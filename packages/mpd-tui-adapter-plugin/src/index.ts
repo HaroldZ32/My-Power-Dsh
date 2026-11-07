@@ -996,7 +996,7 @@ export function hostSelfHealsPanelCsv(version: string): boolean {
  * back. There is therefore NO enable-list state this adapter could still author — anything it wrote
  * would be a second writer racing the host's own merge, which is exactly the incident class
  * (`fix/sidebar-015-keeper-migration`) this gate retires. Which host the bundle is ADMITTED on is a
- * different fact, declared in `dsh-plugin.json` `compat.hosts` (0.17.0 since v0.15.5).
+ * different fact, declared in `dsh-plugin.json` `compat.hosts` (the 0.18.0 + 0.19.0 band since v0.18.0).
  */
 export const PANEL_CSV_HOST_OWNED_SINCE = "0.16.1"
 

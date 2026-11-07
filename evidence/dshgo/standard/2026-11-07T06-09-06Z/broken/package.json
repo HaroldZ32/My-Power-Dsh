@@ -1,0 +1,1 @@
+{"engines":{"dsh":">=0.2.1-rc.5"},"dsh":{"bundle":{"patch":["./cordis.patch.yml"]}},"dshGo":{"v":1,"contributes":{"panels":[{"id":"dup","placement":["session.tab"]}],"composer.strip":[{"id":"dup","text":"—"}]}}}

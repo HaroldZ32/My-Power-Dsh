@@ -73,13 +73,17 @@ composition, negotiation and authorization reports; the one-line meanings above 
 reading of them, and only `compatible` and `waiting_authorization` were actually observed for this
 bundle.
 
-**Measured 2026-11-06T02-09-20Z against the installed host `@deepseek-harness-tui/dsh-tui` 0.18.0:
-both manifests answer `validatePlugin: ok` and `negotiate: compatible`.**
+**Measured 2026-11-07T05-59-31Z against the installed host `@deepseek-harness-tui/dsh-tui` 0.19.0:
+`validateHost: ok`, and both manifests answer `validatePlugin: ok` and negotiate `compatible`.** The same
+chain answered `compatible` on 0.18.0, and the two verdicts rest on one chain: the admission guide, the
+contract and permission registries and all eleven admission-decision source files are **byte-identical at
+the two tags** (the guide's blob is `6b9dfd3…`, 99,723 B; `permissions-0.1.json` is `f36cb6e…`), so the
+0.19.0 move required no admission rework.
 
 | Manifest | SHA-256 (truncated) | `validatePlugin` | Negotiation |
 |---|---|---|---|
-| `dsh-plugin.json` (bundle root) | `b807ad68…` | `ok` | `compatible` |
-| `packages/mpd-tui-plugin/dsh-plugin.json` | `2354afb9…` | `ok` | `compatible` |
+| `dsh-plugin.json` (bundle root) | `bcbe05af…` | `ok` | `compatible` |
+| `packages/mpd-tui-plugin/dsh-plugin.json` | `aeed4c00…` | `ok` | `compatible` |
 
 Both numbers come from one run of the installed host's own chain,
 `loadSpecData -> createContractIndex -> validatePlugin(index, manifest) -> negotiate(index, manifest,
@@ -91,14 +95,15 @@ established by these runs, only its `validatePlugin` and `negotiate` results:
 
 ```sh
 bun skills/dsh-qa/scripts/tui-admission.ts --static-only
-node evidence/tui/ecosystem-admission/2026-11-06T02-09-20Z/probe-negotiation.mjs
+node evidence/upstream/0.2.2/2026-11-07T05-45Z/probe-negotiation-0.19.0.mjs
 ```
 
-Both exited 0. The second command is machine-specific: `probe-negotiation.mjs` hard-codes the author's
-host root (`HOST`, the installed `@deepseek-harness-tui/dsh-tui` directory under the `dsh-tui` profile)
-and repository root (`REPO`); substitute those two constants before running it. The first command is
-repository-relative and needs no substitution. The 2026-11-06 measurement is a re-run after the permission
-change below; the 2026-11-03 run is what that change was made against.
+Both exited 0 — the first produced `tui-admission-019.log`, the second `probe-negotiation-0.19.0.json`,
+both in that directory. The second command is machine-specific: the probe hard-codes the author's host root
+(`HOST`, the 0.19.0 scratch install under `.qa-tmp/tui-019`) and repository root (`REPO`); substitute those
+two constants before running it. The first command is repository-relative and needs no substitution. The
+2026-11-06 run was against 0.18.0, after the permission change below; the 2026-11-03 run is what that
+change was made against.
 
 **What turned `waiting_authorization` into `compatible`.** The 2026-11-03 run answered
 `waiting_authorization` with reason code `PERMISSION_NOT_GRANTED` over four declared permissions, all
@@ -132,7 +137,7 @@ blocks a claim and not admission.
 |---|---|---|---|
 | A. Package and identity | **PARTIAL** | Met: `$schema` is an absolute URI (`https://dsh.community/schemas/dsh-plugin-0.15.json`), `manifestVersion` is `0.15`, the `id` is stable and unique (`com.mpd-dsh.mpd-tui`), `facets.host` names an entry with `apiVersion: v1alpha1`, no `client` or `worker` facet appears, and the source repository plus the MIT licence are locatable (`dsh-plugin.json`, `LICENSE.md`). | **Not met: no artifact SHA-256 digest is recorded anywhere.** Neither manifest, `dsh-distribution.json`, `VENDOR_LOCK.json` nor `scripts/pack-mpd.ts` carries one; what exists is prose — hashes quoted inside `docs/tui.md`, several of them truncated with `…` — not a digest the admission path can read. The guide scopes the digest to a Verified claim, so this **blocks a claim, not admission**. |
 | B. Declaration completeness | **PARTIAL** | Met: `requires.contracts` carries ONE optional `tui.dsh/v1alpha1#DecisionEvents` with a written fallback; `permissions: []`; `subscriptions: []`; `contributes.commands: []`; neither `provides` nor `requires.services` appears in either manifest. | **Not met:** `contributes.commands: []` while `/mpd` and `/mpd-model` ARE registered through the harness `commands` service, so the host's effect ledger attributed them `undeclared` — an EARLIER observation, not re-measured after admission became `compatible`; [`tui.md` §6.4](./tui.md#64-the-mpd-command-uses-the-hosts-unattributed-commands-service) records that live bound. The declaration and the behaviour still disagree. |
-| C. TUI compatibility | **PASS** | Negotiation passes on 0.18.0 for both manifests (`result.json` above); no `Backend` contribution is declared, so `TUI-BACKEND-001` does not apply; no remote attach is claimed, so no remote profile test is owed. | None inside this group. The `compatible` result is a negotiation result, not a live-mount result (§3). |
+| C. TUI compatibility | **PASS** | Negotiation passes on 0.18.0 and 0.19.0 for both manifests (`result.json` and the 0.19.0 probe log); no `Backend` contribution is declared, so `TUI-BACKEND-001` does not apply; no remote attach is claimed, so no remote profile test is owed. | None inside this group. The `compatible` result is a negotiation result, not a live-mount result (§3). |
 | D. Runtime behaviour | **PARTIAL** | `apply` is synchronous — no `await`, no `ctx.root` capture; repeated activation is deterministic; cleanup ownership is covered by `packages/mpd-tui-plugin/test/plugin.test.ts`, which records every disposer and counts the disposals. | **Not met:** `effectOn` (`packages/mpd-tui-adapter-plugin/src/index.ts`) wraps the ownership call in `try` with an empty `catch`, so a scope that cannot own an effect fails silently instead of leaving a diagnosable, retryable state; and no activation or runtime-generation id is recorded, so a registered resource cannot be traced to the activation instance that owns it. |
 | E. Cleanup and recovery | **PARTIAL** | The documentation half is closed by [`tui.md` §2.1](./tui.md#21-removal-levels-and-the-retention-policy-tui-obs-002): the three removal levels, what a removal revokes, and what it keeps per resource class. | **Not automated.** The pinned conformance matrix (`evidence/dshgo/tui-admission/2026-11-03T01-23-16Z/requirements-v0.15.json`) has no `TUI-OBS-002` row, and `skills/dsh-qa/scripts/tui-spec-conformance.ts` has no evaluator arm for it — an unknown id reports `blocked`. Nothing in the lane certifies §2.1 today. |
 | F. Trust and claims | **PARTIAL** | The `trusted-in-process` disclosure is the host's own `/plugin` surface, not a sentence of ours; the dependency closure is reproducible (committed `bun.lock`, and the published dependency closure carries no install script). | **Not met:** this bundle deliberately makes NO conformance claim, so `TUI-CLAIM-001` is never exercised; there is no provenance or attestation, and the artifact digest that would bind a claim does not exist (§4 group A). |

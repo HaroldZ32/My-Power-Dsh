@@ -1,0 +1,47 @@
+# H1 scenario header + the three run exit codes
+# the transcript below is .qa-tmp/r4-run.sh output from the gitignored demonstration tree:
+#   repo copy with BOTH manifests' compat.hosts cut to [@deepseek-harness-tui/dsh-tui@0.19.0]
+#   (0.18.0 DELETED), specs/tui-hosts.json still naming BOTH hosts, and a synthetic installed
+#   host whose package.json says 0.19.0 (a copy of the ambient payload, version relabelled).
+== scenario ==
+the gate under test (working tree): f300460c410aa3e9526693b4c7e253d5961c42c9fa0f4abd568a8876bd54c6e3  115560 bytes
+cut band -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/r4-demo/repo/dsh-plugin.json : ["@deepseek-harness-tui/dsh-tui@0.19.0"]
+cut band -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/r4-demo/repo/packages/mpd-tui-plugin/dsh-plugin.json : ["@deepseek-harness-tui/dsh-tui@0.19.0"]
+declared claim (specs/tui-hosts.json): ["@deepseek-harness-tui/dsh-tui@0.18.0","@deepseek-harness-tui/dsh-tui@0.19.0"]
+synthetic installed host: @deepseek-harness-tui/dsh-tui 0.18.0 -> 0.19.0
+
+== run 1: the NEW gate, normal mode, synthetic 0.19.0 host ==
+exit=1
+== run 2: the NEW gate, --static-only (NO host discovery at all) ==
+exit=1
+== run 3: the HEAD gate (the one the verifier measured), same cut tree, same 0.19.0 host ==
+HEAD gate: 3a95a637fb01a0269b95b02747aab8e7a4c1a06c2b02dcb2d2db77a06fd1793d  108486 bytes
+exit=0
+
+== observed COMPAT/REPORT lines ==
+--- new-normal
+[tui-admission] arm COMPAT.band:bundle PASS — dsh-plugin.json declares the band [@deepseek-harness-tui/dsh-tui@0.19.0]
+[tui-admission] arm COMPAT.band:package PASS — packages/mpd-tui-plugin/dsh-plugin.json declares the band [@deepseek-harness-tui/dsh-tui@0.19.0]
+[tui-admission] arm COMPAT.band-parity PASS — both manifests declare the same band [@deepseek-harness-tui/dsh-tui@0.19.0]
+[tui-admission] arm COMPAT.distribution-ref PASS — the host-tui ref "pkg:npm/@deepseek-harness-tui/dsh-tui@0.19.0" is inside the band [@deepseek-harness-tui/dsh-tui@0.19.0]
+[tui-admission] arm COMPAT.declared-hosts FAIL — the PUBLISHED host claim [@deepseek-harness-tui/dsh-tui@0.18.0, @deepseek-harness-tui/dsh-tui@0.19.0] (from specs/tui-hosts.json) is not covered — dsh-plugin.json: the band [@deepseek-harness-tui/dsh-tui@0.19.0] does not cover the declared host @deepseek-harness-tui/dsh-tui@0.18.0; packages/mpd-tui-plugin/dsh-plugin.json: the band [@deepseek-harness-tui/dsh-tui@0.19.0] does not cover the declared host @deepseek-harness-tui/dsh-tui@0.18.0; a band that drops a claimed host is a false publication claim, and no discovered host can reveal it
+[tui-admission] arm COMPAT.host-version PASS — the discovered host @deepseek-harness-tui/dsh-tui 0.19.0 is inside the declared band [@deepseek-harness-tui/dsh-tui@0.19.0]
+[tui-admission] FINDING COMPAT.declared-hosts: the PUBLISHED host claim [@deepseek-harness-tui/dsh-tui@0.18.0, @deepseek-harness-tui/dsh-tui@0.19.0] (from specs/tui-hosts.json) is not covered — dsh-plugin.json: the band [@deepseek-harness-tui/dsh-tui@0.19.0] does not cover the declared host @deepseek-harness-tui/dsh-tui@0.18.0; packages/mpd-tui-plugin/dsh-plugin.json: the band [@deepseek-harness-tui/dsh-tui@0.19.0] does not cover the declared host @deepseek-harness-tui/dsh-tui@0.18.0; a band that drops a claimed host is a false publication claim, and no discovered host can reveal it
+[tui-admission] REPORT: FAIL — 1 finding(s) across 55 arms; 47 passed.
+--- new-static-only
+[tui-admission] arm COMPAT.band:bundle PASS — dsh-plugin.json declares the band [@deepseek-harness-tui/dsh-tui@0.19.0]
+[tui-admission] arm COMPAT.band:package PASS — packages/mpd-tui-plugin/dsh-plugin.json declares the band [@deepseek-harness-tui/dsh-tui@0.19.0]
+[tui-admission] arm COMPAT.band-parity PASS — both manifests declare the same band [@deepseek-harness-tui/dsh-tui@0.19.0]
+[tui-admission] arm COMPAT.distribution-ref PASS — the host-tui ref "pkg:npm/@deepseek-harness-tui/dsh-tui@0.19.0" is inside the band [@deepseek-harness-tui/dsh-tui@0.19.0]
+[tui-admission] arm COMPAT.declared-hosts FAIL — the PUBLISHED host claim [@deepseek-harness-tui/dsh-tui@0.18.0, @deepseek-harness-tui/dsh-tui@0.19.0] (from specs/tui-hosts.json) is not covered — dsh-plugin.json: the band [@deepseek-harness-tui/dsh-tui@0.19.0] does not cover the declared host @deepseek-harness-tui/dsh-tui@0.18.0; packages/mpd-tui-plugin/dsh-plugin.json: the band [@deepseek-harness-tui/dsh-tui@0.19.0] does not cover the declared host @deepseek-harness-tui/dsh-tui@0.18.0; a band that drops a claimed host is a false publication claim, and no discovered host can reveal it
+[tui-admission] arm COMPAT.host-version BOUND — NOT CHECKED — --static-only did not run host discovery, so no discovered host version exists to compare against the band
+[tui-admission] NOT PASSED: --static-only was requested, so the host arm did NOT run. A skip is never a pass (D5);
+[tui-admission] FINDING COMPAT.declared-hosts: the PUBLISHED host claim [@deepseek-harness-tui/dsh-tui@0.18.0, @deepseek-harness-tui/dsh-tui@0.19.0] (from specs/tui-hosts.json) is not covered — dsh-plugin.json: the band [@deepseek-harness-tui/dsh-tui@0.19.0] does not cover the declared host @deepseek-harness-tui/dsh-tui@0.18.0; packages/mpd-tui-plugin/dsh-plugin.json: the band [@deepseek-harness-tui/dsh-tui@0.19.0] does not cover the declared host @deepseek-harness-tui/dsh-tui@0.18.0; a band that drops a claimed host is a false publication claim, and no discovered host can reveal it
+[tui-admission] REPORT: FAIL — 1 finding(s) across 50 arms; 41 passed.
+--- head-normal
+[tui-admission] arm COMPAT.band:bundle PASS — dsh-plugin.json declares the band [@deepseek-harness-tui/dsh-tui@0.19.0]
+[tui-admission] arm COMPAT.band:package PASS — packages/mpd-tui-plugin/dsh-plugin.json declares the band [@deepseek-harness-tui/dsh-tui@0.19.0]
+[tui-admission] arm COMPAT.band-parity PASS — both manifests declare the same band [@deepseek-harness-tui/dsh-tui@0.19.0]
+[tui-admission] arm COMPAT.distribution-ref PASS — the host-tui ref "pkg:npm/@deepseek-harness-tui/dsh-tui@0.19.0" is inside the band [@deepseek-harness-tui/dsh-tui@0.19.0]
+[tui-admission] arm COMPAT.host-version PASS — the discovered host @deepseek-harness-tui/dsh-tui 0.19.0 is inside the declared band [@deepseek-harness-tui/dsh-tui@0.19.0]
+[tui-admission] REPORT: PASS — 47 arms passed, 1 allowed deviation(s), 6 bound(s).

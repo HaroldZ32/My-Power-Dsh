@@ -1,0 +1,34 @@
+{
+  "task": "T26 — remove the provenance banner's attribution clause from three doc pairs (EN + zh)",
+  "gitRevAtEvidence": "d6cc91e664906ac2a26259454eae3809f72eb82c",
+  "files": [
+    "docs/feature-audit.md",
+    "docs/feature-audit.zh-CN.md",
+    "docs/tui-parity.md",
+    "docs/tui-parity.zh-CN.md",
+    "docs/upstream-parity-ledger.md",
+    "docs/upstream-parity-ledger.zh-CN.md"
+  ],
+  "change": "the shared STATUS REFRAMED banner now reads: the reference is an early reference and a yardstick, not a conformance target; no gate reads an upstream checkout; NOTHING in this repository is derived from it (roster names, persona texts and model-chain vocabulary are this project's own or re-sourced from permissively licensed public agent prompts, as LICENSE-NOTICES.md records); everything below stays a historical measurement. The false clause ('the roster, the eleven role descriptions and the model-chain vocabulary came from that project and are acknowledged in LICENSE-NOTICES.md and the root README') is gone in all six files.",
+  "declined": "the finding's other half is DECLINED by policy: no historical note and no 'no source is shipped' sentence was added to LICENSE-NOTICES.md or README.md, and neither file was touched.",
+  "acceptance": {
+    "grep 'eleven role descriptions|十一个角色描述' over docs/ + both root READMEs": {
+      "result": "no output",
+      "exit": 1
+    },
+    "bun run verify:docs": {
+      "exit": 0,
+      "pairs": 55,
+      "failed": 0,
+      "violations": 0,
+      "deadTargets": 0
+    },
+    "heading trees + switch links": {
+      "state": "unchanged; only the banner block changed, so the gate's pair/tree checks are vacuous for this edit"
+    }
+  },
+  "bounds": [
+    "no code, no dist, no notices, no README touched",
+    "the reference commit hash already present in upstream-parity-ledger's own wave banner was left as it was (not restated, not removed)"
+  ]
+}

@@ -1,0 +1,4 @@
+[2026-11-07T07:11:32.956Z] [mpd-team-watchdog] web routes: /plugins/mpd-team-watchdog/hold /plugins/mpd-team-watchdog/resume
+[2026-11-07T07:11:32.957Z] [mpd-team-watchdog] applied: enabled=true warnSilenceMs=600000 tickIntervalMs=15000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+[2026-11-07T07:11:33.292Z] [mpd-team-watchdog] registering /plugins/mpd-team-watchdog/hold failed: webserver: duplicate exact route "/plugins/mpd-team-watchdog/hold"
+[2026-11-07T07:11:33.292Z] [mpd-team-watchdog] registering /plugins/mpd-team-watchdog/resume failed: webserver: duplicate exact route "/plugins/mpd-team-watchdog/resume"

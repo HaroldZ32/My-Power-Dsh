@@ -333,8 +333,13 @@
               - id: tool-subagent-control
                 name: '@deepseek-ai/dsh-tool-subagent-control'
 
-              - id: tool-subagent-list-agents
-                name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
+              # NO `tool-subagent-list-agents` ROW (removed for harness 0.2.2-rc.1). That release
+              # dropped the `./list-agents` SUBPATH export from `@deepseek-ai/dsh-tool-subagent-
+              # control` and the root plugin above registers `list_agents` itself; the shipped
+              # `standard` preset dropped the row in the same release. Keeping it is FATAL on
+              # 0.2.2 ("never started") and its id is a row-parity `extra`. DECLARED BOUND: on
+              # 0.2.1-rc.5 the root plugin does NOT register `list_agents`, so that one tool is
+              # absent on the older host — MOUNTING there is unaffected (evidence/upstream/0.2.2/).
 
               - id: tool-subagent
                 name: '@deepseek-ai/dsh-tool-subagent'
@@ -383,14 +388,17 @@
           - id: present
             name: '@deepseek-ai/dsh-tool-present'
 
-          # Profile plugin/bundle management and the plugin market, both DISABLED exactly as the
-          # 0.2.1-rc.5 `standard` preset ships them: the host enables `plugin_manager` in Creator
-          # mode only and other presets keep the row disabled, and `plugin_market` registers
-          # nothing until a `pluginManager` service exists (its index sources are user-configured).
-          # A deployment that wants them sets `disabled: false` in its profile patch.
+          # Profile plugin/bundle management and the plugin market. `tool-plugin-manager` mirrors the
+          # 0.2.2-rc.1 `standard` row VERBATIM, `!!js` guard included: it is enabled only where a
+          # `profileContext` service exists (Creator mode), and on 0.2.1-rc.5 — where `standard` ships
+          # it plainly `disabled: true` and no such service exists — the same expression evaluates to
+          # disabled, so the older host keeps its previous behaviour. `plugin_market` registers
+          # nothing until a `pluginManager` service exists (its index sources are user-configured) and
+          # stays disabled on both hosts. A deployment that wants them sets `disabled: false` in its
+          # profile patch.
           - id: tool-plugin-manager
             name: '@deepseek-ai/dsh-plugin-manager/tools'
-            disabled: true
+            disabled: !!js "!ctx.get('profileContext')"
 
           - id: tool-plugin-market
             name: '@deepseek-ai/dsh-plugin-market/tools'

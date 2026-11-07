@@ -1,0 +1,129 @@
+# GATE SWEEP — code repair, PR #103 CodeRabbit round 1 (findings A, B1, B2)
+# Seat: Senior Engineer. Date: 2026-11-07T19:50:30+08:00. Branch: feature/upstream-0.18.0 @ b0d9ecb7
+# Tools: bun 1.4.2 on PATH; node v24.21.0; pinned build toolchain .toolchain/node_modules/.bin/bun 1.4.0 (NOT used: no dist rebuild, see report).
+# Env: BUN_INSTALL_CACHE_DIR=$PWD/.qa-tmp/bun-cache TMPDIR=$PWD/.qa-tmp/tmp
+
+## 1. bun run typecheck
+$ tsgo --noEmit
+[exit=0]
+
+## 2. node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 614 TypeScript file(s) of 614 in the source set; inspected 55047 declaration(s); skipped 26902 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+[exit=0]
+
+## 3. bun test packages/mpd-dsh-adapter-plugin
+(pass) spawnAgentAsync on the RETIRED generation (§D2.1) > start() is used and its run handle keeps the non-blocking contract [0.04ms]
+
+ 395 pass
+ 0 fail
+ 1573 expect() calls
+Ran 395 tests across 27 files. [2.78s]
+[exit=0]
+
+## 4. bun skills/dsh-qa/scripts/dshgo-standard.ts --self-test
+PASS  kit present + legal run is accepted — judged ok
+PASS  kit present + a red run is refused — judged violation
+PASS  kit present + a NOT-PASSED run is refused (never a silent green) — judged violation
+PASS  kit absent + NOT-PASSED exit 3 is accepted as the contract — judged ok
+PASS  kit absent + a green exit 0 is refused — judged violation
+PASS  kit present + a TIMED-OUT run is refused (a timeout is never a pass) — judged violation; named gate.timeout=failed
+PASS  kit absent + a TIMED-OUT run is refused (a timeout is never a pass) — judged violation; named gate.timeout=failed
+PASS  kit present + a JSON null report is refused (parseable requires an object) — judged violation; named gate.report.parseable=failed
+PASS  kit present + a JSON array report is refused (parseable requires an object) — judged violation; named gate.report.parseable=failed
+PASS  kit present + an unparsable report is refused — judged violation; named gate.report.parseable=failed
+PASS  the real gate fails a broken package — exit=1
+[dshgo-standard] SELF-TEST PASS — 11 arms (10 judge controls + 1 real broken-package control)
+[exit=0]
+
+## 5. node scripts/verify-dshgo-standard.ts --self-test (EXTRA: the gate script itself was NOT touched)
+PASS  HOST: a registration for an id the manifest does not declare
+PASS  HOST: the optional-inject spelling
+PASS  HOST: a top-level inject array carrying dshGo
+PASS  the kit's budget table drifting from the spec is refused
+PASS  HOST: no binding form at all
+[dshgo-standard] SELF-TEST PASS — 44 arms (1 clean control + 43 negative controls)
+[exit=0]
+
+## 6. REAL run with the pinned dsh-Go kit: MPD_DSHGO_KIT=$PWD/.mpd/tmp-dshgo/kit bun skills/dsh-qa/scripts/dshgo-standard.ts
+$ MPD_DSHGO_KIT="$PWD/.mpd/tmp-dshgo/kit" bun skills/dsh-qa/scripts/dshgo-standard.ts
+[dshgo-standard] gate: exit=0 signal=none timedOut=false error=none cross-check=passed static-errors=0 kit=present
+[dshgo-standard] negative control: exit=1 signal=none timedOut=false error=none names-id-duplicate=true
+[dshgo-standard] check gate.report.parseable: PASS — report parsed as an object
+[dshgo-standard] check gate.static.errors: PASS — static error findings = 0
+[dshgo-standard] check gate.timeout: PASS — exit=0 signal=none timedOut=false error=none (a timeout is never a gate verdict)
+[dshgo-standard] check gate.crosscheck.present: PASS — cross-check status = passed
+[dshgo-standard] check gate.exit.legal: PASS — exit = 0 (exit=0 signal=none timedOut=false error=none)
+[dshgo-standard] check control.exit.violations: PASS — exit = 1 (exit=1 signal=none timedOut=false error=none)
+[dshgo-standard] check control.rule.id-duplicate: PASS — the gate named id-duplicate
+[dshgo-standard] evidence: evidence/dshgo/standard/2026-11-07T11-50-48-227Z
+[dshgo-standard] PASS case=dshgo-standard lane=real crosscheck=passed
+[exit=0]
+
+## 7. EXTRA — full suite: bun test packages (NOT a required gate of this task; run because the adapter is shared)
+$ bun test packages
+
+ 3692 pass
+ 6 skip
+ 2 fail
+ 50894 expect() calls
+Ran 3700 tests across 246 files. [40.49s]
+[exit=1 — the 2 failures are the T-62 'shipped artifact' dist-freshness assertions in
+ mpd-ext-plugin/test/adapter-identity.test.ts:361 and mpd-roles-plugin/test/adapter-identity.test.ts:304;
+ both replay node scripts/verify-dist-fresh.ts over their OWN stale dist, which imports the edited
+ adapter src. They go green after the integrator's pinned-toolchain rebuild; no source-level failure.]
+
+## 8. EXTRA — node scripts/verify-dist-fresh.ts (read-only: builds into mkdtemp, never writes the tree)
+$ node scripts/verify-dist-fresh.ts
+STALE lines: 24
+[verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] FAIL - 24 of 34 targets not fresh (STALE: 24) — 763ms
+[exit=1 — EXPECTED: the adapter src edit was deliberately NOT followed by a dist rebuild (captain owns
+ dist/**). The gate names every target with its exact canonical build command; the 24 stale targets are
+ the adapter itself plus the packages whose dist INLINES it.]
+
+## 9. Adapter source imports (the fan-out this edit has on dist/)
+  packages/mpd-autoproject-plugin
+  packages/mpd-better-sidebar-host
+  packages/mpd-bootstrap-plugin
+  packages/mpd-bundle-plugin
+  packages/mpd-cellwork-plugin
+  packages/mpd-codegraph-plugin
+  packages/mpd-comment-checker-plugin
+  packages/mpd-config-plugin
+  packages/mpd-ext-plugin
+  packages/mpd-goal-plugin
+  packages/mpd-hashline-plugin
+  packages/mpd-memory-plugin
+  packages/mpd-modelchain-plugin
+  packages/mpd-project-init-plugin
+  packages/mpd-qa-roles-probe
+  packages/mpd-roles-plugin
+  packages/mpd-roster-provider-plugin
+  packages/mpd-team-compact-plugin
+  packages/mpd-team-core-plugin
+  packages/mpd-team-watchdog-plugin
+  packages/mpd-tools-plugin
+  packages/mpd-tui-plugin
+  packages/mpd-verify-plugin
+  packages/mpd-workmate-plugin
+
+## 10. EXTRA — the same self-test under node (the script header documents `node <file>.ts`)
+$ node skills/dsh-qa/scripts/dshgo-standard.ts --self-test
+PASS  kit present + legal run is accepted — judged ok
+PASS  kit present + a red run is refused — judged violation
+PASS  kit present + a NOT-PASSED run is refused (never a silent green) — judged violation
+PASS  kit absent + NOT-PASSED exit 3 is accepted as the contract — judged ok
+PASS  kit absent + a green exit 0 is refused — judged violation
+PASS  kit present + a TIMED-OUT run is refused (a timeout is never a pass) — judged violation; named gate.timeout=failed
+PASS  kit absent + a TIMED-OUT run is refused (a timeout is never a pass) — judged violation; named gate.timeout=failed
+PASS  kit present + a JSON null report is refused (parseable requires an object) — judged violation; named gate.report.parseable=failed
+PASS  kit present + a JSON array report is refused (parseable requires an object) — judged violation; named gate.report.parseable=failed
+PASS  kit present + an unparsable report is refused — judged violation; named gate.report.parseable=failed
+PASS  the real gate fails a broken package — exit=1
+[dshgo-standard] SELF-TEST PASS — 11 arms (10 judge controls + 1 real broken-package control)
+[exit=0]

@@ -1,0 +1,39 @@
+# verify:gates — the three failing members and why they are OUTSIDE this repair's write scope
+
+## vendor (exit 1)
+[verify-gates] vendor err| [verify-vendor] FAIL - asset skills count drifted: 392 vs 391
+[verify-gates] vendor err| [verify-vendor] FAIL - asset skills treeSha mismatch
+
+### the dirty skills/** corpus that causes it (another writer's uncommitted work; this repair touched no skills file)
+M  skills/dsh-qa/SKILL.md
+A  skills/dsh-qa/scripts/dshgo-standard.ts
+M  skills/dsh-qa/scripts/install-dependencies.ts
+M  skills/dsh-qa/scripts/lib/tui-lane.ts
+M  skills/dsh-qa/scripts/tui-admission.ts
+M  skills/dsh-qa/scripts/tui-deps-ctrla.ts
+M  skills/dsh-qa/scripts/tui-keeper-standdown.ts
+M  skills/dsh-qa/scripts/tui-mount.ts
+M  skills/dsh-qa/scripts/tui-panels.ts
+M  skills/dsh-qa/scripts/tui-team-surface.ts
+M  skills/dsh-qa/scripts/user-surface-mount.ts
+
+## preset-conformance (exit 1)
+[verify-gates] preset-conformance err| [preset-conformance] FAIL: self-test: conformance problems:
+[verify-gates] preset-conformance err|   - the mpd preset does not mount active row(s) the installed standard preset mounts: tool-subagent-list-agents
+
+## dshgo (exit 3)
+[verify-gates] dshgo out| [dshgo-standard] CROSS-CHECK: NOT-PASSED — NOT-PASSED: MPD_DSHGO_KIT is not set, so the official checker did not run (a cross-check that did not run is never a green). Provide a dsh-Go checkout: MPD_DSHGO_KIT=<checkout> node scripts/verify-dshgo-standard.ts
+[verify-gates] dshgo out| [dshgo-standard] RESULT: NOT-PASSED — the official cross-check did not run
+
+## the 11 declared members and their exit codes
+[verify-gates] member vendor: exit=1 FAIL - 137ms
+[verify-gates] member dist-fresh: exit=0 PASS - 786ms
+[verify-gates] member rows-parity: exit=0 PASS - 54ms
+[verify-gates] member docs-parity: exit=0 PASS - 65ms
+[verify-gates] member preset-conformance: exit=1 FAIL - 393ms
+[verify-gates] member plugin-manifest: exit=0 PASS - 2305ms
+[verify-gates] member comment-coverage: exit=0 PASS - 2849ms
+[verify-gates] member graph-model: exit=0 PASS - 249ms
+[verify-gates] member workflows: exit=0 PASS - 40ms
+[verify-gates] member tui-admission: exit=0 PASS - 133ms
+[verify-gates] member dshgo: exit=3 FAIL - 67ms

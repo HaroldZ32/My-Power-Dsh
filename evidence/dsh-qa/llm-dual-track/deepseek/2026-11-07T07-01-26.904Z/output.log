@@ -1,0 +1,5 @@
+Tools called: `bash` (one call: `pwd && ls`).
+
+Files in the directory: 1 (`AGENT.md`).
+dsh: reasoning:
+Only one tool call: bash. One file: AGENT.md. Answer only.

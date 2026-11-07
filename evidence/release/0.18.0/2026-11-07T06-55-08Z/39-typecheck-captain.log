@@ -1,0 +1,8 @@
+# typecheck evidence — re-run for N1 (the 0-byte 39-typecheck-captain.log did not record that tsgo is silent on success)
+# cwd: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+# argv: node_modules/.bin/tsgo --noEmit
+# tool: Version 7.0.0-dev.20260707.2
+# started: 2026-11-07T08:45:55Z
+# finished: 2026-11-07T08:45:56Z
+# exit code: 0
+# note: tsgo --noEmit prints NOTHING on success; this file is non-empty only because of the header/trailer recorded here.

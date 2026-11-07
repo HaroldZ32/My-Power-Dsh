@@ -109,6 +109,32 @@ jobs:
           echo "MPD_DSH_TUI_HOST=${MPD_DSH_TUI_HOST}" >> "$GITHUB_ENV"
           test -f "${MPD_DSH_TUI_HOST}/package.json"
 
+      # THE DSH-GO STANDARD THE `dshgo` GATE CROSS-CHECKS AGAINST. The official checker lives in
+      # `ccch1mneyyy/dsh-Go` (its npm package is `private: true`), so it is NOT vendored and cannot be
+      # a dependency: this step checks the PINNED upstream commit out at CI time and points the gate at
+      # it through `MPD_DSHGO_KIT`. The gate treats a missing checkout as NOT-PASSED (exit 3), which the
+      # aggregate renders as a FAILED member on purpose — a cross-check that did not run is never a pass.
+      # The checkout is a sparse one (`sdk/plugin-kit` only) so the Flutter app is never fetched.
+      # IT MUST ALSO LIVE UNDER `$GITHUB_WORKSPACE`: `actions/checkout` refuses a `path:` that resolves
+      # outside it, and `runner.temp` IS outside it (`/home/runner/work/_temp`). Measured on run
+      # 42358482313, job "Static gates": "Repository path '/home/runner/work/_temp/dsh-go-kit' is not
+      # under '/home/runner/work/My-Power-Dsh/My-Power-Dsh'" — the step died and took the job with it.
+      # `.dsh-go-kit` is workspace-relative, gitignored, and holds exactly the same sparse checkout.
+      - name: Check out the pinned DSH-Go kit the dshgo gate cross-checks against
+        uses: actions/checkout@v7
+        with:
+          repository: ccch1mneyyy/dsh-Go
+          ref: d5ad25c5bc4c66ecacee76b3c5378db45e1db3fa
+          path: .dsh-go-kit
+          sparse-checkout: sdk/plugin-kit
+          sparse-checkout-cone-mode: false
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Point the dshgo gate at the pinned kit
+        run: |
+          test -f "$GITHUB_WORKSPACE/.dsh-go-kit/sdk/plugin-kit/bin/check.mjs"
+          echo "MPD_DSHGO_KIT=$GITHUB_WORKSPACE/.dsh-go-kit" >> "$GITHUB_ENV"
+
       # The vendor gate's subject is `VENDOR_LOCK.json` and the working tree. It resolves NO
       # checkout and reads NO `MPD_UPSTREAM_ROOT`, so this job needs neither a fetch step nor an env
       # block here — that pair was removed with the upstream baseline on 2026-10-07.

@@ -1,0 +1,30 @@
+{
+  "root": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "lanes": [
+    {
+      "lane": "MANIFEST",
+      "findings": []
+    },
+    {
+      "lane": "VIEW",
+      "findings": []
+    },
+    {
+      "lane": "COMPAT",
+      "findings": []
+    },
+    {
+      "lane": "HOST",
+      "findings": []
+    }
+  ],
+  "crossCheck": {
+    "status": "not-passed",
+    "detail": "NOT-PASSED: MPD_DSHGO_KIT is not set, so the official checker did not run (a cross-check that did not run is never a green). Provide a dsh-Go checkout: MPD_DSHGO_KIT=<checkout> node scripts/verify-dshgo-standard.ts",
+    "findings": [],
+    "kit": null,
+    "officialExit": null
+  },
+  "exitCode": 3,
+  "relativeSelf": "scripts/verify-dshgo-standard.ts"
+}

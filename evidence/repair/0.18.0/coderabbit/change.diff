@@ -1,0 +1,29 @@
+diff --git a/agent-references/troubleshooting.md b/agent-references/troubleshooting.md
+index 778dd0b9..b2d0e197 100644
+--- a/agent-references/troubleshooting.md
++++ b/agent-references/troubleshooting.md
+@@ -191,12 +191,18 @@ another team: the session-start complexity gate treated "leading" as permanent.
+ 
+ **Rule (AGENTS.md §1, measured 2026-11-05).** "Leading" means a team that has NOT ended. A team counts as
+ ended on an explicit `agent_teams_control end`, or on a CLEAN-TERMINAL board — at least one task, every task
+-`completed`/`cancelled`, none `failed` — which the gate ends itself. A `failed` task blocks BOTH the auto-end
+-and any re-team and asks for a `kind=repair` row: a wave whose verification failed is never closed silently.
+-With no live team and `team.reteam.afterConsults` (default 4) COMPLETED `mpd_role_spawn*` /
+-`mpd_workmate_spawn` calls since the last fire, the gate stages a NEW shell under the marker
+-`[AgentTeams] Re-team rule`, once per record in `<ws>/.mpd/session-gate/<sessionId>.json`;
+-`team.reteam.enabled` (default true) gates only that volume trigger.
++`completed`/`cancelled`, none `failed` — which the gate ATTEMPTS to end itself: `autoEndCleanTerminal` issues
++ONE `agent_teams_control end` call per team per process and, if that call fails or times out, logs one warning
++and continues WITHOUT retrying that team — so a board the gate treats as terminal can leave its team open.
++A `failed` task blocks BOTH the auto-end and any re-team and asks for a `kind=repair` row: a wave whose
++verification failed is never closed silently. With no live team and `team.reteam.afterConsults` (default 4)
++COMPLETED `mpd_role_spawn*` / `mpd_workmate_spawn` calls since the last fire, the gate fires the re-team rule
++under the marker `[AgentTeams] Re-team rule`, once per record in `<ws>/.mpd/session-gate/<sessionId>.json`. It
++stages a NEW shell only under `team.gate=mechanical`, only when `stagePlan` succeeds, and only when the
++staged-plan probe found none — a plan already staged is NAMED through `alreadyStaged` instead of created, and
++an unanswerable probe stages anyway with one warning. `advisory` mode, a missing `agent_teams_plan` tool and
++every failed call emit the notice only, saying `NO team was staged`. `team.reteam.enabled` (default true)
++gates only that volume trigger.
+ 
+ **Why this id was renumbered (2026-11-07).** T-93 is the `describe().value` harness gap above; this rule is
+ OUR gate's predicate, not DSH behaviour, and AGENTS.md §12's friction list means T-93 in the harness sense.

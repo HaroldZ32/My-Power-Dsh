@@ -1,0 +1,11 @@
+# declaration-comment gate
+# cwd: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+# argv: node scripts/verify-comment-coverage.ts
+# started: 2026-11-07T09:34:11Z
+# finished: 2026-11-07T09:34:14Z
+# exit code: 0
+# verify-comment-coverage
+
+scanned 614 TypeScript file(s) of 614 in the source set; inspected 55021 declaration(s); skipped 26892 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.

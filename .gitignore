@@ -4,6 +4,7 @@ node_modules/
 .qa-tmp/
 .qa-web-client/
 .toolchain/
+.dsh-go-kit/
 *.tmp
 evidence/*.log.tmp
 .DS_Store

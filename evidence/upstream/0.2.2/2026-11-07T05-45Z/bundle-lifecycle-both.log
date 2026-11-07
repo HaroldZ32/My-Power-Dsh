@@ -1,0 +1,20 @@
+=== bundle-lifecycle on dsh 0.2.2-rc.1 ===
+[bundle-lifecycle] ok=false -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/dsh-qa/bundle-lifecycle/2026-11-07T06-02-22.579Z
+  install: {"ok":true,"exit":0,"dependency":"link:/home/haroldzhao/MyProj/DshProj/My-Power-Dsh","bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","@mpd-dsh/mpd"],"oneCommand":"dsh plugin --profile w add <repo root>"}
+  composed: {"ok":true,"exit":0}
+  boot: {"ok":false,"checks":{"http":true,"adapterProvided":true,"adapterSeams":true,"adapterToolCall":false,"corpusFromBundle":true,"noPresetRefusal":true,"probePass":false,"presetProbeOk":true},"failed":["adapterToolCall","probePass"],"probeVerdict":"FAIL","presetPr
+  noHomeCopy: {"ok":true,"skills":[],"presets":[]}
+  layerDurability: {"ok":true,"exit":0,"dependency":true,"bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","@mpd-dsh/mpd"]}
+  uninstall: {"ok":true,"exit":0,"bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app"],"residue":[],"mpdState":[]}
+bundle-lifecycle-022 exit=0
+
+=== bundle-lifecycle on dsh 0.2.1-rc.5 (backward compat arm) ===
+[bundle-lifecycle] ok=true -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/dsh-qa/bundle-lifecycle/2026-11-07T06-02-38.528Z
+  install: {"ok":true,"exit":0,"dependency":"link:/home/haroldzhao/MyProj/DshProj/My-Power-Dsh","bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","@mpd-dsh/mpd"],"oneCommand":"dsh plugin --profile w add <repo root>"}
+  composed: {"ok":true,"exit":0}
+  boot: {"ok":true,"checks":{"http":true,"adapterProvided":true,"adapterSeams":true,"adapterToolCall":true,"corpusFromBundle":true,"noPresetRefusal":true,"probePass":true,"presetProbeOk":true},"failed":[],"probeVerdict":"PASS","presetProbeLine":"ok","http":true,"corpu
+  noHomeCopy: {"ok":true,"skills":[],"presets":[]}
+  layerDurability: {"ok":true,"exit":0,"dependency":true,"bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","@mpd-dsh/mpd"]}
+  uninstall: {"ok":true,"exit":0,"bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app"],"residue":[],"mpdState":[]}
+[bundle-lifecycle] PASS
+bundle-lifecycle-021 exit=0

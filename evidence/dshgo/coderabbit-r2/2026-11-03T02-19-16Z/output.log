@@ -1,0 +1,25 @@
+### tests (bundle + tui)
+ 1 skip
+ 0 fail
+ 35068 expect() calls
+Ran 1306 tests across 64 files. [21.56s]
+### typecheck errors
+0
+### verify:comments
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+### verify:docs
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=55 failed=0 violations=0 exempt=24 derived=3 links=503 dead=0 — PASS
+### verify-dshgo-views
+[verify-dshgo-views] PASS — /home/haroldzhao/MyProj/DshProj/My-Power-Dsh: manifest + static views are legal
+### verify-dist-fresh
+[verify-dist-fresh] ok: 34/34 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 741ms
+### verify:gates
+[verify-gates] member workflows: exit=0 PASS - 34ms
+[verify-gates] PASS - 9/9 member gate(s) green
+### market screenshot URLs
+assets/market/panel-workbench-light.png
+assets/market/panel-team-light.png
+assets/market/panel-workbench-dark.png
+assets/market/panel-team-dark.png
+pinned: true

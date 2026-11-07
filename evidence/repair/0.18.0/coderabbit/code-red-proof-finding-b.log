@@ -1,0 +1,70 @@
+# RED/GREEN PROOF — Finding B1 (timeout attribution) + B2 (parseable shape), PR #103 CodeRabbit round 1
+# Seat: Senior Engineer (code repair). Date: 2026-11-07T19:49:53+08:00. Branch: feature/upstream-0.18.0.
+# HEAD being compared against: b0d9ecb7
+
+## B1 — the attribution fields do NOT exist at HEAD (so a timeout was unattributable there)
+$ git show HEAD:skills/dsh-qa/scripts/dshgo-standard.ts | grep -n 'timedOut|res\.error|res\.signal|reportProblem'
+(no matches — the pre-fix file records none of error / signal / timedOut)
+[exit=0]
+
+## B1 — the fields DO exist in the working tree
+$ grep -n 'timedOut|res\.error|res\.signal|reportProblem' skills/dsh-qa/scripts/dshgo-standard.ts
+59:  readonly timedOut: boolean
+67:  readonly reportProblem: ReportProblem | null
+87:  const error = res.error === undefined ? null : `${(res.error as NodeJS.ErrnoException).code ?? "ERROR"}: ${res.error.message}`
+93:  const timedOut = (res.error as NodeJS.ErrnoException | undefined)?.code === "ETIMEDOUT"
+97:  let reportProblem: ReportProblem | null = null
+99:    reportProblem = { kind: "missing" }
+104:      reportProblem = { kind: "unparsable", message: cause instanceof Error ? cause.message : String(cause) }
+109:    signal: res.signal,
+111:    timedOut,
+115:    reportProblem,
+121:  return `exit=${String(run.status)} signal=${run.signal ?? "none"} timedOut=${String(run.timedOut)} error=${run.error ?? "none"}`
+142:  if (run.reportProblem?.kind === "missing") {
+145:  if (run.reportProblem?.kind === "unparsable") {
+146:    return { name: "gate.report.parseable", ok: false, detail: `the gate's --json report is unparsable: ${run.reportProblem.message}` }
+197:    { name: "gate.timeout", ok: !gate.timedOut, detail: `${runDetail(gate)} (a timeout is never a gate verdict)` },
+292:    // error / signal / timedOut is recorded beside it (the log line carries the same detail).
+296:      timedOut: outcome.gate.timedOut,
+305:      timedOut: outcome.control.timedOut,
+321:   * @param overrides - the attribution fields an arm needs to force (`timedOut`, `reportProblem`, …).
+325:    return { status, signal: null, error: null, timedOut: false, stdout: "", stderr: "", report, reportProblem: null, ...overrides }
+336:  const timedOut = fakeRun(null, undefined, { signal: "SIGTERM", error: "ETIMEDOUT: spawnSync node ETIMEDOUT", timedOut: true, reportProblem: { kind: "missing" } })
+343:  const unparsable = fakeRun(0, undefined, { reportProblem: { kind: "unparsable", message: "Unexpected end of JSON input" } })
+351:    { name: "kit present + a TIMED-OUT run is refused (a timeout is never a pass)", kit: true, run: timedOut, ok: false, mustFail: ["gate.timeout"] },
+352:    { name: "kit absent + a TIMED-OUT run is refused (a timeout is never a pass)", kit: false, run: timedOut, ok: false, mustFail: ["gate.timeout"] },
+
+## B2 — the OLD predicate is quoted from HEAD, the NEW one from the working tree
+OLD:  { name: "gate.report.parseable", ok: gate.report !== undefined && gate.report !== null, ... }
+126:    { name: "gate.report.parseable", ok: gate.report !== undefined && gate.report !== null, detail: gate.report === undefined ? "the gate wrote no parsable --json report" : "report parsed" },
+NEW:  reportCheck() — ok ONLY for a non-null, non-array object
+141:function reportCheck(run: GateRun): Check {
+142-  if (run.reportProblem?.kind === "missing") {
+143-    return { name: "gate.report.parseable", ok: false, detail: "the gate wrote no --json report (the file is absent)" }
+144-  }
+145-  if (run.reportProblem?.kind === "unparsable") {
+146-    return { name: "gate.report.parseable", ok: false, detail: `the gate's --json report is unparsable: ${run.reportProblem.message}` }
+147-  }
+148-  if (typeof run.report !== "object" || run.report === null || Array.isArray(run.report)) {
+149-    return { name: "gate.report.parseable", ok: false, detail: `the gate's --json report parsed as ${reportShape(run.report)} — not a report object` }
+150-  }
+151-  return { name: "gate.report.parseable", ok: true, detail: "report parsed as an object" }
+152-}
+153-
+154-/** The gate's exit code and its cross-check status, read out of its report. */
+155-function crossCheckStatus(report: unknown): string {
+
+## B2 — both predicates evaluated over the shapes a --json file can parse to
+[exit=?]
+shape          | OLD parseable | NEW parseable
+null           | false         | false
+array          | true          | false
+number         | true          | false
+string         | true          | false
+boolean        | true          | false
+object         | true          | true
+object+lanes   | true          | true
+
+OLD admits every non-nullish JSON document (array/number/string/boolean), so a --json file whose
+whole content is [] or 42 satisfied gate.report.parseable. NEW admits only a plain object.
+[exit=0]

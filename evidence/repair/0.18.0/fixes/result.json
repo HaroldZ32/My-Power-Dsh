@@ -1,0 +1,59 @@
+{
+  "wave": "v0.18.0",
+  "repair": "R1 — finding H1 (+ M3, N2) from verify record rec-20261107T082328-68b5c0",
+  "requirement": "R6 — compat.hosts names a band covering 0.18.0 and 0.19.0, and a GATE asserts it",
+  "generatedAt": "2026-11-07T08:37:10Z",
+  "changed": [
+    "scripts/verify-tui-admission.ts — new COMPAT lane: (a) per-manifest band shape, (b) band parity across the two manifests, (c) the dsh-distribution host-tui ref inside the band, (d) the DISCOVERED host version inside the band (BOUND + 'NOT CHECKED' when nothing is discovered); five new --self-test negative controls",
+    "package.json — engines.dsh floored from >=0.2.1-rc.2 to >=0.2.1-rc.5 (M3), one leaf only",
+    "packages/mpd-tui-adapter-plugin/src/index.ts — stale compat.hosts comment corrected from 0.17.0 to the 0.18.0 + 0.19.0 band (N2)",
+    "packages/mpd-tui-adapter-plugin/dist/index.js + packages/mpd-tui-plugin/dist/index.js — rebuilt with the pinned .toolchain bun 1.4.0; both BYTE-IDENTICAL (the comment emits no dist bytes)"
+  ],
+  "notChanged": [
+    "docs/** (owned by another agent this wave)",
+    "scripts/verify-dshgo-standard.ts",
+    "specs/**",
+    "dsh-plugin.json / packages/mpd-tui-plugin/dsh-plugin.json / dsh-distribution.json — temporarily broken for the demonstration, restored byte-exact (sha256 proven, see break-restore-transcript.log)"
+  ],
+  "gates": {
+    "node scripts/verify-tui-admission.ts": { "exit": 0, "report": "PASS — 48 arms passed, 1 allowed deviation(s), 5 bound(s)" },
+    "node scripts/verify-tui-admission.ts --self-test": { "exit": 0, "report": "self-test PASS: 18/18 arms" },
+    "node scripts/verify-tui-admission.ts --static-only": { "exit": 3, "report": "REPORT: PASS — 42 arms passed, 1 allowed deviation(s), 6 bound(s); NOT PASSED by design (D5)" },
+    "./node_modules/.bin/tsgo --noEmit": { "exit": 0, "note": "the repo's `bun run typecheck`; tsgo is not on this shell's PATH, the same binary was invoked from node_modules/.bin" },
+    "node scripts/verify-dist-fresh.ts": { "exit": 0, "report": "ok: 34/34 targets fresh (each rebuilt twice, byte-identical)" },
+    "node scripts/verify-comment-coverage.ts": { "exit": 0, "report": "PASS — 614 files, 55001 declarations" },
+    "node scripts/verify-plugin-manifest.ts --pack": { "exit": 0, "report": "PASS — install-time rules and the packaging contract hold" },
+    "bun test packages/mpd-tui-adapter-plugin": { "exit": 0, "report": "90 pass, 0 fail" },
+    "node ./scripts/verify-gates.ts": {
+      "exit": 1,
+      "members": 11,
+      "passed": 8,
+      "failed": [
+        { "member": "vendor", "exit": 1, "cause": "asset skills count drifted: 392 vs 391 + skills treeSha mismatch — 11 uncommitted skills/** files from another writer; this repair touched no skills file" },
+        { "member": "preset-conformance", "exit": 1, "cause": "the mpd preset does not mount active row(s) the installed standard preset mounts: tool-subagent-list-agents — installed-harness/preset drift, no file in this repair's scope" },
+        { "member": "dshgo", "exit": 3, "cause": "MPD_DSHGO_KIT is not set, so the official cross-check did not run — a declared NOT-PASSED environment bound (MANIFEST/VIEW/COMPAT/HOST all PASS)" }
+      ]
+    }
+  },
+  "negativeControls": [
+    { "id": "compat-empty-band", "assertion": "(a) an EMPTY compat.hosts reddens", "observed": "exit 1, arm COMPAT.band:fixture FAIL" },
+    { "id": "compat-band-parity", "assertion": "(b) two manifests with different bands redden", "observed": "exit 1, arm COMPAT.band-parity FAIL" },
+    { "id": "compat-distribution-ref", "assertion": "(c) a band that omits the dsh-distribution host-tui ref reddens", "observed": "exit 1, arm COMPAT.distribution-ref FAIL" },
+    { "id": "compat-host-version", "assertion": "(d) a DISCOVERED host outside the band reddens", "observed": "exit 1, arm COMPAT.host-version FAIL (fake --host-dir host at 0.17.0)" },
+    { "id": "compat-host-version-reported", "assertion": "(d) with no discovered host the sub-assertion is REPORTED, never a silent pass", "observed": "--static-only exit 3, arm COMPAT.host-version BOUND — 'NOT CHECKED — --static-only did not run host discovery'" }
+  ],
+  "breakAndRestore": [
+    { "case": "A", "break": "both manifests -> [0.18.0] only (band missing the distribution ref)", "exit": 1, "redArm": "COMPAT.distribution-ref", "detail": "the host-tui ref pkg:npm/@deepseek-harness-tui/dsh-tui@0.19.0 is OUTSIDE the declared band" },
+    { "case": "B", "break": "delete 0.18.0 from the band (the defect's measured consequence)", "exit": 1, "redArm": "COMPAT.host-version", "detail": "the discovered host @deepseek-harness-tui/dsh-tui 0.18.0 is OUTSIDE the declared band [0.19.0]" },
+    { "case": "C", "break": "package manifest -> [0.18.0] only, bundle untouched (drift)", "exit": 1, "redArm": "COMPAT.band-parity", "detail": "the two manifests disagree on compat.hosts" },
+    { "case": "D", "break": "both manifests -> [] (empty band)", "exit": 1, "redArm": "COMPAT.band:bundle + COMPAT.band:package + COMPAT.distribution-ref + COMPAT.host-version", "detail": "4 findings" },
+    { "case": "E", "break": "both manifests -> [] under --static-only", "exit": 1, "redArm": "COMPAT.band:bundle + :package + COMPAT.distribution-ref", "detail": "COMPAT.host-version stays BOUND (NOT CHECKED); a red tree still exits 1, not 3" }
+  ],
+  "restore": { "bundleSha256": "bcbe05afd5bc2b2e1727821c11c96cd7f5255397b15c0adccf0de13322cae550", "packageSha256": "aeed4c00f6d82776bfba7a85a3ae91fedaa5060e813df78f432611bfc21f93cd", "byteExactEveryCase": true, "postRestoreGateExit": 0 },
+  "notProved": [
+    "The host arm ran against the ambient 0.18.0 host found at ~/.dsh/profiles/dsh-tui; CI installs 0.19.0, so arm (d) is proven for 0.18.0 here and for 0.19.0 only by the distribution-ref arm plus the fake-host negative control.",
+    "Nothing asserts that EVERY member of the published band was actually measured against a host — the band's other member is checked via the dsh-distribution ref (c) and the ambient host (d), which is what the task specified.",
+    "verify:gates is 11/11 members but 8 pass / 3 fail; the three failures are outside this repair's write scope and are named in verify-gates-failures.log.",
+    "No live TTY mount and no artifact digest: the gate's own declared bound is unchanged."
+  ]
+}

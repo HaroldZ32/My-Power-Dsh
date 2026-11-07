@@ -1,0 +1,40 @@
+[tui-admission] self-test arm shipped-static: PASS — the two shipped manifests and the repository pass every static arm
+[tui-admission] self-test arm negative-control: PASS — a deliberately broken fixture exited 1 with 10/10 expected red arms
+[tui-admission] self-test control transcript: [tui-admission] arm A.schema:fixture FAIL — $schema must be an absolute URI (scheme://…), got "schemas/dsh-plugin-0.15.json"
+[tui-admission] self-test control transcript: [tui-admission] arm A.manifest-version:fixture FAIL — manifestVersion "0.14" must be 0.15 and the $schema version token "0.15" must agree
+[tui-admission] self-test control transcript: [tui-admission] arm A.id:fixture FAIL — a stable plugin id in reverse-DNS shape is required, got (absent)
+[tui-admission] self-test control transcript: [tui-admission] arm A.host-facet:fixture FAIL — facets.host must name both an entry and an apiVersion; entry="missing.js" apiVersion=(absent)
+[tui-admission] self-test control transcript: [tui-admission] arm A.host-entry:fixture FAIL — the facet entry does not resolve from the manifest's directory: "missing.js"
+[tui-admission] self-test control transcript: [tui-admission] arm A.facets:fixture FAIL — a client/worker facet is rejected in v0.15 (no licence surface legalizes it)
+[tui-admission] self-test control transcript: [tui-admission] arm B.contracts:fixture FAIL — an optional contract carries no written fallback: {"apiVersion":"tui.dsh/v1alpha1","kind":"DecisionEvents","optional":true}
+[tui-admission] self-test control transcript: [tui-admission] arm B.no-provides:fixture FAIL — `provides` is rejected in v0.15 and must not appear
+[tui-admission] self-test control transcript: [tui-admission] arm B.permissions:fixture FAIL — permission mpd.not.used is declared but never referenced in the TUI source
+[tui-admission] self-test control transcript: [tui-admission] arm B.commands:fixture FAIL — contributes.commands must be an array
+[tui-admission] self-test control transcript: [tui-admission] FINDING A.schema:fixture: $schema must be an absolute URI (scheme://…), got "schemas/dsh-plugin-0.15.json"
+[tui-admission] self-test control transcript: [tui-admission] FINDING A.manifest-version:fixture: manifestVersion "0.14" must be 0.15 and the $schema version token "0.15" must agree
+[tui-admission] self-test control transcript: [tui-admission] FINDING A.id:fixture: a stable plugin id in reverse-DNS shape is required, got (absent)
+[tui-admission] self-test control transcript: [tui-admission] FINDING A.host-facet:fixture: facets.host must name both an entry and an apiVersion; entry="missing.js" apiVersion=(absent)
+[tui-admission] self-test control transcript: [tui-admission] FINDING A.host-entry:fixture: the facet entry does not resolve from the manifest's directory: "missing.js"
+[tui-admission] self-test control transcript: [tui-admission] FINDING A.facets:fixture: a client/worker facet is rejected in v0.15 (no licence surface legalizes it)
+[tui-admission] self-test control transcript: [tui-admission] FINDING B.contracts:fixture: an optional contract carries no written fallback: {"apiVersion":"tui.dsh/v1alpha1","kind":"DecisionEvents","optional":true}
+[tui-admission] self-test control transcript: [tui-admission] FINDING B.no-provides:fixture: `provides` is rejected in v0.15 and must not appear
+[tui-admission] self-test control transcript: [tui-admission] FINDING B.permissions:fixture: permission mpd.not.used is declared but never referenced in the TUI source
+[tui-admission] self-test control transcript: [tui-admission] FINDING B.commands:fixture: contributes.commands must be an array
+[tui-admission] self-test control transcript: [tui-admission] REPORT: FAIL — 10 finding(s) across 31 arms; 13 passed.
+[tui-admission] self-test arm positive-control: PASS — the same spawn path on the shipped manifest exited 0 with REPORT: PASS
+[tui-admission] self-test arm no-host-not-a-pass: PASS — an absent host exited 3 and printed the candidate list plus the remedy
+[tui-admission] self-test arm r5-record-falsifiable: PASS — a bogus R5 record reddened: the R5 deviation record is STALE — ~/.mpd/nowhere: evidence file packages/does-not-exist/src/index.ts is missing (update docs §5.1 and this gate in the same change)
+[tui-admission] self-test arm r5-write-falsifiable: PASS — a synthetic write under ~/.dsh-tui reddened: a write under ~/.dsh-tui appears at packages/x/src/bad.ts: mkdirSync(join(home, ".dsh-tui")); the R5 deviation and docs §5.1 must move in the same change
+[tui-admission] self-test arm credential-falsifiable: PASS — a synthetic apiKey reference reddened
+[tui-admission] self-test arm stdout-falsifiable: PASS — a synthetic console.log reddened
+[tui-admission] self-test arm fallback-required: PASS — an optional contract without a written fallback is refused: an optional contract carries no written fallback: {"apiVersion":"tui.dsh/v1alpha1","kind":"DecisionEvents","optional":true}
+[tui-admission] self-test arm d-residual-falsifiable: PASS — a fixed effectOn reddened the D residual record
+[tui-admission] self-test arm e-residual-falsifiable: PASS — a matrix carrying TUI-OBS-002 reddened the E residual record
+[tui-admission] self-test arm digest-bound-falsifiable: PASS — a manifest carrying a digest reddened the no-Verified-claim bound
+[tui-admission] self-test arm compat-empty-band: PASS — an EMPTY compat.hosts exited 1 with COMPAT.band red
+[tui-admission] self-test arm compat-band-parity: PASS — two manifests whose bands disagree exited 1 with COMPAT.band-parity red
+[tui-admission] self-test arm compat-distribution-ref: PASS — a band missing the distribution ref exited 1 with COMPAT.distribution-ref red
+[tui-admission] self-test arm compat-host-version: PASS — a discovered host at 0.17.0 exited 1 with COMPAT.host-version red
+[tui-admission] self-test arm compat-host-version-reported: PASS — --static-only exited 3 and reported COMPAT.host-version as NOT CHECKED
+[tui-admission] self-test arm cli-contract: PASS — an unknown flag exited 2 and --help exited 0
+[tui-admission] self-test PASS: 18/18 arms

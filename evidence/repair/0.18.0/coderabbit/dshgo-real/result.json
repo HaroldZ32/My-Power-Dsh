@@ -1,0 +1,60 @@
+{
+  "case": "dshgo-standard",
+  "at": "2026-11-07T11:50:48.369Z",
+  "ok": true,
+  "checks": [
+    {
+      "name": "gate.report.parseable",
+      "ok": true,
+      "detail": "report parsed as an object"
+    },
+    {
+      "name": "gate.static.errors",
+      "ok": true,
+      "detail": "static error findings = 0"
+    },
+    {
+      "name": "gate.timeout",
+      "ok": true,
+      "detail": "exit=0 signal=none timedOut=false error=none (a timeout is never a gate verdict)"
+    },
+    {
+      "name": "gate.crosscheck.present",
+      "ok": true,
+      "detail": "cross-check status = passed"
+    },
+    {
+      "name": "gate.exit.legal",
+      "ok": true,
+      "detail": "exit = 0 (exit=0 signal=none timedOut=false error=none)"
+    },
+    {
+      "name": "control.exit.violations",
+      "ok": true,
+      "detail": "exit = 1 (exit=1 signal=none timedOut=false error=none)"
+    },
+    {
+      "name": "control.rule.id-duplicate",
+      "ok": true,
+      "detail": "the gate named id-duplicate"
+    }
+  ],
+  "gateExit": 0,
+  "gate": {
+    "exit": 0,
+    "signal": null,
+    "timedOut": false,
+    "error": null,
+    "detail": "exit=0 signal=none timedOut=false error=none"
+  },
+  "crossCheck": "passed",
+  "controlExit": 1,
+  "control": {
+    "exit": 1,
+    "signal": null,
+    "timedOut": false,
+    "error": null,
+    "detail": "exit=1 signal=none timedOut=false error=none"
+  },
+  "kit": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp-dshgo/kit"
+}

@@ -1,0 +1,41 @@
+{
+  "case": "dshgo-standard",
+  "at": "2026-11-07T06:08:02.970Z",
+  "ok": true,
+  "checks": [
+    {
+      "name": "gate.report.parseable",
+      "ok": true,
+      "detail": "report parsed"
+    },
+    {
+      "name": "gate.static.errors",
+      "ok": true,
+      "detail": "static error findings = 0"
+    },
+    {
+      "name": "gate.crosscheck.absent",
+      "ok": true,
+      "detail": "cross-check status = not-passed"
+    },
+    {
+      "name": "gate.exit.not-passed",
+      "ok": true,
+      "detail": "exit = 3 (a missing official checkout must exit 3, never 0)"
+    },
+    {
+      "name": "control.exit.violations",
+      "ok": true,
+      "detail": "exit = 1"
+    },
+    {
+      "name": "control.rule.id-duplicate",
+      "ok": true,
+      "detail": "the gate named id-duplicate"
+    }
+  ],
+  "gateExit": 3,
+  "crossCheck": "not-passed",
+  "controlExit": 1,
+  "kit": null
+}

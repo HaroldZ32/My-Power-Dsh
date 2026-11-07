@@ -1,0 +1,88 @@
+{
+  "task": "T1 — DSH-Go conformance HARD GATE",
+  "at": "2026-11-07T06:11:13.700Z",
+  "head": "341b396b5c6b5875356538598464df32a872c1cb",
+  "standard": {
+    "repo": "https://github.com/ccch1mneyyy/dsh-Go",
+    "commit": "d5ad25c5bc4c66ecacee76b3c5378db45e1db3fa",
+    "specData": "specs/dsh-go/"
+  },
+  "gate": "scripts/verify-dshgo-standard.ts",
+  "runs": [
+    {
+      "command": "node scripts/verify-dshgo-standard.ts",
+      "exit": 3,
+      "observed": "static lanes PASS; cross-check NOT-PASSED (MPD_DSHGO_KIT unset)",
+      "log": "gate-no-kit.log"
+    },
+    {
+      "command": "MPD_DSHGO_KIT=<pinned kit> node scripts/verify-dshgo-standard.ts",
+      "exit": 0,
+      "observed": "all five lanes PASS; cross-check PASSED after excluding the official checker's string-only dsh.bundle.patch false negative (printed as crosscheck-normalized)",
+      "log": "gate-with-kit.log"
+    },
+    {
+      "command": "node scripts/verify-dshgo-standard.ts --self-test",
+      "exit": 0,
+      "observed": "44 arms: 1 clean control + 43 negative controls (incl. the COMPAT arm a v2-only component in a DECLARED static view, and the budget-drift probe)",
+      "log": "gate-self-test.log"
+    },
+    {
+      "command": "node scripts/verify-dshgo-standard.ts --root <evidence>/broken",
+      "exit": 1,
+      "observed": "negative control: a duplicate contribution id fails with rule id-duplicate (and the HOST lane refuses a root with no host sources)",
+      "log": "negative-control.log"
+    },
+    {
+      "command": "MPD_DSHGO_KIT=<pinned kit> node scripts/verify-gates.ts",
+      "exit": 1,
+      "observed": "11 members; dshgo exit=0 PASS. The two red members are PRE-EXISTING and outside this task: vendor (skills treeSha awaits the wave's single re-pin by the integrator) and preset-conformance (tool-subagent-list-agents left the installed standard preset at the 0.2.2 harness pin).",
+      "log": "gates-aggregate.log"
+    },
+    {
+      "command": "node scripts/run-qa-selftests.ts",
+      "exit": 1,
+      "observed": "57 cases: 56 pass, 1 fails — preset-conformance (the same pre-existing harness-row finding); dshgo-standard.ts passes (6 arms)",
+      "log": "../../../../.mpd/tmp-dshgo/test-qa.log"
+    }
+  ],
+  "crossCheck": {
+    "absent": "exit 3 (NOT-PASSED) — never a silent green",
+    "present": "exit 0 (PASSED) — official check.mjs exit=1, whose only error is its string-only `dsh.bundle.patch` assumption; the gate resolves every declared patch path itself, so the false negative is excluded EXPLICITLY and printed as a note (`crosscheck-normalized`)",
+    "kitSource": "staged at CI time from the pinned commit (sparse checkout of sdk/plugin-kit), never vendored — the upstream package is `private: true`"
+  },
+  "specAsset": {
+    "path": "specs/dsh-go",
+    "fileCount": 7,
+    "treeSha": "1f812a48dd2c54fa6529c0c05b355676de902515cfe7fa63fd5328b892da2607",
+    "note": "enumerated by the filesystem walk until these files are committed; after the commit `git ls-files` yields the same 7 files and the fingerprint must match"
+  },
+  "skillsChanges": [
+    "skills/dsh-qa/SKILL.md (new dshgo-standard case row)",
+    "skills/dsh-qa/scripts/dshgo-standard.ts (new QA case)",
+    "skills/dsh-qa/scripts/install-dependencies.ts (remedy literal -> dsh-tui@0.19.0)",
+    "skills/dsh-qa/scripts/lib/tui-lane.ts (remedy literal -> 0.19.0)",
+    "skills/dsh-qa/scripts/tui-admission.ts (PREREQ -> 0.19.0)",
+    "skills/dsh-qa/scripts/tui-deps-ctrla.ts (PREREQ -> 0.19.0)",
+    "skills/dsh-qa/scripts/tui-keeper-standdown.ts (PREREQ -> 0.19.0)",
+    "skills/dsh-qa/scripts/tui-mount.ts (PREREQ + TUI_HOST_SPEC default -> 0.19.0)",
+    "skills/dsh-qa/scripts/tui-panels.ts (PREREQ -> 0.19.0)",
+    "skills/dsh-qa/scripts/tui-team-surface.ts (PREREQ + remedy -> 0.19.0)",
+    "skills/dsh-qa/scripts/user-surface-mount.ts (PREREQ + remedy -> 0.19.0)"
+  ],
+  "fixtureVersionLeft": "skills/dsh-qa/scripts/user-surface-mount.ts writes a synthetic package.json with version 0.2.1-rc.3 inside a temp fixture; it only exercises the resolver's directory-walk logic and is never compared with the harness pin, so it was left untouched.",
+  "wiring": {
+    "aggregate": "scripts/verify-gates.ts DECLARED_MEMBERS carries { id: \"dshgo\", argv: [\"node\", \"./scripts/verify-dshgo-standard.ts\"] } — the 11th member; any non-zero exit (2 and 3 included) is a FAILED member.",
+    "ci": ".github/workflows/gates.yml: sparse checkout of ccch1mneyyy/dsh-Go@d5ad25c5 (sdk/plugin-kit) + MPD_DSHGO_KIT export before `bun run verify:gates`.",
+    "release": ".github/workflows/publish.yml: the same checkout and `node scripts/verify-dshgo-standard.ts` placed BEFORE the `npm pack` / `npm stage publish` step, so a non-conforming manifest cannot be staged.",
+    "packageScript": "package.json `verify:dshgo` was added by T1 (pins-engineer), not by this task."
+  },
+  "bounds": [
+    "No Flutter app exists here: nothing renders on a device.",
+    "The HOST lane is static source analysis (constants + computed keys), not a mounted boot.",
+    "The tool-card arms assert the KIT on synthetic trees, not a real tool result; the budget-drift arm compares two tables.",
+    "The cross-check needs a checkout at CI time; without it the gate exits 3 and the aggregate is RED by design.",
+    "verify:gates is still red in this checkout for two PRE-EXISTING, out-of-scope reasons (vendor skills re-pin; preset-conformance harness row).",
+    "scripts/verify-dshgo-views.ts is left in place unmodified (out of this task's write scope); docs/drive-surface.md §4 still points at it — T4 owns that doc edit."
+  ]
+}

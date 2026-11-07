@@ -1,0 +1,2 @@
+[dshgo-standard] gate: exit=0 signal=none timedOut=false error=none cross-check=passed static-errors=0 kit=present
+[dshgo-standard] negative control: exit=1 signal=none timedOut=false error=none names-id-duplicate=true

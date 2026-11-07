@@ -1,0 +1,17 @@
+(pass) W-a — one data frame refreshes the panel on the BUILT artifact > one frame re-reads the routes while the fallback interval never fires 
+(pass) W-a — one data frame refreshes the panel on the BUILT artifact > each MOUNT owns its own stream: both sidebar hosts, mounted together, hold one each 
+(pass) the card's form behaviour > a save writes nested PATHS through scope.mutate with the revision fence 
+(pass) isolation and front-door parity > the four DISPLAY group headings are declared, and grouping is stated as display-only 
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > G-1: each display group renders its heading, and each AGENT renders as ONE row holding its three cells 
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > NEGATIVE CONTROL: the group/agent lookup is falsifiable (a wrong attribute finds nothing) 
+(pass) the effective model-config route > the roster mirror IS the shared declaration's eleven agents, in group order 
+(pass) the BUILT client parses, registers its factories, and ships the frame layer 
+(pass) the watchdog page renders the bundle's OWN state route > an empty store renders the honest 'no stuck team' line instead of a fake banner 
+(pass) team-view panels > a workspace with genuinely NO teams keeps the honest empty state 
+(pass) D4 narrow seam: a subcell is a frame, not a task card > the geometry publishes one frame per group, SIZED BY ITS INTERIOR, and the flat model publishes none 
+(pass) D4 narrow seam: a subcell is a frame, not a task card > the render emits svg → frames → nodes, and NO `data-mpd-node` carries a group id 
+(pass) D4 narrow seam: a subcell is a frame, not a task card > the containment instrument catches a curve INSIDE the frame, and the real routes never enter it 
+(pass) D4 narrow seam: a subcell is a frame, not a task card > a flat render has no frames layer at all (the backward guarantee, on the DOM) 
+(pass) T23 · the recursive geometry draws a box's interior inside it > a frame is sized by its INTERIOR, and an inner subcell frame nests STRICTLY inside it 
+(pass) T23 · the recursive geometry draws a box's interior inside it > an interior keeps its OWN columns: a flattened layout would put both of its cards at one x 
+(pass) T23 · the recursive geometry draws a box's interior inside it > the nested render places cards ABSOLUTELY inside the frames, and the layers still order svg → frames → nodes 

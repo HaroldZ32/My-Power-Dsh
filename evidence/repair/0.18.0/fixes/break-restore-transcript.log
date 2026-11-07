@@ -1,0 +1,71 @@
+original bundle  sha256=bcbe05afd5bc2b2e1727821c11c96cd7f5255397b15c0adccf0de13322cae550
+original package sha256=aeed4c00f6d82776bfba7a85a3ae91fedaa5060e813df78f432611bfc21f93cd
+
+=== A · band missing the DISTRIBUTION ref (both manifests -> [0.18.0] only) ===
+CASE break-A-distribution-ref exit=1
+  [tui-admission] arm COMPAT.band:bundle PASS — dsh-plugin.json declares the band [@deepseek-harness-tui/dsh-tui@0.18.0]
+  [tui-admission] arm COMPAT.band:package PASS — packages/mpd-tui-plugin/dsh-plugin.json declares the band [@deepseek-harness-tui/dsh-tui@0.18.0]
+  [tui-admission] arm COMPAT.band-parity PASS — both manifests declare the same band [@deepseek-harness-tui/dsh-tui@0.18.0]
+  [tui-admission] arm COMPAT.distribution-ref FAIL — the host-tui ref "pkg:npm/@deepseek-harness-tui/dsh-tui@0.19.0" is OUTSIDE the declared band [@deepseek-harness-tui/dsh-tui@0.18.0]; a band that excludes the distribution's own host coordinate is a false publication claim
+  [tui-admission] arm COMPAT.host-version PASS — the discovered host @deepseek-harness-tui/dsh-tui 0.18.0 is inside the declared band [@deepseek-harness-tui/dsh-tui@0.18.0]
+  [tui-admission] FINDING COMPAT.distribution-ref: the host-tui ref "pkg:npm/@deepseek-harness-tui/dsh-tui@0.19.0" is OUTSIDE the declared band [@deepseek-harness-tui/dsh-tui@0.18.0]; a band that excludes the distribution's own host coordinate is a false publication claim
+  [tui-admission] REPORT: FAIL — 1 finding(s) across 54 arms; 47 passed.
+  restored bundle byte-exact
+  restored package byte-exact
+
+=== B · delete 0.18.0 from the band (the defect's measured consequence) ===
+CASE break-B-drop-0.18.0 exit=1
+  [tui-admission] arm COMPAT.band:bundle PASS — dsh-plugin.json declares the band [@deepseek-harness-tui/dsh-tui@0.19.0]
+  [tui-admission] arm COMPAT.band:package PASS — packages/mpd-tui-plugin/dsh-plugin.json declares the band [@deepseek-harness-tui/dsh-tui@0.19.0]
+  [tui-admission] arm COMPAT.band-parity PASS — both manifests declare the same band [@deepseek-harness-tui/dsh-tui@0.19.0]
+  [tui-admission] arm COMPAT.distribution-ref PASS — the host-tui ref "pkg:npm/@deepseek-harness-tui/dsh-tui@0.19.0" is inside the band [@deepseek-harness-tui/dsh-tui@0.19.0]
+  [tui-admission] arm COMPAT.host-version FAIL — the discovered host @deepseek-harness-tui/dsh-tui 0.18.0 is OUTSIDE the declared band [@deepseek-harness-tui/dsh-tui@0.19.0]; this run measured a host the publication claim excludes
+  [tui-admission] FINDING COMPAT.host-version: the discovered host @deepseek-harness-tui/dsh-tui 0.18.0 is OUTSIDE the declared band [@deepseek-harness-tui/dsh-tui@0.19.0]; this run measured a host the publication claim excludes
+  [tui-admission] REPORT: FAIL — 1 finding(s) across 54 arms; 47 passed.
+  restored bundle byte-exact
+  restored package byte-exact
+
+=== C · the two manifests DRIFT (package manifest -> [0.18.0] only, bundle untouched) ===
+CASE break-C-band-drift exit=1
+  [tui-admission] arm COMPAT.band:bundle PASS — dsh-plugin.json declares the band [@deepseek-harness-tui/dsh-tui@0.18.0, @deepseek-harness-tui/dsh-tui@0.19.0]
+  [tui-admission] arm COMPAT.band:package PASS — packages/mpd-tui-plugin/dsh-plugin.json declares the band [@deepseek-harness-tui/dsh-tui@0.18.0]
+  [tui-admission] arm COMPAT.band-parity FAIL — the two manifests disagree on compat.hosts: dsh-plugin.json declares [@deepseek-harness-tui/dsh-tui@0.18.0, @deepseek-harness-tui/dsh-tui@0.19.0] while packages/mpd-tui-plugin/dsh-plugin.json declares [@deepseek-harness-tui/dsh-tui@0.18.0]
+  [tui-admission] arm COMPAT.distribution-ref PASS — the host-tui ref "pkg:npm/@deepseek-harness-tui/dsh-tui@0.19.0" is inside the band [@deepseek-harness-tui/dsh-tui@0.18.0, @deepseek-harness-tui/dsh-tui@0.19.0]
+  [tui-admission] arm COMPAT.host-version PASS — the discovered host @deepseek-harness-tui/dsh-tui 0.18.0 is inside the declared band [@deepseek-harness-tui/dsh-tui@0.18.0, @deepseek-harness-tui/dsh-tui@0.19.0]
+  [tui-admission] FINDING COMPAT.band-parity: the two manifests disagree on compat.hosts: dsh-plugin.json declares [@deepseek-harness-tui/dsh-tui@0.18.0, @deepseek-harness-tui/dsh-tui@0.19.0] while packages/mpd-tui-plugin/dsh-plugin.json declares [@deepseek-harness-tui/dsh-tui@0.18.0]
+  [tui-admission] REPORT: FAIL — 1 finding(s) across 54 arms; 47 passed.
+  restored bundle byte-exact
+  restored package byte-exact
+
+=== D · EMPTY band in both manifests ===
+CASE break-D-empty-band exit=1
+  [tui-admission] arm COMPAT.band:bundle FAIL — dsh-plugin.json: compat.hosts is empty; compat.hosts must declare a non-empty band of @scope/name@x.y.z coordinates
+  [tui-admission] arm COMPAT.band:package FAIL — packages/mpd-tui-plugin/dsh-plugin.json: compat.hosts is empty; compat.hosts must declare a non-empty band of @scope/name@x.y.z coordinates
+  [tui-admission] arm COMPAT.band-parity BOUND — a band is unusable (compat.hosts is empty), so the two cannot be compared; COMPAT.band above carries that finding
+  [tui-admission] arm COMPAT.distribution-ref FAIL — the declared band is unusable (compat.hosts is empty), so the host-tui ref cannot be shown inside it
+  [tui-admission] arm COMPAT.host-version FAIL — the declared band is unusable (compat.hosts is empty), so the discovered host 0.18.0 cannot be shown inside it
+  [tui-admission] FINDING COMPAT.band:bundle: dsh-plugin.json: compat.hosts is empty; compat.hosts must declare a non-empty band of @scope/name@x.y.z coordinates
+  [tui-admission] FINDING COMPAT.band:package: packages/mpd-tui-plugin/dsh-plugin.json: compat.hosts is empty; compat.hosts must declare a non-empty band of @scope/name@x.y.z coordinates
+  [tui-admission] FINDING COMPAT.distribution-ref: the declared band is unusable (compat.hosts is empty), so the host-tui ref cannot be shown inside it
+  [tui-admission] FINDING COMPAT.host-version: the declared band is unusable (compat.hosts is empty), so the discovered host 0.18.0 cannot be shown inside it
+  [tui-admission] REPORT: FAIL — 4 finding(s) across 54 arms; 43 passed.
+  restored bundle byte-exact
+  restored package byte-exact
+
+=== E · the empty band under --static-only (the mode CI uses without a host) ===
+CASE break-E-empty-band-static-only exit=1
+  [tui-admission] arm COMPAT.band:bundle FAIL — dsh-plugin.json: compat.hosts is empty; compat.hosts must declare a non-empty band of @scope/name@x.y.z coordinates
+  [tui-admission] arm COMPAT.band:package FAIL — packages/mpd-tui-plugin/dsh-plugin.json: compat.hosts is empty; compat.hosts must declare a non-empty band of @scope/name@x.y.z coordinates
+  [tui-admission] arm COMPAT.band-parity BOUND — a band is unusable (compat.hosts is empty), so the two cannot be compared; COMPAT.band above carries that finding
+  [tui-admission] arm COMPAT.distribution-ref FAIL — the declared band is unusable (compat.hosts is empty), so the host-tui ref cannot be shown inside it
+  [tui-admission] arm COMPAT.host-version BOUND — NOT CHECKED — --static-only did not run host discovery, so no discovered host version exists to compare against the band
+  [tui-admission] FINDING COMPAT.band:bundle: dsh-plugin.json: compat.hosts is empty; compat.hosts must declare a non-empty band of @scope/name@x.y.z coordinates
+  [tui-admission] FINDING COMPAT.band:package: packages/mpd-tui-plugin/dsh-plugin.json: compat.hosts is empty; compat.hosts must declare a non-empty band of @scope/name@x.y.z coordinates
+  [tui-admission] FINDING COMPAT.distribution-ref: the declared band is unusable (compat.hosts is empty), so the host-tui ref cannot be shown inside it
+  [tui-admission] REPORT: FAIL — 3 finding(s) across 49 arms; 38 passed.
+  restored bundle byte-exact
+  restored package byte-exact
+
+=== post-restore gate (must be green again) ===
+post-restore gate exit=0
+  [tui-admission] REPORT: PASS — 48 arms passed, 1 allowed deviation(s), 5 bound(s).

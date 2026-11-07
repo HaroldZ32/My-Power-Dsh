@@ -112,15 +112,16 @@ Naming is not a gate either. The guide calls `@dsh-tui-ecosystem/<name>` and
 `github.com/dsh-tui-ecosystem/<name>` an 生态约定, and says explicitly 不要求组织仓库 and 不因命名被拒.
 Our package stays `@mpd-dsh/mpd` in `HaroldZ32/My-Power-Dsh`.
 
-Against the five checks: 1, 2, 3 and 4 pass — the repository is public and MIT, `v0.17.5` is tagged
-and published, and the pull request would come from the repository owner. Check 5 was the one miss,
-and the README backlink that closes it now exists.
+Against the five checks: 1, 2, 3 and 4 pass — the repository is public and MIT, and the pull request
+would come from the repository owner; check 4's exact published version is satisfied at SUBMISSION time,
+which is after this release is tagged and published. Check 5 was the one miss, and the README backlink that
+closes it now exists.
 
 ## What we still owe before submitting
 
-1. Bring the DSH Go entry up to the published version. The checked-in entry still names `0.17.0` while
-   the bundle is at `0.17.5`; bump that entry's `version` in the same change that publishes a release,
-   and never ship an entry whose exact version is missing from npm.
+1. The checked-in DSH Go entry now names `0.18.0` (bumped in the same change that publishes this release).
+   Submit only after `0.18.0` is actually on npm: the directory's scan blocks a submission whose exact
+   version is missing, and never ship an entry whose version is not published.
 2. Carry the README backlink to `master`. The dsh-TUI validator reads the README from the default
    branch, so a backlink merged only to `dev` leaves check 5 failing; the release that carries this
    README is what turns it green.

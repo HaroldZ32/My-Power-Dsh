@@ -1,0 +1,7 @@
+# typecheck (tsgo --noEmit)
+# cwd: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+# argv: bun run typecheck
+# started: 2026-11-07T09:34:10Z
+# finished: 2026-11-07T09:34:11Z
+# exit code: 0
+$ tsgo --noEmit

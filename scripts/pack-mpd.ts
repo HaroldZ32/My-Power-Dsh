@@ -366,6 +366,11 @@ const ROOT_ASSET_DIRS: readonly string[] = [
   // purpose: no *.zh-CN.md twin belongs here. The adopted-plugin delta registry that used to ship
   // alongside them is DELETED with the body it described (de-vendor wave).
   "agent-references",
+  // The DSH-Go protocol SPEC DATA (`specs/dsh-go/**`): the static JSON Schemas and the numeric
+  // limits table the packed conformance gate imports at `../specs/dsh-go/limits.ts`. The gate
+  // itself ships through `scripts/**`, so an artifact without this tree would carry the gate and
+  // none of the bytes it statically reads.
+  "specs",
 ]
 
 /**
@@ -977,6 +982,10 @@ function writeManifest(): void {
       // the agent-facing references (troubleshooting + the adopted-plugin delta registry) ship
       // with the same rule as every other root asset: the bytes AND the declaration together.
       "./agent-references/*": "./agent-references/*",
+      // The DSH-Go spec data the packed conformance gate reads travels with the same rule: the
+      // bytes and their addressable path ship together (verify-pack-closure requires a
+      // `./<dir>/*` export for every ROOT_ASSET_DIRS entry).
+      "./specs/*": "./specs/*",
       "./client": "./packages/mpd-bundle-plugin/client.js"
     },
     files: dedupePackedFiles([
@@ -987,6 +996,7 @@ function writeManifest(): void {
       "templates/**",
       "docs/**",
       "agent-references/**",
+      "specs/**",
       "scripts/**",
       // every staged patch file, named individually as well: the wildcards above
       // cover them TODAY, and this line is what keeps the declaration honest if a

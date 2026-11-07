@@ -863,6 +863,42 @@ function createDshAdapter(ctx, config = {}) {
       return;
     }
   };
+  let scopedDshGo;
+  const dshGoService = () => scopedDshGo ?? service("dshGo");
+  const dshGoBoundCallbacks = new Set;
+  const notifyDshGoBound = () => {
+    for (const callback of [...dshGoBoundCallbacks]) {
+      try {
+        callback("dshGo");
+      } catch {}
+    }
+  };
+  const bindDshGoBridge = () => {
+    if (typeof ctx?.inject !== "function")
+      return;
+    try {
+      ctx.inject(["dshGo"], (scoped) => {
+        let bound;
+        try {
+          bound = scoped?.dshGo;
+        } catch {}
+        if (bound === undefined || bound === null) {
+          try {
+            bound = typeof scoped?.get === "function" ? scoped.get("dshGo", false) : undefined;
+          } catch {}
+        }
+        if (bound === undefined || bound === null)
+          return;
+        scopedDshGo = bound;
+        notifyDshGoBound();
+        return () => {
+          if (scopedDshGo === bound)
+            scopedDshGo = undefined;
+        };
+      });
+    } catch {}
+  };
+  bindDshGoBridge();
   const configAgentRouteResolver = () => {
     const config2 = service("mpdConfig");
     if (config2 === undefined || config2 === null)
@@ -1382,13 +1418,38 @@ function createDshAdapter(ctx, config = {}) {
     }
     return { ok: true, isError: false, value: record?.value, raw };
   }
+  function toolRegistrySpeaksBatch(registry) {
+    const candidate = registry;
+    return typeof candidate?.executable === "function" || typeof candidate?.resolve === "function";
+  }
+  async function executeToolCall(registry, input) {
+    const rawArguments = input.arguments === undefined ? "{}" : typeof input.arguments === "string" ? input.arguments : JSON.stringify(input.arguments);
+    const common = {
+      ...input.agent === undefined ? {} : { agent: input.agent }
+    };
+    if (!toolRegistrySpeaksBatch(registry)) {
+      return await registry.execute({
+        name: input.name,
+        arguments: input.arguments ?? {},
+        callId: input.callId,
+        ...input.signal === undefined ? {} : { signal: input.signal },
+        ...common
+      });
+    }
+    const batch = await registry.execute({
+      calls: [{ type: "tool-call", id: input.callId, name: input.name, arguments: rawArguments }],
+      signal: input.signal ?? new AbortController().signal,
+      ...common
+    });
+    return batch?.results?.[0]?.result;
+  }
   async function executeToolForAgent(input) {
     const callId = input.callId ?? "mpd-" + Math.random().toString(36).slice(2, 10);
     const signal = input.signal ?? timeoutSignal(input.timeoutMs ?? defaultTimeoutMs);
     const scoped = input.agent === undefined ? undefined : scopedToolRegistry(input.agent);
     if (scoped !== undefined) {
       try {
-        const raw = await scoped.execute({
+        const raw = await executeToolCall(scoped, {
           name: input.name,
           arguments: input.arguments ?? {},
           callId,
@@ -1424,7 +1485,7 @@ function createDshAdapter(ctx, config = {}) {
       const agentTeams = service("agentTeams");
       const goalService = service("goals");
       const questionService = service("userQuestions");
-      const dshGoService = service("dshGo");
+      const dshGoBridge = dshGoService();
       const sample = liveAgents()[0];
       const sampleScoped = sample?.ctx;
       let scopedCompaction = false;
@@ -1477,7 +1538,7 @@ function createDshAdapter(ctx, config = {}) {
         goals: typeof goalService?.get === "function",
         goalTools: GOAL_TOOL_NAMES.every((goalToolName) => toolReachable(goalToolName)),
         askUser: questionService !== undefined && questionService !== null,
-        dshGo: dshGoService !== undefined && dshGoService !== null
+        dshGo: dshGoBridge !== undefined && dshGoBridge !== null
       };
     },
     workspaceRoot,
@@ -1685,15 +1746,26 @@ function createDshAdapter(ctx, config = {}) {
       }
     },
     onServiceBound(names, callback) {
+      const tracksDshGo = names.includes("dshGo");
+      if (tracksDshGo)
+        dshGoBoundCallbacks.add(callback);
+      const release = () => {
+        if (tracksDshGo)
+          dshGoBoundCallbacks.delete(callback);
+      };
       if (typeof ctx?.on !== "function")
-        return () => {};
+        return release;
       const off = ctx.on("internal/service", (name) => {
         try {
           if (typeof name === "string" && names.includes(name))
             callback(name);
         } catch {}
       });
-      return typeof off === "function" ? off : () => {};
+      const offBus = typeof off === "function" ? off : () => {};
+      return () => {
+        release();
+        offBus();
+      };
     },
     async askUserQuestion(request) {
       const questionService = service("userQuestions");
@@ -1734,11 +1806,11 @@ function createDshAdapter(ctx, config = {}) {
       return off;
     },
     dshGoPresent() {
-      const bridge = service("dshGo");
+      const bridge = dshGoService();
       return bridge !== undefined && bridge !== null;
     },
     dshGoPanel(id, spec) {
-      const bridge = service("dshGo");
+      const bridge = dshGoService();
       if (bridge === undefined || bridge === null || typeof bridge.panel !== "function") {
         warnDshGo(`panel "${id}" not published — the bridge service is absent or exposes no panel()`);
         return false;
@@ -1752,7 +1824,7 @@ function createDshAdapter(ctx, config = {}) {
       }
     },
     dshGoRefresh(id) {
-      const bridge = service("dshGo");
+      const bridge = dshGoService();
       if (bridge === undefined || bridge === null || typeof bridge.refresh !== "function")
         return;
       try {
@@ -1760,7 +1832,7 @@ function createDshAdapter(ctx, config = {}) {
       } catch {}
     },
     dshGoOn(id, handler) {
-      const on = callableMember(service("dshGo"), "on");
+      const on = callableMember(dshGoService(), "on");
       if (on === undefined) {
         warnDshGo(`action "${id}" not registered — the bridge service is absent or exposes no on()`);
         return false;
@@ -1774,7 +1846,7 @@ function createDshAdapter(ctx, config = {}) {
       }
     },
     dshGoStrip(id, dataFn) {
-      const strip = callableMember(service("dshGo"), "strip");
+      const strip = callableMember(dshGoService(), "strip");
       if (strip === undefined) {
         warnDshGo(`strip "${id}" not published — the bridge service is absent or exposes no strip()`);
         return false;
@@ -1788,7 +1860,7 @@ function createDshAdapter(ctx, config = {}) {
       }
     },
     dshGoCaps() {
-      const bridge = service("dshGo");
+      const bridge = dshGoService();
       if (bridge === undefined || bridge === null) {
         warnDshGo("capabilities are unavailable — the bridge service is absent");
         return null;
@@ -1825,7 +1897,7 @@ function createDshAdapter(ctx, config = {}) {
       const callId = input.callId ?? "mpd-" + Math.random().toString(36).slice(2, 10);
       const signal = input.signal ?? timeoutSignal(input.timeoutMs ?? defaultTimeoutMs);
       try {
-        const raw = await tools.execute({
+        const raw = await executeToolCall(tools, {
           name: input.name,
           arguments: input.arguments ?? {},
           callId,

@@ -5,6 +5,9 @@
 // Every arm here is a fact the pinned 1.0.9 checker reports on the same shapes, so a regression in
 // the kit reddens here before it reaches a panel.
 import { describe, expect, test } from "bun:test"
+import { readFileSync } from "node:fs"
+import { dirname, join, resolve } from "node:path"
+import { fileURLToPath } from "node:url"
 import {
   BUDGETS,
   actions,
@@ -42,7 +45,10 @@ import {
   toolCard,
   viewDepth,
   style,
+  V1_COMPONENTS,
+  V2_ONLY_COMPONENTS,
   VIEW_KEY,
+  type DshGoView,
 } from "../src/dshgo-view.ts"
 
 /** The app's v2 caps as the bridge reports them at 1.0.9. */
@@ -500,4 +506,53 @@ describe("H2: the v1 fallback keeps every metric's number", () => {
     const text = JSON.stringify(fallback)
     for (const word of ["Ready", "Active", "3", "1", "in flight"]) expect(text).toContain(word)
   })
+})
+
+// ── the DECLARED static views are the older app's fallback (R9, backward compatibility) ─────
+//
+// A bridgeless host and an older app both render `dsh-go/views/*.json` as shipped: the gate
+// (`scripts/verify-dshgo-standard.ts`, COMPAT lane) asserts these files, and this arm pins that the
+// KIT agrees with the gate — the files are v1, every component is one `V1_COMPONENTS` names, the
+// design linter finds nothing in v1 mode, and `adaptView` leaves them untouched for an old app.
+
+/** `<repo>/packages/mpd-dsh-adapter-plugin/test` -> `<repo>`. */
+const REPO_ROOT: string = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..")
+
+/** The two view files the root manifest declares, in declaration order. */
+const DECLARED_VIEW_FILES: readonly string[] = ["mpd.json", "mpd-team.json"]
+
+/**
+ * Read one declared static view file.
+ * @param name - the file name under `dsh-go/views/`.
+ * @returns the parsed tree, typed as the kit's view shape.
+ */
+function declaredView(name: string): DshGoView {
+  return JSON.parse(readFileSync(join(REPO_ROOT, "dsh-go", "views", name), "utf8")) as DshGoView
+}
+
+describe("the declared static views are the older app's fallback", () => {
+  for (const name of DECLARED_VIEW_FILES) {
+    test(`${name} is v1, draws only v1 components and lints clean in v1 mode`, () => {
+      /** The shipped fallback an older app renders. */
+      const view = declaredView(name)
+      expect(view.v).toBe(1)
+      expect(lintDesign(view, { version: 1 })).toEqual([])
+      /** Every component name the file draws. */
+      const drawn = componentNames(view)
+      expect(drawn.length).toBeGreaterThan(0)
+      for (const type of drawn) {
+        expect(V2_ONLY_COMPONENTS).not.toContain(type)
+        expect(V1_COMPONENTS).toContain(type)
+      }
+    })
+
+    test(`${name} survives adaptView unchanged for an older app`, () => {
+      /** The shipped fallback. */
+      const view = declaredView(name)
+      // No v2-only component and no decoration, so the downgrade is the identity: the file an old
+      // app receives is the file committed at `dsh-go/views/`.
+      expect(adaptView(view, { app: "1.0.8" })).toEqual(view)
+      expect(adaptView(view, null)).toEqual(view)
+    })
+  }
 })

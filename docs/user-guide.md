@@ -40,8 +40,12 @@ If `node-gyp` is unavailable,
 scripts, only the sidebar's terminal panel degrades. (The transitive `node-pty` this flag was needed
 for is gone since `0.24.1`, measured 2026-10-02; `0.28.0` ships no install script either, measured
 2026-10-21.) `dsh-better-sidebar@0.28.0` requires harness **DSH 0.2.1-rc.1 or newer**; this bundle
-pins `0.2.1-rc.5`. A packed install needs no extra step: pnpm
+is built and verified against `0.2.2-rc.1` and keeps `0.2.1-rc.5` working, so either host installs it. A
+packed install needs no extra step: pnpm
 installs the declared dependencies for you (see *Packed package* below).
+
+Which host versions are guaranteed and what degrades on the older one:
+[`compatibility.md`](compatibility.md).
 
 `--profile` is **required on every `dsh plugin` command**, including `--help` and `remove`:
 without it the CLI stops with `error: required option '--profile <name>' not specified`. The
@@ -1143,14 +1147,14 @@ bundle and carries **no** row in `cordis.patch.yml`, so this bundle never mounts
 who wants it installs it into their own profile:
 
 ```bash
-# On the dsh 0.2.1-rc.5 baseline, grant the exact-version exemption first:
-dsh plugin --profile web allow-version @dsh-std/adapter-dsh@0.1.1-rc.2 --dsh-version 0.2.1-rc.5 --accept-risk
+# On the dsh 0.2.2-rc.1 baseline, grant the exact-version exemption first:
+dsh plugin --profile web allow-version @dsh-std/adapter-dsh@0.1.1-rc.2 --dsh-version 0.2.2-rc.1 --accept-risk
 # Then the adapter's own designed one-command install:
 dsh plugin --profile web add @dsh-std/adapter-dsh
 ```
 
 This bundle does not ship it because the adapter's peers pin the `@deepseek-ai/dsh-*` `0.1.2-alpha` host
-line while this bundle's baseline is dsh `0.2.1-rc.5`, so the exemption is the profile owner's explicit
+line while this bundle's baseline is dsh `0.2.2-rc.1`, so the exemption is the profile owner's explicit
 risk decision about their own profile, and shipping it is not a neutral alternative either: the
 plugin manager checks compatibility twice at install time, with a preflight over the explicitly named
 install specs before `pnpm` runs, then a post-install pass over the profile's installed direct

@@ -1,0 +1,5 @@
+== git rev ==
+7296ef8898a44f2f79991a86786f6148244b6e5d
+== verify:docs ==
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=55 failed=0 violations=0 exempt=24 derived=3 links=503 dead=0 — PASS

@@ -19,7 +19,7 @@ import {
 import { buildMpdView } from "../src/dshgo-views.ts"
 import { buildTeamView, type TeamPanelSnapshot } from "../src/dshgo-views.ts"
 import type { PanelSnapshot } from "../src/dshgo-panel.ts"
-import { createSurfaceActions, replyTextOf, stripLine } from "../src/dshgo-surfaces.ts"
+import { createSurfaceActions, registerDshGoSurfaces, replyTextOf, stripLine } from "../src/dshgo-surfaces.ts"
 import { memorySlugOf, readMemoryStore } from "../src/dshgo-panel.ts"
 import { graphLinesOf, graphStepsOf, layerGraphOf } from "../src/dshgo-graph.ts"
 import type { TeamPanelTask } from "../src/dshgo-views.ts"
@@ -323,6 +323,27 @@ describe("the strip", () => {
   test("a parked question marks the line and a waiting plan warns", () => {
     expect(stripLine(0, 0, true, false, false).text.startsWith("❓")).toBe(true)
     expect(stripLine(0, 0, false, true, false).tone).toBe("warn")
+  })
+
+  test("no bridge: neither the strip nor an action is registered, so nothing polls", () => {
+    /** Every id the bridge double received; a present bridge would own the strip and the actions. */
+    const received: string[] = []
+    /** The adapter double: no bridge in this composition, but a live late-bind subscription. */
+    const dsh = {
+      dshGoPresent: (): boolean => false,
+      dshGoPanel: (): boolean => false,
+      dshGoRefresh: (): void => {},
+      onServiceBound: (): (() => void) => () => {},
+      dshGoStrip: (id: string): boolean => { received.push("strip:" + id); return true },
+      dshGoOn: (id: string): boolean => { received.push("on:" + id); return true },
+    }
+    /** The registration under review. */
+    const registration = registerDshGoSurfaces({ dsh, ctx: {} })
+    // No data function was handed to the bridge, so its interval-owning subscription never starts.
+    expect(registration.registered).toBe(false)
+    expect(received).toEqual([])
+    registration.dispose()
+    expect(received).toEqual([])
   })
 })
 

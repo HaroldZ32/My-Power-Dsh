@@ -1,0 +1,6 @@
+tree.json sha: d5ad25c5bc4c66ecacee76b3c5378db45e1db3fa
+SAME lib/bridge/limits.js
+SAME lib/bridge/manifest.js
+SAME lib/bridge/util.js
+SAME bin/check.mjs
+kit check.mjs present: .mpd/tmp-dshgo/kit/sdk/plugin-kit/bin/check.mjs

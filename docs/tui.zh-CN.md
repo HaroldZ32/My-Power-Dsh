@@ -3,11 +3,13 @@
 [English](./tui.md) | **中文**
 
 本页说明 my-power-dsh 的 **DSH-TUI 版本**：它提供什么、如何安装、逐包兼容性测量的结果，以及它
-**明确不声明**什么。目标宿主为 `@deepseek-harness-tui/dsh-tui` **0.18.0** 及其内置的准入
-（admission）配置文件。0.18.0 声明的 `@deepseek-ai/dsh-*` peer 范围覆盖 DeepSeek Harness
-`0.2.1-rc.4` 与 `0.2.1-rc.5` —— 其 36 条 `dsh-*` 名单全部同时包含两者，而 0.17.0 的名单止于
-`0.2.1-rc.3`（读取自已发布的 tarball）。**§11.11 是本波次的修订**：其中记录了这次移动与被触及的载体。
-**此前的钉定版本是 0.17.0，那段表述作为历史保持可读**：0.17.0 是第一个在声明的 peer 范围里接受
+**明确不声明**什么。目标宿主为 `@deepseek-harness-tui/dsh-tui` **0.19.0** 及其内置的准入
+（admission）配置文件。0.19.0 声明的 `@deepseek-ai/dsh-*` peer 范围**新增** DeepSeek Harness
+**`0.2.2-rc.1`**，同时**保留** `0.2.1-rc.4` 与 `0.2.1-rc.5`；而且准入指南与准入链在 0.18.0 与 0.19.0
+两个 tag 上逐字节相同。**§11.13 是本波次的修订**：其中记录了这次移动与被触及的载体。**此前的钉定版本是
+0.18.0，那段表述作为历史保持可读**：0.18.0 的 `dsh-*` 范围覆盖 `0.2.1-rc.4` 与 `0.2.1-rc.5`（36 条
+全部如此），而 0.17.0 的名单止于 `0.2.1-rc.3`（读取自已发布的 tarball），§11.11 是那一波次的修订。
+**再此前是 0.17.0，那段表述作为历史保持可读**：0.17.0 是第一个在声明的 peer 范围里接受
 harness `0.2.1-rc.3` 的 dsh-tui 版本，**§11.10** 是那一波次的修订。**再此前是 0.16.1，那段表述同样
 作为历史保持可读**：0.16.1 是第一个在声明的 peer 范围里包含 harness `0.2.1-rc.2` 的 dsh-tui 版本
 （其 36 个 `@deepseek-ai/dsh-*` peer 全部列出该版本），§11.8 是那一波次的修订。**此前的钉定版本是 0.14.0，那段表述作为历史保持可读**：0.14.0 是新增 **Claude 后端 peer**
@@ -1504,3 +1506,22 @@ PTY 证据。`evidence/docker/client-install/2026-10-25T16-02-51Z/result.json` �
 `l2-dag-page/report.md`、`l3-scene-scroll/README.md`、`l4-row-lifecycle/signatures.md`、
 `l5-watchdog-scene/report.md`、`l6-web-follow/result.json`、`l7-admission-gate/evidence.md` 与
 `audit-parked/result.json`。
+
+### 11.13 harness 0.2.2-rc.1 / DSH-TUI 0.19.0 适配波次后的修订（2026-11-07）
+
+本波次再次移动钉定版本对，且不改动任何 TUI 插件源码。§11.11 与 §11.12 保持原样：它们记录的是更早的
+波次，不是这一波。
+
+| 主题 | 之前 | 之后 |
+|---|---|---|
+| 本页的对标宿主（§ 前言） | **0.18.0** | **0.19.0** —— 它声明的 `@deepseek-ai/dsh-*` peer 范围**新增** harness `0.2.2-rc.1`，同时**保留** `0.2.1-rc.4` 与 `0.2.1-rc.5`，因此一个宿主同时服务两个 harness 波次 |
+| harness 钉定（`package.json` 里三个 `@deepseek-ai/dsh-experimental-*`） | `0.2.1-rc.5` | **`0.2.2-rc.1`**；`engines.node` 现在是 `>=24.9.0`（CLI 在该版本声明此下限），且 `engines.dsh` 同时覆盖两个波段（`>=0.2.1-rc.2 <0.3.0-0`） |
+| §3.3 / §7 —— 版本钉住载体 | `0.18.0` 载体、harness `0.2.1-rc.5` | **`0.19.0` 与 `0.2.2-rc.1`**：两条 Docker 车道（`MPD_E2E_TUI_VERSION`、`MPD_E2E_DSH_VERSION`）、UI 那套 stack（`MPD_UI_TUI_VERSION`、`MPD_UI_DSH_VERSION`）、`dsh-distribution.json` 的 `host-tui` 引用（`…@0.19.0`）、`dsh-plugin.json` 的 `compat.hosts`（现在同时列出 `0.18.0` 与 `0.19.0`）、`skills/dsh-qa/scripts/tui-mount.ts` 的宿主规格，以及每一处 `npm i -g @deepseek-harness-tui/dsh-tui@…` 的 PREREQ 补救串 |
+| 准入链 | 仅 0.18.0 | **两个 tag 上逐字节相同**——指南 blob 为 `6b9dfd3…`（99,723 B），`permissions-0.1.json` 注册表为 `f36cb6e…`，十一个准入决策源文件全部未变。0.19.0 只改了 DSH peer 范围、`/update` 编排、一条 subagent 通道通知与一次第一方 feed 重钉，因此没有准入返工 |
+| 适配器的版本闸 | `PANEL_CSV_HOST_OWNED_SINCE`、`PANEL_CSV_SELF_HEAL_SINCE`、`hostVersion` 夹具 | **不变**——它们编码的是宿主**何时**改变了行为，而不是当前宿主是哪个 |
+
+**在 0.19.0 上的实测。** 宿主自己的准入链是对着一个临时安装（`.qa-tmp/tui-019`）跑的：
+`validateHost: ok`，两份清单都协商为 `compatible`，`tui-admission` 报告
+**PASS——43 条臂通过、1 条允许偏差、5 条边界**
+（`evidence/upstream/0.2.2/2026-11-07T05-45Z/probe-negotiation-0.19.0.json` 与 `tui-admission-019.log`）。
+边界与 §3 相同：这是静态准入结论加上宿主自己的协商，**不是**真机 TTY 挂载，本页也不声明任何渲染帧。

@@ -1,0 +1,41 @@
+# CI static-gates run on 860309a0 (run 42360781672, headSha 860309a0, event pull_request, conclusion success)
+# fetched with: gh api --allow-escape-sequences .../jobs/128368521019/logs
+2026-11-07T09:42:14.7009152Z   path: .dsh-go-kit
+2026-11-07T09:42:14.7615483Z Working directory is '/home/runner/work/My-Power-Dsh/My-Power-Dsh/.dsh-go-kit'
+2026-11-07T09:42:15.8651823Z echo "MPD_DSHGO_KIT=$GITHUB_WORKSPACE/.dsh-go-kit" >> "$GITHUB_ENV"
+2026-11-07T09:42:15.9386294Z [verify-gates] member vendor :: node ./scripts/verify-vendor.ts
+2026-11-07T09:42:16.1196532Z [verify-gates] member vendor: exit=0 PASS - 180ms
+2026-11-07T09:42:16.1196838Z [verify-gates] member dist-fresh :: node ./scripts/verify-dist-fresh.ts
+2026-11-07T09:42:17.0311084Z [verify-gates] member dist-fresh: exit=0 PASS - 908ms
+2026-11-07T09:42:17.0311405Z [verify-gates] member rows-parity :: node ./scripts/verify-rows-parity.ts
+2026-11-07T09:42:17.1626046Z [verify-gates] member rows-parity: exit=0 PASS - 133ms
+2026-11-07T09:42:17.1626523Z [verify-gates] member docs-parity :: node ./scripts/verify-docs-parity.ts
+2026-11-07T09:42:17.2903205Z [verify-gates] member docs-parity: exit=0 PASS - 123ms
+2026-11-07T09:42:17.2903604Z [verify-gates] member preset-conformance :: node ./skills/dsh-qa/scripts/preset-conformance.ts --self-test
+2026-11-07T09:42:17.8807964Z [verify-gates] member preset-conformance: exit=0 PASS - 593ms
+2026-11-07T09:42:17.8808485Z [verify-gates] member plugin-manifest :: node ./scripts/verify-plugin-manifest.ts --pack
+2026-11-07T09:42:20.0803588Z [verify-gates] plugin-manifest out| VERDICT: PASS — the install-time rules and the packaging contract hold.
+2026-11-07T09:42:20.0803948Z [verify-gates] member plugin-manifest: exit=0 PASS - 2200ms
+2026-11-07T09:42:20.0804311Z [verify-gates] member comment-coverage :: node ./scripts/verify-comment-coverage.ts
+2026-11-07T09:42:23.3613458Z [verify-gates] comment-coverage out| VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+2026-11-07T09:42:23.3613881Z [verify-gates] member comment-coverage: exit=0 PASS - 3281ms
+2026-11-07T09:42:23.3614284Z [verify-gates] member graph-model :: node ./scripts/verify-graph-model.ts --self-test
+2026-11-07T09:42:24.0169568Z [verify-gates] member graph-model: exit=0 PASS - 653ms
+2026-11-07T09:42:24.0169841Z [verify-gates] member workflows :: node ./scripts/verify-workflows.ts
+2026-11-07T09:42:24.0933551Z [verify-gates] member workflows: exit=0 PASS - 77ms
+2026-11-07T09:42:24.0938397Z [verify-gates] member tui-admission :: node ./scripts/verify-tui-admission.ts
+2026-11-07T09:42:24.2602609Z [verify-gates] tui-admission out| [tui-admission] arm COMPAT.declared-hosts PASS — every declared host [@deepseek-harness-tui/dsh-tui@0.18.0, @deepseek-harness-tui/dsh-tui@0.19.0] (from specs/tui-hosts.json) is inside each of the 2 manifest band(s)
+2026-11-07T09:42:24.2619292Z [verify-gates] tui-admission out| [tui-admission] arm COMPAT.host-version PASS — the discovered host @deepseek-harness-tui/dsh-tui 0.19.0 is inside the declared band [@deepseek-harness-tui/dsh-tui@0.18.0, @deepseek-harness-tui/dsh-tui@0.19.0]
+2026-11-07T09:42:24.2623911Z [verify-gates] tui-admission out| [tui-admission] REPORT: PASS — 48 arms passed, 1 allowed deviation(s), 6 bound(s).
+2026-11-07T09:42:24.2625058Z [verify-gates] member tui-admission: exit=0 PASS - 164ms
+2026-11-07T09:42:24.2625384Z [verify-gates] member dshgo :: node ./scripts/verify-dshgo-standard.ts
+2026-11-07T09:42:24.4218664Z [verify-gates] dshgo out| [dshgo-standard] MANIFEST: PASS (0 error(s), 0 note(s))
+2026-11-07T09:42:24.4219175Z [verify-gates] dshgo out| [dshgo-standard] VIEW: PASS (0 error(s), 0 note(s))
+2026-11-07T09:42:24.4219696Z [verify-gates] dshgo out| [dshgo-standard] COMPAT: PASS (0 error(s), 0 note(s))
+2026-11-07T09:42:24.4220202Z [verify-gates] dshgo out| [dshgo-standard] HOST: PASS (0 error(s), 0 note(s))
+2026-11-07T09:42:24.4221831Z [verify-gates] dshgo out| [dshgo-standard] CROSS-CHECK: PASSED — PASSED: verdicts agree — official check.mjs exit=1 stops=false (array-patch false negative excluded: the official checker requires a string patch, DSH allows an array and this gate verified every path); this gate stops=false
+2026-11-07T09:42:24.4224992Z [verify-gates] dshgo out| [dshgo-standard] RESULT: LEGAL — manifest, views, compatibility, host half and the official cross-check all agree
+2026-11-07T09:42:24.4225579Z [verify-gates] member dshgo: exit=0 PASS - 164ms
+2026-11-07T09:42:24.4225911Z [verify-gates] PASS - 11/11 member gate(s) green
+2026-11-07T09:42:24.5003092Z VERDICT: PASS — the install-time rules and the packaging contract hold.
+2026-11-07T09:42:27.7116835Z VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.

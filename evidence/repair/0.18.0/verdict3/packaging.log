@@ -1,0 +1,6 @@
+root package.json files allowlist:
+["AGENTS.md","CHANGELOG.md","CONTRIBUTING.md","CONTRIBUTING.zh-CN.md","EXTENSIONS-FOR-AGENTS.md","LICENSE-NOTICES.md","LICENSE.md","PLAN.md","README.md","README.zh-CN.md","VENDOR_LOCK.json","agent-references/**","cordis.patch.yml","docs/**","dsh-distribution.json","dsh-go","dsh-plugin.json","extensions/**","icon.svg","locale/*.json","packages/**","!packages/*/_deps/**","presets/**","scripts/**","skills/**","specs/dsh-go/**","templates/**"]
+
+specs/tui-hosts.json matched by allowlist: false
+dist/mpd-package/specs/tui-hosts.json: 820 bytes
+packed copy identical: yes

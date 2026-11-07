@@ -1,0 +1,132 @@
+{
+  "task": "SMALL CI REPAIR — the DSH-Go kit checkout step in both workflows",
+  "branch": "feature/upstream-0.18.0",
+  "head": "d65bc680",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "recordedAt": "2026-11-07T09:18:33Z",
+  "failedRun": {
+    "runId": "42358482313",
+    "job": "Static gates",
+    "error": "##[error]Repository path '/home/runner/work/_temp/dsh-go-kit' is not under '/home/runner/work/My-Power-Dsh/My-Power-Dsh'",
+    "cause": "actions/checkout refuses any `path:` that resolves outside $GITHUB_WORKSPACE. `${{ runner.temp }}` expands to /home/runner/work/_temp, which is a SIBLING of the workspace (/home/runner/work/My-Power-Dsh), never a descendant — so the step died before any gate ran."
+  },
+  "resolverContract": {
+    "file": "scripts/verify-dshgo-standard.ts",
+    "envVar": "MPD_DSHGO_KIT",
+    "candidates": ["sdk/plugin-kit/bin/check.mjs", "bin/check.mjs"],
+    "meaning": "MPD_DSHGO_KIT names the dsh-Go CHECKOUT ROOT (not the plugin-kit subdirectory). A direct kit directory also resolves, through the second candidate. Both workflows therefore export the checkout ROOT: $GITHUB_WORKSPACE/.dsh-go-kit.",
+    "unsetBehaviour": "CROSS-CHECK lane NOT-PASSED and RESULT NOT-PASSED, exit 3 — unchanged by this repair",
+    "codeEvidence": "scripts/verify-dshgo-standard.ts:131 (KIT_CHECK_PATHS), :925-932 (resolveKitCheck), :996-1016 (unset / non-checkout => not-passed)"
+  },
+  "changes": [
+    {
+      "file": ".github/workflows/gates.yml",
+      "before": [
+        "          path: ${{ runner.temp }}/dsh-go-kit",
+        "          test -f \"$RUNNER_TEMP/dsh-go-kit/sdk/plugin-kit/bin/check.mjs\"",
+        "          echo \"MPD_DSHGO_KIT=$RUNNER_TEMP/dsh-go-kit\" >> \"$GITHUB_ENV\""
+      ],
+      "after": [
+        "          path: .dsh-go-kit",
+        "          test -f \"$GITHUB_WORKSPACE/.dsh-go-kit/sdk/plugin-kit/bin/check.mjs\"",
+        "          echo \"MPD_DSHGO_KIT=$GITHUB_WORKSPACE/.dsh-go-kit\" >> \"$GITHUB_ENV\""
+      ],
+      "also": "Five comment lines above the step record the measured failure (run 42358482313) and why the checkout must live under $GITHUB_WORKSPACE. No other step touched."
+    },
+    {
+      "file": ".github/workflows/publish.yml",
+      "before": [
+        "          path: ${{ runner.temp }}/dsh-go-kit",
+        "          export MPD_DSHGO_KIT=\"$RUNNER_TEMP/dsh-go-kit\""
+      ],
+      "after": [
+        "          path: .dsh-go-kit",
+        "          export MPD_DSHGO_KIT=\"$GITHUB_WORKSPACE/.dsh-go-kit\""
+      ],
+      "also": "Four comment lines above the step record the same measured failure; the `test -f \"$MPD_DSHGO_KIT/sdk/plugin-kit/bin/check.mjs\"` assertion is unchanged because the exported root keeps the same shape."
+    },
+    {
+      "file": ".gitignore",
+      "before": ".toolchain/",
+      "after": ".toolchain/\n.dsh-go-kit/",
+      "also": "Exactly one added line; the CI-only checkout is untracked scratch, never a deliverable."
+    }
+  ],
+  "localVerification": [
+    {
+      "command": "python3 -c \"import yaml; yaml.safe_load(...)\"  # both workflow files",
+      "exit": 0,
+      "result": "gates.yml OK jobs=['gates']; publish.yml OK jobs=['publish']; parsed `path: .dsh-go-kit` as the string '.dsh-go-kit' for both."
+    },
+    {
+      "command": "node scripts/verify-workflows.ts",
+      "exit": 0,
+      "result": "audited 3 workflow file(s); PASS — every workflow is loadable YAML with a sane job/step shape. (This is the repository's own workflow gate; it parses with the installed harness's js-yaml, not a stub.)"
+    },
+    {
+      "command": "MPD_DSHGO_KIT=\"$PWD/.mpd/tmp-dshgo/kit\" node scripts/verify-dshgo-standard.ts",
+      "exit": 0,
+      "result": "RESULT: LEGAL — five lanes PASS, CROSS-CHECK PASSED against the pinned kit. The resolver itself was not modified."
+    },
+    {
+      "command": "cp -a .mpd/tmp-dshgo/kit ./.dsh-go-kit && MPD_DSHGO_KIT=\"$PWD/.dsh-go-kit\" node scripts/verify-dshgo-standard.ts   # CI shape",
+      "exit": 0,
+      "result": "RESULT: LEGAL — the same verdict from the workspace-relative path the workflow now exports (checkout root)."
+    },
+    {
+      "command": "env -u MPD_DSHGO_KIT node scripts/verify-dshgo-standard.ts",
+      "exit": 3,
+      "result": "CROSS-CHECK: NOT-PASSED — 'MPD_DSHGO_KIT is not set'; RESULT: NOT-PASSED. The gate's contract is unchanged."
+    },
+    {
+      "command": "MPD_DSHGO_KIT=\"$PWD/.dsh-go-kit/sdk/plugin-kit\" node scripts/verify-dshgo-standard.ts",
+      "exit": 0,
+      "result": "Direct kit-dir spelling also resolves via the second candidate; CI uses the checkout root, which is the first candidate."
+    },
+    {
+      "command": "GITHUB_WORKSPACE=\"$PWD\" bash -c 'test -f \"$GITHUB_WORKSPACE/.dsh-go-kit/sdk/plugin-kit/bin/check.mjs\"; echo \"MPD_DSHGO_KIT=$GITHUB_WORKSPACE/.dsh-go-kit\"'",
+      "exit": 0,
+      "result": "The step's own shell lines succeed under the CI variable shape (GITHUB_WORKSPACE set, RUNNER_TEMP unset)."
+    },
+    {
+      "command": "node scripts/verify-docs-parity.ts",
+      "exit": 0,
+      "result": "pairs=59 failed=0 violations=0 links=626 dead=0 — PASS, with the staged .dsh-go-kit present."
+    },
+    {
+      "command": "node scripts/verify-manual-paths.ts",
+      "exit": 0,
+      "result": "PASS resolved=155 over-report=70 under-report=81 declared=2 — no new path seen."
+    },
+    {
+      "command": "node scripts/verify-vendor.ts",
+      "exit": 0,
+      "result": "PASS — 8 shipped asset(s) fingerprinted; subject is git ls-files, so the gitignored checkout is invisible."
+    },
+    {
+      "command": "node scripts/verify-plugin-manifest.ts --pack",
+      "exit": 0,
+      "result": "PASS — npm pack --dry-run lists 1256 files and ZERO mention of dsh-go-kit (files allowlist); evidence tree stays out."
+    },
+    {
+      "command": "PATH=\"$PWD/.qa-tmp/dsh-022/bin:$PATH\" MPD_DSHGO_KIT=\"$PWD/.dsh-go-kit\" MPD_DSH_TUI_HOST=\"$PWD/.qa-tmp/tui-019/lib/node_modules/@deepseek-harness-tui/dsh-tui\" node ./scripts/verify-gates.ts",
+      "exit": 0,
+      "result": "PASS — 11/11 member gate(s) green (vendor, dist-fresh, rows-parity, docs-parity, preset-conformance, plugin-manifest, comment-coverage, graph-model, workflows, tui-admission, dshgo) WITH the workspace-relative kit checkout present. Harness 0.2.2-rc.1 (pinned), TUI host 0.19.0 (matches dsh-distribution.json)."
+    },
+    {
+      "command": "git check-ignore -v .dsh-go-kit",
+      "exit": 0,
+      "result": ".gitignore:7:.dsh-go-kit/  -> ignored; `git status --porcelain` lists it nowhere."
+    }
+  ],
+  "notProven": [
+    "A real GitHub Actions run: no runner is available here, so the actual actions/checkout@v7 sparse checkout into .dsh-go-kit and the runner's $GITHUB_WORKSPACE interpolation are simulated, not executed.",
+    "The kit checkout's real network fetch of ccch1mneyyy/dsh-Go@d5ad25c5bc4c66ecacee76b3c5378db45e1db3fa (a local copy of the same pinned kit was used).",
+    "Whether actions/checkout@v7's post-job cleanup and the nested .git behave as expected on the runner — standard supported behaviour (nested checkout under the workspace), not observed here."
+  ],
+  "notes": [
+    "The staged simulation copy ./.dsh-go-kit (424 KB, 27 files, gitignored) was removed after the runs; CI creates it at the same path.",
+    "No commit, add, checkout, stash or branch operation was performed. Only the three files above plus this evidence directory were written.",
+    "Both workflows' checkout `with:` maps keep repository/ref/sparse-checkout/sparse-checkout-cone-mode/fetch-depth/persist-credentials unchanged."
+  ]
+}

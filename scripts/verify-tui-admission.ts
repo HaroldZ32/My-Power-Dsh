@@ -8,7 +8,7 @@
 // the installed host's OWN admission chain against BOTH shipped manifests, so a manifest the host
 // would refuse cannot land behind a green page.
 //
-// TWO ARMS, AND THEY ARE DIFFERENT:
+// TWO ARMS, AND THEY ARE DIFFERENT (the static arm carries a COMPAT lane of its own):
 //
 //   STATIC (host-free) — the rules this repository can decide from its own bytes, derived from
 //   `docs/tui-admission.md` §4 (the A–G checklist) and §5 (the R1–R7 red lines) plus the guide copy at
@@ -30,6 +30,17 @@
 //   recorded that a `JSON.parse` probe proves less than it claims, and this gate must not repeat it.
 //   The host's `package.json#exports` has no `./lib/*` subpath, so the modules are reached by absolute
 //   file URL exactly as the installed payload lays them out.
+//
+//   COMPAT (R6, host-free where it can be) — `compat.hosts` is a PUBLICATION CLAIM, so the gate itself
+//   asserts it instead of trusting the field. In BOTH the normal and `--static-only` runs: every manifest
+//   declares a NON-EMPTY band of `@scope/name@x.y.z` coordinates; the two manifests declare the SAME band
+//   (a drift guard in the gate, not only in a unit test); the `host-tui` component ref in
+//   `dsh-distribution.json` is INSIDE the band; and EVERY host in the PUBLISHED DECLARED SET read from
+//   `specs/tui-hosts.json` is inside EACH manifest's band. That last arm compares WRITTEN DATA and never
+//   consults discovery, so deleting a claimed host from `compat.hosts` reddens on a CI runner that
+//   installs only the other host. When a host IS discovered, its exact version is inside the band too;
+//   when discovery finds none, that sub-assertion prints as NOT CHECKED (`BOUND`) instead of passing
+//   silently. `--self-test` carries a negative control for EACH of the five.
 //
 // NO HOST IS NOT A PASS (decision D5): when no installed host resolves, the gate prints every discovery
 // candidate it tried and the exact remedy, and exits non-zero. `--static-only` exits 3 for the same
@@ -95,6 +106,16 @@ const MUTATING_FS: RegExp = /\b(writeFileSync|appendFileSync|mkdirSync|renameSyn
 const DIGEST_KEY: RegExp = /^(digest|artifact|sha256)$/i
 /** The package name an installed dsh-TUI host's `package.json` must carry. */
 const HOST_PACKAGE_NAME: string = "@deepseek-harness-tui/dsh-tui"
+/** The distribution descriptor whose `host-tui` component ref the band must cover. */
+const DISTRIBUTION_FILE: string = "dsh-distribution.json"
+/** The component id in {@link DISTRIBUTION_FILE} that carries the TUI host coordinate. */
+const DISTRIBUTION_HOST_COMPONENT: string = "host-tui"
+/** The written data naming every dsh-TUI host this bundle PUBLISHES support for; never a discovered fact. */
+const DECLARED_HOSTS_FILE: string = "specs/tui-hosts.json"
+/** One `compat.hosts` entry: an `@scope/name@x.y.z` coordinate (a prerelease/build suffix is allowed). */
+const HOST_COORDINATE: RegExp = /^(@[^/@\s]+\/[^@\s/]+)@(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)$/
+/** One `dsh-distribution.json` component ref: the `pkg:npm/` spelling of the same coordinate. */
+const PACKAGE_REF: RegExp = /^(?:pkg:npm\/)?(@[^@\s/]+\/[^@\s/]+)@(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)$/
 /** The host modules the admission chain lives in, relative to the host package root. */
 const HOST_MODULES: { readonly manifest: string; readonly registry: string; readonly admission: string; readonly descriptor: string; readonly constants: string } = {
   manifest: "node_modules/@dsh-std/manifest/lib/index.js",
@@ -179,6 +200,36 @@ interface ManifestUnreadable {
 
 /** The two arms reading one manifest can produce. */
 type ManifestRead = ManifestLoaded | ManifestUnreadable
+
+/** One parsed host coordinate from a manifest's `compat.hosts` band. */
+interface HostCoordinate {
+  /** The package the coordinate names, e.g. `@deepseek-harness-tui/dsh-tui`. */
+  readonly name: string
+  /** The exact version the coordinate pins, e.g. `0.19.0`. */
+  readonly version: string
+  /** The coordinate exactly as the manifest spells it, so a finding quotes the claim verbatim. */
+  readonly text: string
+}
+
+/** One manifest's declared host band, or the reason its `compat.hosts` cannot be read as one. */
+interface HostBand {
+  /** The manifest the band was read from, as the run names it. */
+  readonly file: string
+  /** The parsed coordinates in declaration order; empty when the band is unusable. */
+  readonly coordinates: readonly HostCoordinate[]
+  /** Why the band is unusable, or undefined when it is a well-formed non-empty band. */
+  readonly problem: string | undefined
+}
+
+/** The PUBLISHED host set as written in {@link DECLARED_HOSTS_FILE}, or the reason it cannot be read. */
+interface DeclaredHosts {
+  /** The data file the set was read from, repository-relative. */
+  readonly file: string
+  /** The declared coordinates in declaration order; empty when the data is unusable. */
+  readonly coordinates: readonly HostCoordinate[]
+  /** Why the declared set is unusable, or undefined when it is a well-formed non-empty set. */
+  readonly problem: string | undefined
+}
 
 /** One parsed command line. */
 interface CliOptions {
@@ -683,6 +734,288 @@ function pairArms(loads: readonly ManifestLoaded[]): ArmResult[] {
   return arms
 }
 
+// ─── STATIC ARMS: THE COMPAT BAND (R6) ──────────────────────────────────────────────────────────
+//
+// `compat.hosts` is a PUBLICATION CLAIM, not an admission input: no host code reads it, so before this
+// lane existed the field could lose a member and every gate stayed green. The lane asserts the claim
+// from this repository's own bytes, and the host arm adds the one check that needs a discovered host.
+
+/** Parse one `compat.hosts` entry as an `@scope/name@x.y.z` coordinate, or undefined. */
+function parseHostCoordinate(value: unknown): HostCoordinate | undefined {
+  if (typeof value !== "string") return undefined
+  /** The entry's parsed parts, when it is a coordinate. */
+  const match = HOST_COORDINATE.exec(value)
+  if (match === null || match[1] === undefined || match[2] === undefined) return undefined
+  return { name: match[1], version: match[2], text: value }
+}
+
+/** Read one manifest's declared host band without ever throwing; a defect becomes `problem`. */
+function readBand(load: ManifestLoaded): HostBand {
+  /** The `compat` block, when it is a record. */
+  const compat = asRecord(load.doc["compat"])
+  if (compat === undefined) return { file: load.file, coordinates: [], problem: "the manifest carries no compat block" }
+  /** The declared `compat.hosts` list, when it is an array. */
+  const hosts = arrayField(compat, "hosts")
+  if (hosts === undefined) return { file: load.file, coordinates: [], problem: "compat.hosts is not an array" }
+  if (hosts.length === 0) return { file: load.file, coordinates: [], problem: "compat.hosts is empty" }
+  /** Every parsed coordinate, accumulated as the list is walked. */
+  const coordinates: HostCoordinate[] = []
+  for (const value of hosts) {
+    /** The entry's parsed coordinate, when it is one. */
+    const coordinate = parseHostCoordinate(value)
+    if (coordinate === undefined) {
+      return { file: load.file, coordinates: [], problem: "compat.hosts carries " + show(value) + ", which is not an @scope/name@x.y.z coordinate" }
+    }
+    coordinates.push(coordinate)
+  }
+  return { file: load.file, coordinates, problem: undefined }
+}
+
+/** Whether the band contains the exact package-and-version pair, which is what "inside" means here. */
+function bandContains(band: HostBand, name: string, version: string): boolean {
+  return band.problem === undefined && band.coordinates.some((coordinate) => coordinate.name === name && coordinate.version === version)
+}
+
+/**
+ * Read the PUBLISHED host set from {@link DECLARED_HOSTS_FILE}.
+ *
+ * The set is WRITTEN DATA on purpose: `compat.hosts` is a publication claim, so the statement of what
+ * the claim must contain cannot be derived from whatever host a machine happens to have installed.
+ * @returns the declared coordinates, or the reason the data file cannot serve as the claim.
+ */
+function readDeclaredHosts(): DeclaredHosts {
+  /** The data file's text, or undefined when it does not exist. */
+  const text = readRepoFile(DECLARED_HOSTS_FILE)
+  if (text === undefined) return { file: DECLARED_HOSTS_FILE, coordinates: [], problem: "the file does not exist" }
+  /** The decoded document, still unknown until the record check below. */
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(text)
+  } catch (error) {
+    return { file: DECLARED_HOSTS_FILE, coordinates: [], problem: "the file is not readable JSON: " + (error instanceof Error ? error.message : String(error)) }
+  }
+  /** The decoded document as a plain record, when it is one. */
+  const doc = asRecord(parsed)
+  if (doc === undefined) return { file: DECLARED_HOSTS_FILE, coordinates: [], problem: "the file is not a JSON object" }
+  /** The declared `hosts` list, when it is an array. */
+  const hosts = arrayField(doc, "hosts")
+  if (hosts === undefined) return { file: DECLARED_HOSTS_FILE, coordinates: [], problem: "hosts is not an array" }
+  if (hosts.length === 0) return { file: DECLARED_HOSTS_FILE, coordinates: [], problem: "hosts is empty" }
+  /** Every parsed coordinate, accumulated as the list is walked. */
+  const coordinates: HostCoordinate[] = []
+  for (const value of hosts) {
+    /** The entry's parsed coordinate, when it is one. */
+    const coordinate = parseHostCoordinate(value)
+    if (coordinate === undefined) {
+      return { file: DECLARED_HOSTS_FILE, coordinates: [], problem: "hosts carries " + show(value) + ", which is not an @scope/name@x.y.z coordinate" }
+    }
+    coordinates.push(coordinate)
+  }
+  return { file: DECLARED_HOSTS_FILE, coordinates, problem: undefined }
+}
+
+/** Render a band as one stable string, so a finding quotes the exact claim the manifest makes. */
+function renderBand(band: HostBand): string {
+  return "[" + band.coordinates.map((coordinate) => coordinate.text).join(", ") + "]"
+}
+
+/** The per-manifest labels for one run, disambiguated when two fixtures would share the `fixture` label. */
+function manifestLabels(loads: readonly ManifestLoaded[]): string[] {
+  /** How many times each label has been handed out, so a repeat gets a stable ordinal. */
+  const seen = new Map<string, number>()
+  return loads.map((load) => {
+    /** The manifest's base label. */
+    const base = manifestLabel(load.file)
+    /** This occurrence's ordinal for that label. */
+    const ordinal = (seen.get(base) ?? 0) + 1
+    seen.set(base, ordinal)
+    return ordinal === 1 ? base : base + "#" + String(ordinal)
+  })
+}
+
+/** COMPAT (a) · one manifest declares a NON-EMPTY band of `@scope/name@x.y.z` coordinates. */
+function bandShapeArm(load: ManifestLoaded): ArmResult {
+  /** The manifest's declared band. */
+  const band = readBand(load)
+  if (band.problem !== undefined) {
+    return arm("COMPAT.band", "fail", load.file + ": " + band.problem + "; compat.hosts must declare a non-empty band of @scope/name@x.y.z coordinates")
+  }
+  return arm("COMPAT.band", "pass", load.file + " declares the band " + renderBand(band))
+}
+
+/** COMPAT (b) · the two manifests declare the SAME band; a drift guard inside the gate itself. */
+function bandParityArm(loads: readonly ManifestLoaded[]): ArmResult {
+  /** The first manifest the run read, when the run read two. */
+  const first = loads[0]
+  /** The second manifest the run read, when the run read two. */
+  const second = loads[1]
+  if (first === undefined || second === undefined || loads.length !== 2) {
+    return arm("COMPAT.band-parity", "bound", "the run read " + String(loads.length) + " manifest(s), so the two bands cannot be compared")
+  }
+  /** The first manifest's band. */
+  const left = readBand(first)
+  /** The second manifest's band. */
+  const right = readBand(second)
+  if (left.problem !== undefined || right.problem !== undefined) {
+    return arm("COMPAT.band-parity", "bound", "a band is unusable (" + (left.problem ?? right.problem ?? "?") + "), so the two cannot be compared; COMPAT.band above carries that finding")
+  }
+  /** The first band, SORTED so declaration order alone is not drift but a duplicate still is. */
+  const leftSet = left.coordinates.map((coordinate) => coordinate.text).sort()
+  /** The second band under the same normalization. */
+  const rightSet = right.coordinates.map((coordinate) => coordinate.text).sort()
+  return JSON.stringify(leftSet) === JSON.stringify(rightSet)
+    ? arm("COMPAT.band-parity", "pass", "both manifests declare the same band " + renderBand(left))
+    : arm("COMPAT.band-parity", "fail", "the two manifests disagree on compat.hosts: " + left.file + " declares " + renderBand(left) + " while " + right.file + " declares " + renderBand(right))
+}
+
+/** The `host-tui` ref {@link DISTRIBUTION_FILE} declares, or the reason it cannot be read. */
+function distributionHostRef(): { readonly ref: string | undefined; readonly problem: string | undefined } {
+  /** The descriptor's text, when the file exists. */
+  const text = readRepoFile(DISTRIBUTION_FILE)
+  if (text === undefined) return { ref: undefined, problem: "the file does not exist" }
+  /** The parsed descriptor, before it is narrowed to a record. */
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(text)
+  } catch (error) {
+    return { ref: undefined, problem: "the file is not readable JSON: " + (error instanceof Error ? error.message : String(error)) }
+  }
+  /** The descriptor as a record. */
+  const doc = asRecord(parsed)
+  if (doc === undefined) return { ref: undefined, problem: "the file is not a JSON object" }
+  for (const value of arrayField(doc, "protocols") ?? []) {
+    /** One protocol entry as a record. */
+    const protocol = asRecord(value)
+    if (protocol === undefined) continue
+    /** That entry's spec, when it carries one. */
+    const spec = asRecord(protocol["spec"])
+    if (spec === undefined) continue
+    for (const component of arrayField(spec, "components") ?? []) {
+      /** One component as a record. */
+      const entry = asRecord(component)
+      if (entry === undefined || stringField(entry, "id") !== DISTRIBUTION_HOST_COMPONENT) continue
+      /** The component's declared ref. */
+      const ref = stringField(entry, "ref")
+      return ref === undefined ? { ref: undefined, problem: "the " + DISTRIBUTION_HOST_COMPONENT + " component carries no ref" } : { ref, problem: undefined }
+    }
+  }
+  return { ref: undefined, problem: "no component with id " + DISTRIBUTION_HOST_COMPONENT + " appears in any protocol" }
+}
+
+/** COMPAT (c) · the `host-tui` ref in {@link DISTRIBUTION_FILE} is INSIDE the declared band. */
+function distributionRefArm(loads: readonly ManifestLoaded[]): ArmResult {
+  /** The manifest whose band the claim is checked against: the first one this run read. */
+  const primary = loads[0]
+  if (primary === undefined) return arm("COMPAT.distribution-ref", "bound", "no manifest was read, so no band exists to check the " + DISTRIBUTION_HOST_COMPONENT + " ref against")
+  /** The band the distribution coordinate must lie inside. */
+  const band = readBand(primary)
+  if (band.problem !== undefined) {
+    return arm("COMPAT.distribution-ref", "fail", "the declared band is unusable (" + band.problem + "), so the " + DISTRIBUTION_HOST_COMPONENT + " ref cannot be shown inside it")
+  }
+  /** The distribution's `host-tui` ref, with the reason it could not be read. */
+  const hostRef = distributionHostRef()
+  /** The ref, when the descriptor carries one. */
+  const ref = hostRef.ref
+  if (ref === undefined || hostRef.problem !== undefined) {
+    return arm("COMPAT.distribution-ref", "fail", DISTRIBUTION_FILE + ": " + (hostRef.problem ?? "the " + DISTRIBUTION_HOST_COMPONENT + " ref is absent"))
+  }
+  /** The ref's parsed coordinate parts, when it is a `pkg:npm/@scope/name@x.y.z` coordinate. */
+  const match = PACKAGE_REF.exec(ref)
+  if (match === null || match[1] === undefined || match[2] === undefined) {
+    return arm("COMPAT.distribution-ref", "fail", DISTRIBUTION_FILE + " declares the " + DISTRIBUTION_HOST_COMPONENT + " ref " + show(ref) + ", which is not a pkg:npm/@scope/name@x.y.z coordinate")
+  }
+  return bandContains(band, match[1], match[2])
+    ? arm("COMPAT.distribution-ref", "pass", "the " + DISTRIBUTION_HOST_COMPONENT + " ref " + show(ref) + " is inside the band " + renderBand(band))
+    : arm("COMPAT.distribution-ref", "fail", "the " + DISTRIBUTION_HOST_COMPONENT + " ref " + show(ref) + " is OUTSIDE the declared band " + renderBand(band) + "; a band that excludes the distribution's own host coordinate is a false publication claim")
+}
+
+/**
+ * COMPAT (e) · every DECLARED host coordinate is inside EACH manifest's band.
+ *
+ * This is the arm that makes the claim falsifiable where merges are gated: it compares the written
+ * claim in {@link DECLARED_HOSTS_FILE} with each manifest's band and never consults a discovered host,
+ * so deleting a claimed host from `compat.hosts` reddens even when the only installed host is the one
+ * the shortened band still carries.
+ * @param loads - the readable manifests this run judges, in report order.
+ * @returns the COMPAT (e) arm: `fail` when a band misses a declared host or the claim is unreadable,
+ *   `bound` when no readable manifest was supplied, `pass` when every band covers the whole claim.
+ */
+function declaredHostsArm(loads: readonly ManifestLoaded[]): ArmResult {
+  /** The published host set this arm holds every band to. */
+  const declared = readDeclaredHosts()
+  if (declared.problem !== undefined) {
+    return arm("COMPAT.declared-hosts", "fail", declared.file + ": " + declared.problem + "; the published host claim must be readable written data, or no band can be held to it")
+  }
+  if (loads.length === 0) {
+    return arm("COMPAT.declared-hosts", "bound", "no readable manifest was supplied, so the published claim " + renderBand(declared) + " cannot be shown inside a band; the A.json arm above carries the unreadable manifest")
+  }
+  /** One problem per manifest whose band misses a declared host, or whose band is unusable. */
+  const problems: string[] = []
+  for (const load of loads) {
+    /** The band this manifest declares. */
+    const band = readBand(load)
+    if (band.problem !== undefined) {
+      problems.push(load.file + ": its band is unusable (" + band.problem + ")")
+      continue
+    }
+    for (const coordinate of declared.coordinates) {
+      if (!bandContains(band, coordinate.name, coordinate.version)) {
+        problems.push(load.file + ": the band " + renderBand(band) + " does not cover the declared host " + coordinate.text)
+      }
+    }
+  }
+  return problems.length === 0
+    ? arm("COMPAT.declared-hosts", "pass", "every declared host " + renderBand(declared) + " (from " + declared.file + ") is inside each of the " + String(loads.length) + " manifest band(s)")
+    : arm("COMPAT.declared-hosts", "fail", "the PUBLISHED host claim " + renderBand(declared) + " (from " + declared.file + ") is not covered — " + problems.join("; ") + "; a band that drops a claimed host is a false publication claim, and no discovered host can reveal it")
+}
+
+/** Every COMPAT arm the static pass can decide: (a) per manifest, (b) the pair, (c) the distribution ref, (e) the declared set. */
+function compatArms(loads: readonly ManifestLoaded[]): ArmResult[] {
+  /** The arms produced by the band lane. */
+  const arms: ArmResult[] = []
+  /** The run's per-manifest labels, in load order. */
+  const labels = manifestLabels(loads)
+  for (let index = 0; index < loads.length; index++) {
+    /** The manifest this iteration's arm judges. */
+    const load = loads[index]
+    if (load === undefined) continue
+    /** The shape arm, renamed with this manifest's label. */
+    const shaped = bandShapeArm(load)
+    arms.push({ ...shaped, id: shaped.id + ":" + (labels[index] ?? "fixture") })
+  }
+  arms.push(bandParityArm(loads))
+  arms.push(distributionRefArm(loads))
+  arms.push(declaredHostsArm(loads))
+  return arms
+}
+
+/**
+ * COMPAT (d) · the DISCOVERED host's exact version is inside the published band.
+ *
+ * `version` is undefined when the running mode discovered no host; the arm then reports NOT CHECKED as
+ * a `bound`, never a silent pass. The band is read from the bundle manifest because that file is the
+ * publication claim, and the host arm only runs on the shipped pair, so no fixture reaches this read.
+ * @param version - the discovered host's exact version, or undefined when none was discovered.
+ * @param reason - why no version is available, quoted by the NOT CHECKED report.
+ * @returns the COMPAT (d) arm, `bound` when the sub-assertion could not be checked.
+ */
+function hostVersionArm(version: string | undefined, reason: string): ArmResult {
+  if (version === undefined) {
+    return arm("COMPAT.host-version", "bound", "NOT CHECKED — " + reason + ", so no discovered host version exists to compare against the band")
+  }
+  /** The bundle manifest the band is read from. */
+  const load = readManifest(DEFAULT_MANIFESTS[0] ?? "dsh-plugin.json")
+  if (!load.ok) return arm("COMPAT.host-version", "fail", "the bundle manifest cannot be read: " + load.message)
+  /** The band the discovered host must lie inside. */
+  const band = readBand(load)
+  if (band.problem !== undefined) {
+    return arm("COMPAT.host-version", "fail", "the declared band is unusable (" + band.problem + "), so the discovered host " + version + " cannot be shown inside it")
+  }
+  return bandContains(band, HOST_PACKAGE_NAME, version)
+    ? arm("COMPAT.host-version", "pass", "the discovered host " + HOST_PACKAGE_NAME + " " + version + " is inside the declared band " + renderBand(band))
+    : arm("COMPAT.host-version", "fail", "the discovered host " + HOST_PACKAGE_NAME + " " + version + " is OUTSIDE the declared band " + renderBand(band) + "; this run measured a host the publication claim excludes")
+}
+
 /** R2 · no credential reference exists on the TUI plane (the tokens the page names). */
 function credentialArm(sources: readonly SourceText[]): ArmResult {
   /** The first file whose text carries a credential reference. */
@@ -853,6 +1186,9 @@ function runStatic(files: readonly string[], fixtureMode: boolean): { readonly a
     loads.push(load)
     for (const result of manifestArms(load, tui)) arms.push({ ...result, id: result.id + ":" + label })
   }
+  // The COMPAT lane (R6) runs in EVERY static pass, `--static-only` included: the band is a claim this
+  // repository publishes, so the gate must redden when its own bytes stop honouring it.
+  for (const result of compatArms(loads)) arms.push(result)
   // Repository-wide arms run once, not per manifest.
   arms.push(credentialArm(tui))
   arms.push(stdoutArm(tui))
@@ -1072,7 +1408,7 @@ async function runHostArm(files: readonly string[], hostDir: string | undefined)
     say("REMEDY: install the host into a dsh profile with `dsh plugin --profile dsh-tui add " + HOST_PACKAGE_NAME + "`,")
     say("        or set MPD_DSH_TUI_HOST to an installed " + HOST_PACKAGE_NAME + " package root.")
     say("        A skip is NEVER a pass (decision D5): this gate exits non-zero until the host arm runs.")
-    return { arms: [arm("H.host", "fail", "no installed host resolved; the candidates and the remedy are printed above")], host: undefined, notPassed: true }
+    return { arms: [arm("H.host", "fail", "no installed host resolved; the candidates and the remedy are printed above"), hostVersionArm(undefined, "no installed host resolved")], host: undefined, notPassed: true }
   }
   /** The resolved host root. */
   const root = selected.dir
@@ -1083,6 +1419,10 @@ async function runHostArm(files: readonly string[], hostDir: string | undefined)
     return parsed === undefined ? "?" : String(parsed["version"] ?? "?")
   })()
   say("host arm: using " + root + " (" + HOST_PACKAGE_NAME + " " + version + ")")
+  // COMPAT (d) is decided the moment the version is known, BEFORE the chain loads: a host outside the
+  // published band is a false publication claim however the rest of this arm turns out.
+  /** COMPAT (d) against the version this discovery actually measured. */
+  const compat = hostVersionArm(version, "the installed host was discovered at " + root)
   /** The host's own admission entry points. */
   let chain: HostChain
   try {
@@ -1091,11 +1431,11 @@ async function runHostArm(files: readonly string[], hostDir: string | undefined)
     chain = loaded.chain
     say("host modules: " + loaded.paths.map((path) => relative(root, path)).join(", "))
   } catch (error) {
-    return { arms: [arm("H.host", "fail", error instanceof Error ? error.message : String(error))], host: undefined, notPassed: false }
+    return { arms: [arm("H.host", "fail", error instanceof Error ? error.message : String(error)), compat], host: undefined, notPassed: false }
   }
 
   /** The arms produced by the host chain. */
-  const arms: ArmResult[] = [arm("H.host", "pass", "the installed host " + HOST_PACKAGE_NAME + " " + version + " resolved at " + root)]
+  const arms: ArmResult[] = [arm("H.host", "pass", "the installed host " + HOST_PACKAGE_NAME + " " + version + " resolved at " + root), compat]
   /** The spec-data bundle the host itself loads. */
   let data: Record<string, unknown>
   try {
@@ -1317,18 +1657,32 @@ async function runGate(cli: CliOptions): Promise<number> {
   const stat = runStatic(files, fixtureMode)
   for (const result of stat.arms) reportArm(result)
   if (fixtureMode) {
+    // COMPAT (d) needs a DISCOVERED host, and this mode discovers none: the arm REPORTS that instead of
+    // vanishing from the report, because a sub-assertion no mode states is a silent pass.
+    /** COMPAT (d), reported as not checked in fixture mode. */
+    const unchecked = hostVersionArm(undefined, "fixture mode (--manifest) did not run host discovery")
+    reportArm(unchecked)
+    /** Every arm this mode ran: the static ones plus the COMPAT (d) report. */
+    const arms = [...stat.arms, unchecked]
     say("FIXTURE MODE: the host arm is not part of this mode; only the static arms above ran.")
     /** The finding count of the static arms alone. */
-    const failures = summarize(stat.arms)
-    if (cli.jsonOut !== undefined) writeRecord(cli.jsonOut, { tool: "verify-tui-admission", mode: "fixture", files, arms: stat.arms, failures })
+    const failures = summarize(arms)
+    if (cli.jsonOut !== undefined) writeRecord(cli.jsonOut, { tool: "verify-tui-admission", mode: "fixture", files, arms, failures })
     return failures === 0 ? EXIT.GREEN : EXIT.FINDINGS
   }
   if (cli.staticOnly) {
+    // Same rule as the fixture branch: `--static-only` is exactly the mode that must SAY the discovered
+    // host was never compared, so the band's host half is a declared bound rather than an implied pass.
+    /** COMPAT (d), reported as not checked under `--static-only`. */
+    const unchecked = hostVersionArm(undefined, "--static-only did not run host discovery")
+    reportArm(unchecked)
+    /** Every arm this mode ran: the static ones plus the COMPAT (d) report. */
+    const arms = [...stat.arms, unchecked]
     say("NOT PASSED: --static-only was requested, so the host arm did NOT run. A skip is never a pass (D5);")
     say("            run without --static-only for an admission verdict.")
     /** The finding count of the static arms alone. */
-    const failures = summarize(stat.arms)
-    if (cli.jsonOut !== undefined) writeRecord(cli.jsonOut, { tool: "verify-tui-admission", mode: "static-only", files, arms: stat.arms, failures, verdict: "not-passed" })
+    const failures = summarize(arms)
+    if (cli.jsonOut !== undefined) writeRecord(cli.jsonOut, { tool: "verify-tui-admission", mode: "static-only", files, arms, failures, verdict: "not-passed" })
     return failures === 0 ? EXIT.NOT_PASSED : EXIT.FINDINGS
   }
   /** The host arm's outcome. */
@@ -1484,7 +1838,75 @@ function selfTest(): void {
     const digestHit = digestArm([{ ok: true, file: "fixture", absolute: join(dir, "fixture.json"), text: "{}", doc: { digest: "sha256:deadbeef" } }])
     check("digest-bound-falsifiable", digestHit.status === "fail", "a manifest carrying a digest reddened the no-Verified-claim bound")
 
-    // 11 · The CLI contract: an unknown flag is exit 2, `--help` is exit 0.
+    // 11 · THE COMPAT LANE (R6) IS FALSIFIABLE — one negative control per sub-assertion, because a band
+    // no gate can break is exactly the defect this lane exists to close. Each fixture is a REAL spawn of
+    // this script, so every control travels the code path a user's run does.
+    /** The shipped bundle manifest the band fixtures derive from. */
+    const baseManifest = readManifest(DEFAULT_MANIFESTS[0] ?? "dsh-plugin.json")
+    /** The shipped bundle document; an unreadable base would make every control below vacuous. */
+    const baseDoc = baseManifest.ok ? (JSON.parse(baseManifest.text) as Record<string, unknown>) : {}
+    /** Write one band fixture and return its path. */
+    const bandFixture = (name: string, hosts: readonly string[]): string => {
+      /** The fixture document, cloned so one control cannot mutate another's input. */
+      const doc = JSON.parse(JSON.stringify(baseDoc)) as Record<string, unknown>
+      doc["compat"] = { hosts }
+      /** The fixture's path inside the self-test's temporary directory. */
+      const file = join(dir, name)
+      writeFileSync(file, JSON.stringify(doc, null, 2) + "\n")
+      return file
+    }
+    // (a) an EMPTY band must redden.
+    /** The empty-band fixture's path. */
+    const emptyBand = bandFixture("band-empty.json", [])
+    /** The empty-band child run. */
+    const emptyBandRun = spawnGate(["--manifest", emptyBand])
+    check("compat-empty-band", emptyBandRun.status === EXIT.FINDINGS && emptyBandRun.output.includes("arm COMPAT.band:fixture FAIL"), "an EMPTY compat.hosts exited " + String(emptyBandRun.status) + " with COMPAT.band red")
+    // (b) two manifests whose bands DISAGREE must redden.
+    /** The narrower band's fixture path — one member of the shipped band. */
+    const narrowBand = bandFixture("band-narrow.json", ["@deepseek-harness-tui/dsh-tui@0.19.0"])
+    /** The wider band's fixture path — the shipped band, so only the comparison itself can be red. */
+    const wideBand = bandFixture("band-wide.json", ["@deepseek-harness-tui/dsh-tui@0.18.0", "@deepseek-harness-tui/dsh-tui@0.19.0"])
+    /** The band-drift child run. */
+    const driftRun = spawnGate(["--manifest", narrowBand, "--manifest", wideBand])
+    check("compat-band-parity", driftRun.status === EXIT.FINDINGS && driftRun.output.includes("arm COMPAT.band-parity FAIL"), "two manifests whose bands disagree exited " + String(driftRun.status) + " with COMPAT.band-parity red")
+    // (c) a band that omits the DISTRIBUTION ref must redden.
+    /** The band that drops the distribution's own host coordinate. */
+    const staleBand = bandFixture("band-stale.json", ["@deepseek-harness-tui/dsh-tui@0.18.0"])
+    /** The distribution-ref child run. */
+    const staleRun = spawnGate(["--manifest", staleBand])
+    check("compat-distribution-ref", staleRun.status === EXIT.FINDINGS && staleRun.output.includes("arm COMPAT.distribution-ref FAIL"), "a band missing the distribution ref exited " + String(staleRun.status) + " with COMPAT.distribution-ref red")
+    // (d) a DISCOVERED host whose version is outside the band must redden. The discovery is the script's
+    // own (`--host-dir` is its documented test seam); only the package.json is synthetic.
+    /** The fake installed host's root. */
+    const oldHost = join(dir, "old-host")
+    mkdirSync(oldHost, { recursive: true })
+    writeFileSync(join(oldHost, "package.json"), JSON.stringify({ name: HOST_PACKAGE_NAME, version: "0.17.0" }, null, 2) + "\n")
+    /** The out-of-band host child run. */
+    const oldHostRun = spawnGate(["--host-dir", oldHost])
+    check("compat-host-version", oldHostRun.status === EXIT.FINDINGS && oldHostRun.output.includes("arm COMPAT.host-version FAIL"), "a discovered host at 0.17.0 exited " + String(oldHostRun.status) + " with COMPAT.host-version red")
+    // … and when NO host is discovered the same sub-assertion is REPORTED, never silently passed.
+    /** The static-only child run, which discovers no host by construction. */
+    const noDiscovery = spawnGate(["--static-only"])
+    check("compat-host-version-reported", noDiscovery.status === EXIT.NOT_PASSED && noDiscovery.output.includes("arm COMPAT.host-version BOUND") && noDiscovery.output.includes("NOT CHECKED"), "--static-only exited " + String(noDiscovery.status) + " and reported COMPAT.host-version as NOT CHECKED")
+    // (e) A band that DROPS a DECLARED host must redden even though NO host is discovered here. The
+    // declared set is written data (specs/tui-hosts.json), and `--manifest` mode never runs discovery, so
+    // this control reproduces exactly the CI condition the defect named: only the newer host installed,
+    // the older claimed host deleted from the band, nothing discovered that could reveal the loss.
+    /** The published host set the control removes one member of. */
+    const declaredSet = readDeclaredHosts()
+    /** Every declared coordinate but the first, so the fixture's band is missing at least one claimed host. */
+    const droppedDeclared = declaredSet.coordinates.slice(1).map((coordinate) => coordinate.text)
+    /** The declared-host-dropped fixture's path. */
+    const declaredDroppedBand = bandFixture("band-declared-dropped.json", droppedDeclared)
+    /** The declared-host-dropped child run. */
+    const declaredDroppedRun = spawnGate(["--manifest", declaredDroppedBand])
+    check(
+      "compat-declared-hosts",
+      declaredDroppedRun.status === EXIT.FINDINGS && declaredDroppedRun.output.includes("arm COMPAT.declared-hosts FAIL"),
+      "a band declaring only " + (droppedDeclared.join(", ") || "(no host at all)") + " while " + declaredSet.file + " claims " + String(declaredSet.coordinates.length) + " host(s) exited " + String(declaredDroppedRun.status) + " with COMPAT.declared-hosts red, and NO host was discovered in this mode",
+    )
+
+    // 12 · The CLI contract: an unknown flag is exit 2, `--help` is exit 0.
     /** The unknown-flag child run. */
     const usageError = spawnGate(["--not-a-flag"])
     /** The help child run. */

@@ -183,3 +183,51 @@ The measured matrix and the RED legs are in
 one boot, four phases, no restart). With the stale composition the save leg, the after-save child-model leg,
 the provider-side leg and the file-edit control go RED while `boot.pid` and the subscription heartbeat stay
 GREEN; the `user` composition turns all four green.
+
+## T-94 — a session that ever led a team stops building another; the gate re-arms on an ENDED or clean-terminal board
+
+**Symptom.** After a wave whose team was archived, a later session in the same workspace refuses to stage
+another team: the session-start complexity gate treated "leading" as permanent.
+
+**Rule (AGENTS.md §1, measured 2026-11-05).** "Leading" means a team that has NOT ended. A team counts as
+ended on an explicit `agent_teams_control end`, or on a CLEAN-TERMINAL board — at least one task, every task
+`completed`/`cancelled`, none `failed` — which the gate ATTEMPTS to end itself: `autoEndCleanTerminal` issues
+ONE `agent_teams_control end` call per team per process and, if that call fails or times out, logs one warning
+and continues WITHOUT retrying that team — so a board the gate treats as terminal can leave its team open.
+A `failed` task blocks BOTH the auto-end and any re-team and asks for a `kind=repair` row: a wave whose
+verification failed is never closed silently. With no live team and `team.reteam.afterConsults` (default 4)
+COMPLETED `mpd_role_spawn*` / `mpd_workmate_spawn` calls since the last fire, the gate fires the re-team rule
+under the marker `[AgentTeams] Re-team rule`, once per record in `<ws>/.mpd/session-gate/<sessionId>.json`. It
+stages a NEW shell only under `team.gate=mechanical`, only when `stagePlan` succeeds, and only when the
+staged-plan probe found none — a plan already staged is NAMED through `alreadyStaged` instead of created, and
+an unanswerable probe stages anyway with one warning. `advisory` mode, a missing `agent_teams_plan` tool and
+every failed call emit the notice only, saying `NO team was staged`. `team.reteam.enabled` (default true)
+gates only that volume trigger.
+
+**Why this id was renumbered (2026-11-07).** T-93 is the `describe().value` harness gap above; this rule is
+OUR gate's predicate, not DSH behaviour, and AGENTS.md §12's friction list means T-93 in the harness sense.
+This entry was indexed as T-93 when the §12 index moved into this file — a collision, now split: the index
+and this body agree on T-94.
+
+## Quick index of the closed frictions (moved from AGENTS.md §12, 2026-11-07)
+
+The manual's §12 carried this one-line index inline. It was moved here by the instruction-budget rule
+(AGENTS.md §3: MOVE-FIRST) so the manual keeps its pointer and this file keeps the index beside the detail.
+Each entry is a closed friction, closed by a rule plus a helper. The seven table-row entries are DSH
+behaviour we do not fight; T-92 and T-94 are this repository's own rules, and T-93 is a harness gap with our
+fix. The full treatment of a T-numbered entry is the table row or section above.
+
+- **T-21** no plugin-module hot reload -> ask with `node scripts/mpd-bg.ts reload-check <module-path>`.
+- **T-23** fresh `/tmp` per bash call + `bwrap --die-with-parent` -> long work is a managed background
+  job (`run_in_background`), started through `node scripts/mpd-bg.ts run --log <file> -- <cmd>`.
+- **T-24** MCP children inherit fds -> never pipe a long-lived `dsh`; probe liveness with
+  `node scripts/mpd-bg.ts probe <pidfile>`.
+- **T-26** the file sandbox is workspace-write -> `node scripts/mpd-bg.ts check-write <path>` first.
+- **T-43** the workmate library lives under `HOME` -> QA must boot with `HOME=<sandbox>`.
+- **T-54** a sandboxed profile copy sits at the SAME directory depth as the installed profile.
+- **T-55** cite code by SYMBOL, never by line number.
+- **T-92** `sessionQualifies` must not decide "is this the captain" by PRESET NAME (AGENTS.md §5).
+- **T-93** a plugin entry's `describe().value` stays at its apply-time config after a save (harness gap,
+  0.1.7-rc.2) -> compose that layer from `describe().user`, never `value` or `base`.
+- **T-94** a session that ever led a team stops building another -> the gate re-arms on an ENDED or
+  clean-terminal board (AGENTS.md §1), and a `failed` task blocks both auto-end and re-team.
