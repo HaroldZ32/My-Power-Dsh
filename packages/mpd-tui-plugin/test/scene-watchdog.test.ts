@@ -372,3 +372,89 @@ describe("the scene draws the SAME body as the sidebar page (clause 3 / A3)", ()
     })
   })
 })
+
+// ── the scene's rail is DRAGGABLE (frozen criteria I1/I2/I3) ────────────────
+//
+// THE USER'S REPORT class: a scene rail that cannot be dragged. This surface drew its rail as a plain
+// `Box` with no pointer props, which the host's drag protocol cannot hit-test at all. The arm below
+// drives the element the scene RENDERED — the shared `panel-core.ts` builder — and reads the position
+// out of the scene's own footer token (`offset + 1 / max + 1`), so every step is a NUMBER: a DELTA
+// commit is `anchor.offset + round(1 / travel * max)`, while the absolute mapping this wave removes
+// would have jumped to the pointer's own cell.
+
+/**
+ * The element a rendered tree carries under one key, parents before children.
+ * @param node - the tree (or one element/child list of it), of unknown shape.
+ * @param key - the React key the element was created with.
+ * @returns the element, or undefined when this render drew none.
+ */
+function elementByKey(node: unknown, key: string): Element | undefined {
+  if (node === null || node === undefined || typeof node !== "object") return undefined
+  if (Array.isArray(node)) {
+    for (const child of node) {
+      /** This child's own answer, when it holds the element. */
+      const found = elementByKey(child, key)
+      if (found !== undefined) return found
+    }
+    return undefined
+  }
+  /** This node as an element. */
+  const element = node as Element
+  if (element.props?.key === key) return element
+  return elementByKey(element.children ?? [], key)
+}
+
+describe("the watchdog scene's rail answers the pointer", () => {
+  test("a grab parks, one cell moves by the DELTA, a click jumps, and the footer proves each step", () => {
+    withLang("en", () => {
+      /** Twelve incidents, so the body is far taller than a 20-row terminal. */
+      const unread = Array.from({ length: 12 }, (_entry, index) => incident({ id: `inc-${index}`, at: NOW - 65_000 - index * 1_000 }))
+      /** The view the scene draws: 39 body rows in a 15-row window, so `max = 24`. */
+      const view: WatchdogView = { holds: ["team-a"], unread }
+      /** The scene kit, short enough that the body must scroll. */
+      const kit = makeSceneKit(120, 20)
+      /** The scene's component. */
+      const scene = createWatchdogSceneComponent(depsDouble(view).deps)
+      renderScene(kit, scene)
+      kit.runEffects()
+      try {
+        /** The rows after the mount read, at the top of the window. */
+        const atTop = kit.rows(renderScene(kit, scene))
+        // THE POSITION TOKEN IS THE MEASUREMENT: `1/25` is offset 0 of a 24-row band.
+        expect(atTop.join("\n")).toContain("1/25")
+        /** The rail element this render drew. */
+        const rail = elementByKey(renderScene(kit, scene), "gutter")
+        expect(rail).toBeDefined()
+        // THE THREE DRAG PHASES AND THE CLICK (criteria I1/I3) are all on the element the host hit-tests.
+        for (const prop of ["onDragStart", "onDragMove", "onDragEnd", "onClick"] as const) {
+          expect(typeof rail?.props?.[prop]).toBe("function")
+        }
+        // THE BAND, in numbers: 15 rail cells, the thumb is `floor(15² / 39) = 5` of them, so the track
+        // the pointer scrubs along is 10 cells over a 24-row offset band.
+        expect(kit.rows(renderScene(kit, scene)).join("\n")).toContain("1/25")
+        // THE GRAB COMMITS NOTHING: press far from the thumb with the press origin's absolute pair.
+        ;(rail?.props?.onDragStart as (event: unknown) => void)({ localRow: 8, row: 40, startRow: 40 })
+        expect(kit.rows(renderScene(kit, scene)).join("\n")).toContain("1/25")
+        // THE ANCHOR SURVIVES THE RE-RENDER: the move arrives through the SECOND element.
+        /** The next render's rail. */
+        const nextRail = elementByKey(renderScene(kit, scene), "gutter")
+        expect(nextRail).not.toBe(rail)
+        ;(nextRail?.props?.onDragMove as (event: unknown) => void)({ localRow: 9, row: 41, startRow: 40 })
+        /** The footer after one cell of pointer travel. */
+        const dragged = kit.rows(renderScene(kit, scene)).join("\n")
+        // ONE DELTA STEP: `0 + round(1 / 10 * 24) = 2`, so the token reads `3/25`. The ABSOLUTE mapping
+        // would have committed `round(9 / 10 * 24) = 22` — the `23/25` this assertion excludes.
+        expect(dragged).toContain("3/25")
+        expect(dragged).not.toContain("23/25")
+        // THE RELEASE CLEARS THE ANCHOR AND KEEPS THE POSITION.
+        ;(nextRail?.props?.onDragEnd as (event: unknown) => void)({ localRow: 9 })
+        expect(kit.rows(renderScene(kit, scene)).join("\n")).toContain("3/25")
+        // A CLICK NAMES A DESTINATION (criterion I3): the track's fifth cell is `round(5 / 10 * 24) = 12`.
+        ;(nextRail?.props?.onClick as (event: unknown) => void)({ localRow: 5 })
+        expect(kit.rows(renderScene(kit, scene)).join("\n")).toContain("13/25")
+      } finally {
+        kit.runCleanups()
+      }
+    })
+  })
+})

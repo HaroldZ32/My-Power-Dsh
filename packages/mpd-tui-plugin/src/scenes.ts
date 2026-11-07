@@ -52,7 +52,7 @@ import {
 } from "./team-state.js"
 import { boxesFitWidth, hitTest, layoutGraph, layoutGraphNatural, layoutRail, legendLines, sliceSpans } from "./graph.js"
 import { DAG_ANIM, DAG_TONE_GLYPH } from "./dag-theme.js"
-import { gutterCells, gutterCellsX, legendLinesFor, normalizeWheelDelta, runningGlyph, toneColor, useTeamFeed, visualTone, wheelInvertOn } from "./panel-core.ts"
+import { legendLinesFor, normalizeWheelDelta, panelKit, panelSurfaceWidth, runningGlyph, swallowWheelEvent, toneColor, usePanelViewport, useTeamFeed, viewportTrack, visualTone, wheelInvertOn, type PanelKit, type PanelViewport } from "./panel-core.ts"
 import { statusMarker } from "./status.js"
 import {
   SUBAGENT_SCENE_ID,
@@ -233,9 +233,15 @@ function usableKit(React: unknown, ui: any): boolean {
  * narrows what it calls; this is where the two meet, ONCE per render, rather than a cast at every call
  * site. The caller has already proved the kit usable ({@link usableKit}), which is what makes the cast
  * sound: every member the builders read (`React.createElement`, `ui.Box`, `ui.Text`) is present.
+ * THE KIT ALSO CARRIES THE FRAME'S INTERIOR WIDTH (frozen criterion W2), but NOT through this function:
+ * the width only exists once the scene has measured its terminal, and every scene measures AFTER it has
+ * taken this kit, so it records the budget on the returned object (`surface.maxCells = contentCols`) at
+ * that point. Every row the scene builds afterwards is clamped to it by default, through
+ * `surfaceText`/`surfaceBodyRow`; a kit that never receives one keeps the builder's own default, exactly
+ * as before.
  * @param React - the host React instance.
  * @param ui - the host ui kit.
- * @returns the kit as the shared surface builders take it.
+ * @returns the kit as the shared surface builders take it, without an interior width yet.
  */
 function surfaceKit(React: unknown, ui: unknown): SurfaceKit {
   return { React, ui } as unknown as SurfaceKit
@@ -398,7 +404,11 @@ function measureTerminal(ui: any): { size: string; cols: number; window: number;
   const usableRows = Number.isFinite(terminalRows) && terminalRows > 8
   return {
     size,
-    cols: Number.isFinite(terminalCols) && terminalCols > 20 ? terminalCols : FALLBACK_COLS,
+    // A MEASURED TERMINAL IS ALWAYS HONOURED (frozen criterion W5): the old `> 20` gate replaced a
+    // perfectly good 24-column measurement with the 100-column fallback, and the first frame then drew
+    // rows four or more cells wider than the terminal that was measured. The fallback now covers ONLY
+    // the unmeasured case, which is the state it is documented for.
+    cols: Number.isFinite(terminalCols) && terminalCols > 0 ? Math.floor(terminalCols) : FALLBACK_COLS,
     window: usableRows ? terminalRows - 6 : 20,
     // THE RAW ROW COUNT is what a WINDOWED body budgets against: the frame's two border rows and the
     // pinned header/footer are subtracted from the terminal itself, never from a guess at the chrome.
@@ -469,62 +479,37 @@ function useSceneClock(ui: any, live: boolean): { time: number; ref: unknown } {
 }
 
 /**
- * The window's vertical scrollbar, as ONE column of cells.
- *
- * THE CELLS COME FROM `panel-core.ts`'s OWN `gutterCells` — the same helper every sidebar page draws
- * its rail with — so the thumb's length and position can never disagree with the window they
- * describe, and the scene gains no second arithmetic of its own (contract §2 freezes that helper; this
- * file only calls it). The helper answers an EMPTY list when the content fits, and that is the one case
- * this function draws nothing: a scrollbar over a body that does not scroll is a control with no
- * effect. The track glyphs are the contract's (`DAG_CHROME.barEmpty` / `barFull`, via the helper), never
- * a literal spelled here.
- * @param surface - the host kit in the shared builders' shape.
- * @param offset - the window's top row within the content, already clamped.
- * @param contentRows - how many rows the window scrolls over.
- * @param viewportRows - how many rows the window shows.
- * @returns the one-cell-wide column, or undefined when everything fits.
- */
-function gutterColumn(surface: SurfaceKit, offset: number, contentRows: number, viewportRows: number): unknown | undefined {
-  /** One cell per viewport row: the thumb where it sits, the track everywhere else. */
-  const cells = gutterCells(offset, contentRows, viewportRows)
-  if (cells.length === 0) return undefined
-  return surface.React.createElement(
-    surface.ui.Box,
-    { key: "gutter", flexDirection: "column", width: 1 },
-    ...cells.map((cell, row) => surface.React.createElement(surface.ui.Text, { key: `vbar-${row}`, dimColor: true }, cell)),
-  )
-}
-
-/**
  * The frame's children for a WINDOWED body: the pinned header, the window and the pinned footer.
  *
  * THE WINDOW IS TWO SIBLINGS IN A ROW BOX, not a column with a bar painted into each row's last cell.
  * The rail must reserve its ONE column for the whole body — a bar appended to a row's text would make
  * every row one cell wider than the frame's interior and the host would REWRAP it, which is the class
- * of defect this wave exists to remove. A short body (the helper answers no cells) keeps the exact
+ * of defect this wave exists to remove. A short body (the builder answers no rail) keeps the exact
  * element order it always had.
+ *
+ * THE RAIL IS THE SHARED BUILDER (frozen criteria I1/I5): `viewportTrack` draws `panel-core.ts`'s own
+ * gutter cells and wires the host's three drag phases through the viewport handle, so the scene's
+ * scrollbar carries exactly the sidebar's semantics — a DELTA drag, plus a click that jumps the track.
  * @param surface - the host kit in the shared builders' shape.
+ * @param panel - the same host in the PANEL kit's shape, which the rail builder takes.
+ * @param viewport - this render's viewport: the ONE position the window and the rail both read.
  * @param head - the pinned header rows.
- * @param region - the rows the window shows, already sliced to `viewportRows`.
+ * @param region - the rows the window shows, already sliced to the viewport's height.
  * @param footer - the pinned footer rows.
- * @param offset - the window's top row within the content, already clamped.
- * @param contentRows - how many rows the window scrolls over.
- * @param viewportRows - how many rows the window shows.
  * @returns the frame's children, in draw order.
  */
 function windowedBody(
   surface: SurfaceKit,
+  panel: PanelKit,
+  viewport: PanelViewport,
   head: readonly unknown[],
   region: readonly unknown[],
   footer: readonly unknown[],
-  offset: number,
-  contentRows: number,
-  viewportRows: number,
 ): unknown[] {
   /** The window's own rows, in one column so the host stacks them in draw order. */
   const rows = surface.React.createElement(surface.ui.Box, { key: "body-rows", flexDirection: "column", flexGrow: 1 }, ...region)
   /** The rail, absent when everything fits. */
-  const gutter = gutterColumn(surface, offset, contentRows, viewportRows)
+  const gutter = viewportTrack(panel, viewport, "row")
   /** The window: the rows and the rail as siblings, so the rail owns exactly one column. */
   const window = gutter === undefined
     ? rows
@@ -609,15 +594,10 @@ function createBoardComponent(
     const setBoard = state[1] as (next: { rows: string[]; state?: BoardState }) => void
     // THE BOARD'S OWN WINDOW (contract §5.A4's audit item: this scene had NO scroll at all). The read is
     // one row per board line, and `boardLines` grows with the workspace's team, boulder, plans, workmates
-    // and problems — on a short terminal the host used to CLIP the tail with no way to reach it. The
-    // offset is state here, moved by the keys and the wheel below, and the window is drawn with the same
-    // `gutterCells` rail the team scene uses, so the two full-screen surfaces answer one vocabulary.
-    /** The scroll offset, in rows, over the board's own lines. */
-    const scrollState = React.useState(0)
-    /** The board's scroll offset, in rows. */
-    const scroll = scrollState[0] as number
-    /** Moves the board's offset; the home key and `r` reset it to 0. */
-    const setScroll = scrollState[1] as (next: number) => void
+    // and problems — on a short terminal the host used to CLIP the tail with no way to reach it. THE
+    // POSITION IS THE SHARED VIEWPORT HANDLE below (frozen criterion I5), created once `measured` is known
+    // because its band is this page's own heights; the keys, the wheel and the rail all drive that ONE
+    // number, so no gesture can disagree with the scrollbar about where the window sits.
 
     // THE PUSH (PART P): a team-state change re-reads this page instead of waiting up to 2000 ms for
     // the tick below, which STAYS as the fallback for a composition with no feed.
@@ -655,6 +635,27 @@ function createBoardComponent(
     // Host terminal-size hook (conventions §b): the scene adapts instead of
     // assuming a geometry. Always called, with a safe fallback shape.
     const measured = measureTerminal(ui)
+    // THE FRAME'S INTERIOR IS THIS SCENE'S ONE CONTENT WIDTH (frozen criterion W1): the terminal's width
+    // minus the border and padding `surfaceFrame` spends inside it. Every row below is budgeted against
+    // it, so no row can be wider than the room it is drawn in and be wrapped by the host.
+    /** How many cells the frame's interior offers this render. */
+    const contentCols = panelSurfaceWidth(measured.cols)
+    // The kit is this render's own object, so recording the budget on it is what makes every later
+    // `surfaceText`/`surfaceBodyRow` call clamped without threading a parameter through each one.
+    surface.maxCells = contentCols
+    /** The same host in the PANEL kit's shape, which the viewport and rail builders take. */
+    // Sound because every scene proved this host usable through `usableKit` before a hook ran: the two
+    // declarations differ in their React members alone, and the builders only call `createElement`.
+    const panel = panelKit(React, ui) as PanelKit
+    /**
+     * The sizes the viewport hook and every later closure read.
+     *
+     * The row counts are written LATER in this render, once the board's own lines are known; the handle
+     * reads through this object, so those writes are visible to it (one generation, never two).
+     */
+    const sizes: { contentRows: number; viewportRows: number } = { contentRows: 1, viewportRows: 1 }
+    /** The board's ONE scroll position: the keys, the wheel and the rail all drive this handle. */
+    const viewport = usePanelViewport(panel, () => sizes)
     /** The measured terminal size label, empty when the host could not measure. */
     const size = measured.size
     // THE WINDOW BUDGET of this page: the terminal minus the frame's two border rows, the three PINNED
@@ -662,10 +663,14 @@ function createBoardComponent(
     // arithmetic the team scene's window uses, so the two pages page alike.
     /** How many board lines the window can show at once; never below one. */
     const viewportRows = Math.max(1, measured.rows - 2 - 3 - 1)
+    // THE HANDLE IS TOLD THIS RENDER'S SIZE BEFORE ANY GESTURE READS IT, so every read below is clamped
+    // against the page as it stands rather than against the placeholder the hook was constructed with.
+    sizes.contentRows = Math.max(1, rows.length)
+    sizes.viewportRows = viewportRows
     /** The furthest offset that still fills the window; zero when the board fits. */
-    const scrollMax = Math.max(0, rows.length - viewportRows)
+    const scrollMax = viewport.max
     /** The offset for THIS render, clamped — the one value the window and the rail both read. */
-    const scrollAt = Math.min(Math.max(0, scroll), scrollMax)
+    const scrollAt = viewport.offset
 
     if (typeof ui.useInput === "function") {
       ui.useInput((input: string, key: { escape?: boolean; ctrl?: boolean; shift?: boolean; upArrow?: boolean; downArrow?: boolean; pageUp?: boolean; pageDown?: boolean; home?: boolean; end?: boolean } | undefined) => {
@@ -673,14 +678,14 @@ function createBoardComponent(
         // THE WINDOW'S OWN KEYS: the same gestures the team scene and the `dag` page answer, so a reader
         // learns ONE scroll vocabulary across the surfaces (`⇧↑↓` by a row, `PgUp`/`PgDn` by a window,
         // `Home`/`End` the ends).
-        else if (key?.upArrow === true && key?.shift === true) setScroll(Math.max(0, scrollAt - 1))
-        else if (key?.downArrow === true && key?.shift === true) setScroll(Math.min(scrollMax, scrollAt + 1))
-        else if (key?.pageUp === true) setScroll(Math.max(0, scrollAt - viewportRows))
-        else if (key?.pageDown === true) setScroll(Math.min(scrollMax, scrollAt + viewportRows))
-        else if (key?.home === true) setScroll(0)
-        else if (key?.end === true) setScroll(scrollMax)
+        else if (key?.upArrow === true && key?.shift === true) viewport.scrollBy(-1)
+        else if (key?.downArrow === true && key?.shift === true) viewport.scrollBy(1)
+        else if (key?.pageUp === true) viewport.scrollBy(-viewportRows)
+        else if (key?.pageDown === true) viewport.scrollBy(viewportRows)
+        else if (key?.home === true) viewport.scrollTo(0)
+        else if (key?.end === true) viewport.scrollTo(Number.MAX_SAFE_INTEGER)
         else if (input === "r") {
-          setScroll(0)
+          viewport.scrollTo(0)
           setBoard(read())
         }
         // One-key hop from the board to the team workflow (frozen §5.6).
@@ -718,7 +723,7 @@ function createBoardComponent(
     /** The tone the frame, the marker and the tally row all draw in. */
     const tone: SurfaceTone = tally === undefined ? "dim" : toneOfTally(tally, [])
     /** How many cells the progress bar may occupy on this width; never so wide that the row shears. */
-    const barWidth = Math.max(4, Math.min(24, measured.cols - 64))
+    const barWidth = Math.max(4, Math.min(24, contentCols - 64))
 
     /** The pinned header: the page's identity, its counts and its rule — they never scroll away. */
     const head: unknown[] = []
@@ -752,9 +757,12 @@ function createBoardComponent(
       flexDirection: "column",
       flexGrow: 1,
       onWheel: (event: { deltaY?: number; deltaX?: number } | undefined) => {
+        // SWALLOWED FIRST (frozen criterion I4): the gesture is this scene's, so it must not also scroll
+        // the chat behind the frame. `swallowWheelEvent` is the core's one propagation stopper.
+        swallowWheelEvent(event)
         /** The wheel's vertical delta in this plugin's own convention; positive scrolls down. */
         const deltaY = normalizeWheelDelta(Number(event?.deltaY ?? 0), wheelInvertOn())
-        if (deltaY !== 0) setScroll(Math.max(0, Math.min(scrollMax, scrollAt + (deltaY > 0 ? 1 : -1))))
+        if (deltaY !== 0) viewport.scrollBy(deltaY > 0 ? 1 : -1)
       },
     }, ...visible)
     // Key-hint footer, PINNED: the keys that move this window must stay on screen while it moves.
@@ -763,9 +771,9 @@ function createBoardComponent(
 
     // THE FRAME: the surface's own border, its title in the border line, its colour carrying the state
     // the marker draws — the same grammar the DAG page and the merged panel use.
-    /** The border title, clamped to the measured width so it can never shear the frame. */
-    const borderTitle = clampCells(chromeTitle([stateMarker(tone, phase), "MPD board", size]), Math.max(8, measured.cols - 6))
-    return surfaceFrame(surface, "frame", borderTitle, windowedBody(surface, head, [body], footer, scrollAt, rows.length, viewportRows), tone, clock.ref)
+    /** The border title, clamped to the frame's INTERIOR so it can never shear the frame. */
+    const borderTitle = clampCells(chromeTitle([stateMarker(tone, phase), "MPD board", size]), Math.max(8, contentCols - 2))
+    return surfaceFrame(surface, "frame", borderTitle, windowedBody(surface, panel, viewport, head, [body], footer), tone, clock.ref)
   }
 }
 
@@ -833,22 +841,11 @@ function createTeamComponent(
     const hover = hoverState[0] as string | undefined
     /** Moves the hover, or clears it when the pointer leaves the graph. */
     const setHover = hoverState[1] as (next: string | undefined) => void
-    /** The scroll offset, in rows. */
-    const scrollState = React.useState(0)
-    /** The scroll offset, in rows. */
-    const scroll = scrollState[0] as number
-    /** Moves the offset; `r` resets it to 0. */
-    const setScroll = scrollState[1] as (next: number) => void
-    // THE SECOND AXIS (frozen clause T5). It is the DAG DRAWING's own window and nothing else (R8): the
-    // scene's other rows — the roster, the legend, the detail pane, the footer — stay at the terminal's
-    // width and never move sideways. The purpose, said once: the pan exists so the WHOLE DAG can be seen,
-    // because a natural-width drawing is allowed to be wider than the terminal it is drawn in.
-    /** The horizontal scroll offset, in cells, over the DRAWING only. */
-    const scrollXState = React.useState(0)
-    /** The horizontal scroll offset, in cells. */
-    const scrollX = scrollXState[0] as number
-    /** Moves the horizontal offset; `r` resets it to 0. */
-    const setScrollX = scrollXState[1] as (next: number) => void
+    // THE TWO AXES ARE ONE POSITION EACH, and both live on the SHARED VIEWPORT HANDLE created below
+    // (frozen criterion I5): the vertical band is the scene body's own height and the column band is the
+    // DRAWING's width against the interior. The purpose, said once (frozen clause T5): the pan exists so
+    // the WHOLE DAG can be seen, because a natural-width drawing is allowed to be wider than the terminal
+    // it is drawn in — while the scene's other rows stay at the interior's width and never move sideways.
     // The last read's facts, so a key handler answers "is this team staged?" without a second read
     // and without reading state from a stale render closure.
     const latestRef = React.useRef?.(undefined as { staged: boolean; teamId?: string } | undefined)
@@ -924,6 +921,27 @@ function createTeamComponent(
     const focus = hover ?? pinned
     // The window is computed from the host's own terminal size (never assumed).
     const measured = measureTerminal(ui)
+    // THE FRAME'S INTERIOR IS THIS SCENE'S ONE CONTENT WIDTH (frozen criterion W1): the terminal's width
+    // minus the border and padding `surfaceFrame` spends inside it. Everything the scene builds — the
+    // roster's wrap, the drawing's viewport, the legend, the rail and the title — is budgeted against it.
+    /** How many cells the frame's interior offers this render. */
+    const contentCols = panelSurfaceWidth(measured.cols)
+    // The kit is this render's own object, so recording the budget on it is what makes every later
+    // `surfaceText`/`surfaceBodyRow` call clamped without threading a parameter through each one.
+    surface.maxCells = contentCols
+    /** The same host in the PANEL kit's shape, which the viewport and rail builders take. */
+    // Sound because `usableKit` proved this host before a hook ran: the two declarations differ in their
+    // React members alone, and the builders only ever call `createElement`.
+    const panel = panelKit(React, ui) as PanelKit
+    /**
+     * The sizes the viewport hook and every later closure read.
+     *
+     * Seeded from ONE ROW so a gesture that somehow arrives before the body is built cannot divide by
+     * zero; `drawAt` writes the column band and the tail writes the row band, both before anything reads.
+     */
+    const sizes: { contentRows: number; viewportRows: number; contentCols?: number; viewportCols?: number } = { contentRows: 1, viewportRows: 1 }
+    /** The team body's ONE scroll position, on BOTH axes: the keys, the wheel and the two rails drive it. */
+    const viewport = usePanelViewport(panel, () => sizes)
     /** The team head, when there is one. */
     const team = workflow?.team
     // THE TEAM'S OWN STATE, in the one tone vocabulary every surface reports — the frame colour, the
@@ -941,12 +959,15 @@ function createTeamComponent(
      * many rows it produces, which depends on the width, so one pass cannot answer both: the scene
      * draws at its natural width and re-draws ONE COLUMN NARROWER only when that pass overflowed. A
      * short body therefore keeps its previous rendering byte for byte.
-     * @param contentCols - the columns the frame's interior offers this pass, rail excluded.
+     * @param drawCols - the columns the frame's interior offers this pass, rail excluded.
      * @returns the pinned header, the window's content and the drawing facts.
      */
-    const drawAt = (contentCols: number): TeamDraw => {
-      /** The graph's own viewport, inside the scene's one-cell padding (one cell narrower with a rail). */
-      const graphWidth = Math.max(20, contentCols - 4)
+    const drawAt = (drawCols: number): TeamDraw => {
+      // THE DRAWING'S VIEWPORT IS THE INTERIOR ITSELF (frozen criterion W1): the old `contentCols - 4`
+      // re-spelled the frame's OWN chrome a second time, so the drawing — and every row wrapped to it —
+      // came out four cells narrower than the room it had, and the numbers never matched the frame.
+      /** The cells this pass's drawing and its wrapped rows may occupy, rail excluded. */
+      const graphWidth = drawCols
       /** The ranks the host's model served, when it published one; the scene never re-derives its own. */
       const servedRanks = modelRanks(workflow)
       // THE GROUP FRAMES COME WITH THE MODEL (frozen contract D3). A served model's per-node column is the
@@ -960,24 +981,33 @@ function createTeamComponent(
       // the drawing is always its full natural height and the WINDOW is what makes it fit.
       /** The boxed drawing for this width, at its own width — the scene's picture unless it is too narrow. */
       const boxes = layoutGraphNatural(graphTasks, focus, { rows: measured.window }, servedRanks, groups)
-      // THE FULL-SCREEN SCENE OBEYS THE PANEL'S RULE (clause A3): boxes while two node columns of the
-      // drawing fit, and the rail only for a terminal that genuinely cannot show them. Before this the
-      // scene had no rule of its own and inherited the layout's rank cap, so a deep board fell back to a
-      // rail — the lines that "disappear even in full screen" the user reported.
-      /** The drawing: the boxed form while it fits this width, the rail only when it cannot. */
+      // THE DRAWING-OR-RAIL DECISION IS THE SIDEBAR'S OWN (frozen criterion W4, as AMENDED). `boxesFitWidth`
+      // asks the one question that can take the picture away from the reader: do TWO of this drawing's own
+      // node columns fit? A drawing merely WIDER than this pass's viewport keeps its boxes and is reached
+      // by horizontal PAN — the rail drawn under it exists for exactly that, and a scene that switched to
+      // the dense rail layout instead would draw at `graphWidth` by construction, leaving `colOverflow`
+      // false forever and DELETING the horizontal scrollbar the user reported. The old
+      // `boxes.width <= graphWidth` test did precisely that. So a wide drawing is windowed and panned
+      // (the rows below are cut to `graphWidth` by `sliceSpans`), and only a viewport too narrow for two
+      // node columns falls back to `layoutRail`, whose text list fits any width.
+      /** The drawing: the boxed form whenever two node columns fit, the rail layout only when they cannot. */
       const view = boxesFitWidth(boxes, graphWidth) ? boxes : layoutRail(graphTasks, graphWidth, focus, servedRanks)
+      // THE COLUMN BAND IS THE DRAWING'S WIDTH AGAINST THIS PASS'S VIEWPORT, recorded on the shared
+      // handle so the rail, the key handler and the wheel all read the same two numbers.
+      sizes.contentCols = view.width
+      sizes.viewportCols = graphWidth
       /** The furthest horizontal offset that still fills the viewport; zero when the drawing fits. */
-      const scrollXMax = Math.max(0, view.width - graphWidth)
+      const scrollXMax = viewport.colMax
       /** The horizontal offset for THIS render, clamped — the one value the rows and the rail both read. */
-      const scrollXAt = Math.min(Math.max(0, scrollX), scrollXMax)
+      const scrollXAt = viewport.colOffset
       /** The pinned header: identity, state, counts, roster and the drawing's own title row. */
       const head: unknown[] = []
       /** Every row BELOW the drawing, in draw order: they ride the same window as the drawing. */
       const tail: unknown[] = []
       /** How many cells the tally's bar may take on this width; a narrow terminal simply drops it. */
-      const barWidth = Math.max(4, Math.min(16, contentCols - 46))
+      const barWidth = Math.max(4, Math.min(16, graphWidth - 46))
       /** Whether this width has room for the bar beside the tally's own words. */
-      const barFits = contentCols >= 50
+      const barFits = graphWidth >= 50
       // THE TEAM ID IS DRAWN, and it is not decoration: `approve <teamId>` is the exact phrase the
       // plan surface demands, and the id is what tells two waves apart. Two existing arms caught its
       // absence the moment this header was rewritten — the second of them through the CONTROL
@@ -1064,12 +1094,14 @@ function createTeamComponent(
         // THE HORIZONTAL RAIL, DIRECTLY BENEATH THE DRAWING (R8) — not beneath the scene, and driven by
         // the SAME `scrollXAt` the rows above were cut with, so the thumb and the window can never
         // disagree (clause T4). Drawn only while the drawing is wider than the viewport.
-        if (scrollXMax > 0) {
-          // The rail's cells come out of `panel-core.ts`'s ONE horizontal-gutter function, so the scene and
-          // the `dag` panel draw the same thumb at the same offset from the same arithmetic (clause T4).
-          /** The rail's cells, one per column of the viewport. */
-          const rail = gutterCellsX(scrollXAt, view.width, graphWidth)
-          if (rail !== "") tail.push(surfaceText(surface, "hrail", rail, { dim: true }))
+        if (viewport.colOverflow) {
+          // THE HORIZONTAL RAIL IS THE SHARED BUILDER (frozen criteria I1/I5): `viewportTrack` returns
+          // `panel-core.ts`'s own `viewportRail` — a `Box` carrying `onDragStart`/`onDragMove`/`onDragEnd`
+          // around its one text row — so the scene's scrollbar has EXACTLY the sidebar's drag semantics,
+          // and its cells come from the same `gutterCellsX` the thumb above was drawn with (clause T4).
+          /** The draggable rail for this pass, absent when the drawing fits its viewport. */
+          const rail = viewportTrack(panel, viewport, "col", { cols: graphWidth })
+          if (rail !== undefined) tail.push(rail)
         }
         // THE LEGEND sits directly under the DAG it explains, in the SAME width budget the graph was
         // laid out for (`graphWidth`) — the merged panel draws the same lines under its own DAG, so
@@ -1145,8 +1177,8 @@ function createTeamComponent(
       }
       return { head, tail, graphLines, graphRow, view, graphWidth, scrollXAt, scrollXMax }
     }
-    /** The body at the scene's own content width — the pass a short scene keeps byte for byte. */
-    const full = drawAt(measured.cols)
+    /** The body at the frame's own interior width — the pass a short scene keeps byte for byte. */
+    const full = drawAt(contentCols)
     /** The rows the pinned header and the pinned footer leave for the window; never below one. */
     const capacityOf = (draw: TeamDraw): number => Math.max(1, measured.rows - 2 - draw.head.length - 1)
     /** The rows this body carries in its window: the drawing's own plus every row below it. */
@@ -1159,20 +1191,24 @@ function createTeamComponent(
     /** Whether the body must be windowed at all, which is also when the gutter owns a column. */
     const scrolling = contentOf(full) > capacityOf(full)
     /** The body this render draws; an overflowing one is re-laid out one column narrower for its rail. */
-    const body = scrolling ? drawAt(measured.cols - 1) : full
+    const body = scrolling ? drawAt(contentCols - 1) : full
     /** How many rows the window shows. */
     const viewportRows = capacityOf(body)
     /** How many rows the window scrolls over. */
     const contentRows = contentOf(body)
+    // THE HANDLE IS TOLD THIS RENDER'S HEIGHTS before any gesture reads it, so a key press is clamped
+    // against the body that is on screen rather than against the previous render's numbers.
+    sizes.contentRows = contentRows
+    sizes.viewportRows = viewportRows
     // THE FAR-EDGE DEFECT THIS WAVE INHERITS: the state used to be read raw by the render loop, so
     // `End` (which committed `Number.MAX_SAFE_INTEGER`) and a long wheel run pushed the window PAST the
     // last row — the slice then started beyond the content and the scene drew an EMPTY body, with no
     // way back except scrolling up one tick at a time. A clamped value derived per render, and used by
     // the window, both hit tests and every vertical gesture, makes the far edge a real stop.
     /** The furthest vertical offset that still fills the window; zero when the body fits. */
-    const scrollMax = Math.max(0, contentRows - viewportRows)
+    const scrollMax = viewport.max
     /** The vertical offset for THIS render, clamped — the one value the window and both hit tests read. */
-    const scrollAt = Math.min(Math.max(0, scroll), scrollMax)
+    const scrollAt = viewport.offset
     if (viewRef !== undefined && viewRef !== null) viewRef.current = body.view
     /** The tasks the focus would move through, in DRAWING order, which is what the arrow keys walk. */
     const ordered = body.view.hits.map((hit) => hit.taskId)
@@ -1194,14 +1230,14 @@ function createTeamComponent(
         // who clicked a task must be able to leave that mode without leaving the scene.
         if (key?.escape === true && pinned !== undefined) { setPinned(undefined); setHover(undefined); return }
         if (key?.escape === true || input === "q") close()
-        else if (input === "r") { setScroll(0); setScrollX(0); refresh() }
+        else if (input === "r") { viewport.scrollTo(0); viewport.scrollToCol(0); refresh() }
         // THE ARROWS MOVE THE FOCUS; SHIFT MAKES THEM SCROLL (the user's own decision, clause T5). `←/→`
         // are NEW: they walk the SAME one-dimensional drawing order `↑/↓` already walk, because a true
         // two-dimensional neighbour walk would need a geometry contract nobody asked for.
-        else if (key?.upArrow === true || input === "k") (key?.shift === true ? setScroll(Math.max(0, scrollAt - 1)) : moveFocus(-1))
-        else if (key?.downArrow === true || input === "j") (key?.shift === true ? setScroll(Math.min(scrollMax, scrollAt + 1)) : moveFocus(1))
-        else if (key?.leftArrow === true || input === "h") (key?.shift === true ? setScrollX(Math.max(0, body.scrollXAt - 1)) : moveFocus(-1))
-        else if (key?.rightArrow === true || input === "l") (key?.shift === true ? setScrollX(Math.min(body.scrollXMax, body.scrollXAt + 1)) : moveFocus(1))
+        else if (key?.upArrow === true || input === "k") (key?.shift === true ? viewport.scrollBy(-1) : moveFocus(-1))
+        else if (key?.downArrow === true || input === "j") (key?.shift === true ? viewport.scrollBy(1) : moveFocus(1))
+        else if (key?.leftArrow === true || input === "h") (key?.shift === true ? viewport.scrollColBy(-1) : moveFocus(-1))
+        else if (key?.rightArrow === true || input === "l") (key?.shift === true ? viewport.scrollColBy(1) : moveFocus(1))
         // PAGING: `PgUp`/`PgDn` page vertically and their SHIFT forms horizontally, and `Home`/`End` are
         // the vertical ends — the same four keys the `dag` panel answers, so the two surfaces agree.
         // THE VERTICAL PAGE STEP IS THE WINDOW ITSELF (`viewportRows`), not the old drawing-only budget:
@@ -1209,11 +1245,11 @@ function createTeamComponent(
         // height would skip the very rows this wave makes reachable.
         // EVERY VERTICAL MOVE GOES THROUGH `scrollAt`/`scrollMax`, so the far edge is a stop and not a
         // value the next render has to recover from.
-        else if (key?.pageUp === true) (key?.shift === true ? setScrollX(Math.max(0, body.scrollXAt - body.graphWidth)) : setScroll(Math.max(0, scrollAt - viewportRows)))
-        else if (key?.pageDown === true) (key?.shift === true ? setScrollX(Math.min(body.scrollXMax, body.scrollXAt + body.graphWidth)) : setScroll(Math.min(scrollMax, scrollAt + viewportRows)))
-        else if (key?.home === true) setScroll(0)
-        else if (key?.end === true) setScroll(scrollMax)
-        else if (input === "g") { setScroll(0); setScrollX(0) }
+        else if (key?.pageUp === true) (key?.shift === true ? viewport.scrollColBy(-body.graphWidth) : viewport.scrollBy(-viewportRows))
+        else if (key?.pageDown === true) (key?.shift === true ? viewport.scrollColBy(body.graphWidth) : viewport.scrollBy(viewportRows))
+        else if (key?.home === true) viewport.scrollTo(0)
+        else if (key?.end === true) viewport.scrollTo(Number.MAX_SAFE_INTEGER)
+        else if (input === "g") { viewport.scrollTo(0); viewport.scrollToCol(0) }
         else if (input === "p") { nav.planFromTeam = false; openScene(BOARD_SCENE_ID) }
         else if (input === "a") {
           /** Whether the last read saw a staged team, which is what the `a` key needs. */
@@ -1279,12 +1315,15 @@ function createTeamComponent(
           // one moves the WINDOW — the drawing AND every row below it, which is what makes the scene body
           // reachable — while the horizontal one moves the DRAWING's window, and only when there is
           // something to pan to.
+          // SWALLOWED FIRST (frozen criterion I4): the gesture belongs to this scene, so it must not
+          // also reach the chat behind the frame.
+          swallowWheelEvent(event)
           /** The wheel's vertical delta in this plugin's own convention; positive scrolls down. */
           const deltaY = normalizeWheelDelta(Number(event?.deltaY ?? 0), wheelInvertOn())
-          if (deltaY !== 0) setScroll(Math.max(0, Math.min(scrollMax, scrollAt + (deltaY > 0 ? 1 : -1))))
+          if (deltaY !== 0) viewport.scrollBy(deltaY > 0 ? 1 : -1)
           /** The wheel's horizontal delta in the same convention; positive scrolls right. */
           const deltaX = normalizeWheelDelta(Number(event?.deltaX ?? 0), wheelInvertOn())
-          if (deltaX !== 0) setScrollX(Math.max(0, Math.min(body.scrollXMax, body.scrollXAt + (deltaX > 0 ? 1 : -1))))
+          if (deltaX !== 0) viewport.scrollColBy(deltaX > 0 ? 1 : -1)
         },
       }, graphRows))
     }
@@ -1294,9 +1333,9 @@ function createTeamComponent(
     const footer = [surfaceHints(surface, "footer", ["esc/q close", "↑↓ focus", "click pins", "hover previews", "⇧↑↓ scroll", "r refresh", "a plan", "p board"])]
     // THE FRAME: the surface's own border, its title in the border line and its colour carrying the
     // state the marker draws — the grammar the DAG page and the merged panel share.
-    /** The border title, clamped to the measured width so it can never shear the frame. */
-    const borderTitle = clampCells(chromeTitle([`${stateMarker(tone, phase)} MPD team${team === undefined ? "" : ` — ${team.name}`}`, measured.size]), Math.max(8, measured.cols - 6))
-    return surfaceFrame(surface, "frame", borderTitle, windowedBody(surface, body.head, visible, footer, scrollAt, contentRows, viewportRows), tone, clock.ref)
+    /** The border title, clamped to the frame's INTERIOR so it can never shear the frame. */
+    const borderTitle = clampCells(chromeTitle([`${stateMarker(tone, phase)} MPD team${team === undefined ? "" : ` — ${team.name}`}`, measured.size]), Math.max(8, contentCols - 2))
+    return surfaceFrame(surface, "frame", borderTitle, windowedBody(surface, panel, viewport, body.head, visible, footer), tone, clock.ref)
   }
 }
 
@@ -1377,6 +1416,26 @@ function createPlanComponent(
     onHostKit?.(ui)
     /** The host kit in the shared builders' shape; taken once per render, never per call. */
     const surface = surfaceKit(React, ui)
+    // THE FRAME'S INTERIOR IS THIS SURFACE'S ONE CONTENT WIDTH (frozen criteria W1/W2/W3): a plan row is
+    // sentence-shaped and can be long, so a row built at the terminal's width wraps inside a frame four
+    // cells narrower and tears the box exactly as the user screenshotted. The measurement and the
+    // viewport handle are taken FIRST, before any reader that resets the scroll position: `refresh` below
+    // calls the handle, so the handle must exist before a host that runs its effects eagerly can call it.
+    /** The terminal measurement, taken once per render. */
+    const measured = measureTerminal(ui)
+    /** How many cells the frame's interior offers this render. */
+    const contentCols = panelSurfaceWidth(measured.cols)
+    // The kit is this render's own object, so recording the budget on it clamps every row built below.
+    surface.maxCells = contentCols
+    /** The same host in the PANEL kit's shape, which the viewport and rail builders take. */
+    // Sound because `usableKit` proved this host before a hook ran.
+    const panel = panelKit(React, ui) as PanelKit
+    /** How many body rows the window shows: the terminal minus the frame's chrome, as it always was. */
+    const viewportRows = Math.max(1, measured.window)
+    /** The sizes the viewport hook and every later closure read; the height is filled in once it is known. */
+    const sizes: { contentRows: number; viewportRows: number } = { contentRows: 1, viewportRows }
+    /** The plan body's ONE scroll position: the keys and the rail drive this handle. */
+    const viewport = usePanelViewport(panel, () => sizes)
     // The shared clock, at a FIXED hook position (see `subagent-scene.ts`): a host with no timer
     // answers 0 and every animated cell draws the frozen static frame.
     /** The host clock and the ref the animated element must carry. */
@@ -1431,12 +1490,10 @@ function createPlanComponent(
     const armedAt = armedState[0] as number
     /** Arms on the first Ctrl+D and disarms on expiry, any other key, or a discard. */
     const setArmedAt = armedState[1] as (next: number) => void
-    /** The scroll offset as host state. */
-    const scrollState = React.useState(0)
-    /** The current offset, in rows. */
-    const scroll = scrollState[0] as number
-    /** Moves the offset; refresh resets it to 0. */
-    const setScroll = scrollState[1] as (next: number) => void
+    // THE BODY'S SCROLL POSITION LIVES ON THE SHARED VIEWPORT HANDLE created below, together with the
+    // frame's interior width (frozen criterion I5): the plan surface windows its body the same way the
+    // board, team and watchdog surfaces do, so it gets the same clamped band, the same keys and — since
+    // the windowing already implies one — the same draggable rail.
 
     /** Re-reads the record and resets the consent echo, the arm and the scroll. */
     const refresh = (): void => {
@@ -1444,7 +1501,7 @@ function createPlanComponent(
       // Barrier 3: the echo is EMPTY on every entry and on every explicit refresh.
       setEcho("")
       setArmedAt(0)
-      setScroll(0)
+      viewport.scrollTo(0)
     }
 
     // THE PUSH (PART P): a team-state change re-reads the FACTS here, exactly as the periodic read
@@ -1523,7 +1580,7 @@ function createPlanComponent(
     /** Leave the surface. Esc never mutates (frozen §3.2). */
     const leave = (): void => {
       setEcho("")
-      setScroll(0)
+      viewport.scrollTo(0)
       if (target.fromTeam) {
         if (!openScene(TEAM_SCENE_ID)) close()
       } else {
@@ -1669,12 +1726,15 @@ function createPlanComponent(
             setEcho(echo === "" ? "" : [...echo].slice(0, -1).join(""))
             return
           }
+          // THE SAME TWO GESTURES AS BEFORE (`j`/`k` and the arrows move by ONE row), now clamped by the
+          // shared handle: pressing past the last row stops instead of blanking the body, which is the
+          // far-edge defect the other three surfaces already had removed.
           if (key?.upArrow === true || input === "k") {
-            setScroll(scroll > 0 ? scroll - 1 : 0)
+            viewport.scrollBy(-1)
             return
           }
           if (key?.downArrow === true || input === "j") {
-            setScroll(scroll + 1)
+            viewport.scrollBy(1)
             return
           }
           if (key?.return === true || key?.tab === true || key?.meta === true) return
@@ -1694,10 +1754,12 @@ function createPlanComponent(
     }
     if (usable) for (const row of planActionLines(view, echo, armedAt !== 0, message, stagedPlan?.phrase ?? "")) body.push(row)
 
-    /** The terminal measurement, taken once per render. */
-    const measured = measureTerminal(ui)
+    // THE HANDLE'S SIZES ARE TOLD THIS RENDER'S BODY HEIGHT HERE, where the body is finally known.
+    sizes.contentRows = Math.max(1, body.length)
+    /** The offset for THIS render, clamped into the body's band — the far edge is a stop, not a blank. */
+    const scrollAt = viewport.offset
     /** The body rows inside the window. */
-    const visible = body.slice(scroll, scroll + measured.window)
+    const visible = body.slice(scrollAt, scrollAt + viewportRows)
     /** The measured terminal size label. */
     const size = measured.size
 
@@ -1753,17 +1815,45 @@ function createPlanComponent(
         children.push(surfaceText(surface, "empty", detail, { dim: true }))
       }
       children.push(surfaceHints(surface, "footer", ["esc back"]))
-      return surfaceFrame(surface, "frame", clampCells(chromeTitle([`${stateMarker(tone, phase)} MPD plan approval`, size]), Math.max(8, measured.cols - 6)), children, tone, clock.ref)
+      return surfaceFrame(surface, "frame", clampCells(chromeTitle([`${stateMarker(tone, phase)} MPD plan approval`, size]), Math.max(8, contentCols - 2)), children, tone, clock.ref)
     }
+    /** The body's drawn rows, in draw order — collected separately so the rail can sit BESIDE them. */
+    const bodyRows: unknown[] = []
     for (let index = 0; index < visible.length; index += 1) {
       // EVERY BODY ROW GOES THROUGH THE SHARED BUILDER, so the plan surface's own labels (`confirm`,
       // `required`, `runnable`) carry the same tones here as the same labels do elsewhere. `runnable` is
       // the one row whose tone depends on a VALUE — whether the plan can actually run — so it is
       // overridden from the record rather than coloured by its label.
-      children.push(surfaceBodyRow(surface, `line-${index}`, visible[index], { runnable: team?.runnable === true ? "completed" : "failed" }))
+      bodyRows.push(surfaceBodyRow(surface, `line-${index}`, visible[index], { runnable: team?.runnable === true ? "completed" : "failed" }))
     }
+    // THE RAIL IS THE SHARED BUILDER (frozen criteria I1/I5), drawn as a ONE-CELL SIBLING of the rows so
+    // it reserves its column instead of widening a row. The plan scene had no rail at all; its window is
+    // the same `slice(offset, offset + window)` shape the other three surfaces draw a rail for, so the
+    // Non-goal's "only where the existing windowing already implies one" is satisfied — and no key
+    // MEANING changes: `j`/`k` and `↑`/`↓` still move exactly one row.
+    /** The draggable rail for this render, absent when the body fits its window. */
+    const rail = viewportTrack(panel, viewport, "row")
+    /** The rows column, which is the window's content half. */
+    // THE WHEEL OVER THE BODY (frozen criterion I4): swallowed first so the gesture cannot also reach the
+    // chat behind the frame, then applied through the ONE sign normalisation every surface uses — the raw
+    // terminal delta is machine-dependent, so a plan that read it directly would scroll backwards on
+    // exactly the installations the knob exists for.
+    const rowsColumn = React.createElement(ui.Box, {
+      key: "body-rows",
+      flexDirection: "column",
+      flexGrow: 1,
+      onWheel: (event: { deltaY?: number } | undefined): void => {
+        swallowWheelEvent(event)
+        /** The wheel's vertical delta in this plugin's own convention; positive scrolls down. */
+        const deltaY = normalizeWheelDelta(Number(event?.deltaY ?? 0), wheelInvertOn())
+        if (deltaY !== 0) viewport.scrollBy(deltaY > 0 ? 1 : -1)
+      },
+    }, ...bodyRows)
+    children.push(rail === undefined
+      ? rowsColumn
+      : React.createElement(ui.Box, { key: "body-window", flexDirection: "row", flexGrow: 1 }, rowsColumn, rail))
     if (busy) children.push(surfaceText(surface, "busy", "working…", { tone: "running" }))
-    return surfaceFrame(surface, "frame", clampCells(chromeTitle([`${stateMarker(tone, phase)} MPD plan approval`, size]), Math.max(8, measured.cols - 6)), children, tone, clock.ref)
+    return surfaceFrame(surface, "frame", clampCells(chromeTitle([`${stateMarker(tone, phase)} MPD plan approval`, size]), Math.max(8, contentCols - 2)), children, tone, clock.ref)
   }
 }
 
