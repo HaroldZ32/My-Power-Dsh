@@ -35,8 +35,8 @@
       ],
       "exitCode": 0,
       "verdict": "PASS",
-      "detail": "after the wave's single re-pin (04-repin-write.log)",
-      "logPath": "38-vendor-captain.log",
+      "detail": "after the wave's vendor re-pin; the shipped lock is the SECOND pin (skills 392 files, treeSha 3133e6fb…) and its assertion transcript is 49-repin-check.log (repin-vendor --check GREEN, drift=0). The first pin (04-repin-write.log, 391/87d34451) is superseded: the pin enumerates the GIT INDEX and the new skills case was still untracked when it ran.",
+      "logPath": "38-vendor-captain.log (+ 49-repin-check.log for the shipped pin)",
       "by": "captain"
     },
     {

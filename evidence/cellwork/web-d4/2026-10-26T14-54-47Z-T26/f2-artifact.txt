@@ -1,0 +1,4 @@
+snapToParity        2
+portStepOf          6
+--- 520 chars around snapToParity ---
+am parity - the parity its column carries (`rank % 2`).            * @param lo - the highest y this item's band allows.            * @param hi - the lowest y this item's band allows.            * @returns the nearest y to `wanted` inside `lo..hi` that carries `parity`.            */           const snapToParity = (wanted        , parity        , lo        , hi        )         => {             /** The nearest value at or below the asked one that carries the channel. */             let y = Math.floor((wanted - parity) / 2) * 2 + parity             // TWO-PIXEL STEPS, so the walk cannot leave the channel it was just snapped onto. The band is             // at least 37px tall on every item this layout draws (a 42px card keeps 2px clear at each             // end), so one of the two directions always lands inside

@@ -1,0 +1,62 @@
+[tui-admission] mode: gate (static + host)
+[tui-admission] manifest: dsh-plugin.json
+[tui-admission] manifest: packages/mpd-tui-plugin/dsh-plugin.json
+[tui-admission] arm A.schema:bundle PASS — $schema is the absolute URI https://dsh.community/schemas/dsh-plugin-0.15.json
+[tui-admission] arm A.manifest-version:bundle PASS — manifestVersion is 0.15 and the $schema token agrees
+[tui-admission] arm A.id:bundle PASS — the plugin id is com.mpd-dsh.mpd-tui
+[tui-admission] arm A.host-facet:bundle PASS — facets.host names packages/mpd-tui-plugin/dist/index.js at apiVersion v1alpha1
+[tui-admission] arm A.host-entry:bundle PASS — the facet entry resolves to packages/mpd-tui-plugin/dist/index.js
+[tui-admission] arm A.facets:bundle PASS — no client or worker facet is declared
+[tui-admission] arm A.licence:bundle PASS — licence MIT with LICENSE.md at the repo root and source https://github.com/HaroldZ32/My-Power-Dsh
+[tui-admission] arm B.contracts:bundle PASS — 1 contract(s) declared; every optional one carries a written fallback
+[tui-admission] arm B.no-provides:bundle PASS — neither provides nor requires.services is declared
+[tui-admission] arm B.permissions:bundle PASS — no permission is declared (nothing unused)
+[tui-admission] arm B.subscriptions:bundle PASS — 0 subscription(s) declared
+[tui-admission] arm B.commands:bundle PASS — 0 TUI command(s) declared
+[tui-admission] arm C.no-backend:bundle PASS — no Backend contribution is declared
+[tui-admission] arm R1.subscriptions-empty:bundle PASS — subscriptions is empty, which is what R1's PASS rests on
+[tui-admission] arm A.schema:package PASS — $schema is the absolute URI https://dsh.community/schemas/dsh-plugin-0.15.json
+[tui-admission] arm A.manifest-version:package PASS — manifestVersion is 0.15 and the $schema token agrees
+[tui-admission] arm A.id:package PASS — the plugin id is com.mpd-dsh.mpd-tui
+[tui-admission] arm A.host-facet:package PASS — facets.host names dist/index.js at apiVersion v1alpha1
+[tui-admission] arm A.host-entry:package PASS — the facet entry resolves to packages/mpd-tui-plugin/dist/index.js
+[tui-admission] arm A.facets:package PASS — no client or worker facet is declared
+[tui-admission] arm A.licence:package PASS — licence MIT with LICENSE.md at the repo root and source https://github.com/HaroldZ32/My-Power-Dsh
+[tui-admission] arm B.contracts:package PASS — 1 contract(s) declared; every optional one carries a written fallback
+[tui-admission] arm B.no-provides:package PASS — neither provides nor requires.services is declared
+[tui-admission] arm B.permissions:package PASS — no permission is declared (nothing unused)
+[tui-admission] arm B.subscriptions:package PASS — 0 subscription(s) declared
+[tui-admission] arm B.commands:package PASS — 0 TUI command(s) declared
+[tui-admission] arm C.no-backend:package PASS — no Backend contribution is declared
+[tui-admission] arm R1.subscriptions-empty:package PASS — subscriptions is empty, which is what R1's PASS rests on
+[tui-admission] arm COMPAT.band:bundle PASS — dsh-plugin.json declares the band [@deepseek-harness-tui/dsh-tui@0.19.0]
+[tui-admission] arm COMPAT.band:package PASS — packages/mpd-tui-plugin/dsh-plugin.json declares the band [@deepseek-harness-tui/dsh-tui@0.19.0]
+[tui-admission] arm COMPAT.band-parity PASS — both manifests declare the same band [@deepseek-harness-tui/dsh-tui@0.19.0]
+[tui-admission] arm COMPAT.distribution-ref PASS — the host-tui ref "pkg:npm/@deepseek-harness-tui/dsh-tui@0.19.0" is inside the band [@deepseek-harness-tui/dsh-tui@0.19.0]
+[tui-admission] arm R2.credentials PASS — no apiKey/api_key/credential reference in 34 TUI source file(s)
+[tui-admission] arm R3.stdout PASS — no console.log call in 34 TUI source file(s)
+[tui-admission] arm R7.cell-width PASS — cellWidth is the exported width primitive the render path consumes (BMP bound recorded in docs §5 R7)
+[tui-admission] arm D.apply-export PASS — the TUI plugin exports a synchronous apply(ctx, config)
+[tui-admission] arm D.cleanup-test PASS — plugin.test.ts still records and counts disposers
+[tui-admission] arm R5.records PASS — the three recorded roots are still written: ~/.mpd/workmate, ~/.mpd/memory, ~/.mpd/codegraph
+[tui-admission] arm R5.allowance ALLOWED-DEVIATION — R5 fails by recorded decision (docs §5.1): the three ~/.mpd roots are written outside ~/.dsh-tui; ALLOWED, never a PASS
+[tui-admission] arm R5.no-dsh-tui-writes PASS — no mutating fs call on a .dsh-tui path in 213 package source file(s) (line-based bound)
+[tui-admission] arm D.residual BOUND — D stays PARTIAL: effectOn catches with a comment-only body (a scope that cannot own an effect fails silently) and no activation/runtime-generation id is recorded (docs §4 D)
+[tui-admission] arm E.residual BOUND — TUI-OBS-002 has no automated evaluator: the pinned matrix carries no row and no lane certifies docs/tui.md §2.1 (docs §4 E)
+[tui-admission] arm F.residual BOUND — no conformance claim is made, so TUI-CLAIM-001 is never exercised; the trusted-in-process disclosure is the host's own /plugin surface (docs §4 F)
+[tui-admission] arm G.market BOUND — the market-display rule belongs to the ecosystem directory, not to this repository (docs §4 G)
+[tui-admission] arm A6.no-digest BOUND — no artifact digest is recorded, so no Verified claim is possible; this blocks a claim, not admission (docs §6)
+[tui-admission] arm A.id-parity PASS — both manifests declare the id com.mpd-dsh.mpd-tui
+[tui-admission] arm A.identity-parity PASS — licence, facet apiVersion, permissions and requires.contracts agree across both manifests
+[tui-admission] arm A.packed-copy BOUND — no packed copy at dist/mpd-package/dsh-plugin.json (the pack step has not run); nothing to compare
+[tui-admission] host arm: using /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/verify3/host (@deepseek-harness-tui/dsh-tui 0.19.0)
+[tui-admission] host modules: node_modules/@dsh-std/manifest/lib/index.js, lib/types/adapter/standard/registry.js, lib/types/adapter/standard/admission.js, lib/types/adapter/standard/descriptor.js, lib/types/adapter/spec/protocol-constants.js
+[tui-admission] 
+[tui-admission] arm H.host PASS — the installed host @deepseek-harness-tui/dsh-tui 0.19.0 resolved at /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/verify3/host
+[tui-admission] arm COMPAT.host-version PASS — the discovered host @deepseek-harness-tui/dsh-tui 0.19.0 is inside the declared band [@deepseek-harness-tui/dsh-tui@0.19.0]
+[tui-admission] arm H.spec-data PASS — loadSpecData() + verifyRegistry() + verifyContractProfiles() resolved /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/verify3/host/tui-profile
+[tui-admission] arm H.descriptor PASS — the host's own legacy descriptor advertises 5 contract(s): commands.dsh/v1alpha1#Command, storage.dsh/v1alpha1#LocalStorage, messages.dsh/v1alpha1#MessageObserver, tui.dsh/v1alpha1#DecisionEvents, tui.dsh/v1alpha1#Backend
+[tui-admission] arm H.chain:bundle PASS — the host parsed, validated and negotiated dsh-plugin.json to `compatible`
+[tui-admission] arm H.chain:package PASS — the host parsed, validated and negotiated packages/mpd-tui-plugin/dsh-plugin.json to `compatible`
+[tui-admission] REPORT: PASS — 47 arms passed, 1 allowed deviation(s), 6 bound(s).
+[tui-admission] BOUND: static admission + the host's own negotiation only — NOT a live TTY mount, and NOT a Verified claim (no artifact digest exists).

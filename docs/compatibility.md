@@ -104,7 +104,7 @@ The declared-set arm and the discovered-host arm answer different questions and 
 the other: the first proves the CLAIM covers both hosts, the second proves THIS machine's host is one the
 claim admits. Neither is a live admission of BOTH hosts in one run. In this release's gate run the
 discovered host was `0.18.0`, so `COMPAT.host-version` PASSED against `0.18.0` and the run reported
-**PASS — 49 arms passed, 1 allowed deviation, 5 bounds**. The `0.19.0` result is the earlier measurement
+**PASS — 49 arms passed, 1 allowed deviation, 5 bounds** (the LOCAL shipped-tree run, which discovered the ambient 0.18.0 host; CI on the same commit installs 0.19.0 and reports 48 arms / 1 deviation / 6 bounds — both are the same gate). The `0.19.0` result is the earlier measurement
 below:
 
 - The host's own admission chain was run against **`0.19.0`**: `validateHost: ok`, both manifests negotiate

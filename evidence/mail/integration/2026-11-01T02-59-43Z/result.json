@@ -1,0 +1,89 @@
+{
+  "review": {
+    "lane": "integration review of the CodeRabbit repairs",
+    "boardTask": "T27",
+    "workTasks": ["T25 (CR3 + CR5)", "T26 (coupling freeze + docs)"],
+    "subject": "CodeRabbit CR3/CR5 repairs, the 11-entry coupling freeze, and the stale mail.jsonl docs row",
+    "contract": ".mpd/plans/mail-unify.md (sha unchanged since T24)",
+    "reviewerSession": "4404a19a-9a07-4c78-9199-63069553868d",
+    "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+    "baseHead": "00053fda0073e647e1f80b76bb554b46ed513683",
+    "branch": "feature/mail-unify",
+    "reviewedTree": "the two wave commits are on the branch; T25/T26 are the UNCOMMITTED working-tree delta on top (the captain commits)",
+    "hashes": {
+      "src/index.ts": "4f7e63581b70bfa1f92da74682b854fc7b2c6315a1b4ae62097d7899ced1a4d3",
+      "src/mail-permit.ts": "4341d9620655e241a825576035162acbc21e80c04ed148e22aaae8098715f772",
+      "test/mail-permit.test.ts": "d5663804ddebf4b170486cb77edcb5f1f6647d69ca64cdd14ff52fd65edc56c2",
+      "test/pr42-review-repairs.test.ts": "0c57f28decf2b9c4575c46eb751a51baf1a0e386ce63e9311eba16b6cd1bb8b0",
+      "test/cross-package-coupling-inventory.test.ts": "f761a654b0a69b160030c07c08c5eca7258b5f9e3086a9ab4be682fb224c5d37",
+      "docs/mail.md": "f6359108171f36e31650190fe2944338f38e3a26a3c6ade45d378cd8ca318acb",
+      "docs/cellwork.md": "942716ddbf903570aca27a1ef508cd6bfeea0452fcc6bf6827c4ff7741bfed2e"
+    },
+    "sandwich": "All reviewed hashes were identical at gate start (02:59:43Z) and review end (03:00:59Z) — a settled tree."
+  },
+  "verdict": {
+    "task": "approve",
+    "t25": "PASS",
+    "t26": "PASS",
+    "riskLevel": "low",
+    "justification": "Both deliberate deviations are CORRECT and I verified the reasoning by probe: CR5's `fromId` rule is the only one that keeps the legitimate asker's wait and refuses every foreign question (a `toId` rule would do the opposite on both counts), and CR3's split — session id on `fromId`, durable address on `fromMemberId` plus `selfId`/`issuerId`/ack/unread — closes all four named consequences for a lineage-only captain while a non-captain stays refused and an ordinary member is unchanged. T26's freeze is real: the live assertion is green with zero unfrozen/stale, and all ELEVEN entries match their actual specifiers. Eight gates green including dist-fresh. One Nit (a reseed edge in the CR5 match)."
+  },
+  "judgements": [
+    {
+      "item": "CR5 — the writer implemented the target-ownership rule on `fromId` instead of CodeRabbit's suggested `toId`",
+      "verdict": "THE WRITER IS RIGHT",
+      "evidence": "Probe: the holder's own question passes whether the row's `fromId` is the session id or the roster id; ANOTHER member's question is refused `foreign-target` naming the sender; the CR-described case — a question ADDRESSED to the holder but SENT by someone else — is refused `foreign-target` too (a `toId` rule would ADMIT it). And the legitimate question's `toId` is the ANSWERER, not the holder (`toIdRuleWouldRefuseLegitimate:true`), so CodeRabbit's rule would refuse the shipped member→captain wait. The refusal is `foreign-target`, carries no label list, and no row is written."
+    },
+    {
+      "item": "CR3 — the writer kept `fromId` = the caller's SESSION id and applied the durable address to `fromMemberId` (and to `selfId`/`issuerId`/ack/unread) instead of CodeRabbit's `fromId: callerAddress`",
+      "verdict": "THE WRITER IS RIGHT",
+      "evidence": "Probes with the exact values the tool now passes: (a) ack of a lead-addressed row by `byId = leadId` → moved; (b) `*` from the lineage captain with `selfId = leadId` → targets [M1, M2], the lead's own row excluded; (c) the captain's own question (fromId = resumed session, fromMemberId = leadId) answered to the durable `leadId` → ok (the store's sender/asker sets union both spellings); (d) a permit issued with `issuerId = leadId` validates without `foreign-issuer`. Non-captain: a stranger's ack is refused, a foreign answer is `not-recipient`, a permit from a non-lead is `foreign-issuer`. Ordinary member: its ack still moves. The protocol's `MailMessage.fromId` is documented as a session id, so keeping the session there loses nothing."
+    }
+  ],
+  "t26Audit": [
+    { "item": "the 11 new couplings are frozen", "result": "PASS", "evidence": "The live assertion `expect({unfrozen: result.unfrozen.map(identityOf), stale: result.stale}).toEqual({unfrozen: [], stale: []})` runs green; the file's fixture arms prove an extra coupling reddens and a stale entry reddens. I independently spot-checked ALL ELEVEN frozen entries against their real source specifiers: 11/11 matched (`matched=11 missing=0`)." },
+    { "item": "the deliberate non-adoption of the `.ts`-extension suggestions is justified", "result": "PASS", "evidence": "Extensionless cross-package specifiers dominate the existing frozen set (every older entry is extensionless), and the comment records that the suggestion was declared STALE twice before this wave. Not a defect." },
+    { "item": "docs/cellwork pair describes the unified store", "result": "PASS", "evidence": "EN and zh-CN both mark `mail.jsonl` as LEGACY (still READ and merged; acknowledgements for those rows append back to it) and state that NEW mail lives in `<workspace>/.mpd/team/mailbox.jsonl` stamped with the cell's `teamId`/`cellId` (and `fromCell` for a cross-cell sender)." },
+    { "item": "docs/mail pair documents the CR5 wait rule", "result": "PASS", "evidence": "EN line: 'on a target the HOLDER did not send: a wait is an ASKER waiting on its own question … another member's question would leak the labels its answers carry'; the zh-CN line carries the same rule." },
+    { "item": "verify:docs green", "result": "PASS", "evidence": "pairs=54 failed=0 violations=0 — PASS." }
+  ],
+  "gates": [
+    { "id": "bun-test-three-packages", "command": "bun test packages/mpd-mail-protocol packages/mpd-team-core-plugin packages/mpd-cellwork-plugin", "exit": 0, "decidingOutput": "all green (the three mail packages, including the new CR3/CR5 arms)" },
+    { "id": "bun-test-coupling", "command": "bun test packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts", "exit": 0, "decidingOutput": "green — live inventory equals the frozen set (0 unfrozen, 0 stale)" },
+    { "id": "typecheck", "command": "bun run typecheck", "exit": 0, "decidingOutput": "no diagnostics" },
+    { "id": "verify-comments", "command": "bun run verify:comments", "exit": 0, "decidingOutput": "VERDICT: PASS" },
+    { "id": "verify-docs", "command": "bun run verify:docs", "exit": 0, "decidingOutput": "pairs=54 failed=0 violations=0 — PASS" },
+    { "id": "verify-manifest", "command": "bun run verify:manifest", "exit": 0, "decidingOutput": "VERDICT: PASS" },
+    { "id": "verify-rows", "command": "bun run verify:rows", "exit": 0, "decidingOutput": "37 row ids match" },
+    { "id": "verify-dist-fresh", "command": "node scripts/verify-dist-fresh.ts", "exit": 0, "decidingOutput": "all targets fresh — the cellwork dist is now rebuilt (the wave-level item from T24 is closed)" }
+  ],
+  "findings": [
+    {
+      "id": "N1",
+      "severity": "Nit",
+      "title": "The CR5 target-ownership match reads only `target.fromId`, not the row's `fromMemberId`, so a holder RESEEDED within the permit's TTL cannot wait on its own pre-reseed question",
+      "where": "packages/mpd-team-core-plugin/src/mail-permit.ts · checkWaitTarget (the `spellings.has(target.fromId)` test)",
+      "what": "Probe: a question sent by the holder under its OLD session (row `fromMemberId: \"M1\"`) is refused `foreign-target` after the holder's session is re-minted — and the refusal names the holder itself ('was sent by \"Senior Engineer\"'). Everywhere else the ownership rules match BOTH recorded spellings (the store's `senderIds` unions `fromId` and `fromMemberId`), so this one path is stricter than the rest.",
+      "why": "It is an edge (the reseed must land between asking and a TTL-bounded wait), but it is the same D16c two-spellings class the repository fixed elsewhere, and the sentence is confusing because the sender and the holder share a name.",
+      "direction": "Match the row's `fromMemberId` too — `spellings.has(target.fromId) || (target.fromMemberId !== undefined && spellings.has(target.fromMemberId))` — a one-line change with the same semantics the store already uses. Optional for this wave; the main cases are correct.",
+      "evidence": "probes.ts 'CR5 reseed edge' in output.log"
+    }
+  ],
+  "declinedToJudge": [
+    { "item": "The four `.ts`-extension suggestions not adopted", "reason": "Documented as deliberately rejected: extensionless is the dominant form in the frozen set and the same suggestion was declared STALE twice earlier. Not a defect." },
+    { "item": "The exact wording of the new docs paragraphs", "reason": "Both language pairs carry the rule accurately and verify:docs is green; T6's lane." },
+    { "item": "Docker / the PR body / the release sweep", "reason": "T10's release-last lane; my dist-fresh run is green." },
+    { "item": "The reseed edge as a blocker", "reason": "Ranked Nit, not charged to T25; the T18 seat-key design and the permit-holder name fallback already cover the ack/answer side." }
+  ],
+  "bounds": [
+    "Reviewed the settled tree on feature/mail-unify at 00053fda with the T25/T26 delta as uncommitted working-tree changes; all hashes stable across the review.",
+    "Read: the CR3 diff in src/index.ts, the CR5 diff in src/mail-permit.ts, both test diffs, the +11 coupling entries with their comment, and all four docs files.",
+    "Ran: eight gates and eight probes — CR5 (own-by-both-spellings, foreign, addressed-to-holder, message scope, reseed edge) and CR3 (ack, broadcast, answering its own question, permit+wait, non-captain refusals, ordinary member) using the exact identities the tool passes.",
+    "Did NOT re-drive the tool harness: the shipped CR3/CR5 tool arms run in the green suite and I read their assertions; my probes are component-level with the tool's values, which is the stated bound.",
+    "No package file was edited by me."
+  ],
+  "evidence": {
+    "directory": "evidence/mail/integration/2026-11-01T02-59-43Z/",
+    "files": ["result.json", "output.log", "probes.ts"]
+  }
+}

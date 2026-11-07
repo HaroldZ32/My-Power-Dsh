@@ -61,7 +61,7 @@
     "presets/**",
     "scripts/**",
     "skills/**",
-    "specs/dsh-go/**",
+    "specs/**",
     "templates/**"
   ],
   "exports": {

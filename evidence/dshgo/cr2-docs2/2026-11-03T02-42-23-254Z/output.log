@@ -1,0 +1,9 @@
+== git rev ==
+d6cc91e664906ac2a26259454eae3809f72eb82c
+
+== acceptance grep (expect no output, exit 1) ==
+grep-exit=1
+
+== bun run verify:docs ==
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=55 failed=0 violations=0 exempt=24 derived=3 links=500 dead=0 — PASS

@@ -1,0 +1,4 @@
+**Tool called:** `bash` (one call: `pwd && ls -la`).
+
+**Files in the directory:** 1 regular file — `AGENT.md` (plus 2 hidden directories: `.codegraph/` and `.mpd/`).
+[llm-deepseek-api-key] model listing from https://api.deepseek.com/models loaded 2 model(s), skipped 0 row(s)

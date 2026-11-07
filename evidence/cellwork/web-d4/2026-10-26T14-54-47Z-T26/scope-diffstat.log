@@ -1,0 +1,4 @@
+ packages/mpd-bundle-plugin/client.js              | 79 +++++++++++++++++-----
+ packages/mpd-bundle-plugin/src/team-view.ts       | 81 ++++++++++++++++++-----
+ packages/mpd-bundle-plugin/test/team-view.test.ts | 78 ++++++++++++++++++++++
+ 3 files changed, 207 insertions(+), 31 deletions(-)

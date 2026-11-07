@@ -1,0 +1,12 @@
+=== layer order in the BUILT client (svg -> frames -> nodes) ===
+                "data-mpd-frames": "1",
+
+=== the frame rect publish + node skip in the BUILT client ===
+
+        const frameIds
+              column.filter((task) => !frameIds
+--- 420 chars around data-mpd-frames ---
+er reads, and a               // frame's id is deliberately NOT a `data-mpd-node`, so the task layer never claims a box               // it does not draw. NULL when the model declares no group, which leaves a flat picture               // byte for byte as it was.               graph.groups === undefined || graph.groups.length === 0 ? null : react.createElement("div", {                 key: "frames",                 "data-mpd-frames": "1",                 style: { position: "absolute", left: 0, top: 0, pointerEvents: "none" },               }, graph.groups.map((frame) => react.createElement("div", {                 key: "frame-" + frame.id,                 className: "mpd-dag-group",                 // THE FRAME
+
+--- 360 chars around the first frameIds use ---
+d's task, also looked up in what is DRAWN; undefined closes the card. */         const tipTask = tip === null ? undefined : drawingTasks.find((candidate) => candidate.id === tip.id)         /** The ids this drawing paints as FRAMES, so the node layer never draws one as a task card. */         const frameIds = new Set((graph.groups === undefined ? [] : graph.groups).map((frame) => frame.id))         /** The panel's elements, in render order. */         const children            = [           // ONE SCOPED STYLESHEET AT THE PANEL ROOT, outside `[data-mpd-graph]`: the material, the           // keyframes and the reduced-motion block live here, never in th

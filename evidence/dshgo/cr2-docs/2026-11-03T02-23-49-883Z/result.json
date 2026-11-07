@@ -1,0 +1,58 @@
+{
+  "task": "T24 — CodeRabbit r1 docs findings: security contact wording, hub link, tui-parity zh repair, provenance alignment",
+  "gitRevAtEvidence": "7296ef8898a44f2f79991a86786f6148244b6e5d",
+  "findings": [
+    {
+      "id": 1,
+      "file": [
+        "CONTRIBUTING.md",
+        "CONTRIBUTING.zh-CN.md"
+      ],
+      "state": "FIXED",
+      "detail": "security bullet reworded to the corrected, no-private-channel wording: report in a normal public issue; no private advisory inbox is wanted. The secrets paragraph after it is kept verbatim."
+    },
+    {
+      "id": 2,
+      "file": [
+        "docs/index.md",
+        "docs/index.zh-CN.md"
+      ],
+      "state": "FIXED",
+      "detail": "docs/market-listing pair linked from the hub with one bilingual row each (maintainers, packagers)."
+    },
+    {
+      "id": 3,
+      "file": [
+        "docs/tui-parity.zh-CN.md"
+      ],
+      "state": "FIXED",
+      "detail": "D1, D2 and D3 rewritten against the English twin (broken parentheses removed; D1 now carries the OPEN-state pane evidence, the finding id and the post-repair run; D2 no longer mis-parenthesises the history-anchor note; D3 no longer restates the stale hash and now matches EN's resolution). The §7 corpus-fingerprint bullet, damaged the same way, was restored to the EN meaning."
+    },
+    {
+      "id": 4,
+      "file": [
+        "docs/user-guide.md",
+        "docs/user-guide.zh-CN.md"
+      ],
+      "state": "FIXED",
+      "detail": "attribution table aligned to the current LICENSE-NOTICES.md: schemastery split out with its real upstream (Shigma + DeepSeek) and the adopted AgentTeams client given its own row (NanmiCoder/dsh-agent-teams); roster row now covers the persona texts only (permissive seeds; two written here) and no longer claims oh-my-openagent; the ast-grep row (not in the notices) replaced by the three MCP dependencies the notices does carry (cclsp MIT/ktnyt, @cyanheads/git-mcp-server Apache-2.0, mcp-server-commands MIT); codegraph row points at the vendored-server section and the real copyright; comment-checker and DSH-STD version literals dropped (the notices states no versions); harness and better-sidebar copyright lines added. Both tables now have 15 rows, 1:1."
+    }
+  ],
+  "extraRepairs": [
+    "Table placeholder cells damaged by the earlier prose pass were restored to '—' (docs/tui-parity.md 13 cells, docs/extensions.md 2, docs/user-guide.md 1) so no table renders a bare colon."
+  ],
+  "gates": {
+    "bun run verify:docs": {
+      "exit": 0,
+      "pairs": 55,
+      "failed": 0,
+      "violations": 0,
+      "deadTargets": 0
+    }
+  },
+  "bounds": [
+    "no code, no dist, no commit",
+    "docs/market-listing*.md untouched (only linked)",
+    "the rest of the repo's dirty tree belongs to other lanes"
+  ]
+}
