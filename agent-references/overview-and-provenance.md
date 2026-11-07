@@ -136,13 +136,14 @@ declared in `README.md` and `LICENSE-NOTICES.md`.
   itself at the moment the work warrants one — or continues solo and says so. Signal D is an ACTIVE
   boulder work for this workspace (`status: "active"` in `.mpd/boulder.json`) — a plan FILE alone is NOT
   a signal, repaired 2026-10-07 because the retired plan-file probe fired in every session of this
-  workspace. Since 2026-10-22 `team.sensitivity` (`easy` DEFAULT | `normal` | `strict`; an unknown or
-  missing value resolves to `easy`) selects the thresholds — `easy` fires at B >= 2, C 2-of-3, E >= 24
-  Han chars / >= 2 verbs, and the NEW signal F (workspace scale: a bounded root `readdir` finding a
-  manifest, a project dir and >= 8 visible entries; `easy` only); `normal` reproduces the pre-wave
-  five-signal behaviour exactly and `strict` tightens it. F is deliberately coarse — in a large
-  workspace it fires on its own even for `hello` — so the silent negative controls live in a tiny
-  workspace. On the `agent_teams_plan` APPROVE success path the approval also anchors a persisted goal
+  workspace. Since 2026-10-22 `team.sensitivity` (`easy` DEFAULT | `normal` | `strict`; an unknown
+  or missing value resolves to `easy`) selects the thresholds — `easy` fires at B >= 2 deliverable
+  verbs, C 2-of-3, E >= 24 Han chars / >= 2 verbs, and the NEW signal F (workspace scale: a bounded
+  root `readdir` finding a manifest, a project dir and >= 8 visible entries; `easy` only); `normal`
+  reproduces the pre-wave five-signal behaviour exactly and `strict` tightens it. F is deliberately
+  coarse — in a large workspace it fires on its own even for `hello` — so the silent negative
+  controls live in a tiny workspace. On the `agent_teams_plan` APPROVE success path the approval
+  also anchors a persisted goal
   (objective = the plan description, source `team`) and seeds `todo_write` from the plan tasks —
   non-fatal, one log line on failure, no new knobs. The gate is implemented by `mpd-roles-plugin` on the official plugin's seams (the retired
   `sessionTeamPolicy.mode: "auto"` unconditional-provisioning path is gone with the plugin that owned

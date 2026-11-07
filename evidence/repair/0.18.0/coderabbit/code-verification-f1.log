@@ -1,0 +1,57 @@
+# Code evidence for the two DOC findings — agent-references/troubleshooting.md (T-94)
+# Collected 2026-11-07T19:42:20+08:00 by the Senior Engineer seat. Workspace: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+# Branch: feature/upstream-0.18.0  HEAD: b0d9ecb7
+
+===== FINDING 1: is auto-end an ATTEMPT with a non-fatal failure path? =====
+--- symbol: autoEndCleanTerminal (packages/mpd-roles-plugin/src/session-gate.ts) ---
+558:  async function autoEndCleanTerminal(agent: unknown, teamId: string): Promise<boolean> {
+559-    try {
+560-      /** The control call's normalized answer: `{ok, isError, value, error}`. */
+561-      const result = await dsh.executeTool({
+562-        name: CONTROL_TOOL_NAME,
+563-        arguments: { action: "end", team_id: teamId, reason: RETEAM_AUTO_END_REASON },
+564-        agent,
+565-        timeoutMs: options.stageTimeoutMs ?? STAGING_TIMEOUT_MS,
+566-      })
+567-      if (result?.ok !== true || result.isError === true) {
+568-        warn("re-team gate: the clean-terminal team \"" + teamId + "\" was NOT auto-ended ("
+569-          + (result?.error === undefined ? "the control call did not report ok" : String(result.error)) + ") — the gate continues")
+570-        return false
+571-      }
+572-      report('re-team gate: auto-ended clean-terminal team "' + teamId + '" through ' + CONTROL_TOOL_NAME)
+573-      return true
+574-    } catch (error) {
+575-      warn("re-team gate: the clean-terminal team \"" + teamId + "\" was NOT auto-ended (" + errorText(error) + ") — the gate continues")
+576-      return false
+577-    }
+578-  }
+579-
+580-  /**
+581-   * Splice ONE notice into the step's decision, right after the LAST still-claimed message.
+582-   *
+583-   * `toSpliced`/`findLastIndex` semantics without the ES2023 lib: the notice lands where the retired
+584-   * implementation placed it. The optional `rewrite` runs over every decision message first, which is
+585-   * how the session-start route consumes the explicit `team:` marker from the user's own turn.
+586-   * @param decision - the downstream decision the step will run with.
+587-   * @param decisionMessages - the decision's current message list.
+588-   * @param rawClaimed - the messages the step still claims, used to find the splice point.
+
+--- symbol: autoEndAttempted (ONE attempt per team per process) ---
+299-  /** Team ids whose auto-end was already attempted (ONE attempt per team per process). */
+300:  const autoEndAttempted = new Set<string>()
+301-
+--
+785-        for (const target of leading.autoEndTeamIds ?? []) {
+786:          if (target === "" || autoEndAttempted.has(target)) continue
+787:          autoEndAttempted.add(target)
+788-          await autoEndCleanTerminal(agent, target)
+
+--- RULE 3 comment: no retry loop on a failed call ---
+782-        // RULE 3: close every clean-terminal board this session led, through the CONTROL tool, as the
+783-        // session's OWN agent. ONE attempt per team per process: the tool is idempotent, but a failed
+784:        // call must not turn every following pre-step into a retry loop.
+785-        for (const target of leading.autoEndTeamIds ?? []) {
+786-          if (target === "" || autoEndAttempted.has(target)) continue
+
+=== OBSERVED: executeTool failure branch and catch both warn + return false; the
+=== caller discards the return value (await autoEndCleanTerminal(...) with no assignment).

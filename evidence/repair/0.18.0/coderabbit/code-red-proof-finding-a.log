@@ -1,0 +1,117 @@
+# RED/GREEN PROOF — Finding A (dshGo inject callback, PR #103 CodeRabbit round 1)
+# Seat: Senior Engineer (code repair). Date: 2026-11-07T19:49:40+08:00. Branch: feature/upstream-0.18.0.
+# HEAD being compared against: b0d9ecb7
+#
+# The first two blocks run the REAL cordis 4.1.0 shipped by the pinned harness (0.2.2-rc.1) and the
+# REAL createDshAdapter, through provide -> dispose -> re-provide. Head source = git show HEAD:...,
+# mirrored under .qa-tmp/red-proof/ (never a tracked file).
+
+## HEAD source (pre-fix): stale binding survives unload AND the re-provide
+$ env TMPDIR=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/tmp bun .qa-tmp/red-proof/cordis-adapter-probe-head.mjs
+before any provider: present=false caps=null
+after provider 1.0.9: present=true caps={"app":"1.0.9"}
+after 1.0.9 unload: present=true caps={"app":"1.0.9"}
+after provider 2.0.0: present=true caps={"app":"1.0.9"}
+[exit=0]
+
+## WORKING TREE (fixed): unload clears the slot; the re-provide binds ITS OWN bridge
+$ env TMPDIR=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/tmp bun .qa-tmp/red-proof/cordis-adapter-probe.mjs
+before any provider: present=false caps=null
+after provider 1.0.9: present=true caps={"app":"1.0.9"}
+after 1.0.9 unload: present=false caps=null
+after provider 2.0.0: present=true caps={"app":"2.0.0"}
+[exit=0]
+
+## Generic cordis contract probe: the OLD early-return shape vs the NEW per-activation shape
+$ env TMPDIR=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/tmp node .qa-tmp/red-proof/cordis-probe.mjs
+OLD shape events: old run1 probed=1.0.9
+OLD shape final binding: 1.0.9
+NEW shape events: new run1 probed=1.0.9 | new run1 cleanup saw=1.0.9 | new run2 probed=2.0.0
+NEW shape final binding: 2.0.0
+[exit=0]
+
+## The new UNIT arm on HEAD source (red) and on the working tree (green)
+$ env BUN_INSTALL_CACHE_DIR=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/bun-cache TMPDIR=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/tmp bun test ./.qa-tmp/red-proof/test/stale.test.ts
+bun test v1.4.2 (744846f84)
+
+.qa-tmp/red-proof/test/stale.test.ts:
+25 |     const first = { caps: { app: "1.0.9" } }
+26 |     const second = { caps: { app: "2.0.0" } }
+27 |     const deferred = deferredAdapter()
+28 |     deferred.fire({ dshGo: first })
+29 |     deferred.fire({ dshGo: second })
+30 |     expect(deferred.adapter.dshGoCaps()).toEqual({ app: "2.0.0" })
+                                              ^
+error: expect(received).toEqual(expected)
+
+  {
+-   "app": "2.0.0",
++   "app": "1.0.9",
+  }
+
+- Expected  - 1
++ Received  + 1
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/red-proof/test/stale.test.ts:30:42)
+(fail) Finding A red proof > a re-fired inject must expose the NEW bridge, never the cached predecessor [0.48ms]
+
+ 0 pass
+ 1 fail
+ 1 expect() calls
+Ran 1 test across 1 file. [12.00ms]
+[exit=1]
+
+$ env BUN_INSTALL_CACHE_DIR=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/bun-cache TMPDIR=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/tmp bun test ./.qa-tmp/red-proof/test/stale-fixed.test.ts
+bun test v1.4.2 (744846f84)
+
+.qa-tmp/red-proof/test/stale-fixed.test.ts:
+(pass) Finding A red proof > a re-fired inject must expose the NEW bridge, never the cached predecessor [0.29ms]
+
+ 1 pass
+ 0 fail
+ 1 expect() calls
+Ran 1 test across 1 file. [16.00ms]
+[exit=0]
+
+## The new tracked arm on HEAD source: the FULL arm reddens (no cleanup returned by the old callback)
+$ env BUN_INSTALL_CACHE_DIR=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/bun-cache TMPDIR=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/tmp bun test ./.qa-tmp/red-proof/test/red.test.ts
+bun test v1.4.2 (744846f84)
+
+.qa-tmp/red-proof/test/red.test.ts:
+(pass) dshGoOn registers the tap handler with the bridge and returns true [0.27ms]
+(pass) dshGoOn degrades to false when the bridge is absent, has no on(), or throws [0.50ms]
+(pass) dshGoStrip registers the data function and returns true [0.05ms]
+(pass) dshGoStrip degrades to false when the bridge is absent, has no strip(), or throws [0.06ms]
+(pass) dshGoCaps reads a caps() method first [0.09ms]
+(pass) dshGoCaps falls back to a caps or capabilities property [0.03ms]
+(pass) dshGoCaps degrades to null when the bridge cannot answer [0.08ms]
+(pass) dshGoPanel forwards a per-render view function verbatim [0.05ms]
+(pass) dshGoPresent reports whether the bridge is bound [0.02ms]
+(pass) a class-based bridge keeps its receiver on every seam (repair T10 #11) [0.08ms]
+(pass) the bridge is bound with the deferred ctx.inject form > ONE ctx.inject(['dshGo'], …) is registered and the service arrives through it [0.12ms]
+(pass) the bridge is bound with the deferred ctx.inject form > a scoped ctx that answers only through get() still binds [0.03ms]
+(pass) the bridge is bound with the deferred ctx.inject form > a fired inject that yields no service leaves the root probe in charge (older host) [0.02ms]
+254 |     const second = { caps: { app: "2.0.0" } }
+255 |     /** The adapter plus its deferred seam. */
+256 |     const deferred = deferredAdapter()
+257 |     /** The first activation's cleanup, returned by its own inject firing. */
+258 |     const firstUnload = deferred.fire({ dshGo: first })
+259 |     expect(typeof firstUnload).toBe("function")
+                                     ^
+error: expect(received).toBe(expected)
+
+Expected: "function"
+Received: "undefined"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/red-proof/test/red.test.ts:259:32)
+(fail) the bridge is bound with the deferred ctx.inject form > a re-fired inject binds ITS OWN bridge, and an unload clears only its own binding [0.22ms]
+(pass) the bridge is bound with the deferred ctx.inject form > a bridgeless host registers nothing and reaches no bridge [0.06ms]
+(pass) the bridge is bound with the deferred ctx.inject form > an inject seam that throws, or no seam at all, keeps the lazy root probe working [0.07ms]
+(pass) the bridge is bound with the deferred ctx.inject form > the deferred inject wakes the onServiceBound subscribers the surface rows registered [0.08ms]
+
+ 16 pass
+ 1 fail
+ 53 expect() calls
+Ran 17 tests across 1 file. [13.00ms]
+[exit=1]
+

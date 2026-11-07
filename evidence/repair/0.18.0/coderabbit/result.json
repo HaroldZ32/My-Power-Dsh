@@ -1,0 +1,59 @@
+{
+  "seat": "Senior Engineer",
+  "task": "REPAIR the two DOC findings of CodeRabbit review round 1 on PR #103",
+  "branch": "feature/upstream-0.18.0",
+  "date": "2026-11-07",
+  "committed": false,
+  "writeScopeUsed": ["agent-references/troubleshooting.md", "evidence/repair/0.18.0/coderabbit/"],
+  "filesChanged": ["agent-references/troubleshooting.md"],
+  "sourceBytesBefore": 83280,
+  "sourceBytesAfter": 83942,
+  "findings": [
+    {
+      "id": "coderabbit-round1-doc-1",
+      "title": "Describe auto-end as an attempt.",
+      "verdict": "FIXED",
+      "reviewerClaimStale": false,
+      "verifiedAgainst": "packages/mpd-roles-plugin/src/session-gate.ts (symbols: autoEndCleanTerminal, autoEndAttempted, the RULE 3 loop)",
+      "codeFacts": [
+        "autoEndCleanTerminal issues ONE agent_teams_control end call, with timeoutMs = stageTimeoutMs ?? STAGING_TIMEOUT_MS",
+        "a non-ok answer and a thrown/timed-out call both warn once and return false (text ends 'the gate continues')",
+        "the RULE 3 loop awaits the call and discards the boolean; autoEndAttempted makes it ONE attempt per team per process",
+        "the source comment states a failed call 'must not turn every following pre-step into a retry loop'",
+        "the re-arm/settlement branch is not conditioned on the auto-end result, so a board classified terminal can leave its team open"
+      ],
+      "newText": "`completed`/`cancelled`, none `failed` — which the gate ATTEMPTS to end itself: `autoEndCleanTerminal` issues ONE `agent_teams_control end` call per team per process and, if that call fails or times out, logs one warning and continues WITHOUT retrying that team — so a board the gate treats as terminal can leave its team open.",
+      "evidence": "code-verification-f1.log"
+    },
+    {
+      "id": "coderabbit-round1-doc-2",
+      "title": "Qualify when the gate stages a shell.",
+      "verdict": "FIXED",
+      "reviewerClaimStale": false,
+      "verifiedAgainst": "packages/mpd-roles-plugin/src/session-gate.ts (symbols: stagePlan, fireReTeam, the mode table in the file header) and packages/mpd-roles-plugin/src/complexity-gate.ts (NO_TEAM_STAGED_PHRASE)",
+      "codeFacts": [
+        "mode table: mechanical stages; advisory 'stages nothing'; off returns immediately",
+        "stagePlan returns {ok:true, alreadyStaged:true} when the probe finds an existing plan — nothing is created",
+        "stagePlan returns {ok:false, error} when hasStagingTool is false, or the tool call fails/throws/times out",
+        "fireReTeam computes staged = mechanical && outcome.ok && !alreadyStaged",
+        "every non-staged route emits a notice whose plan line says 'NO team was staged'"
+      ],
+      "newText": "With no live team and `team.reteam.afterConsults` (default 4) COMPLETED `mpd_role_spawn*` / `mpd_workmate_spawn` calls since the last fire, the gate fires the re-team rule under the marker `[AgentTeams] Re-team rule`, once per record in `<ws>/.mpd/session-gate/<sessionId>.json`. It stages a NEW shell only under `team.gate=mechanical`, only when `stagePlan` succeeds, and only when the staged-plan probe found none — a plan already staged is NAMED through `alreadyStaged` instead of created, and an unanswerable probe stages anyway with one warning. `advisory` mode, a missing `agent_teams_plan` tool and every failed call emit the notice only, saying `NO team was staged`. `team.reteam.enabled` (default true) gates only that volume trigger.",
+      "evidence": "code-verification-f2.log"
+    }
+  ],
+  "gates": {
+    "run": [],
+    "reason": "No gate discovers agent-references/ (scripts/verify-docs-parity.ts: 'No new discovery: agent-references/** stays out of this gate (T-28)'; discoverPairs walks the root README pair, docs/**, the declared bands and each package). Only this one documentation file changed, so no other gate's subject moved.",
+    "negationEvidence": "Discovery code read directly; see README.md 'Gates' section."
+  },
+  "integrationNotes": [
+    "AGENTS.md §1 (paragraph 'The gate RE-ARMS mid-session (2026-11-05)') carries both statements verbatim and needs the same two qualifications; out of this seat's write scope. AGENTS.md is 63483 B against maxBytes 65536, so a MOVE-FIRST trim is required if that edit grows it materially.",
+    "dist/mpd-package/agent-references/troubleshooting.md (untracked build output) is now stale: source sha256 19277185… vs packed b0470ce3…. The wave's pack step must regenerate dist/mpd-package/ and re-anchor verify-pack-closure with --pack-stamp."
+  ],
+  "bounds": [
+    "No live boot, unit test or QA case was run for the gate: both verdicts rest on source reading plus the constants/notice builders quoted in the evidence logs.",
+    "The failure of a real agent_teams_control end call was not reproduced end-to-end.",
+    "No claim is made about the agent_teams_control implementation's own failure modes, only about how this gate handles them."
+  ]
+}

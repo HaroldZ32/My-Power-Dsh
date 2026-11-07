@@ -134,10 +134,8 @@ replaced or deleted. License: **MIT** (`LICENSE.md`); third-party components kee
   extends it (`add_member` / `create_task`) and approves it. An explicit `team:` / `!team` request also
   stages the shell (signal A) and has its marker CONSUMED from the goal text. `team.gate` in `mpd.jsonc`
   selects `mechanical` (**the default again since the 2026-10-20 restore**) | `advisory` | `off`, and
-  `team.sensitivity` (`easy` DEFAULT | `normal` | `strict`) selects the thresholds: `easy` fires at
-  B >= 2 deliverable verbs, C 2-of-3, E >= 24 Han chars / >= 2 verbs, and the NEW signal F — workspace
-  scale (a bounded root `readdir`: a manifest AND a project dir AND >= 8 visible entries; `easy` only);
-  `normal` reproduces the pre-2026-10-22 five-signal behaviour and `strict` tightens it. With the tool
+  `team.sensitivity` (`easy` DEFAULT | `normal` | `strict`) sets the signal thresholds:
+  `agent-references/overview-and-provenance.md`. With the tool
   unmounted or under `advisory` the ONE notice says `NO team was staged` and the captain stages a team
   itself when the work warrants one — or continues solo and says so. **APPROVAL BUNDLES THREE
   MECHANISMS:** on the `agent_teams_plan` approve success path, after real activation, the same approval
@@ -149,13 +147,15 @@ replaced or deleted. License: **MIT** (`LICENSE.md`); third-party components kee
   NOT a signal. Softer signals and the retired path: `agent-references/overview-and-provenance.md`.
   **The gate RE-ARMS mid-session (2026-11-05).** "Leading" now means a team that has NOT ended: an
   explicit `agent_teams_control end`, or a CLEAN-TERMINAL board (>= 1 task, every task
-  completed/cancelled, none failed), which the gate ends itself. A `failed` task blocks BOTH the
-  auto-end and any re-team and asks for a `kind=repair` row — a wave whose verification failed is
-  never closed silently. With no live team and `team.reteam.afterConsults` (default 4) COMPLETED
-  `mpd_role_spawn*` / `mpd_workmate_spawn` calls since the last fire, the gate stages a NEW shell
-  under the marker `[AgentTeams] Re-team rule`, once per record in
-  `<ws>/.mpd/session-gate/<sessionId>.json`. `team.reteam.enabled` (default true) gates only the
-  volume trigger.
+  completed/cancelled, none failed), which the gate ATTEMPTS to end (`autoEndCleanTerminal`: ONE
+  `agent_teams_control end` per team per process, never retried — the team can stay open). A
+  `failed` task blocks BOTH the auto-end and any re-team and asks for a `kind=repair` row — a wave
+  whose verification failed is never closed silently. With no live team and
+  `team.reteam.afterConsults` (default 4) COMPLETED `mpd_role_spawn*` / `mpd_workmate_spawn` calls
+  since the last fire, the gate stages a NEW shell under the marker `[AgentTeams] Re-team rule` only
+  in `mechanical` mode, only when `stagePlan` succeeds and no plan is already staged (else nothing
+  new is staged), once per record in `<ws>/.mpd/session-gate/<sessionId>.json`. `team.reteam.enabled`
+  (default true) gates only the volume trigger.
 - **The ONLY shipped preset is `mpd`** — the main working agent — which also carries the
   project-instruction convention: every session MUST attempt to read `AGENT.md` (falling back to
   `AGENTS.md`, then `CLAUDE.md`) via `dsh-agent-instructions`. **`mpd-project-init` (host row) closes

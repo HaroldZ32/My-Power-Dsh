@@ -44,16 +44,27 @@ const EXIT = { OK: 0, FAIL: 1, CANNOT_RUN: 2 } as const
 /** The evidence directory family this case writes under. */
 const EVIDENCE_SLUG: string = join("dshgo", "standard")
 
+/** Why the gate's `--json` report could not be read: absent from disk, or a JSON.parse failure. */
+type ReportProblem = { readonly kind: "missing" } | { readonly kind: "unparsable"; readonly message: string }
+
 /** One gate invocation's observed result. */
 interface GateRun {
-  /** The exit status, or null when the child never exited. */
+  /** The exit status, or null when the child never exited (a timeout or a spawn failure). */
   readonly status: number | null
+  /** The signal that ended the child, or null when it exited on its own. */
+  readonly signal: string | null
+  /** The spawn failure flattened to `code: message`, or null when the child really ran. */
+  readonly error: string | null
+  /** Whether spawnSync's own timeout killed the child — a TIMEOUT, never a gate verdict. */
+  readonly timedOut: boolean
   /** Captured stdout. */
   readonly stdout: string
   /** Captured stderr. */
   readonly stderr: string
   /** The `--json` report the gate wrote, when it wrote one. */
   readonly report: unknown
+  /** Why the report is not readable, or null when it parsed as a JSON document. */
+  readonly reportProblem: ReportProblem | null
 }
 
 /** One judged assertion: its name, whether it held, and the observed detail. */
@@ -66,22 +77,78 @@ interface Check {
   readonly detail: string
 }
 
-/** Run the gate as a child over one package root, capturing its exit code and JSON report. */
+/** Run the gate as a child over one package root, capturing its exit code, attribution and JSON report. */
 function runGate(root: string, jsonPath: string): GateRun {
   /** The child's arguments. */
   const argv = [GATE, "--root", root, "--json", jsonPath]
   /** The child's completed run. */
   const res = spawnSync(process.execPath, argv, { encoding: "utf8", timeout: 180000, maxBuffer: 32 * 1024 * 1024 })
+  /** The spawn failure flattened to one attributable string, or null when the child really ran. */
+  const error = res.error === undefined ? null : `${(res.error as NodeJS.ErrnoException).code ?? "ERROR"}: ${res.error.message}`
+  // FINDING B1 (PR #103, CodeRabbit round 1): spawnSync answers `status: null` when ITS OWN 180 s
+  // timeout kills the child, and every downstream exit check then reads `exit = null` — a TIMEOUT
+  // looked exactly like a gate VIOLATION. `ETIMEDOUT` on the spawn error is the authoritative flag
+  // (it is what the timeout path sets); the signal is recorded beside it for the same reason.
+  /** Whether spawnSync's own timeout killed the child, never the gate's verdict. */
+  const timedOut = (res.error as NodeJS.ErrnoException | undefined)?.code === "ETIMEDOUT"
   /** The JSON report the gate wrote, when it wrote one. */
   let report: unknown
-  if (existsSync(jsonPath)) {
+  /** Why the report is not readable, or null when it parsed. */
+  let reportProblem: ReportProblem | null = null
+  if (!existsSync(jsonPath)) {
+    reportProblem = { kind: "missing" }
+  } else {
     try {
       report = JSON.parse(readFileSync(jsonPath, "utf8"))
-    } catch {
-      report = undefined
+    } catch (cause) {
+      reportProblem = { kind: "unparsable", message: cause instanceof Error ? cause.message : String(cause) }
     }
   }
-  return { status: res.status, stdout: res.stdout ?? "", stderr: res.stderr ?? "", report }
+  return {
+    status: res.status,
+    signal: res.signal,
+    error,
+    timedOut,
+    stdout: res.stdout ?? "",
+    stderr: res.stderr ?? "",
+    report,
+    reportProblem,
+  }
+}
+
+/** Render one run's exit attribution — status, signal, timeout flag, spawn error — for a log line. */
+function runDetail(run: GateRun): string {
+  return `exit=${String(run.status)} signal=${run.signal ?? "none"} timedOut=${String(run.timedOut)} error=${run.error ?? "none"}`
+}
+
+/** Name what a parsed `--json` value actually is, so a non-report shape is quoted, not guessed. */
+function reportShape(report: unknown): string {
+  if (report === null) return "null"
+  if (Array.isArray(report)) return "an array"
+  return `a ${typeof report}`
+}
+
+/**
+ * Judge the gate's `--json` report: ONLY a non-null, non-array object is a parsable report.
+ *
+ * WHY THE SHAPE MATTERS (review finding B2, PR #103 round 1): a JSON `null`, array or primitive is a
+ * VALID JSON document that carries no lanes, so the old `!== null`-shaped predicate admitted shapes
+ * the rest of the judge then read as unreadable. The detail names WHICH failure was observed —
+ * missing, unparsable, or a non-object — so a broken `--json` write is attributable.
+ * @param run - the gate invocation under judgement.
+ * @returns the `gate.report.parseable` check, with the observed shape or failure in its detail.
+ */
+function reportCheck(run: GateRun): Check {
+  if (run.reportProblem?.kind === "missing") {
+    return { name: "gate.report.parseable", ok: false, detail: "the gate wrote no --json report (the file is absent)" }
+  }
+  if (run.reportProblem?.kind === "unparsable") {
+    return { name: "gate.report.parseable", ok: false, detail: `the gate's --json report is unparsable: ${run.reportProblem.message}` }
+  }
+  if (typeof run.report !== "object" || run.report === null || Array.isArray(run.report)) {
+    return { name: "gate.report.parseable", ok: false, detail: `the gate's --json report parsed as ${reportShape(run.report)} — not a report object` }
+  }
+  return { name: "gate.report.parseable", ok: true, detail: "report parsed as an object" }
 }
 
 /** The gate's exit code and its cross-check status, read out of its report. */
@@ -123,15 +190,18 @@ function judge(kitPresent: boolean, gate: GateRun): Check[] {
   const errors = staticErrors(gate.report)
   /** The checks, in report order. */
   const checks: Check[] = [
-    { name: "gate.report.parseable", ok: gate.report !== undefined && gate.report !== null, detail: gate.report === undefined ? "the gate wrote no parsable --json report" : "report parsed" },
+    reportCheck(gate),
     { name: "gate.static.errors", ok: errors === 0, detail: `static error findings = ${errors}` },
+    // An explicit TIMEOUT check, so a killed child can never be credited as a pass by an exit-status
+    // predicate that happens to tolerate `null`: the attribution is asserted, not inferred.
+    { name: "gate.timeout", ok: !gate.timedOut, detail: `${runDetail(gate)} (a timeout is never a gate verdict)` },
   ]
   if (kitPresent) {
     checks.push({ name: "gate.crosscheck.present", ok: cross === "passed", detail: `cross-check status = ${cross}` })
-    checks.push({ name: "gate.exit.legal", ok: gate.status === 0, detail: `exit = ${String(gate.status)}` })
+    checks.push({ name: "gate.exit.legal", ok: gate.status === 0, detail: `exit = ${String(gate.status)} (${runDetail(gate)})` })
   } else {
     checks.push({ name: "gate.crosscheck.absent", ok: cross === "not-passed", detail: `cross-check status = ${cross}` })
-    checks.push({ name: "gate.exit.not-passed", ok: gate.status === 3, detail: `exit = ${String(gate.status)} (a missing official checkout must exit 3, never 0)` })
+    checks.push({ name: "gate.exit.not-passed", ok: gate.status === 3, detail: `exit = ${String(gate.status)} (${runDetail(gate)}; a missing official checkout must exit 3, never 0)` })
   }
   return checks
 }
@@ -192,13 +262,13 @@ function runCase(): CaseOutcome {
     const gate = runGate(REPO_ROOT, join(evidence, "gate.json"))
     /** Whether a cross-check checkout was supplied to this run. */
     const kitPresent = (process.env[KIT_ENV] ?? "") !== ""
-    logLine(lines, `${TAG} gate: exit=${String(gate.status)} cross-check=${crossCheckStatus(gate.report)} static-errors=${staticErrors(gate.report)} kit=${kitPresent ? "present" : "absent"}`)
+    logLine(lines, `${TAG} gate: ${runDetail(gate)} cross-check=${crossCheckStatus(gate.report)} static-errors=${staticErrors(gate.report)} kit=${kitPresent ? "present" : "absent"}`)
     /** The contract checks. */
     const checks: Check[] = [...judge(kitPresent, gate)]
     /** The negative control: a duplicate id must make the gate fail. */
     const control = runGate(brokenFixture(base), join(evidence, "control.json"))
-    logLine(lines, `${TAG} negative control: exit=${String(control.status)} names-id-duplicate=${String(control.stdout.includes("id-duplicate"))}`)
-    checks.push({ name: "control.exit.violations", ok: control.status === 1, detail: `exit = ${String(control.status)}` })
+    logLine(lines, `${TAG} negative control: ${runDetail(control)} names-id-duplicate=${String(control.stdout.includes("id-duplicate"))}`)
+    checks.push({ name: "control.exit.violations", ok: control.status === 1, detail: `exit = ${String(control.status)} (${runDetail(control)})` })
     checks.push({ name: "control.rule.id-duplicate", ok: control.stdout.includes("id-duplicate"), detail: control.stdout.includes("id-duplicate") ? "the gate named id-duplicate" : "the gate did not name id-duplicate" })
     return { checks, gate, control, lines, evidence }
   } finally {
@@ -218,8 +288,24 @@ function writeEvidence(outcome: CaseOutcome): string {
     ok,
     checks: outcome.checks,
     gateExit: outcome.gate.status,
+    // FINDING B1: the exit status alone cannot tell a TIMEOUT from a VIOLATION, so every run's
+    // error / signal / timedOut is recorded beside it (the log line carries the same detail).
+    gate: {
+      exit: outcome.gate.status,
+      signal: outcome.gate.signal,
+      timedOut: outcome.gate.timedOut,
+      error: outcome.gate.error,
+      detail: runDetail(outcome.gate),
+    },
     crossCheck: crossCheckStatus(outcome.gate.report),
     controlExit: outcome.control.status,
+    control: {
+      exit: outcome.control.status,
+      signal: outcome.control.signal,
+      timedOut: outcome.control.timedOut,
+      error: outcome.control.error,
+      detail: runDetail(outcome.control),
+    },
     kit: process.env[KIT_ENV] ?? null,
   }, null, 2))
   writeFileSync(join(evidence, "output.log"), outcome.lines.join("\n") + "\n")
@@ -228,27 +314,61 @@ function writeEvidence(outcome: CaseOutcome): string {
 
 /** Run the judge arms offline: a synthetic gate result per arm, each with its expected verdict. */
 function selfTest(): number {
+  /**
+   * Build one synthetic gate run for an arm.
+   * @param status - the exit status to model, `null` included.
+   * @param report - the parsed report to model.
+   * @param overrides - the attribution fields an arm needs to force (`timedOut`, `reportProblem`, …).
+   * @returns the synthetic run, with a well-formed exit and no timeout by default.
+   */
+  function fakeRun(status: number | null, report: unknown, overrides: Partial<GateRun> = {}): GateRun {
+    return { status, signal: null, error: null, timedOut: false, stdout: "", stderr: "", report, reportProblem: null, ...overrides }
+  }
   /** A gate run that looks legal with a PASSED cross-check. */
-  const legal: GateRun = { status: 0, stdout: "", stderr: "", report: { crossCheck: { status: "passed" }, lanes: [{ findings: [] }] } }
+  const legal = fakeRun(0, { crossCheck: { status: "passed" }, lanes: [{ findings: [] }] })
   /** A gate run that reports NOT-PASSED because no checkout was supplied. */
-  const notPassed: GateRun = { status: 3, stdout: "", stderr: "", report: { crossCheck: { status: "not-passed" }, lanes: [{ findings: [] }] } }
+  const notPassed = fakeRun(3, { crossCheck: { status: "not-passed" }, lanes: [{ findings: [] }] })
   /** A gate run with one failing finding. */
-  const red: GateRun = { status: 1, stdout: "", stderr: "", report: { crossCheck: { status: "passed" }, lanes: [{ findings: [{ rule: "x", path: "p", detail: "d", severity: "error" }] }] } }
-  /** One arm: a label, the kit flag, the run it judges, and whether the judgement must hold. */
-  const arms: { name: string; kit: boolean; run: GateRun; ok: boolean }[] = [
+  const red = fakeRun(1, { crossCheck: { status: "passed" }, lanes: [{ findings: [{ rule: "x", path: "p", detail: "d", severity: "error" }] }] })
+  // FINDING B1: `status: null` is what spawnSync answers when ITS OWN 180 s timeout kills the child,
+  // so this arm models a TIMEOUT even though the run carries no report and no exit status at all.
+  /** A TIMEOUT-shaped run: killed by the cap, with no report written. */
+  const timedOut = fakeRun(null, undefined, { signal: "SIGTERM", error: "ETIMEDOUT: spawnSync node ETIMEDOUT", timedOut: true, reportProblem: { kind: "missing" } })
+  // FINDING B2: each of these is a VALID JSON document that carries no report at all.
+  /** A `--json` file whose whole content is `null`. */
+  const nullReport = fakeRun(0, null)
+  /** A `--json` file whose whole content is an empty array. */
+  const arrayReport = fakeRun(0, [])
+  /** A `--json` file that is not JSON at all. */
+  const unparsable = fakeRun(0, undefined, { reportProblem: { kind: "unparsable", message: "Unexpected end of JSON input" } })
+  /** One arm: a label, the kit flag, the run it judges, whether the judgement must hold, and the checks that must FAIL by name. */
+  const arms: { name: string; kit: boolean; run: GateRun; ok: boolean; mustFail?: readonly string[] }[] = [
     { name: "kit present + legal run is accepted", kit: true, run: legal, ok: true },
     { name: "kit present + a red run is refused", kit: true, run: red, ok: false },
     { name: "kit present + a NOT-PASSED run is refused (never a silent green)", kit: true, run: notPassed, ok: false },
     { name: "kit absent + NOT-PASSED exit 3 is accepted as the contract", kit: false, run: notPassed, ok: true },
     { name: "kit absent + a green exit 0 is refused", kit: false, run: legal, ok: false },
+    { name: "kit present + a TIMED-OUT run is refused (a timeout is never a pass)", kit: true, run: timedOut, ok: false, mustFail: ["gate.timeout"] },
+    { name: "kit absent + a TIMED-OUT run is refused (a timeout is never a pass)", kit: false, run: timedOut, ok: false, mustFail: ["gate.timeout"] },
+    { name: "kit present + a JSON null report is refused (parseable requires an object)", kit: true, run: nullReport, ok: false, mustFail: ["gate.report.parseable"] },
+    { name: "kit present + a JSON array report is refused (parseable requires an object)", kit: true, run: arrayReport, ok: false, mustFail: ["gate.report.parseable"] },
+    { name: "kit present + an unparsable report is refused", kit: true, run: unparsable, ok: false, mustFail: ["gate.report.parseable"] },
   ]
   /** Arms that did not behave as declared. */
   const failures: string[] = []
   for (const arm of arms) {
+    /** Every check the judge produced for this arm. */
+    const judged = judge(arm.kit, arm.run)
     /** Whether every check the judge produced held. */
-    const held = judge(arm.kit, arm.run).every((check: Check): boolean => check.ok)
-    console.log(`${held === arm.ok ? "PASS" : "FAIL"}  ${arm.name} — judged ${held ? "ok" : "violation"}`)
-    if (held !== arm.ok) failures.push(arm.name)
+    const held = judged.every((check: Check): boolean => check.ok)
+    /** Whether each check the arm NAMED really failed, in the arm's own order. */
+    const named = (arm.mustFail ?? []).map((name: string): boolean => judged.some((check: Check): boolean => check.name === name && !check.ok))
+    /** Whether the overall verdict AND every named check behaved as the arm declared. */
+    const armHeld = held === arm.ok && named.every((didFail: boolean): boolean => didFail)
+    /** The named checks rendered as `name=failed|held`, empty when the arm names none. */
+    const namedDetail = (arm.mustFail ?? []).map((name: string, index: number): string => `${name}=${named[index] ? "failed" : "held"}`).join(", ")
+    console.log(`${armHeld ? "PASS" : "FAIL"}  ${arm.name} — judged ${held ? "ok" : "violation"}${namedDetail === "" ? "" : `; named ${namedDetail}`}`)
+    if (!armHeld) failures.push(arm.name)
   }
   /** The real negative control, so the judge is not the only thing tested. */
   const base = mkdtempSync(join(tmpdir(), "dshgo-qa-self-test-"))

@@ -161,7 +161,7 @@ interface DeferredCtx {
   /** Provide a service; these arms never register one. */
   provide(): void
   /** The deferred inject seam: records the dependency list and keeps the callback for `fire`. */
-  inject(deps: readonly string[], callback: (scoped: unknown) => void): () => void
+  inject(deps: readonly string[], callback: (scoped: unknown) => (() => void) | undefined): () => void
 }
 
 /** One deferred binding as the ctx recorded it, plus the handle that fires it. */
@@ -171,7 +171,7 @@ interface DeferredBinding {
   /** Every dependency list the adapter injected, in call order. */
   deps: string[][]
   /** Run the recorded inject callback against one scoped ctx, as cordis does when the seam binds. */
-  fire(scoped: Record<string, unknown>): void
+  fire(scoped: Record<string, unknown>): (() => void) | undefined
 }
 
 /**
@@ -184,13 +184,13 @@ function deferredAdapter(rootServices: Record<string, unknown> = {}): DeferredBi
   /** Every dependency list the adapter injected. */
   const deps: string[][] = []
   /** The callback the adapter registered, until the arm fires it. */
-  let callback: ((scoped: unknown) => void) | undefined
+  let callback: ((scoped: unknown) => (() => void) | undefined) | undefined
   /** The root ctx double: services come from the table, the inject records instead of resolving. */
   const ctx: DeferredCtx = {
     get: (name: string): unknown => rootServices[name],
     on: (): (() => void) => () => {},
     provide: (): void => {},
-    inject: (names: readonly string[], cb: (scoped: unknown) => void): (() => void) => {
+    inject: (names: readonly string[], cb: (scoped: unknown) => (() => void) | undefined): (() => void) => {
       deps.push([...names])
       callback = cb
       return () => {}
@@ -199,9 +199,7 @@ function deferredAdapter(rootServices: Record<string, unknown> = {}): DeferredBi
   return {
     adapter: createDshAdapter(ctx),
     deps,
-    fire: (scoped: Record<string, unknown>): void => {
-      callback?.(scoped)
-    },
+    fire: (scoped: Record<string, unknown>): (() => void) | undefined => callback?.(scoped),
   }
 }
 
@@ -239,9 +237,38 @@ describe("the bridge is bound with the deferred ctx.inject form", () => {
     const bridge = { on: (): boolean => true }
     /** The adapter plus its deferred seam, over a root that serves the bridge directly. */
     const deferred = deferredAdapter({ dshGo: bridge })
-    deferred.fire({ get: (): undefined => undefined })
+    // Nothing bound means nothing to clean up: a firing that yields no service returns no disposer.
+    expect(deferred.fire({ get: (): undefined => undefined })).toBeUndefined()
     expect(deferred.adapter.dshGoPresent()).toBe(true)
     expect(deferred.adapter.dshGoOn("mpd-dispatch", () => undefined)).toBe(true)
+  })
+
+  // FINDING A (PR #103, CodeRabbit round 1): the callback used to early-return whenever the slot
+  // was already filled, so a reload/re-inject kept the seams on the RETIRED bridge. cordis unloads
+  // and re-runs an inject body whenever the service changes, so this arm fires it twice and then
+  // replays both unloads in the order that exposes a clobber (the older one last).
+  test("a re-fired inject binds ITS OWN bridge, and an unload clears only its own binding", () => {
+    /** The first activation's bridge. */
+    const first = { caps: { app: "1.0.9" } }
+    /** The second activation's bridge, distinct so a stale slot is observable. */
+    const second = { caps: { app: "2.0.0" } }
+    /** The adapter plus its deferred seam. */
+    const deferred = deferredAdapter()
+    /** The first activation's cleanup, returned by its own inject firing. */
+    const firstUnload = deferred.fire({ dshGo: first })
+    expect(typeof firstUnload).toBe("function")
+    expect(deferred.adapter.dshGoCaps()).toEqual({ app: "1.0.9" })
+    // A reload re-runs the callback: it must probe and bind the bridge ITS activation saw.
+    const secondUnload = deferred.fire({ dshGo: second })
+    expect(typeof secondUnload).toBe("function")
+    expect(deferred.adapter.dshGoCaps()).toEqual({ app: "2.0.0" })
+    // An unload that lands after the newer binding must NOT clobber it.
+    firstUnload?.()
+    expect(deferred.adapter.dshGoPresent()).toBe(true)
+    expect(deferred.adapter.dshGoCaps()).toEqual({ app: "2.0.0" })
+    // The activation that bound the live bridge does clear it, falling back to the (empty) root probe.
+    secondUnload?.()
+    expect(deferred.adapter.dshGoPresent()).toBe(false)
   })
 
   test("a bridgeless host registers nothing and reaches no bridge", () => {

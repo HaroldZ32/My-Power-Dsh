@@ -1,0 +1,106 @@
+{
+  "seat": "Senior Engineer",
+  "task": "REPAIR the two CODE findings of CodeRabbit review round 1 on PR #103",
+  "branch": "feature/upstream-0.18.0",
+  "baseHead": "b0d9ecb7",
+  "date": "2026-11-07",
+  "committed": false,
+  "note": "The captain owns the single git writer (AGENTS.md §5); nothing was committed, added or checked out.",
+  "writeScopeUsed": [
+    "packages/mpd-dsh-adapter-plugin/src/index.ts",
+    "packages/mpd-dsh-adapter-plugin/test/adapter-dshgo-surface.test.ts",
+    "skills/dsh-qa/scripts/dshgo-standard.ts",
+    "skills/dsh-qa/SKILL.md",
+    "evidence/repair/0.18.0/coderabbit/"
+  ],
+  "distRebuildRequired": true,
+  "distNote": "packages/mpd-dsh-adapter-plugin/src changed and dist/** was deliberately NOT rebuilt (captain/integrator owns it). `bun build` INLINES the adapter, so every dependent package's dist is stale until the pinned toolchain rebuilds them from the repo root; `node scripts/verify-dist-fresh.ts` names the exact targets.",
+  "skillsRepinRequired": true,
+  "skillsRepinNote": "skills/dsh-qa/** changed, so VENDOR_LOCK.json's corpus treeSha must be re-pinned in the SAME commit (AGENTS.md §9/§11; captain step: node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step).",
+  "sharedEvidenceDirNote": "evidence/repair/0.18.0/coderabbit/ also carries the DOC seat's files (README.md, result.json, change.diff, code-verification-f1.log, code-verification-f2.log). This seat wrote ONLY code-*.log, code-change.diff, code-result.json, code-README.md and dshgo-real/, and touched none of the doc seat's files.",
+  "findings": [
+    {
+      "id": "coderabbit-round1-code-A",
+      "title": "The dshGo inject callback probes once and caches the bridge in scopedDshGo, so a reload/re-inject keeps a previously bound bridge.",
+      "verdict": "FIXED",
+      "reviewerClaimStale": false,
+      "verifiedAgainst": [
+        "packages/mpd-dsh-adapter-plugin/src/index.ts (pre-fix callback at b0d9ecb7, lines 4252-4278; early return at 4256)",
+        "packages/mpd-dsh-adapter-plugin/test/adapter-dshgo-surface.test.ts (new arm)",
+        "real cordis 4.1.0 shipped by the pinned harness 0.2.2-rc.1 (ctx.inject unload/re-run contract)"
+      ],
+      "codeFacts": [
+        "PRE-FIX: the callback opened with `if (scopedDshGo !== undefined && scopedDshGo !== null) return`, so a second firing never re-probed and never returned a cleanup.",
+        "cordis contract (registry.d.ts:104-111): `inject(deps, callback)` is 'unloaded and re-run whenever a required service changes'.",
+        "REAL-CORDIS RED PROOF on HEAD source: after provide(dshGo 1.0.9) -> dispose -> provide(dshGo 2.0.0) the adapter reported present=true, caps={app:'1.0.9'} — the stale bridge survived the unload AND the newer provide.",
+        "REAL-CORDIS GREEN PROOF on the fixed tree: present=false after the unload, then present=true caps={app:'2.0.0'} after the re-provide.",
+        "FIX SHAPE: each firing probes its own bridge into a local `bound`, publishes it to `scopedDshGo`, calls notifyDshGoBound(), and returns `() => { if (scopedDshGo === bound) scopedDshGo = undefined }` — an identity guard, so an older activation's unload can never clobber a newer binding.",
+        "PRESERVED: the guarded `scoped?.dshGo` property read (THROWS on an undeclared service), the `scoped.get('dshGo', false)` probe, the onServiceBound notification path, and the absent-service behaviour (a bridgeless host never fires the callback: nothing registers, no polling, the consumer's ONE `dshGo=absent` line in packages/mpd-bundle-plugin is untouched)."
+      ],
+      "newTestArm": "packages/mpd-dsh-adapter-plugin/test/adapter-dshgo-surface.test.ts :: 'a re-fired inject binds ITS OWN bridge, and an unload clears only its own binding' — fires the inject twice with distinct bridges, replays the OLDER unload last, and asserts the newer binding survives it.",
+      "evidence": ["code-red-proof-finding-a.log", "code-change.diff", "code-gates.log"]
+    },
+    {
+      "id": "coderabbit-round1-code-B1",
+      "title": "spawnSync returns status: null on the 180 s timeout, so a TIMEOUT is indistinguishable from a gate VIOLATION.",
+      "verdict": "FIXED",
+      "reviewerClaimStale": false,
+      "verifiedAgainst": [
+        "skills/dsh-qa/scripts/dshgo-standard.ts (runGate / runDetail / judge / writeEvidence / selfTest)",
+        "node:child_process spawnSync semantics (timeout => error.code === 'ETIMEDOUT', status null, killSignal SIGTERM)"
+      ],
+      "codeFacts": [
+        "`GateRun` now carries `signal: string | null`, `error: string | null` (flattened `code: message`) and `timedOut: boolean` (`error.code === 'ETIMEDOUT'`, the authoritative timeout flag).",
+        "Every gate and control log line now renders `runDetail()`: `exit=… signal=… timedOut=… error=…`.",
+        "result.json carries `gate {exit, signal, timedOut, error, detail}` and `control {…}`, with the pre-existing `gateExit`/`controlExit` keys kept intact.",
+        "A new named check `gate.timeout` fails whenever `timedOut` is true, so a killed child can never be credited as a pass by an exit predicate that tolerates `null`.",
+        "The existing exit-status predicates are unchanged: `gate.exit.legal` still requires 0 with the kit, `gate.exit.not-passed` still requires 3 without it.",
+        "HONEST BOUND: on the PRE-FIX code a timed-out run was already REFUSED (null !== 0 and null !== 3), but it was not ATTRIBUTABLE — the only trace was `exit = null`. The new arms redden on pre-fix code because the `gate.timeout` check they name did not exist at all."
+      ],
+      "newTestArms": [
+        "kit present + a TIMED-OUT run is refused (mustFail: gate.timeout)",
+        "kit absent + a TIMED-OUT run is refused (mustFail: gate.timeout)"
+      ],
+      "evidence": ["code-red-proof-finding-b.log", "code-change.diff", "code-gates.log"]
+    },
+    {
+      "id": "coderabbit-round1-code-B2",
+      "title": "gate.report.parseable accepts non-report JSON shapes; its detail does not distinguish the failure modes.",
+      "verdict": "FIXED",
+      "reviewerClaimStale": false,
+      "reviewerClaimNuance": "The literal example does NOT reproduce on b0d9ecb7: `gate.report !== undefined && gate.report !== null` already refused a JSON `null`. The reproducible hole is ARRAYS and PRIMITIVES (`[]`, `42`, `\"x\"`, `true` all satisfied the predicate, and `reportShape`/`staticErrors` then read them as unreadable). The null arm is kept as a regression pin.",
+      "verifiedAgainst": [
+        "skills/dsh-qa/scripts/dshgo-standard.ts (reportCheck / reportShape / ReportProblem)",
+        "git show HEAD:skills/dsh-qa/scripts/dshgo-standard.ts line 126 (the pre-fix predicate)"
+      ],
+      "codeFacts": [
+        "`reportCheck()` passes ONLY when `typeof report === 'object' && report !== null && !Array.isArray(report)`.",
+        "The detail distinguishes all four outcomes: 'report parsed as an object' / 'the gate wrote no --json report (the file is absent)' / 'the gate's --json report is unparsable: <message>' / 'the gate's --json report parsed as <null|an array|a number|a string|a boolean> — not a report object'.",
+        "`GateRun.reportProblem` is a discriminated union (`{kind:'missing'} | {kind:'unparsable', message}`), so 'missing' and 'unparsable' no longer collapse into one `undefined`.",
+        "Predicate table in code-red-proof-finding-b.log: OLD admits null=false, array=true, number=true, string=true, boolean=true, object=true; NEW admits only object=true."
+      ],
+      "newTestArms": [
+        "kit present + a JSON null report is refused (mustFail: gate.report.parseable)",
+        "kit present + a JSON array report is refused (mustFail: gate.report.parseable)",
+        "kit present + an unparsable report is refused (mustFail: gate.report.parseable)"
+      ],
+      "evidence": ["code-red-proof-finding-b.log", "code-change.diff", "code-gates.log"]
+    }
+  ],
+  "gates": {
+    "bun run typecheck": 0,
+    "node scripts/verify-comment-coverage.ts": 0,
+    "bun test packages/mpd-dsh-adapter-plugin": "0 (395 pass, 0 fail, 1573 expect() calls, 27 files)",
+    "bun skills/dsh-qa/scripts/dshgo-standard.ts --self-test": "0 (11 arms: 10 judge controls + 1 real broken-package control)",
+    "MPD_DSHGO_KIT=$PWD/.mpd/tmp-dshgo/kit bun skills/dsh-qa/scripts/dshgo-standard.ts": "0 (gate exit=0 cross-check=passed, 7/7 checks PASS; evidence/dshgo/standard/2026-11-07T11-50-48-227Z)",
+    "node scripts/verify-dshgo-standard.ts --self-test (EXTRA, gate untouched)": "0 (44 arms)"
+  },
+  "extraObservations": {
+    "bun test packages (full suite, not a required gate)": "1 — 3692 pass, 6 skip, 2 fail. BOTH failures are the T-62 'shipped artifact' dist-freshness assertions (mpd-ext-plugin/test/adapter-identity.test.ts:361, mpd-roles-plugin/test/adapter-identity.test.ts:304); each replays verify-dist-fresh over its OWN dist, which inlines the edited adapter. They go green after the integrator's rebuild; no source-level failure.",
+    "node scripts/verify-dist-fresh.ts (read-only; builds into mkdtemp)": "1 — 'FAIL - 24 of 34 targets not fresh (STALE: 24)', EXPECTED and caused by this edit: the adapter src changed and dist/** was deliberately not rebuilt. The gate names every target with its canonical build command."
+  },
+  "notRun": [
+    "bun run verify:gates — needs the pinned harness on PATH plus MPD_DSHGO_KIT; the release sweep is the captain's.",
+    "Full mount/boot lanes (bundle-lifecycle, preset-conformance) — a forced `bun build`, out of this seat's scope."
+  ]
+}

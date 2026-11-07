@@ -876,21 +876,23 @@ function createDshAdapter(ctx, config = {}) {
       return;
     try {
       ctx.inject(["dshGo"], (scoped) => {
-        if (scopedDshGo !== undefined && scopedDshGo !== null)
-          return;
+        let bound;
         try {
-          scopedDshGo = scoped?.dshGo;
+          bound = scoped?.dshGo;
         } catch {}
-        if (scopedDshGo === undefined || scopedDshGo === null) {
+        if (bound === undefined || bound === null) {
           try {
-            scopedDshGo = typeof scoped?.get === "function" ? scoped.get("dshGo", false) : undefined;
+            bound = typeof scoped?.get === "function" ? scoped.get("dshGo", false) : undefined;
           } catch {}
         }
-        if (scopedDshGo === undefined || scopedDshGo === null) {
-          scopedDshGo = undefined;
+        if (bound === undefined || bound === null)
           return;
-        }
+        scopedDshGo = bound;
         notifyDshGoBound();
+        return () => {
+          if (scopedDshGo === bound)
+            scopedDshGo = undefined;
+        };
       });
     } catch {}
   };

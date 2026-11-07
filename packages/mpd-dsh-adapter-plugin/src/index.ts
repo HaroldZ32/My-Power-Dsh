@@ -4210,7 +4210,13 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
    * lazy root probe stays the fallback for a ctx that has no inject seam.
    */
   let scopedDshGo: any
-  /** The DSH Go bridge, preferring the one the deferred inject proved over a root read. */
+  /**
+   * The DSH Go bridge, preferring the one the deferred inject proved over a root read.
+   *
+   * The scoped slot is per ACTIVATION: cordis unloads and re-runs the inject body whenever the
+   * required service changes, so each run binds the bridge IT probed and clears only that binding
+   * (see {@link bindDshGoBridge}), and a cached predecessor never outlives its own activation.
+   */
   const dshGoService = (): any => scopedDshGo ?? service("dshGo")
 
   /**
@@ -4247,30 +4253,44 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
    * polls and no line is written. An inject call that throws, or a callback whose scoped ctx
    * answers neither form, leaves `scopedDshGo` undefined: the seams then read the root probe,
    * which is exactly the bridgeless/older path, so a construction can never fail over a seam.
+   *
+   * EACH FIRING BINDS ITS OWN BRIDGE (review finding A, PR #103). cordis treats the callback as a
+   * plugin body: it is UNLOADED and RE-RUN whenever a required service changes, so a `dshGo`
+   * reload/re-inject reaches here a second time. Probing behind an "already bound" early return
+   * would keep the seams pointing at the retired service, so every firing probes afresh and the
+   * disposer it returns clears the slot ONLY while it still holds the bridge that firing bound —
+   * an unload that lands after a newer binding must never clobber it.
    * @returns nothing; {@link scopedDshGo} carries the result.
    */
   const bindDshGoBridge = (): void => {
     if (typeof ctx?.inject !== "function") return
     try {
       ctx.inject(["dshGo"], (scoped: any) => {
-        if (scopedDshGo !== undefined && scopedDshGo !== null) return
+        /**
+         * The bridge THIS firing proved, held in a local so the cleanup below can recognise its own
+         * binding; it is published to {@link scopedDshGo} only after both probe forms are tried.
+         */
+        let bound: any
         // The property read THROWS on a cordis ctx that did not declare the service, so both forms
         // are probed in their own guards — the same shape `whenSettingsAvailable` uses.
         try {
-          scopedDshGo = scoped?.dshGo
+          bound = scoped?.dshGo
         } catch { /* fall through to the ctx.get form */ }
-        if (scopedDshGo === undefined || scopedDshGo === null) {
+        if (bound === undefined || bound === null) {
           try {
-            scopedDshGo = typeof scoped?.get === "function" ? scoped.get("dshGo", false) : undefined
+            bound = typeof scoped?.get === "function" ? scoped.get("dshGo", false) : undefined
           } catch { /* the scoped ctx answers neither form */ }
         }
-        // A callback that fired but yielded no service leaves the root probe in charge; null is
-        // normalised so the seams have ONE absent value to reason about.
-        if (scopedDshGo === undefined || scopedDshGo === null) {
-          scopedDshGo = undefined
-          return
-        }
+        // A callback that fired but yielded no service leaves the root probe in charge: nothing is
+        // bound and nothing is registered, so a bridgeless host still writes no line of its own.
+        if (bound === undefined || bound === null) return
+        // Publish the FRESH bridge, replacing whatever a previous firing left behind.
+        scopedDshGo = bound
         notifyDshGoBound()
+        return () => {
+          // Clear this firing's binding, never a newer one: the slot is shared by every activation.
+          if (scopedDshGo === bound) scopedDshGo = undefined
+        }
       })
     } catch {
       // An unusable inject seam leaves the lazy root probe in charge; a bridgeless host stays absent.
