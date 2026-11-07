@@ -1,0 +1,70 @@
+// T23 — CODERABBIT ROUND 1 (CODE): the three `.ts` extensions, the theme registry scope, the pinned
+// screenshot URLs. The other four comments on PR #91 are not this lane's (reported, not touched).
+import { writeFileSync } from "node:fs"
+import { join } from "node:path"
+
+/** This evidence directory. */
+const E = import.meta.dirname
+
+/** The result this directory certifies. */
+const result = {
+  lane: "T23 — CodeRabbit r1 (code): .ts extensions x3, theme registry scope, pinned screenshot URLs",
+  at: new Date().toISOString(),
+  source: "PR #91 inline review, comments #3 #6 #7 #8 #9 (comments.json + findings.txt in this directory)",
+  inScope: [
+    {
+      n: 3,
+      where: "docs/market/dsh-go-entry.json:17",
+      verdict: "FIXED",
+      fix: "all four screenshot URLs moved from the `dev` branch to the reviewed commit 7296ef8898a44f2f79991a86786f6148244b6e5d (the head that was reviewed). The `dev` URLs 404 because the screenshots live on the feature branch until merge; the pinned URLs resolve now and keep resolving after the merge."
+    },
+    {
+      n: 6,
+      where: "packages/mpd-bundle-plugin/src/dshgo-graph.ts:16",
+      verdict: "FIXED",
+      fix: "both relative specifiers now carry `.ts` (the cross-package kit import and the type-only `./dshgo-views.ts`)."
+    },
+    {
+      n: 7,
+      where: "packages/mpd-bundle-plugin/src/dshgo-views.ts:42",
+      verdict: "FIXED",
+      fix: "`./dshgo-graph`, its neighbour `./dshgo-copy` and the type-only `./dshgo-panel` all carry `.ts` now (the reviewer named the first two; the third is the same class in the same block)."
+    },
+    {
+      n: 8,
+      where: "packages/mpd-tui-plugin/src/index.ts:78",
+      verdict: "FIXED",
+      fix: "`./theme.js` -> `./theme.ts` in the row's entry, and the new theme module's own relative source imports (`./log.js`, `./types.js`) -> `.ts`. The package's OLDER `.js` specifiers were left alone: this repair follows the precedent that only the specifiers a wave adds are converted, so the change stays reviewable."
+    },
+    {
+      n: 9,
+      where: "packages/mpd-tui-plugin/src/theme.ts:63",
+      verdict: "FIXED",
+      fix: "`whenBound(\"themes\", (service, scope) => …)` now passes the CALLBACK'S SCOPE to both `registry.register(MPD_THEME, owner)` and `effectOn(owner, …)`, with `ctx` only as the fallback for an adapter that hands none. The 0.18.0 host answers an identity from another activation with an inert disposer, so the old code registered nothing and still reported `requested`.",
+      test: "theme.test.ts now gives the double a DISTINCT bound scope and asserts `registry.identities[0] === bound.ctx`, `!== outer.ctx`, that the owned effect landed on the bound scope and that the outer ctx owns nothing. Negative control: reverting `owner` to `ctx` makes the arm FAIL (1 fail), so the assertion is not vacuous."
+    }
+  ],
+  outOfScopeReported: [
+    { n: 1, where: "CONTRIBUTING.md:210", subject: "keep reporter contact details out of the public security issue", belongsTo: "the docs/contributing lane (T24)" },
+    { n: 2, where: "docs/market-listing.md:8", subject: "link the page from the documentation hub", belongsTo: "the docs lane" },
+    { n: 4, where: "docs/tui-parity.zh-CN.md:117", subject: "broken punctuation + D3 contradicting the English twin", belongsTo: "the docs lane" },
+    { n: 5, where: "docs/user-guide.md:1118", subject: "align the provenance records with the current notices", belongsTo: "the docs lane" }
+  ],
+  gates: [
+    { id: "bun test packages/mpd-bundle-plugin packages/mpd-tui-plugin packages/mpd-dsh-adapter-plugin", exit: 0, observed: "0 fail (bundle 323 arms + the TUI suites 714 pass / 1 skip)" },
+    { id: "bun run typecheck", exit: 0, observed: "0 errors" },
+    { id: "node scripts/verify-comment-coverage.ts", exit: 0, observed: "PASS" },
+    { id: "bun run verify:docs", exit: 0, observed: "pairs=55 failed=0 violations=0 dead=0 — PASS" },
+    { id: "node scripts/verify-dshgo-views.ts", exit: 0, observed: "PASS" },
+    { id: "node scripts/verify-dist-fresh.ts", exit: 0, observed: "34/34 fresh (the two touched packages rebuilt with the pinned toolchain)" },
+    { id: "bun run verify:gates", exit: 0, observed: "9/9 members green" }
+  ],
+  bounds: [
+    "The pinned URLs point at a COMMIT, so they freeze the screenshots: a later redesign will not appear in the listing until the pin moves. That is the trade the review asked for; the alternative (a `dev` URL) 404s until this branch merges.",
+    "Only the specifiers THIS wave added were converted to `.ts`; `packages/mpd-tui-plugin/src` still carries its older `.js` spelling elsewhere, so the package is mixed on purpose rather than churned in a repair commit.",
+    "The theme fix is proven by the seam-level test and a negative control, not against a real 0.18.0 host: the host's rejection behaviour is quoted from its own source, not observed here."
+  ]
+}
+
+writeFileSync(join(E, "result.json"), JSON.stringify(result, null, 2) + "\n")
+console.log("result.json written")

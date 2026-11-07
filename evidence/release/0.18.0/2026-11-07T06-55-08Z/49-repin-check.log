@@ -1,0 +1,69 @@
+# vendor re-pin ASSERTION — recorded for finding M1 of rec-20261107T092205-376636
+# This is NOT a third re-pin. It ASSERTS the SHIPPED VENDOR_LOCK.json against the working tree.
+# cwd: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+# argv: node scripts/repin-vendor.ts --check
+# started: 2026-11-07T09:33:22Z
+# finished: 2026-11-07T09:33:22Z
+# exit code: 0
+# why this wave has a SECOND pin:
+#   repin-vendor enumerates each treeSha asset from the GIT INDEX — its own line says
+#   "file list: git index (N shipped file(s))". Pin #1 (04-repin-write.log) ran while
+#   skills/dsh-qa/scripts/dshgo-standard.ts was UNTRACKED, so it pinned 391 files
+#   (treeSha 87d34451…). Staging that file changed the index the pin enumerates to 392
+#   entries, which invalidated the 391 treeSha and forced the second write (392 files,
+#   treeSha 3133e6fb…) — the one that has no write transcript. 42-vendor-after-repin.log
+#   proves only the POST state, so this run is the missing assertion: the shipped 392 pin
+#   is what the final tree computes.
+[repin-vendor] algorithm : shared rule scripts/lib/asset-files.ts (TRACKED files via `git ls-files` inside a work tree, filesystem walk outside one; LF-normalizing reader), imported by BOTH sides + the sorted-relpath tree fold mirrored from scripts/verify-vendor.ts
+[repin-vendor] normalize : LF - text files (no NUL byte) have CRLF/CR collapsed to LF; binary files (NUL present) are hashed RAW
+[repin-vendor] WARNING   : the vendor gate compares the LF-NORMALIZED value only. A raw-bytes reading would silently fail `bun run verify:vendor` on any corpus containing CRLF/CR bytes - both values are printed per asset below.
+[repin-vendor] assets    : 6 treeSha-bearing asset(s) derived from the working tree
+[repin-vendor] lock      : /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/VENDOR_LOCK.json  (5027 bytes, 6 treeSha asset(s))
+[repin-vendor] authority : one shared file-list rule (3 marker(s) in scripts/verify-vendor.ts, 5 token(s) in scripts/lib/asset-files.ts, binding held here) + 3 mirrored fold token(s)
+
+[repin-vendor] asset          : skills
+[repin-vendor]   locked       : treeSha=3133e6fbce11e25e32f51ce0bd19c4aa1673bf925b7ef3ccef34c5146d7eb1e6 fileCount=392
+[repin-vendor]   file list    : git index (392 shipped file(s))
+[repin-vendor]   computed (LF) : treeSha=3133e6fbce11e25e32f51ce0bd19c4aa1673bf925b7ef3ccef34c5146d7eb1e6 fileCount=392 (1 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : b38d37d22263c73839b5b89689f795494a2a2ae6c72e0469b6dfa35eb72a97f1   <- NEVER write this one
+[repin-vendor]   in sync      : no change
+
+[repin-vendor] asset          : specs/dsh-go
+[repin-vendor]   locked       : treeSha=1f812a48dd2c54fa6529c0c05b355676de902515cfe7fa63fd5328b892da2607 fileCount=7
+[repin-vendor]   file list    : git index (7 shipped file(s))
+[repin-vendor]   computed (LF) : treeSha=1f812a48dd2c54fa6529c0c05b355676de902515cfe7fa63fd5328b892da2607 fileCount=7 (0 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : 1f812a48dd2c54fa6529c0c05b355676de902515cfe7fa63fd5328b892da2607   <- NEVER write this one
+[repin-vendor]   in sync      : no change
+
+[repin-vendor] asset          : packages/mpd-hashline-plugin/src/vendor
+[repin-vendor]   locked       : treeSha=7e6a28e2b1c6dc9c3942bb17da5cef86ae8398af6ed63bfe3cd128a08701c34a fileCount=8
+[repin-vendor]   file list    : git index (8 shipped file(s))
+[repin-vendor]   computed (LF) : treeSha=7e6a28e2b1c6dc9c3942bb17da5cef86ae8398af6ed63bfe3cd128a08701c34a fileCount=8 (0 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : 7e6a28e2b1c6dc9c3942bb17da5cef86ae8398af6ed63bfe3cd128a08701c34a   <- NEVER write this one
+[repin-vendor]   in sync      : no change
+
+[repin-vendor] asset          : packages/mpd-autoproject-plugin/src/boulder/vendor
+[repin-vendor]   locked       : treeSha=fa19e7243941dc9fa229eb0a2c7bafd42267c4db094aec23ce1626f283115f81 fileCount=13
+[repin-vendor]   file list    : git index (13 shipped file(s))
+[repin-vendor]   computed (LF) : treeSha=fa19e7243941dc9fa229eb0a2c7bafd42267c4db094aec23ce1626f283115f81 fileCount=13 (0 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : fa19e7243941dc9fa229eb0a2c7bafd42267c4db094aec23ce1626f283115f81   <- NEVER write this one
+[repin-vendor]   in sync      : no change
+
+[repin-vendor] asset          : packages/mpd-schemastery
+[repin-vendor]   locked       : treeSha=c0701be154849a93851c288f3cfb8f1550e4f43c5f1cf3f10664ee3198c70e49 fileCount=19
+[repin-vendor]   file list    : git index (19 shipped file(s))
+[repin-vendor]   computed (LF) : treeSha=c0701be154849a93851c288f3cfb8f1550e4f43c5f1cf3f10664ee3198c70e49 fileCount=19 (0 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : c0701be154849a93851c288f3cfb8f1550e4f43c5f1cf3f10664ee3198c70e49   <- NEVER write this one
+[repin-vendor]   in sync      : no change
+
+[repin-vendor] asset          : packages/mpd-bundle-plugin/adopted
+[repin-vendor]   locked       : treeSha=a71be3db2d34f7a36e2cf48692968702d7ab00501be9900686f2a2888ecfd33f fileCount=2
+[repin-vendor]   file list    : git index (2 shipped file(s))
+[repin-vendor]   computed (LF) : treeSha=a71be3db2d34f7a36e2cf48692968702d7ab00501be9900686f2a2888ecfd33f fileCount=2 (0 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : a71be3db2d34f7a36e2cf48692968702d7ab00501be9900686f2a2888ecfd33f   <- NEVER write this one
+[repin-vendor]   in sync      : no change
+
+[repin-vendor] _note: POLICY (not a failure) - underscore-prefixed metadata key: the vendor gate skips these too, so this helper does not re-pin it
+[repin-vendor] packages/mpd-mcp-codegraph/dist/serve.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding the package that emits it, never by rewriting the lock
+[repin-vendor] packages/mpd-bundle-plugin/client.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding the package that emits it, never by rewriting the lock
+[repin-vendor] CHECK     : GREEN - lock matches the working tree (drift=0, problems=0)

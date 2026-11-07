@@ -1,0 +1,17 @@
+(pass) the record is the primary team source > the workflow carries the review fields the official board has no column for 
+(pass) the record is the primary team source > the derived states agree: a blocked review, a running task, a failed repair 
+(pass) the record is the primary team source > a task claimed under the member's EXECUTOR HANDLE is credited to that member 
+(pass) the record is the primary team source > phase is the STORED lifecycle, not a guess from the roster 
+(pass) the record is the primary team source > a cycle is REPORTED as a note rather than drawn as if the board were sound 
+(pass) the source selection > readBoardState shows the RECORD even when the official readout is empty 
+(pass) the source selection > an ENDED team does not hide the running one behind it 
+(pass) the source selection > the record read degrades to [] with no service, and never throws 
+(pass) living-graph · the served model reaches the projection only when it is the same board > a model for THIS team is attached, receives the team id, and joins ghost + ranks 
+(pass) living-graph · the served model reaches the projection only when it is the same board > a model for a DIFFERENT team is ignored — the board draws alone 
+(pass) living-graph · the served model reaches the projection only when it is the same board > a throwing service costs the model, never the board 
+(pass) living-graph · the served model reaches the projection only when it is the same board > a service with no graph member is simply a composition without a model 
+(pass) living-graph · the served model reaches the projection only when it is the same board > a FOREIGN model with the SAME T1.. numbering plus one task is REJECTED 
+(pass) living-graph · the served model reaches the projection only when it is the same board > the OFFICIAL-VIEW arms never ask for a model by workspace alone 
+(pass) nested teams · the merged model reaches the LIVE projection (T31) > a LIVE parent+child pair attaches the merged model and the DAG page carries the group frame 
+(pass) nested teams · the merged model reaches the LIVE projection (T31) > a FLAT team keeps the flat drawing: no groups on the model, the page or the view 
+(pass) nested teams · the merged model reaches the LIVE projection (T31) > an UNEXPLAINED extra task still costs the model — the nesting does not open the guard 

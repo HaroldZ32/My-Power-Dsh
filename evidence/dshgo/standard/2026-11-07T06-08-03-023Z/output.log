@@ -1,0 +1,2 @@
+[dshgo-standard] gate: exit=0 cross-check=passed static-errors=0 kit=present
+[dshgo-standard] negative control: exit=1 names-id-duplicate=true

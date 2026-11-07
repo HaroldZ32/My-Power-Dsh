@@ -1,0 +1,93 @@
+### 1. gate — no MPD_DSHGO_KIT (expect exit 3)
+[dshgo-standard] root: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+[dshgo-standard] standard: ccch1mneyyy/dsh-Go@d5ad25c5bc4c66ecacee76b3c5378db45e1db3fa (spec data under specs/dsh-go/)
+[dshgo-standard] MANIFEST: PASS (0 error(s), 0 note(s))
+[dshgo-standard] VIEW: PASS (0 error(s), 0 note(s))
+[dshgo-standard] COMPAT: PASS (0 error(s), 0 note(s))
+[dshgo-standard] HOST: PASS (0 error(s), 0 note(s))
+[dshgo-standard] CROSS-CHECK: NOT-PASSED — NOT-PASSED: MPD_DSHGO_KIT is not set, so the official checker did not run (a cross-check that did not run is never a green). Provide a dsh-Go checkout: MPD_DSHGO_KIT=<checkout> node scripts/verify-dshgo-standard.ts
+[dshgo-standard] RESULT: NOT-PASSED — the official cross-check did not run
+
+### 2. gate — MPD_DSHGO_KIT=<pinned kit> (expect exit 0)
+[dshgo-standard] root: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+[dshgo-standard] standard: ccch1mneyyy/dsh-Go@d5ad25c5bc4c66ecacee76b3c5378db45e1db3fa (spec data under specs/dsh-go/)
+[dshgo-standard] MANIFEST: PASS (0 error(s), 0 note(s))
+[dshgo-standard] VIEW: PASS (0 error(s), 0 note(s))
+[dshgo-standard] COMPAT: PASS (0 error(s), 0 note(s))
+[dshgo-standard] HOST: PASS (0 error(s), 0 note(s))
+[dshgo-standard] CROSS-CHECK: PASSED — PASSED: verdicts agree — official check.mjs exit=1 stops=false (array-patch false negative excluded: the official checker requires a string patch, DSH allows an array and this gate verified every path); this gate stops=false
+  [note] crosscheck-normalized /home/haroldzhao/MyProj/DshProj/My-Power-Dsh — the official checker's only blocking item was its string-only `dsh.bundle.patch` assumption; every declared patch path is resolved by the MANIFEST lane
+[dshgo-standard] RESULT: LEGAL — manifest, views, compatibility, host half and the official cross-check all agree
+
+### 3. gate --self-test (expect exit 0)
+PASS  clean control: a legal manifest, v1 view and host half produce no finding
+PASS  missing dshGo manifest
+PASS  protocol version not 1
+PASS  contributes is not an object
+PASS  a manifest over the 16 KiB budget
+PASS  a slot that is not an array
+PASS  more panels than the protocol allows
+PASS  an id that breaks the protocol pattern
+PASS  the same id declared by two slots
+PASS  an over-length label is a NOTE, not a failure
+PASS  an unknown want value
+PASS  `message` wanted with no message.actions
+PASS  an effect kind outside the six static kinds
+PASS  more than four effects on one action
+PASS  an unknown panel placement
+PASS  an unknown presentation
+PASS  a strip naming an undeclared panel
+PASS  a declared view file that does not exist
+PASS  no engines.dsh is a NOTE
+PASS  no dsh.bundle.patch
+PASS  a declared patch file that does not exist
+PASS  a static view that is not JSON
+PASS  a static view whose root is not a component
+PASS  a v2-only component in a static view
+PASS  an unknown component name in a static view
+PASS  a data binding in a static view
+PASS  a static view over the node budget
+PASS  a static view over the depth budget
+PASS  a static view carrying a style key
+PASS  a static view whose text is empty
+PASS  an image with a web address in a static view
+PASS  a static view declaring v2
+PASS  a static view over the byte budget
+PASS  a tool card builder that constructs a tappable node is a NOTE
+PASS  COMPAT: a v2-only component in a DECLARED static view is refused
+PASS  COMPAT: a data binding in a DECLARED static view is refused
+PASS  COMPAT: a declared static view that does not resolve
+PASS  HOST: a declared panel with no panel registration
+PASS  HOST: a tappable id with no handler
+PASS  HOST: a registration for an id the manifest does not declare
+PASS  HOST: the optional-inject spelling
+PASS  HOST: a top-level inject array carrying dshGo
+PASS  the kit's budget table drifting from the spec is refused
+PASS  HOST: no binding form at all
+[dshgo-standard] SELF-TEST PASS — 44 arms (1 clean control + 43 negative controls)
+
+### 4. negative control — broken package (expect exit 1)
+[dshgo-standard] root: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/dshgo/standard/2026-11-07T06-09-06Z/broken
+[dshgo-standard] standard: ccch1mneyyy/dsh-Go@d5ad25c5bc4c66ecacee76b3c5378db45e1db3fa (spec data under specs/dsh-go/)
+[dshgo-standard] MANIFEST: FAIL (1 error(s), 0 note(s))
+  [error] id-duplicate dshGo.contributes.panels — "dup" is already declared by composer.strip; ids are unique per plugin across ALL slots
+[dshgo-standard] VIEW: PASS (0 error(s), 0 note(s))
+[dshgo-standard] COMPAT: PASS (0 error(s), 1 note(s))
+  [note] compat-view-declared dshGo.contributes.panels — no panel declares a static fallback, so a bridgeless host has nothing to draw
+[dshgo-standard] HOST: FAIL (1 error(s), 0 note(s))
+  [error] host-sources packages/mpd-bundle-plugin/src — no host-half source found; the HOST lane cannot run
+[dshgo-standard] CROSS-CHECK: NOT-PASSED — NOT-PASSED: MPD_DSHGO_KIT is not set, so the official checker did not run (a cross-check that did not run is never a green). Provide a dsh-Go checkout: MPD_DSHGO_KIT=<checkout> node scripts/verify-dshgo-standard.ts
+[dshgo-standard] RESULT: VIOLATIONS — 2 error(s)
+
+### 5. verify:gates aggregate with the kit (dshgo member)
+[verify-gates] member vendor: exit=1 FAIL - 136ms
+[verify-gates] member dist-fresh: exit=0 PASS - 758ms
+[verify-gates] member rows-parity: exit=0 PASS - 58ms
+[verify-gates] member docs-parity: exit=0 PASS - 72ms
+[verify-gates] member preset-conformance: exit=1 FAIL - 397ms
+[verify-gates] member plugin-manifest: exit=0 PASS - 2359ms
+[verify-gates] member comment-coverage: exit=0 PASS - 2880ms
+[verify-gates] member graph-model: exit=0 PASS - 248ms
+[verify-gates] member workflows: exit=0 PASS - 34ms
+[verify-gates] member tui-admission: exit=0 PASS - 99ms
+[verify-gates] member dshgo: exit=0 PASS - 147ms

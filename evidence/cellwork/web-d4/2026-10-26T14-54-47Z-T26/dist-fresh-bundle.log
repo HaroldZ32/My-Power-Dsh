@@ -1,0 +1,7 @@
+  STALE   packages/mpd-bundle-plugin/dist/index.js  <- packages/mpd-bundle-plugin/src/index.ts
+[verify-dist-fresh] root: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)
+[verify-dist-fresh] build toolchain: bun 1.4.0 from the repository toolchain (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun) · recorded buildToolchain bun@1.4.0
+  STALE: packages/mpd-bundle-plugin/dist/index.js — committed packages/mpd-bundle-plugin/dist/index.js (96898 B, f84ad95b9a3eb6a3…) != fresh build of packages/mpd-bundle-plugin/src/index.ts (96998 B, 7600aba9155526b4…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-bundle-plugin/src/index.ts --target node --format esm --outfile packages/mpd-bundle-plugin/dist/index.js
+[verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] FAIL - 1 of 1 targets not fresh (STALE: 1) — 37ms

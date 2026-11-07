@@ -119,6 +119,34 @@ jobs:
             exit 1
           fi
 
+      # THE DSH-GO CONFORMANCE HARD GATE, BEFORE ANYTHING IS PACKED OR STAGED. A manifest that does
+      # not conform to the published native-plugin standard must not be able to reach a stage, and a
+      # `verify:gates` member alone would only cover the push/PR path. The official checker is NOT
+      # vendored (its npm package is `private: true`), so the pinned upstream commit is checked out
+      # here and handed to the gate through `MPD_DSHGO_KIT`; without it the gate exits 3 (NOT-PASSED)
+      # and this step fails the job, because a cross-check that did not run is never a pass.
+      # THE CHECKOUT LIVES UNDER `$GITHUB_WORKSPACE` ON PURPOSE: `actions/checkout` refuses a `path:`
+      # that resolves outside it, and `runner.temp` IS outside it — measured on run 42358482313 in
+      # `gates.yml`, whose identical step died with "Repository path '…/_temp/dsh-go-kit' is not under
+      # '…/My-Power-Dsh/My-Power-Dsh'". `.dsh-go-kit` is workspace-relative and gitignored.
+      - name: Check out the pinned DSH-Go kit the dshgo gate cross-checks against
+        uses: actions/checkout@v7
+        with:
+          repository: ccch1mneyyy/dsh-Go
+          ref: d5ad25c5bc4c66ecacee76b3c5378db45e1db3fa
+          path: .dsh-go-kit
+          sparse-checkout: sdk/plugin-kit
+          sparse-checkout-cone-mode: false
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: "Assert the DSH-Go manifest conforms (hard gate: blocks the stage)"
+        run: |
+          set -euo pipefail
+          export MPD_DSHGO_KIT="$GITHUB_WORKSPACE/.dsh-go-kit"
+          test -f "$MPD_DSHGO_KIT/sdk/plugin-kit/bin/check.mjs"
+          node scripts/verify-dshgo-standard.ts
+
       # STAGED PUBLISHING NEEDS npm >= 11.6 (`npm stage` did not exist before it). The dispatch runner
       # image may carry an older npm than the one shown here, so this step states the versions and
       # FAILS BY NAME instead of letting a later step answer with "Unknown command: stage".

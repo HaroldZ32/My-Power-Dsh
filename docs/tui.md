@@ -4,11 +4,14 @@
 
 This page describes the **DSH-TUI edition** of the my-power-dsh bundle: what it ships, how to
 install it, what the per-package compatibility measurement found, and what it explicitly does
-**not** claim. It targets `@deepseek-harness-tui/dsh-tui` **0.18.0** and its built-in admission
-profile. 0.18.0's declared `@deepseek-ai/dsh-*` peer bands run through DeepSeek Harness
-`0.2.1-rc.4` and `0.2.1-rc.5` — all 36 of its `dsh-*` lists carry both, while 0.17.0's stop at
-`0.2.1-rc.3` (read from the published tarballs). **§11.11 is this wave's amendment**: it records the
-move and the carriers it touched. **The pin before it was 0.17.0, and that statement stays readable as
+**not** claim. It targets `@deepseek-harness-tui/dsh-tui` **0.19.0** and its built-in admission
+profile. 0.19.0's declared `@deepseek-ai/dsh-*` peer bands ADD DeepSeek Harness **`0.2.2-rc.1`**
+while keeping `0.2.1-rc.4` and `0.2.1-rc.5`, and the admission guide plus the admission chain are
+byte-identical at 0.18.0 and 0.19.0. **§11.13 is this wave's amendment**: it records the move and the
+carriers it touched. **The pin before it was 0.18.0, and that statement stays readable as history**:
+0.18.0's `dsh-*` bands ran through `0.2.1-rc.4` and `0.2.1-rc.5` (all 36 of them), while 0.17.0's stop
+at `0.2.1-rc.3` (read from the published tarballs), and §11.11 is that wave's amendment. **The pin
+before that was 0.17.0, and that statement stays readable as
 history**: 0.17.0 is the first dsh-tui release whose declared peer bands admitted harness
 `0.2.1-rc.3`, and **§11.10** is that wave's amendment. **The pin before that was 0.16.1, and that
 statement stays readable as history**: 0.16.1 is the
@@ -1852,3 +1855,23 @@ integration lane). Evidence: `evidence/tui/panel-wave/` — `l1-scroll-engine/CO
 `l2-dag-page/report.md`, `l3-scene-scroll/README.md`, `l4-row-lifecycle/signatures.md`,
 `l5-watchdog-scene/report.md`, `l6-web-follow/result.json`, `l7-admission-gate/evidence.md` and
 `audit-parked/result.json`.
+
+### 11.13 Amendment after the harness 0.2.2-rc.1 / DSH-TUI 0.19.0 adaptation wave (2026-11-07)
+
+This wave moves the pin pair again and changes no TUI plugin source. §11.11 and §11.12 stay as written:
+they record earlier waves, not this one.
+
+| Subject | Before | After |
+|---|---|---|
+| This page's target host (§ preamble) | **0.18.0** | **0.19.0** — its declared `@deepseek-ai/dsh-*` peer bands ADD harness `0.2.2-rc.1` while KEEPING `0.2.1-rc.4` and `0.2.1-rc.5`, so one host serves both harness waves |
+| Harness pin (`package.json`, the three `@deepseek-ai/dsh-experimental-*`) | `0.2.1-rc.5` | **`0.2.2-rc.1`**; `engines.node` is now `>=24.9.0` (the CLI declares that floor at this release) and `engines.dsh` spans BOTH bands (`>=0.2.1-rc.2 <0.3.0-0`) |
+| §3.3 / §7 — the pin carriers | `0.18.0` carriers, harness `0.2.1-rc.5` | **`0.19.0` and `0.2.2-rc.1`**: both Docker lanes (`MPD_E2E_TUI_VERSION`, `MPD_E2E_DSH_VERSION`), the UI stack (`MPD_UI_TUI_VERSION`, `MPD_UI_DSH_VERSION`), `dsh-distribution.json`'s `host-tui` ref (`…@0.19.0`), `dsh-plugin.json`'s `compat.hosts` (which now lists `0.18.0` AND `0.19.0`), the QA host spec in `skills/dsh-qa/scripts/tui-mount.ts` and every `npm i -g @deepseek-harness-tui/dsh-tui@…` PREREQ remedy |
+| The admission chain | 0.18.0 only | **byte-identical at both tags** — the guide's blob is `6b9dfd3…` (99,723 B), the `permissions-0.1.json` registry is `f36cb6e…`, and all eleven admission-decision source files are unchanged. 0.19.0 changed only its DSH peer line, `/update` orchestration, a subagent-channel notice and one first-party feed re-pin, so there was no admission rework |
+| The adapter's version gates | `PANEL_CSV_HOST_OWNED_SINCE`, `PANEL_CSV_SELF_HEAL_SINCE`, the `hostVersion` fixtures | **unchanged** — they encode WHEN the host changed behaviour, never which host is current |
+
+**Measured on 0.19.0.** The host's own admission chain was run against a scratch install
+(`.qa-tmp/tui-019`): `validateHost: ok`, both manifests negotiate `compatible`, and `tui-admission`
+reports **PASS — 43 arms passed, 1 allowed deviation, 5 bounds**
+(`evidence/upstream/0.2.2/2026-11-07T05-45Z/probe-negotiation-0.19.0.json` and `tui-admission-019.log`).
+The bound is the same one §3 carries: this is a static admission verdict plus the host's own negotiation,
+**not** a live TTY mount, and no rendered frame is claimed here.

@@ -1,0 +1,103 @@
+{
+  "review": "v0.18.0 third verification (seat 3)",
+  "loopId": "loop-20261107T055457-25618b",
+  "answeredRecord": "rec-20261107T092205-376636",
+  "commit": "860309a0f666d2388a006adaa0134e7d6ce2cfae",
+  "previousCommit": "d65bc680",
+  "branch": "feature/upstream-0.18.0",
+  "pr": 103,
+  "verdict": "FAIL",
+  "riskLevel": "Medium",
+  "b1": {
+    "status": "PASS",
+    "ciRun": 42360781672,
+    "headSha": "860309a0f666d2388a006adaa0134e7d6ce2cfae",
+    "conclusion": "success",
+    "aggregate": "11/11 members green",
+    "kitPath": ".dsh-go-kit (workspace-relative; MPD_DSHGO_KIT=$GITHUB_WORKSPACE/.dsh-go-kit)",
+    "dshgo": "RESULT: LEGAL (CROSS-CHECK PASSED)",
+    "dockerAcceptanceRun": 42360781568,
+    "dockerAcceptance": "success (credential-free source --no-browser)",
+    "publishYml": "same fix at HEAD; not executed (needs tag/stage)"
+  },
+  "h1": {
+    "status": "PASS",
+    "cutNormalExit": 1,
+    "cutNormalFinding": "COMPAT.declared-hosts FAIL naming dsh-plugin.json and packages/mpd-tui-plugin/dsh-plugin.json",
+    "cutStaticOnlyExit": 1,
+    "cutStaticOnlyFinding": "same; COMPAT.host-version BOUND — NOT CHECKED",
+    "restoredExit": 0,
+    "restoredReport": "PASS — 48 arms passed, 1 allowed deviation(s), 6 bound(s)",
+    "prefixControlExit": 0,
+    "prefixControlReport": "PASS — 47 arms passed (d65bc680 script on the same cut tree/host)",
+    "host": "ambient 0.18.0 payload relabelled 0.19.0 (second seat's declared bound)"
+  },
+  "mediums": {
+    "M1": "FIXED — 49-repin-check.log is a real --check transcript (392 files, treeSha 3133e6fb…, GREEN); my own --check exit 0; result.json bounds #7 states the 391→392 git-index cause. Residual Nit: verify-vendor row still says 'single re-pin (04-repin-write.log)'.",
+    "M2": "NOT FIXED — PR #103 body still says EN 'Model selection runs through four agentOptions sites' and zh '模型选择走四处 agentOptions'; docs/compatibility.md §2 says ONE proven site + three declared bounds. Body sha256 e97b907f…, updatedAt 2026-11-07T09:41:43Z.",
+    "M3": "FIXED — PR body identifies the ONE retained non-PASS row as the intermediate oneclick run and keeps the credentialed Docker as an OWED bounds entry; no '1 owned-not-run'."
+  },
+  "nFindings": {
+    "N1": "FIXED — fixes/typecheck.log is 368 B of NOTE pointing at 39-typecheck-captain.log and r4/typecheck.log.",
+    "N3": "FIXED — result.json bounds no longer declare the oneclick lane failed; bound #6 records the post-repack PASS and retains the earlier failing run for audit."
+  },
+  "newFindings": [
+    {
+      "id": "PKG",
+      "severity": "medium",
+      "what": "specs/tui-hosts.json is absent from the root package.json files allowlist (only specs/dsh-go/**), so the npm/GitHub-install tarball ships scripts/verify-tui-admission.ts without its input; the gate then exits 1 'the file does not exist'. dist/mpd-package and verify-pack-closure are fine (668/668 identical, 0 drift, 820 B packed copy identical)."
+    },
+    {
+      "id": "N-M1",
+      "severity": "nit",
+      "what": "release result.json verify-vendor row still cites the superseded 'single re-pin (04-repin-write.log)' while bounds #7 says two re-pins; point the row at 49-repin-check.log."
+    },
+    {
+      "id": "N-docs",
+      "severity": "nit",
+      "what": "docs/compatibility.md §3 cites 'this release's gate run ... 49 arms ... 5 bounds' (the local 0.18.0-discovering run); CI on 860309a0 discovered 0.19.0 and reports 48 arms / 6 bounds."
+    },
+    {
+      "id": "N-AGENTS",
+      "severity": "nit",
+      "what": "AGENTS.md = 63483 B, margin 2053 B = 5 B above the 2 KB floor: compliant; widen before the next edit."
+    }
+  ],
+  "packCheck": {
+    "distMpdPackageFile": "dist/mpd-package/specs/tui-hosts.json (820 B, byte-identical)",
+    "packClosure": "exit 0 — 668/668 identical, 0 drift, stamp 2026-11-07T09:53:38.395Z (after fresh pack-mpd)",
+    "rootFilesAllowlist": "specs/tui-hosts.json NOT admitted"
+  },
+  "agentsMd": {
+    "bytes": 63483,
+    "cap": 65536,
+    "marginBytes": 2053,
+    "floorBytes": 2048,
+    "status": "COMPLIES (5 B above the 2 KB floor); Nit to widen"
+  },
+  "evidenceFiles": [
+    "evidence/repair/0.18.0/verdict3/report.md",
+    "evidence/repair/0.18.0/verdict3/ci-static-gates-summary.log",
+    "evidence/repair/0.18.0/verdict3/h1-cut-normal.log",
+    "evidence/repair/0.18.0/verdict3/h1-cut-static-only.log",
+    "evidence/repair/0.18.0/verdict3/h1-restored.log",
+    "evidence/repair/0.18.0/verdict3/h1-prefix-control.log",
+    "evidence/repair/0.18.0/verdict3/pack-closure-after-repack.log",
+    "evidence/repair/0.18.0/verdict3/packaging.log",
+    "evidence/repair/0.18.0/verdict3/agents-size.log",
+    "evidence/repair/0.18.0/verdict3/pr-body.md"
+  ],
+  "verifyEvidenceIds": [
+    "ev-20261107T095338-ced4f4",
+    "ev-20261107T095338-d92db7",
+    "ev-20261107T095338-020c1b",
+    "ev-20261107T095338-e8778b"
+  ],
+  "bounds": [
+    "No credentialed Docker, no device/Flutter; no CI dispatch (read-only gh); publish.yml not executed.",
+    "bun test packages / test:qa / the docker lanes were not re-run by this seat; CI ran the credential-free Docker acceptance green on 860309a0.",
+    "npm pack could not run in the sandbox (EROFS on ~/.npm cache); the root files allowlist is conclusive.",
+    "The 0.19.0 host is the ambient 0.18.0 payload relabelled in package.json, not a real 0.19.0 install.",
+    "The repo's tracked files were not mutated; the re-pack refreshed only the gitignored dist/mpd-package/."
+  ]
+}

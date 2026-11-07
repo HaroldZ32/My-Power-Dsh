@@ -1,0 +1,75 @@
+{
+  "measuredAtUtc": "2026-11-07T05:59:31.247Z",
+  "command": "node evidence/upstream/0.2.2/2026-11-07T05-45Z/probe-negotiation-0.19.0.mjs",
+  "host": {
+    "root": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/tui-019/lib/node_modules/@deepseek-harness-tui/dsh-tui",
+    "version": "0.19.0",
+    "facetApiVersions": [
+      "v1alpha1"
+    ],
+    "supportedContracts": [
+      "commands.dsh/v1alpha1#Command",
+      "storage.dsh/v1alpha1#LocalStorage",
+      "messages.dsh/v1alpha1#MessageObserver",
+      "tui.dsh/v1alpha1#DecisionEvents",
+      "tui.dsh/v1alpha1#Backend"
+    ],
+    "hostVersionField": "0.19.0",
+    "validateHost": "ok",
+    "warnings": [
+      "legacy compatibility descriptor: contracts declared from the mounted legacy service topology without live probe evidence"
+    ]
+  },
+  "chain": "loadSpecData -> createContractIndex -> validatePlugin(index, manifest) -> negotiate(index, manifest, buildLegacyHostDescriptor(...).descriptor, [])",
+  "registry": {
+    "profileVersion": null,
+    "facetApiVersions": [
+      "v1alpha1"
+    ],
+    "protocols": 12
+  },
+  "results": [
+    {
+      "manifest": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/dsh-plugin.json",
+      "sha256": "sha256:bcbe05afd5bc2b2e1727821c11c96cd7f5255397b15c0adccf0de13322cae550",
+      "id": "com.mpd-dsh.mpd-tui",
+      "name": "@mpd-dsh/mpd",
+      "version": "0.18.0",
+      "facetApiVersion": "v1alpha1",
+      "entry": "packages/mpd-tui-plugin/dist/index.js",
+      "permissions": [],
+      "requiredContracts": [],
+      "optionalContracts": [
+        "tui.dsh/v1alpha1#DecisionEvents"
+      ],
+      "validatePlugin": {
+        "ok": true,
+        "error": null
+      },
+      "decision": {
+        "decision": "compatible"
+      }
+    },
+    {
+      "manifest": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/dsh-plugin.json",
+      "sha256": "sha256:aeed4c00f6d82776bfba7a85a3ae91fedaa5060e813df78f432611bfc21f93cd",
+      "id": "com.mpd-dsh.mpd-tui",
+      "name": "@mpd-dsh/mpd-tui",
+      "version": "0.1.0",
+      "facetApiVersion": "v1alpha1",
+      "entry": "dist/index.js",
+      "permissions": [],
+      "requiredContracts": [],
+      "optionalContracts": [
+        "tui.dsh/v1alpha1#DecisionEvents"
+      ],
+      "validatePlugin": {
+        "ok": true,
+        "error": null
+      },
+      "decision": {
+        "decision": "compatible"
+      }
+    }
+  ]
+}

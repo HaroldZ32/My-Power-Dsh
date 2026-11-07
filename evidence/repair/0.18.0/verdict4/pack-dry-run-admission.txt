@@ -1,0 +1,14 @@
+total files: 1257
+ADMITTED  specs/tui-hosts.json
+ADMITTED  specs/dsh-go/limits.ts
+ADMITTED  scripts/verify-tui-admission.ts
+ADMITTED  package.json
+specs count: 8
+specs/dsh-go/limits.ts
+specs/dsh-go/schemas/contributions.schema.json
+specs/dsh-go/schemas/invoke.schema.json
+specs/dsh-go/schemas/manifest.schema.json
+specs/dsh-go/schemas/stream.schema.json
+specs/dsh-go/schemas/view.schema.json
+specs/dsh-go/SOURCE.json
+specs/tui-hosts.json

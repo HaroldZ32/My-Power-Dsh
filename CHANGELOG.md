@@ -14,6 +14,57 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
+## 0.18.0 — three-plane upstream adaptation: DSH 0.2.2-rc.1, DSH-TUI 0.19.0, a DSH-Go hard gate and a written backward-compatibility rule
+
+**Changed — the bundle now targets the newest published upstream on three planes.** `@deepseek-ai/dsh`
+`0.2.1-rc.5 → 0.2.2-rc.1` (cordis `~4.1.0`, loader/include `~1.1.0`, timer `~1.2.0`, schemastery
+`~3.19.0`, cosmokit `~1.9.0`; `engines.node >= 24.9.0`), `@deepseek-harness-tui/dsh-tui`
+`0.18.0 → 0.19.0`, and the DSH-Go native-plugin standard at `ccch1mneyyy/dsh-Go@d5ad25c5`. `engines.dsh`
+spans `>=0.2.1-rc.2 <0.3.0-0`, and `compat.hosts` lists BOTH TUI hosts, so the older hosts stay
+installable.
+
+**Added — the DSH-Go conformance gate is a STANDING gate.** `scripts/verify-dshgo-standard.ts` encodes the
+published standard from pinned spec data (`specs/dsh-go/`): the seven slots and their caps, the per-locale
+text limits, the view budgets, the `ctx.inject(['dshGo'], …)` binding, the static-view compatibility rule
+and the official cross-check. Five lanes — MANIFEST / VIEW / COMPAT / HOST / CROSS-CHECK — with exit 0
+legal, 1 violations, 2 cannot-run and 3 NOT-PASSED; `--self-test` is 44 arms. It is the ELEVENTH member of
+`bun run verify:gates`, and `publish.yml` runs it before `npm pack` / `npm stage publish`. Without
+`MPD_DSHGO_KIT` the cross-check lane reports NOT-PASSED (exit 3), never a green. The shipped manifest and
+both static views were already conformant — the work was PROVING it: 0 errors and 0 notes on MANIFEST,
+VIEW, COMPAT and HOST.
+
+**Fixed — the adapter now speaks the batch tool API.** Harness `0.2.2` changed `ToolsService.execute` from a
+single `ToolExecutionInput` to `ToolBatchInput { calls: [{ type: 'tool-call', id, name, arguments }] }`
+returning `ToolBatchResult`. The release notes do not list it and our inventory missed it; a mount caught it
+(`ADAPTER_TOOL_CALL=fail:Tool batch execution failed`) and the adapter was repaired to send the batch shape.
+
+**Fixed — `locale/*.json` now uses the host's `meta` wrapper.** The plugin manager reads
+`{"meta": {title, description}}`; ours were flat `{title, description}`. Both files now carry the wrapper and
+`meta.detail`, which points the plugin's rich-text detail page at `docs/plugin-details.md` /
+`docs/plugin-details.zh-CN.md`. The top-level `package.json` `icon` contract was already satisfied
+(`"icon": "./icon.svg"`, shipped through `files` and exported) and did not change at `0.2.2-rc.1`.
+
+**Removed — the `tool-subagent-list-agents` preset row.** `0.2.2-rc.1` removed the `./list-agents` subpath
+export from `@deepseek-ai/dsh-tool-subagent-control`; the root plugin now registers `list_agents` itself and
+the shipped `standard` preset dropped the row. A row whose module path no longer resolves cannot be kept, so
+the row was deleted; `tool-plugin-manager`'s guard was mirrored from the shipped preset.
+
+**Declared bounds / capability changes.** On `0.2.1-rc.5` the bundle still INSTALLS, MOUNTS and RUNS
+(`bundle-lifecycle` exit 0, every boot check true, no residue), but `list_agents` is not mounted: one
+capability is gone on the older host because upstream removed the seam it needed on the newer one. That is
+the declared capability delta of this release — not "no impact". Also declared: `agentOptions` on the spawn
+request still selects the model on `0.2.2` (proven by the child session's own request header); `engines.dsh`
+is a published claim and not an admission input; there is no Flutter host in this repository, so the DSH-Go
+half is proven against the standard, the pinned spec data and service doubles — not on a device; the official
+DSH-Go checker is not vendored, so without a checkout its lane is NOT-PASSED; and a skipped Docker lane is
+never a pass.
+
+**Documentation.** New bilingual pages: [`docs/dsh-go-standard.md`](./docs/dsh-go-standard.md) (the
+standard, its gate and its bounds), [`docs/compatibility.md`](./docs/compatibility.md) (the three-plane
+matrix and the display-metadata contract) and [`docs/plugin-details.md`](./docs/plugin-details.md) (the
+plugin-manager detail page). `AGENTS.md` gains two binding rules: backward compatibility is a hard
+requirement of any upstream adaptation, and the DSH-Go conformance gate is a standing gate.
+
 ## 0.17.5 — the panel-hygiene wave: burn-after-use rows, the scroll engine, a watchdog scene, and the dsh-TUI admission gate
 
 **Added — the dsh-TUI admission rules are a HARD GATE.** `scripts/verify-tui-admission.ts` is the tenth

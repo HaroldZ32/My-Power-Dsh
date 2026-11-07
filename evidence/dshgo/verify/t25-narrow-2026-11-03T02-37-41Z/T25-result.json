@@ -1,0 +1,65 @@
+{
+  "task": "T25 — narrow re-verify of the 9 PR #91 fixes (releases the merge after the bot rate limit)",
+  "role": "Reviewer",
+  "at": "2026-11-03T02:40:01Z",
+  "branch": "feature/dshgo-admission-and-docs",
+  "head": "d6cc91e664906ac2a26259454eae3809f72eb82c",
+  "subject": "commit d6cc91e6 — reconcile the CodeRabbit review of PR #91 (round 1); source: evidence/dshgo/coderabbit-r2/2026-11-03T02-19-16Z/{comments.json,findings.txt,result.json}",
+  "verdict": {
+    "code": "PASS_WITH_ONE_PARTIAL",
+    "summary": "All merge gates are green and 8 of the 9 findings are fully addressed (one of them — #1 — by a different, documented policy). #5 is only PARTIAL: its table/banner split, the actual notice headings and the Relakkes removal are done, but the requested historical oh-my-openagent provenance note (LICENSE-NOTICES.md + README, stating no source is shipped) and the three status-banner rewording are NOT on this branch. Separately, the round-1 reconciliation record (coderabbit-r2/result.json) still marks #1/#2/#4/#5 as 'out of scope (docs lane)' although this commit fixes #1, #2, #4 and part of #5 — the PR body must match the commit before the merge is announced as 9/9."
+  },
+  "perFinding": [
+    { "n": 1, "where": "CONTRIBUTING.md + CONTRIBUTING.zh-CN.md", "status": "ADDRESSED_DIFFERENTLY", "evidence": "the private-channel guidance is GONE and replaced by 'open an issue like anything else, in the open … no private advisory inbox and does not want one: describe the problem … directly in the issue' (zh mirrored). The literal sentence 'do not post contact details' is absent, but the invitation to send contact details was removed, which addresses the privacy concern more strongly. The reason is recorded in the commit message." },
+    { "n": 2, "where": "docs/index.md + docs/index.zh-CN.md", "status": "FIXED", "evidence": "both hubs carry a market-listing row (EN → market-listing.md, zh → market-listing.zh-CN.md)" },
+    { "n": 3, "where": "docs/market/dsh-go-entry.json", "status": "FIXED", "evidence": "4/4 screenshot URLs pinned to 7296ef8898a44f2f79991a86786f6148244b6e5d, 0 dev URLs; all four PNGs exist at that commit (git cat-file)" },
+    { "n": 4, "where": "docs/tui-parity.zh-CN.md D1–D3", "status": "FIXED", "evidence": "brackets balanced 20/20; the same two full hashes as EN (91a05314…, 303e1631…), no stale hash restated; the four run ids match EN exactly (14-19-18.574Z, 14-29-54.081Z, 14-24-22.312Z, 14-17-24.000Z)" },
+    { "n": 5, "where": "LICENSE-NOTICES.md / README.md / docs/{feature-audit,tui-parity,upstream-parity-ledger}.md + docs/user-guide.md", "status": "PARTIAL", "evidence": "DONE: the user-guide attribution table splits the schemastery and AgentTeams-client rows under their actual notice headings and no Relakkes attribution remains anywhere. NOT DONE: (b) no oh-my-openagent provenance note and no 'no source is shipped' statement in LICENSE-NOTICES.md or README.md (grep finds no oh-my-openagent mention in either); (c) all three status banners still say 'the roster, the eleven role descriptions and the model-chain vocabulary came from that project' — the finding asked for roster names and vocabulary, not the re-sourced role descriptions." },
+    { "n": 6, "where": "packages/mpd-bundle-plugin/src/dshgo-graph.ts", "status": "FIXED", "evidence": "both relative specifiers carry `.ts` (the kit type import and `./dshgo-views.ts`)" },
+    { "n": 7, "where": "packages/mpd-bundle-plugin/src/dshgo-views.ts", "status": "FIXED", "evidence": "`./dshgo-graph.ts` AND the neighbouring `./dshgo-copy.ts` (plus `./dshgo-panel.ts` and the kit import) all carry `.ts`" },
+    { "n": 8, "where": "packages/mpd-tui-plugin/src/index.ts + src/theme.ts", "status": "FIXED", "evidence": "line 78 is `import { registerTheme } from \"./theme.ts\"`; theme.ts's new imports are `./log.ts` and `./types.ts`. The package's older `.js` specifiers are deliberately untouched (declared bound in the commit message)." },
+    { "n": 9, "where": "packages/mpd-tui-plugin/src/theme.ts", "status": "FIXED", "evidence": "`whenBound(\"themes\", (service, scope) => …)`, `owner = scope ?? ctx`, then `registry.register(MPD_THEME, owner)` and `effectOn(owner, …)`; the test double records the identity and the arm 'the bound registry receives the descriptor by identity, and the effect is owned' passes (4/4 in that file)" }
+  ],
+  "gates": [
+    { "id": "typecheck", "exit": 0 },
+    { "id": "verify:gates", "exit": 0, "observed": "nine members PASS" },
+    { "id": "verify-dist-fresh", "exit": 0, "observed": "34/34 fresh (each rebuilt twice byte-identical)" },
+    { "id": "verify-pack-closure", "exit": 0, "observed": "642 files compared, 642 identical, 0 drift, 0 expected-after-pack, 29/29 packages, 504 assets; pack stamp 2026-11-03T02:24:13.382Z (20 s before the commit, after the last source edit)" },
+    { "id": "verify:docs", "exit": 0, "observed": "pairs=55 failed=0 violations=0 dead=0" },
+    { "id": "verify-dshgo-views", "exit": 0 },
+    { "id": "tests", "exit": 0, "observed": "1305 pass / 0 fail / 1306 tests across 64 files (bundle + tui + adapter)" },
+    { "id": "theme-seam-test", "exit": 0, "observed": "4/4 pass, identity arm included" }
+  ],
+  "findings": [
+    {
+      "id": "R1",
+      "severity": "Medium (documentation accuracy, NOT a gate failure)",
+      "title": "#5 is only partially fixed: the historical oh-my-openagent note and the three banner rewordings are absent",
+      "where": "LICENSE-NOTICES.md, README.md, docs/feature-audit.md, docs/tui-parity.md, docs/upstream-parity-ledger.md",
+      "why": "the finding asked to restore a short historical oh-my-openagent provenance note naming the roster names and vocabulary and stating that no oh-my-openagent source is shipped, and to change all three status banners from 'the eleven role descriptions' to the roster names/vocabulary. Neither exists on this branch: the notes are absent and all three banners still attribute the role descriptions to that project — i.e. the exact inaccuracy the finding flags survives.",
+      "direction": "either add the note (LICENSE-NOTICES + README) and the three banner sentences, or record #5 as DECLINED with that reason in the PR reconciliation; do not report 9/9 fixed."
+    },
+    {
+      "id": "R2",
+      "severity": "Medium (process)",
+      "title": "The round-1 reconciliation record is stale relative to the commit it describes",
+      "where": "evidence/dshgo/coderabbit-r2/2026-11-03T02-19-16Z/result.json (inScope 5 / outOfScopeReported 4)",
+      "why": "it marks #1, #2, #4 and #5 as 'out of scope (docs lane)', yet d6cc91e6 fixes #2 and #4 fully, #1 by a different policy, and most of #5. A PR body built from that record would understate the commit and mis-state the disposition of four findings — AGENTS.md §5 requires the inline findings to be reconciled FIXED / STALE / STILL-VALID with evidence.",
+      "direction": "re-issue the reconciliation for the commit that exists: #2 #3 #4 #6 #7 #8 #9 FIXED, #1 FIXED-BY-POLICY (quote the new text), #5 PARTIAL (name the two missing sub-asks and their disposition)."
+    }
+  ],
+  "residualBounds": [
+    "Pre-existing `.js` specifiers in `packages/mpd-tui-plugin/src` are deliberately left alone (the finding named the new imports only); the package remains mixed by decision, so a bare-Node import of that package is still not a supported path.",
+    "#9's destructive negative control (revert the scope) was not re-run by me — that needs a source edit outside the review seat; I verified the code line, the identity-recording test double and the 4/4 arm.",
+    "I did not re-derive the screenshot URLs over the network; I proved the pin (4/4 to 7296ef88, 0 dev) and that the four files exist at that commit in this clone."
+  ],
+  "declined": [
+    "the rendered look: not in scope for this docs/code wave and still no Flutter app",
+    "re-litigating #1's policy choice: removing the private channel is a stronger privacy position than the suggested wording, and the commit documents it"
+  ],
+  "bounds": {
+    "subject": "the nine PR #91 round-1 findings + the merge gates; earlier waves' arms stay cited from their own evidence directories",
+    "tree": "clean tree at d6cc91e6 on feature/dshgo-admission-and-docs; no source, manifest, dist or pack edit from this seat",
+    "writeScope": "evidence/dshgo/verify/t25-narrow-2026-11-03T02-37-41Z/"
+  }
+}

@@ -1,0 +1,444 @@
+
+===== #1 CONTRIBUTING contact-details rule (EN + zh) =====
+
+===== #2 hub rows for market-listing =====
+docs/index.md:68:| [`market-listing.md`](market-listing.md) | maintainers, packagers | How the bundle is listed on the two plugin directories: the `dsh-plugin` topic dshfind indexes, the versioned catalogue the DSH Go market takes by pull request, and the submission file that is kept in step with each release. |
+docs/index.zh-CN.md:66:| [`market-listing.zh-CN.md`](market-listing.zh-CN.md) | 维护者、打包者 | bundle 如何上架两个插件目录：dshfind 索引的 `dsh-plugin` 话题、DSH Go 市场按 PR 收录的版本化目录，以及随每次发布同步的提交文件。 |
+
+===== #3 screenshot URLs + the pinned commit really carries them =====
+urls: [
+ "https://raw.githubusercontent.com/HaroldZ32/My-Power-Dsh/7296ef8898a44f2f79991a86786f6148244b6e5d/docs/assets/market/panel-workbench-light.png",
+ "https://raw.githubusercontent.com/HaroldZ32/My-Power-Dsh/7296ef8898a44f2f79991a86786f6148244b6e5d/docs/assets/market/panel-team-light.png",
+ "https://raw.githubusercontent.com/HaroldZ32/My-Power-Dsh/7296ef8898a44f2f79991a86786f6148244b6e5d/docs/assets/market/panel-workbench-dark.png",
+ "https://raw.githubusercontent.com/HaroldZ32/My-Power-Dsh/7296ef8898a44f2f79991a86786f6148244b6e5d/docs/assets/market/panel-team-dark.png",
+ "https://github.com/HaroldZ32/My-Power-Dsh"
+]
+pinnedTo7296ef88: 4/5
+devBranchUrls: 0
+-- screenshots exist at 7296ef88? --
+docs/assets/market/panel-workbench-light.png: present
+docs/assets/market/panel-team-light.png: present
+docs/assets/market/panel-workbench-dark.png: present
+docs/assets/market/panel-team-dark.png: present
+
+===== #4 zh tui-parity D1-D3 vs EN =====
+78:| **E1** | `evidence/tui/team-surface-verify/2026-09-16T14-19-18.574Z/` | **the accepted verdict run** (t3, attempt 2: green on both of its verify commands: arm 1 13/13, arm 2 7/7, and the negative control red three ways). Arm 1 drives the plugin's REAL `apply()` out of `dist/` and renders the registered scenes with a host double; arm 2 drives the REAL `dsh` TUI over real tmux keystrokes in a sandbox and the real adopted runtime COMMITS an approval. The earlier run `…14-12-48.394Z/` is SUPERSEDED and is cited nowhere on this page. E1 is the PRE-repair measurement: it still records the verdict-line finding F1, and its own `panes/approve-attempt.pane.txt` shows the post-commit empty state; the post-repair re-measurement is the settled-revision lane run named in §4 D1. |
+107:| `activity-panel/plan-approval` (approve) | `lib/index.ts:325,371-381`; `lib/client.js:1501-1516,1695-1696` | present | `mpd-tui-plan` via `/mpd plan` or `a` in `mpd-tui-team`: type `approve <teamId>`, then `Ctrl+X` | E1 (A4–A8 arm 1; H1–H6 arm 2) | §4.2; the verdict line after a real commit is rendered as of the t8 repair (§4, D1) |
+171:**D1: the approval verdict line was not visible after a REAL commit (severity medium; measured
+191:(`evidence/tui/team-surface-verify/2026-09-16T14-29-54.081Z/result.json`, from gate pass 2 in E5; the
+192:lane's earlier post-repair run `…14-24-22.312Z` agrees). The first reading stays
+206:**D3: the lane's accepted verdict run described stale lane bytes (severity medium; measured, then
+211:on the live tree was therefore `303e1631…`, **not** the treeSha that attempt-1's report asked the
+218:303e163148afc07e7dad10775d3de7e96b4caa1cfae9c1a91575ae906d8cc27d`, and the deriving check is
+309:  303e163148afc07e7dad10775d3de7e96b4caa1cfae9c1a91575ae906d8cc27d`**. DERIVE it rather than trust
+315:  pin was a DIFFERENT, stale treeSha (see deviation D3, which also says where that value is
+--- zh ---
+80:| `activity-panel/plan-approval`（批准） | `lib/index.ts:325,371-381`；`lib/client.js:1501-1516,1695-1696` | present | `mpd-tui-plan`：`/mpd plan` 或在 `mpd-tui-team` 中按 `a`；逐字输入 `approve <teamId>` 后按 `Ctrl+X` | E1（Arm 1 的 A4–A8；Arm 2 的 H1–H6） | §4.2；真实提交后的判定行自 t8 修复起已渲染（§4，D1） |
+117:**D1：真实提交后，批准判定行没有渲染出来（严重度 medium；实测为 OPEN，后由 t8 关闭：这里把两种状态都记下来，因为第一种状态正是本波次发现的东西）。** 契约 §4.5 把成功渲染钉为 `approved: <teamId> running · members <n> · tasks <n>`。在真实宿主上实测（E1 Arm 2 的首次运行）：批准**确实提交**，记录从 `phase: staged → running`、`approvedAt` 被写入、`planReviewState` 被删除，这是只有采用的 `approveStagedTeam` 才会留下的签名；而面板显示的是提交后的空状态，因为调用后的重新读取已看不到 staged 记录。Arm 1（录制替身）**确实**渲染了工具的结构化结果，所以这是真实宿主的偏差，而不是场景的渲染缺陷。**修复（t8，`repair`，Senior Engineer）：** 已结束但不再可用的记录现在会把运行时产出的消息渲染为第一行正文（`packages/mpd-tui-plugin/src/scenes.ts:731-750`），并重建了该包的 dist。
+119:**修复后重新实测：** 本波次稳定修订版上的通道重跑报告 `arm2.outcome = approved-by-the-adopted-runtime/verdict-visible`、`outcomeLines.approved = "approved: mpd-fixture-1 running · members 2 · tasks 2"`、`findings: []`（`evidence/tui/team-surface-verify/2026-09-16T14-29-54.081Z/result.json`，来自 E5 的第二趟门禁；该通道更早一次修复后运行 `…14-24-22.312Z` 与之一致）。首次读数作为这次测量的历史保留在本台账中，而不是当前状态。
+124:**D3：该通道的受认可判定运行描述的是过期的通道字节（严重度 medium；实测后在同一波次内解决）。** t3 第一次尝试的判定运行记录了测量它的通道摘要 `skills/dsh-qa/scripts/tui-team-surface.ts` → `21a9eb5c14a30410…`。磁盘上的文件摘要为 `91a05314c38f263cc8c481174dfa3debd6b7e6914512dc94857c1064f792cf2f`，其修改时间（UTC 14:16:22）**晚于** t3 自身的最后更新（UTC 14:14:56）。因此在活动树上重新计算的语料库指纹是 `303e1631…`，**不是**第一次尝试的报告要求 captain 固定的那个 treeSha。那个过期值逐字记录在尝试运行自己的 `result.json` 里，这里刻意不再复述，因为把过期哈希写进正文正是这一行描述的陷阱。当时记录了两项后果：固定那个过期值会让 `verify-vendor` 继续为红，且该判定运行已不再描述磁盘上的通道字节。**解决（实测而非假定）：** 采用本页的独立重算值。固定值取自 2026-09-16 的 `VENDOR_LOCK.json` `assets.skills`：`fileCount 319` / `treeSha 303e163148afc07e7dad10775d3de7e96b4caa1cfae9c1a91575ae906d8cc27d`，推导检查是 `node evidence/tui/team-surface-integrate/2026-09-16T14-17-24.000Z/fingerprint.ts`：它用 `verify-vendor` 自己的算法重算语料，并把固定值并列打印（当前 `drift: false`）。`verify-vendor` 报告 PASS，QA 自检扫描（含 `agent-teams-messaging.ts --self-test`）认可同样的字节，t3 也**重试**（第二次尝试，受认可运行 `…14-19-18.574Z`）并在当前通道字节上转绿。留下来的是一条规则而不是缺陷：判定运行中的通道摘要把该判定绑定到测量它的那些字节上，之后的任何改动都会让这个绑定失效。证据：`evidence/tui/team-surface-integrate/2026-09-16T14-17-24.000Z/raw/fingerprint.log`、`REVISION.json`，以及同目录的 `gates.result.json`（`verifyVendor.exitCode = 0`）。
+165:- **语料库指纹**：权威值是 2026-09-16 读取的 `VENDOR_LOCK.json` `assets.skills` 中的固定值：**`fileCount 319` / `treeSha 303e163148afc07e7dad10775d3de7e96b4caa1cfae9c1a91575ae906d8cc27d`**。请自行推导而不是相信正文：`node evidence/tui/team-surface-integrate/2026-09-16T14-17-24.000Z/fingerprint.ts` 用 `verify-vendor` 自己的算法重算 `skills/**`（绝不引用别人的消息），并列打印重算值、固定值与 `drift` 标志：当前为 `drift: false`；给定这两个字面量时它还会对其做断言（`second-pass/raw/fingerprint-asserted.log`）。t3 第一次尝试的报告要求 captain 固定的值是**另一个**、已过期的 treeSha（见偏差 D3，那里也写了该值记在哪）；照它固定会让 `verify-vendor` 保持红色。就当前状态而言，`verify-vendor` 报告 PASS，`bun run test:qa`（含 `agent-teams-messaging.ts --self-test`）认可同样的字节。该读数仅在提交前不再有 `skills/**` 改动时有效；之后的改动会取代它，captain 在提交时无论如何都会重新测量。
+
+===== #1 security guidance: current wording =====
+CONTRIBUTING.md:205:- **Security reports** — open an issue like anything else, in the open. This project has no private
+-- EN paragraph --
+205:- **Security reports** — open an issue like anything else, in the open. This project has no private
+206-  advisory inbox and does not want one: describe the problem, the affected component and how you found
+207-  it directly in the issue.
+208-- **Questions** — read [`README.md`](./README.md) and the [`docs/`](./docs/index.md) hub first; the
+209-  README's FAQ covers the common install and configuration problems.
+210-
+211-This project does not ship credentials, and neither should your report, your patch or your evidence.
+-- zh paragraph --
+198:- **安全问题** —— 和其他问题一样，直接在公开的 issue 里提。本仓库没有私密漏洞接收入口，也不需要：把问题、
+199-  受影响的组件和发现方式直接写在 issue 里即可。
+200-- **疑问** —— 先读 [`README.zh-CN.md`](./README.zh-CN.md) 与 [`docs/`](./docs/index.zh-CN.md) 文档
+201-  中心；README 的常见问题一节覆盖了安装与配置上的常见故障。
+202-
+203-本项目不随包提供任何凭据，你的报告、补丁与证据里也不应该有。
+204-
+
+===== #5 provenance: LICENSE-NOTICES rows + README note + the three banners =====
+-- LICENSE-NOTICES: schemastery / browser client / Relakkes --
+88:## `packages/mpd-bundle-plugin/adopted/` — AgentTeams browser client (MIT)
+91:client of the dsh-agent-teams project, <https://github.com/NanmiCoder/dsh-agent-teams>, distributed
+96:## `packages/mpd-schemastery/` — MIT, relocated upstream code
+98:`packages/mpd-schemastery/` holds the schemastery validator plus `cosmokit` (`lib/`) used by the
+101:in `packages/mpd-schemastery/LICENSE`:
+103:- `schemastery`, `cosmokit`, `cordis` — `Copyright (c) 2021-present Shigma`.
+-- README: oh-my-openagent / no source shipped --
+-- banners --
+docs/feature-audit.md: 12:> roster, the eleven role descriptions and the model-chain vocabulary came from that project and are 
+docs/tui-parity.md: 7:> roster, the eleven role descriptions and the model-chain vocabulary came from that project and are 
+docs/upstream-parity-ledger.md: 7:> roster, the eleven role descriptions and the model-chain vocabulary came from that project and are 
+
+===== #6/#7/#8: .ts specifiers in the three files =====
+15:import type { DshGoStep } from "../../mpd-dsh-adapter-plugin/src/dshgo-view.ts"
+16:import type { TeamPanelTask } from "./dshgo-views.ts"
+-- dshgo-views.ts lines 35-45 --
+  textField,
+  type DshGoCaps,
+  type DshGoListItem,
+  type DshGoTone,
+  type DshGoView,
+} from "../../mpd-dsh-adapter-plugin/src/dshgo-view.ts"
+import { copyFor, type DshGoCopy } from "./dshgo-copy.ts"
+import { graphLinesOf, graphNeedsFold, graphStepsOf, layerGraphOf } from "./dshgo-graph.ts"
+import type { PanelSnapshot } from "./dshgo-panel.ts"
+
+/** One task row of the team board, as the team panel renders it. */
+-- tui index theme import --
+78:import { registerTheme } from "./theme.ts"
+1136:  // ── the runtime theme: register the shipped palette ───────────────────────
+1137:  // Seam 4's static form is a JSON file the user copies into ~/.dsh-tui/themes/; this registration is
+1139:  // `effectOn`, so unloading the plugin takes the theme back out of the picker.
+-- tui theme.ts relative imports --
+12:import { effectOn } from "../../mpd-tui-adapter-plugin/src/index.js"
+13:import type { Log } from "./log.ts"
+14:import type { PluginContextLike, SeamOutcome, TuiAdapter, TuiThemeDescriptorLike, TuiThemesLike } from "./types.ts"
+
+===== #9 theme scope =====
+65-export function registerTheme(ctx: PluginContextLike, tui: TuiAdapter, log: Log): ThemeSeam {
+66-  /** What this registration measured; `absent` until the seam binds and answers. */
+67-  let outcome: SeamOutcome = { id: "themes", state: "absent", detail: "the theme registry is not composed" }
+68:  tui.whenBound("themes", (service, scope) => {
+69-    /**
+70-     * The identity and owner this registration belongs to: the activation the adapter bound. `ctx` is
+71-     * the fallback only for an adapter (or a test double) that hands no scope at all.
+72-     */
+73-    const owner = scope ?? ctx
+74-    /** The bound registry, read as the adapter's own shape. */
+75-    const registry = service as TuiThemesLike | undefined
+76-    if (typeof registry?.register !== "function") {
+77-      outcome = { id: "themes", state: "refused", detail: "the bound theme registry exposes no register()" }
+78-      return
+79-    }
+80-    try {
+
+===== #1 diff in the fix commit (CONTRIBUTING EN+zh) =====
+commit d6cc91e664906ac2a26259454eae3809f72eb82c
+Author: HaroldZ32 <zyn779735281@hotmail.com>
+Date:   Tue Nov 3 10:24:31 2026 +0800
+
+    fix: reconcile the CodeRabbit review of PR #91 (round 1)
+    
+    9/9 inline findings, all STILL-VALID.
+    
+    Code:
+    - `dshgo-graph.ts` and `dshgo-views.ts` gained the missing explicit `.ts`
+      extensions (plus the two of the same class the reviewer did not name, so the
+      block is uniform);
+    - the TUI row's new import stopped naming a `.js` file that does not exist; the
+      package's older `.js` specifiers are deliberately left alone;
+    - `theme.ts` now passes the BOUND SCOPE from `whenBound("themes", (service,
+      scope) => ...)` to the registry and to `effectOn`. The 0.18.0 host answers
+      another activation's identity with an inert disposer, so the previous code
+      registered nothing while still reporting `requested` - a test with a negative
+      control pins it;
+    - the market entry's screenshot URLs are pinned to the reviewed commit instead of
+      `dev`, where they 404 because the images live on this branch.
+    
+    Docs:
+    - security reports go through a normal public issue, in the open: this project
+      has no private advisory inbox and does not want one (the reporter's contact
+      details must never land in the issue);
+    - the market-listing page is linked from the documentation hub;
+    - the zh `tui-parity` D1-D3 were repaired against the English twin (broken
+      bracketing, a swallowed sentence, and D3 restating a stale treeSha that EN
+      deliberately does not restate), together with the same damage in its corpus
+      fingerprint bullet and placeholder cells the prose pass had turned into `:`;
+    - the user-guide attribution table now matches the current notices file
+      component by component, 15 rows per language.
+    
+    Measured: verify:docs 55 pairs / 0 dead; verify:gates 9/9; pack closure 642
+    files compared, 642 identical (stamp 2026-11-03T02:24:13.382Z); typecheck 0.
+
+diff --git a/CONTRIBUTING.md b/CONTRIBUTING.md
+index bf5dd941..2f51aee5 100644
+--- a/CONTRIBUTING.md
++++ b/CONTRIBUTING.md
+@@ -202,12 +202,9 @@ Evidence logs must never contain credentials, tokens or private data.
+ 
+ - **Bugs and feature requests** — open an issue. Include the exact command, the observed result, the
+   expected result, your DSH profile and the bundle version.
+-- **Security reports** — the repository's **Security** tab does **not** offer private vulnerability
+-  reporting, so that route does not exist and there is no advisory form to fill in. Open a **normal
+-  issue** titled `Security report` and say only that you have one and how to reach you privately; the
+-  maintainer replies with a private channel (an email address or a private thread) and the report
+-  continues there. Keep the public issue and every comment on it free of vulnerability detail — no
+-  stack trace, no proof of concept, no affected version.
++- **Security reports** — open an issue like anything else, in the open. This project has no private
++  advisory inbox and does not want one: describe the problem, the affected component and how you found
++  it directly in the issue.
+ - **Questions** — read [`README.md`](./README.md) and the [`docs/`](./docs/index.md) hub first; the
+   README's FAQ covers the common install and configuration problems.
+ 
+diff --git a/CONTRIBUTING.zh-CN.md b/CONTRIBUTING.zh-CN.md
+index ad5b0daa..46796668 100644
+--- a/CONTRIBUTING.zh-CN.md
+
+===== WHICH commits touched the #5 files since the branch base =====
+d6cc91e6 fix: reconcile the CodeRabbit review of PR #91 (round 1)
+fb2d062b docs: de-AI the prose, current-only notices, and the listing path
+
+===== #5 LICENSE-NOTICES: the table rows the finding named =====
+-- LICENSE-NOTICES table? --
+| Reviewer | `metis.md` | <https://github.com/obra/superpowers/blob/HEAD/skills/requesting-code-review/code-reviewer.md> | MIT | `Copyright (c) 2025 Jesse Vincent` |
+| Plan Reviewer | `momus.md` | <https://github.com/VeryGoodOpenSource/vgv-wingspan/blob/HEAD/skills/shared/references/plan-review.md> | MIT | `Copyright (c) 2026 Very Good Ventures` |
+| Vision Analyst | `multimodal-looker.md` | written here | — | — |
+| Junior Engineer | `sisyphus-junior.md` | written here | — | — |
+
+The seed files and the phrase-overlap measurement are recorded beside the assets in
+`packages/mpd-roles-plugin/personas/ATTRIBUTION.md`.
+
+## `packages/mpd-bundle-plugin/adopted/` — AgentTeams browser client (MIT)
+
+`packages/mpd-bundle-plugin/adopted/agent-teams-client.js` (with its source map) is the built browser
+client of the dsh-agent-teams project, <https://github.com/NanmiCoder/dsh-agent-teams>, distributed
+under the **MIT License**. It is embedded verbatim by `scripts/build-mpd-client.ts` into the shipped
+`packages/mpd-bundle-plugin/client.js`, which backs the AgentTeams sidebar tab. The upstream build
+carries no copyright line, so none is reproduced here.
+
+## `packages/mpd-schemastery/` — MIT, relocated upstream code
+
+`packages/mpd-schemastery/` holds the schemastery validator plus `cosmokit` (`lib/`) used by the
+bundle's schema-declaring plugins, and the DSH framework modules under `harness/` that this
+repository's test suite drives. Both upstream works are MIT and both notices are reproduced in full
+in `packages/mpd-schemastery/LICENSE`:
+
+- `schemastery`, `cosmokit`, `cordis` — `Copyright (c) 2021-present Shigma`.
+- the `@deepseek-ai/dsh-*` modules — `Copyright (c) 2026 DeepSeek`, from
+  <https://github.com/deepseek-ai/deepseek-harness>.
+
+## Declared npm dependencies
+
+These are resolved by the package manager at install time and are not redistributed here, except the
+CodeGraph server noted below.
+
+===== #5 the three banners (full first lines) =====
+--- docs/feature-audit.md ---
+# Feature Audit — upstream spec vs my-power-dsh
+
+**English** | [中文](./feature-audit.zh-CN.md)
+
+This document is the **current baseline/capability comparison** for the port:
+AGENTS.md §1 references it as the engineering target. Historical port-plan records
+live under `docs/plan-*` and are process records, not part of this audit.
+
+> **STATUS REFRAMED (de-vendor-and-verify-law, 2026-10-07).** oh-my-openagent is an EARLY
+> REFERENCE, not a conformance target. The identity checks that used to measure this repository
+> against it are DELETED, no gate reads an upstream checkout, and no synchronisation is owed: the
+> roster, the eleven role descriptions and the model-chain vocabulary came from that project and are
+--- docs/tui-parity.md ---
+# TUI surface-parity ledger — the Web edition against the DSH-TUI edition
+**English** | [中文](./tui-parity.zh-CN.md)
+
+> **STATUS REFRAMED (de-vendor-and-verify-law, 2026-10-07).** oh-my-openagent is an EARLY
+> REFERENCE, not a conformance target. The identity checks that used to measure this repository
+> against it are DELETED, no gate reads an upstream checkout, and no synchronisation is owed: the
+> roster, the eleven role descriptions and the model-chain vocabulary came from that project and are
+> acknowledged in [`LICENSE-NOTICES.md`](../LICENSE-NOTICES.md) and the root README. Everything below
+> is therefore a HISTORICAL MEASUREMENT of a capability surface, kept because the comparison is
+> informative; read a ✅ as "this shipped", never as "this is still upstream-conformant", and read
+> nothing here as a promise to follow upstream release by release.
+
+--- docs/upstream-parity-ledger.md ---
+# Upstream Parity Ledger — my-power-dsh specialist parity against the pinned baseline
+**English** | [中文](./upstream-parity-ledger.zh-CN.md)
+
+> **STATUS REFRAMED (de-vendor-and-verify-law, 2026-10-07).** oh-my-openagent is an EARLY
+> REFERENCE, not a conformance target. The identity checks that used to measure this repository
+> against it are DELETED, no gate reads an upstream checkout, and no synchronisation is owed: the
+> roster, the eleven role descriptions and the model-chain vocabulary came from that project and are
+> acknowledged in [`LICENSE-NOTICES.md`](../LICENSE-NOTICES.md) and the root README. Everything below
+> is therefore a HISTORICAL MEASUREMENT of a capability surface, kept because the comparison is
+> informative; read a ✅ as "this shipped", never as "this is still upstream-conformant", and read
+> nothing here as a promise to follow upstream release by release.
+
+
+===== #5(d): oh-my-openagent provenance note + 'no source is shipped' in LICENSE-NOTICES and README =====
+-- no-source statements --
+README.md:251:- **The bundle is a package, not a fork.** It ships no harness change and edits no DSH source. If the
+README.md:304:No entry describes something this repository does not ship.
+
+===== #5(e): the three banners' exact sentence =====
+docs/feature-audit.md: docs/tui-parity.md: docs/upstream-parity-ledger.md: 
+===== #5 table: user-guide attribution rows (the commit claims 15 per language) =====
+docs/user-guide.md:12
+docs/user-guide.zh-CN.md:12
+-- roster/vocabulary row --
+
+===== #9 theme registry uses the bound scope =====
+    try {
+      /** The host's handle; an invalid or duplicate descriptor also returns an inert one. */
+      const disposer = registry.register(MPD_THEME, owner)
+      if (typeof disposer === "function") effectOn(owner, disposer, `mpd-tui theme ${MPD_THEME.name}`)
+      outcome = { id: "themes", state: "requested", detail: `theme ${MPD_THEME.name} handed to the registry (the plugin face has no read-back)` }
+    } catch (error) {
+      outcome = { id: "themes", state: "refused", detail: String((error as Error)?.message ?? error) }
+    }
+  })
+  log.debug(`theme ${MPD_THEME.name}: registration requested through the theme seam`)
+  return { outcome: (): SeamOutcome => outcome }
+}
+-- test: identity checked? --
+57:/** A theme registry double that records the descriptor AND the identity it was handed. */
+58:function registryDouble(): { register: (descriptor: unknown, identity?: unknown) => () => void; calls: unknown[]; identities: unknown[] } {
+59:  /** The descriptors, by identity, in call order. */
+61:  /** The identity argument of each call, in the same order. */
+64:    register: (descriptor: unknown, identity?: unknown): (() => void) => {
+66:      identities.push(identity)
+77: * The callback receives a SCOPE, exactly as the real adapter does (`binding.scope ?? ctx`); the arm for
+78: * the identity asserts that this scope — not the outer `ctx` — is what reaches the registry.
+81: * @param scope - the activation scope the callback reports.
+84:function adapterWith(service: unknown, bound: boolean, scope?: PluginContextLike): TuiAdapter {
+87:      if (bound) setup(service, scope)
+115:  test("the bound registry receives the descriptor by identity, and the effect is owned", () => {
+
+===== #5 table rows in user-guide (the finding's quoted rows) =====
+```
+
+`mcp__lsp__rename_symbol` (and its `rename_symbol_strict` twin) and `mcp__ast_grep__rewrite` /
+`mcp__ast_grep__scan` **write files**: run the
+rewrites with `apply: false` first, read the diff, then apply. The `mcp-git` / `mcp-shell` rows ship
+disabled (§3). The two remote rows (`context7`, `grep_app`) are public HTTP services
+and need network access; the three local servers need their binary (§11).
+
+## 14. Where these capabilities come from
+
+The attribution facts a user needs, so it is clear which parts are this project's work and which are
+other people's. The authoritative record, with the full licence texts, is
+[`LICENSE-NOTICES.md`](../LICENSE-NOTICES.md).
+
+| What you use | Where it comes from | Licence / version | Recorded in |
+|---|---|---|---|
+| Team mode: the teammate execution plane, `send_message`, `list_agents`, `wait_agent`, `interrupt_agent` and the Web panel | the **official** `@deepseek-ai/dsh-experimental-agent-team` / `-tool-agent-team` / `-client-ui-agent-team` packages, mounted by this bundle's `mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` rows | MIT (harness package set); declared in `package.json` `dependencies` | `cordis.patch.yml`; `README.md` (*What the install mounts*) |
+| The relocated `schemastery` validator, its `cosmokit` dependency and the DSH framework modules the test suite drives | upstream `schemastery` / `cosmokit` / `cordis` by Shigma, and the `@deepseek-ai/dsh-*` modules from the DeepSeek Harness | MIT: `Copyright (c) 2021-present Shigma` and `Copyright (c) 2026 DeepSeek`, reproduced in full in `packages/mpd-schemastery/LICENSE` | `LICENSE-NOTICES.md` §*schemastery* |
+| The AgentTeams sidebar client bundle | the built browser client of **dsh-agent-teams** (<https://github.com/NanmiCoder/dsh-agent-teams>), embedded verbatim into the shipped `client.js` | MIT; the upstream build carries no copyright line | `LICENSE-NOTICES.md` §*adopted* |
+| The eleven roster persona texts | permissively licensed public agent prompts (one Apache-2.0, the rest MIT); Vision Analyst and Junior Engineer are written here | MIT: this repository's own work | `LICENSE-NOTICES.md` §*Roster persona texts*; `packages/mpd-roles-plugin/personas/ATTRIBUTION.md` |
+| The served skill corpus (19 skills, incl. the repo's own `dsh-qa` and `cordis-dev`) | the 16 ported skills are re-sourced from **lazycodex** (the same author's MIT re-license of the oh-my-openagent corpus); `cordis-dev` is written here, adapting the DeepSeek Harness's 创造模式 preset skills (`@deepseek-ai/dsh-agent-preset`, MIT) | MIT: `Copyright (c) 2026 Yeongyu Kim` for the re-sourced corpus; the referenced harness material is MIT and not redistributed | `VENDOR_LOCK.json` `assets.skills`; `LICENSE-NOTICES.md` |
+| `mcp__lsp__*` | **cclsp**, a declared npm dependency | MIT; `Copyright (c) 2025 ktnyt` | `LICENSE-NOTICES.md`; `packages/mpd-mcp-lsp/` |
+| `mcp__git__*` | **@cyanheads/git-mcp-server**, a declared npm dependency | Apache-2.0, Casey Hand | `LICENSE-NOTICES.md`; `packages/mpd-mcp-gitbash/` |
+| `mcp__shell__*` | **mcp-server-commands**, a declared npm dependency | MIT; no copyright line in the package's `LICENSE` | `LICENSE-NOTICES.md`; `packages/mpd-mcp-gitbash/` |
+| `mcp__codegraph__*` and the `mpd-codegraph` row | **codegraph** by Yeongyu Kim: the optional dependency `@colbymchenry/codegraph`, whose prebuilt server ships here | MIT; the vendored server's `LICENSE` is `Copyright (c) 2026 Yeongyu Kim` | `packages/mpd-mcp-codegraph/LICENSE` + `NOTICE`; `LICENSE-NOTICES.md` §*Vendored prebuilt server* |
+| `mpd_comment_check` | **comment-checker** by code-yeongyu (`@code-yeongyu/comment-checker`) | MIT; **not** redistributed: installed on demand into `.toolchain` (`--with-comment-checker`) | `LICENSE-NOTICES.md`; `MPD_DSH_COMMENT_CHECKER_BIN` |
+| The DSH-STD protocol family: `@dsh-std/sdk`, the one DSH-STD **dependency** of this bundle (the adapter is an optional self-install, below) | **dsh-std** (https://github.com/T-Auto/dsh-std): a declared npm dependency, never a vendored body | MIT: `Copyright (c) 2026 DSH Standard contributors`; resolved at install time, not redistributed | `package.json` `dependencies`; `LICENSE-NOTICES.md` |
+| The plugin system, the tool / skill / preset / agent seams, the model providers, the Web shell | DeepSeek Harness: the **`@deepseek-ai/*`** packages | MIT; `Copyright (c) 2026 DeepSeek`; referenced as dependencies only | `LICENSE-NOTICES.md` |
+| The Agent Teams Web panel | the official `@deepseek-ai/dsh-experimental-client-ui-agent-team` client plugin | MIT (harness package set) | §8 above; patch row `mpd-ui-agent-team` |
+| The Workmates sidebar tab | hosted by the community bundle **`dsh-better-sidebar`**, an **optional peer** of this bundle (+ a `devDependency`): the bundle never installs it, and the guarded `mpd-better-sidebar` row mounts it when it is resolvable | MIT; `Copyright (c) 2026 dsh-external` | §8 above; `package.json` `peerDependencies` / `peerDependenciesMeta`; patch row `mpd-better-sidebar` |
+| The DSH plumbing (adapter, runtime plugins, `mpd` preset, combined web client), the TUI edition, the QA suite, the documentation, the extension interface | written here | MIT | `README.md` (Acknowledgements); `LICENSE.md` |
+
+Two consequences worth carrying away: a component keeps its **own** licence even inside this bundle
+(the adopted client bundle and the relocated schemastery validator are MIT, as is this repository), and
+nothing here
+configures your provider credentials: a `MISSING_CREDENTIAL` error belongs to your DSH credential
+
+===== #5 any code-yeongyu / oh-my-openagent provenance left? =====
+LICENSE-NOTICES.md:9:## Skill corpus — MIT, from `code-yeongyu/lazycodex`
+LICENSE-NOTICES.md:17:- Repository: <https://github.com/code-yeongyu/lazycodex>
+LICENSE-NOTICES.md:22:  > Yeongyu Kim (https://github.com/code-yeongyu), author of omo, pi-rules, and this
+LICENSE-NOTICES.md:46:  <https://github.com/code-yeongyu/ast-grep-skill>. The carriers `skills/ast-grep/SOURCE` and
+LICENSE-NOTICES.md:122:`@code-yeongyu/comment-checker` (MIT, <https://github.com/code-yeongyu/go-claude-code-comment-checker>)
+README.md:298:- the served skill corpus (MIT) is re-sourced from `code-yeongyu/lazycodex`;
+README.md:301:- the optional comment checker is `@code-yeongyu/comment-checker` (MIT);
+docs/user-guide.md:792:  `@code-yeongyu/comment-checker` into `.toolchain` (`--with-comment-checker`), or set
+
+===== #5 banner sentence, unwrapped =====
+docs/feature-audit.md: 
+docs/tui-parity.md: 
+docs/upstream-parity-ledger.md: 
+
+===== PACK: on-disk stamp after the fix commit? =====
+commit_time=2026-11-03 10:24:31 +0800
+2026-11-03 10:24:13.382871224 +0800 dist/mpd-package/package.json
+
+===== #9 the theme seam test (identity arm + negative control present) =====
+(pass) registerTheme hands the declaration over and owns the cleanup > the bound registry receives the descriptor by identity, and the effect is owned [0.17ms]
+ 4 pass
+ 0 fail
+Ran 4 tests across 1 file. [149.00ms]
+
+===== #9 negative control in the test file =====
+
+===== #6/#7 exact specifier audit on the three files =====
+packages/mpd-bundle-plugin/src/dshgo-graph.ts:15:import type { DshGoStep } from "../../mpd-dsh-adapter-plugin/src/dshgo-view.ts"
+packages/mpd-bundle-plugin/src/dshgo-graph.ts:16:import type { TeamPanelTask } from "./dshgo-views.ts"
+packages/mpd-bundle-plugin/src/dshgo-views.ts:40:} from "../../mpd-dsh-adapter-plugin/src/dshgo-view.ts"
+packages/mpd-bundle-plugin/src/dshgo-views.ts:41:import { copyFor, type DshGoCopy } from "./dshgo-copy.ts"
+packages/mpd-bundle-plugin/src/dshgo-views.ts:42:import { graphLinesOf, graphNeedsFold, graphStepsOf, layerGraphOf } from "./dshgo-graph.ts"
+packages/mpd-bundle-plugin/src/dshgo-views.ts:43:import type { PanelSnapshot } from "./dshgo-panel.ts"
+packages/mpd-tui-plugin/src/index.ts:40:import { t } from "./i18n.js"
+packages/mpd-tui-plugin/src/index.ts:48:import z from "../../mpd-schemastery"
+packages/mpd-tui-plugin/src/index.ts:49:import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
+packages/mpd-tui-plugin/src/index.ts:50:import type { PluginContextLike, SeamOutcome, SessionLike, TuiAdapter } from "./types.js"
+packages/mpd-tui-plugin/src/index.ts:51:import { createLog, type Log } from "./log.js"
+packages/mpd-tui-plugin/src/index.ts:52:import { onService, reportOutcomes, resolveTuiAdapter, serviceOf } from "../../mpd-tui-adapter-plugin/src/index.js"
+packages/mpd-tui-plugin/src/index.ts:53:import { AMBIGUOUS_MULTI_ROOT_NOTICE, NO_LIVE_SESSION_NOTICE, readBoardState } from "./state.js"
+packages/mpd-tui-plugin/src/index.ts:54:import { registerStatus } from "./status.js"
+packages/mpd-tui-plugin/src/index.ts:55:import { registerRenderers } from "./renderers.js"
+packages/mpd-tui-plugin/src/index.ts:56:import { registerSettingsSection } from "./settings.js"
+packages/mpd-tui-plugin/src/index.ts:57:import { DASHBOARD_TAKEOVER_KNOB, markVolatile, wheelInvertFrom } from "./settings.js"
+packages/mpd-tui-plugin/src/index.ts:58:import { setWheelInvertRead } from "./panel-core.ts"
+packages/mpd-tui-plugin/src/index.ts:59:import type { PanelBadge } from "./panel-core.js"
+packages/mpd-tui-plugin/src/index.ts:60:import { armPanelAttention, panelsSummaryLine, type PanelAttention } from "./panel-attention.js"
+packages/mpd-tui-plugin/src/index.ts:61:import { readDashboardWorkflow, registerDashboardKey } from "./dashboard-key.js"
+packages/mpd-tui-plugin/src/index.ts:62:import { registerPanelSurface, takeoverArmed } from "./panel.js"
+packages/mpd-tui-plugin/src/index.ts:63:import type { PanelOpenOutcome } from "./panel.js"
+packages/mpd-tui-plugin/src/index.ts:64:import type { PageUnavailableReason } from "./commands.js"
+packages/mpd-tui-plugin/src/index.ts:65:import { requestSubagentDetail, takeSubagentDetailRequest } from "./subagent-scene.js"
+packages/mpd-tui-plugin/src/index.ts:66:import { registerWorkmatePanel } from "./panel-workmate.js"
+packages/mpd-tui-plugin/src/index.ts:67:import { registerWatchdogPanel } from "./panel-watchdog.js"
+packages/mpd-tui-plugin/src/index.ts:68:import { boardSummary, registerScene, type PlanActionOutcome, type PlanActions } from "./scenes.js"
+packages/mpd-tui-plugin/src/index.ts:69:import { readPlanView, type MpdPlanView, type TeamWorkflow } from "./team-state.js"
+packages/mpd-tui-plugin/src/index.ts:70:import { liveTeamViews, mpdTeamRecords, type MpdTeamsLike, type TeamFeedAccessor, type TeamFeedSubscribe, type TeamFeedSubscribeMember, type TeamSourceDeps } from "./team-state.js"
+packages/mpd-tui-plugin/src/index.ts:71:import type { TeamRecord } from "../../mpd-team-core-plugin/src/team-store.js"
+packages/mpd-tui-plugin/src/index.ts:72:import type { DshLiveAgent, DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
+packages/mpd-tui-plugin/src/index.ts:73:import { registerCommandTrees } from "./command-trees.js"
+packages/mpd-tui-plugin/src/index.ts:74:import { registerShortcuts } from "./shortcuts.js"
+packages/mpd-tui-plugin/src/index.ts:75:import { createDialogs } from "./dialogs.js"
+packages/mpd-tui-plugin/src/index.ts:76:import { attachWatchdogFrontDoor, composeNotices, type WatchdogFrontDoor } from "./watchdog.js"
+packages/mpd-tui-plugin/src/index.ts:77:import { attemptDecisionEvents } from "./decisions.js"
+packages/mpd-tui-plugin/src/index.ts:78:import { registerTheme } from "./theme.ts"
+packages/mpd-tui-plugin/src/index.ts:79:import { appendBoardOpened, registerCommands } from "./commands.js"
+packages/mpd-tui-plugin/src/index.ts:80:import { openModelMenu } from "./model-menu.js"
+packages/mpd-tui-plugin/src/index.ts:81:import { BOARD_OPENED_EVENT, registerLogOnlyEventType } from "./registration.js"
+packages/mpd-tui-plugin/src/index.ts:82:import { scalarText } from "./sanitize.js"
+packages/mpd-tui-plugin/src/theme.ts:12:import { effectOn } from "../../mpd-tui-adapter-plugin/src/index.js"
+packages/mpd-tui-plugin/src/theme.ts:13:import type { Log } from "./log.ts"
+packages/mpd-tui-plugin/src/theme.ts:14:import type { PluginContextLike, SeamOutcome, TuiAdapter, TuiThemeDescriptorLike, TuiThemesLike } from "./types.ts"
+
+===== #4 zh D1-D3: bracket balance + full hashes (EN vs zh) =====
+{
+ "enBrackets": {
+  "open": 0,
+  "close": 0
+ },
+ "zhBrackets": {
+  "open": 20,
+  "close": 20
+ },
+ "enHashes": [
+  "91a05314c38f263cc8c481174dfa3debd6b7e6914512dc94857c1064f792cf2f",
+  "303e163148afc07e7dad10775d3de7e96b4caa1cfae9c1a91575ae906d8cc27d"
+ ],
+ "zhHashes": [
+  "91a05314c38f263cc8c481174dfa3debd6b7e6914512dc94857c1064f792cf2f",
+  "303e163148afc07e7dad10775d3de7e96b4caa1cfae9c1a91575ae906d8cc27d"
+ ],
+ "enRuns": [
+  "14-19-18.574Z",
+  "14-29-54.081Z",
+  "14-24-22.312Z",
+  "14-17-24.000Z"
+ ],
+ "zhRuns": [
+  "14-19-18.574Z",
+  "14-29-54.081Z",
+  "14-24-22.312Z",
+  "14-17-24.000Z"
+ ],
+ "zhBalanced": true,
+ "zhFullHashCount": 2,
+ "zhRestatesStale": false,
+ "runsMatch": true
+}

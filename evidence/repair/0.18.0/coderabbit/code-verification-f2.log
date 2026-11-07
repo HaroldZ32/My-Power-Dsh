@@ -1,0 +1,34 @@
+# Code evidence for FINDING 2 — does a trigger ALWAYS stage a new plan shell?
+# Collected 2026-11-07T19:42:26+08:00. Same tree as code-verification-f1.log.
+
+===== MODE TABLE (file header of session-gate.ts) =====
+// WHAT A TRIGGER DOES (the mode, resolved PER CALL from `team.gate`):
+//   mechanical (DEFAULT) — stage the shell, then inject the MECHANICAL notice naming the id the
+//                          call returned; every degradation of this route falls back to ADVISORY;
+//   advisory             — today's notice, stages nothing;
+//   off                  — the listener returns immediately.
+
+===== stagePlan: the ladder's branches =====
+461-    if (probe.verdict === "staged") return { ok: true, planId: planIdOf(probe.plan), alreadyStaged: true }
+462-    if (probe.verdict === "unknown") {
+471-    if (!hasStagingTool(input.agent)) return { ok: false, planId: "", alreadyStaged: false, error: "tool " + STAGING_TOOL_NAME + " is not registered in this agent's view" }
+481-      const result = await dsh.executeTool({
+490-        return { ok: false, planId: "", alreadyStaged: false, error: result?.error === undefined ? "the staging call did not report ok" : String(result.error) }
+492-      return { ok: true, planId: planIdOf(result.value), alreadyStaged: false }
+493-    } catch (error) {
+494-      return { ok: false, planId: "", alreadyStaged: false, error: errorText(error) }
+
+===== re-team fire: staged vs alreadyStaged (NOT the same thing) =====
+681:      const staged = input.mode === GATE_MODE_MECHANICAL && outcome.ok && !outcome.alreadyStaged
+682-      /** Whether the ladder found a plan already staged for this session. */
+683:      const alreadyStaged = input.mode === GATE_MODE_MECHANICAL && outcome.ok && outcome.alreadyStaged
+684-      await recordFire(input.workspace, input.sessionId, state, outcome.ok && input.mode === GATE_MODE_MECHANICAL ? outcome.planId : "")
+
+===== session-start fire: staged gate + degraded warning =====
+905:      const staged = mode === GATE_MODE_MECHANICAL && outcome.ok
+906-      report('session gate fired for agent "' + agentId + '" signals=' + verdict.signals.join("/")
+898:            warn("session-start gate: staging degraded to the advisory notice for agent \"" + agentId + "\" (" + String(outcome.error) + ")")
+
+===== the notice phrase the degraded/advisory route prints =====
+248:export const NO_TEAM_STAGED_PHRASE = "NO team was staged"
+919:export const RETEAM_NOTICE_MARKER = "[AgentTeams] Re-team rule"

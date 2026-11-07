@@ -1,0 +1,70 @@
+{
+  "wave": "v0.18.0",
+  "repair": "R4 — finding H1 (the one High finding left in code) + M1 (vendor re-pin transcript) from verify record rec-20261107T092205-376636",
+  "requirement": "R6 — compat.hosts names a band covering 0.18.0 and 0.19.0, AND a gate asserts it in CI, where only 0.19.0 is installed",
+  "generatedAt": "2026-11-07T09:34:00Z",
+  "changed": [
+    "specs/tui-hosts.json — NEW written data naming the PUBLISHED host claim: @deepseek-harness-tui/dsh-tui@0.18.0 and @deepseek-harness-tui/dsh-tui@0.19.0 (never a discovered fact, never prose)",
+    "scripts/verify-tui-admission.ts — new host-free arm COMPAT.declared-hosts: every declared coordinate must be inside EACH manifest's compat.hosts band; runs in the normal, --static-only and fixture modes; new readDeclaredHosts(); new --self-test control compat-declared-hosts; header COMPAT paragraph now names five sub-assertions",
+    "docs/compatibility.md §3 + docs/compatibility.zh-CN.md §3 — restated to what the gate NOW asserts: declared set covered by both bands (host-free), discovered host covered when one exists, BOUND — NOT CHECKED otherwise; explicitly not a live admission of both hosts in one run",
+    "evidence/repair/0.18.0/fixes/README.md — §6 bound 2 corrected ('exactly what R6 asked for' removed); §2 gains an R4 note naming the fifth arm and pointing at this directory",
+    "evidence/release/0.18.0/2026-11-07T06-55-08Z/49-repin-check.log — NEW numbered log: node scripts/repin-vendor.ts --check transcript, shipped 392 / treeSha 3133e6fb… in sync, exit 0"
+  ],
+  "notChanged": [
+    "dsh-plugin.json / packages/mpd-tui-plugin/dsh-plugin.json / dsh-distribution.json — outside this repair's write scope; the demonstration mutates only a copy under the gitignored .qa-tmp/r4-demo/",
+    "VENDOR_LOCK.json — NOT re-pinned: --check says in sync, so a third pin would have been noise",
+    "evidence/release/0.18.0/2026-11-07T06-55-08Z/result.json — captain-owned; this repair adds a log beside it, never rewrites it",
+    "docs/** other than compatibility.md(+.zh-CN), all packages/**, all skills/**"
+  ],
+  "newArm": {
+    "id": "COMPAT.declared-hosts",
+    "claim": "every host in specs/tui-hosts.json lies INSIDE each manifest's compat.hosts band",
+    "reads": "written data only — it never consults a discovered host",
+    "runsIn": ["normal", "--static-only", "fixture (--manifest)"],
+    "undecidable": "FAIL on a band that misses a declared host or an unreadable claim file; BOUND only when no readable manifest was supplied"
+  },
+  "gates": {
+    "node scripts/verify-tui-admission.ts": { "exit": 0, "report": "PASS — 49 arms passed, 1 allowed deviation(s), 5 bound(s)" },
+    "node scripts/verify-tui-admission.ts --self-test": { "exit": 0, "report": "self-test PASS: 19/19 arms, the new compat-declared-hosts control observed RED (child exit 1, arm COMPAT.declared-hosts FAIL, no host discovered)" },
+    "node scripts/verify-tui-admission.ts --static-only": { "exit": 3, "report": "by design (D5); COMPAT.declared-hosts PASS, COMPAT.host-version BOUND — NOT CHECKED" },
+    "bun run typecheck": { "exit": 0, "report": "$ tsgo --noEmit printed no diagnostics; the log is non-empty because of its header/trailer" },
+    "node scripts/verify-comment-coverage.ts": { "exit": 0, "report": "VERDICT: PASS — every declaration in the family carries a precise comment and a full signature" },
+    "bun run verify:docs": { "exit": 0, "report": "pairs=59 failed=0 violations=0 exempt=24 derived=3 links=626 dead=0 — PASS" },
+    "PATH=$PWD/.qa-tmp/dsh-022/bin:$PATH MPD_DSHGO_KIT=$PWD/.dsh-go-kit node ./scripts/verify-gates.ts": {
+      "exit": 0,
+      "report": "PASS - 11/11 member gate(s) green",
+      "members": ["vendor", "dist-fresh", "rows-parity", "docs-parity", "preset-conformance", "plugin-manifest", "comment-coverage", "graph-model", "workflows", "tui-admission", "dshgo"]
+    },
+    "node scripts/repin-vendor.ts --check": { "exit": 0, "report": "CHECK : GREEN - lock matches the working tree (drift=0, problems=0); skills 392 files treeSha=3133e6fb… in sync" }
+  },
+  "negativeControls": [
+    { "id": "compat-declared-hosts", "assertion": "a band that DROPS a declared host reddens even though no host is discovered", "fixture": "the shipped manifest cloned with compat.hosts = every declared host except the first", "observed": "exit 1, arm COMPAT.declared-hosts FAIL, in fixture mode where discovery never runs" },
+    { "id": "compat-empty-band", "assertion": "(a) an EMPTY compat.hosts reddens", "observed": "exit 1, arm COMPAT.band:fixture FAIL" },
+    { "id": "compat-band-parity", "assertion": "(b) two manifests with different bands redden", "observed": "exit 1, arm COMPAT.band-parity FAIL" },
+    { "id": "compat-distribution-ref", "assertion": "(c) a band that omits the dsh-distribution host-tui ref reddens", "observed": "exit 1, arm COMPAT.distribution-ref FAIL" },
+    { "id": "compat-host-version", "assertion": "(d) a DISCOVERED host outside the band reddens", "observed": "exit 1, arm COMPAT.host-version FAIL (fake --host-dir host at 0.17.0)" },
+    { "id": "compat-host-version-reported", "assertion": "(d) with no discovered host the sub-assertion is REPORTED, never a silent pass", "observed": "--static-only exit 3, arm COMPAT.host-version BOUND — 'NOT CHECKED — --static-only did not run host discovery'" }
+  ],
+  "h1Demonstration": {
+    "setup": "copy of the tree under .qa-tmp/r4-demo/; BOTH manifests' compat.hosts cut to [@deepseek-harness-tui/dsh-tui@0.19.0] (0.18.0 DELETED); specs/tui-hosts.json left claiming both hosts; synthetic installed host = a copy of the ambient 0.18.0 payload with package.json version relabelled 0.19.0",
+    "runs": [
+      { "run": "NEW gate, normal mode, --host-dir the synthetic 0.19.0 host", "exit": 1, "observed": "1 finding: COMPAT.declared-hosts FAIL naming both manifests; COMPAT.host-version PASS (0.19.0 is inside the cut band); REPORT: FAIL — 1 finding(s) across 55 arms", "log": "h1-new-gate-normal-0.19.0-host.log" },
+      { "run": "NEW gate, --static-only (no host discovery at all)", "exit": 1, "observed": "the same single finding; COMPAT.host-version BOUND — NOT CHECKED", "log": "h1-new-gate-static-only.log" },
+      { "run": "HEAD gate (sha256 3a95a637fb01a0269b95b02747aab8e7a4c1a06c2b02dcb2d2db77a06fd1793d, 108486 B — the probe sha the verifier recorded), same cut tree and host", "exit": 0, "observed": "REPORT: PASS — 47 arms passed, 1 allowed deviation(s), 6 bound(s) — the defect reproduced", "log": "h1-head-gate-normal-0.19.0-host.log" }
+    ],
+    "conclusion": "the pre-fix gate passes the same tree the fixed gate reddens; the fixed gate's only red arm is the new host-free one, so the result does not depend on which host the machine installs"
+  },
+  "m1": {
+    "whyTwoPins": "repin-vendor enumerates every treeSha asset from the GIT INDEX ('file list: git index (N shipped file(s))'). Pin #1 (04-repin-write.log) ran while skills/dsh-qa/scripts/dshgo-standard.ts was untracked and pinned 391 files (7d1421d8… -> 87d34451…); staging that file changed the enumerated index to 392 entries, invalidating the 391 treeSha and forcing the second write (3133e6fb…). 42-vendor-after-repin.log proves only the post state.",
+    "recorded": "evidence/release/0.18.0/2026-11-07T06-55-08Z/49-repin-check.log — the missing assertion that the shipped 392 pin matches the final tree",
+    "thirdPin": "NOT performed: --check exited 0 with drift=0"
+  },
+  "notProved": [
+    "Neither run admitted BOTH hosts live. The shipped-tree run discovered the ambient 0.18.0 host; the demonstration's 0.19.0 is a version string on a copy of the 0.18.0 payload. The declared-set arm proves the CLAIM covers both hosts, not that this run exercised both.",
+    "The H1 demonstration ran in a COPY of the tree (the manifests are outside this repair's write scope and must not be mutated). The copy carries the files the gate reads but not .git, node_modules, dist/ or the full evidence/ tree.",
+    "dist/mpd-package/ (gitignored local artifact) predates specs/tui-hosts.json, so a later pack must be re-run for that artifact to carry the new data file; no pack gate is claimed here.",
+    "M1 is an assertion, not a reconstruction: the 391->392 cause is the pin's own git-index enumeration plus the verifier's recorded 16:42 staging; the 16:42 index itself was not rebuilt.",
+    "CI installs the host itself; this repair proves the arm reddens with only 0.19.0 discoverable on THIS machine (synthetic), not that a real CI run happened (no push rights from this seat).",
+    "No live TTY mount and no artifact digest: the gate's own declared bound is unchanged."
+  ]
+}

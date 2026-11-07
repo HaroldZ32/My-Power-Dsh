@@ -60,16 +60,16 @@ STATE_FILE="${STATE_FILE:?}"
 FACTS_FILE="${FACTS_FILE:?}"
 APP_DIR="${APP_DIR:?}"
 WORK_DIR="${WORK_DIR:?}"
-# Same default as docker/entrypoint.sh, and for the same reason: 0.18.0 is the dsh-tui release this
-# bundle targets, and its declared peer bands run through harness 0.2.1-rc.4/rc.5 (36 of its 39
-# `@deepseek-ai/dsh-*` peers append both bands, where 0.17.0's lists stop at 0.2.1-rc.3 and 0.16.1's
-# at 0.2.1-rc.2).
-# 0.15.0's bands stop at 0.2.0-rc.2, so pinning it
-# against a 0.2.1 profile is REFUSED on peer ranges — the lane then REDDENS at that step and the row's
+# Same default as docker/entrypoint.sh, and for the same reason: 0.19.0 is the dsh-tui release this
+# bundle targets, and its declared peer bands accept BOTH harness 0.2.2-rc.1 and 0.2.1-rc.4/rc.5 (36 of
+# its 39 `@deepseek-ai/dsh-*` peers append both bands), so one pin serves the current baseline and the
+# older-host arm.
+# A TUI pin whose peer range excludes the harness pin is REFUSED by `dsh plugin --profile dsh-tui add`
+# — the lane then REDDENS at that step and the row's
 # raw quotes the host's own refusal, because the `add-host.log` capture below copies the step log into
-# the evidence tree (`tui-logs/`) and clips its first/error lines. (0.16.1, 0.15.0, 0.14.0, 0.13.0 and
-# 0.12.0 were the pins before it.) Keep the two in step.
-TUI_VERSION="${TUI_VERSION:-0.18.0}"
+# the evidence tree (`tui-logs/`) and clips its first/error lines. (0.18.0, 0.16.1, 0.15.0, 0.14.0,
+# 0.13.0 and 0.12.0 were the pins before it.) Keep the two in step.
+TUI_VERSION="${TUI_VERSION:-0.19.0}"
 # The apparatus library (docker/lib/live-verdict.ts) and the caller's live-arm switch. Both are handed
 # over by docker/entrypoint.sh, which also owns the credential staging — the TUI cannot run a real
 # turn without them, and a missing LIB_DIR then reddens live.tui.* instead of passing silently.

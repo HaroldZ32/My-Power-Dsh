@@ -87,9 +87,10 @@ waterfall 由终端界面回答；在手机上根本没有这样的客户端，�
 （工作台）与 `mpd-team`（团队看板），两者都出现在 `session.tab`、`features` 与 `chat.panel`：外加一条
 **composer strip**（`mpd-status`）、两个 **composer 动作**（`mpd-dispatch`、`mpd-board`）与两个
 **message 动作**（`mpd-save-memory`、`mpd-copy-reply`）。每个面板还在 `dsh-go/views/` 下带一份手写的**静态**
-兜底视图。清单是声明式的：App 用自己的渲染器画那棵 JSON 组件树，不执行本包的任何代码。整块远低于 16 KiB 上限，
-而 `node scripts/verify-dshgo-views.ts` 是那道门：id 唯一、每个插槽的数量合法、每份声明的视图都存在、可解析、
-且在面板预算之内。
+兜底视图。清单是声明式的：App 用自己的渲染器画那棵 JSON 组件树，不执行本包的任何代码。整块远低于 16 KiB 上限。
+门是 `node scripts/verify-dshgo-standard.ts`，它是常设的 `verify:gates` 成员：MANIFEST 与 VIEW 车道保证 id 跨插槽
+唯一、每个插槽的数量合法、每份声明的视图都存在、是视图 v1 且在面板预算之内，HOST 车道则检查下文的绑定形状。
+标准本身见 [`dsh-go-standard.zh-CN.md`](dsh-go-standard.zh-CN.md)。
 
 ### 两个面板
 
@@ -107,7 +108,9 @@ waterfall 由终端界面回答；在手机上根本没有这样的客户端，�
 修好换行。指标磁贴同理画在 hero 卡片**外面**：App 只在 `(width - 8) / 2 >= 136 × 文本缩放` 时让 grid 保持两列，
 带内边距的卡片低于这个阈值，磁贴就会一行一个。
 
-宿主侧（`mpd-bundle-plugin`）在 DSH Go 桥接服务绑定之后经由适配器注册每个面板，以 0.5 Hz（协议上限）轮询，并且
+宿主侧（`mpd-bundle-plugin`）在 DSH Go 桥接服务绑定之后经由适配器注册每个面板——绑定就是
+`mpd-dsh-adapter-plugin` 里唯一一个延迟的 `ctx.inject(["dshGo"], …)`，那是本 bundle 唯一被认可的 harness 接触面，
+因此没有桥的宿主什么也不注册、只打一行 `dshGo=absent`、并且从不轮询。随后它以 0.5 Hz（协议上限）轮询，并且
 只在模型发生变化时推送一份收窄后的数据：id、名称、状态、计数、问题自身的文本与任务标题，绝不含文件系统路径、
 token 或凭据。`view` 是对同一批服务的**实时读取**而不是读推送缓存，因为 App 会**先**取视图**再**订阅。只有**结构性**
 签名变化（暂存问题的身份，或看板的 id/状态集合）才会重新取视图；仅文本变化走数据推送。
@@ -165,7 +168,8 @@ SSH 支持在上游仍被推迟。没有桥接的宿主上，面板与 strip 保
 - **中继不会夺取真实回答者已经认领的请求。** 桌面回答时的行为是已验证的；桌面与手机同时挂载时「桌面优先」
   是构造决定的。
 - **面板动作需要活跃会话。** 没有会话时点按就是一条 toast，不会排队成意图。
-- **仓库门禁检查的不是 v2 实时树。** `verify-dshgo-views.ts` 检查的是**声明的**静态视图；面板在运行时构建的 v2 树由
+- **仓库门禁检查的不是 v2 实时树。** `node scripts/verify-dshgo-standard.ts`（其 VIEW 车道）检查的是**声明的**
+  静态视图；面板在运行时构建的 v2 树由
   该包的单元测试覆盖（两种版本模式下的 `lintDesign` 加预算走查），不由那道门覆盖。
 - **渲染观感在本工作区未证明。** 这里没有 Flutter App，也没有设备：协议形状、预算、主题 token 规则与清单是已验证的；
   像素效果是读者自己的检查。
@@ -178,6 +182,10 @@ SSH 支持在上游仍被推迟。没有桥接的宿主上，面板与 strip 保
   `dshgo-surfaces.ts`），它们的纯视图构建器（`dshgo-views.ts`）与双语文案（`dshgo-copy.ts`）。
 - `mpd-dsh-adapter-plugin`： dshGo 接缝与视图套件（`src/dshgo-view.ts`）：组件 builder、`measureView` /
   `fitsBudget`、`adaptView`、`lintDesign` 与 `toolCard`。
+
+- 本界面所遵循的 DSH-Go 标准——七个插槽及其上限、按语言的文本上限、视图预算、绑定要求与五车道门禁：
+  [`dsh-go-standard.zh-CN.md`](dsh-go-standard.zh-CN.md)。三平面矩阵（DSH 核心、dsh-TUI、DSH-Go）见
+  [`compatibility.zh-CN.md`](compatibility.zh-CN.md)。
 
 代码旁的每个包 README 才是契约，这一页只是地图。仓库通则、门禁与 git 模型见
 [`../AGENTS.md`](../AGENTS.md)，命令见 [`development.md`](development.md)。

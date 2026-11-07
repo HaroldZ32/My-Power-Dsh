@@ -2,10 +2,10 @@
 
 [English](./README.md) | **中文**
 
-[![版本](https://img.shields.io/badge/version-0.17.5-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
+[![版本](https://img.shields.io/badge/version-0.18.0-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
 [![npm](https://img.shields.io/badge/npm-%40mpd--dsh%2Fmpd-CB3837.svg)](https://www.npmjs.com/package/@mpd-dsh/mpd)
 [![许可证：MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE.md)
-[![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.1--rc.5-4B32C3.svg)](#致谢)
+[![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.2--rc.1-4B32C3.svg)](#致谢)
 [![平台](https://img.shields.io/badge/platforms-Web%20GUI%20%7C%20DSH--TUI-informational.svg)](#一个插件两个端)
 [![运行时](https://img.shields.io/badge/runtime-Bun%201.4.0-black.svg)](https://bun.sh)
 [![质量门](https://github.com/HaroldZ32/My-Power-Dsh/actions/workflows/gates.yml/badge.svg)](https://github.com/HaroldZ32/My-Power-Dsh/actions/workflows/gates.yml)
@@ -138,7 +138,8 @@ DSH-TUI 的 pin 记在 [`dsh-plugin.json`](./dsh-plugin.json) 的 `compat.hosts`
 
 | `@mpd-dsh/mpd` | DeepSeek Harness | DSH-TUI | 说明 |
 |---|---|---|---|
-| 0.17.5 | 0.2.1-rc.5 | 0.18.0 | 本次发布 |
+| 0.18.0 | 0.2.2-rc.1 | 0.19.0 | 本次发布 |
+| 0.17.5 | 0.2.1-rc.5 | 0.18.0 | 上一次发布 |
 | 0.17.4 | 0.2.1-rc.5 | 0.18.0 | 上一次发布 |
 | 0.17.3 | 0.2.1-rc.5 | 0.18.0 | 上一版本 |
 | 0.17.2 | 0.2.1-rc.5 | 0.18.0 | `previous` |
@@ -154,10 +155,12 @@ DSH-TUI 的 pin 记在 [`dsh-plugin.json`](./dsh-plugin.json) 的 `compat.hosts`
 | 0.15.0 | 0.2.1-rc.2 | 0.16.1 | `previous` |
 | 0.14.0 | 0.2.1-rc.2 | 0.16.1 | `previous`（harness 0.2.1 适配发布） |
 
-最新一行**就是**这一对：`0.17.5` 对 harness `0.2.1-rc.5` 与 DSH-TUI `0.18.0`，两者必须一起移动。
-`dsh-tui@0.17.0` 的 peer 名单止于 harness `0.2.1-rc.3`，所以 rc.5 的 harness 配 0.17.0 的宿主会被
-`dsh plugin --profile dsh-tui add` 拒装。钉定位置是 [`package.json`](./package.json) 与
-[`dsh-plugin.json`](./dsh-plugin.json) 的 `compat.hosts`；其下各行保留为历史，记录更早版本实际钉定的组合。
+最新一行**就是**这一对：`0.18.0` 对 harness `0.2.2-rc.1` 与 DSH-TUI `0.19.0`。旧宿主继续被支持：
+`engines.dsh` 覆盖 `>=0.2.1-rc.2 <0.3.0-0`，而 `0.18.0` 在 `0.2.1-rc.5` 上同样能安装并运行。`0.19.0`
+的 peer 名单新增 `0.2.2-rc.1`，同时保留 `0.2.1-rc.4`/`0.2.1-rc.5`，而且它的准入链与 `0.18.0` 的逐字节
+相同。钉定位置是 [`package.json`](./package.json) 与 [`dsh-plugin.json`](./dsh-plugin.json) 的
+`compat.hosts`（同时列出两个 TUI 宿主）；其下各行保留为历史，记录更早版本实际钉定的组合。完整矩阵见
+[`docs/compatibility.zh-CN.md`](./docs/compatibility.zh-CN.md)。
 
 ## 快速上手
 
@@ -224,8 +227,11 @@ DSH-TUI 的 pin 记在 [`dsh-plugin.json`](./dsh-plugin.json) 的 `compat.hosts`
 
 ## 状态与已知限制
 
-- **针对一个预发布版 harness 构建和验证。** 套件按 **0.2.1-rc.5** 测试。上游稳定之前请预期会有破坏，
-  并钉住你使用的 harness 版本。
+- **针对一个预发布版 harness 构建和验证。** 套件按 **0.2.2-rc.1** 测试，而更旧的 **0.2.1-rc.5** 仍然可以
+  安装并运行。上游稳定之前请预期会有破坏，并钉住你使用的 harness 版本。
+- **旧 harness 上缺少一项能力。** `list_agents` 在 `0.2.1-rc.5` 上不会被挂载：新 harness 移除了该行所需的
+  子路径导出，而单个 preset 无法同时横跨两者。见
+  [`docs/compatibility.zh-CN.md`](./docs/compatibility.zh-CN.md) §2。
 - **TUI 端在几处点名的地方落后于 Web 端。** 上表中两列不读作"事实相同"的那些行，都是仍然开放的偏差，
   每一条的证据都记在 [`docs/tui-parity.md`](./docs/tui-parity.md)。
 - **套件是一个包，不是一份 fork。** 它不附带任何 harness 改动，也不编辑 DSH 源码。若 harness 改了某个 seam
@@ -263,7 +269,7 @@ DSH-TUI 的 pin 记在 [`dsh-plugin.json`](./dsh-plugin.json) 的 `compat.hosts`
 
 ## 变更日志
 
-发布说明在 [`CHANGELOG.md`](./CHANGELOG.md)，最新的在前，每个已发布版本一节（当前版本是 **v0.17.5**）。
+发布说明在 [`CHANGELOG.md`](./CHANGELOG.md)，最新的在前，每个已发布版本一节（当前版本是 **v0.18.0**）。
 带注释的 tag 列在 [Releases](https://github.com/HaroldZ32/My-Power-Dsh/releases)。
 
 ## 致谢
