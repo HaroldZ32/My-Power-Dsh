@@ -1,0 +1,33 @@
+{
+  "case": "release-0.18.0",
+  "tag": "v0.18.0",
+  "branch": "release/v0.18.0",
+  "tree": "459f815e3ac32a9e48a76d82763fbff4ea4285fd",
+  "note": "The release tree hash equals commit 12bdbdb7's tree, so the credentialed Docker evidence gathered on that tree (source --live and oneclick --live, both exit 0 with 30/30 live.* arms PASS each) applies VERBATIM to this release; it is re-cited rather than re-run. CI's credential-free Docker acceptance also ran on this content.",
+  "rows": [
+    {"gate":"verify:gates","exitCode":0,"verdict":"PASS","detail":"11/11 members green (vendor, dist freshness, rows, docs, preset conformance, manifest, comments, graph, workflows, tui-admission, dshgo)","log":"01-gates.log"},
+    {"gate":"verify-dist-fresh","exitCode":0,"verdict":"PASS","detail":"34/34 fresh, 1 declared NOT COVERED","log":"02-dist.log"},
+    {"gate":"verify-pack-closure","exitCode":0,"verdict":"PASS","detail":"668 files compared, 668 identical, 0 drift","log":"03-pack.log"},
+    {"gate":"typecheck","exitCode":0,"verdict":"PASS","log":"04-typecheck.log"},
+    {"gate":"verify-comment-coverage","exitCode":0,"verdict":"PASS","log":"05-comments.log"},
+    {"gate":"verify-vendor","exitCode":0,"verdict":"PASS","detail":"after the wave's single re-pin (skills 392, treeSha 9cfe60ec)","log":"06-vendor.log"},
+    {"gate":"verify-no-host-override","exitCode":0,"verdict":"PASS","log":"07-nho.log"},
+    {"gate":"verify-manual-paths","exitCode":0,"verdict":"PASS","log":"08-manual.log"},
+    {"gate":"install-profile --dry-run","exitCode":0,"verdict":"PASS","log":"09-install-dry.log"},
+    {"gate":"bun test packages","exitCode":0,"verdict":"PASS","detail":"3700 tests / 246 files / 0 fail / 6 skip","log":"10-tests.log"},
+    {"gate":"test:qa","exitCode":0,"verdict":"PASS","detail":"57/57 after staging the credential store in the sandbox DSH_HOME (AGENTS.md §7). The two earlier red runs are kept: 11 (real HOME -> isolation refusal) and 11b (sandbox without credentials -> 'the sandbox DSH_HOME must carry a credential store').","log":"11c-test-qa-staged.log"},
+    {"gate":"qa/dshgo-standard","exitCode":0,"verdict":"PASS","detail":"lane=real crosscheck=passed","log":"12-dshgo-case.log"},
+    {"gate":"qa/preset-conformance","exitCode":0,"verdict":"PASS","detail":"agentPreset mpd, row parity 27/27, negative control reddens","log":"13-preset-conformance.log"},
+    {"gate":"qa/dual-track-smoke","exitCode":0,"verdict":"PASS","detail":"official + deepseek both ok","log":"14-dual-track.log"},
+    {"gate":"qa/mcp-call","exitCode":0,"verdict":"PASS","log":"15-mcp-call.log"},
+    {"gate":"docker/source --live (credentialed)","exitCode":0,"verdict":"PASS","detail":"tree-identical evidence: evidence/docker/client-install/2026-11-07T10-32-59Z (239 assertions, 0 failed, 30/30 live.* PASS)","log":"evidence/docker/client-install/2026-11-07T10-32-59Z/result.json"},
+    {"gate":"docker/oneclick --live (credentialed)","exitCode":0,"verdict":"PASS","detail":"tree-identical evidence: evidence/docker/client-install-oneclick/2026-11-07T10-53-42Z (239 assertions, 0 failed, 30/30 live.* PASS)","log":"evidence/docker/client-install-oneclick/2026-11-07T10-53-42Z/result.json"},
+    {"gate":"docker/source --no-browser (credential-free regression)","exitCode":0,"verdict":"PASS","detail":"CI job on this content; locally evidence/docker/client-install/2026-11-07T07-14-04Z","log":"CI docker-e2e"}
+  ],
+  "bounds": [
+    "No Flutter/DSH-Go host exists here: the native half is proven against the published standard, the pinned spec data and service doubles, never on a device.",
+    "The official @dsh-go/plugin-kit is private:true and not on npm; it is never vendored. The cross-check ran against a pinned checkout supplied by MPD_DSHGO_KIT.",
+    "compat.hosts is a published claim, not an admission input.",
+    "The DSH-Go HOST lane is static source analysis, not a mounted boot."
+  ]
+}
