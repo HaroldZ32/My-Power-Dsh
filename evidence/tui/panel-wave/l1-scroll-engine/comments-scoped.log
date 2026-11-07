@@ -1,0 +1,21 @@
+### packages/mpd-tui-plugin/src/panel-core.ts
+# verify-comment-coverage
+
+scanned 1 TypeScript file(s) of 1 in the source set; inspected 284 declaration(s); skipped 98 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+[exit: 0]
+### packages/mpd-tui-plugin/src/panel-workmate.ts
+# verify-comment-coverage
+
+scanned 1 TypeScript file(s) of 1 in the source set; inspected 106 declaration(s); skipped 24 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+[exit: 0]
+### packages/mpd-tui-plugin/test/panel-scroll.test.ts
+# verify-comment-coverage
+
+scanned 1 TypeScript file(s) of 1 in the source set; inspected 74 declaration(s); skipped 37 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+[exit: 0]

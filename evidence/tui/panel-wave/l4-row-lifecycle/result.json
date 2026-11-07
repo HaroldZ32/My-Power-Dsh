@@ -1,0 +1,78 @@
+{
+  "lane": "L4",
+  "task": "T2 \u2014 row lifecycle: burn-after-use projection + compact rows in a new shared module",
+  "contract": ".mpd/plans/tui-panel-wave.md \u00a75.A1, \u00a75.A5; decisions D1, D2, D7, D8 (captain directive)",
+  "captain": "7d08e456-38d5-42f1-bcbb-ca370ebe95e4",
+  "date": "2026-11-06T15:38:44Z",
+  "changed": [
+    "packages/mpd-tui-plugin/src/subagent-rows.ts (NEW \u2014 the one row builder: projection, burn rule, compact text, section)",
+    "packages/mpd-tui-plugin/src/subagent-scene.ts (moved the row builder out; consumes the new module; detail rows compact; scene wires the filter and an injectable clock; back-compat re-exports)",
+    "packages/mpd-tui-plugin/test/subagent-scene.test.ts (verbatim fixtures updated; live-row + settled-row assertions; burn directions at the surface)",
+    "packages/mpd-tui-plugin/test/subagent-rows.test.ts (NEW \u2014 every burn arm both ways, negative controls, compact format table)"
+  ],
+  "not_touched": [
+    "panel-dag.ts (L2)",
+    "panel-core.ts (L1)",
+    "scenes.ts (L3)",
+    "index.ts (L5)"
+  ],
+  "acceptance": {
+    "A1_sidebar_and_scene_share_the_filter": "Both surfaces call subagentSectionRows/subagentSectionOf from subagent-rows.ts. The merged scene is WIRED (tested). The sidebar call site is L2's file and is UNWIRED for now: its call keeps the back-compat unfiltered default; L2's recipe is in signatures.md.",
+    "A1_terminal_row_stops_being_drawn": "ARM 1: terminal (completed/failed/cancelled, or unknown WITH an end instant) and now - (endedAt ?? completedAt) > 60000 \u21d2 not drawn; no end instant \u21d2 not drawn at once. Tested at the module level (subagent-rows.test.ts 'ARM 1') and at the surface (subagent-scene.test.ts 'past the grace...').",
+    "A1_ended_team_row_stops_being_drawn": "ARM 2: the row's description EQUALS a member name of an ENDED team scope of this session \u21d2 not drawn at once. Tested both levels. A LIVE team's member row is never hidden.",
+    "A1_live_rows_never_filtered": "starting/running return visible before any arm. Tested.",
+    "A1_other_session_rows_never_filtered": "A row whose parentSessionId names a different session is never hidden. Tested.",
+    "A1_nothing_deleted": "PROJECTION only: rows are read from the host's append-only catalog and filtered at draw time; no store, no delete, no new host contact.",
+    "A1_negative_controls": "No-filter default draws everything (module test + scene detail); the in-grace clock draws the settled row the past-grace clock drops.",
+    "A5_no_mode_in_any_row": "The list row and the detail body draw no `mode` field. Tested: `not.toContain('one-shot')`, `not.toContain('continuable')`, no `mode        ` detail row.",
+    "A5_no_ISO_instant_in_any_row": "List rows and detail rows render relative ages only. Tested: no `2026-10-02T` / no `T15:` in a rendered row.",
+    "A5_ages_Ns_Nm_Nh_Nd": "subagentRowAge pinned over the bucket table: <1s / Ns / Nm / Nh / Nd, `?` for epoch 0 or NaN.",
+    "A5_verbatim_fixtures_updated": "subagent-scene.test.ts: `\ud83d\udfe1 TuiAdapter Engineer \u2014 Lane A \u00b7 running \u00b7 started 2m` (live) and `\ud83d\udfe2 Plan Reviewer \u00b7 completed \u00b7 ended 10s` (settled), plus a pinned FIXED_NOW clock.",
+    "A5_new_live_and_settled_assertions": "subagent-rows.test.ts 'the compact row (clause 5 / D7)' + the updated verbatim arm in subagent-scene.test.ts."
+  },
+  "gates": [
+    {
+      "command": "bun test packages/mpd-tui-plugin/test/subagent-rows.test.ts",
+      "exit": 0,
+      "observed": "22 pass / 0 fail / 71 expect() calls",
+      "log": "evidence/tui/panel-wave/l4-row-lifecycle/subagent-rows.test.log"
+    },
+    {
+      "command": "bun test packages/mpd-tui-plugin/test/subagent-scene.test.ts",
+      "exit": 0,
+      "observed": "31 pass / 0 fail / 164 expect() calls",
+      "log": "evidence/tui/panel-wave/l4-row-lifecycle/subagent-scene.test.log"
+    },
+    {
+      "command": "bun test packages/mpd-tui-plugin",
+      "exit": 0,
+      "observed": "661 pass / 1 skip / 0 fail / 16283 expect() calls / 29 files",
+      "log": "evidence/tui/panel-wave/l4-row-lifecycle/package-tests.log"
+    },
+    {
+      "command": "bun run typecheck",
+      "exit": 0,
+      "observed": "clean (tsgo --noEmit, no output). An EARLIER capture in this same wave was red (5 errors) ONLY on L1's and L3's untracked in-flight test files; those lanes landed and this final capture is clean.",
+      "log": "evidence/tui/panel-wave/l4-row-lifecycle/typecheck.log"
+    },
+    {
+      "command": "bun run verify:comments",
+      "exit": 0,
+      "observed": "VERDICT: PASS \u2014 every declaration in the family carries a precise comment and a full signature (609 files, 54241 declarations).",
+      "log": "evidence/tui/panel-wave/l4-row-lifecycle/verify-comments.log"
+    }
+  ],
+  "residuals_belonging_to_other_lanes": {
+    "note": "NONE at the final capture. Both gates were red earlier in the wave only on L1's/L3's untracked in-flight files (panel-scroll.test.ts, scene-scroll.test.ts); those lanes landed their work and the final capture is green.",
+    "tree_status_log": "evidence/tui/panel-wave/l4-row-lifecycle/tree-status.log"
+  },
+  "bounds": [
+    "The 60 s grace is DELIBERATE: a settled row is still visible for up to a minute so the user can read its outcome. Clause 1's outcome is 'rows stop piling up', not 'a row vanishes the instant it finishes'.",
+    "ARM 2 correlates by NAME, and the host catalog's `description` for a team member is the member's DESCRIPTION (falling back to its NAME only when empty) \u2014 measured in packages/mpd-dsh-adapter-plugin/src/index.ts (`description: request.description === \"\" ? request.name : request.description`). So in production ARM 2 fires for a member with an empty description; other member rows burn through ARM 1 once their run is terminal, which still satisfies clause 1 for teams. This is a correlation BOUND, stated rather than papered over.",
+    "The burn projection is OPT-IN (no filter \u21d2 unfiltered): the sidebar does not burn yet because panel-dag.ts is L2's write scope. L2's exact recipe is in evidence/tui/panel-wave/l4-row-lifecycle/signatures.md.",
+    "The team arm requires an exact, unambiguous name match; a description that merely CONTAINS a member name (e.g. \"Member \u2014 task\") does not fire and follows ARM 1.",
+    "MPD's consult records are an in-process Map in mpd-roles-plugin and are NOT readable from the TUI, so the rule cannot ask 'did MPD spawn this row?'; it is decided from the row itself plus the session's own team projection.",
+    "A row the channel read is session-scoped: the panel snapshot carries no per-row parent id, so its rows are this session's by construction; only a channel row that NAMES another parent session is protected from the burn."
+  ],
+  "published_signatures": "evidence/tui/panel-wave/l4-row-lifecycle/signatures.md"
+}

@@ -1,0 +1,18 @@
+{
+  "capturedAt": "2026-11-06T23:30:00+08:00",
+  "what": "The PUBLISHED 0.17.4 force supervisor interrupted four team members of this wave at ~900 s, with 'Last tool calls: (none recorded)', requeued their rows, cleared their owners and emitted 21 ownerless [split] rows.",
+  "whyItMatters": "This is the same defect PR #101 repairs (merged to dev, NOT released). The session runs the INSTALLED @mpd-dsh/mpd@0.17.4, so the repair is not in effect and the defect reproduced inside this wave's own team.",
+  "observed": {
+    "incidents": [
+      {"taskId": "T1", "kind": "wedged-force", "ms": 901595, "force": "applied", "split": ["T12","T13","T14","T15"], "lastToolCalls": "none recorded"},
+      {"taskId": "T2", "kind": "wedged-force", "ms": 911955, "force": "applied", "split": ["T16","T17","T18","T19","T20"], "lastToolCalls": "none recorded"},
+      {"taskId": "T3", "kind": "wedged-force", "ms": 903881, "force": "applied", "split": ["T21","T22","T23","T24"], "lastToolCalls": "none recorded"},
+      {"taskId": "T4", "kind": "wedged-force", "ms": "~900000", "force": "applied", "split": ["T25","T26","T27","T28","T29","T30","T31","T32"], "lastToolCalls": "none recorded"}
+    ],
+    "knobsAtFailure": {"warnSilenceMs": 600000, "tickIntervalMs": 15000, "warnStreakToEscalate": 6, "actionOnEscalate": "warn-only", "toolInFlightMaxMs": 900000, "holdTtlMs": 900000, "forceAfterMs": 900000, "enabled": true},
+    "evidenceThatTheMembersWereWorking": "senior-engineer-6 had written packages/mpd-tui-plugin/src/panel-core.ts (+109/-17) and created packages/mpd-tui-plugin/test/panel-scroll.test.ts before the interrupt, yet the handoff recorded 'Last tool calls: (none recorded)'.",
+    "splitRowsOwnerless": 21,
+    "recovery": "watchdog.forceAfterMs set to 0 in .mpd/mpd.jsonc; session-watchdog-status reports forceAfterMs=0 and 'the file layer is applied LIVE (T-18)'. The 21 split rows were closed (T12 as failed, the rest completed) and the four parent rows reassigned and re-dispatched."
+  },
+  "bounds": "Single session, this workspace, 2026-11-06. Not a claim about the fixed dev tree, which was not running here."
+}

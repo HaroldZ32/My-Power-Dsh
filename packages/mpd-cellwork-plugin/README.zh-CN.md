@@ -340,6 +340,7 @@ budget）留在本包：它们是**写**看板的工作流层。
 
 verifier 的只读拒绝清单现为 **十个**名字（新增 `mpd_role_spawn_async` 与 `mpd_role_consult`），
 no-delegation 清单为四个（两个 spawn 工具加两个 consult 工具）：verifier 席位既不能委派，也不能
-取消另一个 consult。cell 席位**就是**团队成员，因此团队 watchdog 的强制监督器通过该团队成员身份
-将其作为强制目标（handoff、interrupt、requeue、split），而 `mpd-team-core` **绝不**写 CELL 记录
+取消另一个 consult。cell 席位**就是**团队成员，因此团队 watchdog 的强制监督器通过该团队成员身份、
+按**先宽限后强制**的顺序将其作为强制目标（宽限指令、采用成员自己写的 handoff，然后才是 interrupt、
+requeue、split），而 `mpd-team-core` **绝不**写 CELL 记录
 —— 席位事后通过既有的 `cellwork_dispatch` / `cellwork_split` 动词修复自身。

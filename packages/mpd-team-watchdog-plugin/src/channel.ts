@@ -27,7 +27,7 @@
 // The fold is incremental and append-only: `apply` consumes ONE event and updates
 // the per-session state; nothing re-reads the log. It never throws, never reads a
 // file, and never touches the clock on its own (event times come from the events).
-import type { ChannelState } from "./machine.js"
+import type { ChannelState, ToolCallExcerpt } from "./machine.js"
 
 export type { ChannelState }
 
@@ -68,6 +68,10 @@ export interface ChannelView {
   events: number
   /** Whether an `agent/assistant-stream` start frame (or an answer) covered the open step. */
   firstToken: boolean
+  /** S5: the last committed assistant message's text, or null when the fold observed none. */
+  lastAssistantMessage: string | null
+  /** S5: the last few tool calls (oldest first, at most five), each with an argument excerpt. */
+  recentToolCalls: readonly ToolCallExcerpt[]
 }
 
 /** One assistant-stream frame, as the enrichment seam delivers it. */
@@ -100,6 +104,13 @@ interface SessionFold {
   lastEventType: string | null
   /** How many events this session's fold consumed. */
   events: number
+  /**
+   * S5: the last committed assistant message, with the instant the event carried — the text the
+   * supervisor handoff quotes. Null until an `assistant/message` with readable text arrives.
+   */
+  lastAssistant: { at: number; text: string } | null
+  /** S5: the last few `tool/call`s, oldest first, each with its argument excerpt. */
+  recentCalls: ToolCallExcerpt[]
 }
 
 /** The `turn/step` key the fold stores answers and streaming under. */
@@ -175,6 +186,93 @@ function toolNameOf(event: unknown): string | null {
   // The call event's payload, which names the tool.
   const data = dataOf(event)
   return asString(data.name) ?? asString(asRecord(data.message)?.name)
+}
+
+/** The longest argument excerpt the fold keeps for one call, in characters (S5's handoff quote). */
+const TOOL_EXCERPT_MAX = 160
+
+/** How many recent tool calls the fold keeps per session (S5 quotes the last five). */
+const RECENT_CALLS_MAX = 5
+
+/**
+ * A ONE-LINE argument excerpt for a `tool/call` (S5).
+ *
+ * The supervisor handoff must carry "the last tool calls WITH argument excerpts", and the stamps
+ * carry tool NAMES only, so this is the one place that data exists. The excerpt is the serialized
+ * argument value (the shapes a harness uses are `arguments`, `args`, `input` or the model-facing
+ * `message.content[0].input`), whitespace-collapsed and capped — never the whole payload, because a
+ * handoff that inlines a 40 KB file edit is not evidence, it is a copy of the workspace.
+ *
+ * @param event - the `tool/call` record event.
+ * @returns the single-line excerpt, or an empty string when the call carried no arguments at all.
+ */
+export function toolExcerptOf(event: unknown): string {
+  // The call's payload, where every argument spelling lives.
+  const data = dataOf(event)
+  // The model-facing message a call may wrap its arguments in.
+  const message = asRecord(data.message)
+  // The message's first content block, the second place a call's arguments appear.
+  const first = Array.isArray(message?.content) ? asRecord((message?.content as unknown[])[0]) : null
+  // The argument value, tried in the order the harness shapes put it.
+  const raw = data.arguments ?? data.args ?? data.input ?? first?.input ?? data.params
+  if (raw === undefined || raw === null) return ""
+  // Serialized: a string is quoted, so an excerpt can never be mistaken for an empty argument list.
+  let text: string
+  try {
+    text = typeof raw === "string" ? raw : JSON.stringify(raw)
+  } catch {
+    // A cyclic or otherwise unserializable argument value is reported as present but unreadable.
+    text = "(unserializable arguments)"
+  }
+  if (typeof text !== "string") return ""
+  // One line, so a multiline edit cannot break the bullet it is quoted in.
+  const line = text.replace(/\s+/g, " ").trim()
+  return line.length <= TOOL_EXCERPT_MAX ? line : line.slice(0, TOOL_EXCERPT_MAX - 1) + "…"
+}
+
+/** The longest assistant message the fold keeps, in characters (S5's handoff quote). */
+const ASSISTANT_TEXT_MAX = 1_200
+
+/**
+ * The text of a committed `assistant/message` (S5).
+ *
+ * The fold used to extract NOTHING but a timestamp from this event, which is why the force handoff
+ * could not say what the interrupted member had just said. The text lives in the message's
+ * `content` blocks (`{type:"text", text}`), with a bare `text` as the fallback for a plugin-merged
+ * attempt shape; the blocks are joined and capped, because the handoff quotes the message, it does
+ * not reproduce the transcript.
+ *
+ * @param event - the `assistant/message` (or `assistant/attempt`) record event.
+ * @returns the collapsed message text, or null when the event carried none.
+ */
+export function assistantTextOf(event: unknown): string | null {
+  // The event's payload, where the message lives.
+  const data = dataOf(event)
+  // The model-facing message the event wraps, when it wraps one.
+  const message = asRecord(data.message)
+  // The content blocks, at either nesting, or an empty list when neither carries one.
+  const blocks = Array.isArray(message?.content) ? (message?.content as unknown[]) : Array.isArray(data.content) ? (data.content as unknown[]) : []
+  // The text blocks, in order.
+  const parts: string[] = []
+  for (const block of blocks) {
+    if (typeof block === "string") {
+      parts.push(block)
+      continue
+    }
+    // A structured block's text payload, present only on a text block.
+    const text = asString(asRecord(block)?.text) ?? asString(asRecord(block)?.content)
+    if (text !== null) parts.push(text)
+  }
+  if (parts.length === 0) {
+    /** The payload's own text — present only on a plugin-merged attempt shape, never on a real message. */
+    const bare = asString(data.text) ?? asString(message?.text)
+    if (bare === null) return null
+    parts.push(bare)
+  }
+  // One collapsed line block, capped: the handoff quotes the message, never the whole transcript.
+  const joined = parts.join(" ").replace(/\s+/g, " ").trim()
+  if (joined === "") return null
+  return joined.length <= ASSISTANT_TEXT_MAX ? joined : joined.slice(0, ASSISTANT_TEXT_MAX - 1) + "…"
 }
 
 /**
@@ -258,12 +356,23 @@ export class ChannelFold {
             fold.answered.set(key, time)
             fold.streaming.delete(key)
           }
+          // S5: the TEXT of that message is handoff evidence. It used to be thrown away here, which
+          // is why a force handoff could not say what the interrupted member had just said.
+          const text = assistantTextOf(event)
+          if (text !== null) fold.lastAssistant = { at: time, text }
           break
         }
         case "tool/call": {
           // The id pairing this call with its result, when readable.
           const callId = callIdOf(event)
           if (callId !== null) fold.openCalls.set(callId, { since: time, tool: toolNameOf(event) })
+          // S5: the call's NAME and an argument excerpt, kept for the handoff. Oldest first, capped,
+          // so a long turn cannot grow the fold without bound.
+          const callTool = toolNameOf(event)
+          if (callTool !== null) {
+            fold.recentCalls.push({ tool: callTool, excerpt: toolExcerptOf(event), at: time })
+            if (fold.recentCalls.length > RECENT_CALLS_MAX) fold.recentCalls.splice(0, fold.recentCalls.length - RECENT_CALLS_MAX)
+          }
           break
         }
         case "tool/result": {
@@ -386,6 +495,9 @@ export class ChannelFold {
       lastEventType: fold.lastEventType,
       events: fold.events,
       firstToken: state === "OUTSTANDING" ? false : state === "ALIVE" || state === "IN-FLIGHT",
+      // S5's two handoff facts, read straight off the fold.
+      lastAssistantMessage: fold.lastAssistant === null ? null : fold.lastAssistant.text,
+      recentToolCalls: fold.recentCalls,
     }
   }
 
@@ -425,6 +537,8 @@ export class ChannelFold {
         lastEventAt: null,
         lastEventType: null,
         events: 0,
+        lastAssistant: null,
+        recentCalls: [],
       }
       this.folds.set(sessionId, fold)
     }

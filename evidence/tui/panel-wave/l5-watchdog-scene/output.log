@@ -1,0 +1,35 @@
+=== L5 watchdog scene evidence — 2026-11-06T16:34:39Z ===
+
+## 0. reproduction BEFORE the repair (the pre-fix source, restored afterwards; sha-verified)
+Expected to contain: "1/24"
+Received: "MPD watchdog\n⤢\nwatchdog · 1 held · 12 unread\nteam team-a · held · phase active\nincidents\nescalate · 1m · ○\nteam-a · T3 · a1\ncause silence-channel · 90000ms · hold\nescalate · 1m · ○\nteam-a · T3 · a1\ncause silence-channel · 90000ms · hold\nescalate · 1m · ○\nteam-a · T3 · a1\ncause silence-channel · 90000ms · hold\nescalate · 1m · ○\nteam-a · T3 · a1\ncause silence-channel · 90000ms · hold\nescalate · 1m · ○\nteam-a · T3 · a1\n█\n█\n█\n█\n█\n█\n█\n░\n░\n░\n░\n░\n░\n░\n░\n░\n░\na ack · r refresh · ↑↓/jk scroll 1/23 "
+(fail) clause 2 + clause 3: the page's scroll band and its enlarge control > at a NON-ZERO offset the body is still drawn, the rail keeps its cell, and the frame stays inside the measured height [0.46ms]
+Expected: 37
+Received: 38
+(fail) clause 2 + clause 3: the page's scroll band and its enlarge control > the interior reserves the rail's cell — a row plus the bar is exactly the interior, never wider [0.33ms]
+Expected: 16
+Received: 17
+(fail) clause 2 + clause 3: the page's scroll band and its enlarge control > the frame fits the measured height — a full window draws exactly `rows` lines [0.30ms]
+ 19 pass
+ 3 fail
+
+## 1. bun test packages/mpd-tui-plugin
+(skip) team-workflow projection (read-only, from the OFFICIAL live readout) > the REAL record of this session's own team projects without a hand-built object
+
+ 674 pass
+ 1 skip
+ 0 fail
+ 16379 expect() calls
+Ran 675 tests across 30 files. [12.50s]
+exit: 0
+
+## 2. bun run typecheck
+$ tsgo --noEmit
+exit: 0
+
+## 3. bun run verify:comments
+
+scanned 611 TypeScript file(s) of 611 in the source set; inspected 54505 declaration(s); skipped 26690 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+exit: 0

@@ -86,6 +86,13 @@
 //   bun skills/dsh-qa/scripts/tui-admission.ts [--sandbox-root <dir>] [--static-only]
 // Evidence -> evidence/tui/lanes/<timestamp>/{result.json,output.log,admission-static.json,REVISION.json,
 //             shipped/,clone/,shipped-granted/,grant-clone/}
+//
+// THE HARD REQUIREMENT GATE IS A DIFFERENT FILE: `node scripts/verify-tui-admission.ts`, a member of
+// `bun run verify:gates`. It owns what a build must never pass without — the mechanically checkable
+// admission items as failures, both manifests through the host's OWN `parseManifest`, and a NON-ZERO
+// exit when no host resolves (a skip is never a pass). THIS case stays the instrument: the static grant
+// arms, the three live boots and the ledger attribution, which need a real TTY. A green run here is not
+// the gate and a green gate is not this case's live evidence.
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join, resolve, sep } from "node:path"
 import { tmpdir } from "node:os"

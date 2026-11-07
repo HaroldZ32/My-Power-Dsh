@@ -2,7 +2,7 @@
 
 **English** | [中文](./README.zh-CN.md)
 
-[![Version](https://img.shields.io/badge/version-0.17.4-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
+[![Version](https://img.shields.io/badge/version-0.17.5-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
 [![npm](https://img.shields.io/badge/npm-%40mpd--dsh%2Fmpd-CB3837.svg)](https://www.npmjs.com/package/@mpd-dsh/mpd)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE.md)
 [![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.1--rc.5-4B32C3.svg)](#acknowledgements)
@@ -20,8 +20,9 @@ interface other packages can contribute to.
 
 The bundle runs on two surfaces. Everything below exists in the **DSH Web GUI** and in the **DSH-TUI**
 terminal edition, with the same install, the same `.mpd/` state, the same tools and the same `mpd`
-preset. Nothing is forked, and a capability is not absent from the terminal just because it has no
-pixels there.
+preset. The terminal surface runs on [dsh-TUI](https://github.com/ccch1mneyyy/dsh-TUI), whose site is
+[dshtui.com](https://dshtui.com). Nothing is forked, and a capability is not absent from the terminal
+just because it has no pixels there.
 
 The bundle is the package [`@mpd-dsh/mpd`](https://www.npmjs.com/package/@mpd-dsh/mpd); this
 repository root *is* that package. One command installs it, and one command removes it without leaving
@@ -156,7 +157,8 @@ names it; pin both.
 
 | `@mpd-dsh/mpd` | DeepSeek Harness | DSH-TUI | Notes |
 |---|---|---|---|
-| 0.17.4 | 0.2.1-rc.5 | 0.18.0 | the current release |
+| 0.17.5 | 0.2.1-rc.5 | 0.18.0 | the current release |
+| 0.17.4 | 0.2.1-rc.5 | 0.18.0 | previous |
 | 0.17.3 | 0.2.1-rc.5 | 0.18.0 | previous |
 | 0.17.2 | 0.2.1-rc.5 | 0.18.0 | previous |
 | 0.17.1 | 0.2.1-rc.5 | 0.18.0 | previous |
@@ -171,7 +173,7 @@ names it; pin both.
 | 0.15.0 | 0.2.1-rc.2 | 0.16.1 | previous |
 | 0.14.0 | 0.2.1-rc.2 | 0.16.1 | previous (the harness-0.2.1 adaptation release) |
 
-The newest row **is** that pair: `0.17.4` ships against harness `0.2.1-rc.5` and DSH-TUI `0.18.0`, and the
+The newest row **is** that pair: `0.17.5` ships against harness `0.2.1-rc.5` and DSH-TUI `0.18.0`, and the
 two move as a set. `dsh-tui@0.17.0`'s peer lists stop at harness `0.2.1-rc.3`, so an rc.5 harness with a
 0.17.0 host is refused by `dsh plugin --profile dsh-tui add`. The pins live in
 [`package.json`](./package.json) and [`dsh-plugin.json`](./dsh-plugin.json) `compat.hosts`; the rows below it
@@ -270,7 +272,8 @@ which is HOME-scoped at `~/.mpd/workmate/`. See
 - **[User guide](./docs/user-guide.md)**: install, tools by job, teams, recipes, command reference.
 - **[Documentation hub](./docs/index.md)**: every document, with reading paths for users, extension
   authors, contributors and agents.
-- **[DSH-TUI edition](./docs/tui.md)**: admission, distribution and per-package compatibility.
+- **[DSH-TUI edition](./docs/tui.md)**: admission, distribution and per-package compatibility; the
+  terminal host itself is [dsh-TUI](https://github.com/ccch1mneyyy/dsh-TUI) ([dshtui.com](https://dshtui.com)).
 - **[Distribution descriptor](./dsh-distribution.json)**: this environment's identity, composition and
   managed data locations in the [dsh-distribution](https://github.com/T-Auto/dsh-distribution)
   meta-protocol format (Draft), readable by tools that support the protocol; detail in
@@ -291,7 +294,7 @@ bilingual (English and 简体中文).
 ## Changelog
 
 Release notes live in [`CHANGELOG.md`](./CHANGELOG.md), newest first, one section per released
-version (the current release is **v0.17.4**). Annotated tags are listed under
+version (the current release is **v0.17.5**). Annotated tags are listed under
 [Releases](https://github.com/HaroldZ32/My-Power-Dsh/releases).
 
 ## Acknowledgements

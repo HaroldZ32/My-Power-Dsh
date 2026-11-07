@@ -322,7 +322,7 @@ to top-level `mpd` sessions (a child session — subagent, teammate, workflow wo
 preset's session never get it), settles once per session, and a failure inside it leaves the step
 untouched.
 
-## Async consults and the 15-minute deadman (2026-11-05)
+## Async consults and the consult deadman (2026-11-05, revised 2026-11-06)
 
 `mpd_role_spawn` keeps its arguments and report shape, but its `status` may now also be
 `"interrupted"`: every consult — blocking or background — is supervised.
@@ -335,15 +335,21 @@ untouched.
 Concurrency is capped by `MPD_DSH_CONSULT_MAX` (default `8`, the host's active-child limit): an
 over-cap consult QUEUES and never throws. The cap is read per start.
 
-**Deadman.** Every consult is armed with a 15-minute bound (900 000 ms). On expiry:
+**Deadman.** Every consult — blocking or background — is armed with a bound read at EVERY arm from
+`consult.forceAfterMs`, falling back to `watchdog.forceAfterMs`, then `900000` ms. A declared `0`
+disables the deadman, the same meaning `forceAfterMs` carries for the force supervisor. On expiry the
+predicate is the force supervisor's, applied to this consult's own tool map:
 
-- If the child's CURRENT tool call is `bash` and still in flight, the consult is NOT interrupted:
-  one `consult-long-bash` warning records the elapsed time and the deadman re-arms. This exemption
-  has NO age bound — a legitimate verification run may take an hour.
-- Otherwise the supervisor writes `<ws>/.mpd/handoff/consult-<consultId>-<UTC instant>.md` (task,
-  role, started, elapsed, the last tool calls with ≤ 400-character argument excerpts, next step),
-  interrupts the child, and settles the consult `status:"interrupted"` carrying the handoff path
-  and the last observed activity.
+- An OPEN `bash` call → NOT interrupted, at any age; one `consult-long-bash` record, then re-arm. This
+  exemption has NO age bound — a legitimate verification run may take an hour.
+- Any other OPEN tool younger than `watchdog.toolInFlightMaxMs` → activity; the deadman re-arms and
+  records one `consult-tool-in-flight` line per open call.
+- No open tool, or one past that bound → the supervisor writes
+  `<ws>/.mpd/handoff/consult-<consultId>-<UTC instant>.md` (task, role, started, elapsed, the MEASURED
+  idle duration that triggered the force, the last assistant message when the row observed one, the
+  last tool calls with ≤ 400-character argument excerpts, a next step naming what to resume), then
+  interrupts the child and settles the consult `status:"interrupted"` carrying the handoff path, the
+  measured idle duration and the last observed activity.
 
 The supervisor never interrupts the captain or another consult's child: it only ever calls its own
 handle's `interrupt()`.

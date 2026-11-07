@@ -46,6 +46,7 @@ import {
   usePanelSize,
   usePanelTick,
   usePanelViewport,
+  type PanelKit,
   type PanelPropsLike,
 } from "./panel-core.js"
 
@@ -375,8 +376,14 @@ export function createWorkmatePanelComponent(readLibrary: () => WorkmateLibrary,
     }
     /** The panel's measured geometry; the single geometry hook call of this component. */
     const measured = usePanelSize(kit.ui, panelFloorColumns("workmate"))
-    /** The cells this page may DRAW IN: the reported width minus the frame's own two border cells. */
-    const contentCols = panelContentWidth(measured.cols)
+    // ONE MORE CELL BELONGS TO THE RAIL (contract §5.A2): `panelViewportBody` lays the rows and the
+    // one-cell gutter as row SIBLINGS, so a row budgeted against the bare interior is one cell wider than
+    // the room it has whenever the shelf overflows — the host wraps or clips that cell. The DAG page
+    // already reserves it. The cell is unused while everything fits, which is the cheap, STABLE side of
+    // the trade: a budget that changed with the overflow would rewrap every row the moment a rail
+    // appeared, which is the host's own stated reason for a permanent gutter.
+    /** The cells this page may DRAW IN: the frame interior minus the gutter's one reserved cell. */
+    const contentCols = Math.max(1, panelContentWidth(measured.cols) - 1)
     /** The library for this render, read PER RENDER so the shelf is never a stale copy. */
     let library: WorkmateLibrary
     try {
@@ -510,15 +517,22 @@ export function createWorkmatePanelComponent(readLibrary: () => WorkmateLibrary,
     sizes.viewportRows = windowRows
     /** The same handle, named for what it does here: the window this render draws. */
     const scroller = viewport
-    /** The visible slice of the shelf, inside the page's own wheel handler (the slice is taken on the
-     * page's own rows, so `rowIndex`'s numbers stay indices into exactly this array). */
-    const scrolled = kit.React.createElement(kit.ui.Box, { key: "scroll", flexDirection: "column", onWheel: (event: unknown): void => scroller.onWheel(event) }, ...children.slice(viewport.offset, viewport.offset + viewport.viewportRows))
+    // THE WINDOW IS TAKEN ONCE, BY `panelViewportBody` (contract §5.A2). This page used to slice its own
+    // rows into ONE wrapper element and hand that one-element array to the helper, which then sliced it
+    // AGAIN at the same offset: at every offset above zero the second slice was empty, so the body
+    // vanished while the footer still printed a position — the user's "all the text disappears". The
+    // helper's `rowWrapper` parameter exists for exactly this split: it takes the slice, the page only
+    // wraps what it drew. The wrapper is also where the wheel belongs, because the wrapper IS the
+    // element the host hit-tests for the visible rows.
+    /** The wheel binding, applied by the body to the slice it is about to draw. */
+    const wheelBound = (boundKit: PanelKit, rows: readonly unknown[]): unknown =>
+      boundKit.React.createElement(boundKit.ui.Box, { key: "scroll", flexDirection: "column", onWheel: (event: unknown): void => { swallowWheelEvent(event); scroller.onWheel(event) } }, ...rows)
     /** The pinned footer: the `⤢` hint FIRST (a 26-cell row is clamped from its END, so a trailing hint
      * would be the first thing the host cut at the width this page asks for), then the keys it handles
      * and where the shelf is. */
     const footer = textRow(kit, `${PANEL_FULLSCREEN_GLYPH} fullscreen · ↑↓/jk move · PgUp/PgDn${scroller.overflow ? ` ${scroller.offset + 1}/${scroller.max + 1}` : ""}`, { key: "keys", dim: true, maxCells: contentCols })
-    /** The visible slice plus its reserved gutter column. */
-    const body = panelViewportBody(kit, [scrolled], scroller)
+    /** The visible slice plus its reserved gutter column; the FULL shelf goes in, never a pre-slice. */
+    const body = panelViewportBody(kit, children, scroller, true, wheelBound)
     // THE TITLE ROW IS OUTSIDE THE WINDOW, immediately under the frame's top border: the page's own
     // name and MPD's `⤢`, both pinned, so the control is at the same cell however far the shelf scrolls.
     /** This page's chrome row: its title and the full-screen control. */

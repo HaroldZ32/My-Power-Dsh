@@ -19,7 +19,8 @@ import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSy
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { DshTeamExecutor } from "../../mpd-dsh-adapter-plugin/src/index.ts"
-import { forceWedgedTask, type TeamActionCaller, type TeamActionDeps } from "../src/team-actions"
+import { forceWedgedTask, graceWedgedTask, type TeamActionCaller, type TeamActionDeps } from "../src/team-actions"
+import { writeHandoffDocument } from "../src/team-handoff"
 import { readTeamJournal } from "../src/team-journal"
 import { fold, readRecords } from "../src/mailbox-store"
 import { addTeamMember, addTeamTask, createTeam, readTeam, updateTeamMember, updateTeamTask, writeTeam, type TeamRecord } from "../src/team-store"
@@ -45,8 +46,12 @@ interface Observed {
   workspace: string
   /** One entry per interrupt: `<handle>` plus the exact caller object. */
   interrupts: Array<{ handle: string; caller: unknown }>
+  /** One entry per executor `send`: the handle it targeted and the directive text it carried. */
+  sends: Array<{ handle: string; text: string }>
   /** Set to make the executor's interrupt throw (the refusal arm). */
   interruptError: string | null
+  /** Set to make the executor's `send` throw (the undeliverable-directive arm). */
+  sendError: string | null
   /** Runs INSIDE the interrupt seam, so an arm can land a concurrent write while the force awaits. */
   onInterrupt?: () => void
 }
@@ -69,14 +74,17 @@ function fixture(): Fixture {
   const workspace = mkdtempSync(join(tmpdir(), "mpd-force-"))
   sandboxes.push(workspace)
   /** What the seams observed. */
-  const observed: Observed = { workspace, interrupts: [], interruptError: null }
+  const observed: Observed = { workspace, interrupts: [], sends: [], interruptError: null, sendError: null }
   /** The executor double: records the interrupt and can refuse it. */
   const executor: DshTeamExecutor = {
     kind: "native",
     reason: "the arm's own executor",
     providers: (): string[] => ["interrupt"],
     spawn: async (): Promise<{ handle: string; executor: "native" }> => ({ handle: "child", executor: "native" }),
-    send: async (): Promise<void> => {},
+    send: async (_caller: unknown, handle: string, content: string): Promise<void> => {
+      observed.sends.push({ handle, text: content })
+      if (observed.sendError !== null) throw new Error(observed.sendError)
+    },
     interrupt: async (caller: unknown, handle: string): Promise<void> => {
       observed.interrupts.push({ handle, caller })
       // A sibling writer landing MID-AWAIT, which the arms that check the post-await read script here.
@@ -187,7 +195,12 @@ describe("D3.4 — the force action", () => {
     expect(split.map((task) => task.subject)).toEqual(["[split] the wedged row — packages/a/**", "[split] the wedged row — packages/b/**"])
     for (const task of split) {
       expect(task.status).toBe("pending")
-      expect(task.owner).toBeUndefined()
+      // S7 (updated 2026-11-06): the row INHERITS the interrupted member as its owner, which is what
+      // makes it dispatchable by an owner-only pass. It used to be UNOWNED, and every such row was
+      // refused by the default dispatch pairing.
+      expect(task.owner).toBe(MEMBER_NAME)
+      expect(task.sourceTaskId).toBe("T1")
+      expect(task.blockedBy).toEqual([])
       expect(task.writeScopes.length).toBe(1)
       expect(task.description).toContain(outcome.handoff)
     }
@@ -223,7 +236,11 @@ describe("D3.4 — the force action", () => {
     expect(split.length).toBe(1)
     expect(split[0].subject).toBe("[split] the wedged row")
     expect(split[0].description).toContain("NARROW THE SCOPE FIRST")
-    expect(split[0].owner).toBeUndefined()
+    // S7 (updated 2026-11-06): the continuation row inherits the owner, has no blockers and names the
+    // row it continues — the OLD pin was "unowned", which is the D4 defect this wave fixes.
+    expect(split[0].owner).toBe(MEMBER_NAME)
+    expect(split[0].blockedBy).toEqual([])
+    expect(split[0].sourceTaskId).toBe("T1")
     expect(outcome.split).toEqual([split[0].id])
   })
 
@@ -418,5 +435,230 @@ describe("D3.4 — the force action", () => {
     expect(row?.status).toBe("pending")
     expect(row?.attempt).toBe(2)
     expect(after.tasks.filter((task) => task.subject.startsWith("[split]")).length).toBe(2)
+  })
+})
+
+// S4–S7 (contract `watchdog-force-silence.md`, 2026-11-06): the grace phase's artifact, the terminal
+// race, the inherited owner and the handoff that carries the work.
+describe("S4–S7 — grace artifact, terminal race, dispatchable splits, a handoff that carries the work", () => {
+  test("S4/AC4: a MEMBER handoff written during grace is used VERBATIM and no template is written", async () => {
+    // The fixture.
+    const box = fixture()
+    // The team, with the member seat in the handoff window, exactly as `agent_teams_task handoff` leaves it.
+    let record = teamWith(box.workspace)
+    // The member's own seven-section document, written through the plane's own writer (which creates
+    // the handoff directory and advances the ordinal).
+    const memberPath = writeHandoffDocument(box.workspace, record.teamId, MEMBER_NAME, 1, "# Task\nT1\n\n# State\nhalf done\n")
+    // The seat records the document and enters the checkpoint window.
+    record = updateTeamMember(record, MEMBER_NAME, { handoff: { path: memberPath, ordinal: 1 }, mode: "checkpoint" })
+    writeTeam(box.workspace, record)
+    // The force.
+    const outcome = await forceWedgedTask(box.deps, box.caller, { teamId: record.teamId, taskId: "T1" })
+    expect(outcome.ok).toBe(true)
+    if (!outcome.ok) throw new Error(outcome.error)
+    // THE ARTIFACT IS THE MEMBER'S, and the supervisor wrote no template beside it.
+    expect(outcome.handoffSource).toBe("member")
+    expect(outcome.handoff).toBe(memberPath)
+    expect(handoffs(box.workspace)).toEqual([])
+    // CLOSED CLEANLY: a member that complied is not interrupted.
+    expect(box.observed.interrupts).toEqual([])
+  })
+
+  test("S5/AC7: the fallback handoff carries description, scopes, an ARGUMENT excerpt, the idle clock and real ids", async () => {
+    // The fixture.
+    const box = fixture()
+    // The team under test.
+    const created = teamWith(box.workspace)
+    // The force, with the evidence the watchdog's fold and clock supply.
+    const outcome = await forceWedgedTask(box.deps, box.caller, {
+      teamId: created.teamId,
+      taskId: "T1",
+      evidence: { silentMs: 901_000, toolCalls: [{ tool: "bash", excerpt: "bun run typecheck" }], assistantMessage: "The typecheck is green.", lastToolCalls: ["bash"] },
+    })
+    expect(outcome.ok).toBe(true)
+    if (!outcome.ok) throw new Error(outcome.error)
+    // The document, read back from disk.
+    const text = readFileSync(outcome.handoff, "utf8")
+    // THE WORK: the acceptance text, the declared scopes, the call WITH its argument excerpt, the
+    // measured idle duration, and a next step naming the ACTUAL rows.
+    expect(text).toContain("- Description: own the record")
+    expect(text).toContain("`packages/a/**`")
+    expect(text).toContain("bun run typecheck")
+    expect(text).toContain("IDLE AT THE FORCE BOUND: 901000 ms")
+    expect(text).toContain("The typecheck is green.")
+    expect(text).toContain("`T1`")
+    // The continuation rows are appended with their REAL ids after the split.
+    expect(text).toContain("## Continuation rows")
+    expect(text).toContain(outcome.split[0])
+    // THE DEFECT STRING IS GONE.
+    expect(text).not.toContain("system message")
+  })
+
+  test("S6/AC5: a `complete` landing DURING the interrupt survives: no requeue, no split, one force-skipped journal row", async () => {
+    // The fixture.
+    const box = fixture()
+    // The team under test.
+    const created = teamWith(box.workspace)
+    // A sibling writer completes the row WHILE the interrupt is in flight.
+    box.observed.onInterrupt = () => {
+      /** The record as the concurrent completion left it. */
+      const live = readTeam(box.workspace, created.teamId)
+      if (live === undefined) throw new Error("the team vanished")
+      writeTeam(box.workspace, updateTeamTask(live, "T1", { status: "completed", note: "finished during the interrupt" }, NOW))
+    }
+    // The force.
+    const outcome = await forceWedgedTask(box.deps, box.caller, { teamId: created.teamId, taskId: "T1" })
+    expect(outcome.ok).toBe(true)
+    if (!outcome.ok) throw new Error(outcome.error)
+    // THE TERMINAL STATE WON: the payload says so and carries the observed status/revision.
+    expect(outcome.skipped).toMatchObject({ status: "completed" })
+    expect(outcome.requeued).toBeUndefined()
+    expect(outcome.split).toEqual([])
+    // The row on disk is STILL completed — never dragged back to pending.
+    /** The record as the force left it. */
+    const after = readTeam(box.workspace, created.teamId)
+    expect(after?.tasks.find((task) => task.id === "T1")?.status).toBe("completed")
+    expect(after?.tasks.filter((task) => task.id !== "T1")).toEqual([])
+    // ONE journal row, and its reason states the skip with the status and revision.
+    const skipped = readTeamJournal(box.workspace).filter((entry) => entry.event === "wedged-force" && String(entry.reason).includes("force-skipped"))
+    expect(skipped.length).toBe(1)
+    expect(String(skipped[0].reason)).toContain("status=completed")
+    expect(String(skipped[0].reason)).toContain("revision=")
+  })
+
+  test("S7/AC6: every split row inherits the interrupted member as owner, has no blockers, and names its source; the captain hears the recovery verbs", async () => {
+    // The fixture.
+    const box = fixture()
+    // The team under test.
+    const created = teamWith(box.workspace)
+    // The force.
+    const outcome = await forceWedgedTask(box.deps, box.caller, { teamId: created.teamId, taskId: "T1" })
+    expect(outcome.ok).toBe(true)
+    if (!outcome.ok) throw new Error(outcome.error)
+    /** The record as the force left it. */
+    const after = readTeam(box.workspace, created.teamId)
+    if (after === undefined) throw new Error("the team record vanished")
+    /** The continuation rows the force created. */
+    const split = after.tasks.filter((task) => task.id !== "T1")
+    expect(split.length).toBe(2)
+    for (const task of split) {
+      // DISPATCHABLE: the inherited owner is what owner-only dispatch pairs on.
+      expect(task.owner).toBe(MEMBER_NAME)
+      expect(task.blockedBy).toEqual([])
+      expect(task.sourceTaskId).toBe("T1")
+      expect(task.status).toBe("pending")
+    }
+    // THE CAPTAIN'S BODY names the inherited owner and all three recovery verbs.
+    const mailbox = fold(readRecords(box.workspace))
+    expect(mailbox.messages.length).toBe(1)
+    /** The captain's message body, where the inherited owner and the recovery verbs must appear. */
+    const body = mailbox.messages[0].body
+    expect(body).toContain(`inherited ${MEMBER_NAME} as their owner`)
+    expect(body).toContain('mode:"roster"')
+    expect(body).toContain("reassign")
+    expect(body).toContain('{action:"claim"')
+  })
+
+  // F1 (CodeRabbit, branch `fix/watchdog-force-silence`): adoption is bound to THIS task attempt.
+  test("F1: a handoff written for ANOTHER task is NOT adopted — the directive still goes out", async () => {
+    // The fixture.
+    const box = fixture()
+    // A team with TWO in-progress rows owned by the same member: T1 is the one the stale document
+    // describes, T2 is the row that actually went silent after the member was reopened.
+    let record = teamWith(box.workspace)
+    record = addTeamTask(record, { subject: "the second row", description: "own that one too", writeScopes: ["packages/c/**"] }, NOW)
+    record = updateTeamTask(record, "T2", { status: "in_progress", owner: MEMBER, attempt: 1 }, NOW)
+    // The member's ONLY document describes T1 — exactly what a reopened seat keeps from its last row.
+    /** The stale document, written for T1. */
+    const stale = writeHandoffDocument(box.workspace, record.teamId, MEMBER_NAME, 1, "# Task\nT1\n\n# State\nfinished T1\n")
+    record = updateTeamMember(record, MEMBER_NAME, { handoff: { path: stale, ordinal: 1 }, mode: "member" })
+    writeTeam(box.workspace, record)
+    // The grace directive for T2.
+    /** What the grace action answered. */
+    const outcome = await graceWedgedTask(box.deps, box.caller, { teamId: record.teamId, taskId: "T2" })
+    expect(outcome.ok).toBe(true)
+    if (!outcome.ok) throw new Error(outcome.error)
+    // NOT ADOPTED: a document about other work cannot stand in for THIS row's artifact.
+    expect(outcome.adopted).toBeUndefined()
+    expect(outcome.path).not.toBe(stale)
+    // THE DIRECTIVE WENT OUT, names T2, and asks for the seven-section handoff.
+    expect(box.observed.sends.length).toBe(1)
+    expect(box.observed.sends[0].handle).toBe(MEMBER)
+    expect(box.observed.sends[0].text).toContain("T2")
+    expect(box.observed.sends[0].text).toContain('agent_teams_task {action:"handoff"')
+    expect(outcome.delivered).toBe(true)
+  })
+
+  test("F1 control: a handoff whose Task section names THIS row is still adopted, and no directive is sent", async () => {
+    // The fixture.
+    const box = fixture()
+    // The team under test.
+    let record = teamWith(box.workspace)
+    // The member's OWN document for T1, stating the attempt the row carries.
+    /** The attributable document. */
+    const document = writeHandoffDocument(box.workspace, record.teamId, MEMBER_NAME, 1, "# Task\nT1 (attempt 1) — the wedged row\n\n# State\nhalf done\n")
+    record = updateTeamMember(record, MEMBER_NAME, { handoff: { path: document, ordinal: 1 }, mode: "checkpoint" })
+    writeTeam(box.workspace, record)
+    // The grace directive for the row the document names.
+    /** What the grace action answered. */
+    const outcome = await graceWedgedTask(box.deps, box.caller, { teamId: record.teamId, taskId: "T1" })
+    expect(outcome.ok).toBe(true)
+    if (!outcome.ok) throw new Error(outcome.error)
+    // COMPLIANCE IS STILL HONOURED: the document is adopted and nothing is delivered.
+    expect(outcome.adopted).toBe(document)
+    expect(outcome.directive).toBe("")
+    expect(box.observed.sends).toEqual([])
+  })
+
+  test("F1: a document naming the task but a DIFFERENT attempt is not adopted", async () => {
+    // The fixture.
+    const box = fixture()
+    // The team under test, with the row on its SECOND attempt.
+    let record = teamWith(box.workspace)
+    record = updateTeamTask(record, "T1", { status: "in_progress", owner: MEMBER, attempt: 2 }, NOW)
+    // The document states attempt 1 — the previous generation's work.
+    /** The stale-generation document. */
+    const stale = writeHandoffDocument(box.workspace, record.teamId, MEMBER_NAME, 1, "# Task\nT1 (attempt 1)\n\n# State\nprevious generation\n")
+    record = updateTeamMember(record, MEMBER_NAME, { handoff: { path: stale, ordinal: 1 }, mode: "member" })
+    writeTeam(box.workspace, record)
+    // The grace directive for the CURRENT generation.
+    /** What the grace action answered. */
+    const outcome = await graceWedgedTask(box.deps, box.caller, { teamId: record.teamId, taskId: "T1" })
+    expect(outcome.ok).toBe(true)
+    if (!outcome.ok) throw new Error(outcome.error)
+    // NOT ADOPTED, and the member is asked again for the current attempt.
+    expect(outcome.adopted).toBeUndefined()
+    expect(box.observed.sends.length).toBe(1)
+  })
+
+  // F2 (CodeRabbit, same branch): the captain notice quotes the CONFIGURED grace window.
+  test("F2: the captain notice quotes the configured graceMs, not the hard-coded 90 s default", async () => {
+    // The fixture.
+    const box = fixture()
+    // The team under test, with a member whose harness delivery seam REFUSES: the directive cannot be
+    // delivered, which is the ONE case that mails the captain — and that mail states the deadline.
+    const record = teamWith(box.workspace)
+    // The refusal must be the SEND, not a missing handle: the roster lookup still needs the member.
+    box.observed.sendError = "the member's session is no longer live"
+    // A configured 240 s window, far from the default.
+    /** The grace instant the watchdog recorded. */
+    const graceSentAt = NOW.getTime()
+    /** The CONFIGURED window under test, in ms. */
+    const configuredGraceMs = 240_000
+    // The grace attempt.
+    /** What the grace action answered. */
+    const outcome = await graceWedgedTask(box.deps, box.caller, { teamId: record.teamId, taskId: "T1", evidence: { graceSentAt, graceMs: configuredGraceMs } })
+    expect(outcome.ok).toBe(true)
+    if (!outcome.ok) throw new Error(outcome.error)
+    expect(outcome.delivered).toBe(false)
+    // The captain's mailbox row.
+    /** Every message the mailbox holds. */
+    const mailbox = fold(readRecords(box.workspace))
+    expect(mailbox.messages.length).toBe(1)
+    /** The captain's message body, where the deadline must appear. */
+    const body = mailbox.messages[0].body
+    // THE CONFIGURED DEADLINE, and never the default's.
+    expect(body).toContain(String(graceSentAt + configuredGraceMs))
+    expect(body).not.toContain(String(graceSentAt + 90_000))
   })
 })

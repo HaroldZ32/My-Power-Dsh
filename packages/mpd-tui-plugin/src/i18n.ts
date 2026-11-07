@@ -270,6 +270,10 @@ export const TUI_TEXT = {
     zh: "mpd 看门狗：宿主已接受 {id}；若没有出现面板，请在 /settings → 侧栏里把 {id} 加入面板列表，并按 Ctrl+B 展开",
     en: "mpd watchdog: the host accepted {id}; if no panel appeared, add {id} to the panel list in /settings → side panel, then press Ctrl+B",
   },
+  "watchdog.commandSceneOpened": {
+    zh: "mpd 看门狗：面板无法打开，已改用全屏看门狗场景（esc 返回）",
+    en: "mpd watchdog: the panel could not open; opened the full-screen watchdog scene instead (esc to return)",
+  },
   "watchdog.commandAbsent": {
     zh: "mpd 看门狗：该宿主不提供面板接缝（dsh-tui 0.13.0+），看门狗面板无法打开",
     en: "mpd watchdog: this host exposes no panel seam (dsh-tui 0.13.0+), so the watchdog panel cannot open",

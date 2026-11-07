@@ -99,9 +99,14 @@ replaced or deleted. License: **MIT** (`LICENSE.md`); third-party components kee
   (`mpd_workmate_spawn` — the same one-shot mechanics, plus persona/memory; what is durable is the
   RECORD, never the child session). **A consult can also run in the BACKGROUND (2026-11-05):**
   `mpd_role_spawn_async` returns a `consultId` at once and `mpd_role_consult` lists/waits/collects/
-  cancels, so several consults overlap; every consult — blocking or async — carries a 15-minute
-  deadman that writes a handoff and interrupts the child, and an OPEN `bash` call is its only
-  exemption. Long form: `agent-references/supervision.md`.
+  cancels, so several consults overlap; every consult — blocking or async — carries a SILENCE
+  deadman (`consult.forceAfterMs` → `watchdog.forceAfterMs` → 900 000 ms; a declared `0` disables it)
+  that writes a handoff and interrupts only a child with no observable activity — any in-flight tool
+  younger than `watchdog.toolInFlightMaxMs` counts as activity, and an OPEN `bash` call is exempt at
+  any age. **The TEAM force rule matches:** silence for `forceAfterMs` (default 900 000 ms),
+  `maxTaskAgeMs` (default `0`) as the opt-in age path, `graceMs` (default 90 000) for ONE
+  handoff-and-end-turn directive before a single interrupt, and completed rows never reopen.
+  Long form: `agent-references/supervision.md`.
 - **THE TEAM RECORD IS OURS (team-plane split, 2026-09-30).** `mpd-team-core-plugin` owns the team
   (roster, board, DAG, `kind`/`attempt`/`round`/`verdict`) in `.mpd/team/teams/<id>.json`, served as
   `mpdTeams` and over `/plugins/mpd-team/state`; `mpd-dsh-adapter` mediates the ONE execution seam,
@@ -243,11 +248,11 @@ ORDER), and the gate's `--self-test` fixture arms are the operative evidence. Lo
 No evidence on disk for a gate = the change is not complete. Merge to dev only after the relevant gates
 pass and their evidence is committed with the change.
 
-`bun run verify:gates` is the fast aggregate over the static gates — **nine members: vendor, dist
+`bun run verify:gates` is the fast aggregate over the static gates — **ten members: vendor, dist
 freshness, row parity, doc pairs, preset conformance, plugin manifest, comment coverage, graph model,
-workflows** — one command for a patch/preset edit and the release sweep — and it
-expects a CLEAN tree: a dirty `skills/**` corpus reddens the vendor gate until the wave's single re-pin
-lands (§9/§11).
+workflows, tui admission** — the one command for a patch/preset edit and the release sweep. It expects a
+CLEAN tree: a dirty `skills/**` corpus reddens the vendor gate until the wave's single re-pin lands
+(§9/§11).
 
 ---
 
@@ -502,14 +507,16 @@ installs the package, `reconcile` validates that the patch files load and append
 `dsh.profile.bundles`, and the rows resolve from `<profile>/node_modules`; (c) this repository NEVER
 edits DSH sources, NEVER writes a profile by hand and NEVER pushes a row into `<DSH_HOME>` (the retired
 escape hatches — a home `cordis.patch.yml`, a copied `skills/` tree, a preset directory — are dev/QA
-flows or removed outright); (d) uninstall is the mirror image, one command, leaving no residue except the user's own `~/.mpd/workmate`. A
+flows or removed outright); (d) uninstall is the mirror image, one command, leaving no INSTALLED
+residue (no profile rows, no home copy of skills or presets) while user data under `~/.mpd/**` and
+the workspace's `.mpd/` are RETAINED BY POLICY (`docs/tui.md` §2.1). A
 capability that arrives by any other route is a defect — `verify-plugin-manifest --pack` plus the Docker
 lane hold this line.
 
 ### Primary flow: ONE command, no extra step
 
 - **The USER-facing install is ONE command against the PUBLISHED package — no clone, no build:**
-  `dsh plugin --profile web add @mpd-dsh/mpd@0.17.4` (this release, named by explicit spec) or the
+  `dsh plugin --profile web add @mpd-dsh/mpd@0.17.5` (this release, named by explicit spec) or the
   unversioned `@mpd-dsh/mpd`, which takes whatever `latest` the registry serves;
   `dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh` is the same one
   command from the repository (and the Docker lane's proof spec, §4). pnpm packs it through the
@@ -591,7 +598,7 @@ lane hold this line.
 2. Full gate sweep. §4's gate table is the authority: run every row it marks for this change, plus the
    two it does not carry — `node scripts/verify-no-host-override.ts` (NOT a `verify:gates` member) and
    `node scripts/verify-manual-paths.ts` (whenever `AGENTS.md` changed) — plus the real smoke cases
-   `dual-track-smoke` and `mcp-call`. `bun run verify:gates` aggregates §4's nine static members. Two
+   `dual-track-smoke` and `mcp-call`. `bun run verify:gates` aggregates §4's ten static members. Two
    preconditions are easy to miss: `bun run verify:vendor` only AFTER the wave's single
    `node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step` re-pin when `skills/**`
    changed, and a repo-root `bun test` (unlike `bun test packages`) also scans the `evidence/**`

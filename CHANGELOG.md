@@ -14,6 +14,66 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
+## 0.17.5 — the panel-hygiene wave: burn-after-use rows, the scroll engine, a watchdog scene, and the dsh-TUI admission gate
+
+**Added — the dsh-TUI admission rules are a HARD GATE.** `scripts/verify-tui-admission.ts` is the tenth
+member of `bun run verify:gates`. It fails every mechanically checkable item (manifest `$schema` and
+version, identity parity, the facet entry resolving, contract fallbacks, unused permissions, credential
+and stdout scans, the R5 roots re-checked), and it runs the INSTALLED host's own chain —
+`parseManifest` → `loadSpecData` → `createContractIndex` → `validatePlugin` → `projectManifest` →
+`negotiate` — against BOTH manifests, which must answer `compatible`. **A missing host is exit 3, never a
+green skip**: the gate prints every discovery candidate and the remedy and refuses to call itself passed.
+`--self-test` is host-free and carries a spawned negative control whose broken fixture must exit non-zero
+with its rules red. CI provides the host by installing it into a private prefix on `$RUNNER_TEMP`, with
+the version READ from `dsh-distribution.json`'s own coordinate.
+
+**Added — the watchdog page has a full-screen twin.** `mpd-tui-watchdog` renders the SAME body the panel
+renders (one `watchdogBodyRows` builder, one ack path), with vertical scrolling, `esc`/`q`, `a` to
+acknowledge and `r` to refresh. The page's own `⤢` opens it, `/mpd watchdog` opens it, and the command
+line now names the scene instead of reporting a panel absence — `PanelRoute` carries an optional
+`sceneOpened` for that.
+
+**Added — a second click on a DAG node opens the agent page.** The host has no double-click event at all,
+so the gesture is synthesized: a second click on the SAME node within 350 ms undoes the focus toggle and
+opens MPD's subagent page for that node's `agentId`. No host-internal contact was added; the host's own
+Agent View is not reachable from a plugin and the documentation says so.
+
+**Changed — subagent rows burn after use.** The row list is the host's append-only child catalog, so the
+filter is a draw-time PROJECTION, never a deletion: a terminal row stops being drawn 60 s after its end
+instant, and a row naming a member of an ENDED team of this session stops at once. Live rows are never
+hidden. One new `subagent-rows.ts` is the single row builder both the sidebar and the full-screen scene
+consume.
+
+**Changed — rows are compact.** The `mode` field is gone from the render and times are relative
+(`<1s`/`Ns`/`Nm`/`Nh`/`Nd`), so a row fits a narrow sidebar.
+
+**Changed — the DAG node click TOGGLES focus.** Clicking an already-focused node unfocuses it; blank
+clicks and `Esc` still clear.
+
+**Changed — the team scene scrolls visibly and animates while running.** A visible vertical rail is drawn
+in the gutter, the body below the pinned head is windowed (the merged board scene, which had no scroll at
+all, gained the same), and running markers animate on the scene's own clock with the frame loop paused
+while idle.
+
+**Fixed — the watchdog page's scrollbar broke the page.** Two measured defects: the interior was laid out
+one cell wider than the frame because the rail's cell was never subtracted (the host then wrapped the row
+band — the "content jumps left" report), and the window budget forgot the frame's two border rows, so a
+full window drew one line too many and the host clipped the footer together with its position token.
+
+**Fixed — the workmate page rendered an EMPTY body once scrolled.** It sliced its own window and handed a
+one-element array to a helper that sliced again, so any non-zero offset produced nothing while the footer
+still printed a position. It also laid out one cell too wide and never swallowed its wheel event.
+
+**Fixed — a scrollbar drag jumped instead of moving.** The rail mapped the pointer's ABSOLUTE position, so
+grabbing the thumb anywhere but its centre teleported the view. It now commits the pointer's DELTA,
+anchored at the press origin derived from the drag event's `startRow`/`row` pair, because the host fires
+`dragstart` on the FIRST motion.
+
+**Fixed — three defects the automated review found in the wave itself.** An ended team's age was measured
+from an animation clock that only advances while a task runs, so it froze between polls; a single
+non-finite incident timestamp made every acknowledgement a no-op; and a panel test's settled fixture could
+burn through the grace window before it rendered on a slow machine.
+
 ## 0.17.4 — the supervision wave: re-team after an ended team, parallel one-shot consults, and a 15-minute force supervisor
 
 **Fixed — a session can build the next team again.** `readLeadingTeam` treated a team record as

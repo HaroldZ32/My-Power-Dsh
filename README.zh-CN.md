@@ -2,7 +2,7 @@
 
 [English](./README.md) | **中文**
 
-[![版本](https://img.shields.io/badge/version-0.17.4-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
+[![版本](https://img.shields.io/badge/version-0.17.5-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
 [![npm](https://img.shields.io/badge/npm-%40mpd--dsh%2Fmpd-CB3837.svg)](https://www.npmjs.com/package/@mpd-dsh/mpd)
 [![许可证：MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE.md)
 [![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.1--rc.5-4B32C3.svg)](#致谢)
@@ -17,8 +17,9 @@
 多智能体团队、一份按需加载的技能库、用于代码理解的 MCP 服务，以及一套让别的包也能贡献能力的扩展接口。
 
 套件同时跑在两个端上。下面写的每一项都同时存在于 **DSH Web GUI** 和 **DSH-TUI** 终端版里：同一份安装、
-同一个 `.mpd/` 状态、同一套工具、同一个 `mpd` preset。没有任何东西被分叉；一个能力也不会仅仅因为在终端里
-没有像素就不存在。
+同一个 `.mpd/` 状态、同一套工具、同一个 `mpd` preset。终端这一端跑在
+[dsh-TUI](https://github.com/ccch1mneyyy/dsh-TUI) 上，站点是 [dshtui.com](https://dshtui.com)。
+没有任何东西被分叉；一个能力也不会仅仅因为在终端里没有像素就不存在。
 
 套件本体是包 [`@mpd-dsh/mpd`](https://www.npmjs.com/package/@mpd-dsh/mpd)；**本仓库的根目录就是这个包**。
 一条命令装好，一条命令卸干净，不留残留。
@@ -137,7 +138,8 @@ DSH-TUI 的 pin 记在 [`dsh-plugin.json`](./dsh-plugin.json) 的 `compat.hosts`
 
 | `@mpd-dsh/mpd` | DeepSeek Harness | DSH-TUI | 说明 |
 |---|---|---|---|
-| 0.17.4 | 0.2.1-rc.5 | 0.18.0 | 本次发布 |
+| 0.17.5 | 0.2.1-rc.5 | 0.18.0 | 本次发布 |
+| 0.17.4 | 0.2.1-rc.5 | 0.18.0 | 上一次发布 |
 | 0.17.3 | 0.2.1-rc.5 | 0.18.0 | 上一版本 |
 | 0.17.2 | 0.2.1-rc.5 | 0.18.0 | `previous` |
 | 0.17.1 | 0.2.1-rc.5 | 0.18.0 | `previous` |
@@ -152,7 +154,7 @@ DSH-TUI 的 pin 记在 [`dsh-plugin.json`](./dsh-plugin.json) 的 `compat.hosts`
 | 0.15.0 | 0.2.1-rc.2 | 0.16.1 | `previous` |
 | 0.14.0 | 0.2.1-rc.2 | 0.16.1 | `previous`（harness 0.2.1 适配发布） |
 
-最新一行**就是**这一对：`0.17.4` 对 harness `0.2.1-rc.5` 与 DSH-TUI `0.18.0`，两者必须一起移动。
+最新一行**就是**这一对：`0.17.5` 对 harness `0.2.1-rc.5` 与 DSH-TUI `0.18.0`，两者必须一起移动。
 `dsh-tui@0.17.0` 的 peer 名单止于 harness `0.2.1-rc.3`，所以 rc.5 的 harness 配 0.17.0 的宿主会被
 `dsh plugin --profile dsh-tui add` 拒装。钉定位置是 [`package.json`](./package.json) 与
 [`dsh-plugin.json`](./dsh-plugin.json) 的 `compat.hosts`；其下各行保留为历史，记录更早版本实际钉定的组合。
@@ -242,7 +244,8 @@ DSH-TUI 的 pin 记在 [`dsh-plugin.json`](./dsh-plugin.json) 的 `compat.hosts`
 
 - **[使用者指南](./docs/user-guide.zh-CN.md)**：安装、按用途划分的工具、团队、配方、命令参考。
 - **[文档中心](./docs/index.zh-CN.md)**：全部文档，并为使用者、扩展作者、贡献者和智能体分别给出阅读路径。
-- **[DSH-TUI 版](./docs/tui.zh-CN.md)**：准入、分发与逐包兼容性。
+- **[DSH-TUI 版](./docs/tui.zh-CN.md)**：准入、分发与逐包兼容性；终端宿主本身是
+  [dsh-TUI](https://github.com/ccch1mneyyy/dsh-TUI)（[dshtui.com](https://dshtui.com)）。
 - **[分发描述符](./dsh-distribution.json)**：本环境的身份、组成与受管数据位置，采用
   [dsh-distribution](https://github.com/T-Auto/dsh-distribution) 元协议格式（Draft），供支持该协议的
   工具读取；详见 [docs/tui.zh-CN.md](./docs/tui.zh-CN.md) §4.2。
@@ -260,7 +263,7 @@ DSH-TUI 的 pin 记在 [`dsh-plugin.json`](./dsh-plugin.json) 的 `compat.hosts`
 
 ## 变更日志
 
-发布说明在 [`CHANGELOG.md`](./CHANGELOG.md)，最新的在前，每个已发布版本一节（当前版本是 **v0.17.4**）。
+发布说明在 [`CHANGELOG.md`](./CHANGELOG.md)，最新的在前，每个已发布版本一节（当前版本是 **v0.17.5**）。
 带注释的 tag 列在 [Releases](https://github.com/HaroldZ32/My-Power-Dsh/releases)。
 
 ## 致谢

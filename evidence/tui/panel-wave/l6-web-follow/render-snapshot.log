@@ -1,0 +1,5 @@
+=== LIVE PAYLOAD (renders as before) ===
+Wave GUI active team-alpha approved 2026-10-05T10:00:00.000Z workspace My-Power-Dsh 1 running · 1 ready · 1 blocked 1/4 complete · 1 running / 1 ready Progress 25% native executor MEMBERS (1) web-team-gui Senior Engineer 1/2 deepseek/deepseek-chat current Build the header TASKS (0) No shared task yet — the captain posts them with agent_teams_plan {action:"create_task", blocked_by:[…]}.
+
+=== ENDED PAYLOAD (endedAt=2026-11-06T16:05:59.574Z) ===
+Wave GUI team-alpha approved 2026-10-05T10:00:00.000Z workspace My-Power-Dsh ended 3m 1/4 complete native executor MEMBERS (1) web-team-gui Senior Engineer 1/2 complete deepseek/deepseek-chat TASKS (0) No shared task yet — the captain posts them with agent_teams_plan {action:"create_task", blocked_by:[…]}.

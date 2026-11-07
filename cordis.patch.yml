@@ -412,9 +412,17 @@
         actionOnEscalate: warn-only
         toolInFlightMaxMs: 900000
         holdTtlMs: 900000
-        # D3's force bound (mirrors WATCHDOG_DEFAULTS and mpd-config's SettingsSchema.watchdog):
-        # a task `in_progress` this long is handed to the force supervisor; 0 disables the rule.
+        # `forceAfterMs` now means SILENCE, not task age (contract §S1): a member with NO observable
+        # activity for this long is handed to the force supervisor. An ancient task with fresh tool
+        # stamps is never forced, and `0` still disables the whole rule. Mirrors
+        # WATCHDOG_DEFAULTS and mpd-config's SettingsSchema.watchdog.
         forceAfterMs: 900000
+        # §S4: the GRACE phase between the one handoff directive and the kill. A member that writes
+        # its own handoff inside this window is closed cleanly instead of interrupted.
+        graceMs: 90000
+        # §S2: DELIBERATELY 0 — age alone must never force a task. A non-zero value here reintroduces
+        # the 2026-11-06 failure mode (members killed at ~904-946 s of task age while working).
+        maxTaskAgeMs: 0
     - id: mpd-tools
       name: '@mpd-dsh/mpd/packages/mpd-tools-plugin/dist/index.js'
       config:

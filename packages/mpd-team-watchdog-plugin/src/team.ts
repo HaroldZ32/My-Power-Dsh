@@ -74,9 +74,12 @@ export interface TeamTask {
   /**
    * D3: epoch ms at which this task FIRST entered `in_progress`, when the record carries one.
    *
-   * The force supervisor's WHOLE clock: `now - startedAt >= forceAfterMs` is what decides that a
-   * task is wedged, because the trigger is the TASK's age and no stamp can answer it. Absent until
-   * the row is claimed, and absent on an official-plane view that reports no timestamps at all.
+   * NOT the force clock (S1): the trigger is measured SILENCE, so `startedAt` survives for two
+   * weaker jobs — it is the clock of the OPT-IN `maxTaskAgeMs` ceiling (off by default), and its
+   * age `now - startedAt` is quoted as `elapsedMs` in the handoff document and the decision rows.
+   * The silence clock itself comes from the activity stamps and the fold, never from this field.
+   * Absent until the row is claimed, and absent on an official-plane view that reports no
+   * timestamps at all.
    */
   startedAt?: number
   /**

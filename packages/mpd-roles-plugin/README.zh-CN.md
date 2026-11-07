@@ -129,7 +129,7 @@ trigger = explicit flag OR (matchedSignals >= 1)
 
 显式的 `team:` / `!team` 请求属于信号 **A**，走**同一条**路径：在 `mechanical` 下同样会 stage 该 shell，且标记会从目标文本中被**消费**。它只作用于顶层 `mpd` session（子 session —— subagent、teammate、workflow worker —— 以及其它 preset 的 session 都不会收到），每个 session 只结算一次，且其内部失败不会影响该 step。
 
-## 异步 consult 与 15 分钟 deadman（2026-11-05）
+## 异步 consult 与 consult deadman（2026-11-05，2026-11-06 修订）
 
 `mpd_role_spawn` 的参数与报告形状不变，但 `status` 现在还可能为 `"interrupted"`：每个 consult
 （阻塞式或后台式）都受同一套监督。
@@ -142,14 +142,20 @@ trigger = explicit flag OR (matchedSignals >= 1)
 并发上限由 `MPD_DSH_CONSULT_MAX`（默认 `8`，即宿主的活跃子 agent 上限）控制：超限的 consult 会
 **排队**，绝不抛错。上限在每次启动时读取。
 
-**Deadman。** 每个 consult 都武装一个 15 分钟上限（900 000 ms）。到期时：
+**Deadman。** 每个 consult（阻塞式或后台式）在**每次武装**时读取上限：`consult.forceAfterMs`，
+回退到 `watchdog.forceAfterMs`，再回退到 `900000` ms。显式声明 `0` 即关闭 deadman，与
+`forceAfterMs` 在强制监督器中的含义一致。到期时，判定规则就是强制监督器的那一套，作用于该 consult
+自己的工具表：
 
-- 如果子 agent **当前**的工具调用是 `bash` 且仍在执行中，则**不**中断：记录一条
-  `consult-long-bash` 警告（含已用时间）并重新武装。该豁免**没有时长上限** —— 合法的验证运行可能
-  持续一小时。
-- 否则监督器写入 `<ws>/.mpd/handoff/consult-<consultId>-<UTC instant>.md`（task、role、started、
-  elapsed、最近工具调用及 ≤ 400 字符的参数摘录、next step），中断子 agent，并以
-  `status:"interrupted"` 结算该 consult，携带 handoff 路径与最后一次观测到的活动。
+- 正在执行的 `bash` 调用 → **不**中断，无论已执行多久；记录一条 `consult-long-bash` 并重新武装。该豁免
+  **没有时长上限** —— 合法的验证运行可能持续一小时。
+- 其他任何在飞工具只要年轻于 `watchdog.toolInFlightMaxMs` → 视为活动；deadman 重新武装，并对每个在飞
+  调用记录一条 `consult-tool-in-flight`。
+- 没有在飞工具，或工具已超过该上限 → 监督器写入
+  `<ws>/.mpd/handoff/consult-<consultId>-<UTC instant>.md`（task、role、started、elapsed、触发强制的
+  **实测空闲时长**、观测到的最后一条 assistant 消息、最近工具调用及 ≤ 400 字符的参数摘录、说明从何处
+  继续的 next step），然后中断子 agent，并以 `status:"interrupted"` 结算该 consult，携带 handoff
+  路径、实测空闲时长与最后一次观测到的活动。
 
 监督器**绝不**中断 captain，也不中断另一个 consult 的子 agent：它只会调用自身 handle 的 `interrupt()`。
 

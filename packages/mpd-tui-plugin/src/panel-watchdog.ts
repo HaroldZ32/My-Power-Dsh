@@ -29,7 +29,7 @@ import { WATCHDOG_PANEL_MIN_COLUMNS, WATCHDOG_PANEL_SLUG } from "./dag-theme.js"
 // scroll band are ONE definition (`panel-core.ts`), so the three MPD pages cannot drift apart.
 import {
   clampScroll,
-  PANEL_CHROME_ROWS,
+  PANEL_FRAME_BORDER_ROWS,
   PANEL_TITLE_ROW_ROWS,
   panelContentWidth,
   panelFloorColumns,
@@ -51,6 +51,7 @@ import {
 import type { PanelPageOptions } from "./panel.js"
 import { t } from "./i18n.js"
 import type { WatchdogView } from "./watchdog.js"
+import type { DagTone } from "./dag-theme.js"
 
 /** The panel slug this page registers under; the host prefixes it with this activation's plugin id. */
 export const WATCHDOG_PANEL_ID = WATCHDOG_PANEL_SLUG
@@ -78,6 +79,15 @@ export const WATCHDOG_PANEL_REFRESH_MS = 2000
 
 /** The row budget this page assumes when the host reports no height at all. */
 const WATCHDOG_FALLBACK_ROWS = 24
+
+/**
+ * The pinned footer's own row, drawn OUTSIDE the scrolling window.
+ *
+ * It is a separate constant because the window arithmetic must name it: the frame's TWO border rows,
+ * the title row and this footer are not scrollable, and a budget that forgot one of them drew `rows + 1`
+ * lines that the host clipped.
+ */
+const WATCHDOG_FOOTER_ROWS = 1
 
 /**
  * The panel descriptor, frozen at module scope.
@@ -143,6 +153,15 @@ export interface WatchdogPanelDeps {
    * `?`, which is the honest answer rather than an invented word.
    */
   readTeam?(): WatchdogTeamHead | undefined
+  /**
+   * Opens this page's full-screen scene (`mpd-tui-watchdog`), when the composition registers one.
+   *
+   * ABSENT WHEN THERE IS NO SCENE, and then the chrome row keeps its glyph but carries NO click target
+   * (the shared title-row rule draws the same row on every page). The wiring supplies this only while
+   * the scene seam is composed, so the control and its scene stay ONE decision — a click can never land
+   * on a surface that does not exist.
+   */
+  openFullscreen?(): boolean
   /** Diagnostics: the file sink, never a terminal. */
   log: Log
 }
@@ -244,9 +263,157 @@ export function watchdogIncidentLines(
 }
 
 /**
+ * One acknowledgement press, in the vocabulary BOTH surfaces share (clause 3 / A3).
+ *
+ * The sidebar page and the full-screen scene offer the same `a` key, so the RULE — what "newest" means,
+ * when a press writes nothing, what a refusal says — lives here rather than twice. A surface supplies the
+ * incidents it is showing, the watermark it remembers and the service call; it then draws the flash line.
+ */
+export interface WatchdogAckPress {
+  /** The incidents the surface is showing at the moment of the press. */
+  readonly unread: WatchdogView["unread"]
+  /** The newest stamp this surface has already acknowledged, so a stale closure cannot ack twice. */
+  readonly lastAck: number
+  /** The service call; a failure is reported, never swallowed or retried silently. */
+  acknowledge(upTo: number): WatchdogAckResult
+}
+
+/** What one press produced: the line to draw and the watermark the surface should remember. */
+export interface WatchdogAckOutcome {
+  /** The localized line the surface draws in its flash row. */
+  readonly flash: string
+  /** The watermark after the press; the surface stores this value. */
+  readonly lastAck: number
+}
+
+/**
+ * Run one acknowledgement press.
+ * @param press - the shown incidents, the remembered watermark and the service call.
+ * @returns the flash line and the watermark to remember; a failed call keeps the old watermark.
+ */
+export function watchdogAckPress(press: WatchdogAckPress): WatchdogAckOutcome {
+  if (press.unread.length === 0) return { flash: t("watchdog.panelAckNoop"), lastAck: press.lastAck }
+  // A NON-FINITE STAMP CAN NEVER BE RETIRED BY A WATERMARK, so it must not DECIDE one either. The
+  // service's own unread filter is `record.at > watermark` (`unacknowledged` in `sidecars.ts`, and
+  // `holds.ts`' `unread` does the same), which an `Infinity` satisfies at EVERY watermark: one line of
+  // `incidents.jsonl` whose `at` parsed as an overflowing number (`JSON.parse` answers `Infinity` for
+  // `1e999`, and `readIncidents` validates only `id`) used to make the reduction below yield
+  // `Infinity`, turn this press into a no-op and leave every VALID incident unacknowledgeable behind
+  // it. The usable stamps are therefore collected on their own; the rest stay unread (the panel draws
+  // their age as `?`) and are never claimed as acknowledged.
+  /** The shown incidents whose stamp is a finite number — the only ones a watermark can retire. */
+  const retireable = press.unread.filter((record) => typeof record.at === "number" && Number.isFinite(record.at))
+  /** The newest RETIREABLE incident stamp currently shown — the watermark an acknowledge advances to. */
+  const upTo = retireable.reduce((max, record) => Math.max(max, record.at), 0)
+  // A press with nothing usable and newer than the last acknowledged stamp writes nothing.
+  if (upTo <= press.lastAck) return { flash: t("watchdog.panelAckNoop"), lastAck: press.lastAck }
+  try {
+    /** The service's own answer. */
+    const result = press.acknowledge(upTo)
+    if (result.ok) {
+      // THE COUNT NAMES WHAT THE WATERMARK RETIRED, never the number of rows on screen: an incident
+      // with an unusable stamp stays unread by construction, so counting it would claim an
+      // acknowledgement the service never made.
+      return { flash: t("watchdog.panelAckDone", { n: retireable.length }), lastAck: Math.max(press.lastAck, upTo) }
+    }
+    return { flash: t("watchdog.panelAckFailed", { error: result.error ?? "?" }), lastAck: press.lastAck }
+  } catch (error) {
+    return { flash: t("watchdog.panelAckFailed", { error: String((error as Error)?.message ?? error) }), lastAck: press.lastAck }
+  }
+}
+
+/**
+ * One row of the watchdog BODY, in the vocabulary BOTH surfaces draw.
+ *
+ * The text is already localized (`t`) and already carries the rendered values, so a surface only adds
+ * its own element: the sidebar maps it to `textRow`, the full-screen scene to `surfaceText`. Neither
+ * re-derives a field, which is what makes the two surfaces incapable of describing one incident
+ * differently (clause 3 / A3).
+ */
+export interface WatchdogBodyRow {
+  /** A stable key, unique within one render, so a surface's element keys cannot collide. */
+  readonly key: string
+  /** The drawn text. */
+  readonly text: string
+  /** The tone the row draws in, from the drawing's own vocabulary. */
+  readonly tone?: DagTone
+  /** True for a heading row. */
+  readonly bold?: boolean
+  /** True for a de-emphasized row. */
+  readonly dim?: boolean
+}
+
+/** Everything the shared body needs: the durable view plus the facts the page already read. */
+export interface WatchdogBodyInput {
+  /** The durable view this render read. */
+  readonly view: WatchdogView
+  /** Whether the watchdog service answered at all this render. */
+  readonly available: boolean
+  /** The per-team rows, projected by {@link watchdogTeamRows}. */
+  readonly teams: readonly WatchdogTeamRow[]
+  /** The acknowledgement's outcome line, when a press produced one. */
+  readonly flash?: string
+  /** The render clock, in epoch milliseconds; ONE value per render so every age shares an instant. */
+  readonly now: number
+}
+
+/**
+ * The watchdog BODY: every scrollable row, for BOTH surfaces (clause 3 / A3).
+ *
+ * It is a pure function of the view, the team rows and one clock, so the sidebar page and the
+ * full-screen scene draw the same list in the same order by construction rather than by two edits that
+ * must agree. The ORDER is the contract's: the header, the per-team rows, the incident title, then three
+ * rows per incident, then the acknowledgement flash.
+ * @param input - the durable view, the availability, the team rows and the render clock.
+ * @returns the body rows in draw order; empty only for an empty view with no header (never on a real host).
+ */
+export function watchdogBodyRows(input: WatchdogBodyInput): WatchdogBodyRow[] {
+  /** The rows under construction, in draw order. */
+  const rows: WatchdogBodyRow[] = []
+  if (!input.available) {
+    // THE ABSENT-SERVICE STATE (frozen §5): an explicit sentence, in the header's own position, so a
+    // reader never mistakes "nothing happened" for "the watchdog is not mounted".
+    rows.push({ key: "absent", text: t("watchdog.panelAbsent"), tone: "failed" })
+    rows.push({ key: "absent-hint", text: t("watchdog.panelAbsentHint"), dim: true })
+    return input.flash === undefined ? rows : [...rows, { key: "flash", text: input.flash, tone: "completed" }]
+  }
+  rows.push({
+    key: "header",
+    text: t("watchdog.panelHeader", { held: input.view.holds.length, unread: input.view.unread.length }),
+    bold: true,
+    tone: "chain",
+  })
+  for (const team of input.teams) {
+    rows.push({
+      key: `team-${team.id}`,
+      text: watchdogTeamLine(team),
+      // A held team warns; a team that only appears because of an incident stays quiet.
+      ...(team.held ? { tone: "blocked" as const } : { dim: true }),
+    })
+  }
+  rows.push({ key: "incidents", text: t("watchdog.panelIncidents"), dim: true, bold: true })
+  if (input.view.unread.length === 0) {
+    rows.push({ key: "empty", text: t("watchdog.panelEmpty"), dim: true })
+  } else {
+    for (const record of input.view.unread) {
+      /** This incident's three localized lines, at the shared render clock. */
+      const lines = watchdogIncidentLines(record, input.now)
+      // THREE ROWS PER INCIDENT rather than one wrapped sentence: at the 28-column floor a single line
+      // cannot carry kind, age, team, task, cause, hold outcome and ack state without the host wrapping
+      // it, and a wrapped row inside a self-windowed page is exactly what breaks the frame.
+      rows.push({ key: `${record.id}-1`, text: lines.first, bold: true })
+      rows.push({ key: `${record.id}-2`, text: lines.second })
+      rows.push({ key: `${record.id}-3`, text: lines.third, dim: true })
+    }
+  }
+  if (input.flash !== undefined) rows.push({ key: "flash", text: input.flash, tone: "completed" })
+  return rows
+}
+
+/**
  * Build the watchdog page component.
  * @param deps - the front door reads, the acknowledgement route and the optional team projection.
- * @param options - this page's own chrome (no full-screen surface exists; the control is omitted).
+ * @param options - this page's own chrome: the `⤢` opener its full-screen scene is bound to.
  * @returns a component matching the host's panel props contract.
  */
 export function createWatchdogPanelComponent(deps: WatchdogPanelDeps, options?: PanelPageOptions): unknown {
@@ -260,8 +427,18 @@ export function createWatchdogPanelComponent(deps: WatchdogPanelDeps, options?: 
     }
     /** The panel's measured geometry; the single geometry hook call of this component. */
     const measured = usePanelSize(kit.ui, panelFloorColumns("watchdog"))
-    /** The cells this page may DRAW IN: the reported width minus the frame's own two border cells. */
-    const contentCols = panelContentWidth(measured.cols)
+    /**
+     * The cells this page may DRAW IN: the reported width minus the frame's two border cells AND one
+     * more for the vertical bar's own cell.
+     *
+     * THE BAR'S CELL IS ALWAYS RESERVED (the measured gutter defect). `panelViewportBody` draws the rail
+     * as a 1-cell SIBLING of the rows inside the frame, so a row laid out at the full interior width
+     * pushes the rail past the right border and the host WRAPS that row — the reader sees the text jump
+     * to the left edge and the pane lose its frame (the reported symptom). Whether the bar shows is a
+     * fact about the page's HEIGHT, known only after the rows exist, so reserving the cell
+     * unconditionally is the stable side of the trade (the DAG page makes the same one).
+     */
+    const contentCols = Math.max(1, panelContentWidth(measured.cols) - 1)
     /** The acknowledgement's outcome line, re-set on every press (undefined before the first). */
     const flash = kit.React.useState(undefined)
     /** The flash text, when the state cell holds a string. */
@@ -292,40 +469,30 @@ export function createWatchdogPanelComponent(deps: WatchdogPanelDeps, options?: 
     // THE PAGE OWNS A TICK: a sidebar panel is a passive surface, and the watchdog store changes on its
     // own timer rather than on a keypress.
     usePanelTick(kit, WATCHDOG_PANEL_REFRESH_MS, true)
-    /** The window height this panel affords; the title row and footer are drawn outside it. */
-    const windowRows = Math.max(1, (measured.rows ?? WATCHDOG_FALLBACK_ROWS) - PANEL_CHROME_ROWS - PANEL_TITLE_ROW_ROWS)
+    /**
+     * The window height this panel affords: the panel minus the frame's TWO border rows, the title row
+     * and the pinned footer.
+     *
+     * EACH TERM IS A DRAW, not a convention: `panelFrame` draws the two border rows, `usePanelTitleRow`
+     * draws the title, and the footer below draws one row. The page used to subtract only
+     * `PANEL_CHROME_ROWS` (header + key hints) and the title — three rows — so a full window emitted
+     * `rows + 1` lines, the host clipped the last one and the footer's position token disappeared. The
+     * DAG page's own comment records the same off-by-one; it is repaired here against THIS page's chrome.
+     */
+    const windowRows = Math.max(1, (measured.rows ?? WATCHDOG_FALLBACK_ROWS) - PANEL_FRAME_BORDER_ROWS - PANEL_TITLE_ROW_ROWS - WATCHDOG_FOOTER_ROWS)
     /** The sizes the viewport hook and every later closure read; published by this render below. */
     const sizes = { contentRows: 1, viewportRows: 1 }
     /** The register's ONE scroll position: the key handler below drives it. */
     const viewport = usePanelViewport(kit, () => sizes)
     /** The acknowledge action, shared by the key handler; one call per press. */
     const acknowledgeShown = (): void => {
+      // AN UNAVAILABLE SERVICE HAS NOTHING TO ACKNOWLEDGE: the press stays silent rather than claiming
+      // an outcome the service never produced.
       if (!available) return
-      /** The incidents on screen at the moment of the press. */
-      const shown = view.unread
-      if (shown.length === 0) {
-        setFlash(t("watchdog.panelAckNoop"))
-        return
-      }
-      /** The newest incident stamp currently shown — the watermark an acknowledge advances to. */
-      const upTo = shown.reduce((max, record) => Math.max(max, record.at), 0)
-      /** A press with nothing newer than the last acknowledged stamp writes nothing. */
-      if (!Number.isFinite(upTo) || upTo <= (lastAck.current as number)) {
-        setFlash(t("watchdog.panelAckNoop"))
-        return
-      }
-      try {
-        /** The service's own answer; a failure is reported, never swallowed or retried silently. */
-        const result = deps.acknowledge(upTo)
-        if (result.ok) {
-          lastAck.current = Math.max(lastAck.current as number, upTo)
-          setFlash(t("watchdog.panelAckDone", { n: shown.length }))
-        } else {
-          setFlash(t("watchdog.panelAckFailed", { error: result.error ?? "?" }))
-        }
-      } catch (error) {
-        setFlash(t("watchdog.panelAckFailed", { error: String((error as Error)?.message ?? error) }))
-      }
+      /** What the shared press produced: the line and the watermark to remember. */
+      const outcome = watchdogAckPress({ unread: view.unread, lastAck: lastAck.current as number, acknowledge: (upTo: number) => deps.acknowledge(upTo) })
+      lastAck.current = outcome.lastAck
+      setFlash(outcome.flash)
     }
     /** Register the keymap: `a` acknowledges, `r` refreshes, the arrows and `jk` scroll. */
     usePanelKeys(kit, props?.host, keysArmed, (event: unknown): void => {
@@ -368,49 +535,29 @@ export function createWatchdogPanelComponent(deps: WatchdogPanelDeps, options?: 
     })
 
     // ── THE ROWS, in draw order ──────────────────────────────────────────────
-    /** The rows this page draws above its pinned footer. */
-    const children: unknown[] = []
-    if (!available) {
-      // THE ABSENT-SERVICE STATE (frozen §5): an explicit sentence, in the header's own position, so a
-      // reader never mistakes "nothing happened" for "the watchdog is not mounted".
-      children.push(textRow(kit, t("watchdog.panelAbsent"), { key: "absent", tone: "failed", maxCells: contentCols }))
-      children.push(textRow(kit, t("watchdog.panelAbsentHint"), { key: "absent-hint", dim: true, maxCells: contentCols }))
-    } else {
-      children.push(
-        textRow(kit, t("watchdog.panelHeader", { held: view.holds.length, unread: view.unread.length }), {
-          key: "header",
-          bold: true,
-          tone: "chain",
-          maxCells: contentCols,
-        }),
-      )
-      for (const row of teams) {
-        children.push(
-          textRow(kit, watchdogTeamLine(row), {
-            key: `team-${row.id}`,
-            // A held team warns; a team that only appears because of an incident stays quiet.
-            ...(row.held ? { tone: "blocked" } : { dim: true }),
-            maxCells: contentCols,
-          }),
-        )
-      }
-      children.push(textRow(kit, t("watchdog.panelIncidents"), { key: "incidents", dim: true, bold: true, maxCells: contentCols }))
-      if (view.unread.length === 0) {
-        children.push(textRow(kit, t("watchdog.panelEmpty"), { key: "empty", dim: true, maxCells: contentCols }))
-      } else {
-        for (const record of view.unread) {
-          /** This incident's three localized lines. */
-          const lines = watchdogIncidentLines(record, Date.now())
-          // THREE ROWS PER INCIDENT rather than one wrapped sentence: at the 28-column floor a single
-          // line cannot carry kind, age, team, task, cause, hold outcome and ack state without the host
-          // wrapping it, and a wrapped row inside a self-windowed page is exactly what breaks the frame.
-          children.push(textRow(kit, lines.first, { key: `${record.id}-1`, bold: true, maxCells: contentCols }))
-          children.push(textRow(kit, lines.second, { key: `${record.id}-2`, maxCells: contentCols }))
-          children.push(textRow(kit, lines.third, { key: `${record.id}-3`, dim: true, maxCells: contentCols }))
-        }
-      }
-    }
-    if (flashText !== undefined) children.push(textRow(kit, flashText, { key: "flash", tone: "completed", maxCells: contentCols }))
+    // THE BODY IS THE SHARED BUILDER'S (clause 3 / A3): `watchdogBodyRows` produces the SAME list the
+    // full-screen scene draws, in the same order, so the two surfaces cannot drift. This page only adds
+    // its own element and width budget. ONE clock is read here, for every incident age on the page.
+    /** This render's clock, in epoch milliseconds. */
+    const now = Date.now()
+    /** The rows this page draws above its pinned footer, in the shared vocabulary. */
+    const bodyRows = watchdogBodyRows({
+      view,
+      available,
+      teams,
+      ...(flashText === undefined ? {} : { flash: flashText }),
+      now,
+    })
+    /** The rows this page draws, as host elements clamped to the cells it owns. */
+    const children: unknown[] = bodyRows.map((row) =>
+      textRow(kit, row.text, {
+        key: row.key,
+        ...(row.tone === undefined ? {} : { tone: row.tone }),
+        ...(row.bold === true ? { bold: true } : {}),
+        ...(row.dim === true ? { dim: true } : {}),
+        maxCells: contentCols,
+      }),
+    )
 
     // ── THE SELF-WINDOWED BODY ──────────────────────────────────────────────
     /** The page's content height, the pinned header included. */
@@ -477,7 +624,11 @@ export function registerWatchdogPanel(tui: TuiAdapter, deps: WatchdogPanelDeps):
   const panel: PanelRegistrationHandle | undefined = deps.enabled
     ? tui.registerPanel({
         ...WATCHDOG_PANEL_DESCRIPTOR_FROZEN,
-        component: createWatchdogPanelComponent(deps),
+        // THE `⤢` CONTROL IS FORWARDED ONLY WHEN A SCENE EXISTS (clause 3): the shared title-row rule
+        // always draws the row and its glyph, but the click target exists only when it was handed an
+        // opener — so a composition without the scene seam keeps the old, inert chrome rather than a
+        // button that can only refuse.
+        component: createWatchdogPanelComponent(deps, deps.openFullscreen === undefined ? undefined : { openFullscreen: deps.openFullscreen }),
       })
     : undefined
   return {

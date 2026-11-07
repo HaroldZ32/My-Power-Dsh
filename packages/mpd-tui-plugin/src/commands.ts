@@ -51,6 +51,15 @@ export interface PanelRoute {
   readonly id: string | undefined
   /** Why the route was `unavailable`; absent for the other three outcomes. */
   readonly reason?: PageUnavailableReason
+  /**
+   * Whether the route's FULL-SCREEN fallback opened a scene, when the panel could not.
+   *
+   * AND WHY IT IS CARRIED AT ALL (clause 3): the watchdog page HAS a scene now, so `unavailable` no
+   * longer means "nothing is on screen" — the line must name the surface the user is actually looking
+   * at. Optional so every existing route (and every older fake) keeps type-checking and keeps its old
+   * reading: absent means "no scene information", which is the pre-scene behaviour.
+   */
+  readonly sceneOpened?: boolean
 }
 
 /** What the command needs from the rest of the plugin. */
@@ -178,13 +187,16 @@ function runAction(action: string, actions: CommandActions, session: SessionLike
   // noun (it is the host-facing panel id half), so it is not translated.
   if (action === "dag") return { kind: "success", text: clamp(pageLine("dag", actions.openDag())) }
   if (action === "workmate") return { kind: "success", text: clamp(pageLine("workmate", actions.openWorkmate())) }
-  // `/mpd watchdog` has no full-screen surface behind it, so its line must NOT claim a fallback panel
-  // opened: `opened` names the accepted host id, a refusal names the refusal, and everything else
-  // (no seam, no discovered id) is the one-line absence the contract requires.
+  // `/mpd watchdog` has a FULL-SCREEN FALLBACK (clause 3): the scene renders the same body, so an
+  // `unavailable` route whose scene opened is a SUCCESS that names the surface — not an absence. Only
+  // `sceneOpened === true` takes this branch; a route that opened nothing keeps the absence line below.
   if (action === "watchdog") {
     /** How the routed open of the watchdog page ended, and the id it went to. */
     const route = actions.openWatchdog()
     if (route.outcome === "opened") return { kind: "success", text: clamp(t("watchdog.commandOpened", { id: route.id ?? "?" })) }
+    // THE SCENE IS A REAL SURFACE: the panel could not open (no seam, no id, or a declined open) but the
+    // full-screen watchdog scene did, so the line names what the reader is looking at and how to leave.
+    if (route.sceneOpened === true) return { kind: "success", text: clamp(t("watchdog.commandSceneOpened")) }
     // THE HOST DECLINED THIS OPEN (CodeRabbit #12): the registration stands, so the fix is
     // "press again / check the panel bar", not "the host refused the registration".
     if (route.outcome === "fallback") return { kind: "error", text: clamp(t("watchdog.commandOpenRefused")) }

@@ -1,0 +1,15 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-tui-plugin/test/panel-scroll.test.ts:
+(pass) (a) the workmate body at a non-zero offset > stays NON-EMPTY and is the shelf shifted by exactly one row [1.72ms]
+(pass) (a) the workmate body at a non-zero offset > NEGATIVE CONTROL: the pre-fix call shape — ONE pre-sliced element — IS the empty body [0.22ms]
+(pass) (b) the frame interior and the reserved gutter cell > every workmate row fits interior − 1 while the rail is drawn [0.25ms]
+(pass) (c) a grabbed rail moves the view by the pointer's delta > a VERTICAL grab at the thumb's edge does not jump, and one cell moves one step [0.17ms]
+(pass) (c) a grabbed rail moves the view by the pointer's delta > a HORIZONTAL grab at the thumb's edge does not jump either [0.23ms]
+(pass) (d) the workmate page's wheel containment > the BODY handler stops the event so one tick cannot reach the chat behind the panel [0.13ms]
+(pass) (d) the workmate page's wheel containment > the FRAME handler keeps swallowing too, so the pinned chrome stays contained [0.17ms]
+
+ 7 pass
+ 0 fail
+ 47 expect() calls
+Ran 7 tests across 1 file. [144.00ms]

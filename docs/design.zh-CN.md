@@ -630,24 +630,32 @@ autoproject 与 cellwork 都以同一 session 执行 spawn。
 ### 异步 consult 与 deadman
 
 `mpd_role_spawn_async` 立即返回 `consultId`，`mpd_role_consult` 提供 list/wait/collect/cancel；
-并发由 `MPD_DSH_CONSULT_MAX`（默认 8，超限排队）限制。每个 consult（阻塞或异步）都武装 900 000 ms
-的 deadman：写 handoff 并中断子 agent；唯一例外是子 agent **当前**是正在执行的 `bash`（无时长上限）。
-handle 位于适配器共享的激活接缝（`spawnAgentAsync`）上；`spawnAgent` 是其阻塞投影，因此 workmate 与
-cellwork_recon 的形状不变。只读成员拒绝这两个 consult 工具（共十个名字），且每个 consult 仍是叶子。
+并发由 `MPD_DSH_CONSULT_MAX`（默认 8，超限排队）限制。每个 consult（阻塞或异步）的 deadman 在每次武装时
+读取上限：`consult.forceAfterMs` → `watchdog.forceAfterMs` → 900 000 ms（显式声明 `0` 即关闭）。到期时，
+正在执行的 `bash` 无论多久都豁免；其他任何在飞工具只要年轻于 `toolInFlightMaxMs` 就算活动；否则监督器
+写入 handoff（任务、实测空闲时长、观测到的最后一条 assistant 消息、带参数摘录的最后几次工具调用）并中断
+子 agent。handle 位于适配器共享的激活接缝（`spawnAgentAsync`）上；`spawnAgent` 是其阻塞投影，因此
+workmate 与 cellwork_recon 的形状不变。只读成员拒绝这两个 consult 工具（共十个名字），且每个 consult
+仍是叶子。
 
 ### 强制监督器
 
-团队成员中 `in_progress` 任务达到 `forceAfterMs`（默认 900 000 ms；0 关闭；每 tick 实时读取）时，
-触发 watchdog 的 `wedged` 决策；属主身份按 NAME **与** `executorRef`/session id 解析。动作位于
-team-core（`mpdTeamActions`）：handoff → interrupt → requeue → split → captain 邮箱 →
-`wedged-force` 日志。正在执行的 `bash` 是唯一豁免；captain 永远不是目标；单次 consult 改由 deadman
-监督。
+团队成员中 `in_progress` 任务的所有者连续 `forceAfterMs`（默认 900 000 ms；0 关闭；每 tick 实时读取）
+没有任何可观测活动时，触发 watchdog 的 `wedged` 决策；属主身份按 NAME **与** `executorRef`/session id
+解析。触发条件是**静默**而非任务年龄：`maxTaskAgeMs`（默认 `0`，即从不）是唯一的年龄路径，且需显式开启。
+任何在飞工具只要年轻于 `toolInFlightMaxMs` 就算活动；正在执行的 `bash` 无论多久都豁免；非 `bash` 工具
+超过该上限后不再计入。动作位于 team-core（`mpdTeamActions`），先宽限后终止：成员会收到一条指令，要求它
+立即写 handoff 并结束本轮；在 `graceMs`（默认 90 000）窗口内由成员自己写出的 handoff 会被直接采用；
+只有窗口到期才会中断，随后 requeue → split（每条拆分行的 owner 都是被中断的成员，`blockedBy: []`，
+并带 `sourceTaskId`）→ captain 邮箱说明恢复动词 → `wedged-force` 日志。终态优先：重新读取到该行已不再是
+`in_progress`，或 revision 已变化时，不再 requeue、也不再拆分，只记一条 `force-skipped`。captain 永远
+不是目标；单次 consult 改由 deadman 监督。
 
 ### 平面覆盖
 
-| 平面 | Re-team | 异步 consult | 15 分钟强制 |
+| 平面 | Re-team | 异步 consult | 强制监督器 |
 |---|---|---|---|
-| Agent Teams | 是（同一 session） | — | 是（watchdog） |
+| Agent Teams | 是（同一 session） | — | 是（watchdog，静默） |
 | cellwork 席位 | 是（同一 session） | — | 是（watchdog，席位身份） |
 | cellwork reseed / `cellwork_recon` | 是 | 是（同一接缝） | 是（deadman） |
 | autoproject | 是（同一 session） | 是（继承） | 是（deadman，`slotBoundMs` 对齐） |

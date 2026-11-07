@@ -2,9 +2,10 @@
 
 [中文](./market-listing.zh-CN.md)
 
-Two directories matter, and they work differently: dshfind indexes GitHub, the DSH Go market
-takes a pull request against a versioned catalogue. This page records what each one needs, and
-where our submission file lives.
+Three directories matter, and they work differently: dshfind indexes GitHub, the DSH Go market takes
+a pull request against a versioned catalogue, and the dsh-TUI ecosystem listing takes a pull request
+against one `plugins.json`. This page records what each one needs, and where our submission files
+live.
 
 ## dshfind
 
@@ -60,9 +61,69 @@ because older apps still get the `adaptView` fallback instead of nothing.
 Passing the static check is not the same as having run in the App. That is what the screenshots
 and the release notes are for.
 
+## dsh-TUI ecosystem
+
+The third directory is the dsh-TUI ecosystem listing. Its catalogue is `plugins.json` in the
+repository `dsh-tui-ecosystem/dsh-tui-ecosystem`. One entry is added by a pull request against `main`:
+a workflow runs the validator, an optional AI review follows, and a `MERGE_TOKEN` squash-merges the
+pull request once both are done.
+
+The validator is `.github/scripts/validate-plugins.mjs`, and it makes five machine checks:
+
+1. `plugins.json` is valid JSON and `plugins` is an array.
+2. Every entry requires `name`, `displayName`, `description`, `author`, `repo`, `kind` and `addedAt`,
+   and `kind` must be `plugin`, `template` or `core`.
+3. `repo` must match `https://github.com/owner/repo`, and both the plugin name and the repo URL must
+   be unique case-insensitively.
+4. For a NEW entry, the repository must exist and be public, and the PR author must be that
+   repository's owner or a collaborator.
+5. For a NEW entry, the repository README must contain `https://dshtui.com` or
+   `https://github.com/ccch1mneyyy/dsh-tui`.
+
+Two details bite. The validator LOWERCASES the README before matching, so `dsh-TUI` in our README
+satisfies check 5. And it reads the README from the repository's DEFAULT BRANCH, which for us is
+`master` — a backlink that exists only on `dev` does not satisfy check 5.
+
+Our entry is
+[`docs/market/dsh-tui-ecosystem-entry.json`](./market/dsh-tui-ecosystem-entry.json). That file is ONE
+entry object, not the whole catalogue: append it to the `plugins` array of `plugins.json` in a pull
+request against `main`. The entry carries exactly these fields:
+
+| field | rule |
+|---|---|
+| `name` | the plugin name, unique case-insensitively |
+| `displayName` | the card title |
+| `description` | one sentence in Chinese, usually ending with the install command |
+| `author` | the GitHub account that submits the entry |
+| `repo` | `https://github.com/owner/repo` |
+| `npm` | the npmjs.com package URL, or `null` |
+| `tags` | a short list of Chinese or English tags |
+| `kind` | `plugin`, `template` or `core` |
+| `featured` | `true` or `false`; reserved for the catalogue's own selection |
+| `addedAt` | the submission date, `YYYY-MM-DD` |
+
+A listing is not an endorsement: **收录 ≠ 准入 ≠ 背书**. An entry says only that the repository is
+public, that its author submitted it, and that its README links back. The validator checks nothing
+else — not whether the package is on npm, not whether the name is bare or scoped, not whether a
+`dsh-plugin.json` exists, not whether the manifest parses, not provenance, and not declared
+capabilities. Treat the listing as a pointer to a public repository, never as a review of it.
+
+Naming is not a gate either. The guide calls `@dsh-tui-ecosystem/<name>` and
+`github.com/dsh-tui-ecosystem/<name>` an 生态约定, and says explicitly 不要求组织仓库 and 不因命名被拒.
+Our package stays `@mpd-dsh/mpd` in `HaroldZ32/My-Power-Dsh`.
+
+Against the five checks: 1, 2, 3 and 4 pass — the repository is public and MIT, `v0.17.5` is tagged
+and published, and the pull request would come from the repository owner. Check 5 was the one miss,
+and the README backlink that closes it now exists.
+
 ## What we still owe before submitting
 
-1. Publish the version the entry names, and bump the entry's `version` in the same change.
-2. Put real screenshots in `docs/assets/` and reference their HTTPS URLs (four at most).
-3. Keep the repository description, the npm `description`, the `dshGo` titles and the README lead
+1. Bring the DSH Go entry up to the published version. The checked-in entry still names `0.17.0` while
+   the bundle is at `0.17.5`; bump that entry's `version` in the same change that publishes a release,
+   and never ship an entry whose exact version is missing from npm.
+2. Carry the README backlink to `master`. The dsh-TUI validator reads the README from the default
+   branch, so a backlink merged only to `dev` leaves check 5 failing; the release that carries this
+   README is what turns it green.
+3. Put real screenshots in `docs/assets/` and reference their HTTPS URLs (four at most).
+4. Keep the repository description, the npm `description`, the `dshGo` titles and the README lead
    saying the same thing — the three directory cards quote them independently.

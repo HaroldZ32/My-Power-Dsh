@@ -1,0 +1,69 @@
+{
+  "lane": "L5",
+  "task": "T7",
+  "team": "tui-panel-wave",
+  "contract": ".mpd/plans/tui-panel-wave.md",
+  "criteria": [
+    "§5.A3",
+    "§4 one-file-one-owner",
+    "D3",
+    "D4"
+  ],
+  "files": [
+    "packages/mpd-tui-plugin/src/scene-watchdog.ts (NEW)",
+    "packages/mpd-tui-plugin/src/index.ts",
+    "packages/mpd-tui-plugin/src/panel-watchdog.ts",
+    "packages/mpd-tui-plugin/src/commands.ts",
+    "packages/mpd-tui-plugin/src/i18n.ts",
+    "packages/mpd-tui-plugin/test/panel-watchdog.test.ts",
+    "packages/mpd-tui-plugin/test/scene-watchdog.test.ts (NEW)"
+  ],
+  "measured_defects": {
+    "width_gutter": {
+      "before": "contentCols = panelContentWidth(cols) (no rail cell) while panelViewportBody(..., true, ...) adds a 1-cell rail sibling inside the frame",
+      "reproduction": "unit render at 40 cols: widest drawn row = 38 (the full interior) => row + bar = interior + 1, the host wraps the row (text jumps to the left, frame breaks)",
+      "after": "contentCols = panelContentWidth(cols) - 1 => widest = 37; asserted exactly"
+    },
+    "height_off_by_one": {
+      "before": "windowRows = rows - PANEL_CHROME_ROWS(2) - PANEL_TITLE_ROW_ROWS(1) forgot the frame's two border rows",
+      "reproduction": "unit render at 20 rows: windowRows = 17, frame drew 21 lines, host clipped the footer + its position token (footer read 1/23 instead of 1/24)",
+      "after": "windowRows = rows - PANEL_FRAME_BORDER_ROWS(2) - PANEL_TITLE_ROW_ROWS(1) - WATCHDOG_FOOTER_ROWS(1) => 16; 2+1+16+1 === 20 asserted exactly"
+    },
+    "double_slice": "NOT the live cause: it was repaired in an earlier wave; the unit-render reproduction above shows the two defects that remained. Recorded so the older hypothesis is not carried forward."
+  },
+  "delivered": {
+    "shared_body": "watchdogBodyRows + watchdogAckPress in panel-watchdog.ts — the ONE body/ack builder both surfaces call",
+    "scene": "scene-watchdog.ts registers mpd-tui-watchdog (frame, title+rule, per-team held/phase, header counts, incident list, ack state, key hints, vertical scroll + rail, esc/q, a, r)",
+    "registration": "index.ts registers it on the scene knob; the page's ⤢ gets a click target only when the scene exists; /mpd watchdog's route calls watchdogScene.open()",
+    "route_line": "PanelRoute.sceneOpened (optional) + one branch in commands.ts: unavailable/fallback WITH sceneOpened === true is a success naming the scene; everything else unchanged",
+    "i18n": {
+      "key": "watchdog.commandSceneOpened",
+      "en": "mpd watchdog: the panel could not open; opened the full-screen watchdog scene instead (esc to return)",
+      "zh": "mpd 看门狗：面板无法打开，已改用全屏看门狗场景（esc 返回）"
+    }
+  },
+  "gates": [
+    {
+      "command": "bun test packages/mpd-tui-plugin",
+      "result": "674 pass, 1 skip, 0 fail (675 tests / 30 files), exit 0"
+    },
+    {
+      "command": "bun run typecheck",
+      "result": "tsgo --noEmit, exit 0"
+    },
+    {
+      "command": "bun run verify:comments",
+      "result": "VERDICT: PASS — 611 files / 54505 declarations, exit 0"
+    }
+  ],
+  "bounds": [
+    "No live TTY capture of the scene: proof is unit-render + typecheck (contract §7.1).",
+    "The scene reads through the page's front door in an effect (no synchronous I/O on the render path); the 2 s timer is cleaned up on unmount.",
+    "The watchdog page still has no scrollbar drag of its own: the vertical bar is core's panelViewportBody, and the drag mapping is core's viewportRail (L1's lane)."
+  ],
+  "artifacts": {
+    "reproduction-prefix.log": "raw pre-fix red run (3 failing assertions)",
+    "prefix-panel-watchdog.ts": "sha256 18c16194225e02d17a174663f3410f3d601d3725ac7ef080c4ff925ebbd75c84 — the two pre-fix formulas the red run executed",
+    "fixed-panel-watchdog.ts": "sha256 1f97d20a0a5c57104a700a4f10cc0f49ec223aa06780b5213f07a2a3db1ca997 — the shipped, restored source"
+  }
+}

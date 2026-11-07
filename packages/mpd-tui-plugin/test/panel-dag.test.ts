@@ -39,6 +39,7 @@ import {
   dagPanelKeyAction,
   dagPanelLayout,
   dagRowClick,
+  DAG_DOUBLE_CLICK_MS,
   DAG_PANEL_REFRESH_MS,
   DAG_PANEL_TITLE,
   DAG_SECTION_DAG_TITLE,
@@ -1411,6 +1412,29 @@ function clickRowAt(page: (props: unknown) => unknown, kit: Kit, host: HostRecor
   clickHandlers(render(page, kit, host))[at.row]({ localRow: 0, localCol: at.col + 1 })
 }
 
+/**
+ * Run one arm with the wall clock pinned to one instant, restoring the real clock afterwards.
+ *
+ * THE SYNTHESIZED DOUBLE-CLICK IS DEFINED BY `Date.now()` DELTAS (decision D4), so an arm that merely
+ * clicked twice "quickly" would be asserting whatever the scheduler happened to do between two calls —
+ * flaky by construction and unable to reach the window's boundary at all. This helper makes the pair
+ * deterministic: each click is measured against an instant the arm CHOOSES.
+ * @param at - the epoch-millisecond instant every `Date.now()` inside the arm reports.
+ * @param body - the arm.
+ * @returns whatever the arm returned.
+ */
+function withClock<T>(at: number, body: () => T): T {
+  /** The real clock, restored in the `finally` so one arm can never leak its instant into the next. */
+  const real = Date.now
+  // A cast is needed because the lib types declare `now` as a METHOD; the runtime property is writable.
+  ;(Date as unknown as { now: () => number }).now = (): number => at
+  try {
+    return body()
+  } finally {
+    ;(Date as unknown as { now: () => number }).now = real
+  }
+}
+
 describe("AC4: a click resolves through the row's own rectangle, COLUMN included", () => {
   test("POSITIVE CONTROL: clicking the SECOND box of a two-box rank pins the SECOND task", () => {
     /** The kit: wide enough for boxes, tall enough that the whole drawing is on screen. */
@@ -1510,7 +1534,7 @@ describe("AC4: a click resolves through the row's own rectangle, COLUMN included
 // ── AC6: the second click on the pinned task opens its owner's work page ────────────────────────
 // "单击高亮依赖树并打开详细描述，再次单击进入对应agent的工作页面" — the pin is the first click, the agent
 // page is the second, and the owner name is resolved against the HOST's own curated subagent rows.
-describe("AC6: clicking the ALREADY-PINNED task opens its owner's agent page", () => {
+describe("AC6 + clause 7: the synthesized double click on a node opens its owner's MPD subagent page", () => {
   test("resolves the owner through the host's subagent rows and calls the row's opener", () => {
     /** The kit. */
     const kit = makeKit({ columns: POINTER_PANEL_COLUMNS, rows: POINTER_PANEL_ROWS })
@@ -1532,15 +1556,20 @@ describe("AC6: clicking the ALREADY-PINNED task opens its owner's agent page", (
     expect(second).toBeDefined()
     if (second === undefined) return
     // THE FIRST CLICK PINS, and it does NOT open anything: the page the user asked for is the second one.
-    clickRowAt(page, kit, host, second)
+    withClock(1_000_000, () => { clickRowAt(page, kit, host, second) })
     expect(opened).toEqual([])
     expect(kit.text(render(page, kit, host))).toContain("failedBy")
-    // THE SECOND CLICK ON THE SAME TASK opens that task's owner page.
-    clickRowAt(page, kit, host, second)
+    // THE SECOND CLICK ON THE SAME TASK, INSIDE THE 350 ms WINDOW, is the SYNTHESIZED double click: it
+    // undoes the focus the first click set and opens that task's owner page instead (clause 7 / D4).
+    withClock(1_000_100, () => { clickRowAt(page, kit, host, second) })
     expect(opened).toEqual(["agent-7"])
     expect(host.toasts).toEqual([])
-    // THE PIN IS KEPT: the chain stays lit behind the page the click opened.
-    expect(kit.text(render(page, kit, host))).toContain(`${DAG_CHROME.pinMarker} B2`)
+    // THE TOGGLE IS UNDONE BY THE JUMP: the gesture leaves the node NOT focused, so neither the pin's
+    // detail head nor the drawing's focus marker survives it (the old behaviour kept the pin).
+    /** What the page draws after the pair. */
+    const afterJump = kit.text(render(page, kit, host))
+    expect(afterJump).not.toContain(`${DAG_CHROME.pinMarker} B2`)
+    expect(afterJump).not.toContain(`${DAG_CHROME.focusMarker} B2`)
   })
 
   test("an unmatched owner, an absent opener and a refusal each SPEAK through the host's toast", () => {
@@ -1668,6 +1697,121 @@ describe("AC6: clicking the ALREADY-PINNED task opens its owner's agent page", (
       },
     }
     expect(agentIdForOwner(hostile, "Panel Engineer")).toBeUndefined()
+  })
+})
+
+// ── clause 8 + clause 7: the click TOGGLES focus, and the synthesized double click jumps ────────────
+//
+// Two decisions meet on this handler. D4 makes a click on a node TOGGLE its focus — a second click on
+// the focused node RELEASES it — and the SAME second click, when it lands within 350 ms, is read as a
+// double click: the toggle is undone and the node's owner page opens instead. The host has no
+// double-click event at all, so the gesture is synthesized from `Date.now()` deltas; every arm below
+// pins the clock rather than hoping the scheduler keeps two clicks close together.
+describe("clause 8 / clause 7: a click toggles focus, and a synthesized double click jumps", () => {
+  test("DAG_DOUBLE_CLICK_MS is the frozen 350 ms window", () => {
+    expect(DAG_DOUBLE_CLICK_MS).toBe(350)
+  })
+
+  test("a click FOCUSES an unfocused node, and a later click on it UNFOCUSES it", () => {
+    /** Every id the opener was asked for; a toggle must open NOTHING. */
+    const opened: string[] = []
+    /** The kit: wide enough for boxes, tall enough to show the whole drawing. */
+    const kit = makeKit({ columns: POINTER_PANEL_COLUMNS, rows: POINTER_PANEL_ROWS })
+    /** The host double. */
+    const host = makeHost()
+    /** The board whose second rank holds two boxes. */
+    const tasks = twoBoxRankTasks()
+    /** The page, built WITHOUT an opener: the toggle must not depend on one. */
+    const page = createDagPanelComponent(() => workflowOf(tasks)) as (props: unknown) => unknown
+    /** The right-hand box of the shared rank, which both clicks address. */
+    const second = pageLayoutOf(tasks, POINTER_PANEL_ROWS).view.hits.find((hit) => hit.taskId === "B2")
+    expect(second).toBeDefined()
+    if (second === undefined) return
+    // CLICK 1: the node is FOCUSED — the drawing substitutes its focus marker for the state glyph and
+    // the detail body names the pinned task.
+    withClock(1_000_000, () => { clickRowAt(page, kit, host, second) })
+    /** The page after the focusing click. */
+    const focused = kit.text(render(page, kit, host))
+    expect(focused).toContain(`${DAG_CHROME.focusMarker} B2`)
+    expect(focused).toContain(`${DAG_CHROME.pinMarker} B2`)
+    // CLICK 2, 400 ms LATER — OUTSIDE the window, so it is the toggle's other half: the node is
+    // UNFOCUSED and nothing is opened, because a toggle is not the gesture.
+    withClock(1_000_400, () => { clickRowAt(page, kit, host, second) })
+    /** The page after the releasing click. */
+    const released = kit.text(render(page, kit, host))
+    expect(released).not.toContain(`${DAG_CHROME.focusMarker} B2`)
+    expect(released).not.toContain(`${DAG_CHROME.pinMarker} B2`)
+    // THE DETAIL BODY IS THE DISCRIMINATOR: `▶` is also the keyboard cursor's mark, so the pinned body
+    // disappearing is what proves the FOCUS was released rather than merely drawn differently.
+    expect(released).not.toContain("failedBy")
+    expect(opened).toEqual([])
+  })
+
+  test("a second click WITHIN 350 ms undoes the toggle and opens MPD's subagent page", () => {
+    /** Every id the opener was asked for. */
+    const opened: string[] = []
+    /** The kit. */
+    const kit = makeKit({ columns: POINTER_PANEL_COLUMNS, rows: POINTER_PANEL_ROWS })
+    /** The host double, reporting the live subagent this node's owner resolves to. */
+    const host = makeHost({ subagents: [{ agentId: "agent-7", description: "Panel Engineer" }] })
+    /** The board whose second rank holds two boxes. */
+    const tasks = twoBoxRankTasks()
+    /** The page, carrying the row's opener. */
+    const page = createDagPanelComponent(() => workflowWithOwners(tasks, { B2: "Panel Engineer" }), {
+      openAgentPage: (agentId: string): boolean => {
+        opened.push(agentId)
+        return true
+      },
+    }) as (props: unknown) => unknown
+    /** The right-hand box of the shared rank. */
+    const second = pageLayoutOf(tasks, POINTER_PANEL_ROWS).view.hits.find((hit) => hit.taskId === "B2")
+    expect(second).toBeDefined()
+    if (second === undefined) return
+    // THE PAIR: focus at t, the same node again 300 ms later — inside the synthesized window.
+    withClock(2_000_000, () => { clickRowAt(page, kit, host, second) })
+    expect(opened).toEqual([])
+    withClock(2_000_300, () => { clickRowAt(page, kit, host, second) })
+    expect(opened).toEqual(["agent-7"])
+    expect(host.toasts).toEqual([])
+    // …AND THE NODE IS LEFT UNFOCUSED, which is the acceptance criterion's own wording: the second click
+    // UNDOES the toggle before it jumps, so neither mark survives.
+    /** The page after the gesture. */
+    const afterJump = kit.text(render(page, kit, host))
+    expect(afterJump).not.toContain(`${DAG_CHROME.focusMarker} B2`)
+    expect(afterJump).not.toContain(`${DAG_CHROME.pinMarker} B2`)
+  })
+
+  test("a second click JUST PAST the window only unfocuses — no page is opened", () => {
+    /** Every id the opener was asked for; the boundary arm must leave this empty. */
+    const opened: string[] = []
+    /** The kit. */
+    const kit = makeKit({ columns: POINTER_PANEL_COLUMNS, rows: POINTER_PANEL_ROWS })
+    /** The host double, reporting a row the owner WOULD resolve to — so a jump would be visible. */
+    const host = makeHost({ subagents: [{ agentId: "agent-7", description: "Panel Engineer" }] })
+    /** The board whose second rank holds two boxes. */
+    const tasks = twoBoxRankTasks()
+    /** The page, carrying the row's opener. */
+    const page = createDagPanelComponent(() => workflowWithOwners(tasks, { B2: "Panel Engineer" }), {
+      openAgentPage: (agentId: string): boolean => {
+        opened.push(agentId)
+        return true
+      },
+    }) as (props: unknown) => unknown
+    /** The right-hand box of the shared rank. */
+    const second = pageLayoutOf(tasks, POINTER_PANEL_ROWS).view.hits.find((hit) => hit.taskId === "B2")
+    expect(second).toBeDefined()
+    if (second === undefined) return
+    // ONE MILLISECOND PAST THE FROZEN BOUNDARY: the pair is NOT a double click any more. This is what
+    // separates "the second click jumps" from "the second click unfocuses", and a page that ignored the
+    // window would open the page here too.
+    withClock(3_000_000, () => { clickRowAt(page, kit, host, second) })
+    withClock(3_000_350 + 1, () => { clickRowAt(page, kit, host, second) })
+    expect(opened).toEqual([])
+    expect(host.toasts).toEqual([])
+    /** The page after the releasing click. */
+    const released = kit.text(render(page, kit, host))
+    expect(released).not.toContain(`${DAG_CHROME.focusMarker} B2`)
+    expect(released).not.toContain(`${DAG_CHROME.pinMarker} B2`)
   })
 })
 

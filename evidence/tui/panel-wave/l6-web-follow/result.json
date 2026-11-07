@@ -1,0 +1,88 @@
+{
+  "lane": "L6",
+  "task": "T5 — web plane follows the TUI rules: ended-team treatment for browser member cards plus the shared relative-age format",
+  "contract": ".mpd/plans/tui-panel-wave.md §5.A1 (the web half named by §3), decisions D1 (`web跟着改`) and D2, §3's reconciled facts; blocked-on L4's published signatures (evidence/tui/panel-wave/l4-row-lifecycle/signatures.md)",
+  "captain": "7d08e456-38d5-42f1-bcbb-ca370ebe95e4",
+  "date": "2026-11-06T16:10:00Z",
+  "scope": {
+    "changed": [
+      "packages/mpd-bundle-plugin/src/team-view.ts",
+      "packages/mpd-bundle-plugin/test/team-view.test.ts"
+    ],
+    "evidence": [
+      "evidence/tui/panel-wave/l6-web-follow/render-snapshot.ts",
+      "evidence/tui/panel-wave/l6-web-follow/render-snapshot.log",
+      "evidence/tui/panel-wave/l6-web-follow/team-view.test.log",
+      "evidence/tui/panel-wave/l6-web-follow/package-tests.log",
+      "evidence/tui/panel-wave/l6-web-follow/typecheck.log",
+      "evidence/tui/panel-wave/l6-web-follow/verify-comments.log",
+      "evidence/tui/panel-wave/l6-web-follow/result.json"
+    ],
+    "not_touched": [
+      "packages/mpd-bundle-plugin/client.js (GENERATED — integration lane rebuilds it)",
+      "packages/mpd-bundle-plugin/src/team-page.ts (scope narrowed to team-view.ts by the captain; the sidebar page only mounts the view)",
+      "packages/mpd-bundle-plugin/src/dshgo-*.ts (native panel, out of scope)",
+      "packages/mpd-tui-plugin/** (L4's module is read as a semantic reference only; no import across the package boundary)",
+      "packages/mpd-team-core-plugin/** (the /state route that could serve `endedAt` on the head — route-side enrichment is a separate, out-of-scope finding)"
+    ]
+  },
+  "delivered": {
+    "ended_team_treatment": "TeamView derives `teamEnded` from the served payload: the head's DERIVED `phase === \"ended\"` AND/OR a carried `endedAt` (resolved by `endedInstantOf` from the head, falling back to the workspace listing row with the same team id — the listing is where the route serves the stamp today). When ended: (a) a dedicated ended statement replaces the raw phase chip — a chip reading `ended` plus the RELATIVE age (`data-mpd-team-ended` carries the same age for machine readers); (b) the running/ready tally row, the progress bar and the `Progress N%` counter are NOT drawn; the final `completed/total complete` figure still is; (c) each member card drops its `current` work line, its status dot loses the live status (title `ended`, neutral tone) and its fraction reads `x/y complete` as a FINAL tally. Nothing is deleted from the payload and `data-member` stays on every card.",
+    "relative_age": "`relativeAgeOf` is a LOCAL helper in this package (the planes are DUPLICATED code; no cross-package import), with L4's exact thresholds: `<1s`, `Ns`, `Nm`, `Nh`, `Nd`, and `?` for an absent/unparseable instant (epoch 0 included, matching `subagentRowAge`). Exposed additively as `relativeAge` on the returned module, the same way `formatElapsed` already is, so the vocabulary is provable directly.",
+    "reconciled_fact_honoured": "The WEB plane has NO subagent-row surface, so there is nothing to burn there (no row filter was invented). What the web renders is team MEMBER cards; the treatment lands on exactly that surface, and the ended marking is a RENDERING decision over the served record, not a filter/delete."
+  },
+  "acceptance": {
+    "ended_record_states_ending_with_relative_age": "Test `an ENDED team states the ending and its RELATIVE age, and stops presenting live state`: the ended payload renders `ended 3m`, `data-mpd-team-ended=\"3m\"`, and the full ISO `endedAt` appears nowhere in the panel.",
+    "ended_record_presents_no_live_state": "Same test: no `Progress`, no `data-progress`, no `running`/`ready` counters, the final `1/4 complete` figure is kept, the member card keeps `data-member` but renders neither `current` nor the live task text, and its counter reads `1/2 complete` (final).",
+    "live_record_renders_as_today": "Test `a LIVE team still renders its live state (negative control of the ended treatment)`: `Progress 25%`, `data-progress` present, ` running`/` ready` tally present, `data-mpd-team-ended` absent, member card still shows `current Build the header` and the bare `1/2` fraction. The pre-existing panel tests (including the 25% bar and the verbatim card arm) stay green unchanged.",
+    "age_format": "Test `the relative age prints Ns / Nm / Nh / Nd, and ? for an unusable instant`: pins the bucket table (`<1s`, `12s`, `3m`, `2h`, `4d`) plus `?` for undefined, empty, garbage and epoch 0 — never an ISO instant.",
+    "payload_untouched": "The ended fixture still carries `members[0].current`; the render drops it, and the test asserts the rendered card does not contain the live line while the payload object itself is unchanged by the view (no store, no filter).",
+    "declared_render_observed": "evidence/tui/panel-wave/l6-web-follow/render-snapshot.log — the SAME hook runtime/type-strip the package's tests use, rendering both payloads. LIVE: `... 1 running · 1 ready · 1 blocked 1/4 complete · 1 running / 1 ready Progress 25% ... current Build the header ... 1/2 ...`. ENDED: `... workspace My-Power-Dsh ended 3m 1/4 complete ... 1/2 complete ...` (no current line, no progress counter, no running/ready tally)."
+  },
+  "gates": [
+    {
+      "command": "bun test packages/mpd-bundle-plugin/test/team-view.test.ts",
+      "exit": 0,
+      "observed": "78 pass / 0 fail / 14554 expect() calls / 1 file",
+      "log": "evidence/tui/panel-wave/l6-web-follow/team-view.test.log"
+    },
+    {
+      "command": "bun test packages/mpd-bundle-plugin",
+      "exit": 0,
+      "observed": "322 pass / 0 fail / 17689 expect() calls / 15 files",
+      "log": "evidence/tui/panel-wave/l6-web-follow/package-tests.log"
+    },
+    {
+      "command": "bun run typecheck",
+      "exit": 0,
+      "observed": "clean — `tsgo --noEmit` printed no diagnostics",
+      "log": "evidence/tui/panel-wave/l6-web-follow/typecheck.log"
+    },
+    {
+      "command": "bun run verify:comments",
+      "exit": 0,
+      "observed": "VERDICT: PASS — every declaration in the family carries a precise comment and a full signature (609 files, 54302 declarations)",
+      "log": "evidence/tui/panel-wave/l6-web-follow/verify-comments.log"
+    },
+    {
+      "command": "bun evidence/tui/panel-wave/l6-web-follow/render-snapshot.ts",
+      "exit": 0,
+      "observed": "both rendered panel texts, quoted above under declared_render_observed",
+      "log": "evidence/tui/panel-wave/l6-web-follow/render-snapshot.log"
+    }
+  ],
+  "integration_handoff": {
+    "generated_browser_bundle_rebuild": "node scripts/build-mpd-client.ts",
+    "what_it_rewrites": "packages/mpd-bundle-plugin/client.js (the ONE browser artifact; `team-view.ts` is spliced into it as a factory body, so a stale client.js ships the OLD renderer)",
+    "why_not_run_here": "client.js is the INTEGRATION task's write scope (T-88 derived surfaces), so this lane did not generate it. Until INT runs the command above, a checkout serves the pre-wave renderer.",
+    "dist": "packages/mpd-bundle-plugin/dist/** is untouched for the same reason: `node scripts/verify-dist-fresh.ts` reddens on this lane's src edit BY DESIGN (§6), and INT rebuilds with the pinned toolchain."
+  },
+  "bounds": [
+    "NO web subagent-row surface exists (`.mpd/plans/tui-panel-wave.md` §3), so D8's burn rule and A1's row filter have NO web counterpart and none was invented; the ended-team treatment is the web half, exactly as the contract says.",
+    "The session-scoped head served by `/plugins/mpd-team/state` carries `phase` (the store's DERIVED terminal phase) but NOT `endedAt`; the ending INSTANT rides the `workspaceTeams.records[]` listing in the same payload. `endedInstantOf` therefore reads the head first and the listing row (same team id) second — verified against the route BOTH ways: `buildTeamState` serves the head without the stamp, `buildWorkspaceTeams` spreads it on the listing. If neither carrier has a readable instant, the panel prints `ended ?` rather than inventing an age (the same `?` the TUI helper answers for unusable instants). Enriching the HEAD with `endedAt` is a route change in `packages/mpd-team-core-plugin/src/team-web.ts`, OUTSIDE this lane's write scope, and was reported to the captain.",
+    "The pre-existing header stamp `approved <ISO>` is unchanged: it is a record stamp, not an age, and clause A5's no-ISO rule is about the TUI's subagent rows. Only the ended age is relative.",
+    "No live browser/TUI capture: the proof is unit render under the package's own hook runtime plus the snapshot artifact. A rendered screenshot of the web panel is NOT claimed.",
+    "The workspace listing (`workspaceSection`) already renders `phaseLabel(team.phase)` = `ended` and final task counts; it has no member cards and no live counters, so it was left untouched (also outside the captain-narrowed scope).",
+    "`team-page.ts` was NOT edited: the sidebar page only mounts `TeamView`; the whole ended treatment lives in the view the page renders."
+  ]
+}
