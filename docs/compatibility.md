@@ -82,22 +82,30 @@ because that harness has no `profileContext` service — the older host keeps it
 
 `dsh-plugin.json` and `packages/mpd-tui-plugin/dsh-plugin.json` both declare
 `compat.hosts: ["@deepseek-harness-tui/dsh-tui@0.18.0", "@deepseek-harness-tui/dsh-tui@0.19.0"]`, and
-`dsh-distribution.json`'s `host-tui` ref names `0.19.0`. `verify:tui-admission` now ASSERTS that published
-band instead of trusting the field; its COMPAT lane carries four arms that run in every static pass, plus
-one that can only run when a host is discoverable:
+`dsh-distribution.json`'s `host-tui` ref names `0.19.0`. `verify:tui-admission` asserts that published
+band instead of trusting the field. The set of hosts this bundle CLAIMS is written data, not a
+discovered fact: `specs/tui-hosts.json` names both hosts, and the gate's COMPAT lane carries five arms —
+four that run host-free in every static pass, plus one that can only run when a host is discoverable:
 
 - `COMPAT.band:<label>` — each manifest's `compat.hosts` is a non-empty array of `@scope/name@x.y.z`
   coordinates (one arm per manifest).
 - `COMPAT.band-parity` — the two manifests declare the SAME band, so the pair cannot drift apart.
 - `COMPAT.distribution-ref` — `dsh-distribution.json`'s `host-tui` ref lies INSIDE that band.
+- `COMPAT.declared-hosts` — EVERY host named in `specs/tui-hosts.json` lies INSIDE each manifest's band.
+  This arm reads written data and never consults a discovered host, so deleting a claimed host from
+  either band reddens a CI run that installs only the other host: the loss cannot hide behind whatever
+  host happens to be installed.
 - `COMPAT.host-version` — the DISCOVERED host's exact version lies inside the band. With no discoverable
   host this arm reports `BOUND — NOT CHECKED — <reason>` instead of passing silently; `--static-only`
   reports it that way by construction and itself exits 3, because a static pass is never an admission
   verdict.
 
-In this release's gate run the discovered host was `0.18.0`, so `COMPAT.host-version` PASSED against
-`0.18.0` and the run reported **PASS — 48 arms passed, 1 allowed deviation, 5 bounds**. The `0.19.0`
-result is the earlier measurement below; neither result is a live admission of BOTH hosts:
+The declared-set arm and the discovered-host arm answer different questions and neither substitutes for
+the other: the first proves the CLAIM covers both hosts, the second proves THIS machine's host is one the
+claim admits. Neither is a live admission of BOTH hosts in one run. In this release's gate run the
+discovered host was `0.18.0`, so `COMPAT.host-version` PASSED against `0.18.0` and the run reported
+**PASS — 49 arms passed, 1 allowed deviation, 5 bounds**. The `0.19.0` result is the earlier measurement
+below:
 
 - The host's own admission chain was run against **`0.19.0`**: `validateHost: ok`, both manifests negotiate
   `compatible` (that earlier run reported 43 arms, before this wave added the five COMPAT arms).

@@ -29,6 +29,13 @@ Everything here is EVIDENCE, not a plan. The files in this directory are the obs
 The static arms (A/B/R*/D/E/F/G) and the host-negotiation arm are unchanged and still run; `--static-only`
 still exits **3**, never green.
 
+**R4 (2026-11-07) added a fifth, host-free arm — `COMPAT.declared-hosts`.** It reads the PUBLISHED
+DECLARED SET from `specs/tui-hosts.json` (written data naming `0.18.0` and `0.19.0`) and requires EVERY
+coordinate in it to lie inside EACH manifest's `compat.hosts` band. It never consults discovery, so
+dropping `0.18.0` from both manifests reddens a CI that installs only `0.19.0` — the consequence the R1
+round left invisible. The round-1 tables below predate that arm; its negative control, the recorded red
+run against a synthetic `0.19.0` host, and the re-run gates are in `evidence/repair/0.18.0/r4/`.
+
 ## 3 · Negative controls inside `--self-test` (18/18 arms, exit 0)
 
 | Control | Fixture | Observed |
@@ -84,7 +91,13 @@ Detail: `verify-gates-failures.log`.
 1. The host arm ran against the **ambient 0.18.0** host at `~/.dsh/profiles/dsh-tui`. CI installs
    **0.19.0** from `dsh-distribution.json`; arm (d) is proven for 0.18.0 here, and 0.19.0 is covered by
    arm (c) plus the synthetic-host negative control (which proves the arm can fail).
-2. The lane does not assert that every member of the band was *measured against a host* — it asserts the
-   band is well-formed, identical across the two manifests, contains the distribution coordinate, and
-   contains whatever host this run actually discovered. That is exactly what R6 asked for.
+2. The lane does not assert that every member of the band was *measured against a host* — nothing here
+   can measure a host it does not install. What it asserts, all of it host-free: the band is well formed;
+   both manifests declare the SAME band; the distribution's `host-tui` coordinate is inside it; and EVERY
+   host in the PUBLISHED DECLARED SET (`specs/tui-hosts.json`, written data added by R4) is inside EACH
+   manifest's band. On top of that, the DISCOVERED host's exact version must be inside the band when one
+   is discovered, and the arm reports `BOUND — NOT CHECKED` when none is. Deleting a claimed host
+   therefore reddens in CI even though CI installs only `0.19.0`. What the lane does NOT prove — and never
+   did — is that this run exercised both hosts: the `0.18.0` half here is the ambient host this machine
+   discovered, and the `0.19.0` half is the earlier measurement.
 3. No live TTY mount and no artifact digest: the gate's own declared bound is unchanged.

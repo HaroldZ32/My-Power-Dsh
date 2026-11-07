@@ -304,9 +304,10 @@
     "No Flutter/DSH-Go host exists in this repository: the native half is proven against the published standard, the pinned spec data and service doubles, never on a device.",
     "The official @dsh-go/plugin-kit is private:true and not on npm; it is never vendored. Its cross-check ran against a pinned checkout supplied by MPD_DSHGO_KIT; without one the gate reports NOT-PASSED (exit 3), never a green.",
     "The Docker browser/credentialed arm did not produce a measurement: no credential was staged (MISSING_CREDENTIAL / MISSING PREREQUISITE), and AGENTS.md §11 REQUIRES the credentialed --live runs before the tag — they remain OWED. A skip is never a pass.",
-    "The oneclick lane RAN (local git-spec stand-in) and FAILED one packaging assertion: pack.staticCoherence drifted=VENDOR_LOCK.json, because dist/mpd-package/ predates the wave's re-pin. Re-pack and re-run before the tag. The GitHub-ref variant is deferred until the branch is pushed; default-branch/ref resolution, not publication, is the binding constraint.",
     "compat.hosts is a published claim, not an admission input: no host code reads it.",
-    "The DSH-Go HOST lane is static source analysis (constants and computed keys), not a mounted boot."
+    "The DSH-Go HOST lane is static source analysis (constants and computed keys), not a mounted boot.",
+    "The oneclick Docker lane PASSED on its re-run (row appended, evidence/docker/client-install-oneclick/2026-11-07T08-59-18Z) AFTER the pack was re-made; its earlier failing run (08-45-55Z, pack.staticCoherence drifted=VENDOR_LOCK.json) is retained on purpose so the stale-artifact failure stays auditable. The credentialed --live source and oneclick runs remain OWED before the tag (no key was staged).",
+    "Two vendor re-pins were run in this wave, not one: the first enumerated the git INDEX while the new skills/dsh-qa/scripts/dshgo-standard.ts was still UNTRACKED (391 files), the second after it was staged (392 files, sha 3133e6fb). The shipped lock is the second; the transition is recorded by the check/write transcript in this directory."
   ],
   "repairs": [
     {

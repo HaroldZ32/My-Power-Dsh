@@ -34,10 +34,13 @@
 //   COMPAT (R6, host-free where it can be) — `compat.hosts` is a PUBLICATION CLAIM, so the gate itself
 //   asserts it instead of trusting the field. In BOTH the normal and `--static-only` runs: every manifest
 //   declares a NON-EMPTY band of `@scope/name@x.y.z` coordinates; the two manifests declare the SAME band
-//   (a drift guard in the gate, not only in a unit test); and the `host-tui` component ref in
-//   `dsh-distribution.json` is INSIDE the band. When a host IS discovered, its exact version is inside the
-//   band too; when discovery finds none, that sub-assertion prints as NOT CHECKED (`BOUND`) instead of
-//   passing silently. `--self-test` carries a negative control for EACH of the four.
+//   (a drift guard in the gate, not only in a unit test); the `host-tui` component ref in
+//   `dsh-distribution.json` is INSIDE the band; and EVERY host in the PUBLISHED DECLARED SET read from
+//   `specs/tui-hosts.json` is inside EACH manifest's band. That last arm compares WRITTEN DATA and never
+//   consults discovery, so deleting a claimed host from `compat.hosts` reddens on a CI runner that
+//   installs only the other host. When a host IS discovered, its exact version is inside the band too;
+//   when discovery finds none, that sub-assertion prints as NOT CHECKED (`BOUND`) instead of passing
+//   silently. `--self-test` carries a negative control for EACH of the five.
 //
 // NO HOST IS NOT A PASS (decision D5): when no installed host resolves, the gate prints every discovery
 // candidate it tried and the exact remedy, and exits non-zero. `--static-only` exits 3 for the same
@@ -107,6 +110,8 @@ const HOST_PACKAGE_NAME: string = "@deepseek-harness-tui/dsh-tui"
 const DISTRIBUTION_FILE: string = "dsh-distribution.json"
 /** The component id in {@link DISTRIBUTION_FILE} that carries the TUI host coordinate. */
 const DISTRIBUTION_HOST_COMPONENT: string = "host-tui"
+/** The written data naming every dsh-TUI host this bundle PUBLISHES support for; never a discovered fact. */
+const DECLARED_HOSTS_FILE: string = "specs/tui-hosts.json"
 /** One `compat.hosts` entry: an `@scope/name@x.y.z` coordinate (a prerelease/build suffix is allowed). */
 const HOST_COORDINATE: RegExp = /^(@[^/@\s]+\/[^@\s/]+)@(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)$/
 /** One `dsh-distribution.json` component ref: the `pkg:npm/` spelling of the same coordinate. */
@@ -213,6 +218,16 @@ interface HostBand {
   /** The parsed coordinates in declaration order; empty when the band is unusable. */
   readonly coordinates: readonly HostCoordinate[]
   /** Why the band is unusable, or undefined when it is a well-formed non-empty band. */
+  readonly problem: string | undefined
+}
+
+/** The PUBLISHED host set as written in {@link DECLARED_HOSTS_FILE}, or the reason it cannot be read. */
+interface DeclaredHosts {
+  /** The data file the set was read from, repository-relative. */
+  readonly file: string
+  /** The declared coordinates in declaration order; empty when the data is unusable. */
+  readonly coordinates: readonly HostCoordinate[]
+  /** Why the declared set is unusable, or undefined when it is a well-formed non-empty set. */
   readonly problem: string | undefined
 }
 
@@ -761,6 +776,44 @@ function bandContains(band: HostBand, name: string, version: string): boolean {
   return band.problem === undefined && band.coordinates.some((coordinate) => coordinate.name === name && coordinate.version === version)
 }
 
+/**
+ * Read the PUBLISHED host set from {@link DECLARED_HOSTS_FILE}.
+ *
+ * The set is WRITTEN DATA on purpose: `compat.hosts` is a publication claim, so the statement of what
+ * the claim must contain cannot be derived from whatever host a machine happens to have installed.
+ * @returns the declared coordinates, or the reason the data file cannot serve as the claim.
+ */
+function readDeclaredHosts(): DeclaredHosts {
+  /** The data file's text, or undefined when it does not exist. */
+  const text = readRepoFile(DECLARED_HOSTS_FILE)
+  if (text === undefined) return { file: DECLARED_HOSTS_FILE, coordinates: [], problem: "the file does not exist" }
+  /** The decoded document, still unknown until the record check below. */
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(text)
+  } catch (error) {
+    return { file: DECLARED_HOSTS_FILE, coordinates: [], problem: "the file is not readable JSON: " + (error instanceof Error ? error.message : String(error)) }
+  }
+  /** The decoded document as a plain record, when it is one. */
+  const doc = asRecord(parsed)
+  if (doc === undefined) return { file: DECLARED_HOSTS_FILE, coordinates: [], problem: "the file is not a JSON object" }
+  /** The declared `hosts` list, when it is an array. */
+  const hosts = arrayField(doc, "hosts")
+  if (hosts === undefined) return { file: DECLARED_HOSTS_FILE, coordinates: [], problem: "hosts is not an array" }
+  if (hosts.length === 0) return { file: DECLARED_HOSTS_FILE, coordinates: [], problem: "hosts is empty" }
+  /** Every parsed coordinate, accumulated as the list is walked. */
+  const coordinates: HostCoordinate[] = []
+  for (const value of hosts) {
+    /** The entry's parsed coordinate, when it is one. */
+    const coordinate = parseHostCoordinate(value)
+    if (coordinate === undefined) {
+      return { file: DECLARED_HOSTS_FILE, coordinates: [], problem: "hosts carries " + show(value) + ", which is not an @scope/name@x.y.z coordinate" }
+    }
+    coordinates.push(coordinate)
+  }
+  return { file: DECLARED_HOSTS_FILE, coordinates, problem: undefined }
+}
+
 /** Render a band as one stable string, so a finding quotes the exact claim the manifest makes. */
 function renderBand(band: HostBand): string {
   return "[" + band.coordinates.map((coordinate) => coordinate.text).join(", ") + "]"
@@ -876,7 +929,47 @@ function distributionRefArm(loads: readonly ManifestLoaded[]): ArmResult {
     : arm("COMPAT.distribution-ref", "fail", "the " + DISTRIBUTION_HOST_COMPONENT + " ref " + show(ref) + " is OUTSIDE the declared band " + renderBand(band) + "; a band that excludes the distribution's own host coordinate is a false publication claim")
 }
 
-/** Every COMPAT arm the static pass can decide: (a) per manifest, (b) the pair, (c) the distribution ref. */
+/**
+ * COMPAT (e) · every DECLARED host coordinate is inside EACH manifest's band.
+ *
+ * This is the arm that makes the claim falsifiable where merges are gated: it compares the written
+ * claim in {@link DECLARED_HOSTS_FILE} with each manifest's band and never consults a discovered host,
+ * so deleting a claimed host from `compat.hosts` reddens even when the only installed host is the one
+ * the shortened band still carries.
+ * @param loads - the readable manifests this run judges, in report order.
+ * @returns the COMPAT (e) arm: `fail` when a band misses a declared host or the claim is unreadable,
+ *   `bound` when no readable manifest was supplied, `pass` when every band covers the whole claim.
+ */
+function declaredHostsArm(loads: readonly ManifestLoaded[]): ArmResult {
+  /** The published host set this arm holds every band to. */
+  const declared = readDeclaredHosts()
+  if (declared.problem !== undefined) {
+    return arm("COMPAT.declared-hosts", "fail", declared.file + ": " + declared.problem + "; the published host claim must be readable written data, or no band can be held to it")
+  }
+  if (loads.length === 0) {
+    return arm("COMPAT.declared-hosts", "bound", "no readable manifest was supplied, so the published claim " + renderBand(declared) + " cannot be shown inside a band; the A.json arm above carries the unreadable manifest")
+  }
+  /** One problem per manifest whose band misses a declared host, or whose band is unusable. */
+  const problems: string[] = []
+  for (const load of loads) {
+    /** The band this manifest declares. */
+    const band = readBand(load)
+    if (band.problem !== undefined) {
+      problems.push(load.file + ": its band is unusable (" + band.problem + ")")
+      continue
+    }
+    for (const coordinate of declared.coordinates) {
+      if (!bandContains(band, coordinate.name, coordinate.version)) {
+        problems.push(load.file + ": the band " + renderBand(band) + " does not cover the declared host " + coordinate.text)
+      }
+    }
+  }
+  return problems.length === 0
+    ? arm("COMPAT.declared-hosts", "pass", "every declared host " + renderBand(declared) + " (from " + declared.file + ") is inside each of the " + String(loads.length) + " manifest band(s)")
+    : arm("COMPAT.declared-hosts", "fail", "the PUBLISHED host claim " + renderBand(declared) + " (from " + declared.file + ") is not covered — " + problems.join("; ") + "; a band that drops a claimed host is a false publication claim, and no discovered host can reveal it")
+}
+
+/** Every COMPAT arm the static pass can decide: (a) per manifest, (b) the pair, (c) the distribution ref, (e) the declared set. */
 function compatArms(loads: readonly ManifestLoaded[]): ArmResult[] {
   /** The arms produced by the band lane. */
   const arms: ArmResult[] = []
@@ -892,6 +985,7 @@ function compatArms(loads: readonly ManifestLoaded[]): ArmResult[] {
   }
   arms.push(bandParityArm(loads))
   arms.push(distributionRefArm(loads))
+  arms.push(declaredHostsArm(loads))
   return arms
 }
 
@@ -1794,6 +1888,23 @@ function selfTest(): void {
     /** The static-only child run, which discovers no host by construction. */
     const noDiscovery = spawnGate(["--static-only"])
     check("compat-host-version-reported", noDiscovery.status === EXIT.NOT_PASSED && noDiscovery.output.includes("arm COMPAT.host-version BOUND") && noDiscovery.output.includes("NOT CHECKED"), "--static-only exited " + String(noDiscovery.status) + " and reported COMPAT.host-version as NOT CHECKED")
+    // (e) A band that DROPS a DECLARED host must redden even though NO host is discovered here. The
+    // declared set is written data (specs/tui-hosts.json), and `--manifest` mode never runs discovery, so
+    // this control reproduces exactly the CI condition the defect named: only the newer host installed,
+    // the older claimed host deleted from the band, nothing discovered that could reveal the loss.
+    /** The published host set the control removes one member of. */
+    const declaredSet = readDeclaredHosts()
+    /** Every declared coordinate but the first, so the fixture's band is missing at least one claimed host. */
+    const droppedDeclared = declaredSet.coordinates.slice(1).map((coordinate) => coordinate.text)
+    /** The declared-host-dropped fixture's path. */
+    const declaredDroppedBand = bandFixture("band-declared-dropped.json", droppedDeclared)
+    /** The declared-host-dropped child run. */
+    const declaredDroppedRun = spawnGate(["--manifest", declaredDroppedBand])
+    check(
+      "compat-declared-hosts",
+      declaredDroppedRun.status === EXIT.FINDINGS && declaredDroppedRun.output.includes("arm COMPAT.declared-hosts FAIL"),
+      "a band declaring only " + (droppedDeclared.join(", ") || "(no host at all)") + " while " + declaredSet.file + " claims " + String(declaredSet.coordinates.length) + " host(s) exited " + String(declaredDroppedRun.status) + " with COMPAT.declared-hosts red, and NO host was discovered in this mode",
+    )
 
     // 12 · The CLI contract: an unknown flag is exit 2, `--help` is exit 0.
     /** The unknown-flag child run. */

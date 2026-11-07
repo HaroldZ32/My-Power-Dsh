@@ -74,19 +74,25 @@ harness 上不再由本 bundle 的 preset 提供。这就是本次发布的已�
 
 `dsh-plugin.json` 与 `packages/mpd-tui-plugin/dsh-plugin.json` 都声明
 `compat.hosts: ["@deepseek-harness-tui/dsh-tui@0.18.0", "@deepseek-harness-tui/dsh-tui@0.19.0"]`，而
-`dsh-distribution.json` 的 `host-tui` 引用写的是 `0.19.0`。`verify:tui-admission` 现在**断言**这份已发布
-波段，而不再只是相信字段；它的 COMPAT 车道有四条臂在每次静态运行中都跑，另有一条只有在能发现宿主时才跑：
+`dsh-distribution.json` 的 `host-tui` 引用写的是 `0.19.0`。`verify:tui-admission` 断言这份已发布的
+波段，而不再只是相信字段。本 bundle **声明**支持的宿主集合是**写死的数据**，不是被发现的事实：
+`specs/tui-hosts.json` 点名这两台宿主，门禁的 COMPAT 车道有五条臂——四条在每次静态运行中都无需宿主即可
+跑，另有一条只有在能发现宿主时才跑：
 
 - `COMPAT.band:<label>`——每份清单的 `compat.hosts` 都是非空的 `@scope/name@x.y.z` 坐标数组（每份清单一条臂）。
 - `COMPAT.band-parity`——两份清单声明**相同**的波段，因此这一对不会各自漂移。
 - `COMPAT.distribution-ref`——`dsh-distribution.json` 的 `host-tui` 引用位于该波段**之内**。
+- `COMPAT.declared-hosts`——`specs/tui-hosts.json` 里点名的**每一台**宿主都位于每份清单的波段**之内**。
+  这条臂读的是写死的数据，从不查询被发现的宿主；因此从任一清单删掉一台已声明的宿主，即便 CI 只安装了
+  另一台宿主，门禁也会变红：这份缺失藏不到“这台机器恰好装了哪台宿主”后面。
 - `COMPAT.host-version`——**被发现**宿主的精确版本位于波段之内。发现不到宿主时，这条臂报告
   `BOUND — NOT CHECKED — <reason>`，而不是悄悄通过；`--static-only` 按构造总是这样报告，并且它自身
   退出 3，因为静态运行绝不是准入裁决。
 
-本次发布的门禁运行发现的宿主是 `0.18.0`，所以 `COMPAT.host-version` 针对 `0.18.0` 通过，整次运行报告
-**PASS——48 条臂通过，1 条允许偏差，5 条边界**。`0.19.0` 的结果是下面那份更早的实测——两者都不是对
-**两台**宿主的实时准入：
+“已声明集合”这条臂与“被发现宿主”这条臂回答的是两个不同的问题，谁也替代不了谁：前者证明**声明**覆盖
+两台宿主，后者证明**这台机器**上的宿主是声明所接纳的。两者都不是对**两台**宿主的一次实时准入。本次发布的
+门禁运行发现的宿主是 `0.18.0`，所以 `COMPAT.host-version` 针对 `0.18.0` 通过，整次运行报告
+**PASS——49 条臂通过，1 条允许偏差，5 条边界**。`0.19.0` 的结果是下面那份更早的实测：
 
 - 宿主自己的准入链针对 **`0.19.0`** 跑过：`validateHost: ok`，两份清单都协商为 `compatible`（那次更早的
   运行报告 43 条臂，在本波加入五条 COMPAT 臂之前）。

@@ -1,0 +1,2 @@
+
+NOTE (captain, 2026-11-07): this log is 0 bytes because tsgo --noEmit is silent on success in that earlier run. The AUTHORITATIVE non-empty typecheck evidence is evidence/release/0.18.0/2026-11-07T06-55-08Z/39-typecheck-captain.log (argv + tsgo version + exit 0) and evidence/repair/0.18.0/r4/typecheck.log. Kept as-is rather than deleted so the record stays honest.
