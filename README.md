@@ -2,7 +2,7 @@
 
 **English** | [中文](./README.zh-CN.md)
 
-[![Version](https://img.shields.io/badge/version-0.17.4-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
+[![Version](https://img.shields.io/badge/version-0.17.5-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
 [![npm](https://img.shields.io/badge/npm-%40mpd--dsh%2Fmpd-CB3837.svg)](https://www.npmjs.com/package/@mpd-dsh/mpd)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE.md)
 [![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.1--rc.5-4B32C3.svg)](#acknowledgements)
@@ -157,7 +157,8 @@ names it; pin both.
 
 | `@mpd-dsh/mpd` | DeepSeek Harness | DSH-TUI | Notes |
 |---|---|---|---|
-| 0.17.4 | 0.2.1-rc.5 | 0.18.0 | the current release |
+| 0.17.5 | 0.2.1-rc.5 | 0.18.0 | the current release |
+| 0.17.4 | 0.2.1-rc.5 | 0.18.0 | previous |
 | 0.17.3 | 0.2.1-rc.5 | 0.18.0 | previous |
 | 0.17.2 | 0.2.1-rc.5 | 0.18.0 | previous |
 | 0.17.1 | 0.2.1-rc.5 | 0.18.0 | previous |
@@ -172,7 +173,7 @@ names it; pin both.
 | 0.15.0 | 0.2.1-rc.2 | 0.16.1 | previous |
 | 0.14.0 | 0.2.1-rc.2 | 0.16.1 | previous (the harness-0.2.1 adaptation release) |
 
-The newest row **is** that pair: `0.17.4` ships against harness `0.2.1-rc.5` and DSH-TUI `0.18.0`, and the
+The newest row **is** that pair: `0.17.5` ships against harness `0.2.1-rc.5` and DSH-TUI `0.18.0`, and the
 two move as a set. `dsh-tui@0.17.0`'s peer lists stop at harness `0.2.1-rc.3`, so an rc.5 harness with a
 0.17.0 host is refused by `dsh plugin --profile dsh-tui add`. The pins live in
 [`package.json`](./package.json) and [`dsh-plugin.json`](./dsh-plugin.json) `compat.hosts`; the rows below it
@@ -293,7 +294,7 @@ bilingual (English and 简体中文).
 ## Changelog
 
 Release notes live in [`CHANGELOG.md`](./CHANGELOG.md), newest first, one section per released
-version (the current release is **v0.17.4**). Annotated tags are listed under
+version (the current release is **v0.17.5**). Annotated tags are listed under
 [Releases](https://github.com/HaroldZ32/My-Power-Dsh/releases).
 
 ## Acknowledgements
