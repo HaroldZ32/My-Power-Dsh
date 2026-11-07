@@ -19,7 +19,7 @@
 import type { PluginContextLike, SceneRegistrationHandle, SeamOutcome, TuiAdapter, TuiScenePropsLike } from "./types.js"
 import type { DagTone } from "./dag-theme.js"
 import { clampCells } from "./sanitize.js"
-import { gutterCells, normalizeWheelDelta } from "./panel-core.js"
+import { normalizeWheelDelta, panelKit, panelSurfaceWidth, swallowWheelEvent, usePanelViewport, viewportTrack, wheelInvertOn, type PanelKit } from "./panel-core.js"
 // THE SCENE KIT'S SHARED BUILDERS, never a second implementation of them: `surfaceText`,
 // `surfaceFrame`, `surfaceHints`, `surfaceRule`, `chromeTitle` and `stateMarker` are what every MPD
 // scene draws with, so this surface cannot pick up a different-looking frame or row grammar.
@@ -151,12 +151,9 @@ export function createWatchdogSceneComponent(deps: WatchdogPanelDeps): unknown {
     const flashText = typeof flashState[0] === "string" ? (flashState[0] as string) : undefined
     /** Writes the flash line. */
     const setFlash = flashState[1] as (next: unknown) => void
-    /** The window's offset over the body rows. */
-    const scrollState = React.useState(0)
-    /** The current offset, before this render's clamp. */
-    const scroll = typeof scrollState[0] === "number" ? (scrollState[0] as number) : 0
-    /** Moves the offset. */
-    const setScroll = scrollState[1] as (next: unknown) => void
+    // THE WINDOW'S POSITION IS THE SHARED VIEWPORT HANDLE, created below once this render has measured
+    // its terminal (frozen criterion I5): the keys, the wheel and the rail all drive ONE number, so the
+    // scrollbar can never describe a different position than the rows beside it.
     /** The newest incident stamp this scene has already acknowledged. */
     const lastAck = React.useRef(0)
     /** The explicit refresh trigger (`r`): its UPDATE re-runs the read effect. */
@@ -184,6 +181,17 @@ export function createWatchdogSceneComponent(deps: WatchdogPanelDeps): unknown {
 
     /** The measured terminal; a kit that cannot measure gets the scene's own conservative floor. */
     const measured = typeof ui.useTerminalSize === "function" ? ui.useTerminalSize() : { columns: 80, rows: 24 }
+    // THE FRAME'S INTERIOR IS THIS SCENE'S ONE CONTENT WIDTH (frozen criteria W1/W3): the terminal's width
+    // minus the border and padding `surfaceFrame` spends inside it. The old `columns - 6` was this same
+    // budget with the chrome number re-spelled at every call site; it now comes from ONE helper.
+    /** How many cells the frame's interior offers this render. */
+    const contentCols = panelSurfaceWidth(measured.columns)
+    // The kit is this render's own object, so recording the budget on it clamps every row built below.
+    surface.maxCells = contentCols
+    /** The same host in the PANEL kit's shape, which the viewport and rail builders take. */
+    // Sound because the guard above proved `React.createElement` and the two components: the declarations
+    // differ in their React members alone, and the builders only call `createElement`.
+    const panel = panelKit(React, ui) as PanelKit
     /** How many body rows the window can show; never below one. */
     const viewportRows = Math.max(1, measured.rows - WATCHDOG_SCENE_CHROME_ROWS)
     /** The per-team rows, with the phase half the deferred read captured. */
@@ -196,10 +204,14 @@ export function createWatchdogSceneComponent(deps: WatchdogPanelDeps): unknown {
       ...(flashText === undefined ? {} : { flash: flashText }),
       now: Date.now(),
     })
+    /** The sizes the viewport hook and every later closure read; written before anything reads them. */
+    const sizes: { contentRows: number; viewportRows: number } = { contentRows: Math.max(1, rows.length), viewportRows }
+    /** The body window's ONE scroll position: the keys, the wheel and the rail all drive this handle. */
+    const viewport = usePanelViewport(panel, () => sizes)
     /** The furthest offset that still fills the window. */
-    const scrollMax = Math.max(0, rows.length - viewportRows)
+    const scrollMax = viewport.max
     /** The offset for THIS render, clamped — the one value the window and the rail both read. */
-    const scrollAt = Math.min(Math.max(0, scroll), scrollMax)
+    const scrollAt = viewport.offset
     /** The body rows this window shows. */
     const visible = rows.slice(scrollAt, scrollAt + viewportRows)
 
@@ -230,14 +242,16 @@ export function createWatchdogSceneComponent(deps: WatchdogPanelDeps): unknown {
         // THE WINDOW'S KEYS: the same gestures every MPD scene answers, so a reader learns ONE scroll
         // vocabulary across the surfaces (`⇧↑↓` by a row, `PgUp`/`PgDn` by a window, `Home`/`End` the
         // ends; `j`/`k` stay as the sidebar page spells them).
-        if (key?.upArrow === true && key?.shift === true) setScroll(Math.max(0, scrollAt - 1))
-        else if (key?.downArrow === true && key?.shift === true) setScroll(Math.min(scrollMax, scrollAt + 1))
-        else if (key?.pageUp === true) setScroll(Math.max(0, scrollAt - viewportRows))
-        else if (key?.pageDown === true) setScroll(Math.min(scrollMax, scrollAt + viewportRows))
-        else if (key?.home === true) setScroll(0)
-        else if (key?.end === true) setScroll(scrollMax)
-        else if (input === "j") setScroll(Math.min(scrollMax, scrollAt + 1))
-        else if (input === "k") setScroll(Math.max(0, scrollAt - 1))
+        // EVERY GESTURE MEANS EXACTLY WHAT IT MEANT (one row, one window, the two ends) and now drives
+        // the shared handle, so the far edge is a real stop.
+        if (key?.upArrow === true && key?.shift === true) viewport.scrollBy(-1)
+        else if (key?.downArrow === true && key?.shift === true) viewport.scrollBy(1)
+        else if (key?.pageUp === true) viewport.scrollBy(-viewportRows)
+        else if (key?.pageDown === true) viewport.scrollBy(viewportRows)
+        else if (key?.home === true) viewport.scrollTo(0)
+        else if (key?.end === true) viewport.scrollTo(Number.MAX_SAFE_INTEGER)
+        else if (input === "j") viewport.scrollBy(1)
+        else if (input === "k") viewport.scrollBy(-1)
       })
     }
 
@@ -245,7 +259,7 @@ export function createWatchdogSceneComponent(deps: WatchdogPanelDeps): unknown {
     // unread incidents are the surface's work, and a quiet watchdog stays dim.
     const tone: DagTone = read.view.holds.length > 0 ? "blocked" : read.view.unread.length > 0 ? "chain" : "dim"
     /** The cells one body row may occupy inside the frame, its padding and the rail's column. */
-    const rowCells = Math.max(8, measured.columns - 6)
+    const rowCells = Math.max(8, contentCols - 2)
     /** The pinned head: the title row and the rule beneath it. */
     const head: unknown[] = [
       surfaceText(surface, "title", chromeTitle([`${stateMarker(tone, 0)} ${WATCHDOG_PANEL_TITLE}`, `${String(rows.length)} row(s)`]), { bold: true, tone }),
@@ -261,16 +275,11 @@ export function createWatchdogSceneComponent(deps: WatchdogPanelDeps): unknown {
     )
     // THE RAIL IS A 1-CELL SIBLING OF THE ROWS (never a cell painted into each row): the reserved column
     // is what keeps a row from becoming one cell wider than the frame's interior and being REWRAPPED.
-    /** The rail's cells, one per window row; empty when everything fits. */
-    const railCells = gutterCells(scrollAt, Math.max(rows.length, 1), viewportRows)
-    /** The rail column, absent when the body fits. */
-    const rail = railCells.length === 0
-      ? undefined
-      : React.createElement(
-          ui.Box,
-          { key: "gutter", flexDirection: "column", width: 1 },
-          ...railCells.map((cell, row) => React.createElement(ui.Text, { key: `vbar-${row}`, dimColor: true }, cell)),
-        )
+    // IT IS THE SHARED BUILDER (frozen criteria I1/I5): `viewportTrack` draws `panel-core.ts`'s own gutter
+    // cells inside a `Box` carrying the host's three drag phases — the DELTA drag the sidebar uses — plus
+    // the click-to-jump a bare track click asks for. Absent when the body fits.
+    /** The draggable rail for this render, absent when the body fits its window. */
+    const rail = viewportTrack(panel, viewport, "row")
     // THE WHEEL OVER THE BODY, through the ONE normalisation helper every surface uses, so a machine
     // whose wheel arrives inverted does not scroll this scene the wrong way.
     /** The window's rows in one column, carrying the wheel and (with the rail) the gutter. */
@@ -284,12 +293,16 @@ export function createWatchdogSceneComponent(deps: WatchdogPanelDeps): unknown {
           flexDirection: "column",
           flexGrow: 1,
           onWheel: (event: unknown): void => {
+            // SWALLOWED FIRST (frozen criterion I4): the gesture belongs to this scene.
+            swallowWheelEvent(event)
             /** The event's vertical delta, narrowed from the host's own shape. */
             const raw = (event as { deltaY?: unknown } | undefined)?.deltaY
-            /** The delta in this plugin's convention; sign only, one row per notch. */
-            const deltaY = normalizeWheelDelta(Number(raw ?? 0), false)
+            // THE USER'S WHEEL DIRECTION IS HONOURED (frozen criterion I4): this handler used to pass a
+            // hard-coded `false`, so a machine the terminal reports inverted scrolled this scene the
+            // wrong way while every other surface obeyed the setting.
+            const deltaY = normalizeWheelDelta(Number(raw ?? 0), wheelInvertOn())
             if (deltaY === 0) return
-            setScroll(Math.max(0, Math.min(scrollMax, scrollAt + (deltaY > 0 ? 1 : -1))))
+            viewport.scrollBy(deltaY > 0 ? 1 : -1)
           },
         },
         ...drawn,
@@ -307,8 +320,8 @@ export function createWatchdogSceneComponent(deps: WatchdogPanelDeps): unknown {
         ...(scrollMax > 0 ? [`${String(scrollAt + 1)}/${String(scrollMax + 1)}`] : []),
       ]),
     ]
-    /** The border title, clamped to the measured width so it can never shear the frame. */
-    const borderTitle = clampCells(chromeTitle([stateMarker(tone, 0), WATCHDOG_PANEL_TITLE]), Math.max(8, measured.columns - 6))
+    /** The border title, clamped to the frame's INTERIOR so it can never shear the frame. */
+    const borderTitle = clampCells(chromeTitle([stateMarker(tone, 0), WATCHDOG_PANEL_TITLE]), Math.max(8, contentCols - 2))
     return surfaceFrame(surface, "frame", borderTitle, [...head, window, ...footer], tone)
   }
 }

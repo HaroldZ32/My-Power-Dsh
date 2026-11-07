@@ -1,0 +1,87 @@
+# Rendered-row evidence — TUI scene rail width (W4-AMENDED drag DELTA, narrow-interior fit)
+# Generated: 2026-11-07T15:03:12.839Z UTC = 2026-11-07 23:03:12 +08:00
+# Command:   .toolchain/node_modules/.bin/bun /tmp/mpd-rail-width-evidence.ts > evidence/tui/scene-rail-width/2026-11-07T14-42-53Z/rendered-rows.txt
+#            (run from the repository root; pinned toolchain .toolchain/node_modules/.bin/bun = bun 1.4.0;
+#            the generator itself is a throwaway OUTSIDE the tree and is not part of the package)
+# Provenance: produced by the package's OWN renderer — `packages/mpd-tui-plugin/src/scenes.ts`, the TEAM
+#            scene registered through `registerScene` — driven against a HOST-KIT DOUBLE (React + ui:
+#            index-keyed hooks, captured pointer props, row-aware flattening), the same double shape the
+#            package's own tests use. This is NOT a live TTY capture and NOT a real-mouse capture: no
+#            terminal was attached, and no row text below was typed by hand — every character was
+#            emitted by the renderer and printed from the rendered element tree.
+
+========================================================================================================================
+EXTRACT 1 — the TEAM scene's HORIZONTAL rail drag: one `onDragMove` cell moves the window by a DELTA
+========================================================================================================================
+Mount: the real team scene at a MEASURED 44x24 terminal ('Wide Rank': 8 parallel tasks on one rank).
+
+The arithmetic, derived from the drawing rather than assumed (all of it printed by the run):
+  frame interior (rail extent)   = panelSurfaceWidth(44)            = 40 cells   (border 2 + paddingX 2)
+  drawing (content) width        = 8 boxes x 10 + 7 gaps x 3         = 101 cells
+  max  (horizontal scroll range) = content - extent                  = 101 - 40 = 61
+  thumb                          = floor(extent * extent / content) = floor(40*40/101) = 15 cells
+  travel (the thumb's band)      = extent - thumb                    = 40 - 15 = 25 cells
+  one pointer cell, DELTA        = round(((11 - 10) / 25) * 61) = round(2.4400) = 2
+  same pointer, ABSOLUTE         = round((11 / 25) * 61)     = round(26.8400) = 27   <- what the OLD mapping did (the jump the user saw)
+
+Initial offset (colOffset = 0). Each drawn row is ONE string; rows are printed between `|` markers,
+exactly as emitted (no trimming). The same three rows from the 200-column mount are printed first, so a
+reader can see the 101-cell drawing each 40-cell window below is a cut of:
+
+  full 0 |╭────────╮   ╭────────╮   ╭────────╮   ╭────────╮   ╭────────╮   ╭────────╮   ╭────────╮   ╭────────╮|   (content 101 cells; the emitted row is padded to 196 cells, trailing blanks trimmed here)
+  full 1 |│ ○ a1   │   │ ○ a2   │   │ ○ a3   │   │ ○ a4   │   │ ○ a5   │   │ ○ a6   │   │ ○ a7   │   │ ○ a8   │|   (content 101 cells; the emitted row is padded to 196 cells, trailing blanks trimmed here)
+  full 2 |╰────────╯   ╰────────╯   ╰────────╯   ╰────────╯   ╰────────╯   ╰────────╯   ╰────────╯   ╰────────╯|   (content 101 cells; the emitted row is padded to 196 cells, trailing blanks trimmed here)
+
+The 44-column render, at the initial offset:
+
+  row 0 |╭────────╮   ╭────────╮   ╭────────╮   ╭|
+  row 1 |│ ○ a1   │   │ ○ a2   │   │ ○ a3   │   │|
+  row 2 |╰────────╯   ╰────────╯   ╰────────╯   ╰|
+  rail  |███████████████░░░░░░░░░░░░░░░░░░░░░░░░░|
+
+The drag phases on the rail element (key 'hrail-track', a Box carrying the shared builder's handlers):
+  onDragStart({ localCol: 10, col: 50, startCol: 50 })  -> commits nothing (the PRESS ORIGIN is anchored)
+  onDragMove({ localCol: 11, col: 51, startCol: 50 })   -> commits 2 columns (one cell of pointer travel)
+
+After ONE onDragMove cell (colOffset = 2):
+
+  row 0 |───────╮   ╭────────╮   ╭────────╮   ╭──|
+  row 1 |○ a1   │   │ ○ a2   │   │ ○ a3   │   │ ○|
+  row 2 |───────╯   ╰────────╯   ╰────────╯   ╰──|
+  rail  |░███████████████░░░░░░░░░░░░░░░░░░░░░░░░|
+
+ASSERTED, row by row (all 3 rows):
+  after[i]        == full[i].slice(2, 42)      — the window at offset 2
+  after[i][0..38)  == before[i].slice(2)       — the after-row IS the before-row shifted by exactly 2 columns
+  after[i]        != full[i].slice(27, 67)     — the ABSOLUTE mapping (27) would have shown a different window
+
+The rail's own cells moved too: the thumb's left edge is at rail cell 1 (was 0), which is round(offset / max * travel) = round(2 / 61 * 25) = 1.
+  onDragEnd({ localCol: 11 })                          -> keeps colOffset = 2 (the anchor is cleared, the offset is not)
+
+========================================================================================================================
+EXTRACT 2 — a NARROW terminal (44 columns, interior 40): every emitted row, with its measured cell width
+========================================================================================================================
+Same mount (44x24, 'Wide Rank'). Widths are measured with the package's OWN measurer, `cellWidth` from
+`packages/mpd-tui-plugin/src/sanitize.ts` (the same function the package's width arms assert with).
+
+  row 00  width= 39  |○ MPD team — lead (wide-rank-1) · 44x24|
+  row 01  width= 40  |scope      workspace-level (no session i|
+  row 02  width= 40  |idle · 8 task(s) · 0 done · 0 running · |
+  row 03  width= 20  |roster  (no members)|
+  row 04  width= 21  |task dependency graph|
+  row 05  width= 40  |╭────────╮   ╭────────╮   ╭────────╮   ╭|
+  row 06  width= 40  |│ ○ a1   │   │ ○ a2   │   │ ○ a3   │   │|
+  row 07  width= 40  |╰────────╯   ╰────────╯   ╰────────╯   ╰|
+  row 08  width= 40  |███████████████░░░░░░░░░░░░░░░░░░░░░░░░░|
+  row 09  width= 33  |▼/▸ blocker → dependent · ▶ focus|
+  row 10  width= 40  |✓ completed · ◐ running · ○ open/blocked|
+  row 11  width= 34  |✗ failed · ⊘ cancelled · + planned|
+  row 12  width= 40  |esc/q close · ↑↓ focus · click pins · ho|
+
+Rows emitted: 13. Rows whose width could not be measured: 0.
+MAXIMUM emitted row width = 40 cells (row 1).
+The frame interior at 44 measured columns is panelSurfaceWidth(44) = 40 cells.
+ASSERTED, row by row: every emitted row is at most 40 cells, so the maximum (40) <= the interior (40) — no host wrap, no torn frame.
+
+Bounds: this dump is the rendered element tree of the package's own renderer against the host-kit
+double. It is NOT a live TTY capture; the host's own wrapping and repaint are outside it.

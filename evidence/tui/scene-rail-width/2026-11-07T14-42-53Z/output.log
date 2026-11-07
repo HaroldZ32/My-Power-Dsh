@@ -1,0 +1,135 @@
+### bun test packages/mpd-tui-plugin
+
+1 tests skipped:
+(skip) team-workflow projection (read-only, from the OFFICIAL live readout) > the REAL record of this session's own team projects without a hand-built object
+
+ 684 pass
+ 1 skip
+ 0 fail
+ 16647 expect() calls
+Ran 685 tests across 30 files. [13.18s]
+TEST_EXIT=0
+
+### bun run typecheck
+$ tsgo --noEmit
+TYPECHECK_EXIT=0
+
+### verify:comments
+
+scanned 614 TypeScript file(s) of 614 in the source set; inspected 55166 declaration(s); skipped 26959 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+COMMENTS_EXIT=0
+
+### verify-dist-fresh
+[verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] ok: 34/34 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 742ms
+DISTFRESH_EXIT=0
+
+### verify-docs-parity
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=59 failed=0 violations=0 exempt=24 derived=3 links=626 dead=0 — PASS
+DOCS_EXIT=0
+### ROUND 2 — repair re-run (reviewer findings A/B/C), 2026-11-07T23:04:05+08:00
+### bun test packages/mpd-tui-plugin
+
+1 tests skipped:
+(skip) team-workflow projection (read-only, from the OFFICIAL live readout) > the REAL record of this session's own team projects without a hand-built object
+
+ 685 pass
+ 1 skip
+ 0 fail
+ 16734 expect() calls
+Ran 686 tests across 30 files. [12.82s]
+TEST_EXIT=0
+
+### bun run typecheck
+$ tsgo --noEmit
+TYPECHECK_EXIT=0
+
+### verify:comments
+
+scanned 614 TypeScript file(s) of 614 in the source set; inspected 55178 declaration(s); skipped 26963 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+COMMENTS_EXIT=0
+
+### FINDING B — the <=20-column arm is DISCRIMINATING (temporary local gate revert, restored immediately)
+# NOT IN THE TREE: step 1 edits the gate back to 'terminalCols > 20', step 3 restores '> 0' and re-runs.
+# shipped gate is: 411:    cols: Number.isFinite(terminalCols) && terminalCols > 0 ? Math.floor(terminalCols) : FALLBACK_COLS,
+# step 1 — temporary old gate: 411:    cols: Number.isFinite(terminalCols) && terminalCols > 20 ? Math.floor(terminalCols) : FALLBACK_COLS,
+# step 2 — bun test packages/mpd-tui-plugin/test/scene-scroll.test.ts -t 'keeps the MEASUREMENT'  (OLD '> 20' gate, expected RED)
+
+packages/mpd-tui-plugin/test/scene-scroll.test.ts:
+823 |       const { components, kit } = mount(record, { columns, rows: 20 })
+824 |       /** This surface's rendered rows, one string per drawn row. */
+825 |       const rows = render(kit, components[id])
+826 |       // THE RENDER MUST HAVE DRAWN SOMETHING, or the per-row width assertion is vacuous.
+827 |       expect(rows.length).toBeGreaterThan(0)
+828 |       for (const row of rows) expect(cellWidth(row)).toBeLessThanOrEqual(interior)
+                                                           ^
+error: expect(received).toBeLessThanOrEqual(expected)
+
+Expected: <= 14
+Received: 84
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/scene-scroll.test.ts:828:54)
+(fail) (e) every scene row fits the frame's INTERIOR at a narrow terminal > a terminal at or below 20 columns keeps the MEASUREMENT (W5): every row fits its 14-cell interior [5.27ms]
+
+ 0 pass
+ 9 filtered out
+ 1 fail
+ 4 expect() calls
+Ran 1 test across 1 file. [189.00ms]
+OLD_GATE_EXIT=1
+# step 3 — gate restored: 411:    cols: Number.isFinite(terminalCols) && terminalCols > 0 ? Math.floor(terminalCols) : FALLBACK_COLS,
+# step 4 — same command with the shipped '> 0' gate (expected GREEN)
+
+packages/mpd-tui-plugin/test/scene-scroll.test.ts:
+(pass) (e) every scene row fits the frame's INTERIOR at a narrow terminal > a terminal at or below 20 columns keeps the MEASUREMENT (W5): every row fits its 14-cell interior [6.71ms]
+
+ 1 pass
+ 9 filtered out
+ 0 fail
+ 74 expect() calls
+Ran 1 test across 1 file. [234.00ms]
+NEW_GATE_EXIT=0
+
+### verify-dist-fresh — EXPECTED STALE in this repair round, dist NOT touched (the contract's Scopes assign the rebuild to the Captain)
+  STALE   packages/mpd-tui-plugin/dist/index.js  <- packages/mpd-tui-plugin/src/index.ts
+  STALE: packages/mpd-tui-plugin/dist/index.js — committed packages/mpd-tui-plugin/dist/index.js (534532 B, f20e9f4e984f03b8…) != fresh build of packages/mpd-tui-plugin/src/index.ts (534475 B, c7b7398f1508499f…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-tui-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-plugin/dist/index.js
+[verify-dist-fresh] FAIL - 1 of 34 targets not fresh (STALE: 1) — 742ms
+DISTFRESH_EXIT=1 (see the two STALE lines above)
+# reason: src/scenes.ts changed in this round (finding C removed surfaceKit's dead `maxCells` parameter), and this
+# round's constraints forbid editing dist/**; .mpd/plans/tui-scene-rail-width.md gives the dist rebuild to the Captain.
+# rebuild (from the repository root, pinned toolchain):
+#   .toolchain/node_modules/.bin/bun build packages/mpd-tui-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-plugin/dist/index.js
+
+==================================================================
+CAPTAIN FINAL SWEEP — 2026-11-07T15:07:15Z (after dist rebuild + doc/bound repairs)
+==================================================================
+### bun test packages/mpd-tui-plugin
+(skip) team-workflow projection (read-only, from the OFFICIAL live readout) > the REAL record of this session's own team projects without a hand-built object
+
+ 685 pass
+ 1 skip
+ 0 fail
+ 16734 expect() calls
+Ran 686 tests across 30 files. [13.08s]
+TEST_EXIT=0
+### bun run typecheck
+$ tsgo --noEmit
+TYPECHECK_EXIT=0
+### verify:comments
+scanned 614 TypeScript file(s) of 614 in the source set; inspected 55178 declaration(s); skipped 26963 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+COMMENTS_EXIT=0
+### verify-dist-fresh
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] ok: 34/34 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 737ms
+DISTFRESH_EXIT=0
+### verify-docs-parity
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=59 failed=0 violations=0 exempt=24 derived=3 links=626 dead=0 — PASS
+DOCS_EXIT=0

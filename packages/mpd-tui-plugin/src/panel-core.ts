@@ -545,6 +545,47 @@ export function panelContentWidth(measuredColumns: number): number {
   return Math.max(1, columns - 2)
 }
 
+/**
+ * The FRAME's horizontal border, per side, in cells — the `borderStyle` box `surfaceFrame` draws.
+ *
+ * It is a named constant rather than a literal in either breadth helper because the two must never
+ * disagree: a frame whose border grew would otherwise keep spending one cell per side that no width
+ * budget accounts for, which is the tear this pair exists to remove.
+ */
+export const SURFACE_FRAME_BORDER_X = 1
+
+/**
+ * The FRAME's horizontal padding, per side, in cells — the `paddingX` `surfaceFrame` passes.
+ *
+ * `surfaceFrame` IMPORTS this constant as its own `paddingX`, so the width a scene budgets and the box
+ * the host draws are two readings of ONE number: a scene can no longer draw rows at the terminal's width
+ * inside an interior that is narrower by the padding.
+ */
+export const SURFACE_FRAME_PADDING_X = 1
+
+/**
+ * How many cells a SURFACE (a full-screen scene's `surfaceFrame`) may DRAW IN, given the terminal width.
+ *
+ * THE TEAR THIS FIXES (user screenshot, 2026-11-07): `surfaceFrame` spends two cells on its border and
+ * two more on its one-cell horizontal padding, so its interior is `columns − 4` — while every scene built
+ * its rows at the RAW `columns` and `textRow`'s own budget defaulted to {@link PANEL_ROW_MAX_CELLS}. The
+ * host does not clip a too-wide row, it WRAPS it: one element becomes two visual rows the scene's vertical
+ * window (which counts elements) never budgeted for, the body grows past the terminal and the frame —
+ * border, padding and `░` rail included — is clipped. Budgeting every row against THIS number is what
+ * makes one element one visual row again.
+ *
+ * The subtraction is DERIVED from the frame's own two constants rather than written as a literal `4` at
+ * each call site, so a change to `surfaceFrame`'s chrome moves this budget with it.
+ * @param measuredColumns - the width the host reported through `ui.useTerminalSize()`.
+ * @returns the interior width, in cells, never below one.
+ */
+export function panelSurfaceWidth(measuredColumns: number): number {
+  /** The reported width, floored; a nonsense value still has to produce a usable budget. */
+  const columns = Math.floor(Number.isFinite(measuredColumns) ? measuredColumns : 0)
+  // ONE border cell and ONE padding cell on each of the two sides — four cells in total today.
+  return Math.max(1, columns - 2 * (SURFACE_FRAME_BORDER_X + SURFACE_FRAME_PADDING_X))
+}
+
 /** The rows of chrome a self-windowing page draws OUTSIDE its scrolling window (header + key hints). */
 export const PANEL_CHROME_ROWS = 2
 
@@ -1312,6 +1353,30 @@ function railOffset(position: number, travel: number, max: number): number {
  * @returns the rail element, or undefined when everything fits (and NO column is reserved).
  */
 export function viewportGutter(kit: PanelKit, viewport: PanelViewport, onTrackClick?: (row: number) => void): unknown | undefined {
+  return gutterElement(kit, viewport, onTrackClick, false)
+}
+
+/**
+ * The vertical gutter ELEMENT itself: the ONE place its cells, its drag phases and its optional click
+ * mapping are wired.
+ *
+ * Extracted so the sidebar pages and the full-screen scenes cannot drift apart: `viewportGutter` is this
+ * function WITHOUT the standalone click-to-jump (a page that passes its own `onTrackClick` keeps owning
+ * both gestures), while {@link viewportTrack} is this function WITH it. The cells and the drag wiring are
+ * therefore one implementation, and the only difference between the two rails is whether a bare click on
+ * the track jumps the view.
+ * @param kit - the proved host kit.
+ * @param viewport - this render's viewport.
+ * @param onTrackClick - the page's own cell mapping, handed BOTH the click and the drag phases.
+ * @param clickToJump - map a bare track CLICK through the absolute band, keeping the drag on its DELTA.
+ * @returns the rail element, or undefined when everything fits.
+ */
+function gutterElement(
+  kit: PanelKit,
+  viewport: PanelViewport,
+  onTrackClick: ((row: number) => void) | undefined,
+  clickToJump: boolean,
+): unknown | undefined {
   /** The gutter's cells, one per viewport row. */
   const cells = gutterCells(viewport.offset, viewport.contentRows, viewport.viewportRows)
   if (cells.length === 0) return undefined
@@ -1329,9 +1394,9 @@ export function viewportGutter(kit: PanelKit, viewport: PanelViewport, onTrackCl
    * One drag phase, bound to its own phase name.
    *
    * With a page callback the drag and the click stay ONE gesture — the page's own mapping decides both,
-   * which is what stops the two from disagreeing about where a cell lands. Without one (the shape
-   * {@link panelViewportBody} uses) the handle anchors on `start` and commits the pointer's DELTA on
-   * `move`/`end`, so a grab anywhere on the thumb moves the view by what the finger actually moved.
+   * which is what stops the two from disagreeing about where a cell lands. Without one the handle
+   * anchors on `start` and commits the pointer's DELTA on `move`/`end`, so a grab anywhere on the thumb
+   * moves the view by what the finger actually moved.
    * @param phase - which phase of the host's drag protocol this handler serves.
    * @returns the handler for that phase.
    */
@@ -1349,22 +1414,42 @@ export function viewportGutter(kit: PanelKit, viewport: PanelViewport, onTrackCl
   }
   /** The three drag phases the host's protocol delivers, each on its own side of the delta. */
   const dragging = { onDragStart: scrub("start"), onDragMove: scrub("move"), onDragEnd: scrub("end") }
-  if (onTrackClick === undefined) return kit.React.createElement(kit.ui.Box, { key: "gutter", flexDirection: "column", width: 1, ...dragging }, ...rows)
-  return kit.React.createElement(
-    kit.ui.Box,
-    {
-      key: "gutter",
-      flexDirection: "column",
-      width: 1,
-      onClick: (event: unknown): void => {
-        /** The click's own row inside the rail, when the host reported one. */
-        const row = typeof (event as { localRow?: unknown } | undefined)?.localRow === "number" ? Math.floor((event as { localRow: number }).localRow) : 0
-        onTrackClick(row)
+  if (onTrackClick !== undefined) {
+    return kit.React.createElement(
+      kit.ui.Box,
+      {
+        key: "gutter",
+        flexDirection: "column",
+        width: 1,
+        onClick: (event: unknown): void => {
+          /** The click's own row inside the rail, when the host reported one. */
+          const row = typeof (event as { localRow?: unknown } | undefined)?.localRow === "number" ? Math.floor((event as { localRow: number }).localRow) : 0
+          onTrackClick(row)
+        },
+        ...dragging,
       },
-      ...dragging,
-    },
-    ...rows,
-  )
+      ...rows,
+    )
+  }
+  if (clickToJump) {
+    return kit.React.createElement(
+      kit.ui.Box,
+      {
+        key: "gutter",
+        flexDirection: "column",
+        width: 1,
+        ...dragging,
+        // A CLICK NAMES A DESTINATION, so it maps ABSOLUTELY through {@link railOffset}; a DRAG measures
+        // a distance and stays on the handle's delta. Wiring the click here rather than through
+        // `onTrackClick` is what keeps the two gestures from collapsing into one.
+        onClick: (event: unknown): void => {
+          viewport.scrollTo(railOffset(localCell(event, "row"), travel, viewport.max))
+        },
+      },
+      ...rows,
+    )
+  }
+  return kit.React.createElement(kit.ui.Box, { key: "gutter", flexDirection: "column", width: 1, ...dragging }, ...rows)
 }
 
 /**
@@ -1419,6 +1504,36 @@ export function viewportRail(kit: PanelKit, viewport: PanelViewport, cols: numbe
   /** The rail's cells as the one row a reader sees. */
   const row = textRow(kit, cells, { key: "hrail", tone: "edge", maxCells: extent })
   return kit.React.createElement(kit.ui.Box, { key: "hrail-track", flexDirection: "row", onDragStart: scrub("start"), onDragMove: scrub("move"), onDragEnd: scrub("end") }, row)
+}
+
+/**
+ * One SCENE rail, on either axis: the full-screen surfaces' single drag builder.
+ *
+ * WHY THE SCENES NEED THEIR OWN ENTRY POINT. The pages' two builders predate the user's report that the
+ * HORIZONTAL scrollbar cannot be dragged: `viewportRail` already carries the drag (and is what this
+ * function returns for the horizontal axis, so a scene's row is the SAME element a page draws), while
+ * `viewportGutter` deliberately leaves the click to the page and never jumps on its own. A scene has no
+ * page layer to supply that mapping, so the vertical axis here is {@link gutterElement} WITH
+ * click-to-jump: the track jumps ABSOLUTELY ({@link railOffset}) and the thumb drags by DELTA through
+ * {@link PanelViewport.railDrag}, exactly the sidebar's two gestures.
+ *
+ * ONE BUILDER, NOT TWO COPIES: the drag arithmetic, the cell drawing and the anchor handling all stay in
+ * this module — a scene names an axis and a length and gets the sidebar's behaviour.
+ * @param kit - the proved host kit.
+ * @param viewport - this render's viewport; the axis selects which of its two bands the rail scrubs.
+ * @param axis - `row` for the vertical gutter, `col` for the horizontal rail.
+ * @param options - `cols` is the HORIZONTAL rail's own length in cells; the vertical rail takes its
+ *   length from the viewport's own row count and ignores it.
+ * @returns the rail element, or undefined when that axis has nothing to scrub.
+ */
+export function viewportTrack(
+  kit: PanelKit,
+  viewport: PanelViewport,
+  axis: PanelRailAxis,
+  options: { cols?: number } = {},
+): unknown | undefined {
+  if (axis === "col") return viewportRail(kit, viewport, options.cols ?? viewport.viewportRows)
+  return gutterElement(kit, viewport, undefined, true)
 }
 
 /**

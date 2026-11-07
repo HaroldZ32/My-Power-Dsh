@@ -427,6 +427,16 @@ interface Kit {
   press(input: string, key?: Record<string, unknown>): void
   /** Flattens a rendered tree into its text. */
   text(tree: unknown): string
+  /**
+   * Flattens a rendered tree into its drawn ROWS — one string per host line.
+   *
+   * `text` joins the whole tree into one string (this file's assertions are substring claims), which
+   * cannot tell one over-wide row from many, so a width arm reads the rows through THIS walker instead:
+   * a `Text` element is one row, everything else is a container of rows.
+   * @param tree - the tree `last` holds, or any tree this double produced.
+   * @returns one string per drawn row, in draw order.
+   */
+  rows(tree: unknown): string[]
   /** The last tree `text` flattened — the drawn elements, so a part of the surface is assertable. */
   last(): unknown
   /** How many times a rendered scene called its own `close` — the scene's exit, counted. */
@@ -575,6 +585,33 @@ function makeKit(terminal: { columns: number; rows: number } = { columns: 100, r
       }
       rows(tree)
       return out.join("\n")
+    },
+    rows: (tree: unknown): string[] => {
+      lastTree = tree
+      /** The drawn rows, in draw order. */
+      const out: string[] = []
+      /** Every character inside one node, a row's coloured spans joined with nothing between them. */
+      const inline = (node: unknown): string => {
+        if (node === null || node === undefined) return ""
+        if (typeof node === "string") return node
+        if (typeof node === "number") return String(node)
+        if (Array.isArray(node)) return node.map(inline).join("")
+        /** This node as an element, the only shape left after the guards. */
+        const element = node as Element
+        return inline(element.props?.children) + inline(element.children ?? [])
+      }
+      /** Walk one ROW at a time: a `Text` element is a row, anything else is a container of rows. */
+      const walk = (node: unknown): void => {
+        if (node === null || node === undefined) return
+        if (Array.isArray(node)) { for (const child of node) walk(child); return }
+        if (typeof node === "string" || typeof node === "number") { out.push(String(node)); return }
+        /** This node as an element. */
+        const element = node as Element
+        if (element.type === Text) { out.push(inline(node)); return }
+        for (const child of element.children ?? []) walk(child)
+      }
+      walk(tree)
+      return out
     },
     last: () => lastTree,
   }
@@ -1100,9 +1137,22 @@ function elementByKey(tree: unknown, key: string): Element | undefined {
  * @returns the drawing's characters; empty when this render drew no graph at all.
  */
 function graphText(tree: unknown): string {
+  return graphRows(tree).join("")
+}
+
+/**
+ * The DAG BOX's own rows, one string per drawn row.
+ *
+ * `graphText` joins these into one string, which is enough to ask "is anything drawn", but the narrow
+ * arm needs the ROWS: its claim is that a narrow render is the wide drawing's own rows CUT to the
+ * interior, so it compares row for row against the comfortable-width render.
+ * @param tree - the tree the kit last flattened.
+ * @returns each drawn row's characters, in draw order; empty when this render drew no graph at all.
+ */
+function graphRows(tree: unknown): string[] {
   /** The graph element, found by the key the scene gives it. */
   const graph = elementByKey(tree, "graph")
-  if (graph === undefined) return ""
+  if (graph === undefined) return []
   /** Every character inside one node, spans joined with nothing — the kit's own flattening rule. */
   const inline = (node: unknown): string => {
     if (node === null || node === undefined) return ""
@@ -1113,7 +1163,17 @@ function graphText(tree: unknown): string {
     const element = node as Element
     return inline(element.props?.children) + inline(element.children ?? [])
   }
-  return inline(graph.children ?? [])
+  /**
+   * The graph Box's children with the single row-ARRAY the scene passes unwrapped: `scenes.ts` hands
+   * the rows over as ONE array child (`createElement(Box, props, graphRows)`), so a walk that did not
+   * unwrap it would see the whole drawing as one row.
+   */
+  const rows: unknown[] = []
+  for (const child of graph.children ?? []) {
+    if (Array.isArray(child)) rows.push(...child)
+    else rows.push(child)
+  }
+  return rows.map(inline)
 }
 
 describe("the team scene's focus", () => {
@@ -1428,14 +1488,15 @@ describe("the team scene's focus", () => {
   })
 
   test("a NARROW terminal draws the SAME boxes and windows them rather than clipping them", () => {
-    // THE ARM'S PREMISE CHANGED WITH CLAUSE T1, so the arm is RE-POINTED rather than dropped. It used to
-    // prove that a narrow terminal makes `layoutBoxes` refuse and the rail takes over. Under NATURAL
-    // width the drawing is no longer bounded by the terminal at all, so the narrow case is answered by
-    // WINDOWING the same picture — which is the user's request — and the rail is now reached only when
-    // the BOXES themselves are impossible (more ranks than a boxed drawing stays legible in), not when
-    // the terminal is small. Both halves are asserted: the SAME drawing appears narrow and wide, every
-    // windowed row is exactly the viewport, and the horizontal rail is drawn so the reader can tell the
-    // picture continues.
+    // THE ARM'S PREMISE IS W4-AMENDED (the captain's ruling after the first implementation): a natural
+    // drawing WIDER than the viewport KEEPS ITS BOXES and is reached by horizontal PAN, exactly as the
+    // sidebar does. The reversed W4 switched the scene to `layoutRail` whenever the drawing was wider,
+    // and that layout is drawn AT the interior width — so the horizontal band was closed by
+    // construction and the user's scrollbar had nothing to drag. This arm is therefore the user's own
+    // case, stated twice:
+    //   * the narrow render is the BOXED drawing, never `(rail)`; and
+    //   * it is the SAME picture the wide render draws, WINDOWED — every row of the narrow drawing is
+    //     the wide drawing's own row cut to the frame's interior, not a second layout.
     /** This arm's fixture workspace: one rank with four parallel tasks. */
     const workspace = teamFixture({
       id: "wide-1",
@@ -1449,7 +1510,7 @@ describe("the team scene's focus", () => {
         { id: "d", subject: "four", status: "pending", dependencies: [] },
       ],
     })
-    /** This arm's kit, narrow enough that four boxes could never have fitted. */
+    /** This arm's kit, narrow enough that the natural four-box drawing cannot fit the interior. */
     const { kit, components } = mountScenes(workspace, { terminal: { columns: 44, rows: 24 } })
     /** The rendered scene. */
     const text = render(kit, components[TEAM_SCENE_ID])
@@ -1457,26 +1518,250 @@ describe("the team scene's focus", () => {
     // their labels, so a narrow terminal windows them instead of refusing them.
     expect(text).toContain("task dependency graph")
     expect(text).not.toContain("(rail)")
+    expect(text).toContain(DAG_CHARS.cornerDownRight)
+    // AND EVERY TASK OF THE RANK IS ON THE FIRST WINDOW, because the natural drawing's first three boxes
+    // end at cell 35 and the fourth begins at 39 — inside the 40-cell interior.
     for (const id of ["a", "b", "c", "d"]) expect(text).toContain(id)
     // THE HORIZONTAL RAIL IS DRAWN, because this viewport cannot show the whole drawing — it is the one
     // row beneath the DAG that says so, and it is the DAG's own row rather than the page's (R8).
     // The rail's own cells are `█`/`░`; asserted through the CONTRACT's chrome constants rather than as
     // literals, so a theme of bars is one edit and this arm follows it.
     expect(text).toContain(DAG_CHROME.barFull)
-    // EVERY DRAWN ROW FITS THE VIEWPORT: the drawing is wider than 44 cells, so a scene that drew it
-    // whole would shear the frame. The window is what keeps that honest.
-    // THE SCENE DRAWS ONE ROW PER TERMINAL ROW and the double flattens them into ONE string, so the
-    // cell budget is stated over the whole render: 24 rows of at most 44 cells. A row that overflowed
-    // would push this past the budget, which is what makes the arm falsifiable.
-    expect(cellWidth(text)).toBeLessThanOrEqual(44 * 24)
+    // EVERY DRAWN ROW FITS THE INTERIOR (frozen criterion W3): the frame spends 2 cells on its border
+    // and 2 on its padding, so the rows own `44 - 4 = 40` cells — asserted against the INTERIOR, never
+    // against the 44 the scene was told. The budget is stated PER ROW, the way every other interior arm
+    // states it: an aggregate `cellWidth(text) <= 40 * 24` (this arm's earlier form) let ONE over-wide row
+    // pass as long as the total stayed under the product — a single 480-cell row among twelve 40-cell rows
+    // totals exactly 960, so the aggregate reports a fit while the host wraps that row — and could not see
+    // the defect it exists for.
+    /** This render's drawn rows, one string per host line (the kit's row walker, not the flat text). */
+    const drawnRows = kit.rows(kit.last())
+    // The loop below must have more than one row to walk, or the per-row claim is vacuous.
+    expect(drawnRows.length).toBeGreaterThan(1)
+    for (const row of drawnRows) expect(cellWidth(row)).toBeLessThanOrEqual(40)
     // The SAME board at a comfortable width draws the SAME picture, unwindowed — so the narrow case is a
     // property of the viewport and not a second layout.
     /** This arm's kit at a width the whole drawing fits. */
     const wide = mountScenes(workspace, { terminal: { columns: 120, rows: 30 } })
-    /** The drawing at the comfortable width. */
-    const wideText = render(wide.kit, wide.components[TEAM_SCENE_ID])
-    expect(wideText).toContain(DAG_CHARS.cornerDownRight)
-    expect(wideText).not.toContain(DAG_CHROME.barFull)
+    // Render the same board at the comfortable width, where the interior (116) holds the whole drawing.
+    render(wide.kit, wide.components[TEAM_SCENE_ID])
+    /** The comfortable width's drawing rows, one string per drawn row. */
+    const wideRows = graphRows(wide.kit.last())
+    /** The narrow render's drawing rows, from the tree its own assertions read. */
+    const narrowRows = graphRows(kit.last())
+    expect(wideRows.length).toBeGreaterThan(0)
+    expect(narrowRows.length).toBe(wideRows.length)
+    // WINDOWED, NOT RE-LAID-OUT: each narrow row is its wide twin cut to the interior cells. A scene that
+    // had chosen `layoutRail` here would draw different rows (a text list, not these box borders), and a
+    // scene that had re-laid the boxes out for 40 cells would draw different borders.
+    for (let index = 0; index < wideRows.length; index += 1) {
+      expect(narrowRows[index]?.trimEnd()).toBe(wideRows[index].slice(0, 40).trimEnd())
+    }
+    // AND THE WIDE RENDER HAS NO RAIL: the band is open here BECAUSE this drawing overflows, not because
+    // the scene draws a rail unconditionally.
+    expect(wide.kit.text(wide.kit.last())).not.toContain(DAG_CHROME.barFull)
+  })
+
+  // ── W4-AMENDED: the user's horizontal scrollbar, on a drawing wider than the interior ──
+  //
+  // THE DEFECT THIS SECTION LOCKS (the captain's W4-AMENDED ruling). The scene's DAG-versus-rail choice
+  // is `boxesFitWidth(boxes, graphWidth) ? boxes : layoutRail(...)`: a drawing merely WIDER than the
+  // viewport KEEPS its boxes and is reached by horizontal PAN, exactly as the shipped sidebar does. The
+  // reversed W4 gated on `boxes.width <= graphWidth` instead, and the rail layout it fell back to is
+  // drawn AT `graphWidth` — so `colOverflow` was false by construction, the horizontal band never
+  // opened, and the scrollbar the user reported as undraggable had been DELETED rather than repaired.
+  // The arms below therefore assert the user's own case: boxes, an OPEN band, and a rail element that
+  // carries the host's three drag phases.
+
+  /** One rank of eight parallel tasks: 8 boxes x 10 cells + 7 gaps x 3 = 101 cells, wider than any narrow interior. */
+  const wideRank = (): Record<string, unknown> => ({
+    id: "wide-rank-1",
+    name: "Wide Rank",
+    phase: "running",
+    members: [],
+    tasks: Array.from({ length: 8 }, (_entry, index) => ({ id: `a${index + 1}`, subject: `parallel ${index + 1}`, status: "pending", dependencies: [] })),
+  })
+
+  /**
+   * That same eight-wide rank plus a five-long chain under it: wide enough to open the horizontal band
+   * and tall enough to open the vertical one, so one render carries BOTH rails.
+   */
+  const tallWide = (): Record<string, unknown> => ({
+    id: "tall-wide-1",
+    name: "Tall Wide",
+    phase: "running",
+    members: [],
+    tasks: [
+      ...Array.from({ length: 8 }, (_entry, index) => ({ id: `a${index + 1}`, subject: `parallel ${index + 1}`, status: "pending", dependencies: [] })),
+      ...Array.from({ length: 5 }, (_entry, index) => ({ id: `t${index + 1}`, subject: `chain ${index + 1}`, status: "pending", dependencies: index === 0 ? ["a1"] : [`t${index}`] })),
+    ],
+  })
+
+  test("W4-AMENDED: a drawing wider than the interior keeps its BOXES, opens the horizontal band and draws a DRAGGABLE rail", () => {
+    /** This arm's fixture: the eight-wide rank, 101 cells of drawing. */
+    const workspace = teamFixture(wideRank())
+    /** The kit at 44 columns: the interior is 40, so the drawing is 61 cells wider than the window. */
+    const { kit, components } = mountScenes(workspace, { terminal: { columns: 44, rows: 24 } })
+    /** The rendered scene. */
+    const text = render(kit, components[TEAM_SCENE_ID])
+    // BOXES, NOT THE DENSE RAIL. `(rail)` is the mode word the rail layout writes into the graph header;
+    // the box corner is drawn only by the boxed form. Both halves are asserted, so neither a rail layout
+    // that happened to keep a corner nor a boxed layout that announced `(rail)` could pass.
+    expect(text).toContain(DAG_CHARS.cornerDownRight)
+    expect(text).not.toContain("(rail)")
+    // THE BAND IS OPEN: the drawing is wider than the window, so the scene draws its horizontal rail —
+    // the row of `█`/`░` cells directly beneath the DAG. This is the scrollbar the user could not drag.
+    expect(text).toContain(DAG_CHROME.barFull)
+    // AND IT IS THE SHARED BUILDER'S ELEMENT, carrying all THREE drag phases: `viewportTrack(…, "col")`
+    // returns `panel-core.ts`'s `viewportRail` Box, which the host's drag protocol hit-tests. A bare
+    // `Text` rail (the original defect) has no such props.
+    /** The horizontal rail element this render drew. */
+    const rail = elementByKey(kit.last(), "hrail-track")
+    expect(rail).toBeDefined()
+    for (const phase of ["onDragStart", "onDragMove", "onDragEnd"] as const) {
+      expect(typeof rail?.props?.[phase]).toBe("function")
+    }
+  })
+
+  test("the team scene's HORIZONTAL rail drags by the pointer's DELTA, from the press origin", () => {
+    // THE GEOMETRY THIS ARM PINS, derived from the drawing rather than assumed:
+    //   * the drawing is 8 boxes x 10 cells + 7 gaps x 3 = 101 cells wide (the natural width the
+    //     `boxesFitWidth` gate keeps, because two of its ten-cell columns fit a 40-cell interior);
+    //   * the window is the frame's interior, `44 - 4 = 40` cells, so `colMax = 101 - 40 = 61`;
+    //   * the rail is 40 cells long, its thumb is `floor(40 * 40 / 101) = 15`, so its travel band is
+    //     `40 - 15 = 25` cells;
+    //   * ONE cell of pointer movement is therefore `round(1 / 25 * 61) = 2` columns — not the
+    //     absolute 27 columns a pointer standing on cell 11 would have named.
+    /** This arm's fixture: the same eight-wide rank. */
+    const workspace = teamFixture(wideRank())
+    /** The narrow mount: interior 40 against a 101-cell drawing. */
+    const { kit, components } = mountScenes(workspace, { terminal: { columns: 44, rows: 24 } })
+    /** The scene under test. */
+    const scene = components[TEAM_SCENE_ID]
+    render(kit, scene)
+    /** The window's drawing rows at the LEFT edge. */
+    const atLeft = graphRows(kit.last())
+    /** The same board at a width the whole drawing fits — the FULL rows this window is a cut of. */
+    const wide = mountScenes(workspace, { terminal: { columns: 200, rows: 30 } })
+    render(wide.kit, wide.components[TEAM_SCENE_ID])
+    /** The unwindowed drawing's rows. */
+    const full = graphRows(wide.kit.last())
+    // THE PREMISES, ASSERTED: the drawing is 101 cells and the narrow window is its first 40.
+    expect(full.length).toBe(3)
+    expect(cellWidth(full[0].trimEnd())).toBe(101)
+    expect(atLeft[0]?.trimEnd()).toBe(full[0].slice(0, 40).trimEnd())
+    /** The horizontal rail element this render drew. */
+    const firstRail = elementByKey(kit.last(), "hrail-track")
+    expect(firstRail).toBeDefined()
+    for (const phase of ["onDragStart", "onDragMove", "onDragEnd"] as const) {
+      expect(typeof firstRail?.props?.[phase]).toBe("function")
+    }
+    // THE GRAB IS THE PRESS ORIGIN, at rail cell 10 (inside the thumb's 0..14 run): it commits NOTHING.
+    ;(firstRail?.props?.onDragStart as (event: unknown) => void)({ localCol: 10, col: 50, startCol: 50 })
+    render(kit, scene)
+    expect(graphRows(kit.last())[0]?.trimEnd()).toBe(full[0].slice(0, 40).trimEnd())
+    // THE ANCHOR MUST SURVIVE THE RE-RENDER: the move is delivered to the SECOND render's rail element,
+    // where a per-render closure would have lost it and fallen back to the absolute mapping.
+    /** The rail the next render drew. */
+    const movedRail = elementByKey(kit.last(), "hrail-track")
+    expect(movedRail).toBeDefined()
+    ;(movedRail?.props?.onDragMove as (event: unknown) => void)({ localCol: 11, col: 51, startCol: 50 })
+    render(kit, scene)
+    // THE DELTA STEP: ONE cell of pointer travel moves the window by TWO columns — the exact offset this
+    // arm asserts, proved on the DRAWING (the window is the full row cut at cell 2).
+    /** The exact column offset one cell of pointer travel commits: `round(1 / 25 * 61)`. */
+    const STEP = 2
+    expect(STEP).toBe(Math.round((1 / 25) * 61))
+    expect(graphRows(kit.last())[0]?.trimEnd()).toBe(full[0].slice(STEP, STEP + 40).trimEnd())
+    // AND THE ABSOLUTE MAPPING WOULD HAVE LANDED ELSEWHERE: a pointer at cell 11 names
+    // `round(11 / 25 * 61) = 27`, the jump the user saw when they grabbed the thumb. If the anchor had
+    // been lost, the window would be THAT cut instead of the one asserted above.
+    /** The offset the old absolute mapping names for the pointer's own cell. */
+    const absolute = Math.round((11 / 25) * 61)
+    expect(absolute).toBe(27)
+    expect(absolute).not.toBe(STEP)
+    expect(graphRows(kit.last())[0]?.trimEnd()).not.toBe(full[0].slice(absolute, absolute + 40).trimEnd())
+    // THE RELEASE KEEPS THE POSITION IT REACHED (the anchor is cleared, the offset is not).
+    ;(movedRail?.props?.onDragEnd as (event: unknown) => void)({ localCol: 11 })
+    render(kit, scene)
+    expect(graphRows(kit.last())[0]?.trimEnd()).toBe(full[0].slice(STEP, STEP + 40).trimEnd())
+  })
+
+  test("a bare click on the team scene's VERTICAL rail track maps ABSOLUTELY through the shared band", () => {
+    // THE OTHER GESTURE (frozen criterion I3): a click NAMES A DESTINATION, so it maps absolutely through
+    // the same band a drag scales — `railOffset` stays the click's mapping while `railDrag` owns the
+    // drag. The fixture is wide AND tall, so one render carries BOTH rails; the click is delivered to the
+    // vertical one because the HORIZONTAL rail keeps the sidebar's exact gesture set (the sidebar's
+    // `viewportRail` carries the three drag phases and no `onClick`, and this wave adds no behaviour the
+    // sidebar does not have).
+    // THE PROOF IS BY AN INDEPENDENT GESTURE: `End` is the scene's own "go to the far edge" key, so a
+    // click on the track's LAST row must reproduce that frame BYTE FOR BYTE. A delta-only rail would
+    // move one row, and a broken band would not reach the edge at all.
+    /** This arm's fixture: the eight-wide rank plus a five-long chain — six ranks of drawing. */
+    const workspace = teamFixture(tallWide())
+    /** The kit at a SHORT, NARROW terminal: both bands overflow, so both rails are drawn. */
+    const { kit, components } = mountScenes(workspace, { terminal: { columns: 44, rows: 12 } })
+    /** The scene under test. */
+    const scene = components[TEAM_SCENE_ID]
+    /** The scene at the top of its body. */
+    const atTop = render(kit, scene)
+    /** The rail's cells, one per viewport row, read off the rail element's own Text rows. */
+    const railCells = (): string[] => {
+      /** The vertical rail element this render drew. */
+      const rail = elementByKey(kit.last(), "gutter")
+      /** One cell per Text row, in draw order. */
+      const cells: string[] = []
+      for (const row of rail?.children ?? []) {
+        /** The row as an element, the only shape the builder produces. */
+        const element = row as Element
+        for (const cell of element.children ?? []) if (typeof cell === "string") cells.push(cell)
+      }
+      return cells
+    }
+    /** The cells at the top: the thumb starts at the first row. */
+    const cellsAtTop = railCells()
+    expect(cellsAtTop.length).toBeGreaterThan(2)
+    expect(cellsAtTop.findIndex((cell) => cell === DAG_CHROME.barFull)).toBe(0)
+    // THE FRAME `End` DRAWS — the scene's own absolute far edge, produced WITHOUT the pointer.
+    /** The far-edge frame the `End` key produces. */
+    const atEnd = pressAndRender(kit, scene, "", { end: true })
+    expect(atEnd).not.toBe(atTop)
+    /** The cells at the far edge: the thumb sits at the rail's end. */
+    const cellsAtEnd = railCells()
+    /** How many cells of the rail are thumb at the far edge. */
+    const thumb = cellsAtEnd.filter((cell) => cell === DAG_CHROME.barFull).length
+    expect(thumb).toBeGreaterThan(0)
+    expect(cellsAtEnd.findIndex((cell) => cell === DAG_CHROME.barFull)).toBe(cellsAtEnd.length - thumb)
+    // BACK TO THE TOP, so the click below is measured from the top and not from a drag's remainder.
+    expect(pressAndRender(kit, scene, "", { home: true })).toBe(atTop)
+    /** The rail the top-of-body render drew, which is what the pointer hits. */
+    const rail = elementByKey(kit.last(), "gutter")
+    expect(rail).toBeDefined()
+    for (const phase of ["onDragStart", "onDragMove", "onDragEnd", "onClick"] as const) {
+      expect(typeof rail?.props?.[phase]).toBe("function")
+    }
+    // THE BARE TRACK CLICK, on the LAST cell of the track band: the absolute mapping pins it to the
+    // band's end (`railOffset` returns the maximum for any cell at or past the band's end), so the scene
+    // lands on exactly the frame `End` produced.
+    ;(rail?.props?.onClick as (event: unknown) => void)({ localRow: cellsAtTop.length - 1 })
+    expect(render(kit, scene)).toBe(atEnd)
+    /** The cells after the click: the same far-edge position `End` reached. */
+    const cellsAfter = railCells()
+    expect(cellsAfter.findIndex((cell) => cell === DAG_CHROME.barFull)).toBe(cellsAfter.length - thumb)
+    // AND A MID-TRACK CLICK NAMES A POSITION, not a step: track cell 1 maps to that fraction of the
+    // band, so the thumb lands on the SECOND cell of its travel — where a delta-only click would have
+    // left it on the first. (The arithmetic holds for every thumb length the 4-cell rail can have:
+    // `railOffset` maps the cell's fraction of the travel band into the offset band, and the drawn thumb
+    // is that same fraction of the way along.)
+    expect(pressAndRender(kit, scene, "", { home: true })).toBe(atTop)
+    /** The rail the returned-to-top render drew. */
+    const midRail = elementByKey(kit.last(), "gutter")
+    ;(midRail?.props?.onClick as (event: unknown) => void)({ localRow: 1 })
+    /** The frame the mid-track click produced. */
+    const midClick = render(kit, scene)
+    expect(midClick).not.toBe(atTop)
+    expect(midClick).not.toBe(atEnd)
+    expect(railCells().findIndex((cell) => cell === DAG_CHROME.barFull)).toBe(1)
   })
 })
 
@@ -1505,7 +1790,8 @@ describe("the team scene's legend", () => {
     const { kit, components } = mountScenes(workspace)
     /** The rendered scene text. */
     const text = render(kit, components[TEAM_SCENE_ID])
-    // The scene lays the graph out for `max(20, columns - 4)`; the kit measures 100 columns.
+    // The scene lays the graph out for the frame's INTERIOR, `panelSurfaceWidth(100) = 96` (frozen
+    // criterion W1): the terminal's 100 columns minus the frame's own 2 border + 2 padding cells.
     /** The legend the frozen interface offers for that width. */
     const legend = legendLines(96)
     expect(legend.length).toBeGreaterThan(0)
@@ -1605,5 +1891,79 @@ describe("the plan scene reads the SHARED projection", () => {
     const text = render(kit, components[PLAN_SCENE_ID])
     expect(text).not.toContain("approve plan-")
     expect(text).toContain("MPD plan approval")
+  })
+})
+
+// ── the plan scene's rail (frozen criteria I1/I2; the Non-goal's "where windowing implies one") ──
+//
+// The plan surface had NO rail at all, and it WINDOWS its body (`slice(offset, offset + window)`), so a
+// one-column rail is exactly what that windowing implies — the contract's Non-goal permits it as long as
+// no key MEANING changes, which the `j`/`k` half below asserts: they still move one row.
+
+describe("the plan scene's body rail", () => {
+  test("a windowed plan draws the shared rail, drags by the DELTA, and keeps `j`/`k` at one row", () => {
+    // Twenty tasks on a 12-row terminal: the projection is far taller than the six-row window, so the
+    // rail owns its column and every body row has to fit beside it.
+    /** The staged record the surface reads. */
+    const workspace = teamFixture({
+      id: "plan-rail-1",
+      name: "Plan Rail",
+      phase: "staged",
+      staged: true,
+      captainSessionId: "plan-rail-lead",
+      members: [{ id: "M1", name: "Architect", description: "design", role: "design", status: "idle", spawnedAt: "2026-11-06T23:00:01.000Z" }],
+      tasks: Array.from({ length: 20 }, (_entry, index) => ({
+        id: `T${index + 1}`,
+        kind: "work",
+        subject: `task ${index + 1} of the staged plan`,
+        status: "pending",
+        blockedBy: index === 0 ? [] : [`T${index}`],
+      })),
+    })
+    // THE STAGED PLAN COMES FROM THE SHARED READER (the Web panel's own face): on this harness the
+    // OFFICIAL team readout has no staged phase at all (`staged` is false there by contract), so a plan
+    // awaiting approval exists only as this projection — which is exactly what makes the surface usable.
+    /** The plan awaiting approval, as the shared projection serves it. */
+    const staged = {
+      planId: "plan-rail-1-plan",
+      name: "Plan Rail",
+      description: "twenty tasks on a short terminal",
+      approval: "approve",
+      phrase: `approve ${"plan-rail-1"}`,
+      approved: false,
+      discarded: false,
+      members: [{ name: "Architect", description: "design" }],
+      tasks: Array.from({ length: 20 }, (_entry, index) => ({ subject: `task ${index + 1}`, description: `task ${index + 1} of the staged plan`, blockedBy: index === 0 ? [] : [`T${index}`] })),
+    }
+    /** This arm's mount: short enough that the plan body must window. */
+    const { kit, components } = mountScenes(workspace, { terminal: { columns: 100, rows: 12 }, planFor: () => staged })
+    /** The plan surface. */
+    const plan = components[PLAN_SCENE_ID]
+    /** The plan at the top of its window. */
+    const atTop = render(kit, plan)
+    /** The rail the plan drew. */
+    const rail = elementByKey(kit.last(), "gutter")
+    expect(rail).toBeDefined()
+    // I1: the three drag phases are ON the element, and I3: the track jumps on a click.
+    for (const prop of ["onDragStart", "onDragMove", "onDragEnd", "onClick"] as const) {
+      expect(typeof rail?.props?.[prop]).toBe("function")
+    }
+    // THE GRAB COMMITS NOTHING.
+    ;(rail?.props?.onDragStart as (event: unknown) => void)({ localRow: 3, row: 40, startRow: 40 })
+    expect(render(kit, plan)).toEqual(atTop)
+    // THE ANCHOR SURVIVES THE RE-RENDER: one cell of movement scrolls the body.
+    /** The next render's rail. */
+    const nextRail = elementByKey(kit.last(), "gutter")
+    ;(nextRail?.props?.onDragMove as (event: unknown) => void)({ localRow: 4, row: 41, startRow: 40 })
+    /** The plan after the drag. */
+    const dragged = render(kit, plan)
+    expect(dragged).not.toEqual(atTop)
+    // THE KEYS KEEP THEIR MEANING (the Non-goal): `j` and `k` still move ONE row, so the body after one
+    // `k` is the body the drag left, one step earlier — not a page, not a jump.
+    /** The body after one `k`. */
+    const back = pressAndRender(kit, plan, "k")
+    expect(back).not.toEqual(dragged)
+    /** The body after `j`, which returns to where the drag left it. */
+    expect(pressAndRender(kit, plan, "j")).toEqual(dragged)
   })
 })
