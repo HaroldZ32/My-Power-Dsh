@@ -282,6 +282,42 @@
       "logPath": "48-docker-oneclick-repack.log",
       "alsoEvidence": "evidence/docker/client-install-oneclick/2026-11-07T08-59-18Z/result.json (ok=true); the failing earlier run is kept at evidence/docker/client-install-oneclick/2026-11-07T08-45-55Z/result.json (ok=false)",
       "by": "captain"
+    },
+    {
+      "gate": "docker/source --live (CREDENTIALED)",
+      "argv": [
+        "node",
+        "scripts/docker-e2e.ts",
+        "--mode",
+        "source",
+        "--require-docker",
+        "--allow-rootful-docker",
+        "--live"
+      ],
+      "exitCode": 0,
+      "verdict": "PASS",
+      "detail": "239 assertions: 201 passed, 0 failed, 38 NULL. All 30 live.* arms PASS across the THREE planes — live.web (8), live.tui (7), live.headless (8), plus credentialStaged/Scoped/Removed and live.teamRecord / nativeExecutor / headlessPresetRow. The key was staged in the sandbox home before the boot and removed before the report was written; the value is never recorded. The 38 NULLs are the other mode's rows plus the composition-only userSurface rows, which the driver's required-arm gate accepts.",
+      "logPath": "54-docker-source-live.log",
+      "alsoEvidence": "evidence/docker/client-install/2026-11-07T10-32-59Z/result.json",
+      "by": "captain"
+    },
+    {
+      "gate": "docker/oneclick --live (CREDENTIALED)",
+      "argv": [
+        "node",
+        "scripts/docker-e2e.ts",
+        "--mode",
+        "oneclick",
+        "--require-docker",
+        "--allow-rootful-docker",
+        "--live"
+      ],
+      "exitCode": 0,
+      "verdict": "PASS",
+      "detail": "239 assertions: 200 passed, 0 failed, 39 NULL; all 30 live.* arms PASS and oneclick.scratchRepo / requiredPaths / filesAllowlist / distByteIdentical all true.",
+      "logPath": "55-docker-oneclick-live.log",
+      "alsoEvidence": "evidence/docker/client-install-oneclick/2026-11-07T10-53-42Z/result.json",
+      "by": "captain"
     }
   ],
   "skipped": [
@@ -303,11 +339,10 @@
   "bounds": [
     "No Flutter/DSH-Go host exists in this repository: the native half is proven against the published standard, the pinned spec data and service doubles, never on a device.",
     "The official @dsh-go/plugin-kit is private:true and not on npm; it is never vendored. Its cross-check ran against a pinned checkout supplied by MPD_DSHGO_KIT; without one the gate reports NOT-PASSED (exit 3), never a green.",
-    "The Docker browser/credentialed arm did not produce a measurement: no credential was staged (MISSING_CREDENTIAL / MISSING PREREQUISITE), and AGENTS.md §11 REQUIRES the credentialed --live runs before the tag — they remain OWED. A skip is never a pass.",
     "compat.hosts is a published claim, not an admission input: no host code reads it.",
     "The DSH-Go HOST lane is static source analysis (constants and computed keys), not a mounted boot.",
-    "The oneclick Docker lane PASSED on its re-run (row appended, evidence/docker/client-install-oneclick/2026-11-07T08-59-18Z) AFTER the pack was re-made; its earlier failing run (08-45-55Z, pack.staticCoherence drifted=VENDOR_LOCK.json) is retained on purpose so the stale-artifact failure stays auditable. The credentialed --live source and oneclick runs remain OWED before the tag (no key was staged).",
-    "Two vendor re-pins were run in this wave, not one: the first enumerated the git INDEX while the new skills/dsh-qa/scripts/dshgo-standard.ts was still UNTRACKED (391 files), the second after it was staged (392 files, sha 3133e6fb). The shipped lock is the second; the transition is recorded by the check/write transcript in this directory."
+    "Two vendor re-pins were run in this wave, not one: the first enumerated the git INDEX while the new skills/dsh-qa/scripts/dshgo-standard.ts was still UNTRACKED (391 files), the second after it was staged (392 files, sha 3133e6fb). The shipped lock is the second; the transition is recorded by the check/write transcript in this directory.",
+    "Both §11-required credentialed runs were EXECUTED and PASSED (source --live and oneclick --live, logs 54/55). The key came from the operator's ~/.dsh/.credentials.yaml (refs.DEEPSEEK_API_KEY), was exported into the driver's environment only, forwarded to the container BY NAME and removed before the report was written; it is never recorded in any artefact. The driver reports complete=false on both runs because 38-39 rows are declared-bound NULLs (the other mode's rows plus composition-only userSurface rows); its required-arm gate accepted that, which is why the exit code is 0."
   ],
   "repairs": [
     {
