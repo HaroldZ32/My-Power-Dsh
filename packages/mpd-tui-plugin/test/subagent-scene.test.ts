@@ -33,6 +33,16 @@ import type { TeamWorkflow } from "../src/team-state"
 
 // ── fixtures ────────────────────────────────────────────────────────────────
 
+/**
+ * The render clock EVERY arm in this file pins (contract §5.A5).
+ *
+ * Relative ages are the contract now, so a suite that read the wall clock would be asserting a moving
+ * target. This instant is 10 s after the settled fixtures' end and ~2.5 min after their start, so the
+ * expected ages are `10s` and `2m` — and the settled rows are INSIDE the 60 s burn grace, which is what
+ * lets the list arms assert them at all.
+ */
+const FIXED_NOW = Date.UTC(2026, 9, 2, 15, 22, 40)
+
 /** The live subagent the fixture channel carries: a continuable MPD teammate, running. */
 const LIVE_ROW = {
   agentId: "agent-live",
@@ -122,9 +132,9 @@ function channelFixture(subagents: readonly unknown[], control?: unknown): Recor
   }
 }
 
-/** The component under test, with the team projection injected as the wiring does. */
+/** The component under test, with the team projection and the render clock injected as the wiring does. */
 function mergedComponent(): unknown {
-  return createSubagentSceneComponent(() => workflowFixture())
+  return createSubagentSceneComponent(() => workflowFixture(), undefined, undefined, undefined, () => FIXED_NOW)
 }
 
 // ── the React / ui double (the same one team-surface.test.ts uses) ───────────
@@ -422,10 +432,66 @@ describe("the merged panel puts the host's subagent rows ABOVE the MPD team pane
   test("each row carries the host's own description, mode, status and start instant", () => {
     /** The rendered surface. */
     const text = render(makeKit(channelFixture([LIVE_ROW, DONE_ROW])), mergedComponent())
-    expect(text).toContain("🟡 TuiAdapter Engineer — Lane A · continuable · running · started 2026-10-02T15:20:09.000Z")
-    // A settled row reports the REAL end instant the host gave it; no duration is invented.
-    expect(text).toContain("🟢 Plan Reviewer · one-shot · completed · started 2026-10-02T15:21:00.000Z · ended 2026-10-02T15:22:30.000Z")
+    // COMPACT (clause 5 / D7): no `mode` word and no ISO instant — the description, the host's status
+    // and ONE relative age.
+    expect(text).toContain("🟡 TuiAdapter Engineer — Lane A · running · started 2m")
+    // A settled row reports the age of the REAL end instant the host gave it; no duration is invented.
+    expect(text).toContain("🟢 Plan Reviewer · completed · ended 10s")
+    // THE NEGATIVE CONTROL for clause 5: neither the dropped `mode` vocabulary nor an ISO instant may
+    // reach a rendered row anywhere in this surface.
+    expect(text).not.toContain("continuable")
+    expect(text).not.toContain("one-shot")
+    expect(text).not.toContain("2026-10-02T")
     expect(text).toContain("2 total · 1 running · 1 completed · 0 failed")
+  })
+})
+
+// ── the burn projection at the SURFACE (clause 1 / D1 / D2 / D8) ───────────
+
+describe("the merged scene stops DRAWING the rows the burn rule hides", () => {
+  /** A workflow whose team RECORD carries `endedAt` (the projection says `phase: "ended"`). */
+  function endedTeamWorkflow(): TeamWorkflow {
+    /** The live fixture, with only the team head's phase changed. */
+    const base = workflowFixture()
+    return { ...base, team: { ...(base.team as NonNullable<TeamWorkflow["team"]>), phase: "ended" } }
+  }
+
+  test("past the grace a settled row is gone and a live row is still drawn", () => {
+    // Sixty-one seconds after DONE_ROW's end instant: the terminal row has left the grace window.
+    /** The clock this arm renders at. */
+    const pastGrace = Date.UTC(2026, 9, 2, 15, 23, 31)
+    /** The scene under test, pinned to that clock. */
+    const component = createSubagentSceneComponent(() => workflowFixture(), undefined, undefined, undefined, () => pastGrace)
+    /** The rendered surface. */
+    const text = render(makeKit(channelFixture([LIVE_ROW, DONE_ROW])), component)
+    expect(text).toContain("TuiAdapter Engineer — Lane A")
+    expect(text).not.toContain("Plan Reviewer")
+    // The header's tally is the DRAWN rows' own, so it can never count a row the surface dropped.
+    expect(text).toContain("1 total · 1 running · 0 completed · 0 failed")
+    // NEGATIVE CONTROL: the same two rows under the in-grace clock draw BOTH — the arm above is the
+    // burn window at work, not an unreadable channel.
+    const inGrace = render(makeKit(channelFixture([LIVE_ROW, DONE_ROW])), mergedComponent())
+    expect(inGrace).toContain("Plan Reviewer")
+    expect(inGrace).toContain("2 total")
+  })
+
+  test("an ENDED team hides its member row at once; a LIVE team leaves it alone", () => {
+    // The row's description EQUALS the roster name, which is the exact match the team arm requires.
+    /** A freshly settled row whose description is the member's own name. */
+    const memberRow = { agentId: "agent-member", description: "TuiAdapter Engineer", mode: "continuable", status: "completed", completedAt: FIXED_NOW - 1_000 }
+    /** The live-team surface: the row is inside its team's life, so it is drawn. */
+    const liveTeam = render(makeKit(channelFixture([memberRow])), mergedComponent())
+    expect(liveTeam).toContain("🟢 TuiAdapter Engineer · completed · ended 1s")
+    /** The retired-team surface: the same row, one ended team record later. */
+    const endedTeam = createSubagentSceneComponent(() => endedTeamWorkflow(), undefined, undefined, undefined, () => FIXED_NOW)
+    /** The rendered surface. */
+    const endedText = render(makeKit(channelFixture([memberRow])), endedTeam)
+    expect(endedText).not.toContain("TuiAdapter Engineer · completed")
+    expect(endedText).toContain("0 total")
+    // A row the ended team does NOT name follows the terminal grace instead: it is still drawn.
+    /** A non-member row, settled one second ago. */
+    const stranger = { agentId: "agent-stranger", description: "Stranger", mode: "one-shot", status: "completed", completedAt: FIXED_NOW - 1_000 }
+    expect(render(makeKit(channelFixture([stranger])), endedTeam)).toContain("Stranger")
   })
 })
 
@@ -469,7 +535,8 @@ describe("the merged panel degrades honestly", () => {
     expect(rows[0].startedAt).toBeUndefined()
     /** The rendered surface. */
     const text = render(makeKit(channelFixture([{ description: "discovered child", status: "brand-new" }])), mergedComponent())
-    expect(text).toContain("⚪ discovered child · unknown · unknown")
+    // The unrecognized status is `unknown`, and no age is drawn because the host reported no instant.
+    expect(text).toContain("⚪ discovered child · unknown")
   })
 })
 
@@ -527,7 +594,11 @@ describe("the merged panel never trusts the host's shapes", () => {
     expect(text).not.toContain("\u009b")
     // The control characters became spaces (never removed blindly), and the rest of the row is intact.
     expect(text).toContain("🟡 bad [31mred name")
-    expect(text).toContain("one-shot · running · started 1970-01-01T00:00:00.000Z")
+    // Epoch 0 is a placeholder, not a reported instant, so the age formatter answers `?` instead of a
+    // 1970 ISO instant (or a 20 000-day age). The stripped control characters leave trailing spaces
+    // inside the description, so the two facts are asserted separately rather than across them.
+    expect(text).toContain("bad [31mred name")
+    expect(text).toContain("running · started ?")
   })
 
   test("a non-scalar field is dropped rather than stringified onto the screen", () => {
@@ -563,7 +634,8 @@ describe("the merged panel carries the host dashboard's summary row", () => {
     const rows = [
       LIVE_ROW,
       DONE_ROW,
-      { agentId: "a-fail", description: "Failed run", mode: "one-shot", status: "failed", startedAt: 0 },
+      // A terminal row the host also ENDED: inside the grace, so it is still drawn and counted.
+      { agentId: "a-fail", description: "Failed run", mode: "one-shot", status: "failed", startedAt: 0, completedAt: FIXED_NOW - 5_000 },
       { agentId: "a-odd", description: "Odd run", status: "paused" },
     ]
     /** The rendered surface. */
@@ -571,16 +643,16 @@ describe("the merged panel carries the host dashboard's summary row", () => {
     expect(text).toContain("4 total · 1 running · 1 completed · 1 failed")
     expect(text).toContain("🟡 1 running · 🟢 1 completed · 🔴 1 failed")
     // The unrecognized status stays `unknown`: it is drawn as such, and counted as NO completion.
-    expect(text).toContain("⚪ Odd run · unknown · unknown")
+    expect(text).toContain("⚪ Odd run · unknown")
     expect(text).not.toContain("2 completed")
   })
 
   test("a cancelled run is counted as failed, exactly as the host's own card draws it", () => {
     /** The rendered surface for one cancelled row. */
-    const text = render(makeKit(channelFixture([{ agentId: "a-cancel", description: "Cancelled run", status: "cancelled" }])), mergedComponent())
+    const text = render(makeKit(channelFixture([{ agentId: "a-cancel", description: "Cancelled run", status: "cancelled", completedAt: FIXED_NOW - 5_000 }])), mergedComponent())
     // The counts row is asserted WHOLE: the team section prints its own, unrelated tallies.
     expect(text).toContain("🟡 0 running · 🟢 0 completed · 🔴 1 failed")
-    expect(text).toContain("🔴 Cancelled run · unknown · cancelled")
+    expect(text).toContain("🔴 Cancelled run · cancelled · ended 5s")
   })
 })
 
@@ -632,11 +704,12 @@ describe("ENTER opens a detail view of the selected subagent", () => {
     const detail = pressAndRender(kit, component, "", { return: true })
     expect(detail).toContain("Panel Engineer")
     expect(detail).toContain("status      completed")
-    expect(detail).toContain("mode        continuable")
+    // No `mode` row (D7) and no ISO instant (A5): the two instants are relative ages.
+    expect(detail).not.toContain("mode        ")
     expect(detail).toContain("model       deepseek-flash")
     expect(detail).toContain("provider    deepseek")
-    expect(detail).toContain("started     2026-10-02T15:20:09.000Z")
-    expect(detail).toContain("ended       2026-10-02T15:22:30.000Z")
+    expect(detail).toContain("started     2m")
+    expect(detail).toContain("ended       10s")
     expect(detail).toContain("tokens      in 120 · out 340 · total 460")
     expect(detail).toContain("tool calls  3 · read, bash, edit")
     expect(detail).toContain("output      3 line(s)")
@@ -669,15 +742,15 @@ describe("ENTER opens a detail view of the selected subagent", () => {
     expect(facts?.tokens).toEqual({})
     expect(facts?.toolCallCount).toBeUndefined()
     expect(facts?.outputLines).toBeUndefined()
-    expect(subagentDetailRows(facts!, 0).map((row) => row.text)).toEqual(["Bare", "status      running", "mode        unknown"])
+    expect(subagentDetailRows(facts!, 0, FIXED_NOW).map((row) => row.text)).toEqual(["Bare", "status      running"])
     // A PARTIAL bucket keeps only the buckets the host filled…
     /** The same row with one token bucket and one instant. */
     const partial = subagentDetailFacts({ ...bare, tokens: { input: 7 }, endedAt: Date.UTC(2026, 9, 2, 15, 22, 30) })
     expect(partial?.tokens).toEqual({ input: 7 })
     /** Its drawn body. */
-    const partialLines = subagentDetailRows(partial!, 0).map((row) => row.text)
+    const partialLines = subagentDetailRows(partial!, 0, FIXED_NOW).map((row) => row.text)
     expect(partialLines).toContain("tokens      in 7")
-    expect(partialLines).toContain("ended       2026-10-02T15:22:30.000Z")
+    expect(partialLines).toContain("ended       10s")
     expect(partialLines.some((line) => line.includes("out "))).toBe(false)
     expect(partialLines.some((line) => line.includes("total"))).toBe(false)
     // …and NO duration is derived from the two instants the host did report.
@@ -931,7 +1004,7 @@ describe("AC6 · the scene opens on the requested member's detail", () => {
 
   test("with no pending request the scene opens on its LIST, exactly as it did before", () => {
     /** The scene under test, with a reader that answers nothing. */
-    const component = createSubagentSceneComponent(() => workflowFixture(), undefined, () => undefined)
+    const component = createSubagentSceneComponent(() => workflowFixture(), undefined, () => undefined, undefined, () => FIXED_NOW)
     /** The rendered surface. */
     const text = render(makeKit(channelFixture([DETAIL_ROW])), component)
     expect(text).toContain("subagents  1 total · 0 running · 1 completed · 0 failed")
@@ -944,8 +1017,8 @@ describe("AC6 · the scene opens on the requested member's detail", () => {
     // much later — so the default reader is what makes the hand-off possible without a third argument
     // at every construction site. This arm exercises exactly that path.
     requestSubagentDetail(DETAIL_ROW.agentId, Date.now())
-    /** The scene built the way the wiring builds it: no third argument. */
-    const component = createSubagentSceneComponent(() => workflowFixture())
+    /** The scene built the way the wiring builds it: no third argument (the clock is the test's own). */
+    const component = createSubagentSceneComponent(() => workflowFixture(), undefined, undefined, undefined, () => FIXED_NOW)
     /** Its first render. */
     const text = render(makeKit(channelFixture([DETAIL_ROW])), component)
     expect(text).toContain("status      completed")
@@ -959,7 +1032,7 @@ describe("AC6 · the scene opens on the requested member's detail", () => {
     // carries. A member that settled away is the vanishing case the scene already answers.
     requestSubagentDetail("agent-gone", Date.now())
     /** The scene under test. */
-    const component = createSubagentSceneComponent(() => workflowFixture())
+    const component = createSubagentSceneComponent(() => workflowFixture(), undefined, undefined, undefined, () => FIXED_NOW)
     /** The surface, over a channel that carries a different member. */
     const text = render(makeKit(channelFixture([DETAIL_ROW])), component)
     expect(text).toContain("details: that subagent is no longer in the channel")

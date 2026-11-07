@@ -248,11 +248,11 @@ ORDER), and the gate's `--self-test` fixture arms are the operative evidence. Lo
 No evidence on disk for a gate = the change is not complete. Merge to dev only after the relevant gates
 pass and their evidence is committed with the change.
 
-`bun run verify:gates` is the fast aggregate over the static gates — **nine members: vendor, dist
+`bun run verify:gates` is the fast aggregate over the static gates — **ten members: vendor, dist
 freshness, row parity, doc pairs, preset conformance, plugin manifest, comment coverage, graph model,
-workflows** — one command for a patch/preset edit and the release sweep — and it
-expects a CLEAN tree: a dirty `skills/**` corpus reddens the vendor gate until the wave's single re-pin
-lands (§9/§11).
+workflows, tui admission** — the one command for a patch/preset edit and the release sweep. It expects a
+CLEAN tree: a dirty `skills/**` corpus reddens the vendor gate until the wave's single re-pin lands
+(§9/§11).
 
 ---
 
@@ -598,7 +598,7 @@ lane hold this line.
 2. Full gate sweep. §4's gate table is the authority: run every row it marks for this change, plus the
    two it does not carry — `node scripts/verify-no-host-override.ts` (NOT a `verify:gates` member) and
    `node scripts/verify-manual-paths.ts` (whenever `AGENTS.md` changed) — plus the real smoke cases
-   `dual-track-smoke` and `mcp-call`. `bun run verify:gates` aggregates §4's nine static members. Two
+   `dual-track-smoke` and `mcp-call`. `bun run verify:gates` aggregates §4's ten static members. Two
    preconditions are easy to miss: `bun run verify:vendor` only AFTER the wave's single
    `node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step` re-pin when `skills/**`
    changed, and a repo-root `bun test` (unlike `bun test packages`) also scans the `evidence/**`

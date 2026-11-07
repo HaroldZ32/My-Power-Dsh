@@ -24,6 +24,7 @@
 | 准入测量 | [`evidence/tui/ecosystem-admission/2026-11-06T02-09-20Z/result.json`](../evidence/tui/ecosystem-admission/2026-11-06T02-09-20Z/result.json) | 2026-11-06 用宿主自带的准入库对两份随包清单给出的判定，含两次工具运行及其退出码。 |
 | 测量工具 | [`skills/dsh-qa/scripts/tui-admission.ts`](../skills/dsh-qa/scripts/tui-admission.ts) | 本仓库自己的准入用例：`bun skills/dsh-qa/scripts/tui-admission.ts --static-only`。 |
 | 宿主库探针 | [`evidence/tui/ecosystem-admission/2026-11-06T02-09-20Z/probe-negotiation.mjs`](../evidence/tui/ecosystem-admission/2026-11-06T02-09-20Z/probe-negotiation.mjs) | 直接调用已安装宿主的准入链路跑两份清单，使判定不只依赖我们自己的包装。 |
+| 硬门 | [`scripts/verify-tui-admission.ts`](../scripts/verify-tui-admission.ts) | 接线后的需求门（§7）：来自 §4/§5 的静态臂，加宿主对两份清单自己的协商；跳过永远不是通过。 |
 
 2026-11-03 的协商前后对照也保留着，因为它是 §3 权限故事的证据：
 [`negotiation-before.json`](../evidence/dshgo/tui-admission/2026-11-03T01-23-16Z/negotiation-before.json)
@@ -197,3 +198,51 @@ pull request 会跑的五个检查（规则书 2026-10 口径）：
 正因如此，规则书写下 收录 ≠ 准入 ≠ 背书：一个条目只说明仓库公开、作者本人提交、README 回链了本
 产品——它不为本页的检查清单背书，也不代表 dsh-TUI 或生态组织对本 bundle 的功能、质量或安全作任何
 担保。
+
+## 7. 门禁：硬需求，而不是一份报告
+
+`node scripts/verify-tui-admission.ts` 把本页中机器可判定的部分变成失败。它有独立的脚本行
+（`bun run verify:tui-admission`），并且是聚合静态门（`bun run verify:gates`）的成员：树一旦偏离本页，
+门就会变红，不需要谁再读一遍本页。
+
+**它硬性判失败的内容。** 静态臂只读本仓库自己的字节，判定 §4 与 §5 中机器能判定的条目：`$schema` 是
+绝对 URI，且其版本标记与 `manifestVersion` 0.15 一致；id 稳定，两份清单一致，且两份清单的 licence、
+facet `apiVersion`、permissions 与契约坐标也必须一致；`facets.host` 同时给出 entry 与 `apiVersion`，
+且 entry 能从清单自身目录解析；不出现 `client`/`worker` facet；licence 文件与源码仓库可定位；每个
+optional 契约都带书面 fallback，且不出现 `provides`/`requires.services`；`permissions`、
+`subscriptions`、`contributes.commands` 均声明为数组，且不声明任何在 TUI 源码里从未使用的权限；TUI
+平面不出现凭证引用、不出现 `console.log`；`subscriptions` 保持为空——R1 的 PASS 正建立在此；宽度原语
+是 `cellWidth`；§5.1 记录的三个 `.mpd` 用户数据根仍在写入。每条臂都在输出里报出自己的规则 id，因此
+红色记录会直接指出本页哪一段变了。
+
+**它不判定的部分会被打印，绝不会被省略。** 机器无法判定的分组（D 的运行时残留、E 的清理自动化、
+F 的信任声明、G 的展示规则）以 `BOUND` 报告。其中两项还会被复核，因此不会静默过期：本页点名的
+`effectOn` 吞掉异常必须仍然存在，固定的那套一致性矩阵必须仍然没有 `TUI-OBS-002` 行——任一变化，
+门就失败，本页必须同步修改。
+
+**宿主臂跑宿主自己的链路。** 装了宿主时，两份清单的字节都先过宿主自己的 `parseManifest`（绝不用
+`JSON.parse` 顶替），再过宿主的 `loadSpecData` 及其 registry 自检、`createContractIndex`、
+`validatePlugin`、`projectManifest`，最后用宿主自己的 `buildLegacyHostDescriptor`（由
+`HOST_SUPPORTED_CONTRACTS` 构建）跑 `negotiate`。两份清单都必须回答 `compatible`。
+
+**跳过永远不是通过（D5）。** 宿主发现顺序是 `MPD_DSH_TUI_HOST`、`DSH_TUI_ROOT`、
+`<DSH_HOME>/profiles/*/node_modules/@deepseek-harness-tui/dsh-tui`、`~/.dsh` 下的同一路径，以及 PATH
+上的 `dsh-tui` 启动器。一个都解析不到时，门会打印它试过的每个候选与补救命令，并以 **3** 退出——
+NOT PASSED，绝不渲染成绿色的跳过。`--static-only` 出于同样理由退出 3。
+
+**自检不需要宿主。** `node scripts/verify-tui-admission.ts --self-test` 不需要宿主：它在随包树上跑静态
+臂，然后用同一条 spawn 路径跑两次——一次喂故意损坏的 fixture（必须以非零退出且规则变红），一次喂随包
+清单（必须以零退出）。这一对就是负向对照，并且对照记录会打印在报告里。
+
+**R5 是一项具名允许。** 门把 §5.1 打印为 `ALLOWED-DEVIATION` 并写明理由，绝不打成 PASS，同时复核记录：
+某个根不再被写入、出现 `~/.dsh-tui` 下的写入，或某份文档丢掉这项偏差，门都会失败。R5 仍然是对规则
+的未满足；门让它成为一项不会静默腐烂的未满足。
+
+**写入扫描有一条明说的限制。** `~/.dsh-tui` 那一臂是**按行**扫描的：只有当一次会写盘的调用与一个
+`~/.dsh-tui` 路径出现在**同一行**时它才会失败，所以跨行拼出来的写（例如路径在一句里构造、传给另一句的
+`writeFile`）可以绕过它。它是针对明显违规形态的绊线，而不是「不存在这种写」的证明；R5 的允许偏离靠的是
+**已记录的根目录**这一事实，不是靠这一臂。
+
+**诚实的边界。** 这是静态准入检查加宿主自己的协商。它不是实机 TTY 挂载，不跑宿主的 `/plugin check`
+（那是 §1 里的 QA 用例），也不记录任何产物 digest，因此它打印的任何内容都不是 "Verified" 声明（§6）。
+它协商所用的描述符是宿主的 legacy 兼容描述符，不是实机探针证据。

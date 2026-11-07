@@ -27,6 +27,7 @@ everything this page says about the rules was read from it.
 | The admission measurement | [`evidence/tui/ecosystem-admission/2026-11-06T02-09-20Z/result.json`](../evidence/tui/ecosystem-admission/2026-11-06T02-09-20Z/result.json) | The 2026-11-06 verdict of both shipped manifests against the installed host's own admission library, with the two instrument runs and their exit codes. |
 | The instrument | [`skills/dsh-qa/scripts/tui-admission.ts`](../skills/dsh-qa/scripts/tui-admission.ts) | The repository's own admission case: `bun skills/dsh-qa/scripts/tui-admission.ts --static-only`. |
 | The host-library probe | [`evidence/tui/ecosystem-admission/2026-11-06T02-09-20Z/probe-negotiation.mjs`](../evidence/tui/ecosystem-admission/2026-11-06T02-09-20Z/probe-negotiation.mjs) | Calls the installed host's admission chain directly on both manifests, so the verdict does not rest on our wrapper. |
+| The hard gate | [`scripts/verify-tui-admission.ts`](../scripts/verify-tui-admission.ts) | The wired requirement gate (§7): the static arms from §4/§5 plus the host's own negotiation on both manifests; a skip is never a pass. |
 
 The 2026-11-03 negotiation pair is also kept, because it is the evidence for §3's permission story:
 [`negotiation-before.json`](../evidence/dshgo/tui-admission/2026-11-03T01-23-16Z/negotiation-before.json)
@@ -225,3 +226,61 @@ provenance or attestation, and which capabilities or permissions are declared. T
 writes 收录 ≠ 准入 ≠ 背书: an entry says the repository is public, the author submitted it, and the
 README links back — it carries no statement about this page's checklist, and no endorsement by dsh-TUI
 or the ecosystem organisation.
+
+## 7. The gate: a hard requirement, not a report
+
+`node scripts/verify-tui-admission.ts` turns the mechanically checkable part of this page into failures.
+It has its own script row (`bun run verify:tui-admission`) and it is a member of the aggregate static
+gate (`bun run verify:gates`), so a tree that drifts away from this page reddens without anyone having to
+re-read the page.
+
+**What it hard-fails.** The static arm decides, from the repository's own bytes, the §4 and §5 items a
+machine can decide: `$schema` is an absolute URI whose version token agrees with `manifestVersion` 0.15;
+the id is stable and identical across the two manifests, whose licence, facet `apiVersion`, permissions
+and contract coordinates must agree too; `facets.host` names an entry and an `apiVersion`, and the entry
+resolves from the manifest's own directory; no `client`/`worker` facet appears; the licence file and the
+source repository are locatable; every optional contract carries a written fallback and neither
+`provides` nor `requires.services` appears; `permissions`, `subscriptions` and `contributes.commands`
+are declared as arrays and no permission is declared without a use in the TUI source; no credential
+reference and no `console.log` appear on the TUI plane; `subscriptions` stays empty, which is what R1's
+PASS rests on; the width primitive is `cellWidth`; and the three `.mpd` user-data roots of §5.1 are
+still written. Every arm names its rule id in the output, so a red transcript says which paragraph of
+this page moved.
+
+**What it does not decide is printed, never omitted.** The groups whose lines are not machine-decidable
+(D's runtime residual, E's cleanup automation, F's trust claim, G's display rule) are reported as
+`BOUND`. Two of those bounds are re-checked so they cannot go stale: the `effectOn` swallow this page
+names must still be there, and the pinned conformance matrix must still lack a `TUI-OBS-002` row — if
+either changes, the gate fails and this page must move with it.
+
+**The host arm runs the host's own chain.** With a host installed, both manifests' BYTES go through the
+host's OWN `parseManifest` (never a `JSON.parse` substitute), then the host's `loadSpecData` with its
+registry self-checks, `createContractIndex`, `validatePlugin`, `projectManifest` and `negotiate` against
+the host's own `buildLegacyHostDescriptor` built from `HOST_SUPPORTED_CONTRACTS`. Each manifest must
+answer `compatible`.
+
+**A skip is never a pass (D5).** The host is discovered from `MPD_DSH_TUI_HOST`, `DSH_TUI_ROOT`, every
+`<DSH_HOME>/profiles/*/node_modules/@deepseek-harness-tui/dsh-tui`, the same path under `~/.dsh`, and a
+`dsh-tui` launcher on PATH. When none resolves, the gate prints every candidate it tried and the remedy,
+and exits **3** — NOT PASSED, never a green skip. `--static-only` exits 3 for the same reason.
+
+**The self-test is host-free.** `node scripts/verify-tui-admission.ts --self-test` needs no host: it runs
+the static arms on the shipped tree, then spawns the gate twice on the same path — once on a deliberately
+broken fixture (which must exit non-zero with its rules red) and once on the shipped manifest (which must
+exit zero). That pair is the negative control, and the control transcript is printed in the report.
+
+**R5 is a named allowance.** The gate prints §5.1 as `ALLOWED-DEVIATION` with its reason, never as PASS,
+and it re-checks the record: a root that stops being written, a write under `~/.dsh-tui`, or a doc that
+drops the deviation fails the gate. R5 stays a failure of the rule; the gate makes it a failure that
+cannot rot silently.
+
+**The write scan has a stated limit.** The `~/.dsh-tui` arm is a LINE-BASED scan: it fails when a
+mutating filesystem call and a `~/.dsh-tui` path appear on the same line, so a write split across lines
+(e.g. the path built in one statement and passed to `writeFile` in another) can pass it. It is a tripwire
+for the obvious form of the violation, not a proof that no such write exists, and the R5 allowance rests
+on the recorded roots — not on this arm — being the whole story.
+
+**Honest bounds.** This is a static admission check plus the host's own negotiation. It is not a live TTY
+mount, it does not run the host's `/plugin check` (that is the QA case in §1), and it records no artifact
+digest, so nothing it prints is a "Verified" claim (§6). The descriptor it negotiates against is the
+host's legacy-compatibility descriptor, not live probe evidence.

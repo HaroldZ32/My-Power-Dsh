@@ -189,6 +189,7 @@
     "verify:dist": "node scripts/verify-dist-fresh.ts",
     "verify:manifest": "node scripts/verify-plugin-manifest.ts --pack",
     "verify:comments": "node scripts/verify-comment-coverage.ts",
+  "verify:tui-admission": "node scripts/verify-tui-admission.ts",
     "verify:graph": "node scripts/verify-graph-model.ts",
     "verify:gates": "node ./scripts/verify-gates.ts",
     "repin:vendor": "node scripts/repin-vendor.ts",

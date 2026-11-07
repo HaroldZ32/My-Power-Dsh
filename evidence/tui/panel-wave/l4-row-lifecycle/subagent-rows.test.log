@@ -1,0 +1,30 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-tui-plugin/test/subagent-rows.test.ts:
+(pass) burn after use · ARM 1 — the terminal grace > the grace is exactly the captain's 60 seconds, and it is exported to be pinned [0.01ms]
+(pass) burn after use · ARM 1 — the terminal grace > a settled row is DRAWN inside the grace and NOT drawn one millisecond past it [0.41ms]
+(pass) burn after use · ARM 1 — the terminal grace > `endedAt` outranks `completedAt`, and a terminal row with NEITHER is hidden at once [0.04ms]
+(pass) burn after use · ARM 1 — the terminal grace > FAILED and CANCELLED are terminal exactly like COMPLETED [0.03ms]
+(pass) burn after use · ARM 1 — the terminal grace > a `starting` or `running` row is NEVER hidden, however old it is [0.02ms]
+(pass) burn after use · ARM 1 — the terminal grace > `unknown` is terminal only when a end instant makes its finish provable [0.03ms]
+(pass) burn after use · ARM 1 — the terminal grace > a row PROVABLY from another session's catalog is never hidden [0.03ms]
+(pass) burn after use · ARM 1 — the terminal grace > NO filter draws everything — the back-compat control for a caller that has not wired the scope [0.33ms]
+(pass) burn after use · ARM 2 — the retired team > an ended team's member row stops being drawn AT ONCE, inside the grace included [0.14ms]
+(pass) burn after use · ARM 2 — the retired team > a LIVE team's member row is never hidden, even long after its own end instant [0.07ms]
+(pass) burn after use · ARM 2 — the retired team > the match is EXACT: a description that only carries the name falls back to ARM 1 [0.04ms]
+(pass) burn after use · ARM 2 — the retired team > an AMBIGUOUS ended match does not fire — two ended teams naming one member keep the row [0.01ms]
+(pass) burn after use · ARM 2 — the retired team > a team with no readable member contributes no scope at all [0.07ms]
+(pass) the compact row (clause 5 / D7) > a LIVE row draws its description, its status and its run age — no mode, no ISO [0.13ms]
+(pass) the compact row (clause 5 / D7) > a SETTLED row draws the age of its end — no mode, no ISO instant [0.03ms]
+(pass) the compact row (clause 5 / D7) > the age vocabulary is Ns / Nm / Nh / Nd — and `?` for an instant the host never reported [0.04ms]
+(pass) the compact row (clause 5 / D7) > a FAILED row keeps the host's red glyph, and an UNKNOWN row the neutral one [0.03ms]
+(pass) the section over the DRAWN rows > `rowIndex` addresses the drawn rows, so a hidden row can never shift a click [0.13ms]
+(pass) the section over the DRAWN rows > the section end-to-end hides the settled row and keeps the live one [0.07ms]
+(pass) the section over the DRAWN rows > an empty drawn set still answers the header plus the host's own empty state [0.04ms]
+(pass) the section over the DRAWN rows > the reader never re-orders and never throws on a hostile carrier [0.05ms]
+(pass) the section over the DRAWN rows > `subagentRowFilter` carries the team scope and the session, and omits what it does not know [0.04ms]
+
+ 22 pass
+ 0 fail
+ 71 expect() calls
+Ran 22 tests across 1 file. [142.00ms]

@@ -51,7 +51,8 @@ import {
   type TeamSourceDeps,
 } from "./team-state.js"
 import { boxesFitWidth, hitTest, layoutGraph, layoutGraphNatural, layoutRail, legendLines, sliceSpans } from "./graph.js"
-import { gutterCellsX, legendLinesFor, normalizeWheelDelta, toneColor, useTeamFeed, visualTone, wheelInvertOn } from "./panel-core.ts"
+import { DAG_ANIM, DAG_TONE_GLYPH } from "./dag-theme.js"
+import { gutterCells, gutterCellsX, legendLinesFor, normalizeWheelDelta, runningGlyph, toneColor, useTeamFeed, visualTone, wheelInvertOn } from "./panel-core.ts"
 import { statusMarker } from "./status.js"
 import {
   SUBAGENT_SCENE_ID,
@@ -60,6 +61,7 @@ import {
   barCells,
   chromeTitle,
   createSubagentSceneComponent,
+  runningMarker,
   stateMarker,
   surfaceBodyRow,
   surfaceFrame,
@@ -370,10 +372,10 @@ function wrapCells(value: string, cols: number): string[] {
 /**
  * Measure the host's terminal through its own hook, once per render.
  * @param ui - the host ui kit.
- * @returns the size label, the column count the graph sizes itself from, and the body row budget.
+ * @returns the size label, the column count the graph sizes itself from, the body row budget and the FULL measured row count (which is what a windowed body budgets against).
  */
-function measureTerminal(ui: any): { size: string; cols: number; window: number } {
-  if (typeof ui?.useTerminalSize !== "function") return { size: "", cols: FALLBACK_COLS, window: 20 }
+function measureTerminal(ui: any): { size: string; cols: number; window: number; rows: number } {
+  if (typeof ui?.useTerminalSize !== "function") return { size: "", cols: FALLBACK_COLS, window: 20, rows: 26 }
   /** The measured column count, `?` until the host hook answers. */
   let columns: unknown = "?"
   /** The measured row count, `?` until the host hook answers. */
@@ -392,11 +394,142 @@ function measureTerminal(ui: any): { size: string; cols: number; window: number 
   const terminalCols = Number(columns)
   // The scene owns its chrome (title, meta, notice, footer), so the body window is
   // what is left. A sensible minimum keeps it usable before the first measurement.
+  /** Whether the host really measured a usable row count. */
+  const usableRows = Number.isFinite(terminalRows) && terminalRows > 8
   return {
     size,
     cols: Number.isFinite(terminalCols) && terminalCols > 20 ? terminalCols : FALLBACK_COLS,
-    window: Number.isFinite(terminalRows) && terminalRows > 8 ? terminalRows - 6 : 20,
+    window: usableRows ? terminalRows - 6 : 20,
+    // THE RAW ROW COUNT is what a WINDOWED body budgets against: the frame's two border rows and the
+    // pinned header/footer are subtracted from the terminal itself, never from a guess at the chrome.
+    rows: usableRows ? terminalRows : 26,
   }
+}
+
+/**
+ * The rows one content width of the team scene produces, plus the drawing facts its gestures read.
+ *
+ * THE SPLIT IS WHAT MAKES THE BODY REACHABLE. `head` is the pinned header (identity, state, counts,
+ * roster and the drawing's own title row), `tail` is every row BELOW the drawing (the horizontal rail,
+ * the legend, the state key, the detail pane, the problems and the notice) and `graphLines` is how many
+ * DRAWING rows the region carries — the drawing's rows are built one at a time through
+ * {@link TeamDraw.graphRow}, so only the slice on screen is ever assembled. A body pushed
+ * unconditionally is exactly what the host clips on a short terminal (contract §3's second missing
+ * half), so the scene needs its rows as DATA before it can window them.
+ */
+interface TeamDraw {
+  /** The pinned header rows, always drawn above the window. */
+  head: unknown[]
+  /** The non-drawing rows, in draw order, after the drawing inside the window. */
+  tail: unknown[]
+  /** How many rows the DRAWING contributes to the window's content. */
+  graphLines: number
+  /** One drawing row, animated and cut to this width's horizontal viewport. */
+  graphRow: (index: number) => unknown
+  /** The drawing this width produced, which the pointer handlers resolve against. */
+  view: ReturnType<typeof layoutGraph>
+  /** The cells the drawing was cut to. */
+  graphWidth: number
+  /** The horizontal offset this drawing renders at, clamped. */
+  scrollXAt: number
+  /** The furthest horizontal offset this drawing allows. */
+  scrollXMax: number
+}
+
+/**
+ * The scene's own clock, PAUSED while nothing runs.
+ *
+ * THIS IS `subagent-scene.ts`'s `useSurfaceClock` WITH THE ONE DIFFERENCE THIS WAVE REQUIRES: the
+ * interval handed to the host's `useAnimationFrame` is `null` when no marker is running, and `null` is
+ * the documented PAUSE of the one legal scene timer (the same pause `panel-core.ts`'s `useRunningPhase`
+ * uses for a sidebar page). The helper is repeated here rather than edited there because that file
+ * belongs to another lane this wave; a scene that could not pause would keep the host's frame loop
+ * alive forever on a surface with nothing to animate (contract §5.A4c: the animation stops when
+ * nothing runs).
+ * @param ui - the host ui kit, whose SCENE timer is the `useAnimationFrame` pair.
+ * @param live - whether any row on this surface is running; false pauses the host's loop.
+ * @returns the clock in milliseconds (0 when nothing runs or the host has no timer) plus the ref the animated element must carry.
+ */
+function useSceneClock(ui: any, live: boolean): { time: number; ref: unknown } {
+  if (typeof ui?.useAnimationFrame === "function") {
+    /** The host's own pair: the ref that keeps the clock alive, and the current time. */
+    const pair = ui.useAnimationFrame(live ? DAG_ANIM.intervalMs : null)
+    /** The ref (first) and the time (second), whatever shape the host returned. */
+    const ref = Array.isArray(pair) ? pair[0] : undefined
+    /** The clock, narrowed to a finite number. */
+    const time = Number(Array.isArray(pair) ? pair[1] : 0)
+    return { time: Number.isFinite(time) ? time : 0, ref }
+  }
+  if (typeof ui?.useAnimationTime === "function") {
+    /** The panel kit's clock, narrowed to a finite number, paused the same way. */
+    const time = Number(ui.useAnimationTime(live ? DAG_ANIM.intervalMs : null))
+    return { time: Number.isFinite(time) ? time : 0, ref: undefined }
+  }
+  return { time: 0, ref: undefined }
+}
+
+/**
+ * The window's vertical scrollbar, as ONE column of cells.
+ *
+ * THE CELLS COME FROM `panel-core.ts`'s OWN `gutterCells` — the same helper every sidebar page draws
+ * its rail with — so the thumb's length and position can never disagree with the window they
+ * describe, and the scene gains no second arithmetic of its own (contract §2 freezes that helper; this
+ * file only calls it). The helper answers an EMPTY list when the content fits, and that is the one case
+ * this function draws nothing: a scrollbar over a body that does not scroll is a control with no
+ * effect. The track glyphs are the contract's (`DAG_CHROME.barEmpty` / `barFull`, via the helper), never
+ * a literal spelled here.
+ * @param surface - the host kit in the shared builders' shape.
+ * @param offset - the window's top row within the content, already clamped.
+ * @param contentRows - how many rows the window scrolls over.
+ * @param viewportRows - how many rows the window shows.
+ * @returns the one-cell-wide column, or undefined when everything fits.
+ */
+function gutterColumn(surface: SurfaceKit, offset: number, contentRows: number, viewportRows: number): unknown | undefined {
+  /** One cell per viewport row: the thumb where it sits, the track everywhere else. */
+  const cells = gutterCells(offset, contentRows, viewportRows)
+  if (cells.length === 0) return undefined
+  return surface.React.createElement(
+    surface.ui.Box,
+    { key: "gutter", flexDirection: "column", width: 1 },
+    ...cells.map((cell, row) => surface.React.createElement(surface.ui.Text, { key: `vbar-${row}`, dimColor: true }, cell)),
+  )
+}
+
+/**
+ * The frame's children for a WINDOWED body: the pinned header, the window and the pinned footer.
+ *
+ * THE WINDOW IS TWO SIBLINGS IN A ROW BOX, not a column with a bar painted into each row's last cell.
+ * The rail must reserve its ONE column for the whole body — a bar appended to a row's text would make
+ * every row one cell wider than the frame's interior and the host would REWRAP it, which is the class
+ * of defect this wave exists to remove. A short body (the helper answers no cells) keeps the exact
+ * element order it always had.
+ * @param surface - the host kit in the shared builders' shape.
+ * @param head - the pinned header rows.
+ * @param region - the rows the window shows, already sliced to `viewportRows`.
+ * @param footer - the pinned footer rows.
+ * @param offset - the window's top row within the content, already clamped.
+ * @param contentRows - how many rows the window scrolls over.
+ * @param viewportRows - how many rows the window shows.
+ * @returns the frame's children, in draw order.
+ */
+function windowedBody(
+  surface: SurfaceKit,
+  head: readonly unknown[],
+  region: readonly unknown[],
+  footer: readonly unknown[],
+  offset: number,
+  contentRows: number,
+  viewportRows: number,
+): unknown[] {
+  /** The window's own rows, in one column so the host stacks them in draw order. */
+  const rows = surface.React.createElement(surface.ui.Box, { key: "body-rows", flexDirection: "column", flexGrow: 1 }, ...region)
+  /** The rail, absent when everything fits. */
+  const gutter = gutterColumn(surface, offset, contentRows, viewportRows)
+  /** The window: the rows and the rail as siblings, so the rail owns exactly one column. */
+  const window = gutter === undefined
+    ? rows
+    : surface.React.createElement(surface.ui.Box, { key: "body-window", flexDirection: "row", flexGrow: 1 }, rows, gutter)
+  return [...head, window, ...footer]
 }
 
 /**
@@ -474,6 +607,17 @@ function createBoardComponent(
     const rows = board.rows
     /** Replaces the read: the initial read, the refresh key and the timer all use it. */
     const setBoard = state[1] as (next: { rows: string[]; state?: BoardState }) => void
+    // THE BOARD'S OWN WINDOW (contract §5.A4's audit item: this scene had NO scroll at all). The read is
+    // one row per board line, and `boardLines` grows with the workspace's team, boulder, plans, workmates
+    // and problems — on a short terminal the host used to CLIP the tail with no way to reach it. The
+    // offset is state here, moved by the keys and the wheel below, and the window is drawn with the same
+    // `gutterCells` rail the team scene uses, so the two full-screen surfaces answer one vocabulary.
+    /** The scroll offset, in rows, over the board's own lines. */
+    const scrollState = React.useState(0)
+    /** The board's scroll offset, in rows. */
+    const scroll = scrollState[0] as number
+    /** Moves the board's offset; the home key and `r` reset it to 0. */
+    const setScroll = scrollState[1] as (next: number) => void
 
     // THE PUSH (PART P): a team-state change re-reads this page instead of waiting up to 2000 ms for
     // the tick below, which STAYS as the fallback for a composition with no feed.
@@ -508,10 +652,37 @@ function createBoardComponent(
     /** The phase the state marker breathes at. */
     const phase = animPhase(clock.time)
 
+    // Host terminal-size hook (conventions §b): the scene adapts instead of
+    // assuming a geometry. Always called, with a safe fallback shape.
+    const measured = measureTerminal(ui)
+    /** The measured terminal size label, empty when the host could not measure. */
+    const size = measured.size
+    // THE WINDOW BUDGET of this page: the terminal minus the frame's two border rows, the three PINNED
+    // header rows (title, meta, rule) and the pinned footer. The body lines are what is left — the same
+    // arithmetic the team scene's window uses, so the two pages page alike.
+    /** How many board lines the window can show at once; never below one. */
+    const viewportRows = Math.max(1, measured.rows - 2 - 3 - 1)
+    /** The furthest offset that still fills the window; zero when the board fits. */
+    const scrollMax = Math.max(0, rows.length - viewportRows)
+    /** The offset for THIS render, clamped — the one value the window and the rail both read. */
+    const scrollAt = Math.min(Math.max(0, scroll), scrollMax)
+
     if (typeof ui.useInput === "function") {
-      ui.useInput((input: string, key: { escape?: boolean; ctrl?: boolean } | undefined) => {
+      ui.useInput((input: string, key: { escape?: boolean; ctrl?: boolean; shift?: boolean; upArrow?: boolean; downArrow?: boolean; pageUp?: boolean; pageDown?: boolean; home?: boolean; end?: boolean } | undefined) => {
         if (key?.escape === true || input === "q") close()
-        else if (input === "r") setBoard(read())
+        // THE WINDOW'S OWN KEYS: the same gestures the team scene and the `dag` page answer, so a reader
+        // learns ONE scroll vocabulary across the surfaces (`⇧↑↓` by a row, `PgUp`/`PgDn` by a window,
+        // `Home`/`End` the ends).
+        else if (key?.upArrow === true && key?.shift === true) setScroll(Math.max(0, scrollAt - 1))
+        else if (key?.downArrow === true && key?.shift === true) setScroll(Math.min(scrollMax, scrollAt + 1))
+        else if (key?.pageUp === true) setScroll(Math.max(0, scrollAt - viewportRows))
+        else if (key?.pageDown === true) setScroll(Math.min(scrollMax, scrollAt + viewportRows))
+        else if (key?.home === true) setScroll(0)
+        else if (key?.end === true) setScroll(scrollMax)
+        else if (input === "r") {
+          setScroll(0)
+          setBoard(read())
+        }
         // One-key hop from the board to the team workflow (frozen §5.6).
         else if (input === "a") {
           nav.planFromTeam = false
@@ -538,12 +709,6 @@ function createBoardComponent(
       }
     }
 
-    // Host terminal-size hook (conventions §b): the scene adapts instead of
-    // assuming a geometry. Always called, with a safe fallback shape.
-    const measured = measureTerminal(ui)
-    /** The measured terminal size label, empty when the host could not measure. */
-    const size = measured.size
-
     // THE BOARD'S OWN STATE, in the one tone vocabulary every surface reports: the team's tally when
     // this workspace holds a team, `dim` when it holds none. The matrix is the same one the DAG page
     // and the team scene draw, so a reader learns one signal for "this is fine / this is moving / this
@@ -555,12 +720,12 @@ function createBoardComponent(
     /** How many cells the progress bar may occupy on this width; never so wide that the row shears. */
     const barWidth = Math.max(4, Math.min(24, measured.cols - 64))
 
-    /** The elements handed to the host's Box, in render order. */
-    const children: unknown[] = []
+    /** The pinned header: the page's identity, its counts and its rule — they never scroll away. */
+    const head: unknown[] = []
     // Title/counts chrome (the host draws NO chrome for a scene). The marker is the surface's state
     // and the first thing the eye lands on; the size is last because it is reference, not news.
-    children.push(surfaceText(surface, "title", chromeTitle([`${stateMarker(tone, phase)} MPD board — ${rows.length} line(s)`, size]), { bold: true, tone }))
-    children.push(
+    head.push(surfaceText(surface, "title", chromeTitle([`${stateMarker(tone, phase)} MPD board — ${rows.length} line(s)`, size]), { bold: true, tone }))
+    head.push(
       surfaceText(
         surface,
         "meta",
@@ -568,22 +733,39 @@ function createBoardComponent(
         { dim: true },
       ),
     )
-    children.push(surfaceRule(surface, "rule", undefined, tone))
-    for (let index = 0; index < rows.length; index += 1) {
+    head.push(surfaceRule(surface, "rule", undefined, tone))
+    /** The board lines this window shows, in the read's own order. */
+    const visible: unknown[] = []
+    for (let index = scrollAt; index < Math.min(rows.length, scrollAt + viewportRows); index += 1) {
       // EVERY BODY ROW IS DRAWN BY THE SHARED BUILDER, so the board's own label vocabulary
       // (`workspace`, `team`, `tasks`, `boulder`, `note`, …) carries the same tones here as it does in
       // the merged panel. `tasks` is toned by the TALLY rather than by the label, because that row is
-      // the one body row whose meaning is a state.
-      children.push(surfaceBodyRow(surface, `line-${index}`, rows[index], { tasks: tone }))
+      // the one body row whose meaning is a state. THE KEY KEEPS THE LINE'S OWN INDEX, so a row's
+      // identity does not change when the window moves over it.
+      visible.push(surfaceBodyRow(surface, `line-${index}`, rows[index], { tasks: tone }))
     }
-    // Key-hint footer, always the last row.
-    children.push(surfaceHints(surface, "footer", ["esc/q close", "r refresh", "a team workflow"]))
+    // THE WHEEL OVER THE BODY, through the ONE normalisation helper every surface uses (contract D2),
+    // so a machine whose wheel direction is inverted does not scroll this page the wrong way.
+    /** The window's rows in one column, carrying the wheel the host delivers over them. */
+    const body = React.createElement(ui.Box, {
+      key: "board-window-rows",
+      flexDirection: "column",
+      flexGrow: 1,
+      onWheel: (event: { deltaY?: number; deltaX?: number } | undefined) => {
+        /** The wheel's vertical delta in this plugin's own convention; positive scrolls down. */
+        const deltaY = normalizeWheelDelta(Number(event?.deltaY ?? 0), wheelInvertOn())
+        if (deltaY !== 0) setScroll(Math.max(0, Math.min(scrollMax, scrollAt + (deltaY > 0 ? 1 : -1))))
+      },
+    }, ...visible)
+    // Key-hint footer, PINNED: the keys that move this window must stay on screen while it moves.
+    /** The frame's pinned footer rows. */
+    const footer = [surfaceHints(surface, "footer", ["esc/q close", "⇧↑↓ scroll", "r refresh", "a team workflow"])]
 
     // THE FRAME: the surface's own border, its title in the border line, its colour carrying the state
     // the marker draws — the same grammar the DAG page and the merged panel use.
     /** The border title, clamped to the measured width so it can never shear the frame. */
     const borderTitle = clampCells(chromeTitle([stateMarker(tone, phase), "MPD board", size]), Math.max(8, measured.cols - 6))
-    return surfaceFrame(surface, "frame", borderTitle, children, tone, clock.ref)
+    return surfaceFrame(surface, "frame", borderTitle, windowedBody(surface, head, [body], footer, scrollAt, rows.length, viewportRows), tone, clock.ref)
   }
 }
 
@@ -676,10 +858,16 @@ function createTeamComponent(
     // CURRENT drawing after a refresh moved the rows.
     const viewRef = React.useRef?.(undefined as ReturnType<typeof layoutGraph> | undefined)
     // The shared clock, at a FIXED hook position (see `subagent-scene.ts`): a host with no timer
-    // answers 0 and every animated cell draws the frozen static frame.
-    /** The host clock and the ref the animated element must carry. */
-    const clock = useSurfaceClock(ui)
-    /** The phase the state marker breathes at. */
+    // answers 0 and every animated cell draws the frozen static frame. THE INTERVAL IS `null` WHILE
+    // NOTHING RUNS, which is the host's documented PAUSE — a surface with no live marker then costs the
+    // host no frames at all (contract §5.A4c: the animation stops when nothing runs).
+    // THE LIVE FACT COMES FROM THE PROJECTION, not from the drawing: a task the record calls running,
+    // or a member the record calls running, is exactly the set of rows that breathe below.
+    /** Whether any row this surface can draw is running, which is what the breath animates. */
+    const animate = workflow !== undefined && (workflow.tasks.some((task) => task.visual === "running") || workflow.members.some((member) => member.status === "running"))
+    /** The host clock, PAUSED when nothing runs, and the ref the animated element must carry. */
+    const clock = useSceneClock(ui, animate)
+    /** The phase the running markers breathe at. */
     const phase = animPhase(clock.time)
 
     /** Re-read the workflow and publish it. The render path stays free of I/O. */
@@ -736,44 +924,258 @@ function createTeamComponent(
     const focus = hover ?? pinned
     // The window is computed from the host's own terminal size (never assumed).
     const measured = measureTerminal(ui)
-    /** The graph's own viewport, inside the scene's one-cell padding. */
-    const graphWidth = Math.max(20, measured.cols - 4)
-    // THE DRAWING IS LAID OUT AT ITS NATURAL WIDTH (frozen clauses T1/T2), so `view.width` may exceed
-    // `graphWidth`; the rows below are WINDOWED to the viewport instead of the drawing being squeezed to
-    // it. The vertical budget is the scene's own graph window, which is what buys the roomy box form.
-    /** The rows of the graph that fit the window. */
-    const graphWindow = Math.max(3, measured.window - 4)
-    /** The ranks the host's model served, when it published one; the scene never re-derives its own. */
-    const servedRanks = modelRanks(workflow)
-    // THE GROUP FRAMES COME WITH THE MODEL (frozen contract D3). A served model's per-node column is the
-    // column INSIDE its own frame, so a flat drawing of a grouped board would stack two frames' boxes in
-    // one rank — the reason this call passes the frames through instead of drawing the board flat.
-    /** The group frames the model declares, or undefined when this board has none. */
-    const groups = workflow?.model?.groups
-    /** The boxed drawing for this render, at its own width — the scene's picture unless it is too narrow. */
-    const boxes = layoutGraphNatural(graphTasks, focus, { rows: graphWindow }, servedRanks, groups)
-    // THE FULL-SCREEN SCENE OBEYS THE PANEL'S RULE (clause A3): boxes while two node columns of the
-    // drawing fit, and the rail only for a terminal that genuinely cannot show them. Before this the
-    // scene had no rule of its own and inherited the layout's rank cap, so a deep board fell back to a
-    // rail — the lines that "disappear even in full screen" the user reported.
-    const view = boxesFitWidth(boxes, graphWidth) ? boxes : layoutRail(graphTasks, graphWidth, focus, servedRanks)
-    /** The furthest horizontal offset that still fills the viewport; zero when the drawing fits. */
-    const scrollXMax = Math.max(0, view.width - graphWidth)
-    /** The horizontal offset for THIS render, clamped — the one value the rows and the rail both read. */
-    const scrollXAt = Math.min(Math.max(0, scrollX), scrollXMax)
-    // THE VERTICAL AXIS GETS THE SAME TREATMENT (the far-edge defect this wave repairs). The state used
-    // to be read raw by the render loop, so `End` (which committed `Number.MAX_SAFE_INTEGER`) and a long
-    // wheel run pushed the window PAST the last row: the slice then started beyond the drawing and the
-    // scene drew an EMPTY graph — with no way back except scrolling up one tick at a time. A clamped
-    // value derived per render, and used by the loop, both hit tests and every vertical gesture, makes
-    // the far edge a real stop.
-    /** The furthest vertical offset that still fills the graph window; zero when the drawing fits. */
-    const scrollMax = Math.max(0, view.lines.length - graphWindow)
-    /** The vertical offset for THIS render, clamped — the one value the rows and both hit tests read. */
+    /** The team head, when there is one. */
+    const team = workflow?.team
+    // THE TEAM'S OWN STATE, in the one tone vocabulary every surface reports — the frame colour, the
+    // marker and the tally row all read it, exactly as the board and the merged panel do.
+    /** The tone this render reports. */
+    const tone: SurfaceTone = workflow === undefined ? "dim" : toneOfTally(workflow.counts, workflow.tasks.map((task) => task.visual))
+    /**
+     * The rows ONE CONTENT WIDTH produces: the pinned header above the window, the scrollable region
+     * (the drawing first, then every row below it) and the drawing facts the gestures read.
+     *
+     * IT IS A FUNCTION OF THE WIDTH BECAUSE THE RAIL OWNS A COLUMN WHEN THE BODY OVERFLOWS. With a
+     * gutter the drawing, the roster's wrap and the legend all lose that cell; a render that kept the
+     * wider rows would make every one of them one cell wider than the frame's interior and the host
+     * would REWRAP it — the shear class this wave repairs. Whether the body overflows depends on how
+     * many rows it produces, which depends on the width, so one pass cannot answer both: the scene
+     * draws at its natural width and re-draws ONE COLUMN NARROWER only when that pass overflowed. A
+     * short body therefore keeps its previous rendering byte for byte.
+     * @param contentCols - the columns the frame's interior offers this pass, rail excluded.
+     * @returns the pinned header, the window's content and the drawing facts.
+     */
+    const drawAt = (contentCols: number): TeamDraw => {
+      /** The graph's own viewport, inside the scene's one-cell padding (one cell narrower with a rail). */
+      const graphWidth = Math.max(20, contentCols - 4)
+      /** The ranks the host's model served, when it published one; the scene never re-derives its own. */
+      const servedRanks = modelRanks(workflow)
+      // THE GROUP FRAMES COME WITH THE MODEL (frozen contract D3). A served model's per-node column is the
+      // column INSIDE its own frame, so a flat drawing of a grouped board would stack two frames' boxes in
+      // one rank — the reason this call passes the frames through instead of drawing the board flat.
+      /** The group frames the model declares, or undefined when this board has none. */
+      const groups = workflow?.model?.groups
+      // THE DRAWING IS LAID OUT AT ITS NATURAL WIDTH (frozen clauses T1/T2), so `view.width` may exceed
+      // `graphWidth`; the rows below are WINDOWED to the viewport instead of the drawing being squeezed to
+      // it. The layout's vertical budget is accepted and IGNORED by the geometry (`GraphBudget.rows`), so
+      // the drawing is always its full natural height and the WINDOW is what makes it fit.
+      /** The boxed drawing for this width, at its own width — the scene's picture unless it is too narrow. */
+      const boxes = layoutGraphNatural(graphTasks, focus, { rows: measured.window }, servedRanks, groups)
+      // THE FULL-SCREEN SCENE OBEYS THE PANEL'S RULE (clause A3): boxes while two node columns of the
+      // drawing fit, and the rail only for a terminal that genuinely cannot show them. Before this the
+      // scene had no rule of its own and inherited the layout's rank cap, so a deep board fell back to a
+      // rail — the lines that "disappear even in full screen" the user reported.
+      /** The drawing: the boxed form while it fits this width, the rail only when it cannot. */
+      const view = boxesFitWidth(boxes, graphWidth) ? boxes : layoutRail(graphTasks, graphWidth, focus, servedRanks)
+      /** The furthest horizontal offset that still fills the viewport; zero when the drawing fits. */
+      const scrollXMax = Math.max(0, view.width - graphWidth)
+      /** The horizontal offset for THIS render, clamped — the one value the rows and the rail both read. */
+      const scrollXAt = Math.min(Math.max(0, scrollX), scrollXMax)
+      /** The pinned header: identity, state, counts, roster and the drawing's own title row. */
+      const head: unknown[] = []
+      /** Every row BELOW the drawing, in draw order: they ride the same window as the drawing. */
+      const tail: unknown[] = []
+      /** How many cells the tally's bar may take on this width; a narrow terminal simply drops it. */
+      const barWidth = Math.max(4, Math.min(16, contentCols - 46))
+      /** Whether this width has room for the bar beside the tally's own words. */
+      const barFits = contentCols >= 50
+      // THE TEAM ID IS DRAWN, and it is not decoration: `approve <teamId>` is the exact phrase the
+      // plan surface demands, and the id is what tells two waves apart. Two existing arms caught its
+      // absence the moment this header was rewritten — the second of them through the CONTROL
+      // CHARACTER it carries, which is why the id is the string the render boundary is tested with.
+      head.push(
+        surfaceText(surface, "title", chromeTitle([`${stateMarker(tone, phase)} MPD team${team === undefined ? " — (none)" : ` — ${team.name} (${team.id})`}`, measured.size]), {
+          bold: true,
+          tone,
+        }),
+      )
+      // THE MARKED FALLBACK, third state (frozen PART D.2): a board drawn with NO session id readable is
+      // the workspace's principal team, and the row says so BEFORE the DAG — never a silent fallback.
+      // It is drawn only when the reader said so (`source.scope === "workspace"`); an unlabelled fixture
+      // keeps today's rows exactly, so no existing arm's expected bytes move.
+      if (workflow?.source?.scope === "workspace") {
+        head.push(surfaceBodyRow(surface, "scope", `scope      ${WORKSPACE_SCOPE_MARKER} (no session id on this surface)`))
+      }
+      /** How many DRAWING rows this body contributes to the window; zero for every empty state. */
+      let graphLines = 0
+      if (workflow === undefined) {
+        tail.push(surfaceText(surface, "unreadable", "team state unreadable", { tone: "failed" }))
+      } else if (team === undefined) {
+        // THE EMPTY STATE IS TWO DIFFERENT FACTS, and conflating them was the defect (PART D): a session
+        // whose OWN team does not exist must be told exactly that — and never shown another session's
+        // board — while a session-less surface (an older host) says its drawing is workspace-level.
+        if (workflow.source?.scope === "none") {
+          tail.push(surfaceText(surface, "none-session", `${NO_SESSION_TEAM_MARKER} — stage one with agent_teams_plan, then approve it`, { dim: true }))
+          /** How many teams the workspace holds, when the reader could count them. */
+          const held = workflow.source?.workspaceTeams
+          if (typeof held === "number" && held > 0) {
+            // NO SCOPE MARKER HERE (orthogonalized): `workspace-level` names the no-session-id state, so a
+            // frame scan keyed on the token must match that state ALONE. This row belongs to state 2 —
+            // this session HAS an id and holds no team of its own — and it states the workspace fact in
+            // words, leaving the token to the state it names. State 2's unique marker is the row above.
+            tail.push(surfaceText(surface, "none-session-count", `this workspace holds ${held} team(s), none bound to this session`, { dim: true }))
+          }
+        } else if (workflow.source?.scope === "workspace") {
+          // No session id was readable, so this drawing is the WORKSPACE's principal team: the row
+          // carries the visible marker, so a reader can tell it is not necessarily their own session's.
+          tail.push(surfaceText(surface, "none", `${WORKSPACE_SCOPE_MARKER} (no session id on this surface) — no team in this workspace; stage one with agent_teams_plan, then approve it`, { dim: true }))
+        } else {
+          // The honest empty state: the workspace really holds no team, and the row says which tool
+          // fills it rather than showing an empty frame.
+          tail.push(surfaceText(surface, "none", "no team in this workspace — stage one with agent_teams_plan, then approve it", { dim: true }))
+        }
+      } else {
+        /** The tally row, in the vocabulary the record uses. */
+        const counts = workflow.counts
+        // THE TALLY IS THE ONE ROW THAT IS A STATE, so it draws in the state's tone and carries the bar;
+        // its words are unchanged, because the record's own vocabulary is what a reader already knows.
+        head.push(
+          surfaceText(
+            surface,
+            "phase",
+            chromeTitle([
+              barFits ? `${barCells(counts.completed, counts.total, barWidth)} ${counts.completed}/${counts.total}` : undefined,
+              `${team.phase} · ${counts.total} task(s) · ${counts.completed} done · ${counts.inProgress} running · ${counts.pending} pending · ${counts.failed} failed · ${team.links} link(s)`,
+            ]),
+            { tone },
+          ),
+        )
+        // THE ROSTER'S RUNNING MARKER BREATHES ON THE SAME CLOCK AND THE SAME FRAME TABLE as the drawing
+        // below it (contract §5.A4c): the record's `running` status is drawn through `runningMarker`, so
+        // the roster and a running task can never animate at two different speeds or through two frame
+        // sets — and at the static phase it is the published `◐` it always was.
+        /** The roster, one wrapped line, so the graph gets the room. */
+        const roster = workflow.members.length === 0
+          ? "roster  (no members)"
+          : "roster  " + workflow.members.map((member) => `${member.status === "running" ? runningMarker(phase) : "○"}${member.name} ${member.done}/${member.total}`).join(" · ")
+        /** The wrapped roster chunks; only the first carries the `roster` label the tone table keys on. */
+        const rosterChunks = wrapCells(roster, graphWidth)
+        for (let index = 0; index < rosterChunks.length; index += 1) {
+          head.push(surfaceBodyRow(surface, `roster-${index}`, rosterChunks[index]))
+        }
+        if (workflow.holds.includes(team.id)) head.push(surfaceBodyRow(surface, "hold", `watchdog   HELD (${workflow.holds.join(", ")})`))
+        /** The graph's own header, which names the focus so the highlight is explainable. */
+        const focusLabel = focus === undefined ? "" : ` · focus ${focus}${view.chain.length === 0 ? "" : ` ⇠ ${view.chain.join(",")}`}`
+        // THE HEADER MUST STAY EXACTLY `task dependency graph` WHEN NOTHING IS FOCUSED: the drawing
+        // begins on the very next row (the pointer geometry and the scroll arms are measured from that
+        // offset), so nothing may be inserted between this row and the first row of the drawing.
+        head.push(surfaceText(surface, "graphhead", `task dependency graph${view.mode === "rail" ? " (rail)" : ""}${focusLabel}`, { dim: true }))
+        /** How many drawing rows the window scrolls over: the drawing's own, at this width. */
+        graphLines = view.lines.length
+        // THE HORIZONTAL RAIL, DIRECTLY BENEATH THE DRAWING (R8) — not beneath the scene, and driven by
+        // the SAME `scrollXAt` the rows above were cut with, so the thumb and the window can never
+        // disagree (clause T4). Drawn only while the drawing is wider than the viewport.
+        if (scrollXMax > 0) {
+          // The rail's cells come out of `panel-core.ts`'s ONE horizontal-gutter function, so the scene and
+          // the `dag` panel draw the same thumb at the same offset from the same arithmetic (clause T4).
+          /** The rail's cells, one per column of the viewport. */
+          const rail = gutterCellsX(scrollXAt, view.width, graphWidth)
+          if (rail !== "") tail.push(surfaceText(surface, "hrail", rail, { dim: true }))
+        }
+        // THE LEGEND sits directly under the DAG it explains, in the SAME width budget the graph was
+        // laid out for (`graphWidth`) — the merged panel draws the same lines under its own DAG, so
+        // one legend cannot claim more cells than the drawing above it used. It is COMPOSED, not
+        // private: `graph.ts` owns the drawing's own arrow/focus sentence, and `panel-core.ts`'s
+        // `legendLinesFor` appends the CONTRACT's ONE state key — the six-state key that tells
+        // `○ blocked` from `○ open`, which the drawing module's DELETED five-state key could not.
+        // Handing the drawing's line to that helper is what keeps this scene's legend identical to the
+        // DAG page's, and it is why this scene prints the state key exactly once.
+        /** The drawing module's own line: its arrow/focus sentence; the state key belongs to the composer. */
+        let arrow: string[] = []
+        try {
+          arrow = legendLines(graphWidth)
+        } catch {
+          arrow = []
+        }
+        // THE TWO GROUPS KEEP THEIR OWNER'S KEY: the drawing's lines stay `legend-<i>` (the interface
+        // this package's own suite pins), and the contract's appended key rows are `state-key-<i>`, so a
+        // reader — and a test — can tell which owner said what. Both are DIMMED: a legend explains the
+        // drawing, it never competes with it.
+        for (let index = 0; index < arrow.length; index += 1) {
+          tail.push(surfaceText(surface, `legend-${index}`, arrow[index], { dim: true }))
+        }
+        /** The composed legend: the drawing's lines followed by the contract's six-state key. */
+        let legend: string[] = []
+        try {
+          legend = legendLinesFor(graphWidth, arrow)
+        } catch {
+          legend = []
+        }
+        for (let index = arrow.length; index < legend.length; index += 1) {
+          tail.push(surfaceText(surface, `state-key-${index - arrow.length}`, legend[index], { dim: true }))
+        }
+        // The detail pane: the focused task's contract, which is what a reader needs after finding it.
+        // THE LOOKUP IS THE DRAWN ROWS, not the board's: a plan-only ghost exists only in the joined
+        // rows, so looking in `workflow.tasks` left a focused ghost with no detail at all.
+        /** The focused task's joined row, when there is one. */
+        const detail = focus === undefined ? undefined : graphTasks.find((task) => task.id === focus)
+        if (detail !== undefined) {
+          // The pane draws in the FOCUSED TASK'S OWN TONE: the reader asked about this task, so the pane
+          // reports its state rather than repeating the surface's.
+          tail.push(surfaceText(surface, "detail", `${detail.id} · ${detail.kind ?? "?"} · ${detail.subject}`, { bold: true, tone: visualTone(detail.visual) }))
+          tail.push(surfaceText(surface, "detail-meta",
+            `${detail.visual}${detail.attempt === undefined ? "" : ` · attempt ${detail.attempt}`}${detail.round === undefined ? "" : ` · round ${detail.round}`}${detail.verdict === undefined ? "" : ` · ${detail.verdict}`}${detail.assignee === undefined ? "" : ` · @${detail.assignee}`}${detail.dependencies.length === 0 ? "" : ` · ⇠ ${detail.dependencies.join(",")}`}`,
+            { dim: true }))
+        }
+        for (const problem of workflow.problems) tail.push(surfaceBodyRow(surface, `problem-${problem}`, `note       ${problem}`))
+      }
+      if (notice !== "") tail.push(surfaceText(surface, "notice", notice, { tone: "blocked" }))
+      /** The running marker's base cell, which is the contract's own `running` glyph. */
+      const baseMarker = DAG_TONE_GLYPH.running ?? "◐"
+      /** The animated glyph for this frame, or the base one when nothing is running. */
+      const breathe = runningGlyph(phase)
+      /** Whether the breath changes the glyph this render (it is static at the orbit's head). */
+      const breathing = breathe !== baseMarker
+      /** One drawing row: animated when it carries a running marker, then cut to the horizontal window. */
+      const graphRow = (index: number): unknown => {
+        /** This row's spans, as the drawing laid them out. */
+        const row = view.lines[index] ?? []
+        /** Whether the drawing marks this row as RUNNING, which is what animates. */
+        const running = row.some((span) => span.tone === "running")
+        // THE BREATH IS THE SCENE'S OWN CLOCK ON THE CONTRACT'S OWN GLYPH, applied exactly as the
+        // sidebar's `dag` page applies it: only a running row is touched, and only its FIRST occurrence
+        // of that glyph, so the drawing's geometry and its other marks cannot move. With no timer (or
+        // outside the orbit's head frame) the row is drawn exactly as `graph.ts` laid it out.
+        /** This row's spans, with the running glyph advanced by the phase. */
+        const phased = running && breathing
+          ? row.map((span) => (span.text.includes(baseMarker) ? { text: span.text.replace(baseMarker, breathe), tone: span.tone } : span))
+          : row
+        /** The spans of this row, cut to the viewport and each drawn in its own theme colour. */
+        const spans = sliceSpans(phased, scrollXAt, graphWidth).map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: toneColor(span.tone) }, span.text))
+        return React.createElement(ui.Text, { key: `g${index}` }, ...spans)
+      }
+      return { head, tail, graphLines, graphRow, view, graphWidth, scrollXAt, scrollXMax }
+    }
+    /** The body at the scene's own content width — the pass a short scene keeps byte for byte. */
+    const full = drawAt(measured.cols)
+    /** The rows the pinned header and the pinned footer leave for the window; never below one. */
+    const capacityOf = (draw: TeamDraw): number => Math.max(1, measured.rows - 2 - draw.head.length - 1)
+    /** The rows this body carries in its window: the drawing's own plus every row below it. */
+    const contentOf = (draw: TeamDraw): number => draw.graphLines + draw.tail.length
+    // THE VERTICAL AXIS IS NOW THE WHOLE BODY, and that is the fix for 「显示不全」: the offset used to
+    // move the DRAWING alone, so every row below it (rail, legend, detail, problems, notice) was pushed
+    // unconditionally and the host clipped whatever exceeded the terminal. The window now scrolls over
+    // the drawing AND those rows, so the last row of the scene is reachable — while a body that fits
+    // still draws exactly as before.
+    /** Whether the body must be windowed at all, which is also when the gutter owns a column. */
+    const scrolling = contentOf(full) > capacityOf(full)
+    /** The body this render draws; an overflowing one is re-laid out one column narrower for its rail. */
+    const body = scrolling ? drawAt(measured.cols - 1) : full
+    /** How many rows the window shows. */
+    const viewportRows = capacityOf(body)
+    /** How many rows the window scrolls over. */
+    const contentRows = contentOf(body)
+    // THE FAR-EDGE DEFECT THIS WAVE INHERITS: the state used to be read raw by the render loop, so
+    // `End` (which committed `Number.MAX_SAFE_INTEGER`) and a long wheel run pushed the window PAST the
+    // last row — the slice then started beyond the content and the scene drew an EMPTY body, with no
+    // way back except scrolling up one tick at a time. A clamped value derived per render, and used by
+    // the window, both hit tests and every vertical gesture, makes the far edge a real stop.
+    /** The furthest vertical offset that still fills the window; zero when the body fits. */
+    const scrollMax = Math.max(0, contentRows - viewportRows)
+    /** The vertical offset for THIS render, clamped — the one value the window and both hit tests read. */
     const scrollAt = Math.min(Math.max(0, scroll), scrollMax)
-    if (viewRef !== undefined && viewRef !== null) viewRef.current = view
+    if (viewRef !== undefined && viewRef !== null) viewRef.current = body.view
     /** The tasks the focus would move through, in DRAWING order, which is what the arrow keys walk. */
-    const ordered = view.hits.map((hit) => hit.taskId)
+    const ordered = body.view.hits.map((hit) => hit.taskId)
 
     /** Move the focus by one task in drawing order, wrapping at both ends. */
     const moveFocus = (delta: number): void => {
@@ -798,14 +1200,17 @@ function createTeamComponent(
         // two-dimensional neighbour walk would need a geometry contract nobody asked for.
         else if (key?.upArrow === true || input === "k") (key?.shift === true ? setScroll(Math.max(0, scrollAt - 1)) : moveFocus(-1))
         else if (key?.downArrow === true || input === "j") (key?.shift === true ? setScroll(Math.min(scrollMax, scrollAt + 1)) : moveFocus(1))
-        else if (key?.leftArrow === true || input === "h") (key?.shift === true ? setScrollX(Math.max(0, scrollXAt - 1)) : moveFocus(-1))
-        else if (key?.rightArrow === true || input === "l") (key?.shift === true ? setScrollX(Math.min(scrollXMax, scrollXAt + 1)) : moveFocus(1))
+        else if (key?.leftArrow === true || input === "h") (key?.shift === true ? setScrollX(Math.max(0, body.scrollXAt - 1)) : moveFocus(-1))
+        else if (key?.rightArrow === true || input === "l") (key?.shift === true ? setScrollX(Math.min(body.scrollXMax, body.scrollXAt + 1)) : moveFocus(1))
         // PAGING: `PgUp`/`PgDn` page vertically and their SHIFT forms horizontally, and `Home`/`End` are
         // the vertical ends — the same four keys the `dag` panel answers, so the two surfaces agree.
+        // THE VERTICAL PAGE STEP IS THE WINDOW ITSELF (`viewportRows`), not the old drawing-only budget:
+        // the window now carries the rows below the drawing too, so a page that moved by the drawing's
+        // height would skip the very rows this wave makes reachable.
         // EVERY VERTICAL MOVE GOES THROUGH `scrollAt`/`scrollMax`, so the far edge is a stop and not a
         // value the next render has to recover from.
-        else if (key?.pageUp === true) (key?.shift === true ? setScrollX(Math.max(0, scrollXAt - graphWidth)) : setScroll(Math.max(0, scrollAt - graphWindow)))
-        else if (key?.pageDown === true) (key?.shift === true ? setScrollX(Math.min(scrollXMax, scrollXAt + graphWidth)) : setScroll(Math.min(scrollMax, scrollAt + graphWindow)))
+        else if (key?.pageUp === true) (key?.shift === true ? setScrollX(Math.max(0, body.scrollXAt - body.graphWidth)) : setScroll(Math.max(0, scrollAt - viewportRows)))
+        else if (key?.pageDown === true) (key?.shift === true ? setScrollX(Math.min(body.scrollXMax, body.scrollXAt + body.graphWidth)) : setScroll(Math.min(scrollMax, scrollAt + viewportRows)))
         else if (key?.home === true) setScroll(0)
         else if (key?.end === true) setScroll(scrollMax)
         else if (input === "g") { setScroll(0); setScrollX(0) }
@@ -822,109 +1227,28 @@ function createTeamComponent(
       })
     }
 
-    /** The elements handed to the host's Box, in render order. */
-    const children: unknown[] = []
-    /** The team head, when there is one. */
-    const head = workflow?.team
-    // THE TEAM'S OWN STATE, in the one tone vocabulary every surface reports — the frame colour, the
-    // marker and the tally row all read it, exactly as the board and the merged panel do.
-    /** The tone this render reports. */
-    const tone: SurfaceTone = workflow === undefined ? "dim" : toneOfTally(workflow.counts, workflow.tasks.map((task) => task.visual))
-    /** How many cells the tally's bar may take on this width; a narrow terminal simply drops it. */
-    const barWidth = Math.max(4, Math.min(16, measured.cols - 46))
-    /** Whether this width has room for the bar beside the tally's own words. */
-    const barFits = measured.cols >= 50
-    // THE TEAM ID IS DRAWN, and it is not decoration: `approve <teamId>` is the exact phrase the
-    // plan surface demands, and the id is what tells two waves apart. Two existing arms caught its
-    // absence the moment this header was rewritten — the second of them through the CONTROL
-    // CHARACTER it carries, which is why the id is the string the render boundary is tested with.
-    children.push(
-      surfaceText(surface, "title", chromeTitle([`${stateMarker(tone, phase)} MPD team${head === undefined ? " — (none)" : ` — ${head.name} (${head.id})`}`, measured.size]), {
-        bold: true,
-        tone,
-      }),
-    )
-    // THE MARKED FALLBACK, third state (frozen PART D.2): a board drawn with NO session id readable is
-    // the workspace's principal team, and the row says so BEFORE the DAG — never a silent fallback.
-    // It is drawn only when the reader said so (`source.scope === "workspace"`); an unlabelled fixture
-    // keeps today's rows exactly, so no existing arm's expected bytes move.
-    if (workflow?.source?.scope === "workspace") {
-      children.push(surfaceBodyRow(surface, "scope", `scope      ${WORKSPACE_SCOPE_MARKER} (no session id on this surface)`))
-    }
-    if (workflow === undefined) {
-      children.push(surfaceText(surface, "unreadable", "team state unreadable", { tone: "failed" }))
-    } else if (head === undefined) {
-      // THE EMPTY STATE IS TWO DIFFERENT FACTS, and conflating them was the defect (PART D): a session
-      // whose OWN team does not exist must be told exactly that — and never shown another session's
-      // board — while a session-less surface (an older host) says its drawing is workspace-level.
-      if (workflow.source?.scope === "none") {
-        children.push(surfaceText(surface, "none-session", `${NO_SESSION_TEAM_MARKER} — stage one with agent_teams_plan, then approve it`, { dim: true }))
-        /** How many teams the workspace holds, when the reader could count them. */
-        const held = workflow.source?.workspaceTeams
-        if (typeof held === "number" && held > 0) {
-          // NO SCOPE MARKER HERE (orthogonalized): `workspace-level` names the no-session-id state, so a
-          // frame scan keyed on the token must match that state ALONE. This row belongs to state 2 —
-          // this session HAS an id and holds no team of its own — and it states the workspace fact in
-          // words, leaving the token to the state it names. State 2's unique marker is the row above.
-          children.push(surfaceText(surface, "none-session-count", `this workspace holds ${held} team(s), none bound to this session`, { dim: true }))
-        }
-      } else if (workflow.source?.scope === "workspace") {
-        // No session id was readable, so this drawing is the WORKSPACE's principal team: the row
-        // carries the visible marker, so a reader can tell it is not necessarily their own session's.
-        children.push(surfaceText(surface, "none", `${WORKSPACE_SCOPE_MARKER} (no session id on this surface) — no team in this workspace; stage one with agent_teams_plan, then approve it`, { dim: true }))
-      } else {
-        // The honest empty state: the workspace really holds no team, and the row says which tool
-        // fills it rather than showing an empty frame.
-        children.push(surfaceText(surface, "none", "no team in this workspace — stage one with agent_teams_plan, then approve it", { dim: true }))
-      }
-    } else {
-      /** The tally row, in the vocabulary the record uses. */
-      const counts = workflow.counts
-      // THE TALLY IS THE ONE ROW THAT IS A STATE, so it draws in the state's tone and carries the bar;
-      // its words are unchanged, because the record's own vocabulary is what a reader already knows.
-      children.push(
-        surfaceText(
-          surface,
-          "phase",
-          chromeTitle([
-            barFits ? `${barCells(counts.completed, counts.total, barWidth)} ${counts.completed}/${counts.total}` : undefined,
-            `${head.phase} · ${counts.total} task(s) · ${counts.completed} done · ${counts.inProgress} running · ${counts.pending} pending · ${counts.failed} failed · ${head.links} link(s)`,
-          ]),
-          { tone },
-        ),
-      )
-      /** The roster, one wrapped line, so the graph gets the room. */
-      const roster = workflow.members.length === 0
-        ? "roster  (no members)"
-        : "roster  " + workflow.members.map((member) => `${member.status === "running" ? "◐" : "○"}${member.name} ${member.done}/${member.total}`).join(" · ")
-      /** The wrapped roster chunks; only the first carries the `roster` label the tone table keys on. */
-      const rosterChunks = wrapCells(roster, graphWidth)
-      for (let index = 0; index < rosterChunks.length; index += 1) {
-        children.push(surfaceBodyRow(surface, `roster-${index}`, rosterChunks[index]))
-      }
-      if (workflow.holds.includes(head.id)) children.push(surfaceBodyRow(surface, "hold", `watchdog   HELD (${workflow.holds.join(", ")})`))
-      /** The graph's own header, which names the focus so the highlight is explainable. */
-      const focusLabel = focus === undefined ? "" : ` · focus ${focus}${view.chain.length === 0 ? "" : ` ⇠ ${view.chain.join(",")}`}`
-      // THE HEADER MUST STAY EXACTLY `task dependency graph` WHEN NOTHING IS FOCUSED: the drawing
-      // begins on the very next row (the pointer geometry and the scroll arms are measured from that
-      // offset), so nothing may be inserted between this row and the first row of the drawing.
-      children.push(surfaceText(surface, "graphhead", `task dependency graph${view.mode === "rail" ? " (rail)" : ""}${focusLabel}`, { dim: true }))
-      // THE GRAPH BOX OWNS THE POINTER. Its children are exactly the drawn rows, in order, so a
-      // `localRow`/`localCol` from the host's event resolves against the SAME geometry that was
-      // drawn — `hitTest` is a rectangle lookup on the layout, never a second one.
-      /** The rows of the graph that fit the window. */
-      const graphWindow = Math.max(3, measured.window - 4)
-      /** One host element per drawn graph row, each carrying its coloured spans. */
-      const graphRows: unknown[] = []
-      for (let index = scrollAt; index < Math.min(view.lines.length, scrollAt + graphWindow); index += 1) {
-        // THE HORIZONTAL WINDOW, through the ONE slicer (clause T3). It is applied HERE and nowhere
-        // else in this scene: this is the DAG's own row list, and every other row the scene draws is
-        // pushed through `surfaceText`/`surfaceBodyRow` at its full width (R8).
-        /** The spans of this row, cut to the viewport and each drawn in its own theme colour. */
-        const spans = sliceSpans(view.lines[index], scrollXAt, graphWidth).map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: toneColor(span.tone) }, span.text))
-        graphRows.push(React.createElement(ui.Text, { key: `g${index}` }, ...spans))
-      }
-      children.push(React.createElement(ui.Box, {
+    /** The drawing line the window starts on, which is also what the pointer's local row adds to. */
+    const graphFrom = Math.min(scrollAt, body.graphLines)
+    /** The drawing line the window ends on (exclusive). */
+    const graphTo = Math.min(body.graphLines, scrollAt + viewportRows)
+    // THE GRAPH BOX OWNS THE POINTER. Its children are exactly the drawn rows, in order, so a
+    // `localRow`/`localCol` from the host's event resolves against the SAME geometry that was drawn —
+    // `hitTest` is a rectangle lookup on the layout, never a second one. The drawing is the FIRST row
+    // of the window, so the pointer's local row plus the window's offset is the drawing's own row.
+    /** The drawing's visible rows, which are the graph box's ONLY children. */
+    const graphRows: unknown[] = []
+    for (let index = graphFrom; index < graphTo; index += 1) graphRows.push(body.graphRow(index))
+    /** How far into the tail the window starts, which stays zero while the drawing fills its bottom. */
+    const tailStart = Math.max(0, scrollAt - body.graphLines)
+    /** The rows the tail still has room for below the visible drawing. */
+    const tailRoom = viewportRows - (graphTo - graphFrom)
+    /** The tail rows this window reaches, in draw order. */
+    const tailRows: unknown[] = []
+    for (let index = 0; index < tailRoom && tailStart + index < body.tail.length; index += 1) tailRows.push(body.tail[tailStart + index])
+    /** The window's rows: the drawing's own box (when this board has a drawing), then the tail rows. */
+    const visible: unknown[] = []
+    if (body.graphLines > 0) {
+      visible.push(React.createElement(ui.Box, {
         key: "graph",
         flexDirection: "column",
         // Pointer handlers: present on every host, INERT on one without mouse tracking, so the
@@ -934,7 +1258,7 @@ function createTeamComponent(
           const drawn = viewRef?.current
           if (drawn === undefined) return
           /** The task under the pointer, or none. */
-          const under = hitTest(drawn, Number(event?.localRow ?? -1) + scrollAt, Number(event?.localCol ?? -1) + scrollXAt)
+          const under = hitTest(drawn, Number(event?.localRow ?? -1) + graphFrom, Number(event?.localCol ?? -1) + body.scrollXAt)
           setHover(under)
         },
         onMouseLeave: () => setHover(undefined),
@@ -943,7 +1267,7 @@ function createTeamComponent(
           const drawn = viewRef?.current
           if (drawn === undefined) return
           /** The task that was clicked, or none for blank space. */
-          const under = hitTest(drawn, Number(event?.localRow ?? -1) + scrollAt, Number(event?.localCol ?? -1) + scrollXAt)
+          const under = hitTest(drawn, Number(event?.localRow ?? -1) + graphFrom, Number(event?.localCol ?? -1) + body.scrollXAt)
           // Clicking the pinned task again, or blank space, UNPINS — the same gesture that pinned it.
           setPinned(under === undefined || under === pinned ? undefined : under)
           setHover(under)
@@ -952,81 +1276,27 @@ function createTeamComponent(
           // EACH DELTA DRIVES ITS OWN AXIS (clause T5), and BOTH signs come from the ONE normalisation
           // helper (contract D2): the raw terminal delta is machine-dependent, so a scene reading it
           // directly scrolls the wrong way on exactly the installations the knob exists for. The vertical
-          // one moves the graph window; the horizontal one moves the DRAWING's window, and only when
-          // there is something to pan to — a wheel that scrolled a fitting drawing would be motion with
-          // no cause.
+          // one moves the WINDOW — the drawing AND every row below it, which is what makes the scene body
+          // reachable — while the horizontal one moves the DRAWING's window, and only when there is
+          // something to pan to.
           /** The wheel's vertical delta in this plugin's own convention; positive scrolls down. */
           const deltaY = normalizeWheelDelta(Number(event?.deltaY ?? 0), wheelInvertOn())
           if (deltaY !== 0) setScroll(Math.max(0, Math.min(scrollMax, scrollAt + (deltaY > 0 ? 1 : -1))))
           /** The wheel's horizontal delta in the same convention; positive scrolls right. */
           const deltaX = normalizeWheelDelta(Number(event?.deltaX ?? 0), wheelInvertOn())
-          if (deltaX !== 0) setScrollX(Math.max(0, Math.min(scrollXMax, scrollXAt + (deltaX > 0 ? 1 : -1))))
+          if (deltaX !== 0) setScrollX(Math.max(0, Math.min(body.scrollXMax, body.scrollXAt + (deltaX > 0 ? 1 : -1))))
         },
       }, graphRows))
-      // THE HORIZONTAL RAIL, DIRECTLY BENEATH THE DRAWING (R8) — not beneath the scene, and driven by
-      // the SAME `scrollXAt` the rows above were cut with, so the thumb and the window can never
-      // disagree (clause T4). Drawn only while the drawing is wider than the viewport.
-      if (scrollXMax > 0) {
-        // The rail's cells come out of `panel-core.ts`'s ONE horizontal-gutter function, so the scene and
-        // the `dag` panel draw the same thumb at the same offset from the same arithmetic (clause T4).
-        /** The rail's cells, one per column of the viewport. */
-        const rail = gutterCellsX(scrollXAt, view.width, graphWidth)
-        if (rail !== "") children.push(surfaceText(surface, "hrail", rail, { dim: true }))
-      }
-      // THE LEGEND sits directly under the DAG it explains, in the SAME width budget the graph was
-      // laid out for (`graphWidth`) — the merged panel draws the same lines under its own DAG, so
-      // one legend cannot claim more cells than the drawing above it used. It is COMPOSED, not
-      // private: `graph.ts` owns the drawing's own arrow/focus sentence, and `panel-core.ts`'s
-      // `legendLinesFor` appends the CONTRACT's ONE state key — the six-state key that tells
-      // `○ blocked` from `○ open`, which the drawing module's DELETED five-state key could not.
-      // Handing the drawing's line to that helper is what keeps this scene's legend identical to the
-      // DAG page's, and it is why this scene prints the state key exactly once.
-      /** The drawing module's own line: its arrow/focus sentence; the state key belongs to the composer. */
-      let arrow: string[] = []
-      try {
-        arrow = legendLines(graphWidth)
-      } catch {
-        arrow = []
-      }
-      // THE TWO GROUPS KEEP THEIR OWNER'S KEY: the drawing's lines stay `legend-<i>` (the interface
-      // this package's own suite pins), and the contract's appended key rows are `state-key-<i>`, so a
-      // reader — and a test — can tell which owner said what. Both are DIMMED: a legend explains the
-      // drawing, it never competes with it.
-      for (let index = 0; index < arrow.length; index += 1) {
-        children.push(surfaceText(surface, `legend-${index}`, arrow[index], { dim: true }))
-      }
-      /** The composed legend: the drawing's lines followed by the contract's six-state key. */
-      let legend: string[] = []
-      try {
-        legend = legendLinesFor(graphWidth, arrow)
-      } catch {
-        legend = []
-      }
-      for (let index = arrow.length; index < legend.length; index += 1) {
-        children.push(surfaceText(surface, `state-key-${index - arrow.length}`, legend[index], { dim: true }))
-      }
-      // The detail pane: the focused task's contract, which is what a reader needs after finding it.
-      // THE LOOKUP IS THE DRAWN ROWS, not the board's: a plan-only ghost exists only in the joined
-      // rows, so looking in `workflow.tasks` left a focused ghost with no detail at all.
-      /** The focused task's joined row, when there is one. */
-      const detail = focus === undefined ? undefined : graphTasks.find((task) => task.id === focus)
-      if (detail !== undefined) {
-        // The pane draws in the FOCUSED TASK'S OWN TONE: the reader asked about this task, so the pane
-        // reports its state rather than repeating the surface's.
-        children.push(surfaceText(surface, "detail", `${detail.id} · ${detail.kind ?? "?"} · ${detail.subject}`, { bold: true, tone: visualTone(detail.visual) }))
-        children.push(surfaceText(surface, "detail-meta",
-          `${detail.visual}${detail.attempt === undefined ? "" : ` · attempt ${detail.attempt}`}${detail.round === undefined ? "" : ` · round ${detail.round}`}${detail.verdict === undefined ? "" : ` · ${detail.verdict}`}${detail.assignee === undefined ? "" : ` · @${detail.assignee}`}${detail.dependencies.length === 0 ? "" : ` · ⇠ ${detail.dependencies.join(",")}`}`,
-          { dim: true }))
-      }
-      for (const problem of workflow.problems) children.push(surfaceBodyRow(surface, `problem-${problem}`, `note       ${problem}`))
     }
-    if (notice !== "") children.push(surfaceText(surface, "notice", notice, { tone: "blocked" }))
-    children.push(surfaceHints(surface, "footer", ["esc/q close", "↑↓ focus", "click pins", "hover previews", "⇧↑↓ scroll", "r refresh", "a plan", "p board"]))
+    for (const row of tailRows) visible.push(row)
+    // Key-hint footer, PINNED: the keys that move this window must stay on screen while it moves.
+    /** The frame's pinned footer rows. */
+    const footer = [surfaceHints(surface, "footer", ["esc/q close", "↑↓ focus", "click pins", "hover previews", "⇧↑↓ scroll", "r refresh", "a plan", "p board"])]
     // THE FRAME: the surface's own border, its title in the border line and its colour carrying the
     // state the marker draws — the grammar the DAG page and the merged panel share.
     /** The border title, clamped to the measured width so it can never shear the frame. */
-    const borderTitle = clampCells(chromeTitle([`${stateMarker(tone, phase)} MPD team${head === undefined ? "" : ` — ${head.name}`}`, measured.size]), Math.max(8, measured.cols - 6))
-    return surfaceFrame(surface, "frame", borderTitle, children, tone, clock.ref)
+    const borderTitle = clampCells(chromeTitle([`${stateMarker(tone, phase)} MPD team${team === undefined ? "" : ` — ${team.name}`}`, measured.size]), Math.max(8, measured.cols - 6))
+    return surfaceFrame(surface, "frame", borderTitle, windowedBody(surface, body.head, visible, footer, scrollAt, contentRows, viewportRows), tone, clock.ref)
   }
 }
 

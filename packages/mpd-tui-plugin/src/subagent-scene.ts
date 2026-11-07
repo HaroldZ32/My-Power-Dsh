@@ -27,10 +27,16 @@
 // TWO MODES. The list above, and a DETAIL view for one selected row (`enter` opens it; esc,
 // backspace and q step back to the list). The detail is a MODE, so esc must not close the scene
 // while it owns the body — the same grammar the host's own dashboard/detail pair uses. It draws
-// only what the channel actually reported for that entry (description, status, mode, model,
-// provider, the two instants as ISO-8601 UTC, the token buckets it filled, the tool calls it
-// recorded, and the tail of its output), and an entry that left the channel degrades to a notice
-// on the list rather than to a throw.
+// only what the channel actually reported for that entry (description, status, model, provider,
+// the two instants as RELATIVE ages, the token buckets it filled, the tool calls it recorded, and
+// the tail of its output), and an entry that left the channel degrades to a notice on the list
+// rather than to a throw. A DETAIL STAYS READABLE after its row has burned out of the list: the
+// burn rule is a projection over the LIST, not a delete from the host's append-only catalog.
+//
+// THE ROW LIFECYCLE IS NOT DECIDED HERE. `subagent-rows.ts` owns the projection, the compact row
+// text and the burn-after-use rule (contract §5.A1/§5.A5, decisions D1/D2/D7/D8), so this scene and
+// the sidebar page render one vocabulary. This file contributes the SCENE-only parts: the detail
+// view, the DAG body, the frame and the keys.
 //
 // DEFENSIVE RULES (a plugin scene renders inside the host's own error boundary — a throw is
 // contained, but the surface is lost, and with it the screen the user asked for):
@@ -39,15 +45,50 @@
 //     into "completed";
 //   · `channel.subagentControl` is declared on the channel, but a composition without native
 //     control returns false, so it is feature-detected before EVERY interrupt call;
-//   · no duration is ever computed for a row the host did not report: only the host's own
-//     `startedAt`/`endedAt` instants are printed, as ISO-8601 UTC, and an unreadable instant is
-//     omitted rather than invented;
+//   · no duration is ever invented for a row the host did not report: an unreadable instant is
+//     omitted rather than printed as a zero, and the age formatter answers `?` for one;
 //   · every external string crosses sanitize.ts (`stripControl` + `clampCells`) before `ui.Text`.
 //
 // This file never imports React: it uses `props.React.createElement` (the documented always-safe
 // form), so it cannot drag a second React copy under the host's reconciler.
 import type { TuiScenePropsLike } from "./types.js"
-import { clampCells, stripControl } from "./sanitize.js"
+import { clampCells } from "./sanitize.js"
+// THE ROW BUILDER LIVES IN ITS OWN MODULE (`.mpd/plans/tui-panel-wave.md` §4 lane L4): this scene and
+// the sidebar page render the SAME rows, so the projection, the burn projection and the compact row
+// text are imported from `subagent-rows.ts` rather than re-derived here.
+import {
+  filterSubagentEntries,
+  safeRow,
+  subagentRowAge,
+  subagentRowEntries,
+  subagentRowFilter,
+  subagentRowView,
+  subagentSectionOf,
+  type SubagentRowView,
+} from "./subagent-rows.js"
+// THE BACK-COMPAT RE-EXPORTS. These symbols MOVED to `subagent-rows.ts`; they stay reachable through
+// this module while the other call site migrates (`panel-dag.ts` belongs to L2), so an existing import
+// keeps working and typechecks instead of breaking the wave's shared build.
+export {
+  filterSubagentEntries,
+  glyphOf,
+  MERGED_ROW_MAX_CELLS,
+  safeRow,
+  SUBAGENT_ROW_GRACE_MS,
+  subagentRowAge,
+  subagentRowEntries,
+  subagentRowFilter,
+  subagentRowLine,
+  subagentRows,
+  subagentRowView,
+  subagentRowVisible,
+  subagentSectionOf,
+  subagentSectionRows,
+  subagentTeamScope,
+  visibleSubagentEntries,
+  visibleSubagentRows,
+} from "./subagent-rows.js"
+export type { SubagentRowEntry, SubagentRowView, SubagentSectionRow, SubagentTeamScope } from "./subagent-rows.js"
 import { layoutGraphNatural, legendLines, sliceSpans, type GraphView } from "./graph.js"
 import { modelRanks, modelRows, NO_SESSION_TEAM_MARKER, sessionIdOf, teamWorkflowLines, WORKSPACE_SCOPE_MARKER, type TeamFeedAccessor, type TeamWorkflow } from "./team-state.js"
 import { t } from "./i18n.js"
@@ -472,9 +513,6 @@ export const SUBAGENT_SCENE_ID = "mpd-tui-subagents"
 /** The scene title the host's registry shows for it. */
 export const SUBAGENT_SCENE_TITLE = "MPD subagents + team"
 
-/** The cell budget of ONE rendered row — the same bound the other scenes apply to their rows. */
-export const MERGED_ROW_MAX_CELLS = 4000
-
 /** The column count the DAG is laid out for before the host has measured one. */
 const FALLBACK_COLS = 100
 
@@ -492,62 +530,6 @@ const DETAIL_LABEL_WIDTH = 12
 
 /** How many tool names the detail's tool row lists before it counts the remainder. */
 const DETAIL_TOOL_NAMES = 8
-
-/** Every status the host's own `SubagentStatus` union can carry, as data (never guessed). */
-const KNOWN_STATUSES: readonly string[] = ["starting", "running", "completed", "failed", "cancelled", "unknown"]
-
-/** Every durable mode the host's own `SubagentState['mode']` can carry, as data. */
-const KNOWN_MODES: readonly string[] = ["one-shot", "continuable", "unknown"]
-
-/**
- * The host's own `SubagentCard` glyphs, reused verbatim so the two surfaces read the same way.
- *
- * `unknown` is the HISTORICAL row: the host discovers an idle child it did not witness settle, and
- * the parent log alone cannot prove how its last epoch ended — so it is drawn as unknown, never as
- * a completed run.
- */
-const SUBAGENT_GLYPHS = {
-  /** A live run (`running`/`starting`). */
-  live: "🟡",
-  /** A row whose outcome the host cannot prove. */
-  unknown: "⚪",
-  /** A run that failed or was cancelled. */
-  failed: "🔴",
-  /** A run the host reports as completed. */
-  completed: "🟢",
-} as const
-
-/** One subagent row as this scene renders it, projected without a single assumption. */
-export interface SubagentRowView {
-  /** The host's agent id, kept ONLY so the interrupt path has a target; absent when unreadable. */
-  agentId?: string
-  /** The sanitized description, or `(no description)` when the host reported none. */
-  description: string
-  /** `one-shot`, `continuable` or `unknown` — the host's own vocabulary, never invented. */
-  mode: string
-  /** The host's own status when it is one this file knows, otherwise `unknown`. */
-  status: string
-  /** The real start instant as ISO-8601 UTC; undefined when the host reported none. */
-  startedAt?: string
-  /** The real end instant as ISO-8601 UTC; undefined for a row the host has not ended. */
-  endedAt?: string
-  /** True only for a live run (`running`/`starting`) — the host's own liveness test. */
-  live: boolean
-  /** True only for a terminal failure (`failed`/`cancelled`). */
-  failed: boolean
-}
-
-/** One drawn row of the subagent section, with the emphasis it must carry. */
-export interface SubagentSectionRow {
-  /** The row text, already sanitized at this boundary. */
-  text: string
-  /** True for the section's own header row. */
-  header?: boolean
-  /** True for the host's empty-state rows, which it draws dimmed. */
-  dim?: boolean
-  /** The index into {@link SubagentRowView} list when this row IS a subagent, else absent. */
-  rowIndex?: number
-}
 
 /** The React instance surface this scene uses, as the host's own React must expose it. */
 interface ReactLike {
@@ -645,38 +627,6 @@ function noopSubscribe(): () => void {
 }
 
 /**
- * One external value as a renderable row fragment — THE render boundary of this file.
- *
- * `stripControl` + `clampCells` (never `scalarText`) for the same reason `scenes.ts` chooses it:
- * collapsing whitespace would eat the team body's indentation. A non-scalar is DROPPED rather than
- * stringified, so a hostile payload can never reach `ui.Text` as `[object Object]`.
- * @param value - the candidate, of unknown shape.
- * @returns the sanitized, clamped text; empty for a nullish or non-scalar value.
- */
-function safeRow(value: unknown): string {
-  /** The candidate's runtime type, the only narrowing this boundary trusts. */
-  const type = typeof value
-  if (type !== "string" && type !== "number" && type !== "boolean") return ""
-  if (type === "number" && !Number.isFinite(value as number)) return ""
-  /** The candidate as text: a string as-is, any other scalar through `String`. */
-  const raw = type === "string" ? (value as string) : String(value)
-  return clampCells(stripControl(raw), MERGED_ROW_MAX_CELLS)
-}
-
-/**
- * An epoch-millisecond instant as ISO-8601 UTC.
- * @param value - the candidate field; only a finite number inside the ECMAScript time range is used.
- * @returns the ISO instant, or undefined when the host reported no usable one.
- */
-function isoInstant(value: unknown): string | undefined {
-  if (typeof value !== "number" || !Number.isFinite(value)) return undefined
-  // ±8.64e15 ms is the exact ECMAScript time-value range: outside it `toISOString()` throws, and a
-  // range check keeps that throw out of the render path entirely.
-  if (Math.abs(value) > 8.64e15) return undefined
-  return new Date(value).toISOString()
-}
-
-/**
  * Prove the host handed a usable React instance and ui kit.
  *
  * The VERDICT is `panel-core.ts`'s own guard, so a page and a scene refuse exactly the same hosts; the
@@ -742,113 +692,6 @@ function isReturn(input: string, key: SceneKey | undefined): boolean {
   const modified = key?.ctrl === true || key?.meta === true || key?.shift === true || key?.super === true
   if (modified) return false
   return key?.return === true || /^[\r\n]+$/u.test(input)
-}
-
-/**
- * Project ONE host subagent entry into a row view.
- * @param entry - one element of `channel.subagents`, of unknown shape.
- * @returns the row view, or undefined when the entry is not an object at all.
- */
-export function subagentRowView(entry: unknown): SubagentRowView | undefined {
-  if (entry === null || typeof entry !== "object") return undefined
-  /** The entry as a record; every field stays `unknown` and is narrowed below. */
-  const row = entry as Record<string, unknown>
-  /** The status, kept only when it is one of the host's own six. */
-  const status = typeof row.status === "string" && KNOWN_STATUSES.includes(row.status) ? row.status : "unknown"
-  /** The durable mode, kept only when it is one of the host's own three. */
-  const mode = typeof row.mode === "string" && KNOWN_MODES.includes(row.mode) ? row.mode : "unknown"
-  /** The agent id, kept only when it is a usable non-empty string (it is an interrupt target). */
-  const agentId = typeof row.agentId === "string" && row.agentId !== "" ? row.agentId : undefined
-  /** The start instant, or undefined when the host reported none. */
-  const startedAt = isoInstant(row.startedAt)
-  // `endedAt` is the host's settled end; `completedAt` is the older projection of the same fact.
-  /** The end instant, or undefined for a row the host has not ended. */
-  const endedAt = isoInstant(row.endedAt ?? row.completedAt)
-  return {
-    ...(agentId === undefined ? {} : { agentId }),
-    description: safeRow(row.description) || "(no description)",
-    mode,
-    status,
-    ...(startedAt === undefined ? {} : { startedAt }),
-    ...(endedAt === undefined ? {} : { endedAt }),
-    live: status === "running" || status === "starting",
-    failed: status === "failed" || status === "cancelled",
-  }
-}
-
-/** One projected row together with the raw host entry it came from. */
-export interface SubagentRowEntry {
-  /** The row the list draws. */
-  view: SubagentRowView
-  /** The raw element of `channel.subagents`, kept so the detail view re-reads the SAME entry. */
-  entry: unknown
-}
-
-/**
- * The host's own subagent rows for this render, each paired with its raw entry.
- *
- * This is the ONE reader of `channel.subagents`: {@link subagentRows} derives the drawn rows from it
- * and the detail view re-reads the entry it was opened on, so the list, the counts and the detail are
- * three views of one projection and cannot disagree about a subagent.
- * @param channel - the scene's channel (`props.channel`), of unknown shape.
- * @returns one pair per readable row, in the host's own order; [] when the field is absent, hostile
- *   or not an array — this function never throws and never re-orders.
- */
-export function subagentRowEntries(channel: unknown): SubagentRowEntry[] {
-  try {
-    /** The host's own array, when this composition projects one at all. */
-    const raw = (channel as { subagents?: unknown } | undefined)?.subagents
-    if (!Array.isArray(raw)) return []
-    // NO CAP: the host's own dashboard maps its whole array through a ScrollBox, so capping here
-    // would make this panel show less than the screen it mirrors — and a silently dropped row
-    // would make every count below it a lie.
-    /** The projected pairs, in the host's own order. */
-    const pairs: SubagentRowEntry[] = []
-    for (const entry of raw) {
-      /** This entry's projection, skipped when it is not a readable object. */
-      const view = subagentRowView(entry)
-      if (view !== undefined) pairs.push({ view, entry })
-    }
-    return pairs
-  } catch {
-    // A hostile channel (a throwing getter, a proxy) degrades to "no rows" rather than to a crash.
-    return []
-  }
-}
-
-/**
- * The host's own subagent rows for this render.
- * @param channel - the scene's channel (`props.channel`), of unknown shape.
- * @returns one view per readable row, in the host's own order; [] when the field is absent,
- *   hostile or not an array — this function never throws and never re-orders.
- */
-export function subagentRows(channel: unknown): SubagentRowView[] {
-  return subagentRowEntries(channel).map((pair) => pair.view)
-}
-
-/**
- * The glyph the host's own card draws for one row.
- * @param row - the projected row.
- * @returns the host's glyph for that state.
- */
-export function glyphOf(row: SubagentRowView): string {
-  if (row.live) return SUBAGENT_GLYPHS.live
-  if (row.failed) return SUBAGENT_GLYPHS.failed
-  if (row.status === "unknown") return SUBAGENT_GLYPHS.unknown
-  return SUBAGENT_GLYPHS.completed
-}
-
-/**
- * One subagent row, in the order this surface promises: description, mode, status, instant.
- * @param row - the projected row.
- * @returns the sanitized row line.
- */
-export function subagentRowLine(row: SubagentRowView): string {
-  /** The row's fields, in render order. */
-  const parts: string[] = [row.description, row.mode, row.status]
-  if (row.startedAt !== undefined) parts.push(`started ${row.startedAt}`)
-  if (row.endedAt !== undefined) parts.push(`ended ${row.endedAt}`)
-  return safeRow(`${glyphOf(row)} ${parts.join(" · ")}`)
 }
 
 /** One drawn row of the detail body: the text plus the emphasis it carries. */
@@ -968,24 +811,26 @@ export function subagentDetailFacts(entry: unknown): SubagentDetailFacts | undef
 /**
  * The detail body for one subagent: every fact the host reported, then the tail of its output.
  *
+ * COMPACT, exactly like the list rows (clause 5 / D7): the durable `mode` word is not drawn at all, and
+ * the two instants are RELATIVE ages — a detail row must not carry an ISO-8601 instant either.
  * The output is the BRITTLE part of a detail view: it grows without bound while the run is live, so
  * only a window of it is drawn and `scroll` walks that window back from the newest line. A line the
  * host never wrote is never synthesized — an omitted field has no row at all.
  * @param facts - the projection {@link subagentDetailFacts} built from the selected entry.
  * @param scroll - output lines scrolled UP from the newest; 0 shows the newest tail.
+ * @param now - the render clock the relative ages are computed against; defaults to the wall clock.
  * @returns the rows in draw order, each already sanitized through `safeRow`.
  */
-export function subagentDetailRows(facts: SubagentDetailFacts, scroll: number): SubagentDetailRow[] {
+export function subagentDetailRows(facts: SubagentDetailFacts, scroll: number, now: number = Date.now()): SubagentDetailRow[] {
   /** The detail body, in draw order; its title is the row's own sanitized description. */
   const rows: SubagentDetailRow[] = [{ text: facts.row.description, title: true }]
   /** One label/value row, aligned on the label column and sanitized at this boundary. */
   const pair = (label: string, value: string): SubagentDetailRow => ({ text: safeRow(`${label.padEnd(DETAIL_LABEL_WIDTH)}${value}`) })
   rows.push(pair("status", facts.row.status))
-  rows.push(pair("mode", facts.row.mode))
   if (facts.model !== undefined) rows.push(pair("model", facts.model))
   if (facts.provider !== undefined) rows.push(pair("provider", facts.provider))
-  if (facts.row.startedAt !== undefined) rows.push(pair("started", facts.row.startedAt))
-  if (facts.row.endedAt !== undefined) rows.push(pair("ended", facts.row.endedAt))
+  if (facts.row.startedAt !== undefined) rows.push(pair("started", subagentRowAge(facts.row.startedAt, now)))
+  if (facts.row.endedAt !== undefined) rows.push(pair("ended", subagentRowAge(facts.row.endedAt, now)))
   /** The token counters the host reported, each named by the host's own bucket name. */
   const tokenParts: string[] = []
   if (facts.tokens.input !== undefined) tokenParts.push(`in ${facts.tokens.input}`)
@@ -1017,55 +862,6 @@ export function subagentDetailRows(facts: SubagentDetailFacts, scroll: number): 
     for (let index = start; index < end; index += 1) rows.push({ text: safeRow(`  ${lines[index]}`) })
   }
   return rows
-}
-
-/**
- * The subagent section: its header, then the host's rows — or the host's own empty state.
- *
- * The empty-state wording is the host's own English text (`SubagentDashboard` renders the i18n keys
- * `subagent-none` and `subagent-empty-hint` under its dim `○`). A plugin scene receives only the ui
- * kit, and the host's i18n module is NOT part of the scene props contract, so the strings are
- * carried here instead of being unreachable.
- * @param channel - the scene's channel.
- * @returns the section's rows in render order; the header is always present.
- */
-export function subagentSectionRows(channel: unknown): SubagentSectionRow[] {
-  /** The projected rows. */
-  const rows = subagentRows(channel)
-  /** The tallies the host's own dashboard header shows: one counter per state it names. */
-  let live = 0
-  /** Rows the host reports as completed. */
-  let completed = 0
-  /** Rows the host reports as failed or cancelled. */
-  let failed = 0
-  for (const row of rows) {
-    if (row.live) live += 1
-    if (row.status === "completed") completed += 1
-    if (row.failed) failed += 1
-  }
-  /** The section's rows, in render order. */
-  const section: SubagentSectionRow[] = [
-    { text: `subagents  ${rows.length} total · ${live} running · ${completed} completed · ${failed} failed`, header: true },
-  ]
-  if (rows.length === 0) {
-    section.push({ text: `${SUBAGENT_GLYPHS.unknown} No subagents in the current session`, dim: true })
-    section.push({ text: "  Subagents appear here once the main agent starts Task delegations", dim: true })
-    return section
-  }
-  // THE COUNTS ROW the host's own dashboard carries on top, in THIS file's row vocabulary: the same
-  // three tallies the header names above, drawn with the same glyphs the rows below use. It exists
-  // because Ctrl+A may open this panel INSTEAD of that dashboard (dashboard-key.ts), and a summary
-  // the user could see before must not disappear. The buckets are the host's own states — `live` is
-  // the host's running/starting, `completed` its completed, `failed` its failed/cancelled — so a
-  // status this file does not recognize lands in NONE of them (it is drawn as `unknown` below and
-  // never folded into a completion the host never reported). It is drawn only when a row exists:
-  // with an empty list the header's own zeroes are the whole truth.
-  section.push({
-    text: `${SUBAGENT_GLYPHS.live} ${live} running · ${SUBAGENT_GLYPHS.completed} ${completed} completed · ${SUBAGENT_GLYPHS.failed} ${failed} failed`,
-    dim: true,
-  })
-  for (let index = 0; index < rows.length; index += 1) section.push({ text: subagentRowLine(rows[index]), rowIndex: index })
-  return section
 }
 
 /**
@@ -1198,6 +994,9 @@ export function takeSubagentDetailRequest(nowMs: number = Date.now()): string | 
  *   earlier `scenes.ts` already constructed.
  * @param subscribeTeams - resolves the LIVE team-state feed for the calling session's workspace, per
  *   render; undefined keeps this scene on its 2000 ms tick alone.
+ * @param now - reads the render clock in epoch milliseconds; ONE read per render, so the burn window and
+ *   every relative age on the surface agree. Injected so a test pins time instead of racing the wall
+ *   clock; the default is the wall clock.
  * @returns a component matching the host's `TuiSceneProps` contract.
  */
 export function createSubagentSceneComponent(
@@ -1205,6 +1004,7 @@ export function createSubagentSceneComponent(
   onHostKit?: (ui: unknown) => unknown,
   takePendingDetail: () => string | undefined = takeSubagentDetailRequest,
   subscribeTeams?: TeamFeedAccessor,
+  now: () => number = () => Date.now(),
 ): unknown {
   // The props type is the ADAPTER's `TuiScenePropsLike` — the TUI plane's single declaration of the
   // host's scene contract — even though every field is still re-checked at runtime below: the type
@@ -1365,8 +1165,19 @@ export function createSubagentSceneComponent(
     const dagXMax = dagView === undefined ? 0 : Math.max(0, dagView.width - measured.cols)
     /** The furthest vertical offset; zero when the drawing fits the terminal. */
     const dagYMax = dagView === undefined ? 0 : Math.max(0, dagView.lines.length - 1)
-    /** The host's own rows for this render, each with the raw entry the detail re-reads. */
-    const pairs = subagentRowEntries(channel)
+    /** This render's clock, read ONCE: the burn window and every relative age share one instant. */
+    const renderNow = now()
+    // THE BURN PROJECTION (§5.A1 / D1 / D2 / D8). The host's catalog is append-only, so filtering is what
+    // this surface DRAWS: `allPairs` keeps every entry (the detail re-reads its own run from it), and
+    // `pairs` is the projection the list shows — a settled consult stops being drawn after the grace, a
+    // team member row stops when its team record ends, and a live or foreign-session row is never dropped.
+    // The team scope is the SESSION-SCOPED workflow this scene already refreshed; no new read is added.
+    /** The burn inputs: this session's own team scope plus the render clock. */
+    const rowFilter = subagentRowFilter(workflow, sessionIdOf(channel), renderNow)
+    /** EVERY row the channel carries, in the host's own order — the detail view re-reads from here. */
+    const allPairs = subagentRowEntries(channel)
+    /** The rows THIS render draws, in the host's own order. */
+    const pairs = filterSubagentEntries(allPairs, rowFilter)
     /** The drawn row views, in the host's own order. */
     const rows = pairs.map((pair) => pair.view)
     /** The selected row's index, clamped into the drawn range; -1 when there is no row. */
@@ -1375,14 +1186,17 @@ export function createSubagentSceneComponent(
     const selected = selectedIndex === -1 ? undefined : rows[selectedIndex]
     // The detail is keyed by the host's own AGENT ID, never by a row index: a child that settles, or
     // a new one that appears above it, renumbers the rows without changing which run the user opened.
+    // THE DETAIL IS READ FROM THE FULL CATALOG ON PURPOSE: a row that has burned out of the LIST is still
+    // on the channel, and a user who opened it before it settled keeps reading it instead of being
+    // bounced by the projection that only governs drawing.
     /** The index of the row the DETAIL view re-read, or -1 when this render does not carry it. */
-    const detailAt = detailAgentId === undefined ? -1 : pairs.findIndex((pair) => pair.view.agentId === detailAgentId)
+    const detailAt = detailAgentId === undefined ? -1 : allPairs.findIndex((pair) => pair.view.agentId === detailAgentId)
     /** True while the detail owns the scene body. */
     const detailOpen = detailAt >= 0
     /** The detail's own row — the interrupt target while the detail is open. */
-    const detailRow = detailOpen ? rows[detailAt] : undefined
+    const detailRow = detailOpen ? allPairs[detailAt].view : undefined
     /** The detail's facts, re-read from the entry THIS render carries. */
-    const detailFacts = detailOpen ? subagentDetailFacts(pairs[detailAt].entry) : undefined
+    const detailFacts = detailOpen ? subagentDetailFacts(allPairs[detailAt].entry) : undefined
     /** The output lines the detail could page through. */
     const detailLines = detailFacts?.outputLines?.length ?? 0
     /** The largest offset this render can page back from the newest line. */
@@ -1564,7 +1378,7 @@ export function createSubagentSceneComponent(
       // the keyboard is talking to.
       /** The detail's rows, or the honest unreadable line when the entry lost its shape. */
       const detailRows: SubagentDetailRow[] =
-        detailFacts === undefined ? [{ text: "details: this entry is unreadable", dim: true }] : subagentDetailRows(detailFacts, detailScroll)
+        detailFacts === undefined ? [{ text: "details: this entry is unreadable", dim: true }] : subagentDetailRows(detailFacts, detailScroll, renderNow)
       for (let index = 0; index < detailRows.length; index += 1) {
         /** This row's own draw instructions. */
         const row = detailRows[index]
@@ -1584,8 +1398,13 @@ export function createSubagentSceneComponent(
       }
     } else {
       // (a) THE HOST'S OWN SUBAGENT ROWS — the top section, and the reason this scene exists.
-      /** The subagent section, decided in one place. */
-      const section = subagentSectionRows(channel)
+      /**
+       * The subagent section, built from the rows THIS render draws (never re-projected from the channel).
+       *
+       * `rowIndex` must address THIS render's `rows`, or a click, the selection tone and the detail lookup
+       * would all drift by however many rows the burn projection removed above them.
+       */
+      const section = subagentSectionOf(rows, renderNow)
       for (let index = 0; index < section.length; index += 1) {
         /** This row's own draw instructions. */
         const row = section[index]

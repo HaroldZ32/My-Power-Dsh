@@ -88,6 +88,27 @@ jobs:
           npm i -g "@deepseek-ai/dsh@${HARNESS_VERSION}"
           dsh --version
 
+      # The dsh-TUI HOST the admission gate negotiates against (`tui-admission`, AGENTS.md §4).
+      # Its version is READ from `dsh-distribution.json`'s own coordinate, never restated here, so a
+      # bump cannot leave this job negotiating against the previous release. It is installed into a
+      # PRIVATE prefix on purpose: the repository's dependency tree must stay byte-identical to the
+      # frozen lockfile that `dist-fresh`, the pack closure and `bun install --frozen-lockfile` rest on.
+      # The gate FAILS, never skips, when this step did not run: a skip is not a pass.
+      - name: Install the dsh-TUI host the admission gate negotiates against
+        run: |
+          TUI_HOST_VERSION="$(node -p "JSON.stringify(require('./dsh-distribution.json')).match(/@deepseek-harness-tui\\/dsh-tui@([0-9][0-9.]*)/)?.[1] ?? ''")"
+          if [ -z "$TUI_HOST_VERSION" ]; then
+            echo "::error::no @deepseek-harness-tui/dsh-tui coordinate found in dsh-distribution.json"
+            exit 1
+          fi
+          echo "installing @deepseek-harness-tui/dsh-tui@${TUI_HOST_VERSION} (the coordinate this bundle distributes)"
+          TUI_HOST_PREFIX="$RUNNER_TEMP/tui-host"
+          npm i --prefix "$TUI_HOST_PREFIX" --no-package-lock --no-save \
+            "@deepseek-harness-tui/dsh-tui@${TUI_HOST_VERSION}"
+          MPD_DSH_TUI_HOST="${TUI_HOST_PREFIX}/node_modules/@deepseek-harness-tui/dsh-tui"
+          echo "MPD_DSH_TUI_HOST=${MPD_DSH_TUI_HOST}" >> "$GITHUB_ENV"
+          test -f "${MPD_DSH_TUI_HOST}/package.json"
+
       # The vendor gate's subject is `VENDOR_LOCK.json` and the working tree. It resolves NO
       # checkout and reads NO `MPD_UPSTREAM_ROOT`, so this job needs neither a fetch step nor an env
       # block here — that pair was removed with the upstream baseline on 2026-10-07.

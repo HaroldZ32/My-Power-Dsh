@@ -1,0 +1,80 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-tui-plugin/test/panel-scroll.test.ts:
+298 |     /** The body the reader sees at offset 1. */
+299 |     const after = bodyRows(second, kit)
+300 |     // THE DEFECT: before the fix this was `[]` — the page sliced its own rows into one wrapper element
+301 |     // and `panelViewportBody` sliced THAT one-element array at offset 1, so the window was empty while
+302 |     // the footer still printed `2/11`.
+303 |     expect(after.length).toBeGreaterThan(0)
+                               ^
+error: expect(received).toBeGreaterThan(expected)
+
+Expected: > 0
+Received: 0
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/panel-scroll.test.ts:303:26)
+(fail) (a) the workmate body at a non-zero offset > stays NON-EMPTY and is the shelf shifted by exactly one row [1.71ms]
+(pass) (a) the workmate body at a non-zero offset > NEGATIVE CONTROL: the pre-fix call shape — ONE pre-sliced element — IS the empty body [0.20ms]
+356 |     /** Every drawn row: the title row, the windowed body and the footer. */
+357 |     const rows = drawnRows(findByKey(tree, "frame"), kit)
+358 |     expect(rows.length).toBeGreaterThan(0)
+359 |     // THE DEFECT: the page budgeted 38 cells, so every clamped row was one cell wider than the room
+360 |     // the rows column actually had next to the rail — the host wrapped or clipped that cell.
+361 |     for (const row of rows) expect(cellWidth(row)).toBeLessThanOrEqual(budget)
+                                                         ^
+error: expect(received).toBeLessThanOrEqual(expected)
+
+Expected: <= 37
+Received: 38
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/panel-scroll.test.ts:361:52)
+(fail) (b) the frame interior and the reserved gutter cell > every workmate row fits interior − 1 while the rail is drawn [0.33ms]
+386 |     // then"), so the event carries BOTH the first-motion local cell and the press origin's absolute
+387 |     // pair. The finger went down at rail row 5 and the first motion reached row 6 (absolute row 30,
+388 |     // press row 29), and the old ABSOLUTE mapping would have committed `round(6 / 9 * 90) = 60` here.
+389 |     ;(startProps.onDragStart as (event: unknown) => void)({ localRow: 6, row: 30, startRow: 29 })
+390 |     // THE GRAB ITSELF COMMITS NOTHING: the pointer's position is an ANCHOR, not an offset.
+391 |     expect(viewport.offset).toBe(45)
+                                  ^
+error: expect(received).toBe(expected)
+
+Expected: 45
+Received: 60
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/panel-scroll.test.ts:391:29)
+(fail) (c) a grabbed rail moves the view by the pointer's delta > a VERTICAL grab at the thumb's edge does not jump, and one cell moves one step [0.28ms]
+419 |     /** The rail element of this render. */
+420 |     const startRail = viewportRail(coreKit(kit), viewport, 40)
+421 |     expect(startRail).toBeDefined()
+422 |     ;((startRail as FakeNode).props.onDragStart as (event: unknown) => void)({ localCol: 16, col: 40, startCol: 39 })
+423 |     // The press was at track cell 15; the first motion reached 16, so nothing is committed yet.
+424 |     expect(viewport.colOffset).toBe(77)
+                                     ^
+error: expect(received).toBe(expected)
+
+Expected: 77
+Received: 80
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/panel-scroll.test.ts:424:32)
+(fail) (c) a grabbed rail moves the view by the pointer's delta > a HORIZONTAL grab at the thumb's edge does not jump either [0.32ms]
+444 |     /** How many times the event's own propagation stopper was called. */
+445 |     let swallowed = 0
+446 |     // THE DEFECT: the body handler called the scroller only, so the host's own wheel dispatch kept the
+447 |     // event and the chat behind the sidebar scrolled on the same tick.
+448 |     ;(wheelBox?.props.onWheel as (event: unknown) => void)({ deltaY: 1, stopPropagation: (): void => { swallowed += 1 } })
+449 |     expect(swallowed).toBe(1)
+                            ^
+error: expect(received).toBe(expected)
+
+Expected: 1
+Received: 0
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/panel-scroll.test.ts:449:23)
+(fail) (d) the workmate page's wheel containment > the BODY handler stops the event so one tick cannot reach the chat behind the panel [0.22ms]
+(pass) (d) the workmate page's wheel containment > the FRAME handler keeps swallowing too, so the pinned chrome stays contained [0.18ms]
+
+ 2 pass
+ 5 fail
+ 24 expect() calls
+Ran 7 tests across 1 file. [148.00ms]
