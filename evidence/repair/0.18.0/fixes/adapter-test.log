@@ -1,0 +1,121 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-tui-adapter-plugin/test/panel-enable-migration.test.ts:
+(pass) T1 · the stale-default predicate, as a pure decision > the known stale default is exactly the 0.13.0 list, normalized [0.03ms]
+(pass) T1 · the stale-default predicate, as a pure decision > a known stale residue DIFFERING from the host's default is the migration's trigger [0.03ms]
+(pass) T1 · the stale-default predicate, as a pure decision > the SAME list as the host's current default is NOT a trigger — a 0.13.0 host is unchanged
+(pass) T1 · the stale-default predicate, as a pure decision > an unreadable or empty host default leaves the migration INERT, never a wildcard
+(pass) T1 · the stale-default predicate, as a pure decision > only a KNOWN stale list triggers: a custom list and an empty residue never do [0.02ms]
+(pass) T1 · the merge: the migration target is the host's default ∪ our ids > the stale pin migrates, in the host's order, with our ids appended in registration order [0.24ms]
+(pass) T1 · the merge: the migration target is the host's default ∪ our ids > the pin WITH our ids already in it migrates to the same target, not to a doubled list [0.03ms]
+(pass) T1 · the merge: the migration target is the host's default ∪ our ids > a provably-dead id of ours is part of the residue removal and does not block the migration [0.02ms]
+(pass) T1 · the merge: the migration target is the host's default ∪ our ids > a custom list keeps its exact order and contents, and only ever gains our ids [0.02ms]
+(pass) T1 · the merge: the migration target is the host's default ∪ our ids > a custom list that already names us is never migrated, and its order is untouched [0.02ms]
+(pass) T1 · the merge: the migration target is the host's default ∪ our ids > an UNREADABLE host default writes the old target — `kept ∪ added`, exactly as before [0.02ms]
+(pass) T1 · the merge: the migration target is the host's default ∪ our ids > with NOTHING registered the migration does not open a write path of its own [0.02ms]
+(pass) T1 · the host's default is READ from the host module, never hardcoded > a staged host's own DEFAULT_SIDE_PANEL_IDS comes back normalized, in the host's order [2.37ms]
+(pass) T1 · the host's default is READ from the host module, never hardcoded > a host that exports no default still BINDS the store, with the migration field ABSENT [1.24ms]
+(pass) T1 · the host's default is READ from the host module, never hardcoded > a non-string, or empty, default export is unreadable rather than a wildcard [1.07ms]
+(pass) T1 · the host's default is READ from the host module, never hardcoded > against the INSTALLED host: the migration target is the host's own default, in its own order [10.34ms]
+(pass) T1 · the keeper migrates the stale pin on BOTH repair paths > the LADDER path migrates the pin, then repairs the mirror's rewrite, then stands down [0.84ms]
+(pass) T1 · the keeper migrates the stale pin on BOTH repair paths > the FEED path migrates at arm time and again when the mirror rewrites the stale pin [0.21ms]
+(pass) T1 · the keeper migrates the stale pin on BOTH repair paths > a DELIBERATE custom list is never rewritten, on the ladder or through the feed [0.13ms]
+(pass) T1 · the keeper migrates the stale pin on BOTH repair paths > the CURRENT default ∪ ours stands down untouched, and is not migrated [0.10ms]
+(pass) T1 · the keeper migrates the stale pin on BOTH repair paths > an UNREADABLE host default degrades INERT: one log line, and the old merge on the wire [0.14ms]
+(pass) T1 · the keeper migrates the stale pin on BOTH repair paths > a 0.13.0 host — whose own default IS the pin — keeps the pre-migration behaviour [0.10ms]
+(pass) C2 · the keeper stands down on a self-healing host (>= 0.15.0) > the version predicate: 0.15.0 and later self-heal; older, empty and unparseable versions do not [0.14ms]
+(pass) C2 · the keeper stands down on a self-healing host (>= 0.15.0) > (a) on a 0.15.0 host the keeper writes NOTHING: a mirror rewrite is not repaired, and the belt observes it once [0.36ms]
+(pass) C2 · the keeper stands down on a self-healing host (>= 0.15.0) > (a) an explicit /settings removal of BOTH panels STAYS removed on a 0.15.0 host — the belt reports the union keeping them, then silence [0.22ms]
+(pass) C2 · the keeper stands down on a self-healing host (>= 0.15.0) > (b) a 0.14.0 host keeps the legacy keeper byte-for-byte: the mirror rewrite IS repaired, version explicit [0.14ms]
+(pass) C2 · the keeper stands down on a self-healing host (>= 0.15.0) > (b) an ABSENT version — the pre-C2 probe shape — keeps the legacy keeper: no gate fires [0.10ms]
+(pass) S1 · the stale-default migration re-arms on a self-healing host > (a) a stale pin on 0.15.0: the LADDER tick migrates it to the host default ∪ ours, then stands down [0.17ms]
+(pass) S1 · the stale-default migration re-arms on a self-healing host > (b) a MID-SESSION feed event re-applying the stale pin: the belt re-migrates it [0.16ms]
+(pass) S1 · the stale-default migration re-arms on a self-healing host > (c) the CURRENT default ∪ ours: NO write on the tick or any belt event (C2 preserved) [0.15ms]
+(pass) S1 · the stale-default migration re-arms on a self-healing host > (d) a DELIBERATE custom list: NO write ever, on the tick or the belt [0.14ms]
+(pass) S1 · the stale-default migration re-arms on a self-healing host > (e) an UNREADABLE host default: inert, exactly ONE degrade line, and no write [0.13ms]
+(pass) S1 · the stale-default migration re-arms on a self-healing host > (f) a stale pin with NOTHING registered: the migration stays gated on registration [0.09ms]
+(pass) S1 · the stale-default migration re-arms on a self-healing host > (g) idempotence: after the belt's re-migration the next event writes NOTHING [0.17ms]
+(pass) R2 · the self-healer migration is contained, disposal-safe and honest > (R2.1) a store whose apply throws settles a recorded refusal — zero unhandled rejections [0.19ms]
+(pass) R2 · the self-healer migration is contained, disposal-safe and honest > (R2.2) a loadPrefs() resolving AFTER stop() neither migrates nor installs the belt [0.17ms]
+(pass) R2 · the self-healer migration is contained, disposal-safe and honest > (R2.2) a belt the host never gave an unsubscribe for stays silent after stop() [0.20ms]
+(pass) R2 · the self-healer migration is contained, disposal-safe and honest > (R2.3) a host that drops the migration write settles REFUSED, never confirmed [0.23ms]
+(pass) G1 · the adapter is READ-ONLY on a host that owns the enable list (>= 0.16.1) > the ownership predicate starts at 0.16.1, and unreadable versions stay out of it [0.04ms]
+(pass) G1 · the adapter is READ-ONLY on a host that owns the enable list (>= 0.16.1) > (a) 0.16.1 with a STALE PIN: the keeper writes NOTHING — no migration, no belt, no feed [0.17ms]
+(pass) G1 · the adapter is READ-ONLY on a host that owns the enable list (>= 0.16.1) > (b) 0.16.1 with a CURRENT list: still nothing written, and no tick is left armed [0.11ms]
+(pass) G1 · the adapter is READ-ONLY on a host that owns the enable list (>= 0.16.1) > (c) 0.16.0 is BELOW the gate: the S1 migration still runs exactly once [0.10ms]
+
+packages/mpd-tui-adapter-plugin/test/adapter-hosts.test.ts:
+(pass) host shape 1: reachable by ctx.get only (the mediated plugin host) > the probe binds the plugin host, and ONLY that seam [0.41ms]
+(pass) host shape 1: reachable by ctx.get only (the mediated plugin host) > a probe that answers is NOT a binding channel when the ctx cannot inject [0.06ms]
+(pass) host shape 2: reachable only inside the deferred inject callback > one inject per seam, never a batch [0.27ms]
+(pass) host shape 2: reachable only inside the deferred inject callback > closeScene drives the 0.15.0 void close() ONLY for the host-reported ACTIVE id [0.14ms]
+(pass) host shape 2: reachable only inside the deferred inject callback > a registration made BEFORE the seam binds is queued and drained at the bind [0.10ms]
+(pass) host shape 2: reachable only inside the deferred inject callback > every host handle goes to the injected scope's effect, and the cleanup clears the status key [0.19ms]
+(pass) host shape 3: absent (a web or headless composition) > nothing binds, nothing throws, and exactly ONE aggregate warning is printed [0.18ms]
+(pass) host shape 3: absent (a web or headless composition) > a composition with ONE seam reports the info line instead, never the warning [0.10ms]
+(pass) resolution and diagnostics > resolveTuiAdapter prefers the mounted service and falls back to a row-private adapter [0.11ms]
+(pass) resolution and diagnostics > a broken ctx.get never escapes resolveTuiAdapter [0.07ms]
+(pass) resolution and diagnostics > createLazyTuiAdapter warns exactly once per row [0.13ms]
+(pass) resolution and diagnostics > describeOutcome renders the vocabulary consumers already read [0.02ms]
+(pass) resolution and diagnostics > the file sink appends under .mpd/logs and caps its own size [1.01ms]
+(pass) host contact resolver > a host install carrying useStdin resolves, and the hook is the module's own [0.76ms]
+(pass) host contact resolver > a candidate without lib/types/ui.js is skipped, and no candidate at all reports one reason [0.29ms]
+(pass) host contact resolver > a version-skew host (no useStdin export) and a module that throws both degrade to undefined [1.15ms]
+(pass) host contact resolver > a pinned root is exclusive, and without a pin every installed profile is probed [0.56ms]
+(pass) host contact on the adapter > an injected contact is reported bound and wakes a subscriber immediately [0.15ms]
+(pass) host contact on the adapter > an adapter that did not probe reports absent, and a subscriber still answers once [0.08ms]
+(pass) host contact on the adapter > a probe against a staged install binds the contact and writes ONE line [0.76ms]
+(pass) host contact on the adapter > a probe with no reachable host degrades to absent with ONE line and no throw [0.27ms]
+(pass) host contact on the adapter > a subscriber registered while the probe is pending runs at the settle [0.48ms]
+(pass) live stdin context classification > a value carrying internal_querier is the LIVE provider's and yields its bus [0.08ms]
+(pass) live stdin context classification > the context DEFAULT is refused with ONE reason, never attached to [0.01ms]
+(pass) live stdin context classification > a missing marker, a dead shape, a throwing read and a nullish value are all refusals [0.06ms]
+(pass) the status identity rule and the remembered host kit > a status registration carries the CALLING ACTIVATION, never the consumer's ctx [0.22ms]
+(pass) the status identity rule and the remembered host kit > a remembered kit is preferred over the probed module, and the capability names the source [0.18ms]
+(pass) the status identity rule and the remembered host kit > a kit without a callable useStdin is refused, and the previous contact stands [0.04ms]
+(pass) the status identity rule and the remembered host kit > a kit arriving AFTER the probe settled wakes a waiting subscriber exactly once [0.52ms]
+(pass) rich status view registration > a bound status service registers the view and reports it as requested [0.08ms]
+(pass) rich status view registration > a host refusal (undefined) and a host without registerView are both reported refused [0.07ms]
+(pass) the panels seam > a registration the host accepts is CONFIRMED with the id read back from its own list() [0.21ms]
+(pass) the panels seam > a REFUSED registration is refused, not 'requested' (the host returns undefined and adds no id) [0.06ms]
+(pass) the panels seam > a host with no list() read-back is honestly 'requested' — never claimed as registered [0.05ms]
+(pass) the panels seam > a seam-less host degrades: absent, no id, and opening reports absent rather than refused [0.06ms]
+(pass) the panels seam > a bound seam WITHOUT open() answers false, so the caller can fall back instead of waiting [0.06ms]
+(pass) the panels seam > an accepted open is confirmed; a refused one is refused with the rate-limit/no-consumer reason [0.08ms]
+(pass) the panel-id record's provenance (a record the remedy can trust) > REFUSES a record that cannot name the installed host package [0.07ms]
+(pass) the panel-id record's provenance (a record the remedy can trust) > REFUSES a record whose ids did not come from a host read-back [0.01ms]
+(pass) the panel-id record's provenance (a record the remedy can trust) > REFUSES `act0` — the ONE activation the installed host cannot compose, with the measured reason [0.04ms]
+(pass) the panel-id record's provenance (a record the remedy can trust) > NEGATIVE CONTROL: a read-back id from a named host is ACCEPTED, and carries all four facts [0.02ms]
+(pass) the panel-id record's provenance (a record the remedy can trust) > the INSTALLED host's own version is readable — the provenance is a measurement, not a literal [0.21ms]
+(pass) the panel-id record's bounded history (the prune's ownership evidence) > panelHistoryAfter folds the previous boot's ids in, drops the live ones, and keeps the NEWEST [0.21ms]
+(pass) the panel-id record's bounded history (the prune's ownership evidence) > readPanelIdRecordPast answers the record's history PLUS its current ids, shape-filtered and deduped [0.36ms]
+(pass) the panel-id record's bounded history (the prune's ownership evidence) > a record the provenance rules REFUSE contributes no past at all — and a missing one is not an error [0.37ms]
+
+packages/mpd-tui-adapter-plugin/test/no-direct-tui-access.test.ts:
+NO-DIRECT-TUI-ACCESS — D6 static gate for the DSH-TUI plane (.mpd/plans/mpd-seam-convergence.md A2.2)
+band: packages/mpd-*/src/**/*.ts, minus packages/mpd-tui-adapter-plugin (the ONE sanctioned route)
+scanned: 31 package(s), 213 .ts file(s)
+declared out-of-band: every non-.ts file under a scanned src/ (currently the .gitkeep placeholders) — printed, never failed
+RESULT: PASS (0 findings)
+NO-DIRECT-TUI-ACCESS — D6 static gate for the DSH-TUI plane (.mpd/plans/mpd-seam-convergence.md A2.2)
+band: packages/mpd-*/src/**/*.ts, minus packages/mpd-tui-adapter-plugin (the ONE sanctioned route)
+scanned: 31 package(s), 213 .ts file(s)
+declared out-of-band: every non-.ts file under a scanned src/ (currently the .gitkeep placeholders) — printed, never failed
+RESULT: PASS (0 findings)
+(pass) no direct DSH-TUI seam access outside the TUI adapter (A2.2) [1349.99ms]
+SELF-TEST — no-direct-tui-access (negative control over a seeded fixture tree)
+  ok   the seeded band yields exactly the five seeded violations
+  ok   the comment-only mention is not a finding
+  ok   the aliased receiver is caught (an alias is not a different seam)
+  ok   the string forms are caught (get / inject / serviceOf)
+  ok   the adapter package is excluded by identity
+  ok   the non-.ts fixture file is reported out of band, never as a finding
+  ok   the scan covers the adapter package's siblings
+SELF-TEST: PASS (7/7 checks)
+(pass) the gate reddens on a seeded violation (negative control) [1.20ms]
+(pass) the forbidden list tracks the adapter's seam table [0.17ms]
+
+ 90 pass
+ 0 fail
+ 431 expect() calls
+Ran 90 tests across 3 files. [2.87s]

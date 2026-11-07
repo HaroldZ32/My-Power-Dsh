@@ -2,10 +2,10 @@
 
 **English** | [中文](./README.zh-CN.md)
 
-[![Version](https://img.shields.io/badge/version-0.17.5-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
+[![Version](https://img.shields.io/badge/version-0.18.0-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
 [![npm](https://img.shields.io/badge/npm-%40mpd--dsh%2Fmpd-CB3837.svg)](https://www.npmjs.com/package/@mpd-dsh/mpd)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE.md)
-[![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.1--rc.5-4B32C3.svg)](#acknowledgements)
+[![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.2--rc.1-4B32C3.svg)](#acknowledgements)
 [![Platforms](https://img.shields.io/badge/platforms-Web%20GUI%20%7C%20DSH--TUI-informational.svg)](#one-plugin-two-surfaces)
 [![Runtime](https://img.shields.io/badge/runtime-Bun%201.4.0-black.svg)](https://bun.sh)
 [![Gates](https://github.com/HaroldZ32/My-Power-Dsh/actions/workflows/gates.yml/badge.svg)](https://github.com/HaroldZ32/My-Power-Dsh/actions/workflows/gates.yml)
@@ -157,7 +157,8 @@ names it; pin both.
 
 | `@mpd-dsh/mpd` | DeepSeek Harness | DSH-TUI | Notes |
 |---|---|---|---|
-| 0.17.5 | 0.2.1-rc.5 | 0.18.0 | the current release |
+| 0.18.0 | 0.2.2-rc.1 | 0.19.0 | the current release |
+| 0.17.5 | 0.2.1-rc.5 | 0.18.0 | previous |
 | 0.17.4 | 0.2.1-rc.5 | 0.18.0 | previous |
 | 0.17.3 | 0.2.1-rc.5 | 0.18.0 | previous |
 | 0.17.2 | 0.2.1-rc.5 | 0.18.0 | previous |
@@ -173,11 +174,13 @@ names it; pin both.
 | 0.15.0 | 0.2.1-rc.2 | 0.16.1 | previous |
 | 0.14.0 | 0.2.1-rc.2 | 0.16.1 | previous (the harness-0.2.1 adaptation release) |
 
-The newest row **is** that pair: `0.17.5` ships against harness `0.2.1-rc.5` and DSH-TUI `0.18.0`, and the
-two move as a set. `dsh-tui@0.17.0`'s peer lists stop at harness `0.2.1-rc.3`, so an rc.5 harness with a
-0.17.0 host is refused by `dsh plugin --profile dsh-tui add`. The pins live in
-[`package.json`](./package.json) and [`dsh-plugin.json`](./dsh-plugin.json) `compat.hosts`; the rows below it
-record what earlier releases actually pinned.
+The newest row **is** that pair: `0.18.0` ships against harness `0.2.2-rc.1` and DSH-TUI `0.19.0`. The
+older hosts stay supported: `engines.dsh` spans `>=0.2.1-rc.2 <0.3.0-0`, and `0.18.0` both mounts and runs
+on `0.2.1-rc.5`. `0.19.0`'s peer lists add `0.2.2-rc.1` while keeping `0.2.1-rc.4`/`0.2.1-rc.5`, and its
+admission chain is byte-identical to `0.18.0`'s. The pins live in
+[`package.json`](./package.json) and [`dsh-plugin.json`](./dsh-plugin.json) `compat.hosts` (which lists both
+TUI hosts); the rows below it record what earlier releases actually pinned. The full matrix is
+[`docs/compatibility.md`](./docs/compatibility.md).
 
 ## Quick start
 
@@ -249,8 +252,12 @@ which is HOME-scoped at `~/.mpd/workmate/`. See
 
 ## Status and known limitations
 
-- **Built and verified against a prerelease harness.** The bundle is tested against **0.2.1-rc.5**.
-  Expect breakage while upstream stabilizes, and pin the harness version you use.
+- **Built and verified against a prerelease harness.** The bundle is tested against **0.2.2-rc.1**, and the
+  older **0.2.1-rc.5** still mounts and runs. Expect breakage while upstream stabilizes, and pin the
+  harness version you use.
+- **One capability is missing on the older harness.** `list_agents` is not mounted on `0.2.1-rc.5`: the
+  newer harness removed the subpath export the row needed, and a single preset cannot straddle both. See
+  [`docs/compatibility.md`](./docs/compatibility.md) §2.
 - **The TUI surface trails the Web surface in a few named places.** The rows of the table above that do
   not read "same facts" are open deviations, each recorded with its evidence in
   [`docs/tui-parity.md`](./docs/tui-parity.md).
@@ -294,7 +301,7 @@ bilingual (English and 简体中文).
 ## Changelog
 
 Release notes live in [`CHANGELOG.md`](./CHANGELOG.md), newest first, one section per released
-version (the current release is **v0.17.5**). Annotated tags are listed under
+version (the current release is **v0.18.0**). Annotated tags are listed under
 [Releases](https://github.com/HaroldZ32/My-Power-Dsh/releases).
 
 ## Acknowledgements

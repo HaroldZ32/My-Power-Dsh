@@ -65,13 +65,16 @@
 投影；上表的一行释义是本页的读法，而本 bundle 实际观察到的只有 `compatible` 与
 `waiting_authorization` 两档。
 
-**2026-11-06T02-09-20Z 针对已安装宿主 `@deepseek-harness-tui/dsh-tui` 0.18.0 实测：两份清单
-都回答 `validatePlugin: ok` 与 `negotiate: compatible`。**
+**2026-11-07T05-59-31Z 针对已安装宿主 `@deepseek-harness-tui/dsh-tui` 0.19.0 实测：`validateHost: ok`，
+两份清单都回答 `validatePlugin: ok` 并协商为 `compatible`。** 同一条链在 0.18.0 上也回答
+`compatible`，而且两个结论依托的是同一条链：准入指南、契约与权限注册表、以及十一个准入决策源文件在两个
+tag 上**逐字节相同**（指南 blob 为 `6b9dfd3…`，99,723 B；`permissions-0.1.json` 为 `f36cb6e…`），因此
+0.19.0 这次移动不需要任何准入返工。
 
 | 清单 | SHA-256（截断） | `validatePlugin` | 协商 |
 |---|---|---|---|
-| `dsh-plugin.json`（bundle 根） | `b807ad68…` | `ok` | `compatible` |
-| `packages/mpd-tui-plugin/dsh-plugin.json` | `2354afb9…` | `ok` | `compatible` |
+| `dsh-plugin.json`（bundle 根） | `bcbe05af…` | `ok` | `compatible` |
+| `packages/mpd-tui-plugin/dsh-plugin.json` | `aeed4c00…` | `ok` | `compatible` |
 
 两个结果来自同一次运行，走的是已安装宿主自己的链路
 `loadSpecData -> createContractIndex -> validatePlugin(index, manifest) -> negotiate(index, manifest,
@@ -82,13 +85,13 @@ legacyHostDescriptor, [])`，由我们的探针包装。本仓库自己的工具
 
 ```sh
 bun skills/dsh-qa/scripts/tui-admission.ts --static-only
-node evidence/tui/ecosystem-admission/2026-11-06T02-09-20Z/probe-negotiation.mjs
+node evidence/upstream/0.2.2/2026-11-07T05-45Z/probe-negotiation-0.19.0.mjs
 ```
 
-两者退出码均为 0。第二条命令与机器相关：`probe-negotiation.mjs` 把作者的宿主根（`HOST`，`dsh-tui`
-profile 下已安装的 `@deepseek-harness-tui/dsh-tui` 目录）与仓库根（`REPO`）写死在文件里，运行前需替换
-这两个常量；第一条命令是仓库相对路径，无需替换。2026-11-06 这次是下面那次权限改动之后的复测；
-2026-11-03 那次才是改动所针对的测量。
+两者退出码均为 0——第一条产出 `tui-admission-019.log`，第二条产出 `probe-negotiation-0.19.0.json`，
+都在该目录下。第二条命令与机器相关：探针把作者的宿主根（`HOST`，`.qa-tmp/tui-019` 下的 0.19.0 临时
+安装）与仓库根（`REPO`）写死在文件里，运行前需替换这两个常量；第一条命令是仓库相对路径，无需替换。
+2026-11-06 那次跑的是 0.18.0，是下面那次权限改动之后的复测；2026-11-03 那次才是改动所针对的测量。
 
 **`waiting_authorization` 是怎么变成 `compatible` 的。** 2026-11-03 的运行回答
 `waiting_authorization`，原因码 `PERMISSION_NOT_GRANTED`，涉及四个已声明权限，全部是
@@ -118,7 +121,7 @@ live probe evidence`——探针结果与本仓库工具都记录该警告，而
 |---|---|---|---|
 | A. 包与身份 | **PARTIAL** | 已满足：`$schema` 是绝对 URI（`https://dsh.community/schemas/dsh-plugin-0.15.json`），`manifestVersion` 为 `0.15`，`id` 稳定且唯一（`com.mpd-dsh.mpd-tui`），`facets.host` 指明入口且 `apiVersion: v1alpha1`，未出现 `client` 或 `worker` facet，源仓库与 MIT 许可可定位（`dsh-plugin.json`、`LICENSE.md`）。 | **未满足：任何地方都没有记录产物 SHA-256 digest。** 两份清单、`dsh-distribution.json`、`VENDOR_LOCK.json`、`scripts/pack-mpd.ts` 都没有；存在的是散文——`docs/tui.md` 内引用的若干哈希，其中多处以 `…` 截断——不是准入库能读取的 digest。规则书把 digest 限定在 Verified 声明里，因此这**卡住的是声明，不是准入**。 |
 | B. 声明完整性 | **PARTIAL** | 已满足：`requires.contracts` 只有一条可选契约 `tui.dsh/v1alpha1#DecisionEvents` 并写有回退；`permissions: []`；`subscriptions: []`；`contributes.commands: []`；两份清单都没有出现 `provides` 或 `requires.services`。 | **未满足：** `contributes.commands: []`，而 `/mpd` 与 `/mpd-model` 确实通过 harness 的 `commands` 服务注册，于是宿主的 effect ledger 把它们记为 `undeclared`——这是**更早的一次观察**，准入变成 `compatible` 之后并未复测；该实机边界记录在 [`tui.zh-CN.md` §6.4](./tui.zh-CN.md) 中。声明与行为仍然不一致。 |
-| C. TUI 兼容性 | **PASS** | 两份清单在 0.18.0 上协商通过（见上方 `result.json`）；没有声明 `Backend` 贡献，因此 `TUI-BACKEND-001` 不适用；没有声明 remote attach，因此不欠远程 profile 测试。 | 本组内无缺口。`compatible` 是协商结果，不是实机挂载结果（§3）。 |
+| C. TUI 兼容性 | **PASS** | 两份清单在 0.18.0 与 0.19.0 上都协商通过（见上方 `result.json` 与 0.19.0 探针日志）；没有声明 `Backend` 贡献，因此 `TUI-BACKEND-001` 不适用；没有声明 remote attach，因此不欠远程 profile 测试。 | 本组内无缺口。`compatible` 是协商结果，不是实机挂载结果（§3）。 |
 | D. 运行时行为 | **PARTIAL** | `apply` 是同步的——没有 `await`，也没有捕获 `ctx.root`；重复 activation 行为确定；清理归属由 `packages/mpd-tui-plugin/test/plugin.test.ts` 覆盖，该用例记录每个 disposer 并统计释放次数。 | **未满足：** `effectOn`（`packages/mpd-tui-adapter-plugin/src/index.ts`）把归属调用包在 `try` 加空 `catch` 里，于是无法拥有 effect 的 scope 会静默失败，而不是留下可诊断、可重试的状态；另外没有记录 activation 或 runtime generation id，已注册资源无法追溯到拥有它的 activation 实例。 |
 | E. 清理与恢复 | **PARTIAL** | 文档这一半由 [`tui.zh-CN.md` §2.1](./tui.zh-CN.md) 补上：三种移除等级、一次移除实际撤销什么、以及按资源类别说明保留什么。 | **尚未自动化。** 固定的那套一致性矩阵（`evidence/dshgo/tui-admission/2026-11-03T01-23-16Z/requirements-v0.15.json`）没有 `TUI-OBS-002` 行，`skills/dsh-qa/scripts/tui-spec-conformance.ts` 也没有对应的求值分支——未知 id 报 `blocked`。今天没有任何通道为 §2.1 背书。 |
 | F. 信任与声明 | **PARTIAL** | `trusted-in-process` 披露用的是宿主自己的 `/plugin` 界面，不是我们的一句话；依赖闭包可复现（提交了 `bun.lock`，且已发布的依赖闭包不含安装脚本）。 | **未满足：** 本 bundle 有意不做任何一致性声明，因此 `TUI-CLAIM-001` 从未被行使；没有 provenance 或 attestation，而绑定声明所需的产物 digest 并不存在（§4 A 组）。 |

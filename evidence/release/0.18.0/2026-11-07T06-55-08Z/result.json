@@ -1,0 +1,327 @@
+{
+  "case": "release-0.18.0",
+  "wave": "upstream three-plane adaptation (DSH 0.2.2-rc.1 / dsh-TUI 0.19.0 / DSH-Go hard gate)",
+  "at": "2026-11-07T08:20:00.000Z",
+  "branch": "feature/upstream-0.18.0",
+  "version": "0.18.0",
+  "repairR2": "2026-11-07T08:56Z — R2 repair of the independent verifier's M4/M5/N1 findings. M4: the browser arm is re-attributed as NOT RUN — NO CREDENTIAL (27-docker.log records MISSING_CREDENTIAL / MISSING PREREQUISITE), and AGENTS.md §11 REQUIRES the credentialed --live runs before the tag. M5: the oneclick rationale is replaced by the real git-spec/ref constraint (default-branch resolution, not publication) and a local git-spec stand-in run is recorded — it RAN and FAILED one packaging assertion (stale packed VENDOR_LOCK.json; re-pack owed). N1: 39-typecheck-captain.log is non-empty and records the argv, the tsgo version and the exit code.",
+  "environment": {
+    "node": "v24.21.0",
+    "bun": "1.4.0 (.toolchain/node_modules/.bin/bun, pinned buildToolchain)",
+    "harnessOnPath": "0.2.2-rc.1 (.qa-tmp/dsh-022/bin, the repository dependency pin)",
+    "ambientHarnessOnPath": "0.2.1-rc.5 (nvm global; used only for the backward-compatibility arms)",
+    "tuiHost": "0.19.0 (measured); 0.18.0 also admitted",
+    "dshGoKit": ".mpd/tmp-dshgo/kit @ ccch1mneyyy/dsh-Go d5ad25c5bc4c66ecacee76b3c5378db45e1db3fa",
+    "tmpdir": ".qa-tmp/tmp (the global package caches and the system tempdir are READ-ONLY in this sandbox)"
+  },
+  "rows": [
+    {
+      "gate": "verify-dist-fresh",
+      "argv": [
+        "node",
+        "scripts/verify-dist-fresh.ts"
+      ],
+      "exitCode": 0,
+      "verdict": "PASS",
+      "detail": "34/34 targets fresh (each rebuilt twice, byte-identical); 1 declared NOT COVERED (sha-pinned vendored packages/mpd-mcp-codegraph/dist/serve.js)",
+      "logPath": "32-dist-captain.log",
+      "by": "captain"
+    },
+    {
+      "gate": "verify-vendor",
+      "argv": [
+        "node",
+        "scripts/verify-vendor.ts"
+      ],
+      "exitCode": 0,
+      "verdict": "PASS",
+      "detail": "after the wave's single re-pin (04-repin-write.log)",
+      "logPath": "38-vendor-captain.log",
+      "by": "captain"
+    },
+    {
+      "gate": "verify:gates",
+      "argv": [
+        "node",
+        "./scripts/verify-gates.ts"
+      ],
+      "exitCode": 0,
+      "verdict": "PASS",
+      "detail": "11/11 members green: vendor, dist freshness, row parity, doc pairs, preset conformance, plugin manifest, comment coverage, graph model, workflows, tui admission, dshgo",
+      "logPath": "31-verify-gates-captain.log",
+      "by": "captain"
+    },
+    {
+      "gate": "verify-plugin-manifest",
+      "argv": [
+        "node",
+        "scripts/verify-plugin-manifest.ts",
+        "--pack"
+      ],
+      "exitCode": 0,
+      "verdict": "PASS",
+      "detail": "npm pack --dry-run lists 1256 files; 0 required paths absent; version coherence 0.18.0",
+      "logPath": "34-manifest-captain.log",
+      "by": "captain"
+    },
+    {
+      "gate": "verify-comment-coverage",
+      "argv": [
+        "node",
+        "scripts/verify-comment-coverage.ts"
+      ],
+      "exitCode": 0,
+      "verdict": "PASS",
+      "detail": "614 files, 54925 declarations",
+      "logPath": "35-comments-captain.log",
+      "by": "captain"
+    },
+    {
+      "gate": "verify-no-host-override",
+      "argv": [
+        "node",
+        "scripts/verify-no-host-override.ts"
+      ],
+      "exitCode": 0,
+      "verdict": "PASS",
+      "detail": "0 of 0 id-targets collide with the 214 host-declared row ids",
+      "logPath": "36-no-host-override-captain.log",
+      "by": "captain"
+    },
+    {
+      "gate": "verify-manual-paths",
+      "argv": [
+        "node",
+        "scripts/verify-manual-paths.ts"
+      ],
+      "exitCode": 0,
+      "verdict": "PASS",
+      "detail": "resolved=155 over-report=69 under-report=79 declared=2",
+      "logPath": "37-manual-paths-captain.log",
+      "by": "captain"
+    },
+    {
+      "gate": "verify-pack-closure",
+      "argv": [
+        "node",
+        "scripts/verify-pack-closure.ts"
+      ],
+      "exitCode": 0,
+      "verdict": "PASS",
+      "detail": "667 files compared / 667 identical / 0 drift; 559 declared sources, 558 present, 1 declared exemption",
+      "logPath": "33-pack-closure-captain.log",
+      "by": "captain"
+    },
+    {
+      "gate": "typecheck",
+      "argv": [
+        "tsgo",
+        "--noEmit"
+      ],
+      "exitCode": 0,
+      "verdict": "PASS",
+      "detail": "tsgo 7.0.0-dev.20260707.2, exit 0; tsgo --noEmit prints NOTHING on success, so this log records the argv, the tool version and the exit code instead of staying a silent 0-byte file",
+      "logPath": "39-typecheck-captain.log",
+      "by": "senior-engineer-repair-r2"
+    },
+    {
+      "gate": "tests",
+      "argv": [
+        "bun",
+        "test",
+        "packages"
+      ],
+      "exitCode": 0,
+      "verdict": "PASS",
+      "detail": "3699 tests across 246 files, 0 fail, 6 skip, 50888 expect() calls",
+      "logPath": "40-test-packages-captain.log",
+      "by": "captain"
+    },
+    {
+      "gate": "dshgo-self-test",
+      "argv": [
+        "node",
+        "scripts/verify-dshgo-standard.ts",
+        "--self-test"
+      ],
+      "exitCode": 0,
+      "verdict": "PASS",
+      "detail": "44 arms: 1 clean control + 43 negative controls, including the COMPAT lane (a v2-only component in a DECLARED static view is refused)",
+      "logPath": "41-dshgo-selftest-captain.log",
+      "by": "captain"
+    },
+    {
+      "gate": "test:qa",
+      "argv": [
+        "node",
+        "scripts/run-qa-selftests.ts"
+      ],
+      "exitCode": 0,
+      "verdict": "PASS",
+      "detail": "all self-tests passed under the PINNED harness on PATH",
+      "logPath": "16b-test-qa-pinned.log",
+      "by": "integrator"
+    },
+    {
+      "gate": "qa/dshgo-standard",
+      "argv": [
+        "bun",
+        "skills/dsh-qa/scripts/dshgo-standard.ts"
+      ],
+      "exitCode": 0,
+      "verdict": "PASS",
+      "detail": "lane=real crosscheck=passed",
+      "logPath": "21-dshgo-standard-real.log",
+      "by": "integrator"
+    },
+    {
+      "gate": "qa/preset-conformance",
+      "argv": [
+        "node",
+        "skills/dsh-qa/scripts/preset-conformance.ts"
+      ],
+      "exitCode": 0,
+      "verdict": "PASS",
+      "detail": "agentPreset mpd; row parity 27/27; negative control reddens with agent-preset/invalid",
+      "logPath": "23-preset-conformance-real.log",
+      "by": "integrator"
+    },
+    {
+      "gate": "qa/dual-track-smoke",
+      "argv": [
+        "bun",
+        "skills/dsh-qa/scripts/llm-dual-track.ts"
+      ],
+      "exitCode": 0,
+      "verdict": "PASS",
+      "detail": "official ok + deepseek ok",
+      "logPath": "24-dual-track-smoke.log",
+      "by": "integrator"
+    },
+    {
+      "gate": "qa/mcp-call",
+      "argv": [
+        "bun",
+        "skills/dsh-qa/scripts/mcp-call.ts"
+      ],
+      "exitCode": 0,
+      "verdict": "PASS",
+      "detail": "125 tools recorded, mcp__ast_grep__ and mcp__lsp__ both called",
+      "logPath": "25-mcp-call.log",
+      "by": "integrator"
+    },
+    {
+      "gate": "qa/bundle-lifecycle",
+      "argv": [
+        "bun",
+        "skills/dsh-qa/scripts/bundle-lifecycle.ts"
+      ],
+      "exitCode": 0,
+      "verdict": "PASS",
+      "detail": "adapterToolCall true, corpusFromBundle true, noPresetRefusal true, uninstall residue []",
+      "logPath": "26-bundle-lifecycle.log",
+      "by": "integrator"
+    },
+    {
+      "gate": "install-profile --dry-run",
+      "argv": [
+        "node",
+        "scripts/install-profile.ts",
+        "--dry-run"
+      ],
+      "exitCode": 0,
+      "verdict": "PASS",
+      "detail": "DRY-RUN done, nothing written",
+      "logPath": "20-install-profile-dryrun.log",
+      "by": "integrator"
+    },
+    {
+      "gate": "docker/source --no-browser",
+      "argv": [
+        "node",
+        "scripts/docker-e2e.ts",
+        "--mode",
+        "source",
+        "--require-docker",
+        "--allow-rootful-docker",
+        "--no-browser"
+      ],
+      "exitCode": 0,
+      "verdict": "PASS",
+      "detail": "the credential-free regression arm; result.json ok=true, zero failing rows",
+      "logPath": "28-docker-source-nobrowser.log",
+      "by": "integrator"
+    },
+    {
+      "gate": "docker/oneclick (local git-spec stand-in)",
+      "argv": [
+        "node",
+        "scripts/docker-e2e.ts",
+        "--mode",
+        "oneclick",
+        "--no-browser"
+      ],
+      "exitCode": 1,
+      "verdict": "FAIL",
+      "detail": "RAN, not skipped. ROOTLESS Docker; spec=git+file:///opt/oneclick.git (the lane's documented local stand-in for github:HaroldZ32/My-Power-Dsh, built from this working tree); pins node 24.19.0 / dsh 0.2.2-rc.1 / pnpm 11.23.0 / bun 1.4.0 pinned. 158 passed / 1 failed / 80 null (live and browser rows are credential-gated). Every oneclick assertion passed (scratchRepo, requiredPaths, filesAllowlist, distByteIdentical; install.exit/profileDep/installedTree) — the ONE failure is pack.staticCoherence: 'drifted=VENDOR_LOCK.json', because dist/mpd-package/ was packed at 16:19 and VENDOR_LOCK.json was re-pinned at 16:42 (sha256 4453d4de… vs packed 3f6aa642…). RELEASE-BLOCKING: re-pack (node scripts/pack-mpd.ts) and re-run this lane before the tag. Full evidence: evidence/docker/client-install-oneclick/2026-11-07T08-45-55Z/result.json.",
+      "logPath": "44-docker-oneclick.log",
+      "by": "senior-engineer-repair-r2"
+    },
+    {
+      "gate": "docker/oneclick",
+      "argv": [
+        "node",
+        "scripts/docker-e2e.ts",
+        "--mode",
+        "oneclick",
+        "--no-browser"
+      ],
+      "exitCode": 0,
+      "verdict": "PASS",
+      "detail": "re-run AFTER the re-pack that fixed the stale artifact: the first run (08-45-55Z) failed only pack.staticCoherence (drifted=VENDOR_LOCK.json) because dist/mpd-package/ (16:19) predated the wave's 16:42 vendor re-pin; node scripts/pack-mpd.ts was re-run and verify-pack-closure re-anchored (pack stamp 2026-11-07T08:59:15.655Z, 667 files 0 drift), then this lane returned ok=true with no failed assertion.",
+      "logPath": "48-docker-oneclick-repack.log",
+      "alsoEvidence": "evidence/docker/client-install-oneclick/2026-11-07T08-59-18Z/result.json (ok=true); the failing earlier run is kept at evidence/docker/client-install-oneclick/2026-11-07T08-45-55Z/result.json (ok=false)",
+      "by": "captain"
+    }
+  ],
+  "skipped": [
+    {
+      "gate": "qa/tui-admission",
+      "reason": "absent-fixture: no tui profile in the sandbox root. The static admission arm was still exercised (static result ok=true) and the host's own chain is covered by verify:tui-admission inside verify:gates.",
+      "logPath": "22-tui-admission-real.log"
+    }
+  ],
+  "crossReadings": [
+    {
+      "gate": "qa/preset-conformance under the AMBIENT harness (0.2.1-rc.5)",
+      "exitCode": 1,
+      "assertion": "the mpd preset does not mount active row(s) the installed standard preset mounts: tool-subagent-list-agents",
+      "why": "NOT a preset defect. Harness 0.2.2-rc.1 removed the ./list-agents subpath export from dsh-tool-subagent-control, so the preset row had to go; 0.2.1-rc.5's standard preset still declares it. One preset cannot straddle two harness lines, and a row whose module no longer resolves cannot be kept (the loader resolves the module before honouring `disabled`). This is the wave's declared capability delta on the older host.",
+      "logPath": "16-test-qa.log"
+    }
+  ],
+  "bounds": [
+    "No Flutter/DSH-Go host exists in this repository: the native half is proven against the published standard, the pinned spec data and service doubles, never on a device.",
+    "The official @dsh-go/plugin-kit is private:true and not on npm; it is never vendored. Its cross-check ran against a pinned checkout supplied by MPD_DSHGO_KIT; without one the gate reports NOT-PASSED (exit 3), never a green.",
+    "The Docker browser/credentialed arm did not produce a measurement: no credential was staged (MISSING_CREDENTIAL / MISSING PREREQUISITE), and AGENTS.md §11 REQUIRES the credentialed --live runs before the tag — they remain OWED. A skip is never a pass.",
+    "The oneclick lane RAN (local git-spec stand-in) and FAILED one packaging assertion: pack.staticCoherence drifted=VENDOR_LOCK.json, because dist/mpd-package/ predates the wave's re-pin. Re-pack and re-run before the tag. The GitHub-ref variant is deferred until the branch is pushed; default-branch/ref resolution, not publication, is the binding constraint.",
+    "compat.hosts is a published claim, not an admission input: no host code reads it.",
+    "The DSH-Go HOST lane is static source analysis (constants and computed keys), not a mounted boot."
+  ],
+  "repairs": [
+    {
+      "wave": "post-verdict repairs",
+      "items": [
+        "H1 fixed: scripts/verify-tui-admission.ts gained a COMPAT lane (5 arms + 5 negative controls); dropping 0.18.0 from the band now exits 1 COMPAT.host-version. Evidence evidence/repair/0.18.0/fixes/",
+        "M3 fixed: engines.dsh floored to >=0.2.1-rc.5 <0.3.0-0",
+        "N2 fixed: stale compat.hosts comment in the TUI adapter corrected",
+        "M2/H1-doc fixed: docs/compatibility.md now names the ONE proven routing site and the three unexercised ones as a declared bound; the band sentence describes the real arm",
+        "M1 fixed: AGENTS.md 4 and docs/development.md carry the exact verify:gates invocation and the measured bare-run yield (2/11 red)",
+        "M4 fixed: the Docker browser row reads NOT RUN - NO CREDENTIAL, with the 11 REQUIRED --live runs recorded as OWED",
+        "M5 fixed: the oneclick rationale was corrected and the lane RUN - it exposed a stale pack, which was re-packed and re-run to PASS",
+        "N1 fixed: the typecheck log is non-empty (argv, tsgo version, exit 0)",
+        "vendor: the wave's re-pin re-run once after the new skills file became tracked (391 -> 392 files) - the fingerprint must cover a tracked file, not exclude it"
+      ]
+    }
+  ]
+}

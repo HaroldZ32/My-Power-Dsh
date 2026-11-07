@@ -3,9 +3,14 @@
   "assets": {
     "_note": "directory assets: fileCount + treeSha (sorted relpath + LF-normalized per-file sha256 aggregation) double gate; single-file assets: fileCount + sha256 gate - both verified by scripts/verify-vendor.ts, which refuses a zero-subject run",
     "skills": {
-      "fileCount": 391,
+      "fileCount": 392,
       "source": "skill corpus at repo root (ported upstream skills + dsh-qa + svn-master + bundle-lifecycle, agent-teams-dispatch, agent-teams-sidebar, extension-isolation, extension-lifecycle, extension-mcp-bridge, extension-template, workmate-library, workmate-team-member and readonly-deny QA cases + the dsh-qa scripts/lib/workspace-isolation.mjs QA sandbox helper + the dsh-qa scripts/lib/gate-probe.mjs two-sided complexity-gate probe + the five TUI lanes and their shared harness: scripts/tui-mount.mjs, tui-panels.mjs, tui-admission.mjs, tui-distribution.mjs, tui-spec-conformance.mjs, lib/tui-lane.mjs + the settings-bridge lanes and their shared engine: scripts/tui-settings-bridge.mjs, web-settings-bridge.mjs, lib/settings-bridge-lane.mjs + the six team-watchdog lanes and their shared harness: scripts/team-watchdog-{heartbeat,fault,scene,config,notify,boot}.mjs, lib/watchdog-lane.mjs + the real-dsh boot lane); whole-dir refresh from upstream, keep provenance links",
-      "treeSha": "7d1421d8902e3603bacda43cfe31546a5dfec6103aa885eb38f9eea8a91d0757"
+      "treeSha": "3133e6fbce11e25e32f51ce0bd19c4aa1673bf925b7ef3ccef34c5146d7eb1e6"
+    },
+    "specs/dsh-go": {
+      "fileCount": 7,
+      "treeSha": "1f812a48dd2c54fa6529c0c05b355676de902515cfe7fa63fd5328b892da2607",
+      "source": "DSH-Go protocol v1 SPEC DATA (no upstream executable code): limits.ts is a transcription of runtime/bridge/dsh-go-bridge/lib/native/limits.js plus view-check.js BUDGETS, and schemas/*.schema.json are byte-for-byte copies; fetched from ccch1mneyyy/dsh-Go@d5ad25c5bc4c66ecacee76b3c5378db45e1db3fa, pinned by specs/dsh-go/SOURCE.json"
     },
     "packages/mpd-mcp-codegraph/dist/serve.js": {
       "fileCount": 1,

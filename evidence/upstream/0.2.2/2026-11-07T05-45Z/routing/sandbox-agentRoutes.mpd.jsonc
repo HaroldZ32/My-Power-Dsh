@@ -1,0 +1,4 @@
+{
+  // ac6 baseline: the spawned member's own configured route
+  "agentRoutes": { "Junior Engineer": { "provider": "deepseek-official", "model": "deepseek-v4-flash" } }
+}

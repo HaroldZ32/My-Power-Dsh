@@ -32,9 +32,10 @@ run produced no `result.json` at all, `3` the host has no usable docker.
 4. `pnpm` (`npm i -g pnpm@…`). Not decoration: `dsh plugin <args>` forwards to `pnpm` in the profile
    directory, and the harness prints `pnpm was not found; install pnpm and make it available on PATH`
    when it is missing. A machine without pnpm cannot install a bundle.
-5. `npm i -g @deepseek-ai/dsh@0.2.1-rc.5` (the default pin — override it with
+5. `npm i -g @deepseek-ai/dsh@0.2.2-rc.1` (the default pin — override it with
    `MPD_E2E_DSH_VERSION=<version>`, which `docker/docker-compose.yml` forwards and
    `docker/entrypoint.sh` reads), then asserts that `dsh --version` prints **exactly** that string.
+   `0.2.1-rc.5` stays supported and is what the separate backward-compatibility boot installs.
 6. Copies the checkout to `/opt/mpd`, runs `bun install`, and rebuilds **every** `packages/*/dist`
    entry from source with the canonical repo-root command from `AGENTS.md` §6 (`bun build
    packages/<pkg>/src/<entry>.ts --target node --format esm --outfile packages/<pkg>/dist/<entry>.js`).
@@ -94,11 +95,11 @@ run produced no `result.json` at all, `3` the host has no usable docker.
 14. Records `boot.llmTurn` as **`null` with a reason** — see below.
 15. **Runs the DSH-TUI edition** (`docker/tui-lane.sh`) — the one profile a developer host cannot
     exercise, because the TUI host must be installed from npm into a writable global prefix and booted
-    on a real PTY. It installs `@deepseek-harness-tui/dsh-tui@0.18.0` — the dsh-tui release this
-    bundle now targets. Its declared `@deepseek-ai/dsh-*` peers run through harness `0.2.1-rc.4`/`rc.5`
-    (all 36 of its 39 append both bands), where `0.17.0`'s stop at `0.2.1-rc.3`, so it serves both the
-    `0.2.0-rc.2` baseline and the `0.2.1` wave; `0.16.1` declared those bands only up to `0.2.1-rc.2`,
-    `0.15.0` covered only up to `0.2.0-rc.2`, and
+    on a real PTY. It installs `@deepseek-harness-tui/dsh-tui@0.19.0` — the dsh-tui release this
+    bundle now targets. Its declared `@deepseek-ai/dsh-*` peers accept BOTH harness `0.2.2-rc.1` and
+    `0.2.1-rc.4`/`rc.5` (36 of its 39 append both bands), so one pin serves the current baseline AND the
+    older-host arm; `0.18.0` accepts only the `0.2.1` wave, `0.17.0`'s peers stop at `0.2.1-rc.3`,
+    `0.16.1` declared those bands only up to `0.2.1-rc.2`, `0.15.0` covered only up to `0.2.0-rc.2`, and
     `0.11.2` stops at `0.2.0-rc.1`, where `dsh plugin --profile dsh-tui add` is REFUSED on peer
     ranges — the lane then reddens at that step and its `tui-logs/add-host.log` capture quotes the
     host's own refusal, rather than passing green on an apology.

@@ -1,0 +1,12 @@
+Received: 1
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-roles-plugin/test/adapter-identity.test.ts:304:7)
+(fail) F1 shipped artifact > the committed dist is the byte-identical product of a canonical build (T-62) [65.57ms]
+(pass) F1 shipped artifact > the built dist carries the adapter-identity fix [0.86ms]
+(pass) row config fallbacks (2026-10-20 restore) > captain.investigation and delegation.gate spelled in the ROW config reach the resolved mode [0.57ms]
+(pass) row config fallbacks (2026-10-20 restore) > with no row spelling both restored guards keep their deny default [0.34ms]
+
+ 18 pass
+ 2 fail
+ 68 expect() calls
+Ran 20 tests across 2 files. [297.00ms]

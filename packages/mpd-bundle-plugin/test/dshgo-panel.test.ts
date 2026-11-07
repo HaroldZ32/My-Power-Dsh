@@ -595,6 +595,21 @@ describe("registration is lazy and silent", () => {
     expect(host.bound[0]).toEqual(["dshGo"])
   })
 
+  test("no bridge: no interval is ever created, so nothing polls", () => {
+    /** A synthetic clock, so "no polling" is counted rather than assumed. */
+    clock = installFakeClock()
+    /** A host with no DSH Go bridge at all. */
+    const host = fakeHost()
+    /** The registration under review. */
+    const registration = registerDshGoPanel({ dsh: host.dsh, ctx: host.ctx, log: logCapture().log, workspace: () => "/ws" })
+    expect(clock.created).toBe(0)
+    expect(clock.live).toBe(0)
+    // The release must not owe anything back either: a bridgeless host owns no timer at all.
+    registration.dispose()
+    expect(clock.created).toBe(0)
+    expect(clock.live).toBe(0)
+  })
+
   test("a second attempt while absent does not repeat the log line", () => {
     /** A host with no bridge, and a registration that already gave up once. */
     const host = fakeHost()

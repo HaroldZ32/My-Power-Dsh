@@ -1,0 +1,36 @@
+{
+  "repo": "https://github.com/ccch1mneyyy/dsh-Go",
+  "commit": "d5ad25c5bc4c66ecacee76b3c5378db45e1db3fa",
+  "fetchedAt": "2026-11-07T05:59:14Z",
+  "note": "The DSH-Go protocol v1 standard this bundle conforms to. `specs/dsh-go/limits.ts` is a SPEC-DATA transcription of the limits.js authority (the upstream SDK `@dsh-go/plugin-kit` is `private: true`, so nothing upstream can be a dependency); `specs/dsh-go/schemas/*.schema.json` are byte-for-byte copies of the five upstream JSON Schemas, fetched from raw.githubusercontent.com at the pinned commit. No upstream executable code is vendored.",
+  "files": [
+    {
+      "path": "runtime/bridge/dsh-go-bridge/lib/native/limits.js",
+      "sha256": "bf7215077362ddbd10e8dee7302f7a9ff8c71dc439773c4307de5ef681c6f8ac"
+    },
+    {
+      "path": "sdk/plugin-kit/schema/manifest.schema.json",
+      "sha256": "1abfff069d68b38a7a8d34bcf49dcbf2093ef7725cb0f7e9c8eff9f99cce6748"
+    },
+    {
+      "path": "sdk/plugin-kit/schema/contributions.schema.json",
+      "sha256": "f4a3aa6b82cc944c9ee573eaa9dedf9fa9bf7978f57785e7da319ecfed3f8e58"
+    },
+    {
+      "path": "sdk/plugin-kit/schema/view.schema.json",
+      "sha256": "9b175788448c61af0b41382af7617ac7720151f2f4041fa8f72a03ad7f023153"
+    },
+    {
+      "path": "sdk/plugin-kit/schema/stream.schema.json",
+      "sha256": "2377213d296cd361f8584c294bb0c7c35a53e9af476d1e929a09dafaa2f2ab69"
+    },
+    {
+      "path": "sdk/plugin-kit/schema/invoke.schema.json",
+      "sha256": "9a39f0d3aec0fa92a0229e2e49ef1c213649c4196ad716e2658d779bab64621f"
+    },
+    {
+      "path": "sdk/plugin-kit/lib/view-check.js",
+      "sha256": "9024c9e40e2f7401d84f2c29109ec7a6c2f031fb34038f4da6eca8feffc15250"
+    }
+  ]
+}

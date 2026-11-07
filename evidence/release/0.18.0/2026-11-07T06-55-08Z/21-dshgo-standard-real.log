@@ -1,0 +1,10 @@
+[dshgo-standard] gate: exit=0 cross-check=passed static-errors=0 kit=present
+[dshgo-standard] negative control: exit=1 names-id-duplicate=true
+[dshgo-standard] check gate.report.parseable: PASS — report parsed
+[dshgo-standard] check gate.static.errors: PASS — static error findings = 0
+[dshgo-standard] check gate.crosscheck.present: PASS — cross-check status = passed
+[dshgo-standard] check gate.exit.legal: PASS — exit = 0
+[dshgo-standard] check control.exit.violations: PASS — exit = 1
+[dshgo-standard] check control.rule.id-duplicate: PASS — the gate named id-duplicate
+[dshgo-standard] evidence: evidence/dshgo/standard/2026-11-07T07-00-09-839Z
+[dshgo-standard] PASS case=dshgo-standard lane=real crosscheck=passed

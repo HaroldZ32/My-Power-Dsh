@@ -1,0 +1,8 @@
+[dshgo-standard] root: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+[dshgo-standard] standard: ccch1mneyyy/dsh-Go@d5ad25c5bc4c66ecacee76b3c5378db45e1db3fa (spec data under specs/dsh-go/)
+[dshgo-standard] MANIFEST: PASS (0 error(s), 0 note(s))
+[dshgo-standard] VIEW: PASS (0 error(s), 0 note(s))
+[dshgo-standard] COMPAT: PASS (0 error(s), 0 note(s))
+[dshgo-standard] HOST: PASS (0 error(s), 0 note(s))
+[dshgo-standard] CROSS-CHECK: NOT-PASSED — NOT-PASSED: MPD_DSHGO_KIT is not set, so the official checker did not run (a cross-check that did not run is never a green). Provide a dsh-Go checkout: MPD_DSHGO_KIT=<checkout> node scripts/verify-dshgo-standard.ts
+[dshgo-standard] RESULT: NOT-PASSED — the official cross-check did not run

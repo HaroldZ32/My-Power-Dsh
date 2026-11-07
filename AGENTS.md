@@ -181,6 +181,11 @@ replaced or deleted. License: **MIT** (`LICENSE.md`); third-party components kee
    own fingerprints — a corrupted one still reddens — while the upstream identity behind them is
    PROVENANCE, never a dependency to re-fetch, re-sync or audit.
 6. **Minimal diffs.** Prefer the smallest change that satisfies the requirement; no speculative refactors.
+7. **Backward compatibility is a HARD requirement of any upstream adaptation** (user ruling 2026-11-07).
+   A new upstream capability is OPTIONAL: probe it, degrade along a written fallback where the host lacks
+   it, and keep the older host working — a release that would refuse the older host at install time is a
+   defect, not an upgrade. The gate that proves an adaptation carries a compatibility arm, and a support
+   claim no arm checks is not a claim (§4).
 
 ---
 
@@ -204,9 +209,7 @@ silently TRUNCATED, so a section past the cut stops binding unnoticed. The rule 
 adding to this file, move a LONG FORM of comparable or larger size into `agent-references/` and leave a
 SHORT definition **plus an exact pointer** — never drop the term — then re-measure. Keep a margin of at least
 **2 KB** below the cut (the historical target was **≤ 63.5 KiB / 65024 B**). A truncated manual is one whose tail silently stops binding,
-and a reader cannot tell. Measured re-baselines: 2026-10-07 **65923 → 65244** (truncated), 2026-10-08
-**60456**, the harness-021 rollback **62650**, and the 2026-10-20 context diet — whose measured sizes are
-recorded in `agent-references/context-discipline.md`.
+and a reader cannot tell. Measured re-baselines are recorded in `agent-references/context-discipline.md`.
 
 ---
 
@@ -225,34 +228,38 @@ recorded in `agent-references/context-discipline.md`.
 | Installer | `node scripts/install-profile.ts --dry-run` | any bundle-patch/installer change |
 | Doc pairs | `bun run verify:docs` (`scripts/verify-docs-parity.ts`; `--self-test` with a negative control; fails on a zh-only doc or an undocumented package) | any human-facing doc change (`README*.md`, `docs/**`, `packages/*/README*.md`, `extensions/**`, `templates/**`); before release |
 | **Plugin manifest (STANDING — user-mandated)** | `bun run verify:manifest` (= `node scripts/verify-plugin-manifest.ts --pack`): **no `cordis`** in any dependency field (by NAME; the optional field is NOT an exemption), no `preinstall`/`install`/`postinstall`/`prepare` script NAME, VERSION COHERENCE (`dsh-plugin.json` + `dsh-distribution.json` carry `package.json`'s version), plus the packaging contract a one-command install rests on (declared patch files exist, every row module path resolves, `files` admits every runtime path, `evidence/` stays out, `npm pack --dry-run` carries them) | every manifest/patch/row/file-layout/version change, and EVERY release sweep |
-| **Declaration comments (STANDING — user-mandated)** | `bun run verify:comments` (= `node scripts/verify-comment-coverage.ts`): a TypeScript-AST check (never a line scan) that every declaration in its source set has a precise comment above it, and that every NAMED function writes down its parameter and return types | any source edit, and EVERY release sweep |
+| **Declaration comments (STANDING — user-mandated)** | `bun run verify:comments` (= `node scripts/verify-comment-coverage.ts`): a TypeScript-AST check (never a line scan) that every declaration has a precise comment and every NAMED function writes down its parameter and return types (§6) | any source edit, and EVERY release sweep |
+| **DSH-Go conformance (STANDING — user-mandated)** | `node scripts/verify-dshgo-standard.ts` — five lanes (MANIFEST / VIEW / COMPAT / HOST / CROSS-CHECK); exit 0 legal, 1 violations, 2 cannot-run, 3 NOT-PASSED; `--self-test` = 44 arms; `MPD_DSHGO_KIT` supplies the official checker and its absence is NOT-PASSED, never a green. The COMPAT lane is the compatibility arm §2 rule 7 requires | every `dshGo` manifest / static-view / host-half change, every release sweep, and BEFORE `npm pack` (`publish.yml`) |
 | No host override | `node scripts/verify-no-host-override.ts`: fails when ANY shipped patch row id-targets an id a host layer declares; refuses a vacuous PASS; `--self-test` 6 arms + a live seed | any bundle-patch row edit, and EVERY release sweep |
 | Manual paths | `node scripts/verify-manual-paths.ts` (T-66: a path-shaped token this manual spells in a code span is AUDITED only when its first segment is an entry at the repo root; a non-root-anchored or non-literal token is counted in its own bucket and NEVER fails — so it catches a wrong ROOT-relative path, not a wrong package-relative spelling) | any edit to this manual |
 | Extension CLI | `bun scripts/mpd-ext.ts --self-test` + `bun scripts/mpd-ext.ts validate extensions/mpd-ext-example` (exit 0; a deliberately broken extension MUST exit 1 with per-item errors) | any extension-interface/manifest/CLI change |
 | Boot check (MOUNT) | a boot that really applies the rows in an isolated `DSH_HOME` + sandbox `HOME` — e.g. `bun skills/dsh-qa/scripts/bundle-lifecycle.ts` (host rows) and `node skills/dsh-qa/scripts/preset-conformance.ts` (the `mpd` preset's standing mount + every harness-owned row config; its negative control proves the assertion is falsifiable) | any patch change, any preset/row change, and REQUIRED for any tool-schema change |
 | Composition only | `node scripts/dump-config.ts --profile <p>` (repo wrapper around the raw harness flag: prints the composition-only banner itself and propagates the child's exit code) | whenever a row/preset composition question is asked |
-| **Docker real-machine (LAST step)** | `bun run verify:docker` (`node scripts/docker-e2e.ts`; flags: `agent-references/verification-flow.md`). Builds a real `ubuntu:24.04` and asserts the INSTALL then the MOUNT (rows activating, tools registering, TUI, `agentPreset=mpd`). **Without a ROOTLESS Docker it PRINTS A NOTICE AND SKIPS (exit 0)**: rootless runs, rootful skips unless `--allow-rootful-docker`, an absent daemon skips, `--require-docker` makes any skip exit 3. A SKIP is not a pass. **The lane ALSO requires the USER-SURFACE arm (14b)**: `userSurface.*` rows are required in EVERY mode (witness/slash-command rules: `agent-references/verification-flow.md`); a lane that never ran them exits 3 | every release sweep, and any install/mount-path change (`files`/`dsh.*`, a patch row, `docker/**`) |
+| **Docker real-machine (LAST step)** | `bun run verify:docker` (`node scripts/docker-e2e.ts`; flags and the 14b rules: `agent-references/verification-flow.md`). Builds a real `ubuntu:24.04` and asserts the INSTALL then the MOUNT (rows activating, tools registering, TUI, `agentPreset=mpd`). **Without a ROOTLESS Docker it SKIPS (exit 0)**: rootless runs, rootful skips unless `--allow-rootful-docker`, an absent daemon skips; `--require-docker` makes any skip exit 3, and a SKIP is never a pass. **The USER-SURFACE arm (14b) is REQUIRED in every mode**: `userSurface.*` rows; a lane that never ran them exits 3 | every release sweep, and any install/mount-path change (`files`/`dsh.*`, a patch row, `docker/**`) |
 
-The full former §4 body — the same table with its long per-row measurements and reasoning, and why the
-Docker lane is LAST — is in `agent-references/verification-flow.md`.
-
-**The pack-closure bound (T-91):** a green `node scripts/verify-pack-closure.ts` certifies COMPLETENESS
-plus the BYTE IDENTITY of every file whose source did not move; **freshness is NOT what the exit code
-says** — it comes from the `expected-after-pack` list at the re-pack (T-26's discriminator: TIMESTAMP
-ORDER), and the gate's `--self-test` fixture arms are the operative evidence. Long form:
+Long form (per-row measurements, and why the Docker lane is LAST):
 `agent-references/verification-flow.md`.
 
-`--dump-config` proves COMPOSITION ONLY and never a plugin load; always use `node scripts/dump-config.ts`
-(T-31), which prints that warning itself. Long form: `agent-references/verification-flow.md`.
+**Pack-closure bound (T-91):** the exit code certifies COMPLETENESS + byte identity, **not freshness**
+(T-26's TIMESTAMP-ORDER discriminator, `expected-after-pack` at the re-pack); the `--self-test` arms are
+the operative evidence. Long form: `agent-references/verification-flow.md`.
+
+`--dump-config` proves COMPOSITION ONLY, never a plugin load: use `node scripts/dump-config.ts` (T-31).
+Long form: `agent-references/verification-flow.md`.
 
 No evidence on disk for a gate = the change is not complete. Merge to dev only after the relevant gates
 pass and their evidence is committed with the change.
 
-`bun run verify:gates` is the fast aggregate over the static gates — **ten members: vendor, dist
+`bun run verify:gates` is the fast aggregate over the static gates — **eleven members: vendor, dist
 freshness, row parity, doc pairs, preset conformance, plugin manifest, comment coverage, graph model,
-workflows, tui admission** — the one command for a patch/preset edit and the release sweep. It expects a
+workflows, tui admission, dsh-go** — the one command for a patch/preset edit and the release sweep. It expects a
 CLEAN tree: a dirty `skills/**` corpus reddens the vendor gate until the wave's single re-pin lands
 (§9/§11).
+
+**A bare `bun run verify:gates` is RED by design**: it needs the PINNED harness FIRST on `PATH` and a
+pinned `dsh-Go` checkout in `MPD_DSHGO_KIT`:
+`PATH="$PWD/.qa-tmp/dsh-022/bin:$PATH" MPD_DSHGO_KIT="$PWD/.mpd/tmp-dshgo/kit" bun run verify:gates`.
+Otherwise `preset-conformance` reddens under the ambient 0.2.1-rc.5 and `dshgo` exits 3 NOT-PASSED.
 
 ---
 
@@ -516,7 +523,7 @@ lane hold this line.
 ### Primary flow: ONE command, no extra step
 
 - **The USER-facing install is ONE command against the PUBLISHED package — no clone, no build:**
-  `dsh plugin --profile web add @mpd-dsh/mpd@0.17.5` (this release, named by explicit spec) or the
+  `dsh plugin --profile web add @mpd-dsh/mpd@0.18.0` (this release, named by explicit spec) or the
   unversioned `@mpd-dsh/mpd`, which takes whatever `latest` the registry serves;
   `dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh` is the same one
   command from the repository (and the Docker lane's proof spec, §4). pnpm packs it through the
@@ -538,7 +545,7 @@ lane hold this line.
   (the transitive `node-pty` postinstall that OLDER releases pulled is the historical reason; it has been
   gone since 0.24.1, measured 2026-10-02, and 0.28.0 ships no install script either, measured 2026-10-21
   — its row's mount guard disables it when absent). 0.28.0 requires harness 0.2.1-rc.1+ (this repo pins
-  0.2.1-rc.5), injects `["webServer","sessions","connection","tools"]`, and contributes each mpd sidebar
+  0.2.2-rc.1 and still supports 0.2.1-rc.5), injects `["webServer","sessions","connection","tools"]`, and contributes each mpd sidebar
   page twice — the primary tab plus a `bottomOnly` bottom-workbench twin (`<id>:bottom`) — with the
   official right sidebar as the fallback when the package is absent. `@ast-grep/cli` +
   `@code-yeongyu/comment-checker` left `optionalDependencies`.
@@ -598,7 +605,7 @@ lane hold this line.
 2. Full gate sweep. §4's gate table is the authority: run every row it marks for this change, plus the
    two it does not carry — `node scripts/verify-no-host-override.ts` (NOT a `verify:gates` member) and
    `node scripts/verify-manual-paths.ts` (whenever `AGENTS.md` changed) — plus the real smoke cases
-   `dual-track-smoke` and `mcp-call`. `bun run verify:gates` aggregates §4's ten static members. Two
+   `dual-track-smoke` and `mcp-call`. `bun run verify:gates` aggregates §4's eleven static members. Two
    preconditions are easy to miss: `bun run verify:vendor` only AFTER the wave's single
    `node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step` re-pin when `skills/**`
    changed, and a repo-root `bun test` (unlike `bun test packages`) also scans the `evidence/**`
@@ -625,30 +632,12 @@ lane hold this line.
 ## 12. Troubleshooting (known)
 
 The full symptom → cause/fix table lives in **`agent-references/troubleshooting.md`** (on demand, not
-injected; see the Reference Index). It is the former body of this section, moved verbatim 2026-09-17 by
-the T-22 instruction-budget split and hash-verified under `evidence/gates/agents-budget/`. It covers the
-ESM-restart trap, the fresh-`/tmp` and `nohup` rules, the single-`skills/**`-writer re-pin rule, the
-`update_task` contract, `--dump-config` vs a mounting boot, schema-union boot failures, credential/sandbox
-traps, the codegraph daemon policy, the preset-plane row-drift class, agent-teams dispatch defects, the
-failed-dependency pinning trap, write-scope overlap (advisory on the official plane, refused by mpd
-`approve`), profile-row loss after an unrelated
-install.
+injected; see the Reference Index): the former body of this section, moved verbatim 2026-09-17 by the T-22
+instruction-budget split and hash-verified under `evidence/gates/agents-budget/`.
 
-**Harness-owned frictions — CLOSED by a rule plus a helper** (user decision 2026-09-17). Each is DSH
-behaviour we do not fight; the detail and the measurements are in `agent-references/troubleshooting.md`.
-
-- **T-21** no plugin-module hot reload -> ask with `node scripts/mpd-bg.ts reload-check <module-path>`.
-- **T-23** fresh `/tmp` per bash call + `bwrap --die-with-parent` -> long work is a managed background
-  job (`run_in_background`), started through `node scripts/mpd-bg.ts run --log <file> -- <cmd>`.
-- **T-24** MCP children inherit fds -> never pipe a long-lived `dsh`; probe liveness with
-  `node scripts/mpd-bg.ts probe <pidfile>`.
-- **T-26** the file sandbox is workspace-write -> `node scripts/mpd-bg.ts check-write <path>` first.
-- **T-43** the workmate library lives under `HOME` -> QA must boot with `HOME=<sandbox>`.
-- **T-54** a sandboxed profile copy sits at the SAME directory depth as the installed profile.
-- **T-55** cite code by SYMBOL, never by line number.
-- **T-92** `sessionQualifies` must not decide "is this the captain" by PRESET NAME (see §5).
-- **T-93** a session that ever led a team stops building another -> the gate re-arms on an ENDED or
-  clean-terminal board (§1), and a `failed` task blocks both auto-end and re-team.
+**Harness-owned frictions — CLOSED by a rule plus a helper** (user decision 2026-09-17): T-21, T-23, T-24,
+T-26, T-43, T-54, T-55, T-92, T-93. Each is DSH behaviour we do not fight; its rule, helper command and
+measurement are in `agent-references/troubleshooting.md` (quick index: that file's last section).
 
 ---
 

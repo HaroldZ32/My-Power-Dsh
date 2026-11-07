@@ -1,0 +1,51 @@
+{
+  "root": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/dshgo/standard/2026-11-07T06-09-06Z/broken",
+  "lanes": [
+    {
+      "lane": "MANIFEST",
+      "findings": [
+        {
+          "rule": "id-duplicate",
+          "path": "dshGo.contributes.panels",
+          "detail": "\"dup\" is already declared by composer.strip; ids are unique per plugin across ALL slots",
+          "severity": "error"
+        }
+      ]
+    },
+    {
+      "lane": "VIEW",
+      "findings": []
+    },
+    {
+      "lane": "COMPAT",
+      "findings": [
+        {
+          "rule": "compat-view-declared",
+          "path": "dshGo.contributes.panels",
+          "detail": "no panel declares a static fallback, so a bridgeless host has nothing to draw",
+          "severity": "note"
+        }
+      ]
+    },
+    {
+      "lane": "HOST",
+      "findings": [
+        {
+          "rule": "host-sources",
+          "path": "packages/mpd-bundle-plugin/src",
+          "detail": "no host-half source found; the HOST lane cannot run",
+          "severity": "error"
+        }
+      ]
+    }
+  ],
+  "crossCheck": {
+    "status": "not-passed",
+    "detail": "NOT-PASSED: MPD_DSHGO_KIT is not set, so the official checker did not run (a cross-check that did not run is never a green). Provide a dsh-Go checkout: MPD_DSHGO_KIT=<checkout> node scripts/verify-dshgo-standard.ts",
+    "findings": [],
+    "kit": null,
+    "officialExit": null
+  },
+  "exitCode": 1,
+  "relativeSelf": "scripts/verify-dshgo-standard.ts"
+}

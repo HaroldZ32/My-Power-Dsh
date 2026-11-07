@@ -65,19 +65,18 @@ ONE_CLICK_SRC="${MPD_E2E_ONECLICK_SRC:-/opt/oneclick-src}"
 ONE_CLICK_REPO="${MPD_E2E_ONECLICK_REPO:-/opt/oneclick.git}"
 
 NODE_VERSION="${MPD_E2E_NODE_VERSION:-24.19.0}"
-# The harness pin. 0.2.1-rc.5 is the bundle's baseline: the `mpd` preset declares rows that exist only
-# in harness 0.2.1, so a 0.2.0 harness cannot mount it — keep this in step with the compose default.
-DSH_VERSION="${MPD_E2E_DSH_VERSION:-0.2.1-rc.5}"
+# The harness pin. 0.2.2-rc.1 is the bundle's baseline; 0.2.1-rc.5 stays supported and is what the
+# separate backward-compatibility boot installs. The `mpd` preset declares rows that exist only in
+# harness 0.2.1, so a 0.2.0 harness cannot mount it — keep this in step with the compose default.
+DSH_VERSION="${MPD_E2E_DSH_VERSION:-0.2.2-rc.1}"
 PNPM_VERSION="${MPD_E2E_PNPM_VERSION:-11.23.0}"
-# The DSH-TUI host. 0.18.0 is the dsh-tui release this bundle targets, and its declared peer bands run
-# through harness 0.2.1-rc.4/rc.5 — 36 of its 39 `@deepseek-ai/dsh-*` peers append both bands, where
-# 0.17.0's lists stop at 0.2.1-rc.3 and 0.16.1's at 0.2.1-rc.2 (e.g. `dsh-agent`: `… || 0.2.0-rc.2 ||
-# 0.2.1-rc.2`) — so it serves BOTH the 0.2.0-rc.2 baseline and the 0.2.1 wave. 0.15.0's bands stop at
-# 0.2.0-rc.2: a
-# `dsh plugin --profile dsh-tui add` against a 0.2.1 harness is then REFUSED on peer ranges, the same
-# failure mode measured 2026-09-29 on the 0.11.1/0.2.0-rc.1 pair (which aborted this lane,
+# The DSH-TUI host. 0.19.0 is the dsh-tui release this bundle targets: 36 of its 39 `@deepseek-ai/dsh-*`
+# peers append every band up to 0.2.2-rc.1 while keeping 0.2.1-rc.4/rc.5, so one pin serves BOTH the
+# current baseline and the older-host arm. 0.18.0's bands stop at 0.2.1-rc.5, and a
+# `dsh plugin --profile dsh-tui add` whose peer range excludes the harness pin is REFUSED on peer ranges,
+# the same failure mode measured 2026-09-29 on the 0.11.1/0.2.0-rc.1 pair (which aborted this lane,
 # evidence/docker/client-install/2026-09-29T07-07-01Z) and again 2026-10-17 on 0.15.0/0.2.1-rc.2.
-TUI_VERSION="${MPD_E2E_TUI_VERSION:-0.18.0}"
+TUI_VERSION="${MPD_E2E_TUI_VERSION:-0.19.0}"
 export TUI_VERSION
 # ── THE LIVE TEAM PROJECT: one small engineering task, built by a REAL team, on each UI plane ──
 # WHY THIS KNOB EXISTS. Every live arm above its own block proves ONE tool call. That answers "is the

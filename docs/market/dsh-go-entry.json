@@ -1,6 +1,6 @@
 {
   "name": "@mpd-dsh/mpd",
-  "version": "0.17.5",
+  "version": "0.18.0",
   "title": {
     "zh": "MPD 工作台",
     "en": "MPD Workbench"

@@ -1,0 +1,2 @@
+[preset-conformance] FAIL: self-test: conformance problems:
+  - the mpd preset does not mount active row(s) the installed standard preset mounts: tool-subagent-list-agents

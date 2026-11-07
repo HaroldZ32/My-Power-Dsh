@@ -1,0 +1,41 @@
+{
+  "case": "dshgo-standard",
+  "at": "2026-11-07T07:00:10.102Z",
+  "ok": true,
+  "checks": [
+    {
+      "name": "gate.report.parseable",
+      "ok": true,
+      "detail": "report parsed"
+    },
+    {
+      "name": "gate.static.errors",
+      "ok": true,
+      "detail": "static error findings = 0"
+    },
+    {
+      "name": "gate.crosscheck.present",
+      "ok": true,
+      "detail": "cross-check status = passed"
+    },
+    {
+      "name": "gate.exit.legal",
+      "ok": true,
+      "detail": "exit = 0"
+    },
+    {
+      "name": "control.exit.violations",
+      "ok": true,
+      "detail": "exit = 1"
+    },
+    {
+      "name": "control.rule.id-duplicate",
+      "ok": true,
+      "detail": "the gate named id-duplicate"
+    }
+  ],
+  "gateExit": 0,
+  "crossCheck": "passed",
+  "controlExit": 1,
+  "kit": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp-dshgo/kit"
+}

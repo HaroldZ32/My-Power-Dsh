@@ -103,9 +103,10 @@ contributes **two panels**: `mpd` (the workbench) and `mpd-team` (the team board
 actions** (`mpd-dispatch`, `mpd-board`) and two **message actions** (`mpd-save-memory`, `mpd-copy-reply`).
 Each panel names a hand-written STATIC fallback under `dsh-go/views/`. The manifest is declarative: the app
 draws the JSON component tree with its own renderer and executes none of this bundle's code. The whole
-block stays far under the 16 KiB ceiling, and `node scripts/verify-dshgo-views.ts` is the gate that keeps
-the ids unique, the per-slot counts legal and every declared view present, parseable and inside the panel
-budget.
+block stays far under the 16 KiB ceiling. The gate is `node scripts/verify-dshgo-standard.ts`, a standing
+`verify:gates` member: its MANIFEST and VIEW lanes keep the ids unique across slots, the per-slot counts
+legal and every declared view present, view-v1 and inside the panel budget, while its HOST lane checks the
+binding form below. [`dsh-go-standard.md`](dsh-go-standard.md) states the standard itself.
 
 ### The two panels
 
@@ -132,7 +133,10 @@ for a measured reason: the app keeps a grid two columns wide only while `(width 
 scale`, and the padded card sits under that threshold, which stacked the tiles one per row.
 
 The host half (`mpd-bundle-plugin`) registers each panel through the adapter once the DSH Go bridge is
-bound, polls at 0.5 Hz (the protocol's ceiling), and pushes a narrowed model only when it changed: ids,
+bound — the binding is ONE deferred `ctx.inject(["dshGo"], …)` in `mpd-dsh-adapter-plugin`, the bundle's
+only sanctioned harness contact, so a bridgeless host registers nothing, logs one `dshGo=absent` line and
+never polls. It then polls at 0.5 Hz (the protocol's ceiling), and pushes a narrowed model only when it
+changed: ids,
 names, statuses, counts, the question's own text and task titles: never a filesystem path, a token or a
 credential. `view` is built from a LIVE read rather than from the push cache, because the app fetches the
 view BEFORE it subscribes. The view is re-fetched only when a STRUCTURAL signature changes (the parked
@@ -206,7 +210,8 @@ remote host still renders them.
 - **The relay claims nothing a real answerer claimed.** Its behaviour when a desktop answers is proven;
   its behaviour when both a desktop and a phone are attached is "the desktop wins", by construction.
 - **A panel action needs a live session.** Without one the tap is a toast, not a queued intent.
-- **The v2 live trees are not what the repo gate lints.** `verify-dshgo-views.ts` checks the DECLARED
+- **The v2 live trees are not what the repo gate lints.** `node scripts/verify-dshgo-standard.ts` (its VIEW
+  lane) checks the DECLARED
   static views; the v2 trees the panels build at runtime are covered by the package's unit tests
   (`lintDesign` in both version modes, plus the budget walk), never by that gate.
 - **The rendered look is unproven here.** No Flutter app and no device in this workspace: the protocol
@@ -221,6 +226,11 @@ remote host still renders them.
   bilingual copy (`dshgo-copy.ts`).
 - `mpd-dsh-adapter-plugin`: the dshGo seams and the view kit (`src/dshgo-view.ts`): the component
   builders, `measureView` / `fitsBudget`, `adaptView`, `lintDesign` and `toolCard`.
+
+- The DSH-Go standard this surface conforms to — the seven slots and their caps, the per-locale text
+  limits, the view budgets, the binding requirement and the five-lane gate:
+  [`dsh-go-standard.md`](dsh-go-standard.md). The three-plane matrix (DSH core, dsh-TUI, DSH-Go) is
+  [`compatibility.md`](compatibility.md).
 
 Each package README beside the code is the contract; this page is the map. Repository-wide conventions,
 gates and the git model are in [`../AGENTS.md`](../AGENTS.md), and the commands are in

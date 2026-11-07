@@ -1,0 +1,39 @@
+# R2 repair — checks actually run (2026-11-07)
+# cwd: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+
+## AGENTS.md instruction budget
+before: 63480 B (measured at session start)
+after:  63483 B   (cap 65536, 2 KB margin -> must be <= 63488)
+
+## bare aggregate (no PATH/MPD_DSHGO_KIT inputs) — the documented default
+command: env -u MPD_DSHGO_KIT node ./scripts/verify-gates.ts
+[verify-gates] FAIL - 2/11 member gate(s) failed: preset-conformance (exit=1), dshgo (exit=3)
+EXIT=1
+
+## aggregate WITH the two env inputs
+command: PATH="$PWD/.qa-tmp/dsh-022/bin:$PATH" MPD_DSHGO_KIT="$PWD/.mpd/tmp-dshgo/kit" TMPDIR="$PWD/.qa-tmp/tmp" node ./scripts/verify-gates.ts
+[verify-gates] tui-admission out| [tui-admission] REPORT: PASS — 48 arms passed, 1 allowed deviation(s), 5 bound(s).
+[verify-gates] PASS - 11/11 member gate(s) green
+full log: 45-verify-gates-r2.log (35688 B)
+
+## docs parity
+command: bun run verify:docs
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=59 failed=0 violations=0 exempt=24 derived=3 links=626 dead=0 — PASS
+exit: 0
+
+## manual paths
+command: node scripts/verify-manual-paths.ts
+[verify-manual-paths] PASS resolved=155 over-report=70 under-report=81 declared=2 (every audited path exists; the DECLARED anticipatory class is named with its reason and counted apart; the two matcher-error directions above are reported, not merged)
+exit: 0
+
+## why the named GitHub spec could not run (M5 deferral evidence)
+command: git ls-remote --heads origin feature/upstream-0.18.0
+exit: 0  (no ref line above = the branch is NOT on origin)
+command: git log --oneline -1
+341b396b release: v0.17.5 — the panel-hygiene wave: burn-after-use rows, the scroll engine, a watchdog scene, and the dsh-TUI admission gate
+branch: feature/upstream-0.18.0
+
+## oneclick lane result (ran against the lane's local git-spec stand-in)
+evidence: evidence/docker/client-install-oneclick/2026-11-07T08-45-55Z/result.json
+ok=false total=239 passed=158 failed=1 null=80 failedNames=["pack.staticCoherence"]
+pins=nodePin=24.19.0 dsh=0.2.2-rc.1 pnpm=11.23.0 spec=git+file:///opt/oneclick.git

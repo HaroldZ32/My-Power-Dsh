@@ -1,0 +1,11 @@
+[dshgo-standard] root: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/dshgo/standard/2026-11-07T06-09-06Z/broken
+[dshgo-standard] standard: ccch1mneyyy/dsh-Go@d5ad25c5bc4c66ecacee76b3c5378db45e1db3fa (spec data under specs/dsh-go/)
+[dshgo-standard] MANIFEST: FAIL (1 error(s), 0 note(s))
+  [error] id-duplicate dshGo.contributes.panels — "dup" is already declared by composer.strip; ids are unique per plugin across ALL slots
+[dshgo-standard] VIEW: PASS (0 error(s), 0 note(s))
+[dshgo-standard] COMPAT: PASS (0 error(s), 1 note(s))
+  [note] compat-view-declared dshGo.contributes.panels — no panel declares a static fallback, so a bridgeless host has nothing to draw
+[dshgo-standard] HOST: FAIL (1 error(s), 0 note(s))
+  [error] host-sources packages/mpd-bundle-plugin/src — no host-half source found; the HOST lane cannot run
+[dshgo-standard] CROSS-CHECK: NOT-PASSED — NOT-PASSED: MPD_DSHGO_KIT is not set, so the official checker did not run (a cross-check that did not run is never a green). Provide a dsh-Go checkout: MPD_DSHGO_KIT=<checkout> node scripts/verify-dshgo-standard.ts
+[dshgo-standard] RESULT: VIOLATIONS — 2 error(s)

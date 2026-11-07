@@ -4199,6 +4199,86 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
   }
 
   /**
+   * THE SCOPED `dshGo` BRIDGE the deferred inject proved, or `undefined`.
+   *
+   * WHY A DEFERRED INJECT (R11, 2026-11-07): the DSH Go native-plugin standard binds the host half
+   * with `ctx.inject(['dshGo'], …)` — `'dshGo?'` is not cordis syntax and a top-level `inject`
+   * entry would keep a bridgeless host from starting the row at all. The bundle's own rows stay
+   * seam-only (AGENTS.md §6), so the ONE sanctioned contact file registers the binding: the
+   * INJECTED scope is what proves the service reachable (the T4-INERT-1 lesson the TUI adapter
+   * measured — a root probe can answer nothing for a service provided in another fiber), and the
+   * lazy root probe stays the fallback for a ctx that has no inject seam.
+   */
+  let scopedDshGo: any
+  /** The DSH Go bridge, preferring the one the deferred inject proved over a root read. */
+  const dshGoService = (): any => scopedDshGo ?? service("dshGo")
+
+  /**
+   * The `dshGo` late-bind subscribers that registered through {@link DshAdapter.onServiceBound}.
+   *
+   * WHY THE ADAPTER OWNS THIS SET: the standard's binding is the deferred inject, so the callback
+   * that PROVES the service is the authoritative wake-up. The raw `internal/service` bus stays as
+   * the other path (an older harness, or a rebind), and a subscriber can be woken by both — every
+   * consumer's attempt is idempotent, so a duplicate wake costs nothing, while a bus event that
+   * arrives before the inject resolved would otherwise leave the surface absent forever.
+   */
+  const dshGoBoundCallbacks = new Set<(name: string) => void>()
+
+  /**
+   * Wake every `dshGo` late-bind subscriber this adapter registered.
+   *
+   * One throwing consumer must never stop the others from publishing their surface.
+   * @returns nothing.
+   */
+  const notifyDshGoBound = (): void => {
+    for (const callback of [...dshGoBoundCallbacks]) {
+      try {
+        callback("dshGo")
+      } catch {
+        /* one consumer's failure must not silence the seam's other subscribers */
+      }
+    }
+  }
+
+  /**
+   * Register THE one deferred `ctx.inject(["dshGo"], …)` binding for this adapter.
+   *
+   * A host that is not the DSH Go app never fires the callback, so nothing is registered, nothing
+   * polls and no line is written. An inject call that throws, or a callback whose scoped ctx
+   * answers neither form, leaves `scopedDshGo` undefined: the seams then read the root probe,
+   * which is exactly the bridgeless/older path, so a construction can never fail over a seam.
+   * @returns nothing; {@link scopedDshGo} carries the result.
+   */
+  const bindDshGoBridge = (): void => {
+    if (typeof ctx?.inject !== "function") return
+    try {
+      ctx.inject(["dshGo"], (scoped: any) => {
+        if (scopedDshGo !== undefined && scopedDshGo !== null) return
+        // The property read THROWS on a cordis ctx that did not declare the service, so both forms
+        // are probed in their own guards — the same shape `whenSettingsAvailable` uses.
+        try {
+          scopedDshGo = scoped?.dshGo
+        } catch { /* fall through to the ctx.get form */ }
+        if (scopedDshGo === undefined || scopedDshGo === null) {
+          try {
+            scopedDshGo = typeof scoped?.get === "function" ? scoped.get("dshGo", false) : undefined
+          } catch { /* the scoped ctx answers neither form */ }
+        }
+        // A callback that fired but yielded no service leaves the root probe in charge; null is
+        // normalised so the seams have ONE absent value to reason about.
+        if (scopedDshGo === undefined || scopedDshGo === null) {
+          scopedDshGo = undefined
+          return
+        }
+        notifyDshGoBound()
+      })
+    } catch {
+      // An unusable inject seam leaves the lazy root probe in charge; a bridgeless host stays absent.
+    }
+  }
+  bindDshGoBridge()
+
+  /**
    * The LIVE `mpdConfig` agent-route resolver, or `undefined` when the composition mounts no config row.
    *
    * WHY THE ADAPTER ROW CAN READ IT (measured, this wave): `mpd-config` provides `mpdConfig`
@@ -5121,6 +5201,79 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
   }
 
   /**
+   * Whether a tools registry takes the BATCH `execute` contract harness 0.2.2 introduced.
+   *
+   * WHY A CAPABILITY AND NOT A VERSION: `execute` itself is arity-identical in both supported lines
+   * (one argument), so the method cannot be introspected directly, and a version string would be a
+   * constant this bundle would have to keep in step with every upstream release. 0.2.2 ADDED
+   * `executable()` and `resolve()` to the service (and removed `executionMode()`), so either member is
+   * an observable capability only a batch-shaped registry answers. Nothing here is learned by
+   * throwing, so a genuine tool error can never be mistaken for a shape mismatch.
+   *
+   * @param registry - the tools service, or an agent-scoped registry on the same seam.
+   * @returns true when the registry must be asked with `{ calls: [...] }`.
+   */
+  function toolRegistrySpeaksBatch(registry: unknown): boolean {
+    /** The registry read through the loose member shapes every harness generation is probed with. */
+    const candidate = registry as { executable?: unknown; resolve?: unknown } | null | undefined
+    return typeof candidate?.executable === "function" || typeof candidate?.resolve === "function"
+  }
+
+  /**
+   * Execute ONE tool call through a tools registry in the shape THAT registry takes.
+   *
+   * THE TWO CONTRACTS (measured against the installed packages, never the release notes):
+   *   · 0.2.1 — `execute({ callId, name, arguments, signal?, agent? })` answers one
+   *     `ToolExecutionResult`;
+   *   · 0.2.2 — `execute({ calls: [{ type: "tool-call", id, name, arguments }], signal, agent? })`
+   *     answers a `ToolBatchResult`, where `calls[].arguments` is the RAW JSON STRING and
+   *     `results[0].result` is the SAME `ToolExecutionResult` type — so {@link projectToolResult}
+   *     reads either answer unchanged.
+   *
+   * The call id, the parsed arguments and the optional calling agent keep their exact meanings in
+   * both shapes; only the envelope and the argument ENCODING differ, which is why the raw string is
+   * serialized here and nowhere else.
+   *
+   * @param registry - the tools service, or an agent-scoped registry on the same seam.
+   * @param input - the tool name, parsed arguments, call id, cancellation and optional calling agent.
+   * @returns the per-call `ToolExecutionResult` the caller projects.
+   */
+  async function executeToolCall(
+    registry: { execute: (payload: unknown) => unknown },
+    input: { name: string; arguments?: unknown; callId: string; signal?: AbortSignal; agent?: unknown },
+  ): Promise<unknown> {
+    /** The arguments in the batch contract's encoding: a RAW JSON STRING, never an object. */
+    const rawArguments = input.arguments === undefined
+      ? "{}"
+      : typeof input.arguments === "string" ? input.arguments : JSON.stringify(input.arguments)
+    /** The tail both shapes share: the calling agent, present only when the caller supplied one. */
+    const common = {
+      ...(input.agent === undefined ? {} : { agent: input.agent }),
+    }
+    if (!toolRegistrySpeaksBatch(registry)) {
+      return await registry.execute({
+        name: input.name,
+        arguments: input.arguments ?? {},
+        callId: input.callId,
+        ...(input.signal === undefined ? {} : { signal: input.signal }),
+        ...common,
+      })
+    }
+    /** The batch answer; `signal` is REQUIRED there, so an absent caller signal becomes a live one. */
+    const batch = await registry.execute({
+      calls: [{ type: "tool-call", id: input.callId, name: input.name, arguments: rawArguments }],
+      signal: input.signal ?? new AbortController().signal,
+      ...common,
+    }) as { results?: readonly { result?: unknown }[] } | undefined
+    /**
+     * The call's own outcome. The batch contract answers ONE result per input call, so the index-0
+     * read is total; a defensive `undefined` (an empty answer) projects as an empty success, which is
+     * the same shape the single-call path would produce for a tool that returned nothing.
+     */
+    return batch?.results?.[0]?.result
+  }
+
+  /**
    * Execute ONE tool for ONE agent, preferring that agent's own scoped registry.
    *
    * The order matters and is the whole reason this helper exists: an agent-scoped row's
@@ -5145,8 +5298,8 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     const scoped = input.agent === undefined ? undefined : scopedToolRegistry(input.agent)
     if (scoped !== undefined) {
       try {
-        /** The harness's own result, from the agent-scoped registry. */
-        const raw = await scoped.execute({
+        /** The harness's own result, from the agent-scoped registry, in THAT registry's shape. */
+        const raw = await executeToolCall(scoped, {
           name: input.name,
           arguments: input.arguments ?? {},
           callId,
@@ -5201,7 +5354,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       /** The harness user-questions service snapshot: the seam `askUserQuestion` drives. */
       const questionService = service("userQuestions")
       /** The DSH Go bridge snapshot; absent on every host that is not the DSH Go app. */
-      const dshGoService = service("dshGo")
+      const dshGoBridge = dshGoService()
       /** One live Agent, the sample every live-registry flag is probed against. */
       const sample = liveAgents()[0]
       /** That Agent's own scoped context, probed for the per-agent flags. */
@@ -5289,7 +5442,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         // Both are optional SERVICES rather than event seams, so each flag names exactly the
         // probe its method performs; the methods re-probe per call, so a late bind is seen.
         askUser: questionService !== undefined && questionService !== null,
-        dshGo: dshGoService !== undefined && dshGoService !== null,
+        dshGo: dshGoBridge !== undefined && dshGoBridge !== null,
       }
     },
 
@@ -5636,7 +5789,14 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
      * @returns a disposer removing the subscription.
      */
     onServiceBound(names: readonly string[], callback: (name: string) => void): () => void {
-      if (typeof ctx?.on !== "function") return () => {}
+      /** Whether the deferred `dshGo` inject can wake this subscription (the standard's channel). */
+      const tracksDshGo = names.includes("dshGo")
+      if (tracksDshGo) dshGoBoundCallbacks.add(callback)
+      /** Stop tracking this callback; safe to call after the bus disposer already ran. */
+      const release = (): void => {
+        if (tracksDshGo) dshGoBoundCallbacks.delete(callback)
+      }
+      if (typeof ctx?.on !== "function") return release
       /** The binding subscription's disposer, degraded to a no-op when the bus returned none. */
       const off = ctx.on("internal/service", (name: unknown) => {
         try {
@@ -5645,7 +5805,12 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
           /* a throwing listener must not break the runtime's own binding dispatch */
         }
       })
-      return typeof off === "function" ? off : () => {}
+      /** The bus's own disposer, or a no-op when the runtime answered none. */
+      const offBus = typeof off === "function" ? off : (): void => {}
+      return (): void => {
+        release()
+        offBus()
+      }
     },
 
     /**
@@ -5730,7 +5895,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     /** Whether the DSH Go bridge is bound right now; see the interface member for the contract. */
     dshGoPresent(): boolean {
       /** The bridge service, or undefined when this host is not DSH Go. */
-      const bridge = service("dshGo")
+      const bridge = dshGoService()
       return bridge !== undefined && bridge !== null
     },
 
@@ -5742,7 +5907,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
      */
     dshGoPanel(id: string, spec: DshGoPanelSpec): boolean {
       /** The bridge service, or undefined when this host is not DSH Go. */
-      const bridge = service("dshGo")
+      const bridge = dshGoService()
       if (bridge === undefined || bridge === null || typeof bridge.panel !== "function") {
         warnDshGo(`panel "${id}" not published — the bridge service is absent or exposes no panel()`)
         return false
@@ -5759,7 +5924,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     /** Ask the bridge to re-render one panel; a no-op (never a throw, never a log) without one. */
     dshGoRefresh(id: string): void {
       /** The bridge service, or undefined when this host is not DSH Go. */
-      const bridge = service("dshGo")
+      const bridge = dshGoService()
       if (bridge === undefined || bridge === null || typeof bridge.refresh !== "function") return
       try {
         bridge.refresh(id)
@@ -5776,7 +5941,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
      */
     dshGoOn(id: string, handler: DshGoHandler): boolean {
       /** The bridge's own `on`, or undefined when this host is not DSH Go. */
-      const on = callableMember(service("dshGo"), "on")
+      const on = callableMember(dshGoService(), "on")
       if (on === undefined) {
         warnDshGo(`action "${id}" not registered — the bridge service is absent or exposes no on()`)
         return false
@@ -5793,7 +5958,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     /** Publish one strip's data function; see the interface member for the contract. */
     dshGoStrip(id: string, dataFn: DshGoStripData): boolean {
       /** The bridge's own `strip`, or undefined when this host is not DSH Go. */
-      const strip = callableMember(service("dshGo"), "strip")
+      const strip = callableMember(dshGoService(), "strip")
       if (strip === undefined) {
         warnDshGo(`strip "${id}" not published — the bridge service is absent or exposes no strip()`)
         return false
@@ -5813,7 +5978,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
      */
     dshGoCaps(): DshGoCaps | null {
       /** The bridge service, or undefined when this host is not DSH Go. */
-      const bridge = service("dshGo")
+      const bridge = dshGoService()
       if (bridge === undefined || bridge === null) {
         warnDshGo("capabilities are unavailable — the bridge service is absent")
         return null
@@ -5869,8 +6034,8 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       /** The caller's signal, or a per-call timeout so no tool can hang a turn. */
       const signal = input.signal ?? timeoutSignal(input.timeoutMs ?? defaultTimeoutMs)
       try {
-        /** The harness's own result object, projected just below. */
-        const raw = await tools.execute({
+        /** The harness's own result object, asked in the shape the INSTALLED registry takes. */
+        const raw = await executeToolCall(tools, {
           name: input.name,
           arguments: input.arguments ?? {},
           callId,

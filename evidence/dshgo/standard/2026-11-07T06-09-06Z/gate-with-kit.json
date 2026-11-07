@@ -1,0 +1,37 @@
+{
+  "root": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "lanes": [
+    {
+      "lane": "MANIFEST",
+      "findings": []
+    },
+    {
+      "lane": "VIEW",
+      "findings": []
+    },
+    {
+      "lane": "COMPAT",
+      "findings": []
+    },
+    {
+      "lane": "HOST",
+      "findings": []
+    }
+  ],
+  "crossCheck": {
+    "status": "passed",
+    "detail": "PASSED: verdicts agree — official check.mjs exit=1 stops=false (array-patch false negative excluded: the official checker requires a string patch, DSH allows an array and this gate verified every path); this gate stops=false",
+    "findings": [
+      {
+        "rule": "crosscheck-normalized",
+        "path": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+        "detail": "the official checker's only blocking item was its string-only `dsh.bundle.patch` assumption; every declared patch path is resolved by the MANIFEST lane",
+        "severity": "note"
+      }
+    ],
+    "kit": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp-dshgo/kit",
+    "officialExit": 1
+  },
+  "exitCode": 0,
+  "relativeSelf": "scripts/verify-dshgo-standard.ts"
+}

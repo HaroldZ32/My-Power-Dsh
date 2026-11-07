@@ -1,0 +1,8 @@
+[preset-conformance] ok=false -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/dsh-qa/preset-conformance/2026-11-07T05-59-14.616Z
+  conformance: {"ok":false,"checked":32,"schemaFree":7,"patchFiles":["cordis.patch.yml","presets/mpd.patch.yml"],"preset":{"rowId":"preset-mpd","id":"mpd","children":29,"file":"presets/mpd.patch.yml"},"parity":{"reference":".qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-web-app/pre
+  auth: {"ok":true,"tokenSeen":true,"cookieSession":true}
+  sessionCreate: {"ok":false,"status":200,"error":{"code":"agent-preset/invalid","message":"tool-subagent-list-agents (@deepseek-ai/dsh-tool-subagent-control/list-agents): never started","details":{"agentPreset":"mpd","reason":"tool-subagent-list-agents (@deepseek-ai/dsh-tool-subagent-control/list-agents): never sta
+  sessionHeader: {"ok":false,"agentPreset":null,"log":null}
+  bootLog: {"ok":true,"signatures":[]}
+  negativeControl: {"ok":true,"code":"agent-preset/invalid","message":"persona (@deepseek-ai/dsh-persona): invalid config:\n  - $.prefix missing required value (at prefix)\ntool-subagent-list-agents (@deepseek-ai/dsh-tool-subagent-control/list-agents): never started","mutations":["preset-mpd row: persona prefix: -> te
+preset-conformance exit=1
