@@ -986,7 +986,9 @@ export interface PanelViewport {
  * The shape that avoids it: a ref holds the offset as the single live authority (a gesture between renders
  * must move the position the NEXT gesture measures from), the state cell exists only to make the host
  * re-render, and every clamp reads the page's sizes through `read()` so there is exactly ONE generation of
- * numbers — whichever render's closure is asking.
+ * numbers — whichever render's closure is asking. The cell's value is a monotonically advancing TICK,
+ * never the offset: both axes may commit the same number, and an Object.is-equal write would be a React
+ * bail-out that leaves the move undrawn.
  *
  * NO SNAPSHOT IS RETURNED: `offset`, `max` and `max` are derived inside `band()`, which runs on every read
  * and every render, so a caller can never hold a stale copy of the position.
@@ -1018,10 +1020,24 @@ export function usePanelViewport(
   // it must occupy its own stable slot, created before any handler that reads it.
   /** The live COLUMN offset: the horizontal window's single authority. */
   const liveCol = kit.React.useRef(0)
-  /** The state cell, whose value MIRRORS the ref and exists to make the host re-render this page. */
-  const cell = kit.React.useState(initialOffset)
+  /**
+   * The state cell, whose value is the RENDER TICK and NEVER the offset.
+   *
+   * The cell exists only to make the host re-render this page, so it must change on every commit. An
+   * earlier shape stored the clamped offset here, and a second axis committing the same number was
+   * Object.is-equal to the first: React bailed out and the horizontal move stayed invisible until an
+   * unrelated render.
+   */
+  const cell = kit.React.useState(0)
   /** The setter, proved callable before any handler is built around it. */
   const set = cell[1] as (next: number) => void
+  /**
+   * The render tick, advanced by every commit on either axis.
+   *
+   * The host-React interface has no generic on `useRef`, so the number is asserted at this ONE
+   * initialised cell rather than spelled as a type argument the host cannot take.
+   */
+  const tick = kit.React.useRef(0) as { current: number }
   /**
    * The page's sizes for THIS render, captured through a ref so a handler written in an earlier render
    * still clamps against the CURRENT page. The assignment runs on every render, which is what keeps it
@@ -1099,7 +1115,10 @@ export function usePanelViewport(
     /** The clamped target. */
     const clamped = clampScroll(next, now.contentRows, now.viewportRows).offset
     if (live !== null && live !== undefined) live.current = clamped
-    set(clamped)
+    // THE TICK, NOT THE OFFSET: the host re-renders on a NEW cell value, and two commits may legitimately
+    // clamp to the same offset.
+    tick.current += 1
+    set(tick.current)
   }
   /**
    * Record a new COLUMN offset, through the same two-step shape as {@link commit}.
@@ -1118,7 +1137,10 @@ export function usePanelViewport(
     /** Where the column position lands. */
     const target = Math.min(clamped.max, Math.max(0, wanted))
     if (liveCol !== null && liveCol !== undefined) liveCol.current = target
-    set(target)
+    // THE TICK, NOT THE OFFSET: a column commit at a number the row axis already committed must still
+    // produce a NEW cell value, or React's Object.is bail-out swallows the horizontal move entirely.
+    tick.current += 1
+    set(tick.current)
   }
   /**
    * The handle every caller addresses, with LIVE getters.

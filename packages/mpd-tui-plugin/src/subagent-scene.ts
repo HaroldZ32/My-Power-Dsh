@@ -51,8 +51,8 @@
 //
 // This file never imports React: it uses `props.React.createElement` (the documented always-safe
 // form), so it cannot drag a second React copy under the host's reconciler.
-import type { TuiScenePropsLike } from "./types.js"
-import { clampCells } from "./sanitize.js"
+import type { TuiScenePropsLike } from "./types.ts"
+import { clampCells } from "./sanitize.ts"
 // THE ROW BUILDER LIVES IN ITS OWN MODULE (`.mpd/plans/tui-panel-wave.md` §4 lane L4): this scene and
 // the sidebar page render the SAME rows, so the projection, the burn projection and the compact row
 // text are imported from `subagent-rows.ts` rather than re-derived here.
@@ -65,7 +65,7 @@ import {
   subagentRowView,
   subagentSectionOf,
   type SubagentRowView,
-} from "./subagent-rows.js"
+} from "./subagent-rows.ts"
 // THE BACK-COMPAT RE-EXPORTS. These symbols MOVED to `subagent-rows.ts`; they stay reachable through
 // this module while the other call site migrates (`panel-dag.ts` belongs to L2), so an existing import
 // keeps working and typechecks instead of breaking the wave's shared build.
@@ -87,13 +87,13 @@ export {
   subagentTeamScope,
   visibleSubagentEntries,
   visibleSubagentRows,
-} from "./subagent-rows.js"
-export type { SubagentRowEntry, SubagentRowView, SubagentSectionRow, SubagentTeamScope } from "./subagent-rows.js"
-import { layoutGraphNatural, legendLines, sliceSpans, type GraphView } from "./graph.js"
-import { modelRanks, modelRows, NO_SESSION_TEAM_MARKER, sessionIdOf, teamWorkflowLines, WORKSPACE_SCOPE_MARKER, type TeamFeedAccessor, type TeamWorkflow } from "./team-state.js"
-import { t } from "./i18n.js"
-import { legendLinesFor, panelKit, panelSurfaceWidth, SURFACE_FRAME_PADDING_X, textRow, toneColor, usePanelViewport, useTeamFeed, viewportTrack, visualGlyph, type PanelKit } from "./panel-core.js"
-import { DAG_ANIM, DAG_CHROME, DAG_TONE_GLYPH, type DagTone } from "./dag-theme.js"
+} from "./subagent-rows.ts"
+export type { SubagentRowEntry, SubagentRowView, SubagentSectionRow, SubagentTeamScope } from "./subagent-rows.ts"
+import { layoutGraphNatural, legendLines, sliceSpans, type GraphView } from "./graph.ts"
+import { modelRanks, modelRows, NO_SESSION_TEAM_MARKER, sessionIdOf, teamWorkflowLines, WORKSPACE_SCOPE_MARKER, type TeamFeedAccessor, type TeamWorkflow } from "./team-state.ts"
+import { t } from "./i18n.ts"
+import { legendLinesFor, panelKit, panelSurfaceWidth, SURFACE_FRAME_PADDING_X, textRow, toneColor, usePanelViewport, useTeamFeed, viewportTrack, visualGlyph, type PanelKit } from "./panel-core.ts"
+import { DAG_ANIM, DAG_CHROME, DAG_TONE_GLYPH, type DagTone } from "./dag-theme.ts"
 
 // ── THE SHARED SURFACE VISUAL SYSTEM ────────────────────────────────────────
 //

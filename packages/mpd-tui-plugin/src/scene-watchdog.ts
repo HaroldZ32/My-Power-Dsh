@@ -16,10 +16,10 @@
 //
 // THIS FILE NAMES NO `ctx.tui*` SERVICE: registration and the open request go through the `TuiAdapter`
 // (`packages/mpd-tui-adapter-plugin`), the ONE place a DSH-TUI service may be named (AGENTS.md §6).
-import type { PluginContextLike, SceneRegistrationHandle, SeamOutcome, TuiAdapter, TuiScenePropsLike } from "./types.js"
-import type { DagTone } from "./dag-theme.js"
-import { clampCells } from "./sanitize.js"
-import { normalizeWheelDelta, panelKit, panelSurfaceWidth, swallowWheelEvent, usePanelViewport, viewportTrack, wheelInvertOn, type PanelKit } from "./panel-core.js"
+import type { PluginContextLike, SceneRegistrationHandle, SeamOutcome, TuiAdapter, TuiScenePropsLike } from "./types.ts"
+import type { DagTone } from "./dag-theme.ts"
+import { clampCells } from "./sanitize.ts"
+import { normalizeWheelDelta, panelKit, panelSurfaceWidth, swallowWheelEvent, usePanelViewport, viewportTrack, wheelInvertOn } from "./panel-core.ts"
 // THE SCENE KIT'S SHARED BUILDERS, never a second implementation of them: `surfaceText`,
 // `surfaceFrame`, `surfaceHints`, `surfaceRule`, `chromeTitle` and `stateMarker` are what every MPD
 // scene draws with, so this surface cannot pick up a different-looking frame or row grammar.
@@ -31,7 +31,7 @@ import {
   surfaceRule,
   surfaceText,
   type SurfaceKit,
-} from "./subagent-scene.js"
+} from "./subagent-scene.ts"
 import {
   watchdogAckPress,
   watchdogBodyRows,
@@ -40,8 +40,8 @@ import {
   WATCHDOG_PANEL_TITLE,
   type WatchdogPanelDeps,
   type WatchdogTeamHead,
-} from "./panel-watchdog.js"
-import type { WatchdogView } from "./watchdog.js"
+} from "./panel-watchdog.ts"
+import type { WatchdogView } from "./watchdog.ts"
 
 /** The scene id the host opens by, and the id every `openScene` call names. */
 export const WATCHDOG_SCENE_ID = "mpd-tui-watchdog"
@@ -130,7 +130,19 @@ export function createWatchdogSceneComponent(deps: WatchdogPanelDeps): unknown {
     const ui = props?.ui as SceneUi | undefined
     /** Leaves the scene; a host without the callback gets a no-op, so a key never throws. */
     const close = typeof props?.close === "function" ? props.close : (): void => {}
-    if (React === undefined || ui === undefined || typeof React.createElement !== "function" || typeof React.useState !== "function" || typeof React.useEffect !== "function") {
+    // THE PANEL KIT IS PART OF THE GUARD: `panelKit` proves `React.createElement` and `ui.Box`/`ui.Text`
+    // callable, and the checks below add the hooks this component and the shared viewport call —
+    // `useRef` included, the member whose absence used to surface as a `TypeError` inside the viewport.
+    /** The host kit in the panel builders' shape; `undefined` means this host cannot render the scene. */
+    const panel = panelKit(React, ui)
+    if (
+      panel === undefined ||
+      React === undefined ||
+      ui === undefined ||
+      typeof React.useState !== "function" ||
+      typeof React.useEffect !== "function" ||
+      typeof React.useRef !== "function"
+    ) {
       // THE KIT IS THE HARD CONTRACT: render nothing rather than crash the reconciler.
       return null
     }
@@ -188,10 +200,6 @@ export function createWatchdogSceneComponent(deps: WatchdogPanelDeps): unknown {
     const contentCols = panelSurfaceWidth(measured.columns)
     // The kit is this render's own object, so recording the budget on it clamps every row built below.
     surface.maxCells = contentCols
-    /** The same host in the PANEL kit's shape, which the viewport and rail builders take. */
-    // Sound because the guard above proved `React.createElement` and the two components: the declarations
-    // differ in their React members alone, and the builders only call `createElement`.
-    const panel = panelKit(React, ui) as PanelKit
     /** How many body rows the window can show; never below one. */
     const viewportRows = Math.max(1, measured.rows - WATCHDOG_SCENE_CHROME_ROWS)
     /** The per-team rows, with the phase half the deferred read captured. */

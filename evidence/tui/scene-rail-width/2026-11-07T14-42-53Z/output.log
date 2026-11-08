@@ -133,3 +133,31 @@ DISTFRESH_EXIT=0
 ### verify-docs-parity
 [verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=59 failed=0 violations=0 exempt=24 derived=3 links=626 dead=0 — PASS
 DOCS_EXIT=0
+
+==================================================================
+ROUND 3 — CodeRabbit round-1 reconciliation — 2026-11-08T11:25:35Z
+==================================================================
+### bun test packages/mpd-tui-plugin
+(skip) team-workflow projection (read-only, from the OFFICIAL live readout) > the REAL record of this session's own team projects without a hand-built object
+
+ 686 pass
+ 1 skip
+ 0 fail
+ 16739 expect() calls
+Ran 687 tests across 30 files. [13.13s]
+TEST_EXIT=0
+### bun run typecheck
+$ tsgo --noEmit
+TYPECHECK_EXIT=0
+### verify:comments
+scanned 614 TypeScript file(s) of 614 in the source set; inspected 55185 declaration(s); skipped 26970 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+COMMENTS_EXIT=0
+### verify-dist-fresh
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] ok: 34/34 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 743ms
+DISTFRESH_EXIT=0
+### verify-docs-parity
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=59 failed=0 violations=0 exempt=24 derived=3 links=626 dead=0 — PASS
+DOCS_EXIT=0

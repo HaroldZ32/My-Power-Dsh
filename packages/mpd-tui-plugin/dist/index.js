@@ -6291,8 +6291,9 @@ function panelScrollKey(event) {
 function usePanelViewport(kit, read, initialOffset = 0) {
   const live = kit.React.useRef(initialOffset);
   const liveCol = kit.React.useRef(0);
-  const cell = kit.React.useState(initialOffset);
+  const cell = kit.React.useState(0);
   const set2 = cell[1];
+  const tick = kit.React.useRef(0);
   const facts = kit.React.useRef({ contentRows: 1, viewportRows: 1 });
   const rowDrag = kit.React.useRef(undefined);
   const colDrag = kit.React.useRef(undefined);
@@ -6324,7 +6325,8 @@ function usePanelViewport(kit, read, initialOffset = 0) {
     const clamped = clampScroll(next, now.contentRows, now.viewportRows).offset;
     if (live !== null && live !== undefined)
       live.current = clamped;
-    set2(clamped);
+    tick.current += 1;
+    set2(tick.current);
   };
   const commitCol = (next) => {
     const clamped = colBand();
@@ -6332,7 +6334,8 @@ function usePanelViewport(kit, read, initialOffset = 0) {
     const target = Math.min(clamped.max, Math.max(0, wanted));
     if (liveCol !== null && liveCol !== undefined)
       liveCol.current = target;
-    set2(target);
+    tick.current += 1;
+    set2(tick.current);
   };
   const handle = {
     get contentRows() {
@@ -10833,7 +10836,8 @@ function createWatchdogSceneComponent(deps) {
     const React = props?.React;
     const ui = props?.ui;
     const close = typeof props?.close === "function" ? props.close : () => {};
-    if (React === undefined || ui === undefined || typeof React.createElement !== "function" || typeof React.useState !== "function" || typeof React.useEffect !== "function") {
+    const panel = panelKit(React, ui);
+    if (panel === undefined || React === undefined || ui === undefined || typeof React.useState !== "function" || typeof React.useEffect !== "function" || typeof React.useRef !== "function") {
       return null;
     }
     const surface = { React, ui };
@@ -10863,7 +10867,6 @@ function createWatchdogSceneComponent(deps) {
     const measured = typeof ui.useTerminalSize === "function" ? ui.useTerminalSize() : { columns: 80, rows: 24 };
     const contentCols = panelSurfaceWidth(measured.columns);
     surface.maxCells = contentCols;
-    const panel = panelKit(React, ui);
     const viewportRows = Math.max(1, measured.rows - WATCHDOG_SCENE_CHROME_ROWS);
     const teams = watchdogTeamRows(read.view, () => read.team);
     const rows = watchdogBodyRows({

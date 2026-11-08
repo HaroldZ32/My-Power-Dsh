@@ -1908,6 +1908,7 @@ was unusable. It moves no version pin, adds no seam and touches no host internal
 | Subject | Before | After |
 |---|---|---|
 | §3.4 — the scenes' rails | the sidebar pages' rails scrubbed under the drag protocol; every full-screen scene rail was drawn but INERT — no drag, no click, and the horizontal rails were bare `Text`s with no element to hang a handler on | every scene rail comes from the ONE shared builder the pages use (`viewportTrack` → `viewportGutter`/`viewportRail`): delta drag anchored at the press origin, click-to-jump on the vertical track, and the horizontal rail is a Box carrying the same three phases |
+| §3.4 — the viewport's re-render trigger | the shared viewport kept its re-render trigger in a state cell holding the CLAMPED OFFSET, so a row commit and a column commit that landed on the SAME number made the second `set` Object.is-equal — React bailed out and the column move stayed undrawn until something else rendered | the cell carries a MONOTONIC TICK advanced on every commit, so both axes always render; a regression arm commits `1` on each axis in turn and asserts the cell keeps advancing while the getters read `1`/`1` |
 | §3.4 — the wide DAG's horizontal band | the band opened (a natural drawing wider than the interior panned) but its rail could not be dragged, so the pan was reachable from the keyboard only | the band stays open and its rail is DRAGGABLE, so a wide DAG is panned with the mouse; the boxed picture is kept (the shipped "boxes whenever two node columns fit" rule) and the dense-rail list still appears only when they cannot |
 | §3.4 / §3.5 — the scene frame's width budget | scenes built rows and rails at the RAW terminal columns while `surfaceFrame` spends 2 border + 2 padding cells, and `surfaceText` never clamped — the host WRAPPED the overflow into visual rows the vertical window never counted, the frame grew past the terminal and the rail spilled into neighbouring rows | ONE derived interior (`panelSurfaceWidth(columns)` = columns − border 2 − `paddingX` 2), threaded into every scene row and rail builder; `surfaceText`/`surfaceBodyRow` carry `maxCells`; `FALLBACK_COLS` can no longer overdraw a measured terminal |
 | §3.4 — the merged (subagents) scene | horizontal rail built at the raw columns (4 cells over the interior) and drawn as a bare `Text` | built at the interior, an element carrying the drag phases |
@@ -1915,9 +1916,9 @@ was unusable. It moves no version pin, adds no seam and touches no host internal
 | §11.12's two PARKED scroll sites | the plan scene's missing scrollbar and the subagents scene's uncapped vertical tail, both PARKED | the plan one is FIXED; the subagents vertical tail stays PARKED — that scene has no viewport-height window, so a vertical rail would describe a band that does not exist |
 | The suite's scene width arms | asserted `cellWidth(row) <= columns` — the width the scene was TOLD, so a 4-cell overflow passed silently | retightened to the INTERIOR, plus a narrow-interior arm and an arm at a terminal no wider than 20 columns that discriminates the `FALLBACK_COLS` gate |
 
-**Measured.** `bun test packages/mpd-tui-plugin` **685 pass / 1 skip / 0 fail** (686 tests, 30 files; the
+**Measured.** `bun test packages/mpd-tui-plugin` **686 pass / 1 skip / 0 fail** (687 tests, 30 files; the
 wave's baseline was 675/1/0), `bun run typecheck` exit 0, `bun run verify:comments` PASS (614 files /
-55,178 declarations), and `node scripts/verify-dist-fresh.ts` reports **34/34 targets fresh**. **Bounds:**
+55,185 declarations), and `node scripts/verify-dist-fresh.ts` reports **34/34 targets fresh**. **Bounds:**
 no live TTY and no real-mouse capture — the proof is the rendered element tree plus the package suite,
 exactly as §11.12's bound states — and the horizontal rail carries no `onClick` (the three drag phases
 only), because that is what the sidebar's shared builder offers; adding click-to-position there would
