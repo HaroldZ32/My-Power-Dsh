@@ -50,6 +50,7 @@ import { DAG_ANIM, DAG_CHARS, DAG_CHROME, DAG_STATE_TONES, DAG_TONE_GLYPH, DAG_T
 import { GRAPH_THEME, layoutGraphNatural, legendLines } from "../src/graph"
 import { legendLinesFor } from "../src/panel-core"
 import { cellWidth } from "../src/sanitize"
+import { panelSurfaceWidth } from "../src/panel-core"
 import { readBoardState, statusLine } from "../src/state"
 import { STATUS_MAX_CELLS, statusMarker, statusVisualLine } from "../src/status"
 import { readRecordWorkflow } from "../src/team-state"
@@ -546,7 +547,10 @@ describe("every layout row fits the viewport it was laid out for", () => {
       /** This render's layout rows. */
       const rows = layoutRows(kit.last())
       expect(rows.length).toBeGreaterThan(0)
-      for (const row of rows) expect(cellWidth(rowText(row))).toBeLessThanOrEqual(columns)
+      // THE INTERIOR, NOT THE WIDTH THE SCENE WAS TOLD (frozen criterion W3): `columns` is the
+      // terminal, and the frame's own 2 border + 2 padding cells come OUT of it. The old form compared
+      // against `columns` and was therefore blind to exactly the four-cell overdraw this wave removes.
+      for (const row of rows) expect(cellWidth(rowText(row))).toBeLessThanOrEqual(panelSurfaceWidth(columns))
     }
   })
 
@@ -597,7 +601,9 @@ describe("every layout row fits the viewport it was laid out for", () => {
         /** This render's drawing rows. */
         const rows = graphRows(kit.last())
         expect(rows.length).toBeGreaterThan(0)
-        for (const row of rows) expect(cellWidth(row)).toBeLessThanOrEqual(columns)
+        // THE SAME INTERIOR BUDGET for the merged scene: its DAG rows are cut to `panelSurfaceWidth`
+        // and its prose rows are clamped by the kit, so a wide drawing can no longer widen a row.
+        for (const row of rows) expect(cellWidth(row)).toBeLessThanOrEqual(panelSurfaceWidth(columns))
       }
     }
   })
@@ -627,7 +633,7 @@ describe("a CJK fixture does not shear the layout", () => {
       render(kit, components[TEAM_SCENE_ID])
       /** The drawing as the SCENE windowed it: every row is the viewport's own width. */
       const drawn = graphRows(kit.last())
-      for (const row of drawn) expect(cellWidth(row)).toBeLessThanOrEqual(columns)
+      for (const row of drawn) expect(cellWidth(row)).toBeLessThanOrEqual(panelSurfaceWidth(columns))
       // THE DRAWING ITSELF, read from the layout, where the borders are still closed. The board is the
       // SAME one the scene drew, in the drawing's own vocabulary — built here rather than read back out
       // of the record, whose `blockedBy` is the STORE's field name and not the layout's.

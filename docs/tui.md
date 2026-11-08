@@ -572,9 +572,31 @@ the host's frame loop is `null` — paused — when nothing runs. The merged boa
 at all, gained the same window and rail. **Bounds:** the pinned head — title, scope, tally, wrapped
 roster, hold, graph header — is NOT windowed, so a terminal shorter than head+chrome can still clip it
 (queued for a later wave), and no live TTY capture of the animation was obtained; the proof is the
-rendered element tree, the package suite and the typecheck (§11.12). Two OTHER scroll sites were audited
-and **PARKED, not fixed** — the subagents scene's uncapped vertical tail and the plan scene's missing
-scrollbar (`evidence/tui/panel-wave/audit-parked/result.json`) — and neither may be counted as fixed.
+rendered element tree, the package suite and the typecheck (§11.12). Of the two OTHER scroll sites that
+wave audited (`evidence/tui/panel-wave/audit-parked/result.json`): the **plan scene's missing scrollbar is
+FIXED** by §11.14 (it now draws a clamped, draggable rail), while the **subagents scene's uncapped vertical
+tail stays PARKED** — that scene has no viewport-height window to describe, so a vertical rail there would
+report a band that does not exist; adding one together with a real window is what closes it, not drawing a
+bar over an unwindowed tail.
+
+**Since the 2026-11-07 wave (§11.14) the full-screen scenes obey the same budget and the same gestures as
+the sidebar pages.** Every scene row is built against ONE derived interior width
+(`panelSurfaceWidth(columns)` — the terminal columns minus the surface frame's own chrome: two border
+cells and `paddingX: 1` on each side), and `surfaceText`/`surfaceBodyRow` clamp to it, so a long tally,
+roster or notice sentence can no longer WRAP into visual rows the vertical window never counted and push
+the frame past the terminal. That wrap is the mechanism behind the torn, deformed frame the user reported.
+The merged scene's four-column overdraw is gone with it, and the DAG-vs-rail choice keeps the
+shipped rule (boxes whenever two node columns fit; the rest is reached by horizontal pan), so a wide DAG
+still shows its picture and its HORIZONTAL scrollbar. Every scene rail — six elements across those five
+scenes, since the team scene carries both axes — is drawn by the ONE shared builder the pages use:
+`viewportTrack`, which is `viewportGutter` with click-to-jump on the ROW axis and `viewportRail` on the
+COLUMN axis, so every rail, the horizontal one included, scrubs under the same
+`onDragStart`/`onDragMove`/`onDragEnd` delta protocol. The scene wheel handlers that exist (board rows,
+the team graph box, the plan rows, the watchdog rows) swallow the event and honour `tui.wheelInvert`; the
+merged scene binds no wheel handler. **Bounds:** this is proved on the rendered element tree and the
+package suite, not on a live TTY with a real mouse (§11.12's bound carries over), and the corner `░`
+residue may additionally involve host repaint across a width change — no fixed-size PTY capture was made,
+so it stays a declared bound.
 
 - **The drawing is THIS SESSION's team — the workspace's latest one is never substituted for it.** The
   defect the user reported (「我new了一个session，老session的DAG图还摆在那儿」) was that a surface picked
@@ -1875,3 +1897,34 @@ reports **PASS — 43 arms passed, 1 allowed deviation, 5 bounds**
 (`evidence/upstream/0.2.2/2026-11-07T05-45Z/probe-negotiation-0.19.0.json` and `tui-admission-019.log`).
 The bound is the same one §3 carries: this is a static admission verdict plus the host's own negotiation,
 **not** a live TTY mount, and no rendered frame is claimed here.
+
+### 11.14 Amendment after the scene rail/width wave (2026-11-07)
+
+This wave addresses the two defects a user reported against the FULL-SCREEN scenes: the horizontal
+scrollbar could not be dragged, and a wide or long scene tore the frame into a deformed shape whose rail
+was unusable. It moves no version pin, adds no seam and touches no host internal; its frozen contract is
+`.mpd/plans/tui-scene-rail-width.md`.
+
+| Subject | Before | After |
+|---|---|---|
+| §3.4 — the scenes' rails | the sidebar pages' rails scrubbed under the drag protocol; every full-screen scene rail was drawn but INERT — no drag, no click, and the horizontal rails were bare `Text`s with no element to hang a handler on | every scene rail comes from the ONE shared builder the pages use (`viewportTrack` → `viewportGutter`/`viewportRail`): delta drag anchored at the press origin, click-to-jump on the vertical track, and the horizontal rail is a Box carrying the same three phases |
+| §3.4 — the viewport's re-render trigger | the shared viewport kept its re-render trigger in a state cell holding the CLAMPED OFFSET, so a row commit and a column commit that landed on the SAME number made the second `set` Object.is-equal — React bailed out and the column move stayed undrawn until something else rendered | the cell carries a MONOTONIC TICK advanced on every commit, so both axes always render; a regression arm commits `1` on each axis in turn and asserts the cell keeps advancing while the getters read `1`/`1` |
+| §3.4 — the wide DAG's horizontal band | the band opened (a natural drawing wider than the interior panned) but its rail could not be dragged, so the pan was reachable from the keyboard only | the band stays open and its rail is DRAGGABLE, so a wide DAG is panned with the mouse; the boxed picture is kept (the shipped "boxes whenever two node columns fit" rule) and the dense-rail list still appears only when they cannot |
+| §3.4 / §3.5 — the scene frame's width budget | scenes built rows and rails at the RAW terminal columns while `surfaceFrame` spends 2 border + 2 padding cells, and `surfaceText` never clamped — the host WRAPPED the overflow into visual rows the vertical window never counted, the frame grew past the terminal and the rail spilled into neighbouring rows | ONE derived interior (`panelSurfaceWidth(columns)` = columns − border 2 − `paddingX` 2), threaded into every scene row and rail builder; `surfaceText`/`surfaceBodyRow` carry `maxCells`; `FALLBACK_COLS` can no longer overdraw a measured terminal |
+| §3.4 — the merged (subagents) scene | horizontal rail built at the raw columns (4 cells over the interior) and drawn as a bare `Text` | built at the interior, an element carrying the drag phases |
+| §3.4 — the plan scene | NO scrollbar and an unbounded offset (`setScroll(scroll + 1)` walked past the last row into blank) | a clamped, draggable vertical rail; `j`/`k` still move ONE row and stop at the last |
+| §11.12's two PARKED scroll sites | the plan scene's missing scrollbar and the subagents scene's uncapped vertical tail, both PARKED | the plan one is FIXED; the subagents vertical tail stays PARKED — that scene has no viewport-height window, so a vertical rail would describe a band that does not exist |
+| The suite's scene width arms | asserted `cellWidth(row) <= columns` — the width the scene was TOLD, so a 4-cell overflow passed silently | retightened to the INTERIOR, plus a narrow-interior arm and an arm at a terminal no wider than 20 columns that discriminates the `FALLBACK_COLS` gate |
+
+**Measured.** `bun test packages/mpd-tui-plugin` **686 pass / 1 skip / 0 fail** (687 tests, 30 files; the
+wave's baseline was 675/1/0), `bun run typecheck` exit 0, `bun run verify:comments` PASS (614 files /
+55,185 declarations), and `node scripts/verify-dist-fresh.ts` reports **34/34 targets fresh**. **Bounds:**
+no live TTY and no real-mouse capture — the proof is the rendered element tree plus the package suite,
+exactly as §11.12's bound states — and the horizontal rail carries no `onClick` (the three drag phases
+only), because that is what the sidebar's shared builder offers; adding click-to-position there would
+change the sidebar page too. The corner `░` residue of the reported capture may additionally involve host
+repaint across a width change: no fixed-size PTY capture was made, so that part stays a declared bound,
+and the capture's title format matches no surface in this tree and shows no frame border, so it cannot be
+tied to a build — what is proved here is the wrap mechanism it is consistent with, not that exact frame.
+And the subagents scene still has NO vertical rail — it has no viewport-height window to describe, so its
+uncapped vertical tail remains the one PARKED scroll site.

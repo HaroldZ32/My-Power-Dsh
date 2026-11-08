@@ -6175,6 +6175,12 @@ function panelContentWidth(measuredColumns) {
   const columns = Math.floor(Number.isFinite(measuredColumns) ? measuredColumns : 0);
   return Math.max(1, columns - 2);
 }
+var SURFACE_FRAME_BORDER_X = 1;
+var SURFACE_FRAME_PADDING_X = 1;
+function panelSurfaceWidth(measuredColumns) {
+  const columns = Math.floor(Number.isFinite(measuredColumns) ? measuredColumns : 0);
+  return Math.max(1, columns - 2 * (SURFACE_FRAME_BORDER_X + SURFACE_FRAME_PADDING_X));
+}
 var PANEL_CHROME_ROWS = 2;
 function normalizeWheelDelta(delta, invert) {
   if (delta === 0)
@@ -6285,8 +6291,9 @@ function panelScrollKey(event) {
 function usePanelViewport(kit, read, initialOffset = 0) {
   const live = kit.React.useRef(initialOffset);
   const liveCol = kit.React.useRef(0);
-  const cell = kit.React.useState(initialOffset);
+  const cell = kit.React.useState(0);
   const set2 = cell[1];
+  const tick = kit.React.useRef(0);
   const facts = kit.React.useRef({ contentRows: 1, viewportRows: 1 });
   const rowDrag = kit.React.useRef(undefined);
   const colDrag = kit.React.useRef(undefined);
@@ -6318,7 +6325,8 @@ function usePanelViewport(kit, read, initialOffset = 0) {
     const clamped = clampScroll(next, now.contentRows, now.viewportRows).offset;
     if (live !== null && live !== undefined)
       live.current = clamped;
-    set2(clamped);
+    tick.current += 1;
+    set2(tick.current);
   };
   const commitCol = (next) => {
     const clamped = colBand();
@@ -6326,7 +6334,8 @@ function usePanelViewport(kit, read, initialOffset = 0) {
     const target = Math.min(clamped.max, Math.max(0, wanted));
     if (liveCol !== null && liveCol !== undefined)
       liveCol.current = target;
-    set2(target);
+    tick.current += 1;
+    set2(tick.current);
   };
   const handle = {
     get contentRows() {
@@ -6439,6 +6448,9 @@ function railOffset(position, travel, max) {
   return Math.round(cell / travel * span);
 }
 function viewportGutter(kit, viewport, onTrackClick) {
+  return gutterElement(kit, viewport, onTrackClick, false);
+}
+function gutterElement(kit, viewport, onTrackClick, clickToJump) {
   const cells = gutterCells(viewport.offset, viewport.contentRows, viewport.viewportRows);
   if (cells.length === 0)
     return;
@@ -6453,18 +6465,30 @@ function viewportGutter(kit, viewport, onTrackClick) {
     viewport.railDrag("row", phase, phase === "start" ? localStartCell(event, "row") : row, travel);
   };
   const dragging = { onDragStart: scrub("start"), onDragMove: scrub("move"), onDragEnd: scrub("end") };
-  if (onTrackClick === undefined)
-    return kit.React.createElement(kit.ui.Box, { key: "gutter", flexDirection: "column", width: 1, ...dragging }, ...rows);
-  return kit.React.createElement(kit.ui.Box, {
-    key: "gutter",
-    flexDirection: "column",
-    width: 1,
-    onClick: (event) => {
-      const row = typeof event?.localRow === "number" ? Math.floor(event.localRow) : 0;
-      onTrackClick(row);
-    },
-    ...dragging
-  }, ...rows);
+  if (onTrackClick !== undefined) {
+    return kit.React.createElement(kit.ui.Box, {
+      key: "gutter",
+      flexDirection: "column",
+      width: 1,
+      onClick: (event) => {
+        const row = typeof event?.localRow === "number" ? Math.floor(event.localRow) : 0;
+        onTrackClick(row);
+      },
+      ...dragging
+    }, ...rows);
+  }
+  if (clickToJump) {
+    return kit.React.createElement(kit.ui.Box, {
+      key: "gutter",
+      flexDirection: "column",
+      width: 1,
+      ...dragging,
+      onClick: (event) => {
+        viewport.scrollTo(railOffset(localCell(event, "row"), travel, viewport.max));
+      }
+    }, ...rows);
+  }
+  return kit.React.createElement(kit.ui.Box, { key: "gutter", flexDirection: "column", width: 1, ...dragging }, ...rows);
 }
 function viewportRail(kit, viewport, cols) {
   if (!viewport.colOverflow)
@@ -6481,6 +6505,11 @@ function viewportRail(kit, viewport, cols) {
   };
   const row = textRow(kit, cells, { key: "hrail", tone: "edge", maxCells: extent });
   return kit.React.createElement(kit.ui.Box, { key: "hrail-track", flexDirection: "row", onDragStart: scrub("start"), onDragMove: scrub("move"), onDragEnd: scrub("end") }, row);
+}
+function viewportTrack(kit, viewport, axis, options = {}) {
+  if (axis === "col")
+    return viewportRail(kit, viewport, options.cols ?? viewport.viewportRows);
+  return gutterElement(kit, viewport, undefined, true);
 }
 function panelViewportBody(kit, children, viewport, reserveGutter = true, rowWrapper) {
   const visible = children.slice(viewport.offset, viewport.offset + viewport.viewportRows);
@@ -8000,15 +8029,17 @@ function surfaceText(kit, key, text, style = {}) {
     key,
     ...style.tone === undefined ? {} : { tone: style.tone },
     ...style.bold === true ? { bold: true } : {},
-    ...style.dim === true && style.tone === undefined ? { dim: true } : {}
+    ...style.dim === true && style.tone === undefined ? { dim: true } : {},
+    ...style.maxCells === undefined && kit.maxCells === undefined ? {} : { maxCells: style.maxCells ?? kit.maxCells }
   });
 }
 function surfaceBodyRow(kit, key, line, overrides) {
-  if (line === "")
-    return surfaceText(kit, key, line);
-  const split = labelSplit(line);
+  const shown = kit.maxCells === undefined ? line : clampCells(line, kit.maxCells);
+  if (shown === "")
+    return surfaceText(kit, key, shown);
+  const split = labelSplit(shown);
   if (split === undefined) {
-    return surfaceText(kit, key, line, line.startsWith("  ") ? { dim: true } : {});
+    return surfaceText(kit, key, shown, shown.startsWith("  ") ? { dim: true } : {});
   }
   const label = split.label.trimEnd();
   const tone = overrides?.[label] ?? ROW_LABEL_TONE[label] ?? "dim";
@@ -8034,7 +8065,7 @@ function surfaceFrame(kit, key, title, children, tone = "dim", ref) {
     flexDirection: "column",
     width: "100%",
     flexGrow: 1,
-    paddingX: 1,
+    paddingX: SURFACE_FRAME_PADDING_X,
     borderStyle: DAG_CHROME.frameBorder,
     borderColor: toneColor(tone),
     ...ref === undefined ? {} : { ref },
@@ -8054,10 +8085,10 @@ var DETAIL_TOOL_NAMES = 8;
 function noopSubscribe() {
   return () => {};
 }
-function hostKit(React, ui) {
+function hostKit(React, ui, maxCells) {
   if (panelKit(React, ui) === undefined)
     return;
-  return { React, ui };
+  return { React, ui, ...maxCells === undefined ? {} : { maxCells } };
 }
 function measureTerminal(ui) {
   if (typeof ui.useTerminalSize !== "function")
@@ -8073,7 +8104,7 @@ function measureTerminal(ui) {
   const height = Number(rows);
   return {
     size: `${String(columns)}x${String(rows)}`,
-    cols: Number.isFinite(cols) && cols > 20 ? cols : FALLBACK_COLS,
+    cols: Number.isFinite(cols) && cols > 0 ? Math.floor(cols) : FALLBACK_COLS,
     rows: Number.isFinite(height) && height > 5 ? Math.floor(height) : FALLBACK_ROWS
   };
 }
@@ -8246,9 +8277,6 @@ function createSubagentSceneComponent(readWorkflow, onHostKit, takePendingDetail
     const detailScrollState = React.useState(0);
     const detailScroll = detailScrollState[0];
     const setDetailScroll = detailScrollState[1];
-    const graphXState = React.useState(0);
-    const graphX = graphXState[0];
-    const setGraphX = graphXState[1];
     const graphYState = React.useState(0);
     const graphY = graphYState[0];
     const setGraphY = graphYState[1];
@@ -8286,8 +8314,14 @@ function createSubagentSceneComponent(readWorkflow, onHostKit, takePendingDetail
       } catch {}
     }
     const measured = measureTerminal(ui);
-    const dagView = teamGraphView(workflow, measured.cols);
-    const dagXMax = dagView === undefined ? 0 : Math.max(0, dagView.width - measured.cols);
+    const contentCols = panelSurfaceWidth(measured.cols);
+    kit.maxCells = contentCols;
+    const panel = panelKit(props?.React, props?.ui);
+    const sizes = { contentRows: 1, viewportRows: 1 };
+    const viewport = usePanelViewport(panel, () => sizes);
+    const dagView = teamGraphView(workflow, contentCols);
+    sizes.contentCols = dagView === undefined ? contentCols : Math.max(contentCols, dagView.width);
+    sizes.viewportCols = contentCols;
     const dagYMax = dagView === undefined ? 0 : Math.max(0, dagView.lines.length - 1);
     const renderNow = now();
     const rowFilter = subagentRowFilter(workflow, sessionIdOf(channel), renderNow);
@@ -8358,11 +8392,11 @@ function createSubagentSceneComponent(readWorkflow, onHostKit, takePendingDetail
           return;
         }
         if (dagView !== undefined && key?.shift === true && key?.leftArrow === true) {
-          setGraphX(Math.max(0, Math.min(dagXMax, graphX - 1)));
+          viewport.scrollColBy(-1);
           return;
         }
         if (dagView !== undefined && key?.shift === true && key?.rightArrow === true) {
-          setGraphX(Math.max(0, Math.min(dagXMax, graphX + 1)));
+          viewport.scrollColBy(1);
           return;
         }
         if (dagView !== undefined && key?.shift === true && key?.upArrow === true) {
@@ -8374,11 +8408,11 @@ function createSubagentSceneComponent(readWorkflow, onHostKit, takePendingDetail
           return;
         }
         if (dagView !== undefined && key?.shift === true && key?.pageUp === true) {
-          setGraphX(Math.max(0, Math.min(dagXMax, graphX - measured.cols)));
+          viewport.scrollColBy(-contentCols);
           return;
         }
         if (dagView !== undefined && key?.shift === true && key?.pageDown === true) {
-          setGraphX(Math.max(0, Math.min(dagXMax, graphX + measured.cols)));
+          viewport.scrollColBy(contentCols);
           return;
         }
         if (dagView !== undefined && key?.pageUp === true) {
@@ -8463,21 +8497,19 @@ function createSubagentSceneComponent(readWorkflow, onHostKit, takePendingDetail
       }
       const view = dagView;
       if (view !== undefined) {
-        const graphXAt = Math.min(Math.max(0, graphX), dagXMax);
+        const graphXAt = viewport.colOffset;
         const graphYAt = Math.min(Math.max(0, graphY), dagYMax);
-        children.push(React.createElement(ui.Text, { key: "graphhead", dimColor: true }, safeRow(`task dependency graph${view.mode === "rail" ? " (rail)" : ""}${dagXMax > 0 ? ` ⇠${graphXAt}/${view.width}→` : ""}`)));
+        children.push(surfaceText(kit, "graphhead", `task dependency graph${view.mode === "rail" ? " (rail)" : ""}${viewport.colOverflow ? ` ⇠${graphXAt}/${view.width}→` : ""}`, { dim: true }));
         for (let index = graphYAt;index < view.lines.length; index += 1) {
-          const spans = sliceSpans(view.lines[index], graphXAt, measured.cols).map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: toneColor(span.tone) }, span.text));
+          const spans = sliceSpans(view.lines[index], graphXAt, contentCols).map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: toneColor(span.tone) }, span.text));
           children.push(React.createElement(ui.Text, { key: `graph-${index}` }, ...spans));
         }
-        if (dagXMax > 0) {
-          const rail = gutterCellsX(graphXAt, view.width, measured.cols);
-          if (rail !== "")
-            children.push(surfaceText(kit, "hrail", rail, { dim: true }));
-        }
+        const rail = viewportTrack(panel, viewport, "col", { cols: contentCols });
+        if (rail !== undefined)
+          children.push(rail);
         let arrow = [];
         try {
-          arrow = legendLines(measured.cols);
+          arrow = legendLines(contentCols);
         } catch {
           arrow = [];
         }
@@ -8486,7 +8518,7 @@ function createSubagentSceneComponent(readWorkflow, onHostKit, takePendingDetail
         }
         let legend = [];
         try {
-          legend = legendLinesFor(measured.cols, arrow);
+          legend = legendLinesFor(contentCols, arrow);
         } catch {
           legend = [];
         }
@@ -8499,7 +8531,7 @@ function createSubagentSceneComponent(readWorkflow, onHostKit, takePendingDetail
       children.push(surfaceText(kit, "notice", noticeLine, { tone: noticeLine.startsWith("interrupt requested") ? "completed" : "blocked" }));
     }
     children.push(surfaceHints(kit, "footer", detailOpen ? ["esc/backspace/q back to the list", "↑↓ scroll the output", "i interrupt the selected run", "r refresh"] : ["esc/q close", "↑↓ select", "enter detail", "i interrupt the selected run", "r refresh", "alt+a this panel", "alt+t team", "alt+m board"]));
-    const borderTitle = clampCells(chromeTitle([`${stateMarker(frameTone, phase)} ${t("scene.subagents")}`, measured.size === "" ? undefined : measured.size]), Math.max(8, measured.cols - 6));
+    const borderTitle = clampCells(chromeTitle([`${stateMarker(frameTone, phase)} ${t("scene.subagents")}`, measured.size === "" ? undefined : measured.size]), Math.max(8, contentCols - 2));
     return surfaceFrame(kit, "frame", borderTitle, children, frameTone, clock.ref);
   };
 }
@@ -10804,7 +10836,8 @@ function createWatchdogSceneComponent(deps) {
     const React = props?.React;
     const ui = props?.ui;
     const close = typeof props?.close === "function" ? props.close : () => {};
-    if (React === undefined || ui === undefined || typeof React.createElement !== "function" || typeof React.useState !== "function" || typeof React.useEffect !== "function") {
+    const panel = panelKit(React, ui);
+    if (panel === undefined || React === undefined || ui === undefined || typeof React.useState !== "function" || typeof React.useEffect !== "function" || typeof React.useRef !== "function") {
       return null;
     }
     const surface = { React, ui };
@@ -10814,9 +10847,6 @@ function createWatchdogSceneComponent(deps) {
     const flashState = React.useState(undefined);
     const flashText = typeof flashState[0] === "string" ? flashState[0] : undefined;
     const setFlash = flashState[1];
-    const scrollState = React.useState(0);
-    const scroll = typeof scrollState[0] === "number" ? scrollState[0] : 0;
-    const setScroll = scrollState[1];
     const lastAck = React.useRef(0);
     const refreshState = React.useState(0);
     const refreshToken = typeof refreshState[0] === "number" ? refreshState[0] : 0;
@@ -10835,6 +10865,8 @@ function createWatchdogSceneComponent(deps) {
       };
     }, refreshToken);
     const measured = typeof ui.useTerminalSize === "function" ? ui.useTerminalSize() : { columns: 80, rows: 24 };
+    const contentCols = panelSurfaceWidth(measured.columns);
+    surface.maxCells = contentCols;
     const viewportRows = Math.max(1, measured.rows - WATCHDOG_SCENE_CHROME_ROWS);
     const teams = watchdogTeamRows(read.view, () => read.team);
     const rows = watchdogBodyRows({
@@ -10844,8 +10876,10 @@ function createWatchdogSceneComponent(deps) {
       ...flashText === undefined ? {} : { flash: flashText },
       now: Date.now()
     });
-    const scrollMax = Math.max(0, rows.length - viewportRows);
-    const scrollAt = Math.min(Math.max(0, scroll), scrollMax);
+    const sizes = { contentRows: Math.max(1, rows.length), viewportRows };
+    const viewport = usePanelViewport(panel, () => sizes);
+    const scrollMax = viewport.max;
+    const scrollAt = viewport.offset;
     const visible = rows.slice(scrollAt, scrollAt + viewportRows);
     const acknowledgeShown = () => {
       if (!read.available)
@@ -10870,25 +10904,25 @@ function createWatchdogSceneComponent(deps) {
           return;
         }
         if (key?.upArrow === true && key?.shift === true)
-          setScroll(Math.max(0, scrollAt - 1));
+          viewport.scrollBy(-1);
         else if (key?.downArrow === true && key?.shift === true)
-          setScroll(Math.min(scrollMax, scrollAt + 1));
+          viewport.scrollBy(1);
         else if (key?.pageUp === true)
-          setScroll(Math.max(0, scrollAt - viewportRows));
+          viewport.scrollBy(-viewportRows);
         else if (key?.pageDown === true)
-          setScroll(Math.min(scrollMax, scrollAt + viewportRows));
+          viewport.scrollBy(viewportRows);
         else if (key?.home === true)
-          setScroll(0);
+          viewport.scrollTo(0);
         else if (key?.end === true)
-          setScroll(scrollMax);
+          viewport.scrollTo(Number.MAX_SAFE_INTEGER);
         else if (input === "j")
-          setScroll(Math.min(scrollMax, scrollAt + 1));
+          viewport.scrollBy(1);
         else if (input === "k")
-          setScroll(Math.max(0, scrollAt - 1));
+          viewport.scrollBy(-1);
       });
     }
     const tone = read.view.holds.length > 0 ? "blocked" : read.view.unread.length > 0 ? "chain" : "dim";
-    const rowCells = Math.max(8, measured.columns - 6);
+    const rowCells = Math.max(8, contentCols - 2);
     const head = [
       surfaceText(surface, "title", chromeTitle([`${stateMarker(tone, 0)} ${WATCHDOG_PANEL_TITLE}`, `${String(rows.length)} row(s)`]), { bold: true, tone }),
       surfaceRule(surface, "rule", undefined, tone)
@@ -10898,18 +10932,18 @@ function createWatchdogSceneComponent(deps) {
       ...row.bold === true ? { bold: true } : {},
       ...row.dim === true ? { dim: true } : {}
     }));
-    const railCells = gutterCells(scrollAt, Math.max(rows.length, 1), viewportRows);
-    const rail = railCells.length === 0 ? undefined : React.createElement(ui.Box, { key: "gutter", flexDirection: "column", width: 1 }, ...railCells.map((cell, row) => React.createElement(ui.Text, { key: `vbar-${row}`, dimColor: true }, cell)));
+    const rail = viewportTrack(panel, viewport, "row");
     const window = React.createElement(ui.Box, { key: "body-window", flexDirection: "row", flexGrow: 1 }, React.createElement(ui.Box, {
       key: "body-rows",
       flexDirection: "column",
       flexGrow: 1,
       onWheel: (event) => {
+        swallowWheelEvent(event);
         const raw = event?.deltaY;
-        const deltaY = normalizeWheelDelta(Number(raw ?? 0), false);
+        const deltaY = normalizeWheelDelta(Number(raw ?? 0), wheelInvertOn());
         if (deltaY === 0)
           return;
-        setScroll(Math.max(0, Math.min(scrollMax, scrollAt + (deltaY > 0 ? 1 : -1))));
+        viewport.scrollBy(deltaY > 0 ? 1 : -1);
       }
     }, ...drawn), ...rail === undefined ? [] : [rail]);
     const footer = [
@@ -10922,7 +10956,7 @@ function createWatchdogSceneComponent(deps) {
         ...scrollMax > 0 ? [`${String(scrollAt + 1)}/${String(scrollMax + 1)}`] : []
       ])
     ];
-    const borderTitle = clampCells(chromeTitle([stateMarker(tone, 0), WATCHDOG_PANEL_TITLE]), Math.max(8, measured.columns - 6));
+    const borderTitle = clampCells(chromeTitle([stateMarker(tone, 0), WATCHDOG_PANEL_TITLE]), Math.max(8, contentCols - 2));
     return surfaceFrame(surface, "frame", borderTitle, [...head, window, ...footer], tone);
   };
 }
@@ -11048,7 +11082,7 @@ function measureTerminal2(ui) {
   const usableRows = Number.isFinite(terminalRows) && terminalRows > 8;
   return {
     size,
-    cols: Number.isFinite(terminalCols) && terminalCols > 20 ? terminalCols : FALLBACK_COLS2,
+    cols: Number.isFinite(terminalCols) && terminalCols > 0 ? Math.floor(terminalCols) : FALLBACK_COLS2,
     window: usableRows ? terminalRows - 6 : 20,
     rows: usableRows ? terminalRows : 26
   };
@@ -11066,15 +11100,9 @@ function useSceneClock(ui, live) {
   }
   return { time: 0, ref: undefined };
 }
-function gutterColumn(surface, offset, contentRows, viewportRows) {
-  const cells = gutterCells(offset, contentRows, viewportRows);
-  if (cells.length === 0)
-    return;
-  return surface.React.createElement(surface.ui.Box, { key: "gutter", flexDirection: "column", width: 1 }, ...cells.map((cell, row) => surface.React.createElement(surface.ui.Text, { key: `vbar-${row}`, dimColor: true }, cell)));
-}
-function windowedBody(surface, head, region, footer, offset, contentRows, viewportRows) {
+function windowedBody(surface, panel, viewport, head, region, footer) {
   const rows = surface.React.createElement(surface.ui.Box, { key: "body-rows", flexDirection: "column", flexGrow: 1 }, ...region);
-  const gutter = gutterColumn(surface, offset, contentRows, viewportRows);
+  const gutter = viewportTrack(panel, viewport, "row");
   const window = gutter === undefined ? rows : surface.React.createElement(surface.ui.Box, { key: "body-window", flexDirection: "row", flexGrow: 1 }, rows, gutter);
   return [...head, window, ...footer];
 }
@@ -11103,9 +11131,6 @@ function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamVi
     const board = state[0];
     const rows = board.rows;
     const setBoard = state[1];
-    const scrollState = React.useState(0);
-    const scroll = scrollState[0];
-    const setScroll = scrollState[1];
     useTeamFeed(React, teamDeps?.subscribeTeams, () => setBoard(read()));
     React.useEffect(() => {
       setBoard(read());
@@ -11126,28 +11151,35 @@ function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamVi
     const clock = useSurfaceClock(ui);
     const phase = animPhase(clock.time);
     const measured = measureTerminal2(ui);
+    const contentCols = panelSurfaceWidth(measured.cols);
+    surface.maxCells = contentCols;
+    const panel = panelKit(React, ui);
+    const sizes = { contentRows: 1, viewportRows: 1 };
+    const viewport = usePanelViewport(panel, () => sizes);
     const size = measured.size;
     const viewportRows = Math.max(1, measured.rows - 2 - 3 - 1);
-    const scrollMax = Math.max(0, rows.length - viewportRows);
-    const scrollAt = Math.min(Math.max(0, scroll), scrollMax);
+    sizes.contentRows = Math.max(1, rows.length);
+    sizes.viewportRows = viewportRows;
+    const scrollMax = viewport.max;
+    const scrollAt = viewport.offset;
     if (typeof ui.useInput === "function") {
       ui.useInput((input, key) => {
         if (key?.escape === true || input === "q")
           close();
         else if (key?.upArrow === true && key?.shift === true)
-          setScroll(Math.max(0, scrollAt - 1));
+          viewport.scrollBy(-1);
         else if (key?.downArrow === true && key?.shift === true)
-          setScroll(Math.min(scrollMax, scrollAt + 1));
+          viewport.scrollBy(1);
         else if (key?.pageUp === true)
-          setScroll(Math.max(0, scrollAt - viewportRows));
+          viewport.scrollBy(-viewportRows);
         else if (key?.pageDown === true)
-          setScroll(Math.min(scrollMax, scrollAt + viewportRows));
+          viewport.scrollBy(viewportRows);
         else if (key?.home === true)
-          setScroll(0);
+          viewport.scrollTo(0);
         else if (key?.end === true)
-          setScroll(scrollMax);
+          viewport.scrollTo(Number.MAX_SAFE_INTEGER);
         else if (input === "r") {
-          setScroll(0);
+          viewport.scrollTo(0);
           setBoard(read());
         } else if (input === "a") {
           nav.planFromTeam = false;
@@ -11169,7 +11201,7 @@ function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamVi
     }
     const tally = board.state?.team?.tasks;
     const tone = tally === undefined ? "dim" : toneOfTally(tally, []);
-    const barWidth = Math.max(4, Math.min(24, measured.cols - 64));
+    const barWidth = Math.max(4, Math.min(24, contentCols - 64));
     const head = [];
     head.push(surfaceText(surface, "title", chromeTitle([`${stateMarker(tone, phase)} MPD board — ${rows.length} line(s)`, size]), { bold: true, tone }));
     head.push(surfaceText(surface, "meta", chromeTitle([`${sessionRows} transcript row(s)`, tally === undefined ? undefined : `${barCells(tally.completed, tally.total, barWidth)} ${tally.completed}/${tally.total}`]), { dim: true }));
@@ -11183,14 +11215,15 @@ function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamVi
       flexDirection: "column",
       flexGrow: 1,
       onWheel: (event) => {
+        swallowWheelEvent(event);
         const deltaY = normalizeWheelDelta(Number(event?.deltaY ?? 0), wheelInvertOn());
         if (deltaY !== 0)
-          setScroll(Math.max(0, Math.min(scrollMax, scrollAt + (deltaY > 0 ? 1 : -1))));
+          viewport.scrollBy(deltaY > 0 ? 1 : -1);
       }
     }, ...visible);
     const footer = [surfaceHints(surface, "footer", ["esc/q close", "⇧↑↓ scroll", "r refresh", "a team workflow"])];
-    const borderTitle = clampCells(chromeTitle([stateMarker(tone, phase), "MPD board", size]), Math.max(8, measured.cols - 6));
-    return surfaceFrame(surface, "frame", borderTitle, windowedBody(surface, head, [body], footer, scrollAt, rows.length, viewportRows), tone, clock.ref);
+    const borderTitle = clampCells(chromeTitle([stateMarker(tone, phase), "MPD board", size]), Math.max(8, contentCols - 2));
+    return surfaceFrame(surface, "frame", borderTitle, windowedBody(surface, panel, viewport, head, [body], footer), tone, clock.ref);
   };
 }
 function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords, onHostKit, teamDeps) {
@@ -11214,12 +11247,6 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
     const hoverState = React.useState(undefined);
     const hover = hoverState[0];
     const setHover = hoverState[1];
-    const scrollState = React.useState(0);
-    const scroll = scrollState[0];
-    const setScroll = scrollState[1];
-    const scrollXState = React.useState(0);
-    const scrollX = scrollXState[0];
-    const setScrollX = scrollXState[1];
     const latestRef = React.useRef?.(undefined);
     const viewRef = React.useRef?.(undefined);
     const animate = workflow !== undefined && (workflow.tasks.some((task) => task.visual === "running") || workflow.members.some((member) => member.status === "running"));
@@ -11257,20 +11284,27 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
     const graphTasks = workflow === undefined ? [] : modelRows(workflow);
     const focus = hover ?? pinned;
     const measured = measureTerminal2(ui);
+    const contentCols = panelSurfaceWidth(measured.cols);
+    surface.maxCells = contentCols;
+    const panel = panelKit(React, ui);
+    const sizes = { contentRows: 1, viewportRows: 1 };
+    const viewport = usePanelViewport(panel, () => sizes);
     const team = workflow?.team;
     const tone = workflow === undefined ? "dim" : toneOfTally(workflow.counts, workflow.tasks.map((task) => task.visual));
-    const drawAt = (contentCols) => {
-      const graphWidth = Math.max(20, contentCols - 4);
+    const drawAt = (drawCols) => {
+      const graphWidth = drawCols;
       const servedRanks = modelRanks(workflow);
       const groups = workflow?.model?.groups;
       const boxes = layoutGraphNatural(graphTasks, focus, { rows: measured.window }, servedRanks, groups);
       const view = boxesFitWidth(boxes, graphWidth) ? boxes : layoutRail(graphTasks, graphWidth, focus, servedRanks);
-      const scrollXMax = Math.max(0, view.width - graphWidth);
-      const scrollXAt = Math.min(Math.max(0, scrollX), scrollXMax);
+      sizes.contentCols = view.width;
+      sizes.viewportCols = graphWidth;
+      const scrollXMax = viewport.colMax;
+      const scrollXAt = viewport.colOffset;
       const head = [];
       const tail = [];
-      const barWidth = Math.max(4, Math.min(16, contentCols - 46));
-      const barFits = contentCols >= 50;
+      const barWidth = Math.max(4, Math.min(16, graphWidth - 46));
+      const barFits = graphWidth >= 50;
       head.push(surfaceText(surface, "title", chromeTitle([`${stateMarker(tone, phase)} MPD team${team === undefined ? " — (none)" : ` — ${team.name} (${team.id})`}`, measured.size]), {
         bold: true,
         tone
@@ -11309,10 +11343,10 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
         const focusLabel = focus === undefined ? "" : ` · focus ${focus}${view.chain.length === 0 ? "" : ` ⇠ ${view.chain.join(",")}`}`;
         head.push(surfaceText(surface, "graphhead", `task dependency graph${view.mode === "rail" ? " (rail)" : ""}${focusLabel}`, { dim: true }));
         graphLines = view.lines.length;
-        if (scrollXMax > 0) {
-          const rail = gutterCellsX(scrollXAt, view.width, graphWidth);
-          if (rail !== "")
-            tail.push(surfaceText(surface, "hrail", rail, { dim: true }));
+        if (viewport.colOverflow) {
+          const rail = viewportTrack(panel, viewport, "col", { cols: graphWidth });
+          if (rail !== undefined)
+            tail.push(rail);
         }
         let arrow = [];
         try {
@@ -11354,15 +11388,17 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
       };
       return { head, tail, graphLines, graphRow: graphRow2, view, graphWidth, scrollXAt, scrollXMax };
     };
-    const full = drawAt(measured.cols);
+    const full = drawAt(contentCols);
     const capacityOf = (draw) => Math.max(1, measured.rows - 2 - draw.head.length - 1);
     const contentOf = (draw) => draw.graphLines + draw.tail.length;
     const scrolling = contentOf(full) > capacityOf(full);
-    const body = scrolling ? drawAt(measured.cols - 1) : full;
+    const body = scrolling ? drawAt(contentCols - 1) : full;
     const viewportRows = capacityOf(body);
     const contentRows = contentOf(body);
-    const scrollMax = Math.max(0, contentRows - viewportRows);
-    const scrollAt = Math.min(Math.max(0, scroll), scrollMax);
+    sizes.contentRows = contentRows;
+    sizes.viewportRows = viewportRows;
+    const scrollMax = viewport.max;
+    const scrollAt = viewport.offset;
     if (viewRef !== undefined && viewRef !== null)
       viewRef.current = body.view;
     const ordered = body.view.hits.map((hit) => hit.taskId);
@@ -11384,28 +11420,28 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
         if (key?.escape === true || input === "q")
           close();
         else if (input === "r") {
-          setScroll(0);
-          setScrollX(0);
+          viewport.scrollTo(0);
+          viewport.scrollToCol(0);
           refresh();
         } else if (key?.upArrow === true || input === "k")
-          key?.shift === true ? setScroll(Math.max(0, scrollAt - 1)) : moveFocus(-1);
+          key?.shift === true ? viewport.scrollBy(-1) : moveFocus(-1);
         else if (key?.downArrow === true || input === "j")
-          key?.shift === true ? setScroll(Math.min(scrollMax, scrollAt + 1)) : moveFocus(1);
+          key?.shift === true ? viewport.scrollBy(1) : moveFocus(1);
         else if (key?.leftArrow === true || input === "h")
-          key?.shift === true ? setScrollX(Math.max(0, body.scrollXAt - 1)) : moveFocus(-1);
+          key?.shift === true ? viewport.scrollColBy(-1) : moveFocus(-1);
         else if (key?.rightArrow === true || input === "l")
-          key?.shift === true ? setScrollX(Math.min(body.scrollXMax, body.scrollXAt + 1)) : moveFocus(1);
+          key?.shift === true ? viewport.scrollColBy(1) : moveFocus(1);
         else if (key?.pageUp === true)
-          key?.shift === true ? setScrollX(Math.max(0, body.scrollXAt - body.graphWidth)) : setScroll(Math.max(0, scrollAt - viewportRows));
+          key?.shift === true ? viewport.scrollColBy(-body.graphWidth) : viewport.scrollBy(-viewportRows);
         else if (key?.pageDown === true)
-          key?.shift === true ? setScrollX(Math.min(body.scrollXMax, body.scrollXAt + body.graphWidth)) : setScroll(Math.min(scrollMax, scrollAt + viewportRows));
+          key?.shift === true ? viewport.scrollColBy(body.graphWidth) : viewport.scrollBy(viewportRows);
         else if (key?.home === true)
-          setScroll(0);
+          viewport.scrollTo(0);
         else if (key?.end === true)
-          setScroll(scrollMax);
+          viewport.scrollTo(Number.MAX_SAFE_INTEGER);
         else if (input === "g") {
-          setScroll(0);
-          setScrollX(0);
+          viewport.scrollTo(0);
+          viewport.scrollToCol(0);
         } else if (input === "p") {
           nav.planFromTeam = false;
           openScene(BOARD_SCENE_ID);
@@ -11455,20 +11491,21 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
           setHover(under);
         },
         onWheel: (event) => {
+          swallowWheelEvent(event);
           const deltaY = normalizeWheelDelta(Number(event?.deltaY ?? 0), wheelInvertOn());
           if (deltaY !== 0)
-            setScroll(Math.max(0, Math.min(scrollMax, scrollAt + (deltaY > 0 ? 1 : -1))));
+            viewport.scrollBy(deltaY > 0 ? 1 : -1);
           const deltaX = normalizeWheelDelta(Number(event?.deltaX ?? 0), wheelInvertOn());
           if (deltaX !== 0)
-            setScrollX(Math.max(0, Math.min(body.scrollXMax, body.scrollXAt + (deltaX > 0 ? 1 : -1))));
+            viewport.scrollColBy(deltaX > 0 ? 1 : -1);
         }
       }, graphRows));
     }
     for (const row of tailRows)
       visible.push(row);
     const footer = [surfaceHints(surface, "footer", ["esc/q close", "↑↓ focus", "click pins", "hover previews", "⇧↑↓ scroll", "r refresh", "a plan", "p board"])];
-    const borderTitle = clampCells(chromeTitle([`${stateMarker(tone, phase)} MPD team${team === undefined ? "" : ` — ${team.name}`}`, measured.size]), Math.max(8, measured.cols - 6));
-    return surfaceFrame(surface, "frame", borderTitle, windowedBody(surface, body.head, visible, footer, scrollAt, contentRows, viewportRows), tone, clock.ref);
+    const borderTitle = clampCells(chromeTitle([`${stateMarker(tone, phase)} MPD team${team === undefined ? "" : ` — ${team.name}`}`, measured.size]), Math.max(8, contentCols - 2));
+    return surfaceFrame(surface, "frame", borderTitle, windowedBody(surface, panel, viewport, body.head, visible, footer), tone, clock.ref);
   };
 }
 function planActionLines(workflow, echo, armed, message, servedPhrase = "") {
@@ -11498,6 +11535,13 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, plan
       return null;
     onHostKit?.(ui);
     const surface = surfaceKit(React, ui);
+    const measured = measureTerminal2(ui);
+    const contentCols = panelSurfaceWidth(measured.cols);
+    surface.maxCells = contentCols;
+    const panel = panelKit(React, ui);
+    const viewportRows = Math.max(1, measured.window);
+    const sizes = { contentRows: 1, viewportRows };
+    const viewport = usePanelViewport(panel, () => sizes);
     const clock = useSurfaceClock(ui);
     const phase = animPhase(clock.time);
     const channelSession = () => channelSessionOf(props);
@@ -11518,14 +11562,11 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, plan
     const armedState = React.useState(0);
     const armedAt = armedState[0];
     const setArmedAt = armedState[1];
-    const scrollState = React.useState(0);
-    const scroll = scrollState[0];
-    const setScroll = scrollState[1];
     const refresh = () => {
       setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession()));
       setEcho("");
       setArmedAt(0);
-      setScroll(0);
+      viewport.scrollTo(0);
     };
     useTeamFeed(React, teamDeps?.subscribeTeams, () => setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession())));
     React.useEffect(() => {
@@ -11570,7 +11611,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, plan
     const usable = view !== undefined && team !== undefined && team.staged || stagedPlan !== undefined && stagedPlan !== null && stagedPlan.approved !== true;
     const leave = () => {
       setEcho("");
-      setScroll(0);
+      viewport.scrollTo(0);
       if (target.fromTeam) {
         if (!openScene(TEAM_SCENE_ID))
           close();
@@ -11681,11 +11722,11 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, plan
           return;
         }
         if (key?.upArrow === true || input === "k") {
-          setScroll(scroll > 0 ? scroll - 1 : 0);
+          viewport.scrollBy(-1);
           return;
         }
         if (key?.downArrow === true || input === "j") {
-          setScroll(scroll + 1);
+          viewport.scrollBy(1);
           return;
         }
         if (key?.return === true || key?.tab === true || key?.meta === true)
@@ -11701,8 +11742,9 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, plan
     if (usable)
       for (const row of planActionLines(view, echo, armedAt !== 0, message, stagedPlan?.phrase ?? ""))
         body.push(row);
-    const measured = measureTerminal2(ui);
-    const visible = body.slice(scroll, scroll + measured.window);
+    sizes.contentRows = Math.max(1, body.length);
+    const scrollAt = viewport.offset;
+    const visible = body.slice(scrollAt, scrollAt + viewportRows);
     const size = measured.size;
     const tone = busy ? "running" : message.startsWith("approve failed") || message.startsWith("discard failed") ? "failed" : message.startsWith("approved:") ? "completed" : message.startsWith("discarded:") ? "cancelled" : usable ? "focus" : "dim";
     const settled = message !== "";
@@ -11718,14 +11760,28 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, plan
         children.push(surfaceText(surface, "empty", detail, { dim: true }));
       }
       children.push(surfaceHints(surface, "footer", ["esc back"]));
-      return surfaceFrame(surface, "frame", clampCells(chromeTitle([`${stateMarker(tone, phase)} MPD plan approval`, size]), Math.max(8, measured.cols - 6)), children, tone, clock.ref);
+      return surfaceFrame(surface, "frame", clampCells(chromeTitle([`${stateMarker(tone, phase)} MPD plan approval`, size]), Math.max(8, contentCols - 2)), children, tone, clock.ref);
     }
+    const bodyRows = [];
     for (let index = 0;index < visible.length; index += 1) {
-      children.push(surfaceBodyRow(surface, `line-${index}`, visible[index], { runnable: team?.runnable === true ? "completed" : "failed" }));
+      bodyRows.push(surfaceBodyRow(surface, `line-${index}`, visible[index], { runnable: team?.runnable === true ? "completed" : "failed" }));
     }
+    const rail = viewportTrack(panel, viewport, "row");
+    const rowsColumn = React.createElement(ui.Box, {
+      key: "body-rows",
+      flexDirection: "column",
+      flexGrow: 1,
+      onWheel: (event) => {
+        swallowWheelEvent(event);
+        const deltaY = normalizeWheelDelta(Number(event?.deltaY ?? 0), wheelInvertOn());
+        if (deltaY !== 0)
+          viewport.scrollBy(deltaY > 0 ? 1 : -1);
+      }
+    }, ...bodyRows);
+    children.push(rail === undefined ? rowsColumn : React.createElement(ui.Box, { key: "body-window", flexDirection: "row", flexGrow: 1 }, rowsColumn, rail));
     if (busy)
       children.push(surfaceText(surface, "busy", "working…", { tone: "running" }));
-    return surfaceFrame(surface, "frame", clampCells(chromeTitle([`${stateMarker(tone, phase)} MPD plan approval`, size]), Math.max(8, measured.cols - 6)), children, tone, clock.ref);
+    return surfaceFrame(surface, "frame", clampCells(chromeTitle([`${stateMarker(tone, phase)} MPD plan approval`, size]), Math.max(8, contentCols - 2)), children, tone, clock.ref);
   };
 }
 function registerScene(ctx, tui, log, workspaceRoot, home, holds = () => [], planActions = UNAVAILABLE_PLAN_ACTIONS, planReader, teamViews, teamRecords, onHostKit, teamDeps) {
