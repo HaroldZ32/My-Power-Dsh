@@ -1452,6 +1452,8 @@ const PIN_FIXTURE_A: string = "0123456789abcdef0123456789abcdef01234567"
 const PIN_FIXTURE_B: string = "89abcdef0123456789abcdef0123456789abcdef"
 /** The one pin site the C5 disagreement arm perturbs, by its stable id. */
 const PIN_PERTURBED_SITE: string = "docs/dsh-go-standard.md"
+/** The two pin sites a PACKAGED tree does not ship — the `.github/**` workflow refs, and the only sites whose absence is a note. */
+const PIN_WORKFLOW_SITES: readonly string[] = ["publish.yml", "gates.yml"]
 
 /** Every site's text at one commit, built from each site's own shape — the pin arms' in-memory input. */
 function pinTexts(commit: string): Map<string, string | null> {
@@ -1465,6 +1467,92 @@ function perturbPin(texts: Map<string, string | null>, id: string, commit: strin
   if (site === undefined) throw new Error(`perturbPin: no pin site named ${id}`)
   texts.set(id, site.fixture(commit))
   return texts
+}
+
+/**
+ * Assert the packaged/checkout split C5 branches on, from a reading set with the two workflow sites
+ * ABSENT: packaged reports zero errors and exactly two skip notes (`skipped === 2`), a checkout reports
+ * exactly two `pin-site-missing` errors (`skipped === 0`), a PRESENT-but-pinless site is an error in
+ * BOTH (an absent file and an absent pin are different facts), and `isCheckout` reads a `.git` FILE as
+ * a checkout. Each failure names the half it guards, so a mutated mode branch reddens at its own
+ * assertion; the `.git` probe uses a fresh temp dir and never the real tree.
+ */
+function assertPinModeSplit(): void {
+  /** The agreeing fixture with the two workflow sites REMOVED — what a packaged tree actually ships. */
+  const withoutWorkflows = pinTexts(PIN_FIXTURE_A)
+  for (const id of PIN_WORKFLOW_SITES) withoutWorkflows.delete(id)
+  /** Those texts as readings: seven present sites plus two whose FILE is absent. */
+  const readings = extractPins(withoutWorkflows)
+  /** The two workflow paths, sorted — the only sites the absence branch may excuse. */
+  const workflowPaths = PIN_SITES
+    .filter((site: PinSite): boolean => PIN_WORKFLOW_SITES.includes(site.id))
+    .map((site: PinSite): string => site.file)
+    .sort()
+
+  /** The PACKAGED verdict: absence of a workflow file must never be an error. */
+  const packaged = auditPin(readings, false)
+  /** The packaged verdict's failing findings. */
+  const packagedErrors = packaged.findings.filter((finding: Finding): boolean => finding.severity === "error")
+  if (packagedErrors.length !== 0) {
+    throw new Error(`C5 packaged mode: a packaged tree must report ZERO errors for the absent workflow sites, got ${packagedErrors.map((finding: Finding): string => `${finding.rule}@${finding.path}`).join(", ")}`)
+  }
+  /** The packaged verdict's skip notes. */
+  const skipNotes = packaged.findings.filter((finding: Finding): boolean => finding.rule === "pin-site-skipped")
+  if (skipNotes.length !== 2 || packaged.skipped !== 2) {
+    throw new Error(`C5 packaged mode: the absent workflow sites must produce exactly TWO pin-site-skipped notes and skipped === 2, got ${skipNotes.length} note(s) and skipped ${packaged.skipped}`)
+  }
+  /** The paths those notes name, sorted. */
+  const notePaths = skipNotes.map((finding: Finding): string => finding.path).sort()
+  if (notePaths.join("|") !== workflowPaths.join("|")) {
+    throw new Error(`C5 packaged mode: the two skip notes must be the two workflow sites ${workflowPaths.join(", ")}, got ${notePaths.join(", ") || "none"}`)
+  }
+
+  /** The CHECKOUT verdict over the SAME readings: each absent workflow site is now an error. */
+  const checkedOut = auditPin(readings, true)
+  /** The checkout verdict's failing findings. */
+  const checkoutErrors = checkedOut.findings.filter((finding: Finding): boolean => finding.severity === "error")
+  if (checkoutErrors.length !== 2 || checkedOut.skipped !== 0) {
+    throw new Error(`C5 checkout mode: an absent pin site must produce exactly TWO pin-site-missing errors and skipped === 0, got ${checkoutErrors.length} error(s) and skipped ${checkedOut.skipped}`)
+  }
+  if (checkoutErrors.some((finding: Finding): boolean => finding.rule !== "pin-site-missing")) {
+    throw new Error(`C5 checkout mode: both checkout errors must be pin-site-missing, got ${checkoutErrors.map((finding: Finding): string => finding.rule).join(", ")}`)
+  }
+  /** The checkout errors' paths, sorted. */
+  const missingPaths = checkoutErrors.map((finding: Finding): string => finding.path).sort()
+  if (missingPaths.join("|") !== workflowPaths.join("|")) {
+    throw new Error(`C5 checkout mode: the two errors must be the two workflow sites ${workflowPaths.join(", ")}, got ${missingPaths.join(", ") || "none"}`)
+  }
+
+  /** The agreeing fixture with ONE PRESENT site degraded to prose that states no commit at all. */
+  const pinless = pinTexts(PIN_FIXTURE_A)
+  pinless.set(PIN_PERTURBED_SITE, "This page states no pinned commit.\n")
+  /** The PACKAGED verdict over that present-but-pinless site: absence of a PIN still fails. */
+  const pinlessPackaged = auditPin(extractPins(pinless), false)
+  /** That verdict's failing findings. */
+  const pinlessErrors = pinlessPackaged.findings.filter((finding: Finding): boolean => finding.severity === "error")
+  /** The pinless site's own path, resolved from its stable id. */
+  const pinlessPath = PIN_SITES.find((site: PinSite): boolean => site.id === PIN_PERTURBED_SITE)?.file ?? PIN_PERTURBED_SITE
+  /** The single error that present-but-pinless site must produce. */
+  const [pinlessError] = pinlessErrors
+  if (pinlessErrors.length !== 1 || pinlessError === undefined || pinlessError.rule !== "pin-site-missing" || pinlessError.path !== pinlessPath || pinlessPackaged.skipped !== 0) {
+    throw new Error(`C5 packaged present-pinless: a PRESENT site stating no commit must be exactly one pin-site-missing error in a packaged tree, got ${pinlessErrors.map((finding: Finding): string => `${finding.rule}@${finding.path}`).join(", ") || "none"} with skipped ${pinlessPackaged.skipped}`)
+  }
+
+  /** A throwaway tree for the `.git` probe — never the real repository. */
+  const base = mkdtempSync(join(tmpdir(), "dshgo-standard-ischeckout-"))
+  try {
+    /** A directory carrying `.git` as a FILE — the git-worktree shape. */
+    const worktree = join(base, "worktree")
+    /** A directory carrying no `.git` at all — the packaged shape. */
+    const shipped = join(base, "shipped")
+    mkdirSync(worktree)
+    mkdirSync(shipped)
+    writeFileSync(join(worktree, ".git"), "gitdir: /nonexistent\n")
+    if (!isCheckout(worktree)) throw new Error("C5 isCheckout: a `.git` FILE (a worktree) must read as a checkout")
+    if (isCheckout(shipped)) throw new Error("C5 isCheckout: a directory with no `.git` must read as a packaged tree")
+  } finally {
+    rmSync(base, { recursive: true, force: true })
+  }
 }
 
 /** The self-test arms: one clean control plus a negative control for every rule family. */
@@ -1856,6 +1944,8 @@ const ARMS: readonly Arm[] = [
       if (only === undefined || !only.detail.startsWith(`${PIN_PERTURBED_SITE} states`)) {
         throw new Error(`the disagreement must name ${PIN_PERTURBED_SITE}, got ${only?.detail ?? "none"}`)
       }
+      /** The packaged/checkout split this same C5 block branches on — folded here so the arm COUNT stays fixed. */
+      assertPinModeSplit()
       return perturbed.findings
     },
   },
