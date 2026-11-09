@@ -1,0 +1,76 @@
+diff --git a/AGENTS.md b/AGENTS.md
+index e57c14c7..44afc2c6 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -230,7 +230,7 @@ and a reader cannot tell. Measured re-baselines are recorded in `agent-reference
+ | Doc pairs | `bun run verify:docs` (`scripts/verify-docs-parity.ts`; `--self-test` with a negative control; fails on a zh-only doc or an undocumented package) | any human-facing doc change (`README*.md`, `docs/**`, `packages/*/README*.md`, `extensions/**`, `templates/**`); before release |
+ | **Plugin manifest (STANDING — user-mandated)** | `bun run verify:manifest` (= `node scripts/verify-plugin-manifest.ts --pack`): **no `cordis`** in any dependency field (by NAME; the optional field is NOT an exemption), no `preinstall`/`install`/`postinstall`/`prepare` script NAME, VERSION COHERENCE (`dsh-plugin.json` + `dsh-distribution.json` carry `package.json`'s version), plus the packaging contract a one-command install rests on (declared patch files exist, every row module path resolves, `files` admits every runtime path, `evidence/` stays out, `npm pack --dry-run` carries them) | every manifest/patch/row/file-layout/version change, and EVERY release sweep |
+ | **Declaration comments (STANDING — user-mandated)** | `bun run verify:comments` (= `node scripts/verify-comment-coverage.ts`): a TypeScript-AST check (never a line scan) that every declaration has a precise comment and every NAMED function writes down its parameter and return types (§6) | any source edit, and EVERY release sweep |
+-| **DSH-Go conformance (STANDING — user-mandated)** | `node scripts/verify-dshgo-standard.ts` — five lanes (MANIFEST / VIEW / COMPAT / HOST / CROSS-CHECK); exit 0 legal, 1 violations, 2 cannot-run, 3 NOT-PASSED; `--self-test` = 44 arms; `MPD_DSHGO_KIT` supplies the official checker and its absence is NOT-PASSED, never a green. The COMPAT lane is the compatibility arm §2 rule 7 requires | every `dshGo` manifest / static-view / host-half change, every release sweep, and BEFORE `npm pack` (`publish.yml`) |
++| **DSH-Go conformance (STANDING — user-mandated)** | `node scripts/verify-dshgo-standard.ts` — five lanes (MANIFEST / VIEW / COMPAT / HOST / CROSS-CHECK); exit 0 legal, 1 violations, 2 cannot-run, 3 NOT-PASSED; `--self-test` = 46 arms; `MPD_DSHGO_KIT` supplies the official checker and its absence is NOT-PASSED, never a green. The COMPAT lane is the compatibility arm §2 rule 7 requires | every `dshGo` manifest / static-view / host-half change, every release sweep, and BEFORE `npm pack` (`publish.yml`) |
+ | No host override | `node scripts/verify-no-host-override.ts`: fails when ANY shipped patch row id-targets an id a host layer declares; refuses a vacuous PASS; `--self-test` 6 arms + a live seed | any bundle-patch row edit, and EVERY release sweep |
+ | Manual paths | `node scripts/verify-manual-paths.ts` (T-66: a path-shaped token this manual spells in a code span is AUDITED only when its first segment is an entry at the repo root; a non-root-anchored or non-literal token is counted in its own bucket and NEVER fails — so it catches a wrong ROOT-relative path, not a wrong package-relative spelling) | any edit to this manual |
+ | Extension CLI | `bun scripts/mpd-ext.ts --self-test` + `bun scripts/mpd-ext.ts validate extensions/mpd-ext-example` (exit 0; a deliberately broken extension MUST exit 1 with per-item errors) | any extension-interface/manifest/CLI change |
+diff --git a/docs/dsh-go-standard.md b/docs/dsh-go-standard.md
+index 8a66157c..9bb22a42 100644
+--- a/docs/dsh-go-standard.md
++++ b/docs/dsh-go-standard.md
+@@ -4,7 +4,7 @@
+ 
+ This page states the **DSH-Go native-plugin standard** this bundle implements, the way it is proven, and
+ the bounds of that proof. The standard is pinned to `ccch1mneyyy/dsh-Go` at commit
+-`d5ad25c5bc4c66ecacee76b3c5378db45e1db3fa` (2026-11-06). The enforcement point is
++`f36bf91b0736e81ef40c2a7040b2ec337ca1ab40` (2026-11-09). The enforcement point is
+ `node scripts/verify-dshgo-standard.ts`, a standing gate ([`AGENTS.md`](../AGENTS.md) §4).
+ 
+ ## 1. What the standard is, and the spec data this repository pins
+@@ -128,8 +128,10 @@ not prove:
+ 
+ Exit codes are the contract the aggregator honours: **0** every lane legal, **1** one or more violations,
+ **2** cannot run (unreadable `package.json`, unknown flag, a misbehaving self-test arm), **3** NOT-PASSED when
+-the official cross-check could not run. `--self-test` runs **44 arms** — one clean control and 43 negative
+-controls, one per rule family — and it exits 0 on this tree.
++the official cross-check could not run. The five lanes are not the only failure source: a PIN disagreement
++on the eight declaration sites exits **1** while every lane still passes, and the PIN check is **not** a
++sixth lane — it prints its own `PIN:` line. `--self-test` runs **46 arms** — one clean control and 45
++negative controls, one per rule family — and it exits 0 on this tree.
+ 
+ The gate is a **standing** member: it is the eleventh member of `bun run verify:gates`, `gates.yml` checks
+ out the pinned upstream commit with a sparse `sdk/plugin-kit` checkout and exports `MPD_DSHGO_KIT` before the
+diff --git a/docs/dsh-go-standard.zh-CN.md b/docs/dsh-go-standard.zh-CN.md
+index 049d2f6f..db37b1fd 100644
+--- a/docs/dsh-go-standard.zh-CN.md
++++ b/docs/dsh-go-standard.zh-CN.md
+@@ -3,7 +3,7 @@
+ [English](./dsh-go-standard.md) | **中文**
+ 
+ 本页说明本 bundle 所实现的 **DSH-Go 原生插件标准**、它的证明方式，以及这份证明的边界。标准钉在
+-`ccch1mneyyy/dsh-Go` 的提交 `d5ad25c5bc4c66ecacee76b3c5378db45e1db3fa`（2026-11-06）。执行点是
++`ccch1mneyyy/dsh-Go` 的提交 `f36bf91b0736e81ef40c2a7040b2ec337ca1ab40`（2026-11-09）。执行点是
+ `node scripts/verify-dshgo-standard.ts`，它是常设门禁（[`AGENTS.md`](../AGENTS.md) §4）。
+ 
+ ## 1. 标准的构成，以及本仓库钉住的规范数据
+@@ -113,8 +113,10 @@ dshGo 读取都走一个作用域访问器，在注入接缝缺席时退回惰
+ | CROSS-CHECK | 当 `MPD_DSHGO_KIT` 指向一个 DSH-Go 检出时，运行它自己的 `check.mjs --json` 并比较两边的结论 | 受宿主约束；没有检出即 NOT-PASSED |
+ 
+ 退出码是聚合器遵守的契约：**0** 所有车道合法，**1** 一条或多条违规，**2** 无法运行（`package.json` 读不
+-了、未知参数、自检臂行为异常），**3** 官方交叉核对无法运行时的 NOT-PASSED。`--self-test` 跑 **44 条臂**
+-——一条干净对照加 43 条负向对照，每个规则族一条——在这棵树上退出 0。
++了、未知参数、自检臂行为异常），**3** 官方交叉核对无法运行时的 NOT-PASSED。五条车道并不是唯一的失败
++来源：八个声明点上出现 PIN 分歧时，即使每条车道仍然通过，门禁也会以 **1** 退出；而这个 PIN 检查**不是**
++第六条车道——它打印自己的 `PIN:` 行。`--self-test` 跑 **46 条臂**——一条干净对照加 45 条负向对照，每个
++规则族一条——在这棵树上退出 0。
+ 
+ 门禁是**常设**成员：它是 `bun run verify:gates` 的第十一个成员；`gates.yml` 以稀疏的 `sdk/plugin-kit`
+ 检出上游钉住提交，并在跑聚合前导出 `MPD_DSHGO_KIT`；`publish.yml` 在 `npm pack` / `npm stage publish`
+ .github/workflows/gates.yml      |   2 +-
+ .github/workflows/publish.yml    |   2 +-
+ AGENTS.md                        |   2 +-
+ VENDOR_LOCK.json                 |   2 +-
+ docs/dsh-go-standard.md          |   8 +-
+ docs/dsh-go-standard.zh-CN.md    |   8 +-
+ scripts/verify-dshgo-standard.ts | 255 +++++++++++++++++++++++++++++++++++++--
+ scripts/verify-gates.ts          |   2 +-
+ specs/dsh-go/SOURCE.json         |   4 +-
+ specs/dsh-go/limits.ts           |   4 +-
+ 10 files changed, 267 insertions(+), 22 deletions(-)

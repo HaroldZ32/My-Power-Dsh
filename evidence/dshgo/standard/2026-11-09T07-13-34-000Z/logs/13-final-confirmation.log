@@ -1,0 +1,110 @@
+PASS  clean control: a legal manifest, v1 view and host half produce no finding
+PASS  missing dshGo manifest
+PASS  protocol version not 1
+PASS  contributes is not an object
+PASS  a manifest over the 16 KiB budget
+PASS  a slot that is not an array
+PASS  more panels than the protocol allows
+PASS  an id that breaks the protocol pattern
+PASS  the same id declared by two slots
+PASS  an over-length label is a NOTE, not a failure
+PASS  an unknown want value
+PASS  `message` wanted with no message.actions
+PASS  an effect kind outside the six static kinds
+PASS  more than four effects on one action
+PASS  an unknown panel placement
+PASS  an unknown presentation
+PASS  a strip naming an undeclared panel
+PASS  a declared view file that does not exist
+PASS  no engines.dsh is a NOTE
+PASS  no dsh.bundle.patch
+PASS  a declared patch file that does not exist
+PASS  a static view that is not JSON
+PASS  a static view whose root is not a component
+PASS  a v2-only component in a static view
+PASS  an unknown component name in a static view
+PASS  a data binding in a static view
+PASS  a static view over the node budget
+PASS  a static view over the depth budget
+PASS  a static view carrying a style key
+PASS  a static view whose text is empty
+PASS  an image with a web address in a static view
+PASS  a static view declaring v2
+PASS  a static view over the byte budget
+PASS  a tool card builder that constructs a tappable node is a NOTE
+PASS  COMPAT: a v2-only component in a DECLARED static view is refused
+PASS  COMPAT: a data binding in a DECLARED static view is refused
+PASS  COMPAT: a declared static view that does not resolve
+PASS  HOST: a declared panel with no panel registration
+PASS  HOST: a tappable id with no handler
+PASS  HOST: a registration for an id the manifest does not declare
+PASS  HOST: the optional-inject spelling
+PASS  HOST: a top-level inject array carrying dshGo
+PASS  the kit's budget table drifting from the spec is refused
+PASS  HOST: no binding form at all
+PASS  C5 PIN: one perturbed site disagreeing with the seven others
+PASS  C5 PIN: a site that states no 40-hex commit
+[dshgo-standard] SELF-TEST PASS — 46 arms (1 clean control + 45 negative controls)
+[dshgo-standard] root: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+[dshgo-standard] standard: ccch1mneyyy/dsh-Go@f36bf91b0736e81ef40c2a7040b2ec337ca1ab40 (spec data under specs/dsh-go/)
+[dshgo-standard] PIN: PASS — 8 site readings agree on f36bf91b0736e81ef40c2a7040b2ec337ca1ab40
+[dshgo-standard] MANIFEST: PASS (0 error(s), 0 note(s))
+[dshgo-standard] VIEW: PASS (0 error(s), 0 note(s))
+[dshgo-standard] COMPAT: PASS (0 error(s), 0 note(s))
+[dshgo-standard] HOST: PASS (0 error(s), 0 note(s))
+[dshgo-standard] CROSS-CHECK: PASSED — PASSED: verdicts agree — official check.mjs exit=1 stops=false (array-patch false negative excluded: the official checker requires a string patch, DSH allows an array and this gate verified every path); this gate stops=false
+  [note] crosscheck-normalized /home/haroldzhao/MyProj/DshProj/My-Power-Dsh — the official checker's only blocking item was its string-only `dsh.bundle.patch` assumption; every declared patch path is resolved by the MANIFEST lane
+[dshgo-standard] RESULT: LEGAL — manifest, views, compatibility, host half and the official cross-check all agree
+[repin-vendor] algorithm : shared rule scripts/lib/asset-files.ts (TRACKED files via `git ls-files` inside a work tree, filesystem walk outside one; LF-normalizing reader), imported by BOTH sides + the sorted-relpath tree fold mirrored from scripts/verify-vendor.ts
+[repin-vendor] normalize : LF - text files (no NUL byte) have CRLF/CR collapsed to LF; binary files (NUL present) are hashed RAW
+[repin-vendor] WARNING   : the vendor gate compares the LF-NORMALIZED value only. A raw-bytes reading would silently fail `bun run verify:vendor` on any corpus containing CRLF/CR bytes - both values are printed per asset below.
+[repin-vendor] assets    : 6 treeSha-bearing asset(s) derived from the working tree
+[repin-vendor] lock      : /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/VENDOR_LOCK.json  (5027 bytes, 6 treeSha asset(s))
+[repin-vendor] authority : one shared file-list rule (3 marker(s) in scripts/verify-vendor.ts, 5 token(s) in scripts/lib/asset-files.ts, binding held here) + 3 mirrored fold token(s)
+
+[repin-vendor] asset          : skills
+[repin-vendor]   locked       : treeSha=4510bff19106ee5d00c72c6b752210763cbaf2de60facb3dbb6ff1c794f32c91 fileCount=392
+[repin-vendor]   file list    : git index (392 shipped file(s))
+[repin-vendor]   computed (LF) : treeSha=4510bff19106ee5d00c72c6b752210763cbaf2de60facb3dbb6ff1c794f32c91 fileCount=392 (1 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : 57861798a3dbfb0165950f7aab54e2d421c2801b2d24c5113508cf4f631add88   <- NEVER write this one
+[repin-vendor]   in sync      : no change
+
+[repin-vendor] asset          : specs/dsh-go
+[repin-vendor]   locked       : treeSha=a444f9d095ef0c0fda3aed28e6953ac0b01f71693c4edce77aa83cf6dde28eb6 fileCount=7
+[repin-vendor]   file list    : git index (7 shipped file(s))
+[repin-vendor]   computed (LF) : treeSha=a444f9d095ef0c0fda3aed28e6953ac0b01f71693c4edce77aa83cf6dde28eb6 fileCount=7 (0 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : a444f9d095ef0c0fda3aed28e6953ac0b01f71693c4edce77aa83cf6dde28eb6   <- NEVER write this one
+[repin-vendor]   in sync      : no change
+
+[repin-vendor] asset          : packages/mpd-hashline-plugin/src/vendor
+[repin-vendor]   locked       : treeSha=7e6a28e2b1c6dc9c3942bb17da5cef86ae8398af6ed63bfe3cd128a08701c34a fileCount=8
+[repin-vendor]   file list    : git index (8 shipped file(s))
+[repin-vendor]   computed (LF) : treeSha=7e6a28e2b1c6dc9c3942bb17da5cef86ae8398af6ed63bfe3cd128a08701c34a fileCount=8 (0 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : 7e6a28e2b1c6dc9c3942bb17da5cef86ae8398af6ed63bfe3cd128a08701c34a   <- NEVER write this one
+[repin-vendor]   in sync      : no change
+
+[repin-vendor] asset          : packages/mpd-autoproject-plugin/src/boulder/vendor
+[repin-vendor]   locked       : treeSha=fa19e7243941dc9fa229eb0a2c7bafd42267c4db094aec23ce1626f283115f81 fileCount=13
+[repin-vendor]   file list    : git index (13 shipped file(s))
+[repin-vendor]   computed (LF) : treeSha=fa19e7243941dc9fa229eb0a2c7bafd42267c4db094aec23ce1626f283115f81 fileCount=13 (0 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : fa19e7243941dc9fa229eb0a2c7bafd42267c4db094aec23ce1626f283115f81   <- NEVER write this one
+[repin-vendor]   in sync      : no change
+
+[repin-vendor] asset          : packages/mpd-schemastery
+[repin-vendor]   locked       : treeSha=c0701be154849a93851c288f3cfb8f1550e4f43c5f1cf3f10664ee3198c70e49 fileCount=19
+[repin-vendor]   file list    : git index (19 shipped file(s))
+[repin-vendor]   computed (LF) : treeSha=c0701be154849a93851c288f3cfb8f1550e4f43c5f1cf3f10664ee3198c70e49 fileCount=19 (0 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : c0701be154849a93851c288f3cfb8f1550e4f43c5f1cf3f10664ee3198c70e49   <- NEVER write this one
+[repin-vendor]   in sync      : no change
+
+[repin-vendor] asset          : packages/mpd-bundle-plugin/adopted
+[repin-vendor]   locked       : treeSha=a71be3db2d34f7a36e2cf48692968702d7ab00501be9900686f2a2888ecfd33f fileCount=2
+[repin-vendor]   file list    : git index (2 shipped file(s))
+[repin-vendor]   computed (LF) : treeSha=a71be3db2d34f7a36e2cf48692968702d7ab00501be9900686f2a2888ecfd33f fileCount=2 (0 file(s) LF-normalized)
+[repin-vendor]   raw-bytes    : a71be3db2d34f7a36e2cf48692968702d7ab00501be9900686f2a2888ecfd33f   <- NEVER write this one
+[repin-vendor]   in sync      : no change
+
+[repin-vendor] _note: POLICY (not a failure) - underscore-prefixed metadata key: the vendor gate skips these too, so this helper does not re-pin it
+[repin-vendor] packages/mpd-mcp-codegraph/dist/serve.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding the package that emits it, never by rewriting the lock
+[repin-vendor] packages/mpd-bundle-plugin/client.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding the package that emits it, never by rewriting the lock
+[repin-vendor] CHECK     : GREEN - lock matches the working tree (drift=0, problems=0)

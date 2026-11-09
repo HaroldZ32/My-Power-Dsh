@@ -1,7 +1,7 @@
 {
   "repo": "https://github.com/ccch1mneyyy/dsh-Go",
-  "commit": "d5ad25c5bc4c66ecacee76b3c5378db45e1db3fa",
-  "fetchedAt": "2026-11-07T05:59:14Z",
+  "commit": "f36bf91b0736e81ef40c2a7040b2ec337ca1ab40",
+  "fetchedAt": "2026-11-09T06:48:05Z",
   "note": "The DSH-Go protocol v1 standard this bundle conforms to. `specs/dsh-go/limits.ts` is a SPEC-DATA transcription of the limits.js authority (the upstream SDK `@dsh-go/plugin-kit` is `private: true`, so nothing upstream can be a dependency); `specs/dsh-go/schemas/*.schema.json` are byte-for-byte copies of the five upstream JSON Schemas, fetched from raw.githubusercontent.com at the pinned commit. No upstream executable code is vendored.",
   "files": [
     {

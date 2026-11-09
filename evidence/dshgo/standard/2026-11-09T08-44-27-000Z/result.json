@@ -1,0 +1,82 @@
+{
+  "subject": "CodeRabbit round-1 findings on scripts/verify-dshgo-standard.ts (C5 pin checker)",
+  "branch": "fix/dshgo-1.0.14-repin",
+  "parentCommit": "c3a64877",
+  "changedFile": "scripts/verify-dshgo-standard.ts",
+  "changedFileSha256": "766f44da12e290c5d7d6da1ff3451db919c9df66be40804f353396a27dd056f9",
+  "armCount": 46,
+  "major": {
+    "finding": "The published verify:dshgo command reported two pin-site-missing errors and exited 1 because package.json files ships scripts/ but not .github.",
+    "fix": [
+      "PinReading.absent tells an absent FILE apart from a present file that states no pin.",
+      "isCheckout(root) = existsSync(<root>/.git), so a directory (clone) and a file (worktree) both count as a checkout.",
+      "auditPin(readings, checkout): absent + checkout -> pin-site-missing ERROR; absent + packaged -> pin-site-skipped NOTE; present but no 40-hex commit -> pin-site-missing ERROR in both modes.",
+      "The PIN line prints '<n> of <total> site readings agree on <sha>' and '(<n> skipped: not shipped)' when any site was skipped.",
+      "main calls auditPin(readPins(REPO_ROOT), isCheckout(REPO_ROOT))."
+    ],
+    "modeProofs": {
+      "packaged": {
+        "shape": "npm pack tarball (mpd-dsh-mpd-0.18.0.tgz: 1262 files, 11954415 bytes, zero package/.github entries) extracted to a temp dir; no .git",
+        "argv": "MPD_DSHGO_KIT=$PWD/.mpd/recon/dsh-go node <tmp>/packaged/scripts/verify-dshgo-standard.ts --root <tmp>/packaged",
+        "exit": 0,
+        "pinLine": "[dshgo-standard] PIN: PASS — 6 of 8 site readings agree on f36bf91b0736e81ef40c2a7040b2ec337ca1ab40 (2 skipped: not shipped)",
+        "notes": [
+          "[note] pin-site-skipped .github/workflows/publish.yml — publish.yml: the file is not shipped in a packaged tree (no `.git`), so its pin cannot be read here",
+          "[note] pin-site-skipped .github/workflows/gates.yml — gates.yml: the file is not shipped in a packaged tree (no `.git`), so its pin cannot be read here"
+        ]
+      },
+      "checkoutMissingWorkflow": {
+        "shape": "same packaged tree + a .git DIRECTORY + .github/workflows/publish.yml restored; .github/workflows/gates.yml deliberately deleted",
+        "argv": "MPD_DSHGO_KIT=$PWD/.mpd/recon/dsh-go node <tmp>/checkout/scripts/verify-dshgo-standard.ts --root <tmp>/checkout",
+        "exit": 1,
+        "pinLine": "[dshgo-standard] PIN: FAIL — 1 error(s) across 8 site readings",
+        "finding": "[error] pin-site-missing .github/workflows/gates.yml — gates.yml: the file is absent from this checkout — a deleted or renamed pin site must fail, not silently shrink the audit"
+      },
+      "packagedPresentButNoPin": {
+        "shape": "packaged tree with the sha in docs/dsh-go-standard.md rewritten to deadbeef; no .git",
+        "argv": "MPD_DSHGO_KIT=$PWD/.mpd/recon/dsh-go node <tmp>/packaged/scripts/verify-dshgo-standard.ts --root <tmp>/packaged",
+        "exit": 1,
+        "finding": "[error] pin-site-missing docs/dsh-go-standard.md — docs/dsh-go-standard.md states no dsh-Go commit literal; every present pin site must state the same peeled release commit"
+      }
+    }
+  },
+  "trivial": {
+    "finding": "The C5 disagreement arm never asserted the unperturbed fixture set was clean, so a drifted fixture or selector could make it pass for the wrong reason.",
+    "fix": "The arm now asserts (1) the unperturbed fixture set yields zero findings, (2) the perturbation yields EXACTLY ONE pin-disagreement, and (3) that finding names the perturbed site. Any violation throws and fails the arm.",
+    "mutationTests": [
+      "A: baseline built from a perturbed fixture -> FAIL 'the unperturbed fixture set must be clean, got pin-disagreement:error' (exit 1)",
+      "B: two sites perturbed -> FAIL 'the perturbation must produce exactly one pin-disagreement, got 2' (exit 1)",
+      "C: a different site perturbed than the asserted one -> FAIL 'the disagreement must name docs/dsh-go-standard.md, got docs/dsh-go-standard.zh-CN.md states ...' (exit 1)"
+    ]
+  },
+  "commands": [
+    { "argv": "node scripts/verify-dshgo-standard.ts --self-test", "exit": 0, "result": "SELF-TEST PASS — 46 arms (1 clean control + 45 negative controls)" },
+    { "argv": "MPD_DSHGO_KIT=$PWD/.mpd/recon/dsh-go node scripts/verify-dshgo-standard.ts", "exit": 0, "result": "PIN: PASS — 8 of 8 site readings agree on f36bf91b0736e81ef40c2a7040b2ec337ca1ab40; RESULT: LEGAL" },
+    { "argv": "env -u MPD_DSHGO_KIT node scripts/verify-dshgo-standard.ts", "exit": 3, "result": "RESULT: NOT-PASSED — the official cross-check did not run" },
+    { "argv": "bun run typecheck", "exit": 0, "result": "$ tsgo --noEmit" },
+    { "argv": "node scripts/verify-comment-coverage.ts", "exit": 0, "result": "VERDICT: PASS — 618 TypeScript file(s), 55615 declaration(s)" },
+    { "argv": "node scripts/verify-manual-paths.ts", "exit": 0, "result": "extra check; manual untouched" }
+  ],
+  "evidenceFiles": [
+    "output.log",
+    "self-test.log",
+    "gate-with-kit.log",
+    "gate-no-kit.log",
+    "typecheck.log",
+    "comments.log",
+    "manifest-paths.log",
+    "packaged.log",
+    "checkout.log",
+    "packaged-broken-pin.log",
+    "mode-exits.txt",
+    "mutation-tests.log",
+    "diff-stat.txt"
+  ],
+  "bounds": [
+    "The mode proofs run a COPY of the script from each temp root, because REPO_ROOT derives from the script's own location; the real working tree was never mutated (.git check and workflow deletions happened only in temp copies).",
+    "A .git FILE (worktree) is accepted by the same existsSync check but was exercised only with a .git DIRECTORY.",
+    "The packaged proof packs with npm pack (the package.json files allowlist); it does not run the full one-command install.",
+    "No self-test arm covers the packaged/checkout split: the count stays 46 by instruction, and the split is proven by the three end-to-end mode proofs above.",
+    "This work is uncommitted on fix/dshgo-1.0.14-repin; the captain makes the follow-up commit."
+  ]
+}

@@ -1,7 +1,7 @@
 // DSH-Go protocol v1 — the FROZEN SPEC DATA this repository conforms to.
 //
-// SOURCE OF TRUTH: `ccch1mneyyy/dsh-Go` at commit `d5ad25c5bc4c66ecacee76b3c5378db45e1db3fa`
-// (2026-11-06), file `runtime/bridge/dsh-go-bridge/lib/native/limits.js` (mirrored by the SDK at
+// SOURCE OF TRUTH: `ccch1mneyyy/dsh-Go` at commit `f36bf91b0736e81ef40c2a7040b2ec337ca1ab40`
+// (2026-11-09), file `runtime/bridge/dsh-go-bridge/lib/native/limits.js` (mirrored by the SDK at
 // `sdk/plugin-kit/lib/bridge/limits.js`). `specs/dsh-go/SOURCE.json` pins every fetched file by
 // sha256, and `VENDOR_LOCK.json` fingerprints this whole tree as an asset.
 //

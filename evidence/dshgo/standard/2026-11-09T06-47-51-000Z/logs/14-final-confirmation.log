@@ -1,0 +1,21 @@
+=== FINAL CONFIRMATION (after every edit, scratch file removed) at 2026-11-09T06:51:36Z ===
+--- 1/3 node scripts/repin-vendor.ts --check ---
+[repin-vendor] CHECK     : GREEN - lock matches the working tree (drift=0, problems=0)
+EXIT=0
+--- 2/3 node scripts/verify-vendor.ts ---
+[verify-vendor] PASS - 8 shipped asset(s) fingerprinted, upstream identity not checked
+EXIT=0
+--- 3/3 MPD_DSHGO_KIT=.mpd/recon/dsh-go node scripts/verify-dshgo-standard.ts ---
+[dshgo-standard] MANIFEST: PASS (0 error(s), 0 note(s))
+[dshgo-standard] VIEW: PASS (0 error(s), 0 note(s))
+[dshgo-standard] COMPAT: PASS (0 error(s), 0 note(s))
+[dshgo-standard] HOST: PASS (0 error(s), 0 note(s))
+[dshgo-standard] CROSS-CHECK: PASSED — PASSED: verdicts agree — official check.mjs exit=1 stops=false (array-patch false negative excluded: the official checker requires a string patch, DSH allows an array and this gate verified every path); this gate stops=false
+  [note] crosscheck-normalized /home/haroldzhao/MyProj/DshProj/My-Power-Dsh — the official checker's only blocking item was its string-only `dsh.bundle.patch` assumption; every declared patch path is resolved by the MANIFEST lane
+[dshgo-standard] RESULT: LEGAL — manifest, views, compatibility, host half and the official cross-check all agree
+EXIT=0
+--- git status (tracked) ---
+ M VENDOR_LOCK.json
+ M scripts/verify-dshgo-standard.ts
+ M specs/dsh-go/SOURCE.json
+ M specs/dsh-go/limits.ts

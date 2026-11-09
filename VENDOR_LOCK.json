@@ -9,7 +9,7 @@
     },
     "specs/dsh-go": {
       "fileCount": 7,
-      "treeSha": "1f812a48dd2c54fa6529c0c05b355676de902515cfe7fa63fd5328b892da2607",
+      "treeSha": "a444f9d095ef0c0fda3aed28e6953ac0b01f71693c4edce77aa83cf6dde28eb6",
       "source": "DSH-Go protocol v1 SPEC DATA (no upstream executable code): limits.ts is a transcription of runtime/bridge/dsh-go-bridge/lib/native/limits.js plus view-check.js BUDGETS, and schemas/*.schema.json are byte-for-byte copies; fetched from ccch1mneyyy/dsh-Go@d5ad25c5bc4c66ecacee76b3c5378db45e1db3fa, pinned by specs/dsh-go/SOURCE.json"
     },
     "packages/mpd-mcp-codegraph/dist/serve.js": {

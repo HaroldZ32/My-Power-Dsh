@@ -1,0 +1,13 @@
+[dshgo-standard] root: /tmp/tmp.RcaKeLmhRu/packaged
+[dshgo-standard] standard: ccch1mneyyy/dsh-Go@f36bf91b0736e81ef40c2a7040b2ec337ca1ab40 (spec data under specs/dsh-go/)
+[dshgo-standard] PIN: FAIL — 1 error(s) across 8 site readings
+  [error] pin-site-missing docs/dsh-go-standard.md — docs/dsh-go-standard.md states no dsh-Go commit literal; every present pin site must state the same peeled release commit
+  [note] pin-site-skipped .github/workflows/publish.yml — publish.yml: the file is not shipped in a packaged tree (no `.git`), so its pin cannot be read here
+  [note] pin-site-skipped .github/workflows/gates.yml — gates.yml: the file is not shipped in a packaged tree (no `.git`), so its pin cannot be read here
+[dshgo-standard] MANIFEST: PASS (0 error(s), 0 note(s))
+[dshgo-standard] VIEW: PASS (0 error(s), 0 note(s))
+[dshgo-standard] COMPAT: PASS (0 error(s), 0 note(s))
+[dshgo-standard] HOST: PASS (0 error(s), 0 note(s))
+[dshgo-standard] CROSS-CHECK: PASSED — PASSED: verdicts agree — official check.mjs exit=1 stops=false (array-patch false negative excluded: the official checker requires a string patch, DSH allows an array and this gate verified every path); this gate stops=false
+  [note] crosscheck-normalized /tmp/tmp.RcaKeLmhRu/packaged — the official checker's only blocking item was its string-only `dsh.bundle.patch` assumption; every declared patch path is resolved by the MANIFEST lane
+[dshgo-standard] RESULT: VIOLATIONS — 1 error(s)

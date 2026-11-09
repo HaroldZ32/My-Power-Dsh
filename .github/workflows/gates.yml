@@ -124,7 +124,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: ccch1mneyyy/dsh-Go
-          ref: d5ad25c5bc4c66ecacee76b3c5378db45e1db3fa
+          ref: f36bf91b0736e81ef40c2a7040b2ec337ca1ab40
           path: .dsh-go-kit
           sparse-checkout: sdk/plugin-kit
           sparse-checkout-cone-mode: false

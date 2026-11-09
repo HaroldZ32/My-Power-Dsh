@@ -99,7 +99,7 @@ const DECLARED_MEMBERS: readonly Member[] = [
   // `--self-test` is the negative control that proves the arms discriminate.
   { id: "tui-admission", argv: ["node", "./scripts/verify-tui-admission.ts"] },
   // THE DSH-GO CONFORMANCE HARD GATE (requirements R7/R8/R9): the native-plugin standard at
-  // `ccch1mneyyy/dsh-Go@d5ad25c5…` encoded as manifest / view / backward-compatibility / host lanes,
+  // `ccch1mneyyy/dsh-Go@f36bf91b…` encoded as manifest / view / backward-compatibility / host lanes,
   // plus the official checker as a cross-check. Exit 0 legal, 1 violations, 2 cannot-run, 3 NOT-PASSED
   // (no `MPD_DSHGO_KIT` checkout) — and this aggregate treats 2 and 3 as a FAILED member, never as a
   // skip, because a cross-check that did not run is not a pass.

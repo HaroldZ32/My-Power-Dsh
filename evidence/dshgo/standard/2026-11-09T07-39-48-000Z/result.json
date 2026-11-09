@@ -1,0 +1,92 @@
+{
+  "case": "DOC-1 repair (three stale surfaces) + the verifier's two evidence nits",
+  "kind": "author repair evidence — NOT a verifier verdict",
+  "at": "2026-11-09T07:39:48Z",
+  "branch": "fix/dshgo-1.0.14-repin",
+  "head": "18da0c6cc88429c4be48ca72e472abb8136998c8",
+  "verdictUnderRepair": ".mpd/verify/records/rec-20261109T073350-11670e.json",
+  "finding": "DOC-1: docs/dsh-go-standard.md §6 and docs/dsh-go-standard.zh-CN.md §6 stated `--self-test` = 44 arms (actual 46) and described exit 0 as if every lane legal were sufficient; AGENTS.md §4's DSH-Go row stated 44 arms.",
+  "changes": [
+    {
+      "path": "docs/dsh-go-standard.md",
+      "section": "§6",
+      "old": "Exit codes are the contract the aggregator honours: **0** every lane legal, **1** one or more violations, **2** cannot run (unreadable `package.json`, unknown flag, a misbehaving self-test arm), **3** NOT-PASSED when the official cross-check could not run. `--self-test` runs **44 arms** — one clean control and 43 negative controls, one per rule family — and it exits 0 on this tree.",
+      "new": "Exit codes are the contract the aggregator honours: **0** every lane legal, **1** one or more violations, **2** cannot run (unreadable `package.json`, unknown flag, a misbehaving self-test arm), **3** NOT-PASSED when the official cross-check could not run. The five lanes are not the only failure source: a PIN disagreement on the eight declaration sites exits **1** while every lane still passes, and the PIN check is **not** a sixth lane — it prints its own `PIN:` line. `--self-test` runs **46 arms** — one clean control and 45 negative controls, one per rule family — and it exits 0 on this tree.",
+      "note": "heading tree, the five-lane table and the [中文] switch link are untouched; the paragraph above the table is unchanged"
+    },
+    {
+      "path": "docs/dsh-go-standard.zh-CN.md",
+      "section": "§6",
+      "old": "退出码是聚合器遵守的契约：**0** 所有车道合法，**1** 一条或多条违规，**2** 无法运行（`package.json` 读不了、未知参数、自检臂行为异常），**3** 官方交叉核对无法运行时的 NOT-PASSED。`--self-test` 跑 **44 条臂**——一条干净对照加 43 条负向对照，每个规则族一条——在这棵树上退出 0。",
+      "new": "退出码是聚合器遵守的契约：**0** 所有车道合法，**1** 一条或多条违规，**2** 无法运行（`package.json` 读不了、未知参数、自检臂行为异常），**3** 官方交叉核对无法运行时的 NOT-PASSED。五条车道并不是唯一的失败来源：八个声明点上出现 PIN 分歧时，即使每条车道仍然通过，门禁也会以 **1** 退出；而这个 PIN 检查**不是**第六条车道——它打印自己的 `PIN:` 行。`--self-test` 跑 **46 条臂**——一条干净对照加 45 条负向对照，每个规则族一条——在这棵树上退出 0。",
+      "note": "Chinese parity of the same edit; heading tree, five-lane table and [English] switch link untouched"
+    },
+    {
+      "path": "AGENTS.md",
+      "section": "§4 DSH-Go conformance row",
+      "old": "`--self-test` = 44 arms",
+      "new": "`--self-test` = 46 arms",
+      "note": "length-neutral: wc -c is 63479 B before and after (ceiling 63488 B); nothing else in the row changed"
+    }
+  ],
+  "nits": [
+    {
+      "id": "NIT-1",
+      "path": "evidence/dshgo/standard/2026-11-09T07-13-34-000Z/result.json",
+      "field": "finalConfirmation.note (and commands[13].what)",
+      "disposition": "corrected to the measured order: the confirmation re-ran after commands 00-12 and BEFORE the bundle was written (logs/13 mtime 15:17:40; no-kit control 14 at 15:18:31; result.json/output.log first written 15:19:23). The note also records that result.json's own mtime moved later only because the note was corrected."
+    },
+    {
+      "id": "NIT-2",
+      "path": "evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/10-pin-proof-perturbed.log",
+      "disposition": "clean re-run of the same proof against the .qa-tmp/pin-proof mirror (repo doc untouched, sha256 befb003... before and after): exit 1, PIN FAIL with pin-disagreement, all five lanes PASS, RESULT: VIOLATIONS, and zero `No such file or directory` lines. The transcript block in output.log still quotes the original run's trailing error and was deliberately not rewritten."
+    }
+  ],
+  "commands": [
+    {
+      "id": "00-wc-agents",
+      "argv": "wc -c AGENTS.md",
+      "exit": 0,
+      "observed": "63479 AGENTS.md"
+    },
+    {
+      "id": "01-verify-docs-parity",
+      "argv": "node scripts/verify-docs-parity.ts",
+      "exit": 0,
+      "observed": "root=... pairs=59 failed=0 violations=0 exempt=24 derived=3 links=626 dead=0 — PASS"
+    },
+    {
+      "id": "02-verify-manual-paths",
+      "argv": "node scripts/verify-manual-paths.ts",
+      "exit": 0,
+      "observed": "PASS resolved=158 over-report=72 under-report=83 declared=2"
+    },
+    {
+      "id": "03-verify-comment-coverage",
+      "argv": "node scripts/verify-comment-coverage.ts",
+      "exit": 0,
+      "observed": "VERDICT: PASS — every declaration in the family carries a precise comment and a full signature."
+    },
+    {
+      "id": "04-dshgo-self-test",
+      "argv": "node scripts/verify-dshgo-standard.ts --self-test",
+      "exit": 0,
+      "observed": "SELF-TEST PASS — 46 arms (1 clean control + 45 negative controls)"
+    },
+    {
+      "id": "05-dshgo-gate-with-kit",
+      "argv": "MPD_DSHGO_KIT=$PWD/.mpd/recon/dsh-go node scripts/verify-dshgo-standard.ts",
+      "exit": 0,
+      "observed": "PIN: PASS — 8 site readings agree on f36bf91b...; RESULT: LEGAL"
+    }
+  ],
+  "bounds": [
+    "This record is AUTHOR evidence: the verdict must be recorded by a different agent.",
+    "I did not run bun test, the full verify:gates aggregate, the manifest/pack gates or the Docker lane — the task scoped proof to the four gates above plus the DSH-Go self-test/gate.",
+    "The pre-existing pin-literal update (d5ad25c... -> f36bf91b...) in both dsh-go-standard docs was already in the working tree and is NOT part of this repair."
+  ],
+  "outOfScopeFindings": [
+    "dist/mpd-package/{AGENTS.md,docs/dsh-go-standard*.md,CHANGELOG.md} still spells 44 arms — it is the generated pack artifact, refreshed by the pack step, not a source surface.",
+    "CHANGELOG.md line 30 still spells 44 arms as the historical 0.18.0 release note."
+  ]
+}

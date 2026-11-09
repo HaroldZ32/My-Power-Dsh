@@ -1,0 +1,83 @@
+{
+  "root": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "lanes": [
+    {
+      "lane": "MANIFEST",
+      "findings": []
+    },
+    {
+      "lane": "VIEW",
+      "findings": []
+    },
+    {
+      "lane": "COMPAT",
+      "findings": []
+    },
+    {
+      "lane": "HOST",
+      "findings": []
+    }
+  ],
+  "pin": {
+    "commit": "f36bf91b0736e81ef40c2a7040b2ec337ca1ab40",
+    "readings": [
+      {
+        "id": "SOURCE.json",
+        "file": "specs/dsh-go/SOURCE.json",
+        "commit": "f36bf91b0736e81ef40c2a7040b2ec337ca1ab40"
+      },
+      {
+        "id": "limits.ts header",
+        "file": "specs/dsh-go/limits.ts",
+        "commit": "f36bf91b0736e81ef40c2a7040b2ec337ca1ab40"
+      },
+      {
+        "id": "verify-dshgo-standard.ts header",
+        "file": "scripts/verify-dshgo-standard.ts",
+        "commit": "f36bf91b0736e81ef40c2a7040b2ec337ca1ab40"
+      },
+      {
+        "id": "verify-dshgo-standard.ts render line",
+        "file": "scripts/verify-dshgo-standard.ts",
+        "commit": "f36bf91b0736e81ef40c2a7040b2ec337ca1ab40"
+      },
+      {
+        "id": "docs/dsh-go-standard.md",
+        "file": "docs/dsh-go-standard.md",
+        "commit": "f36bf91b0736e81ef40c2a7040b2ec337ca1ab40"
+      },
+      {
+        "id": "docs/dsh-go-standard.zh-CN.md",
+        "file": "docs/dsh-go-standard.zh-CN.md",
+        "commit": "f36bf91b0736e81ef40c2a7040b2ec337ca1ab40"
+      },
+      {
+        "id": "publish.yml",
+        "file": ".github/workflows/publish.yml",
+        "commit": "f36bf91b0736e81ef40c2a7040b2ec337ca1ab40"
+      },
+      {
+        "id": "gates.yml",
+        "file": ".github/workflows/gates.yml",
+        "commit": "f36bf91b0736e81ef40c2a7040b2ec337ca1ab40"
+      }
+    ],
+    "findings": []
+  },
+  "crossCheck": {
+    "status": "passed",
+    "detail": "PASSED: verdicts agree — official check.mjs exit=1 stops=false (array-patch false negative excluded: the official checker requires a string patch, DSH allows an array and this gate verified every path); this gate stops=false",
+    "findings": [
+      {
+        "rule": "crosscheck-normalized",
+        "path": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+        "detail": "the official checker's only blocking item was its string-only `dsh.bundle.patch` assumption; every declared patch path is resolved by the MANIFEST lane",
+        "severity": "note"
+      }
+    ],
+    "kit": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/dsh-go",
+    "officialExit": 1
+  },
+  "exitCode": 0,
+  "relativeSelf": "scripts/verify-dshgo-standard.ts"
+}
