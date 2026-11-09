@@ -175,7 +175,8 @@ replaced or deleted. License: **MIT** (`LICENSE.md`); third-party components kee
    **Mounting is by `cordis.patch.yml` + the profile mechanism and NOTHING else — binding** (§8): this
    repository is an independent PACKAGE the profile references; it never injects rows into the harness,
    never edits DSH sources, and never writes the home by hand.
-3. **Evidence without evidence is incomplete.** A change without QA evidence is not done.
+3. **Evidence without evidence is incomplete.** A change without QA evidence is not done — and that
+   evidence is produced by a DIFFERENT agent (the verifier), never by the agent that wrote the change.
 4. **Isolation.** QA never touches the real `~/.dsh`. Everything boots in a temp DSH_HOME.
 5. **Fingerprinted bytes, historical identity.** The assets this repository SHIPS are verified by their
    own fingerprints — a corrupted one still reddens — while the upstream identity behind them is
@@ -240,9 +241,8 @@ and a reader cannot tell. Measured re-baselines are recorded in `agent-reference
 Long form (per-row measurements, and why the Docker lane is LAST):
 `agent-references/verification-flow.md`.
 
-**Pack-closure bound (T-91):** the exit code certifies COMPLETENESS + byte identity, **not freshness**
-(T-26's TIMESTAMP-ORDER discriminator, `expected-after-pack` at the re-pack); the `--self-test` arms are
-the operative evidence. Long form: `agent-references/verification-flow.md`.
+**Pack-closure bound (T-91):** the exit code certifies COMPLETENESS + byte identity, **not freshness**;
+the `--self-test` arms are the operative evidence. Long form: `agent-references/verification-flow.md`.
 
 `--dump-config` proves COMPOSITION ONLY, never a plugin load: use `node scripts/dump-config.ts` (T-31).
 Long form: `agent-references/verification-flow.md`.
@@ -323,12 +323,19 @@ Otherwise `preset-conformance` reddens under the ambient 0.2.1-rc.5 and `dshgo` 
      or Explorer, a verdict to a Reviewer. The captain executes only what must not be delegated by rule —
      committing (single git writer), contract amendments, plan/roster shaping, releasing a watchdog hold,
      and the final integration. **RECONNAISSANCE IS DELEGATED, AGAIN MECHANICALLY (user ruling
-     2026-10-20):** on the `mpd` preset's top-level session the captain's `read`/`grep`/`glob` are
-     REFUSED on SOURCE paths (`captain.investigation: "deny"`; the documentation band stays readable),
+     2026-10-20):** on the `mpd` preset's top-level session the captain's `read`/`grep`/`glob`,
+     `mpd_hashline_read`, the MCP recon tools (`codegraph_explore`, `ast_grep_search`, the `lsp`
+     readers) and shell read-verbs on a source path are REFUSED on SOURCE paths
+     (`captain.investigation: "deny"` plus the `captain.shell` read-route; the documentation band stays readable),
      and the harness's generic spawn tools (`subagent`, `subagent_fork`, `workflow`) are REFUSED
      (`delegation.gate: "deny"`), so delegation goes through `mpd_role_spawn`, the workmate library or
-     Agent Teams. **THE WRITE PATH IS NOT GATED:** `write`/`edit`/`bash` stay available and the verification law's
-     write guard (`verify.mode`) remains WITHDRAWN; WHO executes a change is decided by size (this very
+     Agent Teams. **THE WRITE PATH IS NOT GATED, BUT THE CAPTAIN'S SHELL AND GATE EVIDENCE
+     ARE:** `write`/`edit`/`mpd_hashline_edit` stay available and the verification law's write guard
+     (`verify.mode`) remains WITHDRAWN; `bash` stays open for git, filesystem and bookkeeping and
+     REFUSES verification commands (`bun test`, `bun run verify:*`, `node scripts/verify-*`, the QA
+     cases, `bun build packages/*`, `docker`) under `captain.shell` (default `deny`);
+     `mpd_verify_evidence {kind:"gate"}` is REFUSED for the captain under `verify.evidenceBy` (default
+     `verifier`) while `kind:"probe"` stays open. WHO executes a change is decided by size (this very
      rule), and a DIFFERENT agent records the verdict. **Full token-by-token account of the boot line and the remaining
      withdrawn knob: `agent-references/verification-flow.md`, "§5 rule 2 — the captain's tool pack".**
   3. **Keep requirement / task / review SEPARATE.** A dispatched piece of work gets a requirement task
@@ -343,8 +350,10 @@ Otherwise `preset-conformance` reddens under the ambient 0.2.1-rc.5 and `dshgo` 
   4. **A-writes/B-verifies is the RECOMMENDED discipline; its MECHANICAL form is withdrawn.** The
      top-level `mpd` agent MAY `write`/`edit` a code path directly and NO loop needs arming (the
      2026-10-17 ruling removed the write guard; the 2026-10-20 restore did NOT bring it back — only the
-     reconnaissance and delegation guards). The normal path is still to hand the scope to a write-capable
-     member. Code is verified by a DIFFERENT agent that works from the frozen contract and the docs —
+     reconnaissance and delegation guards — and the 2026-11-09 captain self-test fence adds
+     `captain.shell` + `verify.evidenceBy`, never the write guard). The normal path is still to hand the
+     scope to a write-capable member. Code is verified by a DIFFERENT agent that works from the frozen
+     contract and the docs —
      **never from the implementation** — with the verdict recorded BEFORE any implementation read; only a
      recorded FAIL justifies implementation reading, for diagnosis. A PASS with no cited documents or no
      gate evidence is REFUSED, and a FAIL bounces the work back to a writer as a `kind=repair` task. That
@@ -486,11 +495,9 @@ bound and the conformance failure modes — is in `agent-references/qa-disciplin
   ("advisory, not a lock"), and on the mpd record plane `approve` REFUSES two tasks whose scopes overlap
   with no dependency path between them. Pre-declare the derived path on the task whose edits redden it.
 - **Preset/row conformance against the INSTALLED harness** (`preset-conformance`, required for any
-  preset/patch/overlay change): a row config is validated with the installed plugin's own schemastery
-  `Config`, because that is what the loader runs, and the `mpd` preset's row set is pinned against the
-  installed `standard` preset (a missing row is a capability every mpd session loses). `--dump-config`
-  and every `--self-test` that never creates a session are blind to this class — only a real mount is
-  not.
+  preset/patch/overlay change): the installed plugin's own schemastery `Config` validates each row, and
+  the `mpd` preset's row set is pinned against `standard`; only a real mount sees this class.
+  Long form: `agent-references/qa-discipline.md`.
 - New case checklist: add row to SKILL.md case table; script + `--self-test`; real run; evidence dir.
 - **Verify on SETTLED hashes** (pin by hash, re-check after a settle window, sandwich a verifier's
   read: hash -> work -> re-hash) and run a long-lived `dsh` with stdio to FILES, never pipes — both
@@ -655,12 +662,10 @@ slot, workmate) stay here, with the verifier's envelope.
   discipline is the exported deny list**, exactly ten names, identical in `mpd-roles-plugin` and
   `mpd-workmate-plugin` (asserted by `roles.test.ts`): `write`, `edit`, `mpd_hashline_edit`, `bash`,
   `mcp__ast_grep__rewrite`, `mcp__ast_grep__scan`, `mcp__lsp__rename_symbol`,
-  `mcp__lsp__rename_symbol_strict`, `mpd_role_spawn_async`, `mpd_role_consult`. **Do NOT re-add
-  `str_replace_editor` / `apply_patch`, and do not
-  filter the list with `dsh.hasTool`** — the harness validates the WHOLE list at spawn time, so one dead
-  entry breaks every read-only spawn; since 2026-10-10 that validation is TOLERATED instead of fatal
-  (`restrictToolsTolerant` prunes the names the harness reports as unknown, with exactly ONE logged
-  retry). Full form, including the two enforcement surfaces: `agent-references/glossary.md`.
+  `mcp__lsp__rename_symbol_strict`, `mpd_role_spawn_async`, `mpd_role_consult`. **Do NOT re-add `str_replace_editor` / `apply_patch`, and do not filter the list with `dsh.hasTool`** —
+  the harness validates the WHOLE list at spawn time; the tolerant validation (`restrictToolsTolerant`),
+  the 2026-10-10 change, the ONE-logged-retry behaviour and the two enforcement surfaces are in
+  `agent-references/glossary.md`.
 - **team-model slot → agent route**: the slot is NO LONGER a persisted unit; the unit of model
   configuration is the AGENT. Each of the eleven roster members has its OWN persisted route —
   `agentRoutes.<Agent>.{provider,model,reasoningEffort?,fallbacks?}`, set and cleared individually — in
@@ -683,13 +688,9 @@ slot, workmate) stay here, with the verifier's envelope.
   strand a returning workspace), and a v2 marker means a deleted block is never re-seeded.
   `mpd-roster-provider-plugin` serves only the refused `spawn_teammate` path (§5 rule 5), so it routes
   nothing by default. Long form: `agent-references/glossary.md`.
-- **verifier's envelope**: the tool and path boundary a BOUND VERIFIER SEAT works inside. A seat is bound
-  with `mpd_verify_seat`; the boundary it is meant to keep — no shell, no source-returning tools, no
-  board mutation (`mpd_verify_*` excepted), reads path-scoped to the frozen docs AND the documentation
-  band while it is BLIND (a bare path argument refused), and a recorded FAIL unlocking implementation
-  reading for DIAGNOSIS — is **PROSE since 2026-10-17**: the hook that ENFORCED it (`installVerifyGuard`) was withdrawn, so a seat is BOOKKEEPING now, recorded and
-  auditable, not mechanically fenced. Blindness is no longer OBSERVED, so treat an unproven basis as
-  UNVERIFIED rather than established. **Long form: `agent-references/glossary.md`.**
+- **verifier's envelope**: the tool/path boundary a BOUND VERIFIER SEAT works inside — **PROSE since
+  2026-10-17** once the hook was withdrawn, so a seat is BOOKKEEPING, not a fence; an unproven basis is
+  UNVERIFIED. **Long form: `agent-references/glossary.md`.**
 - **workmate**: a durable, evolving agent instance in `~/.mpd/workmate/` created by `mpd-workmate-plugin`
   (`mpd_workmate_*`) from a roster BASE template with an independent name; it self-summarizes after each
   work (persona + independent memory, size-capped) and keeps a short note card. Reuse is via

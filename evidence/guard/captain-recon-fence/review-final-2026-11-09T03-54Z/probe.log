@@ -1,0 +1,24 @@
+## F10 arm 1 — piped search carrying an EXISTING out-of-band path (contract B3: REFUSED)
+OK  F10-B3   exp=REFUSED  got=REFUSED  "cat docs/decisions.md | grep TODO packages/mpd-roles-plugin/src/index.ts" :: [mpd-roles] captain shell: REFUSED — "grep TODO packages/mpd-roles-plugin/src/index.ts" reads workspace content through the shell, and reconnaissance is not the captain's job. Delegate it: mpd_role_sp
+
+## F10 arm 2 — piped search whose out-of-band token exists nowhere (contract C3: not a path candidate -> ALLOWED)
+OK  F10-C3   exp=ALLOWED  got=ALLOWED  "cat docs/x | grep TODO packages/y.ts"
+
+## Existence qualifier is UNIFORM (amended C3) — a nonexistent candidate never refuses
+OK  C3-uni   exp=ALLOWED  got=ALLOWED  "rg --files docs/ packages/nope.ts"
+
+## Unchanged C3 rows around the amendment (regression guard)
+OK  C3       exp=REFUSED  got=REFUSED  "rg foo" :: [mpd-roles] captain shell: REFUSED — "rg foo" reads workspace content through the shell, and reconnaissance is not the captain's job. Delegate it: mpd_role_spawn {role:"Explorer", task:"find what you 
+OK  C3       exp=ALLOWED  got=ALLOWED  "rg foo docs/"
+OK  C3       exp=REFUSED  got=REFUSED  "find . -name '*.ts'" :: [mpd-roles] captain shell: REFUSED — "find . -name '*.ts'" reads workspace content through the shell, and reconnaissance is not the captain's job. Delegate it: mpd_role_spawn {role:"Explorer", task:"f
+OK  C3       exp=ALLOWED  got=ALLOWED  "git log --oneline | grep fix"
+OK  C3       exp=REFUSED  got=REFUSED  "cat packages/mpd-roles-plugin/src/index.ts" :: [mpd-roles] captain shell: REFUSED — "cat packages/mpd-roles-plugin/src/index.ts" reads workspace content through the shell, and reconnaissance is not the captain's job. Delegate it: mpd_role_spawn {r
+OK  C3       exp=ALLOWED  got=ALLOWED  "cat docs/decisions.md"
+
+## Band classifier used by both rules (same function, one definition)
+band "docs/decisions.md" -> true
+band "packages/mpd-roles-plugin/src/index.ts" -> false
+band "packages/y.ts" -> false
+band "docs/x" -> true
+
+SUMMARY total=9 mismatched=0

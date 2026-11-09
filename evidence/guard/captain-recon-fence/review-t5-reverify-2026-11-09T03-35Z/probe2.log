@@ -1,0 +1,34 @@
+## substitution-hidden GATE commands (contract §3 C1 family)
+ALLOWED  "echo $(bun test)"
+ALLOWED  "x=$(bun test)"
+ALLOWED  "$(bun test)"
+ALLOWED  "echo `bun test`"
+ALLOWED  "echo $(npm run typecheck)"
+ALLOWED  "echo $(node scripts/verify-vendor.ts)"
+ALLOWED  "if $(bun test); then echo ok; fi"
+REFUSED  "echo $(cd packages && bun test)"
+    :: [mpd-roles] captain shell: REFUSED — "bun test)" is a verification command and verification is not the captain's job. Delegate it: mpd_role_spawn {role:"Reviewe
+
+## substitution-hidden READS (the repaired class — expected REFUSED)
+REFUSED  "echo $(cat packages/mpd-roles-plugin/src/index.ts)"
+    :: [mpd-roles] captain shell: REFUSED — "cat packages/mpd-roles-plugin/src/index.ts" reads workspace content through the shell, and reconnaissance is not the capta
+REFUSED  "echo `grep TODO packages/mpd-roles-plugin/src/index.ts`"
+    :: [mpd-roles] captain shell: REFUSED — "grep TODO packages/mpd-roles-plugin/src/index.ts" reads workspace content through the shell, and reconnaissance is not the
+REFUSED  "echo $(head -5 packages/mpd-roles-plugin/src/index.ts)"
+    :: [mpd-roles] captain shell: REFUSED — "head -5 packages/mpd-roles-plugin/src/index.ts" reads workspace content through the shell, and reconnaissance is not the c
+
+## process substitution / declared bounds (out of the token class)
+ALLOWED  "cat <(cat packages/mpd-roles-plugin/src/index.ts)"
+ALLOWED  "diff <(cat docs/decisions.md) <(cat packages/mpd-roles-plugin/src/index.ts)"
+ALLOWED  "bash -c 'cat packages/mpd-roles-plugin/src/index.ts'"
+ALLOWED  "sh -c 'bun test'"
+ALLOWED  "python3 -c 'print(open(\"packages/mpd-roles-plugin/src/index.ts\").read())'"
+
+## over-block watch: a read segment plus an unrelated substitution
+REFUSED  "cat docs/decisions.md && echo \"ran at $(date)\" && ls packages"
+    :: [mpd-roles] captain shell: REFUSED — "cat docs/decisions.md && echo "ran at $(date)" && ls packages" reads workspace content through the shell, and reconnaissan
+REFUSED  "cat docs/decisions.md && du -sh packages $(pwd)"
+    :: [mpd-roles] captain shell: REFUSED — "cat docs/decisions.md && du -sh packages $(pwd)" reads workspace content through the shell, and reconnaissance is not the 
+ALLOWED  "cat docs/decisions.md && git log -1 --format=%H $(git rev-parse --abbrev-ref HEAD)"
+REFUSED  "echo $(cat docs/decisions.md && ls packages)"
+    :: [mpd-roles] captain shell: REFUSED — "cat docs/decisions.md && ls packages" reads workspace content through the shell, and reconnaissance is not the captain's j

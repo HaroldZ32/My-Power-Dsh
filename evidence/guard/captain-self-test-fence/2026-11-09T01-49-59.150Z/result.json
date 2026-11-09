@@ -1,0 +1,117 @@
+{
+  "ok": true,
+  "wave": "captain-self-test-fence",
+  "contract": ".mpd/plans/captain-self-test-fence.md §5 (evidence) / §4 A6",
+  "timestamp": "2026-11-09T01-49-59.150Z",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "branch": "fix/captain-self-test-fence",
+  "head": "3ffcbe7e4479a9b6d09b58f19f8ceb783ddf4c8e",
+  "pinnedBuildToolchain": "bun 1.4.0 (.toolchain/node_modules/.bin/bun)",
+  "rebuilds": [],
+  "rebuildNote": "No package dist was stale when the wave gates ran: verify-dist-fresh rebuilt every entry twice and reported 34/34 fresh, 0 stale. Nothing needed rebuilding, so none was.",
+  "allGatesGreen": true,
+  "gates": [
+    {
+      "id": "tests",
+      "argv": [
+        "bun",
+        "test",
+        "packages/mpd-roles-plugin",
+        "packages/mpd-verify-plugin",
+        "packages/mpd-tools-plugin"
+      ],
+      "exit": 0,
+      "summary": "452 pass, 0 fail, 3137 expect() calls, 26 files",
+      "logPath": "output.log#tests"
+    },
+    {
+      "id": "typecheck",
+      "argv": [
+        "bun",
+        "run",
+        "typecheck"
+      ],
+      "exit": 0,
+      "summary": "tsgo --noEmit: no diagnostics, exit 0",
+      "logPath": "output.log#typecheck"
+    },
+    {
+      "id": "dist",
+      "argv": [
+        "node",
+        "scripts/verify-dist-fresh.ts"
+      ],
+      "exit": 0,
+      "summary": "ok: 34/34 targets fresh (each rebuilt twice, byte-identical); 1 declared NOT COVERED artifact (packages/mpd-mcp-codegraph/dist/serve.js)",
+      "logPath": "output.log#dist"
+    },
+    {
+      "id": "comments",
+      "argv": [
+        "bun",
+        "run",
+        "verify:comments"
+      ],
+      "exit": 0,
+      "summary": "VERDICT: PASS — 618 TypeScript files, 55405 declarations",
+      "logPath": "output.log#comments"
+    },
+    {
+      "id": "rows",
+      "argv": [
+        "bun",
+        "run",
+        "verify:rows"
+      ],
+      "exit": 0,
+      "summary": "ok: 36 row ids match the 2-file bundle patch layer",
+      "logPath": "output.log#rows"
+    },
+    {
+      "id": "preset-conformance",
+      "argv": [
+        "node",
+        "skills/dsh-qa/scripts/preset-conformance.ts"
+      ],
+      "exit": 0,
+      "summary": "PASS — conformance ok=true (33 rows checked, preset mpd 28 children), sessionCreate agentPreset=mpd, negative control refused with agent-preset/invalid",
+      "logPath": "output.log#preset-conformance"
+    },
+    {
+      "id": "docs",
+      "argv": [
+        "bun",
+        "run",
+        "verify:docs"
+      ],
+      "exit": 0,
+      "summary": "PASS — pairs=59 failed=0 violations=0 links=626 dead=0",
+      "logPath": "output.log#docs"
+    },
+    {
+      "id": "manual-paths",
+      "argv": [
+        "node",
+        "scripts/verify-manual-paths.ts"
+      ],
+      "exit": 0,
+      "summary": "PASS — resolved=158 over-report=72 under-report=83 declared=2",
+      "logPath": "output.log#manual-paths"
+    },
+    {
+      "id": "vendor",
+      "argv": [
+        "node",
+        "scripts/verify-vendor.ts"
+      ],
+      "exit": 0,
+      "summary": "PASS — 8 shipped asset(s) fingerprinted, upstream identity not checked",
+      "logPath": "output.log#vendor"
+    }
+  ],
+  "honestBounds": [
+    "A4's live-mount BOOT-LINE tokens (captainShell=deny patterns=<N>, evidenceBy=verifier) are not asserted here: preset-conformance proves the preset/rows mount, row config conformance and agentPreset=mpd on a real session, not the rows' boot-line text. The unit arm for evidenceBy= is packages/mpd-verify-plugin/test/evidence-by.test.ts; the live token arm belongs to the integration/review rows.",
+    "This bundle is the static + unit + mount sweep only. It does not re-run the Docker real-machine lane, which the release sweep owns.",
+    "`verify-dist-fresh` certifies completeness and byte identity, not freshness (T-26/T-91): the operative evidence is its rebuild-twice-and-diff, quoted above."
+  ]
+}

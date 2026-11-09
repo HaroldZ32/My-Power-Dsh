@@ -1,0 +1,58 @@
+===== build: .toolchain/node_modules/.bin/bun build packages/mpd-roles-plugin/src/index.ts --target node --format esm --outfile packages/mpd-roles-plugin/dist/index.js =====
+Bundled 19 modules in 12ms
+
+  index.js  0.28 MB  (entry point)
+
+[build exit=0]
+f0ec17be51d0f03a7e597970e324b969ec4e39cf6129f3ec64b3d55794a54e4b  packages/mpd-roles-plugin/dist/index.js
+
+===== probes: .toolchain/node_modules/.bin/bun .mpd/tmp/probe-shell.ts =====
+ALLOWED  expected=ALLOWED  OK  "cat docs/decisions.md && ls packages"
+ALLOWED  expected=ALLOWED  OK  "cat docs/decisions.md && rm -rf node_modules"
+ALLOWED  expected=ALLOWED  OK  "cat docs/decisions.md && git status"
+REFUSED  expected=REFUSED  OK  "echo $(cat packages/mpd-roles-plugin/src/index.ts)"
+REFUSED  expected=REFUSED  OK  "echo `cat packages/x.ts`"
+ALLOWED  expected=ALLOWED  OK  "echo $(cat docs/decisions.md)"
+REFUSED  expected=REFUSED  OK  "git log | find"
+ALLOWED  expected=ALLOWED  OK  "git log --oneline | grep fix"
+[probe exit=0]
+
+===== .toolchain/node_modules/.bin/bun test packages/mpd-roles-plugin (tail) =====
+(pass) CONTROL: the forwarded cap disturbs neither the route nor the prompt the spawn already carried [0.51ms]
+
+ 365 pass
+ 0 fail
+ 2657 expect() calls
+Ran 365 tests across 18 files. [1130.00ms]
+[test exit=0]
+
+===== node scripts/verify-dist-fresh.ts --only mpd-roles =====
+  FRESH   packages/mpd-roles-plugin/dist/index.js  sha f0ec17be51d0… 26ms  <- packages/mpd-roles-plugin/src/index.ts
+[verify-dist-fresh] root: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)
+[verify-dist-fresh] build toolchain: bun 1.4.0 from the repository toolchain (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun) · recorded buildToolchain bun@1.4.0
+[verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] ok: 1/1 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 39ms
+[mpd-roles dist exit=0]
+
+===== node scripts/verify-dist-fresh.ts --only mpd-verify =====
+  FRESH   packages/mpd-verify-plugin/dist/index.js  sha 0cfbc7a82f06… 22ms  <- packages/mpd-verify-plugin/src/index.ts
+[verify-dist-fresh] root: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)
+[verify-dist-fresh] build toolchain: bun 1.4.0 from the repository toolchain (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun) · recorded buildToolchain bun@1.4.0
+[verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] ok: 1/1 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 38ms
+[mpd-verify dist exit=0]
+
+===== .toolchain/node_modules/.bin/bun run typecheck =====
+$ tsgo --noEmit
+[typecheck exit=0]
+
+===== .toolchain/node_modules/.bin/bun run verify:comments =====
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 618 TypeScript file(s) of 618 in the source set; inspected 55546 declaration(s); skipped 27199 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+[comments exit=0]

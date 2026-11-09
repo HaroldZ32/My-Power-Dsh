@@ -1,0 +1,33 @@
+## B1 — R1 launcher spellings (expect REFUSED)
+R1        REFUSED  "npm test"
+R1        REFUSED  "npm run typecheck"
+R1        REFUSED  "bun typecheck"
+R1        REFUSED  "bun run --silent typecheck"
+R1        REFUSED  "env FOO=1 bun run typecheck"
+R1        REFUSED  "/usr/local/bin/bun test"
+R1        REFUSED  "/usr/bin/env bun test"
+R1        REFUSED  "sudo -u root bun test"
+R1        REFUSED  "FOO=1 bun test"
+R1        REFUSED  "command bun test"
+R1        REFUSED  "nohup bun test"
+R1        REFUSED  "npm run verify:gates"
+R1        REFUSED  "pnpm test"
+R1        REFUSED  "yarn run typecheck"
+R1        REFUSED  "npx vitest"
+R1        REFUSED  "cd packages && bun test"
+R1        REFUSED  "echo start; bun test"
+
+## B1 — anti-false-positive list (expect ALLOWED)
+anti-FP   ALLOWED  "git status"
+anti-FP   ALLOWED  "ls"
+anti-FP   ALLOWED  "mkdir -p x"
+anti-FP   ALLOWED  "node -e \"1+1\""
+anti-FP   ALLOWED  "bun run format"
+anti-FP   ALLOWED  "npm install"
+anti-FP   ALLOWED  "cat docs/x.md"
+anti-FP   ALLOWED  "echo \"bun test\""
+
+## B1 — scope: child session and non-captain keep the shell, `allow` restores it
+child     ALLOWED  "cat packages/mpd-roles-plugin/src/index.ts"
+allow     ALLOWED  "bun test"
+allow     ALLOWED  "cat packages/mpd-roles-plugin/src/index.ts"

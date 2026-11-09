@@ -1,0 +1,8 @@
+# A4 live-mount evidence — reviewer-3, T5 (recorded 2026-11-09T02:00:40Z)
+# Real mount: skills/dsh-qa/scripts/captain-scope.ts live lane, isolated DSH_HOME/HOME, profile mpd-headless.
+# Live run evidence: evidence/roles/captain-scope/2026-11-09T01-55-53.580Z/result.json (ok:true, 8 rows PASS).
+# Sandbox row logs: .mpd/tmp/live/mpd-captain-full-tools-wZ98Gi/ws/.mpd/logs (TMPDIR kept under the workspace for this review).
+
+[2026-11-09T01:55:56.328Z] [mpd-roles] team plane: readOnlyGuard=installed deny=10 captainInvestigation=deny captainShell=deny patterns=9 delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed questions=relay routes=0 rosterSection=agent-scoped order=605 sessionGate=mechanical sensitivity=easy
+[2026-11-09T01:55:56.099Z] [mpd-verify] verifySeam=present (the harness tools.guard SEAM — NOT an installed gate: the write guard is WITHDRAWN; the mpd-roles row reports its own state) loops=0 installedAt=2026-11-09T01:55:56.099Z delegationObserver=installed tools=5 mode=hard evidenceBy=verifier guard=seam-present bootMarker=written
+[2026-11-09T01:55:56.066Z] [mpd-tools] captainMaxResultBytes=4096

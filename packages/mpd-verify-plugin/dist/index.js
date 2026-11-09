@@ -2510,8 +2510,9 @@ var VERIFIER_DENIED_TOOLS = [
 var VERIFIER_DENIED_PREFIXES = ["agent_teams_", "mpd_", "spawn_teammate", "team_task_", "team_"];
 var VERIFY_TOOL_PREFIX = "mpd_verify_";
 var PATH_ARG_KEYS = ["file_path", "path", "filePath", "target"];
+var PATH_LIST_TOOLS = ["mcp__ast_grep__rewrite", "mcp__ast_grep__search"];
 function readTargetPath(toolName, args) {
-  if (toolName === "mcp__ast_grep__rewrite") {
+  if (PATH_LIST_TOOLS.includes(toolName)) {
     const paths = args?.paths;
     if (Array.isArray(paths) && typeof paths[0] === "string")
       return paths[0];
@@ -2624,6 +2625,21 @@ function resolveVerifyMode(raw) {
   if (value === "advisory")
     return "advisory";
   return "hard";
+}
+function resolveEvidenceBy(raw) {
+  const value = typeof raw === "string" ? raw.trim().toLowerCase() : "";
+  return value === "any" ? "any" : "verifier";
+}
+function isMpdCaptainSession(agent) {
+  const header = agent?.session?.header;
+  if (header === undefined || header === null)
+    return false;
+  if (header.origin === "subagent")
+    return false;
+  const depth = Number(header.delegationDepth);
+  if (depth >= 1)
+    return false;
+  return header.agentPreset === "mpd";
 }
 function resolvePositiveInt(raw, fallback) {
   const value = typeof raw === "number" ? raw : typeof raw === "string" && raw.trim() !== "" ? Number(raw) : Number.NaN;
@@ -3887,6 +3903,9 @@ function evidenceTool(deps) {
     },
     execute: (args, exec) => {
       const { workspace, sessionId } = where(deps, exec);
+      if (String(args?.kind ?? "") === "gate" && resolveEvidenceBy(deps.configValue("verify.evidenceBy")) === "verifier" && isMpdCaptainSession(exec.agent)) {
+        return { refused: `[mpd-verify] captain gate evidence: REFUSED — running a gate is verification, and verification is not the captain's job (verify.evidenceBy="verifier"). Delegate it: mpd_role_spawn {role:"Reviewer", task:"run mpd_verify_evidence {kind:\\"gate\\", gate:\\"<id>\\"} and report the outcome"}, or bind a verifier seat with mpd_verify_seat. kind:"probe" stays open to you (content-free: size/sha256/mtime), and verify.evidenceBy:"any" in mpd.jsonc is the configuration opt-out.` };
+      }
       const seat = readSeats(workspace).seats?.[sessionId];
       const loopId = seat?.loopId ?? (args?.loop_id === undefined ? null : String(args.loop_id));
       const evidenceId = mintId("ev");
@@ -4147,6 +4166,7 @@ function apply(ctx, config = {}) {
   }
   const mode = resolveVerifyMode(configValue("verify.mode"));
   outcome.push("mode=" + mode);
+  outcome.push("evidenceBy=" + resolveEvidenceBy(configValue("verify.evidenceBy")));
   const guardSeam = dsh.capabilities().toolsGuard === true;
   outcome.push("guard=" + (guardSeam ? "seam-present" : "no-guard-seam"));
   const installedAt = new Date().toISOString();

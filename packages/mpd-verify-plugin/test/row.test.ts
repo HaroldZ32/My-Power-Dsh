@@ -381,7 +381,7 @@ describe("the mpd-verify row", () => {
     /** The top-level caller. */
     const captain = { session: { id: "captain-session", header: { cwd: workspace, agentPreset: "mpd" } } }
     /** A DIFFERENT agent, the only one that may take a seat on the captain's loop. */
-    const verifier = { session: { id: "verifier-session", header: { cwd: workspace, agentPreset: "mpd", parentSession: "captain-session" } } }
+    const verifier = { session: { id: "verifier-session", header: { cwd: workspace, agentPreset: "mpd", parentSession: "captain-session", origin: "subagent", delegationDepth: 1 } } }
     /** Every result this arm produced, in call order, so each is walked before it is asserted on. */
     const results: Array<{ label: string; value: unknown }> = []
     /** Call one tool and record its result for the walk. */
@@ -434,7 +434,7 @@ describe("the mpd-verify row", () => {
     /** The top-level caller. */
     const captain = { session: { id: "captain-session", header: { cwd: workspace, agentPreset: "mpd" } } }
     /** The agent that takes the seat. */
-    const verifier = { session: { id: "verifier-session", header: { cwd: workspace, agentPreset: "mpd", parentSession: "captain-session" } } }
+    const verifier = { session: { id: "verifier-session", header: { cwd: workspace, agentPreset: "mpd", parentSession: "captain-session", origin: "subagent", delegationDepth: 1 } } }
     /** THIS wave's contract — not either member of the pair the seat used to be handed. */
     const contract = ".mpd/plans/verify-law-defects.md"
     // The contract must exist on disk: the record hashes it, and a hardcoded path that does not exist is
@@ -509,7 +509,7 @@ describe("the mpd-verify row", () => {
     /** The top-level caller (the loop's reader on a delegated loop). */
     const captain = { session: { id: "captain-session", header: { cwd: workspace, agentPreset: "mpd" } } }
     /** The verifier seat, a DIFFERENT agent. */
-    const verifier = { session: { id: "verifier-session", header: { cwd: workspace, agentPreset: "mpd", parentSession: "captain-session" } } }
+    const verifier = { session: { id: "verifier-session", header: { cwd: workspace, agentPreset: "mpd", parentSession: "captain-session", origin: "subagent", delegationDepth: 1 } } }
     /** The contract this loop freezes. */
     const contract = ".mpd/plans/verify-law-defects.md"
     /** An implementation path, refused while the seat is blind and admitted after the FAIL unlocks it. */

@@ -1,0 +1,107 @@
+{
+  "task": "T2 / W2-C2 — gate mpd_hashline_read and the MCP recon tools",
+  "wave": "captain recon fence (wave 2)",
+  "owner": "Deep Worker (T2)",
+  "contract": ".mpd/plans/captain-recon-fence.md §2 non-goals, §3 C2, §4 B2/B6, §7 scope amendment (law.ts)",
+  "utc": "2026-11-09T02:34:01.509Z",
+  "git_head": "b956b213",
+  "changed": [
+    {
+      "path": "packages/mpd-roles-plugin/src/captain-investigation.ts",
+      "symbols": ["INVESTIGATION_TOOLS", "captainInvestigationDecision"],
+      "what": "INVESTIGATION_TOOLS grew from 3 to 15 names: mpd_hashline_read; mcp__ast_grep__search; the NINE LSP readers (find_definition, get_hover, find_references, get_diagnostics, find_workspace_symbols, find_implementation, prepare_call_hierarchy, get_incoming_calls, get_outgoing_calls); mcp__codegraph__codegraph_explore. The decision itself is UNCHANGED: same mode-first order, same topLevel gate, same single captainReadablePath classifier, same fail-closed bare-call rule. The bare-call reason text was widened to cover a source-returning tool that is not a search (codegraph_explore) while keeping the pinned substring 'no path argument'.",
+      "unchanged": "captain.investigation knob, DEFAULT_INVESTIGATION_MODE, the band (captainReadablePath / CAPTAIN_READABLE_*), the install seam and its error boundary, the refusal's route-out sentence."
+    },
+    {
+      "path": "packages/mpd-verify-plugin/src/law.ts",
+      "symbols": ["PATH_LIST_TOOLS (new module-local const)", "readTargetPath"],
+      "what": "The authorised two-part diff from the §7 amendment, word for word: a new PATH_LIST_TOOLS = ['mcp__ast_grep__rewrite', 'mcp__ast_grep__search'], and the single rewrite-only condition replaced by PATH_LIST_TOOLS.includes(toolName). The branch body and its position BEFORE the PATH_ARG_KEYS loop are unchanged, so precedence for every pre-existing shape is byte-identical.",
+      "why_required": "Without it readTargetPath returns undefined for mcp__ast_grep__search (its path argument is `paths`, not one of file_path/path/filePath/target), so the guard would refuse the tool as a BARE CALL even for docs/ — B2's 'with docs/ ALLOWED' arm is unreachable without this change."
+    },
+    {
+      "path": "packages/mpd-roles-plugin/test/captain-investigation.test.ts",
+      "symbols": ["C2 — every source-returning tool is judged by the SAME path classifier (8 new arms)", "the rule still touches no WRITE tool and no bash"],
+      "what": "New arms for hashline, codegraph_explore (bare-call reason + no-args), ast_grep_search (source refused / docs allowed / bare refused), the EIGHT path-carrying LSP readers, find_workspace_symbols (bare-call), member/other-preset/non-listed-tool release, and mode `allow`. A direct readTargetPath arm locks the paths[0] precedence for BOTH ast-grep tools and the frozen PATH_ARG_KEYS order. The old 'touches NO tool but the three reconnaissance tools' arm was retitled and kept for the write/bash/empty-tool cases."
+    }
+  ],
+  "not_changed": [
+    "packages/mpd-roles-plugin/dist/index.js — T3 owns the rebuild (explicit captain instruction)",
+    "packages/mpd-verify-plugin/dist/index.js — T3's rebuild set per the captain's amendment",
+    "packages/mpd-roles-plugin/src/captain-shell.ts — T1's file, untouched",
+    "presets/mpd.patch.yml, AGENTS.md, agent-references/verification-flow.md — T6 owns B5; untouched",
+    "verify.evidenceBy, captain.maxResultBytes, delegation.gate, mpd_verify_evidence, write tools (contract §2)"
+  ],
+  "acceptance": [
+    {
+      "criterion": "B2a mpd_hashline_read on packages/x.ts REFUSED; on docs/x.md ALLOWED",
+      "verdict": "PASS",
+      "evidence": "arm 'mpd_hashline_read is a full-file reader and is refused on a source path, allowed on the band' — refused on packages/x/src/y.ts with the full refusal sentence; allowed on docs/a.md, ./agent-references/glossary.md and the absolute band spelling"
+    },
+    {
+      "criterion": "B2b codegraph_explore REFUSED with the bare-call reason",
+      "verdict": "PASS",
+      "evidence": "arm 'codegraph_explore has NO path argument, so the bare-call rule refuses it' — denial carries 'captain investigation rule' AND 'no path argument'; same with args undefined; a member session is released"
+    },
+    {
+      "criterion": "B2c ast_grep_search with a source path REFUSED; with docs/ ALLOWED",
+      "verdict": "PASS",
+      "evidence": "arm 'ast_grep_search is judged by its FIRST paths entry, and a bare call is refused' — packages/x/src refused, docs allowed (this is the arm that fails without the law.ts change), absent `paths` refused as a bare call"
+    },
+    {
+      "criterion": "B2d lsp find_definition on a source file_path REFUSED (+ the eight other readers per the §7 amendment)",
+      "verdict": "PASS",
+      "evidence": "arm 'the LSP readers are judged by file_path, and they keep the band open' — all eight file_path readers refused on packages/x/src/y.ts and allowed on docs/a.md; find_workspace_symbols (query only) refused by the bare-call rule"
+    },
+    {
+      "criterion": "B2e Child sessions unaffected",
+      "verdict": "PASS",
+      "evidence": "arm 'the new doors leave a member, another preset and a non-listed tool untouched' — MEMBER released on hashline/ast-grep/lsp; a top-level session of another preset ('cordis') released; mcp__grep_app__searchGitHub and mcp__context7__query-docs released (contract §2)"
+    },
+    {
+      "criterion": "C2 readTargetPath extended ONLY for the genuinely new shape; existing precedence unchanged",
+      "verdict": "PASS",
+      "evidence": "arm 'the list-shaped reader keeps BOTH ast-grep tools on paths[0]' — rewrite and search both return paths[0]; read({file_path,path}) still returns file_path; grep({path}) and lsp({file_path}) unchanged; absent/empty paths return undefined"
+    },
+    {
+      "criterion": "C2 bound stated in the module",
+      "verdict": "PASS",
+      "evidence": "captain-investigation.ts header HONEST BOUNDS (1)/(2) and the INVESTIGATION_TOOLS doc block state the MCP deny by TOOL NAME, the deliberate absence of rename_symbol/rename_symbol_strict (writes), and the token-based shell bound owned by captain-shell.ts"
+    },
+    {
+      "criterion": "B4 boot tokens still print",
+      "verdict": "PASS (adjacent, not this task's change)",
+      "evidence": "no boot-token code touched; adapter-identity.test.ts arms asserting 'captainInvestigation=deny' pass in the package suite; the mode resolver is unchanged"
+    }
+  ],
+  "gates": [
+    { "gate": "packages/mpd-roles-plugin bun test test/captain-investigation.test.ts", "result": "22 pass / 0 fail / 122 expect", "exit": 0 },
+    { "gate": "packages/mpd-roles-plugin bun test", "result": "343 pass / 1 fail (344 tests, 18 files)", "exit": 1, "note": "the one failure is the F1 dist byte-identity arm — RED BY DESIGN, see expected_red_by_design" },
+    { "gate": "packages/mpd-verify-plugin bun test", "result": "102 pass / 0 fail / 6 files", "exit": 0 },
+    { "gate": "packages/mpd-dsh-adapter-plugin bun test", "result": "395 pass / 0 fail / 27 files", "exit": 0, "note": "the cross-package coupling inventory still passes with the added test-side law.ts import" },
+    { "gate": "root bun run typecheck (tsgo --noEmit)", "result": "clean", "exit": 0 },
+    { "gate": "bun run verify:comments", "result": "PASS — 618 files, 55427 declarations, 27142 inline callbacks skipped", "exit": 0 },
+    { "gate": "node scripts/verify-dist-fresh.ts", "result": "FAIL — 2 of 34 targets STALE (mpd-roles-plugin, mpd-verify-plugin), build toolchain bun 1.4.0 from .toolchain", "exit": 1, "note": "BY DESIGN — T3 rebuilds both" },
+    { "gate": "bun run verify:rows", "result": "ok — 36 row ids match the 2-file patch layer", "exit": 0 },
+    { "gate": "node scripts/verify-manual-paths.ts", "result": "PASS — resolved=158 over-report=72 under-report=83 declared=2", "exit": 0 },
+    { "gate": "bun run verify:manifest", "result": "PASS — 2 patch files, 28 row module paths, 1262 packed files, evidence excluded", "exit": 0 },
+    { "gate": "node skills/dsh-qa/scripts/preset-conformance.ts --self-test (pinned harness)", "result": "PASS — 33 harness rows, mpd preset 28 child rows, parity 27/27, negative controls 4/4 reddened", "exit": 0 },
+    { "gate": "node skills/dsh-qa/scripts/preset-conformance.ts (live mount, pinned harness)", "result": "PASS — session/create answered agentPreset=mpd; its own artifact evidence/dsh-qa/preset-conformance/2026-11-09T02-32-50.808Z", "exit": 0 },
+    { "gate": "bun run test:qa", "result": "PASS — all self-tests passed", "exit": 0 }
+  ],
+  "expected_red_by_design": [
+    {
+      "gate": "F1 shipped artifact / verify-dist-fresh",
+      "why": "No dist was rebuilt: the captain directed that T3 rebuilds packages/mpd-roles-plugin/dist/index.js ONCE after both src changes (T1's captain-shell.ts and this one) and extended that to packages/mpd-verify-plugin/dist/index.js, which also inlines law.ts.",
+      "observed": "committed roles dist 261503 B sha 1e88f260… vs fresh 264598 B sha 2aedf611…; committed verify dist 175999 B sha f8078dc0… vs fresh 176071 B sha 0cfbc7a8…"
+    }
+  ],
+  "honest_bounds": [
+    "NO live mount of the new doors is claimed. The guard is proven through the SHIPPED pure decision plus the install seam (unit arms), not through a booted dsh: a live captain-scope lane would load the committed dist, which is stale until T3 rebuilds. Re-run captain-scope after T3 if a live witness is required.",
+    "ast-grep is judged by paths[0] ONLY, because contract §3 C2 says 'judge the FIRST element'. A call whose paths[0] is inside the band but paths[1] is a source path is therefore ALLOWED. Closing that needs the contract to say judge EVERY element; the module bound documents the reader, not this specific residual.",
+    "The MCP deny is by TOOL NAME (stated in the module): a source-returning MCP tool not in INVESTIGATION_TOOLS is open until added. mcp__lsp__rename_symbol / rename_symbol_strict are deliberately out (writes; already on the member read-only deny list).",
+    "Argument shapes are from this session's tool catalog: the eight LSP readers carry file_path, find_workspace_symbols carries only query, mpd_hashline_read carries path, ast-grep search carries paths. A future schema change that renames an argument would silently turn a judged tool into a bare-call refusal (fail-closed, never fail-open).",
+    "The shell read-route (C3) is T1's file and is not claimed here; the module's honesty bound no longer asserts that the shell route is unguarded."
+  ],
+  "next_step": "T3: rebuild BOTH dists from the repo root with .toolchain/node_modules/.bin/bun, then re-run node scripts/verify-dist-fresh.ts (expect 34/34 FRESH) and (cd packages/mpd-roles-plugin && bun test) (expect 0 fail). Until then the dist arm stays red by design.",
+  "verification": "A DIFFERENT agent verifies this against the frozen contract; nothing here is a self-certification."
+}

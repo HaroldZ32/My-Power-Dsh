@@ -1,0 +1,32 @@
+deny table length: 19
+ok   A "bun run test" -> REFUSE [bun-run-test]
+ok   A "bun run test:unit" -> REFUSE [bun-run-gate]
+ok   A "bun run test:watch" -> REFUSE [bun-run-gate]
+ok   A "bunx tsgo --noEmit" -> REFUSE [bunx-runner]
+ok   A "bun x tsgo" -> REFUSE [bunx-runner]
+ok   A "npm exec tsc" -> REFUSE [pkg-exec-runner]
+ok   A "pnpm dlx tsc" -> REFUSE [pkg-exec-runner]
+ok   A "yarn dlx tsc" -> REFUSE [pkg-exec-runner]
+ok   A "npm exec -p typescript tsc" -> ALLOW [(no row)]
+ok   A "bun run testimony" -> ALLOW [(no row)]
+ok   A "bun run format" -> ALLOW [(no row)]
+ok   A "npm install" -> ALLOW [(no row)]
+ok   A "git status" -> ALLOW [(no row)]
+ok   B "true | grep -rn TODO" -> REFUSE [(no row)]
+ok   B "git log | grep -R fix" -> REFUSE [(no row)]
+ok   B "git log | grep -r fix" -> REFUSE [(no row)]
+ok   B "git log | grep -rn fix" -> REFUSE [(no row)]
+ok   B "git log | grep --recursive fix" -> REFUSE [(no row)]
+ok   B "git log | grep --dereference-recursive fix" -> REFUSE [(no row)]
+ok   B "git log | grep fix" -> ALLOW [(no row)]
+ok   B "ls | grep md" -> ALLOW [(no row)]
+ok   B "grep -rn TODO docs/" -> ALLOW [(no row)]
+ok   B "git log | grep -rn TODO docs/" -> ALLOW [(no row)]
+required rows: 23 mismatched: 0
+--- declared residuals (outside the filed spellings) ---
+residual "git log | grep \"-r\" fix" -> ALLOW
+residual "git log | grep '--recursive' fix" -> ALLOW
+residual "bunx --bun tsgo" -> ALLOW
+residual "npm x tsc" -> ALLOW
+residual "pnpm --silent dlx tsc" -> ALLOW
+residual "bun \"test\"" -> ALLOW

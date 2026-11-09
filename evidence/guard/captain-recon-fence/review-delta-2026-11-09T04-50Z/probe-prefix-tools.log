@@ -1,0 +1,63 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-tools-plugin/test/captain-result-cap.test.ts:
+(pass) resolveMaxResultBytes — the config seam > default 4096, an explicit integer wins, and 0 is a DECLARED disable [0.07ms]
+(pass) resolveMaxResultBytes — the config seam > anything unreadable fails CLOSED on the default rather than switching the cap off [0.02ms]
+(pass) mpd-tools captain result cap (C3 / A3) > a captain result over the cap is truncated, and the FULL text is on disk with its absolute path [1.88ms]
+(pass) mpd-tools captain result cap (C3 / A3) > EXACTLY at the cap passes through byte-identical — no marker, no file [0.29ms]
+(pass) mpd-tools captain result cap (C3 / A3) > ONE byte over the cap truncates — the off-by-one boundary [0.36ms]
+(pass) mpd-tools captain result cap (C3 / A3) > the cap is measured in BYTES: a 2000-character CJK result (6000 B) is truncated [0.34ms]
+(pass) mpd-tools captain result cap (C3 / A3) > a CHILD's result is untouched by the captain cap and keeps today's character budget [0.36ms]
+(pass) mpd-tools captain result cap (C3 / A3) > a child still receives today's 16384-character banner, unchanged [0.35ms]
+(pass) mpd-tools captain result cap (C3 / A3) > `captain.maxResultBytes: 0` disables the cap — and the legacy budget does NOT take over [0.29ms]
+(pass) mpd-tools captain result cap (C3 / A3) > a small captain result passes through unchanged [0.24ms]
+(pass) mpd-tools captain result cap (C3 / A3) > the LIVE config layer wins over the row config, read per call [0.27ms]
+(pass) mpd-tools captain result cap (C3 / A3) > a FAILED full-text write degrades to today's truncation and says so in the banner [0.51ms]
+335 |     // NO DUPLICATED REGION: every complete line the body keeps appears exactly ONCE, so the output can
+336 |     // never carry a head plus a copy of its own tail.
+337 |     /** The COMPLETE numbered lines retained (a slice may cut a line, which then does not match). */
+338 |     const kept = body.split("\n").filter((line) => /^line \d{4}$/.test(line))
+339 |     expect(kept.length).toBeGreaterThan(0)
+340 |     expect(new Set(kept).size).toBe(kept.length)
+                                     ^
+error: expect(received).toBe(expected)
+
+Expected: 1085
+Received: 600
+
+      at <anonymous> (/tmp/mpd-prefix-tools-QOOwnz/packages/mpd-tools-plugin/test/captain-result-cap.test.ts:340:32)
+(fail) mpd-tools captain result cap (C3 / A3) > a FAILED full-text write keeps UNIQUE text at 4,000-8,000 chars — no duplicated tail [1.04ms]
+357 |     /** The real `process.cwd`, restored after the arm. */
+358 |     const previousCwd = process.cwd
+359 |     delete process.env.DSH_WORKSPACE_ROOT
+360 |     // `dsh.workspaceRoot(exec)` really can throw on a host whose cwd is gone; the hook must DEGRADE rather
+361 |     // than reject, or the captain loses the whole result instead of a truncated one.
+362 |     process.cwd = (): string => { throw new Error("cwd unavailable") }
+                                                  ^
+error: cwd unavailable
+      at <anonymous> (/tmp/mpd-prefix-tools-QOOwnz/packages/mpd-tools-plugin/test/captain-result-cap.test.ts:362:45)
+      at <anonymous> (/tmp/mpd-prefix-tools-QOOwnz/packages/mpd-tools-plugin/src/index.ts:233:33)
+      at <anonymous> (/tmp/mpd-prefix-tools-QOOwnz/packages/mpd-dsh-adapter-plugin/src/index.ts:5750:31)
+(fail) mpd-tools captain result cap (C3 / A3) > a THROWING workspace root degrades to the notice banner instead of losing the whole result [0.36ms]
+(pass) mpd-tools captain result cap (C3 / A3) > the activation line reports captainMaxResultBytes=<n> [0.25ms]
+
+packages/mpd-tools-plugin/test/tools.test.ts:
+(pass) write-guard allows first write to a new file [0.22ms]
+(pass) write-guard allows idempotent rewrite of identical content [0.08ms]
+(pass) write-guard denies silent overwrite of differing content [0.07ms]
+(pass) write-guard allows idempotent rewrite of a >1MB file (full-file compare) [2.16ms]
+(pass) write-guard resolves a RELATIVE file_path against the session workspace, not process.cwd() [0.27ms]
+(pass) truncation output (incl. banner) never exceeds truncateMaxBytes [0.31ms]
+(pass) truncation near the banner-length boundary never inflates the output [0.20ms]
+(pass) truncation with a budget smaller than the banner adds no head/tail slices [0.07ms]
+(pass) truncation keeps head and tail slices plus the banner [0.06ms]
+(pass) truncation passes through outputs within the budget unchanged [0.09ms]
+
+2 tests failed:
+(fail) mpd-tools captain result cap (C3 / A3) > a FAILED full-text write keeps UNIQUE text at 4,000-8,000 chars — no duplicated tail [1.04ms]
+(fail) mpd-tools captain result cap (C3 / A3) > a THROWING workspace root degrades to the notice banner instead of losing the whole result [0.36ms]
+
+ 23 pass
+ 2 fail
+ 90 expect() calls
+Ran 25 tests across 2 files. [31.00ms]

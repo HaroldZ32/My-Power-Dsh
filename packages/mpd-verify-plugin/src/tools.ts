@@ -17,7 +17,7 @@
 import type { DshAdapter, DshToolDef, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 import { textBlock } from "../../mpd-dsh-adapter-plugin/src/index"
 import { VERIFY_EVIDENCE_CARD, VERIFY_RECORD_CARD } from "./dshgo-cards.ts"
-import { DEFAULT_CONTRACT_PATH, loopContractPath, normalizeContractPath, resolvePositiveInt, sessionKeyOf } from "./law.ts"
+import { DEFAULT_CONTRACT_PATH, isMpdCaptainSession, loopContractPath, normalizeContractPath, resolveEvidenceBy, resolvePositiveInt, sessionKeyOf } from "./law.ts"
 import {
   appendEscape, ensureDir, evidenceDir, hashDoc, loopsDir, mintId, readEvidence, readJson, readLoops, readRecords,
   readSeats, recordsDir, seatsPath, sha256File, verifyRoot, writeEvidence, writeJsonAtomic, writeLoop,
@@ -383,6 +383,15 @@ function evidenceTool(deps: VerifyToolDeps): DshToolDef {
     execute: (args: any, exec: DshToolExec) => {
       /** The call's workspace and caller. */
       const { workspace, sessionId } = where(deps, exec)
+      // C2 — THE CAPTAIN DOES NOT RUN GATES. Checked BEFORE a gate is resolved or a process is spawned, so
+      // a refused call writes NOTHING (no evidence file, no ledger row) and costs no child process.
+      // `kind:"probe"` stays open: it reports only size/sha256/mtime, which is reconnaissance the captain
+      // may do; `verify.evidenceBy:"any"` in mpd.jsonc is the configuration opt-out.
+      if (String(args?.kind ?? "") === "gate"
+        && resolveEvidenceBy(deps.configValue("verify.evidenceBy")) === "verifier"
+        && isMpdCaptainSession(exec.agent)) {
+        return { refused: "[mpd-verify] captain gate evidence: REFUSED — running a gate is verification, and verification is not the captain's job (verify.evidenceBy=\"verifier\"). Delegate it: mpd_role_spawn {role:\"Reviewer\", task:\"run mpd_verify_evidence {kind:\\\"gate\\\", gate:\\\"<id>\\\"} and report the outcome\"}, or bind a verifier seat with mpd_verify_seat. kind:\"probe\" stays open to you (content-free: size/sha256/mtime), and verify.evidenceBy:\"any\" in mpd.jsonc is the configuration opt-out." }
+      }
       /** The loop this evidence belongs to: the caller's seat first, then the explicit argument. */
       const seat = readSeats(workspace).seats?.[sessionId]
       /** The loop the evidence is filed under: the seat's, else the argument, else unbound. */

@@ -1,0 +1,100 @@
+{
+  "ok": true,
+  "slug": "captain-shell-repair",
+  "domain": "guard",
+  "startedAt": "2026-11-09T04:39:00Z",
+  "subject": "packages/mpd-roles-plugin/src/captain-shell.ts (+ test) — CodeRabbit round 1 post-review repair, plus the dist rebuild",
+  "branch": "fix/captain-self-test-fence",
+  "toolchain": {
+    "bun": "1.4.0",
+    "binary": ".toolchain/node_modules/.bin/bun",
+    "note": "pinned toolchain from the repo root, as AGENTS.md §6 requires"
+  },
+  "findings": [
+    {
+      "id": "A",
+      "severity": "Major",
+      "status": "FIXED",
+      "claim": "`bun run test` matched no deny row: `bun-test` needs `bun test`, `bun-run-gate` needs `:` or `_` after the script name; `bunx`/`bun x` and (the same check) `npm exec`/`pnpm dlx`/`yarn dlx` gate runners were uncovered",
+      "change": "three rows APPENDED to CAPTAIN_SHELL_DENY_PATTERNS (no existing label changes owner): bun-run-test, bunx-runner, pkg-exec-runner",
+      "patterns": {
+        "bun-run-test": "/^(?:sudo\\s+)?bun\\s+run\\s+test\\b/i",
+        "bunx-runner": "/^(?:sudo\\s+)?(?:bunx|bun\\s+x)\\s+(?:--\\s+)?(?:tsc|tsgo|jest|vitest|mocha)\\b/i",
+        "pkg-exec-runner": "/^(?:sudo\\s+)?(?:(?:npm|pnpm|yarn)\\s+exec|(?:pnpm|yarn)\\s+dlx)\\s+(?:--\\s+)?(?:tsc|tsgo|jest|vitest|mocha)\\b/i"
+      },
+      "launcher_gap_check": "CONFIRMED for all three named launchers before the fix (`npm exec tsc`, `pnpm dlx tsc`, `yarn dlx tsc` all returned no row and were ALLOWED); covered in one family row, with the `exec` siblings of the same family (pnpm/yarn exec) included. Residual declared in the module header: a launcher option taking a SEPARATE value (`npm exec -p typescript tsc`) and the attached `--package=` form stay outside the token table.",
+      "label_ownership": "`bun run test:unit` still resolves to the earlier `bun-run-gate` row; the new `bun-run-test` row owns only the bare spelling that matched nothing before. Both are gateShaped, so the model-facing sentence is identical."
+    },
+    {
+      "id": "B",
+      "severity": "Minor",
+      "status": "FIXED",
+      "claim": "the piped-search stdin exemption let `grep -r` (no path) search the whole workspace, because GNU grep -r ignores stdin and recurses the cwd",
+      "change": "GREP_RECURSIVE_FLAG_PATTERN + isGrepRecursiveFlag(); the read-route's final exemption is now `readsPipe = patternFirst && fedByPipe && !recursiveGrep`",
+      "flags_covered": ["-r", "-R", "any short cluster carrying either letter (-rn, -nr, -Rni, -rnl)", "--recursive", "--dereference-recursive"],
+      "scope": "`grep` SPECIFICALLY, as the finding asks: `ag`/`ack` and the other verbs keep their existing behaviour; a non-recursive piped `grep` keeps the F1 exemption"
+    }
+  ],
+  "measured": {
+    "denyTableLength": 19,
+    "denyTableLengthBefore": 16,
+    "bootToken": "captainShell=deny patterns=19",
+    "bootTokenSource": "packages/mpd-roles-plugin/src/index.ts:1442 (`\"captainShell=deny patterns=\" + String(CAPTAIN_SHELL_DENY_PATTERNS.length)`)",
+    "bootTokenVerification": "unit level only: adapter-identity.test.ts:344 asserts the boot line carries that COMPUTED token (passes in the 369-test run). No live headless boot was run by this lane, so the token is not claimed as observed in a real mount.",
+    "dist": {
+      "path": "packages/mpd-roles-plugin/dist/index.js",
+      "sha256": "466dac3702797046b404d39e31140a3e022b69dba1290b9f4cf4d202f7666308",
+      "bytes": 277654
+    },
+    "sources": {
+      "packages/mpd-roles-plugin/src/captain-shell.ts": "6555063f34d516241076c36c46839fa18b54932ba5a8f47c76b2497b5df58d64",
+      "packages/mpd-roles-plugin/test/captain-shell.test.ts": "d6a74e1304ad3c903d067d9bf65976c3d3b8d7041156a14c3fb50211051cf418"
+    }
+  },
+  "gates": [
+    {
+      "command": ".toolchain/node_modules/.bin/bun test packages/mpd-roles-plugin",
+      "exit": 0,
+      "observed": "369 pass / 0 fail / 2720 expect() calls across 18 files",
+      "scope": "the roles package only"
+    },
+    {
+      "command": "node scripts/verify-dist-fresh.ts --only mpd-roles",
+      "exit": 0,
+      "observed": "FRESH packages/mpd-roles-plugin/dist/index.js sha 466dac370279… (each target rebuilt twice, byte-identical); 1 NOT COVERED listed (mpd-mcp-codegraph/serve.js, pre-existing)"
+    },
+    {
+      "command": ".toolchain/node_modules/.bin/bun run typecheck",
+      "exit": 0,
+      "observed": "$ tsgo --noEmit — no diagnostics"
+    },
+    {
+      "command": ".toolchain/node_modules/.bin/bun run verify:comments",
+      "exit": 0,
+      "observed": "VERDICT: PASS — 618 TS files, 55565 declarations inspected, 27209 inline callbacks skipped"
+    }
+  ],
+  "tests_added": {
+    "deny_table": [
+      "POST-REVIEW — `bun run test` refused in both spellings (bare, `:unit`, `--watch`, `--silent`, sudo, uppercase); `bun run testimony` and `bun run format` stay allowed; label ownership asserted",
+      "POST-REVIEW — `bunx`/`bun x` refused against all five gate runners (+ `bunx -- tsgo`, sudo); `bunx cowsay` / `bun x cowsay` stay allowed",
+      "POST-REVIEW — `npm exec`/`pnpm dlx`/`yarn dlx` (+ pnpm/yarn exec, `--` separator, sudo) refused against all five runners; `npm install`, `npm ci`, `pnpm install`, `yarn install`, `npm run format`, `yarn build` stay allowed"
+    ],
+    "read_route": [
+      "B2 — one arm per recursion spelling (`-r`, `-R`, `-rn`, `-nr`, `-Rni`, `-rnl`, `--recursive`, `--dereference-recursive`) refused",
+      "B2 — recursive piped grep with a real out-of-band path still refused; non-recursive piped grep (`git log | grep fix`, `ls | grep md`, `grep -n`, `grep -i`, `grep fix docs/x`) still ALLOWED; in-band recursive grep (`grep -rn TODO docs/`) still allowed"
+    ],
+    "representatives": "REPRESENTATIVE gained bun-run-test, bunx-runner (`bunx tsgo --noEmit`), pkg-exec-runner (`npm exec tsc --noEmit`); the existing every-row-must-have-a-representative arm forces this"
+  },
+  "bounds": [
+    "A comment in the module header and the deny-table doc block changed AFTER the first dist build; the dist was rebuilt and the sha was UNCHANGED (bun strips these comments), and verify-dist-fresh re-passed on the settled tree.",
+    "`captainShell=deny patterns=19` is verified at unit level (computed from the constant and asserted in the boot-line test), NOT from a live mount. The wave's live captain-scope lane would print it on its next run.",
+    "The shared checkout carries CONCURRENT edits by other lanes (packages/mpd-tools-plugin/src+dist+test, packages/mpd-verify-plugin/test/evidence-by.test.ts, mtimes 12:32–12:35). They are OUTSIDE this scope, were not touched or reverted, and are why `bun run typecheck` / `verify:comments` ran over a tree larger than this change.",
+    "Stale documentation OUTSIDE the assigned scope, reported not edited: agent-references/verification-flow.md:264 shows a sample boot line `captainShell=deny patterns=16`, which is now one generation behind (19).",
+    "Declared residual of the deny table, written into the module header: launcher options that take a SEPARATE value (`npm exec -p typescript tsc`) and the attached `--package=…` form are not seen by the token table."
+  ],
+  "evidence": {
+    "dir": "evidence/guard/captain-shell-repair/2026-11-09T04-39-00Z/",
+    "files": ["output.log", "probe.ts", "result.json"]
+  }
+}

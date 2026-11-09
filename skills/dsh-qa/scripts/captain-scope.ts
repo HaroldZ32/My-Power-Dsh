@@ -19,10 +19,12 @@
 //
 // TWO TIERS, named so no reader mistakes one for the other:
 //   * DISCRIMINATING, the boot line: the roles row reports `captainInvestigation=deny`,
-//     `delegationGate=deny` and `sessionGate=mechanical`, and `verifyGate=absent reason=…`. A pre-
+//     `delegationGate=deny`, `captainShell=deny patterns=<N>` and `sessionGate=mechanical`, and
+//     `verifyGate=absent reason=…`. A pre-
 //     restoration `dist` prints `absent reason=` for the two restored guards, so this arm reddens on a
 //     stale artifact and cannot pass a tree that still carries the rollback.
-//   * DISCRIMINATING, offline: the SHIPPED apply site CALLS the two restored installs and does NOT call
+//   * DISCRIMINATING, offline: the SHIPPED apply site CALLS the two restored installs AND the captain
+//     shell install (contract C1), and does NOT call
 //     `installVerifyGuard(`; `resolveGateMode(undefined)` is `mechanical`; the persona carries the READ
 //     DISCIPLINE block and no longer carries the rollback's "no reconnaissance guard, no delegation
 //     gate" sentence; the row is composed once; this case is registered in the skill's table.
@@ -51,6 +53,7 @@ import { DSH_MISSING, dshCommand } from "./lib/dsh-launcher.ts"
 import { assertSessionsSandboxed, sandboxWorkspace } from "./lib/workspace-isolation.ts"
 import { findToolCall, readSessionEvents } from "./lib/session-evidence.ts"
 import { GATE_MODE_MECHANICAL, resolveGateMode } from "../../../packages/mpd-roles-plugin/src/complexity-gate.ts"
+import { CAPTAIN_SHELL_DENY_PATTERNS } from "../../../packages/mpd-roles-plugin/src/captain-shell.ts"
 
 /** The repository root, derived from this script's own URL (`<root>/skills/dsh-qa/scripts/`). */
 const repoRoot: string = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
@@ -64,6 +67,12 @@ const ABSENT_VERIFY: string = "verifyGate=absent reason="
 const INSTALLED_INVESTIGATION: string = "captainInvestigation=deny"
 /** The boot-line token the RESTORED delegation gate must report, with its mode. */
 const INSTALLED_DELEGATION: string = "delegationGate=deny"
+/**
+ * The boot-line token the captain SHELL guard must report (contract `.mpd/plans/captain-self-test-fence.md`
+ * §3 C1): the fail-closed default plus the size of the deny table the source really ships, so a stale
+ * dist whose table moved without a rebuild reddens here.
+ */
+const INSTALLED_CAPTAIN_SHELL: string = "captainShell=deny patterns=" + String(CAPTAIN_SHELL_DENY_PATTERNS.length)
 /** The session gate's restored MECHANICAL default, as the boot line must spell it. */
 const SESSION_GATE_MECHANICAL: string = "sessionGate=mechanical"
 /** The pack §5's top-level agent holds DIRECTLY, asserted from the request header's tool list. */
@@ -78,6 +87,8 @@ const SOURCE_ORIGIN: string = join(repoRoot, "packages", "mpd-roles-plugin", "sr
 const APPLY_SITE: string = join(repoRoot, "packages", "mpd-roles-plugin", "src", "index.ts")
 /** The two installs the 2026-10-20 ruling RESTORED; a tree without them carries the rollback again. */
 const RESTORED_INSTALLS: readonly string[] = ["installCaptainInvestigationGuard(", "installDelegationGate("]
+/** The captain shell guard's install, added by the 2026-11-09 captain self-test fence (contract C1). */
+const SHELL_INSTALL: string = "installCaptainShellGuard("
 /** The ONE install that stays withdrawn: the captain's code `write` is not gated. */
 const WITHDRAWN_INSTALL: string = "installVerifyGuard("
 /** The rebuild command the runtime precondition names, so a stale artifact is never a mystery. */
@@ -178,7 +189,8 @@ function selfTest(): number {
   // The two restored guards report their MODE, so the apply site carries the KEY (its value is the
   // installed mode); the withdrawn one carries a literal because its whole sentence is fixed text.
   check(applySite.includes(ABSENT_VERIFY), "the shipped apply site no longer reports " + ABSENT_VERIFY)
-  for (const key of ["captainInvestigation=", "delegationGate=", "sessionGate="]) {
+  check(applySite.includes(SHELL_INSTALL), "the shipped apply site no longer installs " + SHELL_INSTALL + ": contract C1 regressed")
+  for (const key of ["captainInvestigation=", "captainShell=", "delegationGate=", "sessionGate="]) {
     check(applySite.includes(key), "the shipped apply site no longer reports " + key)
   }
 
@@ -200,7 +212,7 @@ function selfTest(): number {
 
   for (const message of failures) console.error("[" + SLUG + " self-test] FAIL: " + message)
   if (failures.length > 0) return failures.length
-  console.log("[" + SLUG + " self-test] ok: row composed once; the two guards installed and the write guard still withdrawn; session gate defaults mechanical; the persona states the restored rule; case registered")
+  console.log("[" + SLUG + " self-test] ok: row composed once; the two restored guards and the captain shell guard installed and the write guard still withdrawn; session gate defaults mechanical; the persona states the restored rule; case registered")
   return 0
 }
 
@@ -455,9 +467,9 @@ function runReal(): void {
   })
   rows.push({
     name: "DISCRIMINATING-guard-state-reported",
-    ok: [ABSENT_VERIFY, INSTALLED_INVESTIGATION, INSTALLED_DELEGATION, SESSION_GATE_MECHANICAL].every((token) => bootLine.includes(token)),
-    reason: [ABSENT_VERIFY, INSTALLED_INVESTIGATION, INSTALLED_DELEGATION, SESSION_GATE_MECHANICAL].every((token) => bootLine.includes(token))
-      ? "DISCRIMINATING: the boot line reports the TWO RESTORED guards by MODE (captainInvestigation=deny, delegationGate=deny), the session gate as mechanical, and the still-withdrawn write guard as absent"
+    ok: [ABSENT_VERIFY, INSTALLED_INVESTIGATION, INSTALLED_DELEGATION, INSTALLED_CAPTAIN_SHELL, SESSION_GATE_MECHANICAL].every((token) => bootLine.includes(token)),
+    reason: [ABSENT_VERIFY, INSTALLED_INVESTIGATION, INSTALLED_DELEGATION, INSTALLED_CAPTAIN_SHELL, SESSION_GATE_MECHANICAL].every((token) => bootLine.includes(token))
+      ? "DISCRIMINATING: the boot line reports the TWO RESTORED guards by MODE (captainInvestigation=deny, delegationGate=deny), the captain shell guard as deny with its deny-table size, the session gate as mechanical, and the still-withdrawn write guard as absent"
       : "the boot line does not report the restored scope (a stale dist still prints the rollback's absent tokens — rebuild it: " + REBUILD_COMMAND + ")",
     raw: JSON.stringify(bootLine),
   })

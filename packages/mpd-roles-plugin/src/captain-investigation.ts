@@ -6,11 +6,14 @@
 // "find the file and the code", `Researcher` for evidence-based search, or a team member) and consumes
 // the REPORT.
 //
-// WHAT IT DENIES: `read`, `grep` and `glob` on a SOURCE path, for a session where `sessionIsMpdCaptain`
-// is true — §5's top-level session (not a delegated child — `origin: "subagent"` or depth `1`+ — and
-// never a preset name: T-92) AND a session whose `agentPreset` is `mpd`: this rule is part of what the
-// `mpd` preset means, so a user working in another preset (`cordis` is the deployment default) keeps its
-// own reconnaissance. The write rule beside it reads the SAME predicate.
+// WHAT IT DENIES: every registered tool that RETURNS workspace source, on a SOURCE path — the harness's
+// `read` / `grep` / `glob`, the hashline file reader, the ast-grep syntax search and the LSP readers; a
+// source-returning tool with NO path argument (the code graph's `codegraph_explore`, the LSP's
+// `find_workspace_symbols`) is refused by the fail-closed bare-call rule. The session is one where
+// `sessionIsMpdCaptain` is true — §5's top-level session (not a delegated child — `origin: "subagent"` or
+// depth `1`+ — and never a preset name: T-92) AND a session whose `agentPreset` is `mpd`: this rule is
+// part of what the `mpd` preset means, so a user working in another preset (`cordis` is the deployment
+// default) keeps its own reconnaissance. The write rule beside it reads the SAME predicate.
 //
 // WHAT STAYS OPEN — THE DOCUMENTATION BAND: `.mpd/**`, `docs/**`, `evidence/**`, `agent-references/**`;
 // ANY `AGENT.md` / `AGENTS.md` / `CLAUDE.md` by BASENAME at any depth, inside this workspace OR outside
@@ -24,10 +27,15 @@
 // The knob is `captain.investigation` in `mpd.jsonc`: `"deny"` (default) | `"allow"`; the row's boot line
 // reports the mode it installed.
 //
-// HONEST BOUND, stated rather than implied: the guard reads a TOOL CALL's arguments, so reaching a source
-// path through the shell (`cat`, `rg`) is NOT blocked — `bash` stays available to the captain for gates
-// and git, exactly as §5 rule 5's command matcher has the same reading bound — and a path is judged by
-// its SPELLING, so a symlink is never resolved.
+// HONEST BOUNDS, stated rather than implied. (1) The guard reads a TOOL CALL's arguments and its path is
+// judged by SPELLING: a symlink is never resolved, and an MCP tool is covered only by NAME — one that
+// returns workspace source under a name absent from {@link INVESTIGATION_TOOLS} stays open until it is
+// added there. A LIST-shaped argument is judged ENTRY BY ENTRY, not by its first member: every non-empty
+// string in ast-grep's `paths` must be inside the band, so a later entry cannot smuggle source past a
+// permitted first one, and an element that is not a non-empty string REFUSES the call rather than being
+// ignored. (2) Shell access is NOT this file's subject: `bash` belongs to the captain-shell
+// guard beside it, whose own decision family judges the file-reading commands it is given — and ANY such
+// rule is TOKEN-based, so a path assembled at runtime (`cat "$F"`) is not judged.
 import type { DshAdapter, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 import { readTargetPath } from "../../mpd-verify-plugin/src/law.ts"
 import { sessionIsMpdCaptain } from "./complexity-gate.ts"
@@ -41,8 +49,42 @@ export type InvestigationMode = "deny" | "allow"
 /** The mode a session gets when `mpd.jsonc` says nothing: the requirement's own default, fail-closed. */
 export const DEFAULT_INVESTIGATION_MODE: InvestigationMode = "deny"
 
-/** The path-consuming tools reconnaissance is done with; every other tool is somebody else's rule. */
-export const INVESTIGATION_TOOLS: readonly string[] = ["read", "glob", "grep"]
+/**
+ * The path-consuming tools reconnaissance is done with; every other tool is somebody else's rule.
+ *
+ * The three harness tools are the original set. The captain recon fence wave (2026-11-09) closed the
+ * remaining registered doors that return workspace source: the hashline full-file reader (`path`), the
+ * ast-grep syntax SEARCH (`paths` — EVERY entry is judged, see {@link astGrepSearchPaths}) and the LSP
+ * readers (`file_path`). The wave's repair (T8, same day) replaced the earlier "judge the first entry"
+ * rule for the search: a later entry naming a source path was a live bypass, so order no longer matters.
+ * `mcp__codegraph__codegraph_explore` is the last row and has no path argument at all — it returns
+ * verbatim source for a query — so it is REFUSED by the fail-closed bare-call rule in the decision below
+ * rather than by a path test, and no path argument is invented for it. The LSP's own
+ * `find_workspace_symbols` is the same case from the other side: it takes only a `query`, so the same
+ * bare-call rule refuses it and its door needs no path judgement.
+ *
+ * BOUND: the MCP half of this list is a deny by TOOL NAME. An MCP tool that returns workspace source
+ * under a name not listed here is NOT covered until it is added here — the LSP server's write-side
+ * `rename_symbol` / `rename_symbol_strict` are deliberately absent (they are WRITES, and the member
+ * read-only deny list already carries them), but any FUTURE reader of that class must be added by hand.
+ */
+export const INVESTIGATION_TOOLS: readonly string[] = [
+  "read",
+  "glob",
+  "grep",
+  "mpd_hashline_read",
+  "mcp__ast_grep__search",
+  "mcp__lsp__find_definition",
+  "mcp__lsp__get_hover",
+  "mcp__lsp__find_references",
+  "mcp__lsp__get_diagnostics",
+  "mcp__lsp__find_workspace_symbols",
+  "mcp__lsp__find_implementation",
+  "mcp__lsp__prepare_call_hierarchy",
+  "mcp__lsp__get_incoming_calls",
+  "mcp__lsp__get_outgoing_calls",
+  "mcp__codegraph__codegraph_explore",
+]
 
 /** The documentation BANDS the captain may still read: contracts, records, evidence and the reference. */
 export const CAPTAIN_READABLE_PREFIXES: readonly string[] = [".mpd/", "docs/", "evidence/", "agent-references/"]
@@ -160,6 +202,68 @@ function isInstructionFile(path: string): boolean {
 }
 
 /**
+ * The ast-grep tool whose path argument is a LIST that must be judged ENTRY BY ENTRY.
+ *
+ * `mcp__ast_grep__rewrite` is deliberately NOT here: it is a WRITE tool, it sits on the member read-only
+ * deny list, and its reader is `readTargetPath`'s `paths[0]` contract, which this repair leaves alone.
+ */
+const AST_GREP_SEARCH_TOOL = "mcp__ast_grep__search"
+
+/** The first `paths` element that is not a non-empty string, recorded so the refusal can name it. */
+interface InvalidSearchPathEntry {
+  /** Its position in the caller's list, so the refusal points at the element, not the list. */
+  index: number
+  /** The element as the harness validated it, stringified into the refusal sentence. */
+  value: unknown
+}
+
+/**
+ * One ast-grep search call's `paths` list: the entries a band check can judge, plus the FIRST element
+ * that is not a non-empty string.
+ *
+ * A non-empty string is the ONLY usable shape (§3 C2 of the recon-fence contract): an absent or non-array
+ * `paths` and an empty list yield no entries, while an element of any other shape is recorded here instead
+ * of being filtered out, so the caller refuses the WHOLE call rather than letting a malformed element ride
+ * beside a permitted one.
+ */
+interface AstGrepSearchPathList {
+  /** The non-empty string entries, in call order, for the every-element band check. */
+  entries: string[]
+  /** The first element that is not a non-empty string; absent when every element is usable. */
+  invalid?: InvalidSearchPathEntry
+}
+
+/**
+ * Split an ast-grep search call's `paths` array into judgeable entries and the first unusable element.
+ *
+ * The caller refuses a call whose list yields NOTHING, which is the fail-closed bare-call case (the same
+ * shape a missing `path` has for `glob`/`grep`); an unusable element BESIDE usable ones is refused as an
+ * offending shape rather than ignored, so `["docs/", 42]` cannot pass as a docs-only search.
+ *
+ * @param args - the call's argument object, as the harness validated it.
+ * @returns the entries to judge and, when one exists, the first element that is not a non-empty string.
+ */
+function astGrepSearchPaths(args: Record<string, unknown> | undefined): AstGrepSearchPathList {
+  /** The raw argument, accepted only as a list. */
+  const paths = args?.paths
+  if (!Array.isArray(paths)) return { entries: [] }
+  /** The usable entries, collected so the band check sees every string the call names. */
+  const entries: string[] = []
+  /** The first element that is not a non-empty string; the caller refuses the whole call when set. */
+  let invalid: InvalidSearchPathEntry | undefined
+  for (let index = 0; index < paths.length; index += 1) {
+    /** The element at this position, judged by its TYPE first: only a non-empty string is a path. */
+    const entry: unknown = paths[index]
+    if (typeof entry === "string" && entry !== "") {
+      entries.push(entry)
+      continue
+    }
+    if (invalid === undefined) invalid = { index, value: entry }
+  }
+  return invalid === undefined ? { entries } : { entries, invalid }
+}
+
+/**
  * Decide one call for the captain's investigation rule.
  *
  * Pure with respect to the harness, like `captainWriteDecision` beside it: the caller passes the tool
@@ -178,11 +282,30 @@ export function captainInvestigationDecision(input: CaptainInvestigationInput): 
   /** The tool name, read defensively so an unexpected shape is a pass-through. */
   const toolName = String(input.toolName ?? "")
   if (!INVESTIGATION_TOOLS.includes(toolName)) return undefined
-  /** The path this call names; `glob`/`grep` name it under `path`, `read` under `file_path`. */
+  // THE LIST-SHAPED DOOR IS JUDGED WHOLE (T8): checking only `paths[0]` let `["docs/", "packages/x.ts"]`
+  // read source, so EVERY entry is judged and the FIRST one outside the band names the refusal.
+  if (toolName === AST_GREP_SEARCH_TOOL) {
+    /** What this call's `paths` argument carries: its judgeable entries and its first unusable element. */
+    const searchPaths = astGrepSearchPaths(input.args)
+    // FAIL-CLOSED with no usable entry: a search with no path covers the whole workspace.
+    if (searchPaths.entries.length === 0) return investigationRefusal(toolName, "(no path argument — a bare search covers the whole workspace)")
+    /** The first entry outside the readable band, or `undefined` when every entry is inside it. */
+    const offending = searchPaths.entries.find((entry) => !captainReadablePath(input.workspaceRoot, entry))
+    if (offending !== undefined) return investigationRefusal(toolName, JSON.stringify(offending))
+    // A NON-STRING OR EMPTY-STRING ENTRY REFUSES THE WHOLE CALL (F5): filtering it out let
+    // `["docs/", 42]` pass as a docs-only search, and the frozen contract refuses any such element.
+    if (searchPaths.invalid !== undefined) {
+      return investigationRefusal(toolName, "(`paths` entry " + searchPaths.invalid.index
+        + " is not a non-empty string: " + String(JSON.stringify(searchPaths.invalid.value)) + ")")
+    }
+    return undefined
+  }
+  /** The path this call names: `read` and the LSP tools under `file_path`, `glob`/`grep`/`mpd_hashline_read` under `path`; `codegraph_explore` names none. */
   const raw = readTargetPath(toolName, input.args)
   // FAIL-CLOSED on a missing path: `glob`/`grep` without a `path` search the WHOLE workspace, and the
-  // pattern's own directory prefix is deliberately NOT a substitute (contract §2.2).
-  if (raw === undefined) return investigationRefusal(toolName, "(no path argument — a bare call searches the whole workspace)")
+  // pattern's own directory prefix is deliberately NOT a substitute (contract §2.2) — while a tool that
+  // returns source and takes no path at all (`codegraph_explore`) has nothing that could be judged.
+  if (raw === undefined) return investigationRefusal(toolName, "(no path argument — a bare call has no path to judge: it searches the whole workspace, or returns source for a query)")
   if (captainReadablePath(input.workspaceRoot, raw)) return undefined
   return investigationRefusal(toolName, JSON.stringify(raw))
 }

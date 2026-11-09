@@ -1,0 +1,182 @@
+## B1 — contract §1 R1 spellings (expect REFUSE)
+ok-refused        "npm test" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "npm test" is a verification command and verification is not the captain's job. Delegate it: mpd_role_spawn {role
+ok-refused        "npm run typecheck" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "npm run typecheck" is a verification command and verification is not the captain's job. Delegate it: mpd_role_sp
+ok-refused        "bun typecheck" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "bun typecheck" is a verification command and verification is not the captain's job. Delegate it: mpd_role_spawn 
+ok-refused        "bun run --silent typecheck" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "bun run --silent typecheck" is a verification command and verification is not the captain's job. Delegate it: mp
+ok-refused        "env FOO=1 bun run typecheck" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "env FOO=1 bun run typecheck" is a verification command and verification is not the captain's job. Delegate it: m
+ok-refused        "/usr/local/bin/bun test" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "/usr/local/bin/bun test" is a verification command and verification is not the captain's job. Delegate it: mpd_r
+ok-refused        "sudo -E bun test" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "sudo -E bun test" is a verification command and verification is not the captain's job. Delegate it: mpd_role_spa
+ok-refused        "/usr/bin/bun test" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "/usr/bin/bun test" is a verification command and verification is not the captain's job. Delegate it: mpd_role_sp
+ok-refused        "FOO=1 bun test" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "FOO=1 bun test" is a verification command and verification is not the captain's job. Delegate it: mpd_role_spawn
+ok-refused        "command bun test" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "command bun test" is a verification command and verification is not the captain's job. Delegate it: mpd_role_spa
+ok-refused        "nohup bun test" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "nohup bun test" is a verification command and verification is not the captain's job. Delegate it: mpd_role_spawn
+ok-refused        "time bun test" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "time bun test" is a verification command and verification is not the captain's job. Delegate it: mpd_role_spawn 
+ok-refused        "sudo -u root bun test" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "sudo -u root bun test" is a verification command and verification is not the captain's job. Delegate it: mpd_rol
+ok-refused        "/usr/bin/env bun test" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "/usr/bin/env bun test" is a verification command and verification is not the captain's job. Delegate it: mpd_rol
+ok-refused        "npm run verify:gates" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "npm run verify:gates" is a verification command and verification is not the captain's job. Delegate it: mpd_role
+ok-refused        "npm run test:unit" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "npm run test:unit" is a verification command and verification is not the captain's job. Delegate it: mpd_role_sp
+ok-refused        "pnpm test" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "pnpm test" is a verification command and verification is not the captain's job. Delegate it: mpd_role_spawn {rol
+ok-refused        "pnpm run typecheck" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "pnpm run typecheck" is a verification command and verification is not the captain's job. Delegate it: mpd_role_s
+ok-refused        "yarn test" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "yarn test" is a verification command and verification is not the captain's job. Delegate it: mpd_role_spawn {rol
+ok-refused        "yarn run typecheck" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "yarn run typecheck" is a verification command and verification is not the captain's job. Delegate it: mpd_role_s
+ok-refused        "npx tsc" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "npx tsc" is a verification command and verification is not the captain's job. Delegate it: mpd_role_spawn {role:
+ok-refused        "npx jest" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "npx jest" is a verification command and verification is not the captain's job. Delegate it: mpd_role_spawn {role
+ok-refused        "npx vitest" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "npx vitest" is a verification command and verification is not the captain's job. Delegate it: mpd_role_spawn {ro
+ok-refused        "bun test --timeout 5000" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "bun test --timeout 5000" is a verification command and verification is not the captain's job. Delegate it: mpd_r
+ok-refused        "cd packages && bun test" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "bun test" is a verification command and verification is not the captain's job. Delegate it: mpd_role_spawn {role
+ok-refused        "echo start; bun test" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "bun test" is a verification command and verification is not the captain's job. Delegate it: mpd_role_spawn {role
+ok-refused        "git status | bun test" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "bun test" is a verification command and verification is not the captain's job. Delegate it: mpd_role_spawn {role
+
+## B1 — anti-false-positive list (expect ALLOW)
+ok-allowed        "git status" -> ALLOW
+ok-allowed        "ls" -> ALLOW
+ok-allowed        "ls -la docs" -> ALLOW
+ok-allowed        "mkdir -p x" -> ALLOW
+ok-allowed        "mkdir -p .mpd/tmp" -> ALLOW
+ok-allowed        "node -e '1+1'" -> ALLOW
+ok-allowed        "node -e \"1+1\"" -> ALLOW
+ok-allowed        "bun run format" -> ALLOW
+ok-allowed        "npm install" -> ALLOW
+ok-allowed        "cat docs/decisions.md" -> ALLOW
+ok-allowed        "echo \"bun test\"" -> ALLOW
+ok-allowed        "git log --stat" -> ALLOW
+ok-allowed        "git log --oneline -5" -> ALLOW
+ok-allowed        "git diff --stat" -> ALLOW
+ok-allowed        "git show HEAD:AGENTS.md" -> ALLOW
+ok-allowed        "mv a b" -> ALLOW
+ok-allowed        "echo hi | cat" -> ALLOW
+ok-allowed        "wc -l AGENTS.md" -> ALLOW
+ok-allowed        "head -20 CHANGELOG.md" -> ALLOW
+ok-allowed        "head -20 README.md" -> ALLOW
+ok-allowed        "rg TODO docs/" -> ALLOW
+ok-allowed        "sed -n '1,5p' docs/decisions.md" -> ALLOW
+ok-allowed        "cat README.md" -> ALLOW
+ok-allowed        "cat AGENTS.md" -> ALLOW
+ok-allowed        "find docs -name '*.md'" -> ALLOW
+ok-allowed        "grep -rn TODO docs/" -> ALLOW
+ok-allowed        "ag TODO docs/" -> ALLOW
+ok-allowed        "awk '{print}' docs/decisions.md" -> ALLOW
+ok-allowed        "tail -n 5 docs/decisions.md" -> ALLOW
+ok-allowed        "less docs/decisions.md" -> ALLOW
+ok-allowed        "nl docs/decisions.md" -> ALLOW
+ok-allowed        "git grep bun" -> ALLOW
+ok-allowed        "python3 -c 'print(1)'" -> ALLOW
+ok-allowed        "which bun" -> ALLOW
+ok-allowed        "pwd" -> ALLOW
+ok-allowed        "ls -la packages" -> ALLOW
+ok-allowed        "/usr/bin/env git status" -> ALLOW
+
+## B3 — contract §4 B3 arms (expected per the FROZEN TEXT)
+observe           "cat packages/x.ts" -> ALLOW
+observe           "cat packages/mpd-roles-plugin/src/index.ts" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "cat packages/mpd-roles-plugin/src/index.ts" reads workspace content through the shell, and reconnaissance is not
+observe           "rg foo" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "rg foo" reads workspace content through the shell, and reconnaissance is not the captain's job. Delegate it: mpd
+observe           "rg foo docs/" -> ALLOW
+observe           "sed -n '1,10p' docs/x.md" -> ALLOW
+observe           "cat docs/x.md" -> ALLOW
+observe           "git log -p" -> ALLOW
+observe           "echo hi | cat" -> ALLOW
+observe           "find . -name '*.ts'" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "find . -name '*.ts'" reads workspace content through the shell, and reconnaissance is not the captain's job. Del
+
+## B3 FALSE-POSITIVE HUNT — legitimate captain commands, observed only
+observe           "git log --oneline | grep fix" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "grep fix" reads workspace content through the shell, and reconnaissance is not the captain's job. Delegate it: m
+observe           "ls -la | grep md" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "grep md" reads workspace content through the shell, and reconnaissance is not the captain's job. Delegate it: mp
+observe           "cat docs/decisions.md | grep TODO" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "grep TODO" reads workspace content through the shell, and reconnaissance is not the captain's job. Delegate it: 
+observe           "git status | head -3" -> ALLOW
+observe           "grep -E \"fix|feat\" docs/decisions.md" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "grep -E "fix" reads workspace content through the shell, and reconnaissance is not the captain's job. Delegate i
+observe           "grep -E 'TODO|FIXME' docs/decisions.md" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "grep -E 'TODO" reads workspace content through the shell, and reconnaissance is not the captain's job. Delegate 
+observe           "awk '/TODO|FIXME/' docs/decisions.md" -> ALLOW
+observe           "sed -n '/TODO/p' docs/decisions.md" -> ALLOW
+observe           "rg --files docs/" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "rg --files docs/" reads workspace content through the shell, and reconnaissance is not the captain's job. Delega
+observe           "rg --files -g '*.md' docs/" -> ALLOW
+observe           "grep -c TODO docs/decisions.md" -> ALLOW
+observe           "grep -rn TODO docs/ agent-references/" -> ALLOW
+observe           "find docs -name '*.md' -newer AGENTS.md" -> ALLOW
+observe           "head -c 200 docs/decisions.md" -> ALLOW
+observe           "cat \"docs/decisions.md\"" -> ALLOW
+observe           "cat package.json" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "cat package.json" reads workspace content through the shell, and reconnaissance is not the captain's job. Delega
+observe           "cat \"packages/mpd-roles-plugin/src/index.ts\"" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "cat "packages/mpd-roles-plugin/src/index.ts"" reads workspace content through the shell, and reconnaissance is n
+observe           "cat ./packages/mpd-roles-plugin/src/index.ts" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "cat ./packages/mpd-roles-plugin/src/index.ts" reads workspace content through the shell, and reconnaissance is n
+observe           "cat docs/../packages/mpd-roles-plugin/src/index.ts" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "cat docs/../packages/mpd-roles-plugin/src/index.ts" reads workspace content through the shell, and reconnaissanc
+observe           "sed -i 's/TODO/TODO/g' packages/mpd-roles-plugin/src/index.ts" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "sed -i 's/TODO/TODO/g' packages/mpd-roles-plugin/src/index.ts" reads workspace content through the shell, and re
+observe           "sed -i.bak 's/TODO/TODO/g' docs/decisions.md" -> ALLOW
+observe           "cat docs/decisions.md > package.json" -> REFUSE :: [mpd-roles] captain shell: REFUSED — "cat docs/decisions.md > package.json" reads workspace content through the shell, and reconnaissance is not the c
+observe           "cat docs/decisions.md > /tmp/t5-out.md" -> ALLOW
+observe           "cd packages/mpd-roles-plugin/src && cat captain-shell.ts" -> ALLOW
+observe           "cd packages && cat mpd-roles-plugin/src/index.ts" -> ALLOW
+observe           "bash -c 'bun test'" -> ALLOW
+observe           "sh -c 'npm test'" -> ALLOW
+observe           "env -u FOO bun test" -> ALLOW
+observe           "npm --prefix . test" -> ALLOW
+observe           "bun run --filter x test" -> ALLOW
+
+## B2 — investigation doors (expect REFUSE on source / ALLOW on docs)
+B2 hashline source -> REFUSE :: captain investigation rule: `mpd_hashline_read` on "packages/mpd-roles-plugin/src/index.ts" is refused — the `mpd` preset's TOP-LEVEL session does not
+B2 hashline docs -> ALLOW
+B2 hashline bare -> REFUSE :: captain investigation rule: `mpd_hashline_read` on (no path argument — a bare call has no path to judge: it searches the whole workspace, or returns s
+B2 hashline empty -> REFUSE :: captain investigation rule: `mpd_hashline_read` on (no path argument — a bare call has no path to judge: it searches the whole workspace, or returns s
+B2 codegraph bare -> REFUSE :: captain investigation rule: `mcp__codegraph__codegraph_explore` on (no path argument — a bare call has no path to judge: it searches the whole workspa
+B2 ast search source -> REFUSE :: captain investigation rule: `mcp__ast_grep__search` on "packages/mpd-roles-plugin/src/index.ts" is refused — the `mpd` preset's TOP-LEVEL session does
+B2 ast search docs -> ALLOW
+B2 ast search src-second -> REFUSE :: captain investigation rule: `mcp__ast_grep__search` on "packages/mpd-roles-plugin/src/index.ts" is refused — the `mpd` preset's TOP-LEVEL session does
+B2 ast search src-first -> REFUSE :: captain investigation rule: `mcp__ast_grep__search` on "packages/mpd-roles-plugin/src/index.ts" is refused — the `mpd` preset's TOP-LEVEL session does
+B2 ast search empty -> REFUSE :: captain investigation rule: `mcp__ast_grep__search` on (no path argument — a bare search covers the whole workspace) is refused — the `mpd` preset's T
+B2 ast search bare -> REFUSE :: captain investigation rule: `mcp__ast_grep__search` on (no path argument — a bare search covers the whole workspace) is refused — the `mpd` preset's T
+B2 ast search docs+42 -> ALLOW
+B2 ast search 42 -> REFUSE :: captain investigation rule: `mcp__ast_grep__search` on (no path argument — a bare search covers the whole workspace) is refused — the `mpd` preset's T
+B2 lsp find-def source -> REFUSE :: captain investigation rule: `mcp__lsp__find_definition` on "packages/mpd-roles-plugin/src/index.ts" is refused — the `mpd` preset's TOP-LEVEL session 
+B2 lsp get-hover docs -> ALLOW
+B2 lsp symbols bare -> REFUSE :: captain investigation rule: `mcp__lsp__find_workspace_symbols` on (no path argument — a bare call has no path to judge: it searches the whole workspac
+B2 read source -> REFUSE :: captain investigation rule: `read` on "packages/mpd-roles-plugin/src/index.ts" is refused — the `mpd` preset's TOP-LEVEL session does not run reconnai
+B2 grep bare -> REFUSE :: captain investigation rule: `grep` on (no path argument — a bare call has no path to judge: it searches the whole workspace, or returns source for a q
+B2 glob bare -> REFUSE :: captain investigation rule: `glob` on (no path argument — a bare call has no path to judge: it searches the whole workspace, or returns source for a q
+B2 glob docs -> ALLOW
+B2 member ast source -> ALLOW
+B2 member hashline source -> ALLOW
+B2 allow hashline source -> ALLOW
+B2 lsp rename (write, not gated) -> ALLOW
+
+## B2 — every lsp reader on a source file_path
+B2 mcp__lsp__find_definition -> REFUSE :: captain investigation rule: `mcp__lsp__find_definition` on "packages/mpd-roles-plugin/src/index.ts" is refused — the `mpd` preset's TOP-LEVEL session 
+B2 mcp__lsp__get_hover -> REFUSE :: captain investigation rule: `mcp__lsp__get_hover` on "packages/mpd-roles-plugin/src/index.ts" is refused — the `mpd` preset's TOP-LEVEL session does n
+B2 mcp__lsp__find_references -> REFUSE :: captain investigation rule: `mcp__lsp__find_references` on "packages/mpd-roles-plugin/src/index.ts" is refused — the `mpd` preset's TOP-LEVEL session 
+B2 mcp__lsp__get_diagnostics -> REFUSE :: captain investigation rule: `mcp__lsp__get_diagnostics` on "packages/mpd-roles-plugin/src/index.ts" is refused — the `mpd` preset's TOP-LEVEL session 
+B2 mcp__lsp__find_implementation -> REFUSE :: captain investigation rule: `mcp__lsp__find_implementation` on "packages/mpd-roles-plugin/src/index.ts" is refused — the `mpd` preset's TOP-LEVEL sess
+B2 mcp__lsp__prepare_call_hierarchy -> REFUSE :: captain investigation rule: `mcp__lsp__prepare_call_hierarchy` on "packages/mpd-roles-plugin/src/index.ts" is refused — the `mpd` preset's TOP-LEVEL s
+B2 mcp__lsp__get_incoming_calls -> REFUSE :: captain investigation rule: `mcp__lsp__get_incoming_calls` on "packages/mpd-roles-plugin/src/index.ts" is refused — the `mpd` preset's TOP-LEVEL sessi
+B2 mcp__lsp__get_outgoing_calls -> REFUSE :: captain investigation rule: `mcp__lsp__get_outgoing_calls` on "packages/mpd-roles-plugin/src/index.ts" is refused — the `mpd` preset's TOP-LEVEL sessi
+
+## B2 — readTargetPath precedence (contract §7 amendment: existing shapes byte-identical)
+readTargetPath rewrite paths -> "packages/a.ts"
+readTargetPath search paths -> "packages/a.ts"
+readTargetPath search docs-only -> "docs/b.md"
+readTargetPath search path-key -> "docs/b.md"
+readTargetPath search empty-paths+path -> "docs/b.md"
+readTargetPath search nonarray-paths+path -> "docs/b.md"
+readTargetPath read path -> "docs/a.md"
+readTargetPath read file_path -> "docs/a.md"
+readTargetPath read filePath -> "docs/a.md"
+readTargetPath read target -> "docs/a.md"
+readTargetPath read bare -> undefined
+readTargetPath codegraph bare -> undefined
+readTargetPath rewrite path-key only -> "docs/b.md"
+
+## B2 — captainReadablePath band edges
+band "docs/decisions.md" -> true
+band "docs" -> true
+band ".mpd/mpd.jsonc" -> true
+band "evidence/guard" -> true
+band "agent-references/index.md" -> true
+band "packages/mpd-roles-plugin/src/index.ts" -> false
+band "packages" -> false
+band "scripts/verify-vendor.ts" -> false
+band "AGENTS.md" -> true
+band "packages/x/AGENTS.md" -> true
+band "docs/nested/AGENTS.md" -> true
+band "README.md" -> true
+band "README.zh-CN.md" -> true
+band "CHANGELOG.md" -> true
+band "LICENSE.md" -> true
+band "LICENSE-NOTICES.md" -> true
+band "package.json" -> false
+band "docs/../packages/x.ts" -> false
+band "../outside/AGENTS.md" -> true

@@ -26,6 +26,7 @@ import { join, resolve } from "node:path"
 import { ROLES, ROLE_BY_ID, type MpdRoleSpec } from "./roles.data.ts"
 import { installReadonlyGuard } from "./team-guard.ts"
 import { INVESTIGATION_CONFIG_KEY, installCaptainInvestigationGuard } from "./captain-investigation.ts"
+import { CAPTAIN_SHELL_CONFIG_KEY, CAPTAIN_SHELL_DENY_PATTERNS, installCaptainShellGuard } from "./captain-shell.ts"
 import { installAskUserQuestionGuard } from "./ask-user-guard.ts"
 import { QUESTION_ROUTES, installQuestionRelay, registerQuestionWeb, type PendingQuestion, type QuestionEffect } from "./question-relay.ts"
 import { DELEGATION_CONFIG_KEY, installDelegationGate } from "./delegation-gate.ts"
@@ -54,14 +55,15 @@ type Ctx = { tools: any; subagents: any; provide: (n: string, v: any, check?: an
  * The row config: the persona directory plus the keys this row reads itself.
  *
  * `team.gate` (mechanical | advisory | off), `team.sensitivity` (easy | normal | strict),
- * `boulder.dir`, `captain.investigation` (deny | allow) and `delegation.gate` (deny | captain |
+ * `boulder.dir`, `captain.investigation` (deny | allow), `captain.shell` (deny | allow) and
+ * `delegation.gate` (deny | captain |
  * allow) mirror their `.mpd/mpd.jsonc` spellings, so a composition without the config row mounted can
  * still pin them in the patch. `consult.forceAfterMs` and `watchdog.forceAfterMs` are the two layers
  * of the consult deadman's bound (the second is the shared force-supervisor knob), and
  * `watchdog.toolInFlightMaxMs` is the in-flight half of the same predicate (contract §S9). Every knob
  * is read PER USE through the same config layer, so a `mpd.jsonc` edit applies without a reinstall.
  */
-type Config = { personasDir?: string; team?: { gate?: unknown; sensitivity?: unknown; reteam?: { enabled?: unknown; afterConsults?: unknown } }; boulder?: { dir?: unknown }; captain?: { investigation?: unknown }; delegation?: { gate?: unknown }; consult?: { forceAfterMs?: unknown }; watchdog?: { forceAfterMs?: unknown; toolInFlightMaxMs?: unknown } }
+type Config = { personasDir?: string; team?: { gate?: unknown; sensitivity?: unknown; reteam?: { enabled?: unknown; afterConsults?: unknown } }; boulder?: { dir?: unknown }; captain?: { investigation?: unknown; shell?: unknown }; delegation?: { gate?: unknown }; consult?: { forceAfterMs?: unknown }; watchdog?: { forceAfterMs?: unknown; toolInFlightMaxMs?: unknown } }
 
 /** The consult deadman's OWN bound key, read first (contract §S9). */
 const CONSULT_FORCE_KEY = "consult.forceAfterMs"
@@ -1334,6 +1336,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     if (key === RETEAM_AFTER_CONSULTS_CONFIG_KEY) return config.team?.reteam?.afterConsults
     if (key === BOULDER_DIR_CONFIG_KEY) return config.boulder?.dir
     if (key === INVESTIGATION_CONFIG_KEY) return config.captain?.investigation
+    if (key === CAPTAIN_SHELL_CONFIG_KEY) return config.captain?.shell
     if (key === DELEGATION_CONFIG_KEY) return config.delegation?.gate
     if (key === CONSULT_FORCE_KEY) return config.consult?.forceAfterMs
     if (key === WATCHDOG_FORCE_KEY) return config.watchdog?.forceAfterMs
@@ -1420,6 +1423,27 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   } catch (error) {
     guardOutcome.push("captainInvestigation=absent reason=threw")
     warnOnce("captain-investigation:threw", "the captain investigation guard could not be installed (" + errText(error) + ")")
+  }
+  // THE CAPTAIN SHELL GUARD (contract `.mpd/plans/captain-self-test-fence.md` §3 C1) sits at this same
+  // site and for the same reason: reconnaissance is not the captain's work, and neither is running the
+  // verification commands that produce evidence — it delegates the command to a specialist and consumes
+  // the REPORT, while `bash` stays open for git, the filesystem and bookkeeping. `captain.shell`
+  // (`deny` default | `allow`) is read per call through the SAME `configValue`; the boot token below
+  // reports the mode and the size of the shipped deny table.
+  try {
+    /** The guard's install outcome, whose MODE the team-plane boot signature reports below. */
+    const shell = installCaptainShellGuard(dsh, {
+      configValue,
+      warn: (line) => warnOnce("captain-shell:" + line, line),
+    })
+    guardOutcome.push(shell.installed
+      ? (shell.mode === "allow"
+        ? "captainShell=allow"
+        : "captainShell=deny patterns=" + String(CAPTAIN_SHELL_DENY_PATTERNS.length))
+      : "captainShell=absent reason=" + String(shell.reason))
+  } catch (error) {
+    guardOutcome.push("captainShell=absent reason=threw")
+    warnOnce("captain-shell:threw", "the captain shell guard could not be installed (" + errText(error) + ")")
   }
   try {
     /** The gate's install outcome, whose MODE the team-plane boot signature reports below. */
