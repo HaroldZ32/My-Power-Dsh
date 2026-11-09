@@ -2625,6 +2625,21 @@ function resolveVerifyMode(raw) {
     return "advisory";
   return "hard";
 }
+function resolveEvidenceBy(raw) {
+  const value = typeof raw === "string" ? raw.trim().toLowerCase() : "";
+  return value === "any" ? "any" : "verifier";
+}
+function isMpdCaptainSession(agent) {
+  const header = agent?.session?.header;
+  if (header === undefined || header === null)
+    return false;
+  if (header.origin === "subagent")
+    return false;
+  const depth = Number(header.delegationDepth);
+  if (depth >= 1)
+    return false;
+  return header.agentPreset === "mpd";
+}
 function resolvePositiveInt(raw, fallback) {
   const value = typeof raw === "number" ? raw : typeof raw === "string" && raw.trim() !== "" ? Number(raw) : Number.NaN;
   return Number.isFinite(value) && value > 0 ? Math.floor(value) : fallback;
@@ -3887,6 +3902,9 @@ function evidenceTool(deps) {
     },
     execute: (args, exec) => {
       const { workspace, sessionId } = where(deps, exec);
+      if (String(args?.kind ?? "") === "gate" && resolveEvidenceBy(deps.configValue("verify.evidenceBy")) === "verifier" && isMpdCaptainSession(exec.agent)) {
+        return { refused: `[mpd-verify] captain gate evidence: REFUSED — running a gate is verification, and verification is not the captain's job (verify.evidenceBy="verifier"). Delegate it: mpd_role_spawn {role:"Reviewer", task:"run mpd_verify_evidence {kind:\\"gate\\", gate:\\"<id>\\"} and report the outcome"}, or bind a verifier seat with mpd_verify_seat. kind:"probe" stays open to you (content-free: size/sha256/mtime), and verify.evidenceBy:"any" in mpd.jsonc is the configuration opt-out.` };
+      }
       const seat = readSeats(workspace).seats?.[sessionId];
       const loopId = seat?.loopId ?? (args?.loop_id === undefined ? null : String(args.loop_id));
       const evidenceId = mintId("ev");
@@ -4147,6 +4165,7 @@ function apply(ctx, config = {}) {
   }
   const mode = resolveVerifyMode(configValue("verify.mode"));
   outcome.push("mode=" + mode);
+  outcome.push("evidenceBy=" + resolveEvidenceBy(configValue("verify.evidenceBy")));
   const guardSeam = dsh.capabilities().toolsGuard === true;
   outcome.push("guard=" + (guardSeam ? "seam-present" : "no-guard-seam"));
   const installedAt = new Date().toISOString();

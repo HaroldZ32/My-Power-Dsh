@@ -891,6 +891,100 @@ function installCaptainInvestigationGuard(dsh, options) {
   }
 }
 
+// packages/mpd-roles-plugin/src/captain-shell.ts
+var CAPTAIN_SHELL_CONFIG_KEY = "captain.shell";
+var CAPTAIN_SHELL_TOOLS = ["bash", "powershell", "pwsh"];
+var CAPTAIN_SHELL_DENY_PATTERNS = [
+  { label: "bun-test", pattern: /^(?:sudo\s+)?bun\s+test\b/i, gateShaped: true },
+  { label: "bun-run-gate", pattern: /^(?:sudo\s+)?bun\s+run\s+(?:verify|test)[:_]/i, gateShaped: true },
+  { label: "bun-run-typecheck", pattern: /^(?:sudo\s+)?bun\s+run\s+typecheck\b/i, gateShaped: true },
+  { label: "node-verify-script", pattern: /^(?:sudo\s+)?node\s+scripts\/verify-/i, gateShaped: true },
+  {
+    label: "node-release-script",
+    pattern: /^(?:sudo\s+)?node\s+scripts\/(?:repin-vendor|pack-mpd|docker-e2e|install-profile)/i,
+    gateShaped: true
+  },
+  { label: "qa-scripts", pattern: /^(?:sudo\s+)?(?:bun|node)\s+skills\/dsh-qa\/scripts\//i, gateShaped: true },
+  { label: "npm-pack", pattern: /^(?:sudo\s+)?npm\s+(?:pack|run\s+pack)\b/i, gateShaped: false },
+  { label: "docker", pattern: /^(?:sudo\s+)?docker\b/i, gateShaped: false },
+  { label: "tsc", pattern: /^(?:sudo\s+)?(?:bun|node|npx)\s+.*\btsc\b/i, gateShaped: true },
+  { label: "bun-build", pattern: /^(?:sudo\s+)?bun\s+build\s+packages\//i, gateShaped: true }
+];
+var MAX_QUOTED_SEGMENT = 140;
+function resolveCaptainShellMode(raw) {
+  return raw === "allow" ? "allow" : "deny";
+}
+function captainShellSegments(command) {
+  return command.split(/&&|\|\||;|\||\r?\n/u).map((segment) => segment.trim()).filter((segment) => segment !== "");
+}
+function matchCaptainShellDeny(segment) {
+  for (const entry of CAPTAIN_SHELL_DENY_PATTERNS) {
+    if (entry.pattern.test(segment))
+      return entry;
+  }
+  return;
+}
+function captainShellDecision(input) {
+  if (input.mode !== "deny")
+    return;
+  if (!input.topLevel)
+    return;
+  const toolName = String(input.toolName ?? "");
+  if (!CAPTAIN_SHELL_TOOLS.includes(toolName))
+    return;
+  const raw = input.args?.command;
+  if (typeof raw !== "string")
+    return;
+  const segments = captainShellSegments(raw);
+  for (const segment of segments) {
+    const entry = matchCaptainShellDeny(segment);
+    if (entry !== undefined)
+      return captainShellRefusal(segment, entry);
+  }
+  const whole = raw.trim();
+  if (whole !== "") {
+    const entry = matchCaptainShellDeny(whole);
+    if (entry !== undefined)
+      return captainShellRefusal(whole, entry);
+  }
+  return;
+}
+function captainShellRefusal(segment, entry) {
+  const shown = segment.length > MAX_QUOTED_SEGMENT ? segment.slice(0, MAX_QUOTED_SEGMENT - 1) + "…" : segment;
+  const evidenceClause = entry.gateShaped ? ' mpd_verify_evidence {kind:"gate"} is refused for the captain too (verify.evidenceBy), so the delegate records it.' : "";
+  return '[mpd-roles] captain shell: REFUSED — "' + shown + '" is a verification command and verification is not' + ` the captain's job. Delegate it: mpd_role_spawn {role:"Reviewer", task:"run <exact command> and` + ' report the outcome"}. bash stays yours for git, filesystem and bookkeeping; captain.shell:"allow"' + " in mpd.jsonc is the configuration opt-out." + evidenceClause;
+}
+function installCaptainShellGuard(dsh, options) {
+  const mode = resolveCaptainShellMode(options.configValue(CAPTAIN_SHELL_CONFIG_KEY));
+  try {
+    if (dsh.capabilities().toolsGuard !== true) {
+      options.warn("the harness exposes no tools.guard seam — the captain shell guard is NOT installed " + "(the top-level session keeps its shell on verification commands; the rule lives in the instruction text only)");
+      return { installed: false, mode, reason: "no-guard-seam" };
+    }
+    let reportedInternalError = false;
+    const dispose = dsh.guardTool((exec) => {
+      try {
+        return captainShellDecision({
+          toolName: String(exec?.name ?? ""),
+          args: exec?.arguments,
+          topLevel: sessionIsMpdCaptain(exec?.agent),
+          mode: resolveCaptainShellMode(options.configValue(CAPTAIN_SHELL_CONFIG_KEY))
+        });
+      } catch (error) {
+        if (!reportedInternalError) {
+          reportedInternalError = true;
+          options.warn("the captain shell guard hit an internal error and passed the call through (" + (error instanceof Error ? error.message : String(error)) + ")");
+        }
+        return;
+      }
+    });
+    return { installed: true, mode, ...typeof dispose === "function" ? { dispose } : {} };
+  } catch (error) {
+    options.warn("installing the captain shell guard failed (" + (error instanceof Error ? error.message : String(error)) + ")");
+    return { installed: false, mode, reason: "install-failed" };
+  }
+}
+
 // packages/mpd-roles-plugin/src/ask-user-guard.ts
 var ASK_USER_QUESTION_TOOL = "ask_user_question";
 function nonEmptyString(value) {
@@ -5950,6 +6044,8 @@ state: ` + v.state + " elapsed: " + v.elapsedMs + "ms" : "")) },
       return config.boulder?.dir;
     if (key === INVESTIGATION_CONFIG_KEY)
       return config.captain?.investigation;
+    if (key === CAPTAIN_SHELL_CONFIG_KEY)
+      return config.captain?.shell;
     if (key === DELEGATION_CONFIG_KEY)
       return config.delegation?.gate;
     if (key === CONSULT_FORCE_KEY)
@@ -6000,6 +6096,16 @@ state: ` + v.state + " elapsed: " + v.elapsedMs + "ms" : "")) },
   } catch (error) {
     guardOutcome.push("captainInvestigation=absent reason=threw");
     warnOnce("captain-investigation:threw", "the captain investigation guard could not be installed (" + errText(error) + ")");
+  }
+  try {
+    const shell = installCaptainShellGuard(dsh, {
+      configValue,
+      warn: (line) => warnOnce("captain-shell:" + line, line)
+    });
+    guardOutcome.push(shell.installed ? shell.mode === "allow" ? "captainShell=allow" : "captainShell=deny patterns=" + String(CAPTAIN_SHELL_DENY_PATTERNS.length) : "captainShell=absent reason=" + String(shell.reason));
+  } catch (error) {
+    guardOutcome.push("captainShell=absent reason=threw");
+    warnOnce("captain-shell:threw", "the captain shell guard could not be installed (" + errText(error) + ")");
   }
   try {
     const delegation = installDelegationGate(dsh, {

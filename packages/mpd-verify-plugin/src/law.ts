@@ -583,6 +583,49 @@ export function resolveVerifyMode(raw: unknown): "hard" | "advisory" | "off" {
 }
 
 /**
+ * Resolve `verify.evidenceBy` to one of its two values.
+ *
+ * `verifier` (the default) refuses a captain's `kind:"gate"` evidence — running a gate IS verification,
+ * and verification belongs to a DIFFERENT agent — while `any` restores it. Read RAW from the config
+ * service like `verify.mode`, and the test is the exact token `any`: anything absent, unreadable or
+ * misspelled stays FAIL-CLOSED on `verifier`.
+ *
+ * @param raw - the config value, as the layer reported it.
+ * @returns the mode in force.
+ */
+export function resolveEvidenceBy(raw: unknown): "verifier" | "any" {
+  /** The value lowercased, so `ANY` and `Any` both resolve. */
+  const value = typeof raw === "string" ? raw.trim().toLowerCase() : ""
+  return value === "any" ? "any" : "verifier"
+}
+
+/**
+ * Whether one agent's session is the CAPTAIN OF THE `mpd` PRESET.
+ *
+ * MIRRORED, not imported, from `mpd-roles-plugin`'s `sessionIsMpdCaptain`
+ * (`packages/mpd-roles-plugin/src/complexity-gate.ts:1633-1638`), which composes the ONE `sessionRank`
+ * classification with the preset test: header absent → NOT the captain (fail-closed);
+ * `origin === "subagent"` → a child; `delegationDepth >= 1` → a child; otherwise the captain IFF
+ * `agentPreset === "mpd"`. NO CROSS-PACKAGE IMPORT: `bun build` inlines each package's imports, so a
+ * shared module would be copied rather than shared, and this row must classify exactly as the roles row
+ * does. T-92 is why the delegation facts are read BEFORE the preset: a preset-keyed test alone once made
+ * the captain branch unreachable when the whole deployment recorded one preset.
+ *
+ * @param agent - the live agent handle whose session header is classified.
+ * @returns whether this session is the top-level session of the `mpd` preset.
+ */
+export function isMpdCaptainSession(agent: unknown): boolean {
+  /** The agent's session header, which carries the origin, the delegation depth and the preset. */
+  const header = (agent as { session?: { header?: Record<string, unknown> } } | undefined)?.session?.header
+  if (header === undefined || header === null) return false
+  if (header.origin === "subagent") return false
+  /** The delegation depth; an unreadable depth is not ">= 1" and is therefore read as the captain. */
+  const depth = Number(header.delegationDepth)
+  if (depth >= 1) return false
+  return header.agentPreset === "mpd"
+}
+
+/**
  * Read a positive integer knob, falling back to a declared default.
  *
  * @param raw - the config value, as the layer reported it.
