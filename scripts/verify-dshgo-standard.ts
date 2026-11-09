@@ -21,10 +21,14 @@
 // `docs/dsh-go-standard.md`, `docs/dsh-go-standard.zh-CN.md`, and the two workflow refs
 // (`publish.yml`, `gates.yml`) — so eight readings in all. Nothing compared them, and one wave moved
 // the pin while leaving both docs and both CI refs on the previous sha with every lane green. The PIN
-// check below reads all eight, fails on a site that states no 40-hex commit and on any disagreement,
-// and prints its own `PIN:` line (it is NOT a sixth lane). The literal must be the PEELED release
-// commit — `git rev-parse v1.0.14^{commit}` — never the annotated tag object that `git rev-parse
-// v1.0.14` prints, which is not a commit at all.
+// check below reads all eight and fails on a site that states no 40-hex commit and on any disagreement.
+// A site whose FILE is absent is an error only in a CHECKOUT (`.git` present — every CI run and this
+// repository); a packaged tree ships `scripts/**`, `specs/**` and `docs/**` but NOT `.github/**`, so its
+// two workflow sites print `pin-site-skipped` NOTES and never change the exit code. A file that IS
+// present but states no 40-hex commit is an error in both modes: an absent file and an absent pin are
+// different facts. It prints its own `PIN:` line (it is NOT a sixth lane). The literal must be the
+// PEELED release commit — `git rev-parse v1.0.14^{commit}` — never the annotated tag object that `git
+// rev-parse v1.0.14` prints, which is not a commit at all.
 //
 // THE FIVE LANES, and what each one may and may not prove:
 //
@@ -1101,7 +1105,7 @@ interface PinSite {
   readonly fixture: (commit: string) => string
 }
 
-/** One site's reading: where it lives and which commit it stated. */
+/** One site's reading: where it lives, which commit it stated, and whether its file was there at all. */
 interface PinReading {
   /** Stable label, copied from the site. */
   readonly id: string
@@ -1109,15 +1113,19 @@ interface PinReading {
   readonly file: string
   /** The commit the site stated, or null when its file was unreadable or stated none. */
   readonly commit: string | null
+  /** True when the file itself is not there — an absence of the FILE, which is not the same fact as a missing pin. */
+  readonly absent: boolean
 }
 
 /** The pin check's verdict: the agreed commit (null when there is none), the readings and the findings. */
 interface PinAudit {
-  /** The single 40-hex commit every site states, or null when a site states none or two disagree. */
+  /** The single 40-hex commit the PRESENT sites agree on, or null when none is stated or a site dissents. */
   readonly commit: string | null
   /** Every site's reading, in declaration order — the evidence a `--json` consumer keeps. */
   readonly readings: readonly PinReading[]
-  /** One `pin-site-missing` per site without a 40-hex commit, plus one `pin-disagreement` per dissenter. */
+  /** How many sites a packaged tree does not ship — printed as skipped and never counted as an error. */
+  readonly skipped: number
+  /** One `pin-site-missing` per site without a 40-hex commit, one `pin-site-skipped` note per unshipped file, and one `pin-disagreement` per dissenter. */
   readonly findings: readonly Finding[]
 }
 
@@ -1207,22 +1215,33 @@ const PIN_SITES: readonly PinSite[] = [
   },
 ]
 
-/** Extract each site's commit from its text — the PURE half, so a self-test arm never touches the disk. */
+/**
+ * Extract each site's commit from its text — the PURE half, so a self-test arm never touches the disk.
+ * A site ABSENT from `texts` has no file at all; a site mapped to `null` has a file that could not be
+ * read, so it is still expected to state a commit.
+ */
 function extractPins(texts: ReadonlyMap<string, string | null>): readonly PinReading[] {
   return PIN_SITES.map((site: PinSite): PinReading => {
-    /** The site's text, undefined when the caller supplied none for it. */
+    /** The site's text, undefined when the caller supplied none because the file is not there. */
     const text = texts.get(site.id)
-    return { id: site.id, file: site.file, commit: text === undefined || text === null ? null : site.select(text) }
+    return { id: site.id, file: site.file, commit: text === undefined || text === null ? null : site.select(text), absent: text === undefined }
   })
 }
 
-/** Read every pin site under `root` from disk and extract its commit. */
+/**
+ * Read every pin site under `root` from disk and extract its commit. A file that does not exist leaves
+ * NO entry for its site, which is what `extractPins` reports as `absent`; a file that exists but cannot
+ * be read still has to state a commit.
+ */
 function readPins(root: string): readonly PinReading[] {
-  /** The site texts, keyed by site id; null when a file cannot be read. */
+  /** The site texts, keyed by site id; a site with no entry has no file under `root`. */
   const texts = new Map<string, string | null>()
   for (const site of PIN_SITES) {
+    /** The site's path under the audited root. */
+    const path = join(root, site.file)
+    if (!existsSync(path)) continue
     try {
-      texts.set(site.id, readFileSync(join(root, site.file), "utf8"))
+      texts.set(site.id, readFileSync(path, "utf8"))
     } catch {
       texts.set(site.id, null)
     }
@@ -1230,16 +1249,45 @@ function readPins(root: string): readonly PinReading[] {
   return extractPins(texts)
 }
 
-/** Judge the readings: a site with no 40-hex commit is an error, and so is any disagreement. */
-function auditPin(readings: readonly PinReading[]): PinAudit {
+/**
+ * True when `root` is a CHECKOUT rather than a packaged tree: a `.git` entry exists, as a directory in
+ * a clone or as a file in a worktree. Every CI run and this repository are checkouts, so a deleted or
+ * renamed pin site still fails loudly; a packed install has no `.git` and ships no `.github/**`.
+ */
+function isCheckout(root: string): boolean {
+  return existsSync(join(root, ".git"))
+}
+
+/**
+ * Judge the readings. A site whose file IS PRESENT but states no 40-hex commit is an error in BOTH
+ * modes. A site whose file is ABSENT is an error only in a CHECKOUT; a packaged tree does not ship
+ * `.github/**`, so its workflow sites are NOTES there and never change the exit code.
+ */
+function auditPin(readings: readonly PinReading[], checkout: boolean): PinAudit {
   /** The findings this check contributes. */
   const findings: Finding[] = []
   for (const reading of readings) {
+    if (reading.absent) {
+      findings.push(checkout
+        ? {
+            rule: "pin-site-missing",
+            path: reading.file,
+            detail: `${reading.id}: the file is absent from this checkout — a deleted or renamed pin site must fail, not silently shrink the audit`,
+            severity: "error",
+          }
+        : {
+            rule: "pin-site-skipped",
+            path: reading.file,
+            detail: `${reading.id}: the file is not shipped in a packaged tree (no \`.git\`), so its pin cannot be read here`,
+            severity: "note",
+          })
+      continue
+    }
     if (reading.commit !== null && isCommit(reading.commit)) continue
     findings.push({
       rule: "pin-site-missing",
       path: reading.file,
-      detail: `${reading.id} states ${reading.commit === null ? "no dsh-Go commit literal" : `\`${reading.commit}\`, which is not a 40-hex commit`}; all ${readings.length} pin sites must state the same peeled release commit`,
+      detail: `${reading.id} states ${reading.commit === null ? "no dsh-Go commit literal" : `\`${reading.commit}\`, which is not a 40-hex commit`}; every present pin site must state the same peeled release commit`,
       severity: "error",
     })
   }
@@ -1268,7 +1316,12 @@ function auditPin(readings: readonly PinReading[]): PinAudit {
       })
     }
   }
-  return { commit: findings.length === 0 ? agreed : null, readings, findings }
+  return {
+    commit: agreed !== null && findings.every((finding: Finding): boolean => finding.severity !== "error") ? agreed : null,
+    readings,
+    skipped: findings.filter((finding: Finding): boolean => finding.rule === "pin-site-skipped").length,
+    findings,
+  }
 }
 
 /** Count the failing findings across every lane. */
@@ -1295,7 +1348,7 @@ function render(report: AuditReport): number {
   /** The PIN line's verdict: the agreed commit, or FAIL plus the error count — its OWN line, not a lane. */
   const pinVerdict = report.pin.commit === null
     ? `FAIL — ${pinErrors.length} error(s) across ${report.pin.readings.length} site readings`
-    : `PASS — ${report.pin.readings.length} site readings agree on ${report.pin.commit}`
+    : `PASS — ${report.pin.readings.length - report.pin.skipped} of ${report.pin.readings.length} site readings agree on ${report.pin.commit}${report.pin.skipped === 0 ? "" : ` (${report.pin.skipped} skipped: not shipped)`}`
   console.log(`${TAG} PIN: ${pinVerdict}`)
   for (const finding of report.pin.findings) console.log(`  [${finding.severity}] ${finding.rule} ${finding.path} — ${finding.detail}`)
   for (const lane of report.lanes) renderLane(lane)
@@ -1397,6 +1450,8 @@ function mutableManifest(): { manifest: Record<string, unknown>; dshGo: Record<s
 const PIN_FIXTURE_A: string = "0123456789abcdef0123456789abcdef01234567"
 /** A second synthetic 40-hex commit: the value ONE perturbed site is rewritten to. */
 const PIN_FIXTURE_B: string = "89abcdef0123456789abcdef0123456789abcdef"
+/** The one pin site the C5 disagreement arm perturbs, by its stable id. */
+const PIN_PERTURBED_SITE: string = "docs/dsh-go-standard.md"
 
 /** Every site's text at one commit, built from each site's own shape — the pin arms' in-memory input. */
 function pinTexts(commit: string): Map<string, string | null> {
@@ -1785,7 +1840,24 @@ const ARMS: readonly Arm[] = [
     name: "C5 PIN: one perturbed site disagreeing with the seven others",
     rule: "pin-disagreement",
     severity: "error",
-    probe: () => auditPin(extractPins(perturbPin(pinTexts(PIN_FIXTURE_A), "docs/dsh-go-standard.md", PIN_FIXTURE_B))).findings,
+    probe: () => {
+      /** The UNPERTURBED fixture set: a drifted fixture or selector must fail HERE, never pass by accident. */
+      const baseline = auditPin(extractPins(pinTexts(PIN_FIXTURE_A)), true)
+      if (baseline.findings.length !== 0) {
+        throw new Error(`the unperturbed fixture set must be clean, got ${baseline.findings.map((finding: Finding): string => `${finding.rule}:${finding.severity}`).join(", ")}`)
+      }
+      /** The same set with exactly one site moved to a different commit. */
+      const perturbed = auditPin(extractPins(perturbPin(pinTexts(PIN_FIXTURE_A), PIN_PERTURBED_SITE, PIN_FIXTURE_B)), true)
+      /** The disagreements that perturbation produced. */
+      const disagreements = perturbed.findings.filter((finding: Finding): boolean => finding.rule === "pin-disagreement")
+      if (disagreements.length !== 1) throw new Error(`the perturbation must produce exactly one pin-disagreement, got ${disagreements.length}`)
+      /** The one disagreement, asserted to name the perturbed site rather than a bystander. */
+      const [only] = disagreements
+      if (only === undefined || !only.detail.startsWith(`${PIN_PERTURBED_SITE} states`)) {
+        throw new Error(`the disagreement must name ${PIN_PERTURBED_SITE}, got ${only?.detail ?? "none"}`)
+      }
+      return perturbed.findings
+    },
   },
   {
     name: "C5 PIN: a site that states no 40-hex commit",
@@ -1795,7 +1867,7 @@ const ARMS: readonly Arm[] = [
       /** The agreeing fixture, with ONE site degraded to a short token that is not a commit. */
       const texts = pinTexts(PIN_FIXTURE_A)
       texts.set("docs/dsh-go-standard.zh-CN.md", "标准钉在\n`ccch1mneyyy/dsh-Go` 的提交 `deadbeef`（2026-11-09）。执行点是\n")
-      return auditPin(extractPins(texts)).findings
+      return auditPin(extractPins(texts), true).findings
     },
   },
 ]
@@ -1893,7 +1965,7 @@ function main(argv: readonly string[]): number {
   /** The cross-check lane, told how many static errors it must agree with. */
   const crossCheck = runCrossCheck(root, lanes)
   /** The pin-coherence check over the REPOSITORY's declaration sites — a repository fact, not a lane. */
-  const pin = auditPin(readPins(REPO_ROOT))
+  const pin = auditPin(readPins(REPO_ROOT), isCheckout(REPO_ROOT))
   /** The whole report. */
   const report: AuditReport = { root, lanes, pin, crossCheck }
   /** The exit code the contract assigns. */

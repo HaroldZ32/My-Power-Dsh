@@ -1,0 +1,13 @@
+file_sha256=766f44da12e290c5d7d6da1ff3451db919c9df66be40804f353396a27dd056f9
+=== mutation A ===
+FAIL  C5 PIN: one perturbed site disagreeing with the seven others — the arm itself threw: the unperturbed fixture set must be clean, got pin-disagreement:error
+[dshgo-standard] SELF-TEST FAILED — 1 arm(s): C5 PIN: one perturbed site disagreeing with the seven others
+exit=1
+=== mutation B ===
+FAIL  C5 PIN: one perturbed site disagreeing with the seven others — the arm itself threw: the perturbation must produce exactly one pin-disagreement, got 2
+[dshgo-standard] SELF-TEST FAILED — 1 arm(s): C5 PIN: one perturbed site disagreeing with the seven others
+exit=1
+=== mutation C ===
+FAIL  C5 PIN: one perturbed site disagreeing with the seven others — the arm itself threw: the disagreement must name docs/dsh-go-standard.md, got docs/dsh-go-standard.zh-CN.md states `89abcdef0123456789abcdef0123456789abcdef` while 7 of 8 sites state `0123456789abcdef0123456789abcdef01234567`: SOURCE.json=0123456789abcdef0123456789abcdef01234567, limits.ts header=0123456789abcdef0123456789abcdef01234567, verify-dshgo-standard.ts header=0123456789abcdef0123456789abcdef01234567, verify-dshgo-standard.ts render line=0123456789abcdef0123456789abcdef01234567, docs/dsh-go-standard.md=0123456789abcdef0123456789abcdef01234567, docs/dsh-go-standard.zh-CN.md=89abcdef0123456789abcdef0123456789abcdef, publish.yml=0123456789abcdef0123456789abcdef01234567, gates.yml=0123456789abcdef0123456789abcdef01234567
+[dshgo-standard] SELF-TEST FAILED — 1 arm(s): C5 PIN: one perturbed site disagreeing with the seven others
+exit=1
