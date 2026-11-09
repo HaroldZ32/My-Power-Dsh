@@ -3,7 +3,7 @@
 [English](./dsh-go-standard.md) | **中文**
 
 本页说明本 bundle 所实现的 **DSH-Go 原生插件标准**、它的证明方式，以及这份证明的边界。标准钉在
-`ccch1mneyyy/dsh-Go` 的提交 `d5ad25c5bc4c66ecacee76b3c5378db45e1db3fa`（2026-11-06）。执行点是
+`ccch1mneyyy/dsh-Go` 的提交 `f36bf91b0736e81ef40c2a7040b2ec337ca1ab40`（2026-11-09）。执行点是
 `node scripts/verify-dshgo-standard.ts`，它是常设门禁（[`AGENTS.md`](../AGENTS.md) §4）。
 
 ## 1. 标准的构成，以及本仓库钉住的规范数据
@@ -113,8 +113,10 @@ dshGo 读取都走一个作用域访问器，在注入接缝缺席时退回惰�
 | CROSS-CHECK | 当 `MPD_DSHGO_KIT` 指向一个 DSH-Go 检出时，运行它自己的 `check.mjs --json` 并比较两边的结论 | 受宿主约束；没有检出即 NOT-PASSED |
 
 退出码是聚合器遵守的契约：**0** 所有车道合法，**1** 一条或多条违规，**2** 无法运行（`package.json` 读不
-了、未知参数、自检臂行为异常），**3** 官方交叉核对无法运行时的 NOT-PASSED。`--self-test` 跑 **44 条臂**
-——一条干净对照加 43 条负向对照，每个规则族一条——在这棵树上退出 0。
+了、未知参数、自检臂行为异常），**3** 官方交叉核对无法运行时的 NOT-PASSED。五条车道并不是唯一的失败
+来源：八个声明点上出现 PIN 分歧时，即使每条车道仍然通过，门禁也会以 **1** 退出；而这个 PIN 检查**不是**
+第六条车道——它打印自己的 `PIN:` 行。`--self-test` 跑 **46 条臂**——一条干净对照加 45 条负向对照，每个
+规则族一条——在这棵树上退出 0。
 
 门禁是**常设**成员：它是 `bun run verify:gates` 的第十一个成员；`gates.yml` 以稀疏的 `sdk/plugin-kit`
 检出上游钉住提交，并在跑聚合前导出 `MPD_DSHGO_KIT`；`publish.yml` 在 `npm pack` / `npm stage publish`

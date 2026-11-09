@@ -4,7 +4,7 @@
 
 This page states the **DSH-Go native-plugin standard** this bundle implements, the way it is proven, and
 the bounds of that proof. The standard is pinned to `ccch1mneyyy/dsh-Go` at commit
-`d5ad25c5bc4c66ecacee76b3c5378db45e1db3fa` (2026-11-06). The enforcement point is
+`f36bf91b0736e81ef40c2a7040b2ec337ca1ab40` (2026-11-09). The enforcement point is
 `node scripts/verify-dshgo-standard.ts`, a standing gate ([`AGENTS.md`](../AGENTS.md) §4).
 
 ## 1. What the standard is, and the spec data this repository pins
@@ -128,8 +128,10 @@ not prove:
 
 Exit codes are the contract the aggregator honours: **0** every lane legal, **1** one or more violations,
 **2** cannot run (unreadable `package.json`, unknown flag, a misbehaving self-test arm), **3** NOT-PASSED when
-the official cross-check could not run. `--self-test` runs **44 arms** — one clean control and 43 negative
-controls, one per rule family — and it exits 0 on this tree.
+the official cross-check could not run. The five lanes are not the only failure source: a PIN disagreement
+on the eight declaration sites exits **1** while every lane still passes, and the PIN check is **not** a
+sixth lane — it prints its own `PIN:` line. `--self-test` runs **46 arms** — one clean control and 45
+negative controls, one per rule family — and it exits 0 on this tree.
 
 The gate is a **standing** member: it is the eleventh member of `bun run verify:gates`, `gates.yml` checks
 out the pinned upstream commit with a sparse `sdk/plugin-kit` checkout and exports `MPD_DSHGO_KIT` before the

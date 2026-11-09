@@ -1,0 +1,15 @@
+00-self-test	0	evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/00-self-test.log
+01-gate-five-lanes	0	evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/01-gate-five-lanes.log
+02-repin-check	0	evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/02-repin-check.log
+03-verify-vendor	0	evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/03-verify-vendor.log
+04-verify-docs-parity	0	evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/04-verify-docs-parity.log
+05-verify-workflows	0	evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/05-verify-workflows.log
+06-verify-comments	0	evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/06-verify-comments.log
+07-verify-dist-fresh	0	evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/07-verify-dist-fresh.log
+08-typecheck	0	evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/08-typecheck.log
+09-pin-proof-unperturbed	0	evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/09-pin-proof-unperturbed.log
+10-pin-proof-perturbed	1	evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/10-pin-proof-perturbed.log
+11-restoration-check	0	evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/11-restoration-check.log
+12-bun-test-adapter	0	evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/12-bun-test-adapter.log
+13-final-confirmation	0	evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/13-final-confirmation.log
+14-gate-without-kit	3	evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/14-gate-without-kit.log

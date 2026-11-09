@@ -1,0 +1,24 @@
+=== CMD: git status --porcelain --untracked-files=normal | grep -v '^?? evidence/' ===
+ M VENDOR_LOCK.json
+ M scripts/verify-dshgo-standard.ts
+ M specs/dsh-go/SOURCE.json
+ M specs/dsh-go/limits.ts
+(only the 4 modified files expected)
+
+=== CMD: git diff --name-only (tracked edits) ===
+VENDOR_LOCK.json
+scripts/verify-dshgo-standard.ts
+specs/dsh-go/SOURCE.json
+specs/dsh-go/limits.ts
+
+=== packages/ and dist/ touched? ===
+(empty = untouched)
+
+=== package.json touched? (must be empty) ===
+(empty above = whole file untouched, dshGo block included)
+
+=== dshgo-view.ts BUDGETS/PROTOCOL/1.0.9 floor unchanged? ===
+(empty = untouched)
+
+=== .mpd/recon/dsh-go mirror cleanliness ===
+(empty = mirror untouched)

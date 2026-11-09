@@ -1,0 +1,14 @@
+bundle=evidence/dshgo/standard/2026-11-09T07-13-34-000Z
+--- result.json finalConfirmation.note
+corrected 2026-11-09: the earlier wording claimed this ran AFTER result.json/output.log, which the original mtimes contradict. It re-ran after the gate/proof sequence (commands 00-12) and BEFORE the bundle was written: this log is 15:17:40, the no-kit negative control (14) is 15:18:31, and result.json/output.log were first written at 15:19:23 (result.json's mtime moved later only because this note was corrected). All three checks exit 0 and the PIN/lane lines are identical to command 01, so nothing in the worktree drifted between the gate evidence and this confirmation
+--- commands[13].what
+the touched-module package's suite (D6)
+--- mtimes (original bundle)
+2026-11-09 15:40:12.807429953 +0800 evidence/dshgo/standard/2026-11-09T07-13-34-000Z/result.json
+2026-11-09 15:19:23.084222245 +0800 evidence/dshgo/standard/2026-11-09T07-13-34-000Z/output.log
+2026-11-09 15:17:40.216280336 +0800 evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/13-final-confirmation.log
+2026-11-09 15:18:31.968597033 +0800 evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/14-gate-without-kit.log
+--- log 10 stray-error scan
+0
+--- log 10 last line
+[dshgo-standard] RESULT: VIOLATIONS — 1 error(s)

@@ -8,12 +8,23 @@
 // app and the bridge actually apply, it is a `verify:gates` MEMBER, and `publish.yml` runs it before
 // anything is packed or staged, so a non-conforming manifest cannot reach a release.
 //
-// THE STANDARD IT ENCODES: `ccch1mneyyy/dsh-Go` at commit `d5ad25c5bc4c66ecacee76b3c5378db45e1db3fa`
-// (2026-11-06). The numeric table is `runtime/bridge/dsh-go-bridge/lib/native/limits.js`; the
+// THE STANDARD IT ENCODES: `ccch1mneyyy/dsh-Go` at commit `f36bf91b0736e81ef40c2a7040b2ec337ca1ab40`
+// (2026-11-09). The numeric table is `runtime/bridge/dsh-go-bridge/lib/native/limits.js`; the
 // structural rules are the five upstream JSON Schemas plus the bridge's own `manifest.js`; the view
 // budgets are the app's `view-check.js`. Those bytes are captured as SPEC DATA under
 // `specs/dsh-go/` (`SPECS` below) — never as vendored executable code, because `@dsh-go/plugin-kit`
 // is `private: true` on npm and this repository's de-vendor policy forbids vendoring upstream code.
+//
+// THE PIN IS ASSERTED, NOT ASSUMED (contract §3 C5, added 2026-11-09 after the verifier's PIN-2).
+// The same upstream commit is RESTATED at seven declaration points — `specs/dsh-go/SOURCE.json`'s
+// `commit`, the `specs/dsh-go/limits.ts` header, THIS file's header AND its `standard:` render line,
+// `docs/dsh-go-standard.md`, `docs/dsh-go-standard.zh-CN.md`, and the two workflow refs
+// (`publish.yml`, `gates.yml`) — so eight readings in all. Nothing compared them, and one wave moved
+// the pin while leaving both docs and both CI refs on the previous sha with every lane green. The PIN
+// check below reads all eight, fails on a site that states no 40-hex commit and on any disagreement,
+// and prints its own `PIN:` line (it is NOT a sixth lane). The literal must be the PEELED release
+// commit — `git rev-parse v1.0.14^{commit}` — never the annotated tag object that `git rev-parse
+// v1.0.14` prints, which is not a commit at all.
 //
 // THE FIVE LANES, and what each one may and may not prove:
 //
@@ -201,12 +212,14 @@ interface CrossCheckResult {
   readonly officialExit: number | null
 }
 
-/** The full audit a run produces: the static lanes and the cross-check lane. */
+/** The full audit a run produces: the static lanes, the pin check and the cross-check lane. */
 interface AuditReport {
   /** The audited package root. */
   readonly root: string
   /** The five static lanes, in report order. */
   readonly lanes: readonly LaneResult[]
+  /** The pin-coherence check over the repository's declaration sites. */
+  readonly pin: PinAudit
   /** The cross-check lane. */
   readonly crossCheck: CrossCheckResult
 }
@@ -1076,6 +1089,188 @@ function auditStatic(root: string, hostSources: readonly string[] | undefined): 
   ]
 }
 
+/** One declaration point that restates the pinned dsh-Go commit, and how its text yields it. */
+interface PinSite {
+  /** Stable label the findings and the report's PIN line print. */
+  readonly id: string
+  /** Repository-relative path the literal lives in. */
+  readonly file: string
+  /** Extract the commit this site states from its file's text; null when it states none. */
+  readonly select: (text: string) => string | null
+  /** Build one synthetic file text at `commit`, so a self-test arm can perturb a site IN MEMORY. */
+  readonly fixture: (commit: string) => string
+}
+
+/** One site's reading: where it lives and which commit it stated. */
+interface PinReading {
+  /** Stable label, copied from the site. */
+  readonly id: string
+  /** Repository-relative path, copied from the site. */
+  readonly file: string
+  /** The commit the site stated, or null when its file was unreadable or stated none. */
+  readonly commit: string | null
+}
+
+/** The pin check's verdict: the agreed commit (null when there is none), the readings and the findings. */
+interface PinAudit {
+  /** The single 40-hex commit every site states, or null when a site states none or two disagree. */
+  readonly commit: string | null
+  /** Every site's reading, in declaration order — the evidence a `--json` consumer keeps. */
+  readonly readings: readonly PinReading[]
+  /** One `pin-site-missing` per site without a 40-hex commit, plus one `pin-disagreement` per dissenter. */
+  readonly findings: readonly Finding[]
+}
+
+/** The exact shape a commit literal must have at every site: 40 lowercase hex characters. */
+const PIN_COMMIT: RegExp = /^[0-9a-f]{40}$/
+
+/** True when `value` is exactly a 40-hex commit literal. */
+function isCommit(value: string): boolean {
+  return PIN_COMMIT.test(value)
+}
+
+/** Build a selector returning the first capture group of `marker`'s first match — the commit it names. */
+function capturedCommit(marker: RegExp): (text: string) => string | null {
+  return (text: string): string | null => {
+    /** The marker's first match in the site's text. */
+    const found = marker.exec(text)
+    return found === null ? null : found[1] ?? null
+  }
+}
+
+/** Read the structured site's `commit` field; the one declaration point that is JSON, not prose. */
+function jsonCommit(text: string): string | null {
+  try {
+    /** The parsed document, when it is a JSON object. */
+    const parsed: unknown = JSON.parse(text)
+    if (!isRecord(parsed)) return null
+    /** The value of its `commit` field. */
+    const commit = parsed.commit
+    return typeof commit === "string" ? commit : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The contract's seven declaration points as EIGHT readings: the workflow point is one requirement but
+ * two files, and each reading is the exact sentence / field / line the pin is hand-maintained in.
+ */
+const PIN_SITES: readonly PinSite[] = [
+  {
+    id: "SOURCE.json",
+    file: join("specs", "dsh-go", "SOURCE.json"),
+    select: jsonCommit,
+    fixture: (commit: string): string => JSON.stringify({ repo: "https://github.com/ccch1mneyyy/dsh-Go", commit }, null, 2),
+  },
+  {
+    id: "limits.ts header",
+    file: join("specs", "dsh-go", "limits.ts"),
+    select: capturedCommit(/^\/\/ SOURCE OF TRUTH:.*?`([0-9a-f]{40})`/m),
+    fixture: (commit: string): string => `// DSH-Go protocol v1 — the FROZEN SPEC DATA this repository conforms to.\n//\n// SOURCE OF TRUTH: \`ccch1mneyyy/dsh-Go\` at commit \`${commit}\`\n// (2026-11-09), file \`runtime/bridge/dsh-go-bridge/lib/native/limits.js\`.\n`,
+  },
+  {
+    id: "verify-dshgo-standard.ts header",
+    file: join("scripts", "verify-dshgo-standard.ts"),
+    select: capturedCommit(/^\/\/ THE STANDARD IT ENCODES:.*?at commit `([0-9a-f]{40})`/m),
+    fixture: (commit: string): string => `// THE STANDARD IT ENCODES: \`ccch1mneyyy/dsh-Go\` at commit \`${commit}\`\n// (2026-11-09). The numeric table is the app's limits.js.\n`,
+  },
+  {
+    id: "verify-dshgo-standard.ts render line",
+    file: join("scripts", "verify-dshgo-standard.ts"),
+    select: capturedCommit(/standard: ccch1mneyyy\/dsh-Go@([0-9a-f]{40})/),
+    fixture: (commit: string): string => `  console.log(\`\${TAG} standard: ccch1mneyyy/dsh-Go@${commit} (spec data under specs/dsh-go/)\`)\n`,
+  },
+  {
+    id: "docs/dsh-go-standard.md",
+    file: join("docs", "dsh-go-standard.md"),
+    select: capturedCommit(/at commit\s+`([0-9a-f]{40})`/),
+    fixture: (commit: string): string => `This page states the standard. The standard is pinned to \`ccch1mneyyy/dsh-Go\` at commit\n\`${commit}\` (2026-11-09). The enforcement point is\n\`node scripts/verify-dshgo-standard.ts\`.\n`,
+  },
+  {
+    id: "docs/dsh-go-standard.zh-CN.md",
+    file: join("docs", "dsh-go-standard.zh-CN.md"),
+    select: capturedCommit(/的提交\s*`([0-9a-f]{40})`/),
+    fixture: (commit: string): string => `本页说明本 bundle 所实现的标准。标准钉在\n\`ccch1mneyyy/dsh-Go\` 的提交 \`${commit}\`（2026-11-09）。执行点是\n\`node scripts/verify-dshgo-standard.ts\`。\n`,
+  },
+  {
+    id: "publish.yml",
+    file: join(".github", "workflows", "publish.yml"),
+    select: capturedCommit(/repository: ccch1mneyyy\/dsh-Go\s*\n\s*ref: ([0-9a-f]{40})/),
+    fixture: (commit: string): string => `        with:\n          repository: ccch1mneyyy/dsh-Go\n          ref: ${commit}\n          path: .dsh-go-kit\n`,
+  },
+  {
+    id: "gates.yml",
+    file: join(".github", "workflows", "gates.yml"),
+    select: capturedCommit(/repository: ccch1mneyyy\/dsh-Go\s*\n\s*ref: ([0-9a-f]{40})/),
+    fixture: (commit: string): string => `        with:\n          repository: ccch1mneyyy/dsh-Go\n          ref: ${commit}\n          path: .dsh-go-kit\n`,
+  },
+]
+
+/** Extract each site's commit from its text — the PURE half, so a self-test arm never touches the disk. */
+function extractPins(texts: ReadonlyMap<string, string | null>): readonly PinReading[] {
+  return PIN_SITES.map((site: PinSite): PinReading => {
+    /** The site's text, undefined when the caller supplied none for it. */
+    const text = texts.get(site.id)
+    return { id: site.id, file: site.file, commit: text === undefined || text === null ? null : site.select(text) }
+  })
+}
+
+/** Read every pin site under `root` from disk and extract its commit. */
+function readPins(root: string): readonly PinReading[] {
+  /** The site texts, keyed by site id; null when a file cannot be read. */
+  const texts = new Map<string, string | null>()
+  for (const site of PIN_SITES) {
+    try {
+      texts.set(site.id, readFileSync(join(root, site.file), "utf8"))
+    } catch {
+      texts.set(site.id, null)
+    }
+  }
+  return extractPins(texts)
+}
+
+/** Judge the readings: a site with no 40-hex commit is an error, and so is any disagreement. */
+function auditPin(readings: readonly PinReading[]): PinAudit {
+  /** The findings this check contributes. */
+  const findings: Finding[] = []
+  for (const reading of readings) {
+    if (reading.commit !== null && isCommit(reading.commit)) continue
+    findings.push({
+      rule: "pin-site-missing",
+      path: reading.file,
+      detail: `${reading.id} states ${reading.commit === null ? "no dsh-Go commit literal" : `\`${reading.commit}\`, which is not a 40-hex commit`}; all ${readings.length} pin sites must state the same peeled release commit`,
+      severity: "error",
+    })
+  }
+  /** Every 40-hex commit the sites state, in reading order; a site with none contributes nothing here. */
+  const stated = readings.map((reading: PinReading): string => reading.commit ?? "").filter((commit: string): boolean => isCommit(commit))
+  /** The value the most sites state — the reference a dissenter is reported against (first-seen on a tie). */
+  let agreed: string | null = null
+  /** How many sites state `agreed`. */
+  let agreedCount = 0
+  for (const value of new Set(stated)) {
+    /** How many readings state this value. */
+    const count = stated.filter((commit: string): boolean => commit === value).length
+    if (count > agreedCount) {
+      agreed = value
+      agreedCount = count
+    }
+  }
+  if (agreed !== null) {
+    for (const reading of readings) {
+      if (reading.commit === null || reading.commit === agreed) continue
+      findings.push({
+        rule: "pin-disagreement",
+        path: reading.file,
+        detail: `${reading.id} states \`${reading.commit}\` while ${agreedCount} of ${readings.length} sites state \`${agreed}\`: ${readings.map((candidate: PinReading): string => `${candidate.id}=${candidate.commit ?? "none"}`).join(", ")}`,
+        severity: "error",
+      })
+    }
+  }
+  return { commit: findings.length === 0 ? agreed : null, readings, findings }
+}
+
 /** Count the failing findings across every lane. */
 function countErrors(lanes: readonly LaneResult[]): number {
   return lanes.reduce((total: number, lane: LaneResult): number => total + lane.findings.filter((finding: Finding): boolean => finding.severity === "error").length, 0)
@@ -1094,12 +1289,20 @@ function renderLane(lane: LaneResult): void {
 /** Print the whole report and return the exit code the contract assigns. */
 function render(report: AuditReport): number {
   console.log(`${TAG} root: ${report.root}`)
-  console.log(`${TAG} standard: ccch1mneyyy/dsh-Go@d5ad25c5bc4c66ecacee76b3c5378db45e1db3fa (spec data under specs/dsh-go/)`)
+  console.log(`${TAG} standard: ccch1mneyyy/dsh-Go@f36bf91b0736e81ef40c2a7040b2ec337ca1ab40 (spec data under specs/dsh-go/)`)
+  /** The pin-coherence check's failing findings, counted separately from the lanes. */
+  const pinErrors = report.pin.findings.filter((finding: Finding): boolean => finding.severity === "error")
+  /** The PIN line's verdict: the agreed commit, or FAIL plus the error count — its OWN line, not a lane. */
+  const pinVerdict = report.pin.commit === null
+    ? `FAIL — ${pinErrors.length} error(s) across ${report.pin.readings.length} site readings`
+    : `PASS — ${report.pin.readings.length} site readings agree on ${report.pin.commit}`
+  console.log(`${TAG} PIN: ${pinVerdict}`)
+  for (const finding of report.pin.findings) console.log(`  [${finding.severity}] ${finding.rule} ${finding.path} — ${finding.detail}`)
   for (const lane of report.lanes) renderLane(lane)
   console.log(`${TAG} CROSS-CHECK: ${report.crossCheck.status.toUpperCase()} — ${report.crossCheck.detail}`)
   for (const finding of report.crossCheck.findings) console.log(`  [${finding.severity}] ${finding.rule} ${finding.path} — ${finding.detail}`)
-  /** Failing findings across the static lanes plus the cross-check lane. */
-  const errors = countErrors(report.lanes) + report.crossCheck.findings.filter((finding: Finding): boolean => finding.severity === "error").length
+  /** Failing findings across the static lanes, the pin check and the cross-check lane. */
+  const errors = countErrors(report.lanes) + pinErrors.length + report.crossCheck.findings.filter((finding: Finding): boolean => finding.severity === "error").length
   if (errors > 0) {
     console.log(`${TAG} RESULT: VIOLATIONS — ${errors} error(s)`)
     return EXIT.VIOLATIONS
@@ -1188,6 +1391,25 @@ function mutableManifest(): { manifest: Record<string, unknown>; dshGo: Record<s
   /** Its `dshGo` block. */
   const dshGo = manifest.dshGo as Record<string, unknown>
   return { manifest, dshGo, contributes: dshGo.contributes as Record<string, unknown[]> }
+}
+
+/** A synthetic 40-hex commit the pin arms use as the AGREEING value — never a real upstream sha. */
+const PIN_FIXTURE_A: string = "0123456789abcdef0123456789abcdef01234567"
+/** A second synthetic 40-hex commit: the value ONE perturbed site is rewritten to. */
+const PIN_FIXTURE_B: string = "89abcdef0123456789abcdef0123456789abcdef"
+
+/** Every site's text at one commit, built from each site's own shape — the pin arms' in-memory input. */
+function pinTexts(commit: string): Map<string, string | null> {
+  return new Map<string, string | null>(PIN_SITES.map((site: PinSite): [string, string | null] => [site.id, site.fixture(commit)]))
+}
+
+/** Rewrite ONE site's in-memory text to a different commit, leaving every other site untouched. */
+function perturbPin(texts: Map<string, string | null>, id: string, commit: string): Map<string, string | null> {
+  /** The site being perturbed. */
+  const site = PIN_SITES.find((candidate: PinSite): boolean => candidate.id === id)
+  if (site === undefined) throw new Error(`perturbPin: no pin site named ${id}`)
+  texts.set(id, site.fixture(commit))
+  return texts
 }
 
 /** The self-test arms: one clean control plus a negative control for every rule family. */
@@ -1559,6 +1781,23 @@ const ARMS: readonly Arm[] = [
     severity: "error",
     build: (dir) => { fixture(dir, legalManifest(), { "mpd.json": LEGAL_VIEW }, LEGAL_HOST.replace("ctx.inject(['dshGo'], (go: any) => { go.panel() })", "")) },
   },
+  {
+    name: "C5 PIN: one perturbed site disagreeing with the seven others",
+    rule: "pin-disagreement",
+    severity: "error",
+    probe: () => auditPin(extractPins(perturbPin(pinTexts(PIN_FIXTURE_A), "docs/dsh-go-standard.md", PIN_FIXTURE_B))).findings,
+  },
+  {
+    name: "C5 PIN: a site that states no 40-hex commit",
+    rule: "pin-site-missing",
+    severity: "error",
+    probe: () => {
+      /** The agreeing fixture, with ONE site degraded to a short token that is not a commit. */
+      const texts = pinTexts(PIN_FIXTURE_A)
+      texts.set("docs/dsh-go-standard.zh-CN.md", "标准钉在\n`ccch1mneyyy/dsh-Go` 的提交 `deadbeef`（2026-11-09）。执行点是\n")
+      return auditPin(extractPins(texts)).findings
+    },
+  },
 ]
 
 /** Run every self-test arm; non-zero when any arm does not behave as declared. */
@@ -1653,8 +1892,10 @@ function main(argv: readonly string[]): number {
   const lanes = auditStatic(root, undefined)
   /** The cross-check lane, told how many static errors it must agree with. */
   const crossCheck = runCrossCheck(root, lanes)
+  /** The pin-coherence check over the REPOSITORY's declaration sites — a repository fact, not a lane. */
+  const pin = auditPin(readPins(REPO_ROOT))
   /** The whole report. */
-  const report: AuditReport = { root, lanes, crossCheck }
+  const report: AuditReport = { root, lanes, pin, crossCheck }
   /** The exit code the contract assigns. */
   const code = render(report)
   if (requireKit && crossCheck.kit === null) console.log(`${TAG} ${KIT_ENV} is REQUIRED by --require-dshgo-kit and was not supplied`)

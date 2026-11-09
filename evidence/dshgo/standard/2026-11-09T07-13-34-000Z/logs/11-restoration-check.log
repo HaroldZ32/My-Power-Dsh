@@ -1,0 +1,4 @@
+argv: bash -c <restoration check>
+befb00309a26382f7f9f60a0bb6c45b8f878a520de35ea0b3c9befc00e044215  docs/dsh-go-standard.md
+1	1	docs/dsh-go-standard.md
+RESTORED: byte-identical to the pre-perturbation hash and states only the new pin
