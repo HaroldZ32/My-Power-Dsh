@@ -229,9 +229,17 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       const tail = tailBytes > 0 ? source.subarray(origBytes - tailBytes).toString("utf8") : ""
       /** The content bytes retained, reported in the marker. */
       const keptBytes = headBytes + tailBytes
-      /** The full-text log path: `<workspace>/.mpd/logs/tool-results/<epochMs>-<tool>.log`. */
-      const fullPath = join(dsh.workspaceRoot(exec), ".mpd", "logs", "tool-results", Date.now() + "-" + toolFileStem(exec) + ".log")
+      /**
+       * The full-text log path: `<workspace>/.mpd/logs/tool-results/<epochMs>-<tool>.log`.
+       *
+       * Assigned INSIDE the try; the catch RETURNS, so the marker below is only reached once it is set.
+       */
+      let fullPath = ""
       try {
+        // `dsh.workspaceRoot(exec)` can THROW (the roles row wraps its own call for the same reason), so
+        // it is resolved INSIDE this try: a throwing root must reach the degraded fallback below, not
+        // reject the waterfall and cost the captain the whole result.
+        fullPath = join(dsh.workspaceRoot(exec), ".mpd", "logs", "tool-results", Date.now() + "-" + toolFileStem(exec) + ".log")
         mkdirSync(dirname(fullPath), { recursive: true })
         writeFileSync(fullPath, text, "utf8")
       } catch (error) {
@@ -239,7 +247,15 @@ export function apply(ctx: Ctx, config: Config = {}): void {
         // say so in its banner — a captain never has text dropped without being told where it went.
         /** The write failure, rendered for the banner (a diagnostic never thrown out of a waterfall). */
         const reason = error instanceof Error ? error.message : String(error)
-        return { ...out, content: [{ type: "text", text: legacyTruncate(text, maxBytes, "[mpd] full text log could not be written: " + reason) }] }
+        // NO DUPLICATED TAIL AT ANY LENGTH: `legacyTruncate`'s head+tail form assumes the text is LARGER
+        // than the budget, which its two other call sites guarantee. A middle-sized result (4,000-8,000
+        // characters against today's 16,384-character budget) instead kept the WHOLE text as its head and
+        // re-emitted the last 30% as a tail — a duplicated region larger than the original. Capping the
+        // degraded budget at `text.length - 1` makes the slices disjoint for every input, so the kept
+        // content plus the notice stay strictly smaller than the text they replace.
+        /** The budget the degraded banner may spend: today's budget, one character short of the text. */
+        const degradedBudget = Math.max(1, Math.min(maxBytes, text.length - 1))
+        return { ...out, content: [{ type: "text", text: legacyTruncate(text, degradedBudget, "[mpd] full text log could not be written: " + reason) }] }
       }
       // The marker NAMES the recovery: the ORIGINAL byte count, the retained byte count and the absolute
       // path of the full text. Its own bytes are overhead ON TOP of the retained slices, never content.

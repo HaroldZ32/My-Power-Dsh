@@ -1,0 +1,19 @@
+# three package suites (pinned bun 1.4.0)
+===== mpd-roles-plugin =====
+
+ 369 pass
+ 0 fail
+ 2720 expect() calls
+Ran 369 tests across 18 files. [1012.00ms]
+===== mpd-tools-plugin =====
+
+ 25 pass
+ 0 fail
+ 96 expect() calls
+Ran 25 tests across 2 files. [224.00ms]
+===== mpd-verify-plugin =====
+
+ 102 pass
+ 0 fail
+ 700 expect() calls
+Ran 102 tests across 6 files. [456.00ms]

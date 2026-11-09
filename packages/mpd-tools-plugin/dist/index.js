@@ -2508,13 +2508,15 @@ function apply(ctx, config = {}) {
       const head = source.subarray(0, headBytes).toString("utf8");
       const tail = tailBytes > 0 ? source.subarray(origBytes - tailBytes).toString("utf8") : "";
       const keptBytes = headBytes + tailBytes;
-      const fullPath = join2(dsh.workspaceRoot(exec), ".mpd", "logs", "tool-results", Date.now() + "-" + toolFileStem(exec) + ".log");
+      let fullPath = "";
       try {
+        fullPath = join2(dsh.workspaceRoot(exec), ".mpd", "logs", "tool-results", Date.now() + "-" + toolFileStem(exec) + ".log");
         mkdirSync2(dirname(fullPath), { recursive: true });
         writeFileSync(fullPath, text, "utf8");
       } catch (error) {
         const reason = error instanceof Error ? error.message : String(error);
-        return { ...out, content: [{ type: "text", text: legacyTruncate(text, maxBytes, "[mpd] full text log could not be written: " + reason) }] };
+        const degradedBudget = Math.max(1, Math.min(maxBytes, text.length - 1));
+        return { ...out, content: [{ type: "text", text: legacyTruncate(text, degradedBudget, "[mpd] full text log could not be written: " + reason) }] };
       }
       const marker = `
 [mpd] truncated ` + origBytes + "B -> " + keptBytes + "B; full text: " + fullPath + "]";

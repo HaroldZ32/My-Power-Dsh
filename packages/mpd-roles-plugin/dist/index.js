@@ -963,7 +963,10 @@ var CAPTAIN_SHELL_DENY_PATTERNS = [
   { label: "npx-runner", pattern: /^(?:sudo\s+)?npx\s+(?:tsc|tsgo|jest|vitest|mocha)\b/i, gateShaped: true },
   { label: "bun-typecheck", pattern: /^(?:sudo\s+)?bun\s+typecheck\b/i, gateShaped: true },
   { label: "pnpm-test", pattern: /^(?:sudo\s+)?pnpm\s+(?:run\s+)?(?:test|typecheck)\b/i, gateShaped: true },
-  { label: "yarn-test", pattern: /^(?:sudo\s+)?yarn\s+(?:run\s+)?(?:test|typecheck)\b/i, gateShaped: true }
+  { label: "yarn-test", pattern: /^(?:sudo\s+)?yarn\s+(?:run\s+)?(?:test|typecheck)\b/i, gateShaped: true },
+  { label: "bun-run-test", pattern: /^(?:sudo\s+)?bun\s+run\s+test\b/i, gateShaped: true },
+  { label: "bunx-runner", pattern: /^(?:sudo\s+)?(?:bunx|bun\s+x)\s+(?:--\s+)?(?:tsc|tsgo|jest|vitest|mocha)\b/i, gateShaped: true },
+  { label: "pkg-exec-runner", pattern: /^(?:sudo\s+)?(?:(?:npm|pnpm|yarn)\s+exec|(?:pnpm|yarn)\s+dlx)\s+(?:--\s+)?(?:tsc|tsgo|jest|vitest|mocha)\b/i, gateShaped: true }
 ];
 var MAX_QUOTED_SEGMENT = 140;
 function resolveCaptainShellMode(raw) {
@@ -1124,6 +1127,7 @@ var CAPTAIN_SHELL_READ_VERBS = [
   ...READ_VERB_FILE_READERS
 ];
 var RG_FILES_MODE_FLAG = "--files";
+var GREP_RECURSIVE_FLAG_PATTERN = /^(?:--recursive|--dereference-recursive|-[A-Za-z]*[rR][A-Za-z]*)$/u;
 var REDIRECT_OPERATOR_PATTERN = /^(?:\d*|&)>>?$/u;
 var REDIRECT_ATTACHED_PATTERN = /^(?:\d*|&)>>?\S+$/u;
 var SED_IN_PLACE_PATTERN = /^(?:-[a-zA-Z]*i|--in-place(?:=|$))/u;
@@ -1147,6 +1151,9 @@ function stripRedirectTargets(tokens) {
 }
 function isSedInPlaceFlag(token) {
   return SED_IN_PLACE_PATTERN.test(token);
+}
+function isGrepRecursiveFlag(token) {
+  return GREP_RECURSIVE_FLAG_PATTERN.test(token);
 }
 function resolveRelativeDirectory(cwd, target) {
   const parts = cwd === "" ? [] : cwd.split("/");
@@ -1298,7 +1305,9 @@ function captainShellReadViolation(segment, context) {
   }
   if (judged > 0)
     return;
-  return search && !(patternFirst && context.fedByPipe) ? captainShellReadRefusalText(segment) : undefined;
+  const recursiveGrep = verb === "grep" && tokens.slice(1).some((token) => isGrepRecursiveFlag(token));
+  const readsPipe = patternFirst && context.fedByPipe && !recursiveGrep;
+  return search && !readsPipe ? captainShellReadRefusalText(segment) : undefined;
 }
 function captainShellDecision(input) {
   if (input.mode !== "deny")

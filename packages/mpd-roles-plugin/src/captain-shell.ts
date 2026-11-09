@@ -25,12 +25,20 @@
 // name), so that spelling remains outside what this table can see. The global `"allow"` mode is the only
 // opt-out (contract §2 — no per-command escape).
 //
+// THE POST-REVIEW REPAIR (CodeRabbit round 1 on the wave-2 PR, 2026-11-09) closes two more SPELLING holes
+// instead of widening the taxonomy: `bun run test` where nothing separates the script name from the end of
+// the segment, and the package-binary launchers (`bunx`, `bun x`, `npm exec`, `pnpm exec`, `pnpm dlx`,
+// `yarn exec`, `yarn dlx`) aimed at a gate runner. The SAME declared bound applies to both: a launcher
+// option taking a SEPARATE value stays outside the table, so `npm exec -p typescript tsc` is not seen —
+// the attached form `npm exec --package=typescript tsc` is not seen either.
+//
 // WAVE 2 §3 C3 — THE SHELL READ-ROUTE, a SECOND decision family that runs only when NO deny row matched.
 // When the first token (after the same normalisation) is a READ VERB, the shell is not a reconnaissance
 // route either. Tokens are the subject, and SEVEN rules bind it (the four findings and two nits of the
-// 2026-11-09 repair, rec-20261109T030449-cae6c8, plus the captain's follow-up repair of the same day —
-// the substitution-aware whole-string pass and the `find` stdin exclusion; until then a reasonable
-// captain command was refused):
+// 2026-11-09 repair, rec-20261109T030449-cae6c8, the captain's follow-up repair of the same day — the
+// substitution-aware whole-string pass and the `find` stdin exclusion — and the post-review repair
+// CodeRabbit round 1 forced on rule 3, the recursive-`grep` narrowing; until then a reasonable captain
+// command was refused):
 //   1. SEGMENTATION IS QUOTE-AWARE (repair F2): the command splits on top-level `&&`, `||`, `;`, `|` and a
 //      newline ONLY outside single/double quotes, with backslash escapes respected — so
 //      `grep -E "fix|feat" docs/decisions.md` is ONE segment, its path argument is judged normally, and a
@@ -46,7 +54,11 @@
 //      out-of-band path is still judged and refused. The stdin exemption covers ONLY the verbs that really
 //      consume stdin (`rg`, `grep`, `ag`, `ack`, repair F5): `find` has no pattern and never reads stdin,
 //      and `rg --files` lists the tree, so a piped one is judged exactly like a first-stage one —
-//      `git log | find` is a whole-workspace search and stays refused.
+//      `git log | find` is a whole-workspace search and stays refused. A RECURSIVE `grep` is the same
+//      exception one level down (post-review repair, CodeRabbit round 1): `-r`, `-R`, any short cluster
+//      carrying either letter, `--recursive` and `--dereference-recursive` all make GNU grep IGNORE its
+//      stdin and recurse the working directory, so `git log | grep -r fix` is REFUSED while a
+//      non-recursive piped `grep` keeps the exemption.
 //   4. `cd` IS TRACKED across the segments of one command (repair F3) and a later RELATIVE candidate is
 //      resolved against it, so `cd packages && cat mpd-roles-plugin/src/index.ts` is refused while
 //      `cd docs && cat decisions.md` is allowed; an ABSOLUTE candidate is never rebased. A `cd` whose
@@ -127,6 +139,13 @@ export interface CaptainShellDenyPattern {
  * Because {@link matchCaptainShellDeny} reduces every segment through
  * {@link normaliseCaptainShellSegment} FIRST, the optional-`sudo` prefix each row still carries is now
  * belt-and-braces rather than the only wrapper handled.
+ *
+ * THE POST-REVIEW REPAIR (CodeRabbit round 1 on the wave-2 PR, 2026-11-09) APPENDS the three spellings
+ * waves 1–2 still missed, and each one is a REAL hole rather than a hypothetical: `bun run test` with
+ * nothing after the script name (`bun-run-gate` requires a `:` or `_` there, so only `bun run test:unit`
+ * was caught), the `bunx` / `bun x` package-binary launcher, and the `npm exec` / `pnpm exec` / `pnpm dlx` /
+ * `yarn exec` / `yarn dlx` family — each against the same five gate runners `npx-runner` already names.
+ * The table stays a FAMILY list: one row per launcher family, never a taxonomy of every wrapper.
  */
 export const CAPTAIN_SHELL_DENY_PATTERNS: readonly CaptainShellDenyPattern[] = [
   { label: "bun-test", pattern: /^(?:sudo\s+)?bun\s+test\b/i, gateShaped: true },
@@ -151,6 +170,13 @@ export const CAPTAIN_SHELL_DENY_PATTERNS: readonly CaptainShellDenyPattern[] = [
   { label: "bun-typecheck", pattern: /^(?:sudo\s+)?bun\s+typecheck\b/i, gateShaped: true },
   { label: "pnpm-test", pattern: /^(?:sudo\s+)?pnpm\s+(?:run\s+)?(?:test|typecheck)\b/i, gateShaped: true },
   { label: "yarn-test", pattern: /^(?:sudo\s+)?yarn\s+(?:run\s+)?(?:test|typecheck)\b/i, gateShaped: true },
+  // POST-REVIEW REPAIR (CodeRabbit round 1, 2026-11-09) — appended AFTER every earlier row, so no existing
+  // label changes owner: `bun run test:unit` still resolves to `bun-run-gate` above, and the bare spelling
+  // this row owns is only the one that matched nothing before. `\b` after `test` is deliberate: it admits
+  // `test:unit` WITHOUT swallowing an unrelated script name (`bun run testimony` stays allowed).
+  { label: "bun-run-test", pattern: /^(?:sudo\s+)?bun\s+run\s+test\b/i, gateShaped: true },
+  { label: "bunx-runner", pattern: /^(?:sudo\s+)?(?:bunx|bun\s+x)\s+(?:--\s+)?(?:tsc|tsgo|jest|vitest|mocha)\b/i, gateShaped: true },
+  { label: "pkg-exec-runner", pattern: /^(?:sudo\s+)?(?:(?:npm|pnpm|yarn)\s+exec|(?:pnpm|yarn)\s+dlx)\s+(?:--\s+)?(?:tsc|tsgo|jest|vitest|mocha)\b/i, gateShaped: true },
 ]
 
 /** The longest command segment the refusal quotes, so the sentence stays inside the contract's 600-character bound. */
@@ -442,6 +468,13 @@ export const CAPTAIN_SHELL_READ_VERBS: readonly string[] = [
 /** The ONE mode flag that takes no pattern: `rg --files` lists files, so every non-flag token is a path (F4). */
 const RG_FILES_MODE_FLAG = "--files"
 
+/**
+ * The `grep` recursion flags in every spelling GNU grep accepts: the short cluster (`-r`, `-R`, `-rn`,
+ * `-Rni`) and the two long forms. A recursive `grep` NEVER reads the pipe it is fed — it walks the working
+ * directory instead — so the stdin exemption cannot cover it (post-review repair, CodeRabbit round 1).
+ */
+const GREP_RECURSIVE_FLAG_PATTERN = /^(?:--recursive|--dereference-recursive|-[A-Za-z]*[rR][A-Za-z]*)$/u
+
 /** A redirect OPERATOR in its own token (`>`, `>>`, `2>`, `2>>`, `&>`), whose target is the NEXT token (NIT 1). */
 const REDIRECT_OPERATOR_PATTERN = /^(?:\d*|&)>>?$/u
 
@@ -499,6 +532,16 @@ function stripRedirectTargets(tokens: readonly string[]): string[] {
  */
 function isSedInPlaceFlag(token: string): boolean {
   return SED_IN_PLACE_PATTERN.test(token)
+}
+
+/**
+ * Whether one `grep` token is a recursion flag, which makes even a PIPED invocation walk the tree.
+ *
+ * @param token - one token after the `grep` verb, as the caller spelled it (quotes still attached).
+ * @returns true for `-r`, `-R`, any short cluster carrying either letter, and the two long forms.
+ */
+function isGrepRecursiveFlag(token: string): boolean {
+  return GREP_RECURSIVE_FLAG_PATTERN.test(token)
 }
 
 /**
@@ -812,7 +855,13 @@ export function captainShellReadViolation(segment: string, context: CaptainShell
   // a first-stage `rg foo` refused and `rg foo docs/` allowed (rule 3). ONLY the PATTERN-TAKING searches
   // (`rg`/`grep`/`ag`/`ack`) read STDIN when a pipe feeds them (repairs F1 and F5): `find` and `rg --files`
   // take no pattern and never read stdin, so a piped one searches the tree exactly like a first-stage one.
-  return search && !(patternFirst && context.fedByPipe) ? captainShellReadRefusalText(segment) : undefined
+  // A RECURSIVE `grep` is the exception to the exception (repair B2): `grep -r` IGNORES its stdin and
+  // recurses the working directory, so the pipe buys no exemption there and `git log | grep -r fix` is refused.
+  /** True when this segment is a recursive `grep`, which IGNORES the pipe and walks the tree instead (repair B2). */
+  const recursiveGrep = verb === "grep" && tokens.slice(1).some((token) => isGrepRecursiveFlag(token))
+  /** True when a pattern-taking search really READS the pipe: fed by one, and not a recursive `grep`. */
+  const readsPipe = patternFirst && context.fedByPipe && !recursiveGrep
+  return search && !readsPipe ? captainShellReadRefusalText(segment) : undefined
 }
 
 /** Everything {@link captainShellDecision} needs, so the decision stays pure and harness-free. */

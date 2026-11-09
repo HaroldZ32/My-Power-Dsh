@@ -261,7 +261,7 @@ the session gate prints its restored default:
 [mpd-roles] team plane: readOnlyGuard=installed deny=10 \
   captainInvestigation=deny \
   delegationGate=deny \
-  captainShell=deny patterns=16 \
+  captainShell=deny patterns=19 \
   verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) \
   askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=mechanical …
 ```

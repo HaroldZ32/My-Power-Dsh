@@ -309,6 +309,72 @@ describe("mpd-tools captain result cap (C3 / A3)", () => {
     cleanup(workspace)
   })
 
+  test("a FAILED full-text write keeps UNIQUE text at 4,000-8,000 chars — no duplicated tail", async () => {
+    /** The sandbox the captain calls in. */
+    const workspace = sandbox()
+    // Same degraded setup as the 100,000-character arm: `.mpd/logs` is a regular file, so the write fails.
+    mkdirSync(join(workspace, ".mpd"), { recursive: true })
+    writeFileSync(join(workspace, ".mpd", "logs"), "not a directory")
+    // ~6,000 characters whose every LINE is unique, so a re-emitted tail is visible as a repeated line.
+    // The 100,000-character arm could not see this: its text is far larger than the legacy budget, while
+    // a middle-sized result used to fit a 16,384-character budget and still got a head PLUS a tail.
+    /** The numbered lines that make up the result. */
+    const lines = Array.from({ length: 600 }, (_, i) => "line " + String(i).padStart(4, "0"))
+    /** The oversized (but under the legacy budget) result. */
+    const text = lines.join("\n")
+    expect(text.length).toBeGreaterThan(4000)
+    expect(text.length).toBeLessThan(8000)
+    /** The waterfall with today's budget, which the degraded path must fall back to. */
+    const hook = truncationHook(workspace, { captain: { maxResultBytes: 4096 }, truncateMaxBytes: 16384 })
+    /** The decision the captain receives. */
+    const out = await run(hook, text, captain(workspace))
+    /** The visible text the captain would see. */
+    const body = textOf(out)
+    // THE FAILURE IS STILL DISCLOSED.
+    expect(body).toContain("[mpd] full text log could not be written:")
+    // NO DUPLICATED REGION: every complete line the body keeps appears exactly ONCE, so the output can
+    // never carry a head plus a copy of its own tail.
+    /** The COMPLETE numbered lines retained (a slice may cut a line, which then does not match). */
+    const kept = body.split("\n").filter((line) => /^line \d{4}$/.test(line))
+    expect(kept.length).toBeGreaterThan(0)
+    expect(new Set(kept).size).toBe(kept.length)
+    // The retained text plus its banner never inflate the result it replaces.
+    expect(body.length).toBeLessThan(text.length)
+    cleanup(workspace)
+  })
+
+  test("a THROWING workspace root degrades to the notice banner instead of losing the whole result", async () => {
+    /** The sandbox the captain calls in. */
+    const workspace = sandbox()
+    /** The waterfall under the captain's cap and today's budget. */
+    const hook = truncationHook(workspace, { captain: { maxResultBytes: 4096 }, truncateMaxBytes: 16384 })
+    /** A captain header with NO cwd, so the workspace root falls through to `process.cwd()`. */
+    const noCwd = { session: { id: "captain-no-cwd", header: { agentPreset: "mpd" } } }
+    /** The oversized result, ~6,000 characters. */
+    const text = "v".repeat(6000)
+    /** The previous env fallback, restored after the arm. */
+    const previousWorkspace = process.env.DSH_WORKSPACE_ROOT
+    /** The real `process.cwd`, restored after the arm. */
+    const previousCwd = process.cwd
+    delete process.env.DSH_WORKSPACE_ROOT
+    // `dsh.workspaceRoot(exec)` really can throw on a host whose cwd is gone; the hook must DEGRADE rather
+    // than reject, or the captain loses the whole result instead of a truncated one.
+    process.cwd = (): string => { throw new Error("cwd unavailable") }
+    /** The decision the captain receives; the throw must not escape the hook. */
+    let body = ""
+    try {
+      body = textOf(await run(hook, text, noCwd))
+    } finally {
+      process.cwd = previousCwd
+      if (previousWorkspace === undefined) delete process.env.DSH_WORKSPACE_ROOT
+      else process.env.DSH_WORKSPACE_ROOT = previousWorkspace
+    }
+    expect(body).toContain("[mpd] full text log could not be written:")
+    expect(body).toContain("cwd unavailable")
+    expect(body).not.toBe(text)
+    cleanup(workspace)
+  })
+
   test("the activation line reports captainMaxResultBytes=<n>", async () => {
     /** The sandbox the row boots against. */
     const workspace = sandbox()

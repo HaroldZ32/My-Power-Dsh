@@ -181,6 +181,11 @@ describe("A1 — the deny table, row by row", () => {
     "bun-typecheck": "bun typecheck",
     "pnpm-test": "pnpm test",
     "yarn-test": "yarn test",
+    // POST-REVIEW REPAIR (CodeRabbit round 1): the launcher spellings waves 1–2 still missed. The
+    // representatives are chosen so each row is the FIRST match: `bun x tsc` would resolve to `tsc` above.
+    "bun-run-test": "bun run test",
+    "bunx-runner": "bunx tsgo --noEmit",
+    "pkg-exec-runner": "npm exec tsc --noEmit",
   }
 
   test("every shipped deny-table row matches its representative command", () => {
@@ -205,6 +210,70 @@ describe("A1 — the deny table, row by row", () => {
       "node ./node_modules/typescript/bin/tsc",
     ]) {
       expect(bashByCaptain(command), command + " is not refused").toContain("captain shell: REFUSED")
+    }
+  })
+
+  // POST-REVIEW REPAIR (CodeRabbit round 1 on the wave-2 PR): the spellings the table still missed. Each
+  // arm is a command the finding names; the anti-false-positive arms are the ones it requires to stay
+  // ALLOWED, so a widened row cannot pass by refusing everything.
+  test("POST-REVIEW — `bun run test` is refused in BOTH spellings, and a lookalike script name is not", () => {
+    for (const command of [
+      "bun run test",
+      "bun run test:unit",
+      "bun run test --watch",
+      "bun run --silent test",
+      "sudo bun run test",
+      "BUN RUN TEST",
+    ]) {
+      expect(bashByCaptain(command), command + " is not refused").toContain("captain shell: REFUSED")
+    }
+    // The word boundary does NOT swallow an unrelated script name, and a non-gate script stays allowed.
+    expect(bashByCaptain("bun run testimony")).toBeUndefined()
+    expect(bashByCaptain("bun run format")).toBeUndefined()
+    // The bare spelling is the row this repair added; the `:` spelling keeps its EARLIER owner, so no
+    // existing label changed hands (`bun-run-gate` already required a `:` or `_` after `test`).
+    expect(matchCaptainShellDeny("bun run test")?.label).toBe("bun-run-test")
+    expect(matchCaptainShellDeny("bun run test:unit")?.label).toBe("bun-run-gate")
+  })
+
+  test("POST-REVIEW — the `bunx` / `bun x` launcher is refused against every gate runner", () => {
+    for (const command of [
+      "bunx tsc --noEmit",
+      "bunx tsgo --noEmit",
+      "bunx jest --ci",
+      "bunx vitest run",
+      "bunx mocha test/captain-shell.test.ts",
+      "bunx -- tsgo",
+      "bun x tsgo",
+      "bun x jest --ci",
+      "sudo bunx vitest run",
+    ]) {
+      expect(bashByCaptain(command), command + " is not refused").toContain("captain shell: REFUSED")
+    }
+    // ANTI-FALSE-POSITIVE: a `bunx` binary that is NOT a gate runner is none of this table's business.
+    expect(bashByCaptain("bunx cowsay hi")).toBeUndefined()
+    expect(bashByCaptain("bun x cowsay hi")).toBeUndefined()
+  })
+
+  test("POST-REVIEW — the package-manager binary launchers are refused against every gate runner", () => {
+    for (const command of [
+      "npm exec tsc --noEmit",
+      "npm exec -- tsc --noEmit",
+      "npm exec tsgo --noEmit",
+      "npm exec vitest run",
+      "pnpm dlx jest --ci",
+      "pnpm dlx -- tsc",
+      "pnpm exec tsc --noEmit",
+      "yarn dlx tsgo",
+      "yarn dlx mocha test/captain-shell.test.ts",
+      "yarn exec tsc --noEmit",
+      "sudo npm exec tsc",
+    ]) {
+      expect(bashByCaptain(command), command + " is not refused").toContain("captain shell: REFUSED")
+    }
+    // ANTI-FALSE-POSITIVE: installing is a chore, not gate evidence, in every launcher.
+    for (const command of ["npm install", "npm ci", "pnpm install", "yarn install", "npm run format", "yarn build"]) {
+      expect(bashByCaptain(command), command + " must stay allowed").toBeUndefined()
     }
   })
 
@@ -737,6 +806,41 @@ describe("B3 FOLLOW-UP REPAIR — the substitution-aware whole-string pass (A) a
     expect(bashByCaptain("git log --oneline | rg fix")).toBeUndefined()
     expect(bashByCaptain("ls -la | ag fix")).toBeUndefined()
     expect(bashByCaptain("ls -la | ack fix")).toBeUndefined()
+  })
+
+  test("B2 — a RECURSIVE `grep` ignores its stdin, so the pipe buys no exemption (CodeRabbit round 1)", () => {
+    // One arm per spelling the finding names: `-r`, `-R`, a short cluster carrying either letter,
+    // `--recursive` and `--dereference-recursive`. GNU grep ignores stdin for ALL of them and recurses the
+    // working directory, so `git log | grep -r fix` is a whole-workspace search, not a pipe read.
+    for (const command of [
+      "git log | grep -r fix",
+      "git log | grep -R fix",
+      "git log | grep -rn fix",
+      "git log | grep -nr fix",
+      "git log | grep -Rni fix",
+      "ls | grep -rnl md",
+      "git log | grep --recursive fix",
+      "git log | grep --dereference-recursive fix",
+    ]) {
+      expect(bashByCaptain(command), command + " must be refused").toContain("captain shell: REFUSED")
+    }
+    // The PATH rule is unchanged: the same recursive piped grep carrying a REAL out-of-band path is refused
+    // for the path, exactly like its non-recursive twin.
+    expect(bashByCaptain("git log | grep -r fix packages/mpd-roles-plugin/src/index.ts")).toContain("captain shell: REFUSED")
+    // ANTI-FALSE-POSITIVE: a NON-recursive piped grep keeps the F1 exemption, with or without ordinary flags,
+    // and the task's own in-band spelling (`docs/x`, a path the disk need not confirm) stays allowed.
+    for (const command of [
+      "git log | grep fix",
+      "ls | grep md",
+      "cat docs/decisions.md | grep -n TODO",
+      "git log --oneline | grep -i fix",
+      "grep fix docs/x",
+    ]) {
+      expect(bashByCaptain(command), command + " must stay allowed").toBeUndefined()
+    }
+    // ...and a recursive grep aimed INSIDE the band is still allowed by the BAND, not by the pipe.
+    expect(bashByCaptain("grep -rn TODO docs/")).toBeUndefined()
+    expect(bashByCaptain("git log | grep -rn TODO docs/")).toBeUndefined()
   })
 })
 

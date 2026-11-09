@@ -301,12 +301,13 @@ describe("mpd_verify_evidence — the captain's gate rule (C2 / A2)", () => {
     cleanup(workspace)
   })
 
-  test("anything but the exact token `any` fails CLOSED on verifier", () => {
+  test("the `any` opt-out is case-insensitive and whitespace-trimmed; anything else fails CLOSED on verifier", () => {
     expect(resolveEvidenceBy(undefined)).toBe("verifier")
     expect(resolveEvidenceBy("verifier")).toBe("verifier")
     expect(resolveEvidenceBy("yes")).toBe("verifier")
     expect(resolveEvidenceBy("")).toBe("verifier")
     expect(resolveEvidenceBy("ANY")).toBe("any")
+    expect(resolveEvidenceBy(" any ")).toBe("any")
     /** The sandbox the captain calls against with a misspelled opt-out. */
     const workspace = sandbox()
     withSentinelGate(workspace)
