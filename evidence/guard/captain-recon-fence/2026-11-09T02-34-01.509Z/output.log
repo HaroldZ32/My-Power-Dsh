@@ -1,0 +1,177 @@
+# C2 evidence — captain recon fence, tool doors (T2 / Deep Worker)
+# UTC 2026-11-09T02:34:29.390Z   workspace /home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+# git HEAD b956b213   dirty files: 23
+# focused suite (22 arms) first, then the full package suites, then the B6 gates.
+
+===== 1. focused arm — (cd packages/mpd-roles-plugin && bun test test/captain-investigation.test.ts) =====
+(pass) L2 — the INSTALL is the decision the arms above proved, with a reported mode > the guard reaches the seam and the reported mode follows the knob [0.18ms]
+(pass) L2 — the INSTALL is the decision the arms above proved, with a reported mode > a throwing exec is PASSED THROUGH, never denied or thrown, and reported once [0.20ms]
+(pass) L2 — the INSTALL is the decision the arms above proved, with a reported mode > a composition without the guard seam reports the absence instead of installing nothing silently [0.03ms]
+
+ 22 pass
+ 0 fail
+ 122 expect() calls
+Ran 22 tests across 1 file. [11.00ms]
+exit=0
+
+===== 2. (cd packages/mpd-roles-plugin && bun test) — the ONE failure is the dist arm, RED BY DESIGN (T3 owns dist) =====
+
+1 tests failed:
+(fail) F1 shipped artifact > the committed dist is the byte-identical product of a canonical build (T-62) [68.70ms]
+
+ 343 pass
+ 1 fail
+ 2492 expect() calls
+Ran 344 tests across 18 files. [726.00ms]
+exit=1
+
+===== 3. (cd packages/mpd-verify-plugin && bun test) =====
+(pass) the mpd-verify row > AC-D1: every mpd_verify_* result survives the harness's lossless-JSON walk, and the loop id comes back from the call [0.77ms]
+(pass) the mpd-verify row > AC-D2: the seat's frozen docs are the LOOP's contract, and a contract-less loop gets the declared default [0.89ms]
+(pass) the mpd-verify row > AC-D4: a FAIL unlocks the seat, and the PASS is judged by the LOG — clean admits, an admitted read refuses by name, a refused attempt does not spend [4.04ms]
+
+ 102 pass
+ 0 fail
+ 699 expect() calls
+Ran 102 tests across 6 files. [140.00ms]
+exit=0
+
+===== 4. (cd packages/mpd-dsh-adapter-plugin && bun test) — cross-package coupling inventory =====
+(pass) spawnAgentAsync (§D2.1) > an ASYNCHRONOUSLY REJECTED interrupt also falls back to abort() [5.16ms]
+(pass) spawnAgentAsync (§D2.1) > spawnAgent remains the BLOCKING projection with the unchanged shape [0.13ms]
+(pass) spawnAgentAsync on the RETIRED generation (§D2.1) > start() is used and its run handle keeps the non-blocking contract [0.07ms]
+
+ 395 pass
+ 0 fail
+ 1573 expect() calls
+Ran 395 tests across 27 files. [2.81s]
+exit=0
+
+===== 5. bun run typecheck =====
+$ tsgo --noEmit
+exit=0
+
+===== 6. bun run verify:comments =====
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 618 TypeScript file(s) of 618 in the source set; inspected 55427 declaration(s); skipped 27142 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+exit=0
+
+===== 7. node scripts/verify-dist-fresh.ts — RED BY DESIGN until T3 rebuilds BOTH packages =====
+  FRESH   packages/mpd-workmate-plugin/dist/index.js  sha 541fc060fbfc… 26ms  <- packages/mpd-workmate-plugin/src/index.ts
+[verify-dist-fresh] root: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)
+[verify-dist-fresh] build toolchain: bun 1.4.0 from the repository toolchain (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun) · recorded buildToolchain bun@1.4.0
+  STALE: packages/mpd-roles-plugin/dist/index.js — committed packages/mpd-roles-plugin/dist/index.js (261503 B, 1e88f260cecf3dd9…) != fresh build of packages/mpd-roles-plugin/src/index.ts (264598 B, 2aedf61130cc81da…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-roles-plugin/src/index.ts --target node --format esm --outfile packages/mpd-roles-plugin/dist/index.js
+  STALE: packages/mpd-verify-plugin/dist/index.js — committed packages/mpd-verify-plugin/dist/index.js (175999 B, f8078dc0c5275bf2…) != fresh build of packages/mpd-verify-plugin/src/index.ts (176071 B, 0cfbc7a82f067e8d…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-verify-plugin/src/index.ts --target node --format esm --outfile packages/mpd-verify-plugin/dist/index.js
+[verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] FAIL - 2 of 34 targets not fresh (STALE: 2) — 738ms
+exit=1
+
+===== 8. bun run verify:rows =====
+$ node scripts/verify-rows-parity.ts
+[verify-rows-parity] ok: 36 row ids match the 2-file bundle patch layer (mcp-astgrep, mcp-codegraph, mcp-context7, mcp-git, mcp-grepapp, mcp-lsp, mcp-shell, mpd-agent-team, mpd-autoproject, mpd-better-sidebar, mpd-bootstrap, mpd-cellwork, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-goal, mpd-hashline, mpd-memory, mpd-modelchain, mpd-project-init, mpd-roles, mpd-roster-provider, mpd-team-compact, mpd-team-core, mpd-team-watchdog, mpd-tool-agent-team, mpd-tools, mpd-tui, mpd-tui-adapter, mpd-ui-agent-team, mpd-verify, mpd-web-compat, mpd-workmate, preset-mpd)
+exit=0
+
+===== 9. node scripts/verify-manual-paths.ts =====
+[verify-manual-paths] under-report:placeholder AGENTS.md:686 -> <ws>/.mpd/model-config-seed.json
+[verify-manual-paths] census bucket=under-report:elided direction=under-report count=1 reason="contains an elision mark — the path is not written out, so no literal target exists"
+[verify-manual-paths] under-report:elided AGENTS.md:18 -> [中文](./<name>.zh-CN.md) [non-ASCII/elision characters]
+[verify-manual-paths] census bucket=under-report:prose direction=under-report count=0 reason="a directory spelled in words rather than as a token — nothing to stat"
+[verify-manual-paths] census family=over-report direction=over-report total=72 buckets=6 (counted apart from under-report and from unresolved)
+[verify-manual-paths] census family=under-report direction=under-report total=83 buckets=7 (counted apart from over-report and from unresolved)
+[verify-manual-paths] census family=declared direction=declared total=2 buckets=2 (the DECLARED anticipatory class and its rot guard — counted apart from the audited subjects and from unresolved)
+[verify-manual-paths] PASS resolved=158 over-report=72 under-report=83 declared=2 (every audited path exists; the DECLARED anticipatory class is named with its reason and counted apart; the two matcher-error directions above are reported, not merged)
+exit=0
+
+===== 10. bun run verify:manifest =====
+ok    component-ref-dependencies: 8 declared component id(s), 0 dangling dependsOn edge(s)
+ok    bundle-patch-files: 2 patch file(s) declared, 0 missing
+ok    row-module-paths: 28 module path(s) named by the patch files, 0 missing, 0 patch file(s) unreadable
+ok    files-allowlist: 27 pattern(s); 0 required path(s) not admitted
+ok    evidence-excluded: the frozen evidence/ tree stays out of the published package
+ok    packed-content: npm pack --dry-run lists 1262 file(s); 0 required path(s) absent
+
+VERDICT: PASS — the install-time rules and the packaging contract hold.
+exit=0
+
+===== 11. preset-conformance --self-test (pinned harness first on PATH) =====
+[preset-conformance self-test] PASS - (i) retired `text:` persona form -> problems name the persona row :: /tmp/mpd-preset-conformance-4M1B8s/persona-text.patch.yml :: persona (@deepseek-ai/dsh-persona): $.prefix missing required value | /tmp/mpd-preset-conformance-4M1B8s/persona-text.patch.yml :: the persona row has no `pref
+[preset-conformance self-test] PASS - (ii) renamed required row -> the unmutated copy is clean and the mutated one names tool-fs AND tool-fs-renamed :: control problems=0; mutated: the mpd preset does not mount active row(s) the installed standard preset mounts: tool-fs | the mpd preset declares row(s) the installed standard preset does not declare at all: tool-fs-renam
+[preset-conformance self-test] PASS - (iii) the renamed copy really changed the document it audits :: bytes differ
+[preset-conformance self-test] PASS - (iv) hermetic: temp fixtures only; the live preset patch bytes + mtime are unchanged :: fixture root /tmp/mpd-preset-conformance-4M1B8s (temp); live mtime 1794191351493.6528 -> 1794191351493.6528
+[preset-conformance self-test] ok: 33 harness rows conform against the installed schemas (6 row(s) declare no schema), persona prefix=true, mpd preset 28 child rows, row parity 27/27 (negative controls: 4/4 reddened)
+exit=0
+
+===== 12. preset-conformance (live mount, pinned harness) =====
+  auth: {"ok":true,"tokenSeen":true,"cookieSession":true}
+  sessionCreate: {"ok":true,"status":200,"sessionId":"session-d5ca08d2-51e1-4c2f-8517-3dd55a775fcc","agentPreset":"mpd","raw":"{\"type\":\"server-response\",\"rpcId\":\"preset-conformance-1794191696160\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-d5ca08d2-51e1-4c2f-8517-3dd55a775fcc\",\"agentPreset\"
+  sessionHeader: {"ok":true,"agentPreset":"mpd","log":"/tmp/mpd-preset-main-00Umto/home/sessions/--tmp-mpd-preset-main-00Umto-ws--/session-d5ca08d2-51e1-4c2f-8517-3dd55a775fcc/session.v4.jsonl.zstd"}
+  bootLog: {"ok":true,"signatures":[]}
+  negativeControl: {"ok":true,"code":"agent-preset/invalid","message":"persona (@deepseek-ai/dsh-persona): invalid config:\n  - $.prefix missing required value (at prefix)","mutations":["preset-mpd row: persona prefix: -> text:"],"override":"id-target on preset-mpd via --patch"}
+[preset-conformance] PASS
+exit=0
+
+===== 13. bun run test:qa (all QA self-tests) =====
+[mpd-ext] validate /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/extensions/mpd-ext-example (plane=user)
+  extension "mpd-ext-example": loadable
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+  pending contributes.mcp[0]: pending: server "lint-mcp" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state
+[mpd-ext] ok
+[test:qa] all self-tests passed
+exit=0
+
+############################################################
+# RE-MEASURE — T1's captain-shell.ts/captain-shell.test.ts edits landed in the shared tree
+# AFTER the snapshot above; these numbers describe the CURRENT tree.
+# git status now: 24 modified/untracked entries
+############################################################
+
+===== R1. (cd packages/mpd-roles-plugin && bun test) — current tree =====
+
+1 tests failed:
+(fail) F1 shipped artifact > the committed dist is the byte-identical product of a canonical build (T-62) [71.78ms]
+
+ 343 pass
+ 1 fail
+ 2492 expect() calls
+Ran 344 tests across 18 files. [732.00ms]
+exit=1
+
+===== R2. bun run typecheck — current tree =====
+$ tsgo --noEmit
+exit=0
+
+===== R3. node scripts/verify-dist-fresh.ts — current tree (still RED BY DESIGN) =====
+  FRESH   packages/mpd-workmate-plugin/dist/index.js  sha 541fc060fbfc… 26ms  <- packages/mpd-workmate-plugin/src/index.ts
+[verify-dist-fresh] root: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)
+[verify-dist-fresh] build toolchain: bun 1.4.0 from the repository toolchain (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun) · recorded buildToolchain bun@1.4.0
+  STALE: packages/mpd-roles-plugin/dist/index.js — committed packages/mpd-roles-plugin/dist/index.js (261503 B, 1e88f260cecf3dd9…) != fresh build of packages/mpd-roles-plugin/src/index.ts (264598 B, 2aedf61130cc81da…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-roles-plugin/src/index.ts --target node --format esm --outfile packages/mpd-roles-plugin/dist/index.js
+  STALE: packages/mpd-verify-plugin/dist/index.js — committed packages/mpd-verify-plugin/dist/index.js (175999 B, f8078dc0c5275bf2…) != fresh build of packages/mpd-verify-plugin/src/index.ts (176071 B, 0cfbc7a82f067e8d…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-verify-plugin/src/index.ts --target node --format esm --outfile packages/mpd-verify-plugin/dist/index.js
+[verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] FAIL - 2 of 34 targets not fresh (STALE: 2) — 752ms
+exit=1
+
+===== R4. (cd packages/mpd-verify-plugin && bun test) — current tree =====
+(pass) the mpd-verify row > AC-D1: every mpd_verify_* result survives the harness's lossless-JSON walk, and the loop id comes back from the call [0.84ms]
+(pass) the mpd-verify row > AC-D2: the seat's frozen docs are the LOOP's contract, and a contract-less loop gets the declared default [0.98ms]
+(pass) the mpd-verify row > AC-D4: a FAIL unlocks the seat, and the PASS is judged by the LOG — clean admits, an admitted read refuses by name, a refused attempt does not spend [4.57ms]
+
+ 102 pass
+ 0 fail
+ 699 expect() calls
+Ran 102 tests across 6 files. [144.00ms]
+exit=0
+
+===== R5. bun run verify:comments — current tree (T1's files included) =====
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 618 TypeScript file(s) of 618 in the source set; inspected 55427 declaration(s); skipped 27142 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+exit=0

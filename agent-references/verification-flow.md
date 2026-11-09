@@ -232,10 +232,14 @@ as "working solo" — sizing decides WHICH executor, never whether to delegate.
 GATE-DENIED for the captain (`captain.shell`, default `deny`), and `mpd_verify_evidence {kind:"gate"}` is
 refused for the captain (`verify.evidenceBy`, default `verifier`) while `kind:"probe"` stays open; no loop
 is armed, no band is reserved, and `verify.mode` stays withdrawn. RECONNAISSANCE is DELEGATED, again
-MECHANICALLY (2026-10-20): on the `mpd`
-preset's top-level session `read`/`grep`/`glob` are REFUSED on a SOURCE path, while the documentation band
+MECHANICALLY (2026-10-20) and CLOSED FURTHER on 2026-11-09 (`.mpd/plans/captain-recon-fence.md`): on the `mpd`
+preset's top-level session `read`/`grep`/`glob`, `mpd_hashline_read`, the MCP recon tools
+(`codegraph_explore`, `ast_grep_search`, the `lsp` readers) and the shell read-verbs (file readers and
+searches — `cat`, `sed`, `rg`, `find`, …) are REFUSED on a SOURCE path, while the documentation band
 (`.mpd/**`, `docs/**`, `evidence/**`, `agent-references/**`, and the root instruction/overview files) stays
-readable; and the harness's generic spawn tools (`subagent`, `subagent_fork`, `workflow`) are REFUSED for
+readable; the shell read-route reuses the SAME band classifier as the investigation guard
+(`captainReadablePath`, exported from `captain-investigation.ts`) rather than a second definition, so
+one band governs both doors; and the harness's generic spawn tools (`subagent`, `subagent_fork`, `workflow`) are REFUSED for
 the sessions `delegation.gate` covers, so delegation goes through `mpd_role_spawn`, the workmate library
 or Agent Teams. Steering is therefore BOTH: the persona states the rule up front (its READ DISCIPLINE
 block, so the first move is a delegation rather than a refused read), and the two guards make it
@@ -257,9 +261,9 @@ the session gate prints its restored default:
 [mpd-roles] team plane: readOnlyGuard=installed deny=10 \
   captainInvestigation=deny \
   delegationGate=deny \
-  captainShell=deny patterns=<N> \
+  captainShell=deny patterns=16 \
   verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) \
-  askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=mechanical
+  askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=mechanical …
 ```
 
 The `mpd-verify` row prints its own token, `evidenceBy=verifier`, beside that row's tool surface.

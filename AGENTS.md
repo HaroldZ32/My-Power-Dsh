@@ -323,8 +323,10 @@ Otherwise `preset-conformance` reddens under the ambient 0.2.1-rc.5 and `dshgo` 
      or Explorer, a verdict to a Reviewer. The captain executes only what must not be delegated by rule —
      committing (single git writer), contract amendments, plan/roster shaping, releasing a watchdog hold,
      and the final integration. **RECONNAISSANCE IS DELEGATED, AGAIN MECHANICALLY (user ruling
-     2026-10-20):** on the `mpd` preset's top-level session the captain's `read`/`grep`/`glob` are
-     REFUSED on SOURCE paths (`captain.investigation: "deny"`; the documentation band stays readable),
+     2026-10-20):** on the `mpd` preset's top-level session the captain's `read`/`grep`/`glob`,
+     `mpd_hashline_read`, the MCP recon tools (`codegraph_explore`, `ast_grep_search`, the `lsp`
+     readers) and shell read-verbs on a source path are REFUSED on SOURCE paths
+     (`captain.investigation: "deny"` plus the `captain.shell` read-route; the documentation band stays readable),
      and the harness's generic spawn tools (`subagent`, `subagent_fork`, `workflow`) are REFUSED
      (`delegation.gate: "deny"`), so delegation goes through `mpd_role_spawn`, the workmate library or
      Agent Teams. **THE WRITE PATH IS NOT GATED, BUT THE CAPTAIN'S SHELL AND GATE EVIDENCE
@@ -660,12 +662,10 @@ slot, workmate) stay here, with the verifier's envelope.
   discipline is the exported deny list**, exactly ten names, identical in `mpd-roles-plugin` and
   `mpd-workmate-plugin` (asserted by `roles.test.ts`): `write`, `edit`, `mpd_hashline_edit`, `bash`,
   `mcp__ast_grep__rewrite`, `mcp__ast_grep__scan`, `mcp__lsp__rename_symbol`,
-  `mcp__lsp__rename_symbol_strict`, `mpd_role_spawn_async`, `mpd_role_consult`. **Do NOT re-add
-  `str_replace_editor` / `apply_patch`, and do not
-  filter the list with `dsh.hasTool`** — the harness validates the WHOLE list at spawn time, so one dead
-  entry breaks every read-only spawn; since 2026-10-10 that validation is TOLERATED instead of fatal
-  (`restrictToolsTolerant` prunes the names the harness reports as unknown, with exactly ONE logged
-  retry). Full form, including the two enforcement surfaces: `agent-references/glossary.md`.
+  `mcp__lsp__rename_symbol_strict`, `mpd_role_spawn_async`, `mpd_role_consult`. **Do NOT re-add `str_replace_editor` / `apply_patch`, and do not filter the list with `dsh.hasTool`** —
+  the harness validates the WHOLE list at spawn time; the tolerant validation (`restrictToolsTolerant`),
+  the 2026-10-10 change, the ONE-logged-retry behaviour and the two enforcement surfaces are in
+  `agent-references/glossary.md`.
 - **team-model slot → agent route**: the slot is NO LONGER a persisted unit; the unit of model
   configuration is the AGENT. Each of the eleven roster members has its OWN persisted route —
   `agentRoutes.<Agent>.{provider,model,reasoningEffort?,fallbacks?}`, set and cleared individually — in

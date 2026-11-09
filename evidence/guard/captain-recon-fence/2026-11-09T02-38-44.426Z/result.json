@@ -1,0 +1,57 @@
+{
+  "task": "T8 — W2-C2 repair: judge EVERY ast_grep paths element, not just the first",
+  "wave": "captain recon fence (wave 2), repair of the gap the C2 owner reported",
+  "owner": "Deep Worker (T8)",
+  "utc": "2026-11-09T02:38:44.426Z",
+  "git_head": "b956b213",
+  "scope_respected": [
+    "edited: packages/mpd-roles-plugin/src/captain-investigation.ts",
+    "edited: packages/mpd-roles-plugin/test/captain-investigation.test.ts",
+    "NOT edited: packages/mpd-verify-plugin/src/law.ts (its paths[0] contract stays the shared reader for ast-grep's single-path calls)",
+    "NOT edited: any dist (T3 rebuilds), captain-shell.ts, presets/mpd.patch.yml, AGENTS.md, agent-references/**"
+  ],
+  "rules_implemented": [
+    {
+      "tool": "mcp__ast_grep__search",
+      "rule": "Every non-empty STRING element of args.paths is judged by captainReadablePath. ANY element outside the band REFUSES. A call with NO non-empty string element REFUSES as a fail-closed bare call. All elements inside the band ALLOWS.",
+      "where": "captainInvestigationDecision, before the generic readTargetPath branch, via the new module-local astGrepSearchPaths helper + AST_GREP_SEARCH_TOOL const",
+      "order_sensitivity": "none — the refusal names the FIRST offending element in call order, and the verdict is identical for either order"
+    },
+    {
+      "tool": "mcp__ast_grep__rewrite",
+      "rule": "UNCHANGED — it is a write tool, is not in INVESTIGATION_TOOLS, and still resolves through readTargetPath's paths[0] contract",
+      "where": "untouched; the shared-reader regression arm still pins readTargetPath's behaviour for both ast-grep tools"
+    }
+  ],
+  "refusal_sentence_for_non_first_offending_element": {
+    "call": "mcp__ast_grep__search {paths: [\"docs/\", \"packages/x.ts\"]}",
+    "emitted": "captain investigation rule: `mcp__ast_grep__search` on \"packages/x.ts\" is refused — the `mpd` preset's TOP-LEVEL session does not run reconnaissance, so its context stays small enough for very large projects. Delegate it: `mpd_role_spawn` with the `Explorer` role (find files and code) or the `Researcher` role (evidence-based search), or hand the search to a team member, and consume the REPORT. The documentation band stays open to you, and this is the whole of it: `AGENT.md`, `AGENTS.md` and `CLAUDE.md` at ANY depth — inside this workspace or outside its root, so a sibling project's instruction file is readable; the trees `.mpd/**`, `docs/**`, `evidence/**` and `agent-references/**`; and, at the workspace root only, `README.md`, `README.zh-CN.md`, `CHANGELOG.md` and `LICENSE*.md` — those two README spellings exactly, since there is no `README*` glob. Every source path stays refused, and `captain.investigation: \"allow\"` in mpd.jsonc restores full access.",
+    "names": "the offending element `packages/x.ts` (element 1), NOT element zero (`docs/`)",
+    "same_call_reversed": "captain investigation rule: `mcp__ast_grep__search` on \"packages/x.ts\" is refused — … (identical target clause)"
+  },
+  "acceptance": [
+    { "arm": "paths:[\"docs/\",\"packages/x.ts\"] REFUSED", "verdict": "PASS", "evidence": "arm 'ast_grep_search judges EVERY paths entry, in either order (T8 repair)'; sentence asserts `on \"packages/x.ts\" is refused`" },
+    { "arm": "paths:[\"packages/x.ts\",\"docs/\"] REFUSED (order must not matter)", "verdict": "PASS", "evidence": "same arm; identical target clause on the reversed list" },
+    { "arm": "paths:[\"docs/\",\"agent-references/\"] ALLOWED", "verdict": "PASS", "evidence": "same arm; decide(...) === undefined" },
+    { "arm": "paths:[] REFUSED", "verdict": "PASS", "evidence": "same arm; 'no path argument' (fail-closed bare call)" },
+    { "arm": "paths:[123] REFUSED", "verdict": "PASS", "evidence": "same arm; the non-string element yields no judgeable path -> 'no path argument'" },
+    { "arm": "paths absent REFUSED", "verdict": "PASS", "evidence": "same arm; 'no path argument'" },
+    { "arm": "single-element source REFUSED / single-element docs ALLOWED (no regression)", "verdict": "PASS", "evidence": "both kept in the same arm" },
+    { "arm": "mcp__ast_grep__rewrite unchanged", "verdict": "PASS", "evidence": "readTargetPath arm 'the SHARED reader still resolves paths[0] for both ast-grep tools' — rewrite {paths:[source, docs]} -> 'packages/x.ts'" },
+    { "arm": "module honest-bounds states the new rule", "verdict": "PASS", "evidence": "header HONEST BOUNDS (1) now says 'A LIST-shaped argument is judged ENTRY BY ENTRY, not by its first member'; the INVESTIGATION_TOOLS doc names the T8 repair and that order no longer matters" }
+  ],
+  "gates": [
+    { "gate": ".toolchain/node_modules/.bin/bun test packages/mpd-roles-plugin", "result": "343 pass / 1 fail — 344 tests, 18 files; the one failure is the F1 dist byte-identity arm", "exit": 1, "note": "RED BY DESIGN until T3 rebuilds dist" },
+    { "gate": ".toolchain/node_modules/.bin/bun test packages/mpd-roles-plugin/test/captain-investigation.test.ts", "result": "22 pass / 0 fail", "exit": 0 },
+    { "gate": ".toolchain/node_modules/.bin/bun run typecheck", "result": "tsgo --noEmit clean", "exit": 0 },
+    { "gate": ".toolchain/node_modules/.bin/bun run verify:comments", "result": "PASS — 618 files, 55434 declarations, 27144 inline callbacks skipped", "exit": 0 }
+  ],
+  "honest_bounds": [
+    "No live mount is claimed: the committed dist is stale until T3, so a booted dsh would still run the previous guard. The repair is proven through the SHIPPED pure decision and the package's arms.",
+    "Non-string entries are IGNORED rather than offending (the rule judges paths). A list mixing strings and non-strings is decided by its string entries alone; a list with no string entry is refused.",
+    "judgment is still by SPELLING (unchanged): a symlink is not resolved, and a path assembled at runtime inside an element is not judged.",
+    "readTargetPath's first-entry behaviour for mcp__ast_grep__search is untouched by design: the guard no longer routes the search through it, so the two rules cannot disagree about the verdict."
+  ],
+  "next_step": "T3 rebuilds both dists from the repo root with .toolchain/node_modules/.bin/bun; then node scripts/verify-dist-fresh.ts (expect 34/34 FRESH) and .toolchain/node_modules/.bin/bun test packages/mpd-roles-plugin (expect 0 fail). No further code change needed.",
+  "verification": "A DIFFERENT agent verifies this against the frozen contract and the T8 assignment; nothing here is a self-certification."
+}

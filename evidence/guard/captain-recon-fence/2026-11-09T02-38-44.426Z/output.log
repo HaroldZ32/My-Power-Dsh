@@ -1,0 +1,43 @@
+# T8 evidence — C2 repair: ast-grep search judged ENTRY BY ENTRY (Deep Worker)
+# UTC 2026-11-09T02:38:44.436Z   workspace /home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+# git HEAD b956b213
+# changed: packages/mpd-roles-plugin/src/captain-investigation.ts + its test file ONLY (law.ts, dist, captain-shell.ts, docs untouched)
+
+===== 1. .toolchain/node_modules/.bin/bun test packages/mpd-roles-plugin =====
+(pass) THE WIRING: the registered mpd_role_spawn forwards `maxDepth` = caller depth + 1 [3.22ms]
+(pass) CONTROL: the forwarded cap disturbs neither the route nor the prompt the spawn already carried [1.26ms]
+
+1 tests failed:
+(fail) F1 shipped artifact > the committed dist is the byte-identical product of a canonical build (T-62) [140.43ms]
+
+ 343 pass
+ 1 fail
+ 2499 expect() calls
+Ran 344 tests across 18 files. [1.70s]
+exit=1
+
+===== 2. .toolchain/node_modules/.bin/bun run typecheck =====
+$ tsgo --noEmit
+exit=0
+
+===== 3. .toolchain/node_modules/.bin/bun run verify:comments =====
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 618 TypeScript file(s) of 618 in the source set; inspected 55434 declaration(s); skipped 27144 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+exit=0
+
+===== 4. exact refusal sentences, printed from the SHIPPED decision (bun -e, pinned toolchain) =====
+--- source SECOND {paths: ["docs/","packages/x.ts"]}
+captain investigation rule: `mcp__ast_grep__search` on "packages/x.ts" is refused — the `mpd` preset's TOP-LEVEL session does not run reconnaissance, so its context stays small enough for very large projects. Delegate it: `mpd_role_spawn` with the `Explorer` role (find files and code) or the `Researcher` role (evidence-based search), or hand the search to a team member, and consume the REPORT. The documentation band stays open to you, and this is the whole of it: `AGENT.md`, `AGENTS.md` and `CLAUDE.md` at ANY depth — inside this workspace or outside its root, so a sibling project's instruction file is readable; the trees `.mpd/**`, `docs/**`, `evidence/**` and `agent-references/**`; and, at the workspace root only, `README.md`, `README.zh-CN.md`, `CHANGELOG.md` and `LICENSE*.md` — those two README spellings exactly, since there is no `README*` glob. Every source path stays refused, and `captain.investigation: "allow"` in mpd.jsonc restores full access.
+--- source FIRST {paths: ["packages/x.ts","docs/"]}
+captain investigation rule: `mcp__ast_grep__search` on "packages/x.ts" is refused — the `mpd` preset's TOP-LEVEL session does not run reconnaissance, so its context stays small enough for very large projects. Delegate it: `mpd_role_spawn` with the `Explorer` role (find files and code) or the `Researcher` role (evidence-based search), or hand the search to a team member, and consume the REPORT. The documentation band stays open to you, and this is the whole of it: `AGENT.md`, `AGENTS.md` and `CLAUDE.md` at ANY depth — inside this workspace or outside its root, so a sibling project's instruction file is readable; the trees `.mpd/**`, `docs/**`, `evidence/**` and `agent-references/**`; and, at the workspace root only, `README.md`, `README.zh-CN.md`, `CHANGELOG.md` and `LICENSE*.md` — those two README spellings exactly, since there is no `README*` glob. Every source path stays refused, and `captain.investigation: "allow"` in mpd.jsonc restores full access.
+--- all in band {paths: ["docs/","agent-references/"]}
+ALLOWED
+--- empty list {paths: []}
+captain investigation rule: `mcp__ast_grep__search` on (no path argument — a bare search covers the whole workspace) is refused — the `mpd` preset's TOP-LEVEL session does not run reconnaissance, so its context stays small enough for very large projects. Delegate it: `mpd_role_spawn` with the `Explorer` role (find files and code) or the `Researcher` role (evidence-based search), or hand the search to a team member, and consume the REPORT. The documentation band stays open to you, and this is the whole of it: `AGENT.md`, `AGENTS.md` and `CLAUDE.md` at ANY depth — inside this workspace or outside its root, so a sibling project's instruction file is readable; the trees `.mpd/**`, `docs/**`, `evidence/**` and `agent-references/**`; and, at the workspace root only, `README.md`, `README.zh-CN.md`, `CHANGELOG.md` and `LICENSE*.md` — those two README spellings exactly, since there is no `README*` glob. Every source path stays refused, and `captain.investigation: "allow"` in mpd.jsonc restores full access.
+--- non-string element {paths: [123]}
+captain investigation rule: `mcp__ast_grep__search` on (no path argument — a bare search covers the whole workspace) is refused — the `mpd` preset's TOP-LEVEL session does not run reconnaissance, so its context stays small enough for very large projects. Delegate it: `mpd_role_spawn` with the `Explorer` role (find files and code) or the `Researcher` role (evidence-based search), or hand the search to a team member, and consume the REPORT. The documentation band stays open to you, and this is the whole of it: `AGENT.md`, `AGENTS.md` and `CLAUDE.md` at ANY depth — inside this workspace or outside its root, so a sibling project's instruction file is readable; the trees `.mpd/**`, `docs/**`, `evidence/**` and `agent-references/**`; and, at the workspace root only, `README.md`, `README.zh-CN.md`, `CHANGELOG.md` and `LICENSE*.md` — those two README spellings exactly, since there is no `README*` glob. Every source path stays refused, and `captain.investigation: "allow"` in mpd.jsonc restores full access.
+exit=0

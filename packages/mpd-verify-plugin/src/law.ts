@@ -167,6 +167,15 @@ export interface WriteTarget {
 const PATH_ARG_KEYS: readonly string[] = ["file_path", "path", "filePath", "target"]
 
 /**
+ * The MCP tools whose path argument is a LIST (`paths`), read here by its FIRST entry.
+ *
+ * That single-path shape is what `readTargetPath` returns for either tool; the captain investigation
+ * guard separately judges EVERY entry of `mcp__ast_grep__search`, and that every-element rule lives in
+ * the guard rather than in this shared reader.
+ */
+const PATH_LIST_TOOLS: readonly string[] = ["mcp__ast_grep__rewrite", "mcp__ast_grep__search"]
+
+/**
  * Read the target path of one tool call, if it carries exactly one usable spelling.
  *
  * @param toolName - the tool being dispatched.
@@ -174,8 +183,8 @@ const PATH_ARG_KEYS: readonly string[] = ["file_path", "path", "filePath", "targ
  * @returns the raw path, or `undefined` when the call carries none this law can act on.
  */
 export function readTargetPath(toolName: string, args: Record<string, unknown> | undefined): string | undefined {
-  if (toolName === "mcp__ast_grep__rewrite") {
-    /** The ast-grep rewrite carries a LIST of paths; its first entry is the one classified. */
+  if (PATH_LIST_TOOLS.includes(toolName)) {
+    /** The tool's LIST of paths; its first entry is the one classified. */
     const paths = args?.paths
     if (Array.isArray(paths) && typeof paths[0] === "string") return paths[0]
   }

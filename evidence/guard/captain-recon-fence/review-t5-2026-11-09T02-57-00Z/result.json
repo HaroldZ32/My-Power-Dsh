@@ -1,0 +1,141 @@
+{
+  "task": "T5 — W2-C5 independent verification of the captain recon fence (wave 2)",
+  "loop": "loop-20261109T025106-3ccdf5",
+  "verifier_seat": "1f174ce8-26f0-48a6-a977-a6550d8b50ec",
+  "contract": ".mpd/plans/captain-recon-fence.md",
+  "git_head": "b956b213",
+  "verdict": "FAIL",
+  "risk": "HIGH",
+  "report": "evidence/guard/captain-recon-fence/review-t5-2026-11-09T02-57-00Z/report.md",
+  "probe_log": "evidence/guard/captain-recon-fence/review-t5-2026-11-09T02-57-00Z/probe.log",
+  "probe_script": "evidence/guard/captain-recon-fence/review-t5-2026-11-09T02-57-00Z/probe.ts",
+  "verify_plane_evidence": [
+    "ev-20261109T030215-f38070",
+    "ev-20261109T030258-5888d5",
+    "ev-20261109T030301-d8b0fc"
+  ],
+  "gates_reproduced": {
+    "G1": "bun test packages/mpd-roles-plugin packages/mpd-verify-plugin packages/mpd-tools-plugin — 479 pass / 0 fail, 26 files",
+    "G2": "bun run typecheck — exit 0",
+    "G3": "node scripts/verify-dist-fresh.ts — 34/34 FRESH, pinned bun 1.4.0, 1 NOT COVERED",
+    "G4": "bun run verify:comments — PASS 618 files / 55469 declarations",
+    "G5": "bun run verify:rows — 36 row ids",
+    "G6": "preset-conformance (pinned 0.2.2-rc.1) — PASS, 33 rows, 28 children, session/create agentPreset=mpd, negative control red",
+    "G7": "bun run verify:docs — PASS pairs=59 dead=0",
+    "G8": "node scripts/verify-manual-paths.ts — PASS resolved=158",
+    "G9": "node scripts/verify-vendor.ts — PASS 8 assets",
+    "G10": "captain-scope.ts (pinned harness) — PASS 8 rows; own live-mount evidence evidence/roles/captain-scope/2026-11-09T02-59-34.610Z/"
+  },
+  "acceptance": {
+    "B1": "PASS — every contract R1 spelling refused; anti-false-positive list allowed; child and allow mode unaffected",
+    "B2": "PASS on the §4 arms — hashline/codegraph/ast-grep/lsp doors closed; readTargetPath precedence preserved; law.ts diff matches §7",
+    "B3": "FAIL as written — cat packages/x.ts ALLOWED (path does not exist; C3's existence filter); intended behaviour proven with an existing source path",
+    "B4": "PASS — boot line tokens match installed guards (captainShell=deny patterns=16 computed from the 16-row table)",
+    "B5": "PASS on the named docs, with F7 (persona enumerates 6 of 16 shell readers)",
+    "B6": "PASS — nine gates + live mount reproduced green"
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "High",
+      "where": "packages/mpd-roles-plugin/src/captain-shell.ts — captainShellReadViolation (existing.length === 0 && search branch)",
+      "what": "piped search verbs refused: 'git log --oneline | grep fix', 'ls -la | grep md', 'cat docs/decisions.md | grep TODO' all REFUSED as reconnaissance",
+      "direction": "pipeline-aware read-route: a search segment after '|' reads stdin and is allowed; keep the whole-workspace refusal for a leading search segment"
+    },
+    {
+      "id": "F2",
+      "severity": "High",
+      "where": "packages/mpd-roles-plugin/src/captain-shell.ts — captainShellSegments (quote-blind split on '|')",
+      "what": "grep -E \"fix|feat\" docs/decisions.md and grep -E 'TODO|FIXME' docs/decisions.md REFUSED; refusal quotes a truncated 'grep -E \"fix'",
+      "direction": "quote-aware top-level segment splitting (or judge the unsplit string when a quote is unbalanced)"
+    },
+    {
+      "id": "F3",
+      "severity": "High",
+      "where": "packages/mpd-roles-plugin/src/captain-shell.ts — captainShellPathExists / captainShellReadViolation (relative tokens resolved against workspace root, no cd tracking)",
+      "what": "cd packages/mpd-roles-plugin/src && cat captain-shell.ts ALLOWED; cd packages && cat mpd-roles-plugin/src/index.ts ALLOWED",
+      "direction": "resolve later segments against the cd target, or fail closed on a relative reader after a cd segment"
+    },
+    {
+      "id": "F4",
+      "severity": "Medium",
+      "where": "packages/mpd-roles-plugin/src/captain-shell.ts — READ_VERB_PATTERN_FIRST candidate rule",
+      "what": "rg --files docs/ REFUSED while rg --files -g '*.md' docs/ ALLOWED (mode flag consumed as a pattern / a glob value consumed as a pattern)",
+      "direction": "teach the read-route the flag-only search modes"
+    },
+    {
+      "id": "F5",
+      "severity": "Medium",
+      "where": "packages/mpd-roles-plugin/src/captain-investigation.ts — astGrepSearchPaths",
+      "what": "mcp__ast_grep__search {paths: [\"docs/\", 42]} ALLOWED; frozen §3 C2 says any non-string element is refused",
+      "direction": "treat a non-string entry as an offending path (or amend §3 C2 if the ignore is intended)"
+    },
+    {
+      "id": "F6",
+      "severity": "Medium",
+      "where": "frozen contract §4 B3 vs §3 C3's ignore-non-existent-token rule",
+      "what": "cat packages/x.ts ALLOWED in this checkout (the path does not exist); B3 as written says REFUSED",
+      "direction": "captain amends B3's example to an existing source path; the existence filter must stay"
+    },
+    {
+      "id": "F7",
+      "severity": "Medium",
+      "where": "presets/mpd.patch.yml (READ DISCIPLINE) and agent-references/verification-flow.md §5 rule 2",
+      "what": "the persona enumerates 6 shell readers (cat, sed, rg, head, tail, find) while 16 verbs are gated; grep/awk/less/more/ag/ack/strings/xxd/od/nl omitted",
+      "direction": "say 'any shell read verb (e.g. …)' or extend the list"
+    },
+    {
+      "id": "F8",
+      "severity": "Nit",
+      "where": "packages/mpd-roles-plugin/src/captain-shell.ts — nonFlag collection",
+      "what": "cat docs/decisions.md > package.json REFUSED because an existing redirect target is judged as a read path",
+      "direction": "skip tokens that follow a redirection operator"
+    },
+    {
+      "id": "F9",
+      "severity": "Nit",
+      "where": "packages/mpd-roles-plugin/src/captain-shell.ts — READ_VERB_FILE_READERS includes sed/awk",
+      "what": "sed -i on an existing source path REFUSED as reconnaissance although the write path is declared ungated",
+      "direction": "treat in-place sed as a write, or name the edit route in the refusal"
+    },
+    {
+      "id": "F10",
+      "severity": "Nit",
+      "where": "packages/mpd-verify-plugin/src/law.ts — PATH_LIST_TOOLS comment",
+      "what": "comment says the list is 'judged by its FIRST entry' while the search guard judges every entry",
+      "direction": "state the two-level truth"
+    },
+    {
+      "id": "F11",
+      "severity": "Nit",
+      "where": "skills/dsh-qa/SKILL.md — captain-scope case row",
+      "what": "the row never mentions captainShell while the case asserts it (wave-1 carry)",
+      "direction": "add the captainShell token to the discriminating sentence"
+    },
+    {
+      "id": "F12",
+      "severity": "Nit",
+      "where": "agent-references/verification-flow.md §5 rule 2 boot-line sample",
+      "what": "live line carries questions=relay routes=0 sensitivity=easy; sample omits them",
+      "direction": "include the tokens or mark the sample elided"
+    }
+  ],
+  "declined": [
+    "bash -c 'bun test' / sh -c 'npm test' — outside C1's frozen wrapper list; covered by the module's stated command-family bound",
+    "env -u FOO bun test — env options are outside the contract's 'env + NAME=value' step",
+    "npm --prefix . test — a flag between launcher and script is outside C1's enumerated spellings",
+    "bun run --filter x test — explicitly declared un-collapsed in the module header",
+    "mcp__lsp__rename_symbol allowed — a write, contract keeps it out, member deny list carries it",
+    "git show HEAD:file / git grep — declared residuals §6",
+    "nested instruction files readable (packages/x/AGENTS.md) — intended C4/D14 rule",
+    "evidence's 'wave 1 booted with patterns=9' — verified true against wave 1's 01-55-53 boot log",
+    "AGENTS.md §13 glossary compression — budget MOVE, gates PASS"
+  ],
+  "bounds": [
+    "No live DENIAL through an agentPreset=mpd session could be run (headless refuses a preset); the denial claim rests on the shipped decision functions driven at the real workspace root.",
+    "Did not read the full test files, the roles apply site beyond the boot-line lines, or the dist bytes (certified by verify-dist-fresh).",
+    "No Docker lane (not in B6).",
+    "No reviewed code was edited."
+  ],
+  "verdict_sentence": "B3's literal arm is unmet and C3 introduces two High false-positive regressions (piped grep, quoted alternation) plus a cd bypass; gates, tokens and the evidence bundle otherwise reproduce."
+}

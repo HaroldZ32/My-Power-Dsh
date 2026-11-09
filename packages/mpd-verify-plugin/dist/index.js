@@ -2510,8 +2510,9 @@ var VERIFIER_DENIED_TOOLS = [
 var VERIFIER_DENIED_PREFIXES = ["agent_teams_", "mpd_", "spawn_teammate", "team_task_", "team_"];
 var VERIFY_TOOL_PREFIX = "mpd_verify_";
 var PATH_ARG_KEYS = ["file_path", "path", "filePath", "target"];
+var PATH_LIST_TOOLS = ["mcp__ast_grep__rewrite", "mcp__ast_grep__search"];
 function readTargetPath(toolName, args) {
-  if (toolName === "mcp__ast_grep__rewrite") {
+  if (PATH_LIST_TOOLS.includes(toolName)) {
     const paths = args?.paths;
     if (Array.isArray(paths) && typeof paths[0] === "string")
       return paths[0];
