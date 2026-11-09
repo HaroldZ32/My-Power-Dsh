@@ -22,11 +22,14 @@
 // (`publish.yml`, `gates.yml`) — so eight readings in all. Nothing compared them, and one wave moved
 // the pin while leaving both docs and both CI refs on the previous sha with every lane green. The PIN
 // check below reads all eight and fails on a site that states no 40-hex commit and on any disagreement.
-// A site whose FILE is absent is an error only in a CHECKOUT (`.git` present — every CI run and this
-// repository); a packaged tree ships `scripts/**`, `specs/**` and `docs/**` but NOT `.github/**`, so its
-// two workflow sites print `pin-site-skipped` NOTES and never change the exit code. A file that IS
-// present but states no 40-hex commit is an error in both modes: an absent file and an absent pin are
-// different facts. It prints its own `PIN:` line (it is NOT a sixth lane). The literal must be the
+// A site whose FILE is absent is excused ONLY when its path is under `.github/**` — the one tree a
+// packaged install does not ship — and there it prints a `pin-site-skipped` NOTE that never changes the
+// exit code. A packaged tree DOES ship `specs/**`, `docs/**` and `scripts/**`, so an absent `SOURCE.json`,
+// `limits.ts`, docs page or any future non-`.github` site is a `pin-site-missing` ERROR in BOTH modes; a
+// CHECKOUT (`.git` present — every CI run and this repository) treats every absence as an error too. A
+// file that IS present but states no 40-hex commit is an error in both modes: an absent file and an
+// absent pin are different facts. It prints its own `PIN:` line (it is NOT a sixth lane). The literal
+// must be the
 // PEELED release commit — `git rev-parse v1.0.14^{commit}` — never the annotated tag object that `git
 // rev-parse v1.0.14` prints, which is not a commit at all.
 //
@@ -1123,9 +1126,9 @@ interface PinAudit {
   readonly commit: string | null
   /** Every site's reading, in declaration order — the evidence a `--json` consumer keeps. */
   readonly readings: readonly PinReading[]
-  /** How many sites a packaged tree does not ship — printed as skipped and never counted as an error. */
+  /** How many `.github/**` sites a packaged tree does not ship — printed as skipped and never counted as an error. */
   readonly skipped: number
-  /** One `pin-site-missing` per site without a 40-hex commit, one `pin-site-skipped` note per unshipped file, and one `pin-disagreement` per dissenter. */
+  /** One `pin-site-missing` per site without a 40-hex commit, one `pin-site-skipped` note per unshipped `.github/**` file, and one `pin-disagreement` per dissenter. */
   readonly findings: readonly Finding[]
 }
 
@@ -1259,28 +1262,43 @@ function isCheckout(root: string): boolean {
 }
 
 /**
+ * True when a pin site lives under the repository's `.github/` tree — the ONE tree a packaged install
+ * does not ship, so it is the only absence a packaged audit may excuse. Normalized through `/` because
+ * `PIN_SITES` builds its paths with the platform separator.
+ */
+function isGithubSite(file: string): boolean {
+  return file.split(sep).join("/").startsWith(".github/")
+}
+
+/**
  * Judge the readings. A site whose file IS PRESENT but states no 40-hex commit is an error in BOTH
- * modes. A site whose file is ABSENT is an error only in a CHECKOUT; a packaged tree does not ship
- * `.github/**`, so its workflow sites are NOTES there and never change the exit code.
+ * modes. A site whose file is ABSENT is excused ONLY under `.github/**` in a packaged tree — the one
+ * tree a pack omits — where it is a note; every other absence, and every absence in a checkout, is an
+ * error, because a packaged tree does ship `specs/**`, `docs/**` and `scripts/**`.
  */
 function auditPin(readings: readonly PinReading[], checkout: boolean): PinAudit {
   /** The findings this check contributes. */
   const findings: Finding[] = []
   for (const reading of readings) {
     if (reading.absent) {
-      findings.push(checkout
-        ? {
-            rule: "pin-site-missing",
-            path: reading.file,
-            detail: `${reading.id}: the file is absent from this checkout — a deleted or renamed pin site must fail, not silently shrink the audit`,
-            severity: "error",
-          }
-        : {
-            rule: "pin-site-skipped",
-            path: reading.file,
-            detail: `${reading.id}: the file is not shipped in a packaged tree (no \`.git\`), so its pin cannot be read here`,
-            severity: "note",
-          })
+      /** A packaged tree ships every pin site except `.github/**`; only an absence there is a note. */
+      if (!checkout && isGithubSite(reading.file)) {
+        findings.push({
+          rule: "pin-site-skipped",
+          path: reading.file,
+          detail: `${reading.id}: the file is not shipped in a packaged tree (no \`.git\`), so its pin cannot be read here`,
+          severity: "note",
+        })
+        continue
+      }
+      findings.push({
+        rule: "pin-site-missing",
+        path: reading.file,
+        detail: checkout
+          ? `${reading.id}: the file is absent from this checkout — a deleted or renamed pin site must fail, not silently shrink the audit`
+          : `${reading.id}: the file is absent from a packaged tree, which ships every pin site except \`.github/**\` — only a \`.github\` site may be skipped`,
+        severity: "error",
+      })
       continue
     }
     if (reading.commit !== null && isCommit(reading.commit)) continue
@@ -1454,6 +1472,8 @@ const PIN_FIXTURE_B: string = "89abcdef0123456789abcdef0123456789abcdef"
 const PIN_PERTURBED_SITE: string = "docs/dsh-go-standard.md"
 /** The two pin sites a PACKAGED tree does not ship — the `.github/**` workflow refs, and the only sites whose absence is a note. */
 const PIN_WORKFLOW_SITES: readonly string[] = ["publish.yml", "gates.yml"]
+/** The one NON-workflow pin site the C5 packaged-absence arm REMOVES — a file a packaged tree DOES ship, so its absence must fail. */
+const PIN_SHIPPED_SITE: string = "SOURCE.json"
 
 /** Every site's text at one commit, built from each site's own shape — the pin arms' in-memory input. */
 function pinTexts(commit: string): Map<string, string | null> {
@@ -1473,8 +1493,9 @@ function perturbPin(texts: Map<string, string | null>, id: string, commit: strin
  * Assert the packaged/checkout split C5 branches on, from a reading set with the two workflow sites
  * ABSENT: packaged reports zero errors and exactly two skip notes (`skipped === 2`), a checkout reports
  * exactly two `pin-site-missing` errors (`skipped === 0`), a PRESENT-but-pinless site is an error in
- * BOTH (an absent file and an absent pin are different facts), and `isCheckout` reads a `.git` FILE as
- * a checkout. Each failure names the half it guards, so a mutated mode branch reddens at its own
+ * BOTH (an absent file and an absent pin are different facts), an absence OUTSIDE `.github/**` is an
+ * error even in a packaged tree and is NEVER counted as skipped, and `isCheckout` reads a `.git` FILE
+ * as a checkout. Each failure names the half it guards, so a mutated mode branch reddens at its own
  * assertion; the `.git` probe uses a fresh temp dir and never the real tree.
  */
 function assertPinModeSplit(): void {
@@ -1536,6 +1557,21 @@ function assertPinModeSplit(): void {
   const [pinlessError] = pinlessErrors
   if (pinlessErrors.length !== 1 || pinlessError === undefined || pinlessError.rule !== "pin-site-missing" || pinlessError.path !== pinlessPath || pinlessPackaged.skipped !== 0) {
     throw new Error(`C5 packaged present-pinless: a PRESENT site stating no commit must be exactly one pin-site-missing error in a packaged tree, got ${pinlessErrors.map((finding: Finding): string => `${finding.rule}@${finding.path}`).join(", ") || "none"} with skipped ${pinlessPackaged.skipped}`)
+  }
+
+  /** The agreeing fixture with ONE NON-workflow site ABSENT — a file a packaged tree DOES ship. */
+  const withoutShippedSite = pinTexts(PIN_FIXTURE_A)
+  withoutShippedSite.delete(PIN_SHIPPED_SITE)
+  /** That site's own path, resolved from its stable id. */
+  const shippedPath = PIN_SITES.find((site: PinSite): boolean => site.id === PIN_SHIPPED_SITE)?.file ?? PIN_SHIPPED_SITE
+  /** The PACKAGED verdict over that absence: a site a packaged tree ships must fail, never turn into a note. */
+  const shippedAbsent = auditPin(extractPins(withoutShippedSite), false)
+  /** That verdict's failing findings. */
+  const shippedErrors = shippedAbsent.findings.filter((finding: Finding): boolean => finding.severity === "error")
+  /** The single error the absent non-workflow site must produce. */
+  const [shippedError] = shippedErrors
+  if (shippedErrors.length !== 1 || shippedError === undefined || shippedError.rule !== "pin-site-missing" || shippedError.path !== shippedPath || shippedAbsent.skipped !== 0) {
+    throw new Error(`C5 packaged non-workflow absence: an absent site a packaged tree DOES ship must be exactly one pin-site-missing error and never a skip, got ${shippedErrors.map((finding: Finding): string => `${finding.rule}@${finding.path}`).join(", ") || "none"} with skipped ${shippedAbsent.skipped}`)
   }
 
   /** A throwaway tree for the `.git` probe — never the real repository. */
