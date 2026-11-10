@@ -4,11 +4,12 @@
 // `cellwork_subteam`, `cellwork_send`, `cellwork_inbox`. The listeners: the host-plane `agent/pre-step`
 // checkpoint detector and the `agent/turn-stopping` compaction barrier. The decision logic they share
 // lives in `protocol-core.ts` (pure, unit-testable); this file binds it to the adapter and to disk.
-import { appendJournal, freeCellId, handoffPath, newCellState, readCell, writeCell, type CellMemberRecord, type CellState } from "./state"
+import { appendJournal, freeCellId, handoffPath, newCellState, readCell, resolveCellTeam, writeCell, type CellMemberRecord, type CellState } from "./state"
 import { callerContext, type CallerContext, type TeamActionsServiceView, type TeamsServiceView } from "./caller"
 import type { CellworkConfig } from "./config"
 import { fenceReasonOf, nameKey, resolveMemberName, sendThroughExecutor } from "./dispatch"
 import { validateHandoffText, writeHandoff } from "./handoff"
+import { growExecutionSeats, lastSeatGrowthRefusalOf, seatProjectionOf, type SeatGrowthResult } from "./elastic"
 import { acknowledgeCellMail, appendCellMail, deliverCellMail, findWorkspaceMailById, foldCellMail, nextCellMailId, pageCellMail, readCellMail, truncateCellMailBody, unreadFor, wakeFailures, type CellMailMessage } from "./mail"
 import { mailMaxUndeliveredOf, sendMany } from "../../mpd-team-core-plugin/src/mailbox-store"
 import type { SendInput, SendManyResult } from "../../mpd-team-core-plugin/src/mailbox-store"
@@ -347,6 +348,66 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
     /** The service's own read. */
     const record = teams()?.get?.(workspace, teamId)
     return typeof record === "object" && record !== null ? record as Record<string, unknown> : undefined
+  }
+  /**
+   * The board the dispatch pass addresses (§7.1/§7.1a): the ONE resolver, never `cell.teamId` directly.
+   *
+   * @param workspace - the caller's workspace root.
+   * @param cell - the cell record being read.
+   * @returns the resolution, with both ids and the evidence on it.
+   */
+  const boardOf = (workspace: string, cell: CellState): ReturnType<typeof resolveCellTeam> =>
+    resolveCellTeam({ workspace, cell, teams: teams(), recordFor: (teamId) => recordOf(workspace, teamId) })
+  /**
+   * The roster role names, or [] when the roster service cannot answer.
+   *
+   * Read structurally, per call: a composition without the roles row degrades seat growth to its
+   * recorded-role fallback rather than failing the dispatch pass.
+   *
+   * @returns every canonical roster role name.
+   */
+  const rosterRoles = (): string[] => {
+    try {
+      /** The roster rows. */
+      const rows = (deps.ctx.get?.("mpdRoles", false) as { list?: () => unknown } | undefined)?.list?.()
+      return Array.isArray(rows) ? rows.map((row) => String((row as { name?: unknown }).name ?? "")).filter((name) => name !== "") : []
+    } catch {
+      return []
+    }
+  }
+  /**
+   * The roster persona text for one role, or null when the roster cannot answer.
+   *
+   * @param role - a roster role name.
+   * @returns the persona text, or null.
+   */
+  const rosterPersona = (role: string): string | null => {
+    try {
+      /** The role row. */
+      const row = (deps.ctx.get?.("mpdRoles", false) as { get?: (key: string) => { persona?: unknown } | null } | undefined)?.get?.(role)
+      return row !== null && row !== undefined && typeof row.persona === "string" && row.persona.trim() !== "" ? row.persona : null
+    } catch {
+      return null
+    }
+  }
+  /**
+   * The task ids a raw `reassign` argument names, read defensively so growth never doubles a hand-over.
+   *
+   * @param value - the raw tool argument.
+   * @returns the named task ids; a malformed argument yields an empty list (the plane owns its refusal).
+   */
+  const reassignedTaskIds = (value: unknown): string[] => {
+    if (!Array.isArray(value)) return []
+    /** The named ids. */
+    const ids: string[] = []
+    for (const entry of value) {
+      if (typeof entry !== "object" || entry === null) continue
+      /** The entry as a record. */
+      const row = entry as Record<string, unknown>
+      if (typeof row.task_id === "string" && row.task_id !== "") ids.push(row.task_id)
+      else if (typeof row.taskId === "string" && row.taskId !== "") ids.push(row.taskId)
+    }
+    return ids
   }
   /**
    * The PLANE's reading of one seat, or an empty reading when the record does not name it.
@@ -933,6 +994,20 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
           reassignInvalid: { type: "array", items: { type: "string" }, description: "One sentence per `reassign` entry this call refused to read." },
           unfenced: { type: "array", items: { type: "object" }, description: "One entry per distinct `unfence` member (duplicates collapse to one): `{member, unfenced:true, plane, planeReason?}` for a cleared CELL give-up fence (the CELL row's `fenced:true`, whatever the TEAM row says), `{member, unfenced:false, reason:\"not-fenced\"}` when neither record reports a marker, `{member, unfenced:false, reason:\"checkpoint-pending\", detail}` only when the CELL row carries no `fenced:true` AND the TEAM row is at `mode:\"checkpoint\"` with no `fenced` flag (the compaction barrier owns it, nothing was written), and `{member, unfenced, cellRow:\"untouched\", plane, planeReason?}` when an explicit TEAM-only fence was cleared while the CELL row was left untouched. `plane` is `unfenced` (the TEAM seat was reopened through the seam), `absent` (this composition exposes no `unfence` seam, so no reopen is claimed) or `refused` (with the plane's own sentence in `planeReason`). A FORCED clear answers `{member, unfenced:true, forced:true, alive:false, liveness:\"dead\"|\"unknown\", sessionId, bound:\"retry-budget\"|\"stale\", pendingMs?, plane, planeReason?}`, and a forced request that is refused writes nothing and answers `reason:\"live-session\"` or `reason:\"force-not-eligible\"` with a `detail` sentence. The dead-reseed seat (a reseeded `subcaptain` row whose recorded session the registry PROVES dead) is held by the SAME predicate and its forced clear names `bound:\"dead-session\"`. Any outcome whose plane half ended `refused` ALSO carries `retry`: the exact Lead-only verb (`agent_teams_control {action:\"unfence\", member}`) that re-drives the seam, echoed in the render and in the journal row." },
           refused: { type: "string" },
+          seats: {
+            type: "object",
+            description: "The seat projection after this pass (§4.2): `execution` seats (planning excluded), `planning` seats, the two caps (`cap` = cellwork.seats.max, `capPerRole`), and how many seats this pass grew or reused.",
+            properties: {
+              execution: { type: "number" },
+              planning: { type: "number" },
+              cap: { type: "number" },
+              capPerRole: { type: "number" },
+              grown: { type: "number" },
+              reused: { type: "number" },
+            },
+          },
+          grownSeats: { type: "array", items: { type: "object" }, description: "One entry per seat this pass raised or adopted: `{name, role, taskId, rosterRole, reason}`. `rosterRole` is the `role` the live member record actually carries after the append (§7.1b); empty means the append arm dropped it." },
+          seatWarnings: { type: "array", items: { type: "string" }, description: "Non-fatal seat observations, e.g. a freshly grown seat whose member record carries no `role` (§7.1b)." },
         },
         required: ["ok"],
       },
@@ -987,7 +1062,15 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         /** One line per hand-over, claiming and delivery reported as the SEPARATE facts they are. */
         const handovers = reassigned.map((row) => "reassign " + String(row.taskId) + " -> " + String(row.owner) + ": " + (row.delivered === true ? "claimed on the board and delivered" : row.claimed === true ? "CLAIMED, delivery failed: " + String(row.reason ?? "unknown") : "not claimed: " + String(row.reason ?? "unknown")))
         if (typeof result.refused === "string") return render([...clears, ...handovers, ...invalid, "cellwork_dispatch refused: " + result.refused].join("\n"))
-        return render([...clears, ...handovers, ...invalid, ...(pairs.length === 0
+        // THE SEATS THIS PASS GREW (§4.2): named with the role the member record actually carries, so a
+        // §7.1b role loss is visible in the answer instead of surfacing later as a mis-routed seat.
+        /** Every seat this pass raised or adopted. */
+        const grown = Array.isArray(result.grownSeats) ? result.grownSeats as Array<Record<string, unknown>> : []
+        /** The seat line, empty when nothing grew. */
+        const seatLines = grown.length === 0 ? [] : ["grew " + String(grown.length) + " seat(s): " + grown.map((row) => String(row.name) + " (" + String(row.role) + ")" + (String(row.rosterRole ?? "") === "" ? " [the member record carries NO role — §7.1b]" : "") + " for " + String(row.taskId)).join(", ")]
+        /** Non-fatal seat warnings (the §7.1b role loss, a handle-less seat). */
+        const seatWarnings = Array.isArray(result.seatWarnings) ? result.seatWarnings.map((row) => String(row)) : []
+        return render([...clears, ...handovers, ...invalid, ...seatLines, ...seatWarnings, ...(pairs.length === 0
           ? ["nothing else dispatched" + (skipped.length === 0 ? "" : " (" + skipped.map((row) => String(row.subject) + ": " + String(row.reason)).join("; ") + ")")]
           : [...pairs.map((row) => String(row.subject) + " -> " + String(row.memberName)), ...(skipped.length === 0 ? [] : ["reported: " + skipped.length])])].join("\n"))
       },
@@ -1069,11 +1152,37 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       const current = applied.cell
       /** The raw `reassign` argument, forwarded untouched. */
       const rawReassign = readArgs(args)["reassign"]
+      // RUNTIME SEAT GROWTH, BEFORE THE PASS PAIRS (§4.1). The board is resolved through the ONE resolver
+      // (§7.1), so a legacy record whose `teamId` names the dead planning team grows seats on the REAL
+      // execution board; the grown seats' hand-overs ride the SAME plane call below, so the claim is real.
+      /** The board this pass addresses. */
+      const board = boardOf(caller.workspace, current)
+      /** The growth pass's answer; empty when the board is unreadable or nothing is BUSY. */
+      const growth: SeatGrowthResult = await growExecutionSeats({
+        dsh,
+        workspace: caller.workspace,
+        cell: current,
+        config,
+        captainAgent: exec.agent,
+        record: board.record,
+        refreshRecord: () => recordOf(caller.workspace, board.teamId),
+        rosterRoles: rosterRoles(),
+        personaFor: rosterPersona,
+        excludeTaskIds: reassignedTaskIds(rawReassign),
+        now,
+      })
+      // THE GROWN SEATS ARE PERSISTED ON THE CELL RECORD before the pass, so the guard and every later
+      // reader see the same roster the board carries. The journal rows are already written by growth.
+      if (Object.keys(growth.members).length > 0) writeCell(caller.workspace, { ...current, members: { ...current.members, ...growth.members } })
+      /** The hand-over argument: the caller's own pairs first, then the growth claims they did not name. */
+      const reassignArg = growth.reassign.length === 0
+        ? rawReassign
+        : rawReassign === undefined || !Array.isArray(rawReassign) ? growth.reassign : [...rawReassign, ...growth.reassign]
       /** The plane's answer. */
       const reply = (await plane.dispatch({
         sessionId: caller.sessionId,
         mode: "owner-only",
-        ...(rawReassign === undefined ? {} : { reassign: rawReassign }),
+        ...(reassignArg === undefined ? {} : { reassign: reassignArg }),
       })) as Record<string, unknown>
       // A REFUSAL IS THE PLANE'S OWN SENTENCE (a malformed `reassign`, an unknown mode, no team), which is
       // what the tool's failure envelope reports — the same shape every other cellwork refusal uses. A
@@ -1098,6 +1207,17 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
           .map((row) => row.reason === "cancelled" ? { ...row, reason: "CANCELLED — the row is terminal on the board, so no pass may pair it" } : row)
           .filter((row) => row.reason !== "already completed" && !String(row.reason).startsWith("not ready (status "))
         : []
+      // THE PLANE'S SKIP IS THE FACT; GROWTH'S REFUSAL IS THE REASON (§4.1). A row growth could not seat
+      // keeps the pass's BUSY skip but carries the cap / non-roster / append sentence instead, so the
+      // operator reads WHY the pass left it pending and which knob or declaration repairs it.
+      /** Growth's refusal sentence per board id. */
+      const growthReason = new Map(growth.refused.map((row) => [row.taskId, row.reason]))
+      /** The skips with the growth sentence applied where growth decided the row's fate. */
+      const skippedWithSeats = skipped.map((row) => {
+        /** The growth sentence for this row, when it has one. */
+        const reason = growthReason.get(String(row.taskId))
+        return reason === undefined ? row : { ...row, reason }
+      })
       // CANCELLED ROWS ARE NAMED HERE TOO. The plane now CLOSES a cancelled row (and reports `cancelled`);
       // this cell also keeps its own `cancelledTasks` map for rows a PREVIOUS build abandoned before the
       // plane knew them, and those must be reported rather than silently absent from the skip list.
@@ -1108,14 +1228,33 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         // PLANE closed is already in `skipped` (as CANCELLED) and must not be listed twice. The old
         // `pairs` guard was DEAD and is gone — the plane never pairs a cancelled row — and a row the plane
         // does not carry at all is added here, because the cell's own map is the only place it is remembered.
-        if (skipped.some((row) => String(row.taskId) === taskId)) continue
-        skipped.push({ taskId, subject: "", reason: "CANCELLED — this cell's record abandoned the row, so no pass may pair it" })
+        if (skippedWithSeats.some((row) => String(row.taskId) === taskId)) continue
+        skippedWithSeats.push({ taskId, subject: "", reason: "CANCELLED — this cell's record abandoned the row, so no pass may pair it" })
       }
       if (reassigned.length > 0) {
         appendJournal(caller.workspace, cell.cellId, { event: "dispatch-reassign", claimed: reassigned.filter((row) => row.claimed === true).length, delivered: reassigned.filter((row) => row.delivered === true).length, rejected: reassigned.filter((row) => row.claimed !== true).length }, now)
       }
-      appendJournal(caller.workspace, cell.cellId, { event: "dispatch-pass", pairs: pairs.length, skipped: skipped.length }, now)
-      return { ok: true, pairs, skipped, ...(unfenced.length === 0 ? {} : { unfenced }), ...(reassigned.length === 0 ? {} : { reassigned }) }
+      appendJournal(caller.workspace, cell.cellId, { event: "dispatch-pass", pairs: pairs.length, skipped: skippedWithSeats.length, grown: growth.grown.length, ...(board.teamId === "" ? {} : { teamId: board.teamId }) }, now)
+      /** The seat projection the answer carries (§4.2), counted after this pass's growth. */
+      const seatProjection = seatProjectionOf({ members: { ...current.members, ...growth.members } }, config)
+      return {
+        ok: true,
+        pairs,
+        skipped: skippedWithSeats,
+        ...(unfenced.length === 0 ? {} : { unfenced }),
+        ...(reassigned.length === 0 ? {} : { reassigned }),
+        // THE SEAT REPORT (§4.2): the caps, what grew or was reused, and any §7.1b role warning.
+        seats: {
+          execution: seatProjection.execution,
+          planning: seatProjection.planning,
+          cap: growth.caps.total,
+          capPerRole: growth.caps.perRole,
+          grown: growth.grown.length,
+          reused: growth.reused.length,
+        },
+        ...(growth.grown.length === 0 ? {} : { grownSeats: growth.grown }),
+        ...(growth.warnings.length === 0 ? {} : { seatWarnings: growth.warnings }),
+      }
     },
   }))
 
@@ -1135,6 +1274,24 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
           error: { type: "string" },
           cellId: { type: "string" },
           phase: { type: "string" },
+          teamId: { type: "string", description: "The RESOLVED execution board this sweep read (§7.1), not necessarily the id the cell record carries." },
+          recordedTeamId: { type: "string", description: "The team id the CELL RECORD names; differs from `teamId` exactly when the record is stale." },
+          planningTeamId: { type: "string", description: "The staging team the record preserved, or \"\" when it carries none." },
+          boardResolution: { type: "string", description: "Which evidence named the board: `plane` | `activated-tasks` | `state.teamId` | `planningTeamId` | `none`." },
+          disagreement: { type: "boolean", description: "True when the cell record's teamId and the winning resolution name DIFFERENT teams; the note names both." },
+          boardResolutionNote: { type: "string", description: "The disagreement sentence naming BOTH ids and the resolution that won; absent when they agree (§7.1)." },
+          seats: {
+            type: "object",
+            description: "The seat projection (§4.2): execution seats (planning excluded), planning seats, the two caps, the grown count, and the last cap refusal growth journaled.",
+            properties: {
+              execution: { type: "number" },
+              planning: { type: "number" },
+              cap: { type: "number" },
+              capPerRole: { type: "number" },
+              grown: { type: "number" },
+              refusal: { type: "string" },
+            },
+          },
           members: { type: "array", items: { type: "object" } },
           tasks: { type: "array", items: { type: "object" } },
           staleSplit: { type: "boolean" },
@@ -1157,8 +1314,20 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         const tasks = Array.isArray(result.tasks) ? result.tasks as Array<Record<string, unknown>> : []
         /** The fenced members, with the rows a reassignment would move. */
         const fenced = Array.isArray(result.fenced) ? result.fenced as Array<Record<string, unknown>> : []
+        /** The seat projection, when the answer carries one. */
+        const seats = typeof result.seats === "object" && result.seats !== null ? result.seats as Record<string, unknown> : undefined
+        // THE BOARD LINE NAMES THE RESOLVED TEAM AND, WHEN THEY DISAGREE, BOTH IDS (§7.1): an operator
+        // supervising a legacy cell must be able to see that the record's id is stale and which board the
+        // counts below actually came from.
+        /** The board line: resolved team, the record's id when it differs, and the seat projection. */
+        const boardLine = "board: " + (String(result.teamId ?? "") === "" ? "none resolved" : String(result.teamId) + " (" + String(result.boardResolution ?? "?") + ")")
+          + (typeof result.recordedTeamId === "string" && result.recordedTeamId !== "" && result.recordedTeamId !== result.teamId ? " · the cell record names " + result.recordedTeamId : "")
+          + (seats === undefined ? "" : " · seats " + String(seats.execution) + " execution / " + String(seats.planning) + " planning, caps " + String(seats.cap) + "/" + String(seats.capPerRole) + ", grown " + String(seats.grown))
+          + (seats !== undefined && typeof seats.refusal === "string" ? "\n  last growth refusal: " + seats.refusal : "")
+          + (typeof result.boardResolutionNote === "string" ? "\n  " + result.boardResolutionNote : "")
         return render([
           "cell " + String(result.cellId ?? "") + " · phase " + String(result.phase ?? "") + " · split " + String(result.splitRevision ?? "none") + (result.staleSplit === true ? " (STALE)" : "") + " · requirements rev " + String(result.requirementsRevision ?? 0),
+          boardLine,
           "members: " + members.map((row) => String(row.name) + "[" + String(row.mode) + (row.handoffReady === true ? ",handoff-ready" : "") + (row.suspect === true ? ",SUSPECT" : "") + (typeof row.ratio === "number" ? "," + Math.round((row.ratio as number) * 100) + "%" : "") + (row.suspect === true ? ": the recorded session is not a live agent, so the reseed did not produce a working child" : "") + "]").join(" "),
           "tasks: " + (tasks.length === 0 ? "none" : tasks.map((row) => String(row.id) + " " + String(row.status) + (row.owner === undefined ? "" : "(" + String(row.owner) + ")")).join(" ")),
           "fenced: " + (fenced.length === 0
@@ -1214,7 +1383,15 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       /** The instant this sweep measures every window age against (one clock for the whole answer). */
       const now = new Date()
       /** The live record. */
-      const record = recordOf(caller.workspace, cell.teamId)
+      // THE BOARD IS RESOLVED, NOT TRUSTED FROM THE RECORD (§7.1/§7.1a): a legacy cell whose `teamId`
+      // names the ended planning team must be swept on its REAL execution board, and a disagreement is
+      // reported below with BOTH ids instead of silently preferring one.
+      /** The resolved board and its evidence. */
+      const board = boardOf(caller.workspace, cell)
+      /** The cell as the plane readers must see it: the resolved team id, so their reads land on the board. */
+      const boardCell: CellState = board.teamId === "" || board.teamId === cell.teamId ? cell : { ...cell, teamId: board.teamId }
+      /** The live record. */
+      const record = board.record
       /** The board rows this build can read. */
       const tasks = record !== undefined && Array.isArray(record.tasks) ? (record.tasks as Array<Record<string, unknown>>) : []
       /** Every member's live reading. */
@@ -1222,10 +1399,10 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         // THE PLANE FIRST, the adapter only as the documented degradation (see `planePressureOf`): the
         // sweep reports the provenance the seat's own row would report, so two surfaces cannot disagree.
         /** The plane's reading for this seat, when it answered. */
-        const plane = planePressureOf(teams(), caller.workspace, cell.teamId, member.name)
+        const plane = planePressureOf(teams(), caller.workspace, boardCell.teamId, member.name)
         /** The live pressure reading, which is total on the adapter. */
         /** The seat as the PLANE reads it, when the record names this member. */
-        const seat = recordSeat(cell, caller.workspace, member.name)
+        const seat = recordSeat(boardCell, caller.workspace, member.name)
         // THE RECORD IS THE AUTHORITY FOR `mode` AND `fenced` (wave W2-E): the cell row is the mirror, so a
         // plane-side fence is reported even before the mirror catches up. The planner's own reading wins
         // when it answered, and the adapter's meter is the fallback (a total read, never a guess).
@@ -1238,7 +1415,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         // THE FORCED LEVER'S ONE PREDICATE (R5.2): the SAME reading `cellwork_dispatch {unfence}` decides
         // with, projected READ-ONLY, so the sweep can never advertise a lever the verb refuses.
         /** The one forced-lever reading for this seat. */
-        const reading = forceReadingOf(cell, caller.workspace, member, now)
+        const reading = forceReadingOf(boardCell, caller.workspace, member, now)
         return {
           name: member.name,
           mode: seat.mode ?? member.mode,
@@ -1262,7 +1439,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       /** Every closed seat, with the reason, its open board rows, and whether it is a real give-up fence. */
       const fenced = Object.values(cell.members).flatMap((member) => {
         /** The seat as the PLANE reads it, when the record names this member. */
-        const seat = recordSeat(cell, caller.workspace, member.name)
+        const seat = recordSeat(boardCell, caller.workspace, member.name)
         // WHY THE PLANE WINS: an explicit fence written by `mpdTeamActions.fence` is a fact; the cell row's
         // own `mode` can lag it by a turn. When the record says the seat is closed, that reason is reported.
         // GIVE-UP vs BARRIER-OWNED (repair round 3): only an EXPLICIT `fenced:true` on either record is a
@@ -1283,7 +1460,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         // registry proves dead), which `barrierOwned` alone never covered — so the seat the incident left
         // behind is REPORTED here with the same lever the verb accepts, instead of disappearing.
         /** The one forced-lever reading for this seat, shared with `cellwork_dispatch {unfence}`. */
-        const reading = forceReadingOf(cell, caller.workspace, member, now)
+        const reading = forceReadingOf(boardCell, caller.workspace, member, now)
         // THREE WAYS A SEAT IS CLOSED: the explicit give-up marker (either record), the barrier's window,
         // and the dead-reseed shape. The give-up needs no reading — its marker IS the fact.
         if ((!reading.closed && !giveUp) || reason === undefined) return []
@@ -1309,10 +1486,25 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         }).map((task) => String(task.id ?? ""))
         return [{ name: member.name, mode: seat.mode ?? member.mode, reason, tasks: owned, giveUp, barrierOwned: reading.barrierOwned, forceEligible: reading.forceEligible, liveness: reading.liveness, ...(reading.suspect ? { suspect: true } : {}), ...(reading.deadReseed ? { deadReseed: true } : {}), ...(reading.pendingMs === undefined ? {} : { pendingMs: reading.pendingMs }), ...(planeOnly ? { retry: planeRetryOf(member.name) } : {}) }]
       })
+      /** The seat projection this sweep reports (§4.2). */
+      const seatProjection = seatProjectionOf(cell, config)
+      // A CAP REFUSAL IS REPEATED VERBATIM (§4.2): the sweep reads growth's own journal sentence instead
+      // of re-deriving the cap decision, so the number the operator sees is the number that stopped it.
+      /** The last growth refusal the cell journaled, when there was one. */
+      const growthRefusal = lastSeatGrowthRefusalOf(caller.workspace, cell.cellId)
       return {
         ok: true,
         cellId: cell.cellId,
         phase: cell.phase,
+        // THE RESOLVED BOARD AND ITS EVIDENCE (§7.1): `teamId` is the board the counts came from, and a
+        // disagreement with the record is reported with BOTH ids — never silently preferred.
+        teamId: board.teamId,
+        recordedTeamId: board.recordedTeamId,
+        planningTeamId: board.planningTeamId,
+        boardResolution: board.resolution,
+        // The resolver's OWN disagreement flag (§7.1), so the sweep is branchable without parsing the note.
+        disagreement: board.disagreement,
+        ...(board.note === undefined ? {} : { boardResolutionNote: board.note }),
         members,
         tasks: tasks.map((task) => superviseTaskRow(task)),
         staleSplit: cell.splitStale,
@@ -1320,6 +1512,14 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         requirementsRevision: cell.requirementsRevision,
         handoffReady: Object.values(cell.members).filter((member) => member.handoffReady).map((member) => member.name),
         fenced,
+        seats: {
+          execution: seatProjection.execution,
+          planning: seatProjection.planning,
+          cap: seatProjection.cap,
+          capPerRole: seatProjection.capPerRole,
+          grown: seatProjection.grown,
+          ...(growthRefusal === undefined ? {} : { refusal: growthRefusal }),
+        },
         unreadMail: messages.filter((message) => !message.read).length,
         wakeFailures: wakeFailures(messages).map((message) => ({ id: message.id, to: message.to, subject: message.subject, reason: message.wakeReason ?? "no wake-up was attempted" })),
       }
@@ -1349,6 +1549,9 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
           checkpointRatio: { type: "number" },
           willCheckpoint: { type: "boolean" },
           reason: { type: "string" },
+          teamId: { type: "string", description: "The RESOLVED execution board the plane meter was read through (§7.1a)." },
+          planeRead: { type: "string", description: "`read` when the team plane answered, `unavailable` when the adapter fallback supplied the reading." },
+          planeNote: { type: "string", description: "The sentence naming the board the plane could not answer for; absent when it answered." },
         },
         required: ["ok"],
       },
@@ -1356,7 +1559,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         /** The result as a record. */
         const result = typeof value === "object" && value !== null ? value as Record<string, unknown> : {}
         if (result.ok === false) return render("cellwork_context refused: " + String(result.error ?? "unknown refusal"))
-        return render(String(result.member ?? "?") + " [" + String(result.mode ?? "?") + "] used " + String(result.usedTokens ?? "?") + " / " + String(result.windowTokens ?? "no window") + " (" + String(result.provenance) + ")" + (typeof result.ratio === "number" ? " = " + Math.round((result.ratio as number) * 100) + "%" : "") + " · checkpoint at " + String(Math.round(Number(result.checkpointRatio ?? 0) * 100)) + "% · would fire: " + String(result.willCheckpoint === true) + (String(result.reason ?? "") === "" ? "" : " (" + String(result.reason) + ")"))
+        return render(String(result.member ?? "?") + " [" + String(result.mode ?? "?") + "] used " + String(result.usedTokens ?? "?") + " / " + String(result.windowTokens ?? "no window") + " (" + String(result.provenance) + ")" + (typeof result.ratio === "number" ? " = " + Math.round((result.ratio as number) * 100) + "%" : "") + " · checkpoint at " + String(Math.round(Number(result.checkpointRatio ?? 0) * 100)) + "% · would fire: " + String(result.willCheckpoint === true) + (String(result.reason ?? "") === "" ? "" : " (" + String(result.reason) + ")") + (typeof result.planeNote === "string" ? "\n  " + result.planeNote : ""))
       },
     },
     execute: async (_args: unknown, exec: DshToolExec): Promise<ProtocolResult> => {
@@ -1368,8 +1571,12 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       // read through the row that owns the seat, so its provenance is what the caller is told. Only a
       // composition where that service (or its member) is absent reads the adapter directly — the same
       // degradation every seam in this bundle documents.
+      // THE READ RUNS ON THE RESOLVED BOARD (§7.1a site 5): `cell.teamId` may name the dead planning team,
+      // and reading the meter through it silently degraded every execution seat to the adapter fallback.
+      /** The resolved execution board. */
+      const board = boardOf(caller.workspace, caller.cell)
       /** The plane's reading, when it answered. */
-      const plane = planePressureOf(teams(), caller.workspace, caller.cell.teamId, caller.member)
+      const plane = planePressureOf(teams(), caller.workspace, board.teamId, caller.member)
       /** The live reading for the caller's own session. */
       const pressure = plane ?? dsh.contextPressure(exec.agent)
       /** The checkpoint decision this reading would produce. */
@@ -1378,6 +1585,12 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         ok: true,
         member: caller.member,
         mode: caller.seat?.mode ?? "member",
+        // THE RESOLVED BOARD AND THE PLANE'S HALF ARE NAMED, NEVER SILENT (§7.1a): when the plane could not
+        // answer on a board that DID resolve, the adapter fallback is labelled instead of passing as the
+        // authoritative reading.
+        teamId: board.teamId,
+        planeRead: plane === undefined ? "unavailable" : "read",
+        ...(plane === undefined && board.teamId !== "" ? { planeNote: "the team plane's member meter could not answer for " + JSON.stringify(board.teamId) + ", so this reading came from the adapter" } : {}),
         usedTokens: pressure.usedTokens,
         windowTokens: pressure.windowTokens,
         ratio: pressure.ratio,

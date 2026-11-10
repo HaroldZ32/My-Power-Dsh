@@ -33,6 +33,14 @@ export interface MpConsultStartSpec {
   /** The CALLER's tool execution context — the same object the roles tools are handed. */
   exec: unknown
   /**
+   * Optional PER-START concurrency budget for the shared supervisor (§6.2).
+   *
+   * PRECEDENCE (the ONE written rule): an explicitly declared `MPD_DSH_CONSULT_MAX` wins over this
+   * request at every value — it is the operator's hard cap — and this request applies only when the env
+   * declares none. It is an ARGUMENT to the same `acquire()`: no second registry, no second counter.
+   */
+  maxConcurrent?: number
+  /**
    * Optional ABSOLUTE agent-nesting cap; absent means the row's own `spawnMaxDepthOf` rule applies
    * (caller depth + 1, a leaf). A caller SHOULD omit it: a plane's own nesting cap (e.g.
    * `cellwork.depthMax`, which counts CELLS) is a different scale from agent delegation depth.
@@ -91,6 +99,15 @@ export interface MpConsultsApi {
   collect: (consultId: string) => ConsultOutcome | undefined
   /** Interrupt one consult's child and settle it interrupted (a caller-initiated stop). */
   cancel: (consultId: string) => ConsultView
+  /**
+   * The cap a start requesting `maxConcurrent` would really get (§6.2 precedence: the env wins).
+   *
+   * An operator surface prints THIS number rather than re-deriving the precedence: the arithmetic lives
+   * in the supervisor's one `acquire()` rule.
+   * @param requested - the plane's own budget, or undefined for the row default.
+   * @returns the positive cap a start would queue behind.
+   */
+  effectiveBudgetOf: (requested?: number) => number
 }
 
 /** What {@link createMpConsults} needs from the row. */
@@ -166,6 +183,9 @@ export function createMpConsults(deps: MpConsultsDeps): MpConsultsApi {
         task,
         ...(spec.context === undefined ? {} : { context: String(spec.context) }),
         exec: spec.exec,
+        // THE BUDGET IS AN ARGUMENT, never a knob on the supervisor: the cellwork plane raises its own
+        // request through this field and the supervisor's ONE `acquire()` decides (env wins, §6.2).
+        ...(spec.maxConcurrent === undefined ? {} : { maxConcurrent: spec.maxConcurrent }),
         raise: () => deps.raise({ ...spec, role, task }),
         // FORWARDED VERBATIM: the supervisor owns the ONE settlement path, so it is the only place the
         // observer can be fired exactly once. Absent stays absent (no empty call, no wrapper).
@@ -199,5 +219,6 @@ export function createMpConsults(deps: MpConsultsDeps): MpConsultsApi {
       }
     },
     cancel: (consultId: string): ConsultView => deps.supervisor.cancel(consultId),
+    effectiveBudgetOf: (requested?: number): number => deps.supervisor.effectiveBudgetOf(requested),
   }
 }

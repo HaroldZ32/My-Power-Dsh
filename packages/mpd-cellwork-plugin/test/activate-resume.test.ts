@@ -301,7 +301,11 @@ function makeHarness(): Harness {
       get: (key: string): { name: string; persona: string } | null => ROSTER.find((entry) => entry.name.toLowerCase() === key.toLowerCase()) ?? null,
     },
     mpdConfig: {
-      get: (): unknown => undefined,
+      // THE TWO-SEAT PLANNING BASELINE (`analysts=0`, contract §5.4.2): these arms assert board
+      // arithmetic (staged row counts, minted ids) taken from the planning team, so the fan-out's extra
+      // analysis rows are switched OFF here. The DEFAULT fan-out shape is asserted in
+      // `planning-fanout.test.ts`, not by weakening anything in this file.
+      get: (key: string): unknown => key === "cellwork.planning.analysts" ? 0 : undefined,
       agentRouteResolutionOf: (role: string): unknown => ROUTED.includes(role) ? { ok: true, route: { provider: "deepseek-official", model: "deepseek-flash" } } : { ok: false, reason: "unconfigured", missing: ["agentRoutes." + role + ".provider"] },
     },
     llm: {

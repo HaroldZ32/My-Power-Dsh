@@ -31,7 +31,8 @@ import { installCellworkProtocol } from "./protocol"
 import type { ProtocolCtx } from "./protocol-core"
 import { stagePlanningTeam } from "./staging"
 import { roleKey } from "./split"
-import { cellDir, freeCellId, journalPath, newCellState, readActiveCell, readCell, recordTransition, requirementsPath, statePath, writeCell, type CellReadFailure, type CellState } from "./state"
+import { cellDir, freeCellId, journalPath, newCellState, readActiveCell, readCell, recordTransition, requirementsPath, resolveCellTeam, statePath, writeCell, type CellReadFailure, type CellState } from "./state"
+import { isPlanningSeatName, seatProjectionOf } from "./elastic"
 
 /** The cordis plugin name; the bundle patch addresses this row by its id `mpd-cellwork`. */
 export const name = "mpd-cellwork"
@@ -80,6 +81,16 @@ interface CellworkStatusResult {
   parentCellId: string | null
   /** The live team id, or "" while no team was approved. */
   teamId: string
+  /** The team id the CELL RECORD names, which differs from {@link teamId} when the record is stale (§7.1). */
+  recordedTeamId: string
+  /** The staging team id the record preserved, or "" when it carries none. */
+  planningTeamId: string
+  /** Which evidence named the reported board: `plane` | `activated-tasks` | `state.teamId` | `planningTeamId` | `none`. */
+  boardResolution: string
+  /** Whether the record's id and the winning resolution name DIFFERENT teams (§7.1). */
+  disagreement: boolean
+  /** The disagreement sentence naming BOTH ids and the winning resolution; absent when they agree (§7.1). */
+  boardResolutionNote?: string
   /** The accepted requirements revision (0 before the first finalize). */
   requirementsRevision: number
   /** The accepted split revision, or null. */
@@ -89,7 +100,9 @@ interface CellworkStatusResult {
   /** ISO instant the planner team was staged, or "". */
   startedAt: string
   /** The cell's members, in board order. */
-  members: Array<{ name: string; role: string; mode: string; sessionId: string }>
+  members: Array<{ name: string; role: string; mode: string; sessionId: string; adopted?: boolean; grown?: boolean; planning?: boolean }>
+  /** The seat projection (§4.2): execution/planning counts, the two caps and the grown count. */
+  seats: { execution: number; planning: number; cap: number; capPerRole: number; grown: number }
   /** How many checkpoints were injected so far. */
   checkpoints: number
   /** The caller's own cell seat, or null when the session belongs to no cell. */
@@ -150,6 +163,10 @@ interface CellworkStopResult {
   reason: string
   /** The in-progress tasks a non-forced stop refused on; empty when the stop was clean. */
   inProgress: string[]
+  /** The RESOLVED execution team the stop leaves behind (§7.1a site 4); "" when none resolved. */
+  teamId: string
+  /** The exact Lead verb that ends the left-behind team, or "" when no team resolved. */
+  endTeamCommand: string
   /** Absolute state record path. */
   statePath: string
 }
@@ -346,17 +363,25 @@ function render(value: unknown): unknown {
       + (result.alreadyStarted === true ? " (already started)" : ""))
   }
   if ("inProgress" in result || "forced" in result) {
-    return textBlock("cellwork stopped " + String(result.cellId) + " — archived" + (result.forced === true ? " (forced)" : "") + ", reason: " + String(result.reason ?? ""))
+    return textBlock("cellwork stopped " + String(result.cellId) + " — archived" + (result.forced === true ? " (forced)" : "") + ", reason: " + String(result.reason ?? "")
+      + (typeof result.teamId === "string" && result.teamId !== ""
+        ? "\n  team LEFT RUNNING: " + result.teamId + " — the cell does not end it; end it with " + String(result.endTeamCommand)
+        : ""))
   }
   if ("members" in result) {
     /** The member lines of the status render. */
     const members = Array.isArray(result.members) ? result.members as Array<Record<string, unknown>> : []
+    /** The seat projection, when the answer carries one. */
+    const seats = typeof result.seats === "object" && result.seats !== null ? result.seats as Record<string, unknown> : undefined
     return textBlock("cellwork " + String(result.cellId) + " — phase " + String(result.phase) + (result.archived === true ? " (archived)" : "")
       + "\n  objective: " + String(result.objective)
       + "\n  captain: " + String(result.captainSessionId) + (result.seat === null ? "" : " · you: " + String((result.seat as Record<string, unknown>).name) + " (" + String((result.seat as Record<string, unknown>).mode) + ")")
       + "\n  requirements rev " + String(result.requirementsRevision) + " · split rev " + String(result.splitRevision ?? "-") + (result.splitStale === true ? " (STALE)" : "")
-      + "\n  team: " + (String(result.teamId) === "" ? "none approved" : String(result.teamId) + " — " + String(result.teamMembers) + " member(s), " + String(result.teamTasks) + " task(s)")
-      + "\n  members (" + members.length + "): " + (members.length === 0 ? "-" : members.map((member) => String(member.name) + "[" + String(member.mode) + "]").join(", "))
+      + "\n  team: " + (String(result.teamId) === "" ? "none approved" : String(result.teamId) + " (" + String(result.boardResolution ?? "?") + ") — " + String(result.teamMembers) + " member(s), " + String(result.teamTasks) + " task(s)")
+      + (typeof result.recordedTeamId === "string" && result.recordedTeamId !== "" && result.recordedTeamId !== result.teamId ? "\n  the cell record names team " + result.recordedTeamId + " (stale; the board above is what the dispatcher uses)" : "")
+      + (typeof result.boardResolutionNote === "string" ? "\n  " + result.boardResolutionNote : "")
+      + (seats === undefined ? "" : "\n  seats: " + String(seats.execution) + " execution / " + String(seats.planning) + " planning · caps " + String(seats.cap) + "/" + String(seats.capPerRole) + " · grown " + String(seats.grown))
+      + "\n  members (" + members.length + "): " + (members.length === 0 ? "-" : members.map((member) => String(member.name) + "[" + String(member.mode) + (member.planning === true ? ",planning" : "") + (member.grown === true ? ",grown" : "") + (member.adopted === true ? ",adopted" : "") + "]").join(", "))
       + "\n  checkpoints injected: " + String(result.checkpoints)
       + "\n  state: " + String(result.statePath))
   }
@@ -430,7 +455,23 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
           captainSessionId: { type: "string" },
           depth: { type: "number" },
           parentCellId: { oneOf: [{ type: "string" }, { type: "null" }] },
-          teamId: { type: "string" },
+          teamId: { type: "string", description: "The RESOLVED execution board the counts came from (§7.1), not necessarily the id the cell record carries." },
+          recordedTeamId: { type: "string", description: "The team id the CELL RECORD names; differs from `teamId` exactly when the record is stale." },
+          planningTeamId: { type: "string", description: "The staging team the record preserved, or \"\" when it carries none." },
+          boardResolution: { type: "string", description: "Which evidence named the reported board: `plane` | `activated-tasks` | `state.teamId` | `planningTeamId` | `none`." },
+          disagreement: { type: "boolean", description: "True when the cell record's teamId and the winning resolution name DIFFERENT teams; the note names both." },
+          boardResolutionNote: { type: "string", description: "The disagreement sentence naming BOTH ids and the resolution that won; absent when they agree (§7.1)." },
+          seats: {
+            type: "object",
+            description: "The seat projection (§4.2): execution seats (planning excluded), planning seats, the two caps and the grown count.",
+            properties: {
+              execution: { type: "number" },
+              planning: { type: "number" },
+              cap: { type: "number" },
+              capPerRole: { type: "number" },
+              grown: { type: "number" },
+            },
+          },
           requirementsRevision: { type: "number" },
           splitRevision: { oneOf: [{ type: "number" }, { type: "null" }] },
           splitStale: { type: "boolean" },
@@ -481,9 +522,17 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
         state = single.state
       }
       /** The live team record, when a team id is recorded and readable. */
-      const teamRecord = teamRecordOf(ctx, caller.workspace, state.teamId)
+      // THE BOARD IS RESOLVED, NOT TRUSTED FROM THE RECORD (§7.1): a legacy cell whose `teamId` names the
+      // ended planning team reports its REAL execution board, with both ids and the winning resolution on
+      // the answer; the read never rewrites the record and never re-activates anything.
+      /** The resolved board and its evidence. */
+      const board = resolveCellTeam({ workspace: caller.workspace, cell: state, teams: teamsService(ctx), recordFor: (teamId) => teamRecordOf(ctx, caller.workspace, teamId) })
+      /** The live team record the counts come from. */
+      const teamRecord = board.record
       /** The live team's counts. */
       const counts = teamCounts(teamRecord)
+      /** The seat projection this read reports (§4.2). */
+      const seats = seatProjectionOf(state, cfg)
       return {
         ok: true,
         cellId: state.cellId,
@@ -493,16 +542,26 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
         captainSessionId: state.captainSessionId,
         depth: state.depth,
         parentCellId: state.parentCellId,
-        teamId: state.teamId,
+        // `teamId` is the RESOLVED board (the id the counts came from); the record's own id travels beside
+        // it whenever the two disagree, so a stale record is visible rather than silently preferred.
+        teamId: board.teamId,
+        recordedTeamId: board.recordedTeamId,
+        planningTeamId: board.planningTeamId,
+        boardResolution: board.resolution,
+        // The resolver's OWN disagreement flag (§7.1): both ids travel above, this is the boolean a
+        // reader can branch on without re-parsing the sentence.
+        disagreement: board.disagreement,
+        ...(board.note === undefined ? {} : { boardResolutionNote: board.note }),
         requirementsRevision: state.requirementsRevision,
         splitRevision: state.splitRevision,
         splitStale: state.splitStale,
         startedAt: state.startedAt,
-        members: Object.values(state.members).map((member) => ({ name: member.name, role: member.role, mode: member.mode, sessionId: member.sessionId })),
+        members: Object.values(state.members).map((member) => ({ name: member.name, role: member.role, mode: member.mode, sessionId: member.sessionId, ...(member.adopted === true ? { adopted: true } : {}), ...(member.grown === true ? { grown: true } : {}), ...(isPlanningSeatName(member.name) ? { planning: true } : {}) })),
         checkpoints: state.checkpoints.length,
         seat: caller.seat === undefined ? null : { name: caller.seat.name, mode: caller.seat.mode },
         teamMembers: counts.members,
         teamTasks: counts.tasks,
+        seats: { execution: seats.execution, planning: seats.planning, cap: seats.cap, capPerRole: seats.capPerRole, grown: seats.grown },
         splitTaskId: state.splitTaskId ?? "",
         memberDivergence: memberDivergence(teamRecord, state),
         cellDir: cellDir(caller.workspace, state.cellId),
@@ -642,6 +701,8 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
           forced: { type: "boolean" },
           reason: { type: "string" },
           inProgress: { type: "array", items: { type: "string" } },
+          teamId: { type: "string", description: "The RESOLVED execution team this stop leaves behind; the cell does NOT end it by itself (product decision, §7.1a)." },
+          endTeamCommand: { type: "string", description: "The exact retry verb that ends the left-behind team: agent_teams_control {action:\"end\", team_id:<id>}." },
           statePath: { type: "string" },
         },
         required: ["ok"],
@@ -677,7 +738,21 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
         return { ok: false, error: "cellwork_stop is CAPTAIN-ONLY: the captain of " + state.cellId + " is session " + state.captainSessionId + ", which is not this caller" }
       }
       if (state.phase === "stopped") {
-        return { ok: true, cellId: state.cellId, archived: true, forced: false, reason: state.stopReason === "" ? "already stopped" : state.stopReason, inProgress: [], statePath: statePath(workspace, state.cellId) }
+        // ALREADY ARCHIVED: the team pointer is still reported, because a second stop must not hide the
+        // team the first one left running (§7.1a site 4).
+        /** The board the stopped cell was working on, when it still resolves. */
+        const stoppedBoard = resolveCellTeam({ workspace, cell: state, teams: teamsService(ctx), recordFor: (teamId) => teamRecordOf(ctx, workspace, teamId) })
+        return {
+          ok: true,
+          cellId: state.cellId,
+          archived: true,
+          forced: false,
+          reason: state.stopReason === "" ? "already stopped" : state.stopReason,
+          inProgress: [],
+          teamId: stoppedBoard.teamId,
+          endTeamCommand: stoppedBoard.teamId === "" ? "" : "agent_teams_control {action:\"end\", team_id:\"" + stoppedBoard.teamId + "\"}",
+          statePath: statePath(workspace, state.cellId),
+        }
       }
       // A CELL WITH A LIVE SUB-CELL MAY NOT BE STOPPED SILENTLY (R1). The sub-cell's captain is the
       // only session the guard lets act on it, so stopping the parent first would leave a cell nobody
@@ -689,7 +764,12 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
         return { ok: false, error: "cellwork_stop refused: " + String(liveChildren.length) + " sub-cell(s) of " + state.cellId + " are still active (" + liveChildren.join(", ") + "). Stop each one first, by id and as ITS captain (`cellwork_stop {cellId: \"...\"}`), or pass force:true with a reason — a forced stop is journaled" }
       }
       /** The live tasks a non-forced stop must refuse on. */
-      const inProgress = liveTasks(teamRecordOf(ctx, workspace, state.teamId))
+      // THE GUARD RUNS ON THE RESOLVED BOARD (§7.1a site 4): `liveTasks` read through a stale `teamId`
+      // saw an empty planning team and let a non-forced stop through while execution rows were running.
+      /** The board this cell is actually working on. */
+      const board = resolveCellTeam({ workspace, cell: state, teams: teamsService(ctx), recordFor: (teamId) => teamRecordOf(ctx, workspace, teamId) })
+      /** The live tasks a non-forced stop must refuse on. */
+      const inProgress = liveTasks(board.record)
       /** Whether the caller demanded the exception. */
       const forced = input.force === true
       if (inProgress.length > 0 && !forced) {
@@ -703,11 +783,17 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
       // book still names are interrupted first (R7.5, one journal row each), and the book's cell key is
       // dropped so a late settlement cannot re-create a row. Best-effort by design — a plane that cannot
       // answer must not block the stop, whose job is to hand every tool back.
-      await stopConsultCleanup?.({ cellId: state.cellId, teamId: state.teamId, workspace })
+      // THE CONSULT ROWS LIVE ON THE RESOLVED BOARD TOO: a legacy record would otherwise ask the dead
+      // planning team's record to clear rows it never held, leaving the real board's consults behind.
+      await stopConsultCleanup?.({ cellId: state.cellId, teamId: board.teamId === "" ? state.teamId : board.teamId, workspace })
       /** The archived record: stopped, archived, and no longer the workspace's active cell. */
       const stopped: CellState = { ...state, phase: "stopped", archived: true, stopReason: reason }
-      recordTransition(workspace, stopped, { event: "stop", reason, forced, inProgress }, now)
-      return { ok: true, cellId: state.cellId, archived: true, forced, reason, inProgress, statePath: statePath(workspace, state.cellId) }
+      recordTransition(workspace, stopped, { event: "stop", reason, forced, inProgress, ...(board.teamId === "" ? {} : { teamId: board.teamId }) }, now)
+      // THE TEAM IS LEFT RUNNING ON PURPOSE (product decision, §7.1a): the answer NAMES the execution team
+      // it leaves behind and the exact verb that ends it, so a stopped cell can never silently keep workers.
+      /** The exact Lead verb that ends the left-behind team, or "" when no team resolved. */
+      const endTeamCommand = board.teamId === "" ? "" : "agent_teams_control {action:\"end\", team_id:\"" + board.teamId + "\"}"
+      return { ok: true, cellId: state.cellId, archived: true, forced, reason, inProgress, teamId: board.teamId, endTeamCommand, statePath: statePath(workspace, state.cellId) }
     },
   }))
 

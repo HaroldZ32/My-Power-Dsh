@@ -71,18 +71,19 @@ team，`cellwork_subteam` 在 `depth + 1 > depthMax` 时拒绝。**智能体委�
 
 flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正文延伸到同级或更高级的下一个标题，因此
 `###` 留在父章节内）、`cellwork_recon`（规划器的**只读**咨询——`{role, task}` 问一个问题，
-`{role, questions:[…]}` 并发问 1..8 个并全部落定后返回）、`cellwork_split`（切分器的按度量图——每个
+`{role, questions:[…]}` 并发问 1..`cellwork.recon.maxQuestions`（默认 16）个并全部落定后返回）、`cellwork_split`（切分器的按度量图——每个
 任务可声明自己的看板 `member`，拒绝会把 findings 持久化到 `split/<rev>.refused.json`）、
 `cellwork_activate`（队长的物化；对每个不同的 `member` 只拉起一个成员，每份合约同时点名 owner role 与成员，
 其返回的 `reused` 列出从 cell 记录或活跃名册解析、而不是新拉起的成员名；成员行的**另外两种**出现方式
 是暂存与采纳，见下文）。
 
 **后台委派**这一对，给 cell 座位使用（规划器、副队长、普通成员——绝不是队长）：`cellwork_delegate`
-一趟启动 1..16 个咨询并**立即**返回它们的 `consultId`，角色由名册行**自己的**解析器规范化
+一趟启动 1..`cellwork.delegate.maxTasks`（默认 32）个咨询并**立即**返回它们的 `consultId`，角色由名册行**自己的**解析器规范化
 （`DeepWorker`、`deep worker`、`deep-worker` 与 `Deep Worker` 是**同一个** agent）、可以是**任意**名册角色
 （写作角色也算）；`cellwork_consult` 列出、等待、收取（会**释放**记录）与取消**本 cell** 发起的咨询。两者都走
-`mpd-roles` 行在它**唯一**的咨询监督器之上提供的 `mpdConsults` 服务——一个注册表、一个
-`MPD_DSH_CONSULT_MAX` 上限（超上限的工作**排队**）、一个静默死信器——服务缺席时按名字拒绝，绝不用无监督的
+`mpd-roles` 行在它**唯一**的咨询监督器之上提供的 `mpdConsults` 服务——一个注册表、一个并发上限
+（每次启动的预算是 `cellwork.consultMax`，默认 32；显式声明的 `MPD_DSH_CONSULT_MAX` **优先**，两者都没有时
+行默认值是 8；超上限的工作**排队**，且队列**没有长度上限**——上限只管**活跃**子会话）、一个静默死信器——服务缺席时按名字拒绝，绝不用无监督的
 启动替代。三个咨询动词**都**走该服务（旧有的 `cellwork_recon {role, task}` 形态也算），因此只挂 cellwork、
 **不挂** `mpd-roles` 行的组合连那个形态也会失去；随包发布的 bundle 同时挂载两行，所以只有手工搭建的组合会受
 影响。校验是**全有或全无**，而这条规则只管**校验**：如果某个启动在**已经启动了部分子会话之后**失败，答复是
@@ -171,6 +172,12 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
 `compactionHeadroomTokens` 65536 · `compactionRetries` 3 · `idleBarrierDelayMs` 200 ·
 `checkpointPendingMaxMs` 900000 · `asciiCharsPerToken` 3 · `cjkCharsPerToken` 1 · `contractGates` [] ·
 `windowOverride` null。
+
+六个**座位与并发**键是 `cellwork.seats.maxPerRole`（8，`1..32`）、`cellwork.seats.max`（32，`1..64`）、
+`cellwork.consultMax`（32，`1..256`）、`cellwork.planning.analysts`（2，`0..8`）、
+`cellwork.delegate.maxTasks`（32，`1..64`）与 `cellwork.recon.maxQuestions`（16，`1..64`）。`seats.*`
+是**嵌套**键（`cellwork.seats.maxPerRole` / `cellwork.seats.max`）；越界或畸形的值会回退到默认值，并在该行
+日志里用**一条**行点名真正的点号路径。
 
 邮件上限是这张表**唯一**的例外：`mail.maxUndelivered`（默认 8，`0` 表示关闭；缺失或不可用的值回退到 8）是
 `mail.*` 键，因为**两个**邮件工具都读它，并且经同一个共享存储执行（见下文「邮件与重种边界」）。
@@ -373,8 +380,9 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
   咨询。三个咨询动词经 `mpdConsults` 服务启动，子会话的智能体深度交给名册自己的 `spawnMaxDepthOf(exec.agent)`
   规则（调用者深度 + 1，一个叶子），该路径刻意不施加名册工具侧的深度下限。这条豁免今天只有**一个**消费者：
   cellwork，其平面由 `cellwork.depthMax` 约束；第二个消费者必须先论证这次绕过。
-- **通用 team 动词就是 cell 模式消除的危险。** `agent_teams_dispatch` 会把就绪任务配给声明的 owner，但当
-  owner 忙时会**退回按名册顺序**配对；本波次中它把一条 REVIEW 任务交给了写过被审泳道的成员。队长立即释放
+- **通用 team 动词默认是仅声明 owner 的；只有它显式的名册模式才会替换。** `agent_teams_dispatch` 会把
+  就绪任务配给**声明的** owner，按位置的回退需要显式 `mode:"roster"`——正是**那个**模式把一条 REVIEW 任务
+  交给了写过被审泳道的成员。队长立即释放
   配对、把该行恢复给独立评审者，而写作者披露它只跑了 `git diff --stat`、一次标记 grep 和一次目录列表就被
   叫停——没有产生任何裁决，因此没有被污染的判断被采用。`cellwork_dispatch` 仅声明 owner、绝不替换；在 cell
   模式之外，等声明的 owner，或先释放再刻意改派。

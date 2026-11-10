@@ -28,7 +28,11 @@ bundle 里除了 `/cellwork` 命令之外没有任何入口能启动这个模式
 
 ## 四个阶段
 
-1. **requirements（需求）**：`cellwork_start` 打开当前活跃 cell 的需求阶段（它绝不创建 cell）。规划器
+1. **requirements（需求）**：`cellwork_start` 打开当前活跃 cell 的需求阶段（它绝不创建 cell）。它暂存
+   规划器、切分器**以及分析泳道**：`cellwork.planning.analysts`（默认 2，`0..8`）拉起
+   `cell-analyst-1 … K`，交替使用只读名册角色 Explorer 与 Researcher，每席一个 `analysis-<i>` 看板任务，
+   责成它侦察并把发现邮件给两个规划座位。切分任务被需求任务**和每一个分析任务**阻塞，因此图建立在证据
+   而非切分器猜测之上；`0` 保留最初的两座规划阶段。规划器
    运行苏格拉底式流程：它把结构化问题信封邮件发给队长，队长在主页面调用 `ask_user_question` 并把答案邮件
    回传，规划器如此往复直到满意；随后写出 `requirements.md` 并调用
    `cellwork_requirements {action:"finalize"}`。**只有**规划器塑造需求；队长只做转达，从不撰写，也不代用户
@@ -42,7 +46,11 @@ bundle 里除了 `/cellwork` 命令之外没有任何入口能启动这个模式
    `split-refused` journal 行上，因此每一次拒绝在磁盘上都有产物。
    每个任务还可以声明 `member`，即它要拉起的看板成员；省略时成员名**就是** `ownerRole`。多个任务可以共用
    一个成员，多个成员也可以共用一个 owner role，这正是同一个 role 获得真正并行座位的方式，因为激活对每个
-   不同的 `member` **只拉起一个**成员。座位的**身份**是一次归一化，而不是原始字符串：**任何文字**的字母与
+   不同的 `member` **只拉起一个**成员。某个 role 的就绪任务可以同时运行、但它声明的成员名少于这个**就绪
+   前沿宽度**时**不会**被拒绝：判定结果会为该 role 带上一条**非致命**的 `seat-width-short` 警告，说明一个
+   role 一个座位会把它们**串行化**、点名已声明的成员，并给出修法——`declare \`member\` names "<role>-2",
+   "<role>-3", … so each ready task runs on its OWN seat, or add dependency edges if they must not run
+   together`。该警告绝不改变 `accepted`。座位的**身份**是一次归一化，而不是原始字符串：**任何文字**的字母与
    数字都保留、大小写折叠、其它字符的连续段折叠成一个 `-`，因此 `"Seat A"` 与 `"seat-a"` 是**一个**座位，
    `"工程师 A"` 与 `"工程师-a"` 是**一个**座位，而 `"工程师甲"` 与 `"工程师乙"` 是**两个**：成员名可以是
    中文（或任何文字），不必是 ASCII。身份为空的名称（纯标点的 `---`、空串）、超过 64 字符的名称、或含控制
@@ -57,7 +65,11 @@ bundle 里除了 `/cellwork` 命令之外没有任何入口能启动这个模式
 4. **re-split（重切分）**：`cellwork_requirements {action:"update"}` 提升需求修订号并把切分标记为过期。规划器
    重新谈定变化的部分，切分器重新提交一个修订，`cellwork_activate` 只把新增或有变化的工作**追加**到同一个
    team：team id 与 cell id 都不变，新修订中被去掉的工作标记为 `cancelled`（绝不删除），切分任务会被重新
-   派发而不是被复制。用过期切分激活会被**拒绝**，除非调用者显式指定修订号。
+   派发而不是被复制。用过期切分激活会被**拒绝**，除非调用者显式指定修订号。**重切分是作用域变更，绝不
+   重新分座**：座位只为**新**任务拉起，保留下来的键保留它的看板行**和它的 owner**（绝不重写 owner），
+   激活 cell 已经物化过的修订号会被拒绝——所以把相同的键重新提交、指望把工作摊到更多座位，对分配是一次
+   静默空操作。要加宽**运行中**的看板，请增长座位：派发时的自动弹性增长，或运行中的
+   `agent_teams_plan {action:"add_member"}`。
 
 ### 激活中途失败可以续做
 
@@ -95,6 +107,10 @@ bundle 里除了 `/cellwork` 命令之外没有任何入口能启动这个模式
 
 - **同修订号的激活会被拒绝。** 激活 cell 已记录的修订号是一次空操作请求，会被直接拒绝；每次提交的修订号
   都必须**大于**已记录的修订号：修订只能向前。
+- **重切分不能给保留下来的工作加座位。** 座位只为**新**任务拉起；保留下来的键保留它的看板行**和它的 owner**，
+  激活从不改写 owner——所以把同样的键重新分配给更多 `member` 名字，对派发是一次静默空操作。真正能加宽执行
+  宽度的两条路径是派发时的自动弹性增长，以及运行中的 `agent_teams_plan {action:"add_member"}`（见
+  「成员：暂存的、拉起的与采纳的」）。
 - **保留下来的行会被复用，合约不会被重写。** 跨修订存活的任务保留它在看板上的行，以及验证循环打开时冻结的
   合约：验证者仍然按工作开始前冻结的验收标准裁决。
 - **激活会说明它保留了什么。** 一次修订保留了任务时，`cellwork_activate` 返回 `notice` —— 刻意写成结果里的
@@ -156,6 +172,26 @@ cell 的 `state.json` 维护一张 `members` 表：每个座位一行，携带 r
 `"<name>" is not a recorded cell member` 只在「记录点名了座位、但那一行确实缺失」时保留（例如成员键的
 拼写与记录的 `name` 不一致，如手工改过或更旧的记录）。边界：采纳只覆盖 TEAM 记录已经认识的成员；team
 记录里没有的 session，按设计仍然没有通道。
+
+**弹性执行座位（弹性规划波次）。** 每一趟派发（`cellwork_dispatch` 与激活的首次派发）中，一个**就绪**任务
+声明的所有者若是**不空闲**的活跃成员（BUSY，或已被另一个 claim 占着），可以不等待，而是**增长**一个座位：
+
+- 所有者的 **base** 是它的名字去掉结尾的 `-<n>`（`n >= 2`），**role** 是拼写与 base 相等的名册角色
+  （大小写/空格/连字符不敏感）；base 不匹配任何名册角色时，该任务的增长被**拒绝**，理由为
+  `owner base "<base>" is not a roster role`；
+- 已存在同名册角色拥有的、名为 `<base>-<n>`（n 最小）的空闲座位时，**复用**它，不新建；
+- 否则通过 `agent_teams_plan {action:"add_member"}` **带着 `role`** 向活跃名册追加一个 `<base>-<n>` 座位，
+  写进 cell 记录（`grown: true`），记**一条** `seat-grown` journal 行（task、name、role、reason），并在
+  **同一趟**里通过 `agent_teams_dispatch {action:"run", reassign:[…]}` 完成配对——配对是真的，而不是一个
+  永远收不到座位的 claim。
+
+上限：每个 base `cellwork.seats.maxPerRole`（默认 8）个座位，每个 cell `cellwork.seats.max`（默认 32）个
+执行座位。触顶的任务保持 BUSY 跳过，且理由**必须**点名上限及其数值。**绝不**为以下情形增长：规划座位
+（`cell-planner`、`cell-splitter`、`cell-analyst-*`）、纯验证者座位、处于 `checkpoint` 模式或被围栏的
+座位、被阻塞的任务、已被 claim 的任务，以及由队长 claim 的行。增长是幂等的：同一看板跑两趟，只要还有空闲
+座位就不会建第二个，名册上的名字绝不重复，追加与 cell 记录写入之间崩溃由下一趟采纳活跃名册行来修复。
+运行中的 `add_member` **不带 `role`** 是合法的，但答复会**警告**（一句话）：该座位无法按 role 匹配路由，
+将继承调用会话的路由——请传 `role`。
 
 ## 被围栏的成员、改派与解围杠杆
 
@@ -239,8 +275,9 @@ cell 的 `state.json` 维护一张 `members` 表：每个座位一行，携带 r
   `barrierFailures` 与 `checkpointSince`。这个上限只覆盖**跨多次运行仍停留在窗口里**的座位——session 已死的
   座位不会再启动运行，由下面的强制杠杆兜底。
 
-**通用 team 动词带着一个 cell 模式已经消除的危险。** `agent_teams_dispatch` 会把就绪任务配给声明的 owner，但当
-该 owner 忙时会**退回按名册顺序**配对。就在本波次里，它把一条 **REVIEW** 任务交给了**写过被审泳道**的成员；
+**通用 team 动词默认是「仅声明 owner」的；只有它显式的名册模式才带着 cell 模式已经消除的危险。**
+`agent_teams_dispatch` 会把就绪任务配给**声明的** owner，而按位置的回退**只**存在于显式的 `mode:"roster"`
+参数之后。正是那个模式在现场波次里把一条 **REVIEW** 任务交给了**写过被审泳道**的成员；
 队长立即释放了配对、把该行恢复给独立评审者，而那位写作者披露：在被叫停之前它只跑了 `git diff --stat`、一次
 标记 grep 和一次目录列表：没有产生任何裁决，因此没有被污染的判断被采用。`cellwork_dispatch` 是**仅声明
 owner**、绝不替换的；在 cell 模式之外，**等声明的 owner 空出来，或刻意改派**（先
@@ -254,10 +291,10 @@ owner**、绝不替换的；在 cell 模式之外，**等声明的 owner 空出�
 | `cellwork_start` | 队长 | 打开活跃 cell 的需求阶段：校验 cell 与调用者、写入 `startedAt`、记入 journal |
 | `cellwork_status` | 队长、成员 | 阶段、目标、队长、需求/切分修订号、成员及其模式、已注入的检查点、活跃 team 计数、已记录的切分票看板 id、cell 记录与活跃名册的成员差异（`missingFromCell` / `missingFromTeam` / `inSync`）、调用者自己的座位与磁盘路径——它**唯一**的写入是**采纳**本记录从未学到的活跃 team 座位，绝不推进阶段 |
 | `cellwork_requirements` | 规划器 | `finalize` 需求文档，或 `update` 它：update 会提升修订号并把切分标记为过期；章节正文延伸到同级或更高级的下一个标题，因此 `###` 子标题留在父章节内 |
-| `cellwork_recon` | 规划器、副队长 | **只读**咨询（Explorer/Researcher）：走 `mpdConsults`，由名册行把只读拒绝清单施加到子会话上，并把子会话放在调用者下方一层、作为**叶子**（`cellwork.depthMax` 只数嵌套的 cell，绝不给子会话封顶）；`{role, task}` 返回一份报告（旧有形状），`{role, questions}` 并发跑 1..8 个问题、**全部落定后**才返回，每个问题一行；每份报告都记入 journal |
-| `cellwork_delegate` | 规划器、副队长、成员 | 一次调用启动 1..16 个**后台**咨询并**立即**返回它们的 `consultId`（任何子会话落定之前）；角色可以是**任意**名册角色（写作角色也算），由名册行规范化；校验**全有或全无**（未知角色、空字段或超过 16 个任务则一个都不启动）；超过上限的工作在共享的 `MPD_DSH_CONSULT_MAX` 上**排队** |
+| `cellwork_recon` | 规划器、副队长 | **只读**咨询（Explorer/Researcher）：走 `mpdConsults`，由名册行把只读拒绝清单施加到子会话上，并把子会话放在调用者下方一层、作为**叶子**（`cellwork.depthMax` 只数嵌套的 cell，绝不给子会话封顶）；`{role, task}` 返回一份报告（旧有形状），`{role, questions}` 并发跑 1..`cellwork.recon.maxQuestions`（默认 16）个问题、**全部落定后**才返回，每个问题一行；每份报告都记入 journal |
+| `cellwork_delegate` | 规划器、副队长、成员 | 一次调用启动 1..`cellwork.delegate.maxTasks`（默认 32）个**后台**咨询并**立即**返回它们的 `consultId`（任何子会话落定之前）；角色可以是**任意**名册角色（写作角色也算），由名册行规范化；校验**全有或全无**（未知角色、空字段或任务数超过该上限则一个都不启动）；超过上限的工作在**唯一**的共享监督器上**排队**（每次启动的预算是 `cellwork.consultMax`，默认 32；显式声明的 `MPD_DSH_CONSULT_MAX` 优先），且队列本身**无长度上限** |
 | `cellwork_consult` | 规划器、副队长、成员 | 对本 cell 通过 `cellwork_delegate` 发起的咨询做 `list` / `wait` / `collect` / `cancel`：`list` 只列本 cell 的、监督器仍然记得的 id；`wait` 收敛到 1..60000 ms（默认 30000），超时返回 `state:\"running\"`；`collect` 返回报告并**释放**记录；`cancel` 中断子会话并记 `consult-cancelled`；不是本 cell 发起的 id 会被一句教学式拒绝 |
-| `cellwork_split` | 切分器 | `submit` 任务图让插件度量（每个任务可声明自己的看板 `member`），或 `show` 上一次的裁定；每次拒绝都把 findings 持久化到 `split/<修订>.refused.json`；一个**非致命**的 `warnings` 列表按切分键点名每个没有写作用域的 `work`/`repair`/`integration` 任务，且永不改变 `accepted` |
+| `cellwork_split` | 切分器 | `submit` 任务图让插件度量（每个任务可声明自己的看板 `member`），或 `show` 上一次的裁定；每次拒绝都把 findings 持久化到 `split/<修订>.refused.json`；一个**非致命**的 `warnings` 列表按切分键点名每个没有写作用域的 `work`/`repair`/`integration` 任务（`write-scopes-empty`），以及每个就绪前沿宽度超过其已声明 `member` 名的 owner role（`seat-width-short`），且永不改变 `accepted` |
 | `cellwork_activate` | 队长 | 把被接受的切分物化到活跃 team 记录、写合约（同时点名 owner role 与成员）、对每个不同的 `member` 只拉起一个成员、打开验证循环、派发；中途失败的一轮会被检查点记录，同一个修订号可以续做，而更新的被接受修订号会取代更旧的在飞部分激活；返回的 `reused` 列出从 cell 记录或活跃名册解析（而不是新拉起）的成员名，而保留了任务的重切分还会返回 `notice`（合约不被重写、扩展作用域需要手工重新冻结加新的验证循环、就绪行按仅声明所有者派发）；成员行的**另外两种**出现方式是暂存与采纳（见「成员：暂存的、拉起的与采纳的」） |
 | `cellwork_dispatch` | 队长 | 在 team 看板上做一次「仅声明所有者」的派发；owner 忙、缺席或被围栏时如实报告、任务保持待派发；`reassign` 先把点名的行交给另一个成员（看板 claim → `task-reassigned` journal → 投递），而 `unfence` 在派发**之前**清除点名成员**已放弃**的围栏：CELL 行的 `fenced: true` **就是**放弃（两个键被删除、`mode: member`、`handoffReady: false`、`handoffs` 保留、记 `member-unfenced`），并通过团队平面的 `unfence` 接缝重新打开 TEAM 座位（该接缝也清掉 `mode: checkpoint`；没有接缝时报告 `plane: "absent"` 且不声称已重开）；**待处理**的检查点（CELL 行 `mode: checkpoint` 或 `handoffReady: true`，或 TEAM 行 `mode: checkpoint` 且没有 `fenced` 标志）——以及**死重种**座位（R5.2：`subcaptain`、非交接就绪、记录的 session 被证明已死）——答复 `checkpoint-pending` 且什么都不写，除非条目请求**失败即拒绝**的强制杠杆（`{member, force: true}`：活跃 session 直接拒绝，只有达到重试预算、超过 `checkpointPendingMaxMs`，或凭死重种形态那个**被证明已死**的 session 且记录里有时间戳才允许（`bound: "dead-session"`），并记 `member-unfenced-forced`）；平面那一半若以 `refused` 结束，答复、journal 行与渲染里都会带 `retry`（确切的 `agent_teams_control {action: "unfence", member}` verb）；`not-fenced` 如实回答，未知或有歧义的名字拒绝整个调用，两种形式可以放在同一次调用里 |
 | `cellwork_supervise` | 队长 | 只读巡检：待处理的检查点、压缩、晋升、过期切分、未读邮件、每一条**未投递**的邮件行，以及每个**关闭**座位与其仍拥有的未关闭行——每行标记 `giveUp:true`（任一记录上显式 `fenced:true`，用 `reassign` 加 `unfence` 修复）或 `giveUp:false`（被持有的座位：归屏障所有的窗口，或标了 `deadReseed:true` 的死重种形态），后者还带 `barrierOwned`、`forceEligible` 与 `pendingMs`，并在没有监管者能重开它时点名有界的强制杠杆；`forceEligible` 与 `cellwork_dispatch {unfence:…, force:true}` 用的是**同一个判据**，绝不是第二份拷贝；TEAM 那一半是没有屏障再挂起的 `checkpoint` 的关闭座位会带 `retry`（那个仅队长可用的确切 verb）；只有带时间戳、注册表**存在**、其**队长锚点**可解析、且记录里的 session 查不到时，成员才会标 `suspect:true`（注册表存在却解析不了锚点是 `unknown`，什么都不许可）；每个投影都是无损 JSON，没有 `undefined` 自有键 |
@@ -309,23 +346,31 @@ cell 的**座位**——规划器、被晋升的副队长、已记录的普通�
 `mpd_role_spawn_async` + `mpd_role_consult` 那样。cell **队长刻意不能**：它的路线是看板（`cellwork_split` →
 `cellwork_activate` → `cellwork_dispatch`），一个能自己拉起咨询的队长就是在干活，而不是在调度。
 
-- `cellwork_delegate {tasks:[{role, task, context?}, …]}` 一趟启动 1..16 个咨询，**立即**返回
+- `cellwork_delegate {tasks:[{role, task, context?}, …]}` 一趟启动 1..`cellwork.delegate.maxTasks`（默认 32）
+  个咨询，**立即**返回
   `{ok, started, consults:[{consultId, role, startedAt}]}`——子会话继续工作，座位继续自己的事。角色是**任意**
   名册角色（写作角色也算），由名册行**自己的**解析器规范化，因此 `DeepWorker`、`deep worker`、`deep-worker`
   与 `Deep Worker` 是**同一个** agent，答复回显名册自己的拼写。校验是**全有或全无**：未知角色、空的
-  `role`/`task`、或超过 16 个任务会拒绝整个调用，并且**一个都不启动**。这条规则只管**校验**——部分批次仍
+  `role`/`task`、或任务数超过该上限会拒绝整个调用，并且**一个都不启动**。这条规则只管**校验**——部分批次仍
   可能出现：如果某个启动在**已经启动了部分子会话之后**失败，答复是 `ok:false`，并点名**确实已启动**的 id；
   这些子会话继续运行并保持记录（用 `cellwork_consult` 收取）。
 - `cellwork_consult {action, consultId?, timeoutMs?}` 结算它们：`list`（只列本 cell 发起、且监督器仍记得的 id）、
   `wait`（1..60000 ms，默认 30000——超时返回 `state:"running"`，绝不抛错）、`collect`（返回报告并**释放**记录）、
   `cancel`（中断子会话并记 `consult-cancelled`）。不是本 cell 发起的 id 会被拒绝，并且句子里说明所有权规则与
   另外两条通道，绝不只是「找不到」。
-- 两个动词都走 `mpd-roles` 行在它**唯一**的咨询监督器之上提供的 `mpdConsults` **服务**：一个注册表、一个并发上限
-  （`MPD_DSH_CONSULT_MAX`，默认 8——超上限的工作**排队**，绝不拒绝）、一个静默死信器。没有那一行的组合会**按名字**
+- 两个动词都走 `mpd-roles` 行在它**唯一**的咨询监督器之上提供的 `mpdConsults` **服务**：一个注册表、一个并发
+  上限、一个静默死信器。cellwork 交给**那个**监督器的上限是 `cellwork.consultMax`（默认 32，`1..256`），即
+  **每次启动的预算**——显式声明的 `MPD_DSH_CONSULT_MAX` 永远**优先**，两者都没有时行默认值是 8。超上限的工作
+  **排队**、绝不拒绝，且**队列本身没有长度上限**：上限只管**活跃**子会话。来自**宿主**的拒绝
+  （`ACTIVATION_LIMIT_REACHED`）是**排队**信号而不是失败：MPD 槽位被释放，咨询在**槽位之外**等待有界退避
+  （250 ms → 4 s），回到 FIFO 的**队首**，最多重试 8 次；耗尽后以一句点名 **Settings → Subagent limits** 里
+  `maxActiveSubagents`（cellwork 建议 32–64）的话落定；`cellwork_consult {action:"list"}` 每行报告
+  `hostRetries`。没有那一行的组合会**按名字**
   被拒绝；不存在无监督的回退启动。由于**三个**咨询动词（两个新动词**以及**旧有的 `cellwork_recon {role, task}`
   形态）都走这个服务，只挂 cellwork、**不挂** `mpd-roles` 行的组合连旧有的 recon 形态也会失去；随包发布的
   bundle 同时挂载两行，所以只有手工搭建的组合会受影响。
-- `cellwork_recon` 得到同一扇门，外加一个**批量**形态：`{role, questions:[…]}` 问 1..8 个问题，**并发**运行，
+- `cellwork_recon` 得到同一扇门，外加一个**批量**形态：`{role, questions:[…]}` 问
+  1..`cellwork.recon.maxQuestions`（默认 16）个问题，**并发**运行，
   全部落定后才返回（一个问题失败不会取消其它问题——它那一行带上失败文本与 `stopReason:"failed"`）。
   `{role, task}` 保持它原有的字段，而只问一个问题的批量也同时带旧有的 `report`/`stopReason`。
 
@@ -563,7 +608,7 @@ cell 内的智能体可以互相通信，不经过用户界面，也不经过队
 
 | 路径 | 内容 |
 |---|---|
-| `state.json` | cell 记录：阶段、队长 session、深度、父 cell、team id、规划器/切分器 handle、被 stage 的切分票看板 id（`splitTaskId`）、成员及其模式（含可选的 `fenced`/`fencedReason` 与 `adopted: true` 标记）、切分修订号、检查点、journal 游标，以及两个可选的「在飞激活」字段：`activationInFlight`（正在物化的被接受修订号）与 `activatedLoops`（切分键 → 验证循环 id） |
+| `state.json` | cell 记录：阶段、队长 session、深度、父 cell、team id（**执行**看板——两者不同时，暂存 team 保留在 `planningTeamId`）、规划器/切分器 handle、被 stage 的切分票看板 id（`splitTaskId`）、成员及其模式（含可选的 `fenced`/`fencedReason`、`adopted: true` 与 `grown: true` 标记）、切分修订号、检查点、journal 游标，以及两个可选的「在飞激活」字段：`activationInFlight`（正在物化的被接受修订号）与 `activatedLoops`（切分键 → 验证循环 id） |
 | `journal.jsonl` | 只追加的迁移：阶段、派发、检查点、压缩、晋升、拒绝，以及取代行（`split-superseded`、`activation-in-flight-superseded`）；一趟激活每个产物写一条紧凑的 `cell-activation-progress` 行、失败时只写一条完整的 `cell-activation-partial` 行，修复行是 `task-reassigned`、`dispatch-reassign`、`checkpoint-unrecoverable`、`member-adopted` 与 `member-unfenced` |
 | `mail.jsonl`（旧格式） | 统一**之前**的按 cell 邮件日志，仍会被**读取**并合并进视图；新邮件**不再**写在这里：它们住在 workspace 存储 `<workspace>/.mpd/team/mailbox.jsonl`，盖上本 cell 的 `teamId` 与 `cellId`（跨 cell 发送者还会盖上 `fromCell`），由 `cellwork_inbox` 读取，并在那里随后跟一条单独的 `wake` 记录说明唤醒尝试的结果；对**这些**旧格式行的确认会追加回本文件，而统一之后的行则在存储里确认 |
 | `requirements.md` | 经校验的需求文档，带修订号；一次变更会提升修订号并把切分标记为过期 |
@@ -579,6 +624,30 @@ cell id 形如 `cell-<UTC 时刻>`；子 cell 会记录 `parentCellId` 与 `dept
 记录是**带版本**的。损坏、无法解析或版本高于本构建的状态一律是**点名绝对路径的拒绝**：绝不静默重置，
 也绝不覆盖。停止即归档：目录保留、记录标记 `stopped`，之后再次 `/cellwork` 会得到一个全新的 cell id。
 
+## 这个 cell 正在用哪块看板
+
+`state.json` 的 `teamId` 只是一条**快路径**，从不是单独的真相。激活可能把执行看板落到记录从未学到的 team 上
+——规划 team 可以先变成 clean-terminal、执行 team 随后才铸出，而这正是本 bundle 的**常态**路径——因此每个
+读者都经**同一条**规则解析看板（cellwork 状态模块导出的 `resolveCellTeam`）：
+
+1. 记录的 `teamId`，仅当它的记录携带本 cell `activatedTasks` 里的某个看板 id（或该 cell 还没有已激活 id）时
+   才被接受；
+2. 否则为**团队平面**就本 cell 的队长 session 给出的解析结果——正是 `cellwork_dispatch` 走的同一条路径；
+3. 否则为「看板携带本 cell 已激活任务 id」的那个活跃 team；
+4. 否则回退到 `planningTeamId`，即保留的暂存 id（旧 cell 的回退）。
+
+`cellwork_status`、`cellwork_supervise`、`cellwork_context`、`cellwork_stop` 的活任务守卫、座位解析、本 cell
+的需求重切分路径以及激活自己的写入，读的都是**这条解析**，绝不是裸字段。激活还会把执行看板 id **持久化**为
+`teamId`，并把暂存 id 保留为 `planningTeamId`，因此**新** cell 的记录在磁盘上就是对的；**旧** cell（包括现场
+的 VEdit cell）会被正确显示，**无需迁移、无需重写状态**——解析胜出，过期字段只是快路径。
+
+**分歧会被报告，绝不静默。** 记录的 id 与胜出的解析指向不同 team 时，界面会同时打印**两个** id 以及哪条解析
+胜出（若记录的 id 被否决，还会说明其看板不携带本 cell 的任何已激活任务）。`cellwork_stop` 的活任务守卫
+针对**解析出的** team 运行，所以那块看板还有活任务时，非强制 stop 会被**拒绝**；而 stop **不会**自己结束
+team——它的答复携带 `teamId`（它留下继续运行的执行 team）与 `endTeamCommand`（精确的重试动词
+`agent_teams_control {action:"end", team_id:"<id>"}`），渲染会把两者都打印出来。操作者停止 cell 后若想让
+agent 退出，必须调用该动词。
+
 ## 配置
 
 每个数字都是 `cellwork.<key>` 旋钮。**优先级为项目文件 > 行配置 > 随包发布的默认值**：
@@ -590,6 +659,21 @@ cell id 形如 `cell-<UTC 时刻>`；子 cell 会记录 `parentCellId` 与 `dept
 `compactionHeadroomTokens` 65536 · `compactionRetries` 3 · `idleBarrierDelayMs` 200 ·
 `checkpointPendingMaxMs` 900000 ·
 `asciiCharsPerToken` 3 · `cjkCharsPerToken` 1 · `contractGates` [] · `windowOverride` null。
+
+六个**座位与并发**旋钮（弹性规划波次）是：
+
+| 键 | 默认 | 边界 | 含义 |
+|---|---|---|---|
+| `cellwork.seats.maxPerRole` | `8` | `1..32` | 共用一个 base role（`Senior Engineer`、`Senior Engineer-2`、…）的座位数；`1` 关闭增长 |
+| `cellwork.seats.max` | `32` | `1..64` | 一个 cell 的**执行**座位总数（不含规划座位） |
+| `cellwork.consultMax` | `32` | `1..256` | 本平面交给**唯一**共享咨询监督器的每次启动预算；显式声明的 `MPD_DSH_CONSULT_MAX` 仍然优先 |
+| `cellwork.planning.analysts` | `2` | `0..8` | 额外的规划泳道（`cell-analyst-1 … K`）；`0` 保留两座规划阶段 |
+| `cellwork.delegate.maxTasks` | `32` | `1..64` | `cellwork_delegate` 的单次调用上限 |
+| `cellwork.recon.maxQuestions` | `16` | `1..64` | `cellwork_recon` 批量形态的单次调用上限 |
+
+`seats.maxPerRole` 与 `seats.max` 是**嵌套**键：在 `mpd.jsonc` 里写成 `cellwork.seats.maxPerRole` /
+`cellwork.seats.max`，而行配置既接受嵌套对象、也接受扁平点号键。越界或畸形的值会回退到默认值，并在该行日志里
+用**一条**行点名真正的点号路径——绝不因此拒绝一个 cell。
 
 邮件上限是这张表**唯一**的例外：`mail.maxUndelivered`（默认 8，`0` 表示关闭；缺失或不可用的值回退到 8）
 放在 `mail.` 前缀下，因为**两个**邮件工具都读它（见「感知 cell 的邮件」）。
@@ -620,6 +704,16 @@ cell id 形如 `cell-<UTC 时刻>`；子 cell 会记录 `parentCellId` 与 `dept
   限制同时驻留的成员会话数，超过上限的 cell 无法一次全部拉起。用 cellwork 时建议在
   **Settings → Subagent limits** 调到 **32–64**（它会写进当前 profile 的 Cordis patch）；随包无法替你
   设置（随包 patch 行绝不能 id-target 宿主行）而 agent 沙箱对 `~/.dsh` 只读，所以这是一次性的用户操作。
+  来自宿主的槽位拒绝**不是**失败：咨询会释放 MPD 槽位、在**槽位之外**等待有界退避（250 ms → 4 s）、回到
+  FIFO 的**队首**，最多重试 8 次，耗尽后以一句点名该设置的话落定——但队列只能继续**询问**，它从不预留槽位。
+- **宿主当前的空闲槽位数量无法观测，且队列没有长度上限。** 监督器可以在**我们的**预算上完全正确，却仍然
+  猜错宿主剩余容量，这正是「用退避重试」而不是「预留」的原因。`cellwork.consultMax` 只管**活跃**子会话；
+  等待队列没有长度上限。
+- **`cellwork.seats.max`（32）高于宿主默认的 8。** 增长到该上限的 cell 会一直重试，直到操作者调高
+  `maxActiveSubagents`（一次性操作：Settings → Subagent limits，32–64）。这是设计，写在这里而不是藏起来。
+- **分析泳道没有自动超时。** 弃用的泳道由队长关闭；一个从不把发现邮件回来的泳道，插件不会重试。
+- **只保留一个切分修订。** 多泳道切分不在范围内：重切分是由需求 `update` 喂出一个**新的**被接受修订，
+  绝不是两张同时活跃的切分图。
 - **不宣称做过真·LLM 端到端 cell 运行。** 单元测试用假上下文证明命令面、各模式下守卫的判定、状态存储、
   估算算术与协议逻辑；Wave-3 的 QA 用例证明命令已注册、其处理函数确实提交了指令，并复现挂载。两者都不是
   模型驱动的运行。
@@ -634,10 +728,10 @@ cell id 形如 `cell-<UTC 时刻>`；子 cell 会记录 `parentCellId` 与 `dept
   绝不解析，通过 `bash`（`cat`、`rg`）绕到源码路径也不被拦截。`..` 跳转**只**在 basename 是
   `AGENT.md`、`AGENTS.md` 或 `CLAUDE.md` 时放行（读兄弟项目的指令文件正是它存在的理由）；其它任何 `..`
   仍被拒绝。
-- **通用 team 动词就是 cell 模式消除的危险。** `agent_teams_dispatch` 会把就绪任务配给声明的 owner，但当
-  owner 忙时会**退回按名册顺序**配对；本波次中它把一条 REVIEW 任务交给了写过被审泳道的成员（配对立即释放，
-  没有记录任何裁决）。cell 派发是仅声明 owner、绝不替换的：在 cell 模式之外，等声明的 owner，或先释放再
-  刻意改派。写者自审不是理论风险。
+- **通用 team 动词默认是仅声明 owner 的；只有它显式的名册模式才会替换。** `agent_teams_dispatch` 会把
+  就绪任务配给**声明的** owner，按位置的回退需要显式 `mode:"roster"`——正是**那个**模式把一条 REVIEW 任务
+  交给了写过被审泳道的成员（配对立即释放，没有记录任何裁决）。cell 派发是仅声明 owner、绝不替换的：在 cell
+  模式之外，等声明的 owner，或先释放再刻意改派。写者自审不是理论风险。
 - **重种是尽力而为。** 原生后端不暴露已落地激活的 dispose，因此旧子代理只做尽力中断，新 handle 记录在
   cell 上。
 - **检查点需要观测到的窗口。** 没有观测就没有检查点：比例绝不会施加在猜测的窗口上。

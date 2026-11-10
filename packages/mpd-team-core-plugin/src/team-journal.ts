@@ -42,8 +42,12 @@ import { teamRoot } from "./team-store"
  * consult was recorded or updated, or a whole team's consult rows were removed when the cell ended.
  * They are EVIDENCE of a graph-only fact — a consult is never a board row — so they carry the consult
  * id and ordinal instead of a `taskId`.
+ *
+ * `member-role-omitted` is the §7.1b non-blocking warning: a member was appended to a LIVE roster with
+ * NO `role`, so route resolution cannot match it by role and the seat inherits the calling session's
+ * route. The `reason` carries the one-sentence warning; the append itself still happens.
  */
-export type TeamJournalEvent = "task-reassigned" | "task-cancelled" | "member-fenced" | "member-unfenced" | "handoff-written" | "team-ended" | "wedged-force" | "wedged-grace" | "consult-upsert" | "consult-clear"
+export type TeamJournalEvent = "task-reassigned" | "task-cancelled" | "member-fenced" | "member-unfenced" | "handoff-written" | "team-ended" | "wedged-force" | "wedged-grace" | "consult-upsert" | "consult-clear" | "member-role-omitted"
 
 /** One team-journal row. */
 export interface TeamJournalEntry {

@@ -84,6 +84,7 @@ import { planForSession, registerTeamRoutes, TEAM_ACTION_ROUTES, TEAM_ROUTES, ty
 // branches, so a tool call, the `mpdTeamActions` service and an HTTP route all drive ONE sequence.
 import { approveTeam, cancelTasks, clearConsults, endTeam, fenceMember, forceWedgedTask, graceWedgedTask, runDispatch, TEAM_ACTIONS_SERVICE, unfenceMember, upsertConsult, writeMemberHandoff, type MpdTeamActionsService, type TeamActionCaller, type TeamActionDeps } from "./team-actions"
 import { installIdleGuard, withIdlePreamble } from "./idle-guard"
+import { appendTeamJournal } from "./team-journal"
 import { GraphModels } from "./graph-model"
 import type { GraphModel } from "../../mpd-graph-core/src/index.ts"
 import { ChangeFeed } from "./change-feed"
@@ -2128,6 +2129,14 @@ export function apply(ctx: any): void {
         /** The member this append minted — the LAST row of the new roster. */
         const added = roster.members[roster.members.length - 1]
         writeTeam(workspace, withDerivedPhase(roster))
+        // §7.1b: an OMITTED `role` is legal but silently costly — a seat with no role cannot be matched by
+        // role during route resolution, so it inherits the CALLING session's route. ONE sentence, never a
+        // refusal: it rides the answer's existing `warning` field and one journal row.
+        /** The one warning this append owes when the caller omitted the member's role. */
+        const roleWarning = input.role === undefined || input.role.trim() === ""
+          ? "member " + JSON.stringify(added.name) + " was added with no `role` — route resolution cannot match it by role, so the seat inherits the calling session's route; pass `role` with the roster label this seat answers to."
+          : undefined
+        if (roleWarning !== undefined) appendTeamJournal(workspace, { event: "member-role-omitted", teamId: roster.teamId, at: now().toISOString(), member: added.name, reason: roleWarning })
         // THE MEMBER IS RAISED HERE, exactly as approval raises one: a roster row nothing ever spawned
         // would be the C7-3 ghost class again. A failed raise is written on the row AND reported in the
         // answer, never left silent.
@@ -2151,7 +2160,7 @@ export function apply(ctx: any): void {
           /** The record re-read immediately before the handle is written, so the raise cannot clobber a concurrent write. */
           const running = updateTeamMember(readTeam(workspace, roster.teamId) ?? roster, added.id, { executorRef: spawned.handle, status: "running" })
           writeTeam(workspace, withDerivedPhase(running))
-          return { team: running, member: { ...added, executorRef: spawned.handle, status: "running" }, spawned: spawned.handle, appended: `member ${added.name} (${added.id}) appended to the live team ${running.teamId}` }
+          return { team: running, member: { ...added, executorRef: spawned.handle, status: "running" }, spawned: spawned.handle, appended: `member ${added.name} (${added.id}) appended to the live team ${running.teamId}`, ...(roleWarning === undefined ? {} : { warning: roleWarning }) }
         } catch (error) {
           // A FAILED RAISE LEAVES NO ZOMBIE (contract `.mpd/plans/agent-slot-hygiene.md`). The row this
           // append wrote is REMOVED, not marked `failed`: a member the harness never raised is counted by
@@ -2161,7 +2170,7 @@ export function apply(ctx: any): void {
           /** The record with the never-raised row dropped, so the roster and the capacity agree. */
           const released = removeTeamMember(readTeam(workspace, roster.teamId) ?? roster, added.id)
           writeTeam(workspace, withDerivedPhase(released))
-          return { team: released, member: { ...added, status: "failed" }, stoppedAt: `member ${added.name}: ${String((error as Error)?.message ?? error)}`, appended: `member ${added.name} (${added.id}) was NOT added to team ${released.teamId}: the raise FAILED, and its roster row was REMOVED so no failed slot is held` }
+          return { team: released, member: { ...added, status: "failed" }, stoppedAt: `member ${added.name}: ${String((error as Error)?.message ?? error)}`, appended: `member ${added.name} (${added.id}) was NOT added to team ${released.teamId}: the raise FAILED, and its roster row was REMOVED so no failed slot is held`, ...(roleWarning === undefined ? {} : { warning: roleWarning }) }
         }
       }
 

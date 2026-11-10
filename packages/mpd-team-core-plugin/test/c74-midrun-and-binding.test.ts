@@ -27,6 +27,7 @@ import { apply, TEAMS_SERVICE, type MpdTeamsService } from "../src/index.ts"
 import { send as sendRawMail } from "../src/mailbox-store.ts"
 import { archivePathFor, archivePlan, newPlanId, stagePlan, writePlan, type StagedPlan } from "../src/plan-store.ts"
 import { activeTeamId, createTeam, newTeamId, readTeam } from "../src/team-store.ts"
+import { readTeamJournal } from "../src/team-journal.ts"
 
 /** One captured tool registration, with `execute` kept so an arm can actually drive it. */
 interface Tool {
@@ -75,6 +76,13 @@ interface Harness {
   /** The `mpdTeams` service the plugin published; read through a getter because `apply` runs later. */
   readonly service: MpdTeamsService | undefined
   /**
+   * Every raise request the stub backend received, in call order.
+   *
+   * §7.1b needs the REQUEST half, not only the record: a member's `role` must reach the executor, which
+   * is the FIRST channel route resolution reads.
+   */
+  readonly spawnRequests: Array<{ name?: string; role?: string }>
+  /**
    * Drive one registered tool by name as a given session.
    * @param name - the registered tool name.
    * @param args - the tool arguments.
@@ -100,21 +108,24 @@ function harness(): Harness {
   const tools = new Map<string, Tool>()
   /** The service the plugin published. */
   let service: MpdTeamsService | undefined
+  /** Every raise request the stub backend received, in call order (§7.1b reads the REQUEST half). */
+  const spawnRequests: Array<{ name?: string; role?: string }> = []
   /** The stub backend: it raises any member and mints a handle derived from the member's name. */
   const executor = {
     kind: "native",
     reason: "the arm's own executor",
     providers: (): string[] => ["spawn"],
     /**
-     * Record nothing and answer a predictable handle.
+     * Record the request and answer a predictable handle.
      * @param _caller - the Lead agent, never inspected.
-     * @param request - the raise request, read for the member's name.
+     * @param request - the raise request, read for the member's name and its role.
      * @returns the handle the record keeps as `executorRef`.
      */
-    spawn: async (_caller: unknown, request: { name?: string }): Promise<{ handle: string; executor: string }> => ({
-      handle: "child-" + String(request?.name ?? "").replace(/\s+/g, "-"),
-      executor: "native",
-    }),
+    spawn: async (_caller: unknown, request: { name?: string; role?: string }): Promise<{ handle: string; executor: string }> => {
+      // THE REQUEST HALF (§7.1b): the member's role must reach the executor, the FIRST channel routing reads.
+      spawnRequests.push({ name: request?.name, ...(request?.role === undefined ? {} : { role: request.role }) })
+      return { handle: "child-" + String(request?.name ?? "").replace(/\s+/g, "-"), executor: "native" }
+    },
     /** Deliver nothing; the mailbox arm only needs the record. */
     send: async (): Promise<void> => {},
     /** Interrupt nobody. */
@@ -150,6 +161,8 @@ function harness(): Harness {
     tools,
     /** The service the plugin published; a getter because `apply` runs after this literal is built. */
     get service(): MpdTeamsService | undefined { return service },
+    /** The raise requests the stub backend received, in call order. */
+    spawnRequests,
     call: async (name: string, args: unknown, sessionId: string, opts?: HeaderOpts) => {
       /** The registered tool, or a thrown error naming what WAS registered. */
       const tool = tools.get(name)
@@ -253,6 +266,52 @@ describe("C7-4 F1 — a mid-run append lands on the APPROVED record", () => {
     const added = readTeam(h.workspace, teamId)?.members.find((member) => member.name === "Explorer")
     expect(added?.status).toBe("running")
     expect(added?.executorRef).toBe("child-Explorer")
+  })
+
+  test("§7.1b: a mid-run add_member WITH role persists it, forwards it to the raise, and stays SILENT", async () => {
+    /** The harness this arm drives. */
+    const h = harness()
+    /** The approved team. */
+    const teamId = await approveTeam(h)
+    /** The tool's answer: a supplied role needs no warning. */
+    const answer = await h.call("agent_teams_plan", { action: "add_member", member: { name: "Reviewer 2", role: "Reviewer", description: "Reviewer 2 (verifier)", prompt: "You review." } }, LEAD) as { warning?: string; spawned?: string }
+    expect(answer.spawned).toBe("child-Reviewer-2")
+    expect(answer.warning).toBeUndefined()
+    // THE RECORD carries the route identity…
+    /** The appended member as the record holds it. */
+    const added = readTeam(h.workspace, teamId)?.members.find((member) => member.name === "Reviewer 2")
+    expect(added?.role).toBe("Reviewer")
+    // …AND the raise request carried it too, which is the channel route resolution reads FIRST.
+    /** The raise request this append made. */
+    const request = h.spawnRequests.find((entry) => entry.name === "Reviewer 2")
+    expect(request?.role).toBe("Reviewer")
+    // SILENT on the journal channel: only an OMITTED role is worth a row.
+    expect(readTeamJournal(h.workspace).some((row) => row.event === "member-role-omitted")).toBe(false)
+  })
+
+  test("§7.1b: a mid-run add_member WITHOUT role still creates the member, WARNS in the answer, and journals the omission", async () => {
+    /** The harness this arm drives. */
+    const h = harness()
+    /** The approved team. */
+    const teamId = await approveTeam(h)
+    /** The tool's answer: created, with the one-sentence warning. */
+    const answer = await h.call("agent_teams_plan", { action: "add_member", member: { name: "Reviewer 3", description: "Reviewer 3 (verifier)", prompt: "You review." } }, LEAD) as { warning?: string; appended?: string }
+    // AN OMITTED ROLE IS LEGAL, never a refusal: the append happens and the member is raised.
+    expect(answer.appended).toContain("live team " + teamId)
+    expect(typeof answer.warning).toBe("string")
+    expect(answer.warning).toContain("no `role`")
+    expect(answer.warning).toContain("Reviewer 3")
+    expect(answer.warning).toContain("inherits the calling session's route")
+    /** The appended member as the record holds it — created, and honestly role-less. */
+    const added = readTeam(h.workspace, teamId)?.members.find((member) => member.name === "Reviewer 3")
+    expect(added?.status).toBe("running")
+    expect(added?.role).toBeUndefined()
+    // THE JOURNAL channel carries the same sentence ONCE, with the member and the reason on the row.
+    /** The rows this append wrote under the omission event. */
+    const rows = readTeamJournal(h.workspace).filter((row) => row.event === "member-role-omitted")
+    expect(rows.length).toBe(1)
+    expect(rows[0]?.member).toBe("Reviewer 3")
+    expect(rows[0]?.reason).toBe(answer.warning)
   })
 
   test("NEGATIVE CONTROL: a plan that IS staged and already approved still refuses", async () => {

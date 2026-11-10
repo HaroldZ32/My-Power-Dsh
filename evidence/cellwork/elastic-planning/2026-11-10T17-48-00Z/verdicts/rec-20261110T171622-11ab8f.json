@@ -1,0 +1,114 @@
+{
+  "version": 1,
+  "recordId": "rec-20261110T171622-11ab8f",
+  "loopId": "loop-20261110T162130-20741c",
+  "taskId": "T2",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "writerId": "c74011b3-f67e-469a-a4a3-6aadda5a9e4e",
+  "verifierId": "94b6eb1d-2afd-427e-b4ff-52f1e1301f87",
+  "basis": {
+    "kind": "blind",
+    "frozenContract": {
+      "path": ".mpd/plans/cellwork-elastic-planning.md",
+      "sha256": "992d9fb3bf7259b81c1b003be57655f98c02c526811ef9a7014e26073204027d"
+    },
+    "docs": [
+      {
+        "path": ".mpd/plans/cellwork-elastic-planning.md",
+        "sha256": "992d9fb3bf7259b81c1b003be57655f98c02c526811ef9a7014e26073204027d"
+      }
+    ],
+    "probe": [
+      {
+        "path": "packages/mpd-cellwork-plugin/src/elastic.ts",
+        "bytes": 35638,
+        "sha256": "5fa6b55a45abf7e6efb86558082d58593fe9be9a27ae54034faee19fe63fa65c",
+        "mtime": "2026-11-10T16:52:11.446Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/protocol.ts",
+        "bytes": 180017,
+        "sha256": "48b7e774626b97c926f67d55bd970c8cc1b2dab120da3a1390ad94d5d989fe92",
+        "mtime": "2026-11-10T16:56:47.706Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/activate.ts",
+        "bytes": 56610,
+        "sha256": "c159ea7bf1849532a461114b7650e22b49b6e200cd162b769ebbd9ee0173f46f",
+        "mtime": "2026-11-10T17:07:09.007Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/state.ts",
+        "bytes": 53358,
+        "sha256": "512328bb906fb617339c94bfc8a09ec3cb7a216c40be705733a57c4704ae7806",
+        "mtime": "2026-11-10T16:46:42.059Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/index.ts",
+        "bytes": 57121,
+        "sha256": "3b0590165919e7633539565fb4e19cebdc911aec39fcbd63a8ae42f6dd991faa",
+        "mtime": "2026-11-10T17:09:33.314Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/test/elastic-seats.test.ts",
+        "bytes": 34901,
+        "sha256": "7864b019cbd1ef0e3630bb9048e8532af121cc21e94aa9bfbb910c8921b1883b",
+        "mtime": "2026-11-10T17:09:07.083Z"
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": ".mpd/plans/cellwork-elastic-planning.md",
+      "sha256": "992d9fb3bf7259b81c1b003be57655f98c02c526811ef9a7014e26073204027d"
+    },
+    {
+      "path": "docs/cellwork.md",
+      "sha256": "7000ee69212a3d717d78c3cb3591babf00a5b7e23b9f6bf1d31d9efd84f7cc36"
+    }
+  ],
+  "gateEvidence": [
+    {
+      "evidenceId": "ev-20261110T171143-ee312d",
+      "cmd": "bun run typecheck",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261110T171143-ee312d.log",
+      "logSha256": "7904edfdd1adef86c59dc610b46a625b1cb3d1d923e5be526a8c1ec37860788c"
+    },
+    {
+      "evidenceId": "ev-20261110T171145-cc948e",
+      "cmd": "bun run verify:comments",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261110T171145-cc948e.log",
+      "logSha256": "c30c4b99faf5a4d08f1eed9c31cd55d97eb0b4d3f9fea7c30604fdbeb7a410dc"
+    },
+    {
+      "evidenceId": "ev-20261110T171214-e1a9bd",
+      "cmd": "bun test packages",
+      "exit": 1,
+      "logPath": ".mpd/verify/evidence/ev-20261110T171214-e1a9bd.log",
+      "logSha256": "5651a6bad8b48387892a5d6ddd5e739f9bbd5d3ce20aeb51b8d41b68bf79fc8e"
+    },
+    {
+      "evidenceId": "ev-20261110T171148-6cad51",
+      "cmd": "node scripts/verify-dist-fresh.ts",
+      "exit": 1,
+      "logPath": ".mpd/verify/evidence/ev-20261110T171148-6cad51.log",
+      "logSha256": "3cfcd4c4bef5a8df70442ec84baabc80a8da45eaba36f359c8c8ccc779ed04b8"
+    }
+  ],
+  "verdict": "PASS",
+  "findings": [],
+  "unlockedReads": [],
+  "createdAt": "2026-11-10T17:16:22.711Z",
+  "notes": [
+    "Verdict recorded BLIND: contract §4 + §7.1/§7.1a/§7.1b + docs/cellwork.md + gate evidence. No scope source was read (elastic.ts/protocol.ts/activate.ts/state.ts/index.ts/elastic-seats.test.ts) before this record; the evidence is the gate log's arm names/outcomes.",
+    "Gates for this loop: typecheck ev-20261110T171143-ee312d exit 0; comments ev-20261110T171145-cc948e exit 0; tests ev-20261110T171214-e1a9bd exit 1 = 3975 pass / 6 skip / 1 fail — the ONLY failure is the expected F1 shipped-dist check (pre-T5); the four T1-attributed reds from the earlier runs are GREEN. dist ev-20261110T171148-6cad51 exit 1 = 2/34 STALE (cellwork + roles dist), expected pre-T5 and NOT scored as a Blocker.",
+    "ARMS (13 W1 arms, all green): four ready rows on one BUSY seat grow seats and the same pass hands four rows over (§4.1 growth + >1 dispatch); maxPerRole=2 creates exactly one extra seat, names the cap, second pass creates nothing (boundary + over); an idle Deep Worker-2 is reused instead of growing -3; a non-roster base never grows and the skip names the base; planning/fenced/checkpoint/claimed never grow; §4.2 status/supervise carry the seat projection and the cap refusal; §4.3 appendJournal cursor monotonic == row count for fresh AND legacy; §7.1 legacy cell whose teamId names the planning team reports the REAL board and both ids; §7.1a site 4 stop refused on the RESOLVED board and names the team; site 5 context reads the plane meter on the RESOLVED board; site 6 a seat only the execution roster names resolves while teamId is stale; §7.1b role-lost reported + persisted-role no-warning.",
+    "ATTACK (a) ANSWERED: the three activation reds (activate-resume.test.ts A2/A3 + A3, activate-resume-e2e.test.ts C12/D1) are green with their files UNTOUCHED (mtimes 00:36:58Z, predating the fix), and they were RED in my own earlier gate runs — so the injected throw really surfaces again (behaviour restored, not an arm passing for another reason). The fourth red (member-adoption B1) was resolved by the captain-disclosed SHAPE MOVE and its arm was updated (member-adoption.test.ts 20955 B, mtime 01:07:53Z); that is a disclosed shape change, not an untouched-test restoration.",
+    "§7.1 WRITE-SIDE JUDGMENT (captain question): the flow.ts hunk persisting teamId/planningTeamId is NOT applied, so state.json still holds the stale id. This is ACCEPTABLE for a T1 PASS because §7.1a assigns flow.ts to T4 ('T4 finishes flow.ts after T1 lands') and §7.5.1 (W4 acceptance) owns the activated-cell write. It is NOT acceptable at wave level: §7.1 bullet 1 remains unmet until T4 applies its hunk, and T9's §7.5.1 arm 1 must prove it. Carried to T4/T9.",
+    "CARRY-1 (Medium): §4.4 arm 4 — 'every growth writes ONE seat-grown journal row and one roster member; a capped growth writes neither' — has NO arm name in the gate log (writer claims it; arm 1 or 2 may assert it internally). Add an explicitly named arm. CARRY-2 (Medium): the row's 'cap at 1 (growth disabled)' and 'blocked task never grows' arms are not visible (arm 5 lists planning/fenced/checkpoint/claimed; blocked is excluded by the ready filter but unproven); add one arm each. CARRY-3 (Medium, attack b): the evidence-gated start resolution has no arm for a re-split with an EMPTY activatedTasks — the risk is that resolution is skipped and the stale/planning board is shown; add an arm or declare the predicate's bound. CARRY-4 (Medium, writer-declared): §7.1a site 3 (activation cancel on the resolved board) is wired but has NO unit arm — its failure mode is the silent 'skipped/ok:true' no-op; add an arm. CARRY-5 (Nit, attack d): the cap sentence's KEY+VALUE pair is not visibly asserted (arm 2 says 'names the cap' only). CARRY-6 (Nit, attack e): journal append edge cases — a field containing a newline, and a foreign append — are not visible; arm 9 covers fresh/legacy/equal only. CARRY-7 (Nit): site 8 live-roster seed and the activate answer's missing rosterRole (captain-declared) have no arm; §7.1c docs guidance is T5's. CARRY-8 (Nit, attack c): no dedicated growth-before-pairing double-claim arm; arm 1 covers four distinct rows in one pass.",
+    "BOUNDS: the gate ran on a shared tree with T5 integration and T12 in flight; attribution of the 13 arms to T1 rests on the loop scope + the elastic-seats.test.ts file. The two wave mount lanes were NOT run (not in the row's list; no row/patch/manifest carrier changed by T1). flow.ts site 7 and the persistence hunk are T4's by contract.",
+    "DECLINED TO JUDGE: §7.1b's persistence side (T4 by contract), §7.1c docs guidance (T5 docs lane), site 7 flow.ts wiring (T4), and the mount lanes (bound above)."
+  ]
+}

@@ -328,8 +328,17 @@ function makeHarness(): Harness {
       get: (key: string): { name: string; persona: string } | null => ROSTER.find((entry) => entry.name.toLowerCase() === key.toLowerCase()) ?? null,
     },
     mpdConfig: {
-      /** @returns no config override, so the shipped knobs apply. */
-      get: (): unknown => undefined,
+      /**
+       * Read one declared knob; only the planning-seat count is overridden.
+       *
+       * THE TWO-SEAT PLANNING BASELINE (`analysts=0`, contract §5.4.2): these arms count board rows, so
+       * the fan-out's extra analysis rows are switched OFF here and the DEFAULT shape is asserted in
+       * `planning-fanout.test.ts` instead.
+       *
+       * @param key - the file-layer key the config resolver asks for.
+       * @returns the pinned analyst count, else no override (the shipped knobs apply).
+       */
+      get: (key: string): unknown => key === "cellwork.planning.analysts" ? 0 : undefined,
       /**
        * Resolve one role's route, which the budget measurement reads.
        * @param role - the role label.

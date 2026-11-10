@@ -34,7 +34,7 @@
 // failure snapshot, and the retry reconciles that artifact from the live roster/state instead of
 // failing on a duplicate.
 import { existsSync, readFileSync } from "node:fs"
-import { atomicWriteText, appendJournal, contractPath, type CellMemberRecord, type CellState } from "./state"
+import { atomicWriteText, appendJournal, contractPath, resolveCellTeam, type BoardTeamService, type CellMemberRecord, type CellState } from "./state"
 import type { CellworkConfig } from "./config"
 import type { SplitTaskVerdict, SplitVerdict } from "./split"
 import { roleKey } from "./split"
@@ -42,6 +42,7 @@ import { contractRelativePath, type DispatchMemberView, type DispatchRecordView,
 import type { TeamActionsServiceView } from "./caller"
 import type { DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 import { findSplitTicket } from "./staging"
+import { growExecutionSeats, type SeatGrowthResult } from "./elastic"
 
 /**
  * The placeholder sentence a frozen contract carries until {@link withLoopId} replaces it.
@@ -92,6 +93,21 @@ export interface ActivateDeps {
   personaFor: (role: string) => string | null
   /** Read the live team record by id, or undefined when the team service cannot answer. */
   recordFor: (teamId: string) => Record<string, unknown> | undefined
+  /**
+   * The team service, for the §7.1 board resolution.
+   *
+   * OPTIONAL for an older wiring: absent means the resolution falls back to `recordFor`'s fast path,
+   * which is today's behaviour — never a refused activation.
+   */
+  teams?: () => BoardTeamService | undefined
+  /**
+   * The canonical roster role names, for runtime seat growth (§4.1).
+   *
+   * OPTIONAL like {@link ActivateDeps.teams}: absent falls back to the role spellings the cell and team
+   * rows already record, confirmed through `personaFor` — a declared execution role still grows, and a
+   * non-roster base is still refused.
+   */
+  rosterRoles?: () => readonly string[]
   /**
    * The TEAM-PLANE write surface, probed per call.
    *
@@ -171,6 +187,18 @@ export interface ActivateOutcome {
    * activation already dispatched owner-only, and the one stage-4 exception where a kept contract IS rebuilt.
    */
   notice?: string
+  /**
+   * The team the EXECUTION board landed on, when it differs from the record's previous `teamId` (§7.1).
+   *
+   * The caller persists it as the cell's `teamId`; absent means the record already names the right team.
+   */
+  teamId?: string
+  /**
+   * The staging team id preserved when {@link ActivateOutcome.teamId} replaced it (§7.1).
+   *
+   * Travels WITH `teamId` only: a record whose ids agree needs no rewrite.
+   */
+  planningTeamId?: string
 }
 
 /**
@@ -417,8 +445,24 @@ function contractAlreadyNamesLoop(deps: Pick<ActivateDeps, "workspace" | "cell">
  * @returns the artifacts created, or the refusal sentence plus the partial it may resume from.
  */
 export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResult> {
+  // THE BOARD IS RESOLVED, NOT TRUSTED FROM THE RECORD (§7.1/§7.1a sites 3 and 8): a normal cell's
+  // planning team goes clean-terminal and activation lands on a FRESH team, so `cell.teamId` names the
+  // dead one. Every team read below — the live-roster seed, the cancellation, the final report — goes
+  // through this ONE resolution instead of `deps.cell.teamId`.
+  // THE START-OF-PASS RESOLUTION IS EVIDENCE-GATED: an INITIAL activation has no minted board ids to
+  // verify `teamId` against, so it reads NOTHING extra (the writes resolve the live team themselves and
+  // the end-of-pass resolution names the board by its own minted ids). A RE-SPLIT does have minted ids,
+  // so its seed/cancel path resolves the execution board and never the dead planning team (§7.1a site 8).
+  /** Whether this pass is a RE-SPLIT, whose recorded team must be verified against the minted ids. */
+  const resplit = Object.values(deps.cell.activatedTasks ?? {}).some((id) => id !== "")
+  /** The board this activation's seed and cancellation read. */
+  const board = resplit
+    ? resolveCellTeam({ workspace: deps.workspace, cell: deps.cell, teams: deps.teams?.(), recordFor: deps.recordFor })
+    : { teamId: deps.cell.teamId }
+  /** The staging team id the record carried BEFORE this pass, preserved on the outcome (§7.1). */
+  const planningTeamId = deps.cell.teamId
   /** The team id every write addresses; a cell with no team was never staged. */
-  const teamId = deps.cell.teamId
+  const teamId = board.teamId
   if (teamId === "") return { ok: false, error: "cellwork_activate: no team is recorded on " + deps.cell.cellId + " — run `cellwork_start` first (the planning team is the record activation appends to)" }
   /** The partial artifacts this pass produced, in the shape the caller persists. */
   const partial: ActivatePartial = { members: {}, boardIds: {}, loopIds: {}, contracts: {} }
@@ -747,8 +791,18 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     }
     if (cancelledIds.length > 0 && plane?.cancelTasks !== undefined) {
       /** The plane's answer for the cancellation. */
-      const closed = (await plane.cancelTasks({ workspace: deps.workspace, teamId: deps.cell.teamId, taskIds: cancelledIds, note: "the accepted split no longer carries this task" })) as Record<string, unknown>
+      // THE CANCEL TARGETS THE RESOLVED BOARD (§7.1a site 3), never the stale recorded id: cancelling on
+      // the dead planning team answered `ok:true` with every row `skipped`, a silent no-op reporting success.
+      /** The plane's answer for the cancellation. */
+      const closed = (await plane.cancelTasks({ workspace: deps.workspace, teamId, taskIds: cancelledIds, note: "the accepted split no longer carries this task" })) as Record<string, unknown>
       if (closed?.ok === false) return fail("cellwork_activate could not close the dropped row(s): " + String(closed.error ?? "the team plane refused the cancellation"))
+      // A ROW THE PLANE SKIPPED IS NOT CANCELLED. The old path reported success for an answer whose every
+      // entry was skipped; the rows would stay dispatchable, which is the defect this step exists to remove.
+      /** The rows the plane did not cancel, with its reason. */
+      const uncancelled = Array.isArray(closed.skipped) ? (closed.skipped as Array<Record<string, unknown>>).filter((row) => typeof row.taskId === "string") : []
+      if (uncancelled.length > 0) {
+        return fail("cellwork_activate could not close " + String(uncancelled.length) + " dropped row(s) on team " + teamId + ": " + uncancelled.map((row) => String(row.taskId) + " (" + String(row.reason ?? "the plane skipped it") + ")").join("; ") + " — the activation is left un-dispatched and can be resumed")
+      }
     }
   }
   // 5. DISPATCH, owner-only, after the loops exist. A throw from this stage is a PARTIAL, not a wedge.
@@ -756,8 +810,31 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
   let dispatch: DispatchReport
   /** The live record, re-read after the appends; the splitter's row is closed through it below. */
   let record: DispatchRecordView | undefined
+  /** Every seat this pass's initial growth raised or adopted (§4.1), journaled with the activation. */
+  let growth: SeatGrowthResult = { members: {}, reassign: [], grown: [], reused: [], refused: [], warnings: [], caps: { perRole: 0, total: 0 } }
   try {
+    // THE STRICT DISPATCH READ STAYS FIRST: a team read that throws here must FAIL the pass (the original
+    // behaviour). Only after it succeeds may the growth path consult the resolver, whose reads are total.
     record = deps.recordFor(teamId)
+    // THE INITIAL PASS GROWS SEATS TOO (§4.1): a RE-SPLIT can start with every existing seat BUSY, so the
+    // freshly appended rows would otherwise wait for the next captain pass. The board is resolved with the
+    // ids THIS pass minted, so a fresh execution team is found by its own evidence (§7.1).
+    /** The board after this pass's appends. */
+    const afterBoard = resolveCellTeam({ workspace: deps.workspace, cell: { ...deps.cell, activatedTasks: Object.fromEntries(boardIds) }, teams: deps.teams?.(), recordFor: deps.recordFor })
+    growth = await growExecutionSeats({
+      dsh: deps.dsh,
+      workspace: deps.workspace,
+      cell: { ...deps.cell, members: { ...deps.cell.members, ...newMembers }, activatedTasks: Object.fromEntries(boardIds) },
+      config: deps.config,
+      captainAgent: deps.captainAgent,
+      record: afterBoard.record,
+      refreshRecord: () => deps.recordFor(afterBoard.teamId),
+      rosterRoles: deps.rosterRoles?.() ?? [],
+      personaFor: deps.personaFor,
+      now: deps.now,
+    })
+    // The grown rows travel with this pass's members, so the caller persists them in ONE transition.
+    for (const [name, row] of Object.entries(growth.members)) newMembers[name] = row
     /** The team-plane write surface, probed per call. */
     const plane = deps.teamActions()
     // THE PLANE PAIRS (wave W2-D). The pass is owner-only and carries NO exclusion list: the rows this
@@ -767,7 +844,7 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
       dispatch = { pairs: [], skipped: [], refused: "the mpdTeamActions service is absent, so no member can be woken — the board is materialised and ready for a manual `cellwork_dispatch`" }
     } else {
       /** The plane's answer for this pass. */
-      const reply = (await plane.dispatch({ sessionId: deps.cell.captainSessionId, mode: "owner-only" })) as Record<string, unknown>
+      const reply = (await plane.dispatch({ sessionId: deps.cell.captainSessionId, mode: "owner-only", ...(growth.reassign.length === 0 ? {} : { reassign: growth.reassign }) })) as Record<string, unknown>
       dispatch = reply?.ok === false
         ? { pairs: [], skipped: [], refused: String(reply.error ?? "the team plane refused the activation pass") }
         : {
@@ -794,9 +871,18 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
       // turn a successful activation into a failure.
     }
   }
+  // THE RECORD LEARNS THE EXECUTION TEAM IT ACTUALLY WROTE TO (§7.1): after every append, the board is
+  // resolved again with THIS pass's minted ids, so a fresh execution team is named by its own evidence and
+  // a legacy cell whose `teamId` named the dead planning team is repaired on the record it reports.
+  /** The board the completed pass landed on. */
+  const finalBoard = resolveCellTeam({ workspace: deps.workspace, cell: { ...deps.cell, activatedTasks: Object.fromEntries(boardIds) }, teams: deps.teams?.(), recordFor: deps.recordFor })
+  /** The execution team id the outcome reports; the input's id when nothing better resolved. */
+  const executionTeamId = finalBoard.teamId === "" ? teamId : finalBoard.teamId
   appendJournal(deps.workspace, deps.cell.cellId, {
     event: "activate",
     teamId,
+    resolvedTeamId: executionTeamId,
+    ...(executionTeamId === teamId ? {} : { recordedTeamId: teamId }),
     mode,
     splitRevision: deps.split.revision,
     producer: producerIdentity(deps.cell.cellId),
@@ -810,6 +896,8 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     progress: artifacts,
     dispatched: dispatch.pairs.length,
     skipped: dispatch.skipped.length,
+    grown: growth.grown.length,
+    ...(growth.warnings.length === 0 ? {} : { seatWarnings: growth.warnings }),
     ...(splitTaskId === "" ? {} : { splitTaskId }),
   }, deps.now)
   // THE KEPT CONTRACT'S ONE REBUILD, NAMED (C5): stage 4 rewrites a kept task's contract only when its loop
@@ -831,6 +919,8 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
       cancelled,
       loops,
       dispatch,
+      // §7.1: the record takes the execution board id and preserves the staging id beside it.
+      ...(executionTeamId === "" || executionTeamId === planningTeamId ? {} : { teamId: executionTeamId, planningTeamId }),
       ...(splitTaskId === "" ? {} : { splitTaskId }),
       ...(notice === undefined ? {} : { notice }),
     },

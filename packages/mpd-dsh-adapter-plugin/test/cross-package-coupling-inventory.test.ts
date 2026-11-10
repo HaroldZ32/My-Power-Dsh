@@ -359,6 +359,8 @@ export const FROZEN_COUPLINGS: readonly string[] = [
   "packages/mpd-team-core-plugin/src/mailbox-store.ts :: import { fanOutTargets, foldMail, inheritedThreadId, validateEnvelope, validateReferences } from \"../../mpd-mail-protocol/src/index\"",
   "packages/mpd-team-core-plugin/src/mailbox-store.ts :: import type { MailAddress, MailAnswer, MailEnvelope, MailKind, MailMessage as ProtocolMailMessage, MailProblem, MailQuestion, MailSendRecord } from \"../../mpd-mail-protocol/src/index\"",
   "packages/mpd-team-core-plugin/src/team-web.ts :: import type { MailAnswer, MailQuestion } from \"../../mpd-mail-protocol/src/index\"",
+  // §7.2 (cellwork-elastic-planning): the seven-section handoff contract is written ONCE on the team plane — cellwork re-exports its validator instead of keeping a second copy that could drift.
+  "packages/mpd-cellwork-plugin/src/handoff.ts :: export { validateHandoffText, type HandoffValidation } from \"../../mpd-team-core-plugin/src/team-handoff\"",
 ]
 
 /** Blank out comments while preserving BOTH the character count and every newline, so a

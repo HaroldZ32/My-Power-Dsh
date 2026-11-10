@@ -20,12 +20,15 @@
 //   * a task MAY declare its board `member` (several members per role, several tasks per member), the
 //     name must be usable and carry a non-empty identity, and one member may not carry two different
 //     owner roles — the identity is the SAME `roleKey` activation groups by, so two spellings of one name
-//     are ONE seat here too (CR R-B1).
+//     are ONE seat here too (CR R-B1);
+//   * the READY-FRONTIER WIDTH of each owner role is computed from the submitted graph and reported as a
+//     NON-FATAL warning when the role's tasks declare fewer member names than the width (§5.3) — one seat
+//     per role serialises them, and only the splitter can name more seats.
 //
 // Everything here is pure apart from `node:fs`; the window reader and the clock are injected.
 import { existsSync, readdirSync, readFileSync } from "node:fs"
 import { dirname } from "node:path"
-import { atomicWriteText, refusedSplitPath, splitPath, CELL_SPLIT_DIR, cellDir } from "./state"
+import { appendJournal, atomicWriteText, refusedSplitPath, splitPath, CELL_SPLIT_DIR, cellDir } from "./state"
 import { applyBudget, estimateTask, measureInput, type BudgetVerdict, type TaskEstimate, type WindowReading } from "./budget"
 import type { CellworkConfig } from "./config"
 
@@ -149,11 +152,14 @@ export interface SplitVerdict {
   /** Every graph-rule violation, in task order. */
   findings: GraphFinding[]
   /**
-   * NON-FATAL advisories: the omissions that freeze a contract nobody can work under.
+   * NON-FATAL advisories: the omissions that freeze a contract nobody can work under, and the roles whose
+   * tasks declare fewer seats than their ready-frontier width (§5.3).
    *
    * Deliberately OUTSIDE {@link SplitVerdict.accepted} (C4/D3): a task that legitimately writes nothing is
    * not refused, but a `work`/`repair`/`integration` task that declared NO path freezes a contract allowing
    * none, and the splitter must see that rather than discover it when its writer stops at the first edit.
+   * The seat-width advisories share the channel for the same reason: the graph is legal, it simply cannot
+   * run as wide as it could, and naming more `member` seats is the fix only the splitter can apply.
    */
   warnings: GraphFinding[]
   /** Every distinct owner role's window reading. */
@@ -306,6 +312,166 @@ export function writeScopeWarnings(tasks: readonly SplitTaskInput[]): GraphFindi
       taskKey: task.key,
       code: "write-scopes-empty",
       detail: "task " + JSON.stringify(task.key) + " (" + (task.kind ?? "work") + ") declares NO write scope, so its frozen contract allows no path and its writer must stop at the first edit — declare `writeScopes` now, or ask the captain for a scope extension BEFORE the first write",
+    })
+  }
+  return warnings
+}
+
+/**
+ * One owner role's ready-frontier width and the board member names its tasks declare (§5.3).
+ */
+export interface SeatWidthReading {
+  /** The role spelling as FIRST declared, so the warning quotes the splitter's own words back. */
+  role: string
+  /** How many of that role's tasks can be ready at the same time. */
+  width: number
+  /** The distinct board member names those tasks declare (a role spelling counts as one when omitted). */
+  members: readonly string[]
+}
+
+/**
+ * The transitive dependency matrix of one submitted graph: `depends[i][j]` is true when task `i` must
+ * WAIT FOR task `j` (i.e. a dependency path `i → j` exists through `blockedBy` edges).
+ *
+ * A reference to a key this submission does not carry is ignored here: `validateGraph` already refuses that
+ * graph, so the width computation never has to decide what a dangling edge means.
+ *
+ * @param tasks - the submitted tasks, in submission order.
+ * @returns one row per task, in the same order.
+ */
+function dependencyMatrix(tasks: readonly SplitTaskInput[]): boolean[][] {
+  /** The position of every submitted key, so a `blockedBy` entry resolves to an index. */
+  const positionOf = new Map<string, number>()
+  tasks.forEach((task, index) => { if (!positionOf.has(task.key)) positionOf.set(task.key, index) })
+  /** The matrix, filled row by row. */
+  const depends = tasks.map(() => tasks.map(() => false))
+  /** One task's dependency closure, walked depth-first so a shared transitive edge is visited once. */
+  const close = (from: number): void => {
+    /** The row this closure owns: task `from`'s dependency set, marked in place as the walk reaches it. */
+    const row = depends[from]
+    if (row === undefined) return
+    /** The dependencies still to record (a stack beats recursion for a single split's task count). */
+    const stack: number[] = []
+    for (const blocker of tasks[from]?.blockedBy ?? []) {
+      /** The blocker's position, when this submission carries it. */
+      const target = positionOf.get(blocker)
+      if (target !== undefined && target !== from) stack.push(target)
+    }
+    while (stack.length > 0) {
+      /** The next dependency to record. */
+      const next = stack.pop() as number
+      if (row[next] === true) continue
+      row[next] = true
+      for (const blocker of tasks[next]?.blockedBy ?? []) {
+        /** The deeper blocker, when this submission carries it. */
+        const deeper = positionOf.get(blocker)
+        if (deeper !== undefined && deeper !== from) stack.push(deeper)
+      }
+    }
+  }
+  for (let index = 0; index < tasks.length; index += 1) close(index)
+  return depends
+}
+
+/**
+ * The largest set of MUTUALLY UNRELATED tasks inside one role's group (exact maximum antichain).
+ *
+ * THE RULE (stated because §5.3 requires the implementation to name it): two tasks are UNRELATED when no
+ * dependency path orders them in either direction — "tasks with no dependency path between them" is exactly
+ * §5.3's definition — and the width is the size of the largest such set. By Dilworth's theorem that size is
+ * `|group| - (maximum matching of the comparability relation)` over the group's transitive closure, so this
+ * computes the EXACT width rather than a greedy lower bound: a role with four truly independent tasks and
+ * one seat reports 4, never 2 depending on the order they were submitted in.
+ *
+ * A cyclic graph (refused by `validateGraph`) makes the relation non-transitive-antisymmetric; the matching
+ * still returns a number, and the verdict is already a refusal, so the value is never acted on.
+ *
+ * @param group - the positions of one role's tasks, in submission order.
+ * @param depends - the graph's transitive dependency matrix.
+ * @returns the width of that group.
+ */
+function widestAntichain(group: readonly number[], depends: readonly boolean[][]): number {
+  /** The matching's right-hand holder: `-1` when a task is not yet matched as the LATER half of a pair. */
+  const matchedBy = new Array<number>(group.length).fill(-1)
+  /** Whether one left task can be matched, walking augmenting paths through the comparability relation. */
+  const augment = (left: number, seen: boolean[]): boolean => {
+    for (let right = 0; right < group.length; right += 1) {
+      if (right === left || seen[right] === true) continue
+      if (depends[group[left] as number]?.[group[right] as number] !== true) continue
+      seen[right] = true
+      if (matchedBy[right] === -1 || augment(matchedBy[right] as number, seen)) {
+        matchedBy[right] = left
+        return true
+      }
+    }
+    return false
+  }
+  /** How many comparability pairs the matching holds. */
+  let matching = 0
+  for (let left = 0; left < group.length; left += 1) {
+    if (augment(left, new Array<boolean>(group.length).fill(false))) matching += 1
+  }
+  return group.length - matching
+}
+
+/**
+ * The ready-frontier width of every owner role, and the member names its tasks declare (§5.3).
+ *
+ * The width is the largest number of that role's tasks that can be ready at the SAME time (see
+ * {@link widestAntichain} for the rule); the member names are compared by {@link roleKey}, because two
+ * spellings of one name are ONE seat on the board.
+ *
+ * @param tasks - the submitted tasks, in submission order.
+ * @returns one reading per distinct owner role, in first-declaration order.
+ */
+export function seatWidthReadings(tasks: readonly SplitTaskInput[]): SeatWidthReading[] {
+  /** The graph's dependency closure, computed once for every role. */
+  const depends = dependencyMatrix(tasks)
+  /** Role key → the reading being built. */
+  const groups = new Map<string, { role: string; positions: number[]; members: string[]; memberKeys: Set<string> }>()
+  tasks.forEach((task, index) => {
+    /** The role's comparison key. */
+    const key = roleKey(task.ownerRole)
+    if (key === "") return
+    /** The group being built for that role. */
+    const group = groups.get(key) ?? { role: task.ownerRole, positions: [], members: [], memberKeys: new Set<string>() }
+    group.positions.push(index)
+    /** The member name this task resolves to: its declared name, else the role spelling. */
+    const member = resolvedMember(task)
+    /** That name's identity, which is what "distinct" means on the board. */
+    const memberKey = roleKey(member)
+    if (!group.memberKeys.has(memberKey)) {
+      group.memberKeys.add(memberKey)
+      group.members.push(member)
+    }
+    groups.set(key, group)
+  })
+  return [...groups.values()].map((group) => ({ role: group.role, width: widestAntichain(group.positions, depends), members: [...group.members] }))
+}
+
+/**
+ * The NON-FATAL seat-width advisories one submission earns (§5.3): a role whose ready tasks outnumber the
+ * member names it declares, which serialises them onto one seat.
+ *
+ * WHY THIS IS NOT A FINDING: the graph is legal — every task has an owner and the DAG is sound — it simply
+ * cannot run as wide as it could, and the splitter is the only agent that can fix it by naming seats
+ * (`Reviewer-2`, `Reviewer-3`, …). Warnings never refuse; they ride on the verdict and are journaled with
+ * the split, so the shape is visible to the captain as well as to the splitter.
+ *
+ * @param tasks - the submitted tasks.
+ * @returns one advisory per under-declared role, in first-declaration order.
+ */
+export function seatWidthWarnings(tasks: readonly SplitTaskInput[]): GraphFinding[] {
+  /** The advisories found. */
+  const warnings: GraphFinding[] = []
+  for (const reading of seatWidthReadings(tasks)) {
+    if (reading.width <= reading.members.length) continue
+    /** The fix, spelled with the role's own name so it can be pasted into the next revision. */
+    const fix = "declare `member` names " + [reading.role + "-2", reading.role + "-3"].map((name) => JSON.stringify(name)).join(", ") + ", …"
+    warnings.push({
+      taskKey: reading.role,
+      code: "seat-width-short",
+      detail: "role " + JSON.stringify(reading.role) + " can have " + String(reading.width) + " task(s) ready at the SAME time, but its tasks declare only " + String(reading.members.length) + " board member name(s) (" + reading.members.join(", ") + ") — one seat per role serialises them; " + fix + " so each ready task runs on its OWN seat, or add dependency edges if they must not run together",
     })
   }
   return warnings
@@ -497,6 +663,12 @@ export async function submitSplit(deps: SubmitDeps, submission: SplitSubmission)
   const findings = validateGraph(submission.tasks, deps.roster)
   /** The NON-FATAL scope advisories, which never enter the acceptance predicate (C4). */
   const warnings = writeScopeWarnings(submission.tasks)
+  // THE SEAT-WIDTH ADVISORIES RIDE ON THE SAME CHANNEL (§5.3): they are computed from the SUBMITTED GRAPH
+  // here — never from a view of the board, which can describe a different team — and they are journaled
+  // with the split below, before the verdict is returned to any caller.
+  /** The roles whose ready tasks outnumber the member names they declare. */
+  const seatWarnings = seatWidthWarnings(submission.tasks)
+  warnings.push(...seatWarnings)
   /** One window reading per distinct role (the FIRST spelling is the one resolved). */
   const readings = new Map<string, WindowReading>()
   for (const task of submission.tasks) {
@@ -585,6 +757,17 @@ export async function submitSplit(deps: SubmitDeps, submission: SplitSubmission)
   /** The persisted document, carrying its own path so a reader never has to guess which file it read. */
   const persisted: SplitVerdict = { ...verdict, file }
   atomicWriteText(file, JSON.stringify(persisted, null, 2) + "\n")
+  // THE WIDTH ADVISORIES ARE JOURNALED WITH THE SPLIT (§5.3): the verdict file is what a reader opens, and
+  // this row is the ORDERED half of that record — written here, in the one place every submission passes
+  // through, so no caller can accept a graph and lose the reason its seats were declared too narrowly.
+  if (seatWarnings.length > 0) {
+    appendJournal(deps.workspace, deps.cellId, {
+      event: "split-seat-width-warning",
+      revision: submission.revision,
+      accepted,
+      warnings: seatWarnings.map((warning) => ({ role: warning.taskKey, detail: warning.detail })),
+    }, deps.now)
+  }
   return persisted
 }
 
