@@ -43,6 +43,9 @@ import { roleSpawnCard, rolesListCard } from "./tool-cards.ts"
 // supervisor's (contract §S9), resolved per arm through the live config layer by the closures the
 // supervisor is built with below. Kept in its own module so its tests need no boot.
 import { CONSULT_ACTIVITY_HISTORY, CONSULT_FORCE_AFTER_MS, CONSULT_TOOL_IN_FLIGHT_MAX_MS, consultActivityKeyOf, consultLabelKey, consultMaxFromEnv, createConsultSupervisor, type ConsultToolActivity } from "./spawn-async.ts"
+// The SERVICE seam a bounded plane outside this package consumes (cellwork's background delegation):
+// the SAME supervisor, published as `mpdConsults`, so no consumer needs a relative import into this row.
+import { createMpConsults } from "./consults.ts"
 
 /** The cordis plugin name, matched against this row's id in the bundle patch. */
 export const name = "mpd-roles"
@@ -1071,6 +1074,30 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     toolInFlightMaxMs: () => consultInFlightBound(),
   })
 
+  // ── the consult SERVICE seam (cellwork async delegation) ──────────────────
+  // ONE supervisor, a second VIEW of it: a bounded plane outside this package starts and settles consults
+  // through `mpdConsults` instead of importing this row (the cross-package coupling inventory is frozen).
+  // It registers no tool, is listed by no tool output and adds no cap: `start` lands on the same
+  // `consultSupervisor`, so `MPD_DSH_CONSULT_MAX` and the silence deadman govern both surfaces. The one
+  // behavioural difference is that this path does NOT apply `consultDepthRefusal` — see `consults.ts`.
+  ctx.provide("mpdConsults", createMpConsults({
+    supervisor: consultSupervisor,
+    // THE SAME INTERNAL PATH the async tool uses (`raiseConsultAsync`): persona, route, fallback and the
+    // read-only child scope are identical. A caller MAY still pass an absolute `maxDepth`; when it does not
+    // (cellwork no longer does — its `depthMax` counts nested CELLS), `raiseConsultAsync` applies this
+    // row's own `spawnMaxDepthOf(exec.agent)` rule, caller depth + 1, a leaf.
+    raise: (spec) => raiseConsultAsync(spec, spec.exec, spec.maxDepth),
+    // Roles are canonicalised against THIS call's roster surface, so the id the caller gets back, the name
+    // the supervisor records and the name the handoff document prints are all the ONE canonical spelling.
+    canonicalRole: (role, exec) => {
+      /** The roster as this call sees it: base specialists plus extension roles. */
+      const surface = roleSurface(exec)
+      /** The resolved role, or null when the spelling names nothing on that surface. */
+      const spec = roleOfToolInput(surface, String(role ?? ""))
+      return spec === null ? null : spec.name
+    },
+  }))
+
   dsh.registerTool({
     name: "mpd_roles_list",
     description: "List the specialist roster — the SAME normal-named specialists team mode stages as teammates, each named for what it does: " + rosterFunctionList() + ". Address a role by that name (any case, space or hyphen spelling). Use this before mpd_role_spawn; for team work stage the roster with `agent_teams_plan` (add_member with the persona text from mpd_role_persona → create_task with its dependency answer → approve) instead of repeated single-call consults.",
@@ -1188,9 +1215,12 @@ export function apply(ctx: Ctx, config: Config = {}): void {
    *
    * @param args - the tool arguments (`role`, `task`, optional `context`).
    * @param exec - the invoking tool execution, whose agent and signal ride the spawn.
+   * @param maxDepth - an OPTIONAL absolute agent-nesting cap declared by a bounded caller; absent (the
+   *   cellwork path since the R1.1 repair) means this row's own `spawnMaxDepthOf(exec.agent)` rule applies,
+   *   caller depth + 1. A cell plane's own `depthMax` counts nested CELLS and is NOT this scale.
    * @returns the started handle the consult supervisor owns.
    */
-  async function raiseConsultAsync(args: any, exec: any): Promise<DshAsyncAgent> {
+  async function raiseConsultAsync(args: any, exec: any, maxDepth?: number): Promise<DshAsyncAgent> {
     /** The roster as this call sees it: base specialists plus extension roles. */
     const surface = roleSurface(exec)
     /** The resolved role, or null — in which case the error lists every addressable name. */
@@ -1215,6 +1245,11 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     const run = await resolveRunRoute(dsh, primary, resolution.ok ? resolution.route.fallbacks ?? [] : [])
     /** The assembled prompt, identical to the blocking path's. */
     const prompt = spec.persona + "\n\nTask: " + task + (args?.context ? "\n\nContext:\n" + String(args.context) : "") + "\n\nWork with the tools your role requires (read-only roles must never modify anything). End with ONLY the structured report (role/summary/recommendation/details/evidence)."
+    // THE DEPTH CAP: a declared positive ABSOLUTE cap overrides this row's caller-depth arithmetic; anything
+    // unusable — and ABSENT, which is what the cellwork path sends since the R1.1 repair — falls back to
+    // `spawnMaxDepthOf`, never to `undefined`, so a child is never raised under the host's hidden default.
+    /** The cap to forward: the declared positive whole number, else the row's own rule. */
+    const depthCap = typeof maxDepth === "number" && Number.isFinite(maxDepth) && maxDepth >= 1 ? Math.floor(maxDepth) : spawnMaxDepthOf(exec.agent)
     return dsh.spawnAgentAsync({
       label: spec.name,
       prompt,
@@ -1224,7 +1259,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       model: run.route.model,
       persona: spec.persona,
       outputSchema: REPORT_SCHEMA,
-      maxDepth: spawnMaxDepthOf(exec.agent),
+      maxDepth: depthCap,
       ...(run.route.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: run.route.reasoningEffort } }),
       ...(spec.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {})
     })

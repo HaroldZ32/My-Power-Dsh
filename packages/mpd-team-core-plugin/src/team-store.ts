@@ -293,7 +293,97 @@ export interface TeamRecord {
   nextMemberNumber: number
   /** The next task number to mint; monotonic for the same reason. */
   nextTaskNumber: number
+  /**
+   * The BACKGROUND CONSULTS a cell recorded against this team, newest last.
+   *
+   * ABSENT until one is recorded, and absent again once the cell ends (`clearConsults`): a record
+   * written before this field existed — or by a caller that never delegated — carries no key at all,
+   * which is what makes the whole feature additive. Nothing on the board reads it: consults are NOT
+   * tasks, take no `T<n>` id, are never dispatched, and are excluded from every tally and readiness
+   * predicate. They are drawn by the graph projection, which is the only consumer.
+   */
+  consults?: TeamConsultRecord[]
+  /**
+   * The next consult ordinal to mint; monotonic exactly like {@link nextTaskNumber}.
+   *
+   * OPTIONAL for the same backward reason: an older record has no counter, and the mint falls back to
+   * `1` (an upsert by `consultId` never re-mints, so a missing counter can never reuse a live number).
+   */
+  nextConsultNumber?: number
 }
+
+/**
+ * One BACKGROUND CONSULT recorded against a team (contract §3).
+ *
+ * WHY IT LIVES ON THE TEAM RECORD. The graph model is built from that record and cached against the
+ * change feed's revision, so a consult written here is invalidated by the SAME write -> `teamStateChanged`
+ * -> revision path every board edit uses: no second watcher, no second cache key, no new route. It is
+ * also why the shape is flat JSON — it crosses the wire to the web payload unchanged.
+ *
+ * THE STATE WORD IS THE LIFECYCLE, the tone is the renderer's (the graph maps `interrupted` to
+ * `cancelled` — the tone table is closed). `cancelled` is kept as its own word here because a caller
+ * that abandons a consult says something different from the deadman interrupting it.
+ */
+export interface TeamConsultRecord {
+  /** The minted, monotonic, per-team ordinal; it names the node (`C<n>`) and orders the frame's rows. */
+  consultNumber: number
+  /** The supervisor's own id for the consult, which is the upsert's key. */
+  consultId: string
+  /** The canonical roster role name the consult runs under. */
+  role: string
+  /** The assignment excerpt, bounded by the writer (<= 200 characters). */
+  task: string
+  /** The cell that started it, so a node can still name its owner after the cell's rows age out. */
+  cellId: string
+  /** When the consult started, epoch milliseconds. */
+  startedAt: number
+  /** Where the consult is in its lifecycle; `running` is the only non-terminal value. */
+  state: TeamConsultState
+  /** When the consult settled, epoch milliseconds; absent while it is running. */
+  finishedAt?: number
+  /** How long it ran, milliseconds; absent while it is running. */
+  elapsedMs?: number
+  /** The handoff document path, present only when the consult was interrupted with one. */
+  handoff?: string
+}
+
+/** The lifecycle of one recorded consult. */
+export type TeamConsultState = "running" | "complete" | "interrupted" | "failed" | "cancelled"
+
+/**
+ * One consult as a CALLER reports it: every field except the ordinal, which the record mints.
+ *
+ * The split is deliberate: an ordinal is a property of the record's own sequence (it names the node),
+ * so a caller that supplied one could make two consults claim `C1` and the drawing would lose a row.
+ */
+export interface TeamConsultUpsertInput {
+  /** The supervisor's own id for the consult: the upsert key, stable for the process life. */
+  consultId: string
+  /** The canonical roster role name. */
+  role: string
+  /** The assignment excerpt, bounded by the writer. */
+  task: string
+  /** The cell that started it. */
+  cellId: string
+  /** When the consult started, epoch milliseconds. */
+  startedAt: number
+  /** Where the consult is in its lifecycle. */
+  state: TeamConsultState
+  /** When it settled, epoch milliseconds; a terminal row without one is stamped with the verb's clock. */
+  finishedAt?: number
+  /** How long it ran, milliseconds. */
+  elapsedMs?: number
+  /** The handoff document path, when the deadman interrupted it with one. */
+  handoff?: string
+}
+
+/**
+ * How many consult rows one team keeps (contract §8, acceptance 8).
+ *
+ * The cap exists because a cell that never stops cleanly would otherwise grow its record forever; the
+ * prune drops the OLDEST SETTLED row first and NEVER a running one, so a live consult is always visible.
+ */
+export const CONSULT_RETENTION_MAX = 50
 
 /** The per-workspace index: which team is ACTIVE for which Lead session. */
 export interface TeamsIndex {
@@ -793,6 +883,135 @@ export function addTeamTask(record: TeamRecord, input: NewTaskInput, now: Date):
     ...(input.sourceTaskId === undefined ? {} : { sourceTaskId: input.sourceTaskId }),
   }
   return { ...record, tasks: [...record.tasks, task], nextTaskNumber: record.nextTaskNumber + 1 }
+}
+
+/**
+ * What one consult upsert reports: the row's minted ordinal and the ids the retention cap dropped.
+ *
+ * The ordinal is returned because the caller usually needs it (a journal line, a debugging read); the
+ * pruned ids because a retention drop is a FACT a reader should be able to see rather than infer.
+ */
+export interface ConsultUpsertResult {
+  /** The record as the upsert leaves it (a new object; the input is never mutated). */
+  record: TeamRecord
+  /** The ordinal this consult holds after the upsert; minted on first sight, never re-minted. */
+  consultNumber: number
+  /** The consult ids the retention cap dropped, oldest settled first. */
+  pruned: string[]
+}
+
+/**
+ * Upsert ONE consult row onto a team record, then prune to the retention cap (pure: the caller persists).
+ *
+ * KEYED BY `consultId` and nothing else, which is what makes the write-on-observe paths idempotent: a
+ * settlement recorded by the `onSettled` callback and one recorded by a later `collect` are the same row,
+ * so the DAG can be told about a consult twice without ever drawing it twice.
+ *
+ * MONOTONE LIFECYCLE. A terminal row is never moved back to `running`: a stale start-report arriving
+ * after the settlement must not resurrect a consult the user just watched finish — and it must not erase
+ * the settlement's own facts either, so `finishedAt`, `elapsedMs` and `handoff` survive that report
+ * verbatim (R7.6). Every other field is last-write-wins.
+ *
+ * RETENTION (§8, acceptance 8): at most {@link CONSULT_RETENTION_MAX} rows per team; the OLDEST SETTLED
+ * row goes first and a `running` row is NEVER dropped, so pruning can stop early with the cap still
+ * exceeded — a record full of live consults is the honest picture, not an error.
+ * @param record - the record to copy.
+ * @param input - the row the caller reports; `consultNumber` is deliberately not an input.
+ * @param now - the instant a terminal row without a stated `finishedAt` is stamped with.
+ * @returns the new record, the row's ordinal and every id the prune dropped.
+ */
+export function applyConsultUpsert(record: TeamRecord, input: TeamConsultUpsertInput, now: Date): ConsultUpsertResult {
+  /** The rows as they stand, so nothing below mutates the input record. */
+  const rows = [...(record.consults ?? [])]
+  /** The index of the row this consult already holds, or -1 for a first sight. */
+  const held = rows.findIndex((row) => row.consultId === input.consultId)
+  /** The ordinal this upsert keeps or mints. */
+  const consultNumber = held >= 0 ? rows[held].consultNumber : (record.nextConsultNumber ?? 1)
+  /**
+   * Whether this report is a STALE `running` one that retains a held row's TERMINAL state (R7.6).
+   *
+   * The lifecycle rule keeps the terminal state, but the terminal FACTS travel with it: `finishedAt`,
+   * `elapsedMs` and `handoff` belong to the settlement that wrote them, so a late start-report must not
+   * re-stamp the finish clock from `now` nor drop the elapsed span and the handoff path.
+   */
+  const staleRunning = held >= 0 && rows[held].state !== "running" && input.state === "running"
+  /** The incoming row, with the ordinal the record owns. */
+  const incoming: TeamConsultRecord = {
+    consultNumber,
+    consultId: input.consultId,
+    role: input.role,
+    // A BLANK EXCERPT NEVER ERASES ONE: the observe paths (`wait`/`collect`/`cancel`) report a settlement
+    // without the assignment text, and the card must keep the title the start path wrote.
+    task: input.task.trim() === "" && held >= 0 ? rows[held].task : input.task,
+    cellId: input.cellId,
+    startedAt: input.startedAt,
+    // A terminal row is never resurrected by a late `running` report (see the lifecycle note above).
+    state: staleRunning ? rows[held].state : input.state,
+    // THE TERMINAL FACTS SURVIVE THE STALE REPORT (R7.6): on `staleRunning` the held row's own clock,
+    // span and handoff are carried verbatim; every other report keeps last-write-wins semantics.
+    ...(staleRunning
+      ? {
+          ...(rows[held].finishedAt === undefined ? {} : { finishedAt: rows[held].finishedAt }),
+          ...(rows[held].elapsedMs === undefined ? {} : { elapsedMs: rows[held].elapsedMs }),
+          ...(rows[held].handoff === undefined ? {} : { handoff: rows[held].handoff }),
+        }
+      : {
+          ...(input.finishedAt === undefined ? {} : { finishedAt: input.finishedAt }),
+          ...(input.elapsedMs === undefined ? {} : { elapsedMs: input.elapsedMs }),
+          ...(input.handoff === undefined ? {} : { handoff: input.handoff }),
+        }),
+  }
+  // A settlement that arrives with no clock of its own is stamped HERE, so `finishedAt` is never absent
+  // on a terminal row while a running one never carries it.
+  if (incoming.state !== "running" && incoming.finishedAt === undefined) incoming.finishedAt = now.getTime()
+  if (incoming.state === "running") {
+    delete incoming.finishedAt
+    delete incoming.elapsedMs
+  }
+  if (held >= 0) rows[held] = incoming
+  else rows.push(incoming)
+  // THE PRUNE: oldest settled first, a running row never. `consultNumber` is the mint order, so the
+  // smallest number among the settled rows is the oldest one.
+  /** The ids the cap dropped. */
+  const pruned: string[] = []
+  while (rows.length > CONSULT_RETENTION_MAX) {
+    /** The oldest settled row's index, or -1 when every row is still running. */
+    let victim = -1
+    for (let index = 0; index < rows.length; index += 1) {
+      if (rows[index].state === "running") continue
+      if (victim < 0 || rows[index].consultNumber < rows[victim].consultNumber) victim = index
+    }
+    if (victim < 0) break
+    pruned.push(rows[victim].consultId)
+    rows.splice(victim, 1)
+  }
+  // THE COUNTER IS MONOTONE ACROSS AN UPDATE TOO: a settlement upsert keeps its row's OLD ordinal above,
+  // so deriving the counter from it would RE-MINT that ordinal for the next consult and two rows would
+  // claim the same `C<n>`. The record's own counter therefore only ever moves FORWARD.
+  /** The next ordinal: past this row's number and never behind the counter already on the record. */
+  const nextConsultNumber = Math.max(record.nextConsultNumber ?? 0, consultNumber + 1)
+  return {
+    record: { ...record, consults: rows, nextConsultNumber },
+    consultNumber,
+    pruned,
+  }
+}
+
+/**
+ * Drop every consult row from a team record (pure: the caller persists).
+ *
+ * THE CELL-END PATH. A settled consult stays visible until its cell ends, which is this call: the whole
+ * array and the counter go away, so a re-used record cannot inherit a stale `C<n>` sequence. Removal by
+ * ABSENCE (both keys are optional) is what keeps a cleared record byte-identical to one that never
+ * recorded a consult at all.
+ * @param record - the record to copy.
+ * @returns the record without any consult, or the SAME record when it already had none.
+ */
+export function clearTeamConsults(record: TeamRecord): TeamRecord {
+  if (record.consults === undefined && record.nextConsultNumber === undefined) return record
+  /** The record with both optional keys removed. */
+  const { consults: _consults, nextConsultNumber: _nextConsultNumber, ...rest } = record
+  return rest
 }
 
 /** The fields {@link updateTeamTask} may change; `revision` and `updatedAt` are always bumped. */

@@ -24,7 +24,7 @@
 // frame over its own nodes plus its child groups' boxes. A model built with NO group is byte-identical
 // to the flat model this package has always produced, which is the backward-compatibility test.
 import { ID_ORDER, cycleIds, rankPlan } from "./rank.ts"
-import type { BoardTask, BuildModelInput, GraphEdge, GraphGroup, GraphGroupInput, GraphModel, GraphNode, GraphReport, PlanDocument, PlanTask, RankPlan } from "./types.ts"
+import type { BoardTask, BuildModelInput, GraphConsultInput, GraphConsultNode, GraphEdge, GraphGroup, GraphGroupInput, GraphModel, GraphNode, GraphReport, PlanDocument, PlanTask, RankPlan } from "./types.ts"
 
 /** One edge as the two inputs declared it, before it is reduced to a `GraphEdge`. */
 interface DeclaredEdge {
@@ -64,6 +64,14 @@ interface Frame {
   plan?: PlanDocument
   /** The frames nested inside this one, ordered by the id collator. */
   children: Frame[]
+  /**
+   * The background consults THIS frame's own team started.
+   *
+   * Held on the frame, never in its node list: a consult is not a task, takes no rank and contributes no
+   * edge, so it must not reach `mergeFrame` or the rank derivation below. It is collected here only so
+   * the model can attribute it to the right box and order the frames' rows predictably.
+   */
+  consults: readonly GraphConsultInput[]
 }
 
 /** A frame that draws a BOX: a group, which therefore has an id and a title. */
@@ -192,6 +200,79 @@ function byFrameDepthThenId(left: GroupFrame, right: GroupFrame): number {
 }
 
 /**
+ * The visual TONE a consult's recorded lifecycle word draws in.
+ *
+ * THE TONE TABLE IS CLOSED (contract §9): a consult reads with the six states both planes already draw,
+ * so `interrupted` is drawn as `cancelled` — the same "this stopped without a report" tone — and an
+ * unrecognized word reads as `open` rather than inventing a seventh state.
+ * @param state - the lifecycle word the team record carries.
+ * @returns the visual state the card draws in.
+ */
+function consultVisualOf(state: string): string {
+  switch (state) {
+    case "running":
+      return "running"
+    case "complete":
+      return "completed"
+    case "interrupted":
+      return "cancelled"
+    case "failed":
+      return "failed"
+    case "cancelled":
+      return "cancelled"
+    default:
+      return "open"
+  }
+}
+
+/**
+ * The ordinal a consult's node id is minted from, kept TOTAL so a malformed record cannot name a node
+ * `Cundefined`. A value that is not a positive integer reads as `0`, which is stable rather than random.
+ * @param value - the record's `consultNumber`.
+ * @returns a non-negative integer.
+ */
+function consultOrdinalOf(value: number): number {
+  return Number.isFinite(value) && value >= 1 ? Math.floor(value) : 0
+}
+
+/**
+ * The consult nodes ONE frame draws: the frame's own rows, ordered and named by their minted ordinal.
+ *
+ * THE ID IS THE FRAME'S (`contract §4`): `C<n>` in the root frame and `"<groupId>::C<n>"` inside a box —
+ * the same qualification `framedBoardOf` applies to a nested team's task ids, for the same reason (every
+ * team mints its ordinal from 1, so the bare spelling would collide across boxes).
+ *
+ * NO DEPENDENCY, NO RANK: `dependencies` is empty and `depth` is 0 on every row, because a consult takes
+ * no part in any derivation; the renderer places it in its frame's first column.
+ * @param frame - the frame whose consults are projected.
+ * @returns the consult nodes, in the frame's own order.
+ */
+function consultNodesOf(frame: Frame): GraphConsultNode[] {
+  /** The frame's rows, by their minted ordinal, ties broken by the id so the order is total. */
+  const ordered = [...frame.consults].sort((left, right) => consultOrdinalOf(left.consultNumber) - consultOrdinalOf(right.consultNumber) || ID_ORDER.compare(left.consultId, right.consultId))
+  return ordered.map((row) => {
+    /** The ordinal this node is named by. */
+    const ordinal = consultOrdinalOf(row.consultNumber)
+    return {
+      id: frame.id === null ? `C${ordinal}` : `${frame.id}::C${ordinal}`,
+      subject: row.task,
+      visual: consultVisualOf(row.state),
+      dependencies: [],
+      depth: 0,
+      planned: false,
+      kind: "consult",
+      consultId: row.consultId,
+      cellId: row.cellId,
+      startedAt: row.startedAt,
+      status: row.state,
+      assignee: row.role,
+      ...(row.elapsedMs === undefined ? {} : { elapsedMs: row.elapsedMs }),
+      ...(frame.id === null ? {} : { group: frame.id }),
+    }
+  })
+}
+
+/**
  * Whether a frame draws a box, narrowing it to the shape a {@link GraphGroup} record needs.
  * @param frame - any frame of the tree.
  * @returns whether it is a group frame.
@@ -251,6 +332,7 @@ function collectFrame(group: GraphGroupInput, parent: Frame): Frame {
     depth: parent.depth + 1,
     board: group.board ?? [],
     children: [],
+    consults: group.consults ?? [],
     ...(group.originTaskId === undefined ? {} : { originTaskId: group.originTaskId }),
     ...(group.plan === undefined ? {} : { plan: group.plan }),
   }
@@ -459,6 +541,7 @@ export function buildModel(input: BuildModelInput): GraphModel {
     depth: -1,
     board: input.board ?? [],
     children: [],
+    consults: input.consults ?? [],
     ...(input.plan === undefined ? {} : { plan: input.plan }),
   }
   /** The declared subcells, each collected with its own nested frames. */
@@ -586,7 +669,12 @@ export function buildModel(input: BuildModelInput): GraphModel {
   }
   /** The declared groups, flat and shallow-first, so a renderer can recurse without a second field. */
   const groups = groupRecords(frames, level)
-  return { nodes, edges, ranks, cycles: [...cyclic].sort(), report, ...(groups.length === 0 ? {} : { groups }) }
+  // THE SIBLING ARRAY (contract §2, hard rule 1): frame pre-order, each frame's rows by their ordinal.
+  // Nothing above reads it, which is what makes `nodes`/`edges`/`ranks`/`report` byte-identical with and
+  // without consults; the spread below is what keeps a consultless model the exact bytes it always was.
+  /** Every frame's consult nodes, in the order the model draws them. */
+  const consults = frames.flatMap((frame) => consultNodesOf(frame))
+  return { nodes, edges, ranks, cycles: [...cyclic].sort(), report, ...(groups.length === 0 ? {} : { groups }), ...(consults.length === 0 ? {} : { consults }) }
 }
 
 /**

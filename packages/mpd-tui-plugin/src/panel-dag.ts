@@ -52,7 +52,7 @@ import { boxesFitWidth, hitTest, hitTestGroup, layoutBoxesNatural, layoutList, l
 // uses, so this page adds no cross-package edge beyond the ones the inventory already counts.
 import type { GroupedGroup } from "./dag-groups.js"
 import type { TeamWorkflow } from "./team-state.js"
-import { modelRanks, modelRows, NO_SESSION_TEAM_MARKER, WORKSPACE_SCOPE_MARKER, type TeamFeedAccessor } from "./team-state.js"
+import { modelConsults, modelRanks, modelRows, NO_SESSION_TEAM_MARKER, WORKSPACE_SCOPE_MARKER, type TeamFeedAccessor } from "./team-state.js"
 import {
   clampScroll,
   graphRow,
@@ -271,6 +271,10 @@ export function dagPageOf(workflow: TeamWorkflow | undefined): DagPage | undefin
   if (workflow.tasks.length === 0 && workflow.team === undefined) return undefined
   /** The rows to draw: the board joined with the served model, ghosts included (wave `living-graph`). */
   const rows = modelRows(workflow)
+  // THE CONSULT NODES ARE APPENDED, NOT MERGED (consult DAG, contract §6): `modelRows` keeps its three
+  // consumers (counts, legend, roster) reading the BOARD, while the DRAWING gets these rows too. Each
+  // carries `group`, so the frame tree files it into the right box with no second lookup.
+  rows.push(...modelConsults(workflow))
   /** The tasks, projected once. */
   const tasks: DagPanelTask[] = []
   for (const task of rows) {
@@ -292,6 +296,8 @@ export function dagPageOf(workflow: TeamWorkflow | undefined): DagPage | undefin
       ...(task.verdict === undefined ? {} : { verdict: panelField(task.verdict, 60) ?? "" }),
       ...(task.planned === true ? { planned: true } : {}),
       ...(task.group === undefined ? {} : { group: panelField(task.group, 60) ?? "" }),
+      // The consult badge travels whole: the drawing needs its presence, the detail body its four facts.
+      ...(task.consult === undefined ? {} : { consult: task.consult }),
     })
   }
   // The SAME C6 rule, one guard later: a board whose every row failed to project is still a resolved
@@ -350,7 +356,9 @@ export function dagPageOf(workflow: TeamWorkflow | undefined): DagPage | undefin
     teamName: panelField(workflow.team?.name, 60) ?? "(unnamed team)",
     phase: panelField(workflow.team?.phase, 20) ?? "unknown",
     completed: typeof workflow.counts?.completed === "number" ? workflow.counts.completed : 0,
-    total: typeof workflow.counts?.total === "number" ? workflow.counts.total : tasks.length,
+    // THE FALLBACK COUNTS THE BOARD, NEVER THE DRAWING (consult DAG, contract §6): `tasks` now also
+    // carries the consult rows, and a tally that counted them would report agents as work.
+    total: typeof workflow.counts?.total === "number" ? workflow.counts.total : workflow.tasks.length,
     members: roster.length,
     roster: roster.length === 0
       ? "roster  (no members)"
@@ -714,6 +722,10 @@ export function dagBadge(tasks: readonly { readonly visual: string }[]): PanelBa
  * @returns the rows, in print order, each inside `cols`.
  */
 export function pinnedDetailLines(task: DagPanelTask, tasks: readonly DagPanelTask[], cols: number): string[] {
+  // A CONSULT IS NOT A TASK, so the ten task facts would be ten lies on its card: it has no verdict, no
+  // attempt, no round and no blockers, and printing `—` for each would bury the four facts that matter
+  // (consult DAG, contract §6: role, state, startedAt/elapsed and the consultId).
+  if (task.consult !== undefined) return consultDetailLines(task, task.consult, cols)
   /** The tasks that depend on this one, i.e. what pinning it would unblock. */
   const dependents = tasks.filter((other) => other.dependencies.includes(task.id)).map((other) => other.id)
   /** The facts, in a fixed order so the body does not reshuffle between renders. */
@@ -739,6 +751,51 @@ export function pinnedDetailLines(task: DagPanelTask, tasks: readonly DagPanelTa
     ["round", task.round === undefined ? "—" : String(task.round)],
     ["blockedBy", task.dependencies.length === 0 ? "—" : task.dependencies.join(",")],
     ["dependents", dependents.length === 0 ? "—" : dependents.join(",")],
+  ]
+  return facts.map(([label, value]) => panelText(`${label} ${value}`, cols))
+}
+
+/**
+ * One epoch-millisecond instant as an ISO-8601 string, or a dash when it is not representable.
+ *
+ * `Number.isFinite` ALONE DOES NOT MAKE `toISOString()` SAFE (CodeRabbit round 1, R7.7): a finite
+ * magnitude beyond ±8.64e15 ms is outside the ECMAScript date range, so `new Date(value)` is Invalid and
+ * `toISOString()` throws `RangeError`. The consult badge comes from a PERSISTED team record, and a
+ * malformed value must degrade one line of the pinned body, never break `pinnedDetailLines`.
+ * @param milliseconds - the instant the record carries.
+ * @returns the ISO instant, or `—` when the value is not a representable Date.
+ */
+function isoInstantOf(milliseconds: number): string {
+  /** The instant under test; an out-of-range value reads back as NaN, never as a throw site. */
+  const instant = new Date(milliseconds)
+  return Number.isFinite(instant.getTime()) ? instant.toISOString() : "—"
+}
+
+/**
+ * The pinned detail body for a CONSULT node.
+ *
+ * Deliberately its own body rather than the task body with fields blanked: a consult's facts are a
+ * different set, and a reader who pins one is asking "which agent, how is it doing, when did it start,
+ * and what do I collect it by" — the four lines below, in that order.
+ * @param task - the pinned consult row.
+ * @param badge - its consult facts.
+ * @param cols - the cells available.
+ * @returns the rows, in print order, each inside `cols`.
+ */
+function consultDetailLines(task: DagPanelTask, badge: NonNullable<DagPanelTask["consult"]>, cols: number): string[] {
+  /** The wall-clock start, rendered as an ISO instant so a reader can compare it with a log line. */
+  const started = isoInstantOf(badge.startedAt)
+  /** The facts, in a fixed order so the body does not reshuffle between renders. */
+  const facts: Array<[string, string]> = [
+    ["subject", task.subject === "" ? "—" : task.subject],
+    ["id", task.id],
+    ["consult", badge.consultId],
+    ["role", task.assignee === undefined || task.assignee === "" ? "—" : task.assignee],
+    ["state", badge.state === "" ? "—" : badge.state],
+    ["started", started],
+    // A NON-FINITE ELAPSED SPAN IS NOT A MEASUREMENT: `Math.round(NaN / 1000)` would print `NaNs`.
+    ["elapsed", badge.elapsedMs === undefined || !Number.isFinite(badge.elapsedMs) ? "—" : `${String(Math.max(0, Math.round(badge.elapsedMs / 1000)))}s`],
+    ["cell", badge.cellId === "" ? "—" : badge.cellId],
   ]
   return facts.map(([label, value]) => panelText(`${label} ${value}`, cols))
 }
@@ -1452,7 +1509,9 @@ export function createDagPanelComponent(readWorkflow: (sessionId?: string) => Te
       // workspace arm — the one the ladder used to lose to the false "no team in this workspace" row
       // — states whose team it is. An unlabelled projection reads as the workspace fallback, exactly
       // as `TeamWorkflow.source`'s own contract spells it.
-      if (page !== undefined && page.tasks.length === 0) {
+      // THE EMPTY-BOARD STATE IS THE BOARD'S (consult DAG, contract §6): `page.tasks` now also carries the
+      // consult rows, so a team with consults and no tasks would lose this hint — and the hint stays true.
+      if (page !== undefined && (workflow?.tasks.length ?? 0) === 0) {
         children.push(textRow(kit, page.roster, { key: "roster", dim: true, maxCells: contentCols }))
         children.push(textRow(kit, scope === "session" ? "this session's team has no tasks yet — `agent_teams_plan` posts them" : "the workspace's team has no tasks yet — `agent_teams_plan` posts them", { key: "empty-board", dim: true, maxCells: contentCols }))
       }
@@ -1621,7 +1680,18 @@ export function createDagPanelComponent(readWorkflow: (sessionId?: string) => Te
       // THE WORD COMES FROM THE NAMED SOURCE, never from the layout's `derived` flag alone: that flag
       // is `false` by design once a served map is applied, so reading it as "the ranks were served"
       // mislabelled HOST-DERIVED ranks as an untrusted fallback (the verifier's finding).
-      children.push(textRow(kit, `view ${layout.mode}${layout.list ? " (dense)" : ""} · ${order.length} tasks · ranks ${ranksPhrase(page.ranksSource, layout.ranksDerived)}`, { key: "mode", dim: true, maxCells: contentCols }))
+      // A CONSULT IS NOT WORK (R7.9): `order` now also holds the consult nodes the drawing appends, so
+      // counting it would print `3 tasks` for two board rows and one agent. The tasks tally counts only
+      // rows with NO consult badge, and the consults are reported as their own number.
+      /** The board's CONSULT node ids, which the drawing carries but the task tally must not count. */
+      const consultIds = new Set(page.tasks.filter((task) => task.consult !== undefined).map((task) => task.id))
+      /** The drawn nodes that are WORK: every hit that carries no consult badge. */
+      const taskNodes = order.filter((id) => !consultIds.has(id)).length
+      /** The drawn CONSULT nodes, reported separately so an agent is never tallied as a task. */
+      const consultNodes = order.length - taskNodes
+      /** The consults half of the mode line, omitted entirely when the drawing carries none. */
+      const consultsPhrase = consultNodes === 0 ? "" : ` · ${String(consultNodes)} consult${consultNodes === 1 ? "" : "s"}`
+      children.push(textRow(kit, `view ${layout.mode}${layout.list ? " (dense)" : ""} · ${String(taskNodes)} tasks${consultsPhrase} · ranks ${ranksPhrase(page.ranksSource, layout.ranksDerived)}`, { key: "mode", dim: true, maxCells: contentCols }))
       // THE UNRESOLVED BLOCKERS ARE SURFACED, NEVER SWALLOWED (R18). A blocker reference naming no task
       // on the board is the exact shape of the user's own defect — the record says `blockedBy: ["3"]`
       // while its ids are `T3` — and a page that dropped it silently would make a broken board look

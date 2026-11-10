@@ -176,25 +176,19 @@ export function resolveMemberName(members: Record<string, CellMemberRecord>, nam
 
 
 /**
- * Why one member cannot be woken, or undefined when it can (contract C7).
+ * Why one seat is CLOSED, in the sentence a captain reads — or undefined when it can work (contract C7).
  *
- * THREE signals fence a member, and the record's own `mode`/`handoffReady` are the durable ones: the
- * barrier may be refused after its retries, so a `checkpoint` seat with a written handoff IS the fence
- * even before the explicit `fenced` marker is written. The marker names the cause when the barrier gave
- * up, which is what makes the report actionable.
+ * The signals are the record's own `mode`/`handoffReady` (durable, because the barrier may be refused
+ * after its retries), the explicit `fenced` marker naming the cause, and — since R5.2 — the
+ * REOPENED-BUT-UNPROVEN `subcaptain` shape a reseed leaves behind. The `undefined` answer is the ONLY
+ * "this seat may be messaged" answer, so a caller never has to interpret an empty string.
  *
- * @param member - the member row, from the CELL record where it exists and the team record otherwise.
- * @returns the one-sentence reason, or undefined when the member may be messaged.
- */
-
-/**
- * Why one seat is CLOSED, in the sentence a captain reads — or undefined when it can work.
+ * The `subcaptain` arm is a SHAPE, not a verdict: a healthy promotion writes the same mode, so a caller
+ * that can read liveness decides whether the seat is really held (the sweep and the forced lever do that
+ * through their ONE predicate, `protocol.ts#forceReadingOf`).
  *
- * Two spellings mean the same thing to a reader: the barrier's explicit fence (with its classification) and
- * a seat in the checkpoint window (a hand-off written and the barrier not yet compacted). The `undefined`
- * answer is the ONLY "this seat may be messaged" answer, so a caller never has to interpret an empty string.
  * @param member - the cell or roster row, or undefined when the member is unknown.
- * @returns the reason sentence, or undefined for a live seat.
+ * @returns the reason sentence, or undefined for a seat nothing names as held.
  */
 export function fenceReasonOf(member: FenceableView | undefined): string | undefined {
   if (member === undefined) return undefined
@@ -203,6 +197,12 @@ export function fenceReasonOf(member: FenceableView | undefined): string | undef
   }
   if (member.mode === "checkpoint") return "its mode is `checkpoint` — the seat is fenced to the handoff tools until the barrier compacts it"
   if (member.handoffReady === true) return "a handoff is already written and waiting for the compaction barrier"
+  // A REOPENED-BUT-UNPROVEN SEAT IS NAMED, NEVER HIDDEN (R5.2). A reseed writes `subcaptain` with no
+  // handoff pending, which is ALSO how a healthy promotion looks — so this arm is a SHAPE, not a verdict:
+  // the caller that can read liveness (the supervise sweep and the forced lever, through their one
+  // predicate) decides whether the seat is really held. Answering `undefined` here is what made the
+  // dead-reseed seat invisible to every surface that asks this predicate.
+  if (member.mode === "subcaptain") return "the compaction barrier reopened it onto a fresh child (`subcaptain`), so it counts as working only while that child is a live agent"
   return undefined
 }
 

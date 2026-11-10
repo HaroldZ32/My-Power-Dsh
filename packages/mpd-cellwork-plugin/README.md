@@ -25,10 +25,10 @@ about. A session in no cell is untouched, which is what makes the mode free whil
 
 | Caller | Refused |
 |---|---|
-| captain | everything except `cellwork_*` (but NOT `cellwork_handoff`), `agent_teams_*`, `ask_user_question`, `todo_write`, `mpd_memory_*`, and the one verify-loop opener `mpd_verify_open` (that EXACT name; every other `mpd_verify_*` stays refused) |
-| verifier | `write`, `edit`, `mpd_hashline_edit`, `mcp__ast_grep__rewrite`, `mcp__ast_grep__scan`, `mcp__lsp__rename_symbol`, `mcp__lsp__rename_symbol_strict`, and the two bundle spawn tools `mpd_role_spawn` / `mpd_workmate_spawn` — a verifier NEVER delegates: the verdict is its own work, and a FAIL is the channel back to the writer |
+| captain | everything except `cellwork_*` (but NOT `cellwork_handoff`, `cellwork_delegate` or `cellwork_consult`), `agent_teams_*`, `ask_user_question`, `todo_write`, `mpd_memory_*`, and the one verify-loop opener `mpd_verify_open` (that EXACT name; every other `mpd_verify_*` stays refused) |
+| verifier | `write`, `edit`, `mpd_hashline_edit`, `mcp__ast_grep__rewrite`, `mcp__ast_grep__scan`, `mcp__lsp__rename_symbol`, `mcp__lsp__rename_symbol_strict`, the two bundle spawn tools `mpd_role_spawn` / `mpd_workmate_spawn`, both roster consult tools `mpd_role_spawn_async` / `mpd_role_consult`, and this package's `cellwork_delegate` / `cellwork_consult` — a verifier NEVER delegates: the verdict is its own work, and a FAIL is the channel back to the writer |
 | member at its context checkpoint | everything except `cellwork_handoff`, `cellwork_context`, `cellwork_status` |
-| subcaptain | a MINI-CAPTAIN: the captain allowlist MINUS `cellwork_start`/`cellwork_stop`, plus the four sub-cell verbs `cellwork_subteam`, `cellwork_activate`, `cellwork_dispatch`, `cellwork_supervise`. No file-work tool at all |
+| subcaptain | a MINI-CAPTAIN: the captain allowlist MINUS `cellwork_start`/`cellwork_stop`, plus the four sub-cell verbs `cellwork_subteam`, `cellwork_activate`, `cellwork_dispatch`, `cellwork_supervise` AND the two consult verbs `cellwork_delegate` / `cellwork_consult`. No file-work tool at all |
 | planner (`cell-planner`) | `read`/`grep`/`glob` inside the documentation band — `.mpd/**`, `docs/**`, `evidence/**`, `agent-references/**`; any `AGENT.md`/`AGENTS.md`/`CLAUDE.md` by basename at any depth, inside or outside the workspace root; at the root only `README.md`, `README.zh-CN.md`, `CHANGELOG.md`, `LICENSE*.md` — and every other tool it needs to plan |
 | ordinary member | nothing: it is a normal worker |
 
@@ -41,11 +41,17 @@ band the top-level `mpd` captain keeps (a parity test imports both lists, so the
 is judged by its SPELLING with symlinks never resolved, and a `..` segment is admitted ONLY when the
 basename is one of the three instruction files — reading a sibling project's `AGENT.md` is exactly why
 the hop is allowed. In a cell the planner NEVER runs reconnaissance itself, and a CONSULT IS A LEAF:
-`mpd_role_spawn` forwards the caller's recorded depth + 1 and denies both spawn tools in the child's own
-scope, so the child cannot delegate again; a caller already at depth 2 or deeper is refused outright.
-The cell planner sits at depth 1, keeps its route, and its consult lands at depth 2 as a leaf;
-`cellwork_recon` is exempt from that depth floor because its own depth is bounded by
-`cellwork.depthMax`.
+the roster's spawn tools forward the caller's recorded delegation depth + 1 and deny both spawn tools in
+the child's own scope, so the child cannot delegate again; a caller already at delegation depth 2 or
+deeper is refused by those TOOLS. The three cellwork consult verbs do not go through that floor: they
+start through the `mpdConsults` service, which places the child at caller depth + 1 — one level below
+the caller, a leaf — and forwards no absolute cap.
+TWO SCALES, not one. `cellwork.depthMax` (1..8, default 3) is the CELL-TREE scale: it counts nested
+CELLS and teams, and `cellwork_subteam` refuses `depth + 1 > depthMax`. AGENT delegation depth is a
+separate scale the harness records per session: a cell seat is a TEAM MEMBER, so the planner sits at
+delegation depth 1 in the shipped topology, and the seats of a NESTED cell sit one level deeper than the
+cell that raised them. The two numbers never coincide, which is why the cell cap is not forwarded as the
+child's agent cap: at the legal value `depthMax: 1` that forwarding disabled every consult.
 
 ## State on disk
 
@@ -75,12 +81,28 @@ the record says `stopped`, and a later `/cellwork` mints a new cell id.
 
 The flow tools: `cellwork_requirements` (the planner's finalize/update; a section body runs to the next
 heading of the same or a higher level, so `###` stays inside its parent), `cellwork_recon` (the
-planner's one-shot read-only consult), `cellwork_split` (the splitter's measured graph — each task may
+planner's READ-ONLY consult — `{role, task}` for one question, `{role, questions:[…]}` for 1..8 settled
+CONCURRENTLY), `cellwork_split` (the splitter's measured graph — each task may
 declare its board `member`, and a refusal persists its findings at `split/<rev>.refused.json`),
 `cellwork_activate` (the captain's materialisation; it raises ONE member per distinct `member`, names
 both the owner role and the member in each contract, its answer's `reused` list names the members
 resolved from the cell record or the live roster instead of raised, and the OTHER ways a member row
 appears are staging and adoption, below).
+
+The BACKGROUND DELEGATION pair, for a cell seat (planner, subcaptain, ordinary member — never the
+captain): `cellwork_delegate` starts 1..16 consults in ONE pass and returns their `consultId`s
+immediately, roles canonicalised by the roles row's OWN resolver (`DeepWorker`, `deep worker`,
+`deep-worker` and `Deep Worker` are ONE agent) and ANY roster role (writers included) allowed;
+`cellwork_consult` lists, waits for, collects (which RELEASES the record) and cancels the consults THIS
+cell started. Both go through the `mpdConsults` service the `mpd-roles` row provides over its ONE
+consult supervisor — one registry, one `MPD_DSH_CONSULT_MAX` cap (over-cap work QUEUES) and one silence
+deadman — and an absent service is refused by name, never replaced by an unsupervised spawn. ALL THREE
+consult verbs go through that service, the legacy `cellwork_recon {role, task}` form included, so a
+composition that mounts cellwork WITHOUT the `mpd-roles` row loses that form too; the shipped bundle
+mounts both rows, so only a hand-built composition is affected. Validation is ALL-OR-NOTHING, and that
+covers VALIDATION only: a start failing AFTER some children already started answers `ok:false` naming
+the ids that DID start — those children keep running and stay recorded, for `cellwork_consult` to
+collect.
 
 The protocol tools: `cellwork_dispatch` (one owner-only dispatch pass, plus `reassign` hand-overs and
 the `unfence` lever), `cellwork_supervise` (the captain's read-only sweep, including every CLOSED seat
@@ -150,11 +172,12 @@ documented here.
   `{member, unfenced: false, reason: "checkpoint-pending", detail}` and writes NEITHER record — the
   barrier owns it. The CELL marker above outranks this: a give-up is recovered even while its TEAM row
   still reads `mode: "checkpoint"`.
-- **`not-fenced` is a fact, not a failure.** A member neither record fences answers
-  `{member, unfenced: false, reason: "not-fenced"}`; the record is not rewritten and nothing is asked of
-  the team plane. That is also the honest answer for a member whose CELL row merely carries
-  `handoffReady: true` while NEITHER record carries a marker: only an explicit give-up marker is cleared,
-  because reopening a bare waiting row would invite the second-handoff livelock.
+- **`not-fenced` is a fact, not a failure.** A member NEITHER record holds — no explicit fence and no
+  checkpoint spelling — answers `{member, unfenced: false, reason: "not-fenced"}`; the record is not
+  rewritten and nothing is asked of the team plane. A CELL row that merely carries `handoffReady: true`
+  is NOT that case: that flag is a checkpoint spelling, so the seat is BARRIER-OWNED and the unforced
+  answer is `checkpoint-pending` (nothing written), because the compaction barrier owns the reopen. Only
+  an explicit give-up marker is cleared by the unforced lever.
 - **A name must resolve UNAMBIGUOUSLY.** The shared rule is exact member key, then exact display name,
   then the normalized key only when it is non-empty and carried by EXACTLY ONE member; an unknown or
   ambiguous spelling (say `1` against 后端1/前端1) refuses the whole `unfence` call and the
@@ -182,7 +205,8 @@ reported on the row's log line (`<workspace>/.mpd/logs/mpd-cellwork.log`).
 `depthMax` 3 · `checkpointRatio` 0.5 · `windowFraction` 0.25 · `fixedOverheadTokens` 32000 ·
 `fixedOverheadByRoute` {} · `toolSchemaChars` 0 · `outputReserveTokens` 8192 ·
 `compactionHeadroomTokens` 65536 · `compactionRetries` 3 · `idleBarrierDelayMs` 200 ·
-`asciiCharsPerToken` 3 · `cjkCharsPerToken` 1 · `contractGates` [] · `windowOverride` null.
+`checkpointPendingMaxMs` 900000 · `asciiCharsPerToken` 3 · `cjkCharsPerToken` 1 · `contractGates` [] ·
+`windowOverride` null.
 
 The mail bound is the ONE knob outside this table: `mail.maxUndelivered` (default 8, `0` disables; an
 absent or unusable value falls back to 8) is a `mail.*` key because BOTH mail tools read it, and it is
@@ -290,8 +314,9 @@ whose window cannot be read can be certified deliberately, and it is recorded as
   projection never carries an `undefined` own key (the optional `owner` is OMITTED, never set to `undefined`),
   and no result carries a non-finite number, a negative zero or a cycle.
 - **B5 recon bound.** `cellwork_recon` raises the read-only child with the exact `Explorer`/`Researcher`
-  label and an absolute depth cap, so the child-persona seam applies the roster deny list. On a composition
-  WITHOUT that seam the child is read-only by PROMPT only, and the result reports `personaInjected:false`.
+  label — and no absolute cap, because the roster places the child one level below the caller as a leaf — so
+  the child-persona seam applies the roster deny list. On a composition WITHOUT that seam the child is
+  read-only by PROMPT only, and the result reports `personaInjected:false`.
 - **Verify-loop producer.** `mpd_verify_open` is called with the captain's LIVE agent and its own session id,
   recorded truthfully on the loop; the cell id appears only as DATA on the frozen contract
   (`producer: cellwork:<cellId>`), never as a fabricated session. `mpd_verify_open` — that exact name — is the
@@ -308,16 +333,45 @@ whose window cannot be read can be certified deliberately, and it is recorded as
   (the planner/splitter), and a completion failure is journaled, never fatal to the revision.
 - **Compaction is classified, never swallowed — and a member that is still reachable is compacted IN
   PLACE.** The `agent/turn-stopping` listener RETURNS the barrier promise, so the host's serial dispatch
-  AWAITS it instead of racing a detached one. The barrier waits for the agent to be idle with a bounded
-  retry budget (`compactionRetries`, `idleBarrierDelayMs`), then resolves the engine from the LIVE member
-  handle the event carries (`compactionEngineForLiveAgent`) BEFORE any sleep and BEFORE the registry
-  lookup, so a member already detached from `ctx.agents` still compacts in place; only when that handle
-  carries no engine does the id-keyed `compactionEngineForAgent` get a chance. A retry delay may sit
-  between attempts; there is none before the FIRST one. The engine is driven with a real
-  `AbortController` signal, and the journaled reason is one of `compacted` | `no-safe-range` | `busy` |
-  `aborted` | `failed` | `no-engine`; exhausting the retry budget is never a silent no-op. The outcome
-  union is exactly `promoted` | `reseeded` | `refused`, and a `compacted` answer takes `promoted` on the
-  SAME agent — no interrupt, no reseed.
+  AWAITS it instead of racing a detached one. The barrier does NOT wait for an idle agent: it makes at
+  most `compactionRetries` attempts, sleeping `idleBarrierDelayMs` BETWEEN them (no sleep before the
+  FIRST one), and resolves the engine from the LIVE member handle the event carries
+  (`compactionEngineForLiveAgent`) BEFORE any sleep and BEFORE the registry lookup, so a member already
+  detached from `ctx.agents` still reaches its own realm's engine; only when that handle carries no
+  engine does the id-keyed `compactionEngineForAgent` get a chance. The engine is driven with a real
+  `AbortController` signal, and the journaled reason BEGINS with one of the classifications `compacted` |
+  `no-safe-range` | `busy` | `aborted` | `failed` | `no-engine`; exhausting the retry budget is never a
+  silent no-op. **The reason is a classification PLUS, when it applies, a `; ` clause** (NIT 5): a reseed
+  appends the host-bound note to it, so the `busy`-on-every-attempt shape journals
+  `busy; the engine reported \`busy\` on every attempt: …` — a reader that matches the whole string against
+  the six-value list would miss exactly the shape this bundle measured. **`busy` on
+  every attempt is the HOST's bound and the reason says so (R4.0):** `compactNow` runs inside
+  `agent.runMaintenance`, which refuses any phase but idle, while `agent/turn-stopping` is dispatched
+  inside the turn and its listeners are awaited — in-place compaction cannot run at that event, so the
+  reseed is the only path and the reason text records it instead of leaving `busy` unexplained. The
+  outcome union is exactly `promoted` | `reseeded` | `refused`, and a `compacted` answer takes
+  `promoted` on the SAME agent — no interrupt, no reseed. **A run whose PERSISTED ROW reopened the CELL
+  seat also reopens the TEAM seat.** The gate is that row (`fenced !== true`), never the raw outcome: it
+  calls the plane's `unfence` seam as the CAPTAIN, journals `member-unfenced` with
+  `by: "barrier"` and reports `plane: "unfenced" | "absent" | "refused"` (the seam's three answers); a
+  `reseeded` run that reaches the retry bound FENCES the CELL row on that same run and reopens nothing,
+  journaling `plane-reopen-skipped` with `plane: "skipped-fenced"`, the barrier's fourth `plane` value. A
+  reseed journals
+  `member-reseeded` with both session ids, the retirement fact and the plane's half. **The retirement is
+  authorised by a LIVE ANCESTOR (R5.1)** — the same session the reseed is raised under (the member's
+  durable parent when live, else the cell's captain), NEVER the member's own handle, which the host
+  refuses as `UNAUTHORIZED "cannot interrupt itself"` before its ancestry check. The row records what
+  the host did: `retired:true` only with `retirement:"accepted"`, `"nothing-to-retire"` when the
+  registry holds no live session under that id (never a retirement), `"refused"` with the host's
+  sentence in `retirementReason`, and `"unavailable"` when the composition exposes no seam. A plane
+  half that ends `refused` carries `retry`, the exact Lead-only verb that re-drives it. A reseed is NOT
+  proof of a working child: `checkpointSince` survives it, and `cellwork_supervise` marks a STAMPED seat
+  `suspect` only when the registry is PRESENT, its CAPTAIN anchor resolves, and the recorded session does
+  not (a present registry that cannot resolve that anchor answers `unknown` and marks nothing). The
+  bounded forced lever
+  (`unfence: [{member, force: true}]`) is the last resort, fail-closed on a live session and on a
+  missing written bound (`barrierFailures` at `compactionRetries`, or a window older than
+  `checkpointPendingMaxMs`); it reopens the seat for reassignment, not for work.
 - **Mail and reseed bounds.** Cell mail is durable first and woken best-effort. `cellwork_send` resolves
   the recipient in the cell tree — a member name, `captain`, or the cross-cell form
   `"<cellId>/<captain|member>"`, where `<cellId>` must be a sub-cell THIS cell registered or this cell's
@@ -361,6 +415,36 @@ from the parent team's own roster (`deriveParentTeam`), because the session stag
 a member of it. The TUI is the surface that draws the boxes this wave; the web DAG's group frame is a
 declared follow-up (`docs/cellwork.md`, "Declared bounds").
 
+### Consults as DAG nodes
+
+The consults a seat starts are part of the picture. Each start writes ONE `running` row onto the cell's
+team record through `mpdTeamActions.upsertConsult`, and the graph — which `mpd-team-core-plugin` builds
+from that record and caches against the change feed's revision — draws it inside the cell's grouping box.
+No second store, no second watcher, no `.mpd/cellwork/**` read from the team plane.
+
+- **A settled consult is recorded WITHOUT a seat asking.** `mpdConsults.start` takes an optional
+  `onSettled` observer, which the roles row fires exactly once when the record leaves `running`; cellwork
+  passes one per consult and upserts the terminal row from it. The `wait`/`collect`/`cancel` answers write
+  the same row as a second, idempotent source (the upsert is keyed by `consultId`), so an observer whose
+  write never landed is corrected the moment anybody looks.
+- **A cell with no live team records nothing** (`teamId === ""`): there is no record to draw a node on, so
+  the call journals `consult-unattached` and its answer is unchanged. A plane that cannot take the write
+  journals `consult-unrecorded` for the same reason — a write failure never turns a started child into a
+  failed tool call.
+- **`cellwork_stop` clears them and interrupts their children.** The stop (forced included) FIRST drops
+  the in-memory consult book's cell key — the deliberate STOP MARKER the settlement observer reads — then
+  interrupts every consult that key still named through `mpdConsults.cancel`, journaling one
+  `consult-cancelled` row per child (`consult-cancel-skipped` with the reason when the seam is absent or
+  the call throws), and finally calls `mpdTeamActions.clearConsults` for the cell's team, so the graph
+  stops drawing them AND a child that settles later is journaled (`consult-late-settlement`) instead of
+  re-creating a row. A cell with no live team still gets the cancellation above — the children are
+  process-local, not plane-owned.
+- **The rows are retained, not unbounded.** The team plane keeps at most 50 per team, dropping the oldest
+  SETTLED row first and never a `running` one; a cell that never stops cleanly therefore ages out instead
+  of growing forever.
+- **Nothing here is a task.** A consult takes no `T<n>`, is never dispatched, and is excluded from the
+  board tallies, `readyTasks`, the clean-terminal rule and the verifier's scope.
+
 ## Declared bounds
 
 - The guard is **process-wide and dispatch-time only**. It cannot see intent, it cannot stop a model from
@@ -373,6 +457,18 @@ declared follow-up (`docs/cellwork.md`, "Declared bounds").
   because cellwork's own dispatch pass reads the cell record — a bare board read still shows the row.
 - Verification blindness stays PROSE, exactly as this repository states it: cellwork wires the contract,
   the loop and the verdict, and does not pretend to observe what a verifier read.
+- **A delegated WRITER works OUTSIDE the cell board**: no frozen contract, no verify loop, no board row.
+  Board-scale work belongs on `cellwork_split` + `cellwork_activate`; background delegation is for
+  bounded side-work.
+- **The consult book is IN MEMORY** (cell id → consult id, no report and no cap), like the supervisor's
+  own records: a restart loses both, and `cellwork_consult` says so instead of answering a stale id. A
+  consult a seat collects through `mpd_role_consult` directly leaves this cell's list.
+- **Agent delegation depth and the CELL-tree depth are DIFFERENT SCALES** — `cellwork.depthMax` bounds
+  nested cells/teams only and is NEVER passed to a consult. The three consult verbs start through the
+  `mpdConsults` service, which leaves the child's agent depth to the roster's own
+  `spawnMaxDepthOf(exec.agent)` rule (caller depth + 1, a leaf) and deliberately does not apply the
+  roster's tool-side depth floor. ONE consumer of that exemption exists today: cellwork, whose plane is
+  bounded by `cellwork.depthMax`; a second consumer must justify the bypass.
 - The 1/4-of-window rule is a certified ESTIMATE from measured bytes and configurable ratios — not a
   measurement, and deliberately punitive for CJK.
 - **The generic team verb is the hazard cell mode removes.** `agent_teams_dispatch` pairs a ready task
@@ -423,9 +519,11 @@ so the row an owner claims carries the acceptance text it is judged against.
 
 ## Consult tools, force targets and the cell record (2026-11-05)
 
-The verifier's read-only deny list is now TEN names (adding `mpd_role_spawn_async` and
-`mpd_role_consult`) and the no-delegation list carries four (the two spawn tools plus both consult
-tools): a verifier seat can neither delegate nor cancel another consult. A cell seat IS a team
+The verifier's read-only deny list on the ROSTER side stays TEN names (`mpd_role_spawn_async` and
+`mpd_role_consult` included), this package's own `VERIFIER_DENY_TOOLS` carries ELEVEN (that ten minus
+the `bash` a verifier keeps, plus `cellwork_delegate` and `cellwork_consult`), and the no-delegation list
+carries SIX (the two spawn tools, both roster consult tools, and this package's two consult verbs): a
+verifier seat can neither delegate nor cancel another consult, whichever spelling it reaches for. A cell seat IS a team
 member, so the team watchdog's force supervisor targets it through that team-member identity and its
 GRACE-then-force order (grace directive, ADOPTED member handoff, then interrupt, requeue, split) while
 `mpd-team-core` never writes the CELL record — a seat repairs its own seat afterwards through the

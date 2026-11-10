@@ -36,8 +36,11 @@ function decide(seat: CellworkSeat, toolName: string): string | undefined {
   return cellworkGuardDecision(seat, toolName)
 }
 
-test("the no-delegation list is the two bundle spawn tools, and it is NOT the write deny", () => {
-  expect([...VERIFIER_NO_DELEGATION]).toEqual(["mpd_role_spawn", "mpd_role_spawn_async", "mpd_role_consult", "mpd_workmate_spawn"])
+test("the no-delegation list is the bundle spawn tools plus this package's two consult verbs", () => {
+  // The four bundle spawn names are the original arm (CR repair E); the TWO `cellwork_*` names are the
+  // cell's own door to the SAME background consults (background-delegation contract §3.3), so the verifier
+  // loses both spellings of one capability rather than one.
+  expect([...VERIFIER_NO_DELEGATION]).toEqual(["mpd_role_spawn", "mpd_role_spawn_async", "mpd_role_consult", "mpd_workmate_spawn", "cellwork_delegate", "cellwork_consult"])
   // The write deny is a SEPARATE list and stays exactly the write-capable names: one list per reason, so a
   // refusal always teaches the one repair that matches what it refused.
   // The TWO CONSULT surfaces are ALSO on the read-only deny list (§D2.7: ten names); the guard
@@ -47,6 +50,10 @@ test("the no-delegation list is the two bundle spawn tools, and it is NOT the wr
   expect(VERIFIER_DENY_TOOLS).not.toContain("mpd_role_spawn")
   expect(VERIFIER_DENY_TOOLS).not.toContain("mpd_workmate_spawn")
   expect(VERIFIER_DENY_TOOLS).toContain("write")
+  // The CELLWORK pair is in BOTH lists on purpose: the write-deny membership states the denial in one
+  // place, and the delegation arm (checked first) phrases it.
+  expect(VERIFIER_DENY_TOOLS).toContain("cellwork_delegate")
+  expect(VERIFIER_DENY_TOOLS).toContain("cellwork_consult")
   // `bash` stays available to a verifier BY DESIGN (a gate run needs a shell), so it is in neither list.
   expect(VERIFIER_DENY_TOOLS).not.toContain("bash")
   expect(VERIFIER_NO_DELEGATION).not.toContain("bash")

@@ -84,6 +84,23 @@ export interface CellMemberRecord {
   fenced?: boolean
   /** The one-sentence reason the barrier recorded when it fenced this member. PRESERVED, never defaulted. */
   fencedReason?: string
+  /**
+   * ISO instant this seat entered the checkpoint window (R4.3).
+   *
+   * OPTIONAL AND ADDITIVE, written at the ONE place a seat is closed without an owner (the pre-step
+   * checkpoint). It is the AGE the captain's forced `unfence` measures (`checkpointPendingMaxMs`), and
+   * it SURVIVES a reseed on purpose: a fresh child is not proof that the seat works, so the window keeps
+   * its clock until the barrier actually reopens the seat.
+   */
+  checkpointSince?: string
+  /**
+   * How many CONSECUTIVE barrier runs ended without reopening this seat (R4.3).
+   *
+   * OPTIONAL AND ADDITIVE, absent-not-zero: the key exists only while a run has failed to reopen the
+   * seat, and a reopening outcome deletes it. The barrier fences the seat when the count reaches the
+   * `compactionRetries` bound, so a seat stuck in the window cannot be retried forever.
+   */
+  barrierFailures?: number
   /** ISO instant the member was added to the cell. */
   joinedAt: string
   /**
@@ -594,6 +611,12 @@ function normalizeMember(name: string, raw: unknown): CellMemberRecord | null {
     // a record that never carried one must not grow `fenced: false` (its ABSENCE is the "not fenced" fact).
     ...(raw.fenced === true ? { fenced: true } : {}),
     ...(typeof raw.fencedReason === "string" ? { fencedReason: raw.fencedReason } : {}),
+    // ADDITIVE AND PRESERVED for the same reason as `fenced` (R4.3): the checkpoint window's clock and
+    // the barrier's failure count drive the forced-unfence predicate, so a read that dropped them would
+    // reset a stuck seat's bound on every restart. A count of ZERO is not a fact (absent means "no failed
+    // run has been recorded"), so it is dropped rather than persisted as `0`.
+    ...(textField(raw.checkpointSince) === undefined ? {} : { checkpointSince: raw.checkpointSince as string }),
+    ...(typeof raw.barrierFailures === "number" && Number.isFinite(raw.barrierFailures) && raw.barrierFailures > 0 ? { barrierFailures: Math.floor(raw.barrierFailures) } : {}),
     joinedAt: typeof raw.joinedAt === "string" ? raw.joinedAt : "",
     // ADDITIVE AND PRESERVED for the same reason as `fenced`: an adopted row must still read as adopted
     // after a restart, and a row activation created must not grow `adopted: false`.

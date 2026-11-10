@@ -375,6 +375,47 @@ function byFrameId(left, right) {
 function byFrameDepthThenId(left, right) {
   return left.depth - right.depth || ID_ORDER.compare(left.id, right.id);
 }
+function consultVisualOf(state) {
+  switch (state) {
+    case "running":
+      return "running";
+    case "complete":
+      return "completed";
+    case "interrupted":
+      return "cancelled";
+    case "failed":
+      return "failed";
+    case "cancelled":
+      return "cancelled";
+    default:
+      return "open";
+  }
+}
+function consultOrdinalOf(value) {
+  return Number.isFinite(value) && value >= 1 ? Math.floor(value) : 0;
+}
+function consultNodesOf(frame) {
+  const ordered = [...frame.consults].sort((left, right) => consultOrdinalOf(left.consultNumber) - consultOrdinalOf(right.consultNumber) || ID_ORDER.compare(left.consultId, right.consultId));
+  return ordered.map((row) => {
+    const ordinal = consultOrdinalOf(row.consultNumber);
+    return {
+      id: frame.id === null ? `C${ordinal}` : `${frame.id}::C${ordinal}`,
+      subject: row.task,
+      visual: consultVisualOf(row.state),
+      dependencies: [],
+      depth: 0,
+      planned: false,
+      kind: "consult",
+      consultId: row.consultId,
+      cellId: row.cellId,
+      startedAt: row.startedAt,
+      status: row.state,
+      assignee: row.role,
+      ...row.elapsedMs === undefined ? {} : { elapsedMs: row.elapsedMs },
+      ...frame.id === null ? {} : { group: frame.id }
+    };
+  });
+}
 function isGroupFrame(frame) {
   return frame.id !== null && frame.label !== null;
 }
@@ -398,6 +439,7 @@ function collectFrame(group, parent) {
     depth: parent.depth + 1,
     board: group.board ?? [],
     children: [],
+    consults: group.consults ?? [],
     ...group.originTaskId === undefined ? {} : { originTaskId: group.originTaskId },
     ...group.plan === undefined ? {} : { plan: group.plan }
   };
@@ -523,6 +565,7 @@ function buildModel(input) {
     depth: -1,
     board: input.board ?? [],
     children: [],
+    consults: input.consults ?? [],
     ...input.plan === undefined ? {} : { plan: input.plan }
   };
   root.children = (input.groups ?? []).map((group) => collectFrame(group, root)).sort(byFrameId);
@@ -635,7 +678,8 @@ function buildModel(input) {
     ranksDerived: rootLayout?.derived ?? true
   };
   const groups = groupRecords(frames, level);
-  return { nodes, edges, ranks, cycles: [...cyclic].sort(), report, ...groups.length === 0 ? {} : { groups } };
+  const consults = frames.flatMap((frame) => consultNodesOf(frame));
+  return { nodes, edges, ranks, cycles: [...cyclic].sort(), report, ...groups.length === 0 ? {} : { groups }, ...consults.length === 0 ? {} : { consults } };
 }
 function groupRecords(frames, level) {
   const groups = [];

@@ -50,6 +50,15 @@ export interface CellworkConfig {
   compactionRetries: number
   /** The idle retry interval, in milliseconds, of that barrier. */
   idleBarrierDelayMs: number
+  /**
+   * How long a seat may sit in the checkpoint window before the captain's FORCED unfence may clear it.
+   *
+   * The last-resort lever (R4.4) is fail-closed: it reopens a seat only when the recorded session is
+   * not live AND the window is older than this bound (or the barrier already spent its retry budget).
+   * Fifteen minutes is the bundle's established silence bound, so a captain sees the same number the
+   * team watchdog uses.
+   */
+  checkpointPendingMaxMs: number
   /** ASCII characters a token is priced at; lower is more conservative. */
   asciiCharsPerToken: number
   /** CJK characters a token is priced at — deliberately punitive, since CJK tokenizers differ. */
@@ -71,6 +80,7 @@ export const DEFAULT_CELLWORK_CONFIG: CellworkConfig = {
   compactionHeadroomTokens: 65536,
   compactionRetries: 3,
   idleBarrierDelayMs: 200,
+  checkpointPendingMaxMs: 900000,
   asciiCharsPerToken: 3,
   cjkCharsPerToken: 1,
   windowOverride: null,
@@ -99,6 +109,7 @@ const KNOB_RULES: Readonly<Record<string, KnobRule>> = {
   outputReserveTokens: { integer: true, min: 0, max: 1000000 },
   compactionHeadroomTokens: { integer: true, min: 0, max: 10000000 },
   compactionRetries: { integer: true, min: 1, max: 10 },
+  checkpointPendingMaxMs: { integer: true, min: 0, max: 86400000 },
   idleBarrierDelayMs: { integer: true, min: 0, max: 10000 },
   asciiCharsPerToken: { integer: false, min: 0.5, max: 16 },
   cjkCharsPerToken: { integer: false, min: 0.5, max: 16 },
@@ -248,6 +259,7 @@ export function resolveCellworkConfig(
     compactionHeadroomTokens: numberKnob("compactionHeadroomTokens", row, readFile, warn),
     compactionRetries: numberKnob("compactionRetries", row, readFile, warn),
     idleBarrierDelayMs: numberKnob("idleBarrierDelayMs", row, readFile, warn),
+    checkpointPendingMaxMs: numberKnob("checkpointPendingMaxMs", row, readFile, warn),
     asciiCharsPerToken: numberKnob("asciiCharsPerToken", row, readFile, warn),
     cjkCharsPerToken: numberKnob("cjkCharsPerToken", row, readFile, warn),
     windowOverride,

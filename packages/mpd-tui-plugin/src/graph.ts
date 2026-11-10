@@ -67,7 +67,7 @@
 // against `ascii codepoints=34 cellWidth=34 endsWith│=true`. The `wide` array below is that fix, and
 // it is why a CJK subject can no longer shear the drawing.
 import { cellWidth, clampCells, sliceCells, stripControl } from "./sanitize.js"
-import { DAG_CHARS, DAG_GHOST_MARKER, DAG_GROUP_CHARS, DAG_TONE_GLYPH } from "./dag-theme.js"
+import { DAG_CHARS, DAG_CONSULT_MARKER, DAG_GHOST_MARKER, DAG_GROUP_CHARS, DAG_TONE_GLYPH } from "./dag-theme.js"
 // THE GROUP TREE (wave `cellwork`, contract D3): the nested layout's geometry, kept in its own module so
 // it can be measured and asserted WITHOUT a canvas. This file only paints what that module returns.
 import {
@@ -125,6 +125,35 @@ export interface GraphTask {
    * boxes themselves arrive once in {@link layoutBoxesNatural}'s `groups` argument.
    */
   group?: string
+  /**
+   * The CONSULT facts, present only when this row is a consult node rather than a task.
+   *
+   * A consult is drawn by this module exactly like a task (the same box, the same tone, the same hit
+   * area) and differs in ONE painted thing: {@link labelOf} swaps the state glyph for the consult
+   * marker. The detail body prints the rest. Declared structurally here with
+   * `TeamTaskRow.consult` in `team-state.ts` as the authoritative projection: this module is the pure
+   * drawing and deliberately imports no projection code.
+   */
+  consult?: GraphConsultBadge
+}
+
+/**
+ * The facts a CONSULT node carries that a task node does not (consult DAG, contract §6).
+ *
+ * One field beyond the node's own id and assignee is enough for a drawing; the pinned detail body reads
+ * the same four, which is why they travel together rather than as a boolean plus a lookup.
+ */
+export interface GraphConsultBadge {
+  /** The supervisor's own id for the consult, printed by the detail body. */
+  consultId: string
+  /** The lifecycle word AS RECORDED, printed by the detail body (`interrupted` included). */
+  state: string
+  /** The cell that started it. */
+  cellId: string
+  /** When it started, epoch milliseconds. */
+  startedAt: number
+  /** How long it ran, milliseconds; absent while it is still running. */
+  elapsedMs?: number
 }
 
 /**
@@ -305,6 +334,15 @@ const FOCUS_MARKER = DAG_CHARS.focusMarker
  * an open board task — the drawing would be technically complete and practically unreadable.
  */
 const GHOST_MARKER = DAG_GHOST_MARKER
+
+/**
+ * The marker a CONSULT node draws instead of a state glyph.
+ *
+ * Same rule as the ghost: a MARKER, not a tone. The tone still comes from the consult's recorded
+ * lifecycle word, so a settled consult is drawn exactly as lively as a completed task, and the id it
+ * prints (`C1`, or `teamB::C1` inside a box) is the marker that tells the two apart at a glance.
+ */
+const CONSULT_MARKER = DAG_CONSULT_MARKER
 
 /**
  * THE LEGEND'S ARROW SENTENCE, roomiest wording first.
@@ -624,7 +662,7 @@ function labelOf(task: GraphTask, focus: string | undefined): string {
   // beats what it is), then a GHOST's plan-only marker, then the contract's state glyph. The ghost is
   // keyed on the model's `visual: "planned"` value, so the tone (`toneOf`) still reads it as `open`.
   /** The marker this label draws. */
-  const marker = task.id === focus ? FOCUS_MARKER : task.visual === "planned" ? GHOST_MARKER : (GLYPH[task.visual] ?? "?")
+  const marker = task.id === focus ? FOCUS_MARKER : task.consult !== undefined ? CONSULT_MARKER : task.visual === "planned" ? GHOST_MARKER : (GLYPH[task.visual] ?? "?")
   return `${marker} ${task.id}`
 }
 

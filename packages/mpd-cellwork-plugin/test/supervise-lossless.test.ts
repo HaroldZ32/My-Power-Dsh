@@ -25,6 +25,8 @@ interface CapturedTool {
   name: string
   /** The runner, called with `{ name, agent }` as its exec. */
   execute: (args: unknown, exec: unknown) => Promise<unknown>
+  /** The output declaration, whose render is the text a model reads. */
+  output?: { render?: (args: unknown, value: unknown) => unknown }
 }
 
 /** One command definition the fake registry captured. */
@@ -281,7 +283,15 @@ function makeHarness(): Harness {
   const services: Record<string, unknown> = {
     tools: toolsService,
     commands: commandsService,
-    agents: { list: (): FakeAgent[] => [captain] },
+    // THE IDENTITY SEAM IS A REGISTRY WITH `get`, like the host's: `list` alone is not an identity lookup,
+    // and a composition whose registry cannot resolve a known-live identity may not call anything DEAD
+    // (R7.3). The captain resolves; no member session does, which is the arm's proven-dead premise.
+    agents: {
+      /** The live-session list the adapter's capability probe reads. */
+      list: (): FakeAgent[] => [captain],
+      /** The registry's own lookup: the CAPTAIN resolves, every other id is absent. */
+      get: (id: string): FakeAgent | undefined => (id === captain.id ? captain : undefined),
+    },
     mpdTeams: {
       /**
        * Answer one team read.
@@ -345,6 +355,24 @@ async function runTool(harness: Harness, name: string, args: Record<string, unkn
   const tool = harness.tools.find((candidate) => candidate.name === name)
   if (tool === undefined) throw new Error("no captured tool named " + name)
   return await tool.execute(args, { name, agent }) as Record<string, any>
+}
+
+/**
+ * The text a model reads for one answer, through the definition's own renderer.
+ * @param harness - the harness that captured the definition.
+ * @param name - the tool name.
+ * @param answer - the structured answer to render.
+ * @returns the rendered text, blocks joined by newlines.
+ */
+function renderTool(harness: Harness, name: string, answer: unknown): string {
+  /** The captured definition. */
+  const tool = harness.tools.find((candidate) => candidate.name === name)
+  /** The formatter the definition declares. */
+  const render = tool?.output?.render
+  if (render === undefined) throw new Error("no renderer on " + name)
+  /** The formatter's answer. */
+  const blocks = render({}, answer)
+  return Array.isArray(blocks) ? blocks.map((block) => String((block as { text?: unknown }).text ?? "")).join("\n") : String(blocks)
 }
 
 /**
@@ -474,4 +502,52 @@ test("B2: the walk holds over every cellwork tool result the harness can invoke"
   const stopped = readCell(harness.workspace, cellId)
   expect(stopped.ok).toBe(true)
   if (stopped.ok) expect(stopped.state.phase).toBe("stopped")
+})
+
+
+// ── R4.5: a barrier-owned seat reports the three fields, and the render says what it owes ─────
+
+test("R4.5: a barrier-owned seat reports `barrierOwned`/`forceEligible`/`pendingMs`, and the render stops promising inaction", async () => {
+  /** The harness with a started cell. */
+  const harness = makeHarness()
+  /** The cell id. */
+  const cellId = await startCell(harness)
+  /** The persisted record, read so the arm mutates the REAL row shape. */
+  const loaded = readCell(harness.workspace, cellId)
+  if (!loaded.ok) throw new Error("the started cell must be readable")
+  /** The first recorded member, whichever the staging produced. */
+  const name = Object.keys(loaded.state.members)[0]
+  if (name === undefined) throw new Error("a started cell has at least one member")
+  /** The instant the window opened: one hour before the sweep, so the pending bound IS reached. */
+  const opened = new Date(Date.now() - 3600000).toISOString()
+  // THE PRODUCTION WINDOW: checkpoint mode, waiting for a barrier that nothing supervises.
+  writeCell(harness.workspace, {
+    ...loaded.state,
+    members: { ...loaded.state.members, [name]: { ...loaded.state.members[name], mode: "checkpoint", handoffReady: true, checkpointSince: opened } },
+  })
+  /** The captain's sweep. */
+  const swept = await runTool(harness, "cellwork_supervise", {})
+  expect(swept.ok).toBe(true)
+  // LOSSLESS FIRST: the new optional keys must not smuggle an `undefined` own key into the answer.
+  expect(losslessViolation(swept)).toBeUndefined()
+  /** The closed rows the sweep reports. */
+  const closed = (swept.fenced as Array<Record<string, unknown>>).find((row) => row.name === name)
+  if (closed === undefined) throw new Error("the checkpointed seat must be reported closed")
+  expect(closed.giveUp).toBe(false)
+  expect(closed.barrierOwned).toBe(true)
+  // THE BOUND IS REACHED AND NO SEAM PROVES THE SESSION LIVE, so the forced lever is eligible — the
+  // fail-closed predicate is what says so, not a guess about the barrier.
+  expect(closed.forceEligible).toBe(true)
+  expect(Number(closed.pendingMs)).toBeGreaterThanOrEqual(3600000)
+  /** The text a model reads for the same sweep. */
+  const text = renderTool(harness, "cellwork_supervise", swept)
+  expect(text).toContain("BARRIER-OWNED")
+  // THE OLD PROMISE IS GONE: nothing supervises the barrier, so the sweep names its debt and the lever
+  // instead of telling the captain there is nothing to do.
+  expect(text).not.toContain("nothing for you to do")
+  expect(text).toContain("the barrier has NOT reopened this seat and no supervisor can")
+  expect(text).toContain("force:true")
+  // THE MEMBER ROW IS HONEST TOO: a checkpointed seat whose recorded session the registry cannot prove
+  // live is marked SUSPECT rather than presented as a healthy promotion (R4.2).
+  expect(text).toContain("SUSPECT")
 })

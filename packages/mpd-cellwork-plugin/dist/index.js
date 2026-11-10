@@ -2595,6 +2595,8 @@ function normalizeMember(name, raw) {
     handoffs: typeof raw.handoffs === "number" ? raw.handoffs : 0,
     ...raw.fenced === true ? { fenced: true } : {},
     ...typeof raw.fencedReason === "string" ? { fencedReason: raw.fencedReason } : {},
+    ...textField(raw.checkpointSince) === undefined ? {} : { checkpointSince: raw.checkpointSince },
+    ...typeof raw.barrierFailures === "number" && Number.isFinite(raw.barrierFailures) && raw.barrierFailures > 0 ? { barrierFailures: Math.floor(raw.barrierFailures) } : {},
     joinedAt: typeof raw.joinedAt === "string" ? raw.joinedAt : "",
     ...raw.adopted === true ? { adopted: true } : {}
   };
@@ -2813,6 +2815,7 @@ var DEFAULT_CELLWORK_CONFIG = {
   compactionHeadroomTokens: 65536,
   compactionRetries: 3,
   idleBarrierDelayMs: 200,
+  checkpointPendingMaxMs: 900000,
   asciiCharsPerToken: 3,
   cjkCharsPerToken: 1,
   windowOverride: null
@@ -2827,6 +2830,7 @@ var KNOB_RULES = {
   outputReserveTokens: { integer: true, min: 0, max: 1e6 },
   compactionHeadroomTokens: { integer: true, min: 0, max: 1e7 },
   compactionRetries: { integer: true, min: 1, max: 10 },
+  checkpointPendingMaxMs: { integer: true, min: 0, max: 86400000 },
   idleBarrierDelayMs: { integer: true, min: 0, max: 1e4 },
   asciiCharsPerToken: { integer: false, min: 0.5, max: 16 },
   cjkCharsPerToken: { integer: false, min: 0.5, max: 16 }
@@ -2903,6 +2907,7 @@ function resolveCellworkConfig(rowConfig, readFile, warn) {
     compactionHeadroomTokens: numberKnob("compactionHeadroomTokens", row, readFile, warn),
     compactionRetries: numberKnob("compactionRetries", row, readFile, warn),
     idleBarrierDelayMs: numberKnob("idleBarrierDelayMs", row, readFile, warn),
+    checkpointPendingMaxMs: numberKnob("checkpointPendingMaxMs", row, readFile, warn),
     asciiCharsPerToken: numberKnob("asciiCharsPerToken", row, readFile, warn),
     cjkCharsPerToken: numberKnob("cjkCharsPerToken", row, readFile, warn),
     windowOverride
@@ -2912,7 +2917,7 @@ function resolveCellworkConfig(rowConfig, readFile, warn) {
 // packages/mpd-cellwork-plugin/src/guard.ts
 var CAPTAIN_TOOL_PREFIXES = ["cellwork_", "agent_teams_", "mpd_memory_"];
 var CAPTAIN_TOOL_NAMES = ["ask_user_question", "todo_write", "mpd_verify_open"];
-var CAPTAIN_FORBIDDEN_NAMES = ["cellwork_handoff"];
+var CAPTAIN_FORBIDDEN_NAMES = ["cellwork_handoff", "cellwork_delegate", "cellwork_consult"];
 var VERIFIER_DENY_TOOLS = [
   "write",
   "edit",
@@ -2922,7 +2927,9 @@ var VERIFIER_DENY_TOOLS = [
   "mcp__lsp__rename_symbol",
   "mcp__lsp__rename_symbol_strict",
   "mpd_role_spawn_async",
-  "mpd_role_consult"
+  "mpd_role_consult",
+  "cellwork_delegate",
+  "cellwork_consult"
 ];
 var CHECKPOINT_ALLOW_TOOLS = ["cellwork_handoff", "cellwork_context", "cellwork_status"];
 var PLANNER_READABLE_PREFIXES = [".mpd/", "docs/", "evidence/", "agent-references/"];
@@ -2937,10 +2944,10 @@ var PLANNER_READABLE_ROOT_FILES = [
 var PLANNER_INSTRUCTION_BASENAMES = ["AGENT.md", "AGENTS.md", "CLAUDE.md"];
 var PLANNER_LICENSE_PATTERN = /^LICENSE.*\.md$/i;
 var PLANNER_RECON_TOOLS = ["read", "grep", "glob"];
-var VERIFIER_NO_DELEGATION = ["mpd_role_spawn", "mpd_role_spawn_async", "mpd_role_consult", "mpd_workmate_spawn"];
+var VERIFIER_NO_DELEGATION = ["mpd_role_spawn", "mpd_role_spawn_async", "mpd_role_consult", "mpd_workmate_spawn", "cellwork_delegate", "cellwork_consult"];
 var PLANNER_SEAT_NAME = "cell-planner";
 var SUBCAPTAIN_FORBIDDEN_NAMES = ["cellwork_start", "cellwork_stop"];
-var SUBCAPTAIN_TOOL_NAMES = ["cellwork_subteam", "cellwork_activate", "cellwork_dispatch", "cellwork_supervise"];
+var SUBCAPTAIN_TOOL_NAMES = ["cellwork_subteam", "cellwork_activate", "cellwork_dispatch", "cellwork_supervise", "cellwork_delegate", "cellwork_consult"];
 function isCaptainAllowed(toolName) {
   if (CAPTAIN_FORBIDDEN_NAMES.includes(toolName))
     return false;
@@ -2956,7 +2963,7 @@ function isSubcaptainAllowed(toolName) {
   return isCaptainAllowed(toolName);
 }
 function captainRefusal(toolName) {
-  return "cellwork: `" + toolName + "` is refused — while a cell is running the CAPTAIN DISPATCHES ONLY " + "(user clause 1): it edits no file, runs no shell, does no reconnaissance and verifies nothing. " + "Allowed here: `cellwork_*` except `cellwork_handoff` (`cellwork_status`, `cellwork_start`, " + "`cellwork_dispatch`, `cellwork_supervise`, `cellwork_activate`, `cellwork_send`, `cellwork_inbox`), " + "`agent_teams_*` (`agent_teams_plan`, `agent_teams_task`, `agent_teams_dispatch`, `agent_teams_mail`), " + "`mpd_verify_open` (opening a loop only — binding, evidence and verdict stay refused), " + "`ask_user_question`, `todo_write` and `mpd_memory_*`. Put the work on the team: stage or extend it " + "with `agent_teams_plan`, then DISPATCH WITH `cellwork_dispatch` — owner-only, and a busy or absent " + "owner is REPORTED and the task left pending, never substituted. (`agent_teams_dispatch` stays allowed " + "but it is NOT the verb for this board: it falls back to roster order, which can hand review work to " + "its own writer.) Relay the planner's questions with `ask_user_question`. To leave the mode and get " + "every tool back, call `cellwork_stop`.";
+  return "cellwork: `" + toolName + "` is refused — while a cell is running the CAPTAIN DISPATCHES ONLY " + "(user clause 1): it edits no file, runs no shell, does no reconnaissance and verifies nothing. " + "Allowed here: `cellwork_*` except `cellwork_handoff`, `cellwork_delegate` and `cellwork_consult` " + "(`cellwork_status`, `cellwork_start`, " + "`cellwork_dispatch`, `cellwork_supervise`, `cellwork_activate`, `cellwork_send`, `cellwork_inbox`), " + "`agent_teams_*` (`agent_teams_plan`, `agent_teams_task`, `agent_teams_dispatch`, `agent_teams_mail`), " + "`mpd_verify_open` (opening a loop only — binding, evidence and verdict stay refused), " + "`ask_user_question`, `todo_write` and `mpd_memory_*`. Put the work on the team: stage or extend it " + "with `agent_teams_plan`, then DISPATCH WITH `cellwork_dispatch` — owner-only, and a busy or absent " + "owner is REPORTED and the task left pending, never substituted. (`agent_teams_dispatch` stays allowed " + "but it is NOT the verb for this board: it falls back to roster order, which can hand review work to " + "its own writer.) Background side-work is a MEMBER's or a SUBCAPTAIN's call: they run " + "`cellwork_delegate` and collect with `cellwork_consult`. " + "Relay the planner's questions with `ask_user_question`. To leave the mode and get " + "every tool back, call `cellwork_stop`.";
 }
 function verifierRefusal(toolName) {
   return "cellwork: `" + toolName + "` is refused — this session is a VERIFIER of the cell, so it never " + "fixes what it judges. Read the frozen contract and the documentation (not the implementation), run " + "the gates, then record the verdict with `mpd_verify_record` (a PASS needs the documents it cites " + "and its gate evidence ids); reading, `bash`, `grep`, `glob` and `mpd_verify_*` stay available. A " + "FAIL bounces the work back to its writer as a repair task, and only a RECORDED FAIL makes " + "implementation reading legitimate, for diagnosis.";
@@ -2971,7 +2978,7 @@ function subcaptainRefusal(toolName) {
   return "cellwork: `" + toolName + "` is refused — this session is a SUBCAPTAIN of the cell: it builds and " + "dispatches the next-level team under the SAME rules as the captain, so it dispatches rather than works, " + "and it never edits a file, runs a shell, does reconnaissance or verifies. Allowed here: `cellwork_*` " + "except `cellwork_handoff`, `cellwork_start` and `cellwork_stop` (stage the sub-cell with " + "`cellwork_subteam`, materialise an accepted split with `cellwork_activate`, dispatch with " + "`cellwork_dispatch` and sweep with `cellwork_supervise`), `agent_teams_*`, `ask_user_question`, " + "`todo_write` and `mpd_memory_*`. Only the CAPTAIN opens or closes a cell: if this cell needs that, " + "send the request with `cellwork_send` and end your turn.";
 }
 function plannerRefusal(toolName, target) {
-  return "cellwork: `" + toolName + "` on " + target + " is refused — this session is the CELL PLANNER, so" + " its reconnaissance is DELEGATED, never run itself: its context has to carry the interview and the" + " requirements document, and a source tree spent here is context the interview then lacks. Two" + ' read-only routes, both one-shot: `cellwork_recon` {role:"Explorer"|"Researcher", task} — its' + " report comes straight back, and it forwards its own depth cap so it is never refused by the host's" + " nesting default — or `mpd_role_spawn` with a read-only roster role (Explorer, Researcher, Architect)" + " when the cellwork tool is not mounted. The band stays open to you: `.mpd/**`, `docs/**`," + " `evidence/**`, `agent-references/**`; any `AGENT.md`, `AGENTS.md` or `CLAUDE.md` at any depth, inside" + " this workspace or outside its root; and at the workspace root only `README.md`, `README.zh-CN.md`," + " `CHANGELOG.md` and `LICENSE*.md`.";
+  return "cellwork: `" + toolName + "` on " + target + " is refused — this session is the CELL PLANNER, so" + " its reconnaissance is DELEGATED, never run itself: its context has to carry the interview and the" + " requirements document, and a source tree spent here is context the interview then lacks. Two" + ' read-only routes, both one-shot: `cellwork_recon` {role:"Explorer"|"Researcher", task} — its' + " report comes straight back, and the roster places the child one level below you as a leaf, so it is" + " never refused by the host's nesting default — or `mpd_role_spawn` with a read-only roster role" + " (Explorer, Researcher, Architect) when the cellwork tool is not mounted. The band stays open to" + " you: `.mpd/**`, `docs/**`," + " `evidence/**`, `agent-references/**`; any `AGENT.md`, `AGENTS.md` or `CLAUDE.md` at any depth, inside" + " this workspace or outside its root; and at the workspace root only `README.md`, `README.zh-CN.md`," + " `CHANGELOG.md` and `LICENSE*.md`.";
 }
 function plannerReadablePath(workspaceRoot, raw) {
   const posix = String(raw ?? "").replace(/\\/g, "/");
@@ -3088,12 +3095,19 @@ var PLANNER_RECON_LINES = [
   "reason. Your context is spent on the interview and the requirements document: a source tree read here is",
   "context the interview then lacks, while the REPORT you actually need is a hundred lines, not ten thousand.",
   "",
-  "THE TWO ROUTES, both one-shot and READ-ONLY, and you consume the report rather than re-deriving it:",
+  "THE ROUTES, all one-shot and READ-ONLY unless stated, and you consume the report rather than deriving it:",
   '1. `cellwork_recon` {role:"Explorer"|"Researcher", task} — the in-cell route. Its report comes straight',
-  "   back to you and is journaled, and it forwards its own depth cap, so the host's nesting default never",
-  "   refuses it. `Explorer` finds the file and the code; `Researcher` collects evidence and cites it.",
-  '2. `mpd_role_spawn` {role:"Explorer"|"Researcher"|"Architect", task} — the roster route, for a',
-  "   composition where the cellwork tool is not mounted. Same discipline: ONE bounded question, one report.",
+  "   back to you and is journaled, and the roster places the child one level below you as a leaf, so the",
+  "   host's nesting default never refuses it. `Explorer` finds the file and the code; `Researcher` collects",
+  "   evidence.",
+  "   BATCH: pass `questions:[q1, q2, …]` (1..8) instead of `task` and they run CONCURRENTLY — the call",
+  "   returns when all are settled, one report per question, so an interview's fact-finding costs one call.",
+  "2. `cellwork_delegate` {tasks:[{role, task, context?}, …]} — BACKGROUND, 1..16 at once, ANY roster role",
+  "   (writers included). It returns the `consultId`s immediately and the children keep working while you",
+  '   do; settle them with `cellwork_consult {action:"list"|"wait"|"collect"|"cancel"}`. Use it when',
+  "   the work is side-work you do not have to read before the next question.",
+  '3. `mpd_role_spawn` {role:"Explorer"|"Researcher"|"Architect", task} — the roster route, for a',
+  "   composition where the cellwork tools are not mounted. Same discipline: ONE bounded question, one report.",
   "",
   "THE BAND YOU MAY READ YOURSELF: `.mpd/**` (the cell record, the requirements file, the contracts),",
   "`docs/**`, `evidence/**`, `agent-references/**`; any `AGENT.md`, `AGENTS.md` or `CLAUDE.md` at any depth,",
@@ -3131,7 +3145,9 @@ function activationDirective(input) {
     "   to the planner, which bumps the revision and marks the current split STALE; the splitter re-submits.",
     "5. stop — `cellwork_stop` archives the cell and gives every tool back. Nothing is deleted.",
     "",
-    "YOUR TOOLS IN THIS MODE: `cellwork_*` except `cellwork_handoff`, `agent_teams_*`, `ask_user_question`,",
+    "YOUR TOOLS IN THIS MODE: `cellwork_*` except `cellwork_handoff`, `cellwork_delegate` and",
+    "`cellwork_consult` (background delegation is a MEMBER's or a SUBCAPTAIN's call, not yours),",
+    "`agent_teams_*`, `ask_user_question`,",
     "`todo_write`, `mpd_memory_*`. Everything else is refused, and `cellwork_stop` is how you leave.",
     "",
     "STATE ON DISK (this is the record, not a suggestion): " + dir,
@@ -3766,30 +3782,374 @@ function errorText3(error) {
   return error instanceof Error ? error.message : String(error);
 }
 
+// packages/mpd-cellwork-plugin/src/consults.ts
+var DELEGATE_MAX_TASKS = 16;
+var CONSULT_WAIT_DEFAULT_MS = 30000;
+var CONSULT_WAIT_MAX_MS = 60000;
+var JOURNAL_TASK_CHARS = 400;
+var CONSULT_TASK_CHARS = 200;
+var CONSULT_ACTIONS = ["list", "wait", "collect", "cancel"];
+function createConsultBook() {
+  return new Map;
+}
+function consultSeatRefusal(toolName, seat) {
+  if (seat === undefined) {
+    return "cellwork: `" + toolName + "` is refused — this session is not a recorded member of the running" + " cell. The two consult verbs belong to the cell PLANNER (seat `cell-planner`), a promoted" + " SUBCAPTAIN, and an ordinary recorded MEMBER of the cell; the captain dispatches instead, and a" + " session the cell record never learned has no channel here. Read `cellwork_status` to see whether" + " this session holds a seat.";
+  }
+  if (seat.mode === "captain")
+    return captainRefusal(toolName);
+  if (seat.mode === "verifier")
+    return verifierDelegationRefusal(toolName);
+  if (seat.mode === "checkpoint")
+    return checkpointRefusal(toolName);
+  return;
+}
+function consultRowOf(value) {
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    return;
+  const record = value;
+  const consultId = typeof record.consultId === "string" ? record.consultId : "";
+  if (consultId === "")
+    return;
+  const state = typeof record.state === "string" ? record.state : typeof record.status === "string" ? record.status : "running";
+  const report = reportRowOf(record.report);
+  return {
+    consultId,
+    role: typeof record.role === "string" ? record.role : "",
+    state,
+    startedAt: wholeNumber(record.startedAt),
+    elapsedMs: wholeNumber(record.elapsedMs),
+    ...typeof record.handoff === "string" && record.handoff !== "" ? { handoff: record.handoff } : {},
+    ...report === undefined ? {} : { report },
+    ...typeof record.error === "string" && record.error !== "" ? { error: record.error } : {}
+  };
+}
+function reportRowOf(value) {
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    return;
+  const record = value;
+  return {
+    role: typeof record.role === "string" ? record.role : "",
+    status: typeof record.status === "string" ? record.status : "complete",
+    summary: typeof record.summary === "string" ? record.summary : "",
+    recommendation: typeof record.recommendation === "string" ? record.recommendation : "",
+    details: typeof record.details === "string" ? record.details : "",
+    evidence: Array.isArray(record.evidence) ? record.evidence.map((entry) => String(entry)) : [],
+    stopReason: typeof record.stopReason === "string" ? record.stopReason : null,
+    consultId: typeof record.consultId === "string" ? record.consultId : "",
+    elapsedMs: wholeNumber(record.elapsedMs),
+    ...typeof record.handoff === "string" && record.handoff !== "" ? { handoff: record.handoff } : {},
+    ...typeof record.lastActivity === "string" && record.lastActivity !== "" ? { lastActivity: record.lastActivity } : {}
+  };
+}
+function wholeNumber(value) {
+  const parsed = typeof value === "number" ? value : Number.NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : 0;
+}
+function missingConsultsServiceRefusal(toolName) {
+  return "cellwork: `" + toolName + "` is refused — the `mpdConsults` service is ABSENT from this" + " composition, so no supervised consult can be started or settled. It is provided by the" + " `mpd-roles` row over that row's ONE consult supervisor (the shared `MPD_DSH_CONSULT_MAX` cap and" + " the silence deadman live there); mount that row — there is no unsupervised fallback. The BLOCKING" + " `cellwork_recon` route needs it too, and `mpd_role_spawn` stays available for a one-shot consult.";
+}
+function missingRosterRefusal() {
+  return "cellwork: the roster service (`mpdRoles`) is absent or empty in this composition, so a role" + " spelling cannot be canonicalised — mount the `mpd-roles` row and resubmit.";
+}
+function readDelegateTasks(raw) {
+  if (!Array.isArray(raw))
+    return { ok: false, error: "cellwork_delegate: `tasks` must be an array of 1.." + String(DELEGATE_MAX_TASKS) + " `{role, task}` objects — nothing was started" };
+  if (raw.length === 0)
+    return { ok: false, error: "cellwork_delegate: `tasks` is empty — name at least one `{role, task}` to start; nothing was started" };
+  if (raw.length > DELEGATE_MAX_TASKS)
+    return { ok: false, error: "cellwork_delegate: `tasks` carries " + String(raw.length) + " entries, more than the " + String(DELEGATE_MAX_TASKS) + " this call starts — split it into batches; nothing was started" };
+  const tasks = [];
+  for (let index = 0;index < raw.length; index += 1) {
+    const entry = raw[index];
+    if (typeof entry !== "object" || entry === null || Array.isArray(entry))
+      return { ok: false, error: "cellwork_delegate: tasks[" + String(index) + "] is not an object — every entry is `{role, task, context?}`; nothing was started" };
+    const record = entry;
+    const role = typeof record.role === "string" ? record.role.trim() : "";
+    if (role === "")
+      return { ok: false, error: "cellwork_delegate: tasks[" + String(index) + "].role is empty — name a roster role (see `mpd_roles_list`); nothing was started" };
+    const task = typeof record.task === "string" ? record.task.trim() : "";
+    if (task === "")
+      return { ok: false, error: "cellwork_delegate: tasks[" + String(index) + "].task is empty — one consult answers one concrete assignment; nothing was started" };
+    if (record.context !== undefined && typeof record.context !== "string")
+      return { ok: false, error: "cellwork_delegate: tasks[" + String(index) + "].context must be a string when present; nothing was started" };
+    tasks.push({ role, task, ...typeof record.context === "string" && record.context !== "" ? { context: record.context } : {} });
+  }
+  return { tasks };
+}
+function consultStateOf(value) {
+  return value === "complete" || value === "interrupted" || value === "failed" || value === "cancelled" || value === "running" ? value : "running";
+}
+function consultFinishedAtOf(row) {
+  if (Number.isFinite(row.elapsedMs) && row.elapsedMs > 0 && Number.isFinite(row.startedAt) && row.startedAt > 0)
+    return row.startedAt + row.elapsedMs;
+  return Date.now();
+}
+async function recordConsultRow(deps, row, task) {
+  if (deps.teamId === "") {
+    appendJournal(deps.workspace, deps.cellId, { event: "consult-unattached", consultId: row.consultId, role: row.role }, deps.now);
+    return;
+  }
+  const plane = deps.teamActions();
+  if (plane?.upsertConsult === undefined) {
+    appendJournal(deps.workspace, deps.cellId, { event: "consult-unrecorded", consultId: row.consultId, reason: "this composition exposes no mpdTeamActions.upsertConsult seam" }, deps.now);
+    return;
+  }
+  try {
+    const answer = await Promise.resolve(plane.upsertConsult({
+      workspace: deps.workspace,
+      teamId: deps.teamId,
+      record: {
+        consultId: row.consultId,
+        role: row.role,
+        task: task.slice(0, CONSULT_TASK_CHARS),
+        cellId: deps.cellId,
+        startedAt: row.startedAt,
+        state: consultStateOf(row.state),
+        ...row.state === "running" ? {} : { finishedAt: consultFinishedAtOf(row), elapsedMs: row.elapsedMs },
+        ...row.handoff === undefined ? {} : { handoff: row.handoff }
+      }
+    }));
+    const refusal = typeof answer === "object" && answer !== null && answer.ok === false ? String(answer.error ?? "unknown refusal") : "";
+    if (refusal !== "")
+      appendJournal(deps.workspace, deps.cellId, { event: "consult-unrecorded", consultId: row.consultId, reason: refusal }, deps.now);
+  } catch (error) {
+    appendJournal(deps.workspace, deps.cellId, { event: "consult-unrecorded", consultId: row.consultId, reason: error instanceof Error ? error.message : String(error) }, deps.now);
+  }
+}
+function settlementObserverOf(deps) {
+  return (outcome) => {
+    const row = consultRowOf(outcome);
+    if (row === undefined)
+      return;
+    if (!deps.book.has(deps.cellId)) {
+      appendJournal(deps.workspace, deps.cellId, { event: "consult-late-settlement", consultId: row.consultId }, deps.now);
+      return;
+    }
+    const task = ownedConsult(deps.book, deps.cellId, row.consultId)?.question ?? "";
+    recordConsultRow(deps, row, task);
+  };
+}
+async function startDelegation(deps, rawTasks) {
+  const parsed = readDelegateTasks(rawTasks);
+  if ("ok" in parsed)
+    return parsed;
+  const service = deps.service();
+  if (service?.start === undefined || typeof service.canonicalRole !== "function")
+    return { ok: false, error: missingConsultsServiceRefusal("cellwork_delegate") };
+  if (deps.rosterNames().length === 0)
+    return { ok: false, error: missingRosterRefusal() };
+  const roles = [];
+  for (let index = 0;index < parsed.tasks.length; index += 1) {
+    const answer = (() => {
+      try {
+        return service.canonicalRole?.(parsed.tasks[index].role, deps.exec);
+      } catch {
+        return;
+      }
+    })();
+    const canonical = typeof answer === "string" && answer !== "" ? answer : undefined;
+    if (canonical === undefined)
+      return { ok: false, error: "cellwork_delegate: tasks[" + String(index) + "].role " + JSON.stringify(parsed.tasks[index].role) + " names no roster role — use a roster NAME as `mpd_roles_list` spells it (any case, space, hyphen or underscore spelling); nothing was started" };
+    roles.push(canonical);
+  }
+  const consults = [];
+  for (let index = 0;index < parsed.tasks.length; index += 1) {
+    const task = parsed.tasks[index];
+    try {
+      const answer = await service.start({
+        role: roles[index],
+        task: task.task,
+        ...task.context === undefined ? {} : { context: task.context },
+        exec: deps.exec,
+        onSettled: settlementObserverOf(deps)
+      });
+      const row = consultRowOf(answer);
+      if (row === undefined)
+        return { ok: false, error: "cellwork_delegate: the `mpdConsults` service answered tasks[" + String(index) + "] without a consultId — " + String(consults.length) + " of " + String(parsed.tasks.length) + " consults were already started (" + consults.map((entry) => entry.consultId).join(", ") + "); collect them with `cellwork_consult`" };
+      consults.push({ consultId: row.consultId, role: row.role === "" ? roles[index] : row.role, startedAt: row.startedAt });
+      rememberConsult(deps.book, deps.cellId, { consultId: row.consultId, role: row.role === "" ? roles[index] : row.role, startedAt: row.startedAt, question: task.task });
+      appendJournal(deps.workspace, deps.cellId, {
+        event: "delegate-start",
+        role: row.role === "" ? roles[index] : row.role,
+        consultId: row.consultId,
+        question: task.task.slice(0, JOURNAL_TASK_CHARS)
+      }, deps.now);
+      await recordConsultRow(deps, { ...row, role: row.role === "" ? roles[index] : row.role }, task.task);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { ok: false, error: "cellwork_delegate: starting tasks[" + String(index) + "] (" + roles[index] + ") failed: " + message + " — " + String(consults.length) + " of " + String(parsed.tasks.length) + " consults were already started" + (consults.length === 0 ? "" : " (" + consults.map((entry) => entry.consultId).join(", ") + "); collect them with `cellwork_consult`") };
+    }
+  }
+  return { ok: true, started: consults.length, consults };
+}
+function rememberConsult(book, cellId, owned) {
+  const own = book.get(cellId) ?? new Map;
+  own.set(owned.consultId, owned);
+  book.set(cellId, own);
+}
+function forgetConsult(book, cellId, consultId) {
+  return book.get(cellId)?.delete(consultId) === true;
+}
+function ownedConsult(book, cellId, consultId) {
+  return book.get(cellId)?.get(consultId);
+}
+function taskOfConsult(deps, consultId) {
+  return ownedConsult(deps.book, deps.cellId, consultId)?.question ?? "";
+}
+async function clearCellConsults(deps) {
+  const owned = [...deps.book.get(deps.cellId)?.keys() ?? []];
+  deps.book.delete(deps.cellId);
+  const service = deps.consults();
+  for (const consultId of owned) {
+    try {
+      if (typeof service?.cancel !== "function") {
+        appendJournal(deps.workspace, deps.cellId, { event: "consult-cancel-skipped", consultId, reason: "this composition exposes no mpdConsults.cancel seam" }, deps.now);
+        continue;
+      }
+      await Promise.resolve(service.cancel(consultId));
+      appendJournal(deps.workspace, deps.cellId, { event: "consult-cancelled", consultId, by: "stop" }, deps.now);
+    } catch (error) {
+      appendJournal(deps.workspace, deps.cellId, { event: "consult-cancel-skipped", consultId, reason: error instanceof Error ? error.message : String(error) }, deps.now);
+    }
+  }
+  if (deps.teamId === "")
+    return [];
+  const plane = deps.teamActions();
+  if (plane?.clearConsults === undefined) {
+    if (owned.length > 0)
+      appendJournal(deps.workspace, deps.cellId, { event: "consult-clear-skipped", reason: "this composition exposes no mpdTeamActions.clearConsults seam", count: owned.length }, deps.now);
+    return [];
+  }
+  try {
+    const answer = await Promise.resolve(plane.clearConsults({ workspace: deps.workspace, teamId: deps.teamId }));
+    const cleared = Array.isArray(answer?.cleared) ? answer.cleared.map((id) => String(id)) : [];
+    appendJournal(deps.workspace, deps.cellId, { event: "consult-cleared", count: cleared.length }, deps.now);
+    return cleared;
+  } catch (error) {
+    appendJournal(deps.workspace, deps.cellId, { event: "consult-clear-skipped", reason: error instanceof Error ? error.message : String(error) }, deps.now);
+    return [];
+  }
+}
+function foreignConsultRefusal(toolName, consultId, cellId) {
+  return "cellwork: `" + toolName + "` refused " + JSON.stringify(consultId) + " — this cell did not start" + " that consult, so it is not this cell's to settle. `cellwork_consult` answers only ids that" + " `cellwork_delegate` returned IN CELL " + cellId + " and that the consult supervisor still knows:" + " an id from `mpd_role_spawn_async` belongs to `mpd_role_consult`, a consult another cell started" + " belongs to that cell, and a process restart drops every in-memory handle — re-delegate the task" + " with `cellwork_delegate` when you need it again.";
+}
+function successOf(action, row) {
+  const { error, ...rest } = row;
+  return { ok: true, action, ...rest, ...error === undefined ? {} : { errorDetail: error } };
+}
+async function runConsultAction(deps, args) {
+  const action = args.action.trim();
+  if (!CONSULT_ACTIONS.includes(action))
+    return { ok: false, error: "cellwork_consult: action must be `list`, `wait`, `collect` or `cancel` (got " + JSON.stringify(args.action) + ")" };
+  const service = deps.service();
+  if (service === undefined)
+    return { ok: false, error: missingConsultsServiceRefusal("cellwork_consult") };
+  if (action === "list") {
+    if (typeof service.list !== "function")
+      return { ok: false, error: missingConsultsServiceRefusal("cellwork_consult") };
+    const answer = await Promise.resolve(service.list());
+    const live = (Array.isArray(answer) ? answer : []).map((entry) => consultRowOf(entry)).filter((entry) => entry !== undefined);
+    const own = deps.book.get(deps.cellId) ?? new Map;
+    const consults = [];
+    for (const owned of [...own.values()]) {
+      const row = live.find((entry) => entry.consultId === owned.consultId);
+      if (row === undefined) {
+        forgetConsult(deps.book, deps.cellId, owned.consultId);
+        continue;
+      }
+      consults.push({ consultId: row.consultId, role: row.role === "" ? owned.role : row.role, state: row.state, startedAt: row.startedAt, elapsedMs: row.elapsedMs, question: owned.question });
+    }
+    return { ok: true, action, consults };
+  }
+  const consultId = args.consultId.trim();
+  if (consultId === "")
+    return { ok: false, error: 'cellwork_consult: `consultId` is required for action "' + action + '" — use the id `cellwork_delegate` returned, or action "list" to see this cell\'s ids' };
+  if (ownedConsult(deps.book, deps.cellId, consultId) === undefined)
+    return { ok: false, error: foreignConsultRefusal("cellwork_consult", consultId, deps.cellId) };
+  try {
+    if (action === "wait") {
+      if (typeof service.wait !== "function")
+        return { ok: false, error: missingConsultsServiceRefusal("cellwork_consult") };
+      const bound = args.timeoutMs === undefined ? CONSULT_WAIT_DEFAULT_MS : Math.min(CONSULT_WAIT_MAX_MS, Math.max(1, Math.trunc(Number(args.timeoutMs)) || 1));
+      const row2 = consultRowOf(await service.wait(consultId, bound));
+      if (row2 === undefined)
+        return { ok: false, error: "cellwork_consult: the `mpdConsults` service answered `wait` without a consult view for " + JSON.stringify(consultId) };
+      await recordConsultRow(deps, row2, ownedConsult(deps.book, deps.cellId, consultId)?.question ?? "");
+      return successOf(action, row2);
+    }
+    if (action === "collect") {
+      if (typeof service.collect !== "function")
+        return { ok: false, error: missingConsultsServiceRefusal("cellwork_consult") };
+      const row2 = consultRowOf(await Promise.resolve(service.collect(consultId)));
+      if (row2 === undefined) {
+        forgetConsult(deps.book, deps.cellId, consultId);
+        return { ok: false, error: foreignConsultRefusal("cellwork_consult", consultId, deps.cellId) };
+      }
+      const remembered = taskOfConsult(deps, consultId);
+      if (row2.state !== "running")
+        forgetConsult(deps.book, deps.cellId, consultId);
+      await recordConsultRow(deps, row2, remembered);
+      return successOf(action, row2);
+    }
+    if (typeof service.cancel !== "function")
+      return { ok: false, error: missingConsultsServiceRefusal("cellwork_consult") };
+    const row = consultRowOf(await Promise.resolve(service.cancel(consultId)));
+    if (row === undefined)
+      return { ok: false, error: "cellwork_consult: the `mpdConsults` service answered `cancel` without a consult view for " + JSON.stringify(consultId) };
+    appendJournal(deps.workspace, deps.cellId, { event: "consult-cancelled", role: row.role, consultId }, deps.now);
+    await recordConsultRow(deps, row, taskOfConsult(deps, consultId));
+    return successOf(action, row);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { ok: false, error: "cellwork_consult: `" + action + "` on " + JSON.stringify(consultId) + " failed: " + message };
+  }
+}
+
 // packages/mpd-cellwork-plugin/src/recon.ts
 var RECON_ROLES = ["Explorer", "Researcher"];
 var JOURNAL_REPORT_CHARS = 2000;
+var RECON_MAX_QUESTIONS = 8;
 function canonicalReconRole(role) {
   const wanted = role.trim().toLowerCase();
   return RECON_ROLES.find((candidate) => candidate.toLowerCase() === wanted);
 }
-function reconPrompt(deps, label, task) {
-  const persona = deps.personaFor(label);
+function reconContext(deps) {
   return [
-    ...persona === null ? [] : [persona, ""],
-    "[mpd-cellwork] ONE-SHOT READ-ONLY CONSULT — " + label,
-    "",
-    "Cell " + deps.cell.cellId + " is in its planning phase. Answer the question below from the repository",
+    "Cell " + deps.cell.cellId + " is in its planning phase. Answer the ONE question below from the repository",
     "itself: read files, search, and cite what you found by path. You cannot write, edit or run a shell;",
     "that is the point of this consult.",
-    "",
-    "QUESTION:",
-    task,
     "",
     "RETURN: the evidence you found (paths and the few relevant excerpts), then a direct answer. If the",
     "question is unanswerable from the tree, say exactly what is missing rather than guessing."
   ].join(`
 `);
+}
+function questionsOf(input) {
+  const hasTask = typeof input.task === "string";
+  const hasQuestions = Array.isArray(input.questions);
+  if (hasTask === hasQuestions)
+    return { error: "cellwork_recon: supply EXACTLY ONE of `task` (one question) or `questions` (1.." + String(RECON_MAX_QUESTIONS) + " questions)" };
+  if (hasTask) {
+    const task = String(input.task ?? "").trim();
+    if (task === "")
+      return { error: "cellwork_recon: the task/question is empty — one consult answers one concrete question" };
+    return { questions: [task] };
+  }
+  const declared = Array.isArray(input.questions) ? input.questions : [];
+  if (declared.length === 0)
+    return { error: "cellwork_recon: `questions` is empty — ask at least one question" };
+  if (declared.length > RECON_MAX_QUESTIONS)
+    return { error: "cellwork_recon: `questions` carries " + String(declared.length) + " entries, more than the " + String(RECON_MAX_QUESTIONS) + " one call settles — split it into batches" };
+  const questions = [];
+  for (let index = 0;index < declared.length; index += 1) {
+    const entry = declared[index];
+    const text = typeof entry === "string" ? entry.trim() : "";
+    if (text === "")
+      return { error: "cellwork_recon: questions[" + String(index) + "] is empty — every question must be a non-empty string" };
+    questions.push(text);
+  }
+  return { questions };
 }
 async function runRecon(deps, input) {
   if (deps.cell.phase === "stopped")
@@ -3801,32 +4161,69 @@ async function runRecon(deps, input) {
   const label = canonicalReconRole(input.role);
   if (label === undefined)
     return { ok: false, error: "cellwork_recon: role " + JSON.stringify(input.role) + " is not a read-only consult role — use exactly " + RECON_ROLES.join(" or ") };
-  const task = input.task.trim();
-  if (task === "")
-    return { ok: false, error: "cellwork_recon: the task/question is empty — one consult answers one concrete question" };
+  const asked = questionsOf(input);
+  if ("error" in asked)
+    return { ok: false, error: asked.error };
+  const service = deps.consults;
+  if (service?.start === undefined || service.settle === undefined || service.collect === undefined) {
+    return { ok: false, error: missingConsultsServiceRefusal("cellwork_recon") };
+  }
   const persona = deps.personaFor(label);
-  try {
-    const result = await deps.spawn({
-      label,
-      prompt: reconPrompt(deps, label, task),
-      maxDepth: deps.config.depthMax,
-      parent: deps.parent
-    });
+  const context = reconContext(deps);
+  const starts = [];
+  for (const question of asked.questions) {
+    try {
+      const answer = await service.start({ role: label, task: question, context, exec: deps.exec });
+      const view = consultRowOf(answer);
+      if (view === undefined)
+        starts.push({ question, failure: "the `mpdConsults` service answered without a consultId" });
+      else
+        starts.push({ question, consultId: view.consultId });
+    } catch (error) {
+      starts.push({ question, failure: error instanceof Error ? error.message : String(error) });
+    }
+  }
+  const reports = await Promise.all(starts.map(async (start) => {
+    if (start.consultId === undefined)
+      return { question: start.question, report: "cellwork_recon: starting the " + label + " consult failed: " + String(start.failure ?? "unknown error"), stopReason: "failed" };
+    try {
+      await service.settle?.(start.consultId);
+      const outcome = consultRowOf(await Promise.resolve(service.collect?.(start.consultId)));
+      const report = reportRowOf(outcome?.report);
+      if (report === undefined) {
+        return { question: start.question, report: "cellwork_recon: the " + label + " consult for this question failed: " + String(outcome?.error ?? "the supervisor released no report"), stopReason: "failed" };
+      }
+      return {
+        question: start.question,
+        report: report.summary,
+        stopReason: report.stopReason,
+        ...report.status === "interrupted" ? { interrupted: true } : {},
+        ...report.handoff === undefined ? {} : { handoff: report.handoff }
+      };
+    } catch (error) {
+      return { question: start.question, report: "cellwork_recon: settling the " + label + " consult failed: " + (error instanceof Error ? error.message : String(error)), stopReason: "failed" };
+    }
+  }));
+  for (const row of reports) {
     appendJournal(deps.workspace, deps.cell.cellId, {
-      event: "recon",
+      event: row.stopReason === "failed" ? "recon-failed" : "recon",
       role: label,
-      question: task.slice(0, 400),
-      reportChars: result.output.length,
-      excerpt: result.output.slice(0, JOURNAL_REPORT_CHARS),
-      stopReason: result.stopReason,
+      question: row.question.slice(0, 400),
+      reportChars: row.report.length,
+      excerpt: row.report.slice(0, JOURNAL_REPORT_CHARS),
+      stopReason: row.stopReason,
       personaInjected: persona !== null
     }, deps.now);
-    return { ok: true, role: label.toLowerCase(), label, report: result.output, stopReason: result.stopReason, personaInjected: persona !== null };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    appendJournal(deps.workspace, deps.cell.cellId, { event: "recon-failed", role: label, question: task.slice(0, 400), error: message }, deps.now);
-    return { ok: false, error: "cellwork_recon: raising the " + label + " consult failed: " + message };
   }
+  const single = reports.length === 1 ? reports[0] : undefined;
+  const legacyOnly = input.task !== undefined && asked.questions.length === 1;
+  return {
+    ok: true,
+    role: label.toLowerCase(),
+    label,
+    personaInjected: persona !== null,
+    ...single === undefined ? { reports } : legacyOnly ? { report: single.report, stopReason: single.stopReason } : { reports, report: single.report, stopReason: single.stopReason }
+  };
 }
 
 // packages/mpd-cellwork-plugin/src/activate.ts
@@ -3860,6 +4257,8 @@ function fenceReasonOf(member) {
     return "its mode is `checkpoint` — the seat is fenced to the handoff tools until the barrier compacts it";
   if (member.handoffReady === true)
     return "a handoff is already written and waiting for the compaction barrier";
+  if (member.mode === "subcaptain")
+    return "the compaction barrier reopened it onto a fresh child (`subcaptain`), so it counts as working only while that child is a live agent";
   return;
 }
 function contractRelativePath(cellId, boardId) {
@@ -3922,7 +4321,10 @@ function plannerPrompt(deps) {
     '  VERBATIM. Answer the captain the same way: `kind:"answer", replyTo:<the question\'s message id>, selected:[…]`.',
     "- Then WAIT for the captain's answer. Do not invent an answer, do not proceed on an assumption.",
     "- If reconnaissance is needed before you can ask a good question, call `cellwork_recon`",
-    '  {role:"Explorer"|"Researcher", task} — a one-shot READ-ONLY consult; you get its report back.',
+    '  {role:"Explorer"|"Researcher", task} — a one-shot READ-ONLY consult; you get its report back. Pass',
+    "  `questions:[…]` (1..8) instead of `task` to settle several at once.",
+    "  For side-work you do not have to read immediately, `cellwork_delegate` starts 1..16 BACKGROUND consults",
+    "  in one call and returns their ids; collect them with `cellwork_consult`.",
     ...PLANNER_RECON_LINES,
     "THE DOCUMENT: write `<cell>/requirements.md` under the cell directory with these headings exactly:",
     "  ## Goal · ## Non-goals · ## Users / consumers · ## Constraints · ## Acceptance criteria · ## Open questions",
@@ -3930,7 +4332,8 @@ function plannerPrompt(deps) {
     'Then call `cellwork_requirements {action:"finalize"}` (pass `content` instead of writing the file if that',
     "is easier). A finalized revision unblocks the splitter.",
     "",
-    "YOUR TOOLS: `cellwork_recon`, `cellwork_requirements`, `cellwork_status`, `cellwork_send`/`agent_teams_mail`.",
+    "YOUR TOOLS: `cellwork_recon`, `cellwork_delegate`, `cellwork_consult`, `cellwork_requirements`,",
+    "`cellwork_status`, `cellwork_send`/`agent_teams_mail`.",
     "Do NOT call `ask_user_question` (that is the captain's surface) and do NOT submit a split."
   ].join(`
 `);
@@ -4670,6 +5073,14 @@ function installCellworkFlow(deps) {
     const service = deps.ctx.get?.("mpdRoles", false);
     return typeof service === "object" && service !== null ? service : undefined;
   };
+  const consults = () => {
+    const service = deps.ctx.get?.("mpdConsults", false);
+    return typeof service === "object" && service !== null ? service : undefined;
+  };
+  const consultBook = createConsultBook();
+  deps.onConsultStop?.(async (cell) => {
+    await clearCellConsults({ book: consultBook, cellId: cell.cellId, workspace: cell.workspace, teamId: cell.teamId, teamActions, consults, now: new Date });
+  });
   const configService = () => {
     const service = deps.ctx.get?.("mpdConfig", false);
     return typeof service === "object" && service !== null ? service : undefined;
@@ -4689,6 +5100,19 @@ function installCellworkFlow(deps) {
     } catch {
       return null;
     }
+  };
+  const noLiveCellRefusal = (context, toolName) => {
+    if (context.workspace !== "" && context.cell !== null)
+      return;
+    if (context.workspace === "")
+      return toolName + ": the workspace root could not be resolved, so no cell can be read";
+    const ids = listCellIds(context.workspace);
+    for (const id of ids) {
+      const read = readCell(context.workspace, id);
+      if (read.ok && read.state.phase === "stopped")
+        return toolName + ": cell " + id + " is stopped and archived — consult work is refused after the mode ends";
+    }
+    return toolName + ": no active cell in this workspace — the consult verbs are only callable inside a running cell";
   };
   const routeOf = (role) => {
     try {
@@ -4875,14 +5299,15 @@ missing sections: ` + result.missing.join(", ") : ""));
   }));
   disposers.push(dsh.registerTool({
     name: "cellwork_recon",
-    description: "PLANNER/SUBCAPTAIN only: raise ONE read-only consult (label exactly `Explorer` or `Researcher`) through the adapter's direct one-shot start path, with an explicit absolute maxDepth so the consult is a leaf. The report is returned and journaled in the cell. A composition without the child-persona seam degrades to prose read-only and says so (`personaInjected:false`).",
+    description: "PLANNER/SUBCAPTAIN only: raise READ-ONLY consults (label exactly `Explorer` or `Researcher`) through the `mpdConsults` service, so the roles row applies the read-only deny list to the child and places it one level below the caller as a LEAF (caller agent depth + 1 — `cellwork.depthMax` counts nested CELLS and never caps the child). ONE question (`{role, task}`, the legacy blocking form) returns its report; 1..8 questions (`{role, questions}`) run CONCURRENTLY and the call returns only when ALL of them are settled, one row per question. Every report is journaled in the cell; an absent `mpdConsults` service is refused by name, never replaced by an unsupervised spawn.",
     parameters: {
       type: "object",
       properties: {
-        role: { type: "string", enum: ["Explorer", "Researcher"], description: "The read-only roster role; the label is applied verbatim so the child-persona seam applies the deny list." },
-        task: { type: "string", description: "The one question the consult must answer." }
+        role: { type: "string", enum: ["Explorer", "Researcher"], description: "The read-only roster role; the label is applied verbatim so the roles row applies the read-only deny list." },
+        task: { type: "string", description: "The ONE question the consult must answer (legacy blocking form; exactly one of `task`/`questions`)." },
+        questions: { type: "array", items: { type: "string" }, description: "1..8 questions settled CONCURRENTLY; the call returns when every one is settled (exactly one of `task`/`questions`)." }
       },
-      required: ["role", "task"],
+      required: ["role"],
       additionalProperties: false
     },
     output: {
@@ -4896,7 +5321,21 @@ missing sections: ` + result.missing.join(", ") : ""));
           label: { type: "string" },
           report: { type: "string" },
           stopReason: { oneOf: [{ type: "string" }, { type: "null" }] },
-          personaInjected: { type: "boolean" }
+          personaInjected: { type: "boolean" },
+          reports: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                question: { type: "string" },
+                report: { type: "string" },
+                stopReason: { oneOf: [{ type: "string" }, { type: "null" }] },
+                interrupted: { type: "boolean" },
+                handoff: { type: "string" }
+              },
+              required: ["question", "report", "stopReason"]
+            }
+          }
         },
         required: ["ok"]
       },
@@ -4904,7 +5343,18 @@ missing sections: ` + result.missing.join(", ") : ""));
         const result = typeof value === "object" && value !== null ? value : {};
         if (result.ok === false)
           return text("cellwork_recon refused: " + String(result.error ?? "unknown refusal"));
-        return text(String(result.label ?? "consult") + " report (" + String(result.report ?? "").length + " chars" + (result.personaInjected === true ? ", persona injected" : ", NO persona seam") + `):
+        const rows = Array.isArray(result.reports) ? result.reports : [];
+        if (rows.length > 0) {
+          return text(String(result.label ?? "consult") + " — " + String(rows.length) + " report(s)" + (result.personaInjected === true ? ", persona injected" : ", NO persona readable") + `:
+
+` + rows.map((row, index) => "[" + String(index + 1) + "] " + String(row.question ?? "") + `
+` + String(row.report ?? "") + (row.stopReason === null || row.stopReason === undefined ? "" : `
+(stopReason: ` + String(row.stopReason) + ")" + (row.handoff === undefined ? "" : `
+(handoff: ` + String(row.handoff) + ")"))).join(`
+
+`));
+        }
+        return text(String(result.label ?? "consult") + " report (" + String(result.report ?? "").length + " chars" + (result.personaInjected === true ? ", persona injected" : ", NO persona readable") + `):
 
 ` + String(result.report ?? ""));
       }
@@ -4914,26 +5364,220 @@ missing sections: ` + result.missing.join(", ") : ""));
       const caller = callerFor(exec);
       if (caller.refusal !== null)
         return { ok: false, error: refusalText(caller.refusal), path: caller.refusal.path };
-      if (caller.workspace === "" || caller.cell === null) {
-        const ids = listCellIds(caller.workspace);
-        for (const id of ids) {
-          const read = readCell(caller.workspace, id);
-          if (read.ok && read.state.phase === "stopped")
-            return { ok: false, error: "cellwork_recon: cell " + id + " is stopped and archived — reconnaissance is refused after the mode ends" };
-        }
+      const noCell = noLiveCellRefusal(caller, "cellwork_recon");
+      if (noCell !== undefined)
+        return { ok: false, error: noCell };
+      const cell = caller.cell;
+      if (cell === null)
         return { ok: false, error: "cellwork_recon: no active cell in this workspace" };
-      }
       const result = await runRecon({
-        spawn: (spec) => dsh.spawnAgent(spec).then((answer) => ({ output: answer.output, stopReason: answer.stopReason })),
+        consults: consults(),
+        exec,
         workspace: caller.workspace,
-        cell: caller.cell,
-        parent: exec.agent,
+        cell,
         caller: { member: caller.member, mode: caller.seat?.mode ?? "member" },
-        config,
         personaFor,
         now: new Date
-      }, { role: argString(argv, "role"), task: argString(argv, "task") });
+      }, {
+        role: argString(argv, "role"),
+        ...typeof argv.task === "string" ? { task: argv.task } : {},
+        ...Array.isArray(argv.questions) ? { questions: argv.questions } : {}
+      });
       return result.ok ? { ...result } : { ok: false, error: result.error };
+    }
+  }));
+  disposers.push(dsh.registerTool({
+    name: "cellwork_delegate",
+    description: "PLANNER / SUBCAPTAIN / recorded MEMBER only (the cell captain is refused): start 1..16 BACKGROUND consults in ONE call and return their `consultId`s immediately, before any child settles. Roles are ANY roster role — writers included — and are canonicalised by the roles row (`deep worker` = `Deep-Worker` = `Deep Worker`), so the answer echoes the canonical name. ALL-OR-NOTHING: an unknown role, an empty field or more than 16 tasks refuses the whole call and starts nothing. Over-cap work QUEUES on the shared `MPD_DSH_CONSULT_MAX` cap and is never refused. Collect with `cellwork_consult`; for read-only reconnaissance prefer `cellwork_recon`.",
+    parameters: {
+      type: "object",
+      properties: {
+        tasks: {
+          type: "array",
+          description: "1..16 tasks started in ONE pass; every one must validate or the call starts nothing.",
+          items: {
+            type: "object",
+            properties: {
+              role: { type: "string", description: "A roster role NAME (any case, space, hyphen or underscore spelling; see `mpd_roles_list`)." },
+              task: { type: "string", description: "The assignment / question this consult answers." },
+              context: { type: "string", description: "Optional extra prompt block (why the consult exists)." }
+            },
+            required: ["role", "task"],
+            additionalProperties: false
+          }
+        }
+      },
+      required: ["tasks"],
+      additionalProperties: false
+    },
+    output: {
+      schema: {
+        type: "object",
+        properties: {
+          ok: { type: "boolean" },
+          error: { type: "string" },
+          started: { type: "integer" },
+          consults: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                consultId: { type: "string" },
+                role: { type: "string" },
+                startedAt: { type: "number" }
+              },
+              required: ["consultId", "role", "startedAt"]
+            }
+          }
+        },
+        required: ["ok"]
+      },
+      render: (_args, value) => {
+        const result = typeof value === "object" && value !== null ? value : {};
+        if (result.ok === false)
+          return text("cellwork_delegate refused: " + String(result.error ?? "unknown refusal"));
+        const rows = Array.isArray(result.consults) ? result.consults : [];
+        return text("started " + String(result.started ?? rows.length) + " background consult(s) — collect them with `cellwork_consult`:\n" + rows.map((row) => "- " + String(row.role ?? "") + " · " + String(row.consultId ?? "")).join(`
+`));
+      }
+    },
+    execute: async (args, exec) => {
+      const argv = readArgs(args);
+      const caller = callerFor(exec);
+      if (caller.refusal !== null)
+        return { ok: false, error: refusalText(caller.refusal), path: caller.refusal.path };
+      const noCell = noLiveCellRefusal(caller, "cellwork_delegate");
+      if (noCell !== undefined)
+        return { ok: false, error: noCell };
+      const seatRefusal = consultSeatRefusal("cellwork_delegate", caller.seat);
+      if (seatRefusal !== undefined)
+        return { ok: false, error: seatRefusal };
+      const cell = caller.cell;
+      if (cell === null)
+        return { ok: false, error: "cellwork_delegate: no active cell in this workspace" };
+      const result = await startDelegation({
+        service: consults,
+        rosterNames,
+        cellId: cell.cellId,
+        workspace: caller.workspace,
+        exec,
+        now: new Date,
+        book: consultBook,
+        teamId: cell.teamId,
+        teamActions
+      }, argv.tasks);
+      return result.ok ? { ...result } : { ok: false, error: result.error };
+    }
+  }));
+  disposers.push(dsh.registerTool({
+    name: "cellwork_consult",
+    description: 'PLANNER / SUBCAPTAIN / recorded MEMBER only (the cell captain is refused): list, wait for, collect or cancel the consults THIS cell started through `cellwork_delegate`. `list` answers only this cell\'s ids that the consult supervisor still knows (a direct `mpd_role_consult {action:"collect"}` releases one, and a restart drops every handle); `wait` clamps `timeoutMs` to 1..60000 (default 30000) and a timed-out wait answers `state:"running"` rather than throwing; `collect` returns the settled report and RELEASES the record; `cancel` interrupts that child and journals it. An id this cell did not start is refused, not guessed.',
+    parameters: {
+      type: "object",
+      properties: {
+        action: { type: "string", enum: [...CONSULT_ACTIONS], description: "list | wait | collect | cancel." },
+        consultId: { type: "string", description: "The id `cellwork_delegate` returned; required for every action except `list`." },
+        timeoutMs: { type: "number", description: "The `wait` bound in ms, clamped to 1.." + String(CONSULT_WAIT_MAX_MS) + "; default " + String(CONSULT_WAIT_DEFAULT_MS) + "." }
+      },
+      required: ["action"],
+      additionalProperties: false
+    },
+    output: {
+      schema: {
+        type: "object",
+        properties: {
+          ok: { type: "boolean" },
+          error: { type: "string" },
+          action: { type: "string" },
+          consults: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                consultId: { type: "string" },
+                role: { type: "string" },
+                state: { type: "string" },
+                startedAt: { type: "number" },
+                elapsedMs: { type: "number" },
+                question: { type: "string" }
+              }
+            }
+          },
+          consultId: { type: "string" },
+          role: { type: "string" },
+          state: { type: "string" },
+          startedAt: { type: "number" },
+          elapsedMs: { type: "number" },
+          handoff: { type: "string" },
+          errorDetail: { type: "string", description: "The consult's OWN failure text (a raised child that never reported), distinct from a refusal." },
+          report: {
+            type: "object",
+            properties: {
+              role: { type: "string" },
+              status: { type: "string" },
+              summary: { type: "string" },
+              recommendation: { type: "string" },
+              details: { type: "string" },
+              evidence: { type: "array", items: { type: "string" } },
+              stopReason: { oneOf: [{ type: "string" }, { type: "null" }] },
+              consultId: { type: "string" },
+              elapsedMs: { type: "number" },
+              handoff: { type: "string" },
+              lastActivity: { type: "string" }
+            }
+          }
+        },
+        required: ["ok"]
+      },
+      render: (_args, value) => {
+        const result = typeof value === "object" && value !== null ? value : {};
+        if (result.ok === false)
+          return text("cellwork_consult refused: " + String(result.error ?? "unknown refusal"));
+        const rows = Array.isArray(result.consults) ? result.consults : [];
+        if (result.action === "list") {
+          return text(rows.length === 0 ? "this cell has no consult the supervisor still knows — start work with `cellwork_delegate`" : "this cell's consults (" + String(rows.length) + `):
+` + rows.map((row) => "- " + String(row.role ?? "") + " · " + String(row.consultId ?? "") + " · " + String(row.state ?? "") + " · " + String(row.elapsedMs ?? 0) + " ms · " + String(row.question ?? "")).join(`
+`));
+        }
+        const report = typeof result.report === "object" && result.report !== null ? result.report : undefined;
+        if (report === undefined)
+          return text(String(result.action ?? "consult") + " · " + String(result.role ?? "") + " · " + String(result.state ?? "running") + " · " + String(result.elapsedMs ?? 0) + " ms" + (typeof result.errorDetail === "string" ? `
+` + result.errorDetail : ""));
+        return text(String(result.action ?? "collect") + " · " + String(report.role ?? "") + " · " + String(report.status ?? "") + " · " + String(report.elapsedMs ?? 0) + " ms" + (report.summary === undefined || report.summary === "" ? "" : `
+
+` + String(report.summary)) + (Array.isArray(report.evidence) && report.evidence.length > 0 ? `
+
+evidence:
+` + report.evidence.map((entry) => "- " + String(entry)).join(`
+`) : ""));
+      }
+    },
+    execute: async (args, exec) => {
+      const argv = readArgs(args);
+      const caller = callerFor(exec);
+      if (caller.refusal !== null)
+        return { ok: false, error: refusalText(caller.refusal), path: caller.refusal.path };
+      const noCell = noLiveCellRefusal(caller, "cellwork_consult");
+      if (noCell !== undefined)
+        return { ok: false, error: noCell };
+      const seatRefusal = consultSeatRefusal("cellwork_consult", caller.seat);
+      if (seatRefusal !== undefined)
+        return { ok: false, error: seatRefusal };
+      const cell = caller.cell;
+      if (cell === null)
+        return { ok: false, error: "cellwork_consult: no active cell in this workspace" };
+      const result = await runConsultAction({
+        service: consults,
+        rosterNames,
+        cellId: cell.cellId,
+        workspace: caller.workspace,
+        exec,
+        now: new Date,
+        book: consultBook,
+        teamId: cell.teamId,
+        teamActions
+      }, { action: argString(argv, "action"), consultId: argString(argv, "consultId"), timeoutMs: argv.timeoutMs });
+      return result;
     }
   }));
   disposers.push(dsh.registerTool({
@@ -6190,7 +6834,9 @@ function promotionDirective(cellId, memberName, depth, nextStep) {
     "",
     "A subcaptain DISPATCHES: stage your sub-team with `agent_teams_plan` and register the sub-cell with",
     "`cellwork_subteam {objective}` (the plugin refuses a depth beyond the cell cap). You may consult",
-    "read-only children with `cellwork_recon`, and you keep `cellwork_dispatch`/`cellwork_status`."
+    "read-only children with `cellwork_recon` (1..8 questions in one blocking call), start BACKGROUND",
+    "consults with `cellwork_delegate` and settle them with `cellwork_consult`, and you keep",
+    "`cellwork_dispatch`/`cellwork_status`."
   ].join(`
 `);
 }
@@ -6205,9 +6851,11 @@ function subteamDirective(subcellId, depth, parentCellId, parentTeamId) {
     "You are its captain now: stage the sub-team with `agent_teams_plan` (members + tasks, approve), then",
     "`cellwork_activate` with the accepted split. The same guard applies to you as to any captain: dispatch",
     "only. Your surface here is `cellwork_dispatch`, `cellwork_supervise`, `cellwork_activate` and",
-    "`cellwork_subteam`; starting and ending a cell belong to the PARENT captain, and the guard refuses",
-    "those verbs for you. To leave this sub-cell, `cellwork_send` a stop request to the parent cell — the",
-    "parent archives it and your record is kept."
+    "`cellwork_subteam`, plus the two background-delegation verbs `cellwork_delegate` and",
+    "`cellwork_consult` — start up to 16 supervised consults in one call and settle them later. Starting",
+    "and ending a cell belong to the PARENT captain, and the guard refuses those verbs for you. To leave",
+    "this sub-cell, `cellwork_send` a stop request to the parent cell — the parent archives it and your",
+    "record is kept."
   ].join(`
 `);
 }
@@ -6272,6 +6920,19 @@ function reseedParentOf(deps) {
     return { parent: captain, source: "captain", sessionId: captainSession };
   return;
 }
+function reseedMaxDepthOf(parent) {
+  const session = parent.session;
+  if (typeof session !== "object" || session === null)
+    return 1;
+  const header = session.header;
+  if (typeof header !== "object" || header === null)
+    return 1;
+  const record = header;
+  const raw = Number(record.delegationDepth);
+  if (Number.isFinite(raw) && raw >= 1)
+    return Math.floor(raw) + 1;
+  return record.origin === "subagent" ? 2 : 1;
+}
 function compactionJournalEntry(memberName, result) {
   return {
     event: "compaction",
@@ -6289,11 +6950,16 @@ function checkpointUnrecoverableEntry(memberName, result) {
     member: memberName,
     attempts: result.attempts,
     reason: result.reason,
+    ...result.retirement === undefined ? {} : { retirement: result.retirement },
+    ...result.retirementReason === undefined ? {} : { retirementReason: result.retirementReason },
     repair: "reassign the rows this member owns: cellwork_dispatch {reassign:[{task_id, owner}]}"
   };
 }
-function memberAfterBarrier(previous, result) {
-  const givenUp = result.outcome === "refused";
+function memberAfterBarrier(previous, result, retryBound) {
+  const failures = (previous.barrierFailures ?? 0) + 1;
+  const reopened = result.outcome === "promoted";
+  const givenUp = !reopened && (result.outcome === "refused" || failures >= retryBound);
+  const fenceReason = result.reason + "; " + String(failures) + " of " + String(retryBound) + " consecutive barrier runs did not reopen the seat";
   return {
     name: previous.name,
     role: previous.role,
@@ -6304,17 +6970,37 @@ function memberAfterBarrier(previous, result) {
     handoffs: previous.handoffs,
     joinedAt: previous.joinedAt,
     ...previous.adopted === true ? { adopted: true } : {},
-    ...givenUp ? { fenced: true, fencedReason: result.reason } : {}
+    ...reopened ? {} : previous.checkpointSince === undefined ? {} : { checkpointSince: previous.checkpointSince },
+    ...reopened ? {} : { barrierFailures: failures },
+    ...givenUp ? { fenced: true, fencedReason: fenceReason } : {}
   };
+}
+function retireOriginal(deps, authority) {
+  const interrupt = deps.dsh.interruptAgent;
+  const identity = deps.dsh.liveAgentExact;
+  if (typeof interrupt !== "function" || typeof identity !== "function") {
+    return { retirement: "unavailable", reason: "this composition exposes no " + (typeof interrupt !== "function" ? "interruptAgent" : "liveAgentExact") + " seam, so no retirement could be performed or verified" };
+  }
+  if (liveSessionOf(deps, deps.sessionId) === undefined) {
+    return { retirement: "nothing-to-retire", reason: "the identity registry holds no live agent for session " + JSON.stringify(deps.sessionId) + ", so there was nothing to retire" };
+  }
+  try {
+    interrupt.call(deps.dsh, deps.sessionId, { kind: "ancestor", agent: authority });
+    return { retirement: "accepted" };
+  } catch (error) {
+    return { retirement: "refused", reason: error instanceof Error ? error.message : String(error) };
+  }
 }
 async function promoteAfterHandoff(deps) {
   let lastReason = "not attempted";
+  const classifications = [];
   for (let attempt = 1;attempt <= deps.config.compactionRetries; attempt += 1) {
     if (attempt > 1)
       await deps.sleep(deps.config.idleBarrierDelayMs);
     const engine = engineForBarrier(deps);
     if (engine === undefined || typeof engine.compactNow !== "function") {
       lastReason = "no-engine";
+      classifications.push(lastReason);
       continue;
     }
     const { signal } = compactionSignal(deps.signal);
@@ -6322,25 +7008,26 @@ async function promoteAfterHandoff(deps) {
       const result = await engine.compactNow(deps.agent, signal);
       const outcome = classifyCompactionResult(result);
       lastReason = outcome;
+      classifications.push(outcome);
       if (outcome === "compacted") {
         deps.injectDirective(promotionDirective(deps.cell.cellId, deps.memberName, deps.cell.depth + 1, deps.nextStep));
         return { outcome: "promoted", attempts: attempt, reason: outcome };
       }
     } catch (error) {
       lastReason = classifyCompactionError(error, signal);
+      classifications.push(lastReason);
       if (lastReason === "aborted" && deps.signal?.aborted === true)
         return { outcome: "refused", attempts: attempt, reason: "the caller cancelled the barrier" };
     }
   }
-  try {
-    deps.dsh.interruptAgent(deps.sessionId, { kind: "ancestor", agent: deps.agent });
-  } catch {}
+  const busyThroughout = classifications.length > 0 && classifications.every((entry) => entry === "busy");
+  const busyNote = busyThroughout ? "; the engine reported `busy` on every attempt: the host's compactNow needs an IDLE agent (runMaintenance refuses an open turn) while `agent/turn-stopping` fires inside the turn, so in-place compaction cannot run at this event — the reseed is the only path" : "";
   const parent = reseedParentOf(deps);
   if (parent === undefined) {
     return {
       outcome: "refused",
       attempts: deps.config.compactionRetries,
-      reason: lastReason + "; reseed-parent-unavailable (parent session " + JSON.stringify(deps.parentSessionId ?? "") + " and captain session " + JSON.stringify(deps.cell.captainSessionId) + " are neither one a live agent the registry holds)"
+      reason: lastReason + busyNote + "; reseed-parent-unavailable (parent session " + JSON.stringify(deps.parentSessionId ?? "") + " and captain session " + JSON.stringify(deps.cell.captainSessionId) + " are neither one a live agent the registry holds)"
     };
   }
   if (!parentHeldExactly(deps, parent.parent)) {
@@ -6350,25 +7037,26 @@ async function promoteAfterHandoff(deps) {
       reason: lastReason + "; reseed-parent-unavailable (the live registry no longer holds session " + JSON.stringify(parent.sessionId) + " as the exact instance the reseed would forward)"
     };
   }
+  const retirement = retireOriginal(deps, parent.parent);
   try {
     const activation = await deps.dsh.startContinuableAgent({
       provider: "spawn",
       label: deps.memberName + " · " + deps.cell.teamId,
       request: {
-        prompt: deps.handoffText + `
+        prompt: [{ type: "text", text: deps.handoffText + `
 
-` + promotionDirective(deps.cell.cellId, deps.memberName, deps.cell.depth + 1, deps.nextStep),
+` + promotionDirective(deps.cell.cellId, deps.memberName, deps.cell.depth + 1, deps.nextStep) }],
         parent: parent.parent,
-        maxDepth: deps.config.depthMax
+        maxDepth: reseedMaxDepthOf(parent.parent)
       },
       signal: compactionSignal().signal
     });
     const handle = typeof activation?.childId === "string" ? activation.childId : typeof activation?.id === "string" ? activation.id : "";
     if (handle === "")
-      return { outcome: "refused", attempts: deps.config.compactionRetries, reason: lastReason + "; the reseed reported no child id" };
-    return { outcome: "reseeded", attempts: deps.config.compactionRetries, reason: lastReason, newHandle: handle, parentSessionId: parent.sessionId, parentSource: parent.source };
+      return { outcome: "refused", attempts: deps.config.compactionRetries, reason: lastReason + busyNote + "; the reseed reported no child id", retirement: retirement.retirement, ...retirement.reason === undefined ? {} : { retirementReason: retirement.reason } };
+    return { outcome: "reseeded", attempts: deps.config.compactionRetries, reason: lastReason + busyNote, newHandle: handle, parentSessionId: parent.sessionId, parentSource: parent.source, retired: retirement.retirement === "accepted", retirement: retirement.retirement, ...retirement.reason === undefined ? {} : { retirementReason: retirement.reason } };
   } catch (error) {
-    return { outcome: "refused", attempts: deps.config.compactionRetries, reason: lastReason + "; the reseed failed: " + (error instanceof Error ? error.message : String(error)) };
+    return { outcome: "refused", attempts: deps.config.compactionRetries, reason: lastReason + busyNote + "; the reseed failed: " + (error instanceof Error ? error.message : String(error)), retirement: retirement.retirement, ...retirement.reason === undefined ? {} : { retirementReason: retirement.reason } };
   }
 }
 function nextStepOf(text2) {
@@ -6542,45 +7230,128 @@ function installCellworkProtocol(deps) {
     return { ...stamped, updatedAt: now.toISOString() };
   };
   const captainOnly = (caller, tool) => caller.sessionId === "" || caller.cell === null || caller.sessionId !== caller.cell.captainSessionId ? { ok: false, error: tool + " is CAPTAIN-ONLY: the captain of this cell is session " + String(caller.cell?.captainSessionId ?? "none") + ", which is not this caller" } : undefined;
-  const unfenceSeats = async (caller, cell, targets, now) => {
+  const livenessOf = (sessionId, anchorSessionId) => {
+    if (sessionId === "")
+      return "unknown";
+    if (typeof dsh.liveAgentExact !== "function")
+      return "unknown";
+    try {
+      if (dsh.liveAgentExact(sessionId) !== undefined)
+        return "live";
+      const capabilities = typeof dsh.capabilities === "function" ? dsh.capabilities() : undefined;
+      if (capabilities?.agents !== true)
+        return "unknown";
+      if (anchorSessionId === "" || dsh.liveAgentExact(anchorSessionId) === undefined)
+        return "unknown";
+      return "dead";
+    } catch {
+      return "unknown";
+    }
+  };
+  const checkpointSinceOf = (cell, member) => {
+    if (member.checkpointSince !== undefined)
+      return member.checkpointSince;
+    for (let index = cell.checkpoints.length - 1;index >= 0; index -= 1) {
+      const entry = cell.checkpoints[index];
+      if (entry.sessionId !== "" && entry.sessionId === member.sessionId)
+        return entry.at;
+    }
+    return;
+  };
+  const pendingMsOf = (since, now) => {
+    if (since === undefined || since === "")
+      return;
+    const opened = Date.parse(since);
+    return Number.isFinite(opened) ? Math.max(0, now.getTime() - opened) : undefined;
+  };
+  const forceBoundOf = (member, pendingMs) => {
+    if ((member.barrierFailures ?? 0) >= config.compactionRetries)
+      return "retry-budget";
+    if (pendingMs !== undefined && pendingMs >= config.checkpointPendingMaxMs)
+      return "stale";
+    return;
+  };
+  const forceReadingOf = (cell, workspace, member, now) => {
+    const seat = recordSeat(cell, workspace, member?.name ?? "");
+    const barrierOwned = member?.mode === "checkpoint" || member?.handoffReady === true || seat.checkpoint === true;
+    const since = member === undefined ? undefined : checkpointSinceOf(cell, member);
+    const pendingMs = pendingMsOf(since, now);
+    const liveness = member === undefined ? "unknown" : livenessOf(member.sessionId, cell.captainSessionId);
+    const suspect = since !== undefined && liveness === "dead";
+    const deadReseed = !barrierOwned && liveness === "dead" && member !== undefined && member.mode === "subcaptain" && member.handoffReady !== true;
+    const closed = barrierOwned || deadReseed;
+    const measured = { barrierOwned, suspect, deadReseed, closed, liveness, ...pendingMs === undefined ? {} : { pendingMs } };
+    if (!closed)
+      return { ...measured, forceEligible: false };
+    if (liveness === "live")
+      return { ...measured, forceEligible: false, refusal: "live-session" };
+    const bound = deadReseed ? since === undefined ? member === undefined ? undefined : forceBoundOf(member, pendingMs) : "dead-session" : member === undefined ? undefined : forceBoundOf(member, pendingMs);
+    if (bound === undefined)
+      return { ...measured, forceEligible: false, refusal: "force-not-eligible" };
+    return { ...measured, bound, forceEligible: true };
+  };
+  const planeRetryOf = (name) => 'agent_teams_control {action:"unfence", member:' + JSON.stringify(name) + "}";
+  const reopenPlaneSeat = async (sessionId, name) => {
     const plane = actions();
+    if (typeof plane?.unfence !== "function")
+      return { plane: "absent", planeReason: "this composition exposes no mpdTeamActions.unfence seam, so the TEAM seat was NOT reopened" };
+    try {
+      const reply = await plane.unfence({ sessionId, member: name });
+      if (reply?.ok === false)
+        return { plane: "refused", planeReason: String(reply.error ?? "the team plane refused the unfence") };
+      return { plane: "unfenced" };
+    } catch (error) {
+      return { plane: "refused", planeReason: error instanceof Error ? error.message : String(error) };
+    }
+  };
+  const unfenceSeats = async (caller, cell, targets, now) => {
     const clearedRows = new Map;
     const outcomes = [];
     const cleared = [];
-    const reopenPlaneSeat = async (name) => {
-      if (typeof plane?.unfence !== "function")
-        return { plane: "absent", planeReason: "this composition exposes no mpdTeamActions.unfence seam, so the TEAM seat was NOT reopened" };
-      try {
-        const reply = await plane.unfence({ sessionId: caller.sessionId, member: name });
-        if (reply?.ok === false)
-          return { plane: "refused", planeReason: String(reply.error ?? "the team plane refused the unfence") };
-        return { plane: "unfenced" };
-      } catch (error) {
-        return { plane: "refused", planeReason: error instanceof Error ? error.message : String(error) };
-      }
-    };
     for (const target of targets) {
       const row = cell.members[target.key];
       const cellFenced = row !== undefined && row.fenced === true;
       const seat = recordSeat(cell, caller.workspace, target.name);
       const teamFenced = seat.fenced === true;
       if (cellFenced) {
-        const half = await reopenPlaneSeat(target.name);
+        const half = await reopenPlaneSeat(caller.sessionId, target.name);
         const reopened = { ...row, mode: "member", handoffReady: false };
         delete reopened.fenced;
         delete reopened.fencedReason;
         clearedRows.set(target.key, reopened);
-        outcomes.push({ member: target.name, unfenced: true, plane: half.plane, ...half.planeReason === undefined ? {} : { planeReason: half.planeReason } });
+        outcomes.push({ member: target.name, unfenced: true, plane: half.plane, ...half.planeReason === undefined ? {} : { planeReason: half.planeReason }, ...half.plane === "refused" ? { retry: planeRetryOf(target.name) } : {} });
         cleared.push({ name: target.name, plane: half.plane });
         continue;
       }
       if (teamFenced) {
-        const half = await reopenPlaneSeat(target.name);
-        outcomes.push({ member: target.name, unfenced: half.plane === "unfenced", cellRow: "untouched", plane: half.plane, ...half.planeReason === undefined ? {} : { planeReason: half.planeReason } });
+        const half = await reopenPlaneSeat(caller.sessionId, target.name);
+        outcomes.push({ member: target.name, unfenced: half.plane === "unfenced", cellRow: "untouched", plane: half.plane, ...half.planeReason === undefined ? {} : { planeReason: half.planeReason }, ...half.plane === "refused" ? { retry: planeRetryOf(target.name) } : {} });
         continue;
       }
-      if (seat.checkpoint === true) {
-        outcomes.push({ member: target.name, unfenced: false, reason: "checkpoint-pending", detail: "the TEAM row records a checkpoint for this seat (" + String(seat.fenceReason ?? "mode `checkpoint`") + ") with no `fenced` marker, so the compaction barrier owns that state and nothing was cleared" });
+      const reading = forceReadingOf(cell, caller.workspace, row, now);
+      if (reading.closed && !target.force) {
+        outcomes.push({ member: target.name, unfenced: false, reason: "checkpoint-pending", barrierOwned: reading.barrierOwned, ...reading.deadReseed ? { suspect: true } : {}, detail: reading.deadReseed ? "the record shows a DEAD-RESEED seat for this member (" + String(seat.fenceReason ?? "a reseeded row whose recorded session is not a live agent") + '): no barrier will run for it again, nothing was cleared, and the FORCED lever `unfence:[{member, force:true}]` reopens it under `bound:"dead-session"`' : "the record shows a held seat for this member (" + String(seat.fenceReason ?? "no `fenced` marker: a checkpoint window") + "), so the compaction barrier owns that state and nothing was cleared; the FORCED lever `unfence:[{member, force:true}]` exists for a seat the barrier can no longer run for" });
+        continue;
+      }
+      if (reading.closed && target.force) {
+        if (reading.refusal === "live-session") {
+          outcomes.push({ member: target.name, unfenced: false, reason: "live-session", alive: true, sessionId: row?.sessionId ?? "", detail: "the recorded session is a LIVE agent, so this seat is not dead and the forced lever refuses to reopen it" });
+          continue;
+        }
+        if (row === undefined || reading.bound === undefined) {
+          outcomes.push({ member: target.name, unfenced: false, reason: "force-not-eligible", alive: false, sessionId: row?.sessionId ?? "", ...reading.pendingMs === undefined ? {} : { pendingMs: reading.pendingMs }, detail: "a forced clear needs a written licence: `barrierFailures` at the retry budget (" + String(config.compactionRetries) + "), a `checkpointSince` older than " + String(config.checkpointPendingMaxMs) + " ms, or a reseeded seat whose recorded session the registry PROVES dead. Nothing was written" });
+          continue;
+        }
+        const bound = reading.bound;
+        const reopened = { ...row, mode: "member", handoffReady: false };
+        delete reopened.fenced;
+        delete reopened.fencedReason;
+        delete reopened.barrierFailures;
+        delete reopened.checkpointSince;
+        clearedRows.set(target.key, reopened);
+        const half = await reopenPlaneSeat(caller.sessionId, target.name);
+        outcomes.push({ member: target.name, unfenced: true, forced: true, alive: false, liveness: reading.liveness, sessionId: row.sessionId, bound, ...reading.pendingMs === undefined ? {} : { pendingMs: reading.pendingMs }, plane: half.plane, ...half.planeReason === undefined ? {} : { planeReason: half.planeReason }, ...half.plane === "refused" ? { retry: planeRetryOf(target.name) } : {} });
+        cleared.push({ name: target.name, plane: half.plane, forced: { reason: bound, pendingMs: reading.pendingMs, barrierFailures: row.barrierFailures ?? 0, sessionId: row.sessionId, liveness: reading.liveness } });
         continue;
       }
       outcomes.push({ member: target.name, unfenced: false, reason: "not-fenced" });
@@ -6594,14 +7365,26 @@ function installCellworkProtocol(deps) {
       members[key] = reopened;
     let cursor = base.journalCursor;
     for (const row of cleared) {
-      cursor = appendJournal(caller.workspace, cell.cellId, { event: "member-unfenced", member: row.name, plane: row.plane }, now);
+      const retry = row.plane === "refused" ? { retry: planeRetryOf(row.name) } : {};
+      cursor = appendJournal(caller.workspace, cell.cellId, row.forced === undefined ? { event: "member-unfenced", member: row.name, plane: row.plane, ...retry } : {
+        event: "member-unfenced-forced",
+        member: row.name,
+        by: "captain",
+        reason: row.forced.reason,
+        ...row.forced.pendingMs === undefined ? {} : { pendingMs: row.forced.pendingMs },
+        barrierFailures: row.forced.barrierFailures,
+        sessionId: row.forced.sessionId,
+        liveness: row.forced.liveness,
+        plane: row.plane,
+        ...retry
+      }, now);
     }
     const next = { ...base, members, journalCursor: cursor > 0 ? cursor : base.journalCursor };
     return { cell: writeCell(caller.workspace, next), outcomes };
   };
   disposers.push(dsh.registerTool({
     name: "cellwork_dispatch",
-    description: "CAPTAIN only: one owner-only dispatch pass over the live board. A ready task is paired ONLY with its declared owner; a busy, absent, FENCED or failed owner is REPORTED and the task left pending — never substituted (a fenced member is never messaged). `reassign` hands named rows to another member FIRST: each row is claimed for that member through the board, journaled as `task-reassigned`, then delivered — the repair for a fenced owner. `unfence` clears named members' compaction GIVE-UP fences BEFORE the pass — the repair for the other deadlock: a fenced row keeps `handoffReady:true`, so `cellwork_handoff` refuses it as STILL WAITING while only another SUCCESSFUL barrier could clear it, which a fenced member cannot start. THE CELL ROW'S OWN `fenced:true` IS THE GIVE-UP FACT (the compaction barrier writes the fence on the CELL row and nowhere else): that row loses `fenced`/`fencedReason`, returns to `mode: member` with `handoffReady:false` (its `handoffs` count is unchanged), AND the TEAM seat is reopened through the plane's `unfence` seam when this composition exposes one — the plane's `mode:\"checkpoint\"` counts as a closed seat and that seam clears it too. The answer reports the plane's half honestly as `unfenced`, `absent` or `refused` and never claims the member was reopened when no seam exists. A TEAM row at `mode:\"checkpoint\"` with NO `fenced` flag is a PENDING compaction, not a give-up — UNLESS the CELL row carries the marker above, in which case the CELL marker decides; on its own that pending checkpoint answers `{member, unfenced:false, reason:\"checkpoint-pending\"}` and NEITHER record is written, because the barrier owns it. An explicit `fenced:true` recorded ONLY on the TEAM record is cleared through that seam while the CELL row is left untouched, and the outcome says which half was cleared. A member that is not fenced in either record answers `{member, unfenced:false, reason: not-fenced}` (never a silent success), and an unknown name refuses the whole call with the recorded members named. `unfence` and `reassign` may travel in ONE call and neither interferes with the other. Delivery goes through the team executor and is journaled.",
+    description: "CAPTAIN only: one owner-only dispatch pass over the live board. A ready task is paired ONLY with its declared owner; a busy, absent, FENCED or failed owner is REPORTED and the task left pending — never substituted (a fenced member is never messaged). `reassign` hands named rows to another member FIRST: each row is claimed for that member through the board, journaled as `task-reassigned`, then delivered — the repair for a fenced owner. `unfence` clears named members' compaction GIVE-UP fences BEFORE the pass — the repair for the other deadlock: a fenced row keeps `handoffReady:true`, so `cellwork_handoff` refuses it as STILL WAITING while only another SUCCESSFUL barrier could clear it, which a fenced member cannot start. THE CELL ROW'S OWN `fenced:true` IS THE GIVE-UP FACT (the compaction barrier writes the fence on the CELL row and nowhere else): that row loses `fenced`/`fencedReason`, returns to `mode: member` with `handoffReady:false` (its `handoffs` count is unchanged), AND the TEAM seat is reopened through the plane's `unfence` seam when this composition exposes one — the plane's `mode:\"checkpoint\"` counts as a closed seat and that seam clears it too. The answer reports the plane's half honestly as `unfenced`, `absent` or `refused` and never claims the member was reopened when no seam exists. A TEAM row at `mode:\"checkpoint\"` with NO `fenced` flag is a PENDING compaction, not a give-up — UNLESS the CELL row carries the marker above, in which case the CELL marker decides; on its own that pending checkpoint answers `{member, unfenced:false, reason:\"checkpoint-pending\"}` and NEITHER record is written, because the barrier owns it. A barrier-owned checkpoint is NOT a dead end: the forced lever `unfence:[{member, force:true}]` reopens it only at a written bound (`barrierFailures` at `compactionRetries`, a `checkpointSince` older than `checkpointPendingMaxMs`, or the DEAD-RESEED shape — a reseeded `subcaptain` row whose recorded session the registry PROVES dead, `bound:\"dead-session\"`), and a plane half that ends `refused` carries `retry`, the exact `agent_teams_control {action:\"unfence\", member}` verb that re-drives it; the `unfence` parameter below spells out every bound. An explicit `fenced:true` recorded ONLY on the TEAM record is cleared through that seam while the CELL row is left untouched, and the outcome says which half was cleared. A member that is not fenced in either record answers `{member, unfenced:false, reason: not-fenced}` (never a silent success), and an unknown name refuses the whole call with the recorded members named. `unfence` and `reassign` may travel in ONE call and neither interferes with the other. Delivery goes through the team executor and is journaled.",
     parameters: {
       type: "object",
       properties: {
@@ -6620,8 +7403,21 @@ function installCellworkProtocol(deps) {
         },
         unfence: {
           type: "array",
-          description: 'Member names whose compaction GIVE-UP fence this call CLEARS before the pass (captain-only, like the verb). The CELL row\'s own `fenced:true` is the give-up fact: that row loses `fenced`/`fencedReason`, returns to `mode: member` with `handoffReady:false`, and keeps its `handoffs` count, while the TEAM seat is reopened through the plane\'s `unfence` seam when this composition exposes one (the plane\'s `mode:"checkpoint"` is a closed spelling and that seam clears it too). A give-up fence recorded ONLY on the TEAM record (an explicit `fenced:true`) is cleared there while the CELL row is left untouched. A TEAM row at `mode:"checkpoint"` with no `fenced` marker is barrier-owned and, on its own, answers `reason:"checkpoint-pending"` and writes nothing — the CELL marker above outranks it. A member that is not fenced in either record is reported as not-fenced, never as a silent success; a name that matches no single member (unknown, or ambiguous once normalized) refuses the whole call. May travel with `reassign`.',
-          items: { type: "string" }
+          description: 'Member names whose compaction GIVE-UP fence this call CLEARS before the pass (captain-only, like the verb). The CELL row\'s own `fenced:true` is the give-up fact: that row loses `fenced`/`fencedReason`, returns to `mode: member` with `handoffReady:false`, and keeps its `handoffs` count, while the TEAM seat is reopened through the plane\'s `unfence` seam when this composition exposes one (the plane\'s `mode:"checkpoint"` is a closed spelling and that seam clears it too). A give-up fence recorded ONLY on the TEAM record (an explicit `fenced:true`) is cleared there while the CELL row is left untouched. A TEAM row at `mode:"checkpoint"` with no `fenced` marker is barrier-owned and, on its own, answers `reason:"checkpoint-pending"` and writes nothing — the CELL marker above outranks it. A member that is not fenced in either record is reported as not-fenced, never as a silent success; a name that matches no single member (unknown, or ambiguous once normalized) refuses the whole call. `{member, force:true}` is the LAST RESORT for a seat the barrier can no longer run for: it reopens a BARRIER-OWNED checkpoint (the CELL row\'s own `mode`/`handoffReady` or the TEAM row\'s `mode:"checkpoint"`) ONLY when the recorded session is not a live agent AND a written bound is reached — `barrierFailures` at `compactionRetries`, or a `checkpointSince` older than `checkpointPendingMaxMs` (15 minutes). A bare `force` is never a licence: a live seat, a fresh window, zero failures and a missing timestamp all write NOTHING. THE DEAD-RESEED SEAT IS COVERED BY THE SAME PREDICATE (R5.2): a reseeded row (`mode:"subcaptain"`, `handoffReady:false`, a `checkpointSince`) whose recorded session the registry PROVES dead is answer `checkpoint-pending` unforced and force-clearable with `bound:"dead-session"` — the clock bound is never reached by a seat no live agent can drive. A plane half that answers `refused` names the exact retry verb (`agent_teams_control {action:"unfence", member}`) in the answer AND in the journal row, so a refusal is never a dead end. The journal row is `member-unfenced-forced` (`by:"captain"`, the bound as `reason`, `pendingMs`, `barrierFailures`, `sessionId`, `liveness`, `plane`), the answer adds `alive`/`sessionId`, and the seat is reopened for REASSIGNMENT, NOT for work — its context was never compacted. May travel with `reassign`.',
+          items: {
+            oneOf: [
+              { type: "string" },
+              {
+                type: "object",
+                properties: {
+                  member: { type: "string", description: "The member whose barrier-owned checkpoint this call reopens." },
+                  force: { type: "boolean", description: "Ask for the BOUNDED FORCED lever: a barrier-owned `checkpoint` reopen is allowed ONLY when the recorded session is not live AND a written bound is reached (the barrier's retry budget, or a window older than `checkpointPendingMaxMs`). A bare force on a live seat, a fresh window or a seat with no recorded bound writes NOTHING." }
+                },
+                required: ["member"],
+                additionalProperties: false
+              }
+            ]
+          }
         }
       },
       additionalProperties: false
@@ -6636,7 +7432,7 @@ function installCellworkProtocol(deps) {
           skipped: { type: "array", items: { type: "object" } },
           reassigned: { type: "array", items: { type: "object" }, description: "One entry per readable `reassign` pair: whether the board claim landed and whether the message was delivered." },
           reassignInvalid: { type: "array", items: { type: "string" }, description: "One sentence per `reassign` entry this call refused to read." },
-          unfenced: { type: "array", items: { type: "object" }, description: 'One entry per distinct `unfence` member (duplicates collapse to one): `{member, unfenced:true, plane, planeReason?}` for a cleared CELL give-up fence (the CELL row\'s `fenced:true`, whatever the TEAM row says), `{member, unfenced:false, reason:"not-fenced"}` when neither record reports a marker, `{member, unfenced:false, reason:"checkpoint-pending", detail}` only when the CELL row carries no `fenced:true` AND the TEAM row is at `mode:"checkpoint"` with no `fenced` flag (the compaction barrier owns it, nothing was written), and `{member, unfenced, cellRow:"untouched", plane, planeReason?}` when an explicit TEAM-only fence was cleared while the CELL row was left untouched. `plane` is `unfenced` (the TEAM seat was reopened through the seam), `absent` (this composition exposes no `unfence` seam, so no reopen is claimed) or `refused` (with the plane\'s own sentence in `planeReason`).' },
+          unfenced: { type: "array", items: { type: "object" }, description: 'One entry per distinct `unfence` member (duplicates collapse to one): `{member, unfenced:true, plane, planeReason?}` for a cleared CELL give-up fence (the CELL row\'s `fenced:true`, whatever the TEAM row says), `{member, unfenced:false, reason:"not-fenced"}` when neither record reports a marker, `{member, unfenced:false, reason:"checkpoint-pending", detail}` only when the CELL row carries no `fenced:true` AND the TEAM row is at `mode:"checkpoint"` with no `fenced` flag (the compaction barrier owns it, nothing was written), and `{member, unfenced, cellRow:"untouched", plane, planeReason?}` when an explicit TEAM-only fence was cleared while the CELL row was left untouched. `plane` is `unfenced` (the TEAM seat was reopened through the seam), `absent` (this composition exposes no `unfence` seam, so no reopen is claimed) or `refused` (with the plane\'s own sentence in `planeReason`). A FORCED clear answers `{member, unfenced:true, forced:true, alive:false, liveness:"dead"|"unknown", sessionId, bound:"retry-budget"|"stale", pendingMs?, plane, planeReason?}`, and a forced request that is refused writes nothing and answers `reason:"live-session"` or `reason:"force-not-eligible"` with a `detail` sentence. The dead-reseed seat (a reseeded `subcaptain` row whose recorded session the registry PROVES dead) is held by the SAME predicate and its forced clear names `bound:"dead-session"`. Any outcome whose plane half ended `refused` ALSO carries `retry`: the exact Lead-only verb (`agent_teams_control {action:"unfence", member}`) that re-drives the seam, echoed in the render and in the journal row.' },
           refused: { type: "string" }
         },
         required: ["ok"]
@@ -6644,7 +7440,9 @@ function installCellworkProtocol(deps) {
       render: (_args, value) => {
         const result = typeof value === "object" && value !== null ? value : {};
         const unfenced = Array.isArray(result.unfenced) ? result.unfenced : [];
-        const clears = unfenced.map((row) => row.cellRow === "untouched" ? "unfence " + String(row.member) + ": the CELL row carried no fence marker, so it was left untouched — " + (row.plane === "unfenced" ? "the TEAM row was unfenced through the plane" : row.plane === "absent" ? "the TEAM record reports the seat fenced, but this composition exposes no mpdTeamActions.unfence seam, so the TEAM row is STILL fenced" : "the TEAM row was NOT cleared: " + String(row.planeReason ?? "the team plane refused the unfence")) : "unfence " + String(row.member) + ": " + (row.unfenced !== true ? row.reason === "checkpoint-pending" ? "checkpoint pending — the compaction barrier owns this seat, so nothing was cleared in either record" : "not fenced — nothing was written" : row.plane === "absent" ? "cell row cleared — this composition exposes no mpdTeamActions.unfence seam, so the TEAM seat was NOT reopened (it stays closed until the barrier or the plane reopens it)" : row.plane === "refused" ? "cell row cleared, but the TEAM seat was NOT reopened: " + String(row.planeReason ?? "the team plane refused the unfence") : "cell row cleared and the TEAM seat reopened through the plane"));
+        const retryOf = (row) => typeof row.retry === "string" && row.retry !== "" ? " · the plane half still needs: " + row.retry : "";
+        const lines = unfenced.map((row) => row.forced === true ? "unfence " + String(row.member) + " (FORCED, " + String(row.reason ?? row.bound ?? "bound reached") + "): reopened for reassignment, not for work — the barrier never reopened this seat (" + (row.plane === "unfenced" ? "the TEAM row was reopened through the plane" : row.plane === "absent" ? "this composition exposes no mpdTeamActions.unfence seam, so the TEAM row may still be closed" : "the TEAM row was NOT cleared: " + String(row.planeReason ?? "the team plane refused the unfence")) + ")" : row.reason === "live-session" || row.reason === "force-not-eligible" ? "unfence " + String(row.member) + ": NOT cleared (" + String(row.reason) + ") — " + String(row.detail ?? "") : row.cellRow === "untouched" ? "unfence " + String(row.member) + ": the CELL row carried no fence marker, so it was left untouched — " + (row.plane === "unfenced" ? "the TEAM row was unfenced through the plane" : row.plane === "absent" ? "the TEAM record reports the seat fenced, but this composition exposes no mpdTeamActions.unfence seam, so the TEAM row is STILL fenced" : "the TEAM row was NOT cleared: " + String(row.planeReason ?? "the team plane refused the unfence")) : "unfence " + String(row.member) + ": " + (row.unfenced !== true ? row.reason === "checkpoint-pending" ? row.suspect === true ? "DEAD-RESEED — no barrier will run for this seat again and no live agent is left, so nothing was cleared; the FORCED lever cellwork_dispatch {unfence:[{member:" + JSON.stringify(String(row.member)) + ", force:true}]} reopens it for reassignment" : "checkpoint pending — the compaction barrier owns this seat, so nothing was cleared in either record" : "not fenced — nothing was written" : row.plane === "absent" ? "cell row cleared — this composition exposes no mpdTeamActions.unfence seam, so the TEAM seat was NOT reopened (it stays closed until the barrier or the plane reopens it)" : row.plane === "refused" ? "cell row cleared, but the TEAM seat was NOT reopened: " + String(row.planeReason ?? "the team plane refused the unfence") : "cell row cleared and the TEAM seat reopened through the plane"));
+        const clears = lines.map((line, index) => line + retryOf(unfenced[index]));
         if (result.ok === false)
           return render(["cellwork_dispatch refused: " + String(result.error ?? "unknown refusal"), ...clears].join(`
 `));
@@ -6672,13 +7470,31 @@ function installCellworkProtocol(deps) {
         return { ok: false, error: "cellwork_dispatch: cell " + cell.cellId + " is stopped and archived" };
       const rawUnfence = readArgs2(args)["unfence"];
       if (rawUnfence !== undefined && !Array.isArray(rawUnfence))
-        return { ok: false, error: "cellwork_dispatch: `unfence` must be an array of member names" };
-      const unfenceNames = (rawUnfence ?? []).map((entry) => typeof entry === "string" ? entry.trim() : "");
-      if (unfenceNames.some((name) => name === ""))
+        return { ok: false, error: "cellwork_dispatch: `unfence` must be an array of member names, or of `{member, force}` objects for the bounded forced lever" };
+      const unfenceRequests = [];
+      for (const entry of rawUnfence ?? []) {
+        if (typeof entry === "string") {
+          unfenceRequests.push({ name: entry.trim(), force: false });
+          continue;
+        }
+        if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
+          return { ok: false, error: "cellwork_dispatch: every `unfence` entry must be a member name, or an object `{member, force}`" };
+        }
+        const shaped = entry;
+        if (typeof shaped.member !== "string" || shaped.member.trim() === "") {
+          return { ok: false, error: "cellwork_dispatch: a `{member, force}` entry must name a non-empty `member`" };
+        }
+        if (shaped.force !== undefined && typeof shaped.force !== "boolean") {
+          return { ok: false, error: "cellwork_dispatch: `force` must be a boolean when it is present" };
+        }
+        unfenceRequests.push({ name: shaped.member.trim(), force: shaped.force === true });
+      }
+      if (unfenceRequests.some((request) => request.name === ""))
         return { ok: false, error: "cellwork_dispatch: every `unfence` entry must be a non-empty member name" };
       const unfenceTargets = [];
       const seenTargets = new Set;
-      for (const name of unfenceNames) {
+      for (const request of unfenceRequests) {
+        const name = request.name;
         const resolved = resolveMemberName(cell.members, name);
         if (resolved === undefined) {
           const recorded = Object.keys(cell.members);
@@ -6687,7 +7503,7 @@ function installCellworkProtocol(deps) {
         if (seenTargets.has(resolved.key))
           continue;
         seenTargets.add(resolved.key);
-        unfenceTargets.push({ key: resolved.key, name: resolved.member.name });
+        unfenceTargets.push({ key: resolved.key, name: resolved.member.name, force: request.force });
       }
       const plane = actions();
       if (plane?.dispatch === undefined)
@@ -6722,7 +7538,7 @@ function installCellworkProtocol(deps) {
   }));
   disposers.push(dsh.registerTool({
     name: "cellwork_supervise",
-    description: "CAPTAIN only: one READ-ONLY sweep of the cell — every member's mode / handoff state / live context ratio, the pending board tasks, the stale-split flags, the CLOSED seats together with the open rows they own, and the unread mail (including rows whose wake-up never went out). CLOSED SEATS COME IN TWO KINDS and the sweep names which, because only ONE of them is the captain's to repair: a GIVE-UP fence (an explicit `fenced:true` on EITHER record) gets the two levers — `reassign` its open rows with `cellwork_dispatch {reassign:[...]}`, and clear the fence with `cellwork_dispatch {unfence:[...]}`; a BARRIER-OWNED seat (the TEAM row at `mode:\"checkpoint\"` with NO `fenced` marker, the window every handoff opens) has NOTHING for the captain to do — the compaction barrier reopens it, so no lever is offered and nothing should be written. Call it on every wake-up; it mutates nothing.",
+    description: "CAPTAIN only: one READ-ONLY sweep of the cell — every member's mode / handoff state / live context ratio, the pending board tasks, the stale-split flags, the CLOSED seats together with the open rows they own, and the unread mail (including rows whose wake-up never went out). CLOSED SEATS COME IN THREE KINDS and the sweep names which, because only TWO of them are the captain's to repair: a GIVE-UP fence (an explicit `fenced:true` on EITHER record) gets the two levers — `reassign` its open rows with `cellwork_dispatch {reassign:[...]}`, and clear the fence with `cellwork_dispatch {unfence:[...]}`; a BARRIER-OWNED seat (the TEAM/CELL row at `mode:\"checkpoint\"` with NO `fenced` marker, the window every handoff opens) is reported with `barrierOwned`, `forceEligible` and `pendingMs` — the compaction barrier OWES that seat its reopen, but nothing supervises the barrier, so a seat it can no longer run for needs the BOUNDED forced lever (`cellwork_dispatch {unfence:[{member, force:true}]}`, allowed only when the recorded session is not live and the window's written bound is reached). A DEAD-RESEED seat (a reseeded `subcaptain` row whose recorded session the registry PROVES dead and which no barrier will run for) is reported as a closed seat with `barrierOwned:false`, `suspect:true` and the same `forceEligible` answer the verb uses — ONE predicate, so the lever the sweep advertises is the lever `unfence:[{member, force:true}]` accepts. A closed seat whose TEAM half is a `checkpoint` no barrier is pending for carries `retry`, the exact Lead-only verb that reopens it. A member is reported `suspect:true` only when a window stamp exists, the registry is PRESENT, its CAPTAIN anchor resolves, and the recorded session does not — a present registry that cannot resolve that anchor answers `unknown`, which licenses nothing. Call it on every wake-up; it mutates nothing.",
     parameters: { type: "object", properties: {
       limit: { type: "integer", description: "Rows to render (default 20, clamped 1..100)." },
       offset: { type: "integer", description: "First row of the page (default 0)." }
@@ -6741,7 +7557,7 @@ function installCellworkProtocol(deps) {
           splitRevision: { oneOf: [{ type: "number" }, { type: "null" }] },
           requirementsRevision: { type: "number" },
           handoffReady: { type: "array", items: { type: "string" } },
-          fenced: { type: "array", items: { type: "object" }, description: 'Every CLOSED member with the reason and the OPEN board rows it still owns. Each row carries `giveUp:true` for a real GIVE-UP fence (an explicit `fenced:true` on either record) — the rows a `reassign` pass repairs and `cellwork_dispatch {unfence:[name]}` clears — or `giveUp:false` for a seat the compaction barrier owns (a `mode:"checkpoint"` window with no fence marker), which needs no captain action and gets no unfence advice.' },
+          fenced: { type: "array", items: { type: "object" }, description: 'Every CLOSED member with the reason and the OPEN board rows it still owns. Each row carries `giveUp:true` for a real GIVE-UP fence (an explicit `fenced:true` on either record) — the rows a `reassign` pass repairs and `cellwork_dispatch {unfence:[name]}` clears — or `giveUp:false` for a HELD seat with no fence marker — the compaction barrier\'s `mode:"checkpoint"` window, or the DEAD-RESEED shape flagged `deadReseed:true`. Every closed-seat row ALSO carries `barrierOwned` (a checkpoint spelling, not a fence marker, is what holds it), `forceEligible` (the FORCED `unfence:[{member, force:true}]` lever would be allowed RIGHT NOW — computed by the SAME predicate the verb decides with, so the two cannot disagree), `pendingMs` (how long the window has been open, when a timestamp exists), `suspect:true` for the DEAD-RESEED shape (a reseeded seat whose recorded session the registry proves dead), and `retry` when the TEAM half is a `checkpoint` no barrier is pending for — the exact Lead-only verb that reopens it (R5.4). A barrier-owned seat is not automatically safe: nothing supervises the barrier, so the render names the force lever and its bound instead of promising that no action is needed.' },
           unreadMail: { type: "number" },
           wakeFailures: { type: "array", items: { type: "object" } }
         },
@@ -6756,14 +7572,18 @@ function installCellworkProtocol(deps) {
         const fenced = Array.isArray(result.fenced) ? result.fenced : [];
         return render([
           "cell " + String(result.cellId ?? "") + " · phase " + String(result.phase ?? "") + " · split " + String(result.splitRevision ?? "none") + (result.staleSplit === true ? " (STALE)" : "") + " · requirements rev " + String(result.requirementsRevision ?? 0),
-          "members: " + members.map((row) => String(row.name) + "[" + String(row.mode) + (row.handoffReady === true ? ",handoff-ready" : "") + (typeof row.ratio === "number" ? "," + Math.round(row.ratio * 100) + "%" : "") + "]").join(" "),
+          "members: " + members.map((row) => String(row.name) + "[" + String(row.mode) + (row.handoffReady === true ? ",handoff-ready" : "") + (row.suspect === true ? ",SUSPECT" : "") + (typeof row.ratio === "number" ? "," + Math.round(row.ratio * 100) + "%" : "") + (row.suspect === true ? ": the recorded session is not a live agent, so the reseed did not produce a working child" : "") + "]").join(" "),
           "tasks: " + (tasks.length === 0 ? "none" : tasks.map((row) => String(row.id) + " " + String(row.status) + (row.owner === undefined ? "" : "(" + String(row.owner) + ")")).join(" ")),
           "fenced: " + (fenced.length === 0 ? "none" : fenced.map((row) => {
             const name = String(row.name);
             const reason = String(row.reason);
             const owned = Array.isArray(row.tasks) ? row.tasks.map((id) => String(id)) : [];
-            if (row.giveUp !== true)
-              return name + " (" + reason + ", BARRIER-OWNED) " + (owned.length > 0 ? "owns " + owned.join(", ") + " — " : "") + "nothing for you to do: the compaction barrier owns this seat and reopens it when it completes";
+            if (row.giveUp !== true) {
+              const deadReseed = row.deadReseed === true;
+              const blocked = row.liveness === "live" ? "the recorded session is still a LIVE agent" : row.pendingMs === undefined ? "no checkpoint timestamp is recorded, and a missing timestamp is never a licence" : "the written bound is not reached yet (`barrierFailures` below the retry budget and the window younger than the pending bound)";
+              const retry = typeof row.retry === "string" ? " · the TEAM seat is still `checkpoint` while no barrier is pending for it, so the plane half needs " + row.retry : "";
+              return name + " (" + reason + ", " + (deadReseed ? "DEAD-RESEED" : "BARRIER-OWNED") + ") " + (owned.length > 0 ? "owns " + owned.join(", ") + " — " : "") + (row.forceEligible === true ? deadReseed ? "the reseed's child is not a live agent, so nothing will reopen this seat by itself; the bounded lever is allowed now: cellwork_dispatch {unfence:[{member:" + JSON.stringify(name) + ", force:true}]} — it reopens the seat for REASSIGNMENT, not for work (its context was never compacted)" : "the barrier has NOT reopened this seat and no supervisor can; the bounded lever is allowed now: cellwork_dispatch {unfence:[{member:" + JSON.stringify(name) + ", force:true}]} — it reopens the seat for REASSIGNMENT, not for work (its context was never compacted)" : "the barrier reopens this seat when it completes; nothing supervises it, so if it never does, the bounded lever becomes available once the retry budget or the pending bound is reached — " + blocked) + retry;
+            }
             return name + " (" + reason + ") owns " + (owned.length > 0 ? owned.join(", ") + " — reassign those with cellwork_dispatch {reassign:[{task_id, owner}]}, and" : "no open row —") + " clear the fence with cellwork_dispatch {unfence:[" + JSON.stringify(name) + "]}";
           }).join("; ")),
           "unread mail: " + String(result.unreadMail ?? 0) + (Array.isArray(result.wakeFailures) && result.wakeFailures.length > 0 ? " · " + String(result.wakeFailures.length) + " without a wake-up" : "")
@@ -6779,26 +7599,44 @@ function installCellworkProtocol(deps) {
       if (refused !== undefined)
         return refused;
       const cell = caller.cell;
+      const now = new Date;
       const record = recordOf2(caller.workspace, cell.teamId);
       const tasks = record !== undefined && Array.isArray(record.tasks) ? record.tasks : [];
       const members = Object.values(cell.members).map((member) => {
         const plane = planePressureOf(teams(), caller.workspace, cell.teamId, member.name);
         const seat = recordSeat(cell, caller.workspace, member.name);
         const pressure = plane ?? dsh.contextPressure(member.sessionId === "" ? member.name : member.sessionId);
-        return { name: member.name, mode: seat.mode ?? member.mode, role: member.role, handoffReady: seat.checkpoint ?? member.handoffReady, handoffs: member.handoffs, ratio: pressure.ratio, usedTokens: pressure.usedTokens, windowTokens: pressure.windowTokens, provenance: pressure.provenance };
+        const reading = forceReadingOf(cell, caller.workspace, member, now);
+        return {
+          name: member.name,
+          mode: seat.mode ?? member.mode,
+          role: member.role,
+          handoffReady: seat.checkpoint ?? member.handoffReady,
+          handoffs: member.handoffs,
+          ratio: pressure.ratio,
+          usedTokens: pressure.usedTokens,
+          windowTokens: pressure.windowTokens,
+          provenance: pressure.provenance,
+          liveness: reading.liveness,
+          ...reading.pendingMs === undefined ? {} : { pendingMs: reading.pendingMs },
+          ...reading.suspect ? { suspect: true } : {},
+          ...reading.pendingMs === undefined && !reading.closed ? {} : { forceEligible: reading.forceEligible }
+        };
       });
       const messages = foldCellMail(readCellMail(caller.workspace, cell.cellId));
       const fenced = Object.values(cell.members).flatMap((member) => {
         const seat = recordSeat(cell, caller.workspace, member.name);
         const giveUp = member.fenced === true || seat.fenced === true;
         const reason = member.fenced === true ? fenceReasonOf(member) : seat.fenceReason ?? fenceReasonOf(member);
-        if (reason === undefined)
+        const reading = forceReadingOf(cell, caller.workspace, member, now);
+        if (!reading.closed && !giveUp || reason === undefined)
           return [];
+        const planeOnly = seat.checkpoint === true && seat.fenced !== true && member.mode !== "checkpoint" && member.handoffReady !== true;
         const owned = tasks.filter((task) => {
           const status = String(task.status ?? "");
           return status !== "completed" && status !== "failed" && nameKey(String(task.owner ?? "")) === nameKey(member.name);
         }).map((task) => String(task.id ?? ""));
-        return [{ name: member.name, mode: seat.mode ?? member.mode, reason, tasks: owned, giveUp }];
+        return [{ name: member.name, mode: seat.mode ?? member.mode, reason, tasks: owned, giveUp, barrierOwned: reading.barrierOwned, forceEligible: reading.forceEligible, liveness: reading.liveness, ...reading.suspect ? { suspect: true } : {}, ...reading.deadReseed ? { deadReseed: true } : {}, ...reading.pendingMs === undefined ? {} : { pendingMs: reading.pendingMs }, ...planeOnly ? { retry: planeRetryOf(member.name) } : {} }];
       });
       return {
         ok: true,
@@ -7341,7 +8179,17 @@ acknowledgement refused for ` + String(refused.length) + " row(s), which stay un
       const now = new Date;
       const logged = applyCheckpoint(caller.cell, plan, String(caller.cell.members[caller.member]?.sessionId ?? caller.sessionId), now);
       const injected = logged.members[caller.member];
-      const next = injected === undefined ? logged : { ...logged, members: { ...logged.members, [caller.member]: { ...injected, mode: "checkpoint" } } };
+      const next = injected === undefined ? logged : {
+        ...logged,
+        members: {
+          ...logged.members,
+          [caller.member]: {
+            ...injected,
+            mode: "checkpoint",
+            ...injected.checkpointSince === undefined ? { checkpointSince: now.toISOString() } : {}
+          }
+        }
+      };
       transition(caller.workspace, next, { event: "checkpoint", member: caller.member, usedTokens: plan.usedTokens, windowTokens: plan.windowTokens, turn: plan.turn, reason: plan.reason }, now);
       const message = dsh.userMessage({ text: checkpointDirective(caller.member, plan), source: { kind: "mpd-cellwork", reason: "checkpoint" } });
       return { kind: "enter", messages: [...decision?.messages ?? payload?.messages ?? [], message] };
@@ -7403,10 +8251,47 @@ acknowledgement refused for ` + String(refused.length) + " row(s), which stay un
         deps.warn("[mpd-cellwork] the compaction barrier could not re-read " + fresh.path + ": " + fresh.detail);
         return;
       }
-      const updated = memberAfterBarrier(fresh.state.members[caller.member] ?? member, result);
-      const next = { ...fresh.state, members: { ...fresh.state.members, [caller.member]: updated } };
+      const barrierRow = memberAfterBarrier(fresh.state.members[caller.member] ?? member, result, config.compactionRetries);
+      const cellReopened = barrierRow.fenced !== true;
+      const plane = cellReopened ? await reopenPlaneSeat(caller.cell.captainSessionId, caller.member) : { plane: "skipped-fenced", planeReason: "this barrier FENCED the CELL seat on the same run (the retry bound gave up), so the TEAM seat stays closed with it" };
+      const settled = readCell(caller.workspace, caller.cell.cellId);
+      if (!settled.ok)
+        deps.warn("[mpd-cellwork] the compaction barrier could not re-read " + settled.path + " after the plane call: " + settled.detail + " — merging into the pre-await snapshot");
+      const base = settled.ok ? settled.state : fresh.state;
+      const updated = memberAfterBarrier(base.members[caller.member] ?? member, result, config.compactionRetries);
+      const next = { ...base, members: { ...base.members, [caller.member]: updated } };
+      if (cellReopened) {
+        appendJournal(caller.workspace, caller.cell.cellId, {
+          event: "member-unfenced",
+          member: caller.member,
+          by: "barrier",
+          plane: plane.plane,
+          ...plane.planeReason === undefined ? {} : { planeReason: plane.planeReason },
+          ...plane.plane === "refused" ? { retry: planeRetryOf(caller.member) } : {}
+        }, now);
+      } else if (result.outcome !== "refused") {
+        appendJournal(caller.workspace, caller.cell.cellId, {
+          event: "plane-reopen-skipped",
+          member: caller.member,
+          by: "barrier",
+          plane: plane.plane,
+          ...plane.planeReason === undefined ? {} : { planeReason: plane.planeReason }
+        }, now);
+      }
       if (result.outcome === "refused")
         appendJournal(caller.workspace, caller.cell.cellId, checkpointUnrecoverableEntry(caller.member, result), now);
+      if (result.outcome === "reseeded") {
+        appendJournal(caller.workspace, caller.cell.cellId, {
+          event: "member-reseeded",
+          member: caller.member,
+          previousSessionId: member.sessionId,
+          newSessionId: result.newHandle ?? "",
+          retired: result.retired === true,
+          ...result.retirement === undefined ? {} : { retirement: result.retirement },
+          ...result.retirementReason === undefined ? {} : { retirementReason: result.retirementReason },
+          plane: plane.plane
+        }, now);
+      }
       if (result.outcome === "reseeded" && result.parentSource !== undefined) {
         appendJournal(caller.workspace, caller.cell.cellId, {
           event: "reseed-parent",
@@ -7769,7 +8654,7 @@ function apply(ctx, config = {}) {
       },
       render: (_args, value) => render2(value)
     },
-    execute: (args, exec) => {
+    execute: async (args, exec) => {
       const input = readArgs3(args);
       const caller = callerContext(dsh, exec, { teams: () => teamsService(ctx) });
       const workspace = caller.workspace;
@@ -7806,6 +8691,7 @@ function apply(ctx, config = {}) {
       }
       const now = new Date;
       const reason = argString3(input, "reason") === "" ? forced ? "forced stop" : "stopped by the captain" : argString3(input, "reason");
+      await stopConsultCleanup?.({ cellId: state.cellId, teamId: state.teamId, workspace });
       const stopped = { ...state, phase: "stopped", archived: true, stopReason: reason };
       recordTransition(workspace, stopped, { event: "stop", reason, forced, inProgress }, now);
       return { ok: true, cellId: state.cellId, archived: true, forced, reason, inProgress, statePath: statePath(workspace, state.cellId) };
@@ -7879,7 +8765,10 @@ function apply(ctx, config = {}) {
     });
     return outcome.ok ? { kind: "success", text: "cellwork active: " + outcome.cellId + " — the activation directive was submitted as this agent's next turn" } : { kind: "error", text: outcome.error };
   };
-  disposers.push(...installCellworkFlow({ dsh, ctx, config: cfg, warn }));
+  let stopConsultCleanup;
+  disposers.push(...installCellworkFlow({ dsh, ctx, config: cfg, warn, onConsultStop: (hook) => {
+    stopConsultCleanup = hook;
+  } }));
   disposers.push(...installCellworkProtocol({ dsh, ctx, config: cfg, warn }));
   const command = { name: "cellwork", description: "Start cell-work for an objective: a dedicated planner interview, a measured task split, and a team that dispatches, hands off, compacts and promotes (captain dispatches only).", input: { hint: "objective" }, handler: runCellworkCommand };
   disposers.push(dsh.registerCommand(command));

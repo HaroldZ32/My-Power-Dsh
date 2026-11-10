@@ -410,6 +410,11 @@ node's `depth` is its column INSIDE its own frame, and `ranks` still buckets onl
 task's `rank` on `/plugins/mpd-team/state` remains the OUTER rank. A team with no live child supplies no
 groups at all, and its model is byte-identical to the one this row served before nested teams existed.
 
+**A subcell's CONSULTS are framed with it.** `groupInputsOf` hands each live child's `consults` rows to
+`mpd-graph-core` on that child's frame, so a subcell's background agents are drawn INSIDE its box, with
+the `<groupId>::C<n>` id and `group` attribution the core mints; the liveness filter that drops a
+finished child drops its consults with it. A root team's own rows go to the root frame as `C<n>`.
+
 **Ids are qualified, because every team mints `T1..Tn`.** A nested team's rows reach the model as
 `<teamId>::<taskId>` (the spelling `dispatch.ts#ledgerKey` already uses) while the root frame's ids stay
 BARE; a blocker that names a task of the SAME frame is qualified with it, and every other reference is
@@ -526,7 +531,18 @@ and never guesses a window: `provenance` reports `observed`, `no-window` or `una
 **Service surface.** `mpdTeams` gains `memberContext` (one seat's occupancy), `depthBudget` (a bounded
 parent-chain walk with cycle detection; the limit comes from `cellwork.depthMax`, default 3),
 `archivedPlans` and `cancelTasks`. `mpdTeamActions` carries the exec-free actions `fence`, `unfence`,
-`handoff` and `dispatch`, so a panel button, a service caller and the tool drive the same sequence.
+`handoff`, `dispatch`, `upsertConsult` and `clearConsults`, so a panel button, a service caller and the
+tool drive the same sequence.
+
+**Consults live on the record, and the board never sees them.** `TeamRecord.consults?` (with
+`nextConsultNumber?`) holds the background consults a cell's seats started; `upsertConsult` records or
+updates ONE row keyed by `consultId`, minting the monotonic `consultNumber` on first sight and pruning to
+`CONSULT_RETENTION_MAX` (50) rows — oldest SETTLED first, NEVER a `running` one. `clearConsults` removes
+both keys when the cell ends, so a cleared record is byte-identical to one that never recorded a consult.
+These are cellwork-plane verbs addressed by `(workspace, teamId)` exactly like `cancelTasks`: a consult
+is not a task, takes no `T<n>`, is never dispatched, and is excluded from `readyTasks`, the tallies, the
+clean-terminal rule and the `T<n>` id space. `mpdTeams.graph` projects them into `GraphModel.consults`
+(see `mpd-graph-core`), which is what both planes draw beside the board.
 
 **Workmate binding fields.** A staged member records `workmate`, `workmateMode` (which branch bound it)
 and `workmateReason` (why); `fenced: false` DELETES the fence keys, so there is exactly one on-disk

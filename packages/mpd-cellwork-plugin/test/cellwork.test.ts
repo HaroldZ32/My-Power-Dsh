@@ -473,12 +473,14 @@ test("a composition without the tools.guard seam installs nothing and says so", 
   // The tools and the command are still registered: the mode still records and still refuses on its
   // own tools; only the dispatch fence is absent.
   expect(harness.commands).toHaveLength(1)
-  // FIFTEEN names since the programmatic entry landed (contract §4.5): the fourteen the mode always
-  // shipped plus `cellwork_open`. Every OLD name is unchanged, which is the part the contract pins.
+  // SEVENTEEN names since the background-delegation contract landed: the fifteen the mode shipped (the
+  // fourteen original verbs plus `cellwork_open`) plus `cellwork_delegate` and `cellwork_consult`. Every
+  // OLD name is unchanged, which is the part the contracts pin.
   expect(harness.tools.map((tool) => tool.name).sort()).toEqual([
-    "cellwork_activate", "cellwork_context", "cellwork_dispatch", "cellwork_handoff", "cellwork_inbox",
-    "cellwork_open", "cellwork_recon", "cellwork_requirements", "cellwork_send", "cellwork_split",
-    "cellwork_start", "cellwork_status", "cellwork_stop", "cellwork_subteam", "cellwork_supervise",
+    "cellwork_activate", "cellwork_consult", "cellwork_context", "cellwork_delegate", "cellwork_dispatch",
+    "cellwork_handoff", "cellwork_inbox", "cellwork_open", "cellwork_recon", "cellwork_requirements",
+    "cellwork_send", "cellwork_split", "cellwork_start", "cellwork_status", "cellwork_stop",
+    "cellwork_subteam", "cellwork_supervise",
   ])
 })
 
@@ -536,6 +538,51 @@ test("a record round-trips through an atomic write and leaves no temporary file 
   expect(read.state.stopReason).toBe("")
   // Atomicity's visible half: the directory holds the record and no `.tmp-` sibling.
   expect(readdirSync(cellDir(workspace, state.cellId)).filter((name) => name.includes(".tmp-"))).toHaveLength(0)
+})
+
+test("R4.3: the window keys round-trip — `checkpointSince` survives, a zero `barrierFailures` does not", () => {
+  // A RESTART MUST NOT RESET A STUCK SEAT'S BOUND: the clock and the failure count are what the forced
+  // lever measures, so the reader preserves them. `barrierFailures: 0` is NOT a fact (absence means "no
+  // failed run recorded"), so it is dropped rather than persisted as a zero.
+  /** A temp workspace. */
+  const workspace = mkdtempSync(join(tmpdir(), "mpd-cellwork-window-"))
+  /** A fresh record with one member inside the checkpoint window. */
+  const state = newCellState({ cellId: "cell-20260101T000000000Z", objective: "o", captainSessionId: "s", now: new Date("2026-01-01T00:00:00.000Z") })
+  /** The record as written, with the two new optional keys set. */
+  const written = writeCell(workspace, {
+    ...state,
+    members: {
+      "Senior Engineer": {
+        name: "Senior Engineer",
+        role: "Senior Engineer",
+        sessionId: "session-1",
+        executorRef: "handle-1",
+        mode: "checkpoint",
+        handoffReady: true,
+        handoffs: 1,
+        joinedAt: "2026-01-01T00:00:00.000Z",
+        checkpointSince: "2026-01-01T00:05:00.000Z",
+        barrierFailures: 2,
+      },
+    },
+  })
+  expect(written.members["Senior Engineer"].checkpointSince).toBe("2026-01-01T00:05:00.000Z")
+  /** The read-back record. */
+  const read = readCell(workspace, state.cellId)
+  expect(read.ok).toBe(true)
+  if (!read.ok) throw new Error("expected a read")
+  /** The member row as the next process sees it. */
+  const member = read.state.members["Senior Engineer"]
+  expect(member.checkpointSince).toBe("2026-01-01T00:05:00.000Z")
+  expect(member.barrierFailures).toBe(2)
+  // A ZERO IS ABSENCE: writing it must not grow the key back on the next read.
+  writeCell(workspace, { ...read.state, members: { ...read.state.members, "Senior Engineer": { ...member, barrierFailures: 0 } } })
+  /** The row after the zero was written. */
+  const again = readCell(workspace, state.cellId)
+  expect(again.ok).toBe(true)
+  if (!again.ok) throw new Error("expected a read")
+  expect("barrierFailures" in again.state.members["Senior Engineer"]).toBe(false)
+  expect(again.state.members["Senior Engineer"].checkpointSince).toBe("2026-01-01T00:05:00.000Z")
 })
 
 test("a corrupt state is REFUSED with its path, never reset, and the command refuses on it", async () => {

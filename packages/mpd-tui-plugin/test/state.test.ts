@@ -368,6 +368,23 @@ describe("transcript renderers", () => {
     expect(board?.lines[0]).toContain("opened via command")
   })
 
+  test("board-opened degrades a finite out-of-range epoch instead of throwing", () => {
+    // ±8.64e15 ms is the ECMAScript Date range's edge; one millisecond beyond it is still FINITE,
+    // so `Number.isFinite` alone would let `toISOString()` throw RangeError (R8.5).
+    /** One millisecond past the maximum representable instant. */
+    const above = 8.64e15 + 1
+    /** One millisecond before the minimum representable instant. */
+    const below = -8.64e15 - 1
+    for (const at of [above, below]) {
+      /** The rendered row; building it is the assertion (a throw fails the arm). */
+      const row = TRANSCRIPT_RENDERERS[BOARD_OPENED_EVENT]({ view: "board", via: "command", at })
+      expect(row?.lines[0]).toBe("board opened via command")
+    }
+    /** The boundary instant is still representable and keeps its ISO suffix. */
+    const edge = TRANSCRIPT_RENDERERS[BOARD_OPENED_EVENT]({ view: "board", via: "command", at: 8.64e15 })
+    expect(edge?.lines[0]).toContain(" at ")
+  })
+
   test("renderers never throw and always emit strings, whatever the payload", () => {
     /** Payload shapes every renderer must survive without throwing. */
     const garbage: unknown[] = [undefined, null, 0, "", "text", [], {}, { a: { b: 1 } }, { at: Number.NaN }]

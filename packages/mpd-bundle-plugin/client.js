@@ -7214,6 +7214,10 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     "task.round": "round",
     "task.verdict": "verdict",
     "task.owner": "owner",
+    "task.consult": "consult",
+    "task.status": "state",
+    "task.started": "started",
+    "task.elapsed": "elapsed",
     "task.contract": "acceptance contract",
     "task.contract.none": "No frozen acceptance contract was served for this task.",
     "task.close": "close",
@@ -7304,6 +7308,10 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     "task.round": "评审轮次",
     "task.verdict": "评审结论",
     "task.owner": "负责人",
+    "task.consult": "咨询",
+    "task.status": "状态",
+    "task.started": "开始时间",
+    "task.elapsed": "已用时间",
     "task.contract": "验收契约",
     "task.contract.none": "该任务没有已冻结的验收契约。",
     "task.close": "关闭",
@@ -10785,6 +10793,14 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
        
                      
        
+                                                                                                           
+      
+                                                                                                       
+                                                                                                        
+                                                                                                  
+       
+                                                                                                         
+       
                                                                                         
       
                                                                                                       
@@ -10900,6 +10916,37 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                    
    
 
+  /**
+   * One CONSULT node of the host's model, narrowed to what this drawing paints.
+   *
+   * The full value is `GraphConsultNode` from `mpd-graph-core`: the same id (`C<n>` at the root,
+   * `"<groupId>::C<n>"` inside a box), the same `group` attribution and the same lifecycle `status`.
+   * Its `visual` is the host's six-state tone, so this plane paints it with the tone table it already
+   * has and adds ONE glyph of its own — no seventh colour, no second card component.
+   */
+                                     
+                                                                                    
+              
+                                                                      
+                     
+                                    
+                  
+                                               
+                     
+                                                                           
+                      
+                                                            
+                    
+                                                         
+                   
+                                                                                                         
+                   
+                                                                
+                     
+                                                                         
+                  
+   
+
   /** One dependency edge of the host's model: `from` must close before `to`. */
                                   
                           
@@ -10929,6 +10976,16 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                               
                                                                                          
                                   
+       
+                                                                                                 
+      
+                                                                                                         
+                                                                                                        
+                                                                                                    
+                                                                                                        
+                                                     
+       
+                                        
        
                                                                                                    
       
@@ -11433,6 +11490,12 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     "task.round": "round",
     "task.verdict": "verdict",
     "task.owner": "owner",
+    // THE CONSULT CARD'S FOUR FACT LABELS (consult DAG, contract §6): a consult's pinned body prints
+    // these instead of the task body's verdict/attempt/round/blockers, which would all be blank on it.
+    "task.consult": "consult",
+    "task.status": "state",
+    "task.started": "started",
+    "task.elapsed": "elapsed",
     "task.contract": "acceptance contract",
     "task.contract.none": "No frozen acceptance contract was served for this task.",
     "task.close": "close",
@@ -11939,6 +12002,48 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
        * vocabulary, so it borrows the one the drawing already carries.
        */
       const glyphOf = (visual        )         => GLYPH[visual] ?? (visual === "planned" ? GLYPH.open : "?")
+      /**
+       * The glyph a CONSULT card draws instead of a state glyph (consult DAG, contract §6).
+       *
+       * `@` reads as "an agent was paged for this", it is ASCII and one cell, and it is distinct from
+       * every state mark and from the ghost's treatment (a ghost keeps the `open` glyph and is published
+       * through `data-mpd-planned`). The TONE still comes from the host's six-state `visual`, so a
+       * settled consult is painted with the colour a completed task gets — no seventh tone.
+       */
+      const CONSULT_GLYPH = "@"
+
+      /**
+       * One CONSULT node as a card row (consult DAG, contract §6).
+       *
+       * Synthesized rather than served as a task row, because a consult is NOT a task: the tallies above
+       * the drawing count the board, and a payload that mixed the two would tempt this plane to count
+       * agents as work. `depth: 0` and an empty `blockedBy` are the contract's own values — a consult
+       * takes no rank and draws no edge — so both layouts place it in its frame's first column with no
+       * incoming or outgoing line.
+       *
+       * Declared at FACTORY scope because BOTH layout paths need it: the flat one merges every consult,
+       * the nested one merges the root frame's here and each box's inside `planFrame`.
+       * @param node - one consult of the served model.
+       * @returns the card row the layout places.
+       */
+      const consultRowOf = (node                         )           => ({
+        id: node.id,
+        // THE SUBJECT IS THE EXCERPT AND THE ROLE IS THE OWNER — `mpd-graph-core`'s own reading of this
+        // record (`role` is "drawn as the card's assignee", `task` "drawn as the card's subject"). The card
+        // FACE prints `@ C<n>` + role + state, while the NON-DRAWING surfaces (the hover card and the
+        // pinned body) print the excerpt, exactly as the TUI does. Putting the role here instead printed it
+        // twice and left the excerpt nowhere on this plane.
+        subject: node.subject ?? node.assignee ?? node.id,
+        status: node.status ?? "running",
+        visual: node.visual ?? "open",
+        ...(node.assignee === undefined ? {} : { owner: node.assignee }),
+        blockedBy: [],
+        failedBy: [],
+        depth: 0,
+        rank: 0,
+        planned: false,
+        consult: { consultId: node.consultId, cellId: node.cellId, state: node.status ?? "running", startedAt: node.startedAt, ...(node.elapsedMs === undefined ? {} : { elapsedMs: node.elapsedMs }) },
+      })
       /** The bilingual kind abbreviation of one task; empty when the task carries no kind. */
       const kindOf = (kind                    )         => {
         if (kind === undefined || kind === "") return ""
@@ -11969,10 +12074,15 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       const visualLabelOf = (visual        )         => t(VISUAL_KEY[visual] ?? "visual.open")
       /**
        * Format a duration the way the hover card shows it: seconds, minutes+seconds, or hours+minutes.
-       * @param milliseconds - the elapsed span; negative values are clamped to zero.
+       * @param milliseconds - the elapsed span; negative values are clamped to zero, and a value that is
+       *   not a finite number renders as a dash rather than `NaNs` (the same untrusted-payload class the
+       *   instant formatter below guards).
        * @returns `Xs`, `Xm Ys`, or `Xh Ym`.
        */
       const formatDuration = (milliseconds        )         => {
+        // A NON-FINITE SPAN IS NOT A DURATION: the value comes from a served record, and `Math.floor(NaN)`
+        // would otherwise reach the card as `NaNs` — a fabricated-looking measurement.
+        if (!Number.isFinite(milliseconds)) return "—"
         /** Whole seconds, never negative, so a clock skew cannot print a negative span. */
         const total = Math.max(0, Math.floor(milliseconds / 1000))
         if (total < 60) return total + "s"
@@ -11980,6 +12090,21 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         const minutes = Math.floor(total / 60)
         if (minutes < 60) return minutes + "m " + (total % 60) + "s"
         return Math.floor(minutes / 60) + "h " + (minutes % 60) + "m"
+      }
+      /**
+       * One epoch-millisecond instant as an ISO-8601 string, or a dash when it is not representable.
+       *
+       * `Number.isFinite` ALONE DOES NOT MAKE `toISOString()` SAFE (CodeRabbit round 1, R7.4): a finite
+       * magnitude beyond ±8.64e15 is outside the ECMAScript date range, so `new Date(value)` is Invalid and
+       * `toISOString()` throws `RangeError`. The consult badges come from a SERVED payload, and a
+       * malformed one must degrade one cell, never break the whole render.
+       * @param milliseconds - the instant the payload carries.
+       * @returns the ISO instant, or `—` when the value is not a representable Date.
+       */
+      const isoInstantOf = (milliseconds        )         => {
+        /** The instant under test; an out-of-range value reads back as NaN, never as a throw site. */
+        const instant = new Date(milliseconds)
+        return Number.isFinite(instant.getTime()) ? instant.toISOString() : "—"
       }
       /**
        * The elapsed time of one task, in the card's own vocabulary.
@@ -12146,7 +12271,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
          * stamp. Only this case gets the "not started" sublabel: labelling a completed task with a
          * missing `finishedAt` as "not started" would be false, because it clearly did start.
          */
-        const neverStarted = elapsed === "-" && (typeof task.startedAt !== "string" || task.startedAt === "")
+        // A CONSULT HAS NO BOARD STAMPS, so the task card's "never started" reading would be a lie on
+        // it: the consult branch below prints its OWN four facts and never claims a board lifecycle.
+        const neverStarted = task.consult === undefined && elapsed === "-" && (typeof task.startedAt !== "string" || task.startedAt === "")
         /**
          * One label/value row of the card.
          * @param key - the row's React key.
@@ -12168,7 +12295,14 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         },
           row("tip-status", t("tip.status"), visualLabelOf(task.visual)),
           row("tip-owner", t("tip.owner"), task.owner === undefined || task.owner === "" ? t("tip.unassigned") : task.owner),
-          row("tip-elapsed", t("tip.elapsed"), elapsed, neverStarted ? t("tip.notStarted") : undefined),
+          ...(task.consult === undefined
+            ? [row("tip-elapsed", t("tip.elapsed"), elapsed, neverStarted ? t("tip.notStarted") : undefined)]
+            // THE CONSULT'S OWN TWO ROWS: its recorded state word and how long it ran (a dash while it is
+            // still running, which is what `elapsedMs` being absent means).
+            : [
+              row("tip-state", t("tip.status"), task.consult.state),
+              row("tip-elapsed", t("tip.elapsed"), task.consult.elapsedMs === undefined ? "-" : formatDuration(task.consult.elapsedMs)),
+            ]),
           react.createElement("div", { key: "tip-subject-row", className: "mpd-dag-tip-row" },
             react.createElement("span", { key: "tip-subject-label", className: "mpd-dag-tip-label" }, t("tip.task")),
             react.createElement("span", { key: "tip-subject", className: "mpd-dag-tip-subject", title: task.subject }, short(task.subject, TIP_SUBJECT_MAX))),
@@ -12459,9 +12593,13 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
          * requirement ("改 task plan 就可以实时调整工程"), and a web that skipped it would show a plan
          * edit on the TUI only. A ghost is a normal box in the EXISTING `open` tone — no new glyph, no
          * new colour — carrying `visual: "planned"` and the rank the host derived for it.
+         *
+         * THE CONSULTS ARE MERGED HERE TOO, and this is the FLAT path's half of the contract's "both
+         * layout paths" rule: a payload with no `groups` draws through this function, and a consult the
+         * host served but this merge skipped would appear in the terminal and nowhere else.
          * @param board - the board, in the order the route served it.
          * @param model - the host's model, or undefined on an older server (which serves no ghosts).
-         * @returns the board followed by one synthesized row per plan-only ghost, in model order.
+         * @returns the board followed by one synthesized row per plan-only ghost and per consult.
          */
         const withGhosts = (board            , model                              )             => {
           if (model === undefined || !Array.isArray(model.nodes)) return board
@@ -12492,7 +12630,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
               planned: true,
             })
           }
-          return [...board, ...ghosts]
+          // THE FLAT PATH'S CONSULTS: every served consult is drawn, in the host's own order. A flat model
+          // has no frames, so none of them carries a `group`; the nested path filters by frame instead.
+          /** One row per consult this payload serves, skipped only when the board already claims the id. */
+          const consultRows = (Array.isArray(model.consults) ? model.consults : []).filter((node) => !known.has(node.id)).map(consultRowOf)
+          return [...board, ...ghosts, ...consultRows]
         }
         /** The board plus every plan-only ghost: what the columns and boxes are computed from. */
         const drawing = withGhosts(tasks, served)
@@ -13294,7 +13436,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
             if (known.has(node.id) || node.visual === "group" || node.planned !== true) continue
             ghosts.push({ ...rowOfNode(node), status: "planned", visual: "planned", planned: true })
           }
-          return [...tasks, ...ghosts]
+          // THE ROOT FRAME'S OWN CONSULTS (a consult inside a box carries that box's `group`, so it is
+          // drawn by `planFrame` below instead). Same helper as the flat path: one row shape, one tone.
+          /** The consults the host attributed to the ROOT frame, in its own order. */
+          const rootConsults = (Array.isArray(served.consults) ? served.consults : []).filter((node) => (node.group ?? null) === null && !known.has(node.id)).map(consultRowOf)
+          return [...tasks, ...ghosts, ...rootConsults]
         }
         /**
          * Lay ONE frame out: its items placed in columns, its own edges routed, its boxes' interiors recurred.
@@ -13311,6 +13457,13 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
             : (Array.isArray(served.nodes) ? served.nodes : [])
               .filter((node) => (node.group ?? null) === frameId && node.visual !== "group")
               .map(rowOfNode)
+          // A BOX'S OWN CONSULTS ARE DRAWN INSIDE THAT BOX (contract §6, acceptance 5): the host
+          // attributes each one with `group`, so the frame that owns it is the frame that draws it.
+          if (frameId !== null) {
+            for (const node of Array.isArray(served.consults) ? served.consults : []) {
+              if ((node.group ?? null) === frameId) rows.push(consultRowOf(node))
+            }
+          }
           /** The cards as items, each in the column the host served for it. */
           const items               = rows.map((task) => ({
             id: task.id,
@@ -13904,6 +14057,28 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
        * @returns the detail element.
        */
       const detailSection = (task          , tasks            , contract                                                                                            , edges                         )          => {
+        // A CONSULT IS NOT A TASK (consult DAG, contract §6): the task body's verdict, attempt, round,
+        // blockers and acceptance contract are five rows of nothing on it. Its own four facts are the
+        // ones a reader pinned it for.
+        if (task.consult !== undefined) {
+          /** The consult's badge, narrowed once so the rows below read one value. */
+          const badge = task.consult
+          /** The wall-clock start, rendered as an ISO instant so a reader can compare it with a log. */
+          const started = isoInstantOf(badge.startedAt)
+          return react.createElement("div", { key: "consult-detail", "data-mpd-detail": task.id, style: { marginTop: "10px" } },
+            react.createElement("div", { key: "cd-top", style: CSS.row },
+              react.createElement("span", { key: "cd-subject", style: { flex: "1 1 auto", fontWeight: 600 } }, task.subject),
+              react.createElement("span", { key: "cd-close", "data-detail-close": task.id, style: { ...CSS.chip, cursor: "pointer" }, onClick: () => { if (setPinned !== null) setPinned(null) } }, t("task.close"))),
+            detailRow("cd-id", "task.id", task.id),
+            detailRow("cd-consult", "task.consult", badge.consultId),
+            // THE ROW IS THE ROLE, so the ROLE is what is guarded: the old `state === ""` test read the
+            // state this row never prints and could leave an empty role on screen (R7.10). An absent OR
+            // empty role is the one thing this value has to answer for.
+            detailRow("cd-role", "task.owner", task.owner === undefined || task.owner === "" ? "—" : task.owner),
+            detailRow("cd-state", "task.status", badge.state),
+            detailRow("cd-started", "task.started", started),
+            detailRow("cd-elapsed", "task.elapsed", badge.elapsedMs === undefined ? "—" : formatDuration(badge.elapsedMs)))
+        }
         // BLOCKERS AND DEPENDENTS COME FROM THE SAME SOURCE AS THE DRAWN EDGES. A plan-declared arrow
         // is painted, so the pinned body must name that relationship: with a model it reads the served
         // edges, and only without one does it fall back to the board's `blockedBy` — the same degrade.
@@ -14179,10 +14354,15 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
             },
           },
             react.createElement("div", { key: "node-top", style: CSS.nodeTop },
-              react.createElement("span", { key: "glyph", style: { color: toneOf(node.task.visual), fontWeight: 700 } }, glyphOf(node.task.visual)),
+              // A CONSULT DRAWS THE CONSULT GLYPH, its id (`C<n>` / `team::C<n>`) and its STATE WORD in
+              // the slot a task spends on its kind code — the contract's `C<n>` + role + state, with the
+              // role on the subject line below. Same card, same tone table, one distinguishing glyph: no
+              // second component, and the drawing stays locale-free (the state word is the RECORDED
+              // lifecycle enum, never a translated label).
+              react.createElement("span", { key: "glyph", style: { color: toneOf(node.task.visual), fontWeight: 700 } }, node.task.consult === undefined ? glyphOf(node.task.visual) : CONSULT_GLYPH),
               react.createElement("span", { key: "id", style: { fontWeight: 700 } }, node.task.id),
-              react.createElement("span", { key: "kind", style: CSS.dim }, kindCodeOf(node.task.kind))),
-            react.createElement("div", { key: "subject", style: { ...CSS.dim, marginTop: "1px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, labelOf[node.task.id] ?? ""))
+              react.createElement("span", { key: "kind", style: CSS.dim }, node.task.consult === undefined ? kindCodeOf(node.task.kind) : node.task.consult.state)),
+            react.createElement("div", { key: "subject", style: { ...CSS.dim, marginTop: "1px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, node.task.consult === undefined ? labelOf[node.task.id] ?? "" : node.task.owner ?? ""))
         }
         // THE TALLY SAYS WHAT A CAPTAIN ACTS ON, not just how far along the board is: how many tasks
         // a member could pick up RIGHT NOW, and how many of those are only ready because a
@@ -14448,12 +14628,15 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                   },
                 },
                 react.createElement("div", { key: "node-top", style: CSS.nodeTop },
-                  react.createElement("span", { key: "glyph", style: { color: toneOf(task.visual), fontWeight: 700 } }, glyphOf(task.visual)),
+                  // A CONSULT DRAWS THE CONSULT GLYPH, its id and its STATE WORD where a task prints its
+                  // kind code, with the role on the subject line: the same treatment the NESTED card gives
+                  // it, so a consult reads identically whether it sits in a box or at the root.
+                  react.createElement("span", { key: "glyph", style: { color: toneOf(task.visual), fontWeight: 700 } }, task.consult === undefined ? glyphOf(task.visual) : CONSULT_GLYPH),
                   react.createElement("span", { key: "id", style: { fontWeight: 700 } }, task.id),
                   // THE LEGEND'S `<KIND>` IS ASCII (clause F1): the localized word belongs to the
                   // chrome (the pinned detail body), never to the CJK-free drawing plane.
-                  react.createElement("span", { key: "kind", style: CSS.dim }, kindCodeOf(task.kind))),
-                react.createElement("div", { key: "subject", style: { ...CSS.dim, marginTop: "1px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, labelOf[task.id]),
+                  react.createElement("span", { key: "kind", style: CSS.dim }, task.consult === undefined ? kindCodeOf(task.kind) : task.consult.state)),
+                react.createElement("div", { key: "subject", style: { ...CSS.dim, marginTop: "1px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, task.consult === undefined ? labelOf[task.id] : task.owner ?? ""),
                 // The closers, in order: the node, the column's node map, the column, the grid's column
                 // map, the grid, the padded wrapper, the graph element, and `children.push`.
                 ))))))))
