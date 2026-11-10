@@ -204,7 +204,8 @@ reported on the row's log line (`<workspace>/.mpd/logs/mpd-cellwork.log`).
 `depthMax` 3 · `checkpointRatio` 0.5 · `windowFraction` 0.25 · `fixedOverheadTokens` 32000 ·
 `fixedOverheadByRoute` {} · `toolSchemaChars` 0 · `outputReserveTokens` 8192 ·
 `compactionHeadroomTokens` 65536 · `compactionRetries` 3 · `idleBarrierDelayMs` 200 ·
-`asciiCharsPerToken` 3 · `cjkCharsPerToken` 1 · `contractGates` [] · `windowOverride` null.
+`checkpointPendingMaxMs` 900000 · `asciiCharsPerToken` 3 · `cjkCharsPerToken` 1 · `contractGates` [] ·
+`windowOverride` null.
 
 The mail bound is the ONE knob outside this table: `mail.maxUndelivered` (default 8, `0` disables; an
 absent or unusable value falls back to 8) is a `mail.*` key because BOTH mail tools read it, and it is
@@ -331,16 +332,39 @@ whose window cannot be read can be certified deliberately, and it is recorded as
   (the planner/splitter), and a completion failure is journaled, never fatal to the revision.
 - **Compaction is classified, never swallowed — and a member that is still reachable is compacted IN
   PLACE.** The `agent/turn-stopping` listener RETURNS the barrier promise, so the host's serial dispatch
-  AWAITS it instead of racing a detached one. The barrier waits for the agent to be idle with a bounded
-  retry budget (`compactionRetries`, `idleBarrierDelayMs`), then resolves the engine from the LIVE member
-  handle the event carries (`compactionEngineForLiveAgent`) BEFORE any sleep and BEFORE the registry
-  lookup, so a member already detached from `ctx.agents` still compacts in place; only when that handle
-  carries no engine does the id-keyed `compactionEngineForAgent` get a chance. A retry delay may sit
-  between attempts; there is none before the FIRST one. The engine is driven with a real
-  `AbortController` signal, and the journaled reason is one of `compacted` | `no-safe-range` | `busy` |
-  `aborted` | `failed` | `no-engine`; exhausting the retry budget is never a silent no-op. The outcome
-  union is exactly `promoted` | `reseeded` | `refused`, and a `compacted` answer takes `promoted` on the
-  SAME agent — no interrupt, no reseed.
+  AWAITS it instead of racing a detached one. The barrier does NOT wait for an idle agent: it makes at
+  most `compactionRetries` attempts, sleeping `idleBarrierDelayMs` BETWEEN them (no sleep before the
+  FIRST one), and resolves the engine from the LIVE member handle the event carries
+  (`compactionEngineForLiveAgent`) BEFORE any sleep and BEFORE the registry lookup, so a member already
+  detached from `ctx.agents` still reaches its own realm's engine; only when that handle carries no
+  engine does the id-keyed `compactionEngineForAgent` get a chance. The engine is driven with a real
+  `AbortController` signal, and the journaled reason BEGINS with one of the classifications `compacted` |
+  `no-safe-range` | `busy` | `aborted` | `failed` | `no-engine`; exhausting the retry budget is never a
+  silent no-op. **The reason is a classification PLUS, when it applies, a `; ` clause** (NIT 5): a reseed
+  appends the host-bound note to it, so the `busy`-on-every-attempt shape journals
+  `busy; the engine reported \`busy\` on every attempt: …` — a reader that matches the whole string against
+  the six-value list would miss exactly the shape this bundle measured. **`busy` on
+  every attempt is the HOST's bound and the reason says so (R4.0):** `compactNow` runs inside
+  `agent.runMaintenance`, which refuses any phase but idle, while `agent/turn-stopping` is dispatched
+  inside the turn and its listeners are awaited — in-place compaction cannot run at that event, so the
+  reseed is the only path and the reason text records it instead of leaving `busy` unexplained. The
+  outcome union is exactly `promoted` | `reseeded` | `refused`, and a `compacted` answer takes
+  `promoted` on the SAME agent — no interrupt, no reseed. **A non-`refused` outcome also reopens the
+  TEAM seat** through the plane's `unfence` seam as the CAPTAIN, journals `member-unfenced` with
+  `by: "barrier"` and reports `plane: "unfenced" | "absent" | "refused"`; a reseed journals
+  `member-reseeded` with both session ids, the retirement fact and the plane's half. **The retirement is
+  authorised by a LIVE ANCESTOR (R5.1)** — the same session the reseed is raised under (the member's
+  durable parent when live, else the cell's captain), NEVER the member's own handle, which the host
+  refuses as `UNAUTHORIZED "cannot interrupt itself"` before its ancestry check. The row records what
+  the host did: `retired:true` only with `retirement:"accepted"`, `"nothing-to-retire"` when the
+  registry holds no live session under that id (never a retirement), `"refused"` with the host's
+  sentence in `retirementReason`, and `"unavailable"` when the composition exposes no seam. A plane
+  half that ends `refused` carries `retry`, the exact Lead-only verb that re-drives it. A reseed is NOT
+  proof of a working child: `checkpointSince` survives it, and `cellwork_supervise` marks a seat whose
+  recorded session is not live (registry PRESENT) as `suspect`. The bounded forced lever
+  (`unfence: [{member, force: true}]`) is the last resort, fail-closed on a live session and on a
+  missing written bound (`barrierFailures` at `compactionRetries`, or a window older than
+  `checkpointPendingMaxMs`); it reopens the seat for reassignment, not for work.
 - **Mail and reseed bounds.** Cell mail is durable first and woken best-effort. `cellwork_send` resolves
   the recipient in the cell tree — a member name, `captain`, or the cross-cell form
   `"<cellId>/<captain|member>"`, where `<cellId>` must be a sub-cell THIS cell registered or this cell's

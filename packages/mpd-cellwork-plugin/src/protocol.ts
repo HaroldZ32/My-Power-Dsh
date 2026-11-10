@@ -422,6 +422,13 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
     key: string
     /** The member's recorded display name, which is what the answer's `member` field quotes. */
     name: string
+    /**
+     * Whether this entry asked for the FORCED lever (R4.4).
+     *
+     * A bare string entry is `false` — byte-identical to the pre-R4 behaviour — and a forced entry may
+     * clear a BARRIER-OWNED checkpoint (never a live seat, and only once a written bound is reached).
+     */
+    force: boolean
   }
 
   /** What one `unfence` list did: the record after the write, and one outcome per name. */
@@ -430,6 +437,240 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
     cell: CellState
     /** One outcome per named member, in the order the call named them. */
     outcomes: Array<Record<string, unknown>>
+  }
+
+  /**
+   * What a liveness probe can say about one seat's recorded session: live, not live, or "cannot tell".
+   *
+   * THREE STATES ON PURPOSE (R4.2). `liveAgentExact` answers `undefined` both for a dead session and for
+   * a composition whose agents registry is absent (`mpd-dsh-adapter-plugin/src/index.ts#liveAgentExact`),
+   * so treating that `undefined` as "dead" would report EVERY seat as suspect on an older composition.
+   * `unknown` is the honest answer there, and nothing is fenced or forced on it.
+   */
+  type SeatLiveness = "live" | "dead" | "unknown"
+
+  /**
+   * The WRITTEN licence a forced clear stands on (R4.4, extended by R5.2).
+   *
+   *   `retry-budget` the barrier already spent `compactionRetries` consecutive runs on the seat;
+   *   `stale`        the checkpoint window outlived `checkpointPendingMaxMs`;
+   *   `dead-session` the DEAD-RESEED licence: the recorded session is proven dead, so neither clock
+   *                  bound can ever be reached by a seat no live agent can drive a turn in.
+   */
+  type SeatForceBound = "retry-budget" | "stale" | "dead-session"
+
+  /**
+   * The liveness of one recorded session, through the adapter's identity seam.
+   *
+   * @param sessionId - the session the seat records; "" cannot be proven live.
+   * @returns `live` when the registry answers an Agent for it, `dead` when the registry is present and
+   *   answers nothing, and `unknown` when this composition exposes no identity seam or no registry.
+   */
+  const livenessOf = (sessionId: string): SeatLiveness => {
+    if (typeof dsh.liveAgentExact !== "function") return "unknown"
+    try {
+      if (sessionId !== "" && dsh.liveAgentExact(sessionId) !== undefined) return "live"
+    } catch {
+      return "unknown"
+    }
+    // THE PRESENCE PROBE DECIDES DEAD VS UNKNOWN: only a composition that really serves an agents
+    // registry can call a missing id DEAD; anything else is unproven.
+    try {
+      /** The adapter's capability snapshot, when this composition offers one. */
+      const capabilities = typeof dsh.capabilities === "function" ? dsh.capabilities() : undefined
+      return capabilities?.agents === true ? "dead" : "unknown"
+    } catch {
+      return "unknown"
+    }
+  }
+
+  /**
+   * The instant one seat entered the checkpoint window, or undefined when nothing recorded it.
+   *
+   * The member row is the primary source (R4.3 writes it at the ONE ownerless close); a row written by an
+   * older build falls back to the LAST `cell.checkpoints` entry for the SAME session, which is the
+   * documented fallback and never a substitute for a missing fact.
+   *
+   * @param cell - the cell that holds both records.
+   * @param member - the member row being measured.
+   * @returns the ISO instant, or undefined when neither source names one.
+   */
+  const checkpointSinceOf = (cell: CellState, member: CellMemberRecord): string | undefined => {
+    if (member.checkpointSince !== undefined) return member.checkpointSince
+    for (let index = cell.checkpoints.length - 1; index >= 0; index -= 1) {
+      /** The checkpoint entry at this position. */
+      const entry = cell.checkpoints[index]
+      if (entry.sessionId !== "" && entry.sessionId === member.sessionId) return entry.at
+    }
+    return undefined
+  }
+
+  /**
+   * How long one seat has been in the checkpoint window, in milliseconds.
+   *
+   * @param since - the ISO instant the window opened, when one is recorded.
+   * @param now - the instant the answer is measured at.
+   * @returns the age, or undefined when no usable instant exists (an unparsable stamp is not a licence).
+   */
+  const pendingMsOf = (since: string | undefined, now: Date): number | undefined => {
+    if (since === undefined || since === "") return undefined
+    /** The parsed instant; an unparsable value is refused rather than read as zero. */
+    const opened = Date.parse(since)
+    return Number.isFinite(opened) ? Math.max(0, now.getTime() - opened) : undefined
+  }
+
+  /**
+   * Which written bound authorises a FORCED clear of one barrier-owned seat, if any (R4.4).
+   *
+   * FAIL-CLOSED: a bare `force` is never a licence on its own, and a missing timestamp with zero recorded
+   * failures reaches no bound at all.
+   *
+   * @param member - the member row the bound is measured on.
+   * @param pendingMs - the measured window age, when one exists.
+   * @returns `retry-budget` when the barrier already spent its consecutive-run budget, `stale` when the
+   *   window outlived `checkpointPendingMaxMs`, and undefined when neither bound is reached.
+   */
+  const forceBoundOf = (member: CellMemberRecord, pendingMs: number | undefined): "retry-budget" | "stale" | undefined => {
+    if ((member.barrierFailures ?? 0) >= config.compactionRetries) return "retry-budget"
+    if (pendingMs !== undefined && pendingMs >= config.checkpointPendingMaxMs) return "stale"
+    return undefined
+  }
+
+  /**
+   * The ONE reading of "is this seat held, and would the FORCED lever clear it" (R5.2).
+   *
+   * ONE IMPLEMENTATION, TWO SURFACES: `cellwork_dispatch {unfence}` decides its forced branch from this
+   * object and `cellwork_supervise` projects the SAME object, so the lever the sweep advertises and the
+   * lever the verb accepts cannot disagree again. The divergence this ends was the incident's exact
+   * shape: a reseeded seat (`mode:"subcaptain"`, `handoffReady:false`, TEAM row reopened to `member`) is
+   * NOT barrier-owned, so the verb fell through to `not-fenced` while the sweep advertised
+   * `forceEligible:true` from a SECOND predicate that never asked whether the seat was closed at all.
+   *
+   * TWO CLOSURE SHAPES, both held:
+   *
+   *   `barrierOwned` — a checkpoint SPELLING (CELL `mode:"checkpoint"` / `handoffReady:true`, or the
+   *                    plane's `mode:"checkpoint"`). The barrier owes it a reopen, and the forced lever
+   *                    stands on a WRITTEN bound: the retry budget or the staleness clock. Fail-closed:
+   *                    a fresh window and a missing timestamp reach neither.
+   *   `deadReseed`   — the DEAD-RESEED shape (R5.1/R4.2): the barrier replaced the session with a child
+   *                    the registry PROVES dead (`liveness === "dead"`, i.e. the registry is present and
+   *                    answers nothing) while the row is still `subcaptain` and not handoff-ready. No live
+   *                    agent is left to drive another turn, so nothing will ever reopen it and the clock
+   *                    bound can never be reached: the PROVEN-DEAD session is the licence
+   *                    (`bound:"dead-session"`). Its window's STAMP is still required for that licence — a
+   *                    missing timestamp is never one (the answer is `force-not-eligible`), and an ABSENT
+   *                    registry (`unknown`) proves nothing at all.
+   */
+  interface ForceReading {
+    /** Whether a checkpoint SPELLING on either record is what holds the seat. */
+    barrierOwned: boolean
+    /** The R4.2 OBSERVABILITY flag: a stamped window whose recorded session the registry proves dead. */
+    suspect: boolean
+    /** Whether the seat is the DEAD-RESEED closure shape (`suspect` without any checkpoint spelling). */
+    deadReseed: boolean
+    /** Whether the seat is held at all (`barrierOwned || deadReseed`) — what an UNFORCED clear refuses. */
+    closed: boolean
+    /** The measured age of the window, when a stamp exists. */
+    pendingMs?: number
+    /** What the identity seam says about the session the row records. */
+    liveness: SeatLiveness
+    /** The written licence a FORCED clear stands on, when one is reached. */
+    bound?: SeatForceBound
+    /** Whether `unfence:[{member, force:true}]` would clear this seat RIGHT NOW. */
+    forceEligible: boolean
+    /** Why the forced lever refuses a HELD seat, in the answer's own two spellings. */
+    refusal?: "live-session" | "force-not-eligible"
+  }
+
+  /**
+   * Evaluate the ONE forced-lever predicate for one seat.
+   *
+   * @param cell - the cell whose records are read (the CELL row and its checkpoints history).
+   * @param workspace - the caller's workspace root, where the TEAM record lives.
+   * @param member - the CELL row; `undefined` means the CELL record does not name the seat (a plane-only
+   *   checkpoint is still readable, but nothing about it can be measured or forced).
+   * @param now - the instant the window's age is measured against.
+   * @returns the reading both surfaces consume; total, never throws.
+   */
+  const forceReadingOf = (cell: CellState, workspace: string, member: CellMemberRecord | undefined, now: Date): ForceReading => {
+    /** The plane's reading of the same seat: its `mode:"checkpoint"` is a closed spelling too. */
+    const seat = recordSeat(cell, workspace, member?.name ?? "")
+    /** The barrier's WINDOW, whichever record still carries it. */
+    const barrierOwned = member?.mode === "checkpoint" || member?.handoffReady === true || seat.checkpoint === true
+    /** The instant the window opened, when either source recorded one. */
+    const since = member === undefined ? undefined : checkpointSinceOf(cell, member)
+    /** The window's age, when it can be measured; a missing or unparsable stamp measures nothing. */
+    const pendingMs = pendingMsOf(since, now)
+    /** What the identity seam says about the session the row points at. */
+    const liveness = member === undefined ? "unknown" as const : livenessOf(member.sessionId)
+    // TWO DIFFERENT FACTS, ONE CLOCK (R5.2). `suspect` is the OBSERVABILITY flag R4.2 introduced: a seat
+    // whose recorded session the registry proves dead, whatever else the row says. `deadReseed` is the
+    // CLOSURE shape: the same proven-dead session on a row that LEFT the barrier's window (a reseed), so
+    // no agent is left to drive the turn a barrier would fire on. Only the second one is a forced-lever
+    // licence — a checkpointed seat keeps the clock/retry bounds, and a healthy `subcaptain` is neither.
+    /** Whether the recorded session is proven dead while a window stamp exists (R4.2's flag). */
+    const suspect = since !== undefined && liveness === "dead"
+    /** Whether this is the DEAD-RESEED closure shape rather than the barrier's own window. */
+    const deadReseed = !barrierOwned && liveness === "dead" && member !== undefined && member.mode === "subcaptain" && member.handoffReady !== true
+    /** Whether the seat is held at all. */
+    const closed = barrierOwned || deadReseed
+    /** The measured fields every answer shares. */
+    const measured = { barrierOwned, suspect, deadReseed, closed, liveness, ...(pendingMs === undefined ? {} : { pendingMs }) }
+    // AN OPEN SEAT IS `not-fenced`, NEVER A FORCE VERDICT: the forced lever is about a HELD seat, and a
+    // `force-not-eligible` answer here would claim a window the record does not have.
+    if (!closed) return { ...measured, forceEligible: false }
+    // A LIVE SESSION VETOES EVERY FORCED CLEAR: the seat is not dead, whatever its age or failed runs say.
+    if (liveness === "live") return { ...measured, forceEligible: false, refusal: "live-session" }
+    /** The written licence, if any: the dead-reseed shape stands on its proven-dead session. */
+    // THE LICENCE IS STILL WRITTEN: the dead-reseed shape stands on its PROVEN-DEAD session, but only
+    // once the record carries the window's stamp — a missing timestamp falls back to the retry budget,
+    // and with neither the answer is `force-not-eligible` rather than a silent clear.
+    const bound = deadReseed
+      ? (since === undefined ? (member === undefined ? undefined : forceBoundOf(member, pendingMs)) : "dead-session" as const)
+      : (member === undefined ? undefined : forceBoundOf(member, pendingMs))
+    if (bound === undefined) return { ...measured, forceEligible: false, refusal: "force-not-eligible" }
+    return { ...measured, bound, forceEligible: true }
+  }
+
+  /**
+   * The EXACT verb that retries a plane half the seam REFUSED (R5.4).
+   *
+   * `reopenPlaneSeat` reports `refused` and the TEAM row stays closed; the cellwork verbs cannot re-drive
+   * it a second way (an unforced `unfence` answers `checkpoint-pending` for a pending window, and the
+   * forced path refuses a live child), so the operator is handed the plane's OWN Lead-only verb instead
+   * of a dead end. It is the same write `setMemberFence` performs, and it clears BOTH closed spellings.
+   *
+   * @param name - the member's recorded display name, quoted back exactly as the record spells it.
+   * @returns the retry verb, ready to paste.
+   */
+  const planeRetryOf = (name: string): string => 'agent_teams_control {action:"unfence", member:' + JSON.stringify(name) + '}'
+
+  /**
+   * Ask the plane seam to reopen one seat, reporting which of the three outcomes happened.
+   *
+   * ONE IMPLEMENTATION (R4.1): the captain's `unfence` and the post-handoff barrier both call THIS, so
+   * neither can claim a reopen the plane did not perform. The plane's write surface is probed per call and
+   * `unfence` is the optional half.
+   *
+   * @param sessionId - the authority the plane validates; the captain's own id on both paths.
+   * @param name - the member's recorded display name.
+   * @returns `unfenced` when the seam accepted it, `absent` when this composition exposes no seam, and
+   * `refused` with the plane's own sentence when the seam said no or threw.
+   */
+  const reopenPlaneSeat = async (sessionId: string, name: string): Promise<{ plane: string; planeReason?: string }> => {
+    /** The plane's write surface, probed per call; `unfence` is the optional half. */
+    const plane = actions()
+    if (typeof plane?.unfence !== "function") return { plane: "absent", planeReason: "this composition exposes no mpdTeamActions.unfence seam, so the TEAM seat was NOT reopened" }
+    try {
+      /** The plane's answer — its own sentence when it refuses. */
+      const reply = await plane.unfence({ sessionId, member: name }) as Record<string, unknown>
+      if (reply?.ok === false) return { plane: "refused", planeReason: String(reply.error ?? "the team plane refused the unfence") }
+      return { plane: "unfenced" }
+    } catch (error) {
+      // A THROWING SEAM IS A REFUSED HALF, not a lost cell-row repair: the member is reopened below
+      // either way, and the sentence says which half failed so the captain can retry the plane verb.
+      return { plane: "refused", planeReason: error instanceof Error ? error.message : String(error) }
+    }
   }
 
   /**
@@ -487,34 +728,12 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
    * @returns the record after the write, and one outcome per target.
    */
   const unfenceSeats = async (caller: CallerContext, cell: CellState, targets: readonly UnfenceTarget[], now: Date): Promise<UnfenceResult> => {
-    /** The plane's write surface, probed per call; `unfence` is the optional half. */
-    const plane = actions()
     /** The rows whose CELL fence this call cleared, keyed by the record's own key; merged after every await. */
     const clearedRows = new Map<string, CellMemberRecord>()
     /** One outcome per distinct member (duplicates collapse to one), in the call's order. */
     const outcomes: Array<Record<string, unknown>> = []
-    /** The members whose CELL fence was actually cleared, for the journal. */
-    const cleared: Array<{ name: string; plane: string }> = []
-    /**
-     * Ask the plane seam to reopen one seat, reporting which of the three outcomes happened.
-     *
-     * @param name - the member's recorded display name.
-     * @returns `unfenced` when the seam accepted it, `absent` when this composition exposes no seam, and
-     * `refused` with the plane's own sentence when the seam said no or threw.
-     */
-    const reopenPlaneSeat = async (name: string): Promise<{ plane: string; planeReason?: string }> => {
-      if (typeof plane?.unfence !== "function") return { plane: "absent", planeReason: "this composition exposes no mpdTeamActions.unfence seam, so the TEAM seat was NOT reopened" }
-      try {
-        /** The plane's answer — its own sentence when it refuses. */
-        const reply = await plane.unfence({ sessionId: caller.sessionId, member: name }) as Record<string, unknown>
-        if (reply?.ok === false) return { plane: "refused", planeReason: String(reply.error ?? "the team plane refused the unfence") }
-        return { plane: "unfenced" }
-      } catch (error) {
-        // A THROWING SEAM IS A REFUSED HALF, not a lost cell-row repair: the member is reopened below
-        // either way, and the sentence says which half failed so the captain can retry the plane verb.
-        return { plane: "refused", planeReason: error instanceof Error ? error.message : String(error) }
-      }
-    }
+    /** The members whose CELL row was actually reopened, with the plane's half and (when forced) its bound. */
+    const cleared: Array<{ name: string; plane: string; forced?: { reason: SeatForceBound; pendingMs: number | undefined; barrierFailures: number; sessionId: string; liveness: SeatLiveness } }> = []
     for (const target of targets) {
       /** The row as the PRE-AWAIT snapshot holds it; only its fence MARKER is read, never merged back whole. */
       const row = cell.members[target.key]
@@ -530,13 +749,13 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       // plane's half is reported exactly as it ended, never assumed.
       if (cellFenced) {
         /** How the plane's half ended. */
-        const half = await reopenPlaneSeat(target.name)
+        const half = await reopenPlaneSeat(caller.sessionId, target.name)
         /** The reopened CELL row: the fence keys are REMOVED and the barrier's checkpoint window is reset. */
         const reopened: CellMemberRecord = { ...row, mode: "member", handoffReady: false }
         delete reopened.fenced
         delete reopened.fencedReason
         clearedRows.set(target.key, reopened)
-        outcomes.push({ member: target.name, unfenced: true, plane: half.plane, ...(half.planeReason === undefined ? {} : { planeReason: half.planeReason }) })
+        outcomes.push({ member: target.name, unfenced: true, plane: half.plane, ...(half.planeReason === undefined ? {} : { planeReason: half.planeReason }), ...(half.plane === "refused" ? { retry: planeRetryOf(target.name) } : {}) })
         cleared.push({ name: target.name, plane: half.plane })
         continue
       }
@@ -545,18 +764,59 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       // reports the plane's half as the only half that could be acted on.
       if (teamFenced) {
         /** How the plane's half ended. */
-        const half = await reopenPlaneSeat(target.name)
-        outcomes.push({ member: target.name, unfenced: half.plane === "unfenced", cellRow: "untouched", plane: half.plane, ...(half.planeReason === undefined ? {} : { planeReason: half.planeReason }) })
+        const half = await reopenPlaneSeat(caller.sessionId, target.name)
+        outcomes.push({ member: target.name, unfenced: half.plane === "unfenced", cellRow: "untouched", plane: half.plane, ...(half.planeReason === undefined ? {} : { planeReason: half.planeReason }), ...(half.plane === "refused" ? { retry: planeRetryOf(target.name) } : {}) })
         continue
       }
-      // 3. A PENDING CHECKPOINT IS THE BARRIER'S, NOT A GIVE-UP: `mode:"checkpoint"` without `fenced` is
-      // the state EVERY handoff leaves behind (and the TEAM half of every real give-up, which the CELL
-      // marker above already handled). Nothing is written anywhere and the seam is NOT called.
-      if (seat.checkpoint === true) {
-        outcomes.push({ member: target.name, unfenced: false, reason: "checkpoint-pending", detail: "the TEAM row records a checkpoint for this seat (" + String(seat.fenceReason ?? "mode `checkpoint`") + ") with no `fenced` marker, so the compaction barrier owns that state and nothing was cleared" })
+      // 3. THE HELD SEAT (R4.4, widened by R5.2). A `checkpoint` spelling on either record with no fence
+      // marker is the state EVERY handoff leaves behind — so a CELL-only checkpoint answers
+      // `checkpoint-pending` too, never the false `not-fenced`. The DEAD-RESEED shape (a reseeded seat whose
+      // fresh child is proven dead) is HELD as well: it is not barrier-owned, and it is exactly why the
+      // forced lever used to be unreachable. ONE predicate decides both, the same one the sweep projects.
+      /** The ONE forced-lever reading for this seat (R5.2). */
+      const reading = forceReadingOf(cell, caller.workspace, row, now)
+      if (reading.closed && !target.force) {
+        // UNFORCED: NOTHING is written anywhere and the seam is NOT called. The barrier owns this state.
+        outcomes.push({ member: target.name, unfenced: false, reason: "checkpoint-pending", barrierOwned: reading.barrierOwned, ...(reading.deadReseed ? { suspect: true } : {}), detail: reading.deadReseed
+          ? "the record shows a DEAD-RESEED seat for this member (" + String(seat.fenceReason ?? "a reseeded row whose recorded session is not a live agent") + "): no barrier will run for it again, nothing was cleared, and the FORCED lever `unfence:[{member, force:true}]` reopens it under `bound:\"dead-session\"`"
+          : "the record shows a held seat for this member (" + String(seat.fenceReason ?? "no `fenced` marker: a checkpoint window") + "), so the compaction barrier owns that state and nothing was cleared; the FORCED lever `unfence:[{member, force:true}]` exists for a seat the barrier can no longer run for" })
         continue
       }
-      // 4. NOT FENCED IN EITHER RECORD IS A FACT, NOT A SUCCESS: the answer says so and nothing is written.
+      if (reading.closed && target.force) {
+        // FORCED, AND FAIL-CLOSED: a bare `force` proves nothing. A LIVE seat is refused outright (it is
+        // not dead), and the clear is allowed only when a WRITTEN licence authorises it.
+        if (reading.refusal === "live-session") {
+          outcomes.push({ member: target.name, unfenced: false, reason: "live-session", alive: true, sessionId: row?.sessionId ?? "", detail: "the recorded session is a LIVE agent, so this seat is not dead and the forced lever refuses to reopen it" })
+          continue
+        }
+        // NO CELL ROW MEANS NO RECORDED BOUND: fail closed rather than clear a seat whose clock and
+        // failure count this record never wrote.
+        if (row === undefined || reading.bound === undefined) {
+          outcomes.push({ member: target.name, unfenced: false, reason: "force-not-eligible", alive: false, sessionId: row?.sessionId ?? "", ...(reading.pendingMs === undefined ? {} : { pendingMs: reading.pendingMs }), detail: "a forced clear needs a written licence: `barrierFailures` at the retry budget (" + String(config.compactionRetries) + "), a `checkpointSince` older than " + String(config.checkpointPendingMaxMs) + " ms, or a reseeded seat whose recorded session the registry PROVES dead. Nothing was written" })
+          continue
+        }
+        /** The bound the clear stands on; `dead-session` is the dead-reseed shape's own licence. */
+        const bound = reading.bound
+        // THE WRITE (R4.4): reopen the CELL row for REASSIGNMENT — `mode:"member"`, not handoff-ready, and
+        // every window key DELETED (absent-not-zero). `handoffs`, `joinedAt` and `adopted` are kept.
+        /** The reopened CELL row; the four keys are REMOVED, never written as false/zero. */
+        const reopened: CellMemberRecord = { ...row, mode: "member", handoffReady: false }
+        delete reopened.fenced
+        delete reopened.fencedReason
+        delete reopened.barrierFailures
+        delete reopened.checkpointSince
+        clearedRows.set(target.key, reopened)
+        // BEST-EFFORT PLANE HALF: the same seam, the same reporting; a refusal never undoes the CELL write.
+        /** How the plane's half ended. */
+        const half = await reopenPlaneSeat(caller.sessionId, target.name)
+        // `alive` answers "is the recorded session a LIVE agent" (false here, or the clear would have been
+        // refused); `liveness` names WHY — `dead` when the registry proved it, `unknown` when this
+        // composition cannot tell. The second field is what keeps "unproven" from reading as "dead".
+        outcomes.push({ member: target.name, unfenced: true, forced: true, alive: false, liveness: reading.liveness, sessionId: row.sessionId, bound, ...(reading.pendingMs === undefined ? {} : { pendingMs: reading.pendingMs }), plane: half.plane, ...(half.planeReason === undefined ? {} : { planeReason: half.planeReason }), ...(half.plane === "refused" ? { retry: planeRetryOf(target.name) } : {}) })
+        cleared.push({ name: target.name, plane: half.plane, forced: { reason: bound, pendingMs: reading.pendingMs, barrierFailures: row.barrierFailures ?? 0, sessionId: row.sessionId, liveness: reading.liveness } })
+        continue
+      }
+      // 4. NOT HELD IN EITHER RECORD IS A FACT, NOT A SUCCESS: the answer says so and nothing is written.
       outcomes.push({ member: target.name, unfenced: false, reason: "not-fenced" })
     }
     // NOTHING CLEARED ON THE CELL SIDE: the record is untouched, so a `not-fenced` answer — or a team-only
@@ -573,7 +833,29 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
     /** The journal line count after the LAST append, so the record's cursor stays exact. */
     let cursor = base.journalCursor
     for (const row of cleared) {
-      cursor = appendJournal(caller.workspace, cell.cellId, { event: "member-unfenced", member: row.name, plane: row.plane }, now)
+      // TWO DISTINCT ROWS (R4.4): an UNFORCED clear keeps `member-unfenced`'s meaning; a FORCED one names
+      // the bound it used, the measured age and the failure count, so the record says WHY a seat the
+      // barrier owned was reopened. `liveness` carries the third fact the contract's vocabulary names
+      // (`no-live-session`): every forced clear requires it, so it is recorded beside the bound instead of
+      // standing in for it — a bound is the licence and liveness alone never is.
+      // A REFUSED PLANE HALF NAMES ITS OWN RETRY (R5.4): the row says which verb re-drives the seam, so a
+      // refusal is never a dead end recorded only as `plane:"refused"`.
+      /** The retry verb a refused plane half is repaired with, when it was refused. */
+      const retry = row.plane === "refused" ? { retry: planeRetryOf(row.name) } : {}
+      cursor = appendJournal(caller.workspace, cell.cellId, row.forced === undefined
+        ? { event: "member-unfenced", member: row.name, plane: row.plane, ...retry }
+        : {
+          event: "member-unfenced-forced",
+          member: row.name,
+          by: "captain",
+          reason: row.forced.reason,
+          ...(row.forced.pendingMs === undefined ? {} : { pendingMs: row.forced.pendingMs }),
+          barrierFailures: row.forced.barrierFailures,
+          sessionId: row.forced.sessionId,
+          liveness: row.forced.liveness,
+          plane: row.plane,
+          ...retry,
+        }, now)
     }
     /** The record with the reopened rows and the journal cursor this call established. */
     const next: CellState = { ...base, members, journalCursor: cursor > 0 ? cursor : base.journalCursor }
@@ -602,8 +884,21 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         },
         unfence: {
           type: "array",
-          description: "Member names whose compaction GIVE-UP fence this call CLEARS before the pass (captain-only, like the verb). The CELL row's own `fenced:true` is the give-up fact: that row loses `fenced`/`fencedReason`, returns to `mode: member` with `handoffReady:false`, and keeps its `handoffs` count, while the TEAM seat is reopened through the plane's `unfence` seam when this composition exposes one (the plane's `mode:\"checkpoint\"` is a closed spelling and that seam clears it too). A give-up fence recorded ONLY on the TEAM record (an explicit `fenced:true`) is cleared there while the CELL row is left untouched. A TEAM row at `mode:\"checkpoint\"` with no `fenced` marker is barrier-owned and, on its own, answers `reason:\"checkpoint-pending\"` and writes nothing — the CELL marker above outranks it. A member that is not fenced in either record is reported as not-fenced, never as a silent success; a name that matches no single member (unknown, or ambiguous once normalized) refuses the whole call. May travel with `reassign`.",
-          items: { type: "string" },
+          description: "Member names whose compaction GIVE-UP fence this call CLEARS before the pass (captain-only, like the verb). The CELL row's own `fenced:true` is the give-up fact: that row loses `fenced`/`fencedReason`, returns to `mode: member` with `handoffReady:false`, and keeps its `handoffs` count, while the TEAM seat is reopened through the plane's `unfence` seam when this composition exposes one (the plane's `mode:\"checkpoint\"` is a closed spelling and that seam clears it too). A give-up fence recorded ONLY on the TEAM record (an explicit `fenced:true`) is cleared there while the CELL row is left untouched. A TEAM row at `mode:\"checkpoint\"` with no `fenced` marker is barrier-owned and, on its own, answers `reason:\"checkpoint-pending\"` and writes nothing — the CELL marker above outranks it. A member that is not fenced in either record is reported as not-fenced, never as a silent success; a name that matches no single member (unknown, or ambiguous once normalized) refuses the whole call. `{member, force:true}` is the LAST RESORT for a seat the barrier can no longer run for: it reopens a BARRIER-OWNED checkpoint (the CELL row's own `mode`/`handoffReady` or the TEAM row's `mode:\"checkpoint\"`) ONLY when the recorded session is not a live agent AND a written bound is reached — `barrierFailures` at `compactionRetries`, or a `checkpointSince` older than `checkpointPendingMaxMs` (15 minutes). A bare `force` is never a licence: a live seat, a fresh window, zero failures and a missing timestamp all write NOTHING. THE DEAD-RESEED SEAT IS COVERED BY THE SAME PREDICATE (R5.2): a reseeded row (`mode:\"subcaptain\"`, `handoffReady:false`, a `checkpointSince`) whose recorded session the registry PROVES dead is answer `checkpoint-pending` unforced and force-clearable with `bound:\"dead-session\"` — the clock bound is never reached by a seat no live agent can drive. A plane half that answers `refused` names the exact retry verb (`agent_teams_control {action:\"unfence\", member}`) in the answer AND in the journal row, so a refusal is never a dead end. The journal row is `member-unfenced-forced` (`by:\"captain\"`, the bound as `reason`, `pendingMs`, `barrierFailures`, `sessionId`, `liveness`, `plane`), the answer adds `alive`/`sessionId`, and the seat is reopened for REASSIGNMENT, NOT for work — its context was never compacted. May travel with `reassign`.",
+          items: {
+            oneOf: [
+              { type: "string" },
+              {
+                type: "object",
+                properties: {
+                  member: { type: "string", description: "The member whose barrier-owned checkpoint this call reopens." },
+                  force: { type: "boolean", description: "Ask for the BOUNDED FORCED lever: a barrier-owned `checkpoint` reopen is allowed ONLY when the recorded session is not live AND a written bound is reached (the barrier's retry budget, or a window older than `checkpointPendingMaxMs`). A bare force on a live seat, a fresh window or a seat with no recorded bound writes NOTHING." },
+                },
+                required: ["member"],
+                additionalProperties: false,
+              },
+            ],
+          },
         },
       },
       additionalProperties: false,
@@ -618,7 +913,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
           skipped: { type: "array", items: { type: "object" } },
           reassigned: { type: "array", items: { type: "object" }, description: "One entry per readable `reassign` pair: whether the board claim landed and whether the message was delivered." },
           reassignInvalid: { type: "array", items: { type: "string" }, description: "One sentence per `reassign` entry this call refused to read." },
-          unfenced: { type: "array", items: { type: "object" }, description: "One entry per distinct `unfence` member (duplicates collapse to one): `{member, unfenced:true, plane, planeReason?}` for a cleared CELL give-up fence (the CELL row's `fenced:true`, whatever the TEAM row says), `{member, unfenced:false, reason:\"not-fenced\"}` when neither record reports a marker, `{member, unfenced:false, reason:\"checkpoint-pending\", detail}` only when the CELL row carries no `fenced:true` AND the TEAM row is at `mode:\"checkpoint\"` with no `fenced` flag (the compaction barrier owns it, nothing was written), and `{member, unfenced, cellRow:\"untouched\", plane, planeReason?}` when an explicit TEAM-only fence was cleared while the CELL row was left untouched. `plane` is `unfenced` (the TEAM seat was reopened through the seam), `absent` (this composition exposes no `unfence` seam, so no reopen is claimed) or `refused` (with the plane's own sentence in `planeReason`)." },
+          unfenced: { type: "array", items: { type: "object" }, description: "One entry per distinct `unfence` member (duplicates collapse to one): `{member, unfenced:true, plane, planeReason?}` for a cleared CELL give-up fence (the CELL row's `fenced:true`, whatever the TEAM row says), `{member, unfenced:false, reason:\"not-fenced\"}` when neither record reports a marker, `{member, unfenced:false, reason:\"checkpoint-pending\", detail}` only when the CELL row carries no `fenced:true` AND the TEAM row is at `mode:\"checkpoint\"` with no `fenced` flag (the compaction barrier owns it, nothing was written), and `{member, unfenced, cellRow:\"untouched\", plane, planeReason?}` when an explicit TEAM-only fence was cleared while the CELL row was left untouched. `plane` is `unfenced` (the TEAM seat was reopened through the seam), `absent` (this composition exposes no `unfence` seam, so no reopen is claimed) or `refused` (with the plane's own sentence in `planeReason`). A FORCED clear answers `{member, unfenced:true, forced:true, alive:false, liveness:\"dead\"|\"unknown\", sessionId, bound:\"retry-budget\"|\"stale\", pendingMs?, plane, planeReason?}`, and a forced request that is refused writes nothing and answers `reason:\"live-session\"` or `reason:\"force-not-eligible\"` with a `detail` sentence. The dead-reseed seat (a reseeded `subcaptain` row whose recorded session the registry PROVES dead) is held by the SAME predicate and its forced clear names `bound:\"dead-session\"`. Any outcome whose plane half ended `refused` ALSO carries `retry`: the exact Lead-only verb (`agent_teams_control {action:\"unfence\", member}`) that re-drives the seam, echoed in the render and in the journal row." },
           refused: { type: "string" },
         },
         required: ["ok"],
@@ -628,8 +923,22 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         const result = typeof value === "object" && value !== null ? value as Record<string, unknown> : {}
         /** The unfence outcomes, reported first because they run first. */
         const unfenced = Array.isArray(result.unfenced) ? result.unfenced as Array<Record<string, unknown>> : []
+        /**
+         * The plane RETRY a refused half hands over (R5.4), or "" when the outcome names none.
+         *
+         * @param row - one unfence outcome.
+         * @returns the sentence naming the exact retrying verb, ready to append.
+         */
+        const retryOf = (row: Record<string, unknown>): string => typeof row.retry === "string" && row.retry !== "" ? " · the plane half still needs: " + row.retry : ""
         /** One line per `unfence` name: the CELL row's fact and, when it was asked, the plane's half. */
-        const clears = unfenced.map((row) => row.cellRow === "untouched"
+        const lines = unfenced.map((row) => row.forced === true
+          // THE FORCED LEVER SAYS WHAT IT DID AND WHAT IT DID NOT DO (R4.4): the seat is open for
+          // reassignment, NOT for work — its context was never compacted, so a message would resume a
+          // context the handoff already described.
+          ? "unfence " + String(row.member) + " (FORCED, " + String(row.reason ?? row.bound ?? "bound reached") + "): reopened for reassignment, not for work — the barrier never reopened this seat (" + (row.plane === "unfenced" ? "the TEAM row was reopened through the plane" : row.plane === "absent" ? "this composition exposes no mpdTeamActions.unfence seam, so the TEAM row may still be closed" : "the TEAM row was NOT cleared: " + String(row.planeReason ?? "the team plane refused the unfence")) + ")"
+          : row.reason === "live-session" || row.reason === "force-not-eligible"
+            ? "unfence " + String(row.member) + ": NOT cleared (" + String(row.reason) + ") — " + String(row.detail ?? "")
+            : row.cellRow === "untouched"
           ? "unfence " + String(row.member) + ": the CELL row carried no fence marker, so it was left untouched — " + (row.plane === "unfenced"
             ? "the TEAM row was unfenced through the plane"
             : row.plane === "absent"
@@ -637,13 +946,17 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
               : "the TEAM row was NOT cleared: " + String(row.planeReason ?? "the team plane refused the unfence"))
           : "unfence " + String(row.member) + ": " + (row.unfenced !== true
             ? row.reason === "checkpoint-pending"
-              ? "checkpoint pending — the compaction barrier owns this seat, so nothing was cleared in either record"
+              ? (row.suspect === true
+                ? "DEAD-RESEED — no barrier will run for this seat again and no live agent is left, so nothing was cleared; the FORCED lever cellwork_dispatch {unfence:[{member:" + JSON.stringify(String(row.member)) + ", force:true}]} reopens it for reassignment"
+                : "checkpoint pending — the compaction barrier owns this seat, so nothing was cleared in either record")
               : "not fenced — nothing was written"
             : row.plane === "absent"
               ? "cell row cleared — this composition exposes no mpdTeamActions.unfence seam, so the TEAM seat was NOT reopened (it stays closed until the barrier or the plane reopens it)"
               : row.plane === "refused"
                 ? "cell row cleared, but the TEAM seat was NOT reopened: " + String(row.planeReason ?? "the team plane refused the unfence")
                 : "cell row cleared and the TEAM seat reopened through the plane"))
+        /** The same lines, each carrying the plane retry it names (R5.4) — no silent dead end. */
+        const clears = lines.map((line, index) => line + retryOf(unfenced[index]))
         if (result.ok === false) return render(["cellwork_dispatch refused: " + String(result.error ?? "unknown refusal"), ...clears].join("\n"))
         /** The delivered pairs. */
         const pairs = Array.isArray(result.pairs) ? result.pairs as Array<Record<string, unknown>> : []
@@ -676,15 +989,34 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       // fences and silently skips the rest.
       /** The raw `unfence` argument, read defensively because a direct call bypasses the harness schema. */
       const rawUnfence = readArgs(args)["unfence"]
-      if (rawUnfence !== undefined && !Array.isArray(rawUnfence)) return { ok: false, error: "cellwork_dispatch: `unfence` must be an array of member names" }
-      /** The names this call asks to clear, trimmed, in the order it named them. */
-      const unfenceNames = (rawUnfence ?? []).map((entry) => typeof entry === "string" ? entry.trim() : "")
-      if (unfenceNames.some((name) => name === "")) return { ok: false, error: "cellwork_dispatch: every `unfence` entry must be a non-empty member name" }
+      if (rawUnfence !== undefined && !Array.isArray(rawUnfence)) return { ok: false, error: "cellwork_dispatch: `unfence` must be an array of member names, or of `{member, force}` objects for the bounded forced lever" }
+      /** One requested clear: the spelling the caller used and whether it asked for the FORCED lever. */
+      const unfenceRequests: Array<{ name: string; force: boolean }> = []
+      for (const entry of (rawUnfence ?? [])) {
+        // A BARE STRING IS TODAY'S BEHAVIOUR, BYTE-IDENTICALLY (R4.4): `force` defaults to false and every
+        // pre-R4 arm must answer exactly as it did. The object form is the ONLY way to ask for the lever.
+        if (typeof entry === "string") { unfenceRequests.push({ name: entry.trim(), force: false }); continue }
+        if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
+          return { ok: false, error: "cellwork_dispatch: every `unfence` entry must be a member name, or an object `{member, force}`" }
+        }
+        /** The object entry, as an argument record. */
+        const shaped = entry as Record<string, unknown>
+        if (typeof shaped.member !== "string" || shaped.member.trim() === "") {
+          return { ok: false, error: "cellwork_dispatch: a `{member, force}` entry must name a non-empty `member`" }
+        }
+        if (shaped.force !== undefined && typeof shaped.force !== "boolean") {
+          return { ok: false, error: "cellwork_dispatch: `force` must be a boolean when it is present" }
+        }
+        unfenceRequests.push({ name: shaped.member.trim(), force: shaped.force === true })
+      }
+      if (unfenceRequests.some((request) => request.name === "")) return { ok: false, error: "cellwork_dispatch: every `unfence` entry must be a non-empty member name" }
       /** The recorded member each spelling resolves to, in the same order (the record is keyed by name). */
       const unfenceTargets: UnfenceTarget[] = []
       /** The record keys already resolved, so ONE member named twice yields ONE outcome, seam call and journal row. */
       const seenTargets = new Set<string>()
-      for (const name of unfenceNames) {
+      for (const request of unfenceRequests) {
+        /** The spelling this request used, already trimmed. */
+        const name = request.name
         // ONE RESOLUTION RULE, SHARED WITH `cellwork_send` (repair round 2, finding B): exact table key,
         // then exact display name, then the normalized key ONLY when it is non-empty and unique. An
         // ambiguous normalized key is an UNKNOWN name here, never a guess — `unfence:["运维1"]` must not
@@ -698,7 +1030,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         }
         if (seenTargets.has(resolved.key)) continue
         seenTargets.add(resolved.key)
-        unfenceTargets.push({ key: resolved.key, name: resolved.member.name })
+        unfenceTargets.push({ key: resolved.key, name: resolved.member.name, force: request.force })
       }
       // THE TEAM PLANE OWNS THE PAIRING (wave W2-D). This tool asks for ONE owner-only pass and MAPS the
       // report back into the shape it has always answered; the private engine that used to live in
@@ -772,7 +1104,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
   // ── cellwork_supervise ───────────────────────────────────────────────────
   disposers.push(dsh.registerTool({
     name: "cellwork_supervise",
-    description: "CAPTAIN only: one READ-ONLY sweep of the cell — every member's mode / handoff state / live context ratio, the pending board tasks, the stale-split flags, the CLOSED seats together with the open rows they own, and the unread mail (including rows whose wake-up never went out). CLOSED SEATS COME IN TWO KINDS and the sweep names which, because only ONE of them is the captain's to repair: a GIVE-UP fence (an explicit `fenced:true` on EITHER record) gets the two levers — `reassign` its open rows with `cellwork_dispatch {reassign:[...]}`, and clear the fence with `cellwork_dispatch {unfence:[...]}`; a BARRIER-OWNED seat (the TEAM row at `mode:\"checkpoint\"` with NO `fenced` marker, the window every handoff opens) has NOTHING for the captain to do — the compaction barrier reopens it, so no lever is offered and nothing should be written. Call it on every wake-up; it mutates nothing.",
+    description: "CAPTAIN only: one READ-ONLY sweep of the cell — every member's mode / handoff state / live context ratio, the pending board tasks, the stale-split flags, the CLOSED seats together with the open rows they own, and the unread mail (including rows whose wake-up never went out). CLOSED SEATS COME IN THREE KINDS and the sweep names which, because only TWO of them are the captain's to repair: a GIVE-UP fence (an explicit `fenced:true` on EITHER record) gets the two levers — `reassign` its open rows with `cellwork_dispatch {reassign:[...]}`, and clear the fence with `cellwork_dispatch {unfence:[...]}`; a BARRIER-OWNED seat (the TEAM/CELL row at `mode:\"checkpoint\"` with NO `fenced` marker, the window every handoff opens) is reported with `barrierOwned`, `forceEligible` and `pendingMs` — the compaction barrier OWES that seat its reopen, but nothing supervises the barrier, so a seat it can no longer run for needs the BOUNDED forced lever (`cellwork_dispatch {unfence:[{member, force:true}]}`, allowed only when the recorded session is not live and the window's written bound is reached). A DEAD-RESEED seat (a reseeded `subcaptain` row whose recorded session the registry PROVES dead and which no barrier will run for) is reported as a closed seat with `barrierOwned:false`, `suspect:true` and the same `forceEligible` answer the verb uses — ONE predicate, so the lever the sweep advertises is the lever `unfence:[{member, force:true}]` accepts. A closed seat whose TEAM half is a `checkpoint` no barrier is pending for carries `retry`, the exact Lead-only verb that reopens it. A member whose recorded session is not live while the registry IS present is reported `suspect:true`. Call it on every wake-up; it mutates nothing.",
     parameters: { type: "object", properties: {
       limit: { type: "integer", description: "Rows to render (default 20, clamped 1..100)." },
       offset: { type: "integer", description: "First row of the page (default 0)." },
@@ -791,7 +1123,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
           splitRevision: { oneOf: [{ type: "number" }, { type: "null" }] },
           requirementsRevision: { type: "number" },
           handoffReady: { type: "array", items: { type: "string" } },
-          fenced: { type: "array", items: { type: "object" }, description: "Every CLOSED member with the reason and the OPEN board rows it still owns. Each row carries `giveUp:true` for a real GIVE-UP fence (an explicit `fenced:true` on either record) — the rows a `reassign` pass repairs and `cellwork_dispatch {unfence:[name]}` clears — or `giveUp:false` for a seat the compaction barrier owns (a `mode:\"checkpoint\"` window with no fence marker), which needs no captain action and gets no unfence advice." },
+          fenced: { type: "array", items: { type: "object" }, description: "Every CLOSED member with the reason and the OPEN board rows it still owns. Each row carries `giveUp:true` for a real GIVE-UP fence (an explicit `fenced:true` on either record) — the rows a `reassign` pass repairs and `cellwork_dispatch {unfence:[name]}` clears — or `giveUp:false` for a HELD seat with no fence marker — the compaction barrier's `mode:\"checkpoint\"` window, or the DEAD-RESEED shape flagged `deadReseed:true`. Every closed-seat row ALSO carries `barrierOwned` (a checkpoint spelling, not a fence marker, is what holds it), `forceEligible` (the FORCED `unfence:[{member, force:true}]` lever would be allowed RIGHT NOW — computed by the SAME predicate the verb decides with, so the two cannot disagree), `pendingMs` (how long the window has been open, when a timestamp exists), `suspect:true` for the DEAD-RESEED shape (a reseeded seat whose recorded session the registry proves dead), and `retry` when the TEAM half is a `checkpoint` no barrier is pending for — the exact Lead-only verb that reopens it (R5.4). A barrier-owned seat is not automatically safe: nothing supervises the barrier, so the render names the force lever and its bound instead of promising that no action is needed." },
           unreadMail: { type: "number" },
           wakeFailures: { type: "array", items: { type: "object" } },
         },
@@ -809,7 +1141,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         const fenced = Array.isArray(result.fenced) ? result.fenced as Array<Record<string, unknown>> : []
         return render([
           "cell " + String(result.cellId ?? "") + " · phase " + String(result.phase ?? "") + " · split " + String(result.splitRevision ?? "none") + (result.staleSplit === true ? " (STALE)" : "") + " · requirements rev " + String(result.requirementsRevision ?? 0),
-          "members: " + members.map((row) => String(row.name) + "[" + String(row.mode) + (row.handoffReady === true ? ",handoff-ready" : "") + (typeof row.ratio === "number" ? "," + Math.round((row.ratio as number) * 100) + "%" : "") + "]").join(" "),
+          "members: " + members.map((row) => String(row.name) + "[" + String(row.mode) + (row.handoffReady === true ? ",handoff-ready" : "") + (row.suspect === true ? ",SUSPECT" : "") + (typeof row.ratio === "number" ? "," + Math.round((row.ratio as number) * 100) + "%" : "") + (row.suspect === true ? ": the recorded session is not a live agent, so the reseed did not produce a working child" : "") + "]").join(" "),
           "tasks: " + (tasks.length === 0 ? "none" : tasks.map((row) => String(row.id) + " " + String(row.status) + (row.owner === undefined ? "" : "(" + String(row.owner) + ")")).join(" ")),
           "fenced: " + (fenced.length === 0
             ? "none"
@@ -820,11 +1152,32 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
               const reason = String(row.reason)
               /** The open board rows this seat still owns, if any. */
               const owned = Array.isArray(row.tasks) ? (row.tasks as unknown[]).map((id) => String(id)) : []
-              // BARRIER-OWNED SEATS GET NO LEVER (repair round 3): `mode:"checkpoint"` with no `fenced`
-              // marker is the window every handoff opens, and only the compaction barrier reopens it.
-              // Advising `unfence` there would invite clearing a pending compaction — and the verb answers
-              // `checkpoint-pending` on its own anyway.
-              if (row.giveUp !== true) return name + " (" + reason + ", BARRIER-OWNED) " + (owned.length > 0 ? "owns " + owned.join(", ") + " — " : "") + "nothing for you to do: the compaction barrier owns this seat and reopens it when it completes"
+              // A BARRIER-OWNED SEAT IS NOT AUTOMATICALLY SAFE (R4.5): nothing supervises the barrier —
+              // no timer, no queue, no retry owner — so the old "nothing for you to do" was a promise the
+              // code cannot keep. The render names the barrier's duty AND the bounded lever's state: the
+              // unforced verb still answers `checkpoint-pending` (the barrier owns the window), while the
+              // FORCED lever is allowed only once a written bound is reached.
+              if (row.giveUp !== true) {
+                // TWO HELD SHAPES, NAMED APART (R5.2): a checkpoint window the barrier still owes, and the
+                // dead-reseed seat it can never run for. The second one is NOT barrier-owned, and calling
+                // it that hid the incident behind a sentence about a barrier that would never come back.
+                /** Whether this is the DEAD-RESEED shape rather than the barrier's own window. */
+                const deadReseed = row.deadReseed === true
+                /** Why the forced lever would be refused right now, when it would be. */
+                const blocked = row.liveness === "live"
+                  ? "the recorded session is still a LIVE agent"
+                  : row.pendingMs === undefined
+                    ? "no checkpoint timestamp is recorded, and a missing timestamp is never a licence"
+                    : "the written bound is not reached yet (`barrierFailures` below the retry budget and the window younger than the pending bound)"
+                /** The plane retry a refused/never-attempted TEAM reopen is repaired with (R5.4). */
+                const retry = typeof row.retry === "string" ? " · the TEAM seat is still `checkpoint` while no barrier is pending for it, so the plane half needs " + row.retry : ""
+                return name + " (" + reason + ", " + (deadReseed ? "DEAD-RESEED" : "BARRIER-OWNED") + ") " + (owned.length > 0 ? "owns " + owned.join(", ") + " — " : "")
+                  + (row.forceEligible === true
+                    ? deadReseed
+                      ? "the reseed's child is not a live agent, so nothing will reopen this seat by itself; the bounded lever is allowed now: cellwork_dispatch {unfence:[{member:" + JSON.stringify(name) + ", force:true}]} — it reopens the seat for REASSIGNMENT, not for work (its context was never compacted)"
+                      : "the barrier has NOT reopened this seat and no supervisor can; the bounded lever is allowed now: cellwork_dispatch {unfence:[{member:" + JSON.stringify(name) + ", force:true}]} — it reopens the seat for REASSIGNMENT, not for work (its context was never compacted)"
+                    : "the barrier reopens this seat when it completes; nothing supervises it, so if it never does, the bounded lever becomes available once the retry budget or the pending bound is reached — " + blocked) + retry
+              }
               return name + " (" + reason + ") owns " + (owned.length > 0 ? owned.join(", ") + " — reassign those with cellwork_dispatch {reassign:[{task_id, owner}]}, and" : "no open row —") + " clear the fence with cellwork_dispatch {unfence:[" + JSON.stringify(name) + "]}"
             }).join("; ")),
           "unread mail: " + String(result.unreadMail ?? 0) + (Array.isArray(result.wakeFailures) && result.wakeFailures.length > 0 ? " · " + String((result.wakeFailures as unknown[]).length) + " without a wake-up" : ""),
@@ -840,6 +1193,8 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       if (refused !== undefined) return refused
       /** The active cell. */
       const cell = caller.cell as CellState
+      /** The instant this sweep measures every window age against (one clock for the whole answer). */
+      const now = new Date()
       /** The live record. */
       const record = recordOf(caller.workspace, cell.teamId)
       /** The board rows this build can read. */
@@ -858,7 +1213,29 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         // when it answered, and the adapter's meter is the fallback (a total read, never a guess).
         /** The live pressure reading: the planner's, or the adapter's meter. */
         const pressure = plane ?? dsh.contextPressure(member.sessionId === "" ? member.name : member.sessionId)
-        return { name: member.name, mode: seat.mode ?? member.mode, role: member.role, handoffReady: seat.checkpoint ?? member.handoffReady, handoffs: member.handoffs, ratio: pressure.ratio, usedTokens: pressure.usedTokens, windowTokens: pressure.windowTokens, provenance: pressure.provenance }
+        // THE WINDOW'S CLOCK AND THE SEAT'S LIVENESS (R4.2): a reseed records `subcaptain` + a dead child,
+        // which looked exactly like a healthy promotion. The age is measured from the recorded instant (or
+        // the last checkpoint for the SAME session), and a live registry that answers NOTHING is the ONLY
+        // evidence of a dead seat — an absent registry is `unknown` and never suspect.
+        // THE FORCED LEVER'S ONE PREDICATE (R5.2): the SAME reading `cellwork_dispatch {unfence}` decides
+        // with, projected READ-ONLY, so the sweep can never advertise a lever the verb refuses.
+        /** The one forced-lever reading for this seat. */
+        const reading = forceReadingOf(cell, caller.workspace, member, now)
+        return {
+          name: member.name,
+          mode: seat.mode ?? member.mode,
+          role: member.role,
+          handoffReady: seat.checkpoint ?? member.handoffReady,
+          handoffs: member.handoffs,
+          ratio: pressure.ratio,
+          usedTokens: pressure.usedTokens,
+          windowTokens: pressure.windowTokens,
+          provenance: pressure.provenance,
+          liveness: reading.liveness,
+          ...(reading.pendingMs === undefined ? {} : { pendingMs: reading.pendingMs }),
+          ...(reading.suspect ? { suspect: true } : {}),
+          ...(reading.pendingMs === undefined && !reading.closed ? {} : { forceEligible: reading.forceEligible }),
+        }
       })
       /** The folded mail. */
       const messages = foldCellMail(readCellMail(caller.workspace, cell.cellId))
@@ -883,14 +1260,36 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         // contradicted `giveUp:true` on the same line.
         /** Why this member is closed, or undefined when it can work. */
         const reason = member.fenced === true ? fenceReasonOf(member) : seat.fenceReason ?? fenceReasonOf(member)
-        if (reason === undefined) return []
+        // THE SEAT THE SWEEP MUST NOT HIDE (R5.2): the ONE predicate decides whether this seat is held at
+        // all. It answers TRUE for the DEAD-RESEED shape (`subcaptain`, not handoff-ready, a session the
+        // registry proves dead), which `barrierOwned` alone never covered — so the seat the incident left
+        // behind is REPORTED here with the same lever the verb accepts, instead of disappearing.
+        /** The one forced-lever reading for this seat, shared with `cellwork_dispatch {unfence}`. */
+        const reading = forceReadingOf(cell, caller.workspace, member, now)
+        // THREE WAYS A SEAT IS CLOSED: the explicit give-up marker (either record), the barrier's window,
+        // and the dead-reseed shape. The give-up needs no reading — its marker IS the fact.
+        if ((!reading.closed && !giveUp) || reason === undefined) return []
+        // THE THREE FIELDS THE CAPTAIN ACTS ON (R4.5). `giveUp` stays untouched, so `reassign`/`unfence`
+        // keep their meaning; these say what KIND of closed seat this is and whether the bounded force
+        // lever applies RIGHT NOW. Nothing here promises the barrier will come back — nothing supervises it.
+        // A PLANE-ONLY CHECKPOINT WITH NO PENDING BARRIER NAMES ITS RETRY (R5.4): the TEAM seat is
+        // `checkpoint` while the CELL row already left the window, so no barrier will reopen it and the
+        // cellwork verbs cannot re-drive the seam. The exact Lead-only verb that does is handed over here.
+        /**
+         * Whether the plane holds a bare checkpoint the barrier is no longer pending for.
+         *
+         * NOT an explicit plane fence: that one is cleared by `cellwork_dispatch {unfence:[name]}` itself
+         * (the team-only case), so naming the plane verb there would send the captain past the nearer
+         * lever. This is the shape a REFUSED barrier reopen leaves behind.
+         */
+        const planeOnly = seat.checkpoint === true && seat.fenced !== true && member.mode !== "checkpoint" && member.handoffReady !== true
         /** The open rows credited to this member — the ones a `reassign` pass could move. */
         const owned = tasks.filter((task) => {
           /** The row's status: a terminal row is finished work, never a row to hand over. */
           const status = String(task.status ?? "")
           return status !== "completed" && status !== "failed" && nameKey(String(task.owner ?? "")) === nameKey(member.name)
         }).map((task) => String(task.id ?? ""))
-        return [{ name: member.name, mode: seat.mode ?? member.mode, reason, tasks: owned, giveUp }]
+        return [{ name: member.name, mode: seat.mode ?? member.mode, reason, tasks: owned, giveUp, barrierOwned: reading.barrierOwned, forceEligible: reading.forceEligible, liveness: reading.liveness, ...(reading.suspect ? { suspect: true } : {}), ...(reading.deadReseed ? { deadReseed: true } : {}), ...(reading.pendingMs === undefined ? {} : { pendingMs: reading.pendingMs }), ...(planeOnly ? { retry: planeRetryOf(member.name) } : {}) }]
       })
       return {
         ok: true,
@@ -1582,7 +1981,21 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       /** The member row this injection closes. */
       const injected = logged.members[caller.member]
       /** The record after the mirror. */
-      const next: CellState = injected === undefined ? logged : { ...logged, members: { ...logged.members, [caller.member]: { ...injected, mode: "checkpoint" } } }
+      // THE WINDOW'S CLOCK IS STAMPED HERE, at the ONE ownerless close (R4.3): this is the instant the
+      // seat entered the checkpoint window, and it is what the captain's bounded force lever measures.
+      // Re-stamping an ALREADY checkpointed row would reset a stuck seat's bound on every step, so an
+      // existing instant is preserved.
+      const next: CellState = injected === undefined ? logged : {
+        ...logged,
+        members: {
+          ...logged.members,
+          [caller.member]: {
+            ...injected,
+            mode: "checkpoint",
+            ...(injected.checkpointSince === undefined ? { checkpointSince: now.toISOString() } : {}),
+          },
+        },
+      }
       transition(caller.workspace, next, { event: "checkpoint", member: caller.member, usedTokens: plan.usedTokens, windowTokens: plan.windowTokens, turn: plan.turn, reason: plan.reason }, now)
       /** The ONE message this step receives. */
       const message = dsh.userMessage({ text: checkpointDirective(caller.member, plan), source: { kind: "mpd-cellwork", reason: "checkpoint" } })
@@ -1642,6 +2055,11 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       }
       /** The member's durable parent session, which the reseed may only use while it is LIVE (C2). */
       const parentSessionId = parentSessionOf(agent)
+      // THE ORIGINAL SESSION IS RETIRED ON THE RESEED PATH, BY ITS LIVE ANCESTOR (R4.7, corrected by R5.1):
+      // `promoteAfterHandoff` targets the MEMBER's own session (never the new child) and authorises with the
+      // live session the fresh child is raised under. The outcome is a RECORD, not a hope: `retired:true`
+      // requires the host to have accepted it, and a dead target is `nothing-to-retire`. Neither answer
+      // blocks the reseed, so the journal row says which one happened rather than leaving it to inference.
       /** The barrier's outcome. */
       const result = await promoteAfterHandoff({
         dsh,
@@ -1670,13 +2088,65 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         deps.warn("[mpd-cellwork] the compaction barrier could not re-read " + fresh.path + ": " + fresh.detail)
         return
       }
+      // THE BARRIER OWES THE SEAT ITS REOPEN (R4.1, the one-way door). Every outcome except `refused`
+      // leaves a member that is supposed to WORK again — and `cellwork_handoff` wrote TEAM
+      // `mode:"checkpoint"` when the handoff landed, which the guard fences and dispatch refuses to pair.
+      // The barrier therefore reopens that plane seat AS THE CAPTAIN, through the SAME implementation the
+      // captain's `unfence` uses, and reports which half really happened. Without this call every
+      // successful promotion left a dead seat while the team record still said `running`.
+      /** How the plane's half ended; `absent` for a refusal, which reopened nothing and owes nothing. */
+      const plane = result.outcome === "refused"
+        ? { plane: "absent" as const, planeReason: undefined }
+        : await reopenPlaneSeat(caller.cell.captainSessionId, caller.member)
+      // THE WRITE IS MERGED INTO A READ TAKEN AFTER THE AWAITED PLANE CALL (R5.3). The snapshot above
+      // predates `reopenPlaneSeat`, and writing it back reverted every change a concurrent writer made
+      // inside that await — another member's `fenced:true`, an adoption, a promotion. This is the SAME
+      // discipline `unfenceSeats` already follows (repair round 1, finding 3): re-read, then replace ONLY
+      // this member's row, and fall back to the pre-await snapshot only when the fresh read fails.
+      /** The record as it stands once the plane call settled. */
+      const settled = readCell(caller.workspace, caller.cell.cellId)
+      if (!settled.ok) deps.warn("[mpd-cellwork] the compaction barrier could not re-read " + settled.path + " after the plane call: " + settled.detail + " — merging into the pre-await snapshot")
+      /** The merge base: the POST-plane read, or the pre-plane one when that read failed. */
+      const base = settled.ok ? settled.state : fresh.state
       /** The member row after the barrier (this outcome decides the fence markers and may mint a handle). */
-      const updated: CellMemberRecord = memberAfterBarrier(fresh.state.members[caller.member] ?? member, result)
-      /** The record after the barrier. */
-      const next: CellState = { ...fresh.state, members: { ...fresh.state.members, [caller.member]: updated } }
+      const updated: CellMemberRecord = memberAfterBarrier(base.members[caller.member] ?? member, result, config.compactionRetries)
+      /** The record after the barrier: ONLY this member's row is replaced on the fresh base. */
+      const next: CellState = { ...base, members: { ...base.members, [caller.member]: updated } }
+      // THE REOPENED SEAT IS A FACT WITH ITS OWN ROW: this is the row that says the barrier performed the
+      // duty above, and the plane's half is reported exactly as it ended (`unfenced`/`absent`/`refused`).
+      // A REFUSED HALF NAMES ITS RETRY (R5.4): the TEAM seat stays closed and the row carries the exact
+      // verb that re-drives the seam, so the operator is not left with a dead end.
+      if (result.outcome !== "refused") {
+        appendJournal(caller.workspace, caller.cell.cellId, {
+          event: "member-unfenced",
+          member: caller.member,
+          by: "barrier",
+          plane: plane.plane,
+          ...(plane.planeReason === undefined ? {} : { planeReason: plane.planeReason }),
+          ...(plane.plane === "refused" ? { retry: planeRetryOf(caller.member) } : {}),
+        }, now)
+      }
       // THE GIVEN-UP BARRIER GETS ITS OWN JOURNAL ROW (C7): the compaction row below reports the attempt,
       // this one reports that the member is now OUT OF SERVICE and which verb repairs its rows.
       if (result.outcome === "refused") appendJournal(caller.workspace, caller.cell.cellId, checkpointUnrecoverableEntry(caller.member, result), now)
+      // THE RESEED RETIRES A SESSION, SO BOTH SESSIONS ARE NAMED (R4.7): a fresh handle is not proof the
+      // ORIGINAL child stopped, and the seat record now points at the new one — the row is what makes the
+      // hand-over (and the plane's half) observable instead of inferred from two other rows.
+      if (result.outcome === "reseeded") {
+        appendJournal(caller.workspace, caller.cell.cellId, {
+          event: "member-reseeded",
+          member: caller.member,
+          previousSessionId: member.sessionId,
+          newSessionId: result.newHandle ?? "",
+          retired: result.retired === true,
+          // WHAT THE HOST DID WITH THE RETIREMENT (R5.1), never just the boolean: `accepted` is the only
+          // value behind `retired:true`, `nothing-to-retire` names a session the registry does not hold,
+          // and a refusal carries the host's own sentence.
+          ...(result.retirement === undefined ? {} : { retirement: result.retirement }),
+          ...(result.retirementReason === undefined ? {} : { retirementReason: result.retirementReason }),
+          plane: plane.plane,
+        }, now)
+      }
       // THE SEEDED CHILD'S LINEAGE IS A FACT, NOT AN INFERENCE (C2): one row names the live session the
       // fresh child was raised under and which rule found it, so a captain fallback is never silent.
       if (result.outcome === "reseeded" && result.parentSource !== undefined) {

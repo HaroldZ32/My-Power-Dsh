@@ -2595,6 +2595,8 @@ function normalizeMember(name, raw) {
     handoffs: typeof raw.handoffs === "number" ? raw.handoffs : 0,
     ...raw.fenced === true ? { fenced: true } : {},
     ...typeof raw.fencedReason === "string" ? { fencedReason: raw.fencedReason } : {},
+    ...textField(raw.checkpointSince) === undefined ? {} : { checkpointSince: raw.checkpointSince },
+    ...typeof raw.barrierFailures === "number" && Number.isFinite(raw.barrierFailures) && raw.barrierFailures > 0 ? { barrierFailures: Math.floor(raw.barrierFailures) } : {},
     joinedAt: typeof raw.joinedAt === "string" ? raw.joinedAt : "",
     ...raw.adopted === true ? { adopted: true } : {}
   };
@@ -2813,6 +2815,7 @@ var DEFAULT_CELLWORK_CONFIG = {
   compactionHeadroomTokens: 65536,
   compactionRetries: 3,
   idleBarrierDelayMs: 200,
+  checkpointPendingMaxMs: 900000,
   asciiCharsPerToken: 3,
   cjkCharsPerToken: 1,
   windowOverride: null
@@ -2827,6 +2830,7 @@ var KNOB_RULES = {
   outputReserveTokens: { integer: true, min: 0, max: 1e6 },
   compactionHeadroomTokens: { integer: true, min: 0, max: 1e7 },
   compactionRetries: { integer: true, min: 1, max: 10 },
+  checkpointPendingMaxMs: { integer: true, min: 0, max: 86400000 },
   idleBarrierDelayMs: { integer: true, min: 0, max: 1e4 },
   asciiCharsPerToken: { integer: false, min: 0.5, max: 16 },
   cjkCharsPerToken: { integer: false, min: 0.5, max: 16 }
@@ -2903,6 +2907,7 @@ function resolveCellworkConfig(rowConfig, readFile, warn) {
     compactionHeadroomTokens: numberKnob("compactionHeadroomTokens", row, readFile, warn),
     compactionRetries: numberKnob("compactionRetries", row, readFile, warn),
     idleBarrierDelayMs: numberKnob("idleBarrierDelayMs", row, readFile, warn),
+    checkpointPendingMaxMs: numberKnob("checkpointPendingMaxMs", row, readFile, warn),
     asciiCharsPerToken: numberKnob("asciiCharsPerToken", row, readFile, warn),
     cjkCharsPerToken: numberKnob("cjkCharsPerToken", row, readFile, warn),
     windowOverride
@@ -4239,6 +4244,8 @@ function fenceReasonOf(member) {
     return "its mode is `checkpoint` — the seat is fenced to the handoff tools until the barrier compacts it";
   if (member.handoffReady === true)
     return "a handoff is already written and waiting for the compaction barrier";
+  if (member.mode === "subcaptain")
+    return "the compaction barrier reopened it onto a fresh child (`subcaptain`), so it counts as working only while that child is a live agent";
   return;
 }
 function contractRelativePath(cellId, boardId) {
@@ -6933,8 +6940,11 @@ function checkpointUnrecoverableEntry(memberName, result) {
     repair: "reassign the rows this member owns: cellwork_dispatch {reassign:[{task_id, owner}]}"
   };
 }
-function memberAfterBarrier(previous, result) {
-  const givenUp = result.outcome === "refused";
+function memberAfterBarrier(previous, result, retryBound) {
+  const failures = (previous.barrierFailures ?? 0) + 1;
+  const reopened = result.outcome === "promoted";
+  const givenUp = !reopened && (result.outcome === "refused" || failures >= retryBound);
+  const fenceReason = result.reason + "; " + String(failures) + " of " + String(retryBound) + " consecutive barrier runs did not reopen the seat";
   return {
     name: previous.name,
     role: previous.role,
@@ -6945,17 +6955,37 @@ function memberAfterBarrier(previous, result) {
     handoffs: previous.handoffs,
     joinedAt: previous.joinedAt,
     ...previous.adopted === true ? { adopted: true } : {},
-    ...givenUp ? { fenced: true, fencedReason: result.reason } : {}
+    ...reopened ? {} : previous.checkpointSince === undefined ? {} : { checkpointSince: previous.checkpointSince },
+    ...reopened ? {} : { barrierFailures: failures },
+    ...givenUp ? { fenced: true, fencedReason: fenceReason } : {}
   };
+}
+function retireOriginal(deps, authority) {
+  const interrupt = deps.dsh.interruptAgent;
+  const identity = deps.dsh.liveAgentExact;
+  if (typeof interrupt !== "function" || typeof identity !== "function") {
+    return { retirement: "unavailable", reason: "this composition exposes no " + (typeof interrupt !== "function" ? "interruptAgent" : "liveAgentExact") + " seam, so no retirement could be performed or verified" };
+  }
+  if (liveSessionOf(deps, deps.sessionId) === undefined) {
+    return { retirement: "nothing-to-retire", reason: "the identity registry holds no live agent for session " + JSON.stringify(deps.sessionId) + ", so there was nothing to retire" };
+  }
+  try {
+    interrupt.call(deps.dsh, deps.sessionId, { kind: "ancestor", agent: authority });
+    return { retirement: "accepted" };
+  } catch (error) {
+    return { retirement: "refused", reason: error instanceof Error ? error.message : String(error) };
+  }
 }
 async function promoteAfterHandoff(deps) {
   let lastReason = "not attempted";
+  const classifications = [];
   for (let attempt = 1;attempt <= deps.config.compactionRetries; attempt += 1) {
     if (attempt > 1)
       await deps.sleep(deps.config.idleBarrierDelayMs);
     const engine = engineForBarrier(deps);
     if (engine === undefined || typeof engine.compactNow !== "function") {
       lastReason = "no-engine";
+      classifications.push(lastReason);
       continue;
     }
     const { signal } = compactionSignal(deps.signal);
@@ -6963,25 +6993,26 @@ async function promoteAfterHandoff(deps) {
       const result = await engine.compactNow(deps.agent, signal);
       const outcome = classifyCompactionResult(result);
       lastReason = outcome;
+      classifications.push(outcome);
       if (outcome === "compacted") {
         deps.injectDirective(promotionDirective(deps.cell.cellId, deps.memberName, deps.cell.depth + 1, deps.nextStep));
         return { outcome: "promoted", attempts: attempt, reason: outcome };
       }
     } catch (error) {
       lastReason = classifyCompactionError(error, signal);
+      classifications.push(lastReason);
       if (lastReason === "aborted" && deps.signal?.aborted === true)
         return { outcome: "refused", attempts: attempt, reason: "the caller cancelled the barrier" };
     }
   }
-  try {
-    deps.dsh.interruptAgent(deps.sessionId, { kind: "ancestor", agent: deps.agent });
-  } catch {}
+  const busyThroughout = classifications.length > 0 && classifications.every((entry) => entry === "busy");
+  const busyNote = busyThroughout ? "; the engine reported `busy` on every attempt: the host's compactNow needs an IDLE agent (runMaintenance refuses an open turn) while `agent/turn-stopping` fires inside the turn, so in-place compaction cannot run at this event — the reseed is the only path" : "";
   const parent = reseedParentOf(deps);
   if (parent === undefined) {
     return {
       outcome: "refused",
       attempts: deps.config.compactionRetries,
-      reason: lastReason + "; reseed-parent-unavailable (parent session " + JSON.stringify(deps.parentSessionId ?? "") + " and captain session " + JSON.stringify(deps.cell.captainSessionId) + " are neither one a live agent the registry holds)"
+      reason: lastReason + busyNote + "; reseed-parent-unavailable (parent session " + JSON.stringify(deps.parentSessionId ?? "") + " and captain session " + JSON.stringify(deps.cell.captainSessionId) + " are neither one a live agent the registry holds)"
     };
   }
   if (!parentHeldExactly(deps, parent.parent)) {
@@ -6991,14 +7022,15 @@ async function promoteAfterHandoff(deps) {
       reason: lastReason + "; reseed-parent-unavailable (the live registry no longer holds session " + JSON.stringify(parent.sessionId) + " as the exact instance the reseed would forward)"
     };
   }
+  const retirement = retireOriginal(deps, parent.parent);
   try {
     const activation = await deps.dsh.startContinuableAgent({
       provider: "spawn",
       label: deps.memberName + " · " + deps.cell.teamId,
       request: {
-        prompt: deps.handoffText + `
+        prompt: [{ type: "text", text: deps.handoffText + `
 
-` + promotionDirective(deps.cell.cellId, deps.memberName, deps.cell.depth + 1, deps.nextStep),
+` + promotionDirective(deps.cell.cellId, deps.memberName, deps.cell.depth + 1, deps.nextStep) }],
         parent: parent.parent,
         maxDepth: reseedMaxDepthOf(parent.parent)
       },
@@ -7006,10 +7038,10 @@ async function promoteAfterHandoff(deps) {
     });
     const handle = typeof activation?.childId === "string" ? activation.childId : typeof activation?.id === "string" ? activation.id : "";
     if (handle === "")
-      return { outcome: "refused", attempts: deps.config.compactionRetries, reason: lastReason + "; the reseed reported no child id" };
-    return { outcome: "reseeded", attempts: deps.config.compactionRetries, reason: lastReason, newHandle: handle, parentSessionId: parent.sessionId, parentSource: parent.source };
+      return { outcome: "refused", attempts: deps.config.compactionRetries, reason: lastReason + busyNote + "; the reseed reported no child id" };
+    return { outcome: "reseeded", attempts: deps.config.compactionRetries, reason: lastReason + busyNote, newHandle: handle, parentSessionId: parent.sessionId, parentSource: parent.source, retired: retirement.retirement === "accepted", retirement: retirement.retirement, ...retirement.reason === undefined ? {} : { retirementReason: retirement.reason } };
   } catch (error) {
-    return { outcome: "refused", attempts: deps.config.compactionRetries, reason: lastReason + "; the reseed failed: " + (error instanceof Error ? error.message : String(error)) };
+    return { outcome: "refused", attempts: deps.config.compactionRetries, reason: lastReason + busyNote + "; the reseed failed: " + (error instanceof Error ? error.message : String(error)) };
   }
 }
 function nextStepOf(text2) {
@@ -7183,45 +7215,126 @@ function installCellworkProtocol(deps) {
     return { ...stamped, updatedAt: now.toISOString() };
   };
   const captainOnly = (caller, tool) => caller.sessionId === "" || caller.cell === null || caller.sessionId !== caller.cell.captainSessionId ? { ok: false, error: tool + " is CAPTAIN-ONLY: the captain of this cell is session " + String(caller.cell?.captainSessionId ?? "none") + ", which is not this caller" } : undefined;
-  const unfenceSeats = async (caller, cell, targets, now) => {
+  const livenessOf = (sessionId) => {
+    if (typeof dsh.liveAgentExact !== "function")
+      return "unknown";
+    try {
+      if (sessionId !== "" && dsh.liveAgentExact(sessionId) !== undefined)
+        return "live";
+    } catch {
+      return "unknown";
+    }
+    try {
+      const capabilities = typeof dsh.capabilities === "function" ? dsh.capabilities() : undefined;
+      return capabilities?.agents === true ? "dead" : "unknown";
+    } catch {
+      return "unknown";
+    }
+  };
+  const checkpointSinceOf = (cell, member) => {
+    if (member.checkpointSince !== undefined)
+      return member.checkpointSince;
+    for (let index = cell.checkpoints.length - 1;index >= 0; index -= 1) {
+      const entry = cell.checkpoints[index];
+      if (entry.sessionId !== "" && entry.sessionId === member.sessionId)
+        return entry.at;
+    }
+    return;
+  };
+  const pendingMsOf = (since, now) => {
+    if (since === undefined || since === "")
+      return;
+    const opened = Date.parse(since);
+    return Number.isFinite(opened) ? Math.max(0, now.getTime() - opened) : undefined;
+  };
+  const forceBoundOf = (member, pendingMs) => {
+    if ((member.barrierFailures ?? 0) >= config.compactionRetries)
+      return "retry-budget";
+    if (pendingMs !== undefined && pendingMs >= config.checkpointPendingMaxMs)
+      return "stale";
+    return;
+  };
+  const forceReadingOf = (cell, workspace, member, now) => {
+    const seat = recordSeat(cell, workspace, member?.name ?? "");
+    const barrierOwned = member?.mode === "checkpoint" || member?.handoffReady === true || seat.checkpoint === true;
+    const since = member === undefined ? undefined : checkpointSinceOf(cell, member);
+    const pendingMs = pendingMsOf(since, now);
+    const liveness = member === undefined ? "unknown" : livenessOf(member.sessionId);
+    const suspect = since !== undefined && liveness === "dead";
+    const deadReseed = !barrierOwned && liveness === "dead" && member !== undefined && member.mode === "subcaptain" && member.handoffReady !== true;
+    const closed = barrierOwned || deadReseed;
+    const measured = { barrierOwned, suspect, deadReseed, closed, liveness, ...pendingMs === undefined ? {} : { pendingMs } };
+    if (!closed)
+      return { ...measured, forceEligible: false };
+    if (liveness === "live")
+      return { ...measured, forceEligible: false, refusal: "live-session" };
+    const bound = deadReseed ? since === undefined ? member === undefined ? undefined : forceBoundOf(member, pendingMs) : "dead-session" : member === undefined ? undefined : forceBoundOf(member, pendingMs);
+    if (bound === undefined)
+      return { ...measured, forceEligible: false, refusal: "force-not-eligible" };
+    return { ...measured, bound, forceEligible: true };
+  };
+  const planeRetryOf = (name) => 'agent_teams_control {action:"unfence", member:' + JSON.stringify(name) + "}";
+  const reopenPlaneSeat = async (sessionId, name) => {
     const plane = actions();
+    if (typeof plane?.unfence !== "function")
+      return { plane: "absent", planeReason: "this composition exposes no mpdTeamActions.unfence seam, so the TEAM seat was NOT reopened" };
+    try {
+      const reply = await plane.unfence({ sessionId, member: name });
+      if (reply?.ok === false)
+        return { plane: "refused", planeReason: String(reply.error ?? "the team plane refused the unfence") };
+      return { plane: "unfenced" };
+    } catch (error) {
+      return { plane: "refused", planeReason: error instanceof Error ? error.message : String(error) };
+    }
+  };
+  const unfenceSeats = async (caller, cell, targets, now) => {
     const clearedRows = new Map;
     const outcomes = [];
     const cleared = [];
-    const reopenPlaneSeat = async (name) => {
-      if (typeof plane?.unfence !== "function")
-        return { plane: "absent", planeReason: "this composition exposes no mpdTeamActions.unfence seam, so the TEAM seat was NOT reopened" };
-      try {
-        const reply = await plane.unfence({ sessionId: caller.sessionId, member: name });
-        if (reply?.ok === false)
-          return { plane: "refused", planeReason: String(reply.error ?? "the team plane refused the unfence") };
-        return { plane: "unfenced" };
-      } catch (error) {
-        return { plane: "refused", planeReason: error instanceof Error ? error.message : String(error) };
-      }
-    };
     for (const target of targets) {
       const row = cell.members[target.key];
       const cellFenced = row !== undefined && row.fenced === true;
       const seat = recordSeat(cell, caller.workspace, target.name);
       const teamFenced = seat.fenced === true;
       if (cellFenced) {
-        const half = await reopenPlaneSeat(target.name);
+        const half = await reopenPlaneSeat(caller.sessionId, target.name);
         const reopened = { ...row, mode: "member", handoffReady: false };
         delete reopened.fenced;
         delete reopened.fencedReason;
         clearedRows.set(target.key, reopened);
-        outcomes.push({ member: target.name, unfenced: true, plane: half.plane, ...half.planeReason === undefined ? {} : { planeReason: half.planeReason } });
+        outcomes.push({ member: target.name, unfenced: true, plane: half.plane, ...half.planeReason === undefined ? {} : { planeReason: half.planeReason }, ...half.plane === "refused" ? { retry: planeRetryOf(target.name) } : {} });
         cleared.push({ name: target.name, plane: half.plane });
         continue;
       }
       if (teamFenced) {
-        const half = await reopenPlaneSeat(target.name);
-        outcomes.push({ member: target.name, unfenced: half.plane === "unfenced", cellRow: "untouched", plane: half.plane, ...half.planeReason === undefined ? {} : { planeReason: half.planeReason } });
+        const half = await reopenPlaneSeat(caller.sessionId, target.name);
+        outcomes.push({ member: target.name, unfenced: half.plane === "unfenced", cellRow: "untouched", plane: half.plane, ...half.planeReason === undefined ? {} : { planeReason: half.planeReason }, ...half.plane === "refused" ? { retry: planeRetryOf(target.name) } : {} });
         continue;
       }
-      if (seat.checkpoint === true) {
-        outcomes.push({ member: target.name, unfenced: false, reason: "checkpoint-pending", detail: "the TEAM row records a checkpoint for this seat (" + String(seat.fenceReason ?? "mode `checkpoint`") + ") with no `fenced` marker, so the compaction barrier owns that state and nothing was cleared" });
+      const reading = forceReadingOf(cell, caller.workspace, row, now);
+      if (reading.closed && !target.force) {
+        outcomes.push({ member: target.name, unfenced: false, reason: "checkpoint-pending", barrierOwned: reading.barrierOwned, ...reading.deadReseed ? { suspect: true } : {}, detail: reading.deadReseed ? "the record shows a DEAD-RESEED seat for this member (" + String(seat.fenceReason ?? "a reseeded row whose recorded session is not a live agent") + '): no barrier will run for it again, nothing was cleared, and the FORCED lever `unfence:[{member, force:true}]` reopens it under `bound:"dead-session"`' : "the record shows a held seat for this member (" + String(seat.fenceReason ?? "no `fenced` marker: a checkpoint window") + "), so the compaction barrier owns that state and nothing was cleared; the FORCED lever `unfence:[{member, force:true}]` exists for a seat the barrier can no longer run for" });
+        continue;
+      }
+      if (reading.closed && target.force) {
+        if (reading.refusal === "live-session") {
+          outcomes.push({ member: target.name, unfenced: false, reason: "live-session", alive: true, sessionId: row?.sessionId ?? "", detail: "the recorded session is a LIVE agent, so this seat is not dead and the forced lever refuses to reopen it" });
+          continue;
+        }
+        if (row === undefined || reading.bound === undefined) {
+          outcomes.push({ member: target.name, unfenced: false, reason: "force-not-eligible", alive: false, sessionId: row?.sessionId ?? "", ...reading.pendingMs === undefined ? {} : { pendingMs: reading.pendingMs }, detail: "a forced clear needs a written licence: `barrierFailures` at the retry budget (" + String(config.compactionRetries) + "), a `checkpointSince` older than " + String(config.checkpointPendingMaxMs) + " ms, or a reseeded seat whose recorded session the registry PROVES dead. Nothing was written" });
+          continue;
+        }
+        const bound = reading.bound;
+        const reopened = { ...row, mode: "member", handoffReady: false };
+        delete reopened.fenced;
+        delete reopened.fencedReason;
+        delete reopened.barrierFailures;
+        delete reopened.checkpointSince;
+        clearedRows.set(target.key, reopened);
+        const half = await reopenPlaneSeat(caller.sessionId, target.name);
+        outcomes.push({ member: target.name, unfenced: true, forced: true, alive: false, liveness: reading.liveness, sessionId: row.sessionId, bound, ...reading.pendingMs === undefined ? {} : { pendingMs: reading.pendingMs }, plane: half.plane, ...half.planeReason === undefined ? {} : { planeReason: half.planeReason }, ...half.plane === "refused" ? { retry: planeRetryOf(target.name) } : {} });
+        cleared.push({ name: target.name, plane: half.plane, forced: { reason: bound, pendingMs: reading.pendingMs, barrierFailures: row.barrierFailures ?? 0, sessionId: row.sessionId, liveness: reading.liveness } });
         continue;
       }
       outcomes.push({ member: target.name, unfenced: false, reason: "not-fenced" });
@@ -7235,7 +7348,19 @@ function installCellworkProtocol(deps) {
       members[key] = reopened;
     let cursor = base.journalCursor;
     for (const row of cleared) {
-      cursor = appendJournal(caller.workspace, cell.cellId, { event: "member-unfenced", member: row.name, plane: row.plane }, now);
+      const retry = row.plane === "refused" ? { retry: planeRetryOf(row.name) } : {};
+      cursor = appendJournal(caller.workspace, cell.cellId, row.forced === undefined ? { event: "member-unfenced", member: row.name, plane: row.plane, ...retry } : {
+        event: "member-unfenced-forced",
+        member: row.name,
+        by: "captain",
+        reason: row.forced.reason,
+        ...row.forced.pendingMs === undefined ? {} : { pendingMs: row.forced.pendingMs },
+        barrierFailures: row.forced.barrierFailures,
+        sessionId: row.forced.sessionId,
+        liveness: row.forced.liveness,
+        plane: row.plane,
+        ...retry
+      }, now);
     }
     const next = { ...base, members, journalCursor: cursor > 0 ? cursor : base.journalCursor };
     return { cell: writeCell(caller.workspace, next), outcomes };
@@ -7261,8 +7386,21 @@ function installCellworkProtocol(deps) {
         },
         unfence: {
           type: "array",
-          description: 'Member names whose compaction GIVE-UP fence this call CLEARS before the pass (captain-only, like the verb). The CELL row\'s own `fenced:true` is the give-up fact: that row loses `fenced`/`fencedReason`, returns to `mode: member` with `handoffReady:false`, and keeps its `handoffs` count, while the TEAM seat is reopened through the plane\'s `unfence` seam when this composition exposes one (the plane\'s `mode:"checkpoint"` is a closed spelling and that seam clears it too). A give-up fence recorded ONLY on the TEAM record (an explicit `fenced:true`) is cleared there while the CELL row is left untouched. A TEAM row at `mode:"checkpoint"` with no `fenced` marker is barrier-owned and, on its own, answers `reason:"checkpoint-pending"` and writes nothing — the CELL marker above outranks it. A member that is not fenced in either record is reported as not-fenced, never as a silent success; a name that matches no single member (unknown, or ambiguous once normalized) refuses the whole call. May travel with `reassign`.',
-          items: { type: "string" }
+          description: 'Member names whose compaction GIVE-UP fence this call CLEARS before the pass (captain-only, like the verb). The CELL row\'s own `fenced:true` is the give-up fact: that row loses `fenced`/`fencedReason`, returns to `mode: member` with `handoffReady:false`, and keeps its `handoffs` count, while the TEAM seat is reopened through the plane\'s `unfence` seam when this composition exposes one (the plane\'s `mode:"checkpoint"` is a closed spelling and that seam clears it too). A give-up fence recorded ONLY on the TEAM record (an explicit `fenced:true`) is cleared there while the CELL row is left untouched. A TEAM row at `mode:"checkpoint"` with no `fenced` marker is barrier-owned and, on its own, answers `reason:"checkpoint-pending"` and writes nothing — the CELL marker above outranks it. A member that is not fenced in either record is reported as not-fenced, never as a silent success; a name that matches no single member (unknown, or ambiguous once normalized) refuses the whole call. `{member, force:true}` is the LAST RESORT for a seat the barrier can no longer run for: it reopens a BARRIER-OWNED checkpoint (the CELL row\'s own `mode`/`handoffReady` or the TEAM row\'s `mode:"checkpoint"`) ONLY when the recorded session is not a live agent AND a written bound is reached — `barrierFailures` at `compactionRetries`, or a `checkpointSince` older than `checkpointPendingMaxMs` (15 minutes). A bare `force` is never a licence: a live seat, a fresh window, zero failures and a missing timestamp all write NOTHING. THE DEAD-RESEED SEAT IS COVERED BY THE SAME PREDICATE (R5.2): a reseeded row (`mode:"subcaptain"`, `handoffReady:false`, a `checkpointSince`) whose recorded session the registry PROVES dead is answer `checkpoint-pending` unforced and force-clearable with `bound:"dead-session"` — the clock bound is never reached by a seat no live agent can drive. A plane half that answers `refused` names the exact retry verb (`agent_teams_control {action:"unfence", member}`) in the answer AND in the journal row, so a refusal is never a dead end. The journal row is `member-unfenced-forced` (`by:"captain"`, the bound as `reason`, `pendingMs`, `barrierFailures`, `sessionId`, `liveness`, `plane`), the answer adds `alive`/`sessionId`, and the seat is reopened for REASSIGNMENT, NOT for work — its context was never compacted. May travel with `reassign`.',
+          items: {
+            oneOf: [
+              { type: "string" },
+              {
+                type: "object",
+                properties: {
+                  member: { type: "string", description: "The member whose barrier-owned checkpoint this call reopens." },
+                  force: { type: "boolean", description: "Ask for the BOUNDED FORCED lever: a barrier-owned `checkpoint` reopen is allowed ONLY when the recorded session is not live AND a written bound is reached (the barrier's retry budget, or a window older than `checkpointPendingMaxMs`). A bare force on a live seat, a fresh window or a seat with no recorded bound writes NOTHING." }
+                },
+                required: ["member"],
+                additionalProperties: false
+              }
+            ]
+          }
         }
       },
       additionalProperties: false
@@ -7277,7 +7415,7 @@ function installCellworkProtocol(deps) {
           skipped: { type: "array", items: { type: "object" } },
           reassigned: { type: "array", items: { type: "object" }, description: "One entry per readable `reassign` pair: whether the board claim landed and whether the message was delivered." },
           reassignInvalid: { type: "array", items: { type: "string" }, description: "One sentence per `reassign` entry this call refused to read." },
-          unfenced: { type: "array", items: { type: "object" }, description: 'One entry per distinct `unfence` member (duplicates collapse to one): `{member, unfenced:true, plane, planeReason?}` for a cleared CELL give-up fence (the CELL row\'s `fenced:true`, whatever the TEAM row says), `{member, unfenced:false, reason:"not-fenced"}` when neither record reports a marker, `{member, unfenced:false, reason:"checkpoint-pending", detail}` only when the CELL row carries no `fenced:true` AND the TEAM row is at `mode:"checkpoint"` with no `fenced` flag (the compaction barrier owns it, nothing was written), and `{member, unfenced, cellRow:"untouched", plane, planeReason?}` when an explicit TEAM-only fence was cleared while the CELL row was left untouched. `plane` is `unfenced` (the TEAM seat was reopened through the seam), `absent` (this composition exposes no `unfence` seam, so no reopen is claimed) or `refused` (with the plane\'s own sentence in `planeReason`).' },
+          unfenced: { type: "array", items: { type: "object" }, description: 'One entry per distinct `unfence` member (duplicates collapse to one): `{member, unfenced:true, plane, planeReason?}` for a cleared CELL give-up fence (the CELL row\'s `fenced:true`, whatever the TEAM row says), `{member, unfenced:false, reason:"not-fenced"}` when neither record reports a marker, `{member, unfenced:false, reason:"checkpoint-pending", detail}` only when the CELL row carries no `fenced:true` AND the TEAM row is at `mode:"checkpoint"` with no `fenced` flag (the compaction barrier owns it, nothing was written), and `{member, unfenced, cellRow:"untouched", plane, planeReason?}` when an explicit TEAM-only fence was cleared while the CELL row was left untouched. `plane` is `unfenced` (the TEAM seat was reopened through the seam), `absent` (this composition exposes no `unfence` seam, so no reopen is claimed) or `refused` (with the plane\'s own sentence in `planeReason`). A FORCED clear answers `{member, unfenced:true, forced:true, alive:false, liveness:"dead"|"unknown", sessionId, bound:"retry-budget"|"stale", pendingMs?, plane, planeReason?}`, and a forced request that is refused writes nothing and answers `reason:"live-session"` or `reason:"force-not-eligible"` with a `detail` sentence. The dead-reseed seat (a reseeded `subcaptain` row whose recorded session the registry PROVES dead) is held by the SAME predicate and its forced clear names `bound:"dead-session"`. Any outcome whose plane half ended `refused` ALSO carries `retry`: the exact Lead-only verb (`agent_teams_control {action:"unfence", member}`) that re-drives the seam, echoed in the render and in the journal row.' },
           refused: { type: "string" }
         },
         required: ["ok"]
@@ -7285,7 +7423,9 @@ function installCellworkProtocol(deps) {
       render: (_args, value) => {
         const result = typeof value === "object" && value !== null ? value : {};
         const unfenced = Array.isArray(result.unfenced) ? result.unfenced : [];
-        const clears = unfenced.map((row) => row.cellRow === "untouched" ? "unfence " + String(row.member) + ": the CELL row carried no fence marker, so it was left untouched — " + (row.plane === "unfenced" ? "the TEAM row was unfenced through the plane" : row.plane === "absent" ? "the TEAM record reports the seat fenced, but this composition exposes no mpdTeamActions.unfence seam, so the TEAM row is STILL fenced" : "the TEAM row was NOT cleared: " + String(row.planeReason ?? "the team plane refused the unfence")) : "unfence " + String(row.member) + ": " + (row.unfenced !== true ? row.reason === "checkpoint-pending" ? "checkpoint pending — the compaction barrier owns this seat, so nothing was cleared in either record" : "not fenced — nothing was written" : row.plane === "absent" ? "cell row cleared — this composition exposes no mpdTeamActions.unfence seam, so the TEAM seat was NOT reopened (it stays closed until the barrier or the plane reopens it)" : row.plane === "refused" ? "cell row cleared, but the TEAM seat was NOT reopened: " + String(row.planeReason ?? "the team plane refused the unfence") : "cell row cleared and the TEAM seat reopened through the plane"));
+        const retryOf = (row) => typeof row.retry === "string" && row.retry !== "" ? " · the plane half still needs: " + row.retry : "";
+        const lines = unfenced.map((row) => row.forced === true ? "unfence " + String(row.member) + " (FORCED, " + String(row.reason ?? row.bound ?? "bound reached") + "): reopened for reassignment, not for work — the barrier never reopened this seat (" + (row.plane === "unfenced" ? "the TEAM row was reopened through the plane" : row.plane === "absent" ? "this composition exposes no mpdTeamActions.unfence seam, so the TEAM row may still be closed" : "the TEAM row was NOT cleared: " + String(row.planeReason ?? "the team plane refused the unfence")) + ")" : row.reason === "live-session" || row.reason === "force-not-eligible" ? "unfence " + String(row.member) + ": NOT cleared (" + String(row.reason) + ") — " + String(row.detail ?? "") : row.cellRow === "untouched" ? "unfence " + String(row.member) + ": the CELL row carried no fence marker, so it was left untouched — " + (row.plane === "unfenced" ? "the TEAM row was unfenced through the plane" : row.plane === "absent" ? "the TEAM record reports the seat fenced, but this composition exposes no mpdTeamActions.unfence seam, so the TEAM row is STILL fenced" : "the TEAM row was NOT cleared: " + String(row.planeReason ?? "the team plane refused the unfence")) : "unfence " + String(row.member) + ": " + (row.unfenced !== true ? row.reason === "checkpoint-pending" ? row.suspect === true ? "DEAD-RESEED — no barrier will run for this seat again and no live agent is left, so nothing was cleared; the FORCED lever cellwork_dispatch {unfence:[{member:" + JSON.stringify(String(row.member)) + ", force:true}]} reopens it for reassignment" : "checkpoint pending — the compaction barrier owns this seat, so nothing was cleared in either record" : "not fenced — nothing was written" : row.plane === "absent" ? "cell row cleared — this composition exposes no mpdTeamActions.unfence seam, so the TEAM seat was NOT reopened (it stays closed until the barrier or the plane reopens it)" : row.plane === "refused" ? "cell row cleared, but the TEAM seat was NOT reopened: " + String(row.planeReason ?? "the team plane refused the unfence") : "cell row cleared and the TEAM seat reopened through the plane"));
+        const clears = lines.map((line, index) => line + retryOf(unfenced[index]));
         if (result.ok === false)
           return render(["cellwork_dispatch refused: " + String(result.error ?? "unknown refusal"), ...clears].join(`
 `));
@@ -7313,13 +7453,31 @@ function installCellworkProtocol(deps) {
         return { ok: false, error: "cellwork_dispatch: cell " + cell.cellId + " is stopped and archived" };
       const rawUnfence = readArgs2(args)["unfence"];
       if (rawUnfence !== undefined && !Array.isArray(rawUnfence))
-        return { ok: false, error: "cellwork_dispatch: `unfence` must be an array of member names" };
-      const unfenceNames = (rawUnfence ?? []).map((entry) => typeof entry === "string" ? entry.trim() : "");
-      if (unfenceNames.some((name) => name === ""))
+        return { ok: false, error: "cellwork_dispatch: `unfence` must be an array of member names, or of `{member, force}` objects for the bounded forced lever" };
+      const unfenceRequests = [];
+      for (const entry of rawUnfence ?? []) {
+        if (typeof entry === "string") {
+          unfenceRequests.push({ name: entry.trim(), force: false });
+          continue;
+        }
+        if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
+          return { ok: false, error: "cellwork_dispatch: every `unfence` entry must be a member name, or an object `{member, force}`" };
+        }
+        const shaped = entry;
+        if (typeof shaped.member !== "string" || shaped.member.trim() === "") {
+          return { ok: false, error: "cellwork_dispatch: a `{member, force}` entry must name a non-empty `member`" };
+        }
+        if (shaped.force !== undefined && typeof shaped.force !== "boolean") {
+          return { ok: false, error: "cellwork_dispatch: `force` must be a boolean when it is present" };
+        }
+        unfenceRequests.push({ name: shaped.member.trim(), force: shaped.force === true });
+      }
+      if (unfenceRequests.some((request) => request.name === ""))
         return { ok: false, error: "cellwork_dispatch: every `unfence` entry must be a non-empty member name" };
       const unfenceTargets = [];
       const seenTargets = new Set;
-      for (const name of unfenceNames) {
+      for (const request of unfenceRequests) {
+        const name = request.name;
         const resolved = resolveMemberName(cell.members, name);
         if (resolved === undefined) {
           const recorded = Object.keys(cell.members);
@@ -7328,7 +7486,7 @@ function installCellworkProtocol(deps) {
         if (seenTargets.has(resolved.key))
           continue;
         seenTargets.add(resolved.key);
-        unfenceTargets.push({ key: resolved.key, name: resolved.member.name });
+        unfenceTargets.push({ key: resolved.key, name: resolved.member.name, force: request.force });
       }
       const plane = actions();
       if (plane?.dispatch === undefined)
@@ -7363,7 +7521,7 @@ function installCellworkProtocol(deps) {
   }));
   disposers.push(dsh.registerTool({
     name: "cellwork_supervise",
-    description: "CAPTAIN only: one READ-ONLY sweep of the cell — every member's mode / handoff state / live context ratio, the pending board tasks, the stale-split flags, the CLOSED seats together with the open rows they own, and the unread mail (including rows whose wake-up never went out). CLOSED SEATS COME IN TWO KINDS and the sweep names which, because only ONE of them is the captain's to repair: a GIVE-UP fence (an explicit `fenced:true` on EITHER record) gets the two levers — `reassign` its open rows with `cellwork_dispatch {reassign:[...]}`, and clear the fence with `cellwork_dispatch {unfence:[...]}`; a BARRIER-OWNED seat (the TEAM row at `mode:\"checkpoint\"` with NO `fenced` marker, the window every handoff opens) has NOTHING for the captain to do — the compaction barrier reopens it, so no lever is offered and nothing should be written. Call it on every wake-up; it mutates nothing.",
+    description: "CAPTAIN only: one READ-ONLY sweep of the cell — every member's mode / handoff state / live context ratio, the pending board tasks, the stale-split flags, the CLOSED seats together with the open rows they own, and the unread mail (including rows whose wake-up never went out). CLOSED SEATS COME IN THREE KINDS and the sweep names which, because only TWO of them are the captain's to repair: a GIVE-UP fence (an explicit `fenced:true` on EITHER record) gets the two levers — `reassign` its open rows with `cellwork_dispatch {reassign:[...]}`, and clear the fence with `cellwork_dispatch {unfence:[...]}`; a BARRIER-OWNED seat (the TEAM/CELL row at `mode:\"checkpoint\"` with NO `fenced` marker, the window every handoff opens) is reported with `barrierOwned`, `forceEligible` and `pendingMs` — the compaction barrier OWES that seat its reopen, but nothing supervises the barrier, so a seat it can no longer run for needs the BOUNDED forced lever (`cellwork_dispatch {unfence:[{member, force:true}]}`, allowed only when the recorded session is not live and the window's written bound is reached). A DEAD-RESEED seat (a reseeded `subcaptain` row whose recorded session the registry PROVES dead and which no barrier will run for) is reported as a closed seat with `barrierOwned:false`, `suspect:true` and the same `forceEligible` answer the verb uses — ONE predicate, so the lever the sweep advertises is the lever `unfence:[{member, force:true}]` accepts. A closed seat whose TEAM half is a `checkpoint` no barrier is pending for carries `retry`, the exact Lead-only verb that reopens it. A member whose recorded session is not live while the registry IS present is reported `suspect:true`. Call it on every wake-up; it mutates nothing.",
     parameters: { type: "object", properties: {
       limit: { type: "integer", description: "Rows to render (default 20, clamped 1..100)." },
       offset: { type: "integer", description: "First row of the page (default 0)." }
@@ -7382,7 +7540,7 @@ function installCellworkProtocol(deps) {
           splitRevision: { oneOf: [{ type: "number" }, { type: "null" }] },
           requirementsRevision: { type: "number" },
           handoffReady: { type: "array", items: { type: "string" } },
-          fenced: { type: "array", items: { type: "object" }, description: 'Every CLOSED member with the reason and the OPEN board rows it still owns. Each row carries `giveUp:true` for a real GIVE-UP fence (an explicit `fenced:true` on either record) — the rows a `reassign` pass repairs and `cellwork_dispatch {unfence:[name]}` clears — or `giveUp:false` for a seat the compaction barrier owns (a `mode:"checkpoint"` window with no fence marker), which needs no captain action and gets no unfence advice.' },
+          fenced: { type: "array", items: { type: "object" }, description: 'Every CLOSED member with the reason and the OPEN board rows it still owns. Each row carries `giveUp:true` for a real GIVE-UP fence (an explicit `fenced:true` on either record) — the rows a `reassign` pass repairs and `cellwork_dispatch {unfence:[name]}` clears — or `giveUp:false` for a HELD seat with no fence marker — the compaction barrier\'s `mode:"checkpoint"` window, or the DEAD-RESEED shape flagged `deadReseed:true`. Every closed-seat row ALSO carries `barrierOwned` (a checkpoint spelling, not a fence marker, is what holds it), `forceEligible` (the FORCED `unfence:[{member, force:true}]` lever would be allowed RIGHT NOW — computed by the SAME predicate the verb decides with, so the two cannot disagree), `pendingMs` (how long the window has been open, when a timestamp exists), `suspect:true` for the DEAD-RESEED shape (a reseeded seat whose recorded session the registry proves dead), and `retry` when the TEAM half is a `checkpoint` no barrier is pending for — the exact Lead-only verb that reopens it (R5.4). A barrier-owned seat is not automatically safe: nothing supervises the barrier, so the render names the force lever and its bound instead of promising that no action is needed.' },
           unreadMail: { type: "number" },
           wakeFailures: { type: "array", items: { type: "object" } }
         },
@@ -7397,14 +7555,18 @@ function installCellworkProtocol(deps) {
         const fenced = Array.isArray(result.fenced) ? result.fenced : [];
         return render([
           "cell " + String(result.cellId ?? "") + " · phase " + String(result.phase ?? "") + " · split " + String(result.splitRevision ?? "none") + (result.staleSplit === true ? " (STALE)" : "") + " · requirements rev " + String(result.requirementsRevision ?? 0),
-          "members: " + members.map((row) => String(row.name) + "[" + String(row.mode) + (row.handoffReady === true ? ",handoff-ready" : "") + (typeof row.ratio === "number" ? "," + Math.round(row.ratio * 100) + "%" : "") + "]").join(" "),
+          "members: " + members.map((row) => String(row.name) + "[" + String(row.mode) + (row.handoffReady === true ? ",handoff-ready" : "") + (row.suspect === true ? ",SUSPECT" : "") + (typeof row.ratio === "number" ? "," + Math.round(row.ratio * 100) + "%" : "") + (row.suspect === true ? ": the recorded session is not a live agent, so the reseed did not produce a working child" : "") + "]").join(" "),
           "tasks: " + (tasks.length === 0 ? "none" : tasks.map((row) => String(row.id) + " " + String(row.status) + (row.owner === undefined ? "" : "(" + String(row.owner) + ")")).join(" ")),
           "fenced: " + (fenced.length === 0 ? "none" : fenced.map((row) => {
             const name = String(row.name);
             const reason = String(row.reason);
             const owned = Array.isArray(row.tasks) ? row.tasks.map((id) => String(id)) : [];
-            if (row.giveUp !== true)
-              return name + " (" + reason + ", BARRIER-OWNED) " + (owned.length > 0 ? "owns " + owned.join(", ") + " — " : "") + "nothing for you to do: the compaction barrier owns this seat and reopens it when it completes";
+            if (row.giveUp !== true) {
+              const deadReseed = row.deadReseed === true;
+              const blocked = row.liveness === "live" ? "the recorded session is still a LIVE agent" : row.pendingMs === undefined ? "no checkpoint timestamp is recorded, and a missing timestamp is never a licence" : "the written bound is not reached yet (`barrierFailures` below the retry budget and the window younger than the pending bound)";
+              const retry = typeof row.retry === "string" ? " · the TEAM seat is still `checkpoint` while no barrier is pending for it, so the plane half needs " + row.retry : "";
+              return name + " (" + reason + ", " + (deadReseed ? "DEAD-RESEED" : "BARRIER-OWNED") + ") " + (owned.length > 0 ? "owns " + owned.join(", ") + " — " : "") + (row.forceEligible === true ? deadReseed ? "the reseed's child is not a live agent, so nothing will reopen this seat by itself; the bounded lever is allowed now: cellwork_dispatch {unfence:[{member:" + JSON.stringify(name) + ", force:true}]} — it reopens the seat for REASSIGNMENT, not for work (its context was never compacted)" : "the barrier has NOT reopened this seat and no supervisor can; the bounded lever is allowed now: cellwork_dispatch {unfence:[{member:" + JSON.stringify(name) + ", force:true}]} — it reopens the seat for REASSIGNMENT, not for work (its context was never compacted)" : "the barrier reopens this seat when it completes; nothing supervises it, so if it never does, the bounded lever becomes available once the retry budget or the pending bound is reached — " + blocked) + retry;
+            }
             return name + " (" + reason + ") owns " + (owned.length > 0 ? owned.join(", ") + " — reassign those with cellwork_dispatch {reassign:[{task_id, owner}]}, and" : "no open row —") + " clear the fence with cellwork_dispatch {unfence:[" + JSON.stringify(name) + "]}";
           }).join("; ")),
           "unread mail: " + String(result.unreadMail ?? 0) + (Array.isArray(result.wakeFailures) && result.wakeFailures.length > 0 ? " · " + String(result.wakeFailures.length) + " without a wake-up" : "")
@@ -7420,26 +7582,44 @@ function installCellworkProtocol(deps) {
       if (refused !== undefined)
         return refused;
       const cell = caller.cell;
+      const now = new Date;
       const record = recordOf2(caller.workspace, cell.teamId);
       const tasks = record !== undefined && Array.isArray(record.tasks) ? record.tasks : [];
       const members = Object.values(cell.members).map((member) => {
         const plane = planePressureOf(teams(), caller.workspace, cell.teamId, member.name);
         const seat = recordSeat(cell, caller.workspace, member.name);
         const pressure = plane ?? dsh.contextPressure(member.sessionId === "" ? member.name : member.sessionId);
-        return { name: member.name, mode: seat.mode ?? member.mode, role: member.role, handoffReady: seat.checkpoint ?? member.handoffReady, handoffs: member.handoffs, ratio: pressure.ratio, usedTokens: pressure.usedTokens, windowTokens: pressure.windowTokens, provenance: pressure.provenance };
+        const reading = forceReadingOf(cell, caller.workspace, member, now);
+        return {
+          name: member.name,
+          mode: seat.mode ?? member.mode,
+          role: member.role,
+          handoffReady: seat.checkpoint ?? member.handoffReady,
+          handoffs: member.handoffs,
+          ratio: pressure.ratio,
+          usedTokens: pressure.usedTokens,
+          windowTokens: pressure.windowTokens,
+          provenance: pressure.provenance,
+          liveness: reading.liveness,
+          ...reading.pendingMs === undefined ? {} : { pendingMs: reading.pendingMs },
+          ...reading.suspect ? { suspect: true } : {},
+          ...reading.pendingMs === undefined && !reading.closed ? {} : { forceEligible: reading.forceEligible }
+        };
       });
       const messages = foldCellMail(readCellMail(caller.workspace, cell.cellId));
       const fenced = Object.values(cell.members).flatMap((member) => {
         const seat = recordSeat(cell, caller.workspace, member.name);
         const giveUp = member.fenced === true || seat.fenced === true;
         const reason = member.fenced === true ? fenceReasonOf(member) : seat.fenceReason ?? fenceReasonOf(member);
-        if (reason === undefined)
+        const reading = forceReadingOf(cell, caller.workspace, member, now);
+        if (!reading.closed && !giveUp || reason === undefined)
           return [];
+        const planeOnly = seat.checkpoint === true && seat.fenced !== true && member.mode !== "checkpoint" && member.handoffReady !== true;
         const owned = tasks.filter((task) => {
           const status = String(task.status ?? "");
           return status !== "completed" && status !== "failed" && nameKey(String(task.owner ?? "")) === nameKey(member.name);
         }).map((task) => String(task.id ?? ""));
-        return [{ name: member.name, mode: seat.mode ?? member.mode, reason, tasks: owned, giveUp }];
+        return [{ name: member.name, mode: seat.mode ?? member.mode, reason, tasks: owned, giveUp, barrierOwned: reading.barrierOwned, forceEligible: reading.forceEligible, liveness: reading.liveness, ...reading.suspect ? { suspect: true } : {}, ...reading.deadReseed ? { deadReseed: true } : {}, ...reading.pendingMs === undefined ? {} : { pendingMs: reading.pendingMs }, ...planeOnly ? { retry: planeRetryOf(member.name) } : {} }];
       });
       return {
         ok: true,
@@ -7982,7 +8162,17 @@ acknowledgement refused for ` + String(refused.length) + " row(s), which stay un
       const now = new Date;
       const logged = applyCheckpoint(caller.cell, plan, String(caller.cell.members[caller.member]?.sessionId ?? caller.sessionId), now);
       const injected = logged.members[caller.member];
-      const next = injected === undefined ? logged : { ...logged, members: { ...logged.members, [caller.member]: { ...injected, mode: "checkpoint" } } };
+      const next = injected === undefined ? logged : {
+        ...logged,
+        members: {
+          ...logged.members,
+          [caller.member]: {
+            ...injected,
+            mode: "checkpoint",
+            ...injected.checkpointSince === undefined ? { checkpointSince: now.toISOString() } : {}
+          }
+        }
+      };
       transition(caller.workspace, next, { event: "checkpoint", member: caller.member, usedTokens: plan.usedTokens, windowTokens: plan.windowTokens, turn: plan.turn, reason: plan.reason }, now);
       const message = dsh.userMessage({ text: checkpointDirective(caller.member, plan), source: { kind: "mpd-cellwork", reason: "checkpoint" } });
       return { kind: "enter", messages: [...decision?.messages ?? payload?.messages ?? [], message] };
@@ -8044,10 +8234,37 @@ acknowledgement refused for ` + String(refused.length) + " row(s), which stay un
         deps.warn("[mpd-cellwork] the compaction barrier could not re-read " + fresh.path + ": " + fresh.detail);
         return;
       }
-      const updated = memberAfterBarrier(fresh.state.members[caller.member] ?? member, result);
-      const next = { ...fresh.state, members: { ...fresh.state.members, [caller.member]: updated } };
+      const plane = result.outcome === "refused" ? { plane: "absent", planeReason: undefined } : await reopenPlaneSeat(caller.cell.captainSessionId, caller.member);
+      const settled = readCell(caller.workspace, caller.cell.cellId);
+      if (!settled.ok)
+        deps.warn("[mpd-cellwork] the compaction barrier could not re-read " + settled.path + " after the plane call: " + settled.detail + " — merging into the pre-await snapshot");
+      const base = settled.ok ? settled.state : fresh.state;
+      const updated = memberAfterBarrier(base.members[caller.member] ?? member, result, config.compactionRetries);
+      const next = { ...base, members: { ...base.members, [caller.member]: updated } };
+      if (result.outcome !== "refused") {
+        appendJournal(caller.workspace, caller.cell.cellId, {
+          event: "member-unfenced",
+          member: caller.member,
+          by: "barrier",
+          plane: plane.plane,
+          ...plane.planeReason === undefined ? {} : { planeReason: plane.planeReason },
+          ...plane.plane === "refused" ? { retry: planeRetryOf(caller.member) } : {}
+        }, now);
+      }
       if (result.outcome === "refused")
         appendJournal(caller.workspace, caller.cell.cellId, checkpointUnrecoverableEntry(caller.member, result), now);
+      if (result.outcome === "reseeded") {
+        appendJournal(caller.workspace, caller.cell.cellId, {
+          event: "member-reseeded",
+          member: caller.member,
+          previousSessionId: member.sessionId,
+          newSessionId: result.newHandle ?? "",
+          retired: result.retired === true,
+          ...result.retirement === undefined ? {} : { retirement: result.retirement },
+          ...result.retirementReason === undefined ? {} : { retirementReason: result.retirementReason },
+          plane: plane.plane
+        }, now);
+      }
       if (result.outcome === "reseeded" && result.parentSource !== undefined) {
         appendJournal(caller.workspace, caller.cell.cellId, {
           event: "reseed-parent",

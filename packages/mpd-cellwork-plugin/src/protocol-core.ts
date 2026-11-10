@@ -328,6 +328,23 @@ export interface PromotionDeps {
   signal?: AbortSignal
 }
 
+/**
+ * WHAT the host did with the ORIGINAL session's retirement on the reseed path (R5.1).
+ *
+ * The host's `SubagentRuntime#interrupt` answers `void` and treats an ABSENT target as an accepted no-op,
+ * so a silent return is never proof of a retirement: the target's presence is proven through the
+ * adapter's identity seam first. `accepted` is the ONLY value that may be reported as `retired: true`.
+ *
+ *   `accepted`          the target was proven live and the host took the interrupt without refusing it;
+ *   `nothing-to-retire` the identity registry answers NOTHING for the recorded session — nothing was
+ *                       live to retire, and that is never a retirement;
+ *   `refused`           the host threw (a stale authority, a non-descendant target, …); the sentence is
+ *                       `retirementReason`;
+ *   `unavailable`       this composition exposes no `interruptAgent` or no identity seam, so neither the
+ *                       call nor its reading exists and nothing is claimed.
+ */
+export type RetirementOutcome = "accepted" | "nothing-to-retire" | "refused" | "unavailable"
+
 /** The barrier's outcome. */
 export interface PromotionResult {
   /** `promoted` after a successful compaction, `reseeded` after the fresh-child fallback, `refused` otherwise. */
@@ -342,6 +359,18 @@ export interface PromotionResult {
   parentSessionId?: string
   /** Which rule found that session: the member's durable parent, or the captain fallback. */
   parentSource?: "parent" | "captain"
+  /**
+   * Whether the ORIGINAL session's interrupt was ACCEPTED on the reseed path (R4.7, corrected by R5.1).
+   *
+   * ABSENT-NOT-FALSE: the key exists only on a reseed, and `false` says no retirement was confirmed. `true`
+   * requires {@link PromotionResult.retirement} to be `accepted`: a session the identity registry does not
+   * hold is `nothing-to-retire` and is NEVER recorded as retired (the R4 inversion this repairs).
+   */
+  retired?: boolean
+  /** WHAT the host did with the retirement (R5.1); absent when the reseed path never ran. */
+  retirement?: RetirementOutcome
+  /** The host's own sentence when it REFUSED the interrupt (R5.1); absent on every other outcome. */
+  retirementReason?: string
 }
 
 /**
@@ -532,7 +561,7 @@ export function checkpointUnrecoverableEntry(memberName: string, result: Promoti
 }
 
 /**
- * The member row a finished compaction barrier leaves behind (contract C7).
+ * The member row a finished compaction barrier leaves behind (contract C7, bounded by R4.3).
  *
  * A GIVEN-UP barrier fences the member EXPLICITLY (`fenced` + `fencedReason`), so `cellwork_supervise` and
  * an operator can name the repair; a promoted or reseeded one carries NO fence marker at all. The row is
@@ -540,17 +569,39 @@ export function checkpointUnrecoverableEntry(memberName: string, result: Promoti
  * through a later successful barrier and keep a healthy member out of dispatch — the exact livelock D5
  * cost, only in the other direction.
  *
- * The additive markers that describe the row's HISTORY are carried EXPLICITLY, on BOTH outcomes: an
- * adopted member's first handoff runs exactly this barrier, so dropping `adopted` here would make the
- * record stop saying the row appeared after activation (contract B1).
+ * THE ADDITIVE MARKERS ARE CARRIED EXPLICITLY, ON BOTH OUTCOMES: an adopted member's first handoff runs
+ * exactly this barrier, so dropping `adopted` here would make the record stop saying the row appeared
+ * after activation (contract B1); `checkpointSince`/`barrierFailures` are what the forced-unfence lever
+ * reads, so a run that dropped them would silently reset a stuck seat's bound (the drop class a past R4
+ * review recorded).
+ *
+ * WHAT COUNTS AS REOPENING (R4.3). Only `promoted` does: the SAME session was compacted and keeps
+ * working, so both window keys are DELETED. A `reseeded` outcome raises a FRESH child, which is not
+ * proof the seat works (R4.2) — `checkpointSince` therefore survives it and the failure count grows. The
+ * bound fences the seat on the run where `failures` reaches `retryBound`, and any `refused` outcome
+ * fences immediately (this run already gave up); a give-up names the count so the record says why.
  *
  * @param previous - the member row as the record held it before this outcome.
  * @param result - the barrier's outcome (its classification is the fence's cause).
+ * @param retryBound - the consecutive non-reopening runs this seat may accumulate (the barrier's
+ *   `compactionRetries` knob); a row is fenced on the run that reaches it.
  * @returns the row to persist.
  */
-export function memberAfterBarrier(previous: CellMemberRecord, result: PromotionResult): CellMemberRecord {
-  /** Whether the barrier gave up, which is what fences the member. */
-  const givenUp = result.outcome === "refused"
+export function memberAfterBarrier(previous: CellMemberRecord, result: PromotionResult, retryBound: number): CellMemberRecord {
+  /** The consecutive non-reopening barrier runs, THIS one included (absent reads as zero). */
+  const failures = (previous.barrierFailures ?? 0) + 1
+  /** Whether this outcome reopened the seat: only a successful compaction continues the SAME session. */
+  const reopened = result.outcome === "promoted"
+  /**
+   * Whether the barrier gave up — a refusal now, or a run count that reached the bound.
+   *
+   * A `promoted` outcome NEVER gives up, whatever the count says: the compaction just reopened the seat,
+   * and fencing it on the run that fixed it was a real defect the R4.3 arm caught (a later promotion
+   * would otherwise be read as the fourth failure).
+   */
+  const givenUp = !reopened && (result.outcome === "refused" || failures >= retryBound)
+  /** The fence's sentence: the barrier's own reason plus the run count the bound is measured in. */
+  const fenceReason = result.reason + "; " + String(failures) + " of " + String(retryBound) + " consecutive barrier runs did not reopen the seat"
   return {
     name: previous.name,
     role: previous.role,
@@ -561,7 +612,61 @@ export function memberAfterBarrier(previous: CellMemberRecord, result: Promotion
     handoffs: previous.handoffs,
     joinedAt: previous.joinedAt,
     ...(previous.adopted === true ? { adopted: true } : {}),
-    ...(givenUp ? { fenced: true, fencedReason: result.reason } : {}),
+    // BOTH WINDOW KEYS ON BOTH OUTCOMES (the field-by-field drop hazard): a reopening run deletes them
+    // by omission, while a reseed/refusal carries the clock the force lever measures and records the
+    // count this run added.
+    ...(reopened ? {} : (previous.checkpointSince === undefined ? {} : { checkpointSince: previous.checkpointSince })),
+    ...(reopened ? {} : { barrierFailures: failures }),
+    ...(givenUp ? { fenced: true, fencedReason: fenceReason } : {}),
+  }
+}
+
+/**
+ * Retire the ORIGINAL session of a reseed, AUTHORISED BY A LIVE ANCESTOR (R5.1).
+ *
+ * THE AUTHORITY IS NEVER THE MEMBER'S OWN HANDLE. The host keys an Agent by its session id, so passing
+ * `deps.agent` here made the caller and the target the SAME session: `@deepseek-ai/dsh-subagent` throws
+ * `UNAUTHORIZED "cannot interrupt itself"` BEFORE its ancestry check, so the retirement never ran — and
+ * the only silent path (a target the manager does not hold) is what recorded `retired: true`. The caller
+ * now supplies the live session the reseed is raised under (the member's durable parent, else the cell
+ * captain), which is exactly the `ancestor` authority the host validates, and `retired` reports only what
+ * that call really did.
+ *
+ * THE TARGET'S PRESENCE IS PROVEN FIRST. The host documents an absent target as an ACCEPTED NO-OP, so a
+ * silent return says nothing about a retirement; a session the identity registry does not hold is
+ * `nothing-to-retire`. The reading is the same three-state rule the rest of this bundle uses: an absent
+ * identity seam is UNKNOWN, never dead, and lands in `unavailable` instead of being read either way.
+ *
+ * DECLARED BOUND (stated in the docs): residency is proven through the agents registry, which is the
+ * identity the host's own interrupt consults for its authority check. A live-but-NON-RESIDENT activation
+ * (an external child whose session has no local Agent) would still answer silently and be recorded
+ * `accepted`; the cellwork composition raises LOCAL children (`startContinuableAgent`), so this is a
+ * residual of a composition this row does not build, not of the lever.
+ *
+ * @param deps - the barrier's seams, whose `sessionId` is the member's recorded session (the target).
+ * @param authority - the EXACT live ancestor Agent the reseed is raised under.
+ * @returns what the host did, plus its own sentence when it refused.
+ */
+function retireOriginal(deps: PromotionDeps, authority: DshLiveAgent): { retirement: RetirementOutcome; reason?: string } {
+  /** The interrupt seam, probed rather than assumed (an older composition may not expose it). */
+  const interrupt = deps.dsh.interruptAgent
+  /** The identity seam, whose ABSENCE is "this composition cannot prove anything" — never "dead". */
+  const identity = deps.dsh.liveAgentExact
+  if (typeof interrupt !== "function" || typeof identity !== "function") {
+    return { retirement: "unavailable", reason: "this composition exposes no " + (typeof interrupt !== "function" ? "interruptAgent" : "liveAgentExact") + " seam, so no retirement could be performed or verified" }
+  }
+  // NOTHING TO RETIRE: the registry proves the recorded session is already gone, so the host would answer
+  // its documented no-op and there is nothing to claim. This is the DEAD-SEAT shape, not a retirement.
+  if (liveSessionOf(deps, deps.sessionId) === undefined) {
+    return { retirement: "nothing-to-retire", reason: "the identity registry holds no live agent for session " + JSON.stringify(deps.sessionId) + ", so there was nothing to retire" }
+  }
+  try {
+    interrupt.call(deps.dsh, deps.sessionId, { kind: "ancestor", agent: authority })
+    return { retirement: "accepted" }
+  } catch (error) {
+    // A REFUSAL IS REPORTED, never swallowed: the reseed still proceeds (an unretired original does not
+    // block the fresh child), but the record and the journal name the host's own sentence.
+    return { retirement: "refused", reason: error instanceof Error ? error.message : String(error) }
   }
 }
 
@@ -578,6 +683,8 @@ export function memberAfterBarrier(previous: CellMemberRecord, result: Promotion
 export async function promoteAfterHandoff(deps: PromotionDeps): Promise<PromotionResult> {
   /** The last classification, journaled on every path. */
   let lastReason = "not attempted"
+  /** Every attempt's classification, so a run that was `busy` THROUGHOUT is reported as the host fact it is. */
+  const classifications: string[] = []
   for (let attempt = 1; attempt <= deps.config.compactionRetries; attempt += 1) {
     // NO SLEEP BEFORE THE FIRST ATTEMPT (C1). The member is live NOW; a delay before the first drive is
     // exactly the window in which the host's serial dispatch moves on and the handle stops mattering.
@@ -586,6 +693,7 @@ export async function promoteAfterHandoff(deps: PromotionDeps): Promise<Promotio
     const engine = engineForBarrier(deps)
     if (engine === undefined || typeof engine.compactNow !== "function") {
       lastReason = "no-engine"
+      classifications.push(lastReason)
       continue
     }
     /** A real signal, never `undefined` (the engine's first statement aborts on it). */
@@ -596,21 +704,31 @@ export async function promoteAfterHandoff(deps: PromotionDeps): Promise<Promotio
       /** The classified answer. */
       const outcome = classifyCompactionResult(result)
       lastReason = outcome
+      classifications.push(outcome)
       if (outcome === "compacted") {
         deps.injectDirective(promotionDirective(deps.cell.cellId, deps.memberName, deps.cell.depth + 1, deps.nextStep))
         return { outcome: "promoted", attempts: attempt, reason: outcome }
       }
     } catch (error) {
       lastReason = classifyCompactionError(error, signal)
+      classifications.push(lastReason)
       if (lastReason === "aborted" && deps.signal?.aborted === true) return { outcome: "refused", attempts: attempt, reason: "the caller cancelled the barrier" }
     }
   }
+  // `busy` ON EVERY ATTEMPT IS A HOST FACT, NOT A MYSTERY (R4.0 secondary). `BasicCompactionEngine
+  // .compactNow` runs inside `agent.runMaintenance`, which REFUSES any phase but idle
+  // (`dsh-agent-loop/lib/index.js#runMaintenance`), while `agent/turn-stopping` is dispatched INSIDE the
+  // turn and its listeners are awaited (`:791`). So in-place compaction CANNOT run at this event on this
+  // host — every retry burns the serial dispatch and fails identically. A wait cannot fix it: the host
+  // awaits OUR promise before it can reach idle, so awaiting `whenIdle()` inside the listener deadlocks.
+  // The sentence is appended here so the journal and the captain see the bound instead of "busy forever".
+  /** Whether every attempt was `busy` — the shape all four VEdit journal rows had. */
+  const busyThroughout = classifications.length > 0 && classifications.every((entry) => entry === "busy")
+  /** The host-bound explanation, appended to the reseed outcome's reason when it applies. */
+  const busyNote = busyThroughout
+    ? "; the engine reported `busy` on every attempt: the host's compactNow needs an IDLE agent (runMaintenance refuses an open turn) while `agent/turn-stopping` fires inside the turn, so in-place compaction cannot run at this event — the reseed is the only path"
+    : ""
   // The bounded attempts exhausted: reseed from the handoff.
-  try {
-    deps.dsh.interruptAgent(deps.sessionId, { kind: "ancestor", agent: deps.agent })
-  } catch {
-    // An absent interrupt seam does not block the reseed; the stale child is simply left idle.
-  }
   /** The LIVE session the fresh child is raised under, or undefined when neither candidate is live. */
   const parent = reseedParentOf(deps)
   if (parent === undefined) {
@@ -618,7 +736,7 @@ export async function promoteAfterHandoff(deps: PromotionDeps): Promise<Promotio
     return {
       outcome: "refused",
       attempts: deps.config.compactionRetries,
-      reason: lastReason + "; reseed-parent-unavailable (parent session " + JSON.stringify(deps.parentSessionId ?? "") + " and captain session " + JSON.stringify(deps.cell.captainSessionId) + " are neither one a live agent the registry holds)",
+      reason: lastReason + busyNote + "; reseed-parent-unavailable (parent session " + JSON.stringify(deps.parentSessionId ?? "") + " and captain session " + JSON.stringify(deps.cell.captainSessionId) + " are neither one a live agent the registry holds)",
     }
   }
   // THE HOST'S OWN PRECONDITION, PROVEN BEFORE THE CALL (root cause 2): `@deepseek-ai/dsh-subagent`
@@ -632,13 +750,26 @@ export async function promoteAfterHandoff(deps: PromotionDeps): Promise<Promotio
       reason: lastReason + "; reseed-parent-unavailable (the live registry no longer holds session " + JSON.stringify(parent.sessionId) + " as the exact instance the reseed would forward)",
     }
   }
+  // THE ORIGINAL IS RETIRED BY ITS LIVE ANCESTOR, AFTER THAT ANCESTOR IS PROVEN (R5.1): the SAME session
+  // the child is raised under is the only `ancestor` authority the host accepts, and the member's own
+  // handle is the target, never the caller. Retirement lands here — after the parent proof — so a refusal
+  // that never reaches a spawn never kills the original either.
+  /** What the host did with the original session's retirement. */
+  const retirement = retireOriginal(deps, parent.parent)
   try {
     /** The fresh durable child's activation. */
     const activation = await deps.dsh.startContinuableAgent({
       provider: "spawn",
       label: deps.memberName + " · " + deps.cell.teamId,
       request: {
-        prompt: deps.handoffText + "\n\n" + promotionDirective(deps.cell.cellId, deps.memberName, deps.cell.depth + 1, deps.nextStep),
+        // CONTENT BLOCKS, NEVER A STRING (R4.0, the primary root cause). `SubagentStartRequest.prompt` is
+        // `ContentBlock[]`, and the host appends its return guidance with `[...prompt, block]` — so a
+        // STRING prompt is spread into one single-character block per character (`dsh-subagent/lib/
+        // index.js#withContinuableReturnGuidance`). The DeepSeek serializer then rejects the first bare
+        // string block ("cannot represent user/tool-result content undefined", code UNSUPPORTED_CONTENT),
+        // the child dies before its first turn, and because the poisoned message is permanent history
+        // every later delivery re-fails identically. Measured on the VEdit incident's four reseeds.
+        prompt: [{ type: "text", text: deps.handoffText + "\n\n" + promotionDirective(deps.cell.cellId, deps.memberName, deps.cell.depth + 1, deps.nextStep) }],
         // THE LIVE PARENT, never `deps.agent` (C2): the member's own handle is detached, and the host
         // refuses a parent it no longer holds.
         parent: parent.parent,
@@ -651,10 +782,10 @@ export async function promoteAfterHandoff(deps: PromotionDeps): Promise<Promotio
     }) as { childId?: unknown; id?: unknown } | undefined
     /** The fresh handle the backend minted. */
     const handle = typeof activation?.childId === "string" ? activation.childId : typeof activation?.id === "string" ? activation.id : ""
-    if (handle === "") return { outcome: "refused", attempts: deps.config.compactionRetries, reason: lastReason + "; the reseed reported no child id" }
-    return { outcome: "reseeded", attempts: deps.config.compactionRetries, reason: lastReason, newHandle: handle, parentSessionId: parent.sessionId, parentSource: parent.source }
+    if (handle === "") return { outcome: "refused", attempts: deps.config.compactionRetries, reason: lastReason + busyNote + "; the reseed reported no child id" }
+    return { outcome: "reseeded", attempts: deps.config.compactionRetries, reason: lastReason + busyNote, newHandle: handle, parentSessionId: parent.sessionId, parentSource: parent.source, retired: retirement.retirement === "accepted", retirement: retirement.retirement, ...(retirement.reason === undefined ? {} : { retirementReason: retirement.reason }) }
   } catch (error) {
-    return { outcome: "refused", attempts: deps.config.compactionRetries, reason: lastReason + "; the reseed failed: " + (error instanceof Error ? error.message : String(error)) }
+    return { outcome: "refused", attempts: deps.config.compactionRetries, reason: lastReason + busyNote + "; the reseed failed: " + (error instanceof Error ? error.message : String(error)) }
   }
 }
 

@@ -168,7 +168,8 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
 `depthMax` 3 · `checkpointRatio` 0.5 · `windowFraction` 0.25 · `fixedOverheadTokens` 32000 ·
 `fixedOverheadByRoute` {} · `toolSchemaChars` 0 · `outputReserveTokens` 8192 ·
 `compactionHeadroomTokens` 65536 · `compactionRetries` 3 · `idleBarrierDelayMs` 200 ·
-`asciiCharsPerToken` 3 · `cjkCharsPerToken` 1 · `contractGates` [] · `windowOverride` null。
+`checkpointPendingMaxMs` 900000 · `asciiCharsPerToken` 3 · `cjkCharsPerToken` 1 · `contractGates` [] ·
+`windowOverride` null。
 
 邮件上限是这张表**唯一**的例外：`mail.maxUndelivered`（默认 8，`0` 表示关闭；缺失或不可用的值回退到 8）是
 `mail.*` 键，因为**两个**邮件工具都读它，并且经同一个共享存储执行（见下文「邮件与重种边界」）。
@@ -266,13 +267,32 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
 - **一个 override、一个身份。** `windowOverride` 是单值：它认证**任何**目录读不到窗口的 route，并记录为
   `override`。规划任务由**调用者自己的身份**（规划器/切分器）关闭，关闭失败只记入 journal，绝不影响修订。
 - **压缩结果必须分类，而且能触及的成员会原地压缩。** `agent/turn-stopping` 监听器**返回**屏障的 promise，于是
-  宿主的串行派发会 **await** 它，而不是与一个已脱离的屏障赛跑。屏障先用有界重试预算（`compactionRetries` 次，
-  间隔 `idleBarrierDelayMs`）等该 agent 空闲，然后**在**任何 sleep **之前**、在查注册表**之前**，从事件携带的
-  **活跃**成员 handle 解析引擎（`compactionEngineForLiveAgent`），因此一个已从 `ctx.agents` 脱离的成员仍会原地
-  压缩；只有该 handle 没带引擎时，才轮到按 id 的 `compactionEngineForAgent`。重试之间可以有延迟，**第一次**尝试
-  之前没有。引擎带真实的 `AbortController` 信号驱动；写入 journal 的原因取值是 `compacted` | `no-safe-range` |
-  `busy` | `aborted` | `failed` | `no-engine` 之一，重试预算用完绝不是一次静默的空操作。结果并集恰好是
-  `promoted` | `reseeded` | `refused`，而 `compacted` 的答案走 `promoted`，且是**同一个** agent —— 不打断、不重种。
+  宿主的串行派发会 **await** 它，而不是与一个已脱离的屏障赛跑。屏障**不会**等待空闲的 agent：它最多做
+  `compactionRetries` 次尝试，在两次之间 sleep `idleBarrierDelayMs`（**第一次**之前没有 sleep），然后**在**任何
+  sleep **之前**、在查注册表**之前**，从事件携带的**活跃**成员 handle 解析引擎
+  （`compactionEngineForLiveAgent`），因此一个已从 `ctx.agents` 脱离的成员仍能到达它自己领域里的引擎；只有该
+  handle 没带引擎时，才轮到按 id 的 `compactionEngineForAgent`。引擎带真实的 `AbortController` 信号驱动；写入
+  journal 的原因**以** `compacted` | `no-safe-range` | `busy` | `aborted` | `failed` | `no-engine` 其中**一个分类
+  开头**，重试预算用完绝不是一次静默的空操作。**这个 reason 是「分类 + 适用时的 `; ` 子句」**（NIT 5）：重种会在
+  它后面追加宿主边界说明，所以「每次都 `busy`」的形态写的是
+  `busy; the engine reported \`busy\` on every attempt: …`——把整串去和六个取值逐一相等比较的读者，恰好会漏掉本
+  bundle 实测到的那个形态。**每次尝试都是 `busy` 是宿主自身的边界，reason 会写明（R4.0）：**
+  `compactNow` 跑在 `agent.runMaintenance` 里，后者拒绝除 idle 之外的任何阶段，而 `agent/turn-stopping` 是在
+  回合内部派发、监听器会被 await 的——原地压缩无法在那个事件上运行，因此重种是唯一出路，reason 文本会记录这
+  一点而不是把 `busy` 留成无人解释的话。结果并集恰好是 `promoted` | `reseeded` | `refused`，而 `compacted` 的
+  答案走 `promoted`，且是**同一个** agent —— 不打断、不重种。**非 `refused` 的结果还会重开 TEAM 座位**：以队长
+  身份调用平面的 `unfence` 接缝，记 `member-unfenced` 且 `by: "barrier"`，并报告
+  `plane: "unfenced" | "absent" | "refused"`；重种会记 `member-reseeded`，带上两个 session id、退役事实与平面
+  那一半。**退役由活跃祖先授权（R5.1）**——就是这次重种所用的那个 session（成员的持久父会话活跃时用它，否则用
+  该 cell 的队长），**绝不是**成员自己的 handle：宿主会在祖先检查之前以 `UNAUTHORIZED "cannot interrupt itself"`
+  拒绝它。记录写的是宿主真正做过的事：`retired:true` 只在 `retirement:"accepted"` 时出现；注册表在该 id 下没有
+  活跃 session 时是 `"nothing-to-retire"`（绝不算退役）；宿主拒绝时是 `"refused"`，原话在 `retirementReason`；
+  组合没有接缝时是 `"unavailable"`。以 `refused` 结束的平面那一半会带 `retry`（那个仅队长可用的确切 verb）。
+  重种**不是**「子代理能工作」的证明：`checkpointSince` 会跨重种保留，而记录里的 session 不活跃（注册表
+  **存在**）的座位会被 `cellwork_supervise` 标成 `suspect`。有界的强制杠杆
+  （`unfence: [{member, force: true}]`）是最后手段：活跃 session 与缺失的书面边界（`barrierFailures` 达到
+  `compactionRetries`，或窗口早于 `checkpointPendingMaxMs`）都会被失败即拒绝；它把座位重开是为了重新分配，
+  不是为了工作。
 - **邮件与重种边界。** cell 邮件先落盘（持久），唤醒尽力而为。`cellwork_send` 在 cell 树里解析收件人 ——
   成员名、`captain`，或跨 cell 形式 `"<cellId>/<captain|member>"`，其中 `<cellId>` 必须是**本** cell 登记过的
   子 cell 或本 cell 的父 cell（`cell.subcellIds` / `cell.parentCellId`），其它一律以

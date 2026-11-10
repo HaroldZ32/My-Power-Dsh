@@ -184,14 +184,35 @@ cell 的 `state.json` 维护一张 `members` 表：每个座位一行，携带 r
   `{member, unfenced: true, plane, planeReason?}`，并把平面那一半如实报告为 `unfenced`、`absent` 或
   `refused`，绝不声称一次没有发生的重开。
 - **待处理的检查点不是放弃。** 每次交接都会把 TEAM 行设为 `mode: "checkpoint"`，而压缩屏障仍欠着重新打开，
-  这样的一行没有 `fenced` 键。CELL 行**也没有** `fenced: true` 时，对它执行 `unfence` 会答复
+  这样的一行没有 `fenced` 键。满足以下任一条件，座位就是**归屏障所有**的：CELL 行 `mode` 为 `checkpoint`、
+  它的 `handoffReady` 为 `true`、或 TEAM 行为 `mode: "checkpoint"`。**不带** `force` 的解围会答复
   `{member, unfenced: false, reason: "checkpoint-pending", detail}`——那个状态归屏障所有——并且**两个记录
-  都不写**，接缝也**不会**被调用。上面的 CELL 标记优先：即使 TEAM 行仍写着 `mode: "checkpoint"`，真正的
-  放弃也会被恢复。只有屏障（或一个放弃围栏）才能移动那个座位。
-- **`not-fenced` 会被如实报告，绝不粉饰。** 两个记录都没有围栏的成员答复
-  `{member, unfenced: false, reason: "not-fenced"}`，并且记录**不会**被重写——对一个 CELL 行只带着
-  `handoffReady: true`、而两个记录都没有标记的成员也一样，因为只有显式的放弃标记会被清除（重开一个只是
-  等待的行会招来「第二份交接」的活锁）。名字必须
+  都不写**，接缝也**不会**被调用；只有 CELL 行显示窗口时也一样（这种情况以前会答复自相矛盾的
+  `not-fenced`）。上面的 CELL `fenced` 标记优先：即使 TEAM 行仍写着 `mode: "checkpoint"`，真正的放弃也会被
+  恢复。
+- **有界的**强制**杠杆：`unfence: [{member, force: true}]`（R4.4，最后手段）。** 裸字符串保持**逐字节**相同的
+  非强制行为，因此没有人会误触；对象形式是唯一能请求该杠杆的写法，而且它是**失败即拒绝**的：记录里的 session
+  仍是活跃 agent 时**直接拒绝**（`reason: "live-session"`），否则只有达到**写下过的边界**才允许清除——
+  `barrierFailures` 达到 `compactionRetries`（reason 为 `retry-budget`），或 `checkpointSince` 早于
+  `checkpointPendingMaxMs`（默认 15 分钟，reason 为 `stale`）。时间戳缺失且记录失败数为零**不构成**许可
+  （`reason: "force-not-eligible"`）：时间戳可以回退到该 session 最后一条 `checkpoints` 记录，两者都不存在时
+  没有资格。获准的清除会删除 `fenced`/`fencedReason`/`barrierFailures`/`checkpointSince`，把 `mode` 恢复为
+  `"member"`、`handoffReady: false`，保留 `handoffs`/`joinedAt`/`adopted`，尽力请求平面重开 TEAM 座位，记
+  `member-unfenced-forced`（`{member, by: "captain", reason, pendingMs, barrierFailures, sessionId,
+  liveness, plane}`），并答复 `{member, unfenced: true, forced: true, alive, liveness, sessionId, bound, pendingMs?,
+  plane}`。**它把座位重开是为了重新分配，不是为了工作**：上下文从未被压缩，投递只会重新打开交接文档已经
+  描述过的那段上下文。
+
+  **死重种座位由同一个判据覆盖（R5.2）。** 重种会把行写成 `subcaptain` 加 `handoffReady: false`，并把 TEAM
+  行重开为 `member`，所以**任何**检查点拼写都不再持有它——而当新子代理已不是活跃 agent 时（`liveness: "dead"`：
+  注册表存在且查不到它），再也不会有回合为它触发。这样的座位**仍然**是被持有的，它的许可是那个**被证明已死**的
+  session（`bound: "dead-session"`），但它窗口的**时间戳仍然必需**：没有时间戳就退回重试预算，两者都没有时答复
+  `force-not-eligible`。注册表**缺席**是 `unknown`、绝不是「已死」，因此什么都没被证明、也什么都不会被清除。
+  **以上每个答案都由同一个判据决定**——`barrierOwned`、死重种形态、活跃否决、时间戳、边界——而
+  `cellwork_supervise` 投影的是**同一份**读数，所以巡检宣称可用的杠杆，正好就是该 verb 接受的杠杆（过去这是两个
+  各自独立的判据，巡检宣称的杠杆会被 verb 以 `not-fenced` 拒绝）。
+- **`not-fenced` 会被如实报告，绝不粉饰。** 两个记录都没有围栏、**且**不带检查点窗口的成员答复
+  `{member, unfenced: false, reason: "not-fenced"}`，并且记录**不会**被重写。名字必须
   **无歧义地**解析——先精确的成员键、再精确的显示名、最后才是非空且**恰好只有一个**成员携带的规范化键；
   其余情况（未知，或像 后端1/前端1 下的 `1` 那样有歧义）拒绝**整个**调用，并点名已记录的成员；什么都不会被
   清除、写入或派发，因此拼错一个名字绝不会让清单只生效一半。
@@ -209,8 +230,14 @@ cell 的 `state.json` 维护一张 `members` 表：每个座位一行，携带 r
   ordinal，因此第二份文档是在消耗连续性、而不是保住它（VEdit 的活锁在 7 分钟内写了三份）。
 - **屏障放弃时会记录后果。** 该成员得到 `fenced: true` + `fencedReason`，journal 得到一条点名修复方式的
   `checkpoint-unrecoverable` 行，而 `cellwork_supervise` 会列出每个**关闭**座位以及它仍然拥有的**未关闭**
-  看板行，并标明它是**放弃围栏**（队长该修的）还是**归屏障所有**（待处理检查点窗口，队长无需动作）。
-  上面的解围杠杆就是修复放弃后果的方式。
+  看板行，并标明它是**放弃围栏**（队长该修的）还是**归屏障所有**（待处理检查点窗口）。归屏障所有的座位
+  **并非**自动安全：没有任何东西监管屏障——没有定时器、没有队列、没有重试负责人——因此巡检会报告
+  `barrierOwned`、`forceEligible` 与 `pendingMs`，并点名有界的强制杠杆，而不是承诺「无需队长动作」。
+  上面的解围杠杆就是修复放弃后果的方式。**重试上限**：每一次「没有重开」的屏障运行都会给 CELL 行加一
+  `barrierFailures`，达到 `compactionRetries` 的那一次运行会给座位打上围栏，`fencedReason` 里点名计数
+  （`N of M consecutive barrier runs did not reopen the seat`）；一次重开（`promoted`）运行会删除
+  `barrierFailures` 与 `checkpointSince`。这个上限只覆盖**跨多次运行仍停留在窗口里**的座位——session 已死的
+  座位不会再启动运行，由下面的强制杠杆兜底。
 
 **通用 team 动词带着一个 cell 模式已经消除的危险。** `agent_teams_dispatch` 会把就绪任务配给声明的 owner，但当
 该 owner 忙时会**退回按名册顺序**配对。就在本波次里，它把一条 **REVIEW** 任务交给了**写过被审泳道**的成员；
@@ -232,8 +259,8 @@ owner**、绝不替换的；在 cell 模式之外，**等声明的 owner 空出�
 | `cellwork_consult` | 规划器、副队长、成员 | 对本 cell 通过 `cellwork_delegate` 发起的咨询做 `list` / `wait` / `collect` / `cancel`：`list` 只列本 cell 的、监督器仍然记得的 id；`wait` 收敛到 1..60000 ms（默认 30000），超时返回 `state:\"running\"`；`collect` 返回报告并**释放**记录；`cancel` 中断子会话并记 `consult-cancelled`；不是本 cell 发起的 id 会被一句教学式拒绝 |
 | `cellwork_split` | 切分器 | `submit` 任务图让插件度量（每个任务可声明自己的看板 `member`），或 `show` 上一次的裁定；每次拒绝都把 findings 持久化到 `split/<修订>.refused.json`；一个**非致命**的 `warnings` 列表按切分键点名每个没有写作用域的 `work`/`repair`/`integration` 任务，且永不改变 `accepted` |
 | `cellwork_activate` | 队长 | 把被接受的切分物化到活跃 team 记录、写合约（同时点名 owner role 与成员）、对每个不同的 `member` 只拉起一个成员、打开验证循环、派发；中途失败的一轮会被检查点记录，同一个修订号可以续做，而更新的被接受修订号会取代更旧的在飞部分激活；返回的 `reused` 列出从 cell 记录或活跃名册解析（而不是新拉起）的成员名，而保留了任务的重切分还会返回 `notice`（合约不被重写、扩展作用域需要手工重新冻结加新的验证循环、就绪行按仅声明所有者派发）；成员行的**另外两种**出现方式是暂存与采纳（见「成员：暂存的、拉起的与采纳的」） |
-| `cellwork_dispatch` | 队长 | 在 team 看板上做一次「仅声明所有者」的派发；owner 忙、缺席或被围栏时如实报告、任务保持待派发；`reassign` 先把点名的行交给另一个成员（看板 claim → `task-reassigned` journal → 投递），而 `unfence` 在派发**之前**清除点名成员**已放弃**的围栏：CELL 行的 `fenced: true` **就是**放弃（两个键被删除、`mode: member`、`handoffReady: false`、`handoffs` 保留、记 `member-unfenced`），并通过团队平面的 `unfence` 接缝重新打开 TEAM 座位（该接缝也清掉 `mode: checkpoint`；没有接缝时报告 `plane: "absent"` 且不声称已重开）；**待处理**的检查点（CELL 行无 `fenced: true`、TEAM 行 `mode: checkpoint` 且没有 `fenced` 标志）答复 `checkpoint-pending` 且什么都不写；`not-fenced` 如实回答，未知或有歧义的名字拒绝整个调用，两者可以放在同一次调用里 |
-| `cellwork_supervise` | 队长 | 只读巡检：待处理的检查点、压缩、晋升、过期切分、未读邮件、每一条**未投递**的邮件行，以及每个**关闭**座位与其仍拥有的未关闭行——每行标记 `giveUp:true`（任一记录上显式 `fenced:true`，用 `reassign` 加 `unfence` 修复）或 `giveUp:false`（归屏障所有的 `mode: checkpoint` 窗口，不提供任何杠杆）；每个投影都是无损 JSON，没有 `undefined` 自有键 |
+| `cellwork_dispatch` | 队长 | 在 team 看板上做一次「仅声明所有者」的派发；owner 忙、缺席或被围栏时如实报告、任务保持待派发；`reassign` 先把点名的行交给另一个成员（看板 claim → `task-reassigned` journal → 投递），而 `unfence` 在派发**之前**清除点名成员**已放弃**的围栏：CELL 行的 `fenced: true` **就是**放弃（两个键被删除、`mode: member`、`handoffReady: false`、`handoffs` 保留、记 `member-unfenced`），并通过团队平面的 `unfence` 接缝重新打开 TEAM 座位（该接缝也清掉 `mode: checkpoint`；没有接缝时报告 `plane: "absent"` 且不声称已重开）；**待处理**的检查点（CELL 行 `mode: checkpoint` 或 `handoffReady: true`，或 TEAM 行 `mode: checkpoint` 且没有 `fenced` 标志）——以及**死重种**座位（R5.2：`subcaptain`、非交接就绪、记录的 session 被证明已死）——答复 `checkpoint-pending` 且什么都不写，不带 `force` 的待处理窗口答复 `checkpoint-pending` 且什么都不写，除非条目请求**失败即拒绝**的强制杠杆（`{member, force: true}`：活跃 session 直接拒绝，只有达到重试预算、超过 `checkpointPendingMaxMs`，或凭死重种形态那个**被证明已死**的 session 且记录里有时间戳才允许（`bound: "dead-session"`），并记 `member-unfenced-forced`）；平面那一半若以 `refused` 结束，答复、journal 行与渲染里都会带 `retry`（确切的 `agent_teams_control {action: "unfence", member}` verb）；`not-fenced` 如实回答，未知或有歧义的名字拒绝整个调用，两种形式可以放在同一次调用里 |
+| `cellwork_supervise` | 队长 | 只读巡检：待处理的检查点、压缩、晋升、过期切分、未读邮件、每一条**未投递**的邮件行，以及每个**关闭**座位与其仍拥有的未关闭行——每行标记 `giveUp:true`（任一记录上显式 `fenced:true`，用 `reassign` 加 `unfence` 修复）或 `giveUp:false`（被持有的座位：归屏障所有的窗口，或标了 `deadReseed:true` 的死重种形态），后者还带 `barrierOwned`、`forceEligible` 与 `pendingMs`，并在没有监管者能重开它时点名有界的强制杠杆；`forceEligible` 与 `cellwork_dispatch {unfence:…, force:true}` 用的是**同一个判据**，绝不是第二份拷贝；TEAM 那一半是没有屏障再挂起的 `checkpoint` 的关闭座位会带 `retry`（那个仅队长可用的确切 verb）；记录里的 session 不活跃、而注册表**存在**的成员会标 `suspect:true`；每个投影都是无损 JSON，没有 `undefined` 自有键 |
 | `cellwork_context` | 成员 | 调用者自己的实时占用、度量所用的窗口，以及该窗口的来源 |
 | `cellwork_handoff` | 成员 | 写入并校验检查点交接文档；把检查点标记为就绪；第一份仍在等待屏障时，**第二份**会被拒绝；只被**活跃** team 记录认识的成员会先被采纳（见「成员：暂存的、拉起的与采纳的」），因此拿到同一条通道 |
 | `cellwork_subteam` | 已晋升的副队长 | 登记子 cell、执行深度上限、返回副队长指令 |
@@ -400,18 +427,53 @@ UTF-8 字符 3 字节、按每字符 1 token），因此中文密集的任务只
    `handoff/<member>-<n>.md`、记入 journal，并把检查点标记为 `handoff-ready`。指令要求该 agent 结束本回合，
    别的什么都不要做。
 4. **压缩**：在 `agent/turn-stopping` 时，监听器**返回**屏障的 promise，于是宿主的串行派发会 **await** 它，
-   而不是与一个已脱离的屏障赛跑。屏障先等该 agent 空闲下来（`compactionRetries` 次有界重试，间隔
-   `idleBarrierDelayMs`），然后**在**任何 sleep **之前**、在查注册表**之前**，从事件携带的**活跃**成员 handle
-   解析引擎（`compactionEngineForLiveAgent`），因此一个已从 `ctx.agents` 脱离的成员仍会原地压缩；只有该
-   handle 没带引擎时，才轮到按 id 的 `compactionEngineForAgent`。重试之间可以有延迟，**第一次**尝试之前没有。
-   引擎带真实的 `AbortController` 信号驱动，结果会被分类并记入 journal：`null`（没有安全可用的区间）、
-   `busy`（agent 忙碌）与 `error` 全都会被记录，因此重试预算用完绝不是一次静默的空操作。
+   而不是与一个已脱离的屏障赛跑。屏障**不会**等待 agent 空闲：它最多做 `compactionRetries` 次尝试，在两次
+   之间 sleep `idleBarrierDelayMs`（**第一次**之前没有 sleep），并**在**任何 sleep **之前**、在查注册表**之前**，
+   从事件携带的**活跃**成员 handle 解析引擎（`compactionEngineForLiveAgent`），因此一个已从 `ctx.agents`
+   脱离的成员仍能到达它自己领域里的引擎；只有该 handle 没带引擎时，才轮到按 id 的
+   `compactionEngineForAgent`。引擎带真实的 `AbortController` 信号驱动，结果会被分类并记入 journal：
+   `null`（没有安全可用的区间）、`busy`（agent 忙碌）与 `error` 全都会被记录，因此重试预算用完绝不是一次
+   静默的空操作。**每次尝试都是 `busy` 是宿主自身的边界，journal 会写明这一点**（R4.0）：引擎的
+   `compactNow` 跑在 `agent.runMaintenance` 里，而后者拒绝除 idle 之外的任何阶段；`agent/turn-stopping`
+   又是在**回合内部**派发、且监听器会被 await 的——所以在宿主上，原地压缩**无法**在这个事件上运行，等待也
+   改变不了它（宿主必须先拿到监听器的 promise，才可能进入 idle）。因此重种是这个事件唯一的出路，reason
+   文本会记录这个事实，而不是把 `busy` 留成一句无人解释的话。
 5. **晋升或重种**：结果并集恰好是 `promoted | reseeded | refused`。压缩成功时，**同一个**成员原地晋升——不打断、
    不重种——该 session 的模式变为 `subcaptain`，并收到晋升指令（深度 + 1、从交接文档继承剩余范围、子 team
    协议）。若没有安全区间或压缩失败，则释放该激活，用交接文本作为提示词启动一个新的子代理，并同样种入晋升
    指令——但绝不用成员自己那个已死的 Agent 当父级：重种的父级依次是成员记录的 `parentSession`（解析为活跃
    会话）、该 cell 的队长，两者都不活跃时屏障以**独立**原因 `reseed-parent-unavailable` 拒绝。真正用到的
    父级会记入 journal（`parentSource` + `parentSessionId`），因此血缘由可观测取代推断。
+   **屏障**欠**这个座位一次重开，这是它的**职责**（R4.1）。** `cellwork_handoff` 在文档落地时把 TEAM 行写成
+   `mode: "checkpoint"`，而这个拼写会让守卫和派发都把座位视为关闭。因此只要屏障结果不是 `refused`，它就
+   **以队长身份**调用团队平面的 `unfence` 接缝（`{sessionId: cell.captainSessionId, member}`——与队长自己的
+   verb 用的是同一份授权），记 `member-unfenced` 且 `by: "barrier"`，并把平面那一半完全按该 verb 的方式报告：
+   `plane: "unfenced" | "absent" | "refused"`（`planeReason` 带平面自己的原话）。被**拒绝**的那一半不是死胡同
+   （R5.4）：journal 行还会带 `retry`，写明能够重新驱动该接缝的那个**确切的**、仅队长可用的 verb
+   ——`agent_teams_control {action: "unfence", member: "<名字>"}`——而 `cellwork_supervise` 对一个
+   「没有屏障再为它挂起」的 TEAM `checkpoint`（CELL 行已经离开窗口）也会报出同一个 verb，操作者不必猜。
+   晋升后的座位在**两个**记录里都重新打开；**重种**后的座位指向新的子代理，并额外记 `member-reseeded`
+   `{previousSessionId, newSessionId, retired, plane}`，让这次交接成为事实而不是推断。原 session 会用宿主的
+   `interrupt` 退役：**目标**始终是成员自己的 id（绝不是新子代理），而**授权**来自一个**活跃祖先**（R5.1）
+   ——也就是这次重种所用的那个 session：成员的持久父会话（当它活跃时），否则该 cell 的队长——作为 `ancestor`
+   授权传进去。成员**自己**的 handle 永远不是授权：宿主用 session id 索引 Agent，所以那个写法**就是**目标，
+   `dsh-subagent` 会在祖先检查**之前**以 `UNAUTHORIZED "cannot interrupt itself"` 拒绝它。因此记录写的就是
+   宿主真正做过的事：`retired: true` 只在目标被**证明活跃**且宿主接受了打断时出现（`retirement: "accepted"`）；
+   身份注册表对记录的 session 给不出活跃 agent 时是 `retirement: "nothing-to-retire"`（死座位形态，也是宿主
+   自己文档化的空操作，**绝不**算退役）；宿主拒绝时是 `"refused"`，它自己的原话放在 `retirementReason`；组合
+   没有打断接缝或没有身份接缝时是 `"unavailable"`。以上任何一种答案都不会阻止重种，`member-reseeded` 行会在
+   `retired` 旁边带上 `retirement`/`retirementReason`。**声明边界：** 如果宿主仍能向已退役的 session 投递，
+   它就可以继续收到投递——座位记录指向新的子代理，本 bundle 不会为此发明第二套撤销机制；此外驻留性是通过
+   agents 注册表证明的（那正是宿主授权检查所用的身份），所以一个活跃但**非驻留**的外部激活会静默答复并被记成
+   `accepted`（本 bundle 只起**本地**可续子代理，因此那是它并不构建的组合的残留边界）。
+
+   **重种**不是**「子代理能工作」的证明（R4.2）。** 拿到 handle 被记为 `reseeded`，它诚实的含义只是「启动了一个
+   子代理」：座位保留它的 `checkpointSince` 时钟（只有 `promoted` 结果才会清除它），而
+   `cellwork_supervise` 会把「记录里的 session 已不被活跃注册表持有」的座位报告为 `suspect: true`，并带上
+   `pendingMs` 与 `forceEligible`。当组合里根本没有 agents 注册表时，答案是 `unknown`，**绝不是**「已死」，也
+   不会仅凭这一点把任何座位报成 suspect。session 已死的座位由下面的强制杠杆兜底，而不是由重试计数兜底：
+   它不会再启动任何一次屏障运行。
+
 6. **子 team**：被晋升的 agent 用 `cellwork_subteam` 登记自己的子 cell，并领导自己的计划。当
    `depth + 1 > depthMax`（默认 3）时 `cellwork_subteam` 会拒绝并返回确切的边界，父 team 的深度读自
    `mpdTeams.depthBudget`；它**不启动任何 agent** —— 只写子 cell 记录，并回答一条由被晋升成员随后执行的指令。
@@ -521,6 +583,7 @@ cell id 形如 `cell-<UTC 时刻>`；子 cell 会记录 `parentCellId` 与 `dept
 `depthMax` 3 · `checkpointRatio` 0.5 · `windowFraction` 0.25 · `fixedOverheadTokens` 32000 ·
 `fixedOverheadByRoute` {} · `toolSchemaChars` 0 · `outputReserveTokens` 8192 ·
 `compactionHeadroomTokens` 65536 · `compactionRetries` 3 · `idleBarrierDelayMs` 200 ·
+`checkpointPendingMaxMs` 900000 ·
 `asciiCharsPerToken` 3 · `cjkCharsPerToken` 1 · `contractGates` [] · `windowOverride` null。
 
 邮件上限是这张表**唯一**的例外：`mail.maxUndelivered`（默认 8，`0` 表示关闭；缺失或不可用的值回退到 8）
@@ -535,9 +598,11 @@ cell id 形如 `cell-<UTC 时刻>`；子 cell 会记录 `parentCellId` 与 `dept
   绕过工具直接调用 service 的代码行。读不出来的 cell 记录会放行所有调用者：守卫无法执行一个它看不见的
   模式：此时拒绝会带着记录路径出现在命令与 `cellwork_status` 上。
 - **采纳与解围修复的是记录，不是过去。** 采纳只覆盖 TEAM 记录已经认识的成员；team 记录里没有的 session，
-  按设计仍然没有通道。`unfence` 清除 cell 行上的**放弃**围栏，并在组合暴露 `mpdTeamActions.unfence` 接缝时
-  清除 TEAM 行——绝不碰待处理的检查点（那归屏障所有）；它不重建已死的 session，而旧构建已经写下的 cell 行
-  只能经采纳与解围修复：历史不会被改写。
+  按设计仍然没有通道。**不带 force** 的 `unfence` 清除 cell 行上的**放弃**围栏，并在组合暴露
+  `mpdTeamActions.unfence` 接缝时清除 TEAM 行——绝不碰待处理的检查点（那归屏障所有）。有界的**强制**杠杆
+  （`{member, force: true}`）是例外，也就是上面记录的那一个：它只在写下过的许可下重开归屏障所有的窗口或
+  死重种座位（重试预算、待处理时限，或被证明已死的 session），并且绝不重开活跃座位。两种形式都不重建已死的
+  session，而旧构建已经写下的 cell 行只能经采纳与解围修复：历史不会被改写。
 - **1/4 预算是估算**，带声明的英文 ±25% 误差界，且对 CJK 刻意从严；它不是对模型分词器的测量，因为部署里
   根本没有分词器。
 - **挂载由 overlay 证明。** 在这台机器上，普通的 link-profile 启动仍会解析到一个陈旧的 `@mpd-dsh/mpd` 包，

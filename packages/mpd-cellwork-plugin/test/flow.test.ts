@@ -1346,9 +1346,13 @@ test("B8: the barrier compacts with a REAL signal, promotes on success, and rese
   // keeps its original subject (the reseed path runs, the stale child is interrupted, a handle is minted).
   /** The one live session this arm offers: the captain. */
   const liveCaptain = { id: "session-captain" }
+  // THE TARGET IS LIVE AND ITS PARENT IS LIVE, so the retirement is a real one (R5.1): the identity seam
+  // proves the member's own session, the captain is the only live ancestor, and the interrupt is accepted.
+  /** The live member session the retirement targets. */
+  const liveMember = { id: "session-worker" }
   /** The reseed outcome. */
   const reseeded = await promoteAfterHandoff({
-    dsh: { compactionEngineForAgent: () => ({ compactNow: async () => null }), compactionEngineForLiveAgent: () => undefined, liveAgentExact: (id: string) => (id === "session-captain" ? liveCaptain : undefined), startContinuableAgent: async () => ({ childId: "handle-fresh" }), interruptAgent: () => { interrupted = true } },
+    dsh: { compactionEngineForAgent: () => ({ compactNow: async () => null }), compactionEngineForLiveAgent: () => undefined, liveAgentExact: (id: string) => (id === "session-captain" ? liveCaptain : id === "session-worker" ? liveMember : undefined), startContinuableAgent: async () => ({ childId: "handle-fresh" }), interruptAgent: () => { interrupted = true } },
     agent: {}, memberName: "worker", sessionId: "session-worker", cell, config,
     handoffText: "## Next step\nfinish B", nextStep: "finish B",
     injectDirective: () => {}, sleep: async () => {},
@@ -1356,6 +1360,9 @@ test("B8: the barrier compacts with a REAL signal, promotes on success, and rese
   expect(reseeded.outcome).toBe("reseeded")
   expect(reseeded.newHandle).toBe("handle-fresh")
   expect(interrupted).toBe(true)
+  // WHAT THE HOST DID IS THE RECORD: `accepted` is the only value behind `retired: true`.
+  expect(reseeded.retired).toBe(true)
+  expect(reseeded.retirement).toBe("accepted")
   // A real abort signal is produced even when no parent exists, and a parent abort propagates.
   /** The child signal. */
   const child = compactionSignal()
@@ -1885,11 +1892,16 @@ test("C2.1: the compaction barrier classifies busy, error and no-engine after th
   })
   expect(busyAttempts).toBe(2)
   expect(busy.outcome).toBe("reseeded")
-  expect(busy.reason).toBe("busy")
+  // THE CLASSIFICATION IS UNCHANGED, AND IT IS NO LONGER SILENT (R4.0): `busy` on EVERY attempt is the
+  // host's own bound (`compactNow` needs an idle agent; `agent/turn-stopping` fires inside the turn), so
+  // the reason says that instead of leaving "busy forever" as the unexplained normal path.
+  expect(busy.reason).toStartWith("busy")
+  expect(busy.reason).toContain("cannot run at this event")
+  expect(busy.reason).toContain("the reseed is the only path")
   /** The journal row that outcome writes. */
   const busyRow = compactionJournalEntry("worker", busy)
   expect(busyRow.event).toBe("compaction")
-  expect(busyRow.reason).toBe("busy")
+  expect(String(busyRow.reason)).toContain("`busy` on every attempt")
   expect(busyRow.attempts).toBe(2)
   // A THROWN ERROR is its own classification, and the reseed still happens.
   /** The barrier's answer for a failing engine. */

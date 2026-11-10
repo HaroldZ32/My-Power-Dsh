@@ -238,17 +238,43 @@ three signals, and a fenced member is never messaged.
   `{member, unfenced: true, plane, planeReason?}` per cleared CELL row and reports the plane's half as
   `unfenced`, `absent` or `refused`, never claiming a reopen that did not happen.
 - **A pending checkpoint is NOT a give-up.** Every handoff sets the TEAM row's `mode: "checkpoint"`
-  while the compaction barrier still owes the reopen, and that row carries no `fenced` key. When the
-  CELL row carries no `fenced: true` either, asking to unfence it answers
+  while the compaction barrier still owes the reopen, and that row carries no `fenced` key. A seat is
+  BARRIER-OWNED when ANY of these holds: the CELL row's `mode` is `checkpoint`, its `handoffReady` is
+  `true`, or the TEAM row is at `mode: "checkpoint"`. Asking to unfence it WITHOUT `force` answers
   `{member, unfenced: false, reason: "checkpoint-pending", detail}` — the barrier owns that state — and
-  NEITHER record is written and the seam is NOT called. The CELL marker above outranks this: a real
-  give-up is recovered even while its TEAM row still reads `mode: "checkpoint"`. Only the barrier (or a
-  give-up fence) moves that seat.
-- **`not-fenced` is reported, never dressed up.** A member that NEITHER record fences answers
-  `{member, unfenced: false, reason: "not-fenced"}` and the record is NOT rewritten — including a member
-  whose CELL row merely carries `handoffReady: true` while neither record carries a marker, because only
-  an explicit give-up marker is cleared (reopening a bare waiting row would invite the second-handoff
-  livelock). A name resolves
+  NEITHER record is written and the seam is NOT called, including when only the CELL row shows the
+  window (that case used to answer the contradictory `not-fenced`). The CELL `fenced` marker above
+  outranks this: a real give-up is recovered even while its TEAM row still reads `mode: "checkpoint"`.
+- **The bounded FORCED lever: `unfence: [{member, force: true}]` (R4.4, last resort).** A bare string
+  keeps the unforced behaviour byte-identically, so nothing forces by accident; the object form is the
+  only way to ask for the lever, and it is FAIL-CLOSED: it REFUSES outright when the recorded session is
+  still a live agent (`reason: "live-session"`), and otherwise allows the clear only when a WRITTEN bound
+  is reached — `barrierFailures` at `compactionRetries` (reason `retry-budget`) or a `checkpointSince`
+  older than `checkpointPendingMaxMs`, default 15 minutes (reason `stale`). A missing timestamp with
+  zero recorded failures is NOT a licence (`reason: "force-not-eligible"`): the timestamp may fall back
+  to the last `checkpoints` entry for that session, and when neither exists nothing is eligible. A
+  permitted clear deletes `fenced`/`fencedReason`/`barrierFailures`/`checkpointSince`, restores
+  `mode: "member"` with `handoffReady: false`, keeps `handoffs`/`joinedAt`/`adopted`, asks the plane to
+  reopen the TEAM seat best-effort, journals `member-unfenced-forced`
+  (`{member, by: "captain", reason, pendingMs, barrierFailures, sessionId, liveness, plane}`) and answers
+  `{member, unfenced: true, forced: true, alive, liveness, sessionId, bound, pendingMs?, plane}`. **It reopens the
+  seat for REASSIGNMENT, not for work**: the context was never compacted, so a delivery would resume the
+  very context the handoff document already describes.
+
+  **THE DEAD-RESEED SEAT IS COVERED BY THE SAME PREDICATE (R5.2).** A reseed writes `subcaptain` with
+  `handoffReady: false` and reopens the TEAM row to `member`, so NO checkpoint spelling holds it — and
+  when the fresh child is not a live agent (`liveness: "dead"`: the registry is present and answers
+  nothing) no turn will ever fire for it again. That seat is HELD all the same, its licence is the
+  PROVEN-DEAD session (`bound: "dead-session"`), and its window's stamp is still required: an unstamped
+  row falls back to the retry budget and, with neither, answers `force-not-eligible`. An ABSENT registry
+  is `unknown`, never dead, so nothing is proven and nothing is cleared. **ONE predicate decides every
+  one of these answers** — `barrierOwned`, the dead-reseed shape, the live veto, the stamp, the bound —
+  and `cellwork_supervise` projects the SAME reading, so the lever the sweep advertises is exactly the
+  lever this verb accepts (the two used to be separate predicates, and the sweep advertised a lever the
+  verb refused as `not-fenced`).
+- **`not-fenced` is reported, never dressed up.** A member that NEITHER record fences AND carries no
+  checkpoint window answers `{member, unfenced: false, reason: "not-fenced"}` and the record is NOT
+  rewritten. A name resolves
   UNAMBIGUOUSLY — exact member key, then exact display name, then the normalized key only when it is
   non-empty and carried by EXACTLY ONE member; anything else (unknown, or ambiguous such as `1` against
   后端1/前端1) refuses the WHOLE call and names the recorded members. Nothing is cleared, written or
@@ -272,8 +298,16 @@ three signals, and a fenced member is never messaged.
 - **A given-up barrier records its consequence.** The member gets `fenced: true` + `fencedReason`, the
   journal gets a `checkpoint-unrecoverable` row naming the repair, and `cellwork_supervise` lists every
   CLOSED seat together with the OPEN board rows it still owns, marking each as a GIVE-UP fence (the
-  captain's to repair) or BARRIER-OWNED (the pending checkpoint window, which needs no captain action).
-  The unfence lever above is how the give-up consequence is repaired.
+  captain's to repair) or BARRIER-OWNED (the pending checkpoint window). A barrier-owned seat is NOT
+  automatically safe: nothing supervises the barrier — no timer, no queue, no retry owner — so the sweep
+  reports `barrierOwned`, `forceEligible` and `pendingMs` and names the bounded forced lever instead of
+  promising that no action is needed. The unfence lever above is how the give-up consequence is
+  repaired. **The retry bound**: each non-reopening barrier run increments the CELL row's
+  `barrierFailures`, and the run that reaches `compactionRetries` fences the seat with a `fencedReason`
+  naming the count (`N of M consecutive barrier runs did not reopen the seat`); a reopening
+  (`promoted`) run deletes both `barrierFailures` and `checkpointSince`. That bound only covers a seat
+  that STAYS in the window across runs — a seat whose session died starts no further run and is bounded
+  by the forced lever below.
 
 **The generic team verb carries a hazard cell mode does not.** `agent_teams_dispatch` pairs a ready task
 with its declared owner but FALLS BACK TO ROSTER ORDER when that owner is busy. During this very wave
@@ -298,8 +332,8 @@ merely theoretical risk.
 | `cellwork_consult` | planner, subcaptain, member | `list` / `wait` / `collect` / `cancel` the consults THIS cell started through `cellwork_delegate`: `list` answers only this cell's ids the supervisor still knows, `wait` clamps to 1..60000 ms (default 30000) and answers `state:"running"` when the bound wins, `collect` returns the report and RELEASES the record, `cancel` interrupts and journals `consult-cancelled`; an id this cell did not start is refused with a teaching sentence |
 | `cellwork_split` | splitter | `submit` a graph so the plugin can measure it (each task may declare its board `member`), or `show` the last verdict; every refusal persists its findings at `split/<revision>.refused.json`; a NON-FATAL `warnings` list names every `work`/`repair`/`integration` task with no write scopes, by key, and never changes `accepted` |
 | `cellwork_activate` | captain | materialise an accepted split on the live team record, write contracts (owner role AND member), raise one member per distinct `member`, open verify loops, dispatch; a failed pass is checkpointed and the SAME revision resumes it, while a newer accepted revision supersedes an older in-flight one; the answer's `reused` list names the members resolved from the cell record or the live roster instead of raised, and a re-split that kept tasks also returns a `notice` (contracts not rewritten, scope expansion needs a manual re-freeze plus a new verify loop, ready rows dispatched owner-only); the OTHER ways a member row appears are staging and adoption (see "Members: staged, activated or adopted") |
-| `cellwork_dispatch` | captain | one owner-only dispatch pass over the team board; a busy, absent or fenced owner is reported and the row left pending; `reassign` hands named rows to another member FIRST (board claim → `task-reassigned` journal → delivery), and `unfence` clears named members' GIVEN-UP fences BEFORE the pass (both keys deleted, `mode: member`, `handoffReady: false`, `handoffs` kept, `member-unfenced` journaled; the TEAM row only through the plane's `unfence` seam, with `plane: "absent"` reported when the composition exposes none); a PENDING checkpoint (`mode: checkpoint`, no `fenced` flag) answers `checkpoint-pending` and writes nothing; `not-fenced` is honest, an unknown or ambiguous name refuses the call, and the two may travel together |
-| `cellwork_supervise` | captain | read-only sweep: pending checkpoints, compactions, promotions, stale splits, unread mail, every UNDELIVERED mail row, and every CLOSED seat with the open rows it still owns — each marked `giveUp:true` (an explicit `fenced:true` on either record, repaired with `reassign` plus `unfence`) or `giveUp:false` (a barrier-owned `mode: checkpoint` window, which gets no lever); every projection is lossless JSON, with no `undefined` own key |
+| `cellwork_dispatch` | captain | one owner-only dispatch pass over the team board; a busy, absent or fenced owner is reported and the row left pending; `reassign` hands named rows to another member FIRST (board claim → `task-reassigned` journal → delivery), and `unfence` clears named members' GIVEN-UP fences BEFORE the pass (both keys deleted, `mode: member`, `handoffReady: false`, `handoffs` kept, `member-unfenced` journaled; the TEAM row only through the plane's `unfence` seam, with `plane: "absent"` reported when the composition exposes none); a PENDING/barrier-owned window (CELL `mode: checkpoint` OR `handoffReady: true`, or the TEAM row at `mode: checkpoint`, with no `fenced` flag) — and the DEAD-RESEED seat (R5.2: `subcaptain`, not handoff-ready, recorded session proven dead) — answers `checkpoint-pending` and writes nothing unless the entry asks for the FAIL-CLOSED forced lever (`{member, force: true}`: refused for a live session, allowed only at the retry budget, past `checkpointPendingMaxMs`, or ON the dead-reseed shape's proven-dead session with a recorded stamp, `bound:"dead-session"`, journaled as `member-unfenced-forced`); a plane half that ends `refused` carries `retry` (the exact `agent_teams_control {action:"unfence", member}` verb) in the answer, the journal row and the render; `not-fenced` is honest, an unknown or ambiguous name refuses the call, and the two forms may travel together |
+| `cellwork_supervise` | captain | read-only sweep: pending checkpoints, compactions, promotions, stale splits, unread mail, every UNDELIVERED mail row, and every CLOSED seat with the open rows it still owns — each marked `giveUp:true` (an explicit `fenced:true` on either record, repaired with `reassign` plus `unfence`) or `giveUp:false` (a held seat: a barrier-owned window, or the DEAD-RESEED shape flagged `deadReseed:true`), which also carries `barrierOwned`, `forceEligible` and `pendingMs` and names the bounded forced lever when no supervisor can reopen it; `forceEligible` is the SAME predicate `cellwork_dispatch {unfence:…, force:true}` decides with, never a second copy; a closed seat whose TEAM half is a `checkpoint` no barrier is pending for carries `retry`, the exact Lead-only verb that reopens it; a member whose recorded session is NOT live while the registry IS present is `suspect:true`; every projection is lossless JSON, with no `undefined` own key |
 | `cellwork_context` | member | the caller's own live occupancy, the window it was measured against, and that window's provenance |
 | `cellwork_handoff` | member | write and validate the checkpoint handoff document; marks the checkpoint ready; a SECOND document is refused while the first still waits for the barrier; a member known only to the LIVE team record is adopted first (see "Members: staged, activated or adopted"), so it gets the same channel |
 | `cellwork_subteam` | promoted subcaptain | register a sub-cell, enforce the depth cap, return the sub-captain directive |
@@ -501,15 +535,20 @@ and hands the work to a successor. The sequence is mechanical:
    it and marks the checkpoint `handoff-ready`. The directive tells the agent to end its turn and do
    nothing else.
 4. **Compact**: on `agent/turn-stopping` the listener RETURNS the barrier promise, so the host's serial
-   dispatch AWAITS it instead of racing a detached one. The barrier waits for the agent to be idle
-   (`compactionRetries` bounded retries, `idleBarrierDelayMs` between them) and resolves the engine from
-   the LIVE member handle the event carries — through `compactionEngineForLiveAgent`, BEFORE any sleep
-   and BEFORE the registry lookup — so a member already detached from `ctx.agents` still compacts in
-   place; only when that handle carries no engine does the id-keyed `compactionEngineForAgent` get a
-   chance. A retry delay may sit between attempts; there is none before the FIRST one. The engine is
+   dispatch AWAITS it instead of racing a detached one. The barrier does NOT wait for the agent to be
+   idle: it makes at most `compactionRetries` attempts, sleeping `idleBarrierDelayMs` BETWEEN them (there
+   is no sleep before the FIRST one), and resolves the engine from the LIVE member handle the event
+   carries — through `compactionEngineForLiveAgent`, BEFORE any sleep and BEFORE the registry lookup — so
+   a member already detached from `ctx.agents` still reaches its own realm's engine; only when that
+   handle carries no engine does the id-keyed `compactionEngineForAgent` get a chance. The engine is
    driven with a real `AbortController` signal, and the outcome is classified and journaled: a `null`
    result (no safe useful range), a `busy` agent and an `error` are all recorded, so a retry budget
-   running out is never a silent no-op.
+   running out is never a silent no-op. **`busy` on EVERY attempt is the host's own bound, and the
+   journal says so** (R4.0): the engine's `compactNow` runs inside `agent.runMaintenance`, which refuses
+   any phase but idle, while `agent/turn-stopping` is dispatched INSIDE the turn and its listeners are
+   awaited — so in-place compaction cannot run at this event on this host, and waiting cannot change it
+   (the host awaits the listener's promise before it can reach idle). The reseed is therefore the only
+   path from this event, and the reason text records that fact instead of leaving `busy` unexplained.
 5. **Promote or reseed**: the outcome union is exactly `promoted | reseeded | refused`. On a successful
    compaction the SAME member is promoted in place — no interrupt, no reseed — its session's mode becomes
    `subcaptain` and it receives the promotion directive (depth + 1, the remaining scope taken from the
@@ -519,6 +558,45 @@ and hands the work to a successor. The sequence is mechanical:
    recorded `parentSession` resolved live, then the cell's captain, and when neither is live the barrier
    REFUSES with the distinct reason `reseed-parent-unavailable`. The parent actually used is journaled
    (`parentSource` + `parentSessionId`), so lineage is observable rather than inferred.
+
+   **The barrier OWES the seat its reopen, and this is its DUTY (R4.1).** `cellwork_handoff` writes TEAM
+   `mode: "checkpoint"` when the document lands, and that spelling closes the seat for the guard and for
+   dispatch. A barrier outcome that is not `refused` therefore calls the plane's `unfence` seam AS THE
+   CAPTAIN (`{sessionId: cell.captainSessionId, member}` — the same authority the captain's own verb
+   uses), journals `member-unfenced` with `by: "barrier"`, and reports the plane's half exactly as that
+   verb does: `plane: "unfenced" | "absent" | "refused"` (with the plane's sentence in `planeReason`).
+   A REFUSED half is not a dead end (R5.4): the journal row also carries `retry` with the exact
+   Lead-only verb that re-drives the seam — `agent_teams_control {action: "unfence", member: "<name>"}` —
+   and `cellwork_supervise` reports that same verb for a TEAM `checkpoint` no barrier is pending for
+   (the CELL row already left the window), so an operator is never left guessing.
+   A promoted seat is open in BOTH records again; a RESEEDED one points at the fresh child, and its row
+   additionally journals `member-reseeded` `{previousSessionId, newSessionId, retired, plane}` so the
+   hand-over is a fact rather than an inference. The ORIGINAL session is retired with the host's
+   `interrupt` TARGETING the member's own id (never the new child) and AUTHORISED BY A LIVE ANCESTOR
+   (R5.1): the same session the reseed is raised under — the member's durable parent when that session is
+   live, else the cell's captain — passed as the `ancestor` authority. The member's OWN handle is never
+   the authority: the host keys an Agent by its session id, so that spelling IS the target and
+   `dsh-subagent` refuses it as `UNAUTHORIZED "cannot interrupt itself"` BEFORE its ancestry check.
+   What the record says is therefore what the host did: `retired: true` only when the target was PROVEN
+   live and the host took the interrupt (`retirement: "accepted"`); `retirement: "nothing-to-retire"`
+   when the identity registry holds no live agent for the recorded session (the dead-seat shape, and the
+   host's own documented no-op — NEVER a retirement); `"refused"` when the host said no, with its own
+   sentence in `retirementReason`; and `"unavailable"` when this composition exposes no interrupt or no
+   identity seam. The reseed proceeds on every one of those answers, and the journal row
+   `member-reseeded` carries `retirement`/`retirementReason` beside `retired`. **Declared bounds:** a
+   host that keeps a retired session deliverable can still deliver to it — the seat record points at the
+   new child, and this bundle does not invent a second revocation mechanism — and residency is proven
+   through the agents registry, which is the identity the host's own authority check consults, so a live
+   but NON-RESIDENT external activation would answer silently and be recorded `accepted` (this bundle
+   raises LOCAL continuable children, so that is a residual of a composition it does not build).
+
+   **A reseed is NOT proof of a working child (R4.2).** A resolved child handle is recorded as
+   `reseeded`, which is honest only as "a child was started": the seat keeps its `checkpointSince` clock
+   (a `promoted` outcome is the only one that clears it), and `cellwork_supervise` reports a seat whose
+   recorded session the live registry does NOT hold as `suspect: true` with `pendingMs` and
+   `forceEligible`. When the composition has no agents registry the answer is `unknown`, NEVER "dead",
+   and no seat is reported suspect on that basis. A seat whose session died is bounded by the forced
+   lever below, not by the retry count: it starts no further barrier run.
 6. **Sub-team**: the promoted agent registers its sub-cell with `cellwork_subteam` and leads its own
    plan. `cellwork_subteam` refuses when `depth + 1 > depthMax` (default 3) and returns the exact
    bound, reading the parent team's depth from `mpdTeams.depthBudget`; it starts NO agent — it writes
@@ -650,7 +728,8 @@ and reported on the row's log line (`<workspace>/.mpd/logs/mpd-cellwork.log`).
 `depthMax` 3 · `checkpointRatio` 0.5 · `windowFraction` 0.25 · `fixedOverheadTokens` 32000 ·
 `fixedOverheadByRoute` {} · `toolSchemaChars` 0 · `outputReserveTokens` 8192 ·
 `compactionHeadroomTokens` 65536 · `compactionRetries` 3 · `idleBarrierDelayMs` 200 ·
-`asciiCharsPerToken` 3 · `cjkCharsPerToken` 1 · `contractGates` [] · `windowOverride` null.
+`checkpointPendingMaxMs` 900000 · `asciiCharsPerToken` 3 · `cjkCharsPerToken` 1 · `contractGates` [] ·
+`windowOverride` null.
 
 The mail bound is the ONE knob outside this table: `mail.maxUndelivered` (default 8, `0` disables; an
 absent or unusable value falls back to 8) lives under the `mail.` prefix because BOTH mail tools read it
@@ -668,11 +747,14 @@ whose window cannot be read can be certified deliberately, and it is recorded as
   enforce a mode it cannot see, and the refusal then surfaces on the command and `cellwork_status`
   with the record's path.
 - **Adoption and unfence repair the RECORD, not the past.** Adoption covers members the TEAM record
-  already knows; a session it does not carry still has no channel, by design. `unfence` clears a GIVE-UP
-  fence on the cell row and, when the composition exposes the `mpdTeamActions.unfence` seam, the TEAM
-  row — never a pending checkpoint, which the barrier owns; it does not re-create a dead session, and a
-  cell whose rows the old build already wrote is repaired only through adoption and unfence: its history
-  is not rewritten.
+  already knows; a session it does not carry still has no channel, by design. An UNFORCED `unfence`
+  clears a GIVE-UP fence on the cell row and, when the composition exposes the
+  `mpdTeamActions.unfence` seam, the TEAM row — never a pending checkpoint, which the barrier owns. The
+  bounded FORCED lever (`{member, force: true}`) is the exception, and it is the one documented above:
+  it reopens a barrier-owned window or a dead-reseed seat only under a written licence (the retry
+  budget, the pending bound, or the proven-dead session) and never a live seat. Neither form re-creates
+  a dead session, and a cell whose rows the old build already wrote is repaired only through adoption
+  and unfence: its history is not rewritten.
 - **The 1/4 budget is an estimate** with the declared ±25% English bound and deliberately punitive CJK
   pricing; it is not a measurement of the model's tokenizer, because the deployment ships none.
 - **The mount is proven by an overlay.** On this machine a plain link-profile boot still resolves a
