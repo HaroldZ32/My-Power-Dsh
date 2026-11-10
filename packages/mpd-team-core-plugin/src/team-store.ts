@@ -995,7 +995,7 @@ export function clearTeamConsults(record: TeamRecord): TeamRecord {
   return rest
 }
 
-/** The fields {@link updateTeamTask} may change; `revision` and `updatedAt` are always bumped. *//** The fields {@link updateTeamTask} may change; `revision` and `updatedAt` are always bumped. */
+/** The fields {@link updateTeamTask} may change; `revision` and `updatedAt` are always bumped. */
 export interface TaskPatch {
   /** The task's new state. */
   status?: TaskStatus

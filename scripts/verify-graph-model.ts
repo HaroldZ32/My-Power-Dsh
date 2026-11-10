@@ -34,6 +34,10 @@
 //   node scripts/verify-graph-model.ts --seed-wrong-anchor   the grouped seeded negative control
 //   node scripts/verify-graph-model.ts --self-test          both directions, the group arms, the path forms
 //
+// A SEED BELONGS TO ONE FIXTURE KIND. Asking for a grouped seed without `--grouped` (or for the flat
+// `--seed-wrong-edge` with it) used to compare an untouched model, print PASS and exit 0 while asserting
+// nothing, so that invocation now REFUSES with exit 2 and the re-run that applies it.
+//
 // The fixture board file is a JSON array of `BoardTask` rows (`{id, subject, blockedBy, status, …}`)
 // or an object carrying them under `tasks`. The fixture plan is ORDINARY TASK-PLAN MARKDOWN — the
 // real grammar this repository's plan files use (`## TODOs` with `- [ ] N. …`, a lane/owner table,
@@ -723,6 +727,23 @@ function fail(message: string): never {
   process.exit(1)
 }
 
+/**
+ * Refuse a seeded negative control the selected fixture cannot apply (R3.2).
+ *
+ * WHY A REFUSAL AND NOT A SILENT PASS. Each seed mutates exactly ONE fixture kind, so pairing it with the
+ * other compared an untouched model, printed PASS and exited 0 while asserting NOTHING — this
+ * repository's known false-green class, and the bare spellings are the ones `--help` invites. A seed that
+ * cannot run is a usage error, so it costs a sentence and the usage exit code, never a green.
+ * @param seed - the flag the caller asked for.
+ * @param appliesTo - the fixture that flag mutates, spelled with the flag that selects it.
+ * @param repair - the exact re-run that applies the seed.
+ * @returns never; this exits the process with the usage code.
+ */
+function refuseSeed(seed: string, appliesTo: string, repair: string): never {
+  console.error(`${PREFIX} REFUSED: ${seed} applies to ${appliesTo} only — run against anything else it compares an untouched model and exits 0, asserting nothing. Re-run: ${repair}`)
+  process.exit(2)
+}
+
 /** The parsed invocation. */
 interface Cli {
   /** Whether `--self-test` was requested. */
@@ -781,6 +802,21 @@ function parseCli(argv: readonly string[]): Cli {
   if (cli.fixtureDir !== undefined && (cli.boardPath !== undefined || cli.planPath !== undefined)) fail("--fixture cannot be combined with --board/--plan")
   if ((cli.boardPath === undefined) !== (cli.planPath === undefined)) fail("--board and --plan must be given together")
   if (cli.grouped && (cli.fixtureDir !== undefined || cli.boardPath !== undefined)) fail("--grouped checks the built-in nested fixture and cannot be combined with --fixture/--board/--plan")
+  // A SEED THE SELECTED FIXTURE CANNOT APPLY REFUSES (R3.2, see `refuseSeed`). Checked HERE, before any
+  // fixture is read: a branch below can then never turn an inapplicable seed back into a green.
+  /** The grouped-only seeds this invocation names, in the help text's order. */
+  const groupedSeeds: string[] = [
+    ...(cli.seedWrongAnchor ? ["--seed-wrong-anchor"] : []),
+    ...(cli.seedWrongConsult ? ["--seed-wrong-consult"] : []),
+    ...(cli.seedConsultInNodes ? ["--seed-consult-in-nodes"] : []),
+  ]
+  if (groupedSeeds.length > 0 && !cli.grouped) {
+    /** The first seed the caller named, which is the one the sentence names. */
+    const seed = groupedSeeds[0]
+    refuseSeed(seed, "the GROUPED fixture (`--grouped`)", `node scripts/verify-graph-model.ts --grouped ${seed}`)
+  }
+  // THE RECIPROCAL VACUITY, closed by the same rule: the flat seed on the grouped fixture asserted nothing.
+  if (cli.seedWrongEdge && cli.grouped) refuseSeed("--seed-wrong-edge", "the FLAT fixture (no `--grouped`)", "node scripts/verify-graph-model.ts --seed-wrong-edge")
   return cli
 }
 
@@ -791,12 +827,15 @@ const HELP = [
   "  (no argument)       check the flat fixture (the six-case table), as before groups existed",
   "  --grouped           check the built-in nested (group) fixture",
   "  --emit              print the serialized model snapshot of the fixture being checked",
-  "  --seed-wrong-edge   flip one edge (the negative control) and expect a non-zero exit",
-  "  --seed-wrong-anchor un-anchor one box edge (the grouped negative control)",
-  "  --seed-wrong-consult drop one consult row (the consult negative control)",
-  "  --seed-consult-in-nodes move one consult into `nodes` (the leak negative control)",
+  "  --seed-wrong-edge   flip one edge of the FLAT fixture (the negative control)",
+  "  --seed-wrong-anchor un-anchor one box edge (needs --grouped)",
+  "  --seed-wrong-consult drop one consult row (needs --grouped)",
+  "  --seed-consult-in-nodes move one consult into `nodes` (needs --grouped)",
   "  --self-test         run both directions, the grouped arms and the path forms",
   "  --help              print this text",
+  "",
+  "  A seeded control the selected fixture cannot apply REFUSES with exit 2, because a seed that mutates",
+  "  nothing would exit 0 while asserting nothing.",
 ].join("\n")
 
 /**
@@ -1005,6 +1044,22 @@ function selfTest(): number {
   /** Whether the child's output names that leak. */
   const leakNamed = leakedId !== "" && leakRun.output.includes(`leak: consult "${leakedId}"`)
   arms.push({ name: "--seed-consult-in-nodes exits non-zero and a FAIL line NAMES the leaked consult", ok: leakRun.status !== 0 && leakNamed, detail: `exit ${leakRun.status}: ${leakRun.output.trim().split("\n").filter((line) => line.includes("FAIL leak:"))[0] ?? "(no leak named)"}` })
+  // ── THE INAPPLICABLE-SEED ARMS (R3.2) ────────────────────────────────────
+  // THE BARE SPELLING CAN NO LONGER PASS. `--help` advertises these flags without the fixture they
+  // belong to, so a caller who omits `--grouped` must be REFUSED (exit 2) instead of comparing an
+  // untouched model and printing PASS — the false-green the verdict measured.
+  /** The bare `--seed-wrong-consult` run. */
+  const bareDrop = spawnGate(["--seed-wrong-consult"])
+  arms.push({ name: "the BARE --seed-wrong-consult REFUSES with exit 2 (never a vacuous 0)", ok: bareDrop.status === 2 && bareDrop.output.includes("--grouped"), detail: `exit ${bareDrop.status}: ${bareDrop.output.trim().split("\n")[0] ?? ""}` })
+  /** The bare `--seed-consult-in-nodes` run, which must refuse the same way. */
+  const bareLeak = spawnGate(["--seed-consult-in-nodes"])
+  arms.push({ name: "the BARE --seed-consult-in-nodes REFUSES with exit 2 (never a vacuous 0)", ok: bareLeak.status === 2 && bareLeak.output.includes("--grouped"), detail: `exit ${bareLeak.status}: ${bareLeak.output.trim().split("\n")[0] ?? ""}` })
+  // THE OTHER TWO PAIRINGS OBEY THE SAME RULE, so no seed can reach a fixture it cannot mutate.
+  /** The bare grouped anchor seed, inapplicable on the flat fixture exactly like the two above. */
+  const bareAnchor = spawnGate(["--seed-wrong-anchor"])
+  /** The flat seed under `--grouped`: the reciprocal vacuity, refused by the same rule. */
+  const flatSeedUnderGrouped = spawnGate(["--grouped", "--seed-wrong-edge"])
+  arms.push({ name: "no seed pairs with a fixture it cannot mutate: bare --seed-wrong-anchor and --grouped --seed-wrong-edge both refuse", ok: bareAnchor.status === 2 && flatSeedUnderGrouped.status === 2, detail: `exit ${bareAnchor.status} and exit ${flatSeedUnderGrouped.status}` })
   for (const arm of arms) console.log(`${PREFIX} self-test ${arm.ok ? "PASS" : "FAIL"} — ${arm.name} :: ${arm.detail.slice(0, 240)}`)
   /** How many arms failed. */
   const failed = arms.filter((arm) => !arm.ok).length

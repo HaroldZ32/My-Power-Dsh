@@ -360,6 +360,26 @@ function consultStateOf(value: unknown): string {
 }
 
 /**
+ * The `finishedAt` a TERMINAL consult row is persisted with.
+ *
+ * DERIVED FROM THE ROW'S OWN ARITHMETIC, NEVER FROM THE CALL'S CLOCK. `deps.now` is captured when
+ * `cellwork_delegate` is CALLED, so a consult that settled minutes later persisted its START instant as
+ * its finish and contradicted the `startedAt + elapsedMs` written beside it. The settlement instant the
+ * row already states is the only authority; a row that states NO elapsed time falls back to a FRESH
+ * reading at write time, which is why the two fields can no longer disagree.
+ *
+ * @param row - the terminal consult row as the service reported it.
+ * @returns the finish instant, epoch milliseconds.
+ */
+function consultFinishedAtOf(row: ConsultRow): number {
+  // `consultRowOf` coerces a missing or unreadable `elapsedMs` to 0, so a POSITIVE finite value is the
+  // only reading that states when the consult stopped; a start instant is required for the sum to mean
+  // anything, and `startedAt` is coerced the same way.
+  if (Number.isFinite(row.elapsedMs) && row.elapsedMs > 0 && Number.isFinite(row.startedAt) && row.startedAt > 0) return row.startedAt + row.elapsedMs
+  return Date.now()
+}
+
+/**
  * Write ONE consult row to the team record, journaling instead of failing when the plane cannot take it.
  *
  * NEVER A REFUSAL: the consult is already running, so a write that cannot land must not turn a started
@@ -397,7 +417,7 @@ async function recordConsultRow(deps: ConsultDeps, row: ConsultRow, task: string
         cellId: deps.cellId,
         startedAt: row.startedAt,
         state: consultStateOf(row.state),
-        ...(row.state === "running" ? {} : { finishedAt: deps.now.getTime(), elapsedMs: row.elapsedMs }),
+        ...(row.state === "running" ? {} : { finishedAt: consultFinishedAtOf(row), elapsedMs: row.elapsedMs }),
         ...(row.handoff === undefined ? {} : { handoff: row.handoff }),
       },
     }))
@@ -443,7 +463,6 @@ function settlementObserverOf(deps: ConsultDeps): (outcome: unknown) => void {
 }
 
 /**
- * Start every task of one `cellwork_delegate` call in ONE pass and answer the ids immediately./**
  * Start every task of one `cellwork_delegate` call in ONE pass and answer the ids immediately.
  *
  * Roles are canonicalised FIRST — through the `mpdConsults` service's OWN `canonicalRole`, the resolver

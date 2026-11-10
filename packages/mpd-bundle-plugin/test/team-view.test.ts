@@ -302,8 +302,13 @@ interface GraphGeometry {
   height: number
   /** The column-major grid template. */
   gridTemplateColumns: string
-  /** Every node's box, in column-major order — with its own absolute rectangle on the nested path. */
-  nodes: Array<{ task: { id: string; visual?: string; planned?: boolean }; rank: number; row: number; ordinal: number; top: number; left?: number; width?: number; height?: number }>
+  /**
+   * Every node's box, in column-major order — with its own absolute rectangle on the nested path.
+   *
+   * `subject` and `owner` are read by the consult arms (R3.4): the synthesized row carries the assignment
+   * EXCERPT on the former and the roster ROLE on the latter, which is what keeps the two surfaces apart.
+   */
+  nodes: Array<{ task: { id: string; subject?: string; owner?: string; visual?: string; planned?: boolean }; rank: number; row: number; ordinal: number; top: number; left?: number; width?: number; height?: number }>
   /** One ROUTED edge per drawable dependency, which is what the render paints and the arms assert. */
   edges: Array<{
     parent: string
@@ -3590,6 +3595,41 @@ describe("consults: the web drawing merges the served array on BOTH layout paths
     expect((inner?.left as number) + (inner?.width as number)).toBeLessThanOrEqual((box?.left as number) + (box?.width as number))
     // The ROOT's consult is drawn as well, and it is NOT inside the box's interior columns.
     expect(graph.nodes.map((node) => node.task.id)).toContain("C1")
+  })
+
+  test("R3.4: the excerpt reaches the hover title, the hover card and the pinned body, and the role prints once", async () => {
+    /** The payload whose model carries one consult. */
+    const payload = stateOf(TASKS) as { model: GraphModel }
+    payload.model.consults = [CONSULT("C1")] as never
+    /** The view module, built without rendering, so the DRAWN ROW itself can be read. */
+    const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    /** The consult's drawn card from the flat geometry. */
+    const drawn = view.layout((stateOf(TASKS) as { tasks: Array<Record<string, unknown>> }).tasks, undefined, payload.model).nodes.find((node) => node.task.id === "C1")?.task
+    // THE ROW CARRIES TWO FIELDS, never the same text in both: `subject` is the excerpt (the core's
+    // `task`, "drawn as the card's subject") and `owner` is the role ("drawn as the card's assignee").
+    expect(drawn?.subject).toBe("map the parser")
+    expect(drawn?.owner).toBe("Explorer")
+    /** The rendered panel, whose node publishes the raw subject as its hover title. */
+    const rendered = await renderView({ state: payload })
+    /** The consult's card element. */
+    const card = one(rendered.tree, "data-mpd-node", "C1")
+    expect(card.props.title).toBe("map the parser")
+    // HOVER: the card prints the excerpt in its task row, the role in its owner row.
+    ;(card.props.onMouseEnter as () => void)()
+    /** The tree after the hover re-rendered. */
+    const hovered = await rendered.hooks.act(rendered.component, { sessionId: "s1" } as never)
+    /** The hover card's flat text. */
+    const tip = flatText(one(hovered, "data-mpd-tip-card", "1"))
+    expect(tip).toContain("map the parser")
+    expect(tip).toContain("Explorer")
+    // PIN: the detail body's header is the excerpt and its own `owner` row is the role.
+    ;(one(hovered, "data-mpd-node", "C1").props.onClick as () => void)()
+    /** The tree after the click pinned the consult. */
+    const pinned = await rendered.hooks.act(rendered.component, { sessionId: "s1" } as never)
+    /** The pinned body's flat text. */
+    const detail = flatText(one(pinned, "data-mpd-detail", "C1"))
+    expect(detail).toContain("map the parser")
+    expect(detail).toContain("owner Explorer")
   })
 
   test("the rendered CARD shows the consult marker, its id, its role and its state", async () => {

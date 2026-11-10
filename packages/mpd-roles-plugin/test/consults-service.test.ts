@@ -11,12 +11,14 @@ import { createMpConsults } from "../src/consults.ts"
 import { createConsultSupervisor, type ConsultSupervisor } from "../src/spawn-async.ts"
 
 /** One externally-settled promise, standing in for a child's `result`. */
-function deferred(): { promise: Promise<any>; resolve: (value: any) => void } {
+function deferred(): { promise: Promise<any>; resolve: (value: any) => void; reject: (error: unknown) => void } {
   /** The resolver captured by the executor. */
   let resolve: (value: any) => void = (): void => undefined
+  /** The rejecter captured by the executor, which is how a POST-start child failure is driven. */
+  let reject: (error: unknown) => void = (): void => undefined
   /** The promise itself. */
-  const promise = new Promise<any>((res) => { resolve = res })
-  return { promise, resolve }
+  const promise = new Promise<any>((res, rej) => { resolve = res; reject = rej })
+  return { promise, resolve, reject }
 }
 
 /** Let queued microtasks and one timer tick run. */
@@ -50,10 +52,11 @@ interface Composed {
 /**
  * Compose the service over a REAL supervisor and a fake raise.
  *
- * @param options - `maxConcurrent` sets the shared cap; `failFirst` makes the first raise reject.
+ * @param options - `maxConcurrent` sets the shared cap; `failFirst` makes the first raise reject;
+ *   `failResult` makes the raised child's own `result` REJECT after the start succeeded.
  * @returns the composed service, its supervisor and the raise log.
  */
-function compose(options: { maxConcurrent?: number; failFirst?: boolean } = {}): Composed {
+function compose(options: { maxConcurrent?: number; failFirst?: boolean; failResult?: string } = {}): Composed {
   /** The roles the raise seam started. */
   const raised: string[] = []
   /** The supervisor under test. */
@@ -64,9 +67,12 @@ function compose(options: { maxConcurrent?: number; failFirst?: boolean } = {}):
     raise: async (spec) => {
       raised.push(spec.role)
       if (options.failFirst === true && raised.length === 1) throw new Error("the injected raise failure")
-      /** This child's settlement, which the test resolves. */
+      /** This child's settlement, which the test resolves (or rejects) itself. */
       const settled = deferred()
-      setTimeout(() => settled.resolve(CHILD_REPORT), 1)
+      /** The failure text this case injects, captured once so the closures below read a narrowed value. */
+      const failure = options.failResult
+      if (failure === undefined) setTimeout(() => settled.resolve(CHILD_REPORT), 1)
+      else setTimeout(() => settled.reject(new Error(failure)), 1)
       return { id: "child-" + String(raised.length), result: settled.promise, interrupt: (): void => undefined }
     },
     canonicalRole: (role) => canonical(role),
@@ -331,8 +337,8 @@ describe("the row provides `mpdConsults` over its ONE supervisor", () => {
     expect(seen.length).toBe(1)
   })
 
-  test("onSettled: a consult whose POST-start settlement fails notifies with the failure text", async () => {
-    /** The composed service whose child's settlement REJECTS after the activation started. */
+  test("onSettled: a CANCELLED consult notifies ONCE as `interrupted`, and a second cancel is a no-op", async () => {
+    /** The composed service over a real supervisor. */
     const { service, supervisor } = compose()
     /** Every outcome the observer saw. */
     const seen: Array<{ state: string; error?: string }> = []
@@ -348,6 +354,24 @@ describe("the row provides `mpdConsults` over its ONE supervisor", () => {
     supervisor.cancel(started.consultId)
     await tick(5)
     expect(seen.length).toBe(1)
+  })
+
+  test("onSettled: a child whose RESULT rejects AFTER the start notifies ONCE with the failure text", async () => {
+    /** The composed service whose child's own `result` REJECTS after the activation started. */
+    const { service } = compose({ failResult: "the child's stream died" })
+    /** Every outcome the observer saw. */
+    const seen: Array<{ state: string; error?: string }> = []
+    /** The started consult, which the raise accepted (the start answered `running`). */
+    const started = await service.start({ role: "Explorer", task: "x", exec: {}, onSettled: (outcome): void => { seen.push({ state: String((outcome as { state?: unknown }).state ?? ""), ...((outcome as { error?: unknown }).error === undefined ? {} : { error: String((outcome as { error?: unknown }).error) }) }) } })
+    expect(started.state).toBe("running")
+    // NOBODY calls `wait` or `collect`: the post-start rejection itself must reach the observer.
+    await tick(20)
+    expect(seen.length).toBe(1)
+    expect(seen[0].state).toBe("failed")
+    // THE FAILURE TEXT IS THE ASSERTION the old arm was named for and never made.
+    expect(seen[0].error).toContain("the child's stream died")
+    // A collect cannot resurrect it: the record settled once, as `failed`.
+    expect(service.collect(started.consultId)?.state).toBe("failed")
   })
 
   test("R1.1: a depth-2 caller with NO forwarded cap lands at caller depth + 1 (3) — the row's OWN rule, not a cell cap", async () => {

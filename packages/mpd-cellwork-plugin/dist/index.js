@@ -3875,6 +3875,11 @@ function readDelegateTasks(raw) {
 function consultStateOf(value) {
   return value === "complete" || value === "interrupted" || value === "failed" || value === "cancelled" || value === "running" ? value : "running";
 }
+function consultFinishedAtOf(row) {
+  if (Number.isFinite(row.elapsedMs) && row.elapsedMs > 0 && Number.isFinite(row.startedAt) && row.startedAt > 0)
+    return row.startedAt + row.elapsedMs;
+  return Date.now();
+}
 async function recordConsultRow(deps, row, task) {
   if (deps.teamId === "") {
     appendJournal(deps.workspace, deps.cellId, { event: "consult-unattached", consultId: row.consultId, role: row.role }, deps.now);
@@ -3896,7 +3901,7 @@ async function recordConsultRow(deps, row, task) {
         cellId: deps.cellId,
         startedAt: row.startedAt,
         state: consultStateOf(row.state),
-        ...row.state === "running" ? {} : { finishedAt: deps.now.getTime(), elapsedMs: row.elapsedMs },
+        ...row.state === "running" ? {} : { finishedAt: consultFinishedAtOf(row), elapsedMs: row.elapsedMs },
         ...row.handoff === undefined ? {} : { handoff: row.handoff }
       }
     }));

@@ -203,6 +203,51 @@ describe("acceptance 2: a settlement reaches the record WITHOUT wait/collect", (
   })
 })
 
+describe("R3.1: the persisted finish clock is DERIVED from the row, never the call's own", () => {
+  test("a settlement after the call clock stopped persists `startedAt + elapsedMs`", async () => {
+    /** The call's own clock, captured long before the settlement — the stale instant R3.1 measured. */
+    const stale = new Date("2020-01-01T00:00:00.000Z")
+    /** The sandbox under test, whose deps carry that stale clock. */
+    const box = sandbox()
+    /** The deps one `cellwork_delegate` call would see. */
+    const deps = box.deps({ now: stale })
+    await startDelegation(deps, [{ role: "Explorer", task: "map the parser" }])
+    /** The observer armed at start, fired here as the roles row fires it minutes later. */
+    const observer = box.consults.started[0].onSettled
+    observer?.({ consultId: "consult-1", role: "Explorer", state: "complete", startedAt: 1_000_000, elapsedMs: 700 })
+    await flush()
+    /** The terminal row the plane received. */
+    const terminal = box.plane.rows[box.plane.rows.length - 1]
+    // THE FIX: the finish is the row's own arithmetic, so it can never contradict `elapsedMs`.
+    expect(terminal.record.finishedAt).toBe(1_000_700)
+    expect(terminal.record.elapsedMs).toBe(700)
+    // …and it is NOT the instant `cellwork_delegate` was called, which is what shipped before the repair.
+    expect(terminal.record.finishedAt).not.toBe(stale.getTime())
+  })
+
+  test("a settlement that states NO `elapsedMs` falls back to a FRESH clock reading", async () => {
+    /** The same stale call clock: the fallback must not answer it either. */
+    const stale = new Date("2020-01-01T00:00:00.000Z")
+    /** The sandbox under test. */
+    const box = sandbox()
+    /** The deps one `cellwork_delegate` call would see. */
+    const deps = box.deps({ now: stale })
+    await startDelegation(deps, [{ role: "Explorer", task: "map the parser" }])
+    /** The observer armed at start; this outcome carries no elapsed time at all. */
+    const observer = box.consults.started[0].onSettled
+    /** The clock read before the settlement, so the arm can bound the fresh reading. */
+    const before = Date.now()
+    observer?.({ consultId: "consult-1", role: "Explorer", state: "complete", startedAt: 1_000_000 })
+    await flush()
+    /** The terminal row the plane received. */
+    const terminal = box.plane.rows[box.plane.rows.length - 1]
+    /** Its finish, read as a number for the bounds below. */
+    const finished = Number(terminal.record.finishedAt)
+    expect(finished).toBeGreaterThanOrEqual(before)
+    expect(finished).toBeGreaterThan(stale.getTime())
+  })
+})
+
 describe("acceptance 3: a cancel records the interrupted row immediately", () => {
   test("`cellwork_consult cancel` writes the observed row", async () => {
     /** The sandbox under test. */

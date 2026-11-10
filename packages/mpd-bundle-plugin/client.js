@@ -12028,9 +12028,12 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
        */
       const consultRowOf = (node                         )           => ({
         id: node.id,
-        // The card's subject line shows the ROLE (the contract asks for `C<n>` + role + state); the
-        // assignment excerpt stays in the hover title and the pinned body, the non-drawing surfaces.
-        subject: node.assignee ?? node.subject ?? node.id,
+        // THE SUBJECT IS THE EXCERPT AND THE ROLE IS THE OWNER — `mpd-graph-core`'s own reading of this
+        // record (`role` is "drawn as the card's assignee", `task` "drawn as the card's subject"). The card
+        // FACE prints `@ C<n>` + role + state, while the NON-DRAWING surfaces (the hover card and the
+        // pinned body) print the excerpt, exactly as the TUI does. Putting the role here instead printed it
+        // twice and left the excerpt nowhere on this plane.
+        subject: node.subject ?? node.assignee ?? node.id,
         status: node.status ?? "running",
         visual: node.visual ?? "open",
         ...(node.assignee === undefined ? {} : { owner: node.assignee }),
@@ -14336,7 +14339,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
               react.createElement("span", { key: "glyph", style: { color: toneOf(node.task.visual), fontWeight: 700 } }, node.task.consult === undefined ? glyphOf(node.task.visual) : CONSULT_GLYPH),
               react.createElement("span", { key: "id", style: { fontWeight: 700 } }, node.task.id),
               react.createElement("span", { key: "kind", style: CSS.dim }, node.task.consult === undefined ? kindCodeOf(node.task.kind) : node.task.consult.state)),
-            react.createElement("div", { key: "subject", style: { ...CSS.dim, marginTop: "1px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, node.task.consult === undefined ? labelOf[node.task.id] ?? "" : node.task.subject))
+            react.createElement("div", { key: "subject", style: { ...CSS.dim, marginTop: "1px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, node.task.consult === undefined ? labelOf[node.task.id] ?? "" : node.task.owner ?? ""))
         }
         // THE TALLY SAYS WHAT A CAPTAIN ACTS ON, not just how far along the board is: how many tasks
         // a member could pick up RIGHT NOW, and how many of those are only ready because a
@@ -14610,7 +14613,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                   // THE LEGEND'S `<KIND>` IS ASCII (clause F1): the localized word belongs to the
                   // chrome (the pinned detail body), never to the CJK-free drawing plane.
                   react.createElement("span", { key: "kind", style: CSS.dim }, task.consult === undefined ? kindCodeOf(task.kind) : task.consult.state)),
-                react.createElement("div", { key: "subject", style: { ...CSS.dim, marginTop: "1px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, task.consult === undefined ? labelOf[task.id] : task.subject),
+                react.createElement("div", { key: "subject", style: { ...CSS.dim, marginTop: "1px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, task.consult === undefined ? labelOf[task.id] : task.owner ?? ""),
                 // The closers, in order: the node, the column's node map, the column, the grid's column
                 // map, the grid, the padded wrapper, the graph element, and `children.push`.
                 ))))))))
