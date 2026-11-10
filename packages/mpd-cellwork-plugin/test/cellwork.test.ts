@@ -473,12 +473,14 @@ test("a composition without the tools.guard seam installs nothing and says so", 
   // The tools and the command are still registered: the mode still records and still refuses on its
   // own tools; only the dispatch fence is absent.
   expect(harness.commands).toHaveLength(1)
-  // FIFTEEN names since the programmatic entry landed (contract §4.5): the fourteen the mode always
-  // shipped plus `cellwork_open`. Every OLD name is unchanged, which is the part the contract pins.
+  // SEVENTEEN names since the background-delegation contract landed: the fifteen the mode shipped (the
+  // fourteen original verbs plus `cellwork_open`) plus `cellwork_delegate` and `cellwork_consult`. Every
+  // OLD name is unchanged, which is the part the contracts pin.
   expect(harness.tools.map((tool) => tool.name).sort()).toEqual([
-    "cellwork_activate", "cellwork_context", "cellwork_dispatch", "cellwork_handoff", "cellwork_inbox",
-    "cellwork_open", "cellwork_recon", "cellwork_requirements", "cellwork_send", "cellwork_split",
-    "cellwork_start", "cellwork_status", "cellwork_stop", "cellwork_subteam", "cellwork_supervise",
+    "cellwork_activate", "cellwork_consult", "cellwork_context", "cellwork_delegate", "cellwork_dispatch",
+    "cellwork_handoff", "cellwork_inbox", "cellwork_open", "cellwork_recon", "cellwork_requirements",
+    "cellwork_send", "cellwork_split", "cellwork_start", "cellwork_status", "cellwork_stop",
+    "cellwork_subteam", "cellwork_supervise",
   ])
 })
 

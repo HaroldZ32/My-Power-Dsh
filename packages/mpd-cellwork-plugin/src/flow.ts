@@ -7,16 +7,27 @@
 //
 // The planning team's STAGING is not a tool of its own: `cellwork_start` performs it (Amendment 3), and
 // this module exports the pieces `index.ts` calls. Everything here reaches the harness through the
-// adapter ONLY (`dsh.executeTool`, `dsh.spawnAgent`, `dsh.teamExecutor`, `dsh.registerTool`); the two
-// read-only services (`mpdTeams`, `mpdRoles`) and the config service are declared STRUCTURALLY, because
-// the cross-package coupling inventory is frozen and may only shrink.
+// adapter ONLY (`dsh.executeTool`, `dsh.teamExecutor`, `dsh.registerTool`); the three services it reads
+// (`mpdTeams`, `mpdRoles`, `mpdConsults`) and the config service are declared STRUCTURALLY, because the
+// cross-package coupling inventory is frozen and may only shrink. No consult is raised here any more: the
+// two new tools and `cellwork_recon` go through `mpdConsults`, which is the roles row's ONE supervisor.
 import { appendJournal, listCellIds, readCell, writeCell, requirementsPath, type CellReadFailure, type CellState, type CellMemberRecord } from "./state"
 import { callerContext, type TeamActionsServiceView, sessionIdOf, type CallerContext, type TeamsServiceView } from "./caller"
 import { type CellworkConfig } from "./config"
 import { readRequirements, storedRequirementsText, validateRequirementsText, writeRequirements } from "./requirements"
-import { latestSplit, readSplit, submitSplit, type SplitSubmission, type SplitTaskInput, type SplitVerdict } from "./split"
+import { latestSplit, readSplit, roleKey, submitSplit, type SplitSubmission, type SplitTaskInput, type SplitVerdict } from "./split"
 import { resolveTaskWindow, type RouteResolutionView, type WindowReading } from "./budget"
 import { runRecon } from "./recon"
+import {
+  CONSULT_ACTIONS,
+  CONSULT_WAIT_DEFAULT_MS,
+  CONSULT_WAIT_MAX_MS,
+  consultSeatRefusal,
+  createConsultBook,
+  runConsultAction,
+  startDelegation,
+  type ConsultServiceView,
+} from "./consults"
 import { materializeSplit, type ActivatePartial, type ActivateProgress, type ActivateResult } from "./activate"
 import { PLANNER_MEMBER, SPLITTER_MEMBER, findSplitTicket } from "./staging"
 import type { DshAdapter, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
@@ -184,6 +195,25 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
     const service = deps.ctx.get?.("mpdRoles", false)
     return typeof service === "object" && service !== null ? service as RosterServiceView : undefined
   }
+  /**
+   * The `mpdConsults` service, probed per call.
+   *
+   * Lazy for the same reason as `mpdTeams`: the roles row may activate after this one, and a service
+   * captured at apply time would then be a permanent absence. Undefined is the documented degradation —
+   * every consult verb answers it with a refusal naming the missing row, never an unsupervised spawn.
+   */
+  const consults = (): ConsultServiceView | undefined => {
+    /** The service object, or undefined. */
+    const service = deps.ctx.get?.("mpdConsults", false)
+    return typeof service === "object" && service !== null ? service as ConsultServiceView : undefined
+  }
+  /**
+   * The process-local record of which consults THIS cell started through `cellwork_delegate`.
+   *
+   * Per row, not per cell: it holds ids only (no report, no state, no cap), it is never persisted, and it
+   * dies with the process exactly as the supervisor's own records do (contract §3.4).
+   */
+  const consultBook = createConsultBook()
   /** The config service, probed per call. */
   const configService = (): ConfigServiceView | undefined => {
     /** The service object, or undefined. */
@@ -209,6 +239,44 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
     } catch {
       return null
     }
+  }
+  /**
+   * The canonical roster name one typed spelling names, or undefined when it names no role.
+   *
+   * The comparison is {@link roleKey}, the SAME identity rule a split's `ownerRole` and a board member name
+   * already use: `deep worker`, `deep-worker` and `Deep Worker` collapse to one key, so one agent. The
+   * canonical answer is the roster's OWN spelling, which is what the caller sees echoed back.
+   *
+   * @param role - the role exactly as the caller typed it.
+   * @returns the roster's spelling of that name, or undefined.
+   */
+  const canonicalRoleOf = (role: string): string | undefined => {
+    /** The requested key; an empty one names nothing. */
+    const wanted = roleKey(role)
+    if (wanted === "") return undefined
+    return rosterNames().find((name) => roleKey(name) === wanted)
+  }
+  /**
+   * The refusal a cell-scoped consult verb answers when no LIVE cell is running on this workspace.
+   *
+   * A STOPPED cell is named as such: resolution skips it (it is no longer active), but the contract
+   * refuses consult work after the mode ends, and "no active cell" would hide why.
+   *
+   * @param context - the caller's resolved context.
+   * @param toolName - the tool answering.
+   * @returns the refusal sentence, or undefined when a live cell exists.
+   */
+  const noLiveCellRefusal = (context: CallerContext, toolName: string): string | undefined => {
+    if (context.workspace !== "" && context.cell !== null) return undefined
+    if (context.workspace === "") return toolName + ": the workspace root could not be resolved, so no cell can be read"
+    /** The cell ids this workspace still holds, newest last. */
+    const ids = listCellIds(context.workspace)
+    for (const id of ids) {
+      /** That cell's record, when it can be read. */
+      const read = readCell(context.workspace, id)
+      if (read.ok && read.state.phase === "stopped") return toolName + ": cell " + id + " is stopped and archived — consult work is refused after the mode ends"
+    }
+    return toolName + ": no active cell in this workspace — the consult verbs are only callable inside a running cell"
   }
   /** The route one role resolves to, or undefined when the config service cannot answer. */
   const routeOf = (role: string): RouteResolutionView | undefined => {
@@ -465,14 +533,15 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
   // ── cellwork_recon ───────────────────────────────────────────────────────
   disposers.push(dsh.registerTool({
     name: "cellwork_recon",
-    description: "PLANNER/SUBCAPTAIN only: raise ONE read-only consult (label exactly `Explorer` or `Researcher`) through the adapter's direct one-shot start path, with an explicit absolute maxDepth so the consult is a leaf. The report is returned and journaled in the cell. A composition without the child-persona seam degrades to prose read-only and says so (`personaInjected:false`).",
+    description: "PLANNER/SUBCAPTAIN only: raise READ-ONLY consults (label exactly `Explorer` or `Researcher`) through the `mpdConsults` service, so the roles row applies the read-only deny list to the child and the cell's own absolute `cellwork.depthMax` bounds the nesting. ONE question (`{role, task}`, the legacy blocking form) returns its report; 1..8 questions (`{role, questions}`) run CONCURRENTLY and the call returns only when ALL of them are settled, one row per question. Every report is journaled in the cell; an absent `mpdConsults` service is refused by name, never replaced by an unsupervised spawn.",
     parameters: {
       type: "object",
       properties: {
-        role: { type: "string", enum: ["Explorer", "Researcher"], description: "The read-only roster role; the label is applied verbatim so the child-persona seam applies the deny list." },
-        task: { type: "string", description: "The one question the consult must answer." },
+        role: { type: "string", enum: ["Explorer", "Researcher"], description: "The read-only roster role; the label is applied verbatim so the roles row applies the read-only deny list." },
+        task: { type: "string", description: "The ONE question the consult must answer (legacy blocking form; exactly one of `task`/`questions`)." },
+        questions: { type: "array", items: { type: "string" }, description: "1..8 questions settled CONCURRENTLY; the call returns when every one is settled (exactly one of `task`/`questions`)." },
       },
-      required: ["role", "task"],
+      required: ["role"],
       additionalProperties: false,
     },
     output: {
@@ -487,6 +556,20 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
           report: { type: "string" },
           stopReason: { oneOf: [{ type: "string" }, { type: "null" }] },
           personaInjected: { type: "boolean" },
+          reports: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                question: { type: "string" },
+                report: { type: "string" },
+                stopReason: { oneOf: [{ type: "string" }, { type: "null" }] },
+                interrupted: { type: "boolean" },
+                handoff: { type: "string" },
+              },
+              required: ["question", "report", "stopReason"],
+            },
+          },
         },
         required: ["ok"],
       },
@@ -494,7 +577,13 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         /** The result as a record. */
         const result = typeof value === "object" && value !== null ? value as Record<string, unknown> : {}
         if (result.ok === false) return text("cellwork_recon refused: " + String(result.error ?? "unknown refusal"))
-        return text(String(result.label ?? "consult") + " report (" + String(result.report ?? "").length + " chars" + (result.personaInjected === true ? ", persona injected" : ", NO persona seam") + "):\n\n" + String(result.report ?? ""))
+        /** The batch rows, when the call asked a `questions` array. */
+        const rows = Array.isArray(result.reports) ? result.reports as Array<Record<string, unknown>> : []
+        if (rows.length > 0) {
+          return text(String(result.label ?? "consult") + " — " + String(rows.length) + " report(s)" + (result.personaInjected === true ? ", persona injected" : ", NO persona readable") + ":\n\n" + rows.map((row, index) =>
+            "[" + String(index + 1) + "] " + String(row.question ?? "") + "\n" + String(row.report ?? "") + (row.stopReason === null || row.stopReason === undefined ? "" : "\n(stopReason: " + String(row.stopReason) + ")" + (row.handoff === undefined ? "" : "\n(handoff: " + String(row.handoff) + ")"))).join("\n\n"))
+        }
+        return text(String(result.label ?? "consult") + " report (" + String(result.report ?? "").length + " chars" + (result.personaInjected === true ? ", persona injected" : ", NO persona readable") + "):\n\n" + String(result.report ?? ""))
       },
     },
     execute: async (args: unknown, exec: DshToolExec): Promise<FlowResult> => {
@@ -503,30 +592,232 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
       /** The caller's context. */
       const caller = callerFor(exec)
       if (caller.refusal !== null) return { ok: false, error: refusalText(caller.refusal), path: caller.refusal.path }
-      if (caller.workspace === "" || caller.cell === null) {
-        // A STOPPED cell is refused BY NAME: resolution skips it (it is no longer active), but the
-        // contract refuses reconnaissance after the mode ends, and "no active cell" would hide why.
-        /** The cell ids this workspace still holds, newest last. */
-        const ids = listCellIds(caller.workspace)
-        for (const id of ids) {
-          /** That cell's record, when it can be read. */
-          const read = readCell(caller.workspace, id)
-          if (read.ok && read.state.phase === "stopped") return { ok: false, error: "cellwork_recon: cell " + id + " is stopped and archived — reconnaissance is refused after the mode ends" }
-        }
-        return { ok: false, error: "cellwork_recon: no active cell in this workspace" }
-      }
+      /** The no-live-cell refusal, or undefined when a cell is running. */
+      const noCell = noLiveCellRefusal(caller, "cellwork_recon")
+      if (noCell !== undefined) return { ok: false, error: noCell }
+      /** The running cell; the refusal above already proved one exists. */
+      const cell = caller.cell
+      if (cell === null) return { ok: false, error: "cellwork_recon: no active cell in this workspace" }
       /** The consult outcome. */
       const result = await runRecon({
-        spawn: (spec) => dsh.spawnAgent(spec).then((answer) => ({ output: answer.output, stopReason: answer.stopReason })),
+        consults: consults(),
+        exec,
         workspace: caller.workspace,
-        cell: caller.cell,
-        parent: exec.agent,
+        cell,
         caller: { member: caller.member, mode: caller.seat?.mode ?? "member" },
         config,
         personaFor,
         now: new Date(),
-      }, { role: argString(argv, "role"), task: argString(argv, "task") })
+      }, {
+        role: argString(argv, "role"),
+        ...(typeof argv.task === "string" ? { task: argv.task } : {}),
+        ...(Array.isArray(argv.questions) ? { questions: argv.questions as string[] } : {}),
+      })
       return result.ok ? { ...result } : { ok: false, error: result.error }
+    },
+  }))
+
+  // ── cellwork_delegate ────────────────────────────────────────────────────
+  // BACKGROUND, BATCH delegation for a cell SEAT (never the captain): 1..16 consults start in ONE pass and
+  // the call returns their ids immediately, so the children overlap instead of serialising behind this
+  // seat. Roles may be WRITERS here, exactly as the top-level captain's `mpd_role_spawn_async` allows; the
+  // board-scale route stays `cellwork_split` + `cellwork_activate` (contract §4.1).
+  disposers.push(dsh.registerTool({
+    name: "cellwork_delegate",
+    description: "PLANNER / SUBCAPTAIN / recorded MEMBER only (the cell captain is refused): start 1..16 BACKGROUND consults in ONE call and return their `consultId`s immediately, before any child settles. Roles are ANY roster role — writers included — and are canonicalised by the roles row (`deep worker` = `Deep-Worker` = `Deep Worker`), so the answer echoes the canonical name. ALL-OR-NOTHING: an unknown role, an empty field or more than 16 tasks refuses the whole call and starts nothing. Over-cap work QUEUES on the shared `MPD_DSH_CONSULT_MAX` cap and is never refused. Collect with `cellwork_consult`; for read-only reconnaissance prefer `cellwork_recon`.",
+    parameters: {
+      type: "object",
+      properties: {
+        tasks: {
+          type: "array",
+          description: "1..16 tasks started in ONE pass; every one must validate or the call starts nothing.",
+          items: {
+            type: "object",
+            properties: {
+              role: { type: "string", description: "A roster role NAME (any case, space, hyphen or underscore spelling; see `mpd_roles_list`)." },
+              task: { type: "string", description: "The assignment / question this consult answers." },
+              context: { type: "string", description: "Optional extra prompt block (why the consult exists)." },
+            },
+            required: ["role", "task"],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ["tasks"],
+      additionalProperties: false,
+    },
+    output: {
+      schema: {
+        type: "object",
+        properties: {
+          ok: { type: "boolean" },
+          error: { type: "string" },
+          started: { type: "integer" },
+          consults: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                consultId: { type: "string" },
+                role: { type: "string" },
+                startedAt: { type: "number" },
+              },
+              required: ["consultId", "role", "startedAt"],
+            },
+          },
+        },
+        required: ["ok"],
+      },
+      render: (_args: unknown, value: unknown): unknown => {
+        /** The result as a record. */
+        const result = typeof value === "object" && value !== null ? value as Record<string, unknown> : {}
+        if (result.ok === false) return text("cellwork_delegate refused: " + String(result.error ?? "unknown refusal"))
+        /** The started rows. */
+        const rows = Array.isArray(result.consults) ? result.consults as Array<Record<string, unknown>> : []
+        return text("started " + String(result.started ?? rows.length) + " background consult(s) — collect them with `cellwork_consult`:\n" + rows.map((row) => "- " + String(row.role ?? "") + " · " + String(row.consultId ?? "")).join("\n"))
+      },
+    },
+    execute: async (args: unknown, exec: DshToolExec): Promise<FlowResult> => {
+      /** The argument record. */
+      const argv = readArgs(args)
+      /** The caller's context. */
+      const caller = callerFor(exec)
+      if (caller.refusal !== null) return { ok: false, error: refusalText(caller.refusal), path: caller.refusal.path }
+      /** The no-live-cell refusal, or undefined when a cell is running. */
+      const noCell = noLiveCellRefusal(caller, "cellwork_delegate")
+      if (noCell !== undefined) return { ok: false, error: noCell }
+      // DEFENCE IN DEPTH: the guard refuses a captain/verifier/checkpointed session first, and this
+      // predicate repeats the SAME sentence so a bypassed guard still cannot delegate.
+      /** The seat refusal, or undefined when this seat may delegate. */
+      const seatRefusal = consultSeatRefusal("cellwork_delegate", caller.seat)
+      if (seatRefusal !== undefined) return { ok: false, error: seatRefusal }
+      /** The running cell; the refusals above already proved one exists. */
+      const cell = caller.cell
+      if (cell === null) return { ok: false, error: "cellwork_delegate: no active cell in this workspace" }
+      /** The delegation outcome. */
+      const result = await startDelegation({
+        service: consults,
+        canonicalRole: canonicalRoleOf,
+        rosterNames,
+        cellId: cell.cellId,
+        workspace: caller.workspace,
+        exec,
+        config,
+        now: new Date(),
+        book: consultBook,
+      }, argv.tasks)
+      return result.ok ? { ...result } : { ok: false, error: result.error }
+    },
+  }))
+
+  // ── cellwork_consult ─────────────────────────────────────────────────────
+  // The settle/inspect surface for the consults ONE cell started. Ownership is per cell id: an id this cell
+  // never started is refused with a sentence that teaches the two other channels, never "not found" alone.
+  disposers.push(dsh.registerTool({
+    name: "cellwork_consult",
+    description: "PLANNER / SUBCAPTAIN / recorded MEMBER only (the cell captain is refused): list, wait for, collect or cancel the consults THIS cell started through `cellwork_delegate`. `list` answers only this cell's ids that the consult supervisor still knows (a direct `mpd_role_consult {action:\"collect\"}` releases one, and a restart drops every handle); `wait` clamps `timeoutMs` to 1..60000 (default 30000) and a timed-out wait answers `state:\"running\"` rather than throwing; `collect` returns the settled report and RELEASES the record; `cancel` interrupts that child and journals it. An id this cell did not start is refused, not guessed.",
+    parameters: {
+      type: "object",
+      properties: {
+        action: { type: "string", enum: [...CONSULT_ACTIONS], description: "list | wait | collect | cancel." },
+        consultId: { type: "string", description: "The id `cellwork_delegate` returned; required for every action except `list`." },
+        timeoutMs: { type: "number", description: "The `wait` bound in ms, clamped to 1.." + String(CONSULT_WAIT_MAX_MS) + "; default " + String(CONSULT_WAIT_DEFAULT_MS) + "." },
+      },
+      required: ["action"],
+      additionalProperties: false,
+    },
+    output: {
+      schema: {
+        type: "object",
+        properties: {
+          ok: { type: "boolean" },
+          error: { type: "string" },
+          action: { type: "string" },
+          consults: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                consultId: { type: "string" },
+                role: { type: "string" },
+                state: { type: "string" },
+                startedAt: { type: "number" },
+                elapsedMs: { type: "number" },
+                question: { type: "string" },
+              },
+            },
+          },
+          consultId: { type: "string" },
+          role: { type: "string" },
+          state: { type: "string" },
+          startedAt: { type: "number" },
+          elapsedMs: { type: "number" },
+          handoff: { type: "string" },
+          errorDetail: { type: "string", description: "The consult's OWN failure text (a raised child that never reported), distinct from a refusal." },
+          report: {
+            type: "object",
+            properties: {
+              role: { type: "string" },
+              status: { type: "string" },
+              summary: { type: "string" },
+              recommendation: { type: "string" },
+              details: { type: "string" },
+              evidence: { type: "array", items: { type: "string" } },
+              stopReason: { oneOf: [{ type: "string" }, { type: "null" }] },
+              consultId: { type: "string" },
+              elapsedMs: { type: "number" },
+              handoff: { type: "string" },
+              lastActivity: { type: "string" },
+            },
+          },
+        },
+        required: ["ok"],
+      },
+      render: (_args: unknown, value: unknown): unknown => {
+        /** The result as a record. */
+        const result = typeof value === "object" && value !== null ? value as Record<string, unknown> : {}
+        if (result.ok === false) return text("cellwork_consult refused: " + String(result.error ?? "unknown refusal"))
+        /** The listed rows, when the action was `list`. */
+        const rows = Array.isArray(result.consults) ? result.consults as Array<Record<string, unknown>> : []
+        if (result.action === "list") {
+          return text(rows.length === 0
+            ? "this cell has no consult the supervisor still knows — start work with `cellwork_delegate`"
+            : "this cell's consults (" + String(rows.length) + "):\n" + rows.map((row) => "- " + String(row.role ?? "") + " · " + String(row.consultId ?? "") + " · " + String(row.state ?? "") + " · " + String(row.elapsedMs ?? 0) + " ms · " + String(row.question ?? "")).join("\n"))
+        }
+        /** The report a `collect` released. */
+        const report = typeof result.report === "object" && result.report !== null ? result.report as Record<string, unknown> : undefined
+        if (report === undefined) return text(String(result.action ?? "consult") + " · " + String(result.role ?? "") + " · " + String(result.state ?? "running") + " · " + String(result.elapsedMs ?? 0) + " ms" + (typeof result.errorDetail === "string" ? "\n" + result.errorDetail : ""))
+        return text(String(result.action ?? "collect") + " · " + String(report.role ?? "") + " · " + String(report.status ?? "") + " · " + String(report.elapsedMs ?? 0) + " ms" + (report.summary === undefined || report.summary === "" ? "" : "\n\n" + String(report.summary)) + (Array.isArray(report.evidence) && report.evidence.length > 0 ? "\n\nevidence:\n" + report.evidence.map((entry) => "- " + String(entry)).join("\n") : ""))
+      },
+    },
+    execute: async (args: unknown, exec: DshToolExec): Promise<FlowResult> => {
+      /** The argument record. */
+      const argv = readArgs(args)
+      /** The caller's context. */
+      const caller = callerFor(exec)
+      if (caller.refusal !== null) return { ok: false, error: refusalText(caller.refusal), path: caller.refusal.path }
+      /** The no-live-cell refusal, or undefined when a cell is running. */
+      const noCell = noLiveCellRefusal(caller, "cellwork_consult")
+      if (noCell !== undefined) return { ok: false, error: noCell }
+      /** The seat refusal, or undefined when this seat may inspect its consults. */
+      const seatRefusal = consultSeatRefusal("cellwork_consult", caller.seat)
+      if (seatRefusal !== undefined) return { ok: false, error: seatRefusal }
+      /** The running cell; the refusals above already proved one exists. */
+      const cell = caller.cell
+      if (cell === null) return { ok: false, error: "cellwork_consult: no active cell in this workspace" }
+      /** The action outcome. */
+      const result = await runConsultAction({
+        service: consults,
+        canonicalRole: canonicalRoleOf,
+        rosterNames,
+        cellId: cell.cellId,
+        workspace: caller.workspace,
+        exec,
+        config,
+        now: new Date(),
+        book: consultBook,
+      }, { action: argString(argv, "action"), consultId: argString(argv, "consultId"), timeoutMs: argv.timeoutMs })
+      return result
     },
   }))
 

@@ -75,12 +75,21 @@ the record says `stopped`, and a later `/cellwork` mints a new cell id.
 
 The flow tools: `cellwork_requirements` (the planner's finalize/update; a section body runs to the next
 heading of the same or a higher level, so `###` stays inside its parent), `cellwork_recon` (the
-planner's one-shot read-only consult), `cellwork_split` (the splitter's measured graph — each task may
+planner's READ-ONLY consult — `{role, task}` for one question, `{role, questions:[…]}` for 1..8 settled
+CONCURRENTLY), `cellwork_split` (the splitter's measured graph — each task may
 declare its board `member`, and a refusal persists its findings at `split/<rev>.refused.json`),
 `cellwork_activate` (the captain's materialisation; it raises ONE member per distinct `member`, names
 both the owner role and the member in each contract, its answer's `reused` list names the members
 resolved from the cell record or the live roster instead of raised, and the OTHER ways a member row
 appears are staging and adoption, below).
+
+The BACKGROUND DELEGATION pair, for a cell seat (planner, subcaptain, ordinary member — never the
+captain): `cellwork_delegate` starts 1..16 consults in ONE pass and returns their `consultId`s
+immediately, roles canonicalised by the roles row and ANY roster role (writers included) allowed;
+`cellwork_consult` lists, waits for, collects (which RELEASES the record) and cancels the consults THIS
+cell started. Both go through the `mpdConsults` service the `mpd-roles` row provides over its ONE
+consult supervisor — one registry, one `MPD_DSH_CONSULT_MAX` cap (over-cap work QUEUES) and one silence
+deadman — and an absent service is refused by name, never replaced by an unsupervised spawn.
 
 The protocol tools: `cellwork_dispatch` (one owner-only dispatch pass, plus `reassign` hand-overs and
 the `unfence` lever), `cellwork_supervise` (the captain's read-only sweep, including every CLOSED seat
@@ -373,6 +382,15 @@ declared follow-up (`docs/cellwork.md`, "Declared bounds").
   because cellwork's own dispatch pass reads the cell record — a bare board read still shows the row.
 - Verification blindness stays PROSE, exactly as this repository states it: cellwork wires the contract,
   the loop and the verdict, and does not pretend to observe what a verifier read.
+- **A delegated WRITER works OUTSIDE the cell board**: no frozen contract, no verify loop, no board row.
+  Board-scale work belongs on `cellwork_split` + `cellwork_activate`; background delegation is for
+  bounded side-work.
+- **The consult book is IN MEMORY** (cell id → consult id, no report and no cap), like the supervisor's
+  own records: a restart loses both, and `cellwork_consult` says so instead of answering a stale id. A
+  consult a seat collects through `mpd_role_consult` directly leaves this cell's list.
+- **The roster's delegation depth floor is NOT applied on the consult-service path** — that floor belongs
+  to the roster's tool handlers. `cellwork.depthMax` bounds the cell plane instead, passed as the
+  consult's ABSOLUTE `maxDepth` on every start, plus the roster's leaf denial on the child side.
 - The 1/4-of-window rule is a certified ESTIMATE from measured bytes and configurable ratios — not a
   measurement, and deliberately punitive for CJK.
 - **The generic team verb is the hazard cell mode removes.** `agent_teams_dispatch` pairs a ready task
@@ -423,9 +441,11 @@ so the row an owner claims carries the acceptance text it is judged against.
 
 ## Consult tools, force targets and the cell record (2026-11-05)
 
-The verifier's read-only deny list is now TEN names (adding `mpd_role_spawn_async` and
-`mpd_role_consult`) and the no-delegation list carries four (the two spawn tools plus both consult
-tools): a verifier seat can neither delegate nor cancel another consult. A cell seat IS a team
+The verifier's read-only deny list on the ROSTER side stays TEN names (`mpd_role_spawn_async` and
+`mpd_role_consult` included), this package's own `VERIFIER_DENY_TOOLS` carries ELEVEN (that ten minus
+the `bash` a verifier keeps, plus `cellwork_delegate` and `cellwork_consult`), and the no-delegation list
+carries SIX (the two spawn tools, both roster consult tools, and this package's two consult verbs): a
+verifier seat can neither delegate nor cancel another consult, whichever spelling it reaches for. A cell seat IS a team
 member, so the team watchdog's force supervisor targets it through that team-member identity and its
 GRACE-then-force order (grace directive, ADOPTED member handoff, then interrupt, requeue, split) while
 `mpd-team-core` never writes the CELL record — a seat repairs its own seat afterwards through the

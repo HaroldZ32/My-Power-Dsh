@@ -2912,7 +2912,7 @@ function resolveCellworkConfig(rowConfig, readFile, warn) {
 // packages/mpd-cellwork-plugin/src/guard.ts
 var CAPTAIN_TOOL_PREFIXES = ["cellwork_", "agent_teams_", "mpd_memory_"];
 var CAPTAIN_TOOL_NAMES = ["ask_user_question", "todo_write", "mpd_verify_open"];
-var CAPTAIN_FORBIDDEN_NAMES = ["cellwork_handoff"];
+var CAPTAIN_FORBIDDEN_NAMES = ["cellwork_handoff", "cellwork_delegate", "cellwork_consult"];
 var VERIFIER_DENY_TOOLS = [
   "write",
   "edit",
@@ -2922,7 +2922,9 @@ var VERIFIER_DENY_TOOLS = [
   "mcp__lsp__rename_symbol",
   "mcp__lsp__rename_symbol_strict",
   "mpd_role_spawn_async",
-  "mpd_role_consult"
+  "mpd_role_consult",
+  "cellwork_delegate",
+  "cellwork_consult"
 ];
 var CHECKPOINT_ALLOW_TOOLS = ["cellwork_handoff", "cellwork_context", "cellwork_status"];
 var PLANNER_READABLE_PREFIXES = [".mpd/", "docs/", "evidence/", "agent-references/"];
@@ -2937,10 +2939,10 @@ var PLANNER_READABLE_ROOT_FILES = [
 var PLANNER_INSTRUCTION_BASENAMES = ["AGENT.md", "AGENTS.md", "CLAUDE.md"];
 var PLANNER_LICENSE_PATTERN = /^LICENSE.*\.md$/i;
 var PLANNER_RECON_TOOLS = ["read", "grep", "glob"];
-var VERIFIER_NO_DELEGATION = ["mpd_role_spawn", "mpd_role_spawn_async", "mpd_role_consult", "mpd_workmate_spawn"];
+var VERIFIER_NO_DELEGATION = ["mpd_role_spawn", "mpd_role_spawn_async", "mpd_role_consult", "mpd_workmate_spawn", "cellwork_delegate", "cellwork_consult"];
 var PLANNER_SEAT_NAME = "cell-planner";
 var SUBCAPTAIN_FORBIDDEN_NAMES = ["cellwork_start", "cellwork_stop"];
-var SUBCAPTAIN_TOOL_NAMES = ["cellwork_subteam", "cellwork_activate", "cellwork_dispatch", "cellwork_supervise"];
+var SUBCAPTAIN_TOOL_NAMES = ["cellwork_subteam", "cellwork_activate", "cellwork_dispatch", "cellwork_supervise", "cellwork_delegate", "cellwork_consult"];
 function isCaptainAllowed(toolName) {
   if (CAPTAIN_FORBIDDEN_NAMES.includes(toolName))
     return false;
@@ -2956,7 +2958,7 @@ function isSubcaptainAllowed(toolName) {
   return isCaptainAllowed(toolName);
 }
 function captainRefusal(toolName) {
-  return "cellwork: `" + toolName + "` is refused — while a cell is running the CAPTAIN DISPATCHES ONLY " + "(user clause 1): it edits no file, runs no shell, does no reconnaissance and verifies nothing. " + "Allowed here: `cellwork_*` except `cellwork_handoff` (`cellwork_status`, `cellwork_start`, " + "`cellwork_dispatch`, `cellwork_supervise`, `cellwork_activate`, `cellwork_send`, `cellwork_inbox`), " + "`agent_teams_*` (`agent_teams_plan`, `agent_teams_task`, `agent_teams_dispatch`, `agent_teams_mail`), " + "`mpd_verify_open` (opening a loop only — binding, evidence and verdict stay refused), " + "`ask_user_question`, `todo_write` and `mpd_memory_*`. Put the work on the team: stage or extend it " + "with `agent_teams_plan`, then DISPATCH WITH `cellwork_dispatch` — owner-only, and a busy or absent " + "owner is REPORTED and the task left pending, never substituted. (`agent_teams_dispatch` stays allowed " + "but it is NOT the verb for this board: it falls back to roster order, which can hand review work to " + "its own writer.) Relay the planner's questions with `ask_user_question`. To leave the mode and get " + "every tool back, call `cellwork_stop`.";
+  return "cellwork: `" + toolName + "` is refused — while a cell is running the CAPTAIN DISPATCHES ONLY " + "(user clause 1): it edits no file, runs no shell, does no reconnaissance and verifies nothing. " + "Allowed here: `cellwork_*` except `cellwork_handoff`, `cellwork_delegate` and `cellwork_consult` " + "(`cellwork_status`, `cellwork_start`, " + "`cellwork_dispatch`, `cellwork_supervise`, `cellwork_activate`, `cellwork_send`, `cellwork_inbox`), " + "`agent_teams_*` (`agent_teams_plan`, `agent_teams_task`, `agent_teams_dispatch`, `agent_teams_mail`), " + "`mpd_verify_open` (opening a loop only — binding, evidence and verdict stay refused), " + "`ask_user_question`, `todo_write` and `mpd_memory_*`. Put the work on the team: stage or extend it " + "with `agent_teams_plan`, then DISPATCH WITH `cellwork_dispatch` — owner-only, and a busy or absent " + "owner is REPORTED and the task left pending, never substituted. (`agent_teams_dispatch` stays allowed " + "but it is NOT the verb for this board: it falls back to roster order, which can hand review work to " + "its own writer.) Background side-work is a MEMBER's or a SUBCAPTAIN's call: they run " + "`cellwork_delegate` and collect with `cellwork_consult`. " + "Relay the planner's questions with `ask_user_question`. To leave the mode and get " + "every tool back, call `cellwork_stop`.";
 }
 function verifierRefusal(toolName) {
   return "cellwork: `" + toolName + "` is refused — this session is a VERIFIER of the cell, so it never " + "fixes what it judges. Read the frozen contract and the documentation (not the implementation), run " + "the gates, then record the verdict with `mpd_verify_record` (a PASS needs the documents it cites " + "and its gate evidence ids); reading, `bash`, `grep`, `glob` and `mpd_verify_*` stay available. A " + "FAIL bounces the work back to its writer as a repair task, and only a RECORDED FAIL makes " + "implementation reading legitimate, for diagnosis.";
@@ -3088,12 +3090,18 @@ var PLANNER_RECON_LINES = [
   "reason. Your context is spent on the interview and the requirements document: a source tree read here is",
   "context the interview then lacks, while the REPORT you actually need is a hundred lines, not ten thousand.",
   "",
-  "THE TWO ROUTES, both one-shot and READ-ONLY, and you consume the report rather than re-deriving it:",
+  "THE ROUTES, all one-shot and READ-ONLY unless stated, and you consume the report rather than deriving it:",
   '1. `cellwork_recon` {role:"Explorer"|"Researcher", task} — the in-cell route. Its report comes straight',
-  "   back to you and is journaled, and it forwards its own depth cap, so the host's nesting default never",
-  "   refuses it. `Explorer` finds the file and the code; `Researcher` collects evidence and cites it.",
-  '2. `mpd_role_spawn` {role:"Explorer"|"Researcher"|"Architect", task} — the roster route, for a',
-  "   composition where the cellwork tool is not mounted. Same discipline: ONE bounded question, one report.",
+  "   back to you and is journaled, and it forwards the cell's own absolute depth cap, so the host's nesting",
+  "   default never refuses it. `Explorer` finds the file and the code; `Researcher` collects evidence.",
+  "   BATCH: pass `questions:[q1, q2, …]` (1..8) instead of `task` and they run CONCURRENTLY — the call",
+  "   returns when all are settled, one report per question, so an interview's fact-finding costs one call.",
+  "2. `cellwork_delegate` {tasks:[{role, task, context?}, …]} — BACKGROUND, 1..16 at once, ANY roster role",
+  "   (writers included). It returns the `consultId`s immediately and the children keep working while you",
+  '   do; settle them with `cellwork_consult {action:"list"|"wait"|"collect"|"cancel"}`. Use it when',
+  "   the work is side-work you do not have to read before the next question.",
+  '3. `mpd_role_spawn` {role:"Explorer"|"Researcher"|"Architect", task} — the roster route, for a',
+  "   composition where the cellwork tools are not mounted. Same discipline: ONE bounded question, one report.",
   "",
   "THE BAND YOU MAY READ YOURSELF: `.mpd/**` (the cell record, the requirements file, the contracts),",
   "`docs/**`, `evidence/**`, `agent-references/**`; any `AGENT.md`, `AGENTS.md` or `CLAUDE.md` at any depth,",
@@ -3131,7 +3139,9 @@ function activationDirective(input) {
     "   to the planner, which bumps the revision and marks the current split STALE; the splitter re-submits.",
     "5. stop — `cellwork_stop` archives the cell and gives every tool back. Nothing is deleted.",
     "",
-    "YOUR TOOLS IN THIS MODE: `cellwork_*` except `cellwork_handoff`, `agent_teams_*`, `ask_user_question`,",
+    "YOUR TOOLS IN THIS MODE: `cellwork_*` except `cellwork_handoff`, `cellwork_delegate` and",
+    "`cellwork_consult` (background delegation is a MEMBER's or a SUBCAPTAIN's call, not yours),",
+    "`agent_teams_*`, `ask_user_question`,",
     "`todo_write`, `mpd_memory_*`. Everything else is refused, and `cellwork_stop` is how you leave.",
     "",
     "STATE ON DISK (this is the record, not a suggestion): " + dir,
@@ -3766,30 +3776,271 @@ function errorText3(error) {
   return error instanceof Error ? error.message : String(error);
 }
 
+// packages/mpd-cellwork-plugin/src/consults.ts
+var DELEGATE_MAX_TASKS = 16;
+var CONSULT_WAIT_DEFAULT_MS = 30000;
+var CONSULT_WAIT_MAX_MS = 60000;
+var JOURNAL_TASK_CHARS = 400;
+var CONSULT_ACTIONS = ["list", "wait", "collect", "cancel"];
+function createConsultBook() {
+  return new Map;
+}
+function consultSeatRefusal(toolName, seat) {
+  if (seat === undefined) {
+    return "cellwork: `" + toolName + "` is refused — this session is not a recorded member of the running" + " cell. The two consult verbs belong to the cell PLANNER (seat `cell-planner`), a promoted" + " SUBCAPTAIN, and an ordinary recorded MEMBER of the cell; the captain dispatches instead, and a" + " session the cell record never learned has no channel here. Read `cellwork_status` to see whether" + " this session holds a seat.";
+  }
+  if (seat.mode === "captain")
+    return captainRefusal(toolName);
+  if (seat.mode === "verifier")
+    return verifierDelegationRefusal(toolName);
+  if (seat.mode === "checkpoint")
+    return checkpointRefusal(toolName);
+  return;
+}
+function consultRowOf(value) {
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    return;
+  const record = value;
+  const consultId = typeof record.consultId === "string" ? record.consultId : "";
+  if (consultId === "")
+    return;
+  const state = typeof record.state === "string" ? record.state : typeof record.status === "string" ? record.status : "running";
+  const report = reportRowOf(record.report);
+  return {
+    consultId,
+    role: typeof record.role === "string" ? record.role : "",
+    state,
+    startedAt: wholeNumber(record.startedAt),
+    elapsedMs: wholeNumber(record.elapsedMs),
+    ...typeof record.handoff === "string" && record.handoff !== "" ? { handoff: record.handoff } : {},
+    ...report === undefined ? {} : { report },
+    ...typeof record.error === "string" && record.error !== "" ? { error: record.error } : {}
+  };
+}
+function reportRowOf(value) {
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    return;
+  const record = value;
+  return {
+    role: typeof record.role === "string" ? record.role : "",
+    status: typeof record.status === "string" ? record.status : "complete",
+    summary: typeof record.summary === "string" ? record.summary : "",
+    recommendation: typeof record.recommendation === "string" ? record.recommendation : "",
+    details: typeof record.details === "string" ? record.details : "",
+    evidence: Array.isArray(record.evidence) ? record.evidence.map((entry) => String(entry)) : [],
+    stopReason: typeof record.stopReason === "string" ? record.stopReason : null,
+    consultId: typeof record.consultId === "string" ? record.consultId : "",
+    elapsedMs: wholeNumber(record.elapsedMs),
+    ...typeof record.handoff === "string" && record.handoff !== "" ? { handoff: record.handoff } : {},
+    ...typeof record.lastActivity === "string" && record.lastActivity !== "" ? { lastActivity: record.lastActivity } : {}
+  };
+}
+function wholeNumber(value) {
+  const parsed = typeof value === "number" ? value : Number.NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : 0;
+}
+function missingConsultsServiceRefusal(toolName) {
+  return "cellwork: `" + toolName + "` is refused — the `mpdConsults` service is ABSENT from this" + " composition, so no supervised consult can be started or settled. It is provided by the" + " `mpd-roles` row over that row's ONE consult supervisor (the shared `MPD_DSH_CONSULT_MAX` cap and" + " the silence deadman live there); mount that row — there is no unsupervised fallback. The BLOCKING" + " `cellwork_recon` route needs it too, and `mpd_role_spawn` stays available for a one-shot consult.";
+}
+function missingRosterRefusal() {
+  return "cellwork: the roster service (`mpdRoles`) is absent or empty in this composition, so a role" + " spelling cannot be canonicalised — mount the `mpd-roles` row and resubmit.";
+}
+function readDelegateTasks(raw) {
+  if (!Array.isArray(raw))
+    return { ok: false, error: "cellwork_delegate: `tasks` must be an array of 1.." + String(DELEGATE_MAX_TASKS) + " `{role, task}` objects — nothing was started" };
+  if (raw.length === 0)
+    return { ok: false, error: "cellwork_delegate: `tasks` is empty — name at least one `{role, task}` to start; nothing was started" };
+  if (raw.length > DELEGATE_MAX_TASKS)
+    return { ok: false, error: "cellwork_delegate: `tasks` carries " + String(raw.length) + " entries, more than the " + String(DELEGATE_MAX_TASKS) + " this call starts — split it into batches; nothing was started" };
+  const tasks = [];
+  for (let index = 0;index < raw.length; index += 1) {
+    const entry = raw[index];
+    if (typeof entry !== "object" || entry === null || Array.isArray(entry))
+      return { ok: false, error: "cellwork_delegate: tasks[" + String(index) + "] is not an object — every entry is `{role, task, context?}`; nothing was started" };
+    const record = entry;
+    const role = typeof record.role === "string" ? record.role.trim() : "";
+    if (role === "")
+      return { ok: false, error: "cellwork_delegate: tasks[" + String(index) + "].role is empty — name a roster role (see `mpd_roles_list`); nothing was started" };
+    const task = typeof record.task === "string" ? record.task.trim() : "";
+    if (task === "")
+      return { ok: false, error: "cellwork_delegate: tasks[" + String(index) + "].task is empty — one consult answers one concrete assignment; nothing was started" };
+    if (record.context !== undefined && typeof record.context !== "string")
+      return { ok: false, error: "cellwork_delegate: tasks[" + String(index) + "].context must be a string when present; nothing was started" };
+    tasks.push({ role, task, ...typeof record.context === "string" && record.context !== "" ? { context: record.context } : {} });
+  }
+  return { tasks };
+}
+async function startDelegation(deps, rawTasks) {
+  const parsed = readDelegateTasks(rawTasks);
+  if ("ok" in parsed)
+    return parsed;
+  if (deps.rosterNames().length === 0)
+    return { ok: false, error: missingRosterRefusal() };
+  const roles = [];
+  for (let index = 0;index < parsed.tasks.length; index += 1) {
+    const canonical = deps.canonicalRole(parsed.tasks[index].role);
+    if (canonical === undefined)
+      return { ok: false, error: "cellwork_delegate: tasks[" + String(index) + "].role " + JSON.stringify(parsed.tasks[index].role) + " names no roster role — use a roster NAME as `mpd_roles_list` spells it (any case, space, hyphen or underscore spelling); nothing was started" };
+    roles.push(canonical);
+  }
+  const service = deps.service();
+  if (service?.start === undefined)
+    return { ok: false, error: missingConsultsServiceRefusal("cellwork_delegate") };
+  const consults = [];
+  for (let index = 0;index < parsed.tasks.length; index += 1) {
+    const task = parsed.tasks[index];
+    try {
+      const answer = await service.start({
+        role: roles[index],
+        task: task.task,
+        ...task.context === undefined ? {} : { context: task.context },
+        exec: deps.exec,
+        maxDepth: deps.config.depthMax
+      });
+      const row = consultRowOf(answer);
+      if (row === undefined)
+        return { ok: false, error: "cellwork_delegate: the `mpdConsults` service answered tasks[" + String(index) + "] without a consultId — " + String(consults.length) + " of " + String(parsed.tasks.length) + " consults were already started (" + consults.map((entry) => entry.consultId).join(", ") + "); collect them with `cellwork_consult`" };
+      consults.push({ consultId: row.consultId, role: row.role === "" ? roles[index] : row.role, startedAt: row.startedAt });
+      rememberConsult(deps.book, deps.cellId, { consultId: row.consultId, role: row.role === "" ? roles[index] : row.role, startedAt: row.startedAt, question: task.task });
+      appendJournal(deps.workspace, deps.cellId, {
+        event: "delegate-start",
+        role: row.role === "" ? roles[index] : row.role,
+        consultId: row.consultId,
+        question: task.task.slice(0, JOURNAL_TASK_CHARS)
+      }, deps.now);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { ok: false, error: "cellwork_delegate: starting tasks[" + String(index) + "] (" + roles[index] + ") failed: " + message + " — " + String(consults.length) + " of " + String(parsed.tasks.length) + " consults were already started" + (consults.length === 0 ? "" : " (" + consults.map((entry) => entry.consultId).join(", ") + "); collect them with `cellwork_consult`") };
+    }
+  }
+  return { ok: true, started: consults.length, consults };
+}
+function rememberConsult(book, cellId, owned) {
+  const own = book.get(cellId) ?? new Map;
+  own.set(owned.consultId, owned);
+  book.set(cellId, own);
+}
+function forgetConsult(book, cellId, consultId) {
+  return book.get(cellId)?.delete(consultId) === true;
+}
+function ownedConsult(book, cellId, consultId) {
+  return book.get(cellId)?.get(consultId);
+}
+function foreignConsultRefusal(toolName, consultId, cellId) {
+  return "cellwork: `" + toolName + "` refused " + JSON.stringify(consultId) + " — this cell did not start" + " that consult, so it is not this cell's to settle. `cellwork_consult` answers only ids that" + " `cellwork_delegate` returned IN CELL " + cellId + " and that the consult supervisor still knows:" + " an id from `mpd_role_spawn_async` belongs to `mpd_role_consult`, a consult another cell started" + " belongs to that cell, and a process restart drops every in-memory handle — re-delegate the task" + " with `cellwork_delegate` when you need it again.";
+}
+function successOf(action, row) {
+  const { error, ...rest } = row;
+  return { ok: true, action, ...rest, ...error === undefined ? {} : { errorDetail: error } };
+}
+async function runConsultAction(deps, args) {
+  const action = args.action.trim();
+  if (!CONSULT_ACTIONS.includes(action))
+    return { ok: false, error: "cellwork_consult: action must be `list`, `wait`, `collect` or `cancel` (got " + JSON.stringify(args.action) + ")" };
+  const service = deps.service();
+  if (service === undefined)
+    return { ok: false, error: missingConsultsServiceRefusal("cellwork_consult") };
+  if (action === "list") {
+    if (typeof service.list !== "function")
+      return { ok: false, error: missingConsultsServiceRefusal("cellwork_consult") };
+    const answer = await Promise.resolve(service.list());
+    const live = (Array.isArray(answer) ? answer : []).map((entry) => consultRowOf(entry)).filter((entry) => entry !== undefined);
+    const own = deps.book.get(deps.cellId) ?? new Map;
+    const consults = [];
+    for (const owned of [...own.values()]) {
+      const row = live.find((entry) => entry.consultId === owned.consultId);
+      if (row === undefined) {
+        forgetConsult(deps.book, deps.cellId, owned.consultId);
+        continue;
+      }
+      consults.push({ consultId: row.consultId, role: row.role === "" ? owned.role : row.role, state: row.state, startedAt: row.startedAt, elapsedMs: row.elapsedMs, question: owned.question });
+    }
+    return { ok: true, action, consults };
+  }
+  const consultId = args.consultId.trim();
+  if (consultId === "")
+    return { ok: false, error: 'cellwork_consult: `consultId` is required for action "' + action + '" — use the id `cellwork_delegate` returned, or action "list" to see this cell\'s ids' };
+  if (ownedConsult(deps.book, deps.cellId, consultId) === undefined)
+    return { ok: false, error: foreignConsultRefusal("cellwork_consult", consultId, deps.cellId) };
+  try {
+    if (action === "wait") {
+      if (typeof service.wait !== "function")
+        return { ok: false, error: missingConsultsServiceRefusal("cellwork_consult") };
+      const bound = Math.min(CONSULT_WAIT_MAX_MS, Math.max(1, Math.trunc(Number(args.timeoutMs)) || CONSULT_WAIT_DEFAULT_MS));
+      const row2 = consultRowOf(await service.wait(consultId, bound));
+      if (row2 === undefined)
+        return { ok: false, error: "cellwork_consult: the `mpdConsults` service answered `wait` without a consult view for " + JSON.stringify(consultId) };
+      return successOf(action, row2);
+    }
+    if (action === "collect") {
+      if (typeof service.collect !== "function")
+        return { ok: false, error: missingConsultsServiceRefusal("cellwork_consult") };
+      const row2 = consultRowOf(await Promise.resolve(service.collect(consultId)));
+      if (row2 === undefined) {
+        forgetConsult(deps.book, deps.cellId, consultId);
+        return { ok: false, error: foreignConsultRefusal("cellwork_consult", consultId, deps.cellId) };
+      }
+      if (row2.state !== "running")
+        forgetConsult(deps.book, deps.cellId, consultId);
+      return successOf(action, row2);
+    }
+    if (typeof service.cancel !== "function")
+      return { ok: false, error: missingConsultsServiceRefusal("cellwork_consult") };
+    const row = consultRowOf(await Promise.resolve(service.cancel(consultId)));
+    if (row === undefined)
+      return { ok: false, error: "cellwork_consult: the `mpdConsults` service answered `cancel` without a consult view for " + JSON.stringify(consultId) };
+    appendJournal(deps.workspace, deps.cellId, { event: "consult-cancelled", role: row.role, consultId }, deps.now);
+    return successOf(action, row);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { ok: false, error: "cellwork_consult: `" + action + "` on " + JSON.stringify(consultId) + " failed: " + message };
+  }
+}
+
 // packages/mpd-cellwork-plugin/src/recon.ts
 var RECON_ROLES = ["Explorer", "Researcher"];
 var JOURNAL_REPORT_CHARS = 2000;
+var RECON_MAX_QUESTIONS = 8;
 function canonicalReconRole(role) {
   const wanted = role.trim().toLowerCase();
   return RECON_ROLES.find((candidate) => candidate.toLowerCase() === wanted);
 }
-function reconPrompt(deps, label, task) {
-  const persona = deps.personaFor(label);
+function reconContext(deps) {
   return [
-    ...persona === null ? [] : [persona, ""],
-    "[mpd-cellwork] ONE-SHOT READ-ONLY CONSULT — " + label,
-    "",
-    "Cell " + deps.cell.cellId + " is in its planning phase. Answer the question below from the repository",
+    "Cell " + deps.cell.cellId + " is in its planning phase. Answer the ONE question below from the repository",
     "itself: read files, search, and cite what you found by path. You cannot write, edit or run a shell;",
     "that is the point of this consult.",
-    "",
-    "QUESTION:",
-    task,
     "",
     "RETURN: the evidence you found (paths and the few relevant excerpts), then a direct answer. If the",
     "question is unanswerable from the tree, say exactly what is missing rather than guessing."
   ].join(`
 `);
+}
+function questionsOf(input) {
+  const hasTask = typeof input.task === "string";
+  const hasQuestions = Array.isArray(input.questions);
+  if (hasTask === hasQuestions)
+    return { error: "cellwork_recon: supply EXACTLY ONE of `task` (one question) or `questions` (1.." + String(RECON_MAX_QUESTIONS) + " questions)" };
+  if (hasTask) {
+    const task = String(input.task ?? "").trim();
+    if (task === "")
+      return { error: "cellwork_recon: the task/question is empty — one consult answers one concrete question" };
+    return { questions: [task] };
+  }
+  const declared = Array.isArray(input.questions) ? input.questions : [];
+  if (declared.length === 0)
+    return { error: "cellwork_recon: `questions` is empty — ask at least one question" };
+  if (declared.length > RECON_MAX_QUESTIONS)
+    return { error: "cellwork_recon: `questions` carries " + String(declared.length) + " entries, more than the " + String(RECON_MAX_QUESTIONS) + " one call settles — split it into batches" };
+  const questions = [];
+  for (let index = 0;index < declared.length; index += 1) {
+    const entry = declared[index];
+    const text = typeof entry === "string" ? entry.trim() : "";
+    if (text === "")
+      return { error: "cellwork_recon: questions[" + String(index) + "] is empty — every question must be a non-empty string" };
+    questions.push(text);
+  }
+  return { questions };
 }
 async function runRecon(deps, input) {
   if (deps.cell.phase === "stopped")
@@ -3801,32 +4052,69 @@ async function runRecon(deps, input) {
   const label = canonicalReconRole(input.role);
   if (label === undefined)
     return { ok: false, error: "cellwork_recon: role " + JSON.stringify(input.role) + " is not a read-only consult role — use exactly " + RECON_ROLES.join(" or ") };
-  const task = input.task.trim();
-  if (task === "")
-    return { ok: false, error: "cellwork_recon: the task/question is empty — one consult answers one concrete question" };
+  const asked = questionsOf(input);
+  if ("error" in asked)
+    return { ok: false, error: asked.error };
+  const service = deps.consults;
+  if (service?.start === undefined || service.settle === undefined || service.collect === undefined) {
+    return { ok: false, error: missingConsultsServiceRefusal("cellwork_recon") };
+  }
   const persona = deps.personaFor(label);
-  try {
-    const result = await deps.spawn({
-      label,
-      prompt: reconPrompt(deps, label, task),
-      maxDepth: deps.config.depthMax,
-      parent: deps.parent
-    });
+  const context = reconContext(deps);
+  const starts = [];
+  for (const question of asked.questions) {
+    try {
+      const answer = await service.start({ role: label, task: question, context, exec: deps.exec, maxDepth: deps.config.depthMax });
+      const view = consultRowOf(answer);
+      if (view === undefined)
+        starts.push({ question, failure: "the `mpdConsults` service answered without a consultId" });
+      else
+        starts.push({ question, consultId: view.consultId });
+    } catch (error) {
+      starts.push({ question, failure: error instanceof Error ? error.message : String(error) });
+    }
+  }
+  const reports = await Promise.all(starts.map(async (start) => {
+    if (start.consultId === undefined)
+      return { question: start.question, report: "cellwork_recon: starting the " + label + " consult failed: " + String(start.failure ?? "unknown error"), stopReason: "failed" };
+    try {
+      await service.settle?.(start.consultId);
+      const outcome = consultRowOf(await Promise.resolve(service.collect?.(start.consultId)));
+      const report = reportRowOf(outcome?.report);
+      if (report === undefined) {
+        return { question: start.question, report: "cellwork_recon: the " + label + " consult for this question failed: " + String(outcome?.error ?? "the supervisor released no report"), stopReason: "failed" };
+      }
+      return {
+        question: start.question,
+        report: report.summary,
+        stopReason: report.stopReason,
+        ...report.status === "interrupted" ? { interrupted: true } : {},
+        ...report.handoff === undefined ? {} : { handoff: report.handoff }
+      };
+    } catch (error) {
+      return { question: start.question, report: "cellwork_recon: settling the " + label + " consult failed: " + (error instanceof Error ? error.message : String(error)), stopReason: "failed" };
+    }
+  }));
+  for (const row of reports) {
     appendJournal(deps.workspace, deps.cell.cellId, {
-      event: "recon",
+      event: row.stopReason === "failed" ? "recon-failed" : "recon",
       role: label,
-      question: task.slice(0, 400),
-      reportChars: result.output.length,
-      excerpt: result.output.slice(0, JOURNAL_REPORT_CHARS),
-      stopReason: result.stopReason,
+      question: row.question.slice(0, 400),
+      reportChars: row.report.length,
+      excerpt: row.report.slice(0, JOURNAL_REPORT_CHARS),
+      stopReason: row.stopReason,
       personaInjected: persona !== null
     }, deps.now);
-    return { ok: true, role: label.toLowerCase(), label, report: result.output, stopReason: result.stopReason, personaInjected: persona !== null };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    appendJournal(deps.workspace, deps.cell.cellId, { event: "recon-failed", role: label, question: task.slice(0, 400), error: message }, deps.now);
-    return { ok: false, error: "cellwork_recon: raising the " + label + " consult failed: " + message };
   }
+  const single = reports.length === 1 ? reports[0] : undefined;
+  const legacyOnly = input.task !== undefined && asked.questions.length === 1;
+  return {
+    ok: true,
+    role: label.toLowerCase(),
+    label,
+    personaInjected: persona !== null,
+    ...single === undefined ? { reports } : legacyOnly ? { report: single.report, stopReason: single.stopReason } : { reports, report: single.report, stopReason: single.stopReason }
+  };
 }
 
 // packages/mpd-cellwork-plugin/src/activate.ts
@@ -3922,7 +4210,10 @@ function plannerPrompt(deps) {
     '  VERBATIM. Answer the captain the same way: `kind:"answer", replyTo:<the question\'s message id>, selected:[…]`.',
     "- Then WAIT for the captain's answer. Do not invent an answer, do not proceed on an assumption.",
     "- If reconnaissance is needed before you can ask a good question, call `cellwork_recon`",
-    '  {role:"Explorer"|"Researcher", task} — a one-shot READ-ONLY consult; you get its report back.',
+    '  {role:"Explorer"|"Researcher", task} — a one-shot READ-ONLY consult; you get its report back. Pass',
+    "  `questions:[…]` (1..8) instead of `task` to settle several at once.",
+    "  For side-work you do not have to read immediately, `cellwork_delegate` starts 1..16 BACKGROUND consults",
+    "  in one call and returns their ids; collect them with `cellwork_consult`.",
     ...PLANNER_RECON_LINES,
     "THE DOCUMENT: write `<cell>/requirements.md` under the cell directory with these headings exactly:",
     "  ## Goal · ## Non-goals · ## Users / consumers · ## Constraints · ## Acceptance criteria · ## Open questions",
@@ -3930,7 +4221,8 @@ function plannerPrompt(deps) {
     'Then call `cellwork_requirements {action:"finalize"}` (pass `content` instead of writing the file if that',
     "is easier). A finalized revision unblocks the splitter.",
     "",
-    "YOUR TOOLS: `cellwork_recon`, `cellwork_requirements`, `cellwork_status`, `cellwork_send`/`agent_teams_mail`.",
+    "YOUR TOOLS: `cellwork_recon`, `cellwork_delegate`, `cellwork_consult`, `cellwork_requirements`,",
+    "`cellwork_status`, `cellwork_send`/`agent_teams_mail`.",
     "Do NOT call `ask_user_question` (that is the captain's surface) and do NOT submit a split."
   ].join(`
 `);
@@ -4670,6 +4962,11 @@ function installCellworkFlow(deps) {
     const service = deps.ctx.get?.("mpdRoles", false);
     return typeof service === "object" && service !== null ? service : undefined;
   };
+  const consults = () => {
+    const service = deps.ctx.get?.("mpdConsults", false);
+    return typeof service === "object" && service !== null ? service : undefined;
+  };
+  const consultBook = createConsultBook();
   const configService = () => {
     const service = deps.ctx.get?.("mpdConfig", false);
     return typeof service === "object" && service !== null ? service : undefined;
@@ -4689,6 +4986,25 @@ function installCellworkFlow(deps) {
     } catch {
       return null;
     }
+  };
+  const canonicalRoleOf = (role) => {
+    const wanted = roleKey(role);
+    if (wanted === "")
+      return;
+    return rosterNames().find((name) => roleKey(name) === wanted);
+  };
+  const noLiveCellRefusal = (context, toolName) => {
+    if (context.workspace !== "" && context.cell !== null)
+      return;
+    if (context.workspace === "")
+      return toolName + ": the workspace root could not be resolved, so no cell can be read";
+    const ids = listCellIds(context.workspace);
+    for (const id of ids) {
+      const read = readCell(context.workspace, id);
+      if (read.ok && read.state.phase === "stopped")
+        return toolName + ": cell " + id + " is stopped and archived — consult work is refused after the mode ends";
+    }
+    return toolName + ": no active cell in this workspace — the consult verbs are only callable inside a running cell";
   };
   const routeOf = (role) => {
     try {
@@ -4875,14 +5191,15 @@ missing sections: ` + result.missing.join(", ") : ""));
   }));
   disposers.push(dsh.registerTool({
     name: "cellwork_recon",
-    description: "PLANNER/SUBCAPTAIN only: raise ONE read-only consult (label exactly `Explorer` or `Researcher`) through the adapter's direct one-shot start path, with an explicit absolute maxDepth so the consult is a leaf. The report is returned and journaled in the cell. A composition without the child-persona seam degrades to prose read-only and says so (`personaInjected:false`).",
+    description: "PLANNER/SUBCAPTAIN only: raise READ-ONLY consults (label exactly `Explorer` or `Researcher`) through the `mpdConsults` service, so the roles row applies the read-only deny list to the child and the cell's own absolute `cellwork.depthMax` bounds the nesting. ONE question (`{role, task}`, the legacy blocking form) returns its report; 1..8 questions (`{role, questions}`) run CONCURRENTLY and the call returns only when ALL of them are settled, one row per question. Every report is journaled in the cell; an absent `mpdConsults` service is refused by name, never replaced by an unsupervised spawn.",
     parameters: {
       type: "object",
       properties: {
-        role: { type: "string", enum: ["Explorer", "Researcher"], description: "The read-only roster role; the label is applied verbatim so the child-persona seam applies the deny list." },
-        task: { type: "string", description: "The one question the consult must answer." }
+        role: { type: "string", enum: ["Explorer", "Researcher"], description: "The read-only roster role; the label is applied verbatim so the roles row applies the read-only deny list." },
+        task: { type: "string", description: "The ONE question the consult must answer (legacy blocking form; exactly one of `task`/`questions`)." },
+        questions: { type: "array", items: { type: "string" }, description: "1..8 questions settled CONCURRENTLY; the call returns when every one is settled (exactly one of `task`/`questions`)." }
       },
-      required: ["role", "task"],
+      required: ["role"],
       additionalProperties: false
     },
     output: {
@@ -4896,7 +5213,21 @@ missing sections: ` + result.missing.join(", ") : ""));
           label: { type: "string" },
           report: { type: "string" },
           stopReason: { oneOf: [{ type: "string" }, { type: "null" }] },
-          personaInjected: { type: "boolean" }
+          personaInjected: { type: "boolean" },
+          reports: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                question: { type: "string" },
+                report: { type: "string" },
+                stopReason: { oneOf: [{ type: "string" }, { type: "null" }] },
+                interrupted: { type: "boolean" },
+                handoff: { type: "string" }
+              },
+              required: ["question", "report", "stopReason"]
+            }
+          }
         },
         required: ["ok"]
       },
@@ -4904,7 +5235,18 @@ missing sections: ` + result.missing.join(", ") : ""));
         const result = typeof value === "object" && value !== null ? value : {};
         if (result.ok === false)
           return text("cellwork_recon refused: " + String(result.error ?? "unknown refusal"));
-        return text(String(result.label ?? "consult") + " report (" + String(result.report ?? "").length + " chars" + (result.personaInjected === true ? ", persona injected" : ", NO persona seam") + `):
+        const rows = Array.isArray(result.reports) ? result.reports : [];
+        if (rows.length > 0) {
+          return text(String(result.label ?? "consult") + " — " + String(rows.length) + " report(s)" + (result.personaInjected === true ? ", persona injected" : ", NO persona readable") + `:
+
+` + rows.map((row, index) => "[" + String(index + 1) + "] " + String(row.question ?? "") + `
+` + String(row.report ?? "") + (row.stopReason === null || row.stopReason === undefined ? "" : `
+(stopReason: ` + String(row.stopReason) + ")" + (row.handoff === undefined ? "" : `
+(handoff: ` + String(row.handoff) + ")"))).join(`
+
+`));
+        }
+        return text(String(result.label ?? "consult") + " report (" + String(result.report ?? "").length + " chars" + (result.personaInjected === true ? ", persona injected" : ", NO persona readable") + `):
 
 ` + String(result.report ?? ""));
       }
@@ -4914,26 +5256,221 @@ missing sections: ` + result.missing.join(", ") : ""));
       const caller = callerFor(exec);
       if (caller.refusal !== null)
         return { ok: false, error: refusalText(caller.refusal), path: caller.refusal.path };
-      if (caller.workspace === "" || caller.cell === null) {
-        const ids = listCellIds(caller.workspace);
-        for (const id of ids) {
-          const read = readCell(caller.workspace, id);
-          if (read.ok && read.state.phase === "stopped")
-            return { ok: false, error: "cellwork_recon: cell " + id + " is stopped and archived — reconnaissance is refused after the mode ends" };
-        }
+      const noCell = noLiveCellRefusal(caller, "cellwork_recon");
+      if (noCell !== undefined)
+        return { ok: false, error: noCell };
+      const cell = caller.cell;
+      if (cell === null)
         return { ok: false, error: "cellwork_recon: no active cell in this workspace" };
-      }
       const result = await runRecon({
-        spawn: (spec) => dsh.spawnAgent(spec).then((answer) => ({ output: answer.output, stopReason: answer.stopReason })),
+        consults: consults(),
+        exec,
         workspace: caller.workspace,
-        cell: caller.cell,
-        parent: exec.agent,
+        cell,
         caller: { member: caller.member, mode: caller.seat?.mode ?? "member" },
         config,
         personaFor,
         now: new Date
-      }, { role: argString(argv, "role"), task: argString(argv, "task") });
+      }, {
+        role: argString(argv, "role"),
+        ...typeof argv.task === "string" ? { task: argv.task } : {},
+        ...Array.isArray(argv.questions) ? { questions: argv.questions } : {}
+      });
       return result.ok ? { ...result } : { ok: false, error: result.error };
+    }
+  }));
+  disposers.push(dsh.registerTool({
+    name: "cellwork_delegate",
+    description: "PLANNER / SUBCAPTAIN / recorded MEMBER only (the cell captain is refused): start 1..16 BACKGROUND consults in ONE call and return their `consultId`s immediately, before any child settles. Roles are ANY roster role — writers included — and are canonicalised by the roles row (`deep worker` = `Deep-Worker` = `Deep Worker`), so the answer echoes the canonical name. ALL-OR-NOTHING: an unknown role, an empty field or more than 16 tasks refuses the whole call and starts nothing. Over-cap work QUEUES on the shared `MPD_DSH_CONSULT_MAX` cap and is never refused. Collect with `cellwork_consult`; for read-only reconnaissance prefer `cellwork_recon`.",
+    parameters: {
+      type: "object",
+      properties: {
+        tasks: {
+          type: "array",
+          description: "1..16 tasks started in ONE pass; every one must validate or the call starts nothing.",
+          items: {
+            type: "object",
+            properties: {
+              role: { type: "string", description: "A roster role NAME (any case, space, hyphen or underscore spelling; see `mpd_roles_list`)." },
+              task: { type: "string", description: "The assignment / question this consult answers." },
+              context: { type: "string", description: "Optional extra prompt block (why the consult exists)." }
+            },
+            required: ["role", "task"],
+            additionalProperties: false
+          }
+        }
+      },
+      required: ["tasks"],
+      additionalProperties: false
+    },
+    output: {
+      schema: {
+        type: "object",
+        properties: {
+          ok: { type: "boolean" },
+          error: { type: "string" },
+          started: { type: "integer" },
+          consults: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                consultId: { type: "string" },
+                role: { type: "string" },
+                startedAt: { type: "number" }
+              },
+              required: ["consultId", "role", "startedAt"]
+            }
+          }
+        },
+        required: ["ok"]
+      },
+      render: (_args, value) => {
+        const result = typeof value === "object" && value !== null ? value : {};
+        if (result.ok === false)
+          return text("cellwork_delegate refused: " + String(result.error ?? "unknown refusal"));
+        const rows = Array.isArray(result.consults) ? result.consults : [];
+        return text("started " + String(result.started ?? rows.length) + " background consult(s) — collect them with `cellwork_consult`:\n" + rows.map((row) => "- " + String(row.role ?? "") + " · " + String(row.consultId ?? "")).join(`
+`));
+      }
+    },
+    execute: async (args, exec) => {
+      const argv = readArgs(args);
+      const caller = callerFor(exec);
+      if (caller.refusal !== null)
+        return { ok: false, error: refusalText(caller.refusal), path: caller.refusal.path };
+      const noCell = noLiveCellRefusal(caller, "cellwork_delegate");
+      if (noCell !== undefined)
+        return { ok: false, error: noCell };
+      const seatRefusal = consultSeatRefusal("cellwork_delegate", caller.seat);
+      if (seatRefusal !== undefined)
+        return { ok: false, error: seatRefusal };
+      const cell = caller.cell;
+      if (cell === null)
+        return { ok: false, error: "cellwork_delegate: no active cell in this workspace" };
+      const result = await startDelegation({
+        service: consults,
+        canonicalRole: canonicalRoleOf,
+        rosterNames,
+        cellId: cell.cellId,
+        workspace: caller.workspace,
+        exec,
+        config,
+        now: new Date,
+        book: consultBook
+      }, argv.tasks);
+      return result.ok ? { ...result } : { ok: false, error: result.error };
+    }
+  }));
+  disposers.push(dsh.registerTool({
+    name: "cellwork_consult",
+    description: 'PLANNER / SUBCAPTAIN / recorded MEMBER only (the cell captain is refused): list, wait for, collect or cancel the consults THIS cell started through `cellwork_delegate`. `list` answers only this cell\'s ids that the consult supervisor still knows (a direct `mpd_role_consult {action:"collect"}` releases one, and a restart drops every handle); `wait` clamps `timeoutMs` to 1..60000 (default 30000) and a timed-out wait answers `state:"running"` rather than throwing; `collect` returns the settled report and RELEASES the record; `cancel` interrupts that child and journals it. An id this cell did not start is refused, not guessed.',
+    parameters: {
+      type: "object",
+      properties: {
+        action: { type: "string", enum: [...CONSULT_ACTIONS], description: "list | wait | collect | cancel." },
+        consultId: { type: "string", description: "The id `cellwork_delegate` returned; required for every action except `list`." },
+        timeoutMs: { type: "number", description: "The `wait` bound in ms, clamped to 1.." + String(CONSULT_WAIT_MAX_MS) + "; default " + String(CONSULT_WAIT_DEFAULT_MS) + "." }
+      },
+      required: ["action"],
+      additionalProperties: false
+    },
+    output: {
+      schema: {
+        type: "object",
+        properties: {
+          ok: { type: "boolean" },
+          error: { type: "string" },
+          action: { type: "string" },
+          consults: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                consultId: { type: "string" },
+                role: { type: "string" },
+                state: { type: "string" },
+                startedAt: { type: "number" },
+                elapsedMs: { type: "number" },
+                question: { type: "string" }
+              }
+            }
+          },
+          consultId: { type: "string" },
+          role: { type: "string" },
+          state: { type: "string" },
+          startedAt: { type: "number" },
+          elapsedMs: { type: "number" },
+          handoff: { type: "string" },
+          errorDetail: { type: "string", description: "The consult's OWN failure text (a raised child that never reported), distinct from a refusal." },
+          report: {
+            type: "object",
+            properties: {
+              role: { type: "string" },
+              status: { type: "string" },
+              summary: { type: "string" },
+              recommendation: { type: "string" },
+              details: { type: "string" },
+              evidence: { type: "array", items: { type: "string" } },
+              stopReason: { oneOf: [{ type: "string" }, { type: "null" }] },
+              consultId: { type: "string" },
+              elapsedMs: { type: "number" },
+              handoff: { type: "string" },
+              lastActivity: { type: "string" }
+            }
+          }
+        },
+        required: ["ok"]
+      },
+      render: (_args, value) => {
+        const result = typeof value === "object" && value !== null ? value : {};
+        if (result.ok === false)
+          return text("cellwork_consult refused: " + String(result.error ?? "unknown refusal"));
+        const rows = Array.isArray(result.consults) ? result.consults : [];
+        if (result.action === "list") {
+          return text(rows.length === 0 ? "this cell has no consult the supervisor still knows — start work with `cellwork_delegate`" : "this cell's consults (" + String(rows.length) + `):
+` + rows.map((row) => "- " + String(row.role ?? "") + " · " + String(row.consultId ?? "") + " · " + String(row.state ?? "") + " · " + String(row.elapsedMs ?? 0) + " ms · " + String(row.question ?? "")).join(`
+`));
+        }
+        const report = typeof result.report === "object" && result.report !== null ? result.report : undefined;
+        if (report === undefined)
+          return text(String(result.action ?? "consult") + " · " + String(result.role ?? "") + " · " + String(result.state ?? "running") + " · " + String(result.elapsedMs ?? 0) + " ms" + (typeof result.errorDetail === "string" ? `
+` + result.errorDetail : ""));
+        return text(String(result.action ?? "collect") + " · " + String(report.role ?? "") + " · " + String(report.status ?? "") + " · " + String(report.elapsedMs ?? 0) + " ms" + (report.summary === undefined || report.summary === "" ? "" : `
+
+` + String(report.summary)) + (Array.isArray(report.evidence) && report.evidence.length > 0 ? `
+
+evidence:
+` + report.evidence.map((entry) => "- " + String(entry)).join(`
+`) : ""));
+      }
+    },
+    execute: async (args, exec) => {
+      const argv = readArgs(args);
+      const caller = callerFor(exec);
+      if (caller.refusal !== null)
+        return { ok: false, error: refusalText(caller.refusal), path: caller.refusal.path };
+      const noCell = noLiveCellRefusal(caller, "cellwork_consult");
+      if (noCell !== undefined)
+        return { ok: false, error: noCell };
+      const seatRefusal = consultSeatRefusal("cellwork_consult", caller.seat);
+      if (seatRefusal !== undefined)
+        return { ok: false, error: seatRefusal };
+      const cell = caller.cell;
+      if (cell === null)
+        return { ok: false, error: "cellwork_consult: no active cell in this workspace" };
+      const result = await runConsultAction({
+        service: consults,
+        canonicalRole: canonicalRoleOf,
+        rosterNames,
+        cellId: cell.cellId,
+        workspace: caller.workspace,
+        exec,
+        config,
+        now: new Date,
+        book: consultBook
+      }, { action: argString(argv, "action"), consultId: argString(argv, "consultId"), timeoutMs: argv.timeoutMs });
+      return result;
     }
   }));
   disposers.push(dsh.registerTool({
@@ -6190,7 +6727,9 @@ function promotionDirective(cellId, memberName, depth, nextStep) {
     "",
     "A subcaptain DISPATCHES: stage your sub-team with `agent_teams_plan` and register the sub-cell with",
     "`cellwork_subteam {objective}` (the plugin refuses a depth beyond the cell cap). You may consult",
-    "read-only children with `cellwork_recon`, and you keep `cellwork_dispatch`/`cellwork_status`."
+    "read-only children with `cellwork_recon` (1..8 questions in one blocking call), start BACKGROUND",
+    "consults with `cellwork_delegate` and settle them with `cellwork_consult`, and you keep",
+    "`cellwork_dispatch`/`cellwork_status`."
   ].join(`
 `);
 }
@@ -6205,9 +6744,11 @@ function subteamDirective(subcellId, depth, parentCellId, parentTeamId) {
     "You are its captain now: stage the sub-team with `agent_teams_plan` (members + tasks, approve), then",
     "`cellwork_activate` with the accepted split. The same guard applies to you as to any captain: dispatch",
     "only. Your surface here is `cellwork_dispatch`, `cellwork_supervise`, `cellwork_activate` and",
-    "`cellwork_subteam`; starting and ending a cell belong to the PARENT captain, and the guard refuses",
-    "those verbs for you. To leave this sub-cell, `cellwork_send` a stop request to the parent cell — the",
-    "parent archives it and your record is kept."
+    "`cellwork_subteam`, plus the two background-delegation verbs `cellwork_delegate` and",
+    "`cellwork_consult` — start up to 16 supervised consults in one call and settle them later. Starting",
+    "and ending a cell belong to the PARENT captain, and the guard refuses those verbs for you. To leave",
+    "this sub-cell, `cellwork_send` a stop request to the parent cell — the parent archives it and your",
+    "record is kept."
   ].join(`
 `);
 }

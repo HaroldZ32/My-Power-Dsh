@@ -195,7 +195,9 @@ export function promotionDirective(cellId: string, memberName: string, depth: nu
     "",
     "A subcaptain DISPATCHES: stage your sub-team with `agent_teams_plan` and register the sub-cell with",
     "`cellwork_subteam {objective}` (the plugin refuses a depth beyond the cell cap). You may consult",
-    "read-only children with `cellwork_recon`, and you keep `cellwork_dispatch`/`cellwork_status`.",
+    "read-only children with `cellwork_recon` (1..8 questions in one blocking call), start BACKGROUND",
+    "consults with `cellwork_delegate` and settle them with `cellwork_consult`, and you keep",
+    "`cellwork_dispatch`/`cellwork_status`.",
   ].join("\n")
 }
 
@@ -232,9 +234,11 @@ export function subteamDirective(subcellId: string, depth: number, parentCellId:
     "You are its captain now: stage the sub-team with `agent_teams_plan` (members + tasks, approve), then",
     "`cellwork_activate` with the accepted split. The same guard applies to you as to any captain: dispatch",
     "only. Your surface here is `cellwork_dispatch`, `cellwork_supervise`, `cellwork_activate` and",
-    "`cellwork_subteam`; starting and ending a cell belong to the PARENT captain, and the guard refuses",
-    "those verbs for you. To leave this sub-cell, `cellwork_send` a stop request to the parent cell — the",
-    "parent archives it and your record is kept.",
+    "`cellwork_subteam`, plus the two background-delegation verbs `cellwork_delegate` and",
+    "`cellwork_consult` — start up to 16 supervised consults in one call and settle them later. Starting",
+    "and ending a cell belong to the PARENT captain, and the guard refuses those verbs for you. To leave",
+    "this sub-cell, `cellwork_send` a stop request to the parent cell — the parent archives it and your",
+    "record is kept.",
   ].join("\n")
 }
 

@@ -24,6 +24,17 @@ read-only discipline.
 
 - `mpdRoles` service (`ctx.get("mpdRoles")`): `list()` / `get(key)` — consumed by
   `mpd-modelchain-plugin` (chain lookup).
+- `mpdConsults` service (`ctx.get("mpdConsults")`): `start` / `list` / `wait` / `settle` / `collect` /
+  `cancel` — the SAME consult supervisor the tools below use, published as a cordis SERVICE so a bounded
+  plane outside this package (cellwork's `cellwork_delegate` / `cellwork_consult` / batch
+  `cellwork_recon`) can start and settle background consults without a relative import into this row.
+  ONE registry, ONE `MPD_DSH_CONSULT_MAX` cap and ONE silence deadman govern both surfaces; a start
+  answers `{consultId, role, state:"running", startedAt}` at once and the role is canonicalised first. It
+  adds no tool and appears in no tool list. **THE ONE BEHAVIOURAL DIFFERENCE:** `start` does NOT apply
+  `consultDepthRefusal` — that floor belongs to the TOOL handlers, while this service is called by a
+  plane that owns its own cap (`cellwork.depthMax`, forwarded as the absolute `maxDepth`); persona,
+  route, fallback, cap, deadman and the read-only child scope are identical because the raise lands on
+  the same internal path.
 - `mpd_roles_list` — the roster, one line per role: name, route, and what it does.
 - `mpd_role_spawn` — ONE-SHOT single-call consult: one bounded delegation with one role, one report.
   The child (roster persona + route + write-deny toolFilter for read-only roles) is **labelled with

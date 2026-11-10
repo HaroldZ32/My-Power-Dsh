@@ -65,11 +65,19 @@ cell 规划器位于深度 1、保留自己的路线，它发起的咨询落在�
   就**拒绝**，除非 `force:true`；强制停止会被如实记入 journal。
 
 flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正文延伸到同级或更高级的下一个标题，因此
-`###` 留在父章节内）、`cellwork_recon`（规划器的一次性只读咨询）、`cellwork_split`（切分器的按度量图——每个
+`###` 留在父章节内）、`cellwork_recon`（规划器的**只读**咨询——`{role, task}` 问一个问题，
+`{role, questions:[…]}` 并发问 1..8 个并全部落定后返回）、`cellwork_split`（切分器的按度量图——每个
 任务可声明自己的看板 `member`，拒绝会把 findings 持久化到 `split/<rev>.refused.json`）、
 `cellwork_activate`（队长的物化；对每个不同的 `member` 只拉起一个成员，每份合约同时点名 owner role 与成员，
 其返回的 `reused` 列出从 cell 记录或活跃名册解析、而不是新拉起的成员名；成员行的**另外两种**出现方式
 是暂存与采纳，见下文）。
+
+**后台委派**这一对，给 cell 座位使用（规划器、副队长、普通成员——绝不是队长）：`cellwork_delegate`
+一趟启动 1..16 个咨询并**立即**返回它们的 `consultId`，角色由名册行规范化、可以是**任意**名册角色（写作角色也
+算）；`cellwork_consult` 列出、等待、收取（会**释放**记录）与取消**本 cell** 发起的咨询。两者都走
+`mpd-roles` 行在它**唯一**的咨询监督器之上提供的 `mpdConsults` 服务——一个注册表、一个
+`MPD_DSH_CONSULT_MAX` 上限（超上限的工作**排队**）、一个静默死信器——服务缺席时按名字拒绝，绝不用无监督的
+启动替代。
 
 协议工具：`cellwork_dispatch`（一次仅声明所有者的派发，外加 `reassign` 改派与 `unfence` 解围）、
 `cellwork_supervise`（队长的只读巡检，含每个**关闭**座位——放弃围栏或归屏障所有的检查点——与其仍拥有的
@@ -299,6 +307,13 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
   它，只是因为 cellwork 自己的派发会读取 cell 记录——单看看板仍然能看到这一行。
 - 验证者的"盲"始终是**书面约定**，与本仓库其它地方一致：cellwork 接好合约、循环与裁决，但不假装能观测到
   验证者读过什么。
+- **被委派的写作角色在 cell 看板之外工作**：没有冻结合约、没有验证循环、没有看板行。看板规模的工作属于
+  `cellwork_split` + `cellwork_activate`；后台委派是给有边界的副业用的。
+- **咨询账本在内存里**（cell id → consult id，不含报告、不含上限），与监督器自己的记录一样：重启会同时丢掉
+  两者，而 `cellwork_consult` 会如实说明，而不是回一个过期 id。座位直接通过 `mpd_role_consult` 收走的咨询
+  会离开本 cell 的清单。
+- **名册的委派深度下限不施加在咨询服务这条路径上**——那条下限属于名册的工具处理器。真正给 cell 平面封顶的
+  是 `cellwork.depthMax`：每次启动都作为咨询的**绝对** `maxDepth` 传入，再加上名册在子会话一侧的叶子拒绝。
 - **通用 team 动词就是 cell 模式消除的危险。** `agent_teams_dispatch` 会把就绪任务配给声明的 owner，但当
   owner 忙时会**退回按名册顺序**配对；本波次中它把一条 REVIEW 任务交给了写过被审泳道的成员。队长立即释放
   配对、把该行恢复给独立评审者，而写作者披露它只跑了 `git diff --stat`、一次标记 grep 和一次目录列表就被
@@ -338,8 +353,10 @@ budget）留在本包：它们是**写**看板的工作流层。
 
 ## consult 工具、强制目标与 CELL 记录（2026-11-05）
 
-verifier 的只读拒绝清单现为 **十个**名字（新增 `mpd_role_spawn_async` 与 `mpd_role_consult`），
-no-delegation 清单为四个（两个 spawn 工具加两个 consult 工具）：verifier 席位既不能委派，也不能
+名册一侧 verifier 的只读拒绝清单仍为 **十个**名字（含 `mpd_role_spawn_async` 与 `mpd_role_consult`），
+本包自己的 `VERIFIER_DENY_TOOLS` 则是 **十一** 个（那份十减去 verifier 保留的 `bash`，再加上
+`cellwork_delegate` 与 `cellwork_consult`），而 no-delegation 清单带 **六** 个（两个 spawn 工具、两个名册
+consult 工具，以及本包的两个 consult 动词）：无论 verifier 席位伸手去够哪种拼写，它既不能委派，也不能
 取消另一个 consult。cell 席位**就是**团队成员，因此团队 watchdog 的强制监督器通过该团队成员身份、
 按**先宽限后强制**的顺序将其作为强制目标（宽限指令、采用成员自己写的 handoff，然后才是 interrupt、
 requeue、split），而 `mpd-team-core` **绝不**写 CELL 记录

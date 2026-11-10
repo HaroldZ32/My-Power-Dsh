@@ -5823,6 +5823,54 @@ function createConsultSupervisor(deps) {
   return { start, settle, wait, collect, cancel, list };
 }
 
+// packages/mpd-roles-plugin/src/consults.ts
+function createMpConsults(deps) {
+  const viewOf = (consultId) => deps.supervisor.list().find((entry) => entry.consultId === consultId);
+  const settledView = (consultId) => {
+    const view = viewOf(consultId);
+    if (view === undefined)
+      throw new Error("mpdConsults: unknown consultId " + JSON.stringify(consultId) + " — it was collected, cancelled and collected, or never started");
+    return view;
+  };
+  return {
+    start: async (spec) => {
+      const role = deps.canonicalRole(spec.role, spec.exec);
+      if (role === null)
+        throw new Error("mpdConsults: unknown role " + JSON.stringify(spec.role) + " — pass a roster NAME (see mpd_roles_list)");
+      const task = String(spec.task ?? "").trim();
+      if (task === "")
+        throw new Error("mpdConsults: task required");
+      const view = deps.supervisor.start({
+        role,
+        task,
+        ...spec.context === undefined ? {} : { context: String(spec.context) },
+        exec: spec.exec,
+        raise: () => deps.raise({ ...spec, role, task })
+      });
+      return { consultId: view.consultId, role, state: "running", startedAt: view.startedAt };
+    },
+    list: () => deps.supervisor.list(),
+    wait: async (consultId, timeoutMs) => {
+      await deps.supervisor.wait(consultId, timeoutMs ?? 30000);
+      return settledView(consultId);
+    },
+    settle: async (consultId) => {
+      try {
+        await deps.supervisor.settle(consultId);
+      } catch {}
+      return settledView(consultId);
+    },
+    collect: (consultId) => {
+      try {
+        return deps.supervisor.collect(consultId);
+      } catch {
+        return;
+      }
+    },
+    cancel: (consultId) => deps.supervisor.cancel(consultId)
+  };
+}
+
 // packages/mpd-roles-plugin/src/index.ts
 var name = "mpd-roles";
 var inject = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_SUBAGENTS);
@@ -6288,6 +6336,15 @@ function apply(ctx, config = {}) {
     forceAfterMs: () => consultDeadmanBound(),
     toolInFlightMaxMs: () => consultInFlightBound()
   });
+  ctx.provide("mpdConsults", createMpConsults({
+    supervisor: consultSupervisor,
+    raise: (spec) => raiseConsultAsync(spec, spec.exec, spec.maxDepth),
+    canonicalRole: (role, exec) => {
+      const surface = roleSurface(exec);
+      const spec = roleOfToolInput(surface, String(role ?? ""));
+      return spec === null ? null : spec.name;
+    }
+  }));
   dsh.registerTool({
     name: "mpd_roles_list",
     description: "List the specialist roster — the SAME normal-named specialists team mode stages as teammates, each named for what it does: " + rosterFunctionList() + ". Address a role by that name (any case, space or hyphen spelling). Use this before mpd_role_spawn; for team work stage the roster with `agent_teams_plan` (add_member with the persona text from mpd_role_persona → create_task with its dependency answer → approve) instead of repeated single-call consults.",
@@ -6374,7 +6431,7 @@ Work with the tools your role requires (read-only roles must never modify anythi
       }
     }
   });
-  async function raiseConsultAsync(args, exec) {
+  async function raiseConsultAsync(args, exec, maxDepth) {
     const surface = roleSurface(exec);
     const spec = roleOfToolInput(surface, String(args?.role ?? ""));
     if (spec === null)
@@ -6398,6 +6455,7 @@ Context:
 ` + String(args.context) : "") + `
 
 Work with the tools your role requires (read-only roles must never modify anything). End with ONLY the structured report (role/summary/recommendation/details/evidence).`;
+    const depthCap = typeof maxDepth === "number" && Number.isFinite(maxDepth) && maxDepth >= 1 ? Math.floor(maxDepth) : spawnMaxDepthOf(exec.agent);
     return dsh.spawnAgentAsync({
       label: spec.name,
       prompt,
@@ -6407,7 +6465,7 @@ Work with the tools your role requires (read-only roles must never modify anythi
       model: run.route.model,
       persona: spec.persona,
       outputSchema: REPORT_SCHEMA,
-      maxDepth: spawnMaxDepthOf(exec.agent),
+      maxDepth: depthCap,
       ...run.route.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: run.route.reasoningEffort } },
       ...spec.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {}
     });

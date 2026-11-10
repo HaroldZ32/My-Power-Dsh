@@ -86,6 +86,8 @@ interface Harness {
   handles: Map<string, string>
   /** Every read the plugin made of a team record, with the workspace it asked about. */
   teamReads: Array<{ workspace: string; teamId: string }>
+  /** The fake `mpdConsults` service this harness mounted, with its settlement levers. */
+  consults: ConsultDouble
   /**
    * Answer team reads for ONE workspace only, or for every workspace again when called with undefined.
    *
@@ -140,12 +142,137 @@ function blockText(blocks: unknown): string {
   return typeof blocks === "string" ? blocks : ""
 }
 
+/** One consult the fake `mpdConsults` service holds. */
+interface FakeConsult {
+  /** The minted id. */
+  consultId: string
+  /** The canonical role the start carried. */
+  role: string
+  /** The task text the start carried. */
+  task: string
+  /** The context block the start carried, or "". */
+  context: string
+  /** When the start answered, epoch milliseconds. */
+  startedAt: number
+  /** The settled report, or undefined while the consult still runs. */
+  report?: Record<string, unknown>
+}
+
+/** The fake `mpdConsults` service plus the levers a test needs to control settlement. */
+interface ConsultDouble {
+  /** The service object the row resolves through `ctx.get("mpdConsults")`. */
+  service: Record<string, unknown>
+  /** Whether a started consult settles at once (default true; `hold()` flips it for a background arm). */
+  autoSettle: boolean
+  /** Settle one consult by id, so a background arm can collect a report after a deliberate wait. */
+  finish: (consultId: string, summary?: string) => void
+  /** Settle one consult as INTERRUPTED, the deadman/cancel shape. */
+  interrupt: (consultId: string) => void
+  /** Every consult the service ever minted, in start order. */
+  records: FakeConsult[]
+  /** The call log (`start:<id>`, `settle:<id>`, `collect:<id>`, `cancel:<id>`), so ordering is assertable. */
+  events: string[]
+}
+
+/**
+ * Build the fake `mpdConsults` service over the harness's spawn log.
+ *
+ * It mirrors the roles row's contract, not its implementation: `start` answers the id at once, `settle`
+ * awaits settlement, `collect` RELEASES the record, `cancel` interrupts. A report's summary is
+ * `"FOUND: <task>"`, which is what the recon arms assert on.
+ *
+ * @param spawns - the harness's spawn log, appended for every start.
+ * @returns the double, with its settlement levers.
+ */
+function createConsultDouble(spawns: Array<{ label: string; maxDepth: unknown; prompt: string }>): ConsultDouble {
+  /** The live records, by id. */
+  const live = new Map<string, FakeConsult>()
+  /** The monotonic id part. */
+  let sequence = 0
+  /** The double under construction, so the service closures can read `autoSettle`. */
+  const double: ConsultDouble = {
+    service: {},
+    autoSettle: true,
+    finish: (consultId: string, summary?: string): void => {
+      /** The record being settled. */
+      const record = live.get(consultId)
+      if (record === undefined || record.report !== undefined) return
+      record.report = { role: record.role, status: "complete", summary: summary ?? "FOUND: " + record.task, recommendation: "", details: "", evidence: ["src/a.ts"], stopReason: "end", consultId, elapsedMs: 5 }
+    },
+    interrupt: (consultId: string): void => {
+      /** The record being interrupted. */
+      const record = live.get(consultId)
+      if (record === undefined || record.report !== undefined) return
+      record.report = { role: record.role, status: "interrupted", summary: "consult interrupted", recommendation: "", details: "", evidence: [], stopReason: "interrupted", consultId, elapsedMs: 5, handoff: ".mpd/handoff/consult-" + consultId + ".md" }
+    },
+    records: [],
+    events: [],
+  }
+  /**
+   * The view one record answers.
+   * @param record - the record.
+   * @returns the view shape the roles service declares.
+   */
+  const viewOf = (record: FakeConsult): Record<string, unknown> => ({
+    consultId: record.consultId,
+    role: record.role,
+    state: record.report === undefined ? "running" : String(record.report.status ?? "complete"),
+    startedAt: record.startedAt,
+    elapsedMs: record.report === undefined ? 0 : Number(record.report.elapsedMs ?? 0),
+  })
+  double.service = {
+    /** Start one consult and answer its id immediately. */
+    start: async (spec: Record<string, unknown>): Promise<unknown> => {
+      sequence += 1
+      /** The minted record. */
+      const record: FakeConsult = { consultId: "consult-" + String(sequence), role: String(spec.role ?? ""), task: String(spec.task ?? ""), context: String(spec.context ?? ""), startedAt: 1000 + sequence }
+      live.set(record.consultId, record)
+      double.records.push(record)
+      double.events.push("start:" + record.consultId)
+      spawns.push({ label: record.role, maxDepth: spec.maxDepth, prompt: record.task + (record.context === "" ? "" : "\n\n" + record.context) })
+      if (double.autoSettle) double.finish(record.consultId)
+      return { consultId: record.consultId, role: record.role, state: "running", startedAt: record.startedAt }
+    },
+    /** Every consult the service knows, in start order. */
+    list: (): unknown[] => [...live.values()].map(viewOf),
+    /** Block until the record settles (the fake settles synchronously or not at all). */
+    settle: async (consultId: string): Promise<unknown> => {
+      /** The record being awaited. */
+      const record = live.get(consultId)
+      double.events.push("settle:" + consultId)
+      if (record === undefined) throw new Error("unknown consultId " + consultId)
+      return viewOf(record)
+    },
+    /** The view after a harmless virtual wait. */
+    wait: async (consultId: string): Promise<unknown> => viewOf(live.get(consultId) as FakeConsult),
+    /** The settled outcome, RELEASING the record; a running one answers its view. */
+    collect: (consultId: string): unknown => {
+      /** The record being collected. */
+      const record = live.get(consultId)
+      double.events.push("collect:" + consultId)
+      if (record === undefined) return undefined
+      if (record.report === undefined) return viewOf(record)
+      live.delete(consultId)
+      return { ...viewOf(record), report: record.report }
+    },
+    /** Interrupt one consult and answer its view. */
+    cancel: (consultId: string): unknown => {
+      double.events.push("cancel:" + consultId)
+      double.interrupt(consultId)
+      return viewOf(live.get(consultId) as FakeConsult)
+    },
+  }
+  return double
+}
+
 /**
  * Build the fake harness and apply the plugin once.
  *
+ * @param options - `withoutConsults` leaves the `mpdConsults` service unmounted, which is the arm that
+ *   proves the honest absence refusal.
  * @returns the harness with every captured definition.
  */
-function makeHarness(): Harness {
+function makeHarness(options: { withoutConsults?: boolean } = {}): Harness {
   /** The fresh temp workspace. */
   const workspace = mkdtempSync(join(tmpdir(), "mpd-cellwork-flow-"))
   process.env.DSH_WORKSPACE_ROOT = workspace
@@ -297,6 +424,8 @@ function makeHarness(): Harness {
     /** Register one command definition the plugin contributes. */
     register(definition: CapturedCommand): () => void { commands.push(definition); return (): void => {} },
   }
+  /** The fake consult service (the roles row's `mpdConsults`), with its settlement levers. */
+  const consults = createConsultDouble(spawns)
   /** The two MPD services and the config service. */
   const services: Record<string, unknown> = {
     tools: toolsService,
@@ -328,6 +457,8 @@ function makeHarness(): Harness {
       list: (): Array<{ name: string; persona: string }> => ROSTER.map((entry) => ({ ...entry })),
       get: (key: string): { name: string; persona: string } | null => ROSTER.find((entry) => entry.name.toLowerCase() === key.toLowerCase()) ?? null,
     },
+    // THE CONSULT-SERVICE DOUBLE: mounted unless the arm proves the absence refusal.
+    ...(options.withoutConsults === true ? {} : { mpdConsults: consults.service }),
     mpdConfig: {
       get: (): unknown => undefined,
       agentRouteResolutionOf: (role: string): unknown => ROUTED.includes(role) ? { ok: true, route: { provider: "deepseek-official", model: "deepseek-flash" } } : { ok: false, reason: "unconfigured", missing: ["agentRoutes." + role + ".provider"] },
@@ -369,7 +500,7 @@ function makeHarness(): Harness {
   } as Parameters<typeof apply>[0]
   apply(ctx, {})
   return {
-    ctx, workspace, captain, tools, commands, events, calls, sends, spawns, teamRecords, handles, teamReads,
+    ctx, workspace, captain, tools, commands, events, calls, sends, spawns, teamRecords, handles, teamReads, consults,
     teamsOnlyFor: (only: string | undefined): void => { teamsGate = only },
     failPlan: (action: string): void => {
       // `approve` has its OWN break: the approval still runs and stops after one member (the `stoppedAt`
@@ -611,10 +742,11 @@ test("split: an accepted graph is measured against the INJECTED window, and a 2 
 
 // ── B5: reconnaissance ─────────────────────────────────────────────────────
 
-test("recon: planner only, label exactly Explorer, explicit absolute maxDepth, persona in the prompt", async () => {
+test("recon: planner only, label exactly Explorer, explicit absolute maxDepth, cell context in the prompt", async () => {
   /** The harness with a started cell. */
   const harness = makeHarness()
-  await startCell(harness)
+  /** The started cell. */
+  const cellId = await startCell(harness)
 /** The captain's attempt, refused because the tool is planner-only. */
   const byCaptain = await runTool(harness, "cellwork_recon", { role: "Explorer", task: "where is auth?" }, harness.captain)
   expect(byCaptain.ok).toBe(false)
@@ -623,11 +755,15 @@ test("recon: planner only, label exactly Explorer, explicit absolute maxDepth, p
   expect(byPlanner.ok).toBe(true)
   expect(byPlanner.report).toContain("FOUND")
   expect(byPlanner.personaInjected).toBe(true)
-  // The spawn spec: EXACT label, ABSOLUTE depth cap, persona text in the prompt.
+  // The start the CELLWORK side controls: EXACT label, the cell's ABSOLUTE depth cap, the question as the
+  // task and the read-only cell context — the persona is the roles row's half of the prompt now, so a
+  // planner-side copy would state it twice.
   expect(harness.spawns.length).toBe(1)
   expect(harness.spawns[0].label).toBe("Explorer")
   expect(harness.spawns[0].maxDepth).toBe(DEFAULT_CELLWORK_CONFIG.depthMax)
-  expect(harness.spawns[0].prompt).toContain("EXPLORER PERSONA TEXT")
+  expect(harness.spawns[0].prompt).toContain("where is auth?")
+  expect(harness.spawns[0].prompt).toContain("Cell " + cellId + " is in its planning phase")
+  expect(harness.spawns[0].prompt).toContain("You cannot write, edit or run a shell")
   // A non-read-only role is refused.
   const badRole = await runTool(harness, "cellwork_recon", { role: "Senior Engineer", task: "x" }, plannerAgent(harness))
   expect(badRole.ok).toBe(false)
@@ -768,6 +904,211 @@ test("Amendment 5b: cellwork_recon refuses a stopped cell, and the returned repo
   const afterStop = await runTool(harness, "cellwork_recon", { role: "Explorer", task: "x" }, plannerAgent(harness))
   expect(afterStop.ok).toBe(false)
   expect(String(afterStop.error)).toContain("stopped and archived")
+})
+
+// ── BACKGROUND DELEGATION (contract §3.2): delegate → consult, and the recon batch ─────
+
+/** Read one cell's journal, one parsed entry per line. */
+function readJournal(harness: Harness, cellId: string): Array<Record<string, unknown>> {
+  return readFileSync(journalPath(harness.workspace, cellId), "utf8").split("\n").filter((line) => line.trim() !== "").map((line) => JSON.parse(line) as Record<string, unknown>)
+}
+
+test("delegate: 3 tasks answer 3 ids BEFORE any child settles, list/collect/cancel work on exactly those", async () => {
+  /** The harness with a started cell. */
+  const harness = makeHarness()
+  /** The running cell. */
+  const cellId = await startCell(harness)
+  // HOLD every child: the call must answer ids without awaiting a settlement.
+  harness.consults.autoSettle = false
+  /** The delegate answer. */
+  const started = await runTool(harness, "cellwork_delegate", {
+    tasks: [
+      { role: "Explorer", task: "find the router" },
+      { role: "Researcher", task: "cite the budget rule", context: "the split needs it" },
+      { role: "Senior Engineer", task: "probe one file" },
+    ],
+  }, plannerAgent(harness))
+  expect(started.ok).toBe(true)
+  expect(started.started).toBe(3)
+  // Three ids in ONE response, the canonical roster spelling echoed back, and NOTHING settled yet.
+  expect(started.consults.map((entry: Record<string, unknown>) => entry.role)).toEqual(["Explorer", "Researcher", "Senior Engineer"])
+  expect(started.consults.every((entry: Record<string, unknown>) => typeof entry.consultId === "string")).toBe(true)
+  expect(harness.consults.records.every((record) => record.report === undefined)).toBe(true)
+  // The cell context travels, and the cap is the cell's OWN (never the caller-depth arithmetic).
+  expect(harness.spawns[1].prompt).toContain("the split needs it")
+  expect(harness.spawns.every((spawn) => spawn.maxDepth === DEFAULT_CELLWORK_CONFIG.depthMax)).toBe(true)
+  // ONE journal row per consult, with the bounded task excerpt.
+  /** The cell journal. */
+  const journal = readJournal(harness, cellId)
+  expect(journal.filter((entry) => entry.event === "delegate-start").length).toBe(3)
+  expect(journal.filter((entry) => entry.event === "delegate-start").map((entry) => String(entry.question))).toContain("find the router")
+  /** The three ids, in start order. */
+  const ids = started.consults.map((entry: Record<string, unknown>) => String(entry.consultId))
+  // `list` answers EXACTLY this cell's three, with the question each was started for.
+  /** The list answer. */
+  const listed = await runTool(harness, "cellwork_consult", { action: "list" }, plannerAgent(harness))
+  expect(listed.ok).toBe(true)
+  expect(listed.consults.map((entry: Record<string, unknown>) => entry.consultId)).toEqual(ids)
+  expect(listed.consults[0].question).toBe("find the router")
+  expect(listed.consults.every((entry: Record<string, unknown>) => entry.state === "running")).toBe(true)
+  // A RUNNING collect answers the running view and keeps the handle.
+  /** The running collect. */
+  const running = await runTool(harness, "cellwork_consult", { action: "collect", consultId: ids[0] }, plannerAgent(harness))
+  expect(running.ok).toBe(true)
+  expect(running.state).toBe("running")
+  expect(running.report).toBeUndefined()
+  // A settled collect returns the report and RELEASES the record.
+  harness.consults.finish(ids[0], "the router lives in src/a.ts")
+  /** The settled collect. */
+  const collected = await runTool(harness, "cellwork_consult", { action: "collect", consultId: ids[0] }, plannerAgent(harness))
+  expect(collected.ok).toBe(true)
+  expect(collected.state).toBe("complete")
+  expect(collected.report.summary).toBe("the router lives in src/a.ts")
+  // RELEASED: the id is no longer this cell's, and the refusal teaches the ownership rule.
+  /** The second collect of a released id. */
+  const again = await runTool(harness, "cellwork_consult", { action: "collect", consultId: ids[0] }, plannerAgent(harness))
+  expect(again.ok).toBe(false)
+  expect(String(again.error)).toContain("did not start")
+  // CANCEL interrupts and journals.
+  /** The cancel answer. */
+  const cancelled = await runTool(harness, "cellwork_consult", { action: "cancel", consultId: ids[2] }, plannerAgent(harness))
+  expect(cancelled.ok).toBe(true)
+  expect(cancelled.state).toBe("interrupted")
+  expect(readJournal(harness, cellId).filter((entry) => entry.event === "consult-cancelled").length).toBe(1)
+  // An id this cell never started is refused with the same teaching sentence, never "not found" alone.
+  /** The foreign id. */
+  const foreign = await runTool(harness, "cellwork_consult", { action: "collect", consultId: "consult-999" }, plannerAgent(harness))
+  expect(foreign.ok).toBe(false)
+  expect(String(foreign.error)).toContain("mpd_role_consult")
+})
+
+test("delegate: ALL-OR-NOTHING — one unknown role refuses the call and starts NOTHING", async () => {
+  /** The harness with a started cell. */
+  const harness = makeHarness()
+  /** The running cell. */
+  const cellId = await startCell(harness)
+  /** The refused batch: the SECOND task names no roster role. */
+  const refused = await runTool(harness, "cellwork_delegate", {
+    tasks: [{ role: "Explorer", task: "fine" }, { role: "Ghost Agent", task: "not a role" }],
+  }, plannerAgent(harness))
+  expect(refused.ok).toBe(false)
+  expect(String(refused.error)).toContain("tasks[1].role")
+  expect(String(refused.error)).toContain("nothing was started")
+  // An EMPTY field in an otherwise valid batch refuses it the same way.
+  /** The empty-task batch. */
+  const emptyField = await runTool(harness, "cellwork_delegate", { tasks: [{ role: "Explorer", task: "  " }] }, plannerAgent(harness))
+  expect(emptyField.ok).toBe(false)
+  expect(String(emptyField.error)).toContain("tasks[0].task")
+  // Nothing started: no record, no spawn, no journal row.
+  expect(harness.consults.records).toEqual([])
+  expect(harness.spawns).toEqual([])
+  expect(readJournal(harness, cellId).filter((entry) => entry.event === "delegate-start")).toEqual([])
+})
+
+test("delegate: the CAPTAIN is refused by the tool predicate with the guard's ONE sentence", async () => {
+  /** The harness with a started cell. */
+  const harness = makeHarness()
+  await startCell(harness)
+  for (const toolName of ["cellwork_delegate", "cellwork_consult"]) {
+    /** The captain's attempt. */
+    const refused = await runTool(harness, toolName, { tasks: [], action: "list" }, harness.captain)
+    expect(refused.ok).toBe(false)
+    expect(String(refused.error)).toContain("DISPATCHES ONLY")
+    expect(String(refused.error)).toContain("cellwork_dispatch")
+    expect(String(refused.error)).toContain("agent_teams_dispatch")
+  }
+  expect(harness.consults.records).toEqual([])
+})
+
+test("the ABSENT `mpdConsults` service is refused BY NAME for all three consult verbs", async () => {
+  /** A harness that never mounts the roles row's service. */
+  const harness = makeHarness({ withoutConsults: true })
+  await startCell(harness)
+  /** The delegate attempt. */
+  const delegated = await runTool(harness, "cellwork_delegate", { tasks: [{ role: "Explorer", task: "x" }] }, plannerAgent(harness))
+  expect(delegated.ok).toBe(false)
+  expect(String(delegated.error)).toContain("mpdConsults")
+  expect(String(delegated.error)).toContain("mpd-roles")
+  expect(String(delegated.error)).toContain("no unsupervised fallback")
+  /** The consult attempt. */
+  const consulted = await runTool(harness, "cellwork_consult", { action: "list" }, plannerAgent(harness))
+  expect(consulted.ok).toBe(false)
+  expect(String(consulted.error)).toContain("mpdConsults")
+  // `cellwork_recon` needs the same row now: the supervisor, the cap and the read-only child scope live there.
+  /** The recon attempt. */
+  const recon = await runTool(harness, "cellwork_recon", { role: "Explorer", task: "x" }, plannerAgent(harness))
+  expect(recon.ok).toBe(false)
+  expect(String(recon.error)).toContain("mpd-roles")
+  // And nothing was spawned behind the refusal.
+  expect(harness.spawns).toEqual([])
+})
+
+test("recon BATCH: 3 questions start before ANY settle, and all three report in ONE blocking answer", async () => {
+  /** The harness with a started cell. */
+  const harness = makeHarness()
+  /** The running cell. */
+  const cellId = await startCell(harness)
+  /** The batch answer. */
+  const batch = await runTool(harness, "cellwork_recon", { role: "Researcher", questions: ["q1", "q2", "q3"] }, plannerAgent(harness))
+  expect(batch.ok).toBe(true)
+  expect(batch.label).toBe("Researcher")
+  expect(batch.personaInjected).toBe(true)
+  expect(batch.reports.map((row: Record<string, unknown>) => row.question)).toEqual(["q1", "q2", "q3"])
+  expect(batch.reports.every((row: Record<string, unknown>) => String(row.report).includes("FOUND"))).toBe(true)
+  expect(batch.reports.every((row: Record<string, unknown>) => row.stopReason === "end")).toBe(true)
+  // A THREE-question batch carries `reports` ONLY: the legacy pair is for a one-question answer.
+  expect(batch.report).toBeUndefined()
+  // CONCURRENCY: all three starts happened before the first settle — the call did not serialise them.
+  /** The index of the first settle in the call log. */
+  const firstSettle = harness.consults.events.findIndex((entry) => entry.startsWith("settle:"))
+  expect(firstSettle).toBe(3)
+  expect(harness.consults.events.slice(0, 3).every((entry) => entry.startsWith("start:"))).toBe(true)
+  // ONE journal row per question.
+  expect(readJournal(harness, cellId).filter((entry) => entry.event === "recon").length).toBe(3)
+})
+
+test("recon BATCH: a ONE-question batch ALSO carries the legacy pair, and `{role, task}` stays exactly today's shape", async () => {
+  /** The harness with a started cell. */
+  const harness = makeHarness()
+  await startCell(harness)
+  /** The one-question batch. */
+  const one = await runTool(harness, "cellwork_recon", { role: "Explorer", questions: ["only one"] }, plannerAgent(harness))
+  expect(one.ok).toBe(true)
+  expect(one.reports.length).toBe(1)
+  expect(String(one.report)).toContain("FOUND")
+  expect(one.stopReason).toBe("end")
+  // The LEGACY form: the same fields, and NO `reports` key at all.
+  /** The legacy answer. */
+  const legacy = await runTool(harness, "cellwork_recon", { role: "Explorer", task: "legacy question" }, plannerAgent(harness))
+  expect(legacy.ok).toBe(true)
+  expect(legacy.reports).toBeUndefined()
+  expect(String(legacy.report)).toContain("FOUND")
+  expect(legacy.stopReason).toBe("end")
+  expect(legacy.role).toBe("explorer")
+  expect(legacy.label).toBe("Explorer")
+  expect(legacy.personaInjected).toBe(true)
+})
+
+test("recon BATCH: >8 questions, both fields, neither field and an empty entry each refuse the WHOLE call", async () => {
+  /** The harness with a started cell. */
+  const harness = makeHarness()
+  await startCell(harness)
+  /** Nine questions: one over the batch bound. */
+  const nine = Array.from({ length: 9 }, (_value, index) => "q" + String(index + 1))
+  for (const [args, expected] of [
+    [{ role: "Explorer", questions: nine }, "more than the 8"],
+    [{ role: "Explorer", task: "a", questions: ["b"] }, "EXACTLY ONE"],
+    [{ role: "Explorer" }, "EXACTLY ONE"],
+    [{ role: "Explorer", questions: ["ok", "  "] }, "questions[1] is empty"],
+  ] as Array<[Record<string, unknown>, string]>) {
+    /** The refused call. */
+    const refused = await runTool(harness, "cellwork_recon", args, plannerAgent(harness))
+    expect(refused.ok).toBe(false)
+    expect(String(refused.error)).toContain(expected)
+  }
+  // Nothing was started by any of the four refusals.
+  expect(harness.consults.records).toEqual([])
+  expect(harness.spawns).toEqual([])
 })
 
 // ── Amendment 5, arm (c): the planner prompt carries the relay protocol ─────

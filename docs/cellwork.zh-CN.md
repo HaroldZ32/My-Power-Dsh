@@ -227,7 +227,9 @@ owner**、绝不替换的；在 cell 模式之外，**等声明的 owner 空出�
 | `cellwork_start` | 队长 | 打开活跃 cell 的需求阶段：校验 cell 与调用者、写入 `startedAt`、记入 journal |
 | `cellwork_status` | 队长、成员 | 阶段、目标、队长、需求/切分修订号、成员及其模式、已注入的检查点、活跃 team 计数、已记录的切分票看板 id、cell 记录与活跃名册的成员差异（`missingFromCell` / `missingFromTeam` / `inSync`）、调用者自己的座位与磁盘路径——它**唯一**的写入是**采纳**本记录从未学到的活跃 team 座位，绝不推进阶段 |
 | `cellwork_requirements` | 规划器 | `finalize` 需求文档，或 `update` 它：update 会提升修订号并把切分标记为过期；章节正文延伸到同级或更高级的下一个标题，因此 `###` 子标题留在父章节内 |
-| `cellwork_recon` | 规划器、副队长 | 一次性**只读**咨询（Explorer/Researcher）：走直接启动路径，以角色名作为标签，并给出显式的绝对深度上限，因此这次咨询是一个只读叶子；报告会返回并记入 journal |
+| `cellwork_recon` | 规划器、副队长 | **只读**咨询（Explorer/Researcher）：走 `mpdConsults`，由名册行把只读拒绝清单施加到子会话上，并用 cell 的绝对上限 `cellwork.depthMax` 封顶嵌套；`{role, task}` 返回一份报告（旧有形状），`{role, questions}` 并发跑 1..8 个问题、**全部落定后**才返回，每个问题一行；每份报告都记入 journal |
+| `cellwork_delegate` | 规划器、副队长、成员 | 一次调用启动 1..16 个**后台**咨询并**立即**返回它们的 `consultId`（任何子会话落定之前）；角色可以是**任意**名册角色（写作角色也算），由名册行规范化；校验**全有或全无**（未知角色、空字段或超过 16 个任务则一个都不启动）；超过上限的工作在共享的 `MPD_DSH_CONSULT_MAX` 上**排队** |
+| `cellwork_consult` | 规划器、副队长、成员 | 对本 cell 通过 `cellwork_delegate` 发起的咨询做 `list` / `wait` / `collect` / `cancel`：`list` 只列本 cell 的、监督器仍然记得的 id；`wait` 收敛到 1..60000 ms（默认 30000），超时返回 `state:\"running\"`；`collect` 返回报告并**释放**记录；`cancel` 中断子会话并记 `consult-cancelled`；不是本 cell 发起的 id 会被一句教学式拒绝 |
 | `cellwork_split` | 切分器 | `submit` 任务图让插件度量（每个任务可声明自己的看板 `member`），或 `show` 上一次的裁定；每次拒绝都把 findings 持久化到 `split/<修订>.refused.json`；一个**非致命**的 `warnings` 列表按切分键点名每个没有写作用域的 `work`/`repair`/`integration` 任务，且永不改变 `accepted` |
 | `cellwork_activate` | 队长 | 把被接受的切分物化到活跃 team 记录、写合约（同时点名 owner role 与成员）、对每个不同的 `member` 只拉起一个成员、打开验证循环、派发；中途失败的一轮会被检查点记录，同一个修订号可以续做，而更新的被接受修订号会取代更旧的在飞部分激活；返回的 `reused` 列出从 cell 记录或活跃名册解析（而不是新拉起）的成员名，而保留了任务的重切分还会返回 `notice`（合约不被重写、扩展作用域需要手工重新冻结加新的验证循环、就绪行按仅声明所有者派发）；成员行的**另外两种**出现方式是暂存与采纳（见「成员：暂存的、拉起的与采纳的」） |
 | `cellwork_dispatch` | 队长 | 在 team 看板上做一次「仅声明所有者」的派发；owner 忙、缺席或被围栏时如实报告、任务保持待派发；`reassign` 先把点名的行交给另一个成员（看板 claim → `task-reassigned` journal → 投递），而 `unfence` 在派发**之前**清除点名成员**已放弃**的围栏：CELL 行的 `fenced: true` **就是**放弃（两个键被删除、`mode: member`、`handoffReady: false`、`handoffs` 保留、记 `member-unfenced`），并通过团队平面的 `unfence` 接缝重新打开 TEAM 座位（该接缝也清掉 `mode: checkpoint`；没有接缝时报告 `plane: "absent"` 且不声称已重开）；**待处理**的检查点（CELL 行无 `fenced: true`、TEAM 行 `mode: checkpoint` 且没有 `fenced` 标志）答复 `checkpoint-pending` 且什么都不写；`not-fenced` 如实回答，未知或有歧义的名字拒绝整个调用，两者可以放在同一次调用里 |
@@ -250,12 +252,12 @@ owner**、绝不替换的；在 cell 模式之外，**等声明的 owner 空出�
 
 | 调用者 | 放行 | 拒绝 |
 |---|---|---|
-| 队长 | 除 `cellwork_handoff` 之外的 `cellwork_*`，加上 `agent_teams_*`、`ask_user_question`、`todo_write`、`mpd_memory_*`，以及**唯一**的循环开启器 `mpd_verify_open`（仅精确名字） | 其余全部：不改文件、不跑 shell、不 `read`/`grep`/`glob`，且除开循环之外不做任何验证：绑座位、记录裁决、取证与 escape 仍被拒绝 |
-| 验证者 | `read`、`grep`、`glob`、`bash`（跑关卡）、`mpd_verify_*` | `write`、`edit`、`mpd_hashline_edit`、`mcp__ast_grep__rewrite`、`mcp__ast_grep__scan`、`mcp__lsp__rename_symbol`、`mcp__lsp__rename_symbol_strict`，以及两个 bundle spawn 工具 `mpd_role_spawn` / `mpd_workmate_spawn`：验证者**绝不委派**：裁决是它自己的活，FAIL 才是把工作退回写作者的通道 |
+| 队长 | 除 `cellwork_handoff`、`cellwork_delegate`、`cellwork_consult` 之外的 `cellwork_*`，加上 `agent_teams_*`、`ask_user_question`、`todo_write`、`mpd_memory_*`，以及**唯一**的循环开启器 `mpd_verify_open`（仅精确名字） | 其余全部：不改文件、不跑 shell、不 `read`/`grep`/`glob`、没有自己的后台咨询（队长只做调度），且除开循环之外不做任何验证：绑座位、记录裁决、取证与 escape 仍被拒绝 |
+| 验证者 | `read`、`grep`、`glob`、`bash`（跑关卡）、`mpd_verify_*` | `write`、`edit`、`mpd_hashline_edit`、`mcp__ast_grep__rewrite`、`mcp__ast_grep__scan`、`mcp__lsp__rename_symbol`、`mcp__lsp__rename_symbol_strict`、两个 bundle spawn 工具 `mpd_role_spawn` / `mpd_workmate_spawn`、`mpd_role_spawn_async` / `mpd_role_consult`，以及本包自己的 `cellwork_delegate` / `cellwork_consult`：验证者**绝不委派**：裁决是它自己的活，FAIL 才是把工作退回写作者的通道 |
 | 处于上下文检查点的成员 | `cellwork_handoff`、`cellwork_context`、`cellwork_status` | 其余全部：即使它无视书面说明，也无法继续干活 |
-| 副队长 | 队长白名单**去掉** `cellwork_start` / `cellwork_stop`，**加上** `cellwork_subteam`、`cellwork_activate`、`cellwork_dispatch`、`cellwork_supervise` | 一切文件工作工具：副队长是迷你队长，只做调度，不做实现 |
+| 副队长 | 队长白名单**去掉** `cellwork_start` / `cellwork_stop`，**加上** `cellwork_subteam`、`cellwork_activate`、`cellwork_dispatch`、`cellwork_supervise`、`cellwork_delegate`、`cellwork_consult` | 一切文件工作工具：副队长是迷你队长，只做调度，不做实现 |
 | 规划器（`cell-planner`） | 文档带内的 `read`/`grep`/`glob`：`.mpd/**`、`docs/**`、`evidence/**`、`agent-references/**`；任何**按 basename** 命中的 `AGENT.md`/`AGENTS.md`/`CLAUDE.md`（任意深度，workspace 根之外也算）；以及 workspace 根上仅 `README.md`、`README.zh-CN.md`、`CHANGELOG.md`、`LICENSE*.md` | **源码**路径：拒绝信息点名两条委派路线（`cellwork_recon` 配 `Explorer`/`Researcher`，`mpd_role_spawn` 配只读名册角色），并说明理由。路径按**拼写**判定（绝不解析符号链接），`..` 段**只**允许出现在指令文件名的拼写里 |
-| 普通成员 | 干活所需的一切 | 没有：它就是普通工作者 |
+| 普通成员 | 干活所需的一切，**也包括** `cellwork_delegate` 与 `cellwork_consult` | 没有：它就是普通工作者 |
 
 每次拒绝都是**一整段教学式说明**：点名被拒的调用、可替代的调用，以及作为出路的 `cellwork_stop`。cell 停止
 后座位消失，同一个 session 立刻恢复不受限。
@@ -268,6 +270,31 @@ owner**、绝不替换的；在 cell 模式之外，**等声明的 owner 空出�
 `cellwork_recon` 不受这条深度下限约束，因为它自己的深度由 `cellwork.depthMax` 封顶。cell 队长站在另一端
 （它的读取面只有通过这些工具访问 cell 记录）而在 cell 模式**之外**，`mpd` 队长的可读带如今在任意深度承认
 `AGENT.md`/`AGENTS.md`/`CLAUDE.md`（包括兄弟项目的），同时仍然拒绝一切源码路径。
+
+## 后台委派
+
+cell 的**座位**——规划器、被晋升的副队长、已记录的普通成员——可以把工作派发到**后台**运行，就像顶层队长使用
+`mpd_role_spawn_async` + `mpd_role_consult` 那样。cell **队长刻意不能**：它的路线是看板（`cellwork_split` →
+`cellwork_activate` → `cellwork_dispatch`），一个能自己拉起咨询的队长就是在干活，而不是在调度。
+
+- `cellwork_delegate {tasks:[{role, task, context?}, …]}` 一趟启动 1..16 个咨询，**立即**返回
+  `{ok, started, consults:[{consultId, role, startedAt}]}`——子会话继续工作，座位继续自己的事。角色是**任意**
+  名册角色（写作角色也算），由名册行规范化，因此 `deep worker`、`deep-worker`、`Deep Worker` 是**同一个** agent，
+  答复回显名册自己的拼写。校验是**全有或全无**：未知角色、空的 `role`/`task`、或超过 16 个任务会拒绝整个调用，
+  并且**一个都不启动**。
+- `cellwork_consult {action, consultId?, timeoutMs?}` 结算它们：`list`（只列本 cell 发起、且监督器仍记得的 id）、
+  `wait`（1..60000 ms，默认 30000——超时返回 `state:"running"`，绝不抛错）、`collect`（返回报告并**释放**记录）、
+  `cancel`（中断子会话并记 `consult-cancelled`）。不是本 cell 发起的 id 会被拒绝，并且句子里说明所有权规则与
+  另外两条通道，绝不只是「找不到」。
+- 两个动词都走 `mpd-roles` 行在它**唯一**的咨询监督器之上提供的 `mpdConsults` **服务**：一个注册表、一个并发上限
+  （`MPD_DSH_CONSULT_MAX`，默认 8——超上限的工作**排队**，绝不拒绝）、一个静默死信器。没有那一行的组合会**按名字**
+  被拒绝；不存在无监督的回退启动。
+- `cellwork_recon` 得到同一扇门，外加一个**批量**形态：`{role, questions:[…]}` 问 1..8 个问题，**并发**运行，
+  全部落定后才返回（一个问题失败不会取消其它问题——它那一行带上失败文本与 `stopReason:"failed"`）。
+  `{role, task}` 保持它原有的字段，而只问一个问题的批量也同时带旧有的 `report`/`stopReason`。
+
+被委派的子会话仍然是**叶子**：名册在每个子会话自己的作用域里拒绝两个 spawn 工具，只读角色（Explorer、
+Researcher）另外拿到只读拒绝清单。
 
 ## 上下文预算：实测算出，绝不猜
 
@@ -533,6 +560,17 @@ cell id 形如 `cell-<UTC 时刻>`；子 cell 会记录 `parentCellId` 与 `dept
   创建。重复可检出、不可删除（团队平面没有取消动词）；成员是例外，因为它们按名字与活跃名册对账。
 - **「盲」始终是书面约定**，与本仓库其它地方一致：cellwork 接好合约、循环与裁决，但不假装能观测到验证者
   读过什么。
+- **被委派的写作角色在 cell 看板之外工作。** `cellwork_delegate` 不给它冻结合约、不给验证循环、不给看板行：
+  它的报告在 `cellwork_consult` 里到达，也没有任何东西把它记成裁决。看板规模的工作仍然属于
+  `cellwork_split` + `cellwork_activate`；后台委派是给有边界的副业用的——调研、探针、单文件探查。
+- **咨询账本在内存里。** cellwork 用一个进程内映射记住某个 cell 发起过哪些 id（不是第二个存储，不含报告、不含
+  上限），与监督器的记录一样是进程内的：重启会同时丢掉两者，之后 `cellwork_consult` 给出说明这一点的拒绝，
+  而不是一个过期的 id。座位仍可直接调用 `mpd_role_spawn_async` / `mpd_role_consult`；它那样收走的咨询只是离开
+  本 cell 的清单（下一次 `list` 会顺手剪掉）。
+- **名册的委派深度下限刻意**不**施加在咨询服务这条路径上。** 那条下限属于名册的**工具**处理器，它们会传下一个
+  调用者看不见的上限；cellwork 的座位是深度 2 或更深的 team 成员，因此 `cellwork_recon` 本来就必须豁免，两个新
+  动词跟随它。真正给 cell 平面封顶的是 `cellwork.depthMax`：每次启动都作为咨询的**绝对** `maxDepth` 传入，
+  再加上名册在子会话一侧的叶子拒绝。
 
 ## 测试与证据
 

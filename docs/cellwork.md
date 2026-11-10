@@ -293,7 +293,9 @@ merely theoretical risk.
 | `cellwork_start` | captain | opens the requirements phase of the active cell; validates cell and caller, stamps `startedAt`, journals it |
 | `cellwork_status` | captain, member | phase, objective, captain, requirements/split revisions, members and their modes, injected checkpoints, live team counts, the recorded split-ticket board id, the cell-record vs live-roster divergence (`missingFromCell` / `missingFromTeam` / `inSync`), the caller's own seat and the on-disk paths — its ONE write is ADOPTING a live team seat the record never learned, never a phase transition |
 | `cellwork_requirements` | planner | `finalize` a requirements document, or `update` it: an update bumps the revision and marks the split stale; a section body runs to the next heading of the same or a higher level, so `###` subheadings stay inside their parent |
-| `cellwork_recon` | planner, subcaptain | one-shot READ-ONLY consult (Explorer/Researcher) raised through the direct start path with the role name as its label and an explicit absolute depth cap, so the consult is a read-only leaf; the report is returned and journaled |
+| `cellwork_recon` | planner, subcaptain | READ-ONLY consult (Explorer/Researcher) raised through `mpdConsults`, so the roles row applies its read-only deny list to the child and the cell's absolute `cellwork.depthMax` bounds the nesting; `{role, task}` returns one report (the legacy shape), `{role, questions}` runs 1..8 CONCURRENTLY and returns only when all are settled, one row per question; every report is journaled |
+| `cellwork_delegate` | planner, subcaptain, member | start 1..16 BACKGROUND consults in ONE call and return their `consultId`s immediately, before any child settles; roles are ANY roster role (writers included) and are canonicalised by the roles row; ALL-OR-NOTHING validation (an unknown role, an empty field or >16 tasks starts nothing); over-cap work QUEUES on the shared `MPD_DSH_CONSULT_MAX` cap |
+| `cellwork_consult` | planner, subcaptain, member | `list` / `wait` / `collect` / `cancel` the consults THIS cell started through `cellwork_delegate`: `list` answers only this cell's ids the supervisor still knows, `wait` clamps to 1..60000 ms (default 30000) and answers `state:"running"` when the bound wins, `collect` returns the report and RELEASES the record, `cancel` interrupts and journals `consult-cancelled`; an id this cell did not start is refused with a teaching sentence |
 | `cellwork_split` | splitter | `submit` a graph so the plugin can measure it (each task may declare its board `member`), or `show` the last verdict; every refusal persists its findings at `split/<revision>.refused.json`; a NON-FATAL `warnings` list names every `work`/`repair`/`integration` task with no write scopes, by key, and never changes `accepted` |
 | `cellwork_activate` | captain | materialise an accepted split on the live team record, write contracts (owner role AND member), raise one member per distinct `member`, open verify loops, dispatch; a failed pass is checkpointed and the SAME revision resumes it, while a newer accepted revision supersedes an older in-flight one; the answer's `reused` list names the members resolved from the cell record or the live roster instead of raised, and a re-split that kept tasks also returns a `notice` (contracts not rewritten, scope expansion needs a manual re-freeze plus a new verify loop, ready rows dispatched owner-only); the OTHER ways a member row appears are staging and adoption (see "Members: staged, activated or adopted") |
 | `cellwork_dispatch` | captain | one owner-only dispatch pass over the team board; a busy, absent or fenced owner is reported and the row left pending; `reassign` hands named rows to another member FIRST (board claim → `task-reassigned` journal → delivery), and `unfence` clears named members' GIVEN-UP fences BEFORE the pass (both keys deleted, `mode: member`, `handoffReady: false`, `handoffs` kept, `member-unfenced` journaled; the TEAM row only through the plane's `unfence` seam, with `plane: "absent"` reported when the composition exposes none); a PENDING checkpoint (`mode: checkpoint`, no `fenced` flag) answers `checkpoint-pending` and writes nothing; `not-fenced` is honest, an unknown or ambiguous name refuses the call, and the two may travel together |
@@ -318,12 +320,12 @@ is off. The predicate fires at **dispatch** time only.
 
 | Caller | Allowed | Refused |
 |---|---|---|
-| captain | `cellwork_*` except `cellwork_handoff`, plus `agent_teams_*`, `ask_user_question`, `todo_write`, `mpd_memory_*`, and the ONE loop opener `mpd_verify_open` (exact name only) | everything else: no file edit, no shell, no `read`/`grep`/`glob`, and no verification beyond opening a loop: binding a seat, recording a verdict, evidence and escape stay refused |
-| verifier | `read`, `grep`, `glob`, `bash` (the gates), `mpd_verify_*` | `write`, `edit`, `mpd_hashline_edit`, `mcp__ast_grep__rewrite`, `mcp__ast_grep__scan`, `mcp__lsp__rename_symbol`, `mcp__lsp__rename_symbol_strict`, and the two bundle spawn tools `mpd_role_spawn` / `mpd_workmate_spawn`: a verifier NEVER delegates, because the verdict is its own work and a FAIL is the channel back to the writer |
+| captain | `cellwork_*` except `cellwork_handoff`, `cellwork_delegate` and `cellwork_consult`, plus `agent_teams_*`, `ask_user_question`, `todo_write`, `mpd_memory_*`, and the ONE loop opener `mpd_verify_open` (exact name only) | everything else: no file edit, no shell, no `read`/`grep`/`glob`, no background consult of its own (the captain stays dispatch-only), and no verification beyond opening a loop: binding a seat, recording a verdict, evidence and escape stay refused |
+| verifier | `read`, `grep`, `glob`, `bash` (the gates), `mpd_verify_*` | `write`, `edit`, `mpd_hashline_edit`, `mcp__ast_grep__rewrite`, `mcp__ast_grep__scan`, `mcp__lsp__rename_symbol`, `mcp__lsp__rename_symbol_strict`, the two bundle spawn tools `mpd_role_spawn` / `mpd_workmate_spawn`, `mpd_role_spawn_async` / `mpd_role_consult`, and this package's own `cellwork_delegate` / `cellwork_consult`: a verifier NEVER delegates, because the verdict is its own work and a FAIL is the channel back to the writer |
 | member at its context checkpoint | `cellwork_handoff`, `cellwork_context`, `cellwork_status` | everything else: the agent cannot keep working even if it ignores the prose |
-| subcaptain | the captain allowlist MINUS `cellwork_start` / `cellwork_stop`, PLUS `cellwork_subteam`, `cellwork_activate`, `cellwork_dispatch`, `cellwork_supervise` | every file-work tool: a subcaptain is a mini-captain and dispatches, it does not implement |
+| subcaptain | the captain allowlist MINUS `cellwork_start` / `cellwork_stop`, PLUS `cellwork_subteam`, `cellwork_activate`, `cellwork_dispatch`, `cellwork_supervise`, `cellwork_delegate`, `cellwork_consult` | every file-work tool: a subcaptain is a mini-captain and dispatches, it does not implement |
 | planner (`cell-planner`) | `read`/`grep`/`glob` inside the documentation band: `.mpd/**`, `docs/**`, `evidence/**`, `agent-references/**`; any `AGENT.md`/`AGENTS.md`/`CLAUDE.md` by BASENAME at any depth, also outside the workspace root; and at the workspace root only `README.md`, `README.zh-CN.md`, `CHANGELOG.md`, `LICENSE*.md` | a SOURCE path: the refusal names the two delegation routes (`cellwork_recon` with `Explorer`/`Researcher`, `mpd_role_spawn` with a read-only roster role) and says why. A path is judged by its SPELLING (symlinks are never resolved), and a `..` segment is allowed ONLY in an instruction-file spelling |
-| ordinary member | everything it needs to work | nothing: it is a normal worker |
+| ordinary member | everything it needs to work, `cellwork_delegate` and `cellwork_consult` included | nothing: it is a normal worker |
 
 Every refusal is ONE teaching paragraph: what was refused, the calls that replace it, and
 `cellwork_stop` as the way out. Stopping the cell removes the seat, so the same session is unguarded
@@ -339,6 +341,38 @@ route, and the consult it raises lands at depth 2 as a leaf. `cellwork_recon` is
 floor because its own depth is bounded by `cellwork.depthMax`. The cell captain sits at the opposite end. Its read surface is the cell record, through these tools, while OUTSIDE cell mode the `mpd` captain's
 band now admits `AGENT.md`/`AGENTS.md`/`CLAUDE.md` at any depth, including a sibling project's, and
 still refuses every source path.
+
+## Background delegation
+
+A cell SEAT — the planner, a promoted subcaptain, an ordinary recorded member — can dispatch work that
+runs in the BACKGROUND, the way the top-level captain uses `mpd_role_spawn_async` + `mpd_role_consult`.
+The cell CAPTAIN deliberately cannot: its route is the board (`cellwork_split` → `cellwork_activate` →
+`cellwork_dispatch`), and a captain that raised its own consults would be doing work instead of
+dispatching it.
+
+- `cellwork_delegate {tasks:[{role, task, context?}, …]}` starts 1..16 consults in ONE pass and returns
+  `{ok, started, consults:[{consultId, role, startedAt}]}` immediately — the children keep working while
+  the seat continues. Roles are ANY roster role (writers included) and are canonicalised by the roles
+  row, so `deep worker`, `deep-worker` and `Deep Worker` are ONE agent and the answer echoes the roster's
+  own spelling. Validation is ALL-OR-NOTHING: an unknown role, an empty `role`/`task` or more than 16
+  tasks refuses the whole call and starts NOTHING.
+- `cellwork_consult {action, consultId?, timeoutMs?}` settles them: `list` (only the ids THIS cell
+  started and the supervisor still knows), `wait` (1..60 000 ms, default 30 000 — a timed-out wait
+  answers `state:"running"`, never a throw), `collect` (returns the report AND releases the record) and
+  `cancel` (interrupts the child and journals `consult-cancelled`). An id this cell did not start is
+  refused with a sentence that names the ownership rule and the two other channels, never "not found"
+  alone.
+- Both verbs go through the `mpdConsults` SERVICE the `mpd-roles` row provides over its ONE consult
+  supervisor: ONE registry, ONE concurrency cap (`MPD_DSH_CONSULT_MAX`, default 8 — over-cap work QUEUES
+  and is never refused) and ONE silence deadman. A composition without that row is refused BY NAME; there
+  is no unsupervised fallback spawn.
+- `cellwork_recon` gained the same door plus a BATCH form: `{role, questions:[…]}` asks 1..8 questions,
+  runs them CONCURRENTLY and returns only when all are settled (one failing question does not cancel the
+  others — its row carries the failure text and `stopReason:"failed"`). `{role, task}` keeps exactly its
+  old fields, and a ONE-question batch also carries the legacy `report`/`stopReason` pair.
+
+Delegated children remain LEAVES: the roster denies both spawn tools in every child's own scope, and a
+read-only role (Explorer, Researcher) gets the read-only deny list as well.
 
 ## The context budget: measured, never guessed
 
@@ -669,6 +703,20 @@ whose window cannot be read can be certified deliberately, and it is recorded as
   roster.
 - **Blindness stays prose**, exactly as this repository states it: cellwork wires the contract, the
   loop and the verdict, and does not pretend to observe what a verifier read.
+- **A delegated WRITER works OUTSIDE the cell board.** `cellwork_delegate` gives it no frozen contract,
+  no verify loop and no board row: the operator's report arrives in `cellwork_consult`, and nothing
+  records it as a verdict. Board-scale work still belongs on `cellwork_split` + `cellwork_activate`;
+  background delegation is for bounded side-work — research, a spike, a one-file probe.
+- **The consult book is IN MEMORY.** Cellwork remembers which ids a cell started in a process-local map
+  (no second store, no report, no cap), exactly as the supervisor's records are process-local: a restart
+  loses both, and `cellwork_consult` then answers with the refusal that says so rather than a stale id.
+  A seat may still call `mpd_role_spawn_async` / `mpd_role_consult` directly; a consult it collects that
+  way simply leaves this cell's list (the next `list` prunes it).
+- **The roster's delegation depth floor is deliberately NOT applied on the consult-service path.** That
+  floor belongs to the roster's TOOL handlers, which forward a cap the caller cannot see; cellwork's
+  seats are team members at depth 2 or deeper, so `cellwork_recon` already had to be exempt and the two
+  new verbs follow it. What bounds the cell plane instead is `cellwork.depthMax`, passed as the
+  consult's ABSOLUTE `maxDepth` on every start, plus the roster's own leaf denial on the child side.
 
 ## Tests and evidence
 
