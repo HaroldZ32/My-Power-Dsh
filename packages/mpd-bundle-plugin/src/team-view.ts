@@ -1443,10 +1443,15 @@
       const visualLabelOf = (visual: string): string => t(VISUAL_KEY[visual] ?? "visual.open")
       /**
        * Format a duration the way the hover card shows it: seconds, minutes+seconds, or hours+minutes.
-       * @param milliseconds - the elapsed span; negative values are clamped to zero.
+       * @param milliseconds - the elapsed span; negative values are clamped to zero, and a value that is
+       *   not a finite number renders as a dash rather than `NaNs` (the same untrusted-payload class the
+       *   instant formatter below guards).
        * @returns `Xs`, `Xm Ys`, or `Xh Ym`.
        */
       const formatDuration = (milliseconds: number): string => {
+        // A NON-FINITE SPAN IS NOT A DURATION: the value comes from a served record, and `Math.floor(NaN)`
+        // would otherwise reach the card as `NaNs` — a fabricated-looking measurement.
+        if (!Number.isFinite(milliseconds)) return "—"
         /** Whole seconds, never negative, so a clock skew cannot print a negative span. */
         const total = Math.max(0, Math.floor(milliseconds / 1000))
         if (total < 60) return total + "s"
@@ -1454,6 +1459,21 @@
         const minutes = Math.floor(total / 60)
         if (minutes < 60) return minutes + "m " + (total % 60) + "s"
         return Math.floor(minutes / 60) + "h " + (minutes % 60) + "m"
+      }
+      /**
+       * One epoch-millisecond instant as an ISO-8601 string, or a dash when it is not representable.
+       *
+       * `Number.isFinite` ALONE DOES NOT MAKE `toISOString()` SAFE (CodeRabbit round 1, R7.4): a finite
+       * magnitude beyond ±8.64e15 is outside the ECMAScript date range, so `new Date(value)` is Invalid and
+       * `toISOString()` throws `RangeError`. The consult badges come from a SERVED payload, and a
+       * malformed one must degrade one cell, never break the whole render.
+       * @param milliseconds - the instant the payload carries.
+       * @returns the ISO instant, or `—` when the value is not a representable Date.
+       */
+      const isoInstantOf = (milliseconds: number): string => {
+        /** The instant under test; an out-of-range value reads back as NaN, never as a throw site. */
+        const instant = new Date(milliseconds)
+        return Number.isFinite(instant.getTime()) ? instant.toISOString() : "—"
       }
       /**
        * The elapsed time of one task, in the card's own vocabulary.
@@ -3413,14 +3433,17 @@
           /** The consult's badge, narrowed once so the rows below read one value. */
           const badge = task.consult
           /** The wall-clock start, rendered as an ISO instant so a reader can compare it with a log. */
-          const started = new Date(badge.startedAt).toISOString()
+          const started = isoInstantOf(badge.startedAt)
           return react.createElement("div", { key: "consult-detail", "data-mpd-detail": task.id, style: { marginTop: "10px" } },
             react.createElement("div", { key: "cd-top", style: CSS.row },
               react.createElement("span", { key: "cd-subject", style: { flex: "1 1 auto", fontWeight: 600 } }, task.subject),
               react.createElement("span", { key: "cd-close", "data-detail-close": task.id, style: { ...CSS.chip, cursor: "pointer" }, onClick: () => { if (setPinned !== null) setPinned(null) } }, t("task.close"))),
             detailRow("cd-id", "task.id", task.id),
             detailRow("cd-consult", "task.consult", badge.consultId),
-            detailRow("cd-role", "task.owner", badge.state === "" ? "—" : task.owner ?? "—"),
+            // THE ROW IS THE ROLE, so the ROLE is what is guarded: the old `state === ""` test read the
+            // state this row never prints and could leave an empty role on screen (R7.10). An absent OR
+            // empty role is the one thing this value has to answer for.
+            detailRow("cd-role", "task.owner", task.owner === undefined || task.owner === "" ? "—" : task.owner),
             detailRow("cd-state", "task.status", badge.state),
             detailRow("cd-started", "task.started", started),
             detailRow("cd-elapsed", "task.elapsed", badge.elapsedMs === undefined ? "—" : formatDuration(badge.elapsedMs)))

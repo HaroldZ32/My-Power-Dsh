@@ -4205,6 +4205,7 @@ function applyConsultUpsert(record, input, now) {
   const rows = [...record.consults ?? []];
   const held = rows.findIndex((row) => row.consultId === input.consultId);
   const consultNumber = held >= 0 ? rows[held].consultNumber : record.nextConsultNumber ?? 1;
+  const staleRunning = held >= 0 && rows[held].state !== "running" && input.state === "running";
   const incoming = {
     consultNumber,
     consultId: input.consultId,
@@ -4212,10 +4213,16 @@ function applyConsultUpsert(record, input, now) {
     task: input.task.trim() === "" && held >= 0 ? rows[held].task : input.task,
     cellId: input.cellId,
     startedAt: input.startedAt,
-    state: held >= 0 && rows[held].state !== "running" && input.state === "running" ? rows[held].state : input.state,
-    ...input.finishedAt === undefined ? {} : { finishedAt: input.finishedAt },
-    ...input.elapsedMs === undefined ? {} : { elapsedMs: input.elapsedMs },
-    ...input.handoff === undefined ? {} : { handoff: input.handoff }
+    state: staleRunning ? rows[held].state : input.state,
+    ...staleRunning ? {
+      ...rows[held].finishedAt === undefined ? {} : { finishedAt: rows[held].finishedAt },
+      ...rows[held].elapsedMs === undefined ? {} : { elapsedMs: rows[held].elapsedMs },
+      ...rows[held].handoff === undefined ? {} : { handoff: rows[held].handoff }
+    } : {
+      ...input.finishedAt === undefined ? {} : { finishedAt: input.finishedAt },
+      ...input.elapsedMs === undefined ? {} : { elapsedMs: input.elapsedMs },
+      ...input.handoff === undefined ? {} : { handoff: input.handoff }
+    }
   };
   if (incoming.state !== "running" && incoming.finishedAt === undefined)
     incoming.finishedAt = now.getTime();

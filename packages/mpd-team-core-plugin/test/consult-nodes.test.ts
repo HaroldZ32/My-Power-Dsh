@@ -89,16 +89,35 @@ describe("the record's own mint / upsert / prune rules", () => {
     expect(settled.record.nextConsultNumber).toBe(3)
   })
 
-  test("a terminal row is never moved back to `running`, and a terminal row is stamped with finishedAt", () => {
+  test("a terminal row is never moved back to `running`, and a late report preserves its finish facts", () => {
     /** The workspace and its record. */
     const { team } = workspaceWithTeam()
-    /** A settled row. */
-    const settled = applyConsultUpsert(team, consult({ state: "complete" }), NOW).record
-    // A STALE START REPORT arriving after the settlement must not resurrect the consult.
-    /** The record after the late `running` report. */
-    const late = applyConsultUpsert(settled, consult({ state: "running" }), NOW).record
+    /**
+     * The instant the settlement REALLY finished, deliberately NOT `NOW` and NOT the late report's clock.
+     *
+     * R7.12: the old arm used `NOW` for BOTH upserts, so `finishedAt === NOW.getTime()` passed even when
+     * the late report re-stamped it — a test that could not fail. A distinct instant makes the assertion
+     * falsifiable, and a LATER clock makes a re-stamp observable as the wrong value.
+     */
+    const FINISHED_AT = NOW.getTime() - 30_000
+    /** The clock of the stale `running` report: strictly later than the settlement. */
+    const LATER = new Date(NOW.getTime() + 60_000)
+    /** The settled row, with every terminal fact populated so an erase is visible. */
+    const settled = applyConsultUpsert(team, consult({ state: "complete", finishedAt: FINISHED_AT, elapsedMs: 900, handoff: "handoff/explorer-1.md" }), NOW).record
+    expect(settled.consults?.[0].finishedAt).toBe(FINISHED_AT)
+    expect(settled.consults?.[0].elapsedMs).toBe(900)
+    expect(settled.consults?.[0].handoff).toBe("handoff/explorer-1.md")
+    // A STALE START REPORT arriving after the settlement must not resurrect the consult, RE-STAMP its
+    // finish (`now` here is LATER), or drop the elapsed span and the handoff path (R7.6).
+    /** The record after the late `running` report, stamped with the LATER clock. */
+    const late = applyConsultUpsert(settled, consult({ state: "running" }), LATER).record
     expect(late.consults?.[0].state).toBe("complete")
-    expect(late.consults?.[0].finishedAt).toBe(NOW.getTime())
+    expect(late.consults?.[0].finishedAt).toBe(FINISHED_AT)
+    expect(late.consults?.[0].elapsedMs).toBe(900)
+    expect(late.consults?.[0].handoff).toBe("handoff/explorer-1.md")
+    // THE CLOCK CONTROL: a terminal row arriving WITHOUT a finish stamp IS stamped with the upsert's own
+    // `now`, so the assertions above cannot be passing merely because `now` is ignored everywhere.
+    expect(applyConsultUpsert(team, consult({ state: "complete" }), LATER).record.consults?.[0].finishedAt).toBe(LATER.getTime())
     // A RUNNING ROW NEVER CARRIES A FINISH STAMP.
     expect("finishedAt" in (applyConsultUpsert(team, consult(), NOW).record.consults?.[0] ?? {})).toBe(false)
   })

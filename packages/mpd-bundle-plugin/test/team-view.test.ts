@@ -3632,6 +3632,26 @@ describe("consults: the web drawing merges the served array on BOTH layout paths
     expect(detail).toContain("owner Explorer")
   })
 
+  test("R7.4: a malformed consult instant degrades to a dash instead of throwing", async () => {
+    // A SERVED payload is untrusted: `toISOString()` throws `RangeError` for a finite magnitude beyond
+    // ±8.64e15 ms, and the render must degrade ONE row rather than break the panel. 8.7e15 is finite and
+    // out of range, which is exactly the class `Number.isFinite` alone does not catch.
+    /** The payload whose consult carries an out-of-range instant. */
+    const payload = stateOf(TASKS) as { model: GraphModel }
+    payload.model.consults = [CONSULT("C1", { startedAt: 8.7e15, elapsedMs: Number.POSITIVE_INFINITY })] as never
+    /** The rendered case; a throw in the renderer fails the arm with the RangeError itself. */
+    const rendered = await renderView({ state: payload })
+    // PIN IT: the detail body is the only surface that formats the instant as an ISO string.
+    ;(one(rendered.tree, "data-mpd-node", "C1").props.onClick as () => void)()
+    /** The tree after the click pinned the consult. */
+    const pinned = await rendered.hooks.act(rendered.component, { sessionId: "s1" } as never)
+    /** The pinned body's flat text. */
+    const detail = flatText(one(pinned, "data-mpd-detail", "C1"))
+    expect(detail).toContain("started —")
+    // THE SPAN GUARD TOO: an infinite elapsed is a dash, never `NaNs`/`Infinitys`.
+    expect(detail).toContain("elapsed —")
+  })
+
   test("the rendered CARD shows the consult marker, its id, its role and its state", async () => {
     /** The payload whose model carries one consult. */
     const payload = stateOf(TASKS) as { model: GraphModel }

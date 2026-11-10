@@ -908,8 +908,9 @@ export interface ConsultUpsertResult {
  * so the DAG can be told about a consult twice without ever drawing it twice.
  *
  * MONOTONE LIFECYCLE. A terminal row is never moved back to `running`: a stale start-report arriving
- * after the settlement must not resurrect a consult the user just watched finish. Every other field is
- * last-write-wins.
+ * after the settlement must not resurrect a consult the user just watched finish — and it must not erase
+ * the settlement's own facts either, so `finishedAt`, `elapsedMs` and `handoff` survive that report
+ * verbatim (R7.6). Every other field is last-write-wins.
  *
  * RETENTION (§8, acceptance 8): at most {@link CONSULT_RETENTION_MAX} rows per team; the OLDEST SETTLED
  * row goes first and a `running` row is NEVER dropped, so pruning can stop early with the cap still
@@ -926,6 +927,14 @@ export function applyConsultUpsert(record: TeamRecord, input: TeamConsultUpsertI
   const held = rows.findIndex((row) => row.consultId === input.consultId)
   /** The ordinal this upsert keeps or mints. */
   const consultNumber = held >= 0 ? rows[held].consultNumber : (record.nextConsultNumber ?? 1)
+  /**
+   * Whether this report is a STALE `running` one that retains a held row's TERMINAL state (R7.6).
+   *
+   * The lifecycle rule keeps the terminal state, but the terminal FACTS travel with it: `finishedAt`,
+   * `elapsedMs` and `handoff` belong to the settlement that wrote them, so a late start-report must not
+   * re-stamp the finish clock from `now` nor drop the elapsed span and the handoff path.
+   */
+  const staleRunning = held >= 0 && rows[held].state !== "running" && input.state === "running"
   /** The incoming row, with the ordinal the record owns. */
   const incoming: TeamConsultRecord = {
     consultNumber,
@@ -937,10 +946,20 @@ export function applyConsultUpsert(record: TeamRecord, input: TeamConsultUpsertI
     cellId: input.cellId,
     startedAt: input.startedAt,
     // A terminal row is never resurrected by a late `running` report (see the lifecycle note above).
-    state: held >= 0 && rows[held].state !== "running" && input.state === "running" ? rows[held].state : input.state,
-    ...(input.finishedAt === undefined ? {} : { finishedAt: input.finishedAt }),
-    ...(input.elapsedMs === undefined ? {} : { elapsedMs: input.elapsedMs }),
-    ...(input.handoff === undefined ? {} : { handoff: input.handoff }),
+    state: staleRunning ? rows[held].state : input.state,
+    // THE TERMINAL FACTS SURVIVE THE STALE REPORT (R7.6): on `staleRunning` the held row's own clock,
+    // span and handoff are carried verbatim; every other report keeps last-write-wins semantics.
+    ...(staleRunning
+      ? {
+          ...(rows[held].finishedAt === undefined ? {} : { finishedAt: rows[held].finishedAt }),
+          ...(rows[held].elapsedMs === undefined ? {} : { elapsedMs: rows[held].elapsedMs }),
+          ...(rows[held].handoff === undefined ? {} : { handoff: rows[held].handoff }),
+        }
+      : {
+          ...(input.finishedAt === undefined ? {} : { finishedAt: input.finishedAt }),
+          ...(input.elapsedMs === undefined ? {} : { elapsedMs: input.elapsedMs }),
+          ...(input.handoff === undefined ? {} : { handoff: input.handoff }),
+        }),
   }
   // A settlement that arrives with no clock of its own is stamped HERE, so `finishedAt` is never absent
   // on a terminal row while a running one never carries it.
