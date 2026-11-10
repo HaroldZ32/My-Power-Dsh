@@ -14,6 +14,55 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
+## 0.18.1 — consults become DAG nodes, and the compaction reseed gets its root cause
+
+**Added — a cell seat can dispatch consults.** `cellwork_delegate` lets a planner, a subcaptain or a
+recorded member start 1..16 BACKGROUND consults in ONE call and return their `consultId`s at once;
+`cellwork_consult` lists, waits for, collects or cancels the consults that seat started. The call is
+ALL-OR-NOTHING (an unknown role, an empty field or more than 16 tasks refuses it and starts nothing), the
+roles are ANY roster role including the writers, and work over the shared cap QUEUES rather than being
+refused. The cell captain is refused by both verbs, and the `mpdConsults` service rides the roles row's
+existing ONE supervisor, so a cell's consult has the same lifecycle and the same silence deadman as a
+captain's.
+
+**Changed — a consult is a DAG node on BOTH surfaces.** `GraphModel.consults` is a SIBLING collection,
+persisted on the team record: a consult appears in the graph and on both renders, and never inside
+`nodes` / `ranks` / `edges`, because it is not a scheduling unit. The key is OMITTED when a record has no
+consults, so a record drawn before this release reads exactly as it did — the absence is the backward
+guarantee.
+
+**Fixed — the compaction reseed passed a string where the host requires `ContentBlock[]`.** This is the
+root cause of the cell death that motivated the wave. `SubagentStartRequest.prompt` is `ContentBlock[]`
+and the host appends its return guidance with `[...prompt, block]`, so a STRING prompt is spread into one
+single-character block per character; the serializer then rejects the first bare string block
+(`UNSUPPORTED_CONTENT`), the child dies before its first turn, and because the malformed message is
+permanent history every later delivery re-fails identically. The reseed now hands the host a real
+`ContentBlock[]`. Measured on the four reseeds of the VEdit incident.
+
+**Fixed — the post-handoff barrier reopens the TEAM seat it used to leave closed.** The captain's
+`unfence` and the barrier share ONE implementation, and that implementation now clears the plane half as
+well: the answer reports it honestly as `unfenced`, `absent` (this composition exposes no seam, so no
+reopen is claimed) or `refused`, and never reports a reopen it did not get.
+
+**Fixed — a dead reseed is no longer recorded as success**, so a child that never came up surfaces as a
+failure instead of a green row whose seat nothing can drive.
+
+**Fixed — the forced unfence lever is bounded and fail-closed.** `unfence: [{member, force: true}]` is the
+last resort for a seat the barrier can no longer run for, and it reopens a barrier-owned checkpoint ONLY
+when the recorded session is not a live agent AND a written bound is reached — `barrierFailures` at
+`compactionRetries`, or a `checkpointSince` older than `checkpointPendingMaxMs` (15 minutes), or the
+dead-reseed shape. A bare `force` is never a licence: a live seat, a fresh window, zero failures and a
+missing timestamp all write NOTHING.
+
+**Fixed — `repin-vendor` derives single-file and count-only assets.** The re-pin script emitted a false
+green for an asset recorded as a single file or as a count only. It now derives both shapes — `sha256`
+over a single file's raw bytes, and a `fileCount` for a count-only entry — so count-only drift reddens
+`--check` instead of printing a policy green.
+
+**Declared bounds.** This is a version and documentation commit: no code, `dist` or behaviour change is
+in it. No live-model end-to-end run of a whole cell is claimed for the two capabilities; the wave's
+evidence is the barrier's own arms (including the `ContentBlock[]` reseed shape) and the gate suite.
+
 ## 0.18.0 — three-plane upstream adaptation: DSH 0.2.2-rc.1, DSH-TUI 0.19.0, a DSH-Go hard gate and a written backward-compatibility rule
 
 **Changed — the bundle now targets the newest published upstream on three planes.** `@deepseek-ai/dsh`
