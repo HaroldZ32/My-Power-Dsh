@@ -1,0 +1,23 @@
+--- (1) --check on a copy whose client.js sha256 was corrupted (MUST be RED) ---
+[repin-vendor]   kind         : single-file sha256 (raw bytes - the vendor gate's rule)
+[repin-vendor]   locked       : sha256=ab287cdc058f031cf59347e49dbeecdd2d7d3c08b206c33c13d69d14b0128375 fileCount=1
+[repin-vendor]   computed     : sha256=ab287cdc058f031cf59347e49dbeecdd2d7d3c08b206c33c13d69d14b0128375 fileCount=1
+[repin-vendor] asset          : packages/mpd-bundle-plugin/client.js
+[repin-vendor]   kind         : single-file sha256 (raw bytes - the vendor gate's rule)
+[repin-vendor]   locked       : sha256=0000000000000000000000000000000000000000000000000000000000000000 fileCount=1
+[repin-vendor]   computed     : sha256=5a1222f53a95cb7dd2b0b8ae258708b87045dd6ed7419e6cc245e303a5a554c4 fileCount=1
+[repin-vendor]   DELTA        : sha256 0000000000000000000000000000000000000000000000000000000000000000 -> 5a1222f53a95cb7dd2b0b8ae258708b87045dd6ed7419e6cc245e303a5a554c4
+[repin-vendor] CHECK     : RED - lock does not match the working tree (drift=1, problems=0)
+NEGATIVE_CHECK_EXIT:1
+--- (2) --write on that copy (MUST refresh exactly the one line) ---
+[repin-vendor] WRITE     : applied 1 field change(s) to /tmp/r8-idem-c576N2/VENDOR_LOCK.json
+[repin-vendor]   packages/mpd-bundle-plugin/client.js.sha256: 0000000000000000000000000000000000000000000000000000000000000000 -> 5a1222f53a95cb7dd2b0b8ae258708b87045dd6ed7419e6cc245e303a5a554c4
+[repin-vendor]   - (line 42)       "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+[repin-vendor]   + (line 42)       "sha256": "5a1222f53a95cb7dd2b0b8ae258708b87045dd6ed7419e6cc245e303a5a554c4",
+[repin-vendor] WRITE     : linesChanged=1 bytes 5027 -> 5027 (differingBytes=60)
+WRITE_EXIT:0
+--- (3) diff copy vs the hand-edited lock (empty output = byte-identical) ---
+DIFF_EXIT:0
+--- (4) second --write (MUST be a no-op) ---
+[repin-vendor] WRITE     : nothing to re-pin - /tmp/r8-idem-c576N2/VENDOR_LOCK.json left byte-identical
+SECOND_WRITE_EXIT:0

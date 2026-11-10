@@ -1,0 +1,23 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/dispatch-unfence.test.ts:
+950 |   const harness = makeHarness(cell, DEAD_RESEED_ROSTER, [], { liveSessions: [CAPTAIN_SESSION] })
+951 |   /** The read-only sweep the captain consults first. */
+952 |   const sweep = await runTool(harness, "cellwork_supervise", {})
+953 |   /** The sweep's measurement of the seat. */
+954 |   const measured = (sweep.members as Array<Record<string, unknown>>).find((entry) => entry.name === "Senior Engineer")
+955 |   expect(measured?.liveness).toBe("unknown")
+                                   ^
+error: expect(received).toBe(expected)
+
+Expected: "unknown"
+Received: "dead"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/dispatch-unfence.test.ts:955:30)
+(fail) R9.1: an EMPTY recorded session answers `unknown`, never a proven-dead child [2.61ms]
+
+ 0 pass
+ 32 filtered out
+ 1 fail
+ 1 expect() calls
+Ran 1 test across 1 file. [199.00ms]

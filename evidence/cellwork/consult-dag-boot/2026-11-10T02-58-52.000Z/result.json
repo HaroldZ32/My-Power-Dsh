@@ -1,0 +1,86 @@
+{
+  "ok": true,
+  "isolated": {
+    "DSH_HOME": "/tmp/consult-boot/sandbox/home",
+    "HOME": "/tmp/consult-boot/sandbox/userhome",
+    "workspace": "/tmp/consult-boot/sandbox/ws",
+    "port": 3933
+  },
+  "boot": {
+    "installExit": 0,
+    "tokenSeen": true,
+    "cookieSeen": true,
+    "up": true,
+    "routeStatuses": [
+      200,
+      200,
+      200
+    ]
+  },
+  "consultsModel": {
+    "hasConsultsKey": true,
+    "ids": [
+      "C1",
+      "C2"
+    ],
+    "states": [
+      "complete",
+      "running"
+    ],
+    "visuals": [
+      "completed",
+      "running"
+    ],
+    "roles": [
+      "Explorer",
+      "Researcher"
+    ],
+    "groups": [
+      null,
+      null
+    ],
+    "nodeIds": [
+      "T1",
+      "T2"
+    ],
+    "consultInNodes": false,
+    "consultInRanks": false,
+    "consultInEdges": false,
+    "consultInReport": false
+  },
+  "baselineModel": {
+    "hasConsultsKey": false,
+    "nodeIds": [
+      "T1",
+      "T2"
+    ]
+  },
+  "byteIdentity": {
+    "nodes": true,
+    "edges": true,
+    "ranks": true,
+    "report": true
+  },
+  "nestedModel": {
+    "ids": [
+      "C1",
+      "team-boot-child::C1"
+    ],
+    "groups": [
+      null,
+      "team-boot-child"
+    ],
+    "states": [
+      "running",
+      "cancelled"
+    ],
+    "nodeIds": [
+      "T1",
+      "team-boot-child",
+      "team-boot-child::T1"
+    ],
+    "consultInNodes": false,
+    "consultInRanks": false,
+    "consultInEdges": false
+  }
+}

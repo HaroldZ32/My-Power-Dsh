@@ -1,0 +1,145 @@
+{
+  "ok": true,
+  "wave": "R8 \u2014 the R7 verdict's post-verdict process/doc findings",
+  "contract": ".mpd/plans/cellwork-r7-process-findings.md",
+  "capturedAt": "2026-11-10T09:18:16Z",
+  "items": {
+    "R8.1": {
+      "what": "scripts/repin-vendor.ts derives and splices single-file sha256 assets; --check reddens on their drift; --self-test arm (h) covers drift->RED, write->GREEN, treeSha arms unchanged",
+      "files": [
+        "scripts/repin-vendor.ts"
+      ],
+      "verifyVendorUntouched": "git diff --stat scripts/verify-vendor.ts is empty (no edit)",
+      "idempotence": "a scratch copy of the hand-edited VENDOR_LOCK.json with the client.js sha256 zeroed -> --check exit 1 (DELTA sha256 000... -> 5a1222f5...); --write exit 0 rewrote exactly line 42; diff against the hand-edited lock exit 0 (byte-identical); a second --write was a no-op; real --check GREEN",
+      "selfTest": "11/11 arms PASS including (h) single-file sha256 drift -> --check RED, --write refreshes ONLY that line, --check GREEN"
+    },
+    "R8.2": {
+      "what": "plane reopen gated on the barrier's persisted row (fenced !== true), skipped-fenced named in the plane enum and plane-reopen-skipped journaled; BOTH languages",
+      "files": [
+        "packages/mpd-cellwork-plugin/README.md",
+        "packages/mpd-cellwork-plugin/README.zh-CN.md",
+        "docs/cellwork.md",
+        "docs/cellwork.zh-CN.md"
+      ]
+    },
+    "R8.3": {
+      "what": "livenessOf 'dead' requires a present registry AND a resolvable CAPTAIN anchor; a present-but-unresolved registry answers unknown; BOTH languages plus the cellwork_supervise description and the ForceReading docblock",
+      "files": [
+        "packages/mpd-cellwork-plugin/README.md",
+        "packages/mpd-cellwork-plugin/README.zh-CN.md",
+        "docs/cellwork.md",
+        "docs/cellwork.zh-CN.md",
+        "packages/mpd-cellwork-plugin/src/protocol.ts"
+      ]
+    },
+    "R8.4": {
+      "what": "stop order corrected: the consult book key is dropped FIRST (the stop marker), then children are cancelled, then the plane clears; BOTH languages",
+      "files": [
+        "packages/mpd-cellwork-plugin/README.md",
+        "packages/mpd-cellwork-plugin/README.zh-CN.md"
+      ]
+    },
+    "R8.5": {
+      "what": "renderers.ts BOARD_OPENED_EVENT uses a safe isoInstantOf; a finite epoch beyond +-8.64e15 skips the field instead of throwing; malformed-payload arm added",
+      "files": [
+        "packages/mpd-tui-plugin/src/renderers.ts",
+        "packages/mpd-tui-plugin/test/state.test.ts"
+      ]
+    }
+  },
+  "gates": [
+    {
+      "id": "00-repin-check",
+      "argv": "node scripts/repin-vendor.ts --check",
+      "exit": 0,
+      "log": "evidence/cellwork/r8-process-findings/2026-11-10T09-18-16.221Z/logs/00-repin-check.log"
+    },
+    {
+      "id": "01-repin-self-test",
+      "argv": "node scripts/repin-vendor.ts --self-test",
+      "exit": 0,
+      "log": "evidence/cellwork/r8-process-findings/2026-11-10T09-18-16.221Z/logs/01-repin-self-test.log"
+    },
+    {
+      "id": "02-verify-vendor",
+      "argv": "node scripts/verify-vendor.ts",
+      "exit": 0,
+      "log": "evidence/cellwork/r8-process-findings/2026-11-10T09-18-16.221Z/logs/02-verify-vendor.log"
+    },
+    {
+      "id": "03-typecheck",
+      "argv": ".toolchain/node_modules/.bin/bun run typecheck",
+      "exit": 0,
+      "log": "evidence/cellwork/r8-process-findings/2026-11-10T09-18-16.221Z/logs/03-typecheck.log"
+    },
+    {
+      "id": "04-test-cellwork",
+      "argv": ".toolchain/node_modules/.bin/bun test packages/mpd-cellwork-plugin",
+      "exit": 0,
+      "log": "evidence/cellwork/r8-process-findings/2026-11-10T09-18-16.221Z/logs/04-test-cellwork.log"
+    },
+    {
+      "id": "05-test-tui",
+      "argv": ".toolchain/node_modules/.bin/bun test packages/mpd-tui-plugin",
+      "exit": 0,
+      "log": "evidence/cellwork/r8-process-findings/2026-11-10T09-18-16.221Z/logs/05-test-tui.log"
+    },
+    {
+      "id": "06-test-team-core",
+      "argv": ".toolchain/node_modules/.bin/bun test packages/mpd-team-core-plugin",
+      "exit": 0,
+      "log": "evidence/cellwork/r8-process-findings/2026-11-10T09-18-16.221Z/logs/06-test-team-core.log"
+    },
+    {
+      "id": "07-test-bundle",
+      "argv": ".toolchain/node_modules/.bin/bun test packages/mpd-bundle-plugin",
+      "exit": 0,
+      "log": "evidence/cellwork/r8-process-findings/2026-11-10T09-18-16.221Z/logs/07-test-bundle.log"
+    },
+    {
+      "id": "08-comments",
+      "argv": ".toolchain/node_modules/.bin/bun run verify:comments",
+      "exit": 0,
+      "log": "evidence/cellwork/r8-process-findings/2026-11-10T09-18-16.221Z/logs/08-comments.log"
+    },
+    {
+      "id": "09-dist-fresh",
+      "argv": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "log": "evidence/cellwork/r8-process-findings/2026-11-10T09-18-16.221Z/logs/09-dist-fresh.log"
+    },
+    {
+      "id": "10-docs",
+      "argv": ".toolchain/node_modules/.bin/bun run verify:docs",
+      "exit": 0,
+      "log": "evidence/cellwork/r8-process-findings/2026-11-10T09-18-16.221Z/logs/10-docs.log"
+    },
+    {
+      "id": "11-rows",
+      "argv": ".toolchain/node_modules/.bin/bun run verify:rows",
+      "exit": 0,
+      "log": "evidence/cellwork/r8-process-findings/2026-11-10T09-18-16.221Z/logs/11-rows.log"
+    }
+  ],
+  "idempotenceProofLog": "evidence/cellwork/r8-process-findings/2026-11-10T09-18-16.221Z/logs/12-idempotence-proof.log",
+  "mountLanes": [
+    {
+      "argv": "PATH=\"$PWD/.qa-tmp/dsh-022/bin:$PATH\" .toolchain/node_modules/.bin/bun skills/dsh-qa/scripts/bundle-lifecycle.ts",
+      "exit": 0,
+      "evidence": "evidence/dsh-qa/bundle-lifecycle/2026-11-10T09-16-56.656Z",
+      "result": "PASS"
+    },
+    {
+      "argv": "PATH=\"$PWD/.qa-tmp/dsh-022/bin:$PATH\" node skills/dsh-qa/scripts/preset-conformance.ts",
+      "exit": 0,
+      "evidence": "evidence/dsh-qa/preset-conformance/2026-11-10T09-17-14.619Z",
+      "result": "PASS (negative control: preset-mpd persona mutation -> agent-preset/invalid)"
+    }
+  ],
+  "harness": ".qa-tmp/dsh-022/bin/dsh 0.2.2-rc.1",
+  "notRun": [
+    "Docker real-machine lane (not named by the R8 contract)",
+    "full bun run verify:gates aggregate (the named members were run individually)",
+    "pack closure / manifest / no-host-override (no manifest or row change in this wave)"
+  ]
+}
