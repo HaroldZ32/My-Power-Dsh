@@ -80,7 +80,8 @@ export const VERIFIER_DENY_TOOLS: readonly string[] = [
   "mcp__ast_grep__rewrite",
   "mcp__ast_grep__scan",
   "mcp__lsp__rename_symbol",
-  "mcp__lsp__rename_symbol_strict",  "mpd_role_spawn_async",
+  "mcp__lsp__rename_symbol_strict",
+  "mpd_role_spawn_async",
   "mpd_role_consult",
   "cellwork_delegate",
   "cellwork_consult",
@@ -362,9 +363,10 @@ export function plannerRefusal(toolName: string, target: string): string {
     + " its reconnaissance is DELEGATED, never run itself: its context has to carry the interview and the"
     + " requirements document, and a source tree spent here is context the interview then lacks. Two"
     + " read-only routes, both one-shot: `cellwork_recon` {role:\"Explorer\"|\"Researcher\", task} — its"
-    + " report comes straight back, and it forwards its own depth cap so it is never refused by the host's"
-    + " nesting default — or `mpd_role_spawn` with a read-only roster role (Explorer, Researcher, Architect)"
-    + " when the cellwork tool is not mounted. The band stays open to you: `.mpd/**`, `docs/**`,"
+    + " report comes straight back, and the roster places the child one level below you as a leaf, so it is"
+    + " never refused by the host's nesting default — or `mpd_role_spawn` with a read-only roster role"
+    + " (Explorer, Researcher, Architect) when the cellwork tool is not mounted. The band stays open to"
+    + " you: `.mpd/**`, `docs/**`,"
     + " `evidence/**`, `agent-references/**`; any `AGENT.md`, `AGENTS.md` or `CLAUDE.md` at any depth, inside"
     + " this workspace or outside its root; and at the workspace root only `README.md`, `README.zh-CN.md`,"
     + " `CHANGELOG.md` and `LICENSE*.md`."

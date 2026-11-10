@@ -25,10 +25,10 @@ about. A session in no cell is untouched, which is what makes the mode free whil
 
 | Caller | Refused |
 |---|---|
-| captain | everything except `cellwork_*` (but NOT `cellwork_handoff`), `agent_teams_*`, `ask_user_question`, `todo_write`, `mpd_memory_*`, and the one verify-loop opener `mpd_verify_open` (that EXACT name; every other `mpd_verify_*` stays refused) |
-| verifier | `write`, `edit`, `mpd_hashline_edit`, `mcp__ast_grep__rewrite`, `mcp__ast_grep__scan`, `mcp__lsp__rename_symbol`, `mcp__lsp__rename_symbol_strict`, and the two bundle spawn tools `mpd_role_spawn` / `mpd_workmate_spawn` — a verifier NEVER delegates: the verdict is its own work, and a FAIL is the channel back to the writer |
+| captain | everything except `cellwork_*` (but NOT `cellwork_handoff`, `cellwork_delegate` or `cellwork_consult`), `agent_teams_*`, `ask_user_question`, `todo_write`, `mpd_memory_*`, and the one verify-loop opener `mpd_verify_open` (that EXACT name; every other `mpd_verify_*` stays refused) |
+| verifier | `write`, `edit`, `mpd_hashline_edit`, `mcp__ast_grep__rewrite`, `mcp__ast_grep__scan`, `mcp__lsp__rename_symbol`, `mcp__lsp__rename_symbol_strict`, the two bundle spawn tools `mpd_role_spawn` / `mpd_workmate_spawn`, both roster consult tools `mpd_role_spawn_async` / `mpd_role_consult`, and this package's `cellwork_delegate` / `cellwork_consult` — a verifier NEVER delegates: the verdict is its own work, and a FAIL is the channel back to the writer |
 | member at its context checkpoint | everything except `cellwork_handoff`, `cellwork_context`, `cellwork_status` |
-| subcaptain | a MINI-CAPTAIN: the captain allowlist MINUS `cellwork_start`/`cellwork_stop`, plus the four sub-cell verbs `cellwork_subteam`, `cellwork_activate`, `cellwork_dispatch`, `cellwork_supervise`. No file-work tool at all |
+| subcaptain | a MINI-CAPTAIN: the captain allowlist MINUS `cellwork_start`/`cellwork_stop`, plus the four sub-cell verbs `cellwork_subteam`, `cellwork_activate`, `cellwork_dispatch`, `cellwork_supervise` AND the two consult verbs `cellwork_delegate` / `cellwork_consult`. No file-work tool at all |
 | planner (`cell-planner`) | `read`/`grep`/`glob` inside the documentation band — `.mpd/**`, `docs/**`, `evidence/**`, `agent-references/**`; any `AGENT.md`/`AGENTS.md`/`CLAUDE.md` by basename at any depth, inside or outside the workspace root; at the root only `README.md`, `README.zh-CN.md`, `CHANGELOG.md`, `LICENSE*.md` — and every other tool it needs to plan |
 | ordinary member | nothing: it is a normal worker |
 
@@ -41,11 +41,17 @@ band the top-level `mpd` captain keeps (a parity test imports both lists, so the
 is judged by its SPELLING with symlinks never resolved, and a `..` segment is admitted ONLY when the
 basename is one of the three instruction files — reading a sibling project's `AGENT.md` is exactly why
 the hop is allowed. In a cell the planner NEVER runs reconnaissance itself, and a CONSULT IS A LEAF:
-`mpd_role_spawn` forwards the caller's recorded depth + 1 and denies both spawn tools in the child's own
-scope, so the child cannot delegate again; a caller already at depth 2 or deeper is refused outright.
-The cell planner sits at depth 1, keeps its route, and its consult lands at depth 2 as a leaf;
-`cellwork_recon` is exempt from that depth floor because its own depth is bounded by
-`cellwork.depthMax`.
+the roster's spawn tools forward the caller's recorded delegation depth + 1 and deny both spawn tools in
+the child's own scope, so the child cannot delegate again; a caller already at delegation depth 2 or
+deeper is refused by those TOOLS. The three cellwork consult verbs do not go through that floor: they
+start through the `mpdConsults` service, which places the child at caller depth + 1 — one level below
+the caller, a leaf — and forwards no absolute cap.
+TWO SCALES, not one. `cellwork.depthMax` (1..8, default 3) is the CELL-TREE scale: it counts nested
+CELLS and teams, and `cellwork_subteam` refuses `depth + 1 > depthMax`. AGENT delegation depth is a
+separate scale the harness records per session: a cell seat is a TEAM MEMBER, so the planner sits at
+delegation depth 1 in the shipped topology, and the seats of a NESTED cell sit one level deeper than the
+cell that raised them. The two numbers never coincide, which is why the cell cap is not forwarded as the
+child's agent cap: at the legal value `depthMax: 1` that forwarding disabled every consult.
 
 ## State on disk
 
@@ -85,11 +91,18 @@ appears are staging and adoption, below).
 
 The BACKGROUND DELEGATION pair, for a cell seat (planner, subcaptain, ordinary member — never the
 captain): `cellwork_delegate` starts 1..16 consults in ONE pass and returns their `consultId`s
-immediately, roles canonicalised by the roles row and ANY roster role (writers included) allowed;
+immediately, roles canonicalised by the roles row's OWN resolver (`DeepWorker`, `deep worker`,
+`deep-worker` and `Deep Worker` are ONE agent) and ANY roster role (writers included) allowed;
 `cellwork_consult` lists, waits for, collects (which RELEASES the record) and cancels the consults THIS
 cell started. Both go through the `mpdConsults` service the `mpd-roles` row provides over its ONE
 consult supervisor — one registry, one `MPD_DSH_CONSULT_MAX` cap (over-cap work QUEUES) and one silence
-deadman — and an absent service is refused by name, never replaced by an unsupervised spawn.
+deadman — and an absent service is refused by name, never replaced by an unsupervised spawn. ALL THREE
+consult verbs go through that service, the legacy `cellwork_recon {role, task}` form included, so a
+composition that mounts cellwork WITHOUT the `mpd-roles` row loses that form too; the shipped bundle
+mounts both rows, so only a hand-built composition is affected. Validation is ALL-OR-NOTHING, and that
+covers VALIDATION only: a start failing AFTER some children already started answers `ok:false` naming
+the ids that DID start — those children keep running and stay recorded, for `cellwork_consult` to
+collect.
 
 The protocol tools: `cellwork_dispatch` (one owner-only dispatch pass, plus `reassign` hand-overs and
 the `unfence` lever), `cellwork_supervise` (the captain's read-only sweep, including every CLOSED seat
@@ -299,8 +312,9 @@ whose window cannot be read can be certified deliberately, and it is recorded as
   projection never carries an `undefined` own key (the optional `owner` is OMITTED, never set to `undefined`),
   and no result carries a non-finite number, a negative zero or a cycle.
 - **B5 recon bound.** `cellwork_recon` raises the read-only child with the exact `Explorer`/`Researcher`
-  label and an absolute depth cap, so the child-persona seam applies the roster deny list. On a composition
-  WITHOUT that seam the child is read-only by PROMPT only, and the result reports `personaInjected:false`.
+  label — and no absolute cap, because the roster places the child one level below the caller as a leaf — so
+  the child-persona seam applies the roster deny list. On a composition WITHOUT that seam the child is
+  read-only by PROMPT only, and the result reports `personaInjected:false`.
 - **Verify-loop producer.** `mpd_verify_open` is called with the captain's LIVE agent and its own session id,
   recorded truthfully on the loop; the cell id appears only as DATA on the frozen contract
   (`producer: cellwork:<cellId>`), never as a fabricated session. `mpd_verify_open` — that exact name — is the
@@ -388,9 +402,12 @@ declared follow-up (`docs/cellwork.md`, "Declared bounds").
 - **The consult book is IN MEMORY** (cell id → consult id, no report and no cap), like the supervisor's
   own records: a restart loses both, and `cellwork_consult` says so instead of answering a stale id. A
   consult a seat collects through `mpd_role_consult` directly leaves this cell's list.
-- **The roster's delegation depth floor is NOT applied on the consult-service path** — that floor belongs
-  to the roster's tool handlers. `cellwork.depthMax` bounds the cell plane instead, passed as the
-  consult's ABSOLUTE `maxDepth` on every start, plus the roster's leaf denial on the child side.
+- **Agent delegation depth and the CELL-tree depth are DIFFERENT SCALES** — `cellwork.depthMax` bounds
+  nested cells/teams only and is NEVER passed to a consult. The three consult verbs start through the
+  `mpdConsults` service, which leaves the child's agent depth to the roster's own
+  `spawnMaxDepthOf(exec.agent)` rule (caller depth + 1, a leaf) and deliberately does not apply the
+  roster's tool-side depth floor. ONE consumer of that exemption exists today: cellwork, whose plane is
+  bounded by `cellwork.depthMax`; a second consumer must justify the bypass.
 - The 1/4-of-window rule is a certified ESTIMATE from measured bytes and configurable ratios — not a
   measurement, and deliberately punitive for CJK.
 - **The generic team verb is the hazard cell mode removes.** `agent_teams_dispatch` pairs a ready task

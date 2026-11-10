@@ -227,7 +227,7 @@ owner**、绝不替换的；在 cell 模式之外，**等声明的 owner 空出�
 | `cellwork_start` | 队长 | 打开活跃 cell 的需求阶段：校验 cell 与调用者、写入 `startedAt`、记入 journal |
 | `cellwork_status` | 队长、成员 | 阶段、目标、队长、需求/切分修订号、成员及其模式、已注入的检查点、活跃 team 计数、已记录的切分票看板 id、cell 记录与活跃名册的成员差异（`missingFromCell` / `missingFromTeam` / `inSync`）、调用者自己的座位与磁盘路径——它**唯一**的写入是**采纳**本记录从未学到的活跃 team 座位，绝不推进阶段 |
 | `cellwork_requirements` | 规划器 | `finalize` 需求文档，或 `update` 它：update 会提升修订号并把切分标记为过期；章节正文延伸到同级或更高级的下一个标题，因此 `###` 子标题留在父章节内 |
-| `cellwork_recon` | 规划器、副队长 | **只读**咨询（Explorer/Researcher）：走 `mpdConsults`，由名册行把只读拒绝清单施加到子会话上，并用 cell 的绝对上限 `cellwork.depthMax` 封顶嵌套；`{role, task}` 返回一份报告（旧有形状），`{role, questions}` 并发跑 1..8 个问题、**全部落定后**才返回，每个问题一行；每份报告都记入 journal |
+| `cellwork_recon` | 规划器、副队长 | **只读**咨询（Explorer/Researcher）：走 `mpdConsults`，由名册行把只读拒绝清单施加到子会话上，并把子会话放在调用者下方一层、作为**叶子**（`cellwork.depthMax` 只数嵌套的 cell，绝不给子会话封顶）；`{role, task}` 返回一份报告（旧有形状），`{role, questions}` 并发跑 1..8 个问题、**全部落定后**才返回，每个问题一行；每份报告都记入 journal |
 | `cellwork_delegate` | 规划器、副队长、成员 | 一次调用启动 1..16 个**后台**咨询并**立即**返回它们的 `consultId`（任何子会话落定之前）；角色可以是**任意**名册角色（写作角色也算），由名册行规范化；校验**全有或全无**（未知角色、空字段或超过 16 个任务则一个都不启动）；超过上限的工作在共享的 `MPD_DSH_CONSULT_MAX` 上**排队** |
 | `cellwork_consult` | 规划器、副队长、成员 | 对本 cell 通过 `cellwork_delegate` 发起的咨询做 `list` / `wait` / `collect` / `cancel`：`list` 只列本 cell 的、监督器仍然记得的 id；`wait` 收敛到 1..60000 ms（默认 30000），超时返回 `state:\"running\"`；`collect` 返回报告并**释放**记录；`cancel` 中断子会话并记 `consult-cancelled`；不是本 cell 发起的 id 会被一句教学式拒绝 |
 | `cellwork_split` | 切分器 | `submit` 任务图让插件度量（每个任务可声明自己的看板 `member`），或 `show` 上一次的裁定；每次拒绝都把 findings 持久化到 `split/<修订>.refused.json`；一个**非致命**的 `warnings` 列表按切分键点名每个没有写作用域的 `work`/`repair`/`integration` 任务，且永不改变 `accepted` |
@@ -264,10 +264,15 @@ owner**、绝不替换的；在 cell 模式之外，**等声明的 owner 空出�
 
 其中两行属于本仓库自己的侦察规则，而不是 cellwork 的发明。规划器的可读带**就是**顶层 `mpd` 队长保留的那条
 带，而且有一条 parity 测试同时导入两份清单，因此二者不可能漂移。cell 之内，规划器的侦察是**委派**的，而且
-一次咨询就是**叶子**：`mpd_role_spawn` 会把调用者记录的委派深度 + 1 传下去，**并且**在子会话自己的工具作用域
-里拒绝两个 spawn 工具，因此子会话绝不可能再次委派；已经处于深度 2 或更深的调用者会被直接拒绝（在这里干活，
-或把问题上交）。cell 规划器位于深度 1、保留自己的路线，它发起的咨询落在深度 2、本身就是一个叶子。
-`cellwork_recon` 不受这条深度下限约束，因为它自己的深度由 `cellwork.depthMax` 封顶。cell 队长站在另一端
+一次咨询就是**叶子**：名册的 spawn 工具会把调用者记录的委派深度 + 1 传下去，**并且**在子会话自己的工具作用域
+里拒绝两个 spawn 工具，因此子会话绝不可能再次委派；已经处于委派深度 2 或更深的调用者会被那些**工具**拒绝
+（在这里干活，或把问题上交）。cellwork 的三个咨询动词不走这条下限：它们经 `mpdConsults` 服务启动，由该服务把
+子会话放在调用者深度 + 1——也就是调用者下方一层、一个叶子——并且不传任何绝对上限。
+这里有**两套刻度**，不是一套。`cellwork.depthMax`（1..8，默认 3）是 **CELL 树**的刻度：它只数嵌套的 cell 与
+team，`cellwork_subteam` 在 `depth + 1 > depthMax` 时拒绝。**智能体委派深度**是另一套由 harness 按 session
+记录的刻度：cell 座位就是**团队成员**，因此在随包发布的拓扑里规划器位于委派深度 1，而**嵌套 cell** 的座位比
+拉起它的 cell 再深一层。两个数字并不重合，所以 cell 上限绝不会被当作子会话的智能体上限传下去——在合法值
+`depthMax: 1` 上，那种传法会让每一次咨询都被拒绝。cell 队长站在另一端
 （它的读取面只有通过这些工具访问 cell 记录）而在 cell 模式**之外**，`mpd` 队长的可读带如今在任意深度承认
 `AGENT.md`/`AGENTS.md`/`CLAUDE.md`（包括兄弟项目的），同时仍然拒绝一切源码路径。
 
@@ -279,16 +284,20 @@ cell 的**座位**——规划器、被晋升的副队长、已记录的普通�
 
 - `cellwork_delegate {tasks:[{role, task, context?}, …]}` 一趟启动 1..16 个咨询，**立即**返回
   `{ok, started, consults:[{consultId, role, startedAt}]}`——子会话继续工作，座位继续自己的事。角色是**任意**
-  名册角色（写作角色也算），由名册行规范化，因此 `deep worker`、`deep-worker`、`Deep Worker` 是**同一个** agent，
-  答复回显名册自己的拼写。校验是**全有或全无**：未知角色、空的 `role`/`task`、或超过 16 个任务会拒绝整个调用，
-  并且**一个都不启动**。
+  名册角色（写作角色也算），由名册行**自己的**解析器规范化，因此 `DeepWorker`、`deep worker`、`deep-worker`
+  与 `Deep Worker` 是**同一个** agent，答复回显名册自己的拼写。校验是**全有或全无**：未知角色、空的
+  `role`/`task`、或超过 16 个任务会拒绝整个调用，并且**一个都不启动**。这条规则只管**校验**——部分批次仍
+  可能出现：如果某个启动在**已经启动了部分子会话之后**失败，答复是 `ok:false`，并点名**确实已启动**的 id；
+  这些子会话继续运行并保持记录（用 `cellwork_consult` 收取）。
 - `cellwork_consult {action, consultId?, timeoutMs?}` 结算它们：`list`（只列本 cell 发起、且监督器仍记得的 id）、
   `wait`（1..60000 ms，默认 30000——超时返回 `state:"running"`，绝不抛错）、`collect`（返回报告并**释放**记录）、
   `cancel`（中断子会话并记 `consult-cancelled`）。不是本 cell 发起的 id 会被拒绝，并且句子里说明所有权规则与
   另外两条通道，绝不只是「找不到」。
 - 两个动词都走 `mpd-roles` 行在它**唯一**的咨询监督器之上提供的 `mpdConsults` **服务**：一个注册表、一个并发上限
   （`MPD_DSH_CONSULT_MAX`，默认 8——超上限的工作**排队**，绝不拒绝）、一个静默死信器。没有那一行的组合会**按名字**
-  被拒绝；不存在无监督的回退启动。
+  被拒绝；不存在无监督的回退启动。由于**三个**咨询动词（两个新动词**以及**旧有的 `cellwork_recon {role, task}`
+  形态）都走这个服务，只挂 cellwork、**不挂** `mpd-roles` 行的组合连旧有的 recon 形态也会失去；随包发布的
+  bundle 同时挂载两行，所以只有手工搭建的组合会受影响。
 - `cellwork_recon` 得到同一扇门，外加一个**批量**形态：`{role, questions:[…]}` 问 1..8 个问题，**并发**运行，
   全部落定后才返回（一个问题失败不会取消其它问题——它那一行带上失败文本与 `stopReason:"failed"`）。
   `{role, task}` 保持它原有的字段，而只问一个问题的批量也同时带旧有的 `report`/`stopReason`。
@@ -567,10 +576,11 @@ cell id 形如 `cell-<UTC 时刻>`；子 cell 会记录 `parentCellId` 与 `dept
   上限），与监督器的记录一样是进程内的：重启会同时丢掉两者，之后 `cellwork_consult` 给出说明这一点的拒绝，
   而不是一个过期的 id。座位仍可直接调用 `mpd_role_spawn_async` / `mpd_role_consult`；它那样收走的咨询只是离开
   本 cell 的清单（下一次 `list` 会顺手剪掉）。
-- **名册的委派深度下限刻意**不**施加在咨询服务这条路径上。** 那条下限属于名册的**工具**处理器，它们会传下一个
-  调用者看不见的上限；cellwork 的座位是深度 2 或更深的 team 成员，因此 `cellwork_recon` 本来就必须豁免，两个新
-  动词跟随它。真正给 cell 平面封顶的是 `cellwork.depthMax`：每次启动都作为咨询的**绝对** `maxDepth` 传入，
-  再加上名册在子会话一侧的叶子拒绝。
+- **智能体委派深度与 CELL 树深度是两套不同的刻度。** `cellwork.depthMax`（1..8，默认 3）只约束嵌套的 cell
+  与 team——只有 `cellwork_subteam` 执行它——并且**绝不**传给咨询。三个咨询动词经 `mpdConsults` 服务启动，
+  子会话的智能体深度交给名册自己的 `spawnMaxDepthOf(exec.agent)` 规则（调用者深度 + 1，一个**叶子**），
+  该路径刻意**不**施加名册工具侧的深度下限（处于委派深度 2 或更深的调用者会被**工具**拒绝）。这条豁免今天
+  只有**一个**消费者：cellwork，其平面由 `cellwork.depthMax` 约束；第二个消费者必须先论证这次绕过。
 
 ## 测试与证据
 

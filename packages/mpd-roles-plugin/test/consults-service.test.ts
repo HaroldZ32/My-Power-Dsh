@@ -234,16 +234,42 @@ function makePlugin(): PluginHarness {
 }
 
 describe("the row provides `mpdConsults` over its ONE supervisor", () => {
-  test("the service is provided with its six methods and is NOT a tool", () => {
+  test("the service is provided with its SEVEN methods and is NOT a tool", () => {
     /** The applied row. */
     const harness = makePlugin()
     /** The provided service. */
     const service = harness.provided.mpdConsults
     expect(service).toBeDefined()
-    for (const method of ["start", "list", "wait", "settle", "collect", "cancel"]) expect(typeof service[method]).toBe("function")
+    for (const method of ["canonicalRole", "start", "list", "wait", "settle", "collect", "cancel"]) expect(typeof service[method]).toBe("function")
     // It is a SERVICE: no tool carries its name, and no tool output advertises it.
     expect([...harness.tools.keys()].sort()).toEqual(["mpd_role_consult", "mpd_role_persona", "mpd_role_spawn", "mpd_role_spawn_async", "mpd_roles_list"])
     expect([...harness.tools.keys()]).not.toContain("mpdConsults")
+  })
+
+  test("R1.3: `canonicalRole` is the ROSTER's own resolver — four Deep Worker spellings, one name; unknown is undefined", () => {
+    /** The applied row: the REAL resolver, not a double. */
+    const harness = makePlugin()
+    /** The caller's dispatch. */
+    const exec = { agent: { id: "agent-1" } }
+    // `DeepWorker` is the measured disagreement: the roster accepts it, the removed cellwork-local pass did not.
+    for (const spelling of ["Deep Worker", "deep worker", "deep-worker", "DeepWorker"]) {
+      expect(harness.provided.mpdConsults.canonicalRole(spelling, exec)).toBe("Deep Worker")
+    }
+    // The FROZEN one-argument form works too: a base-roster spelling resolves without an `exec`.
+    expect(harness.provided.mpdConsults.canonicalRole("DeepWorker")).toBe("Deep Worker")
+    expect(harness.provided.mpdConsults.canonicalRole("no such agent", exec)).toBeUndefined()
+    expect(harness.provided.mpdConsults.canonicalRole("", exec)).toBeUndefined()
+  })
+
+  test("R1.3: an unknown role is refused by BOTH the tool and the service; a known spelling resolves to the SAME name", async () => {
+    /** The applied row. */
+    const harness = makePlugin()
+    /** The caller's dispatch. */
+    const exec = { agent: { id: "agent-1" }, signal: new AbortController().signal }
+    await expect(harness.tools.get("mpd_role_spawn").execute({ role: "no such agent", task: "x" }, exec)).rejects.toThrow(/unknown role/)
+    await expect(harness.provided.mpdConsults.start({ role: "no such agent", task: "x", exec })).rejects.toThrow(/unknown role/)
+    expect(harness.provided.mpdConsults.canonicalRole("DeepWorker", exec)).toBe("Deep Worker")
+    expect(harness.spawned).toEqual([])
   })
 
   test("ONE registry: a service start is visible to `mpd_role_consult {action:\"list\"}`, and collect releases it", async () => {
@@ -278,12 +304,29 @@ describe("the row provides `mpdConsults` over its ONE supervisor", () => {
     const deep = { agent: { id: "agent-deep", session: { id: "agent-deep", header: { delegationDepth: 2 } } }, signal: new AbortController().signal }
     // The TOOL applies the roster's depth floor...
     await expect(harness.tools.get("mpd_role_spawn_async").execute({ role: "Explorer", task: "x" }, deep)).rejects.toThrow(/delegation depth 2/)
-    // ...and the SERVICE does not: the cell plane owns its own cap (`cellwork.depthMax`).
+    // ...and the SERVICE does not: this is the bounded plane's exemption (one consumer today: cellwork).
     /** The service start at depth 2. */
     const started = await harness.provided.mpdConsults.start({ role: "Explorer", task: "x", exec: deep, maxDepth: 3 })
     expect(started.state).toBe("running")
     await tick()
     expect(harness.spawned.length).toBe(1)
+    expect(harness.spawned[0].maxDepth).toBe(3)
+  })
+
+  test("R1.1: a depth-2 caller with NO forwarded cap lands at caller depth + 1 (3) — the row's OWN rule, not a cell cap", async () => {
+    /** The applied row. */
+    const harness = makePlugin()
+    /** A team member two levels below the session that started the work. */
+    const deep = { agent: { id: "agent-deep", session: { id: "agent-deep", header: { delegationDepth: 2 } } }, signal: new AbortController().signal }
+    // NO `maxDepth`: this is what cellwork sends since the repair. The service must derive the cap from the
+    // caller's recorded depth (`spawnMaxDepthOf` = 2 + 1), placing the child one level below as a LEAF.
+    /** The service start at depth 2, with no absolute cap. */
+    const started = await harness.provided.mpdConsults.start({ role: "Explorer", task: "x", exec: deep })
+    expect(started.state).toBe("running")
+    await tick()
+    expect(harness.spawned.length).toBe(1)
+    // 3 arrives from the DEPTH SCALE, never from `cellwork.depthMax` (which counts nested CELLS and is not
+    // even visible to this row).
     expect(harness.spawned[0].maxDepth).toBe(3)
   })
 })

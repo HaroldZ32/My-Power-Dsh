@@ -16,7 +16,6 @@
 // records, so a restart loses both together. A seat may still call `mpd_role_spawn_async` /
 // `mpd_role_consult` directly; a consult it collects that way simply leaves this cell's list.
 import type { DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
-import type { CellworkConfig } from "./config"
 import { appendJournal } from "./state"
 import { captainRefusal, checkpointRefusal, verifierDelegationRefusal, type CellworkSeat } from "./guard"
 
@@ -42,6 +41,12 @@ export const CONSULT_ACTIONS: readonly string[] = ["list", "wait", "collect", "c
  * because this module parses it: the authoritative declarations are `packages/mpd-roles-plugin/src/consults.ts`.
  */
 export interface ConsultServiceView {
+  /**
+   * Canonicalise one role spelling through the roles row's OWN resolver — the same one `mpd_role_spawn`
+   * uses. Validating through this method is what keeps `cellwork_delegate` and the roster tools from
+   * disagreeing (`DeepWorker` is the measured case: the roster accepts it, a local pass refused it).
+   */
+  canonicalRole?: (role: string, exec?: unknown) => unknown
   /** Start one background consult; the answer carries the stable id. */
   start?: (spec: { role: string; task: string; context?: string; exec: unknown; maxDepth?: number }) => Promise<unknown>
   /** Every consult the roles row knows, process-wide. */
@@ -234,8 +239,6 @@ function wholeNumber(value: unknown): number {
 export interface ConsultDeps {
   /** The `mpdConsults` service, resolved lazily per call; undefined when the roles row is not mounted. */
   service: () => ConsultServiceView | undefined
-  /** The canonical roster name for one typed role, or undefined when it names no role. */
-  canonicalRole: (role: string) => string | undefined
   /** The roster role names, so a refusal can teach the addressable set. */
   rosterNames: () => string[]
   /** The calling cell's id — the ownership key. */
@@ -244,8 +247,6 @@ export interface ConsultDeps {
   workspace: string
   /** The calling dispatch, forwarded to the service as `exec`. */
   exec: DshToolExec
-  /** The resolved knobs: `depthMax` travels as the consult's ABSOLUTE cap. */
-  config: CellworkConfig
   /** The instant to journal with. */
   now: Date
   /** The process-local ownership map. */
@@ -324,8 +325,10 @@ export function readDelegateTasks(raw: unknown): { tasks: Array<{ role: string; 
 /**
  * Start every task of one `cellwork_delegate` call in ONE pass and answer the ids immediately.
  *
- * Roles are canonicalised FIRST, so an unknown spelling refuses the whole call before a single child is
- * raised; the starts themselves never await a child, and over-cap work QUEUES on the shared supervisor.
+ * Roles are canonicalised FIRST — through the `mpdConsults` service's OWN `canonicalRole`, the resolver
+ * `mpd_role_spawn` uses — so an unknown spelling refuses the whole call before a single child is raised.
+ * The starts themselves never await a child, over-cap work QUEUES on the shared supervisor, and no
+ * `maxDepth` is forwarded (the roster places the child at caller depth + 1 as a leaf).
  *
  * @param deps - the service, the roster, the cell and the knobs.
  * @param rawTasks - the raw `tasks` argument.
@@ -335,18 +338,30 @@ export async function startDelegation(deps: ConsultDeps, rawTasks: unknown): Pro
   /** The parsed task list, or the refusal that replaced it. */
   const parsed = readDelegateTasks(rawTasks)
   if ("ok" in parsed) return parsed
+  /** The service, or the honest absence refusal (never an unsupervised spawn). */
+  const service = deps.service()
+  // THE ROLE RESOLVER IS THE SERVICE'S. Without `canonicalRole` there is no second resolver to validate
+  // against, so the call is refused rather than falling back to a local normalisation that could disagree
+  // with `mpd_role_spawn` (the defect this repair removes).
+  if (service?.start === undefined || typeof service.canonicalRole !== "function") return { ok: false, error: missingConsultsServiceRefusal("cellwork_delegate") }
   if (deps.rosterNames().length === 0) return { ok: false, error: missingRosterRefusal() }
   /** The canonical name of every task's role, in the caller's order. */
   const roles: string[] = []
   for (let index = 0; index < parsed.tasks.length; index += 1) {
+    /** The service's answer: the canonical roster name, or a value that names nothing. */
+    const answer = ((): unknown => {
+      try {
+        return service.canonicalRole?.(parsed.tasks[index].role, deps.exec)
+      } catch {
+        // A resolver failure is an unknown spelling, never a partial start.
+        return undefined
+      }
+    })()
     /** The canonical name, or undefined for a spelling the roster does not answer to. */
-    const canonical = deps.canonicalRole(parsed.tasks[index].role)
+    const canonical = typeof answer === "string" && answer !== "" ? answer : undefined
     if (canonical === undefined) return { ok: false, error: "cellwork_delegate: tasks[" + String(index) + "].role " + JSON.stringify(parsed.tasks[index].role) + " names no roster role — use a roster NAME as `mpd_roles_list` spells it (any case, space, hyphen or underscore spelling); nothing was started" }
     roles.push(canonical)
   }
-  /** The service, or the honest absence refusal (never an unsupervised spawn). */
-  const service = deps.service()
-  if (service?.start === undefined) return { ok: false, error: missingConsultsServiceRefusal("cellwork_delegate") }
   /** The started rows, in the caller's order. */
   const consults: Array<{ consultId: string; role: string; startedAt: number }> = []
   for (let index = 0; index < parsed.tasks.length; index += 1) {
@@ -354,15 +369,17 @@ export async function startDelegation(deps: ConsultDeps, rawTasks: unknown): Pro
     const task = parsed.tasks[index]
     try {
       // THE CALLER'S OWN EXECUTION travels as `exec`, so the child is raised under this session's
-      // authority and the handoff directory resolves in the caller's workspace; `depthMax` is the cell
-      // plane's own ABSOLUTE cap (the roster's depth floor is deliberately not applied on this path).
+      // authority and the handoff directory resolves in the caller's workspace. NO `maxDepth` is
+      // forwarded: `cellwork.depthMax` counts nested CELLS and is a different scale from agent delegation
+      // depth, so the roles row's own `spawnMaxDepthOf(exec.agent)` rule (caller depth + 1, a LEAF) places
+      // the child. Forwarding the cell cap as the child's ABSOLUTE agent depth disabled every consult at
+      // the legal value `depthMax: 1`.
       /** The service's answer: the id at once, before any child settles. */
       const answer = await service.start({
         role: roles[index],
         task: task.task,
         ...(task.context === undefined ? {} : { context: task.context }),
         exec: deps.exec,
-        maxDepth: deps.config.depthMax,
       })
       /** The row projected from the answer. */
       const row = consultRowOf(answer)
@@ -504,8 +521,12 @@ export async function runConsultAction(deps: ConsultDeps, args: { action: string
   try {
     if (action === "wait") {
       if (typeof service.wait !== "function") return { ok: false, error: missingConsultsServiceRefusal("cellwork_consult") }
-      /** The awaited bound: the caller's value clamped to 1..60 000, else the 30 s default. */
-      const bound = Math.min(CONSULT_WAIT_MAX_MS, Math.max(1, Math.trunc(Number(args.timeoutMs)) || CONSULT_WAIT_DEFAULT_MS))
+      // THE CLAMP IS MONOTONE: OMITTED -> the 30 s default; PROVIDED -> 1..60 000, so a declared `0` and a
+      // negative both become 1 (the old `|| default` turned `0` into 30 000 while a negative became 1).
+      /** The awaited bound, milliseconds. */
+      const bound = args.timeoutMs === undefined
+        ? CONSULT_WAIT_DEFAULT_MS
+        : Math.min(CONSULT_WAIT_MAX_MS, Math.max(1, Math.trunc(Number(args.timeoutMs)) || 1))
       /** The view after the wait (a timed-out wait answers `running`). */
       const row = consultRowOf(await service.wait(consultId, bound))
       if (row === undefined) return { ok: false, error: "cellwork_consult: the `mpdConsults` service answered `wait` without a consult view for " + JSON.stringify(consultId) }

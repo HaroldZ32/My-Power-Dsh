@@ -15,7 +15,7 @@ import { appendJournal, listCellIds, readCell, writeCell, requirementsPath, type
 import { callerContext, type TeamActionsServiceView, sessionIdOf, type CallerContext, type TeamsServiceView } from "./caller"
 import { type CellworkConfig } from "./config"
 import { readRequirements, storedRequirementsText, validateRequirementsText, writeRequirements } from "./requirements"
-import { latestSplit, readSplit, roleKey, submitSplit, type SplitSubmission, type SplitTaskInput, type SplitVerdict } from "./split"
+import { latestSplit, readSplit, submitSplit, type SplitSubmission, type SplitTaskInput, type SplitVerdict } from "./split"
 import { resolveTaskWindow, type RouteResolutionView, type WindowReading } from "./budget"
 import { runRecon } from "./recon"
 import {
@@ -239,22 +239,6 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
     } catch {
       return null
     }
-  }
-  /**
-   * The canonical roster name one typed spelling names, or undefined when it names no role.
-   *
-   * The comparison is {@link roleKey}, the SAME identity rule a split's `ownerRole` and a board member name
-   * already use: `deep worker`, `deep-worker` and `Deep Worker` collapse to one key, so one agent. The
-   * canonical answer is the roster's OWN spelling, which is what the caller sees echoed back.
-   *
-   * @param role - the role exactly as the caller typed it.
-   * @returns the roster's spelling of that name, or undefined.
-   */
-  const canonicalRoleOf = (role: string): string | undefined => {
-    /** The requested key; an empty one names nothing. */
-    const wanted = roleKey(role)
-    if (wanted === "") return undefined
-    return rosterNames().find((name) => roleKey(name) === wanted)
   }
   /**
    * The refusal a cell-scoped consult verb answers when no LIVE cell is running on this workspace.
@@ -533,7 +517,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
   // ── cellwork_recon ───────────────────────────────────────────────────────
   disposers.push(dsh.registerTool({
     name: "cellwork_recon",
-    description: "PLANNER/SUBCAPTAIN only: raise READ-ONLY consults (label exactly `Explorer` or `Researcher`) through the `mpdConsults` service, so the roles row applies the read-only deny list to the child and the cell's own absolute `cellwork.depthMax` bounds the nesting. ONE question (`{role, task}`, the legacy blocking form) returns its report; 1..8 questions (`{role, questions}`) run CONCURRENTLY and the call returns only when ALL of them are settled, one row per question. Every report is journaled in the cell; an absent `mpdConsults` service is refused by name, never replaced by an unsupervised spawn.",
+    description: "PLANNER/SUBCAPTAIN only: raise READ-ONLY consults (label exactly `Explorer` or `Researcher`) through the `mpdConsults` service, so the roles row applies the read-only deny list to the child and places it one level below the caller as a LEAF (caller agent depth + 1 — `cellwork.depthMax` counts nested CELLS and never caps the child). ONE question (`{role, task}`, the legacy blocking form) returns its report; 1..8 questions (`{role, questions}`) run CONCURRENTLY and the call returns only when ALL of them are settled, one row per question. Every report is journaled in the cell; an absent `mpdConsults` service is refused by name, never replaced by an unsupervised spawn.",
     parameters: {
       type: "object",
       properties: {
@@ -605,7 +589,6 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         workspace: caller.workspace,
         cell,
         caller: { member: caller.member, mode: caller.seat?.mode ?? "member" },
-        config,
         personaFor,
         now: new Date(),
       }, {
@@ -697,12 +680,10 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
       /** The delegation outcome. */
       const result = await startDelegation({
         service: consults,
-        canonicalRole: canonicalRoleOf,
         rosterNames,
         cellId: cell.cellId,
         workspace: caller.workspace,
         exec,
-        config,
         now: new Date(),
         book: consultBook,
       }, argv.tasks)
@@ -808,12 +789,10 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
       /** The action outcome. */
       const result = await runConsultAction({
         service: consults,
-        canonicalRole: canonicalRoleOf,
         rosterNames,
         cellId: cell.cellId,
         workspace: caller.workspace,
         exec,
-        config,
         now: new Date(),
         book: consultBook,
       }, { action: argString(argv, "action"), consultId: argString(argv, "consultId"), timeoutMs: argv.timeoutMs })

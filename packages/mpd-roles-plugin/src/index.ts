@@ -1082,8 +1082,10 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   // behavioural difference is that this path does NOT apply `consultDepthRefusal` — see `consults.ts`.
   ctx.provide("mpdConsults", createMpConsults({
     supervisor: consultSupervisor,
-    // THE SAME INTERNAL PATH the async tool uses (`raiseConsultAsync`), with the caller's absolute cap
-    // when it declared one, so persona, route, fallback and the read-only child scope are identical.
+    // THE SAME INTERNAL PATH the async tool uses (`raiseConsultAsync`): persona, route, fallback and the
+    // read-only child scope are identical. A caller MAY still pass an absolute `maxDepth`; when it does not
+    // (cellwork no longer does — its `depthMax` counts nested CELLS), `raiseConsultAsync` applies this
+    // row's own `spawnMaxDepthOf(exec.agent)` rule, caller depth + 1, a leaf.
     raise: (spec) => raiseConsultAsync(spec, spec.exec, spec.maxDepth),
     // Roles are canonicalised against THIS call's roster surface, so the id the caller gets back, the name
     // the supervisor records and the name the handoff document prints are all the ONE canonical spelling.
@@ -1213,8 +1215,9 @@ export function apply(ctx: Ctx, config: Config = {}): void {
    *
    * @param args - the tool arguments (`role`, `task`, optional `context`).
    * @param exec - the invoking tool execution, whose agent and signal ride the spawn.
-   * @param maxDepth - an ABSOLUTE nesting cap declared by a bounded caller (the `mpdConsults` service
-   *   passes `cellwork.depthMax`); absent means this row's own `spawnMaxDepthOf` rule applies.
+   * @param maxDepth - an OPTIONAL absolute agent-nesting cap declared by a bounded caller; absent (the
+   *   cellwork path since the R1.1 repair) means this row's own `spawnMaxDepthOf(exec.agent)` rule applies,
+   *   caller depth + 1. A cell plane's own `depthMax` counts nested CELLS and is NOT this scale.
    * @returns the started handle the consult supervisor owns.
    */
   async function raiseConsultAsync(args: any, exec: any, maxDepth?: number): Promise<DshAsyncAgent> {
@@ -1242,8 +1245,8 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     const run = await resolveRunRoute(dsh, primary, resolution.ok ? resolution.route.fallbacks ?? [] : [])
     /** The assembled prompt, identical to the blocking path's. */
     const prompt = spec.persona + "\n\nTask: " + task + (args?.context ? "\n\nContext:\n" + String(args.context) : "") + "\n\nWork with the tools your role requires (read-only roles must never modify anything). End with ONLY the structured report (role/summary/recommendation/details/evidence)."
-    // THE DEPTH CAP: a bounded caller that declared an ABSOLUTE cap (the `mpdConsults` service forwards
-    // `cellwork.depthMax`) overrides this row's caller-depth arithmetic; anything unusable falls back to
+    // THE DEPTH CAP: a declared positive ABSOLUTE cap overrides this row's caller-depth arithmetic; anything
+    // unusable — and ABSENT, which is what the cellwork path sends since the R1.1 repair — falls back to
     // `spawnMaxDepthOf`, never to `undefined`, so a child is never raised under the host's hidden default.
     /** The cap to forward: the declared positive whole number, else the row's own rule. */
     const depthCap = typeof maxDepth === "number" && Number.isFinite(maxDepth) && maxDepth >= 1 ? Math.floor(maxDepth) : spawnMaxDepthOf(exec.agent)

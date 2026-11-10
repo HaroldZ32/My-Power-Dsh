@@ -10,10 +10,13 @@
 // THE ONE BEHAVIOURAL DIFFERENCE from the tools, stated where a reviewer reads it: {@link MpConsultsApi.start}
 // does NOT apply `consultDepthRefusal`. That floor belongs to the TOOL handlers (`mpd_role_spawn`,
 // `mpd_role_spawn_async`), because those forward a depth cap the caller cannot see. This service is
-// called by a bounded plane that owns its own nesting cap (`cellwork.depthMax`, which it passes as
-// `maxDepth`) and whose seats are ordinary team members at depth 2 or deeper — the exact sessions the
-// roster floor refuses. Persona, route, fallback, cap, deadman and the read-only child scope are
-// IDENTICAL, because the raise lands on the same internal path.
+// called by a BOUNDED plane (cellwork) whose seats are team members — the sessions the roster floor can
+// refuse — and whose child is a LEAF. The CHILD's agent depth is therefore left to this row's OWN
+// `spawnMaxDepthOf(exec.agent)` rule (caller depth + 1); a caller MAY still pass `maxDepth`, but the
+// cell plane no longer does: its `cellwork.depthMax` counts nested CELLS, a different scale, and
+// forwarding it as the child's ABSOLUTE agent depth disabled every consult at the legal value 1.
+// Persona, route, fallback, cap, deadman and the read-only child scope are IDENTICAL, because the raise
+// lands on the same internal path.
 //
 // The service is NOT a tool: nothing registers a name, and no tool output lists it.
 import type { DshAsyncAgent } from "../../mpd-dsh-adapter-plugin/src/index"
@@ -29,7 +32,11 @@ export interface MpConsultStartSpec {
   context?: string
   /** The CALLER's tool execution context — the same object the roles tools are handed. */
   exec: unknown
-  /** Optional ABSOLUTE nesting cap; absent means the row's own `spawnMaxDepthOf` rule applies. */
+  /**
+   * Optional ABSOLUTE agent-nesting cap; absent means the row's own `spawnMaxDepthOf` rule applies
+   * (caller depth + 1, a leaf). A caller SHOULD omit it: a plane's own nesting cap (e.g.
+   * `cellwork.depthMax`, which counts CELLS) is a different scale from agent delegation depth.
+   */
   maxDepth?: number
 }
 
@@ -47,6 +54,20 @@ export interface MpConsultStarted {
 
 /** The service surface a consumer reads; it is never registered as a tool. */
 export interface MpConsultsApi {
+  /**
+   * Canonicalise one role spelling through the SAME resolver `mpd_role_spawn` uses.
+   *
+   * A consumer that validates its own role strings MUST call this instead of re-implementing the
+   * normalisation: the roster's rule strips every non-alphanumeric character (`DeepWorker` answers to
+   * `Deep Worker`) and also admits an extension role's namespaced id, so a second local pass disagrees
+   * with the tools exactly where it matters most.
+   *
+   * @param role - the role exactly as the caller typed it.
+   * @param exec - the caller's execution context; it resolves extension-contributed roles, so omitting it
+   *   canonicalises against the BASE roster only.
+   * @returns the canonical roster name, or undefined when the spelling names no role on that surface.
+   */
+  canonicalRole: (role: string, exec?: unknown) => string | undefined
   /** Start ONE background consult and answer its id immediately (over-cap work queues on the shared cap). */
   start: (spec: MpConsultStartSpec) => Promise<MpConsultStarted>
   /** Every consult this process knows, in creation order. */
@@ -110,6 +131,11 @@ export function createMpConsults(deps: MpConsultsDeps): MpConsultsApi {
   }
 
   return {
+    canonicalRole: (role: string, exec?: unknown): string | undefined => {
+      /** The resolver's answer: the canonical name, or null for a spelling that names nothing. */
+      const canonical = deps.canonicalRole(String(role ?? ""), exec)
+      return canonical === null ? undefined : canonical
+    },
     start: async (spec: MpConsultStartSpec): Promise<MpConsultStarted> => {
       /** The canonical roster name this consult runs under, or null for an unknown spelling. */
       const role = deps.canonicalRole(spec.role, spec.exec)
@@ -117,9 +143,12 @@ export function createMpConsults(deps: MpConsultsDeps): MpConsultsApi {
       /** The task text; an empty one must never start an empty prompt. */
       const task = String(spec.task ?? "").trim()
       if (task === "") throw new Error("mpdConsults: task required")
-      // THE SAME `raiseConsultAsync` PATH the tool uses (persona, route, fallback, read-only child scope),
-      // with the caller's absolute cap when it declared one. `consultDepthRefusal` is deliberately NOT
-      // applied here — see this module's header.
+      // THE EXEMPTION IS PROCESS-WIDE. No call through this service applies `consultDepthRefusal`, so any
+      // consumer mounted alongside this row inherits it. ONE consumer exists today: cellwork, whose plane
+      // is bounded by `cellwork.depthMax` (the nested-CELL cap) and whose child is a leaf. A SECOND
+      // consumer must justify the bypass before it relies on it. The child's agent depth is this row's own
+      // `spawnMaxDepthOf(exec.agent)` (caller depth + 1) unless the caller passed an ABSOLUTE `maxDepth`.
+      // THE SAME `raiseConsultAsync` PATH the tool uses (persona, route, fallback, read-only child scope).
       /** The RUNNING record the shared supervisor publishes at once. */
       const view = deps.supervisor.start({
         role,

@@ -4,8 +4,10 @@
 // WHAT IT ADDS OVER `mpd_role_spawn`. The consult is raised through the `mpdConsults` service the
 // `mpd-roles` row provides over its ONE consult supervisor, with `role` set to EXACTLY the read-only
 // roster name — which is what makes the roles row apply the exported READ-ONLY deny list to the child's
-// tool scope mechanically — and with the cell's own ABSOLUTE cap (`cellwork.depthMax`) instead of the
-// caller-depth arithmetic that would refuse a cell member. The cell-context line travels as `context`.
+// tool scope mechanically. NO `maxDepth` travels: the roster's own `spawnMaxDepthOf(exec.agent)` rule
+// places the child one level below the caller as a LEAF, while `cellwork.depthMax` counts nested CELLS
+// (a different scale; forwarding it as an absolute agent cap once disabled every consult at value 1).
+// The cell-context line travels as `context`.
 //
 // TWO FORMS, ONE TOOL. `{role, task}` is the legacy blocking form and keeps its exact result fields. The
 // batch form `{role, questions}` starts every question, settles ALL of them with `Promise.all` and answers
@@ -19,7 +21,6 @@
 // governs: over-cap questions QUEUE inside the supervisor and this call waits for every one.
 import type { CellState } from "./state"
 import { appendJournal } from "./state"
-import type { CellworkConfig } from "./config"
 import type { DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 import { consultRowOf, missingConsultsServiceRefusal, reportRowOf, type ConsultServiceView } from "./consults"
 
@@ -44,8 +45,6 @@ export interface ReconDeps {
   cell: CellState
   /** The caller's cell name (`cell-planner`, …) and enforced seat mode. */
   caller: { member: string; mode: string }
-  /** The resolved knobs; `depthMax` travels as the consult's ABSOLUTE nesting cap. */
-  config: CellworkConfig
   /** The roster persona text for one label, or null when the roster service cannot answer. */
   personaFor: (label: string) => string | null
   /** The instant to journal with. */
@@ -201,9 +200,10 @@ export async function runRecon(deps: ReconDeps, input: ReconInput): Promise<Reco
   for (const question of asked.questions) {
     try {
       // ONE start per question, all in this pass: the supervisor answers at once, so N questions overlap
-      // instead of serialising, and an over-cap one QUEUES on the shared cap rather than failing.
+      // instead of serialising, and an over-cap one QUEUES on the shared cap rather than failing. No
+      // `maxDepth`: the roster's own caller-depth rule places the child as a leaf (see the module header).
       /** The service's answer for this question. */
-      const answer = await service.start({ role: label, task: question, context, exec: deps.exec, maxDepth: deps.config.depthMax })
+      const answer = await service.start({ role: label, task: question, context, exec: deps.exec })
       /** The minted id. */
       const view = consultRowOf(answer)
       if (view === undefined) starts.push({ question, failure: "the `mpdConsults` service answered without a consultId" })

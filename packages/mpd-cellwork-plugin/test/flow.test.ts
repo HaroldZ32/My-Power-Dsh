@@ -111,10 +111,26 @@ const ROSTER = [
   { name: "Planner", persona: "PLANNER PERSONA TEXT" },
   { name: "Lead", persona: "LEAD PERSONA TEXT" },
   { name: "Senior Engineer", persona: "SENIOR ENGINEER PERSONA TEXT" },
+  { name: "Deep Worker", persona: "DEEP WORKER PERSONA TEXT" },
   { name: "Reviewer", persona: "REVIEWER PERSONA TEXT" },
   { name: "Explorer", persona: "EXPLORER PERSONA TEXT" },
   { name: "Researcher", persona: "RESEARCHER PERSONA TEXT" },
 ]
+
+/**
+ * The roles row's OWN spelling rule, mirrored by the fake service: strip every non-alphanumeric
+ * character and compare case-insensitively, so `DeepWorker`, `deep worker` and `deep-worker` are one
+ * agent. The real resolver is `normalizeRoleNameKey` in `mpd-roles-plugin`; this double exists so a
+ * cellwork arm can prove the row asks the SERVICE instead of re-implementing the rule.
+ *
+ * @param role - the caller's spelling.
+ * @returns the roster's spelling, or undefined when it names no role.
+ */
+function canonicalRosterName(role: string): string | undefined {
+  /** The collapsed key of the requested spelling. */
+  const key = String(role ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "")
+  return ROSTER.find((entry) => entry.name.toLowerCase().replace(/[^a-z0-9]+/g, "") === key)?.name
+}
 
 /** The roles the fake route service has a usable `agentRoutes` entry for. */
 const ROUTED = ["Planner", "Lead", "Senior Engineer", "Reviewer"]
@@ -170,6 +186,8 @@ interface ConsultDouble {
   interrupt: (consultId: string) => void
   /** Every consult the service ever minted, in start order. */
   records: FakeConsult[]
+  /** Every `wait` bound the service was asked for, in call order (the clamp arms read it). */
+  waits: number[]
   /** The call log (`start:<id>`, `settle:<id>`, `collect:<id>`, `cancel:<id>`), so ordering is assertable. */
   events: string[]
 }
@@ -206,6 +224,7 @@ function createConsultDouble(spawns: Array<{ label: string; maxDepth: unknown; p
       record.report = { role: record.role, status: "interrupted", summary: "consult interrupted", recommendation: "", details: "", evidence: [], stopReason: "interrupted", consultId, elapsedMs: 5, handoff: ".mpd/handoff/consult-" + consultId + ".md" }
     },
     records: [],
+    waits: [],
     events: [],
   }
   /**
@@ -221,8 +240,27 @@ function createConsultDouble(spawns: Array<{ label: string; maxDepth: unknown; p
     elapsedMs: record.report === undefined ? 0 : Number(record.report.elapsedMs ?? 0),
   })
   double.service = {
+    /**
+     * The roles row's own resolver, mirrored. `cellwork_delegate` must validate through THIS method:
+     * the double deliberately accepts `DeepWorker`, the spelling a local cellwork pass refused.
+     */
+    canonicalRole: (role: string): string | undefined => canonicalRosterName(role),
     /** Start one consult and answer its id immediately. */
     start: async (spec: Record<string, unknown>): Promise<unknown> => {
+      // THE HOST'S DEPTH PRECONDITION, modelled so the arm that would have caught the defect can use it:
+      // a declared ABSOLUTE `maxDepth` is an agent-depth cap, and a child one level below the caller may not
+      // exceed it. The defect forwarded `cellwork.depthMax` (a nested-CELL count) here, so the legal cell
+      // value 1 refused every consult from a depth-1 seat. With no `maxDepth` the roster's own caller+1
+      // rule applies and nothing is refused.
+      /** The caller's recorded agent depth, read the way the roster reads it. */
+      const header = (spec.exec as { agent?: { session?: { header?: Record<string, unknown> } } } | undefined)?.agent?.session?.header
+      /** The depth the caller sits at: a recorded number, else a subagent-origin child, else the top level. */
+      const rawDepth = Number(header?.delegationDepth)
+      /** The normalized caller depth the host would compare a child against. */
+      const callerDepth = Number.isFinite(rawDepth) && rawDepth >= 1 ? Math.floor(rawDepth) : header?.origin === "subagent" ? 1 : 0
+      if (typeof spec.maxDepth === "number" && callerDepth + 1 > spec.maxDepth) {
+        throw new Error("SubagentDepthError: the child would sit at depth " + String(callerDepth + 1) + ", above maxDepth " + String(spec.maxDepth))
+      }
       sequence += 1
       /** The minted record. */
       const record: FakeConsult = { consultId: "consult-" + String(sequence), role: String(spec.role ?? ""), task: String(spec.task ?? ""), context: String(spec.context ?? ""), startedAt: 1000 + sequence }
@@ -243,8 +281,11 @@ function createConsultDouble(spawns: Array<{ label: string; maxDepth: unknown; p
       if (record === undefined) throw new Error("unknown consultId " + consultId)
       return viewOf(record)
     },
-    /** The view after a harmless virtual wait. */
-    wait: async (consultId: string): Promise<unknown> => viewOf(live.get(consultId) as FakeConsult),
+    /** The view after a harmless virtual wait; the bound is RECORDED so the clamp arms can read it. */
+    wait: async (consultId: string, timeoutMs?: number): Promise<unknown> => {
+      double.waits.push(Number(timeoutMs))
+      return viewOf(live.get(consultId) as FakeConsult)
+    },
     /** The settled outcome, RELEASING the record; a running one answers its view. */
     collect: (consultId: string): unknown => {
       /** The record being collected. */
@@ -272,7 +313,7 @@ function createConsultDouble(spawns: Array<{ label: string; maxDepth: unknown; p
  *   proves the honest absence refusal.
  * @returns the harness with every captured definition.
  */
-function makeHarness(options: { withoutConsults?: boolean } = {}): Harness {
+function makeHarness(options: { withoutConsults?: boolean; knobs?: Record<string, unknown> } = {}): Harness {
   /** The fresh temp workspace. */
   const workspace = mkdtempSync(join(tmpdir(), "mpd-cellwork-flow-"))
   process.env.DSH_WORKSPACE_ROOT = workspace
@@ -460,7 +501,7 @@ function makeHarness(options: { withoutConsults?: boolean } = {}): Harness {
     // THE CONSULT-SERVICE DOUBLE: mounted unless the arm proves the absence refusal.
     ...(options.withoutConsults === true ? {} : { mpdConsults: consults.service }),
     mpdConfig: {
-      get: (): unknown => undefined,
+      get: (key: string): unknown => options.knobs?.[key],
       agentRouteResolutionOf: (role: string): unknown => ROUTED.includes(role) ? { ok: true, route: { provider: "deepseek-official", model: "deepseek-flash" } } : { ok: false, reason: "unconfigured", missing: ["agentRoutes." + role + ".provider"] },
     },
     llm: {
@@ -742,7 +783,7 @@ test("split: an accepted graph is measured against the INJECTED window, and a 2 
 
 // ── B5: reconnaissance ─────────────────────────────────────────────────────
 
-test("recon: planner only, label exactly Explorer, explicit absolute maxDepth, cell context in the prompt", async () => {
+test("recon: planner only, label exactly Explorer, NO forwarded maxDepth, cell context in the prompt", async () => {
   /** The harness with a started cell. */
   const harness = makeHarness()
   /** The started cell. */
@@ -755,12 +796,13 @@ test("recon: planner only, label exactly Explorer, explicit absolute maxDepth, c
   expect(byPlanner.ok).toBe(true)
   expect(byPlanner.report).toContain("FOUND")
   expect(byPlanner.personaInjected).toBe(true)
-  // The start the CELLWORK side controls: EXACT label, the cell's ABSOLUTE depth cap, the question as the
-  // task and the read-only cell context — the persona is the roles row's half of the prompt now, so a
-  // planner-side copy would state it twice.
+  // The start the CELLWORK side controls: EXACT label, NO `maxDepth` (the roster's own caller+1 rule places
+  // the child as a leaf — `cellwork.depthMax` counts nested CELLS and is never the child's agent cap), the
+  // question as the task and the read-only cell context — the persona is the roles row's half of the prompt
+  // now, so a planner-side copy would state it twice.
   expect(harness.spawns.length).toBe(1)
   expect(harness.spawns[0].label).toBe("Explorer")
-  expect(harness.spawns[0].maxDepth).toBe(DEFAULT_CELLWORK_CONFIG.depthMax)
+  expect(harness.spawns[0].maxDepth).toBeUndefined()
   expect(harness.spawns[0].prompt).toContain("where is auth?")
   expect(harness.spawns[0].prompt).toContain("Cell " + cellId + " is in its planning phase")
   expect(harness.spawns[0].prompt).toContain("You cannot write, edit or run a shell")
@@ -934,9 +976,10 @@ test("delegate: 3 tasks answer 3 ids BEFORE any child settles, list/collect/canc
   expect(started.consults.map((entry: Record<string, unknown>) => entry.role)).toEqual(["Explorer", "Researcher", "Senior Engineer"])
   expect(started.consults.every((entry: Record<string, unknown>) => typeof entry.consultId === "string")).toBe(true)
   expect(harness.consults.records.every((record) => record.report === undefined)).toBe(true)
-  // The cell context travels, and the cap is the cell's OWN (never the caller-depth arithmetic).
+  // The cell context travels, and NO absolute agent cap is forwarded: the roster's own caller+1 rule
+  // places each child as a leaf (`cellwork.depthMax` counts nested CELLS, never agent levels).
   expect(harness.spawns[1].prompt).toContain("the split needs it")
-  expect(harness.spawns.every((spawn) => spawn.maxDepth === DEFAULT_CELLWORK_CONFIG.depthMax)).toBe(true)
+  expect(harness.spawns.every((spawn) => spawn.maxDepth === undefined)).toBe(true)
   // ONE journal row per consult, with the bounded task excerpt.
   /** The cell journal. */
   const journal = readJournal(harness, cellId)
@@ -980,6 +1023,81 @@ test("delegate: 3 tasks answer 3 ids BEFORE any child settles, list/collect/canc
   const foreign = await runTool(harness, "cellwork_consult", { action: "collect", consultId: "consult-999" }, plannerAgent(harness))
   expect(foreign.ok).toBe(false)
   expect(String(foreign.error)).toContain("mpd_role_consult")
+})
+
+test("delegate: the ROSTER's OWN resolver decides — DeepWorker / deep worker / deep-worker / Deep Worker are ONE agent", async () => {
+  /** The harness with a started cell. */
+  const harness = makeHarness()
+  await startCell(harness)
+  // Keep the children running: this arm is about the canonical name, not settlement.
+  harness.consults.autoSettle = false
+  /** The four spellings the roster collapses into one name. */
+  const delegated = await runTool(harness, "cellwork_delegate", {
+    tasks: [
+      { role: "Deep Worker", task: "a" },
+      { role: "deep worker", task: "b" },
+      { role: "deep-worker", task: "c" },
+      // `DeepWorker` is the MEASURED defect: the roster accepts it, the local pass this repair removed
+      // refused it, so `mpd_role_spawn` and `cellwork_delegate` disagreed about one agent.
+      { role: "DeepWorker", task: "d" },
+    ],
+  }, plannerAgent(harness))
+  expect(delegated.ok).toBe(true)
+  expect(delegated.consults.map((entry: Record<string, unknown>) => entry.role)).toEqual(["Deep Worker", "Deep Worker", "Deep Worker", "Deep Worker"])
+  // The canonical name the SERVICE answered is the one the start carried — no second normalisation.
+  expect(harness.spawns.map((spawn) => spawn.label)).toEqual(["Deep Worker", "Deep Worker", "Deep Worker", "Deep Worker"])
+  // An unknown spelling refuses the whole call, and the records prove nothing extra started.
+  /** The refused batch. */
+  const unknown = await runTool(harness, "cellwork_delegate", { tasks: [{ role: "no-such-role", task: "x" }] }, plannerAgent(harness))
+  expect(unknown.ok).toBe(false)
+  expect(String(unknown.error)).toContain("no-such-role")
+  expect(harness.consults.records.length).toBe(4)
+})
+
+test("delegate + recon: `cellwork.depthMax: 1` (a legal CELL cap) no longer disables a consult", async () => {
+  // The knob is the defect's trigger: the OLD code forwarded it as the child's ABSOLUTE agent cap, so at
+  // the legal value 1 every consult from a depth-1 seat was refused by the host. The fake `start` models
+  // that host rule, so this arm FAILS on the old code and passes only when no `maxDepth` travels.
+  /** The harness whose resolved `depthMax` is 1. */
+  const harness = makeHarness({ knobs: { "cellwork.depthMax": 1 } })
+  await startCell(harness)
+  /** The planner seat at delegation depth 1 — the caller the defect refused. */
+  const depthOnePlanner = { id: "handle-cell-planner", session: { id: "handle-cell-planner", header: { cwd: harness.workspace, delegationDepth: 1 } } }
+  /** The delegate call: one background consult still starts. */
+  const delegated = await runTool(harness, "cellwork_delegate", { tasks: [{ role: "Explorer", task: "spike" }] }, depthOnePlanner)
+  expect(delegated.ok).toBe(true)
+  expect(delegated.started).toBe(1)
+  // NO absolute cap: the roster's own `spawnMaxDepthOf(exec.agent)` rule (caller depth + 1) decides.
+  expect(harness.spawns[0].maxDepth).toBeUndefined()
+  /** The blocking recon: the legacy form still returns its report. */
+  const recon = await runTool(harness, "cellwork_recon", { role: "Researcher", task: "cite it" }, depthOnePlanner)
+  expect(recon.ok).toBe(true)
+  expect(harness.spawns[1].maxDepth).toBeUndefined()
+})
+
+test("consult: the `wait` clamp is MONOTONE — omitted 30000, a declared 0 or negative clamps to 1, a huge bound to 60000", async () => {
+  /** The harness with a started cell. */
+  const harness = makeHarness()
+  await startCell(harness)
+  // The consult must still be RUNNING so `wait` answers its view.
+  harness.consults.autoSettle = false
+  /** The started consult. */
+  const started = await runTool(harness, "cellwork_delegate", { tasks: [{ role: "Explorer", task: "x" }] }, plannerAgent(harness))
+  /** The consult id every `wait` arm below targets, taken from the delegate answer. */
+  const consultId = String(started.consults[0].consultId)
+  /** The declared bound and the clamp the service must receive. */
+  const arms: Array<{ declared?: number; expected: number }> = [
+    { expected: 30000 },
+    { declared: 0, expected: 1 },
+    { declared: -5, expected: 1 },
+    { declared: 999999, expected: 60000 },
+  ]
+  for (const arm of arms) {
+    /** The wait answer. */
+    const waited = await runTool(harness, "cellwork_consult", { action: "wait", consultId, ...(arm.declared === undefined ? {} : { timeoutMs: arm.declared }) }, plannerAgent(harness))
+    expect(waited.ok).toBe(true)
+    expect(harness.consults.waits.at(-1)).toBe(arm.expected)
+  }
 })
 
 test("delegate: ALL-OR-NOTHING — one unknown role refuses the call and starts NOTHING", async () => {

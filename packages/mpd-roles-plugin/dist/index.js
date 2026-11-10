@@ -5833,6 +5833,10 @@ function createMpConsults(deps) {
     return view;
   };
   return {
+    canonicalRole: (role, exec) => {
+      const canonical = deps.canonicalRole(String(role ?? ""), exec);
+      return canonical === null ? undefined : canonical;
+    },
     start: async (spec) => {
       const role = deps.canonicalRole(spec.role, spec.exec);
       if (role === null)

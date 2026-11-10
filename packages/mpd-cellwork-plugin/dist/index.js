@@ -2973,7 +2973,7 @@ function subcaptainRefusal(toolName) {
   return "cellwork: `" + toolName + "` is refused — this session is a SUBCAPTAIN of the cell: it builds and " + "dispatches the next-level team under the SAME rules as the captain, so it dispatches rather than works, " + "and it never edits a file, runs a shell, does reconnaissance or verifies. Allowed here: `cellwork_*` " + "except `cellwork_handoff`, `cellwork_start` and `cellwork_stop` (stage the sub-cell with " + "`cellwork_subteam`, materialise an accepted split with `cellwork_activate`, dispatch with " + "`cellwork_dispatch` and sweep with `cellwork_supervise`), `agent_teams_*`, `ask_user_question`, " + "`todo_write` and `mpd_memory_*`. Only the CAPTAIN opens or closes a cell: if this cell needs that, " + "send the request with `cellwork_send` and end your turn.";
 }
 function plannerRefusal(toolName, target) {
-  return "cellwork: `" + toolName + "` on " + target + " is refused — this session is the CELL PLANNER, so" + " its reconnaissance is DELEGATED, never run itself: its context has to carry the interview and the" + " requirements document, and a source tree spent here is context the interview then lacks. Two" + ' read-only routes, both one-shot: `cellwork_recon` {role:"Explorer"|"Researcher", task} — its' + " report comes straight back, and it forwards its own depth cap so it is never refused by the host's" + " nesting default — or `mpd_role_spawn` with a read-only roster role (Explorer, Researcher, Architect)" + " when the cellwork tool is not mounted. The band stays open to you: `.mpd/**`, `docs/**`," + " `evidence/**`, `agent-references/**`; any `AGENT.md`, `AGENTS.md` or `CLAUDE.md` at any depth, inside" + " this workspace or outside its root; and at the workspace root only `README.md`, `README.zh-CN.md`," + " `CHANGELOG.md` and `LICENSE*.md`.";
+  return "cellwork: `" + toolName + "` on " + target + " is refused — this session is the CELL PLANNER, so" + " its reconnaissance is DELEGATED, never run itself: its context has to carry the interview and the" + " requirements document, and a source tree spent here is context the interview then lacks. Two" + ' read-only routes, both one-shot: `cellwork_recon` {role:"Explorer"|"Researcher", task} — its' + " report comes straight back, and the roster places the child one level below you as a leaf, so it is" + " never refused by the host's nesting default — or `mpd_role_spawn` with a read-only roster role" + " (Explorer, Researcher, Architect) when the cellwork tool is not mounted. The band stays open to" + " you: `.mpd/**`, `docs/**`," + " `evidence/**`, `agent-references/**`; any `AGENT.md`, `AGENTS.md` or `CLAUDE.md` at any depth, inside" + " this workspace or outside its root; and at the workspace root only `README.md`, `README.zh-CN.md`," + " `CHANGELOG.md` and `LICENSE*.md`.";
 }
 function plannerReadablePath(workspaceRoot, raw) {
   const posix = String(raw ?? "").replace(/\\/g, "/");
@@ -3092,8 +3092,9 @@ var PLANNER_RECON_LINES = [
   "",
   "THE ROUTES, all one-shot and READ-ONLY unless stated, and you consume the report rather than deriving it:",
   '1. `cellwork_recon` {role:"Explorer"|"Researcher", task} — the in-cell route. Its report comes straight',
-  "   back to you and is journaled, and it forwards the cell's own absolute depth cap, so the host's nesting",
-  "   default never refuses it. `Explorer` finds the file and the code; `Researcher` collects evidence.",
+  "   back to you and is journaled, and the roster places the child one level below you as a leaf, so the",
+  "   host's nesting default never refuses it. `Explorer` finds the file and the code; `Researcher` collects",
+  "   evidence.",
   "   BATCH: pass `questions:[q1, q2, …]` (1..8) instead of `task` and they run CONCURRENTLY — the call",
   "   returns when all are settled, one report per question, so an interview's fact-finding costs one call.",
   "2. `cellwork_delegate` {tasks:[{role, task, context?}, …]} — BACKGROUND, 1..16 at once, ANY roster role",
@@ -3874,18 +3875,25 @@ async function startDelegation(deps, rawTasks) {
   const parsed = readDelegateTasks(rawTasks);
   if ("ok" in parsed)
     return parsed;
+  const service = deps.service();
+  if (service?.start === undefined || typeof service.canonicalRole !== "function")
+    return { ok: false, error: missingConsultsServiceRefusal("cellwork_delegate") };
   if (deps.rosterNames().length === 0)
     return { ok: false, error: missingRosterRefusal() };
   const roles = [];
   for (let index = 0;index < parsed.tasks.length; index += 1) {
-    const canonical = deps.canonicalRole(parsed.tasks[index].role);
+    const answer = (() => {
+      try {
+        return service.canonicalRole?.(parsed.tasks[index].role, deps.exec);
+      } catch {
+        return;
+      }
+    })();
+    const canonical = typeof answer === "string" && answer !== "" ? answer : undefined;
     if (canonical === undefined)
       return { ok: false, error: "cellwork_delegate: tasks[" + String(index) + "].role " + JSON.stringify(parsed.tasks[index].role) + " names no roster role — use a roster NAME as `mpd_roles_list` spells it (any case, space, hyphen or underscore spelling); nothing was started" };
     roles.push(canonical);
   }
-  const service = deps.service();
-  if (service?.start === undefined)
-    return { ok: false, error: missingConsultsServiceRefusal("cellwork_delegate") };
   const consults = [];
   for (let index = 0;index < parsed.tasks.length; index += 1) {
     const task = parsed.tasks[index];
@@ -3894,8 +3902,7 @@ async function startDelegation(deps, rawTasks) {
         role: roles[index],
         task: task.task,
         ...task.context === undefined ? {} : { context: task.context },
-        exec: deps.exec,
-        maxDepth: deps.config.depthMax
+        exec: deps.exec
       });
       const row = consultRowOf(answer);
       if (row === undefined)
@@ -3966,7 +3973,7 @@ async function runConsultAction(deps, args) {
     if (action === "wait") {
       if (typeof service.wait !== "function")
         return { ok: false, error: missingConsultsServiceRefusal("cellwork_consult") };
-      const bound = Math.min(CONSULT_WAIT_MAX_MS, Math.max(1, Math.trunc(Number(args.timeoutMs)) || CONSULT_WAIT_DEFAULT_MS));
+      const bound = args.timeoutMs === undefined ? CONSULT_WAIT_DEFAULT_MS : Math.min(CONSULT_WAIT_MAX_MS, Math.max(1, Math.trunc(Number(args.timeoutMs)) || 1));
       const row2 = consultRowOf(await service.wait(consultId, bound));
       if (row2 === undefined)
         return { ok: false, error: "cellwork_consult: the `mpdConsults` service answered `wait` without a consult view for " + JSON.stringify(consultId) };
@@ -4064,7 +4071,7 @@ async function runRecon(deps, input) {
   const starts = [];
   for (const question of asked.questions) {
     try {
-      const answer = await service.start({ role: label, task: question, context, exec: deps.exec, maxDepth: deps.config.depthMax });
+      const answer = await service.start({ role: label, task: question, context, exec: deps.exec });
       const view = consultRowOf(answer);
       if (view === undefined)
         starts.push({ question, failure: "the `mpdConsults` service answered without a consultId" });
@@ -4987,12 +4994,6 @@ function installCellworkFlow(deps) {
       return null;
     }
   };
-  const canonicalRoleOf = (role) => {
-    const wanted = roleKey(role);
-    if (wanted === "")
-      return;
-    return rosterNames().find((name) => roleKey(name) === wanted);
-  };
   const noLiveCellRefusal = (context, toolName) => {
     if (context.workspace !== "" && context.cell !== null)
       return;
@@ -5191,7 +5192,7 @@ missing sections: ` + result.missing.join(", ") : ""));
   }));
   disposers.push(dsh.registerTool({
     name: "cellwork_recon",
-    description: "PLANNER/SUBCAPTAIN only: raise READ-ONLY consults (label exactly `Explorer` or `Researcher`) through the `mpdConsults` service, so the roles row applies the read-only deny list to the child and the cell's own absolute `cellwork.depthMax` bounds the nesting. ONE question (`{role, task}`, the legacy blocking form) returns its report; 1..8 questions (`{role, questions}`) run CONCURRENTLY and the call returns only when ALL of them are settled, one row per question. Every report is journaled in the cell; an absent `mpdConsults` service is refused by name, never replaced by an unsupervised spawn.",
+    description: "PLANNER/SUBCAPTAIN only: raise READ-ONLY consults (label exactly `Explorer` or `Researcher`) through the `mpdConsults` service, so the roles row applies the read-only deny list to the child and places it one level below the caller as a LEAF (caller agent depth + 1 — `cellwork.depthMax` counts nested CELLS and never caps the child). ONE question (`{role, task}`, the legacy blocking form) returns its report; 1..8 questions (`{role, questions}`) run CONCURRENTLY and the call returns only when ALL of them are settled, one row per question. Every report is journaled in the cell; an absent `mpdConsults` service is refused by name, never replaced by an unsupervised spawn.",
     parameters: {
       type: "object",
       properties: {
@@ -5268,7 +5269,6 @@ missing sections: ` + result.missing.join(", ") : ""));
         workspace: caller.workspace,
         cell,
         caller: { member: caller.member, mode: caller.seat?.mode ?? "member" },
-        config,
         personaFor,
         now: new Date
       }, {
@@ -5350,12 +5350,10 @@ missing sections: ` + result.missing.join(", ") : ""));
         return { ok: false, error: "cellwork_delegate: no active cell in this workspace" };
       const result = await startDelegation({
         service: consults,
-        canonicalRole: canonicalRoleOf,
         rosterNames,
         cellId: cell.cellId,
         workspace: caller.workspace,
         exec,
-        config,
         now: new Date,
         book: consultBook
       }, argv.tasks);
@@ -5461,12 +5459,10 @@ evidence:
         return { ok: false, error: "cellwork_consult: no active cell in this workspace" };
       const result = await runConsultAction({
         service: consults,
-        canonicalRole: canonicalRoleOf,
         rosterNames,
         cellId: cell.cellId,
         workspace: caller.workspace,
         exec,
-        config,
         now: new Date,
         book: consultBook
       }, { action: argString(argv, "action"), consultId: argString(argv, "consultId"), timeoutMs: argv.timeoutMs });
