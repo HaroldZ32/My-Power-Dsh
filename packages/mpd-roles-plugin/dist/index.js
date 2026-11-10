@@ -5521,7 +5521,7 @@ function createConsultSupervisor(deps) {
     done.catch(() => {
       return;
     });
-    return { id, role: input.role, task: input.task, exec: input.exec, state: "running", startedAt: now(), done, resolve: settle2, reject: fail, reported: false, released: false, held: false };
+    return { id, role: input.role, task: input.task, exec: input.exec, state: "running", startedAt: now(), done, resolve: settle2, reject: fail, reported: false, released: false, held: false, ...input.onSettled === undefined ? {} : { onSettled: input.onSettled } };
   };
   const reportFrom = (record, result) => {
     const structured = result.structured ?? {};
@@ -5536,6 +5536,16 @@ function createConsultSupervisor(deps) {
       consultId: record.id,
       elapsedMs: now() - record.startedAt
     };
+  };
+  const notifySettled = (record) => {
+    const observer = record.onSettled;
+    if (observer === undefined)
+      return;
+    try {
+      observer({ ...viewOf(record), ...record.report === undefined ? {} : { report: record.report }, ...record.failure === undefined ? {} : { error: record.failure } });
+    } catch (error) {
+      deps.log("mpd_role_spawn_async: the onSettled observer threw (" + (error instanceof Error ? error.message : String(error)) + ") — the consult settled anyway");
+    }
   };
   const finish = (record, report) => {
     if (record.reported)
@@ -5554,6 +5564,7 @@ function createConsultSupervisor(deps) {
       release();
     }
     record.resolve(record.report);
+    notifySettled(record);
   };
   const failRecord = (record, error) => {
     if (record.reported)
@@ -5570,6 +5581,7 @@ function createConsultSupervisor(deps) {
       release();
     }
     record.reject(error);
+    notifySettled(record);
   };
   const describeCall = (call) => {
     const args = call.arguments === undefined ? "" : JSON.stringify(call.arguments);
@@ -5849,7 +5861,8 @@ function createMpConsults(deps) {
         task,
         ...spec.context === undefined ? {} : { context: String(spec.context) },
         exec: spec.exec,
-        raise: () => deps.raise({ ...spec, role, task })
+        raise: () => deps.raise({ ...spec, role, task }),
+        ...spec.onSettled === undefined ? {} : { onSettled: spec.onSettled }
       });
       return { consultId: view.consultId, role, state: "running", startedAt: view.startedAt };
     },

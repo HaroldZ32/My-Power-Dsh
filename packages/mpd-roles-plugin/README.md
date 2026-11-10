@@ -30,8 +30,9 @@ read-only discipline.
   `cellwork_recon`) can start and settle background consults without a relative import into this row.
   `canonicalRole(role, exec?)` is the roster's OWN resolver (the one `mpd_role_spawn` uses), so a consumer
   never re-implements the normalisation: `DeepWorker`, `deep worker`, `deep-worker` and `Deep Worker`
-  answer with the same canonical name, extension roles resolve when the caller's `exec` is passed, and an
-  unknown spelling answers `undefined`. ONE registry, ONE `MPD_DSH_CONSULT_MAX` cap and ONE silence
+  answer with the same canonical name, extension roles resolve against the call's workspace when `exec` is
+  passed (and against the extension plane's own fallback root — `DSH_WORKSPACE_ROOT`, then `process.cwd()`
+  — when it is omitted, never "the base roster only"), and an unknown spelling answers `undefined`. ONE registry, ONE `MPD_DSH_CONSULT_MAX` cap and ONE silence
   deadman govern both surfaces; a start answers `{consultId, role, state:"running", startedAt}` at once
   and the role is canonicalised first. It adds no tool and appears in no tool list. **THE ONE BEHAVIOURAL
   DIFFERENCE:** `start` does NOT apply `consultDepthRefusal` — that floor belongs to the TOOL handlers,
@@ -40,7 +41,12 @@ read-only discipline.
   (caller depth + 1); a caller MAY pass an absolute `maxDepth`, but cellwork no longer does — its
   `cellwork.depthMax` counts nested CELLS, a different scale. THE EXEMPTION IS PROCESS-WIDE: one consumer
   exists today, and a second must justify the bypass. Persona, route, fallback, cap, deadman and the
-  read-only child scope are identical because the raise lands on the same internal path.
+  read-only child scope are identical because the raise lands on the same internal path. `start` also takes an
+  optional `onSettled(outcome)` observer, fired EXACTLY ONCE from the one settlement path when the record
+  leaves `running` (a report, a deadman interruption, a cancel and a raise failure all reach it), so a
+  caller that keeps a durable record of its consults — cellwork's DAG nodes — learns they finished without
+  a seat having to call `wait`/`collect`. No callback means today's behaviour, so the option is inert for
+  every existing caller.
 - `mpd_roles_list` — the roster, one line per role: name, route, and what it does.
 - `mpd_role_spawn` — ONE-SHOT single-call consult: one bounded delegation with one role, one report.
   The child (roster persona + route + write-deny toolFilter for read-only roles) is **labelled with

@@ -38,6 +38,15 @@ export interface MpConsultStartSpec {
    * `cellwork.depthMax`, which counts CELLS) is a different scale from agent delegation depth.
    */
   maxDepth?: number
+  /**
+   * Optional SETTLEMENT OBSERVER, fired once when the consult leaves `running`.
+   *
+   * ADDITIVE AND INERT WHEN ABSENT (contract §5.2): no callback means today's behaviour, so every
+   * existing caller is unaffected. A caller that keeps a durable record of its consults passes one so
+   * the record reaches its terminal state WITHOUT a seat having to call `wait`/`collect` — a picture
+   * that only moves when somebody looks would report a finished consult as still running.
+   */
+  onSettled?: (outcome: ConsultOutcome) => void
 }
 
 /** The answer a start returns: the stable id, minted before any child settles. */
@@ -63,8 +72,10 @@ export interface MpConsultsApi {
    * with the tools exactly where it matters most.
    *
    * @param role - the role exactly as the caller typed it.
-   * @param exec - the caller's execution context; it resolves extension-contributed roles, so omitting it
-   *   canonicalises against the BASE roster only.
+   * @param exec - the caller's execution context, which resolves extension-contributed roles against
+   *   THAT call's workspace. Omitting it does not restrict the answer to the base roster: the extension
+   *   plane then resolves from the adapter's own fallback root (`DSH_WORKSPACE_ROOT`, then
+   *   `process.cwd()`), so a project-plane extension living there still contributes roles.
    * @returns the canonical roster name, or undefined when the spelling names no role on that surface.
    */
   canonicalRole: (role: string, exec?: unknown) => string | undefined
@@ -156,6 +167,9 @@ export function createMpConsults(deps: MpConsultsDeps): MpConsultsApi {
         ...(spec.context === undefined ? {} : { context: String(spec.context) }),
         exec: spec.exec,
         raise: () => deps.raise({ ...spec, role, task }),
+        // FORWARDED VERBATIM: the supervisor owns the ONE settlement path, so it is the only place the
+        // observer can be fired exactly once. Absent stays absent (no empty call, no wrapper).
+        ...(spec.onSettled === undefined ? {} : { onSettled: spec.onSettled }),
       })
       return { consultId: view.consultId, role, state: "running", startedAt: view.startedAt }
     },

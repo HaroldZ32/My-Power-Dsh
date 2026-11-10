@@ -387,6 +387,40 @@ dispatching it.
 Delegated children remain LEAVES: the roster denies both spawn tools in every child's own scope, and a
 read-only role (Explorer, Researcher) gets the read-only deny list as well.
 
+### Consults appear on the DAG
+
+The consults a seat starts are first-class NODES of MPD's DAG on BOTH surfaces — the TUI MPD page and
+the web Team view — drawn inside the grouping box of the cell that started them, and they stay on the
+graph after they settle, until that cell ends.
+
+- **Where they live.** Each start writes ONE `running` row onto the cell's team record
+  (`.mpd/team/teams/<id>.json`); the shared graph model is built from that record and cached against the
+  change feed's revision, so a consult refreshes both surfaces through the SAME write → `teamStateChanged`
+  → revision path a board edit uses. No second watcher, no second store, no new route.
+- **They are NOT tasks.** A consult takes no `T<n>`, is never dispatched, is excluded from the board
+  tallies, `readyTasks`, the clean-terminal rule and the verifier's scope, and contributes NO edge and NO
+  rank: the task picture is byte-identical with and without them. It draws with the existing six-state
+  tone (`interrupted` reads as `cancelled`) plus one marker — `@` on the TUI card, the same glyph on the
+  web card — and its id is `C<n>`, or `<teamId>::C<n>` inside a subcell's box.
+- **A settled consult is recorded WITHOUT a seat asking.** The roles row's `mpdConsults.start` takes an
+  optional `onSettled` observer, fired once when the record leaves `running`; cellwork uses it to write
+  the terminal row. The `wait`/`collect`/`cancel` answers write the same row as a second, idempotent
+  source. `cancel` therefore shows up immediately, and a completed consult does not sit on the graph
+  reporting itself as running.
+- **A subcell's consults are drawn INSIDE that subcell's box**, because the projection hands each live
+  child's rows to its own frame; the liveness filter that drops a finished child drops its consults with
+  it.
+- **`cellwork_stop` clears them** (a forced stop too): the rows are removed from the team record and the
+  in-memory consult book is dropped, so a child that settles later cannot re-create a row.
+- **Declared bounds.** A cell that never stops cleanly keeps its rows until they age out through the
+  retention cap (50 per team, oldest SETTLED first, never a `running` row). A consult started while the
+  cell has no live team (`teamId` empty, so no board was ever approved) records NOTHING — one
+  `consult-unattached` journal row is the only trace, and the tool answer is unchanged. The record's
+  read-modify-write has the same cross-process exposure every team write has (no compare-and-swap), a row
+  stays `running` if the process dies before settlement (nothing sweeps it; the cap eventually does), and
+  the TUI's host subagent strip is NOT deduped, so a running consult can appear twice — the host row
+  until its 60 s grace expires, and the DAG node, which is the durable surface.
+
 ## The context budget: measured, never guessed
 
 The mode makes two different promises about context, and they use two different fractions:
@@ -487,9 +521,12 @@ and hands the work to a successor. The sequence is mechanical:
    (`parentSource` + `parentSessionId`), so lineage is observable rather than inferred.
 6. **Sub-team**: the promoted agent registers its sub-cell with `cellwork_subteam` and leads its own
    plan. `cellwork_subteam` refuses when `depth + 1 > depthMax` (default 3) and returns the exact
-   bound; the direct start path passes the same depth as an absolute `maxDepth`, so the harness cap
-   and the cell cap agree. Sub-teams run the identical phases and rules, and `cellwork_supervise`
-   sweeps the whole cell tree.
+   bound, reading the parent team's depth from `mpdTeams.depthBudget`; it starts NO agent — it writes
+   the sub-cell record and answers the directive the promoted member then acts on. Depth has ONE story
+   and TWO scales inside it: `cellwork.depthMax` is the CELL-tree bound and is NEVER forwarded as any
+   agent's `maxDepth`, while an agent's cap is always its own parent session's recorded depth + 1 (the
+   `spawnMaxDepthOf` rule), which is what keeps every consult and every reseed a leaf. Sub-teams run the
+   identical phases and rules, and `cellwork_supervise` sweeps the whole cell tree.
 
 The captain is not a member and is never checkpointed in v1.
 
@@ -684,9 +721,12 @@ whose window cannot be read can be certified deliberately, and it is recorded as
   cancelledTasks`, key → board id), and its board row stays VISIBLE on the board. Dispatch skips it only
   because cellwork's own dispatch pass reads the cell record: a bare board read still shows the row.
 - **The depth fence is three levels by default.** A promoted subcaptain can raise a sub-team, and
-  `cellwork_subteam` refuses past `depthMax`; the nesting capability itself rests on the adapter's
-  direct start path with an explicit absolute `maxDepth`, recorded as a source read in the capability
-  spike (`evidence/cellwork/capability-spike/`).
+  `cellwork_subteam` refuses past `depthMax`; registering a sub-cell starts no agent at all. Every agent
+  the plugin does start is forwarded an explicit `maxDepth` of **its own parent's recorded depth + 1** —
+  the `spawnMaxDepthOf` rule, applied to the caller on a consult and to the LIVE parent on a compaction
+  reseed — and never the cell-tree knob, so the two scales cannot be confused again. The nesting
+  capability and that derivation are recorded as a source read in the capability spike
+  (`evidence/cellwork/capability-spike/`).
 - **`parent_team_id` is implicit, not a knob.** A sub-team's parent is DERIVED by the team plane at
   approval from the parent team's roster (`deriveParentTeam`); `cellwork_subteam` stamps the resulting
   parent team id on the cell record and passes no parent id at all, so there is no argument for a caller to

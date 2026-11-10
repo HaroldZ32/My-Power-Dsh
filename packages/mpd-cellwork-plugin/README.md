@@ -384,6 +384,31 @@ from the parent team's own roster (`deriveParentTeam`), because the session stag
 a member of it. The TUI is the surface that draws the boxes this wave; the web DAG's group frame is a
 declared follow-up (`docs/cellwork.md`, "Declared bounds").
 
+### Consults as DAG nodes
+
+The consults a seat starts are part of the picture. Each start writes ONE `running` row onto the cell's
+team record through `mpdTeamActions.upsertConsult`, and the graph — which `mpd-team-core-plugin` builds
+from that record and caches against the change feed's revision — draws it inside the cell's grouping box.
+No second store, no second watcher, no `.mpd/cellwork/**` read from the team plane.
+
+- **A settled consult is recorded WITHOUT a seat asking.** `mpdConsults.start` takes an optional
+  `onSettled` observer, which the roles row fires exactly once when the record leaves `running`; cellwork
+  passes one per consult and upserts the terminal row from it. The `wait`/`collect`/`cancel` answers write
+  the same row as a second, idempotent source (the upsert is keyed by `consultId`), so an observer whose
+  write never landed is corrected the moment anybody looks.
+- **A cell with no live team records nothing** (`teamId === ""`): there is no record to draw a node on, so
+  the call journals `consult-unattached` and its answer is unchanged. A plane that cannot take the write
+  journals `consult-unrecorded` for the same reason — a write failure never turns a started child into a
+  failed tool call.
+- **`cellwork_stop` clears them.** The stop (forced included) calls `mpdTeamActions.clearConsults` for the
+  cell's team and drops the in-memory consult book, so the graph stops drawing them AND a child that
+  settles later is journaled (`consult-late-settlement`) instead of re-creating a row.
+- **The rows are retained, not unbounded.** The team plane keeps at most 50 per team, dropping the oldest
+  SETTLED row first and never a `running` one; a cell that never stops cleanly therefore ages out instead
+  of growing forever.
+- **Nothing here is a task.** A consult takes no `T<n>`, is never dispatched, and is excluded from the
+  board tallies, `readyTasks`, the clean-terminal rule and the verifier's scope.
+
 ## Declared bounds
 
 - The guard is **process-wide and dispatch-time only**. It cannot see intent, it cannot stop a model from

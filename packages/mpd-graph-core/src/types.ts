@@ -175,7 +175,39 @@ export interface GraphNode extends GraphTask {
 }
 
 /**
- * One dependency edge of the merged graph.
+ * One BACKGROUND CONSULT a cell started, drawn as a node beside the tasks.
+ *
+ * WHY IT IS NOT A TASK (contract §2, hard rule 1). A consult is not work the board tracks: it has no
+ * blocker, takes no rank, is never dispatched and is never counted in a board tally. Putting one in
+ * {@link GraphModel.nodes} would make the TUI synthesise it as a ghost TASK and the web's ghost
+ * whitelist drop it silently — the two surfaces would disagree about the same model. So consults live
+ * in the SIBLING array {@link GraphModel.consults}, and this shape exists only there.
+ *
+ * IT IS STILL A {@link GraphNode}, deliberately: both renderers already draw that shape, so a consult
+ * card reuses the card, the tone table and the row builder instead of a second drawing vocabulary.
+ * `kind: "consult"` is the discriminant — the task vocabulary never uses that word.
+ *
+ * NO EDGE, NO RANK (contract §2, hard rule 2). A consult carries `dependencies: []` and `depth: 0`, and
+ * it takes no part in any frame's rank derivation; a renderer places it in its frame's first column.
+ */
+export interface GraphConsultNode extends GraphNode {
+  /**
+   * The node family. A task's {@link GraphTask.kind} names its requirement-chain role
+   * (`requirement` | `work` | `review` | `repair` | `integration`); a consult is none of those.
+   */
+  kind: "consult"
+  /** The supervisor's own id for the consult, which is what a settle-upsert is keyed by. */
+  consultId: string
+  /** The cell that started the consult: the frame the node belongs to, even when the cell is gone. */
+  cellId: string
+  /** When the consult started, epoch milliseconds — the detail body prints it (contract §6). */
+  startedAt: number
+  /** How long it ran, milliseconds; absent while it is still running. */
+  elapsedMs?: number
+}
+
+/**
+ * One DEPENDENCY edge of the merged graph.
  *
  * `from` is the blocker and `to` the blocked task, so the arrow the drawing paints reads the same
  * way as the board's `blockedBy`. The direction is never inferred from the order of the two arrays.
@@ -236,6 +268,34 @@ export interface GraphGroup {
 }
 
 /**
+ * One consult a caller declares to `buildModel`: the facts a node is derived from, nothing pre-drawn.
+ *
+ * THE MODEL OWNS THE DERIVATION, as it does for tasks: the caller states the record's own lifecycle
+ * word and its minted ordinal, and {@link GraphConsultNode} is computed from them (the id, the visual
+ * tone, the group attribution and the ordering). Declaring the shape STRUCTURALLY at every call site is
+ * the existing convention — `team-core` does the same for {@link GraphGroupInput} — so a projection that
+ * drifts from this record reddens the full-program typecheck instead of drifting silently.
+ */
+export interface GraphConsultInput {
+  /** The minted per-team ordinal: it names the node (`C<n>`) and orders a frame's rows. */
+  consultNumber: number
+  /** The supervisor's own id for the consult, carried onto the node verbatim. */
+  consultId: string
+  /** The canonical roster role name, drawn as the card's assignee. */
+  role: string
+  /** The assignment excerpt (the record bounds it at 200 characters), drawn as the card's subject. */
+  task: string
+  /** The recorded lifecycle word: `running` | `complete` | `interrupted` | `failed` | `cancelled`. */
+  state: string
+  /** When the consult started, epoch milliseconds. */
+  startedAt: number
+  /** The cell that started it, carried onto the node. */
+  cellId: string
+  /** How long it ran, milliseconds; absent while it is still running. */
+  elapsedMs?: number
+}
+
+/**
  * One group a caller declares to `buildModel`: a subcell's id, label and its OWN interior input.
  *
  * The interior is a full merge input — its own board and plan, so a subcell's tasks are ranked among
@@ -263,6 +323,15 @@ export interface GraphGroupInput {
   plan?: PlanDocument
   /** The subcells nested INSIDE this one, recursively; each becomes a further box. */
   groups?: readonly GraphGroupInput[]
+  /**
+   * The BACKGROUND CONSULTS this subcell started, drawn inside its box.
+   *
+   * NESTING IS FREE: the caller builds each live child's frame from that child's OWN record, so the
+   * consult rows arrive with the rest of the child's input and the model attributes them to this frame
+   * (`group` = this group's id, the id qualified `"<groupId>::C<n>"`). The liveness filter that drops a
+   * finished child drops its consults with it — one rule, not two.
+   */
+  consults?: readonly GraphConsultInput[]
 }
 
 /**
@@ -325,6 +394,18 @@ export interface GraphModel {
    * pseudo-nodes); an interior's columns are carried by each member's {@link GraphNode.depth}.
    */
   groups?: GraphGroup[]
+  /**
+   * The BACKGROUND CONSULTS of every frame, drawn beside the tasks and NEVER mixed into them.
+   *
+   * ABSENT when the input declared none — the same backward guarantee {@link groups} carries: a model
+   * with no consult is byte-identical to the one this package produced before consults existed, and
+   * both renderers are the identity on an absent field.
+   *
+   * ORDER: frame pre-order (the root frame first, then each box in id order), and `consultNumber`
+   * ascending inside one frame. The ordinal is minted PER TEAM, so a single global sort would interleave
+   * two frames' `C1`s arbitrarily; ordering by frame first keeps the sequence the user actually saw.
+   */
+  consults?: GraphConsultNode[]
 }
 
 /**
@@ -362,4 +443,12 @@ export interface BuildModelInput {
    * built without groups is byte-identical to the flat model this package has always produced.
    */
   groups?: readonly GraphGroupInput[]
+  /**
+   * The BACKGROUND CONSULTS the ROOT frame's own team started; omitted or empty means none.
+   *
+   * A consult never enters {@link GraphModel.nodes}, never contributes an edge and never takes part in
+   * the rank derivation, so supplying this field cannot change a single byte of `nodes`, `edges`,
+   * `ranks` or `report`. That invariance is a gate (`scripts/verify-graph-model.ts`), not a promise.
+   */
+  consults?: readonly GraphConsultInput[]
 }

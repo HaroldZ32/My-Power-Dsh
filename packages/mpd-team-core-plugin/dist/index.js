@@ -4002,6 +4002,7 @@ import { join as join5 } from "node:path";
 import { existsSync as existsSync3, mkdirSync as mkdirSync4, readFileSync as readFileSync3, readdirSync, renameSync as renameSync2, rmSync as rmSync2, writeFileSync } from "node:fs";
 import { join as join4 } from "node:path";
 var TASK_KINDS = ["requirement", "work", "review", "repair", "integration"];
+var CONSULT_RETENTION_MAX = 50;
 function teamRoot(workspace) {
   return join4(workspace, ".mpd", "team");
 }
@@ -4199,6 +4200,59 @@ function addTeamTask(record, input, now) {
     ...input.sourceTaskId === undefined ? {} : { sourceTaskId: input.sourceTaskId }
   };
   return { ...record, tasks: [...record.tasks, task], nextTaskNumber: record.nextTaskNumber + 1 };
+}
+function applyConsultUpsert(record, input, now) {
+  const rows = [...record.consults ?? []];
+  const held = rows.findIndex((row) => row.consultId === input.consultId);
+  const consultNumber = held >= 0 ? rows[held].consultNumber : record.nextConsultNumber ?? 1;
+  const incoming = {
+    consultNumber,
+    consultId: input.consultId,
+    role: input.role,
+    task: input.task.trim() === "" && held >= 0 ? rows[held].task : input.task,
+    cellId: input.cellId,
+    startedAt: input.startedAt,
+    state: held >= 0 && rows[held].state !== "running" && input.state === "running" ? rows[held].state : input.state,
+    ...input.finishedAt === undefined ? {} : { finishedAt: input.finishedAt },
+    ...input.elapsedMs === undefined ? {} : { elapsedMs: input.elapsedMs },
+    ...input.handoff === undefined ? {} : { handoff: input.handoff }
+  };
+  if (incoming.state !== "running" && incoming.finishedAt === undefined)
+    incoming.finishedAt = now.getTime();
+  if (incoming.state === "running") {
+    delete incoming.finishedAt;
+    delete incoming.elapsedMs;
+  }
+  if (held >= 0)
+    rows[held] = incoming;
+  else
+    rows.push(incoming);
+  const pruned = [];
+  while (rows.length > CONSULT_RETENTION_MAX) {
+    let victim = -1;
+    for (let index = 0;index < rows.length; index += 1) {
+      if (rows[index].state === "running")
+        continue;
+      if (victim < 0 || rows[index].consultNumber < rows[victim].consultNumber)
+        victim = index;
+    }
+    if (victim < 0)
+      break;
+    pruned.push(rows[victim].consultId);
+    rows.splice(victim, 1);
+  }
+  const nextConsultNumber = Math.max(record.nextConsultNumber ?? 0, consultNumber + 1);
+  return {
+    record: { ...record, consults: rows, nextConsultNumber },
+    consultNumber,
+    pruned
+  };
+}
+function clearTeamConsults(record) {
+  if (record.consults === undefined && record.nextConsultNumber === undefined)
+    return record;
+  const { consults: _consults, nextConsultNumber: _nextConsultNumber, ...rest } = record;
+  return rest;
 }
 function updateTeamTask(record, taskId, patch, now) {
   let touched = false;
@@ -5894,6 +5948,7 @@ function handoffWrittenDirective(path) {
 var TEAM_ACTIONS_SERVICE = "mpdTeamActions";
 var FORCE_SENDER_ID = "mpd-force-supervisor";
 var FORCE_SENDER_NAME = "mpd force supervisor";
+var CONSULT_TASK_CHARS = 200;
 function refusalOf(error) {
   return error instanceof Error ? error.message : String(error);
 }
@@ -7072,6 +7127,37 @@ async function cancelTasks(deps, input) {
     return unexpectedRefusalOf(error);
   }
 }
+async function upsertConsult(deps, input) {
+  try {
+    const record = readTeam(input.workspace, input.teamId);
+    if (record === undefined)
+      return { ok: false, error: `no team record is named ${JSON.stringify(input.teamId)} in this workspace` };
+    if (input.record.consultId.trim() === "")
+      return { ok: false, error: "upsertConsult: `record.consultId` is required — it is the key every later write settles by" };
+    const applied = applyConsultUpsert(record, { ...input.record, task: input.record.task.slice(0, CONSULT_TASK_CHARS) }, deps.now());
+    writeTeam(input.workspace, applied.record);
+    appendTeamJournal(input.workspace, { event: "consult-upsert", teamId: record.teamId, at: deps.now().toISOString(), consultId: input.record.consultId, consultNumber: applied.consultNumber, state: input.record.state, ...applied.pruned.length === 0 ? {} : { pruned: applied.pruned } });
+    return { ok: true, teamId: record.teamId, consultNumber: applied.consultNumber, pruned: applied.pruned };
+  } catch (error) {
+    return unexpectedRefusalOf(error);
+  }
+}
+async function clearConsults(deps, input) {
+  try {
+    const record = readTeam(input.workspace, input.teamId);
+    if (record === undefined)
+      return { ok: false, error: `no team record is named ${JSON.stringify(input.teamId)} in this workspace` };
+    const cleared = (record.consults ?? []).map((row) => row.consultId);
+    const next = clearTeamConsults(record);
+    if (next !== record)
+      writeTeam(input.workspace, next);
+    if (cleared.length > 0)
+      appendTeamJournal(input.workspace, { event: "consult-clear", teamId: record.teamId, at: deps.now().toISOString(), cleared });
+    return { ok: true, teamId: record.teamId, cleared };
+  } catch (error) {
+    return unexpectedRefusalOf(error);
+  }
+}
 
 // packages/mpd-graph-core/src/rank.ts
 function deriveRanks(tasks, byId) {
@@ -7450,6 +7536,47 @@ function byFrameId(left, right) {
 function byFrameDepthThenId(left, right) {
   return left.depth - right.depth || ID_ORDER.compare(left.id, right.id);
 }
+function consultVisualOf(state) {
+  switch (state) {
+    case "running":
+      return "running";
+    case "complete":
+      return "completed";
+    case "interrupted":
+      return "cancelled";
+    case "failed":
+      return "failed";
+    case "cancelled":
+      return "cancelled";
+    default:
+      return "open";
+  }
+}
+function consultOrdinalOf(value) {
+  return Number.isFinite(value) && value >= 1 ? Math.floor(value) : 0;
+}
+function consultNodesOf(frame) {
+  const ordered = [...frame.consults].sort((left, right) => consultOrdinalOf(left.consultNumber) - consultOrdinalOf(right.consultNumber) || ID_ORDER.compare(left.consultId, right.consultId));
+  return ordered.map((row) => {
+    const ordinal = consultOrdinalOf(row.consultNumber);
+    return {
+      id: frame.id === null ? `C${ordinal}` : `${frame.id}::C${ordinal}`,
+      subject: row.task,
+      visual: consultVisualOf(row.state),
+      dependencies: [],
+      depth: 0,
+      planned: false,
+      kind: "consult",
+      consultId: row.consultId,
+      cellId: row.cellId,
+      startedAt: row.startedAt,
+      status: row.state,
+      assignee: row.role,
+      ...row.elapsedMs === undefined ? {} : { elapsedMs: row.elapsedMs },
+      ...frame.id === null ? {} : { group: frame.id }
+    };
+  });
+}
 function isGroupFrame(frame) {
   return frame.id !== null && frame.label !== null;
 }
@@ -7473,6 +7600,7 @@ function collectFrame(group, parent) {
     depth: parent.depth + 1,
     board: group.board ?? [],
     children: [],
+    consults: group.consults ?? [],
     ...group.originTaskId === undefined ? {} : { originTaskId: group.originTaskId },
     ...group.plan === undefined ? {} : { plan: group.plan }
   };
@@ -7598,6 +7726,7 @@ function buildModel(input) {
     depth: -1,
     board: input.board ?? [],
     children: [],
+    consults: input.consults ?? [],
     ...input.plan === undefined ? {} : { plan: input.plan }
   };
   root.children = (input.groups ?? []).map((group) => collectFrame(group, root)).sort(byFrameId);
@@ -7710,7 +7839,8 @@ function buildModel(input) {
     ranksDerived: rootLayout?.derived ?? true
   };
   const groups = groupRecords(frames, level);
-  return { nodes, edges, ranks, cycles: [...cyclic].sort(), report, ...groups.length === 0 ? {} : { groups } };
+  const consults = frames.flatMap((frame) => consultNodesOf(frame));
+  return { nodes, edges, ranks, cycles: [...cyclic].sort(), report, ...groups.length === 0 ? {} : { groups }, ...consults.length === 0 ? {} : { consults } };
 }
 function groupRecords(frames, level) {
   const groups = [];
@@ -8127,10 +8257,24 @@ function groupInputsOf(children, parentTeamId, archive, warn, seen) {
       id: child.teamId,
       label: child.name,
       board: framedBoardOf(child),
-      ...nested.length === 0 ? {} : { groups: nested }
+      ...nested.length === 0 ? {} : { groups: nested },
+      ...consultsOf(child)
     });
   }
   return inputs;
+}
+function consultsOf(record) {
+  const rows = record.consults ?? [];
+  return rows.length === 0 ? {} : { consults: rows.map((row) => ({
+    consultNumber: row.consultNumber,
+    consultId: row.consultId,
+    role: row.role,
+    task: row.task,
+    state: row.state,
+    startedAt: row.startedAt,
+    cellId: row.cellId,
+    ...row.elapsedMs === undefined ? {} : { elapsedMs: row.elapsedMs }
+  })) };
 }
 function groupsOf(workspace, record, warn, list) {
   const index = childrenByParent(list(workspace));
@@ -8176,6 +8320,7 @@ class GraphModels {
       const model = buildModel({
         board: boardOf(record),
         plan: readPlanFile(planPath),
+        ...consultsOf(record),
         ...groupsOf(workspace, record, this.deps.warn, this.deps.listTeams ?? listTeams)
       });
       this.cache.set(key, { revision, planPath, model });
@@ -9011,7 +9156,9 @@ function apply(ctx) {
         return resolved;
       return graceWedgedTask(teamActionsDeps, requestedWorkspace === undefined ? resolved.caller : { ...resolved.caller, workspace: requestedWorkspace }, { teamId, taskId, ...evidence === undefined ? {} : { evidence } });
     },
-    cancelTasks: async (input) => cancelTasks(teamActionsDeps, input)
+    cancelTasks: async (input) => cancelTasks(teamActionsDeps, input),
+    upsertConsult: async (input) => upsertConsult(teamActionsDeps, input),
+    clearConsults: async (input) => clearConsults(teamActionsDeps, input)
   };
   if (typeof ctx?.provide === "function") {
     try {

@@ -18,6 +18,7 @@
 import type { DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 import { appendJournal } from "./state"
 import { captainRefusal, checkpointRefusal, verifierDelegationRefusal, type CellworkSeat } from "./guard"
+import type { TeamActionsServiceView } from "./caller"
 
 /** The most tasks ONE `cellwork_delegate` call may start (contract §3.2). */
 export const DELEGATE_MAX_TASKS = 16
@@ -30,6 +31,9 @@ export const CONSULT_WAIT_MAX_MS = 60000
 
 /** ASCII characters of one task kept in the journal row, so a cell's history stays bounded. */
 const JOURNAL_TASK_CHARS = 400
+
+/** ASCII characters of one assignment excerpt kept on the TEAM record (contract §3: `task` <= 200). */
+const CONSULT_TASK_CHARS = 200
 
 /** The four verbs `cellwork_consult` answers. */
 export const CONSULT_ACTIONS: readonly string[] = ["list", "wait", "collect", "cancel"]
@@ -48,7 +52,21 @@ export interface ConsultServiceView {
    */
   canonicalRole?: (role: string, exec?: unknown) => unknown
   /** Start one background consult; the answer carries the stable id. */
-  start?: (spec: { role: string; task: string; context?: string; exec: unknown; maxDepth?: number }) => Promise<unknown>
+  start?: (spec: {
+    role: string
+    task: string
+    context?: string
+    exec: unknown
+    maxDepth?: number
+    /**
+     * Fired ONCE when the consult leaves `running` (consult DAG, contract §5.2).
+     *
+     * This is the call's only way to learn that a child settled without a seat asking: the DAG must not
+     * report a finished consult as running just because nobody called `wait`/`collect`. Absent means the
+     * roles row behaves exactly as it did before the callback existed.
+     */
+    onSettled?: (outcome: unknown) => void
+  }) => Promise<unknown>
   /** Every consult the roles row knows, process-wide. */
   list?: () => unknown
   /** Block for settlement up to a bound, answering the running view when the bound wins. */
@@ -251,6 +269,15 @@ export interface ConsultDeps {
   now: Date
   /** The process-local ownership map. */
   book: ConsultBook
+  /**
+   * The cell's LIVE team id, or `""` when this cell never approved a team.
+   *
+   * A consult started with no team records NOTHING on the plane (declared bound, contract §9): there is
+   * no record to draw it on, so the journal row is the only trace. The tool answer never changes.
+   */
+  teamId: string
+  /** The team-plane write service, resolved lazily per call; undefined degrades to journal-only. */
+  teamActions: () => TeamActionsServiceView | undefined
 }
 
 /** The answer of a successful `cellwork_delegate`. */
@@ -323,6 +350,100 @@ export function readDelegateTasks(raw: unknown): { tasks: Array<{ role: string; 
 }
 
 /**
+ * The lifecycle word a consult view or outcome reports, kept TOTAL so a malformed answer cannot name a
+ * state the team record refuses.
+ * @param value - whatever the service answered.
+ * @returns one of the five recorded words, defaulting to `running`.
+ */
+function consultStateOf(value: unknown): string {
+  return value === "complete" || value === "interrupted" || value === "failed" || value === "cancelled" || value === "running" ? value : "running"
+}
+
+/**
+ * Write ONE consult row to the team record, journaling instead of failing when the plane cannot take it.
+ *
+ * NEVER A REFUSAL: the consult is already running, so a write that cannot land must not turn a started
+ * child into a failed tool call (that would strand the child AND lie about it). Every failure path ends
+ * in one journal row naming the reason, and the tool answer stays exactly what it would have been.
+ *
+ * The task excerpt comes from the caller because a settlement answer does not carry the assignment: a
+ * blank one is never written (the store keeps the row's existing excerpt), so a later upsert cannot
+ * erase the title the card draws.
+ * @param deps - the consult dependencies (plane address, workspace, journal).
+ * @param row - the consult row as the service reports it.
+ * @param task - the assignment excerpt, when this call knows it.
+ */
+async function recordConsultRow(deps: ConsultDeps, row: ConsultRow, task: string): Promise<void> {
+  if (deps.teamId === "") {
+    // DECLARED BOUND: a cell with no team has no record to draw a node on. The journal is the only trace.
+    appendJournal(deps.workspace, deps.cellId, { event: "consult-unattached", consultId: row.consultId, role: row.role }, deps.now)
+    return
+  }
+  /** The plane's write service, when this composition mounts one that has the verb. */
+  const plane = deps.teamActions()
+  if (plane?.upsertConsult === undefined) {
+    appendJournal(deps.workspace, deps.cellId, { event: "consult-unrecorded", consultId: row.consultId, reason: "this composition exposes no mpdTeamActions.upsertConsult seam" }, deps.now)
+    return
+  }
+  try {
+    /** The plane's answer, parsed at this boundary because the verb replies `unknown`. */
+    const answer = await Promise.resolve(plane.upsertConsult({
+      workspace: deps.workspace,
+      teamId: deps.teamId,
+      record: {
+        consultId: row.consultId,
+        role: row.role,
+        task: task.slice(0, CONSULT_TASK_CHARS),
+        cellId: deps.cellId,
+        startedAt: row.startedAt,
+        state: consultStateOf(row.state),
+        ...(row.state === "running" ? {} : { finishedAt: deps.now.getTime(), elapsedMs: row.elapsedMs }),
+        ...(row.handoff === undefined ? {} : { handoff: row.handoff }),
+      },
+    }))
+    /** The refusal the plane answered, when it answered one. */
+    const refusal = typeof answer === "object" && answer !== null && (answer as { ok?: unknown }).ok === false ? String((answer as { error?: unknown }).error ?? "unknown refusal") : ""
+    if (refusal !== "") appendJournal(deps.workspace, deps.cellId, { event: "consult-unrecorded", consultId: row.consultId, reason: refusal }, deps.now)
+  } catch (error) {
+    appendJournal(deps.workspace, deps.cellId, { event: "consult-unrecorded", consultId: row.consultId, reason: error instanceof Error ? error.message : String(error) }, deps.now)
+  }
+}
+
+/**
+ * The settlement observer ONE consult is started with (contract §5.2).
+ *
+ * IT FIRES WITHOUT ANYONE ASKING, which is the whole point: a seat that dispatches three consults and
+ * ends its turn must still see them reach `complete` on the graph. Two rules make it safe:
+ *   - a cell that STOPPED is not resurrected: `cellwork_stop` clears the book, so a late settlement is
+ *     journaled and never re-creates a row;
+ *   - the write is idempotent by `consultId`, so the observe paths (`wait`/`collect`/`cancel`) can also
+ *     write the same row without producing a second one.
+ *
+ * The settled row's OWN `consultId` is the one used, never a value captured at start: the id does not
+ * exist until the service mints it, and the answer that arrives here always carries it.
+ * @param deps - the consult dependencies.
+ * @returns the callback the roles service invokes once.
+ */
+function settlementObserverOf(deps: ConsultDeps): (outcome: unknown) => void {
+  return (outcome: unknown): void => {
+    /** The settled row, or undefined for an answer this boundary cannot read. */
+    const row = consultRowOf(outcome)
+    if (row === undefined) return
+    // A STOPPED CELL KEEPS NOTHING: the book losing its cell key IS the stop marker (see `clearCellConsults`).
+    if (!deps.book.has(deps.cellId)) {
+      appendJournal(deps.workspace, deps.cellId, { event: "consult-late-settlement", consultId: row.consultId }, deps.now)
+      return
+    }
+    /** The assignment text this cell remembered at start, so the card keeps its title. */
+    const task = ownedConsult(deps.book, deps.cellId, row.consultId)?.question ?? ""
+    // FIRE AND FORGET: the observer is called from the supervisor's settlement path, which must not
+    // await a disk write; the row lands a moment later and the graph refreshes through the change feed.
+    void recordConsultRow(deps, row, task)
+  }
+}
+
+/**
+ * Start every task of one `cellwork_delegate` call in ONE pass and answer the ids immediately./**
  * Start every task of one `cellwork_delegate` call in ONE pass and answer the ids immediately.
  *
  * Roles are canonicalised FIRST — through the `mpdConsults` service's OWN `canonicalRole`, the resolver
@@ -330,7 +451,7 @@ export function readDelegateTasks(raw: unknown): { tasks: Array<{ role: string; 
  * The starts themselves never await a child, over-cap work QUEUES on the shared supervisor, and no
  * `maxDepth` is forwarded (the roster places the child at caller depth + 1 as a leaf).
  *
- * @param deps - the service, the roster, the cell and the knobs.
+ * @param deps - the service, the roster, the calling cell, its workspace and the caller's `exec`.
  * @param rawTasks - the raw `tasks` argument.
  * @returns the ids, or the refusal naming what blocked the call.
  */
@@ -380,6 +501,9 @@ export async function startDelegation(deps: ConsultDeps, rawTasks: unknown): Pro
         task: task.task,
         ...(task.context === undefined ? {} : { context: task.context }),
         exec: deps.exec,
+        // THE OBSERVER IS ARMED BEFORE THE START RESOLVES, so a child that settles immediately still
+        // reports: the roles row fires it once from its one settlement path.
+        onSettled: settlementObserverOf(deps),
       })
       /** The row projected from the answer. */
       const row = consultRowOf(answer)
@@ -392,6 +516,10 @@ export async function startDelegation(deps: ConsultDeps, rawTasks: unknown): Pro
         consultId: row.consultId,
         question: task.task.slice(0, JOURNAL_TASK_CHARS),
       }, deps.now)
+      // THE RUNNING ROW (contract §5.1): written AFTER the start, because a start that answered no id has
+      // nothing to record. The answer is awaited so the row exists before the tool replies — a reader that
+      // looks immediately after `cellwork_delegate` must already see N running consults.
+      await recordConsultRow(deps, { ...row, role: row.role === "" ? roles[index] : row.role }, task.task)
     } catch (error) {
       /** The failure's message. */
       const message = error instanceof Error ? error.message : String(error)
@@ -440,6 +568,76 @@ export function ownedConsult(book: ConsultBook, cellId: string, consultId: strin
 }
 
 /**
+ * The assignment text this cell remembered for one consult.
+ *
+ * @param deps - the consult dependencies.
+ * @param consultId - the consult asked about.
+ * @returns the question as the caller wrote it, or "" when the book no longer holds it.
+ */
+function taskOfConsult(deps: ConsultDeps, consultId: string): string {
+  return ownedConsult(deps.book, deps.cellId, consultId)?.question ?? ""
+}
+
+/**
+ * What the cell-end consult cleanup needs: the book, the cell/team address and the plane writer.
+ *
+ * Deliberately NARROWER than {@link ConsultDeps}: `cellwork_stop` runs in a module that has no service
+ * resolver, no roster and no `exec`, and widening that module's deps to satisfy this one would be a
+ * second reason for both to exist.
+ */
+export interface ConsultClearDeps {
+  /** The process-local ownership map, whose cell KEY is also the stop marker the observer reads. */
+  book: ConsultBook
+  /** The cell being stopped. */
+  cellId: string
+  /** The caller's workspace root. */
+  workspace: string
+  /** The stopped cell's live team id, or `""` when it never approved one. */
+  teamId: string
+  /** The team-plane write service, resolved lazily. */
+  teamActions: () => TeamActionsServiceView | undefined
+  /** The instant to journal with. */
+  now: Date
+}
+
+/**
+ * Forget EVERY consult of one cell and remove its rows from the team record: the `cellwork_stop` path.
+ *
+ * TWO HALVES, ONE INTENT (contract §5.3). The TEAM half removes the rows the graph draws; the BOOK half
+ * removes the cell's key, which is also the STOP MARKER the settlement observer reads — so a child that
+ * settles after the cell ended is journaled and never re-creates a row. Deleting the book key is what
+ * makes "stopped" observable to a callback that has no other channel.
+ *
+ * Never throws: a plane that refuses or is absent leaves the rows to age out through the retention cap,
+ * which is the documented bound for a cell that never stops cleanly.
+ * @param deps - the consult dependencies (only the book, the workspace and the plane are read).
+ * @returns the ids the plane reported cleared, or [] when it could not answer.
+ */
+export async function clearCellConsults(deps: ConsultClearDeps): Promise<string[]> {
+  /** The ids this cell had started, captured before the book is dropped. */
+  const owned = [...(deps.book.get(deps.cellId)?.keys() ?? [])]
+  deps.book.delete(deps.cellId)
+  if (deps.teamId === "") return []
+  /** The plane's write service, when this composition has one. */
+  const plane = deps.teamActions()
+  if (plane?.clearConsults === undefined) {
+    if (owned.length > 0) appendJournal(deps.workspace, deps.cellId, { event: "consult-clear-skipped", reason: "this composition exposes no mpdTeamActions.clearConsults seam", count: owned.length }, deps.now)
+    return []
+  }
+  try {
+    /** The plane's answer, parsed at this boundary because the verb replies `unknown`. */
+    const answer = await Promise.resolve(plane.clearConsults({ workspace: deps.workspace, teamId: deps.teamId }))
+    /** The ids the plane says it removed. */
+    const cleared = Array.isArray((answer as { cleared?: unknown } | undefined)?.cleared) ? ((answer as { cleared: unknown[] }).cleared).map((id) => String(id)) : []
+    appendJournal(deps.workspace, deps.cellId, { event: "consult-cleared", count: cleared.length }, deps.now)
+    return cleared
+  } catch (error) {
+    appendJournal(deps.workspace, deps.cellId, { event: "consult-clear-skipped", reason: error instanceof Error ? error.message : String(error) }, deps.now)
+    return []
+  }
+}
+
+/**
  * The teaching sentence a consult verb answers when the id is not this cell's.
  *
  * It never says "not found" alone: it names the ownership rule, the two OTHER channels an id may belong
@@ -478,7 +676,7 @@ function successOf(action: string, row: ConsultRow): Record<string, unknown> {
 /**
  * Run one `cellwork_consult` action against the consults THIS cell started.
  *
- * @param deps - the service, the cell and the knobs.
+ * @param deps - the service, the calling cell, its workspace and the caller's `exec`.
  * @param args - the raw arguments (`action`, optional `consultId`, optional `timeoutMs`).
  * @returns the rows, or the refusal naming what blocked the call.
  */
@@ -530,6 +728,9 @@ export async function runConsultAction(deps: ConsultDeps, args: { action: string
       /** The view after the wait (a timed-out wait answers `running`). */
       const row = consultRowOf(await service.wait(consultId, bound))
       if (row === undefined) return { ok: false, error: "cellwork_consult: the `mpdConsults` service answered `wait` without a consult view for " + JSON.stringify(consultId) }
+      // THE SECOND WRITE SOURCE (contract §5.2): an observe path records what it just saw, so a settled
+      // consult reaches the graph even if the observer's own write never landed. Idempotent by id.
+      await recordConsultRow(deps, row, ownedConsult(deps.book, deps.cellId, consultId)?.question ?? "")
       return successOf(action, row)
     }
     if (action === "collect") {
@@ -541,8 +742,13 @@ export async function runConsultAction(deps: ConsultDeps, args: { action: string
         forgetConsult(deps.book, deps.cellId, consultId)
         return { ok: false, error: foreignConsultRefusal("cellwork_consult", consultId, deps.cellId) }
       }
+      // THE EXCERPT IS READ BEFORE THE BOOK FORGETS THE ROW: a settled collect releases it below.
+      /** The assignment text this cell remembered at start. */
+      const remembered = taskOfConsult(deps, consultId)
       // A record is RELEASED by a settled collect; a running one answers its view and keeps the handle.
       if (row.state !== "running") forgetConsult(deps.book, deps.cellId, consultId)
+      // The observed row, so a settlement nobody watched still reaches the graph (idempotent by id).
+      await recordConsultRow(deps, row, remembered)
       return successOf(action, row)
     }
     if (typeof service.cancel !== "function") return { ok: false, error: missingConsultsServiceRefusal("cellwork_consult") }
@@ -550,6 +756,9 @@ export async function runConsultAction(deps: ConsultDeps, args: { action: string
     const row = consultRowOf(await Promise.resolve(service.cancel(consultId)))
     if (row === undefined) return { ok: false, error: "cellwork_consult: the `mpdConsults` service answered `cancel` without a consult view for " + JSON.stringify(consultId) }
     appendJournal(deps.workspace, deps.cellId, { event: "consult-cancelled", role: row.role, consultId }, deps.now)
+    // THE CANCELLED/INTERRUPTED ROW (acceptance 3): the graph flips as soon as the caller stops it, even
+    // when the child's own settlement arrives later — and that later write is idempotent by id.
+    await recordConsultRow(deps, row, taskOfConsult(deps, consultId))
     // The record is KEPT: an interrupted consult still answers `collect` (which is what releases it), so
     // dropping the handle here would strand a record in the supervisor for the process lifetime.
     return successOf(action, row)

@@ -9,6 +9,8 @@
 export type {
   BoardTask,
   BuildModelInput,
+  GraphConsultInput,
+  GraphConsultNode,
   GraphEdge,
   GraphGroup,
   GraphGroupInput,

@@ -38,8 +38,10 @@ import {
   activeTeamId,
   addTeamMember,
   addTeamTask,
+  applyConsultUpsert,
   blockingDependencies,
   casClaimTask,
+  clearTeamConsults,
   createTeam,
   endTeamRecord,
   idleMembers,
@@ -55,6 +57,7 @@ import {
   withDerivedPhase,
   writeTeam,
   type MemberIdentity,
+  type TeamConsultUpsertInput,
   type TeamMemberMode,
 } from "./team-store"
 import { readHold, readPlan, writePlan, archivePlan, type StagedMember, type StagedPlan } from "./plan-store"
@@ -270,6 +273,22 @@ export interface MpdTeamActionsService {
    */
   cancelTasks: (input: TeamCancelInput) => Promise<TeamActionResult<TeamCancelPayload>>
   /**
+   * Record (or update) ONE background consult against a team, keyed by its `consultId`.
+   *
+   * A CELLWORK-PLANE VERB, not a board one: a consult never becomes a task, so the board, `readyTasks`,
+   * dispatch, the clean-terminal rule and the `T<n>` id space never see this row. It exists on the team
+   * plane because the graph model is built from that record and cached against the change feed's
+   * revision — which is what gives the node cache invalidation and SSE refresh for free.
+   */
+  upsertConsult: (input: TeamConsultUpsertInputPlane) => Promise<TeamActionResult<TeamConsultUpsertPayload>>
+  /**
+   * Remove every consult row from a team (the cell-end path).
+   *
+   * Removal by ABSENCE: both `consults` and `nextConsultNumber` go away, so a cleared record is
+   * byte-identical to one that never recorded a consult.
+   */
+  clearConsults: (input: { workspace: string; teamId: string }) => Promise<TeamActionResult<TeamConsultClearPayload>>
+  /**
    * D3: FORCE one wedged seat — handoff, interrupt, requeue and split — as `sessionId`'s live agent.
    *
    * Addressed by the team's LEAD session, which is the only authority that may interrupt its members;
@@ -352,6 +371,14 @@ export interface TeamCancelPayload {
 }
 
 /**
+ * The character bound on one recorded assignment excerpt (contract §3: `task` is an excerpt, <= 200).
+ *
+ * The full assignment still travels in the journal and in the consult itself; the record keeps only what
+ * a card can draw, so a long prompt can never inflate the team document.
+ */
+const CONSULT_TASK_CHARS = 200
+
+/**
  * The input of one cancellation pass.
  *
  * ADDRESSED BY WORKSPACE + TEAM, not by session: a caller abandoning rows already HOLDS the team it
@@ -367,6 +394,40 @@ export interface TeamCancelInput {
   taskIds: readonly string[]
   /** One line recorded as each row's closing note, so a reader sees WHY it was abandoned. */
   note?: string
+}
+
+/**
+ * The input of ONE consult upsert (contract §3).
+ *
+ * ADDRESSED BY WORKSPACE + TEAM, exactly like {@link TeamCancelInput}: the writer is a cellwork plane
+ * that already holds both, and a session binding would be a second way to name the same record. The row
+ * itself carries no ordinal — the record mints it (see `TeamConsultUpsertInput`).
+ */
+export interface TeamConsultUpsertInputPlane {
+  /** The caller's workspace root. */
+  workspace: string
+  /** The team the consult belongs to. */
+  teamId: string
+  /** The row the caller reports; `consultId` is the upsert key. */
+  record: TeamConsultUpsertInput
+}
+
+/** What one consult upsert produced, in the shape a service caller reads. */
+export interface TeamConsultUpsertPayload {
+  /** The team the row landed on. */
+  teamId: string
+  /** The ordinal this consult holds: minted on first sight, kept on every later upsert. */
+  consultNumber: number
+  /** The consult ids the retention cap dropped on this write (oldest settled first). */
+  pruned: string[]
+}
+
+/** What clearing a team's consults produced. */
+export interface TeamConsultClearPayload {
+  /** The team whose rows were removed. */
+  teamId: string
+  /** The ids that were removed, in row order. */
+  cleared: string[]
 }
 
 /** The input of one fence change. */
@@ -2820,6 +2881,65 @@ export async function cancelTasks(deps: TeamActionDeps, input: TeamCancelInput):
       appendTeamJournal(input.workspace, { event: "task-cancelled", teamId: record.teamId, at: deps.now().toISOString(), taskId, ...(input.note === undefined ? {} : { reason: input.note }) })
     }
     return { ok: true, teamId: record.teamId, cancelled, skipped }
+  } catch (error) {
+    return unexpectedRefusalOf(error)
+  }
+}
+
+/**
+ * Upsert ONE consult row against a team record (contract §3).
+ *
+ * KEYED BY `consultId`: the same id written twice updates one row, which is what lets the start path and
+ * the settlement path both write without coordinating. The ordinal is MINTED here on first sight and the
+ * retention cap is applied on every write, so no caller has to know either rule.
+ *
+ * NOTHING HERE TOUCHES THE BOARD. `tasks`, `nextTaskNumber`, the phase derivation, readiness and the
+ * clean-terminal rule are untouched: a consult is not work, and the contract's rule 3 forbids the board
+ * from ever seeing it.
+ * @param deps - the action seams (clock included, so a test pins the settlement instant).
+ * @param input - the workspace/team address and the row to record.
+ * @returns the ordinal the row holds, or ONE refusal sentence.
+ */
+export async function upsertConsult(deps: TeamActionDeps, input: TeamConsultUpsertInputPlane): Promise<TeamActionResult<TeamConsultUpsertPayload>> {
+  try {
+    /** The team the row belongs to, as the record says. */
+    const record = readTeam(input.workspace, input.teamId)
+    if (record === undefined) return { ok: false, error: `no team record is named ${JSON.stringify(input.teamId)} in this workspace` }
+    // A ROW WITH NO ID IS NOT A ROW: the id is the upsert key, so an empty one would collide with every
+    // other empty one and the drawing would lose rows.
+    if (input.record.consultId.trim() === "") return { ok: false, error: "upsertConsult: `record.consultId` is required — it is the key every later write settles by" }
+    /** The record as this call leaves it, plus what the prune dropped. */
+    const applied = applyConsultUpsert(record, { ...input.record, task: input.record.task.slice(0, CONSULT_TASK_CHARS) }, deps.now())
+    writeTeam(input.workspace, applied.record)
+    appendTeamJournal(input.workspace, { event: "consult-upsert", teamId: record.teamId, at: deps.now().toISOString(), consultId: input.record.consultId, consultNumber: applied.consultNumber, state: input.record.state, ...(applied.pruned.length === 0 ? {} : { pruned: applied.pruned }) })
+    return { ok: true, teamId: record.teamId, consultNumber: applied.consultNumber, pruned: applied.pruned }
+  } catch (error) {
+    return unexpectedRefusalOf(error)
+  }
+}
+
+/**
+ * Remove every consult row from a team (the cell-end path, contract §5.3).
+ *
+ * The cell that started them is gone, so its picture must go with it — and the counter goes too, so a
+ * record reused by a later cell cannot inherit a stale `C<n>` sequence. An absent array is a SUCCESS with
+ * an empty list: the caller asked for a state the record already satisfies.
+ * @param deps - the action seams.
+ * @param input - the workspace/team address.
+ * @returns the ids that were removed, or ONE refusal sentence.
+ */
+export async function clearConsults(deps: TeamActionDeps, input: { workspace: string; teamId: string }): Promise<TeamActionResult<TeamConsultClearPayload>> {
+  try {
+    /** The team whose rows are cleared. */
+    const record = readTeam(input.workspace, input.teamId)
+    if (record === undefined) return { ok: false, error: `no team record is named ${JSON.stringify(input.teamId)} in this workspace` }
+    /** The ids this call removes, in row order. */
+    const cleared = (record.consults ?? []).map((row) => row.consultId)
+    /** The record with the consult keys removed. */
+    const next = clearTeamConsults(record)
+    if (next !== record) writeTeam(input.workspace, next)
+    if (cleared.length > 0) appendTeamJournal(input.workspace, { event: "consult-clear", teamId: record.teamId, at: deps.now().toISOString(), cleared })
+    return { ok: true, teamId: record.teamId, cleared }
   } catch (error) {
     return unexpectedRefusalOf(error)
   }

@@ -5411,6 +5411,29 @@ function modelRows(workflow) {
   rows.sort((left, right) => ID_ORDER.compare(left.id, right.id));
   return rows;
 }
+function modelConsults(workflow) {
+  const model = workflow.model;
+  if (model === undefined)
+    return [];
+  const rows = [];
+  for (const node of model.consults ?? []) {
+    rows.push({
+      id: node.id,
+      subject: node.subject,
+      ...node.kind === undefined ? {} : { kind: node.kind },
+      status: node.status ?? "running",
+      visual: node.visual,
+      ...node.assignee === undefined ? {} : { assignee: node.assignee },
+      dependencies: [],
+      failedDependencies: [],
+      depth: 0,
+      planned: false,
+      ...node.group === undefined ? {} : { group: node.group },
+      consult: { consultId: node.consultId, state: node.status ?? "running", cellId: node.cellId, startedAt: node.startedAt, ...node.elapsedMs === undefined ? {} : { elapsedMs: node.elapsedMs } }
+    });
+  }
+  return rows;
+}
 function modelRanks(workflow) {
   const model = workflow?.model;
   if (model === undefined)
@@ -6003,6 +6026,7 @@ var DAG_GROUP_CHARS = Object.freeze({
 });
 var DAG_GROUP_CHARS_ONE_CELL = Object.values(DAG_GROUP_CHARS).every((glyph) => [...glyph].every((character) => cellWidth(character) === 1));
 var DAG_GHOST_MARKER = "+";
+var DAG_CONSULT_MARKER = "@";
 var DAG_CHROME = Object.freeze({
   nodeBorder: "round",
   frameBorder: "single",
@@ -7131,6 +7155,7 @@ var ARROW_DOWN = DAG_CHARS.arrowDown;
 var ARROW_RIGHT = DAG_CHARS.arrowRight;
 var FOCUS_MARKER = DAG_CHARS.focusMarker;
 var GHOST_MARKER = DAG_GHOST_MARKER;
+var CONSULT_MARKER = DAG_CONSULT_MARKER;
 var LEGEND_ENTRY = Object.freeze([
   `${ARROW_DOWN}/${ARROW_RIGHT} blocker above → dependent below · ${FOCUS_MARKER} focus lights its chain`,
   `${ARROW_DOWN}/${ARROW_RIGHT} blocker → dependent · ${FOCUS_MARKER} focus`,
@@ -7224,7 +7249,7 @@ function sliceSpans(spans, offset, cols) {
   return kept;
 }
 function labelOf(task, focus) {
-  const marker = task.id === focus ? FOCUS_MARKER : task.visual === "planned" ? GHOST_MARKER : GLYPH[task.visual] ?? "?";
+  const marker = task.id === focus ? FOCUS_MARKER : task.consult !== undefined ? CONSULT_MARKER : task.visual === "planned" ? GHOST_MARKER : GLYPH[task.visual] ?? "?";
   return `${marker} ${task.id}`;
 }
 function widestLabelCells(tasks, focus) {
@@ -9277,6 +9302,7 @@ function dagPageOf(workflow) {
   if (workflow.tasks.length === 0 && workflow.team === undefined)
     return;
   const rows = modelRows(workflow);
+  rows.push(...modelConsults(workflow));
   const tasks = [];
   for (const task of rows) {
     const id = panelField(task.id, 40);
@@ -9296,7 +9322,8 @@ function dagPageOf(workflow) {
       ...typeof task.round === "number" && Number.isFinite(task.round) ? { round: Math.floor(task.round) } : {},
       ...task.verdict === undefined ? {} : { verdict: panelField(task.verdict, 60) ?? "" },
       ...task.planned === true ? { planned: true } : {},
-      ...task.group === undefined ? {} : { group: panelField(task.group, 60) ?? "" }
+      ...task.group === undefined ? {} : { group: panelField(task.group, 60) ?? "" },
+      ...task.consult === undefined ? {} : { consult: task.consult }
     });
   }
   if (tasks.length === 0 && workflow.team === undefined)
@@ -9338,7 +9365,7 @@ function dagPageOf(workflow) {
     teamName: panelField(workflow.team?.name, 60) ?? "(unnamed team)",
     phase: panelField(workflow.team?.phase, 20) ?? "unknown",
     completed: typeof workflow.counts?.completed === "number" ? workflow.counts.completed : 0,
-    total: typeof workflow.counts?.total === "number" ? workflow.counts.total : tasks.length,
+    total: typeof workflow.counts?.total === "number" ? workflow.counts.total : workflow.tasks.length,
     members: roster.length,
     roster: roster.length === 0 ? "roster  (no members)" : "roster  " + roster.map((member) => `${member.status === "running" ? "◐" : "○"}${member.name} ${member.done}/${member.total}`).join(" · "),
     problems: (Array.isArray(workflow.problems) ? workflow.problems : []).map((problem) => panelField(problem, 120) ?? "").filter((problem) => problem !== "")
@@ -9486,6 +9513,8 @@ function dagBadge(tasks) {
   return null;
 }
 function pinnedDetailLines(task, tasks, cols) {
+  if (task.consult !== undefined)
+    return consultDetailLines(task, task.consult, cols);
   const dependents = tasks.filter((other) => other.dependencies.includes(task.id)).map((other) => other.id);
   const facts = [
     ["subject", task.subject === "" ? "—" : task.subject],
@@ -9500,6 +9529,20 @@ function pinnedDetailLines(task, tasks, cols) {
     ["round", task.round === undefined ? "—" : String(task.round)],
     ["blockedBy", task.dependencies.length === 0 ? "—" : task.dependencies.join(",")],
     ["dependents", dependents.length === 0 ? "—" : dependents.join(",")]
+  ];
+  return facts.map(([label, value]) => panelText(`${label} ${value}`, cols));
+}
+function consultDetailLines(task, badge, cols) {
+  const started = Number.isFinite(badge.startedAt) ? new Date(badge.startedAt).toISOString() : "—";
+  const facts = [
+    ["subject", task.subject === "" ? "—" : task.subject],
+    ["id", task.id],
+    ["consult", badge.consultId],
+    ["role", task.assignee === undefined || task.assignee === "" ? "—" : task.assignee],
+    ["state", badge.state === "" ? "—" : badge.state],
+    ["started", started],
+    ["elapsed", badge.elapsedMs === undefined ? "—" : `${String(Math.max(0, Math.round(badge.elapsedMs / 1000)))}s`],
+    ["cell", badge.cellId === "" ? "—" : badge.cellId]
   ];
   return facts.map(([label, value]) => panelText(`${label} ${value}`, cols));
 }
@@ -9771,7 +9814,7 @@ function createDagPanelComponent(readWorkflow, options) {
       if (scope === "workspace") {
         children.push(textRow(kit, `${WORKSPACE_SCOPE_MARKER}: no session id on this surface, showing the workspace's newest team`, { key: "scope", dim: true, maxCells: contentCols }));
       }
-      if (page !== undefined && page.tasks.length === 0) {
+      if (page !== undefined && (workflow?.tasks.length ?? 0) === 0) {
         children.push(textRow(kit, page.roster, { key: "roster", dim: true, maxCells: contentCols }));
         children.push(textRow(kit, scope === "session" ? "this session's team has no tasks yet — `agent_teams_plan` posts them" : "the workspace's team has no tasks yet — `agent_teams_plan` posts them", { key: "empty-board", dim: true, maxCells: contentCols }));
       }

@@ -455,6 +455,39 @@ function reseedParentOf(deps: PromotionDeps): ReseedParent | undefined {
 }
 
 /**
+ * The agent-nesting cap a RESEED child must be forwarded, derived from its LIVE parent.
+ *
+ * THE RESEED LANDS AT THE LIVE PARENT'S DEPTH + 1, so that — never the cell-tree knob — is the cap.
+ * Forwarding `cellwork.depthMax` here repeated the R1.1 defect on the one path R1.1 did not touch: the
+ * cell cap counts nested CELLS, so it named a level the child does not occupy. The host's hidden default
+ * is not a substitute either, which is why an EXPLICIT cap is always written.
+ *
+ * THE READING IS DELIBERATELY IDENTICAL to `spawnMaxDepthOf` in `mpd-roles-plugin` (and its workmate
+ * twin), so a reseed and a consult place a child under the same rule: a recorded depth of 1 or more
+ * answers depth + 1; a session recorded as `origin: "subagent"` without a depth reads as depth 1 (a
+ * child, not a top-level session); anything else is depth 0, whose child lands at depth 1.
+ *
+ * @param parent - the live Agent the reseed is raised under, whose session header carries the depth.
+ * @returns the cap to forward, a positive integer.
+ */
+export function reseedMaxDepthOf(parent: DshLiveAgent): number {
+  // The header is read STRUCTURALLY because the adapter types a live Agent's `session` as opaque: the
+  // harness fuses the session record into the agent, and only the header fields below are consulted.
+  /** That session, read as a record. */
+  const session = (parent as { session?: unknown }).session
+  if (typeof session !== "object" || session === null) return 1
+  /** The session header, which carries the delegation facts. */
+  const header = (session as { header?: unknown }).header
+  if (typeof header !== "object" || header === null) return 1
+  /** The header as a record, so every access below is checked. */
+  const record = header as Record<string, unknown>
+  /** The recorded depth; a non-numeric or negative value is not a depth and reads as `0` below. */
+  const raw = Number(record.delegationDepth)
+  if (Number.isFinite(raw) && raw >= 1) return Math.floor(raw) + 1
+  return record.origin === "subagent" ? 2 : 1
+}
+
+/**
  * The journal row ONE barrier outcome writes (`agent/turn-stopping` → `runBarrier`).
  *
  * Extracted so the row is the same wherever it is written and so a test can assert the CLASSIFICATIONS the
@@ -609,7 +642,10 @@ export async function promoteAfterHandoff(deps: PromotionDeps): Promise<Promotio
         // THE LIVE PARENT, never `deps.agent` (C2): the member's own handle is detached, and the host
         // refuses a parent it no longer holds.
         parent: parent.parent,
-        maxDepth: deps.config.depthMax,
+        // THE LIVE PARENT'S OWN DEPTH + 1 (R2.1): the child lands exactly one level below the session it
+        // is raised under, so `cellwork.depthMax` — the nested-CELL bound, a different scale — must never
+        // name this cap. Explicit, never omitted: the host's hidden default is what this cap replaces.
+        maxDepth: reseedMaxDepthOf(parent.parent),
       },
       signal: compactionSignal().signal,
     }) as { childId?: unknown; id?: unknown } | undefined

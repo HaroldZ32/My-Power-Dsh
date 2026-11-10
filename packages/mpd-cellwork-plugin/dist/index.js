@@ -3782,6 +3782,7 @@ var DELEGATE_MAX_TASKS = 16;
 var CONSULT_WAIT_DEFAULT_MS = 30000;
 var CONSULT_WAIT_MAX_MS = 60000;
 var JOURNAL_TASK_CHARS = 400;
+var CONSULT_TASK_CHARS = 200;
 var CONSULT_ACTIONS = ["list", "wait", "collect", "cancel"];
 function createConsultBook() {
   return new Map;
@@ -3871,6 +3872,54 @@ function readDelegateTasks(raw) {
   }
   return { tasks };
 }
+function consultStateOf(value) {
+  return value === "complete" || value === "interrupted" || value === "failed" || value === "cancelled" || value === "running" ? value : "running";
+}
+async function recordConsultRow(deps, row, task) {
+  if (deps.teamId === "") {
+    appendJournal(deps.workspace, deps.cellId, { event: "consult-unattached", consultId: row.consultId, role: row.role }, deps.now);
+    return;
+  }
+  const plane = deps.teamActions();
+  if (plane?.upsertConsult === undefined) {
+    appendJournal(deps.workspace, deps.cellId, { event: "consult-unrecorded", consultId: row.consultId, reason: "this composition exposes no mpdTeamActions.upsertConsult seam" }, deps.now);
+    return;
+  }
+  try {
+    const answer = await Promise.resolve(plane.upsertConsult({
+      workspace: deps.workspace,
+      teamId: deps.teamId,
+      record: {
+        consultId: row.consultId,
+        role: row.role,
+        task: task.slice(0, CONSULT_TASK_CHARS),
+        cellId: deps.cellId,
+        startedAt: row.startedAt,
+        state: consultStateOf(row.state),
+        ...row.state === "running" ? {} : { finishedAt: deps.now.getTime(), elapsedMs: row.elapsedMs },
+        ...row.handoff === undefined ? {} : { handoff: row.handoff }
+      }
+    }));
+    const refusal = typeof answer === "object" && answer !== null && answer.ok === false ? String(answer.error ?? "unknown refusal") : "";
+    if (refusal !== "")
+      appendJournal(deps.workspace, deps.cellId, { event: "consult-unrecorded", consultId: row.consultId, reason: refusal }, deps.now);
+  } catch (error) {
+    appendJournal(deps.workspace, deps.cellId, { event: "consult-unrecorded", consultId: row.consultId, reason: error instanceof Error ? error.message : String(error) }, deps.now);
+  }
+}
+function settlementObserverOf(deps) {
+  return (outcome) => {
+    const row = consultRowOf(outcome);
+    if (row === undefined)
+      return;
+    if (!deps.book.has(deps.cellId)) {
+      appendJournal(deps.workspace, deps.cellId, { event: "consult-late-settlement", consultId: row.consultId }, deps.now);
+      return;
+    }
+    const task = ownedConsult(deps.book, deps.cellId, row.consultId)?.question ?? "";
+    recordConsultRow(deps, row, task);
+  };
+}
 async function startDelegation(deps, rawTasks) {
   const parsed = readDelegateTasks(rawTasks);
   if ("ok" in parsed)
@@ -3902,7 +3951,8 @@ async function startDelegation(deps, rawTasks) {
         role: roles[index],
         task: task.task,
         ...task.context === undefined ? {} : { context: task.context },
-        exec: deps.exec
+        exec: deps.exec,
+        onSettled: settlementObserverOf(deps)
       });
       const row = consultRowOf(answer);
       if (row === undefined)
@@ -3915,6 +3965,7 @@ async function startDelegation(deps, rawTasks) {
         consultId: row.consultId,
         question: task.task.slice(0, JOURNAL_TASK_CHARS)
       }, deps.now);
+      await recordConsultRow(deps, { ...row, role: row.role === "" ? roles[index] : row.role }, task.task);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       return { ok: false, error: "cellwork_delegate: starting tasks[" + String(index) + "] (" + roles[index] + ") failed: " + message + " — " + String(consults.length) + " of " + String(parsed.tasks.length) + " consults were already started" + (consults.length === 0 ? "" : " (" + consults.map((entry) => entry.consultId).join(", ") + "); collect them with `cellwork_consult`") };
@@ -3932,6 +3983,30 @@ function forgetConsult(book, cellId, consultId) {
 }
 function ownedConsult(book, cellId, consultId) {
   return book.get(cellId)?.get(consultId);
+}
+function taskOfConsult(deps, consultId) {
+  return ownedConsult(deps.book, deps.cellId, consultId)?.question ?? "";
+}
+async function clearCellConsults(deps) {
+  const owned = [...deps.book.get(deps.cellId)?.keys() ?? []];
+  deps.book.delete(deps.cellId);
+  if (deps.teamId === "")
+    return [];
+  const plane = deps.teamActions();
+  if (plane?.clearConsults === undefined) {
+    if (owned.length > 0)
+      appendJournal(deps.workspace, deps.cellId, { event: "consult-clear-skipped", reason: "this composition exposes no mpdTeamActions.clearConsults seam", count: owned.length }, deps.now);
+    return [];
+  }
+  try {
+    const answer = await Promise.resolve(plane.clearConsults({ workspace: deps.workspace, teamId: deps.teamId }));
+    const cleared = Array.isArray(answer?.cleared) ? answer.cleared.map((id) => String(id)) : [];
+    appendJournal(deps.workspace, deps.cellId, { event: "consult-cleared", count: cleared.length }, deps.now);
+    return cleared;
+  } catch (error) {
+    appendJournal(deps.workspace, deps.cellId, { event: "consult-clear-skipped", reason: error instanceof Error ? error.message : String(error) }, deps.now);
+    return [];
+  }
 }
 function foreignConsultRefusal(toolName, consultId, cellId) {
   return "cellwork: `" + toolName + "` refused " + JSON.stringify(consultId) + " — this cell did not start" + " that consult, so it is not this cell's to settle. `cellwork_consult` answers only ids that" + " `cellwork_delegate` returned IN CELL " + cellId + " and that the consult supervisor still knows:" + " an id from `mpd_role_spawn_async` belongs to `mpd_role_consult`, a consult another cell started" + " belongs to that cell, and a process restart drops every in-memory handle — re-delegate the task" + " with `cellwork_delegate` when you need it again.";
@@ -3977,6 +4052,7 @@ async function runConsultAction(deps, args) {
       const row2 = consultRowOf(await service.wait(consultId, bound));
       if (row2 === undefined)
         return { ok: false, error: "cellwork_consult: the `mpdConsults` service answered `wait` without a consult view for " + JSON.stringify(consultId) };
+      await recordConsultRow(deps, row2, ownedConsult(deps.book, deps.cellId, consultId)?.question ?? "");
       return successOf(action, row2);
     }
     if (action === "collect") {
@@ -3987,8 +4063,10 @@ async function runConsultAction(deps, args) {
         forgetConsult(deps.book, deps.cellId, consultId);
         return { ok: false, error: foreignConsultRefusal("cellwork_consult", consultId, deps.cellId) };
       }
+      const remembered = taskOfConsult(deps, consultId);
       if (row2.state !== "running")
         forgetConsult(deps.book, deps.cellId, consultId);
+      await recordConsultRow(deps, row2, remembered);
       return successOf(action, row2);
     }
     if (typeof service.cancel !== "function")
@@ -3997,6 +4075,7 @@ async function runConsultAction(deps, args) {
     if (row === undefined)
       return { ok: false, error: "cellwork_consult: the `mpdConsults` service answered `cancel` without a consult view for " + JSON.stringify(consultId) };
     appendJournal(deps.workspace, deps.cellId, { event: "consult-cancelled", role: row.role, consultId }, deps.now);
+    await recordConsultRow(deps, row, taskOfConsult(deps, consultId));
     return successOf(action, row);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -4974,6 +5053,9 @@ function installCellworkFlow(deps) {
     return typeof service === "object" && service !== null ? service : undefined;
   };
   const consultBook = createConsultBook();
+  deps.onConsultStop?.(async (cell) => {
+    await clearCellConsults({ book: consultBook, cellId: cell.cellId, workspace: cell.workspace, teamId: cell.teamId, teamActions, now: new Date });
+  });
   const configService = () => {
     const service = deps.ctx.get?.("mpdConfig", false);
     return typeof service === "object" && service !== null ? service : undefined;
@@ -5355,7 +5437,9 @@ missing sections: ` + result.missing.join(", ") : ""));
         workspace: caller.workspace,
         exec,
         now: new Date,
-        book: consultBook
+        book: consultBook,
+        teamId: cell.teamId,
+        teamActions
       }, argv.tasks);
       return result.ok ? { ...result } : { ok: false, error: result.error };
     }
@@ -5464,7 +5548,9 @@ evidence:
         workspace: caller.workspace,
         exec,
         now: new Date,
-        book: consultBook
+        book: consultBook,
+        teamId: cell.teamId,
+        teamActions
       }, { action: argString(argv, "action"), consultId: argString(argv, "consultId"), timeoutMs: argv.timeoutMs });
       return result;
     }
@@ -6809,6 +6895,19 @@ function reseedParentOf(deps) {
     return { parent: captain, source: "captain", sessionId: captainSession };
   return;
 }
+function reseedMaxDepthOf(parent) {
+  const session = parent.session;
+  if (typeof session !== "object" || session === null)
+    return 1;
+  const header = session.header;
+  if (typeof header !== "object" || header === null)
+    return 1;
+  const record = header;
+  const raw = Number(record.delegationDepth);
+  if (Number.isFinite(raw) && raw >= 1)
+    return Math.floor(raw) + 1;
+  return record.origin === "subagent" ? 2 : 1;
+}
 function compactionJournalEntry(memberName, result) {
   return {
     event: "compaction",
@@ -6896,7 +6995,7 @@ async function promoteAfterHandoff(deps) {
 
 ` + promotionDirective(deps.cell.cellId, deps.memberName, deps.cell.depth + 1, deps.nextStep),
         parent: parent.parent,
-        maxDepth: deps.config.depthMax
+        maxDepth: reseedMaxDepthOf(parent.parent)
       },
       signal: compactionSignal().signal
     });
@@ -8306,7 +8405,7 @@ function apply(ctx, config = {}) {
       },
       render: (_args, value) => render2(value)
     },
-    execute: (args, exec) => {
+    execute: async (args, exec) => {
       const input = readArgs3(args);
       const caller = callerContext(dsh, exec, { teams: () => teamsService(ctx) });
       const workspace = caller.workspace;
@@ -8343,6 +8442,7 @@ function apply(ctx, config = {}) {
       }
       const now = new Date;
       const reason = argString3(input, "reason") === "" ? forced ? "forced stop" : "stopped by the captain" : argString3(input, "reason");
+      await stopConsultCleanup?.({ cellId: state.cellId, teamId: state.teamId, workspace });
       const stopped = { ...state, phase: "stopped", archived: true, stopReason: reason };
       recordTransition(workspace, stopped, { event: "stop", reason, forced, inProgress }, now);
       return { ok: true, cellId: state.cellId, archived: true, forced, reason, inProgress, statePath: statePath(workspace, state.cellId) };
@@ -8416,7 +8516,10 @@ function apply(ctx, config = {}) {
     });
     return outcome.ok ? { kind: "success", text: "cellwork active: " + outcome.cellId + " — the activation directive was submitted as this agent's next turn" } : { kind: "error", text: outcome.error };
   };
-  disposers.push(...installCellworkFlow({ dsh, ctx, config: cfg, warn }));
+  let stopConsultCleanup;
+  disposers.push(...installCellworkFlow({ dsh, ctx, config: cfg, warn, onConsultStop: (hook) => {
+    stopConsultCleanup = hook;
+  } }));
   disposers.push(...installCellworkProtocol({ dsh, ctx, config: cfg, warn }));
   const command = { name: "cellwork", description: "Start cell-work for an objective: a dedicated planner interview, a measured task split, and a team that dispatches, hands off, compacts and promotes (captain dispatches only).", input: { hint: "objective" }, handler: runCellworkCommand };
   disposers.push(dsh.registerCommand(command));

@@ -121,6 +121,20 @@ export interface ConsultStartInput {
   exec: unknown
   /** Raise the child on the shared activation seam; resolves once the child STARTED. */
   raise: () => Promise<DshAsyncAgent>
+  /**
+   * Optional SETTLEMENT OBSERVER: fired exactly ONCE when this consult leaves `running`.
+   *
+   * WHY IT EXISTS (cellwork consult DAG, contract §5.2). A caller that records the consult somewhere
+   * durable must be able to learn it settled WITHOUT a seat happening to call `wait`/`collect` — a
+   * picture that only updates when someone looks would show a finished consult as running forever.
+   * The callback is invoked from the ONE settlement path (`finish`/`failRecord`), so it fires for every
+   * outcome: a report, a deadman interruption, a cancel and a raise failure.
+   *
+   * ABSENT MEANS TODAY'S BEHAVIOUR: nothing is constructed and nothing is called, so every existing
+   * caller is inert with respect to it. A THROW from the callback is caught and logged — an observer must
+   * never be able to break the settlement it observes.
+   */
+  onSettled?: (outcome: ConsultOutcome) => void
 }
 
 /** The lifecycle state of one consult record. */
@@ -269,6 +283,8 @@ interface ConsultRecord {
   longBashLogged?: boolean
   /** The `startedAt` of the open call already reported as in-flight activity, so one call yields one line. */
   inFlightLoggedFor?: number
+  /** The caller's optional settlement observer, fired once from the ONE settlement path. */
+  onSettled?: (outcome: ConsultOutcome) => void
 }
 
 /**
@@ -368,7 +384,7 @@ export function createConsultSupervisor(deps: ConsultSupervisorDeps): ConsultSup
     // A consult nobody collected must not surface as an unhandled rejection; the report stays
     // readable through the record, and `settle` still observes the original rejection.
     void done.catch(() => undefined)
-    return { id, role: input.role, task: input.task, exec: input.exec, state: "running", startedAt: now(), done, resolve: settle, reject: fail, reported: false, released: false, held: false }
+    return { id, role: input.role, task: input.task, exec: input.exec, state: "running", startedAt: now(), done, resolve: settle, reject: fail, reported: false, released: false, held: false, ...(input.onSettled === undefined ? {} : { onSettled: input.onSettled }) }
   }
 
   /** Project a settled handle onto the report shape every consumer reads (§D0.1). */
@@ -385,6 +401,25 @@ export function createConsultSupervisor(deps: ConsultSupervisorDeps): ConsultSup
       stopReason: typeof result.stopReason === "string" ? result.stopReason : null,
       consultId: record.id,
       elapsedMs: now() - record.startedAt,
+    }
+  }
+
+  /**
+   * Fire the caller's settlement observer once, defensively.
+   *
+   * Called from BOTH settlement paths AFTER the record's own state is final, so an observer sees the
+   * settled view rather than the running one it already knew. `reported` is the single-shot guard: a
+   * consult settles once, so an observer cannot be told twice even if both paths were somehow reached.
+   * @param record - the record that just settled.
+   */
+  const notifySettled = (record: ConsultRecord): void => {
+    /** The observer, when the caller supplied one. */
+    const observer = record.onSettled
+    if (observer === undefined) return
+    try {
+      observer({ ...viewOf(record), ...(record.report === undefined ? {} : { report: record.report }), ...(record.failure === undefined ? {} : { error: record.failure }) })
+    } catch (error) {
+      deps.log("mpd_role_spawn_async: the onSettled observer threw (" + (error instanceof Error ? error.message : String(error)) + ") — the consult settled anyway")
     }
   }
 
@@ -407,6 +442,7 @@ export function createConsultSupervisor(deps: ConsultSupervisorDeps): ConsultSup
       release()
     }
     record.resolve(record.report)
+    notifySettled(record)
   }
 
   /** Settle a record as FAILED once: clear the deadman, free its slot, reject the settlement. */
@@ -424,6 +460,7 @@ export function createConsultSupervisor(deps: ConsultSupervisorDeps): ConsultSup
       release()
     }
     record.reject(error)
+    notifySettled(record)
   }
 
   /** Render one observed call for the handoff: name + a ≤400-character argument excerpt. */

@@ -82,7 +82,7 @@ import { installTeamDoorGuard } from "./team-door-guard.ts"
 import { planForSession, registerTeamRoutes, TEAM_ACTION_ROUTES, TEAM_ROUTES, type TeamWebActions, type TeamWebPlan } from "./team-web"
 // THE TWO TEAM ACTIONS, exec-free: the bodies that used to sit inline in the `approve` and `run`
 // branches, so a tool call, the `mpdTeamActions` service and an HTTP route all drive ONE sequence.
-import { approveTeam, cancelTasks, endTeam, fenceMember, forceWedgedTask, graceWedgedTask, runDispatch, TEAM_ACTIONS_SERVICE, unfenceMember, writeMemberHandoff, type MpdTeamActionsService, type TeamActionCaller, type TeamActionDeps } from "./team-actions"
+import { approveTeam, cancelTasks, clearConsults, endTeam, fenceMember, forceWedgedTask, graceWedgedTask, runDispatch, TEAM_ACTIONS_SERVICE, unfenceMember, upsertConsult, writeMemberHandoff, type MpdTeamActionsService, type TeamActionCaller, type TeamActionDeps } from "./team-actions"
 import { installIdleGuard, withIdlePreamble } from "./idle-guard"
 import { GraphModels } from "./graph-model"
 import type { GraphModel } from "../../mpd-graph-core/src/index.ts"
@@ -1795,6 +1795,10 @@ export function apply(ctx: any): void {
     // both (cellwork's activation), and the service plane is the row-to-row one where a session binding
     // would be a second way to name the same record.
     cancelTasks: async (input) => cancelTasks(teamActionsDeps, input),
+    // THE CONSULT WRITES (contract §3): cellwork-plane verbs addressed by workspace + team, exactly like
+    // `cancelTasks` above — the writer already holds both ids, and the board never sees these rows.
+    upsertConsult: async (input) => upsertConsult(teamActionsDeps, input),
+    clearConsults: async (input) => clearConsults(teamActionsDeps, input),
   }
   if (typeof (ctx as { provide?: unknown })?.provide === "function") {
     try {

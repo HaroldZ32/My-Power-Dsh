@@ -193,6 +193,29 @@ export interface TeamTaskRow {
    * is a root task, which is the same reading the absent field has on the model.
    */
   group?: string
+  /**
+   * The CONSULT facts, present only on a row {@link modelConsults} synthesized (consult DAG, contract §6).
+   *
+   * ITS PRESENCE IS THE DISCRIMINATOR: `modelConsults` sets it, no board projection ever does, so a
+   * renderer can tell a consult from a task without comparing id shapes. It is a badge rather than a
+   * `kind: "consult"` because `kind` already names a task's requirement-chain role and overloading it
+   * would make `REQ`/`WRK` abbreviations ambiguous.
+   */
+  consult?: ConsultBadge
+}
+
+/** The facts a consult row carries that a task row does not (consult DAG, contract §6). */
+export interface ConsultBadge {
+  /** The supervisor's own id for the consult, printed by the detail body. */
+  consultId: string
+  /** The lifecycle word AS RECORDED, so the detail body can print `interrupted` rather than its tone. */
+  state: string
+  /** The cell that started it, so the card can name its owner even inside a box. */
+  cellId: string
+  /** When it started, epoch milliseconds. */
+  startedAt: number
+  /** How long it ran, milliseconds; absent while it is still running. */
+  elapsedMs?: number
 }
 
 /** One roster row: the member plus the progress facts the Web panel shows. */
@@ -1147,6 +1170,49 @@ export function modelRows(workflow: TeamWorkflow): TeamTaskRow[] {
   }
   for (const task of workflow.tasks) if (!seen.has(task.id)) rows.push(task)
   rows.sort((left, right) => ID_ORDER.compare(left.id, right.id))
+  return rows
+}
+
+/**
+ * The CONSULT rows one projection carries, as DAG rows (consult DAG, contract §6).
+ *
+ * WHY THIS IS A SIBLING OF {@link modelRows} AND NOT PART OF IT. `modelRows` has three consumers that
+ * depend on it being the BOARD plus the model's TASKS: the counts, the legend and the roster credit.
+ * Folding a consult into it would synthesize a ghost TASK — a consult has no board row — and the numbers
+ * the user reads would count agents as work. So the page appends these rows to its task array for the
+ * DRAWING only, and every tally keeps reading the board.
+ *
+ * ORDER IS THE MODEL'S OWN (frame pre-order, then the minted ordinal inside a frame): it is already the
+ * order the user watched the consults start in, and re-sorting would mix a box's rows into the root's.
+ * @param workflow - the projection to read.
+ * @returns the consult rows, in the model's order; empty when it carries none.
+ */
+export function modelConsults(workflow: TeamWorkflow): TeamTaskRow[] {
+  /** The accepted model, or undefined when this projection carries none. */
+  const model = workflow.model
+  if (model === undefined) return []
+  /** The rows, projected in the model's own order. */
+  const rows: TeamTaskRow[] = []
+  for (const node of model.consults ?? []) {
+    rows.push({
+      id: node.id,
+      subject: node.subject,
+      ...(node.kind === undefined ? {} : { kind: node.kind }),
+      // The lifecycle word AS RECORDED (`running` | `complete` | `interrupted` | `failed` | `cancelled`):
+      // the tone is the renderer's, and the detail body prints this word verbatim.
+      status: node.status ?? "running",
+      visual: node.visual,
+      ...(node.assignee === undefined ? {} : { assignee: node.assignee }),
+      // A consult has no edge and no failed dependency, by contract: the model says so, and a renderer
+      // that painted one would be inventing a relation nobody declared.
+      dependencies: [],
+      failedDependencies: [],
+      depth: 0,
+      planned: false,
+      ...(node.group === undefined ? {} : { group: node.group }),
+      consult: { consultId: node.consultId, state: node.status ?? "running", cellId: node.cellId, startedAt: node.startedAt, ...(node.elapsedMs === undefined ? {} : { elapsedMs: node.elapsedMs }) },
+    })
+  }
   return rows
 }
 

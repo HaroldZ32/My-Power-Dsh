@@ -305,6 +305,27 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
 链接（`deriveParentTeam`），因为登记子 team 的 session 本身就是它的成员。本波次画盒子的是 TUI；web DAG 的分组帧
 是已声明的后续工作（`docs/cellwork.md` 的"声明边界"）。
 
+### 咨询作为 DAG 节点
+
+座位发起的咨询也是画面的一部分：每次启动都通过 `mpdTeamActions.upsertConsult` 往该 cell 的 team 记录上写**一行**
+`running`，而团队平面用这条记录构建图、并按变更 feed 的修订号缓存，于是它画在 cell 的分组盒子里。没有第二个存储、
+没有第二个 watcher、团队平面也从不读 `.mpd/cellwork/**`。
+
+- **落定的咨询不需要座位来过问就会被记录。** `mpdConsults.start` 接受一个可选的 `onSettled` 观察者，名册行在记录
+  离开 `running` 时**恰好**触发一次；cellwork 为每个咨询传一个，并据它 upsert 终态行。`wait`/`collect`/`cancel` 的
+  回答作为**第二个**、幂等的写入源（upsert 以 `consultId` 为键）写同一行，所以观察者那次写没落地，也会在下一次有人
+  查看时被纠正。
+- **没有活跃 team 的 cell 什么都不记**（`teamId === ""`）：没有记录可画，于是调用写一行 `consult-unattached`，
+  回答不变。平面收不下这次写时同样只记 `consult-unrecorded` —— 写入失败绝不会把一个已经启动的子会话变成失败的
+  工具调用。
+- **`cellwork_stop` 会清掉它们。** 停止（含强制停止）对该 cell 的 team 调用 `mpdTeamActions.clearConsults`，并丢掉
+  内存里的 consult book，于是图不再画它们，**并且**之后才落定的子会话只写 journal（`consult-late-settlement`），
+  不会重新造出一行。
+- **行有留存上限，不是无限增长。** 团队平面每个 team 最多留 50 行，先丢**最旧的已结算**行，绝不丢 `running` 行；
+  因此一个永不清停的 cell 只会自然老化，而不是无限膨胀。
+- **这里没有任何东西是任务。** 咨询不占 `T<n>`，不被派发，也被排除在看板统计、`readyTasks`、干净终止规则与验证者
+  范围之外。
+
 ## 声明边界
 
 - 守卫是**进程级、且只在派发时刻**生效。它看不见意图，无法阻止模型去"尝试"某个名字，也覆盖不到绕过工具

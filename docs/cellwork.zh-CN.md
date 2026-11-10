@@ -305,6 +305,32 @@ cell 的**座位**——规划器、被晋升的副队长、已记录的普通�
 被委派的子会话仍然是**叶子**：名册在每个子会话自己的作用域里拒绝两个 spawn 工具，只读角色（Explorer、
 Researcher）另外拿到只读拒绝清单。
 
+### 咨询会出现在 DAG 上
+
+座位发起的咨询在**两个**面上都是一等**节点**——TUI 的 MPD 页与 Web 的 Team 视图——画在发起它的那个 cell 的分组
+盒子里，并且落定之后仍留在图上，直到该 cell 结束。
+
+- **它们住在哪里。** 每次启动往该 cell 的 team 记录（`.mpd/team/teams/<id>.json`）写**一行** `running`；共享的图
+  模型由这条记录构建、并按变更 feed 的修订号缓存，因此一次咨询是通过看板编辑所用的同一条 写入 → `teamStateChanged`
+  → 修订号 路径刷新两个面的。没有第二个 watcher、没有第二个存储、没有新路由。
+- **它们不是任务。** 咨询不占 `T<n>`、不被派发、被排除在看板统计、`readyTasks`、干净终止规则与验证者范围之外，
+  也**不贡献**任何边与任何 rank：带不带它们，任务画面逐字节相同。它用既有的六态色调绘制（`interrupted` 读作
+  `cancelled`），外加一个标记——TUI 卡片上是 `@`，Web 卡片同一个字形——id 是 `C<n>`，在子单元盒子里是
+  `<teamId>::C<n>`。
+- **落定的咨询不需要座位过问就会被记录。** 名册行的 `mpdConsults.start` 接受可选的 `onSettled` 观察者，在记录离开
+  `running` 时触发一次；cellwork 用它写终态行。`wait`/`collect`/`cancel` 的回答作为第二个、幂等的写入源写同一行。
+  因此 `cancel` 立刻可见，一个已完成的咨询也不会挂在图上继续自称 running。
+- **子单元的咨询画在该子单元的盒子内部**，因为投影把每个存活子级的行交给它自己的帧；丢掉已结束子级的存活过滤
+  规则，也一并丢掉它的咨询。
+- **`cellwork_stop` 会清掉它们**（强制停止也一样）：行从 team 记录里删除，内存中的 consult book 被丢掉，于是之后
+  才落定的子会话无法重新造出一行。
+- **声明边界。** 一个永不清停的 cell 会保留它的行，直到它们从留存上限中老化出去（每个 team 50 行，先丢**最旧的
+  已结算**行，绝不丢 `running` 行）。cell 还没有活跃 team 时（`teamId` 为空，即从未批准过看板）发起的咨询**什么都
+  不记**——唯一痕迹是一行 `consult-unattached` journal，工具回答不变。该记录的读-改-写与所有 team 写入一样有跨进程
+  暴露面（没有 compare-and-swap）；进程在落定前死掉时那一行会停在 `running`（没有清扫器，最终由留存上限带走）；
+  TUI 的主机子智能体条**不**去重，所以一个运行中的咨询可能出现两次——主机行直到 60 秒宽限到期，以及 DAG 节点，
+  后者才是持久的那一面。
+
 ## 上下文预算：实测算出，绝不猜
 
 这个模式对上下文有两条不同的承诺，用的也是两个不同的分数：
@@ -387,8 +413,11 @@ UTF-8 字符 3 字节、按每字符 1 token），因此中文密集的任务只
    会话）、该 cell 的队长，两者都不活跃时屏障以**独立**原因 `reseed-parent-unavailable` 拒绝。真正用到的
    父级会记入 journal（`parentSource` + `parentSessionId`），因此血缘由可观测取代推断。
 6. **子 team**：被晋升的 agent 用 `cellwork_subteam` 登记自己的子 cell，并领导自己的计划。当
-   `depth + 1 > depthMax`（默认 3）时 `cellwork_subteam` 会拒绝，并返回确切的边界；直接启动路径把同一个深度
-   作为绝对值 `maxDepth` 传下去，因此宿主上限与 cell 上限一致。子 team 运行完全相同的阶段与规则，
+   `depth + 1 > depthMax`（默认 3）时 `cellwork_subteam` 会拒绝并返回确切的边界，父 team 的深度读自
+   `mpdTeams.depthBudget`；它**不启动任何 agent** —— 只写子 cell 记录，并回答一条由被晋升成员随后执行的指令。
+   深度只有**一种说法**，其中含**两套刻度**：`cellwork.depthMax` 是 **CELL 树**的边界，**绝不**作为任何
+   agent 的 `maxDepth` 传下去；一个 agent 的上限永远是**它自己父 session 记录的深度 + 1**（即
+   `spawnMaxDepthOf` 规则），这正是每一次咨询、每一次重种都是叶子的原因。子 team 运行完全相同的阶段与规则，
    `cellwork_supervise` 会巡检整棵 cell 树。
 
 队长不是成员，在 v1 中永远不会被检查点。
@@ -546,7 +575,9 @@ cell id 形如 `cell-<UTC 时刻>`；子 cell 会记录 `parentCellId` 与 `dept
   标记为 `cancelled`（`state.json: cancelledTasks`，key → 看板 id），它的看板行仍然**可见**。派发之所以跳过
   它，只是因为 cellwork 自己的派发会读取 cell 记录：单看看板仍然能看到这一行。
 - **深度围栏默认三层。** 被晋升的副队长可以拉起子 team，`cellwork_subteam` 在超过 `depthMax` 时拒绝；
-  嵌套能力本身依赖 adapter 的直接启动路径与显式的绝对 `maxDepth`，这一点在能力尖刺
+  登记子 cell **不启动任何 agent**。插件真正启动的每一个 agent 都拿到一个显式的 `maxDepth`，等于
+  **它自己父 session 记录的深度 + 1** —— 即 `spawnMaxDepthOf` 规则：咨询时施加于调用者，压缩重种时施加于
+  **活跃**父级 —— 绝不是 cell 树那个旋钮，因此两套刻度不会再被混为一谈。嵌套能力与这条推导在能力尖刺
 （`evidence/cellwork/capability-spike/`）中作为源码阅读记录在案。
 - **`parent_team_id` 是隐式推导，不是旋钮。** 子 team 的父级由团队平面在批准时从父 team 的名册推导
 （`deriveParentTeam`）；`cellwork_subteam` 把推导出来的父 team id 记在 cell 记录上，全程不传任何父级 id，因此

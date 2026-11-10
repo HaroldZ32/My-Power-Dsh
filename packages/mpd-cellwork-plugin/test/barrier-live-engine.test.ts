@@ -54,8 +54,8 @@ interface Engine {
 interface FakeAgent {
   /** The shared session/agent id. */
   id: string
-  /** The session the workspace root and the parent link resolve from. */
-  session: { id: string; header: { cwd: string; parentSession?: string } }
+  /** The session the workspace root, the parent link and the delegation depth resolve from. */
+  session: { id: string; header: { cwd: string; parentSession?: string; delegationDepth?: number; origin?: string } }
   /** The Agent's own scoped context, which serves the member's engine. */
   ctx?: { get: (name: string) => unknown }
 }
@@ -82,8 +82,8 @@ interface Harness {
   registry: Map<string, FakeAgent>
   /** The engine the member's own scope serves. */
   engine: Engine
-  /** Every reseed the barrier raised, with the parent object it handed the host. */
-  reseeds: Array<{ parent: unknown; prompt: string }>
+  /** Every reseed the barrier raised, with the parent object and the `maxDepth` it handed the host. */
+  reseeds: Array<{ parent: unknown; prompt: string; maxDepth: unknown }>
   /** Every interrupt the barrier issued (`targetSessionId`). */
   interrupts: string[]
   /** Every directive injected into the member. */
@@ -104,6 +104,11 @@ interface HarnessOptions {
   parentLive?: boolean
   /** Whether the captain handle is still live. */
   captainLive?: boolean
+  /**
+   * The delegation facts on the PARENT's session header, which is what the reseed's `maxDepth` derives
+   * from (R2.1). Absent means a top-level parent: depth 0, so the child lands at depth 1.
+   */
+  parentHeader?: { delegationDepth?: number; origin?: string }
   /** Whether the live-handle engine seam exists (false = an older mounted adapter). */
   liveEngineSeam?: boolean
   /**
@@ -177,8 +182,8 @@ function makeHarness(options: HarnessOptions = {}): Harness {
   }
   /** The captain's handle, whose session the cell record names. */
   const captain: FakeAgent = { id: CAPTAIN_SESSION, session: { id: CAPTAIN_SESSION, header: { cwd: workspace } } }
-  /** The member's original parent handle. */
-  const parent: FakeAgent = { id: PARENT_SESSION, session: { id: PARENT_SESSION, header: { cwd: workspace } } }
+  /** The member's original parent handle, whose header decides the reseed's depth cap. */
+  const parent: FakeAgent = { id: PARENT_SESSION, session: { id: PARENT_SESSION, header: { cwd: workspace, ...(options.parentHeader ?? {}) } } }
   /** Which doors serve the engine in the composition this arm models. */
   const doors = options.engineDoors ?? "agent-scope"
   /** The engine the member's OWN SCOPE serves: nothing when the preset realm isolates compaction. */
@@ -190,8 +195,8 @@ function makeHarness(options: HarnessOptions = {}): Harness {
   if (options.captainLive !== false) registry.set(CAPTAIN_SESSION, captain)
   if (options.parentLive !== false) registry.set(PARENT_SESSION, parent)
   if (options.detached !== true) registry.set(MEMBER_SESSION, member)
-  /** Every reseed the barrier raised. */
-  const reseeds: Array<{ parent: unknown; prompt: string }> = []
+  /** Every reseed the barrier raised, with the depth cap it forwarded. */
+  const reseeds: Array<{ parent: unknown; prompt: string; maxDepth: unknown }> = []
   /** Every interrupt the barrier issued. */
   const interrupts: string[] = []
   /** Every directive injected into the member. */
@@ -219,8 +224,8 @@ function makeHarness(options: HarnessOptions = {}): Harness {
     interruptAgent: (targetSessionId: string): void => { interrupts.push(targetSessionId) },
     startContinuableAgent: async (spec: unknown): Promise<unknown> => {
       /** The raised request, read structurally because the seam takes `unknown`. */
-      const request = (spec as { request?: { parent?: FakeAgent; prompt?: string } } | undefined)?.request
-      reseeds.push({ parent: request?.parent, prompt: String(request?.prompt ?? "") })
+      const request = (spec as { request?: { parent?: FakeAgent; prompt?: string; maxDepth?: unknown } } | undefined)?.request
+      reseeds.push({ parent: request?.parent, prompt: String(request?.prompt ?? ""), maxDepth: request?.maxDepth })
       // THE HOST'S OWN CONDITION, enforced by the double: a parent the registry no longer holds is
       // refused with the exact sentence the fences recorded.
       if (request?.parent === undefined || registry.get(request.parent.id) !== request.parent) {
@@ -470,6 +475,46 @@ test("D1/C6(f): a dead parent falls back to the CAPTAIN, and the fallback is jou
   expect(row?.parentSource).toBe("captain")
   expect(row?.parentSessionId).toBe(CAPTAIN_SESSION)
   expect(String(row?.originalParentSessionId)).toBe(PARENT_SESSION)
+})
+
+// ── R2.1: the reseed cap is the LIVE PARENT's depth + 1 ────────────────────
+
+test("R2.1: the reseed forwards the parent's depth + 1, never `cellwork.depthMax`", async () => {
+  // The two scales DIFFER on purpose (3 vs 2): the cell cap counts nested CELLS, the child lands one
+  // level below its parent, so a forwarded cell cap would name a level the child never occupies.
+  /** The harness whose parent sits at delegation depth 1 in a cell tree bounded at 3. */
+  const harness = makeHarness({ detached: true, answers: [null], parentHeader: { delegationDepth: 1 }, knobs: { depthMax: 3 } })
+  await stopListener(harness)({ agent: harness.member })
+  expect(harness.reseeds.length).toBe(1)
+  expect(harness.reseeds[0].maxDepth).toBe(2)
+  // The cell-tree knob is NOT what travels, and the host's hidden default is never reached.
+  expect(harness.reseeds[0].maxDepth).not.toBe(3)
+  expect(harness.reseeds[0].maxDepth).not.toBeUndefined()
+})
+
+test("R2.1: a deeper parent moves the cap with it, and a top-level parent answers 1", async () => {
+  /** A parent recorded at delegation depth 2, the cell tree still bounded at 3. */
+  const deep = makeHarness({ detached: true, answers: [null], parentHeader: { delegationDepth: 2 }, knobs: { depthMax: 3 } })
+  await stopListener(deep)({ agent: deep.member })
+  expect(deep.reseeds[0].maxDepth).toBe(3)
+  /** A parent with no recorded depth at all: a top-level session, whose child lands at depth 1. */
+  const top = makeHarness({ detached: true, answers: [null], knobs: { depthMax: 3 } })
+  await stopListener(top)({ agent: top.member })
+  expect(top.reseeds[0].maxDepth).toBe(1)
+  /** A parent recorded as a subagent with no depth: a CHILD, so its own child lands one level lower. */
+  const child = makeHarness({ detached: true, answers: [null], parentHeader: { origin: "subagent" }, knobs: { depthMax: 3 } })
+  await stopListener(child)({ agent: child.member })
+  expect(child.reseeds[0].maxDepth).toBe(2)
+})
+
+test("R2.1: the fallback to the CAPTAIN derives from the captain's own depth, not the member's parent's", async () => {
+  /** The harness whose original parent is dead, so the captain is the live parent the child lands under. */
+  const harness = makeHarness({ detached: true, answers: [null], parentLive: false })
+  await stopListener(harness)({ agent: harness.member })
+  expect(harness.reseeds.length).toBe(1)
+  expect(harness.reseeds[0].parent).toBe(harness.captain)
+  // The captain's session records no delegation depth, so the reseeded child is a depth-1 session.
+  expect(harness.reseeds[0].maxDepth).toBe(1)
 })
 
 test("D1/C6(g): with BOTH parents dead the reseed is refused as `reseed-parent-unavailable` and no child is raised", async () => {

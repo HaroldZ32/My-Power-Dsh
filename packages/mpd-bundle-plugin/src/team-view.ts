@@ -162,6 +162,14 @@
      */
     planned?: boolean
     /**
+     * The CONSULT facts, present only on the synthesized row of a consult node (consult DAG, contract §6).
+     *
+     * ITS PRESENCE IS THE DISCRIMINATOR the card reads: a consult has no board row, so it can never be
+     * confused with a ghost (`planned: true`) or a task — and this factory has no imports, so the shape
+     * is declared structurally here exactly as {@link TeamTask} and {@link ServedGraphModel} are.
+     */
+    consult?: { consultId: string; cellId: string; state: string; startedAt: number; elapsedMs?: number }
+    /**
      * ISO-8601 UTC instant the task entered `in_progress`, when the record stamped one.
      *
      * ABSENT for a task that never started (and for a payload from an older server). The elapsed time
@@ -277,6 +285,37 @@
     visual?: string
   }
 
+  /**
+   * One CONSULT node of the host's model, narrowed to what this drawing paints.
+   *
+   * The full value is `GraphConsultNode` from `mpd-graph-core`: the same id (`C<n>` at the root,
+   * `"<groupId>::C<n>"` inside a box), the same `group` attribution and the same lifecycle `status`.
+   * Its `visual` is the host's six-state tone, so this plane paints it with the tone table it already
+   * has and adds ONE glyph of its own — no seventh colour, no second card component.
+   */
+  interface ServedGraphModelConsult {
+    /** The node id the card prints: `C<n>`, or `"<groupId>::C<n>"` inside a box. */
+    id: string
+    /** The supervisor's own id, printed by the pinned detail body. */
+    consultId: string
+    /** The cell that started it. */
+    cellId: string
+    /** When it started, epoch milliseconds. */
+    startedAt: number
+    /** How long it ran, milliseconds; absent while it is still running. */
+    elapsedMs?: number
+    /** The assignment excerpt, kept for the hover title. */
+    subject?: string
+    /** The rendered six-state tone the host computed. */
+    visual?: string
+    /** The recorded lifecycle word (`running` | `complete` | `interrupted` | `failed` | `cancelled`). */
+    status?: string
+    /** The canonical roster role, drawn as the card's owner. */
+    assignee?: string
+    /** The enclosing group's id, absent for a node of the root frame. */
+    group?: string
+  }
+
   /** One dependency edge of the host's model: `from` must close before `to`. */
   interface ServedGraphModelEdge {
     /** The blocker id. */
@@ -306,6 +345,16 @@
   interface ServedGraphModel {
     /** Every merged node, ghosts included; absent on a payload that carries no model. */
     nodes?: ServedGraphModelNode[]
+    /**
+     * The team's BACKGROUND CONSULTS, drawn as cards BESIDE the tasks and never counted as work.
+     *
+     * A structural subset of `mpd-graph-core`'s `GraphConsultNode`. ABSENT when the team recorded none —
+     * the same backward guarantee `groups` carries, so a consult-free payload draws exactly the picture
+     * this factory drew before consults existed. They never enter {@link ServedGraphModel.nodes}: a
+     * consult has no edge, no rank and no board row, which is why the two layout paths merge this array
+     * explicitly instead of filtering one node list.
+     */
+    consults?: ServedGraphModelConsult[]
     /**
      * Every group the host declared, flat and shallow-first; ABSENT for a team with no live child.
      *
@@ -810,6 +859,12 @@
     "task.round": "round",
     "task.verdict": "verdict",
     "task.owner": "owner",
+    // THE CONSULT CARD'S FOUR FACT LABELS (consult DAG, contract §6): a consult's pinned body prints
+    // these instead of the task body's verdict/attempt/round/blockers, which would all be blank on it.
+    "task.consult": "consult",
+    "task.status": "state",
+    "task.started": "started",
+    "task.elapsed": "elapsed",
     "task.contract": "acceptance contract",
     "task.contract.none": "No frozen acceptance contract was served for this task.",
     "task.close": "close",
@@ -1316,6 +1371,45 @@
        * vocabulary, so it borrows the one the drawing already carries.
        */
       const glyphOf = (visual: string): string => GLYPH[visual] ?? (visual === "planned" ? GLYPH.open : "?")
+      /**
+       * The glyph a CONSULT card draws instead of a state glyph (consult DAG, contract §6).
+       *
+       * `@` reads as "an agent was paged for this", it is ASCII and one cell, and it is distinct from
+       * every state mark and from the ghost's treatment (a ghost keeps the `open` glyph and is published
+       * through `data-mpd-planned`). The TONE still comes from the host's six-state `visual`, so a
+       * settled consult is painted with the colour a completed task gets — no seventh tone.
+       */
+      const CONSULT_GLYPH = "@"
+
+      /**
+       * One CONSULT node as a card row (consult DAG, contract §6).
+       *
+       * Synthesized rather than served as a task row, because a consult is NOT a task: the tallies above
+       * the drawing count the board, and a payload that mixed the two would tempt this plane to count
+       * agents as work. `depth: 0` and an empty `blockedBy` are the contract's own values — a consult
+       * takes no rank and draws no edge — so both layouts place it in its frame's first column with no
+       * incoming or outgoing line.
+       *
+       * Declared at FACTORY scope because BOTH layout paths need it: the flat one merges every consult,
+       * the nested one merges the root frame's here and each box's inside `planFrame`.
+       * @param node - one consult of the served model.
+       * @returns the card row the layout places.
+       */
+      const consultRowOf = (node: ServedGraphModelConsult): TeamTask => ({
+        id: node.id,
+        // The card's subject line shows the ROLE (the contract asks for `C<n>` + role + state); the
+        // assignment excerpt stays in the hover title and the pinned body, the non-drawing surfaces.
+        subject: node.assignee ?? node.subject ?? node.id,
+        status: node.status ?? "running",
+        visual: node.visual ?? "open",
+        ...(node.assignee === undefined ? {} : { owner: node.assignee }),
+        blockedBy: [],
+        failedBy: [],
+        depth: 0,
+        rank: 0,
+        planned: false,
+        consult: { consultId: node.consultId, cellId: node.cellId, state: node.status ?? "running", startedAt: node.startedAt, ...(node.elapsedMs === undefined ? {} : { elapsedMs: node.elapsedMs }) },
+      })
       /** The bilingual kind abbreviation of one task; empty when the task carries no kind. */
       const kindOf = (kind: string | undefined): string => {
         if (kind === undefined || kind === "") return ""
@@ -1523,7 +1617,9 @@
          * stamp. Only this case gets the "not started" sublabel: labelling a completed task with a
          * missing `finishedAt` as "not started" would be false, because it clearly did start.
          */
-        const neverStarted = elapsed === "-" && (typeof task.startedAt !== "string" || task.startedAt === "")
+        // A CONSULT HAS NO BOARD STAMPS, so the task card's "never started" reading would be a lie on
+        // it: the consult branch below prints its OWN four facts and never claims a board lifecycle.
+        const neverStarted = task.consult === undefined && elapsed === "-" && (typeof task.startedAt !== "string" || task.startedAt === "")
         /**
          * One label/value row of the card.
          * @param key - the row's React key.
@@ -1545,7 +1641,14 @@
         },
           row("tip-status", t("tip.status"), visualLabelOf(task.visual)),
           row("tip-owner", t("tip.owner"), task.owner === undefined || task.owner === "" ? t("tip.unassigned") : task.owner),
-          row("tip-elapsed", t("tip.elapsed"), elapsed, neverStarted ? t("tip.notStarted") : undefined),
+          ...(task.consult === undefined
+            ? [row("tip-elapsed", t("tip.elapsed"), elapsed, neverStarted ? t("tip.notStarted") : undefined)]
+            // THE CONSULT'S OWN TWO ROWS: its recorded state word and how long it ran (a dash while it is
+            // still running, which is what `elapsedMs` being absent means).
+            : [
+              row("tip-state", t("tip.status"), task.consult.state),
+              row("tip-elapsed", t("tip.elapsed"), task.consult.elapsedMs === undefined ? "-" : formatDuration(task.consult.elapsedMs)),
+            ]),
           react.createElement("div", { key: "tip-subject-row", className: "mpd-dag-tip-row" },
             react.createElement("span", { key: "tip-subject-label", className: "mpd-dag-tip-label" }, t("tip.task")),
             react.createElement("span", { key: "tip-subject", className: "mpd-dag-tip-subject", title: task.subject }, short(task.subject, TIP_SUBJECT_MAX))),
@@ -1836,9 +1939,13 @@
          * requirement ("改 task plan 就可以实时调整工程"), and a web that skipped it would show a plan
          * edit on the TUI only. A ghost is a normal box in the EXISTING `open` tone — no new glyph, no
          * new colour — carrying `visual: "planned"` and the rank the host derived for it.
+         *
+         * THE CONSULTS ARE MERGED HERE TOO, and this is the FLAT path's half of the contract's "both
+         * layout paths" rule: a payload with no `groups` draws through this function, and a consult the
+         * host served but this merge skipped would appear in the terminal and nowhere else.
          * @param board - the board, in the order the route served it.
          * @param model - the host's model, or undefined on an older server (which serves no ghosts).
-         * @returns the board followed by one synthesized row per plan-only ghost, in model order.
+         * @returns the board followed by one synthesized row per plan-only ghost and per consult.
          */
         const withGhosts = (board: TeamTask[], model: ServedGraphModel | undefined): TeamTask[] => {
           if (model === undefined || !Array.isArray(model.nodes)) return board
@@ -1869,7 +1976,11 @@
               planned: true,
             })
           }
-          return [...board, ...ghosts]
+          // THE FLAT PATH'S CONSULTS: every served consult is drawn, in the host's own order. A flat model
+          // has no frames, so none of them carries a `group`; the nested path filters by frame instead.
+          /** One row per consult this payload serves, skipped only when the board already claims the id. */
+          const consultRows = (Array.isArray(model.consults) ? model.consults : []).filter((node) => !known.has(node.id)).map(consultRowOf)
+          return [...board, ...ghosts, ...consultRows]
         }
         /** The board plus every plan-only ghost: what the columns and boxes are computed from. */
         const drawing = withGhosts(tasks, served)
@@ -2671,7 +2782,11 @@
             if (known.has(node.id) || node.visual === "group" || node.planned !== true) continue
             ghosts.push({ ...rowOfNode(node), status: "planned", visual: "planned", planned: true })
           }
-          return [...tasks, ...ghosts]
+          // THE ROOT FRAME'S OWN CONSULTS (a consult inside a box carries that box's `group`, so it is
+          // drawn by `planFrame` below instead). Same helper as the flat path: one row shape, one tone.
+          /** The consults the host attributed to the ROOT frame, in its own order. */
+          const rootConsults = (Array.isArray(served.consults) ? served.consults : []).filter((node) => (node.group ?? null) === null && !known.has(node.id)).map(consultRowOf)
+          return [...tasks, ...ghosts, ...rootConsults]
         }
         /**
          * Lay ONE frame out: its items placed in columns, its own edges routed, its boxes' interiors recurred.
@@ -2688,6 +2803,13 @@
             : (Array.isArray(served.nodes) ? served.nodes : [])
               .filter((node) => (node.group ?? null) === frameId && node.visual !== "group")
               .map(rowOfNode)
+          // A BOX'S OWN CONSULTS ARE DRAWN INSIDE THAT BOX (contract §6, acceptance 5): the host
+          // attributes each one with `group`, so the frame that owns it is the frame that draws it.
+          if (frameId !== null) {
+            for (const node of Array.isArray(served.consults) ? served.consults : []) {
+              if ((node.group ?? null) === frameId) rows.push(consultRowOf(node))
+            }
+          }
           /** The cards as items, each in the column the host served for it. */
           const items: NestedItem[] = rows.map((task) => ({
             id: task.id,
@@ -3281,6 +3403,25 @@
        * @returns the detail element.
        */
       const detailSection = (task: TeamTask, tasks: TeamTask[], contract: { description: string; claimedBy: string; claimedAt: string; attempt: number } | undefined, edges?: ServedGraphModelEdge[]): unknown => {
+        // A CONSULT IS NOT A TASK (consult DAG, contract §6): the task body's verdict, attempt, round,
+        // blockers and acceptance contract are five rows of nothing on it. Its own four facts are the
+        // ones a reader pinned it for.
+        if (task.consult !== undefined) {
+          /** The consult's badge, narrowed once so the rows below read one value. */
+          const badge = task.consult
+          /** The wall-clock start, rendered as an ISO instant so a reader can compare it with a log. */
+          const started = new Date(badge.startedAt).toISOString()
+          return react.createElement("div", { key: "consult-detail", "data-mpd-detail": task.id, style: { marginTop: "10px" } },
+            react.createElement("div", { key: "cd-top", style: CSS.row },
+              react.createElement("span", { key: "cd-subject", style: { flex: "1 1 auto", fontWeight: 600 } }, task.subject),
+              react.createElement("span", { key: "cd-close", "data-detail-close": task.id, style: { ...CSS.chip, cursor: "pointer" }, onClick: () => { if (setPinned !== null) setPinned(null) } }, t("task.close"))),
+            detailRow("cd-id", "task.id", task.id),
+            detailRow("cd-consult", "task.consult", badge.consultId),
+            detailRow("cd-role", "task.owner", badge.state === "" ? "—" : task.owner ?? "—"),
+            detailRow("cd-state", "task.status", badge.state),
+            detailRow("cd-started", "task.started", started),
+            detailRow("cd-elapsed", "task.elapsed", badge.elapsedMs === undefined ? "—" : formatDuration(badge.elapsedMs)))
+        }
         // BLOCKERS AND DEPENDENTS COME FROM THE SAME SOURCE AS THE DRAWN EDGES. A plan-declared arrow
         // is painted, so the pinned body must name that relationship: with a model it reads the served
         // edges, and only without one does it fall back to the board's `blockedBy` — the same degrade.
@@ -3556,10 +3697,15 @@
             },
           },
             react.createElement("div", { key: "node-top", style: CSS.nodeTop },
-              react.createElement("span", { key: "glyph", style: { color: toneOf(node.task.visual), fontWeight: 700 } }, glyphOf(node.task.visual)),
+              // A CONSULT DRAWS THE CONSULT GLYPH, its id (`C<n>` / `team::C<n>`) and its STATE WORD in
+              // the slot a task spends on its kind code — the contract's `C<n>` + role + state, with the
+              // role on the subject line below. Same card, same tone table, one distinguishing glyph: no
+              // second component, and the drawing stays locale-free (the state word is the RECORDED
+              // lifecycle enum, never a translated label).
+              react.createElement("span", { key: "glyph", style: { color: toneOf(node.task.visual), fontWeight: 700 } }, node.task.consult === undefined ? glyphOf(node.task.visual) : CONSULT_GLYPH),
               react.createElement("span", { key: "id", style: { fontWeight: 700 } }, node.task.id),
-              react.createElement("span", { key: "kind", style: CSS.dim }, kindCodeOf(node.task.kind))),
-            react.createElement("div", { key: "subject", style: { ...CSS.dim, marginTop: "1px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, labelOf[node.task.id] ?? ""))
+              react.createElement("span", { key: "kind", style: CSS.dim }, node.task.consult === undefined ? kindCodeOf(node.task.kind) : node.task.consult.state)),
+            react.createElement("div", { key: "subject", style: { ...CSS.dim, marginTop: "1px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, node.task.consult === undefined ? labelOf[node.task.id] ?? "" : node.task.subject))
         }
         // THE TALLY SAYS WHAT A CAPTAIN ACTS ON, not just how far along the board is: how many tasks
         // a member could pick up RIGHT NOW, and how many of those are only ready because a
@@ -3825,12 +3971,15 @@
                   },
                 },
                 react.createElement("div", { key: "node-top", style: CSS.nodeTop },
-                  react.createElement("span", { key: "glyph", style: { color: toneOf(task.visual), fontWeight: 700 } }, glyphOf(task.visual)),
+                  // A CONSULT DRAWS THE CONSULT GLYPH, its id and its STATE WORD where a task prints its
+                  // kind code, with the role on the subject line: the same treatment the NESTED card gives
+                  // it, so a consult reads identically whether it sits in a box or at the root.
+                  react.createElement("span", { key: "glyph", style: { color: toneOf(task.visual), fontWeight: 700 } }, task.consult === undefined ? glyphOf(task.visual) : CONSULT_GLYPH),
                   react.createElement("span", { key: "id", style: { fontWeight: 700 } }, task.id),
                   // THE LEGEND'S `<KIND>` IS ASCII (clause F1): the localized word belongs to the
                   // chrome (the pinned detail body), never to the CJK-free drawing plane.
-                  react.createElement("span", { key: "kind", style: CSS.dim }, kindCodeOf(task.kind))),
-                react.createElement("div", { key: "subject", style: { ...CSS.dim, marginTop: "1px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, labelOf[task.id]),
+                  react.createElement("span", { key: "kind", style: CSS.dim }, task.consult === undefined ? kindCodeOf(task.kind) : task.consult.state)),
+                react.createElement("div", { key: "subject", style: { ...CSS.dim, marginTop: "1px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, task.consult === undefined ? labelOf[task.id] : task.subject),
                 // The closers, in order: the node, the column's node map, the column, the grid's column
                 // map, the grid, the padded wrapper, the graph element, and `children.push`.
                 ))))))))

@@ -24,6 +24,7 @@ import {
   CONSULT_WAIT_MAX_MS,
   consultSeatRefusal,
   createConsultBook,
+  clearCellConsults,
   runConsultAction,
   startDelegation,
   type ConsultServiceView,
@@ -64,6 +65,14 @@ export interface FlowDeps {
   config: CellworkConfig
   /** The row's log sink. */
   warn: (line: string) => void
+  /**
+   * Receives the cell-end consult cleanup, so `cellwork_stop` can clear this row's consult book.
+   *
+   * WHY A CALLBACK AND NOT A RETURN VALUE: the stop tool is registered in the row's entry module, which
+   * never sees the book — the book belongs to these tools. Handing the cleanup back at install time keeps
+   * the book private to this module and gives the stop path exactly one function to call.
+   */
+  onConsultStop?: (hook: (cell: { cellId: string; teamId: string; workspace: string }) => Promise<void>) => void
 }
 
 /** One flow tool's answer: a structured success (any documented fields) or the refusal sentence. */
@@ -214,6 +223,12 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
    * dies with the process exactly as the supervisor's own records do (contract §3.4).
    */
   const consultBook = createConsultBook()
+  // THE CELL-END CLEANUP (contract §5.3): the stop tool owns the transition, this module owns the book.
+  deps.onConsultStop?.(async (cell) => {
+    // THE CALLER'S WORKSPACE travels with the call: the stop tool resolved it for ITS invocation, and the
+    // adapter's exec-less root would be a different tree in a multi-session host.
+    await clearCellConsults({ book: consultBook, cellId: cell.cellId, workspace: cell.workspace, teamId: cell.teamId, teamActions, now: new Date() })
+  })
   /** The config service, probed per call. */
   const configService = (): ConfigServiceView | undefined => {
     /** The service object, or undefined. */
@@ -686,6 +701,10 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         exec,
         now: new Date(),
         book: consultBook,
+        // THE PLANE ADDRESS (consult DAG, contract §3): a cell that never approved a team records
+        // nothing, and the writer journals that instead of failing the call.
+        teamId: cell.teamId,
+        teamActions,
       }, argv.tasks)
       return result.ok ? { ...result } : { ok: false, error: result.error }
     },
@@ -795,6 +814,8 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         exec,
         now: new Date(),
         book: consultBook,
+        teamId: cell.teamId,
+        teamActions,
       }, { action: argString(argv, "action"), consultId: argString(argv, "consultId"), timeoutMs: argv.timeoutMs })
       return result
     },

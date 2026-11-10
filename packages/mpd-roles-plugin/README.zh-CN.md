@@ -25,7 +25,9 @@
   之外的有界平面（cellwork 的 `cellwork_delegate` / `cellwork_consult` / 批量 `cellwork_recon`）无需相对
   导入本行就能发起与结算后台咨询。`canonicalRole(role, exec?)` 是名册**自己的**解析器（也就是
   `mpd_role_spawn` 用的那个），因此消费者绝不重新实现规范化：`DeepWorker`、`deep worker`、`deep-worker` 与
-  `Deep Worker` 得到同一个规范名，传入调用者 `exec` 时扩展角色也能解析，未知拼写回答 `undefined`。
+  `Deep Worker` 得到同一个规范名，传入调用者 `exec` 时扩展角色按**该次调用**的 workspace 解析（省略 `exec`
+  时则按扩展平面自己的回退根 —— `DSH_WORKSPACE_ROOT`、再 `process.cwd()` —— 解析，绝不是「只认基础名册」），
+  未知拼写回答 `undefined`。
   一个注册表、一个 `MPD_DSH_CONSULT_MAX` 上限、一个静默死信器同时约束两个面；`start` 立刻返回
   `{consultId, role, state:"running", startedAt}`，并且先做角色规范化。它不新增工具，也不出现在任何工具清单里。
   **唯一的行为差异：** `start` **不**施加 `consultDepthRefusal` —— 那道下限属于**工具**处理器，而本服务由
@@ -33,7 +35,10 @@
   `spawnMaxDepthOf(exec.agent)` 规则（调用者深度 + 1）；调用者**可以**传绝对 `maxDepth`，但 cellwork 不再
   传——它的 `cellwork.depthMax` 数的是嵌套的 **CELL**，是另一套刻度。**这条豁免是进程级的**：今天只有一个
   消费者，第二个消费者必须先论证这次绕过。persona、route、fallback、上限、死信器与只读子会话作用域完全
-  一致，因为拉起走的是同一条内部路径。
+  一致，因为拉起走的是同一条内部路径。`start` 还接受可选的 `onSettled(outcome)` 观察者，在记录离开 `running` 时
+  由**唯一**的结算路径**恰好**触发一次（报告、死信器打断、取消与拉起失败都会走到它），因此把咨询持久记录下来的调用方
+  ——cellwork 的 DAG 节点——无需座位去调 `wait`/`collect` 就能知道它们结束了。不传回调就是今天的行为，所以这个选项对
+  所有既有调用方都是惰性的。
 - `mpd_roles_list` — roster，每个 role 一行：名称、route、做什么。
 - `mpd_role_spawn` — **一次性**单次咨询（one-shot single-call consult）：对一个 role 发起一次有界委派并返回一份报告。被生成的子智能体（roster persona + route + 对 read-only roles 的 write-deny toolFilter）**以该 role 的名称为 label**（`Architect`、`Deep Worker`），而不再是 `role-<id>-<random>`。在提供 `startActivation` 的 host 上，报告落定后 adapter 会 dispose 该 activation —— 已退役的 `start` 回退路径**没有 activation 可 dispose** —— 因此无论走哪条路径，该次咨询都**不可复用**：新问题请发起**新的** spawn。（harness 的 catalog 是只追加的，所以已结束的子会话仍可能以 `inactive` 列出；但契约始终是一次性的。）`mpd_workmate_spawn` 使用同样的**一次性** spawn 机制但作用于持久的、可演化的实例 —— 连续性由库中的 persona/memory/note **记录**承载，而不是子会话；团队工作走 mpd 的 plan 平面（`agent_teams_plan`），绝不走官方的 `spawn_teammate` —— 它已被团队之门守卫拒绝。**一次咨询就是叶子，由两道机制保证。**（1）子会话**自己的**工具作用域拒绝两个 bundle spawn 工具（`mpd_role_spawn`、`mpd_workmate_spawn`），因此咨询绝不可能再次委派——无论是否只读——也绝不可能抬高自己的深度上限；这份拒绝清单与名册的只读清单相互独立，并由一条测试与 workmate 行的那份钉成相等。（2）已经处于委派深度 **2 或更深**的调用者会被直接**拒绝**（在这里干活，或把问题上交），而深度 `0` 与 `1` 保持放行：队长发起咨询（0 → 1），cell **规划器**——团队里深度 1 的成员、不是这两个工具的子会话——保留 `mpd_role_spawn` 路线，它发起的咨询落在深度 2、本身就是一个叶子。`mpd_role_spawn` 还会传 `maxDepth` = 调用者记录深度 + 1，因此宿主自己的深度默认值绝不会拒绝这个叶子。没有记录深度的调用者读作深度 `0`；被 harness 记录为 `origin:"subagent"` 但**没有**深度的 session 读作深度 `1`（即子会话）。`mpd_workmate_spawn` 对 session header 的读法完全一致，并有一条测试在每种 header 形状上比较两个 helper。cellwork 的三个咨询动词（含批量 `cellwork_recon`）**经 `mpdConsults` 服务启动**，因此不走工具侧这道下限：该服务把子会话的智能体深度交给 `spawnMaxDepthOf`（调用者深度 + 1，一个叶子），不施加任何 cell 绝对上限——`cellwork.depthMax` 数的是嵌套 **CELL**，绝不传到子会话。而 cellwork 的**验证者**座位同样被拒绝两个 spawn 工具：裁决是它自己的活，FAIL 才是把工作退回写作者的通道。
 - `mpd_role_persona` — 为需要将 persona 作为文本使用的 spawn surface 获取 persona 文本（用 `agent_teams_plan` 的 `add_member` stage 的 teammate 会把它作为成员的 `prompt`；`spawn_teammate` 本身在工具边界上被拒绝）。

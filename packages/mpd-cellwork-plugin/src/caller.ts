@@ -64,6 +64,17 @@ export interface TeamActionsServiceView {
   handoff?: (input: { sessionId: string; content: string }) => Promise<unknown>
   /** Cancel named board rows, so no pass can pair them. */
   cancelTasks?: (input: { workspace: string; teamId: string; taskIds: readonly string[]; note?: string }) => Promise<unknown>
+  /**
+   * Record (or update) ONE background consult on the team record (consult DAG, contract §3).
+   *
+   * The CELLWORK-plane write: it makes the consult a node of the shared graph and — because the graph
+   * cache and the `/events` stream are invalidated by the team record's own write path — refreshes both
+   * surfaces with no second watcher. Optional, because a composition may mount an older team row; an
+   * absent verb degrades to a journal row, never to a failed delegation.
+   */
+  upsertConsult?: (input: { workspace: string; teamId: string; record: Record<string, unknown> }) => Promise<unknown>
+  /** Remove every consult row from the team record: the cell-end path (contract §5.3). */
+  clearConsults?: (input: { workspace: string; teamId: string }) => Promise<unknown>
 }
 
 /**

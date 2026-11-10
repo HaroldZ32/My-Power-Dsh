@@ -313,6 +313,43 @@ describe("the row provides `mpdConsults` over its ONE supervisor", () => {
     expect(harness.spawned[0].maxDepth).toBe(3)
   })
 
+  test("onSettled: the observer fires ONCE on success and ONCE on failure, with NO wait/collect", async () => {
+    /** The composed service over a real supervisor. */
+    const { service } = compose()
+    /** Every outcome the observer saw. */
+    const seen: Array<{ state: string; hasReport: boolean; error?: string }> = []
+    /** The started consult, with its observer armed. */
+    const started = await service.start({ role: "Explorer", task: "x", exec: {}, onSettled: (outcome): void => { seen.push({ state: String((outcome as { state?: unknown }).state ?? ""), hasReport: (outcome as { report?: unknown }).report !== undefined, ...((outcome as { error?: unknown }).error === undefined ? {} : { error: String((outcome as { error?: unknown }).error) }) }) } })
+    // NOBODY calls `wait` or `collect`: the settlement itself must notify.
+    await tick(20)
+    expect(seen.length).toBe(1)
+    expect(seen[0].state).toBe("complete")
+    expect(seen[0].hasReport).toBe(true)
+    // A collect AFTER the fact must not fire it a second time (one settlement, one callback).
+    service.collect(started.consultId)
+    await tick(5)
+    expect(seen.length).toBe(1)
+  })
+
+  test("onSettled: a consult whose POST-start settlement fails notifies with the failure text", async () => {
+    /** The composed service whose child's settlement REJECTS after the activation started. */
+    const { service, supervisor } = compose()
+    /** Every outcome the observer saw. */
+    const seen: Array<{ state: string; error?: string }> = []
+    /** The started consult. */
+    const started = await service.start({ role: "Explorer", task: "x", exec: {}, onSettled: (outcome): void => { seen.push({ state: String((outcome as { state?: unknown }).state ?? ""), ...((outcome as { error?: unknown }).error === undefined ? {} : { error: String((outcome as { error?: unknown }).error) }) }) } })
+    // The deadman is the ONE path that settles a started consult without a child answer; cancel is the
+    // caller-initiated equivalent and must notify identically.
+    supervisor.cancel(started.consultId)
+    await tick(5)
+    expect(seen.length).toBe(1)
+    expect(seen[0].state).toBe("interrupted")
+    // A cancel that lands after settlement is a no-op, so the observer still saw ONE outcome.
+    supervisor.cancel(started.consultId)
+    await tick(5)
+    expect(seen.length).toBe(1)
+  })
+
   test("R1.1: a depth-2 caller with NO forwarded cap lands at caller depth + 1 (3) — the row's OWN rule, not a cell cap", async () => {
     /** The applied row. */
     const harness = makePlugin()

@@ -648,7 +648,7 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
       },
       render: (_args: unknown, value: unknown) => render(value),
     },
-    execute: (args: unknown, exec: DshToolExec): CellworkStopResult | CellworkFailure => {
+    execute: async (args: unknown, exec: DshToolExec): Promise<CellworkStopResult | CellworkFailure> => {
       /** The tool arguments, read as an untrusted record. */
       const input = readArgs(args)
       /** The caller's workspace, session and seat. */
@@ -699,6 +699,10 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
       const now = new Date()
       /** The caller's stated reason, or the default that says what happened. */
       const reason = argString(input, "reason") === "" ? (forced ? "forced stop" : "stopped by the captain") : argString(input, "reason")
+      // THE CONSULT ROWS GO WITH THE CELL (contract §5.3): the graph stops drawing them, and the book's
+      // cell key is dropped so a late settlement cannot re-create a row. Best-effort by design — a plane
+      // that cannot answer must not block the stop, whose job is to hand every tool back.
+      await stopConsultCleanup?.({ cellId: state.cellId, teamId: state.teamId, workspace })
       /** The archived record: stopped, archived, and no longer the workspace's active cell. */
       const stopped: CellState = { ...state, phase: "stopped", archived: true, stopReason: reason }
       recordTransition(workspace, stopped, { event: "stop", reason, forced, inProgress }, now)
@@ -804,7 +808,11 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
       : { kind: "error", text: outcome.error }
   }
   // ── the flow tools (B4–B7) from their own module ──────────────────────────
-  disposers.push(...installCellworkFlow({ dsh, ctx: ctx as FlowCtx, config: cfg, warn }))
+  // The consult cleanup the stop tool owes: filled HERE, at install time, so the tool body below can
+  // call it long after this function returned (contract §5.3).
+  /** The cell-end consult clear, once the flow tools have installed their hook. */
+  let stopConsultCleanup: ((cell: { cellId: string; teamId: string; workspace: string }) => Promise<void>) | undefined
+  disposers.push(...installCellworkFlow({ dsh, ctx: ctx as FlowCtx, config: cfg, warn, onConsultStop: (hook) => { stopConsultCleanup = hook } }))
 
   // ── the protocol tools and listeners (B8/B9) ──────────────────────────────
   disposers.push(...installCellworkProtocol({ dsh, ctx: ctx as ProtocolCtx, config: cfg, warn }))

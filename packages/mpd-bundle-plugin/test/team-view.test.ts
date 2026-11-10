@@ -3502,3 +3502,109 @@ describe("T25 · mixed heights keep the nested lanes apart", () => {
     expect(arrivalY).toBeLessThan((boxU?.top as number) + (boxU?.height as number))
   })
 })
+
+// ── CONSULT NODES (`.mpd/plans/cellwork-consult-dag-nodes.md` §6, acceptance 5 and 7) ─────────────
+//
+// Both layout paths must merge the served `consults` array EXPLICITLY — the flat one over every node,
+// the nested one per frame — because a consult is not in `model.nodes` by contract. These arms drive the
+// real shipped factory: the flat geometry, the nested geometry (a box's own consult), the identity on an
+// absent field, and the RENDERED card (`@ C<n>` + role + state).
+
+describe("consults: the web drawing merges the served array on BOTH layout paths", () => {
+  /** One served consult node, every field spelled so an arm can single one out. */
+  const CONSULT = (id: string, extra: Record<string, unknown> = {}): Record<string, unknown> => ({
+    id,
+    // THE ORDINAL IS PART OF THE FIXTURE: the CORE mints `C<n>` from it, so a node without one would be
+    // named `C0` and every arm below would assert an id the host can never produce.
+    consultNumber: 1,
+    subject: "map the parser",
+    visual: "running",
+    dependencies: [],
+    depth: 0,
+    planned: false,
+    kind: "consult",
+    consultId: "consult-" + id,
+    cellId: "cell-1",
+    startedAt: 1_762_765_200_000,
+    status: "running",
+    assignee: "Explorer",
+    ...extra,
+  })
+
+  test("the FLAT path draws a root consult and adds NO edge and NO rank", () => {
+    /** The served board, from the shared core. */
+    const payload = stateOf(TASKS) as { model: GraphModel }
+    payload.model.consults = [CONSULT("C1")] as never
+    /** The view module, built without rendering. */
+    const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    // THE RANK COUNT IS THE HOST's: a consult takes no rank, so the columns are the board's 4.
+    const withConsult = view.layout((stateOf(TASKS) as { tasks: Array<Record<string, unknown>> }).tasks, undefined, payload.model)
+    expect(withConsult.rankCount).toBe(4)
+    expect(withConsult.nodes.map((node) => node.task.id)).toContain("C1")
+    // NO EDGE: nothing may be routed to or from a consult.
+    expect(withConsult.edges.some((edge) => edge.parent === "C1" || edge.child === "C1")).toBe(false)
+  })
+
+  test("identity on an ABSENT field: the same board without consults draws the same nodes", () => {
+    /** The payload with no consults at all. */
+    const plain = stateOf(TASKS) as { tasks: Array<Record<string, unknown>>; model: GraphModel }
+    /** The view module. */
+    const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    /** The drawing before any consult existed. */
+    const before = view.layout(plain.tasks, undefined, plain.model)
+    /** The same drawing after one consult was appended to the model. */
+    const after = view.layout(plain.tasks, undefined, { ...plain.model, consults: [CONSULT("C1")] as never })
+    expect(after.nodes.map((node) => node.task.id).filter((id) => id !== "C1")).toEqual(before.nodes.map((node) => node.task.id))
+    // THE PICTURE IS THE SAME, the PIXELS are not: a consult occupies a cell in its column, so every
+    // box below it (and every route beside it) shifts. The contract's byte-identity is about the MODEL's
+    // nodes/edges/ranks/report — which `mpd-graph-core`'s own arms pin — never about a canvas coordinate.
+    expect(after.edges.map((edge) => edge.parent + "→" + edge.child)).toEqual(before.edges.map((edge) => edge.parent + "→" + edge.child))
+    expect(after.rankCount).toBe(before.rankCount)
+    // THE ABSENT FIELD IS A REAL CASE, not a coincidence: this payload never carried the key.
+    expect("consults" in plain.model).toBe(false)
+  })
+
+  test("the NESTED path draws a subcell's consult INSIDE that subcell's box", () => {
+    /** A model with one subcell and a consult attributed to it, plus a root consult. */
+    const nestedModel = buildModel({
+      board: TASKS.map((task) => ({ id: String(task.id), subject: String(task.subject), ...(typeof task.status === "string" ? { status: task.status } : {}), blockedBy: Array.isArray(task.blockedBy) ? task.blockedBy.map(String) : [], depth: Number(task.depth ?? 0), ...(typeof task.visual === "string" ? { visual: task.visual } : {}) })),
+      // THE BOX'S CONSULT IS DECLARED ON THE BOX, which is how the host builds this input: the core
+      // mints the frame-qualified id and attributes `group` itself, so a fixture that hand-set them
+      // would test the renderer against a model the host can never produce.
+      groups: [{ id: "teamB", label: "Subcell B", board: [{ id: "B1", subject: "Child build", status: "open", blockedBy: [], depth: 0 }], consults: [CONSULT("inner", { cellId: "cell-sub", role: "Deep Worker", state: "complete" })] as never }],
+      consults: [CONSULT("C1")] as never,
+    })
+    /** The view module. */
+    const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    /** The nested drawing. */
+    const graph = view.layout((stateOf(TASKS) as { tasks: Array<Record<string, unknown>> }).tasks, undefined, nestedModel)
+    // THE NESTED BRANCH IS THE ONE THAT RAN: the model declares a group, so `layout` took `layoutNested`.
+    expect(graph.groups?.map((group) => group.id)).toContain("teamB")
+    /** The box's own rect, so the interior claim can be checked against the picture. */
+    const box = graph.groups?.find((group) => group.id === "teamB")
+    /** The inner consult's card. */
+    const inner = graph.nodes.find((node) => node.task.id === "teamB::C1")
+    expect(inner).toBeDefined()
+    // INSIDE THE BOX: the card's left edge sits within the frame's rectangle.
+    expect(inner?.left as number).toBeGreaterThanOrEqual(box?.left as number)
+    expect((inner?.left as number) + (inner?.width as number)).toBeLessThanOrEqual((box?.left as number) + (box?.width as number))
+    // The ROOT's consult is drawn as well, and it is NOT inside the box's interior columns.
+    expect(graph.nodes.map((node) => node.task.id)).toContain("C1")
+  })
+
+  test("the rendered CARD shows the consult marker, its id, its role and its state", async () => {
+    /** The payload whose model carries one consult. */
+    const payload = stateOf(TASKS) as { model: GraphModel }
+    payload.model.consults = [CONSULT("C1")] as never
+    /** The rendered case. */
+    const rendered = await renderView({ state: payload })
+    /** The whole panel's text, which is what a reader compares. */
+    const text = flatText(rendered.tree)
+    // THE CONTRACT'S THREE FIELDS: `C<n>` + role + state, on the card itself.
+    expect(text).toContain("@ C1")
+    expect(text).toContain("Explorer")
+    expect(text).toContain("running")
+    // AND THE NODE EXISTS IN THE DRAWN TASK SET, so the card is really in the graph and not in a tally.
+    expect(collect(rendered.tree, "data-mpd-node").map((node) => node.props["data-mpd-node"])).toContain("C1")
+  })
+})
