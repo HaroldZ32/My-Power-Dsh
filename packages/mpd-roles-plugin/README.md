@@ -24,6 +24,29 @@ read-only discipline.
 
 - `mpdRoles` service (`ctx.get("mpdRoles")`): `list()` / `get(key)` — consumed by
   `mpd-modelchain-plugin` (chain lookup).
+- `mpdConsults` service (`ctx.get("mpdConsults")`): `canonicalRole` / `start` / `list` / `wait` / `settle` /
+  `collect` / `cancel` — the SAME consult supervisor the tools below use, published as a cordis SERVICE so a
+  bounded plane outside this package (cellwork's `cellwork_delegate` / `cellwork_consult` / batch
+  `cellwork_recon`) can start and settle background consults without a relative import into this row.
+  `canonicalRole(role, exec?)` is the roster's OWN resolver (the one `mpd_role_spawn` uses), so a consumer
+  never re-implements the normalisation: `DeepWorker`, `deep worker`, `deep-worker` and `Deep Worker`
+  answer with the same canonical name, extension roles resolve against the call's workspace when `exec` is
+  passed (and against the extension plane's own fallback root — `DSH_WORKSPACE_ROOT`, then `process.cwd()`
+  — when it is omitted, never "the base roster only"), and an unknown spelling answers `undefined`. ONE registry, ONE `MPD_DSH_CONSULT_MAX` cap and ONE silence
+  deadman govern both surfaces; a start answers `{consultId, role, state:"running", startedAt}` at once
+  and the role is canonicalised first. It adds no tool and appears in no tool list. **THE ONE BEHAVIOURAL
+  DIFFERENCE:** `start` does NOT apply `consultDepthRefusal` — that floor belongs to the TOOL handlers,
+  while this service is called by a BOUNDED plane (cellwork) whose seats are team members and whose child
+  is a leaf. The child's agent depth is therefore this row's OWN `spawnMaxDepthOf(exec.agent)` rule
+  (caller depth + 1); a caller MAY pass an absolute `maxDepth`, but cellwork no longer does — its
+  `cellwork.depthMax` counts nested CELLS, a different scale. THE EXEMPTION IS PROCESS-WIDE: one consumer
+  exists today, and a second must justify the bypass. Persona, route, fallback, cap, deadman and the
+  read-only child scope are identical because the raise lands on the same internal path. `start` also takes an
+  optional `onSettled(outcome)` observer, fired EXACTLY ONCE from the one settlement path when the record
+  leaves `running` (a report, a deadman interruption, a cancel and a raise failure all reach it), so a
+  caller that keeps a durable record of its consults — cellwork's DAG nodes — learns they finished without
+  a seat having to call `wait`/`collect`. No callback means today's behaviour, so the option is inert for
+  every existing caller.
 - `mpd_roles_list` — the roster, one line per role: name, route, and what it does.
 - `mpd_role_spawn` — ONE-SHOT single-call consult: one bounded delegation with one role, one report.
   The child (roster persona + route + write-deny toolFilter for read-only roles) is **labelled with
@@ -45,9 +68,12 @@ read-only discipline.
   `maxDepth` = the caller's recorded depth + 1, so the host's own depth default can never refuse that leaf.
   A caller with no recorded depth reads as depth `0`; a session the harness recorded `origin:"subagent"`
   WITHOUT a depth reads as depth `1` (a CHILD). `mpd_workmate_spawn` reads the header identically and a
-  test compares both helpers on every header shape. `cellwork_recon` is EXEMPT from the depth floor — its
-  own child depth is bounded by `cellwork.depthMax` — and a cellwork VERIFIER seat is refused both spawn
-  tools as well: the verdict is its own work, and a FAIL is the channel back to the writer.
+  test compares both helpers on every header shape. The three cellwork consult verbs (batch `cellwork_recon`
+  included) are STARTED THROUGH THE `mpdConsults` SERVICE, so they do not go through that TOOL-side floor:
+  the service leaves the child's agent depth to `spawnMaxDepthOf` (caller depth + 1, a leaf) and applies
+  no absolute cell cap — `cellwork.depthMax` counts nested CELLS and never reaches the child. A cellwork
+  VERIFIER seat is refused both spawn tools as well: the verdict is its own work, and a FAIL is the
+  channel back to the writer.
 - `mpd_role_persona` — fetch the persona text for spawn surfaces that take
   persona as text (a teammate staged with `agent_teams_plan` `add_member` takes it as
   the member's `prompt`; `spawn_teammate` itself is refused at the tool boundary).

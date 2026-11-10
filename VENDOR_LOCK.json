@@ -5,11 +5,11 @@
     "skills": {
       "fileCount": 392,
       "source": "skill corpus at repo root (ported upstream skills + dsh-qa + svn-master + bundle-lifecycle, agent-teams-dispatch, agent-teams-sidebar, extension-isolation, extension-lifecycle, extension-mcp-bridge, extension-template, workmate-library, workmate-team-member and readonly-deny QA cases + the dsh-qa scripts/lib/workspace-isolation.mjs QA sandbox helper + the dsh-qa scripts/lib/gate-probe.mjs two-sided complexity-gate probe + the five TUI lanes and their shared harness: scripts/tui-mount.mjs, tui-panels.mjs, tui-admission.mjs, tui-distribution.mjs, tui-spec-conformance.mjs, lib/tui-lane.mjs + the settings-bridge lanes and their shared engine: scripts/tui-settings-bridge.mjs, web-settings-bridge.mjs, lib/settings-bridge-lane.mjs + the six team-watchdog lanes and their shared harness: scripts/team-watchdog-{heartbeat,fault,scene,config,notify,boot}.mjs, lib/watchdog-lane.mjs + the real-dsh boot lane); whole-dir refresh from upstream, keep provenance links",
-      "treeSha": "9cfe60ec5fecc3d1e8f6c15a5a5e07405f4ba538824591b09ac9a91524a31dd8"
+      "treeSha": "4510bff19106ee5d00c72c6b752210763cbaf2de60facb3dbb6ff1c794f32c91"
     },
     "specs/dsh-go": {
       "fileCount": 7,
-      "treeSha": "1f812a48dd2c54fa6529c0c05b355676de902515cfe7fa63fd5328b892da2607",
+      "treeSha": "a444f9d095ef0c0fda3aed28e6953ac0b01f71693c4edce77aa83cf6dde28eb6",
       "source": "DSH-Go protocol v1 SPEC DATA (no upstream executable code): limits.ts is a transcription of runtime/bridge/dsh-go-bridge/lib/native/limits.js plus view-check.js BUDGETS, and schemas/*.schema.json are byte-for-byte copies; fetched from ccch1mneyyy/dsh-Go@d5ad25c5bc4c66ecacee76b3c5378db45e1db3fa, pinned by specs/dsh-go/SOURCE.json"
     },
     "packages/mpd-mcp-codegraph/dist/serve.js": {
@@ -39,7 +39,7 @@
     },
     "packages/mpd-bundle-plugin/client.js": {
       "fileCount": 1,
-      "sha256": "17bd1d3155fc218f3875a937fa6ed05ae362b69b6bc55d970123d81bb5504ecd",
+      "sha256": "5a1222f53a95cb7dd2b0b8ae258708b87045dd6ed7419e6cc245e303a5a554c4",
       "source": "combined web client DERIVED from packages/mpd-bundle-plugin/adopted/** by scripts/build-mpd-client.ts; rebuild it, never rewrite this fingerprint"
     }
   },

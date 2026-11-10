@@ -4,7 +4,8 @@
 //   (a) content taller than the window yields DIFFERENT rendered rows at offset 0 and at a non-zero
 //       offset, and the LAST row of the scene body is reachable — the tail rows (the legend and the
 //       contract's state key) that used to be pushed unconditionally and clipped by the host;
-//   (b) a VISIBLE vertical scrollbar exists, drawn from `panel-core.ts`'s `gutterCells`, and its cells
+//   (b) a VISIBLE vertical scrollbar exists, drawn by the SHARED rail builder (whose cells come from
+//       `panel-core.ts`'s `gutterCells`), and its cells
 //       DIFFER between two offsets — the thumb tracks the window;
 //   (c) two distinct animation phases draw DIFFERENT glyphs for a running row, through the SAME frame
 //       table the sidebar breathes with (`DAG_ANIM.runningFrames`), while a body that fits draws no
@@ -18,11 +19,11 @@ import { mkdtempSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { createTuiAdapter } from "../../mpd-tui-adapter-plugin/src/index"
-import { BOARD_SCENE_ID, TEAM_SCENE_ID, registerScene } from "../src/scenes"
+import { BOARD_SCENE_ID, PLAN_SCENE_ID, TEAM_SCENE_ID, registerScene } from "../src/scenes"
 import { RUNNING_FRAMES } from "../src/subagent-scene"
 import { DAG_ANIM, DAG_CHROME, DAG_TONE_GLYPH } from "../src/dag-theme"
 import { legendLines } from "../src/graph"
-import { legendLinesFor } from "../src/panel-core"
+import { legendLinesFor, panelSurfaceWidth } from "../src/panel-core"
 import { cellWidth } from "../src/sanitize"
 
 // ── the host double ─────────────────────────────────────────────────────────
@@ -338,19 +339,80 @@ function walkElements(node: unknown, visit: (element: Element) => void): void {
  * @returns the cells; empty when the body fits and no scrollbar is drawn.
  */
 function scrollbarCells(tree: unknown): string[] {
-  /** The cells, in row order. */
-  const cells: Array<{ row: number; cell: string }> = []
+  // THE RAIL IS NOW THE SHARED BUILDER'S (`panel-core.ts`'s `viewportTrack`/`viewportGutter`), so the
+  // cells are addressed by the rail's OWN element — the `gutter` Box — rather than by a scene-private
+  // per-cell key. That is the sidebar's own reading rule (`elementByKey(tree, "gutter")`), and it keeps
+  // this arm honest across the change: the cells are still one per viewport row, in draw order.
+  /** The rail element, when this render drew one. */
+  let gutter: Element | undefined
   walkElements(tree, (element) => {
-    /** This element's key, when it carries one. */
-    const key = element.props?.key
-    if (typeof key !== "string" || !key.startsWith("vbar-")) return
-    /** The row this cell belongs to, from the key's own suffix. */
-    const row = Number(key.slice("vbar-".length))
-    /** The cell's own character, which the kit carries as the Text's only child. */
-    const cell = element.children.map((child) => String(child)).join("")
-    cells.push({ row, cell })
+    if (gutter === undefined && element.props?.key === "gutter") gutter = element
   })
-  return cells.sort((left, right) => left.row - right.row).map((entry) => entry.cell)
+  if (gutter === undefined) return []
+  /** The cells, in draw order. */
+  const cells: string[] = []
+  /** Collects every drawn Text cell under the rail, parents before children. */
+  const collect = (node: unknown): void => {
+    if (node === null || node === undefined) return
+    if (Array.isArray(node)) {
+      for (const child of node) collect(child)
+      return
+    }
+    if (typeof node === "string" || typeof node === "number") {
+      cells.push(String(node))
+      return
+    }
+    /** This node as an element. */
+    const element = node as Element
+    /** Every character inside it, spans joined with nothing — the kit's own flattening rule. */
+    const inline = (value: unknown): string => {
+      if (value === null || value === undefined) return ""
+      if (typeof value === "string") return value
+      if (typeof value === "number") return String(value)
+      if (Array.isArray(value)) return value.map(inline).join("")
+      /** This node as an element. */
+      const inner = value as Element
+      return inline(inner.props?.children) + inline(inner.children ?? [])
+    }
+    if (element.type === "Text") {
+      cells.push(inline(element.children ?? []))
+      return
+    }
+    collect(element.children ?? [])
+  }
+  collect(gutter.children ?? [])
+  return cells
+}
+
+/**
+ * The rail ELEMENT a render drew, addressed by the shared builder's own key.
+ *
+ * The vertical rail is `panel-core.ts`'s `viewportTrack`/`viewportGutter` Box — one Text cell per
+ * viewport row — so the element is the one whose props carry the host's drag protocol. The walk returns
+ * the element itself (not its cells) because the ARM under test fires the handlers the host hit-tests.
+ * @param tree - the tree the kit last flattened.
+ * @returns the rail element, or undefined when this render drew no rail.
+ */
+function railElement(tree: unknown): Element | undefined {
+  /** The rail found, when the walk reaches it. */
+  let found: Element | undefined
+  walkElements(tree, (element) => {
+    if (found === undefined && element.props?.key === "gutter") found = element
+  })
+  return found
+}
+
+/**
+ * Where the rail's THUMB starts, read off the drawn cells.
+ *
+ * The thumb is the run of `DAG_CHROME.barFull` cells and the track is `barEmpty` (the contract's own two
+ * glyphs), so the first full cell IS the window's position on the rail. Reading the position out of the
+ * PIXELS is what lets an arm assert a drag by its DELTA without the scene exporting its offset.
+ * @param cells - the rail's cells, top to bottom.
+ * @returns the thumb's first cell, or -1 when the rail drew no thumb at all.
+ */
+function thumbTop(cells: readonly string[]): number {
+  return cells.findIndex((cell) => cell === DAG_CHROME.barFull)
 }
 
 /**
@@ -432,7 +494,10 @@ describe("the team scene windows its WHOLE body, not only the drawing", () => {
     // The two frames are DIFFERENT row lists — the contract's own acceptance wording.
     expect(atEnd).not.toEqual(atTop)
     // And the window never draws a row wider than the terminal it measured.
-    for (const row of atEnd) expect(cellWidth(row)).toBeLessThanOrEqual(100)
+    // EVERY ROW FITS THE FRAME'S INTERIOR (frozen criterion W3), not the 100 columns the scene was
+    // TOLD: the frame spends 2 cells on its border and 2 on its padding, so 96 is the real budget and
+    // the old `<= 100` arm was blind by construction.
+    for (const row of atEnd) expect(cellWidth(row)).toBeLessThanOrEqual(panelSurfaceWidth(100))
   })
 
   test("a body that fits draws NO scrollbar and keeps every row", () => {
@@ -462,8 +527,8 @@ describe("the vertical scrollbar is drawn, and its thumb tracks the window", () 
     render(kit, component)
     /** The scrollbar at the top of the window. */
     const atTop = scrollbarCells(kit.last())
-    // A VISIBLE rail: one cell per row the window shows, drawn from `gutterCells` (so every cell is one
-    // of the contract's two bar glyphs, never a literal spelled by the scene).
+    // A VISIBLE rail: one cell per row the window shows, drawn by the shared builder's own `gutterCells`
+    // (so every cell is one of the contract's two bar glyphs, never a literal spelled by the scene).
     expect(atTop.length).toBeGreaterThan(1)
     expect(atTop.every((cell) => cell === DAG_CHROME.barFull || cell === DAG_CHROME.barEmpty)).toBe(true)
     // The thumb is AT THE TOP: the first cell is the thumb's, the last cell is track.
@@ -548,8 +613,8 @@ describe("running markers breathe through the sidebar's own frame set", () => {
 describe("the merged board scene windows its body too (contract §5.A4's audit item)", () => {
   test("a short terminal windows the board lines with the same rail, and the last line is reachable", () => {
     // THE DEFECT THIS LOCKS: the board scene had NO scroll at all — every line was pushed and the host
-    // clipped the tail on a terminal shorter than the board. It now shares `windowedBody`/`gutterCells`
-    // with the team scene, so one arithmetic and one rail describe both pages.
+    // clipped the tail on a terminal shorter than the board. It now shares `windowedBody` and the
+    // rail builder with the team scene, so one arithmetic and one rail describe both pages.
     /** This arm's mount at a terminal SHORTER than the board it draws. */
     const { components, kit } = mount(fixtureRecord([
       { id: "t1", subject: "root", status: "completed" },
@@ -576,5 +641,191 @@ describe("the merged board scene windows its body too (contract §5.A4's audit i
     expect(atEnd.at(-1)).toContain("⇧↑↓ scroll")
     // The rail's thumb moved, which is what says the two frames are two POSITIONS of one body.
     expect(scrollbarCells(kit.last())).not.toEqual(rail)
+  })
+})
+
+// ── (d) the rails are DRAGGABLE, with the sidebar's own semantics ────────────
+//
+// THE USER'S REPORT (frozen criterion I1/I2): "the horizontal scrollbar cannot be dragged". The cause
+// was that a scene's rail was a bare `Text` (or a `Box` with no pointer props), so there was nothing for
+// the host's drag protocol to hit-test. These arms drive the handlers THE SCENE ITSELF RENDERED — the
+// `gutter` element `panel-core.ts`'s `viewportTrack` builds — and they assert the two properties that
+// distinguish a DELTA drag from an absolute jump:
+//   * the GRAB commits nothing, and
+//   * one cell of pointer movement moves the view by ONE SCALED STEP, never to the cell the pointer is
+//     standing on (which is what a click means, and what the old absolute mapping would have done).
+// The position is read from the RAIL's OWN CELLS, so no arm here depends on the scene exporting its
+// offset. No live TTY and no real mouse are claimed: the proof is the rendered tree, exactly as the
+// sidebar's own drag arms are proved.
+
+describe("(d) the scene rails answer the pointer", () => {
+  test("the team scene's VERTICAL rail drags by the pointer's DELTA, from the press origin", () => {
+    // A ten-rank chain on a 30-row terminal: the body overflows, so the rail is reserved and drawn.
+    /** This arm's mount. */
+    const { component, kit } = mount(longChain(), { columns: 100, rows: 30 })
+    /** The scene at the top of the window. */
+    const atTop = render(kit, component)
+    /** The rail this render drew. */
+    const firstRail = railElement(kit.last())
+    expect(firstRail).toBeDefined()
+    // THE THREE PHASES ARE PRESENT ON THE ELEMENT (criterion I1): a rail that carried none is the defect.
+    for (const phase of ["onDragStart", "onDragMove", "onDragEnd"] as const) {
+      expect(typeof firstRail?.props?.[phase]).toBe("function")
+    }
+    /** The cells at the top: the thumb starts at the first row. */
+    const cellsAtTop = scrollbarCells(kit.last())
+    expect(cellsAtTop.length).toBeGreaterThan(2)
+    expect(thumbTop(cellsAtTop)).toBe(0)
+    // THE GRAB IS NEAR THE BOTTOM OF THE TRACK, far from the thumb: this is the press the old ABSOLUTE
+    // mapping answered with "jump to where the pointer is", which is the jump the user saw on grab.
+    // A DELTA drag instead anchors here and moves only by what the finger travels afterwards.
+    /** The cell the pointer goes down on, and the one it moves to. */
+    const grab = cellsAtTop.length - 3
+    // PREMISE: the absolute mapping would put the thumb near THAT cell, so the two behaviours are
+    // distinguishable on the pixels rather than only in prose.
+    expect(grab).toBeGreaterThan(8)
+    ;(firstRail?.props?.onDragStart as (event: unknown) => void)({ localRow: grab, row: 100, startRow: 100 })
+    // THE GRAB COMMITS NOTHING: the same rows, cell for cell.
+    expect(render(kit, component)).toEqual(atTop)
+    // THE ANCHOR MUST SURVIVE THE RE-RENDER the grab's own scroll (if any) would have caused, so the
+    // move phase is delivered to the element of the SECOND render — a per-render closure would lose it
+    // and fall back to the absolute mapping, which is the defect.
+    /** The rail the next render drew. */
+    const movedRail = railElement(kit.last())
+    expect(movedRail).toBeDefined()
+    ;(movedRail?.props?.onDragMove as (event: unknown) => void)({ localRow: grab + 1, row: 101, startRow: 100 })
+    // THE HOST RE-RENDERS ON THE STATE WRITE the move commits, so the pixels are read from the NEXT
+    // render — the same rule every scene arm in this file follows.
+    render(kit, component)
+    /** The cells after one cell of pointer movement. */
+    const cellsMoved = scrollbarCells(kit.last())
+    /** Where the thumb now starts. */
+    const movedTop = thumbTop(cellsMoved)
+    // ONE SCALED STEP, not an absolute jump: the thumb moved DOWN the rail, and it is nowhere near the
+    // pointer's own cell. The absolute mapping would have put the thumb at `grab` (a cell past 8), so
+    // this assertion fails for the old behaviour in the direction the user reported.
+    expect(movedTop).toBeGreaterThan(0)
+    expect(movedTop).toBeLessThanOrEqual(3)
+    expect(movedTop).toBeLessThan(grab)
+    // THE RELEASE KEEPS THE POSITION IT REACHED (the anchor is cleared, the offset is not).
+    ;(movedRail?.props?.onDragEnd as (event: unknown) => void)({ localRow: grab + 1 })
+    render(kit, component)
+    expect(thumbTop(scrollbarCells(kit.last()))).toBe(movedTop)
+    // A CLICK NAMES A DESTINATION (criterion I3): the same element maps a bare track click ABSOLUTELY,
+    // so pressing the end of the track takes the window to the end — the gesture a drag is NOT.
+    ;(movedRail?.props?.onClick as (event: unknown) => void)({ localRow: cellsAtTop.length - 1 })
+    render(kit, component)
+    expect(thumbTop(scrollbarCells(kit.last()))).toBeGreaterThan(movedTop)
+  })
+
+  test("the board scene's VERTICAL rail is the same builder: a grab commits nothing, a move scrolls", () => {
+    // A terminal shorter than the board it draws, so the rail owns a column.
+    /** This arm's mount. */
+    const { components, kit } = mount(fixtureRecord([
+      { id: "t1", subject: "root", status: "completed" },
+      { id: "t2", subject: "leaf", status: "pending", blockedBy: ["t1"] },
+    ]), { columns: 100, rows: 12 })
+    /** The board scene. */
+    const board = components[BOARD_SCENE_ID]
+    /** The board at the top of its window. */
+    const atTop = render(kit, board)
+    /** The rail the board drew. */
+    const rail = railElement(kit.last())
+    expect(rail).toBeDefined()
+    for (const phase of ["onDragStart", "onDragMove", "onDragEnd"] as const) {
+      expect(typeof rail?.props?.[phase]).toBe("function")
+    }
+    /** The board's rail cells. */
+    const cells = scrollbarCells(kit.last())
+    expect(cells.length).toBeGreaterThan(1)
+    // THE GRAB: nothing moves.
+    ;(rail?.props?.onDragStart as (event: unknown) => void)({ localRow: cells.length - 1, row: 40, startRow: 40 })
+    expect(render(kit, board)).toEqual(atTop)
+    /** The next render's rail — the anchor's second owner. */
+    const nextRail = railElement(kit.last())
+    ;(nextRail?.props?.onDragMove as (event: unknown) => void)({ localRow: cells.length, row: 41, startRow: 40 })
+    /** The board after the drag. */
+    const dragged = render(kit, board)
+    // THE WINDOW MOVED, and the pinned chrome stayed: the body scrolled under a fixed frame.
+    expect(dragged).not.toEqual(atTop)
+    expect(dragged.at(-1)).toContain("esc/q close")
+    // …AND THE THUMB TRACKS IT (the contract's second narrow arm): the cells are a fresh position of the
+    // same rail, drawn from the clamped offset rather than from the pre-drag one.
+    expect(scrollbarCells(kit.last())).not.toEqual(cells)
+  })
+})
+
+// ── (e) a narrow terminal: no emitted row exceeds the frame INTERIOR ────────
+//
+// FROZEN CRITERION W3, and the reason the old width arms were blind BY CONSTRUCTION: every one of them
+// asserted `cellWidth(row) <= columns` where `columns` was the number the scene was TOLD — so a scene
+// drawing at the terminal's width inside a frame four cells narrower always passed. The frame spends 2
+// cells on its border and 2 on its `paddingX: 1`, so the budget is `panelSurfaceWidth(columns)`, and
+// that is what these arms assert against.
+
+describe("(e) every scene row fits the frame's INTERIOR at a narrow terminal", () => {
+  test("the team, board and plan surfaces emit no row wider than `panelSurfaceWidth(columns)`", () => {
+    // A hostile fixture: long subjects, a wide team name and a deep roster at a terminal narrower than
+    // the natural drawing — the exact combination the user's screenshot showed wrapped and clipped.
+    /** The record every surface reads. */
+    const record = fixtureRecord([
+      { id: "w1", subject: "freeze the acceptance contract and publish it to the wave", status: "completed" },
+      { id: "w2", subject: "build the surface the contract describes, at the width it names", status: "in_progress", blockedBy: ["w1"] },
+      { id: "w3", subject: "verify it against the repository's own gates and report the result", status: "pending", blockedBy: ["w2"] },
+    ], { name: "a-team-name-long-enough-to-need-the-clamp" })
+    for (const columns of [44, 32]) {
+      /** The cells the frame's interior owns at this width. */
+      const interior = panelSurfaceWidth(columns)
+      for (const id of [TEAM_SCENE_ID, BOARD_SCENE_ID, PLAN_SCENE_ID]) {
+        // A FRESH KIT PER SURFACE: the host double keys its hook cells by hook POSITION, so one store
+        // shared across three different components would replay one scene's state into another's slot.
+        const { components, kit } = mount(record, { columns, rows: 20 })
+        /** This surface's rendered rows. */
+        const rows = render(kit, components[id])
+        // THE RENDER MUST HAVE DRAWN SOMETHING, or a width assertion is vacuous.
+        expect(rows.length).toBeGreaterThan(0)
+        for (const row of rows) expect(cellWidth(row)).toBeLessThanOrEqual(interior)
+      }
+    }
+  })
+
+  test("a terminal at or below 20 columns keeps the MEASUREMENT (W5): every row fits its 14-cell interior", () => {
+    // THE GATE THIS ARM DISCRIMINATES (frozen criterion W5; the contract's Honest bounds require that
+    // "`W5`'s widened `measureTerminal` gate must be exercised by an arm at <= 20 columns, or it is
+    // unproved"). `measureTerminal` used to honour a measured width only when it was `> 20`, so a terminal
+    // of 18 columns was silently replaced with `FALLBACK_COLS = 100`: the scene then laid its graph and
+    // rows out for a 96-cell interior while the real frame offered 14, and the first frame over-drew by
+    // more than four cells — the torn frame this wave repairs. The shipped gate is `> 0` (`a MEASURED
+    // TERMINAL IS ALWAYS HONOURED`), so the measurement is kept.
+    // THIS ARM IS RED UNDER THE OLD GATE AND GREEN UNDER THE NEW ONE: temporarily restoring
+    // `terminalCols > 20` and running this arm laid the same rows out for `FALLBACK_COLS = 100` — the
+    // first over-wide row measured 84 cells against the 14-cell interior ("Expected: <= 14, Received:
+    // 84") — and it passed again once the `> 0` gate was put back. That is why the mount width below is
+    // 18, not another comfortable one.
+    /** The measured width this arm mounts at: BELOW the retired gate's threshold, so the gate is the subject. */
+    const columns = 18
+    /** The cells the frame's interior owns at that width. */
+    const interior = panelSurfaceWidth(columns)
+    // THE PREMISES, ASSERTED: this width is at or under the retired `> 20` gate, and its interior is far
+    // narrower than the one a 100-column fallback would have drawn for — otherwise nothing below proves it.
+    expect(columns).toBeLessThanOrEqual(20)
+    expect(interior).toBeLessThan(panelSurfaceWidth(100))
+    /** The record every surface reads: the same hostile fixture the 44/32-column arm above uses. */
+    const record = fixtureRecord([
+      { id: "n1", subject: "freeze the acceptance contract and publish it to the wave", status: "completed" },
+      { id: "n2", subject: "build the surface the contract describes, at the width it names", status: "in_progress", blockedBy: ["n1"] },
+      { id: "n3", subject: "verify it against the repository's own gates and report the result", status: "pending", blockedBy: ["n2"] },
+    ], { name: "a-team-name-long-enough-to-need-the-clamp" })
+    for (const id of [TEAM_SCENE_ID, BOARD_SCENE_ID, PLAN_SCENE_ID]) {
+      // A FRESH KIT PER SURFACE, for the reason the arm above states: the double keys its hook cells by
+      // hook POSITION, so one store shared across three components would replay one scene's state.
+      /** This surface's mount at the narrow measured width. */
+      const { components, kit } = mount(record, { columns, rows: 20 })
+      /** This surface's rendered rows, one string per drawn row. */
+      const rows = render(kit, components[id])
+      // THE RENDER MUST HAVE DRAWN SOMETHING, or the per-row width assertion is vacuous.
+      expect(rows.length).toBeGreaterThan(0)
+      for (const row of rows) expect(cellWidth(row)).toBeLessThanOrEqual(interior)
+    }
   })
 })

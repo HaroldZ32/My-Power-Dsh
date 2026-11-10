@@ -159,6 +159,41 @@ interface GroupInput {
   board: readonly BoardTask[]
   /** The child's own live children, recursively. */
   groups?: readonly GroupInput[]
+  /**
+   * The child's own CONSULT rows, drawn inside its box.
+   *
+   * Carried on the frame for the same reason as the board: the box's interior is the child's own model,
+   * so its consults must arrive with the rest of the child's input and the liveness filter that drops a
+   * finished child drops them too — one rule, not two.
+   */
+  consults?: readonly ConsultInput[]
+}
+
+/**
+ * One consult row handed to the shared core, declared STRUCTURALLY for the reason {@link GroupInput} is.
+ *
+ * The authoritative declaration is `GraphConsultInput` in `packages/mpd-graph-core/src/types.ts`, and the
+ * value is passed straight to `buildModel`, so a drift reddens the full-program typecheck instead of
+ * drifting silently. Nothing here is computed: the core mints the node id, maps the tone and attributes
+ * the frame.
+ */
+interface ConsultInput {
+  /** The minted per-team ordinal: it names the node and orders the frame's rows. */
+  consultNumber: number
+  /** The supervisor's own id for the consult. */
+  consultId: string
+  /** The canonical roster role name, drawn as the card's assignee. */
+  role: string
+  /** The assignment excerpt, drawn as the card's subject. */
+  task: string
+  /** The recorded lifecycle word. */
+  state: string
+  /** When the consult started, epoch milliseconds. */
+  startedAt: number
+  /** The cell that started it. */
+  cellId: string
+  /** How long it ran, milliseconds; absent while it is still running. */
+  elapsedMs?: number
 }
 
 /**
@@ -216,9 +251,36 @@ function groupInputsOf(
       // bare `T1..Tn` this team's board also uses.
       board: framedBoardOf(child),
       ...(nested.length === 0 ? {} : { groups: nested }),
+      // THE CHILD'S OWN CONSULTS, unqualified: the core prefixes them with this frame's id (`<team>::C<n>`),
+      // because the ordinal alone restarts at 1 in every team.
+      ...consultsOf(child),
     })
   }
   return inputs
+}
+
+/**
+ * The consult rows ONE team recorded, or NO KEY AT ALL when it recorded none (contract §2.4).
+ *
+ * THE ABSENCE IS THE BACKWARD GUARANTEE. `mpd-graph-core` omits `GraphModel.consults` when its input
+ * carried none, so a team that never delegated produces the exact model (and the exact bytes) both planes
+ * drew before consults existed. The spread at every call site is what makes `{}` mean "no key".
+ * @param record - the team whose rows are projected.
+ * @returns an object spread into a build input: `{}` when the team recorded nothing.
+ */
+function consultsOf(record: TeamRecord): { consults?: ConsultInput[] } {
+  /** The rows the record carries, in the order they were minted. */
+  const rows = record.consults ?? []
+  return rows.length === 0 ? {} : { consults: rows.map((row) => ({
+    consultNumber: row.consultNumber,
+    consultId: row.consultId,
+    role: row.role,
+    task: row.task,
+    state: row.state,
+    startedAt: row.startedAt,
+    cellId: row.cellId,
+    ...(row.elapsedMs === undefined ? {} : { elapsedMs: row.elapsedMs }),
+  })) }
 }
 
 /**
@@ -319,6 +381,9 @@ export class GraphModels {
       const model = buildModel({
         board: boardOf(record),
         plan: readPlanFile(planPath),
+        // THE ROOT FRAME'S OWN CONSULTS, omitted when the team recorded none: a consult is a SIBLING of
+        // the node list, never a task, so this cannot move a rank or an edge.
+        ...consultsOf(record),
         // THE NESTING INPUT, OMITTED WHEN THE TEAM HAS NO LIVE CHILD: a flat tree's model therefore
         // carries no `groups` key at all and stays byte-identical to the one this row served before
         // nested teams existed (the backward guarantee is a test, not an intention).

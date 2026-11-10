@@ -11,17 +11,19 @@
 // mode cost nothing while it is off.
 //
 // THE FOUR MODES, and why a plain member has none:
-//   * captain    — dispatch only: `cellwork_*` except `cellwork_handoff`, `agent_teams_*`,
+//   * captain    — dispatch only: `cellwork_*` except `cellwork_handoff` and the two consult verbs
+//                  (`cellwork_delegate` / `cellwork_consult`, which belong to a seat below it), `agent_teams_*`,
 //                  `ask_user_question`, `todo_write`, `mpd_memory_*`. Everything else is refused.
-//   * verifier   — never writes AND NEVER DELEGATES (CR repair E): the eight read-only names and the two
-//                  bundle spawn tools (`mpd_role_spawn`, `mpd_workmate_spawn`) are refused, while reading,
-//                  gates, bash and the five `mpd_verify_*` calls stay available.
+//   * verifier   — never writes AND NEVER DELEGATES (CR repair E): the read-only write names, the bundle
+//                  spawn tools (`mpd_role_spawn`, `mpd_workmate_spawn`), both roster consult tools and this
+//                  package's own two consult verbs are refused, while reading, gates, bash and the five
+//                  `mpd_verify_*` calls stay available.
 //   * checkpoint — the context threshold was hit: only `cellwork_handoff`, `cellwork_context` and
 //                  `cellwork_status` answer, so an agent that ignores the prose still cannot keep
 //                  working.
 //   * subcaptain — a MINI-CAPTAIN (Amendment 4, contract B2): the captain's dispatch allowlist MINUS
 //                  `cellwork_start`/`cellwork_stop` (only the captain may open or close the cell) plus the
-//                  four sub-cell verbs. It gets NO file-work tool, because clause 5 runs a promoted agent
+//                  four sub-cell verbs and the two consult verbs. It gets NO file-work tool, because clause 5 runs a promoted agent
 //                  "under the same rules as the main agent" and the main agent is dispatch-only.
 //   * member     — the ordinary work surface, untouched — with ONE named exception, the CELL PLANNER,
 //                  which delegates its reconnaissance instead of reading source itself (C5, D15) and so is
@@ -51,16 +53,25 @@ export const CAPTAIN_TOOL_NAMES: readonly string[] = ["ask_user_question", "todo
  *
  * `cellwork_handoff` is a WORKER's duty: a captain that could hand off would be able to present the
  * writer's own end-of-task statement as its own.
+ *
+ * The TWO CONSULT VERBS are here for the user's seat decision (contract §1): the captain stays
+ * DISPATCH-ONLY, so it may not raise background work of its own — it puts the work on the board with
+ * `cellwork_dispatch`, and a subcaptain or member runs `cellwork_delegate` when side-work is needed. A
+ * subcaptain keeps both names through {@link SUBCAPTAIN_TOOL_NAMES}, which is checked first.
  */
-export const CAPTAIN_FORBIDDEN_NAMES: readonly string[] = ["cellwork_handoff"]
+export const CAPTAIN_FORBIDDEN_NAMES: readonly string[] = ["cellwork_handoff", "cellwork_delegate", "cellwork_consult"]
 
 /**
  * The write-capable tools a VERIFIER never gets.
  *
- * Byte-for-byte the roster's read-only deny list (its long form lives in
- * `agent-references/glossary.md`): `mcp__lsp__rename_symbol_strict` is spelled out because the roster's
- * own list names both rename tools, and a verifier's discipline must not depend on which spelling a
- * composition mounts.
+ * The roster's read-only deny list (its long form lives in `agent-references/glossary.md`):
+ * `mcp__lsp__rename_symbol_strict` is spelled out because the roster's own list names both rename tools,
+ * and a verifier's discipline must not depend on which spelling a composition mounts.
+ *
+ * The LAST TWO names are this PACKAGE's own delegation verbs rather than the roster's: they are added
+ * here so a verifier seat's denial is stated in one place, and the guard's delegation arm (checked first)
+ * phrases the sentence. They are NOT added to the roster's `READONLY_DENY`, because the harness validates
+ * a spawn's whole deny list and a cellwork name is unknown to a profile that does not mount this row.
  */
 export const VERIFIER_DENY_TOOLS: readonly string[] = [
   "write",
@@ -69,8 +80,11 @@ export const VERIFIER_DENY_TOOLS: readonly string[] = [
   "mcp__ast_grep__rewrite",
   "mcp__ast_grep__scan",
   "mcp__lsp__rename_symbol",
-  "mcp__lsp__rename_symbol_strict",  "mpd_role_spawn_async",
+  "mcp__lsp__rename_symbol_strict",
+  "mpd_role_spawn_async",
   "mpd_role_consult",
+  "cellwork_delegate",
+  "cellwork_consult",
 ]
 
 /** The ONLY tools a checkpointed member may call, so ignoring the directive cannot continue the work. */
@@ -117,9 +131,10 @@ export const PLANNER_RECON_TOOLS: readonly string[] = ["read", "grep", "glob"]
  * verdict this seat signs — the same reasoning that keeps the eight write tools out of its hands, one level
  * up. `cellwork_recon` needs no entry here (it is the PLANNER's route and is refused on its own arm), so the
  * verifier keeps every reading tool, `bash`, the gates and the five `mpd_verify_*` calls, and loses only the
- * two names that would let it hand the judgement to somebody else.
+ * names that would let it hand the judgement to somebody else — including this package's own two consult
+ * verbs, which are the cell's door to the SAME background consults.
  */
-export const VERIFIER_NO_DELEGATION: readonly string[] = ["mpd_role_spawn", "mpd_role_spawn_async", "mpd_role_consult", "mpd_workmate_spawn"]
+export const VERIFIER_NO_DELEGATION: readonly string[] = ["mpd_role_spawn", "mpd_role_spawn_async", "mpd_role_consult", "mpd_workmate_spawn", "cellwork_delegate", "cellwork_consult"]
 
 /** The cell member name that carries the planner's rule; the cell record and the team board use it verbatim. */
 export const PLANNER_SEAT_NAME = "cell-planner"
@@ -133,11 +148,15 @@ export const PLANNER_SEAT_NAME = "cell-planner"
 export const SUBCAPTAIN_FORBIDDEN_NAMES: readonly string[] = ["cellwork_start", "cellwork_stop"]
 
 /**
- * The four sub-cell verbs a subcaptain may call, named explicitly even though the `cellwork_` prefix
- * already admits them: the surface is the contract, and a reviewer should read it here rather than
- * derive it from a prefix rule.
+ * The sub-cell verbs a subcaptain may call, named explicitly even though the `cellwork_` prefix already
+ * admits them: the surface is the contract, and a reviewer should read it here rather than derive it from
+ * a prefix rule.
+ *
+ * The TWO CONSULT VERBS are named here for a second reason: `CAPTAIN_FORBIDDEN_NAMES` carves them out of
+ * the captain's prefix family, and this list is checked FIRST — so the subcaptain keeps the background
+ * delegation the user granted it (contract §1) while the captain stays dispatch-only.
  */
-export const SUBCAPTAIN_TOOL_NAMES: readonly string[] = ["cellwork_subteam", "cellwork_activate", "cellwork_dispatch", "cellwork_supervise"]
+export const SUBCAPTAIN_TOOL_NAMES: readonly string[] = ["cellwork_subteam", "cellwork_activate", "cellwork_dispatch", "cellwork_supervise", "cellwork_delegate", "cellwork_consult"]
 
 /**
  * Every file-work tool a subcaptain must NOT reach (contract B2, Amendment 4).
@@ -243,7 +262,8 @@ export function isSubcaptainAllowed(toolName: string): boolean {
 export function captainRefusal(toolName: string): string {
   return "cellwork: `" + toolName + "` is refused — while a cell is running the CAPTAIN DISPATCHES ONLY "
     + "(user clause 1): it edits no file, runs no shell, does no reconnaissance and verifies nothing. "
-    + "Allowed here: `cellwork_*` except `cellwork_handoff` (`cellwork_status`, `cellwork_start`, "
+    + "Allowed here: `cellwork_*` except `cellwork_handoff`, `cellwork_delegate` and `cellwork_consult` "
+    + "(`cellwork_status`, `cellwork_start`, "
     + "`cellwork_dispatch`, `cellwork_supervise`, `cellwork_activate`, `cellwork_send`, `cellwork_inbox`), "
     + "`agent_teams_*` (`agent_teams_plan`, `agent_teams_task`, `agent_teams_dispatch`, `agent_teams_mail`), "
     + "`mpd_verify_open` (opening a loop only — binding, evidence and verdict stay refused), "
@@ -251,7 +271,9 @@ export function captainRefusal(toolName: string): string {
     + "with `agent_teams_plan`, then DISPATCH WITH `cellwork_dispatch` — owner-only, and a busy or absent "
     + "owner is REPORTED and the task left pending, never substituted. (`agent_teams_dispatch` stays allowed "
     + "but it is NOT the verb for this board: it falls back to roster order, which can hand review work to "
-    + "its own writer.) Relay the planner's questions with `ask_user_question`. To leave the mode and get "
+    + "its own writer.) Background side-work is a MEMBER's or a SUBCAPTAIN's call: they run "
+    + "`cellwork_delegate` and collect with `cellwork_consult`. "
+    + "Relay the planner's questions with `ask_user_question`. To leave the mode and get "
     + "every tool back, call `cellwork_stop`."
 }
 
@@ -341,9 +363,10 @@ export function plannerRefusal(toolName: string, target: string): string {
     + " its reconnaissance is DELEGATED, never run itself: its context has to carry the interview and the"
     + " requirements document, and a source tree spent here is context the interview then lacks. Two"
     + " read-only routes, both one-shot: `cellwork_recon` {role:\"Explorer\"|\"Researcher\", task} — its"
-    + " report comes straight back, and it forwards its own depth cap so it is never refused by the host's"
-    + " nesting default — or `mpd_role_spawn` with a read-only roster role (Explorer, Researcher, Architect)"
-    + " when the cellwork tool is not mounted. The band stays open to you: `.mpd/**`, `docs/**`,"
+    + " report comes straight back, and the roster places the child one level below you as a leaf, so it is"
+    + " never refused by the host's nesting default — or `mpd_role_spawn` with a read-only roster role"
+    + " (Explorer, Researcher, Architect) when the cellwork tool is not mounted. The band stays open to"
+    + " you: `.mpd/**`, `docs/**`,"
     + " `evidence/**`, `agent-references/**`; any `AGENT.md`, `AGENTS.md` or `CLAUDE.md` at any depth, inside"
     + " this workspace or outside its root; and at the workspace root only `README.md`, `README.zh-CN.md`,"
     + " `CHANGELOG.md` and `LICENSE*.md`."

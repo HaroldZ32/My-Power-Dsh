@@ -238,17 +238,45 @@ three signals, and a fenced member is never messaged.
   `{member, unfenced: true, plane, planeReason?}` per cleared CELL row and reports the plane's half as
   `unfenced`, `absent` or `refused`, never claiming a reopen that did not happen.
 - **A pending checkpoint is NOT a give-up.** Every handoff sets the TEAM row's `mode: "checkpoint"`
-  while the compaction barrier still owes the reopen, and that row carries no `fenced` key. When the
-  CELL row carries no `fenced: true` either, asking to unfence it answers
+  while the compaction barrier still owes the reopen, and that row carries no `fenced` key. A seat is
+  BARRIER-OWNED when ANY of these holds: the CELL row's `mode` is `checkpoint`, its `handoffReady` is
+  `true`, or the TEAM row is at `mode: "checkpoint"`. Asking to unfence it WITHOUT `force` answers
   `{member, unfenced: false, reason: "checkpoint-pending", detail}` — the barrier owns that state — and
-  NEITHER record is written and the seam is NOT called. The CELL marker above outranks this: a real
-  give-up is recovered even while its TEAM row still reads `mode: "checkpoint"`. Only the barrier (or a
-  give-up fence) moves that seat.
-- **`not-fenced` is reported, never dressed up.** A member that NEITHER record fences answers
-  `{member, unfenced: false, reason: "not-fenced"}` and the record is NOT rewritten — including a member
-  whose CELL row merely carries `handoffReady: true` while neither record carries a marker, because only
-  an explicit give-up marker is cleared (reopening a bare waiting row would invite the second-handoff
-  livelock). A name resolves
+  NEITHER record is written and the seam is NOT called, including when only the CELL row shows the
+  window (that case used to answer the contradictory `not-fenced`). The CELL `fenced` marker above
+  outranks this: a real give-up is recovered even while its TEAM row still reads `mode: "checkpoint"`.
+- **The bounded FORCED lever: `unfence: [{member, force: true}]` (R4.4, last resort).** A bare string
+  keeps the unforced behaviour byte-identically, so nothing forces by accident; the object form is the
+  only way to ask for the lever, and it is FAIL-CLOSED: it REFUSES outright when the recorded session is
+  still a live agent (`reason: "live-session"`), and otherwise allows the clear only when a WRITTEN bound
+  is reached — `barrierFailures` at `compactionRetries` (reason `retry-budget`) or a `checkpointSince`
+  older than `checkpointPendingMaxMs`, default 15 minutes (reason `stale`). A missing timestamp with
+  zero recorded failures is NOT a licence (`reason: "force-not-eligible"`): the timestamp may fall back
+  to the last `checkpoints` entry for that session, and when neither exists nothing is eligible. A
+  permitted clear deletes `fenced`/`fencedReason`/`barrierFailures`/`checkpointSince`, restores
+  `mode: "member"` with `handoffReady: false`, keeps `handoffs`/`joinedAt`/`adopted`, asks the plane to
+  reopen the TEAM seat best-effort, journals `member-unfenced-forced`
+  (`{member, by: "captain", reason, pendingMs, barrierFailures, sessionId, liveness, plane}`) and answers
+  `{member, unfenced: true, forced: true, alive, liveness, sessionId, bound, pendingMs?, plane}`. **It reopens the
+  seat for REASSIGNMENT, not for work**: the context was never compacted, so a delivery would resume the
+  very context the handoff document already describes.
+
+  **THE DEAD-RESEED SEAT IS COVERED BY THE SAME PREDICATE (R5.2).** A reseed writes `subcaptain` with
+  `handoffReady: false` and reopens the TEAM row to `member`, so NO checkpoint spelling holds it — and
+  when the fresh child is not a live agent (`liveness: "dead"`: the registry is present, its CAPTAIN
+  anchor resolves, and it answers nothing for the recorded session) no turn will ever fire for it again.
+  That seat is HELD all the same, its licence is the
+  PROVEN-DEAD session (`bound: "dead-session"`), and its window's stamp is still required: an unstamped
+  row falls back to the retry budget and, with neither, answers `force-not-eligible`. An ABSENT registry
+  — or a present one that cannot resolve the CAPTAIN anchor — is `unknown`, never dead, so nothing is
+  proven and nothing is cleared. **ONE predicate decides every
+  one of these answers** — `barrierOwned`, the dead-reseed shape, the live veto, the stamp, the bound —
+  and `cellwork_supervise` projects the SAME reading, so the lever the sweep advertises is exactly the
+  lever this verb accepts (the two used to be separate predicates, and the sweep advertised a lever the
+  verb refused as `not-fenced`).
+- **`not-fenced` is reported, never dressed up.** A member that NEITHER record fences AND carries no
+  checkpoint window answers `{member, unfenced: false, reason: "not-fenced"}` and the record is NOT
+  rewritten. A name resolves
   UNAMBIGUOUSLY — exact member key, then exact display name, then the normalized key only when it is
   non-empty and carried by EXACTLY ONE member; anything else (unknown, or ambiguous such as `1` against
   后端1/前端1) refuses the WHOLE call and names the recorded members. Nothing is cleared, written or
@@ -272,8 +300,16 @@ three signals, and a fenced member is never messaged.
 - **A given-up barrier records its consequence.** The member gets `fenced: true` + `fencedReason`, the
   journal gets a `checkpoint-unrecoverable` row naming the repair, and `cellwork_supervise` lists every
   CLOSED seat together with the OPEN board rows it still owns, marking each as a GIVE-UP fence (the
-  captain's to repair) or BARRIER-OWNED (the pending checkpoint window, which needs no captain action).
-  The unfence lever above is how the give-up consequence is repaired.
+  captain's to repair) or BARRIER-OWNED (the pending checkpoint window). A barrier-owned seat is NOT
+  automatically safe: nothing supervises the barrier — no timer, no queue, no retry owner — so the sweep
+  reports `barrierOwned`, `forceEligible` and `pendingMs` and names the bounded forced lever instead of
+  promising that no action is needed. The unfence lever above is how the give-up consequence is
+  repaired. **The retry bound**: each non-reopening barrier run increments the CELL row's
+  `barrierFailures`, and the run that reaches `compactionRetries` fences the seat with a `fencedReason`
+  naming the count (`N of M consecutive barrier runs did not reopen the seat`); a reopening
+  (`promoted`) run deletes both `barrierFailures` and `checkpointSince`. That bound only covers a seat
+  that STAYS in the window across runs — a seat whose session died starts no further run and is bounded
+  by the forced lever below.
 
 **The generic team verb carries a hazard cell mode does not.** `agent_teams_dispatch` pairs a ready task
 with its declared owner but FALLS BACK TO ROSTER ORDER when that owner is busy. During this very wave
@@ -293,11 +329,13 @@ merely theoretical risk.
 | `cellwork_start` | captain | opens the requirements phase of the active cell; validates cell and caller, stamps `startedAt`, journals it |
 | `cellwork_status` | captain, member | phase, objective, captain, requirements/split revisions, members and their modes, injected checkpoints, live team counts, the recorded split-ticket board id, the cell-record vs live-roster divergence (`missingFromCell` / `missingFromTeam` / `inSync`), the caller's own seat and the on-disk paths — its ONE write is ADOPTING a live team seat the record never learned, never a phase transition |
 | `cellwork_requirements` | planner | `finalize` a requirements document, or `update` it: an update bumps the revision and marks the split stale; a section body runs to the next heading of the same or a higher level, so `###` subheadings stay inside their parent |
-| `cellwork_recon` | planner, subcaptain | one-shot READ-ONLY consult (Explorer/Researcher) raised through the direct start path with the role name as its label and an explicit absolute depth cap, so the consult is a read-only leaf; the report is returned and journaled |
+| `cellwork_recon` | planner, subcaptain | READ-ONLY consult (Explorer/Researcher) raised through `mpdConsults`, so the roles row applies its read-only deny list to the child and places it one level below the caller as a LEAF (`cellwork.depthMax` counts nested CELLS and never caps the child); `{role, task}` returns one report (the legacy shape), `{role, questions}` runs 1..8 CONCURRENTLY and returns only when all are settled, one row per question; every report is journaled |
+| `cellwork_delegate` | planner, subcaptain, member | start 1..16 BACKGROUND consults in ONE call and return their `consultId`s immediately, before any child settles; roles are ANY roster role (writers included) and are canonicalised by the roles row; ALL-OR-NOTHING validation (an unknown role, an empty field or >16 tasks starts nothing); over-cap work QUEUES on the shared `MPD_DSH_CONSULT_MAX` cap |
+| `cellwork_consult` | planner, subcaptain, member | `list` / `wait` / `collect` / `cancel` the consults THIS cell started through `cellwork_delegate`: `list` answers only this cell's ids the supervisor still knows, `wait` clamps to 1..60000 ms (default 30000) and answers `state:"running"` when the bound wins, `collect` returns the report and RELEASES the record, `cancel` interrupts and journals `consult-cancelled`; an id this cell did not start is refused with a teaching sentence |
 | `cellwork_split` | splitter | `submit` a graph so the plugin can measure it (each task may declare its board `member`), or `show` the last verdict; every refusal persists its findings at `split/<revision>.refused.json`; a NON-FATAL `warnings` list names every `work`/`repair`/`integration` task with no write scopes, by key, and never changes `accepted` |
 | `cellwork_activate` | captain | materialise an accepted split on the live team record, write contracts (owner role AND member), raise one member per distinct `member`, open verify loops, dispatch; a failed pass is checkpointed and the SAME revision resumes it, while a newer accepted revision supersedes an older in-flight one; the answer's `reused` list names the members resolved from the cell record or the live roster instead of raised, and a re-split that kept tasks also returns a `notice` (contracts not rewritten, scope expansion needs a manual re-freeze plus a new verify loop, ready rows dispatched owner-only); the OTHER ways a member row appears are staging and adoption (see "Members: staged, activated or adopted") |
-| `cellwork_dispatch` | captain | one owner-only dispatch pass over the team board; a busy, absent or fenced owner is reported and the row left pending; `reassign` hands named rows to another member FIRST (board claim → `task-reassigned` journal → delivery), and `unfence` clears named members' GIVEN-UP fences BEFORE the pass (both keys deleted, `mode: member`, `handoffReady: false`, `handoffs` kept, `member-unfenced` journaled; the TEAM row only through the plane's `unfence` seam, with `plane: "absent"` reported when the composition exposes none); a PENDING checkpoint (`mode: checkpoint`, no `fenced` flag) answers `checkpoint-pending` and writes nothing; `not-fenced` is honest, an unknown or ambiguous name refuses the call, and the two may travel together |
-| `cellwork_supervise` | captain | read-only sweep: pending checkpoints, compactions, promotions, stale splits, unread mail, every UNDELIVERED mail row, and every CLOSED seat with the open rows it still owns — each marked `giveUp:true` (an explicit `fenced:true` on either record, repaired with `reassign` plus `unfence`) or `giveUp:false` (a barrier-owned `mode: checkpoint` window, which gets no lever); every projection is lossless JSON, with no `undefined` own key |
+| `cellwork_dispatch` | captain | one owner-only dispatch pass over the team board; a busy, absent or fenced owner is reported and the row left pending; `reassign` hands named rows to another member FIRST (board claim → `task-reassigned` journal → delivery), and `unfence` clears named members' GIVEN-UP fences BEFORE the pass (both keys deleted, `mode: member`, `handoffReady: false`, `handoffs` kept, `member-unfenced` journaled; the TEAM row only through the plane's `unfence` seam, with `plane: "absent"` reported when the composition exposes none); a PENDING/barrier-owned window (CELL `mode: checkpoint` OR `handoffReady: true`, or the TEAM row at `mode: checkpoint`, with no `fenced` flag) — and the DEAD-RESEED seat (R5.2: `subcaptain`, not handoff-ready, recorded session proven dead) — answers `checkpoint-pending` and writes nothing unless the entry asks for the FAIL-CLOSED forced lever (`{member, force: true}`: refused for a live session, allowed only at the retry budget, past `checkpointPendingMaxMs`, or ON the dead-reseed shape's proven-dead session with a recorded stamp, `bound:"dead-session"`, journaled as `member-unfenced-forced`); a plane half that ends `refused` carries `retry` (the exact `agent_teams_control {action:"unfence", member}` verb) in the answer, the journal row and the render; `not-fenced` is honest, an unknown or ambiguous name refuses the call, and the two forms may travel together |
+| `cellwork_supervise` | captain | read-only sweep: pending checkpoints, compactions, promotions, stale splits, unread mail, every UNDELIVERED mail row, and every CLOSED seat with the open rows it still owns — each marked `giveUp:true` (an explicit `fenced:true` on either record, repaired with `reassign` plus `unfence`) or `giveUp:false` (a held seat: a barrier-owned window, or the DEAD-RESEED shape flagged `deadReseed:true`), which also carries `barrierOwned`, `forceEligible` and `pendingMs` and names the bounded forced lever when no supervisor can reopen it; `forceEligible` is the SAME predicate `cellwork_dispatch {unfence:…, force:true}` decides with, never a second copy; a closed seat whose TEAM half is a `checkpoint` no barrier is pending for carries `retry`, the exact Lead-only verb that reopens it; a member is `suspect:true` only when a window stamp exists, the registry is PRESENT, its CAPTAIN anchor resolves, and the recorded session does not (a present registry that cannot resolve the anchor is `unknown`, which licenses nothing); every projection is lossless JSON, with no `undefined` own key |
 | `cellwork_context` | member | the caller's own live occupancy, the window it was measured against, and that window's provenance |
 | `cellwork_handoff` | member | write and validate the checkpoint handoff document; marks the checkpoint ready; a SECOND document is refused while the first still waits for the barrier; a member known only to the LIVE team record is adopted first (see "Members: staged, activated or adopted"), so it gets the same channel |
 | `cellwork_subteam` | promoted subcaptain | register a sub-cell, enforce the depth cap, return the sub-captain directive |
@@ -318,12 +356,12 @@ is off. The predicate fires at **dispatch** time only.
 
 | Caller | Allowed | Refused |
 |---|---|---|
-| captain | `cellwork_*` except `cellwork_handoff`, plus `agent_teams_*`, `ask_user_question`, `todo_write`, `mpd_memory_*`, and the ONE loop opener `mpd_verify_open` (exact name only) | everything else: no file edit, no shell, no `read`/`grep`/`glob`, and no verification beyond opening a loop: binding a seat, recording a verdict, evidence and escape stay refused |
-| verifier | `read`, `grep`, `glob`, `bash` (the gates), `mpd_verify_*` | `write`, `edit`, `mpd_hashline_edit`, `mcp__ast_grep__rewrite`, `mcp__ast_grep__scan`, `mcp__lsp__rename_symbol`, `mcp__lsp__rename_symbol_strict`, and the two bundle spawn tools `mpd_role_spawn` / `mpd_workmate_spawn`: a verifier NEVER delegates, because the verdict is its own work and a FAIL is the channel back to the writer |
+| captain | `cellwork_*` except `cellwork_handoff`, `cellwork_delegate` and `cellwork_consult`, plus `agent_teams_*`, `ask_user_question`, `todo_write`, `mpd_memory_*`, and the ONE loop opener `mpd_verify_open` (exact name only) | everything else: no file edit, no shell, no `read`/`grep`/`glob`, no background consult of its own (the captain stays dispatch-only), and no verification beyond opening a loop: binding a seat, recording a verdict, evidence and escape stay refused |
+| verifier | `read`, `grep`, `glob`, `bash` (the gates), `mpd_verify_*` | `write`, `edit`, `mpd_hashline_edit`, `mcp__ast_grep__rewrite`, `mcp__ast_grep__scan`, `mcp__lsp__rename_symbol`, `mcp__lsp__rename_symbol_strict`, the two bundle spawn tools `mpd_role_spawn` / `mpd_workmate_spawn`, `mpd_role_spawn_async` / `mpd_role_consult`, and this package's own `cellwork_delegate` / `cellwork_consult`: a verifier NEVER delegates, because the verdict is its own work and a FAIL is the channel back to the writer |
 | member at its context checkpoint | `cellwork_handoff`, `cellwork_context`, `cellwork_status` | everything else: the agent cannot keep working even if it ignores the prose |
-| subcaptain | the captain allowlist MINUS `cellwork_start` / `cellwork_stop`, PLUS `cellwork_subteam`, `cellwork_activate`, `cellwork_dispatch`, `cellwork_supervise` | every file-work tool: a subcaptain is a mini-captain and dispatches, it does not implement |
+| subcaptain | the captain allowlist MINUS `cellwork_start` / `cellwork_stop`, PLUS `cellwork_subteam`, `cellwork_activate`, `cellwork_dispatch`, `cellwork_supervise`, `cellwork_delegate`, `cellwork_consult` | every file-work tool: a subcaptain is a mini-captain and dispatches, it does not implement |
 | planner (`cell-planner`) | `read`/`grep`/`glob` inside the documentation band: `.mpd/**`, `docs/**`, `evidence/**`, `agent-references/**`; any `AGENT.md`/`AGENTS.md`/`CLAUDE.md` by BASENAME at any depth, also outside the workspace root; and at the workspace root only `README.md`, `README.zh-CN.md`, `CHANGELOG.md`, `LICENSE*.md` | a SOURCE path: the refusal names the two delegation routes (`cellwork_recon` with `Explorer`/`Researcher`, `mpd_role_spawn` with a read-only roster role) and says why. A path is judged by its SPELLING (symlinks are never resolved), and a `..` segment is allowed ONLY in an instruction-file spelling |
-| ordinary member | everything it needs to work | nothing: it is a normal worker |
+| ordinary member | everything it needs to work, `cellwork_delegate` and `cellwork_consult` included | nothing: it is a normal worker |
 
 Every refusal is ONE teaching paragraph: what was refused, the calls that replace it, and
 `cellwork_stop` as the way out. Stopping the cell removes the seat, so the same session is unguarded
@@ -331,14 +369,93 @@ again.
 
 Two rows are the repository's reconnaissance rule rather than a cellwork invention. The planner's band
 is the SAME band the top-level `mpd` captain keeps, and a parity test imports both lists so they cannot
-drift apart. Inside a cell the planner's reconnaissance is DELEGATED, and a consult is a LEAF:
-`mpd_role_spawn` forwards the caller's recorded delegation depth + 1 AND denies both spawn tools in the
-child's own scope, so the child can never delegate again; a caller already at depth 2 or deeper is
-refused outright (do the work, or hand the question up). The cell planner sits at depth 1, keeps its
-route, and the consult it raises lands at depth 2 as a leaf. `cellwork_recon` is exempt from that depth
-floor because its own depth is bounded by `cellwork.depthMax`. The cell captain sits at the opposite end. Its read surface is the cell record, through these tools, while OUTSIDE cell mode the `mpd` captain's
+drift apart. Inside a cell the planner's reconnaissance is DELEGATED, and a consult is a LEAF: the
+roster's spawn tools forward the caller's recorded delegation depth + 1 AND deny both spawn tools in the
+child's own scope, so the child can never delegate again; a caller already at delegation depth 2 or
+deeper is refused by those TOOLS (do the work, or hand the question up). The three cellwork consult
+verbs do not go through that floor: they start through the `mpdConsults` service, which places the child
+at caller depth + 1 — one level below the caller, a leaf — and forwards no absolute cap.
+TWO SCALES, not one. `cellwork.depthMax` (1..8, default 3) is the CELL-TREE scale: it counts nested
+CELLS and teams, and `cellwork_subteam` refuses `depth + 1 > depthMax`. AGENT delegation depth is a
+separate scale the harness records per session: a cell seat is a TEAM MEMBER, so the planner sits at
+delegation depth 1 in the shipped topology, and the seats of a NESTED cell sit one level deeper than the
+cell that raised them. The two numbers do not coincide, which is why the cell cap is never forwarded as
+the child's agent cap — at the legal value `depthMax: 1` that forwarding disabled every consult. The cell
+captain sits at the opposite end. Its read surface is the cell record, through these tools, while OUTSIDE cell mode the `mpd` captain's
 band now admits `AGENT.md`/`AGENTS.md`/`CLAUDE.md` at any depth, including a sibling project's, and
 still refuses every source path.
+
+## Background delegation
+
+A cell SEAT — the planner, a promoted subcaptain, an ordinary recorded member — can dispatch work that
+runs in the BACKGROUND, the way the top-level captain uses `mpd_role_spawn_async` + `mpd_role_consult`.
+The cell CAPTAIN deliberately cannot: its route is the board (`cellwork_split` → `cellwork_activate` →
+`cellwork_dispatch`), and a captain that raised its own consults would be doing work instead of
+dispatching it.
+
+- `cellwork_delegate {tasks:[{role, task, context?}, …]}` starts 1..16 consults in ONE pass and returns
+  `{ok, started, consults:[{consultId, role, startedAt}]}` immediately — the children keep working while
+  the seat continues. Roles are ANY roster role (writers included) and are canonicalised by the roles
+  row's OWN resolver, so `DeepWorker`, `deep worker`, `deep-worker` and `Deep Worker` are ONE agent and
+  the answer echoes the roster's own spelling. Validation is ALL-OR-NOTHING: an unknown role, an empty
+  `role`/`task` or more than 16 tasks refuses the whole call and starts NOTHING. That rule covers
+  VALIDATION only — a partial batch is still possible: if a start fails AFTER some children were already
+  started, the answer is `ok:false` naming the ids that DID start, and those children keep running and
+  stay recorded (collect them with `cellwork_consult`).
+- `cellwork_consult {action, consultId?, timeoutMs?}` settles them: `list` (only the ids THIS cell
+  started and the supervisor still knows), `wait` (1..60 000 ms, default 30 000 — a timed-out wait
+  answers `state:"running"`, never a throw), `collect` (returns the report AND releases the record) and
+  `cancel` (interrupts the child and journals `consult-cancelled`). An id this cell did not start is
+  refused with a sentence that names the ownership rule and the two other channels, never "not found"
+  alone.
+- Both verbs go through the `mpdConsults` SERVICE the `mpd-roles` row provides over its ONE consult
+  supervisor: ONE registry, ONE concurrency cap (`MPD_DSH_CONSULT_MAX`, default 8 — over-cap work QUEUES
+  and is never refused) and ONE silence deadman. A composition without that row is refused BY NAME; there
+  is no unsupervised fallback spawn. Because ALL THREE consult verbs (the two new ones AND the legacy
+  `cellwork_recon {role, task}` form) go through that service, a composition that mounts cellwork
+  WITHOUT the `mpd-roles` row loses the legacy recon form too; the shipped bundle mounts both rows, so
+  only a hand-built composition is affected.
+- `cellwork_recon` gained the same door plus a BATCH form: `{role, questions:[…]}` asks 1..8 questions,
+  runs them CONCURRENTLY and returns only when all are settled (one failing question does not cancel the
+  others — its row carries the failure text and `stopReason:"failed"`). `{role, task}` keeps exactly its
+  old fields, and a ONE-question batch also carries the legacy `report`/`stopReason` pair.
+
+Delegated children remain LEAVES: the roster denies both spawn tools in every child's own scope, and a
+read-only role (Explorer, Researcher) gets the read-only deny list as well.
+
+### Consults appear on the DAG
+
+The consults a seat starts are first-class NODES of MPD's DAG on BOTH surfaces — the TUI MPD page and
+the web Team view — drawn inside the grouping box of the cell that started them, and they stay on the
+graph after they settle, until that cell ends.
+
+- **Where they live.** Each start writes ONE `running` row onto the cell's team record
+  (`.mpd/team/teams/<id>.json`); the shared graph model is built from that record and cached against the
+  change feed's revision, so a consult refreshes both surfaces through the SAME write → `teamStateChanged`
+  → revision path a board edit uses. No second watcher, no second store, no new route.
+- **They are NOT tasks.** A consult takes no `T<n>`, is never dispatched, is excluded from the board
+  tallies, `readyTasks`, the clean-terminal rule and the verifier's scope, and contributes NO edge and NO
+  rank: the task picture is byte-identical with and without them. It draws with the existing six-state
+  tone (`interrupted` reads as `cancelled`) plus one marker — `@` on the TUI card, the same glyph on the
+  web card — and its id is `C<n>`, or `<teamId>::C<n>` inside a subcell's box.
+- **A settled consult is recorded WITHOUT a seat asking.** The roles row's `mpdConsults.start` takes an
+  optional `onSettled` observer, fired once when the record leaves `running`; cellwork uses it to write
+  the terminal row. The `wait`/`collect`/`cancel` answers write the same row as a second, idempotent
+  source. `cancel` therefore shows up immediately, and a completed consult does not sit on the graph
+  reporting itself as running.
+- **A subcell's consults are drawn INSIDE that subcell's box**, because the projection hands each live
+  child's rows to its own frame; the liveness filter that drops a finished child drops its consults with
+  it.
+- **`cellwork_stop` clears them** (a forced stop too): the rows are removed from the team record and the
+  in-memory consult book is dropped, so a child that settles later cannot re-create a row.
+- **Declared bounds.** A cell that never stops cleanly keeps its rows until they age out through the
+  retention cap (50 per team, oldest SETTLED first, never a `running` row). A consult started while the
+  cell has no live team (`teamId` empty, so no board was ever approved) records NOTHING — one
+  `consult-unattached` journal row is the only trace, and the tool answer is unchanged. The record's
+  read-modify-write has the same cross-process exposure every team write has (no compare-and-swap), a row
+  stays `running` if the process dies before settlement (nothing sweeps it; the cap eventually does), and
+  the TUI's host subagent strip is NOT deduped, so a running consult can appear twice — the host row
+  until its 60 s grace expires, and the DAG node, which is the durable surface.
 
 ## The context budget: measured, never guessed
 
@@ -420,15 +537,20 @@ and hands the work to a successor. The sequence is mechanical:
    it and marks the checkpoint `handoff-ready`. The directive tells the agent to end its turn and do
    nothing else.
 4. **Compact**: on `agent/turn-stopping` the listener RETURNS the barrier promise, so the host's serial
-   dispatch AWAITS it instead of racing a detached one. The barrier waits for the agent to be idle
-   (`compactionRetries` bounded retries, `idleBarrierDelayMs` between them) and resolves the engine from
-   the LIVE member handle the event carries — through `compactionEngineForLiveAgent`, BEFORE any sleep
-   and BEFORE the registry lookup — so a member already detached from `ctx.agents` still compacts in
-   place; only when that handle carries no engine does the id-keyed `compactionEngineForAgent` get a
-   chance. A retry delay may sit between attempts; there is none before the FIRST one. The engine is
+   dispatch AWAITS it instead of racing a detached one. The barrier does NOT wait for the agent to be
+   idle: it makes at most `compactionRetries` attempts, sleeping `idleBarrierDelayMs` BETWEEN them (there
+   is no sleep before the FIRST one), and resolves the engine from the LIVE member handle the event
+   carries — through `compactionEngineForLiveAgent`, BEFORE any sleep and BEFORE the registry lookup — so
+   a member already detached from `ctx.agents` still reaches its own realm's engine; only when that
+   handle carries no engine does the id-keyed `compactionEngineForAgent` get a chance. The engine is
    driven with a real `AbortController` signal, and the outcome is classified and journaled: a `null`
    result (no safe useful range), a `busy` agent and an `error` are all recorded, so a retry budget
-   running out is never a silent no-op.
+   running out is never a silent no-op. **`busy` on EVERY attempt is the host's own bound, and the
+   journal says so** (R4.0): the engine's `compactNow` runs inside `agent.runMaintenance`, which refuses
+   any phase but idle, while `agent/turn-stopping` is dispatched INSIDE the turn and its listeners are
+   awaited — so in-place compaction cannot run at this event on this host, and waiting cannot change it
+   (the host awaits the listener's promise before it can reach idle). The reseed is therefore the only
+   path from this event, and the reason text records that fact instead of leaving `busy` unexplained.
 5. **Promote or reseed**: the outcome union is exactly `promoted | reseeded | refused`. On a successful
    compaction the SAME member is promoted in place — no interrupt, no reseed — its session's mode becomes
    `subcaptain` and it receives the promotion directive (depth + 1, the remaining scope taken from the
@@ -438,11 +560,58 @@ and hands the work to a successor. The sequence is mechanical:
    recorded `parentSession` resolved live, then the cell's captain, and when neither is live the barrier
    REFUSES with the distinct reason `reseed-parent-unavailable`. The parent actually used is journaled
    (`parentSource` + `parentSessionId`), so lineage is observable rather than inferred.
+
+   **The barrier OWES the seat its reopen, and this is its DUTY (R4.1).** `cellwork_handoff` writes TEAM
+   `mode: "checkpoint"` when the document lands, and that spelling closes the seat for the guard and for
+   dispatch. A barrier run whose PERSISTED ROW reopened the CELL seat (`fenced !== true`) therefore calls
+   the plane's `unfence` seam AS THE CAPTAIN (`{sessionId: cell.captainSessionId, member}` — the same
+   authority the captain's own verb uses), journals `member-unfenced` with `by: "barrier"`, and reports
+   the plane's half exactly as that verb does: `plane: "unfenced" | "absent" | "refused"` (with the
+   plane's sentence in `planeReason`). The gate is the ROW the barrier writes, NEVER the raw outcome: a
+   `reseeded` run that reaches the retry bound FENCES the CELL row on that same run and reopens nothing,
+   journaling `plane-reopen-skipped` with `plane: "skipped-fenced"`, the barrier's fourth `plane` value (a
+   `refused` run journals `checkpoint-unrecoverable` instead, as it always has).
+   A REFUSED half is not a dead end (R5.4): the journal row also carries `retry` with the exact
+   Lead-only verb that re-drives the seam — `agent_teams_control {action: "unfence", member: "<name>"}` —
+   and `cellwork_supervise` reports that same verb for a TEAM `checkpoint` no barrier is pending for
+   (the CELL row already left the window), so an operator is never left guessing.
+   A promoted seat is open in BOTH records again; a RESEEDED one points at the fresh child, and its row
+   additionally journals `member-reseeded` `{previousSessionId, newSessionId, retired, plane}` so the
+   hand-over is a fact rather than an inference. The ORIGINAL session is retired with the host's
+   `interrupt` TARGETING the member's own id (never the new child) and AUTHORISED BY A LIVE ANCESTOR
+   (R5.1): the same session the reseed is raised under — the member's durable parent when that session is
+   live, else the cell's captain — passed as the `ancestor` authority. The member's OWN handle is never
+   the authority: the host keys an Agent by its session id, so that spelling IS the target and
+   `dsh-subagent` refuses it as `UNAUTHORIZED "cannot interrupt itself"` BEFORE its ancestry check.
+   What the record says is therefore what the host did: `retired: true` only when the target was PROVEN
+   live and the host took the interrupt (`retirement: "accepted"`); `retirement: "nothing-to-retire"`
+   when the identity registry holds no live agent for the recorded session (the dead-seat shape, and the
+   host's own documented no-op — NEVER a retirement); `"refused"` when the host said no, with its own
+   sentence in `retirementReason`; and `"unavailable"` when this composition exposes no interrupt or no
+   identity seam. The reseed proceeds on every one of those answers, and the journal row
+   `member-reseeded` carries `retirement`/`retirementReason` beside `retired`. **Declared bounds:** a
+   host that keeps a retired session deliverable can still deliver to it — the seat record points at the
+   new child, and this bundle does not invent a second revocation mechanism — and residency is proven
+   through the agents registry, which is the identity the host's own authority check consults, so a live
+   but NON-RESIDENT external activation would answer silently and be recorded `accepted` (this bundle
+   raises LOCAL continuable children, so that is a residual of a composition it does not build).
+
+   **A reseed is NOT proof of a working child (R4.2).** A resolved child handle is recorded as
+   `reseeded`, which is honest only as "a child was started": the seat keeps its `checkpointSince` clock
+   (a `promoted` outcome is the only one that clears it), and `cellwork_supervise` reports a STAMPED seat
+   `suspect: true` (with `pendingMs` and `forceEligible`) only when the live registry is present, resolves
+   the CAPTAIN anchor, and does not hold the recorded session. When the composition has no agents registry
+   — or a present registry cannot resolve that anchor — the answer is `unknown`, NEVER "dead",
+   and no seat is reported suspect on that basis. A seat whose session died is bounded by the forced
+   lever below, not by the retry count: it starts no further barrier run.
 6. **Sub-team**: the promoted agent registers its sub-cell with `cellwork_subteam` and leads its own
    plan. `cellwork_subteam` refuses when `depth + 1 > depthMax` (default 3) and returns the exact
-   bound; the direct start path passes the same depth as an absolute `maxDepth`, so the harness cap
-   and the cell cap agree. Sub-teams run the identical phases and rules, and `cellwork_supervise`
-   sweeps the whole cell tree.
+   bound, reading the parent team's depth from `mpdTeams.depthBudget`; it starts NO agent — it writes
+   the sub-cell record and answers the directive the promoted member then acts on. Depth has ONE story
+   and TWO scales inside it: `cellwork.depthMax` is the CELL-tree bound and is NEVER forwarded as any
+   agent's `maxDepth`, while an agent's cap is always its own parent session's recorded depth + 1 (the
+   `spawnMaxDepthOf` rule), which is what keeps every consult and every reseed a leaf. Sub-teams run the
+   identical phases and rules, and `cellwork_supervise` sweeps the whole cell tree.
 
 The captain is not a member and is never checkpointed in v1.
 
@@ -566,7 +735,8 @@ and reported on the row's log line (`<workspace>/.mpd/logs/mpd-cellwork.log`).
 `depthMax` 3 · `checkpointRatio` 0.5 · `windowFraction` 0.25 · `fixedOverheadTokens` 32000 ·
 `fixedOverheadByRoute` {} · `toolSchemaChars` 0 · `outputReserveTokens` 8192 ·
 `compactionHeadroomTokens` 65536 · `compactionRetries` 3 · `idleBarrierDelayMs` 200 ·
-`asciiCharsPerToken` 3 · `cjkCharsPerToken` 1 · `contractGates` [] · `windowOverride` null.
+`checkpointPendingMaxMs` 900000 · `asciiCharsPerToken` 3 · `cjkCharsPerToken` 1 · `contractGates` [] ·
+`windowOverride` null.
 
 The mail bound is the ONE knob outside this table: `mail.maxUndelivered` (default 8, `0` disables; an
 absent or unusable value falls back to 8) lives under the `mail.` prefix because BOTH mail tools read it
@@ -584,11 +754,14 @@ whose window cannot be read can be certified deliberately, and it is recorded as
   enforce a mode it cannot see, and the refusal then surfaces on the command and `cellwork_status`
   with the record's path.
 - **Adoption and unfence repair the RECORD, not the past.** Adoption covers members the TEAM record
-  already knows; a session it does not carry still has no channel, by design. `unfence` clears a GIVE-UP
-  fence on the cell row and, when the composition exposes the `mpdTeamActions.unfence` seam, the TEAM
-  row — never a pending checkpoint, which the barrier owns; it does not re-create a dead session, and a
-  cell whose rows the old build already wrote is repaired only through adoption and unfence: its history
-  is not rewritten.
+  already knows; a session it does not carry still has no channel, by design. An UNFORCED `unfence`
+  clears a GIVE-UP fence on the cell row and, when the composition exposes the
+  `mpdTeamActions.unfence` seam, the TEAM row — never a pending checkpoint, which the barrier owns. The
+  bounded FORCED lever (`{member, force: true}`) is the exception, and it is the one documented above:
+  it reopens a barrier-owned window or a dead-reseed seat only under a written licence (the retry
+  budget, the pending bound, or the proven-dead session) and never a live seat. Neither form re-creates
+  a dead session, and a cell whose rows the old build already wrote is repaired only through adoption
+  and unfence: its history is not rewritten.
 - **The 1/4 budget is an estimate** with the declared ±25% English bound and deliberately punitive CJK
   pricing; it is not a measurement of the model's tokenizer, because the deployment ships none.
 - **The mount is proven by an overlay.** On this machine a plain link-profile boot still resolves a
@@ -637,9 +810,12 @@ whose window cannot be read can be certified deliberately, and it is recorded as
   cancelledTasks`, key → board id), and its board row stays VISIBLE on the board. Dispatch skips it only
   because cellwork's own dispatch pass reads the cell record: a bare board read still shows the row.
 - **The depth fence is three levels by default.** A promoted subcaptain can raise a sub-team, and
-  `cellwork_subteam` refuses past `depthMax`; the nesting capability itself rests on the adapter's
-  direct start path with an explicit absolute `maxDepth`, recorded as a source read in the capability
-  spike (`evidence/cellwork/capability-spike/`).
+  `cellwork_subteam` refuses past `depthMax`; registering a sub-cell starts no agent at all. Every agent
+  the plugin does start is forwarded an explicit `maxDepth` of **its own parent's recorded depth + 1** —
+  the `spawnMaxDepthOf` rule, applied to the caller on a consult and to the LIVE parent on a compaction
+  reseed — and never the cell-tree knob, so the two scales cannot be confused again. The nesting
+  capability and that derivation are recorded as a source read in the capability spike
+  (`evidence/cellwork/capability-spike/`).
 - **`parent_team_id` is implicit, not a knob.** A sub-team's parent is DERIVED by the team plane at
   approval from the parent team's roster (`deriveParentTeam`); `cellwork_subteam` stamps the resulting
   parent team id on the cell record and passes no parent id at all, so there is no argument for a caller to
@@ -669,6 +845,22 @@ whose window cannot be read can be certified deliberately, and it is recorded as
   roster.
 - **Blindness stays prose**, exactly as this repository states it: cellwork wires the contract, the
   loop and the verdict, and does not pretend to observe what a verifier read.
+- **A delegated WRITER works OUTSIDE the cell board.** `cellwork_delegate` gives it no frozen contract,
+  no verify loop and no board row: the operator's report arrives in `cellwork_consult`, and nothing
+  records it as a verdict. Board-scale work still belongs on `cellwork_split` + `cellwork_activate`;
+  background delegation is for bounded side-work — research, a spike, a one-file probe.
+- **The consult book is IN MEMORY.** Cellwork remembers which ids a cell started in a process-local map
+  (no second store, no report, no cap), exactly as the supervisor's records are process-local: a restart
+  loses both, and `cellwork_consult` then answers with the refusal that says so rather than a stale id.
+  A seat may still call `mpd_role_spawn_async` / `mpd_role_consult` directly; a consult it collects that
+  way simply leaves this cell's list (the next `list` prunes it).
+- **Agent delegation depth and the CELL-tree depth are DIFFERENT SCALES.** `cellwork.depthMax`
+  (1..8, default 3) bounds nested cells and teams — `cellwork_subteam` is its only enforcer — and it is
+  NEVER passed to a consult. The three consult verbs start through the `mpdConsults` service, which
+  leaves the child's agent depth to the roster's own `spawnMaxDepthOf(exec.agent)` rule (caller depth +
+  1, a LEAF) and deliberately does NOT apply the roster's tool-side depth floor (a caller at delegation
+  depth 2 or deeper is refused by the TOOLS). ONE consumer of that exemption exists today: cellwork,
+  whose plane is bounded by `cellwork.depthMax`; a second consumer must justify the bypass.
 
 ## Tests and evidence
 

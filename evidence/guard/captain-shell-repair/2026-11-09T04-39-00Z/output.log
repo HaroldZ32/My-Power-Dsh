@@ -1,0 +1,66 @@
+# captain-shell post-review repair (CodeRabbit round 1) — gate log (FINAL, regenerated on the settled tree)
+# host time: 2026-11-09T12:40:16+08:00
+# pinned toolchain: .toolchain/node_modules/.bin/bun
+
+## $ .toolchain/node_modules/.bin/bun test packages/mpd-roles-plugin
+(pass) CONTROL: the forwarded cap disturbs neither the route nor the prompt the spawn already carried [0.49ms]
+
+ 369 pass
+ 0 fail
+ 2720 expect() calls
+Ran 369 tests across 18 files. [1033.00ms]
+[exit: 0]
+
+## $ node scripts/verify-dist-fresh.ts --only mpd-roles
+  FRESH   packages/mpd-roles-plugin/dist/index.js  sha 466dac370279… 25ms  <- packages/mpd-roles-plugin/src/index.ts
+[verify-dist-fresh] root: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)
+[verify-dist-fresh] build toolchain: bun 1.4.0 from the repository toolchain (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun) · recorded buildToolchain bun@1.4.0
+[verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] ok: 1/1 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 41ms
+[exit: 0]
+
+## $ sha256sum packages/mpd-roles-plugin/dist/index.js packages/mpd-roles-plugin/src/captain-shell.ts packages/mpd-roles-plugin/test/captain-shell.test.ts
+466dac3702797046b404d39e31140a3e022b69dba1290b9f4cf4d202f7666308  packages/mpd-roles-plugin/dist/index.js
+6555063f34d516241076c36c46839fa18b54932ba5a8f47c76b2497b5df58d64  packages/mpd-roles-plugin/src/captain-shell.ts
+d6a74e1304ad3c903d067d9bf65976c3d3b8d7041156a14c3fb50211051cf418  packages/mpd-roles-plugin/test/captain-shell.test.ts
+
+## $ .toolchain/node_modules/.bin/bun run typecheck
+$ tsgo --noEmit
+[exit: 0]
+
+## $ .toolchain/node_modules/.bin/bun run verify:comments
+# verify-comment-coverage
+
+scanned 618 TypeScript file(s) of 618 in the source set; inspected 55565 declaration(s); skipped 27209 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+[exit: 0]
+
+## $ .toolchain/node_modules/.bin/bun evidence/guard/captain-shell-repair/2026-11-09T04-39-00Z/probe.ts   (direct decision probe)
+table length: 19
+"bun run test" -> bun-run-test | REFUSE
+"bun run test:unit" -> bun-run-gate | REFUSE
+"bun run testimony" -> (no row) | ALLOW
+"bun run format" -> (no row) | ALLOW
+"bunx tsgo" -> bunx-runner | REFUSE
+"bun x tsgo" -> bunx-runner | REFUSE
+"bun x jest" -> bunx-runner | REFUSE
+"npm exec tsc" -> pkg-exec-runner | REFUSE
+"pnpm dlx tsc" -> pkg-exec-runner | REFUSE
+"yarn dlx tsc" -> pkg-exec-runner | REFUSE
+"npm install" -> (no row) | ALLOW
+"git log | grep -r fix" -> REFUSE
+"git log | grep -R fix" -> REFUSE
+"git log | grep -rn fix" -> REFUSE
+"git log | grep -nr fix" -> REFUSE
+"git log | grep --recursive fix" -> REFUSE
+"git log | grep --dereference-recursive fix" -> REFUSE
+"git log | grep fix" -> ALLOW
+"ls | grep md" -> ALLOW
+"grep fix docs/x" -> ALLOW
+"git log | grep -rn TODO docs/" -> ALLOW
+[exit: 0]
+
+## $ .toolchain/node_modules/.bin/bun --version
+1.4.0

@@ -1,0 +1,13 @@
+=== PROOF 1: limits.ts differs from HEAD ONLY on comment lines 3-4 ===
+HEAD minus lines 3-4     : 42a5ee8d66ecba79693eaa1526ae138db5266dca715272112363f1b938d33c63  -
+worktree minus lines 3-4 : 42a5ee8d66ecba79693eaa1526ae138db5266dca715272112363f1b938d33c63  -
+
+=== PROOF 2: verify-dshgo-standard.ts differs ONLY on lines 11,12,1097 ===
+HEAD minus 11,12,1097    : edbb841fad1452daf48a2639d5dd714f686b2cccfd5404145528fca20b18829f  -
+worktree minus same lines: edbb841fad1452daf48a2639d5dd714f686b2cccfd5404145528fca20b18829f  -
+
+=== PROOF 3: upstream spec-data files did NOT change in d5ad25c5..v1.0.14 ===
+(no lines above = no diff = PROTOCOL/LIMITS/VIEW_BUDGETS had nothing to follow)
+
+=== PROOF 4: SOURCE.json is valid JSON and carries exactly 7 file entries ===
+commit=f36bf91b0736e81ef40c2a7040b2ec337ca1ab40 fetchedAt=2026-11-09T06:48:05Z files=7

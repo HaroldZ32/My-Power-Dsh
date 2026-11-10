@@ -37,8 +37,13 @@ import { teamRoot } from "./team-store"
  * `wedged-grace` is S4's FIRST phase: the member was sent the ONE directive to write its handoff and
  * end its turn, and NOTHING was interrupted. It is the durable `graceSentAt` a reader compares the
  * later `wedged-force` row against.
+ *
+ * `consult-upsert` and `consult-clear` are the CELLWORK plane's two consult writes: one background
+ * consult was recorded or updated, or a whole team's consult rows were removed when the cell ended.
+ * They are EVIDENCE of a graph-only fact — a consult is never a board row — so they carry the consult
+ * id and ordinal instead of a `taskId`.
  */
-export type TeamJournalEvent = "task-reassigned" | "task-cancelled" | "member-fenced" | "member-unfenced" | "handoff-written" | "team-ended" | "wedged-force" | "wedged-grace"
+export type TeamJournalEvent = "task-reassigned" | "task-cancelled" | "member-fenced" | "member-unfenced" | "handoff-written" | "team-ended" | "wedged-force" | "wedged-grace" | "consult-upsert" | "consult-clear"
 
 /** One team-journal row. */
 export interface TeamJournalEntry {
@@ -58,6 +63,16 @@ export interface TeamJournalEntry {
   reason?: string
   /** The handoff document a `handoff-written` event names. */
   path?: string
+  /** The consult a `consult-upsert` event is about. */
+  consultId?: string
+  /** The ordinal that consult holds, so a reader can match the row against a drawn node. */
+  consultNumber?: number
+  /** The lifecycle word a `consult-upsert` event recorded. */
+  state?: string
+  /** The consult ids a `consult-clear` event removed, in row order. */
+  cleared?: string[]
+  /** The consult ids a upsert's retention cap dropped. */
+  pruned?: string[]
 }
 
 /** The journal file: ONE workspace-wide append-only log, beside the dispatch ledger. */

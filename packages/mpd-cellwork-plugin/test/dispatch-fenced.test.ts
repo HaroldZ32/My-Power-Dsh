@@ -173,7 +173,7 @@ async function pass(cell: CellState, record: DispatchRecordView): Promise<{ repo
  * @param members - the cell's member table.
  * @returns the harness with every captured registration.
  */
-function makeHarness(members: Record<string, CellMemberRecord>): Harness {
+function makeHarness(members: Record<string, CellMemberRecord>, options: { liveSessions?: readonly string[]; agentsRegistry?: boolean } = {}): Harness {
   /** The fresh temp workspace. */
   const workspace = mkdtempSync(join(tmpdir(), "mpd-cellwork-frozen-"))
   /** The cell record this arm works in, persisted so the tools read it back like a real cell. */
@@ -212,6 +212,11 @@ function makeHarness(members: Record<string, CellMemberRecord>): Harness {
     startContinuableAgent: async (): Promise<never> => { throw new Error("the harness refuses every reseed") },
     userMessage: (value: unknown): unknown => value,
     injectAgentMessage: (): void => {},
+    // THE LIVENESS SEAM (R4.2): an arm names the sessions the registry still holds. Absent models the
+    // older composition whose identity seam cannot tell — UNKNOWN, never dead.
+    ...(options.liveSessions === undefined ? {} : { liveAgentExact: (id: string): Record<string, unknown> | undefined => options.liveSessions?.includes(id) === true ? { id } : undefined }),
+    // THE PRESENCE PROBE: `false` models a composition with NO agents registry.
+    capabilities: (): Record<string, unknown> => ({ agents: options.agentsRegistry !== false }),
   }
   installCellworkProtocol({
     dsh: adapter as unknown as DshAdapter,
@@ -305,14 +310,19 @@ function rawMember(harness: Harness, name: string): Record<string, unknown> {
 
 // ── the fence predicate ────────────────────────────────────────────────────
 
-test("C7: fenceReasonOf names each of the three signals and clears a working seat", () => {
+test("C7/R5.2: fenceReasonOf names every closure signal and still clears a working seat", () => {
+  // A seat nothing names as held is the ONLY `undefined` answer: a plain member row, and nothing at all.
   expect(fenceReasonOf(undefined)).toBeUndefined()
   expect(fenceReasonOf({ mode: "member", handoffReady: false })).toBeUndefined()
-  expect(fenceReasonOf({ mode: "subcaptain", handoffReady: false })).toBeUndefined()
+  expect(fenceReasonOf({ mode: "verifier", handoffReady: false })).toBeUndefined()
   expect(String(fenceReasonOf({ mode: "checkpoint" }))).toContain("checkpoint")
   expect(String(fenceReasonOf({ handoffReady: true }))).toContain("handoff is already written")
   expect(String(fenceReasonOf({ fenced: true, fencedReason: "no-engine" }))).toContain("barrier gave up")
   expect(String(fenceReasonOf({ fenced: true, fencedReason: "no-engine" }))).toContain("no-engine")
+  // R5.2: the REOPENED-BUT-UNPROVEN `subcaptain` shape is now NAMED instead of hidden. It is a shape, not
+  // a verdict — the live/promoted case is gated by the caller that can read liveness (the sweep's one
+  // predicate), which is why this predicate can answer for every reseeded row.
+  expect(String(fenceReasonOf({ mode: "subcaptain", handoffReady: false }))).toContain("reopened it onto a fresh child")
 })
 
 // PROVENANCE (wave T45): this arm asserted `cellMemberOf`, the engine's case-insensitive lookup of a CELL
@@ -408,7 +418,7 @@ test("C7: a given-up barrier fences the member row it persists, and a later succ
   /** The member row before the barrier. */
   const previous = memberRow("Deep Worker", { handoffs: 2 })
   /** The row a refused barrier leaves. */
-  const refused = memberAfterBarrier(previous, { outcome: "refused", attempts: 3, reason: "no-engine; the reseed failed: boom" })
+  const refused = memberAfterBarrier(previous, { outcome: "refused", attempts: 3, reason: "no-engine; the reseed failed: boom" }, 3)
   expect(refused.mode).toBe("checkpoint")
   expect(refused.handoffReady).toBe(true)
   expect(refused.fenced).toBe(true)
@@ -418,7 +428,7 @@ test("C7: a given-up barrier fences the member row it persists, and a later succ
   expect(refused.joinedAt).toBe(previous.joinedAt)
   // A fence recorded earlier must NOT survive a later successful outcome, or a healthy member stays out.
   /** The row a reseed leaves, from a row that WAS fenced. */
-  const reseeded = memberAfterBarrier({ ...refused }, { outcome: "reseeded", attempts: 3, reason: "busy", newHandle: "handle-fresh" })
+  const reseeded = memberAfterBarrier({ ...refused }, { outcome: "reseeded", attempts: 3, reason: "busy", newHandle: "handle-fresh" }, 3)
   expect(reseeded.mode).toBe("subcaptain")
   expect(reseeded.handoffReady).toBe(false)
   expect("fenced" in reseeded).toBe(false)
@@ -434,22 +444,69 @@ test("C7 × B1: an ADOPTED member's marker survives BOTH barrier outcomes, and a
   const adopted: CellMemberRecord = memberRow("rev-late", { adopted: true, handoffs: 1 })
   // REFUSED (the fence) — the row is fenced, and it must still read as adopted.
   /** The row a refused barrier leaves. */
-  const fenced = memberAfterBarrier(adopted, { outcome: "refused", attempts: 3, reason: "no-engine" })
+  const fenced = memberAfterBarrier(adopted, { outcome: "refused", attempts: 3, reason: "no-engine" }, 3)
   expect(fenced.fenced).toBe(true)
   expect(fenced.adopted).toBe(true)
   // PROMOTED (a successful compaction) and RESEEDED (the fallback) — no fence, and the marker still there.
   /** The row a promoted barrier leaves. */
-  const promoted = memberAfterBarrier(adopted, { outcome: "promoted", attempts: 1, reason: "compacted" })
+  const promoted = memberAfterBarrier(adopted, { outcome: "promoted", attempts: 1, reason: "compacted" }, 3)
   expect("fenced" in promoted).toBe(false)
   expect(promoted.adopted).toBe(true)
   /** The row a reseed leaves, from the row the refused barrier fenced. */
-  const reseeded = memberAfterBarrier(fenced, { outcome: "reseeded", attempts: 2, reason: "busy", newHandle: "handle-fresh" })
+  const reseeded = memberAfterBarrier(fenced, { outcome: "reseeded", attempts: 2, reason: "busy", newHandle: "handle-fresh" }, 3)
   expect(reseeded.mode).toBe("subcaptain")
   expect(reseeded.adopted).toBe(true)
   // A row activation created must NOT grow the marker: absence stays absence.
   /** The row a barrier leaves for an activation-created seat. */
-  const staged = memberAfterBarrier(memberRow("Reviewer"), { outcome: "promoted", attempts: 1, reason: "compacted" })
+  const staged = memberAfterBarrier(memberRow("Reviewer"), { outcome: "promoted", attempts: 1, reason: "compacted" }, 3)
   expect("adopted" in staged).toBe(false)
+})
+
+test("R4.3: the THIRD consecutive non-reopening run fences the seat, and its reason names the count", () => {
+  // A seat that stays in the window across runs is bounded by the count; the run that reaches the bound
+  // is the one that fences, and the record must SAY the count so an operator can tell a single failure
+  // from a spent budget.
+  /** The row a checkpointed seat carries before any barrier run. */
+  const first = memberAfterBarrier(memberRow("Deep Worker", { checkpointSince: "2026-11-10T00:00:00.000Z" }), { outcome: "reseeded", attempts: 3, reason: "busy", newHandle: "handle-1" }, 3)
+  // A RESEED IS NOT A REOPENING (R4.2): the window's clock survives, the failure count grows, no fence.
+  expect(first.mode).toBe("subcaptain")
+  expect(first.checkpointSince).toBe("2026-11-10T00:00:00.000Z")
+  expect(first.barrierFailures).toBe(1)
+  expect("fenced" in first).toBe(false)
+  /** The row the SECOND non-reopening run leaves. */
+  const second = memberAfterBarrier({ ...first, handoffReady: true, mode: "checkpoint" }, { outcome: "reseeded", attempts: 3, reason: "busy", newHandle: "handle-2" }, 3)
+  expect(second.barrierFailures).toBe(2)
+  expect("fenced" in second).toBe(false)
+  /** The row the THIRD run leaves: the bound is reached, so the seat is fenced. */
+  const third = memberAfterBarrier({ ...second, handoffReady: true, mode: "checkpoint" }, { outcome: "reseeded", attempts: 3, reason: "busy", newHandle: "handle-3" }, 3)
+  expect(third.mode).toBe("checkpoint")
+  expect(third.handoffReady).toBe(true)
+  expect(third.fenced).toBe(true)
+  expect(third.barrierFailures).toBe(3)
+  // THE COUNT IS IN THE REASON, not only in the number field: the sentence a captain reads names it.
+  expect(String(third.fencedReason)).toContain("3 of 3")
+  expect(String(third.fencedReason)).toContain("busy")
+  // A REOPENING outcome clears BOTH window keys: the same session was compacted and keeps working.
+  /** The row a promoted barrier leaves, from the row the bound fenced. */
+  const promoted = memberAfterBarrier(third, { outcome: "promoted", attempts: 1, reason: "compacted" }, 3)
+  expect(promoted.mode).toBe("subcaptain")
+  expect(promoted.handoffReady).toBe(false)
+  expect("fenced" in promoted).toBe(false)
+  expect("fencedReason" in promoted).toBe(false)
+  expect("checkpointSince" in promoted).toBe(false)
+  expect("barrierFailures" in promoted).toBe(false)
+  // A REFUSAL fences immediately, whatever the count: this run already gave up.
+  /** The row a refused barrier leaves on its FIRST run. */
+  const refusedFirst = memberAfterBarrier(memberRow("Reviewer"), { outcome: "refused", attempts: 3, reason: "no-engine" }, 3)
+  expect(refusedFirst.fenced).toBe(true)
+  expect(String(refusedFirst.fencedReason)).toContain("1 of 3")
+})
+
+test("R4.3: absence stays absence — a row with no window and no failures never grows the keys", () => {
+  /** The row a promoted barrier leaves for a seat that never recorded a window. */
+  const promoted = memberAfterBarrier(memberRow("Reviewer"), { outcome: "promoted", attempts: 1, reason: "compacted" }, 3)
+  expect("checkpointSince" in promoted).toBe(false)
+  expect("barrierFailures" in promoted).toBe(false)
 })
 
 test("C7: the given-up journal row names the member, the attempts and the repair verb", () => {
@@ -566,16 +623,27 @@ test("round 3: a BARRIER-PENDING seat gets NO unfence command — the compaction
   expect(fenced.length).toBe(1)
   expect(fenced[0].name).toBe("Senior Engineer")
   expect(fenced[0].giveUp).toBe(false)
+  // THE THREE HONESTY FIELDS (R4.5): the seat is CLOSED BY THE BARRIER'S WINDOW, and the forced lever is
+  // NOT eligible here — this row records no `checkpointSince` and the harness proves no liveness, so the
+  // fail-closed predicate has no bound and no proven-dead session to stand on.
+  expect(fenced[0].barrierOwned).toBe(true)
+  expect(fenced[0].forceEligible).toBe(false)
   /** The text a model reads for the same sweep. */
   const text = renderTool(harness, "cellwork_supervise", sweep)
   expect(text).toContain("BARRIER-OWNED")
-  expect(text).toContain("nothing for you to do")
-  expect(text).toContain("the compaction barrier owns this seat")
-  // NO LEVER AT ALL: neither the unfence command nor reassignment advice belongs to this seat.
+  // THE OLD PROMISE IS GONE (R4.5): nothing supervises the barrier, so the render no longer tells the
+  // captain there is nothing to do — it names the barrier's debt and the lever's state instead.
+  expect(text).not.toContain("nothing for you to do")
+  expect(text).toContain("nothing supervises it")
+  expect(text).toContain("no checkpoint timestamp is recorded")
+  // NO LEVER YET: without a written bound, neither the unfence command nor reassignment advice is offered.
   expect(text).not.toContain("cellwork_dispatch {unfence")
   expect(text).not.toContain("reassign:[{task_id, owner}]")
   // THE DISTINCTION IS DISCLOSED, not hidden in a trailing parenthetical: the tool description names both
-  // kinds, so a model selecting the tool knows a barrier-owned seat needs no captain action.
+  // kinds (a give-up fence and a barrier-owned window), so a model selecting the tool knows WHICH one it is
+  // looking at — and, since R4.5, that the barrier nothing supervises may need the bounded lever. The old
+  // sentence here claimed a barrier-owned seat "needs no captain action", which is the promise R4.5
+  // withdrew and this test above asserts is gone.
   const tool = harness.tools.get("cellwork_supervise")
   expect(String(tool?.description)).toContain("GIVE-UP")
   expect(String(tool?.description)).toContain("BARRIER-OWNED")
@@ -654,4 +722,83 @@ test("C7: a SECOND cellwork_handoff is refused while the first waits for the bar
   /** The journal rows of the cell, which must hold no `handoff` event. */
   const rows = journalRows(harness)
   expect(rows.filter((row) => row.event === "handoff").length).toBe(0)
+})
+
+
+// ── R4.2: a reseed is not proof of a working child ────────────────────────
+
+test("R4.2: a reseeded seat whose recorded session is NOT live is reported `suspect` with its age", async () => {
+  // THE INCIDENT'S SILENT HALF: `startContinuableAgent` resolving a handle was classified `reseeded`, the row
+  // was written `mode:"subcaptain"` with a DEAD session id, and every surface presented that as a healthy
+  // promotion. The sweep now measures the window's age and the session's liveness and says so.
+  /** The seat a broken reseed left: `subcaptain`, a fresh handle, a window no barrier reopened. */
+  const row = memberRow("Senior Engineer", { mode: "subcaptain", handoffReady: false, handoffs: 2, sessionId: "session-dead-child", checkpointSince: new Date(Date.now() - 1800000).toISOString() })
+  // THE ANCHOR IS WHAT MAKES `dead` PROVABLE (R7.3): the registry holds the CAPTAIN's own session, so its
+  // refusal to answer for the target is a fact about the target rather than an unproven absence.
+  /** The harness whose registry is PRESENT, resolves the captain's identity, and holds nothing under the target id. */
+  const harness = makeHarness({ "Senior Engineer": row }, { liveSessions: [CAPTAIN_SESSION] })
+  /** The captain's sweep. */
+  const sweep = await runTool(harness, "cellwork_supervise", {}, harness.captain)
+  expect(sweep.ok).toBe(true)
+  /** The member row the sweep projects. */
+  const member = (sweep.members as Array<Record<string, unknown>>).find((entry) => entry.name === "Senior Engineer")
+  if (member === undefined) throw new Error("the member must be reported")
+  expect(member.suspect).toBe(true)
+  expect(member.liveness).toBe("dead")
+  expect(Number(member.pendingMs)).toBeGreaterThanOrEqual(1800000)
+  // A DEAD SEAT IS FORCE-ELIGIBLE: the age bound is reached and nothing proves the session live.
+  expect(member.forceEligible).toBe(true)
+  // THE RENDER SAYS IT: the seat is not presented as a working member.
+  /** The text a model reads for the same sweep. */
+  const text = renderTool(harness, "cellwork_supervise", sweep)
+  expect(text).toContain("SUSPECT")
+  expect(text).toContain("the reseed did not produce a working child")
+})
+
+test("R4.2: an ABSENT agents registry is UNKNOWN — a seat is never reported suspect on that basis", async () => {
+  // THE HONESTY BOUND: `liveAgentExact` answers `undefined` both for a dead session and for a composition
+  // with no agents registry. Reading that as "dead" would report EVERY checkpointed seat as suspect on an
+  // older composition, so the presence probe decides, and absence is UNKNOWN.
+  /** The same post-reseed row, with no registry to ask. */
+  const row = memberRow("Senior Engineer", { mode: "subcaptain", handoffReady: false, handoffs: 2, sessionId: "session-dead-child", checkpointSince: new Date(Date.now() - 1800000).toISOString() })
+  /** The harness whose composition exposes NO agents registry. */
+  const harness = makeHarness({ "Senior Engineer": row }, { liveSessions: [], agentsRegistry: false })
+  /** The captain's sweep. */
+  const sweep = await runTool(harness, "cellwork_supervise", {}, harness.captain)
+  /** The member row the sweep projects. */
+  const member = (sweep.members as Array<Record<string, unknown>>).find((entry) => entry.name === "Senior Engineer")
+  if (member === undefined) throw new Error("the member must be reported")
+  expect(member.liveness).toBe("unknown")
+  expect("suspect" in member).toBe(false)
+  // THE AGE IS STILL REPORTED, and the forced lever is NOT available (R5.2): this seat is a `subcaptain`
+  // with no checkpoint spelling on either record, and an UNPROVABLE session proves nothing — the ONE
+  // predicate answers exactly what the forced verb answers, which is `not-fenced` (nothing to clear). The
+  // old second predicate advertised the lever here while the verb refused it, which is the divergence R5.2
+  // removes.
+  expect(Number(member.pendingMs)).toBeGreaterThanOrEqual(1800000)
+  expect(member.forceEligible).toBe(false)
+  // AND THE SAME SEAT IS NOT REPORTED CLOSED: nothing holds it while liveness is unknown.
+  expect((sweep.fenced as Array<Record<string, unknown>>).some((row) => row.name === "Senior Engineer")).toBe(false)
+  /** The text a model reads for the same sweep. */
+  const text = renderTool(harness, "cellwork_supervise", sweep)
+  expect(text).not.toContain("SUSPECT")
+})
+
+test("R7.3: a PRESENT registry that cannot resolve the captain anchor is UNKNOWN, never `dead`", async () => {
+  // THE CAPABILITY FLAG IS NOT PROOF: `capabilities().agents === true` only says a registry service is
+  // mounted. A registry that cannot resolve a session KNOWN to be alive (the captain) may be answering
+  // `undefined` for reasons that have nothing to do with the target, so an absent target proves nothing.
+  /** The same post-reseed row. */
+  const row = memberRow("Senior Engineer", { mode: "subcaptain", handoffReady: false, handoffs: 2, sessionId: "session-dead-child", checkpointSince: new Date(Date.now() - 1800000).toISOString() })
+  /** The harness whose registry is PRESENT but resolves NOTHING — the captain included. */
+  const harness = makeHarness({ "Senior Engineer": row }, { liveSessions: [] })
+  /** The captain's sweep. */
+  const sweep = await runTool(harness, "cellwork_supervise", {}, harness.captain)
+  /** The member row the sweep projects. */
+  const member = (sweep.members as Array<Record<string, unknown>>).find((entry) => entry.name === "Senior Engineer")
+  if (member === undefined) throw new Error("the member must be reported")
+  expect(member.liveness).toBe("unknown")
+  // AND NOTHING IS LICENSED ON IT: no suspect flag, no closed seat, no forced lever.
+  expect("suspect" in member).toBe(false)
+  expect((sweep.fenced as Array<Record<string, unknown>>).some((entry) => entry.name === "Senior Engineer")).toBe(false)
 })

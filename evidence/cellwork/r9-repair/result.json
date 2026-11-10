@@ -1,0 +1,65 @@
+{
+  "wave": "R9 — CodeRabbit round 2 + the count-only residual (frozen contract)",
+  "contract": ".mpd/plans/cellwork-coderabbit-round2.md",
+  "head": "e892527b",
+  "branch": "feature/cellwork-async-delegation",
+  "capturedAt": "2026-11-10T17:55:00+08:00",
+  "items": {
+    "R9.1": {
+      "verdict": "FIXED",
+      "what": "livenessOf returns `unknown` when the RECORDED session id is empty, BEFORE the anchor check; every non-empty case keeps its existing path (the now-redundant `sessionId !== \"\"` guard was removed)",
+      "files": [
+        "packages/mpd-cellwork-plugin/src/protocol.ts:482-497 (guard at :486)",
+        "packages/mpd-cellwork-plugin/test/dispatch-unfence.test.ts:942 (arm)",
+        "packages/mpd-cellwork-plugin/dist/index.js (rebuilt, pinned bun 1.4.0)"
+      ],
+      "arm": "R9.1: an EMPTY recorded session answers `unknown`, never a proven-dead child — dead-reseed row with `sessionId:\"\"`, anchor (captain) resolvable: sweep members row liveness \"unknown\", no `suspect`; unforced -> `not-fenced` (no suspect); forced -> `not-fenced`, no `bound`, no plane fence, no `member-unfenced-forced` journal row, row stays `subcaptain`",
+      "negativeControl": "with the guard removed the SAME arm fails: `Expected: \"unknown\" / Received: \"dead\"` (evidence/cellwork/r9-repair/r91-negative-control.log), exit 1"
+    },
+    "R9.2": {
+      "verdict": "FIXED",
+      "a": "EXTENDED the guard (not merely corrected the claim): AUTHORITY_FILE_TOKENS (scripts/repin-vendor.ts:389) pins the authority's single-file branch guard `if (typeof meta.sha256 === \"string\") {` and its RAW-bytes hash `createHash(\"sha256\").update(readFileSync(dir)).digest(\"hex\")`; the header claim (lines 9-13) and the assertAuthorityShape docblock now say BOTH shapes are re-checked; arm (g2) tampers the single-file statement -> exit 1 naming the single-file shape",
+      "b": "DERIVED and compared: a count-only entry's fileCount now comes from listAssetFiles (the same shared rule the gate uses), a missing path/non-numeric count is a PROBLEM, and `--write` may repair the count; the POLICY skip survives only for `_`-prefixed metadata keys",
+      "files": [
+        "scripts/repin-vendor.ts:389 (tokens), :407-441 (guard), :521-556 (count branch), :662-675 (splice), :1277 (arm i)"
+      ],
+      "countingArm": "arm (i): `{countonly: {fileCount: 3}}` against a 2-file count-only fixture -> `--check` exit 1 with `DELTA : fileCount 3 -> 2`; `--write` repairs it; `--check` exit 0. Arm (a) proves the CORRECT value stays green.",
+      "negativeControl": "with the old POLICY branch restored, arm (i) fails: `count-only drift check exited 0 (expected 1)` — the exact false green (evidence/cellwork/r9-repair/r92-negative-control.log); arm (a) also reddens because it asserts the entry is NOT POLICY-skipped",
+      "verifyVendorUntouched": "git diff --stat scripts/verify-vendor.ts is empty"
+    },
+    "R9.3": {
+      "verdict": "STALE — nothing changed",
+      "why": "mpdConsults.cancel is SYNCHRONOUS end to end and never awaits a child: cellwork calls `await Promise.resolve(service.cancel(id))` (consults.ts:661; seam declared `=> unknown` at :79); the facade returns `ConsultView` (roles-plugin/src/consults.ts:201); the supervisor's `cancel(): ConsultOutcome` body (spawn-async.ts:805-833) has no await and ends with clearTimer + a try/catch `handle.interrupt()` + a local settle; the adapter's `interrupt(): void` (dsh-adapter index.ts:3812-3845) attaches `.catch(...)` to a thenable host answer WITHOUT awaiting it. The one observer on the settle path is cellwork's fire-and-forget `void recordConsultRow` (consults.ts:459-461).",
+      "evidence": "evidence/cellwork/r9-repair/r93-stale-evidence.md"
+    }
+  },
+  "gates": [
+    { "id": "repin-check", "argv": "node scripts/repin-vendor.ts --check", "exit": 0, "observed": "CHECK     : GREEN - lock matches the working tree (drift=0, problems=0)", "log": "evidence/cellwork/r9-repair/repin-check.log" },
+    { "id": "repin-self-test", "argv": "node scripts/repin-vendor.ts --self-test", "exit": 0, "observed": "SELF-TEST PASS - 13/13 arm(s) passed (incl. (g2) single-file guard and (i) count-only drift)", "log": "evidence/cellwork/r9-repair/repin-selftest.log" },
+    { "id": "verify-vendor", "argv": "node scripts/verify-vendor.ts", "exit": 0, "observed": "PASS - 8 shipped asset(s) fingerprinted, upstream identity not checked", "log": "evidence/cellwork/r9-repair/verify-vendor.log" },
+    { "id": "typecheck", "argv": ".toolchain/node_modules/.bin/bun run typecheck", "exit": 0, "observed": "$ tsgo --noEmit (no diagnostics)", "log": "evidence/cellwork/r9-repair/typecheck.log" },
+    { "id": "test-cellwork", "argv": ".toolchain/node_modules/.bin/bun test packages/mpd-cellwork-plugin", "exit": 0, "observed": "312 pass, 0 fail, 30 files", "log": "evidence/cellwork/r9-repair/cellwork-tests.log" },
+    { "id": "comments", "argv": ".toolchain/node_modules/.bin/bun run verify:comments", "exit": 0, "observed": "VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.", "log": "evidence/cellwork/r9-repair/comments.log" },
+    { "id": "dist-fresh", "argv": "node scripts/verify-dist-fresh.ts", "exit": 0, "observed": "ok: 34/34 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED listed", "log": "evidence/cellwork/r9-repair/dist-fresh.log" },
+    { "id": "docs", "argv": ".toolchain/node_modules/.bin/bun run verify:docs", "exit": 0, "observed": "pairs=59 failed=0 violations=0 links=626 dead=0 — PASS", "log": "evidence/cellwork/r9-repair/docs.log" },
+    { "id": "rows", "argv": ".toolchain/node_modules/.bin/bun run verify:rows", "exit": 0, "observed": "36 row ids match the 2-file bundle patch layer", "log": "evidence/cellwork/r9-repair/rows.log" }
+  ],
+  "mountLanes": [
+    { "argv": "PATH=\"$PWD/.qa-tmp/dsh-022/bin:$PATH\" .toolchain/node_modules/.bin/bun skills/dsh-qa/scripts/bundle-lifecycle.ts", "exit": 0, "result": "PASS", "evidence": "evidence/dsh-qa/bundle-lifecycle/2026-11-10T09-52-00.184Z", "log": "evidence/cellwork/r9-repair/mount-bundle-lifecycle.log" },
+    { "argv": "PATH=\"$PWD/.qa-tmp/dsh-022/bin:$PATH\" node skills/dsh-qa/scripts/preset-conformance.ts", "exit": 0, "result": "PASS (negative control: preset-mpd persona mutation -> agent-preset/invalid)", "evidence": "evidence/dsh-qa/preset-conformance/2026-11-10T09-52-17.991Z", "log": "evidence/cellwork/r9-repair/mount-preset-conformance.log" }
+  ],
+  "harness": ".qa-tmp/dsh-022/bin/dsh 0.2.2-rc.1",
+  "build": ".toolchain/node_modules/.bin/bun build packages/mpd-cellwork-plugin/src/index.ts --target node --format esm --outfile packages/mpd-cellwork-plugin/dist/index.js (bun 1.4.0, repo root)",
+  "bounds": [
+    "Docs were NOT edited: the frozen contract scopes R9.1 to protocol.ts + an arm, and the existing README/docs sentences quantify over 'the recorded session', which an empty id is not. The package README and docs/cellwork.md therefore still describe the dead condition without naming the empty-id exception.",
+    "The R9.3 STALE verdict is a code-read of the synchronization: no clock/await measurement was made of a hung host `subagents.interrupt`; the claim is that no layer between cellwork and the adapter awaits a promise on this path.",
+    "`git diff --stat scripts/verify-vendor.ts` is empty; no gate or test was edited to obtain a pass.",
+    "No commit was made (captain-only git writer)."
+  ],
+  "filesChanged": [
+    "packages/mpd-cellwork-plugin/src/protocol.ts",
+    "packages/mpd-cellwork-plugin/test/dispatch-unfence.test.ts",
+    "packages/mpd-cellwork-plugin/dist/index.js",
+    "scripts/repin-vendor.ts"
+  ]
+}

@@ -26,6 +26,7 @@ import { join, resolve } from "node:path"
 import { ROLES, ROLE_BY_ID, type MpdRoleSpec } from "./roles.data.ts"
 import { installReadonlyGuard } from "./team-guard.ts"
 import { INVESTIGATION_CONFIG_KEY, installCaptainInvestigationGuard } from "./captain-investigation.ts"
+import { CAPTAIN_SHELL_CONFIG_KEY, CAPTAIN_SHELL_DENY_PATTERNS, installCaptainShellGuard } from "./captain-shell.ts"
 import { installAskUserQuestionGuard } from "./ask-user-guard.ts"
 import { QUESTION_ROUTES, installQuestionRelay, registerQuestionWeb, type PendingQuestion, type QuestionEffect } from "./question-relay.ts"
 import { DELEGATION_CONFIG_KEY, installDelegationGate } from "./delegation-gate.ts"
@@ -42,6 +43,9 @@ import { roleSpawnCard, rolesListCard } from "./tool-cards.ts"
 // supervisor's (contract §S9), resolved per arm through the live config layer by the closures the
 // supervisor is built with below. Kept in its own module so its tests need no boot.
 import { CONSULT_ACTIVITY_HISTORY, CONSULT_FORCE_AFTER_MS, CONSULT_TOOL_IN_FLIGHT_MAX_MS, consultActivityKeyOf, consultLabelKey, consultMaxFromEnv, createConsultSupervisor, type ConsultToolActivity } from "./spawn-async.ts"
+// The SERVICE seam a bounded plane outside this package consumes (cellwork's background delegation):
+// the SAME supervisor, published as `mpdConsults`, so no consumer needs a relative import into this row.
+import { createMpConsults } from "./consults.ts"
 
 /** The cordis plugin name, matched against this row's id in the bundle patch. */
 export const name = "mpd-roles"
@@ -54,14 +58,15 @@ type Ctx = { tools: any; subagents: any; provide: (n: string, v: any, check?: an
  * The row config: the persona directory plus the keys this row reads itself.
  *
  * `team.gate` (mechanical | advisory | off), `team.sensitivity` (easy | normal | strict),
- * `boulder.dir`, `captain.investigation` (deny | allow) and `delegation.gate` (deny | captain |
+ * `boulder.dir`, `captain.investigation` (deny | allow), `captain.shell` (deny | allow) and
+ * `delegation.gate` (deny | captain |
  * allow) mirror their `.mpd/mpd.jsonc` spellings, so a composition without the config row mounted can
  * still pin them in the patch. `consult.forceAfterMs` and `watchdog.forceAfterMs` are the two layers
  * of the consult deadman's bound (the second is the shared force-supervisor knob), and
  * `watchdog.toolInFlightMaxMs` is the in-flight half of the same predicate (contract §S9). Every knob
  * is read PER USE through the same config layer, so a `mpd.jsonc` edit applies without a reinstall.
  */
-type Config = { personasDir?: string; team?: { gate?: unknown; sensitivity?: unknown; reteam?: { enabled?: unknown; afterConsults?: unknown } }; boulder?: { dir?: unknown }; captain?: { investigation?: unknown }; delegation?: { gate?: unknown }; consult?: { forceAfterMs?: unknown }; watchdog?: { forceAfterMs?: unknown; toolInFlightMaxMs?: unknown } }
+type Config = { personasDir?: string; team?: { gate?: unknown; sensitivity?: unknown; reteam?: { enabled?: unknown; afterConsults?: unknown } }; boulder?: { dir?: unknown }; captain?: { investigation?: unknown; shell?: unknown }; delegation?: { gate?: unknown }; consult?: { forceAfterMs?: unknown }; watchdog?: { forceAfterMs?: unknown; toolInFlightMaxMs?: unknown } }
 
 /** The consult deadman's OWN bound key, read first (contract §S9). */
 const CONSULT_FORCE_KEY = "consult.forceAfterMs"
@@ -1069,6 +1074,30 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     toolInFlightMaxMs: () => consultInFlightBound(),
   })
 
+  // ── the consult SERVICE seam (cellwork async delegation) ──────────────────
+  // ONE supervisor, a second VIEW of it: a bounded plane outside this package starts and settles consults
+  // through `mpdConsults` instead of importing this row (the cross-package coupling inventory is frozen).
+  // It registers no tool, is listed by no tool output and adds no cap: `start` lands on the same
+  // `consultSupervisor`, so `MPD_DSH_CONSULT_MAX` and the silence deadman govern both surfaces. The one
+  // behavioural difference is that this path does NOT apply `consultDepthRefusal` — see `consults.ts`.
+  ctx.provide("mpdConsults", createMpConsults({
+    supervisor: consultSupervisor,
+    // THE SAME INTERNAL PATH the async tool uses (`raiseConsultAsync`): persona, route, fallback and the
+    // read-only child scope are identical. A caller MAY still pass an absolute `maxDepth`; when it does not
+    // (cellwork no longer does — its `depthMax` counts nested CELLS), `raiseConsultAsync` applies this
+    // row's own `spawnMaxDepthOf(exec.agent)` rule, caller depth + 1, a leaf.
+    raise: (spec) => raiseConsultAsync(spec, spec.exec, spec.maxDepth),
+    // Roles are canonicalised against THIS call's roster surface, so the id the caller gets back, the name
+    // the supervisor records and the name the handoff document prints are all the ONE canonical spelling.
+    canonicalRole: (role, exec) => {
+      /** The roster as this call sees it: base specialists plus extension roles. */
+      const surface = roleSurface(exec)
+      /** The resolved role, or null when the spelling names nothing on that surface. */
+      const spec = roleOfToolInput(surface, String(role ?? ""))
+      return spec === null ? null : spec.name
+    },
+  }))
+
   dsh.registerTool({
     name: "mpd_roles_list",
     description: "List the specialist roster — the SAME normal-named specialists team mode stages as teammates, each named for what it does: " + rosterFunctionList() + ". Address a role by that name (any case, space or hyphen spelling). Use this before mpd_role_spawn; for team work stage the roster with `agent_teams_plan` (add_member with the persona text from mpd_role_persona → create_task with its dependency answer → approve) instead of repeated single-call consults.",
@@ -1186,9 +1215,12 @@ export function apply(ctx: Ctx, config: Config = {}): void {
    *
    * @param args - the tool arguments (`role`, `task`, optional `context`).
    * @param exec - the invoking tool execution, whose agent and signal ride the spawn.
+   * @param maxDepth - an OPTIONAL absolute agent-nesting cap declared by a bounded caller; absent (the
+   *   cellwork path since the R1.1 repair) means this row's own `spawnMaxDepthOf(exec.agent)` rule applies,
+   *   caller depth + 1. A cell plane's own `depthMax` counts nested CELLS and is NOT this scale.
    * @returns the started handle the consult supervisor owns.
    */
-  async function raiseConsultAsync(args: any, exec: any): Promise<DshAsyncAgent> {
+  async function raiseConsultAsync(args: any, exec: any, maxDepth?: number): Promise<DshAsyncAgent> {
     /** The roster as this call sees it: base specialists plus extension roles. */
     const surface = roleSurface(exec)
     /** The resolved role, or null — in which case the error lists every addressable name. */
@@ -1213,6 +1245,11 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     const run = await resolveRunRoute(dsh, primary, resolution.ok ? resolution.route.fallbacks ?? [] : [])
     /** The assembled prompt, identical to the blocking path's. */
     const prompt = spec.persona + "\n\nTask: " + task + (args?.context ? "\n\nContext:\n" + String(args.context) : "") + "\n\nWork with the tools your role requires (read-only roles must never modify anything). End with ONLY the structured report (role/summary/recommendation/details/evidence)."
+    // THE DEPTH CAP: a declared positive ABSOLUTE cap overrides this row's caller-depth arithmetic; anything
+    // unusable — and ABSENT, which is what the cellwork path sends since the R1.1 repair — falls back to
+    // `spawnMaxDepthOf`, never to `undefined`, so a child is never raised under the host's hidden default.
+    /** The cap to forward: the declared positive whole number, else the row's own rule. */
+    const depthCap = typeof maxDepth === "number" && Number.isFinite(maxDepth) && maxDepth >= 1 ? Math.floor(maxDepth) : spawnMaxDepthOf(exec.agent)
     return dsh.spawnAgentAsync({
       label: spec.name,
       prompt,
@@ -1222,7 +1259,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       model: run.route.model,
       persona: spec.persona,
       outputSchema: REPORT_SCHEMA,
-      maxDepth: spawnMaxDepthOf(exec.agent),
+      maxDepth: depthCap,
       ...(run.route.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: run.route.reasoningEffort } }),
       ...(spec.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {})
     })
@@ -1334,6 +1371,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     if (key === RETEAM_AFTER_CONSULTS_CONFIG_KEY) return config.team?.reteam?.afterConsults
     if (key === BOULDER_DIR_CONFIG_KEY) return config.boulder?.dir
     if (key === INVESTIGATION_CONFIG_KEY) return config.captain?.investigation
+    if (key === CAPTAIN_SHELL_CONFIG_KEY) return config.captain?.shell
     if (key === DELEGATION_CONFIG_KEY) return config.delegation?.gate
     if (key === CONSULT_FORCE_KEY) return config.consult?.forceAfterMs
     if (key === WATCHDOG_FORCE_KEY) return config.watchdog?.forceAfterMs
@@ -1420,6 +1458,27 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   } catch (error) {
     guardOutcome.push("captainInvestigation=absent reason=threw")
     warnOnce("captain-investigation:threw", "the captain investigation guard could not be installed (" + errText(error) + ")")
+  }
+  // THE CAPTAIN SHELL GUARD (contract `.mpd/plans/captain-self-test-fence.md` §3 C1) sits at this same
+  // site and for the same reason: reconnaissance is not the captain's work, and neither is running the
+  // verification commands that produce evidence — it delegates the command to a specialist and consumes
+  // the REPORT, while `bash` stays open for git, the filesystem and bookkeeping. `captain.shell`
+  // (`deny` default | `allow`) is read per call through the SAME `configValue`; the boot token below
+  // reports the mode and the size of the shipped deny table.
+  try {
+    /** The guard's install outcome, whose MODE the team-plane boot signature reports below. */
+    const shell = installCaptainShellGuard(dsh, {
+      configValue,
+      warn: (line) => warnOnce("captain-shell:" + line, line),
+    })
+    guardOutcome.push(shell.installed
+      ? (shell.mode === "allow"
+        ? "captainShell=allow"
+        : "captainShell=deny patterns=" + String(CAPTAIN_SHELL_DENY_PATTERNS.length))
+      : "captainShell=absent reason=" + String(shell.reason))
+  } catch (error) {
+    guardOutcome.push("captainShell=absent reason=threw")
+    warnOnce("captain-shell:threw", "the captain shell guard could not be installed (" + errText(error) + ")")
   }
   try {
     /** The gate's install outcome, whose MODE the team-plane boot signature reports below. */

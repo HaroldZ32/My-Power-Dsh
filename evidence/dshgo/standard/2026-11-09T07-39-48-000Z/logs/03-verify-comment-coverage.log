@@ -1,0 +1,5 @@
+# verify-comment-coverage
+
+scanned 618 TypeScript file(s) of 618 in the source set; inspected 55606 declaration(s); skipped 27228 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.

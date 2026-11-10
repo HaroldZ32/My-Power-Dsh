@@ -38,13 +38,15 @@ barrel，因为 barrel 还带着两个 `node:fs` 模块；两条路径是同一�
 形状（全部是纯 JSON——没有 `Map`、没有 `Set`、没有类实例、没有函数）：
 
 ```
-GraphModel  = { nodes, edges, ranks, cycles, report, groups? }
+GraphModel  = { nodes, edges, ranks, cycles, report, groups?, consults? }
 GraphNode   = { id, subject, kind?, visual, assignee?, dependencies, depth, planned, title?, status?, group? }
+GraphConsultNode = GraphNode & { kind: "consult", consultId, cellId, startedAt, elapsedMs? }
 GraphEdge   = { from, to, source: "board" | "plan" | "both" | "derived" }
 GraphReport = { boardOnly, planOnly, edgePlanOnly, edgeBoardOnly,
                 planProblems, unresolved, ranksDerived }
 GraphGroup  = { id, label, parentId, memberIds, depth, originTaskId? }
-GraphGroupInput = { id, label, originTaskId?, board?, plan?, groups? }
+GraphGroupInput = { id, label, originTaskId?, board?, plan?, groups?, consults? }
+GraphConsultInput = { consultNumber, consultId, role, task, state, startedAt, cellId, elapsedMs? }
 ```
 
 节点上的 `depth` 是**已解析的列**（从阻断图推导，或报告会说明的 served-depth 回退），所以消费方不再自行分桶。
@@ -53,6 +55,26 @@ GraphGroupInput = { id, label, originTaskId?, board?, plan?, groups? }
 **确定性。** 同样的看板与同样的计划产生逐字节相同的模型。节点、rank 桶和两个 id 列表都按数字 id 比较器排序
 （`T2` 在 `T10` 之前）；边按（`from`、再 `to`）排序；计划问题按源行号、再按文本排序。任何进入绘制的集合都不会因为
 `Map`/`Set` 的插入顺序而变。`JSON.stringify` 能原样往返：缺省的可选字段就是**缺键**，从不是 `undefined` 值。
+
+## 咨询（后台 agent 作为节点）
+
+cell 座位发起的后台咨询会画在任务**旁边**，绝不画成任务。`buildModel` 以 `consults` 接收它们（根输入与每个
+`GroupInput` 都可以带），并把它们放在**兄弟数组** `GraphModel.consults` 里，绝不放进 `nodes`。这是硬规则、不是
+图方便：放进了 `nodes`，TUI 会把它合成成一个 ghost **任务**，而 Web 的 ghost 白名单会静默丢掉它——两个面就会对同
+一个模型各说各话。
+
+- **没有边，也不参与 rank。** 咨询带 `dependencies: []` 与 `depth: 0`，并且不参与任何帧的推导：带不带 `consults`
+  输入，`nodes`、`edges`、`ranks`、`report` 都逐字节相同。加上一条边会把推导的 `resolved` 计数从 0 抬到 1，从而翻转
+  它的 served-depth 回退，让一块旧看板上的每个任务被静默重排。
+- **id 按帧限定。** 根帧是 `C<n>`，盒子里是 `"<groupId>::C<n>"`——铸造的序号在每个 team 里都从 1 重新开始，所以裸
+  拼写会在盒子之间撞车。
+- **色调沿用既有的六态。** `running` → `running`、`complete` → `completed`、`failed` → `failed`、
+  `cancelled` → `cancelled`，而 `interrupted` → `cancelled`（「没有报告就停下」的那一档）。无法识别的词读作
+  `open`。没有第七种状态。
+- **排序**是帧的前序遍历（根在前，然后按 id 排每个盒子），同一个帧内按 `consultNumber` 升序——就是用户当初看着它们
+  启动的顺序。
+- **向后兼容靠「缺省」。** 没有咨询的模型根本不带 `consults` 键，因此无咨询的模型与引入咨询之前本包产出的值（以及
+  字节）完全一致。
 
 **环与扁平看板都如实绘制。** 依赖环让每个 rank 保持有限，并列进 `cycles`；所有 `blockedBy` 都是 `[]` 的看板就画成
 扁平的——一个 rank、没有边——那是真实的画面，不是缺陷。
@@ -219,7 +241,7 @@ resolvePlanFile(workspaceRoot): string | undefined
 readPlanFile(path): PlanDocument
 
 // model.ts —— 唯一的模型
-buildModel({ board?, plan?, groups? }): GraphModel
+buildModel({ board?, plan?, groups?, consults? }): GraphModel
 
 // watch.ts —— 唯一的监听器
 watchGraph(targets, options?): GraphWatcher

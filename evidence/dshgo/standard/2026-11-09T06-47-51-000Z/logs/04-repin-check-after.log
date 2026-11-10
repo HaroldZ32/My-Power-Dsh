@@ -1,0 +1,6 @@
+=== CMD: node scripts/repin-vendor.ts --check (AFTER re-pin)
+[repin-vendor] _note: POLICY (not a failure) - underscore-prefixed metadata key: the vendor gate skips these too, so this helper does not re-pin it
+[repin-vendor] packages/mpd-mcp-codegraph/dist/serve.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding the package that emits it, never by rewriting the lock
+[repin-vendor] packages/mpd-bundle-plugin/client.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding the package that emits it, never by rewriting the lock
+[repin-vendor] CHECK     : GREEN - lock matches the working tree (drift=0, problems=0)
+EXIT=0

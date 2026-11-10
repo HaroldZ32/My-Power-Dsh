@@ -1,6 +1,6 @@
 // packages/mpd-tools-plugin/src/index.ts
-import { existsSync, readFileSync } from "node:fs";
-import { isAbsolute as isAbsolute2, resolve as resolve3 } from "node:path";
+import { existsSync, mkdirSync as mkdirSync2, readFileSync, writeFileSync } from "node:fs";
+import { dirname, isAbsolute as isAbsolute2, join as join2, resolve as resolve3 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
@@ -2401,6 +2401,27 @@ function probeMpdDsh(ctx, strict) {
 // packages/mpd-tools-plugin/src/index.ts
 var name = "mpd-tools";
 var inject = dshSeamInject(DSH_SEAM_TOOLS);
+var CAPTAIN_MAX_RESULT_BYTES_KEY = "captain.maxResultBytes";
+var DEFAULT_CAPTAIN_MAX_RESULT_BYTES = 4096;
+function resolveMaxResultBytes(raw) {
+  const value = typeof raw === "number" ? raw : typeof raw === "string" && raw.trim() !== "" ? Number(raw) : Number.NaN;
+  return Number.isInteger(value) && value >= 0 ? value : DEFAULT_CAPTAIN_MAX_RESULT_BYTES;
+}
+function isMpdCaptainSession(agent) {
+  const header = agent?.session?.header;
+  if (header === undefined || header === null)
+    return false;
+  if (header.origin === "subagent")
+    return false;
+  const depth = Number(header.delegationDepth);
+  if (depth >= 1)
+    return false;
+  return header.agentPreset === "mpd";
+}
+function toolFileStem(exec) {
+  const raw = String(exec?.name ?? "tool");
+  return raw.replace(/[^A-Za-z0-9._-]+/g, "_") || "tool";
+}
 function sessionTarget(target, dsh, exec) {
   return isAbsolute2(target) ? resolve3(target) : resolve3(dsh.workspaceRoot(exec), target);
 }
@@ -2409,6 +2430,28 @@ function apply(ctx, config = {}) {
   const writeGuard = config.writeGuard ?? true;
   const maxBytes = config.truncateMaxBytes ?? 16384;
   const recoveryHint = config.recoveryHint ?? "mpd-tools recovery: read the file fresh with the read tool, re-check exact old_string/new_string (whitespace matters), then retry the edit against the current file content.";
+  const configValue = (key) => {
+    const live = (() => {
+      try {
+        return ctx.get?.("mpdConfig", false);
+      } catch {
+        return;
+      }
+    })();
+    const fromLayer = (() => {
+      try {
+        return live?.get?.(key);
+      } catch {
+        return;
+      }
+    })();
+    if (fromLayer !== undefined)
+      return fromLayer;
+    if (key === CAPTAIN_MAX_RESULT_BYTES_KEY)
+      return config.captain?.maxResultBytes;
+    return;
+  };
+  rowLogLine("mpd-tools", "[mpd-tools] captainMaxResultBytes=" + resolveMaxResultBytes(configValue(CAPTAIN_MAX_RESULT_BYTES_KEY)));
   if (writeGuard) {
     dsh.guardTool((exec) => {
       if (exec.name !== "write")
@@ -2438,20 +2481,50 @@ function apply(ctx, config = {}) {
 `);
     return "";
   }
+  function legacyTruncate(text, budgetBytes, note) {
+    const banner = `
+... [mpd-tools truncated ` + text.length + " chars; keep " + budgetBytes + " budget; " + (note === undefined ? "" : note + "; ") + `tail follows] ...
+`;
+    const budget = Math.max(0, budgetBytes - banner.length);
+    const tailChars = Math.max(1, Math.floor(budget * 0.3));
+    const head = budget > 0 ? text.slice(0, Math.floor(budget * 0.7)) : "";
+    const tail = budget > 0 ? text.slice(-tailChars) : "";
+    return head + banner + tail;
+  }
   dsh.onPostToolExecute(async (exec, result, out) => {
     if (out.kind !== "accept")
       return out;
     const text = blocksToText(out.content ?? result?.content);
+    if (isMpdCaptainSession(exec?.agent)) {
+      const cap = resolveMaxResultBytes(configValue(CAPTAIN_MAX_RESULT_BYTES_KEY));
+      if (cap === 0)
+        return out;
+      const origBytes = Buffer.byteLength(text, "utf8");
+      if (origBytes <= cap)
+        return out;
+      const source = Buffer.from(text, "utf8");
+      const headBytes = Math.min(cap, origBytes);
+      const tailBytes = Math.min(Math.floor(cap / 2), Math.max(0, origBytes - headBytes - 1));
+      const head = source.subarray(0, headBytes).toString("utf8");
+      const tail = tailBytes > 0 ? source.subarray(origBytes - tailBytes).toString("utf8") : "";
+      const keptBytes = headBytes + tailBytes;
+      let fullPath = "";
+      try {
+        fullPath = join2(dsh.workspaceRoot(exec), ".mpd", "logs", "tool-results", Date.now() + "-" + toolFileStem(exec) + ".log");
+        mkdirSync2(dirname(fullPath), { recursive: true });
+        writeFileSync(fullPath, text, "utf8");
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        const degradedBudget = Math.max(1, Math.min(maxBytes, text.length - 1));
+        return { ...out, content: [{ type: "text", text: legacyTruncate(text, degradedBudget, "[mpd] full text log could not be written: " + reason) }] };
+      }
+      const marker = `
+[mpd] truncated ` + origBytes + "B -> " + keptBytes + "B; full text: " + fullPath + "]";
+      return { ...out, content: [{ type: "text", text: head + marker + tail }] };
+    }
     if (text.length <= maxBytes)
       return out;
-    const banner = `
-... [mpd-tools truncated ` + text.length + " chars; keep " + maxBytes + ` budget; tail follows] ...
-`;
-    const budget = Math.max(0, maxBytes - banner.length);
-    const tailChars = Math.max(1, Math.floor(budget * 0.3));
-    const head = budget > 0 ? text.slice(0, Math.floor(budget * 0.7)) : "";
-    const tail = budget > 0 ? text.slice(-tailChars) : "";
-    return { ...out, content: [{ type: "text", text: head + banner + tail }] };
+    return { ...out, content: [{ type: "text", text: legacyTruncate(text, maxBytes) }] };
   });
   dsh.onPostToolExecute(async (exec, result, out) => {
     if (out.kind !== "accept")
@@ -2468,7 +2541,10 @@ function apply(ctx, config = {}) {
   });
 }
 export {
+  CAPTAIN_MAX_RESULT_BYTES_KEY,
+  DEFAULT_CAPTAIN_MAX_RESULT_BYTES,
   apply,
   inject,
-  name
+  name,
+  resolveMaxResultBytes
 };

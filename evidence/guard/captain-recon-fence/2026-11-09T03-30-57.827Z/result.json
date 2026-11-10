@@ -1,0 +1,59 @@
+{
+  "wave": "2",
+  "branch": "fix/captain-self-test-fence",
+  "contract": ".mpd/plans/captain-recon-fence.md §3 C3 / §4 B3",
+  "task": "Follow-up repair: substitution-aware whole-string read pass (A), stdin exemption narrowed to pattern-taking searches (B), dist rebuild (last writer)",
+  "filesChanged": [
+    "packages/mpd-roles-plugin/src/captain-shell.ts",
+    "packages/mpd-roles-plugin/test/captain-shell.test.ts",
+    "packages/mpd-roles-plugin/dist/index.js"
+  ],
+  "fixes": {
+    "A": "The whole-string READ pass now runs only when the command carries a command substitution (`$(` or a backtick). With no substitution the segmentation is complete, so the pass is skipped (this removed the false refusals of `cat docs/decisions.md && ls packages` / `... && rm -rf node_modules`). With a substitution the whole line is still judged, and every substituted body is judged as its own command with the existence requirement relaxed to path-shaped tokens.",
+    "B": "The stdin exemption is restricted to the pattern-taking searches (rg, grep, ag, ack, i.e. `patternFirst`); `find` and `rg --files` never read stdin, so a piped one is judged exactly like a first-stage one (`git log | find` is refused)."
+  },
+  "probes": [
+    { "command": "cat docs/decisions.md && ls packages", "expected": "ALLOWED", "observed": "ALLOWED" },
+    { "command": "cat docs/decisions.md && rm -rf node_modules", "expected": "ALLOWED", "observed": "ALLOWED" },
+    { "command": "cat docs/decisions.md && git status", "expected": "ALLOWED", "observed": "ALLOWED" },
+    { "command": "echo $(cat packages/mpd-roles-plugin/src/index.ts)", "expected": "REFUSED", "observed": "REFUSED" },
+    { "command": "echo `cat packages/x.ts`", "expected": "REFUSED", "observed": "REFUSED" },
+    { "command": "echo $(cat docs/decisions.md)", "expected": "ALLOWED", "observed": "ALLOWED" },
+    { "command": "git log | find", "expected": "REFUSED", "observed": "REFUSED" },
+    { "command": "git log --oneline | grep fix", "expected": "ALLOWED", "observed": "ALLOWED" }
+  ],
+  "commands": [
+    {
+      "command": ".toolchain/node_modules/.bin/bun build packages/mpd-roles-plugin/src/index.ts --target node --format esm --outfile packages/mpd-roles-plugin/dist/index.js",
+      "exit": 0
+    },
+    {
+      "command": ".toolchain/node_modules/.bin/bun test packages/mpd-roles-plugin",
+      "exit": 0,
+      "result": "365 pass, 0 fail, 2657 expect() calls, 18 files — dist arm (T-62 byte-identity) GREEN"
+    },
+    {
+      "command": "node scripts/verify-dist-fresh.ts --only mpd-roles",
+      "exit": 0,
+      "result": "FRESH — 1/1 targets fresh, each rebuilt twice and byte-identical (pinned bun 1.4.0)"
+    },
+    {
+      "command": "node scripts/verify-dist-fresh.ts --only mpd-verify",
+      "exit": 0,
+      "result": "FRESH — 1/1 targets fresh (mpd-verify src/dist were already modified by the wave; verified, not rebuilt here)"
+    },
+    { "command": ".toolchain/node_modules/.bin/bun run typecheck", "exit": 0, "result": "tsgo --noEmit: clean" },
+    {
+      "command": ".toolchain/node_modules/.bin/bun run verify:comments",
+      "exit": 0,
+      "result": "VERDICT: PASS — 618 files, 55546 declarations"
+    }
+  ],
+  "distSha256": "f0ec17be51d0f03a7e597970e324b969ec4e39cf6129f3ec64b3d55794a54e4b",
+  "bounds": [
+    "The rule is TOKEN-based: a runtime-assembled path is not judged.",
+    "The substitution body scanner is quote-blind and counts a quoted `(` as nesting; a body whose spelled signature confuses that scan can escape (contrived; the whole-string pass still runs).",
+    "The dist is proven by the repository's own byte-identity gate; `captainShellDecision` is not exported from the plugin entry, so no dist-level direct probe exists.",
+    "mpd-verify dist freshness was verified only; its src/law.ts and dist/index.js were already modified by the wave before this task."
+  ]
+}

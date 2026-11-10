@@ -34,6 +34,10 @@
 //   node scripts/verify-graph-model.ts --seed-wrong-anchor   the grouped seeded negative control
 //   node scripts/verify-graph-model.ts --self-test          both directions, the group arms, the path forms
 //
+// A SEED BELONGS TO ONE FIXTURE KIND. Asking for a grouped seed without `--grouped` (or for the flat
+// `--seed-wrong-edge` with it) used to compare an untouched model, print PASS and exit 0 while asserting
+// nothing, so that invocation now REFUSES with exit 2 and the re-run that applies it.
+//
 // The fixture board file is a JSON array of `BoardTask` rows (`{id, subject, blockedBy, status, …}`)
 // or an object carrying them under `tasks`. The fixture plan is ORDINARY TASK-PLAN MARKDOWN — the
 // real grammar this repository's plan files use (`## TODOs` with `- [ ] N. …`, a lane/owner table,
@@ -46,7 +50,7 @@ import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { buildModel } from "../packages/mpd-graph-core/src/model.ts"
 import { parsePlanMarkdown } from "../packages/mpd-graph-core/src/plan.ts"
-import type { BoardTask, GraphEdge, GraphGroup, GraphGroupInput, GraphModel, GraphNode, PlanDocument } from "../packages/mpd-graph-core/src/types.ts"
+import type { BoardTask, GraphConsultInput, GraphConsultNode, GraphEdge, GraphGroup, GraphGroupInput, GraphModel, GraphNode, PlanDocument } from "../packages/mpd-graph-core/src/types.ts"
 
 /** This script's own path, used by `--self-test` to spawn the gate for the exit-code arms. */
 const SELF = fileURLToPath(import.meta.url)
@@ -216,12 +220,62 @@ function cycleIdsOracle(ids: readonly string[], deps: ReadonlyMap<string, readon
 }
 
 /**
+ * The visual tone the ORACLE gives one consult lifecycle word.
+ *
+ * Written out here rather than shared with the core: an oracle that borrowed the implementation's own
+ * mapper could not detect a change to it. The contract states the mapping (the six-state tone,
+ * `interrupted` drawn as `cancelled`, an unrecognized word drawn as `open`).
+ * @param state - the recorded lifecycle word.
+ * @returns the visual state the card must draw in.
+ */
+function consultVisualOracle(state: string): string {
+  if (state === "running") return "running"
+  if (state === "complete") return "completed"
+  if (state === "interrupted") return "cancelled"
+  if (state === "failed") return "failed"
+  if (state === "cancelled") return "cancelled"
+  return "open"
+}
+
+/**
+ * The consult nodes ONE frame declares, projected by this gate's own reading.
+ *
+ * ORDER: the minted ordinal, ties broken by the consult id (a frame mints distinct ordinals, so the
+ * tie-break exists only to make the order total). ID: `C<n>` in the root frame and `"<groupId>::C<n>"`
+ * inside a box. NOTHING here touches a task: no dependency, no rank, no place in the node list.
+ * @param frameId - the frame's group id, or `null` for the root frame.
+ * @param consults - the rows the fixture declares for that frame.
+ * @returns the nodes the model must carry, in array order.
+ */
+function consultNodesOracle(frameId: string | null, consults: readonly GraphConsultInput[]): GraphConsultNode[] {
+  /** The rows in the declared order. */
+  const ordered = [...consults].sort((left, right) => left.consultNumber - right.consultNumber || idCompare(left.consultId, right.consultId))
+  return ordered.map((row) => ({
+    id: frameId === null ? `C${row.consultNumber}` : `${frameId}::C${row.consultNumber}`,
+    subject: row.task,
+    visual: consultVisualOracle(row.state),
+    dependencies: [],
+    depth: 0,
+    planned: false,
+    kind: "consult",
+    consultId: row.consultId,
+    cellId: row.cellId,
+    startedAt: row.startedAt,
+    status: row.state,
+    assignee: row.role,
+    ...(row.elapsedMs === undefined ? {} : { elapsedMs: row.elapsedMs }),
+    ...(frameId === null ? {} : { group: frameId }),
+  }))
+}
+
+/**
  * The model the fixture DECLARES, computed by this gate's own reading of the contract.
  * @param plan - the parsed plan (the fixture's markdown, parsed by the real parser).
  * @param board - the fixture's board rows.
+ * @param consults - the ROOT frame's consult rows; omitted means the fixture declares none.
  * @returns the expected model.
  */
-function expectedModel(plan: PlanDocument, board: readonly BoardTask[]): GraphModel {
+function expectedModel(plan: PlanDocument, board: readonly BoardTask[], consults: readonly GraphConsultInput[] = []): GraphModel {
   /** The board rows by id; a repeated id keeps the last row, as the contract says. */
   const boardById = new Map<string, BoardTask>()
   for (const row of board) boardById.set(row.id, row)
@@ -314,6 +368,8 @@ function expectedModel(plan: PlanDocument, board: readonly BoardTask[]): GraphMo
   })
   /** Blocker references that resolve to no node, sorted and de-duplicated. */
   const unresolved = [...new Set([...deps.values()].flat().filter((ref) => !known.has(ref)))].sort(idCompare)
+  /** The ROOT frame's consult nodes: a SIBLING array, never a node. */
+  const consultNodes = consultNodesOracle(null, consults)
   return {
     nodes,
     edges,
@@ -328,6 +384,7 @@ function expectedModel(plan: PlanDocument, board: readonly BoardTask[]): GraphMo
       unresolved,
       ranksDerived: !(resolvedCount === 0 && servedVaries),
     },
+    ...(consultNodes.length === 0 ? {} : { consults: consultNodes }),
   }
 }
 
@@ -392,6 +449,78 @@ function checkModel(model: GraphModel, expected: GraphModel): string[] {
   for (const field of fields) {
     if (canonical(model.report[field]) !== canonical(expected.report[field])) failures.push(`report.${field}: expected ${canonical(expected.report[field])} got ${canonical(model.report[field])}`)
   }
+  failures.push(...consultFailures(model, expected.consults ?? []))
+  failures.push(...consultLeakFailures(model))
+  return failures
+}
+
+/**
+ * Every way the produced CONSULT array differs from the declared one, named row by row.
+ *
+ * The comparison is per row rather than one blob, because a failure a reader has to decode is a failure
+ * that gets waved through: a dropped row must name the id that went missing, and an extra row must name
+ * the id that appeared.
+ * @param model - the produced model.
+ * @param expected - the consult rows the input declares.
+ * @returns one line per failed expectation; empty means equal.
+ */
+function consultFailures(model: GraphModel, expected: readonly GraphConsultNode[]): string[] {
+  /** The failed expectations. */
+  const failures: string[] = []
+  /** The produced rows by id. */
+  const actual = new Map((model.consults ?? []).map((row) => [row.id, row]))
+  /** The declared rows by id. */
+  const declared = new Map(expected.map((row) => [row.id, row]))
+  /** The produced ids, in the model's own order. */
+  const actualOrder = (model.consults ?? []).map((row) => row.id)
+  /** The declared ids, in the order the contract states. */
+  const declaredOrder = expected.map((row) => row.id)
+  if (canonical(actualOrder) !== canonical(declaredOrder)) failures.push(`consult order: expected ${JSON.stringify(declaredOrder)} got ${JSON.stringify(actualOrder)}`)
+  for (const id of declaredOrder) {
+    /** The produced row for this id. */
+    const row = actual.get(id)
+    if (row === undefined) {
+      failures.push(`consult ${id}: missing from the model`)
+      continue
+    }
+    if (canonical(row) !== canonical(declared.get(id))) failures.push(`consult ${id}: expected ${canonical(declared.get(id))} got ${canonical(row)}`)
+  }
+  for (const id of actualOrder) if (!declared.has(id)) failures.push(`consult ${id}: unexpected in the model`)
+  return failures
+}
+
+/**
+ * THE LEAK GUARD (contract §7): no consult may reach `nodes`, `edges`, `ranks` or `report`.
+ *
+ * Both spellings are checked — the node id (`C1`, `teamB::C1`) and the supervisor's `consultId` — because
+ * either one appearing in a task array is the defect this whole sibling-array design exists to prevent:
+ * the TUI would draw it as a ghost TASK and the web's ghost whitelist would drop it silently, so the two
+ * surfaces would disagree about one model.
+ * @param model - the produced model.
+ * @returns one line per leak; empty means the arrays are clean.
+ */
+function consultLeakFailures(model: GraphModel): string[] {
+  /** The failed expectations. */
+  const failures: string[] = []
+  /** Every id a consult owns, in both spellings. */
+  const owned = new Set<string>()
+  for (const row of model.consults ?? []) {
+    owned.add(row.id)
+    owned.add(row.consultId)
+  }
+  if (owned.size === 0) return failures
+  /** The blocks a leak can hide in, rendered once. */
+  const blocks: ReadonlyArray<{ name: string; value: unknown }> = [
+    { name: "nodes", value: model.nodes.map((node) => node.id) },
+    { name: "edges", value: model.edges.map((edge) => `${edge.from}→${edge.to}`) },
+    { name: "ranks", value: model.ranks },
+    { name: "report", value: model.report },
+  ]
+  for (const block of blocks) {
+    /** The rendered block, searched for an owned id. */
+    const text = canonical(block.value)
+    for (const id of owned) if (text.includes(JSON.stringify(id))) failures.push(`leak: consult "${id}" appears in ${block.name} — a consult belongs in the sibling array ONLY`)
+  }
   return failures
 }
 
@@ -403,6 +532,8 @@ interface Fixture {
   board: BoardTask[]
   /** The six cases hard-coded independently of the oracle; absent for a caller-authored fixture. */
   golden?: Golden
+  /** The ROOT frame's consult rows, when this fixture declares any (the default one does not). */
+  consults?: GraphConsultInput[]
 }
 
 /** The default fixture's six-case expectations, written from the contract and NOT from the oracle. */
@@ -596,6 +727,23 @@ function fail(message: string): never {
   process.exit(1)
 }
 
+/**
+ * Refuse a seeded negative control the selected fixture cannot apply (R3.2).
+ *
+ * WHY A REFUSAL AND NOT A SILENT PASS. Each seed mutates exactly ONE fixture kind, so pairing it with the
+ * other compared an untouched model, printed PASS and exited 0 while asserting NOTHING — this
+ * repository's known false-green class, and the bare spellings are the ones `--help` invites. A seed that
+ * cannot run is a usage error, so it costs a sentence and the usage exit code, never a green.
+ * @param seed - the flag the caller asked for.
+ * @param appliesTo - the fixture that flag mutates, spelled with the flag that selects it.
+ * @param repair - the exact re-run that applies the seed.
+ * @returns never; this exits the process with the usage code.
+ */
+function refuseSeed(seed: string, appliesTo: string, repair: string): never {
+  console.error(`${PREFIX} REFUSED: ${seed} applies to ${appliesTo} only — run against anything else it compares an untouched model and exits 0, asserting nothing. Re-run: ${repair}`)
+  process.exit(2)
+}
+
 /** The parsed invocation. */
 interface Cli {
   /** Whether `--self-test` was requested. */
@@ -608,6 +756,10 @@ interface Cli {
   grouped: boolean
   /** Whether the negative control should seed a WRONG BOX ANCHOR. */
   seedWrongAnchor: boolean
+  /** Whether the negative control should DROP one produced consult row. */
+  seedWrongConsult: boolean
+  /** Whether the negative control should MOVE one produced consult into the task node list. */
+  seedConsultInNodes: boolean
   /** The fixture directory, when `--fixture` was given. */
   fixtureDir?: string
   /** The explicit board path, when `--board` was given. */
@@ -625,7 +777,7 @@ interface Cli {
  */
 function parseCli(argv: readonly string[]): Cli {
   /** The invocation under construction. */
-  const cli: Cli = { selfTest: false, emit: false, seedWrongEdge: false, grouped: false, seedWrongAnchor: false, help: false }
+  const cli: Cli = { selfTest: false, emit: false, seedWrongEdge: false, grouped: false, seedWrongAnchor: false, seedWrongConsult: false, seedConsultInNodes: false, help: false }
   for (let index = 0; index < argv.length; index += 1) {
     /** The current argument. */
     const arg = argv[index]
@@ -634,6 +786,8 @@ function parseCli(argv: readonly string[]): Cli {
     else if (arg === "--seed-wrong-edge") cli.seedWrongEdge = true
     else if (arg === "--grouped") cli.grouped = true
     else if (arg === "--seed-wrong-anchor") cli.seedWrongAnchor = true
+    else if (arg === "--seed-wrong-consult") cli.seedWrongConsult = true
+    else if (arg === "--seed-consult-in-nodes") cli.seedConsultInNodes = true
     else if (arg === "--help" || arg === "-h") cli.help = true
     else if (arg === "--fixture" || arg === "--board" || arg === "--plan") {
       /** The value that must follow the flag. */
@@ -648,6 +802,21 @@ function parseCli(argv: readonly string[]): Cli {
   if (cli.fixtureDir !== undefined && (cli.boardPath !== undefined || cli.planPath !== undefined)) fail("--fixture cannot be combined with --board/--plan")
   if ((cli.boardPath === undefined) !== (cli.planPath === undefined)) fail("--board and --plan must be given together")
   if (cli.grouped && (cli.fixtureDir !== undefined || cli.boardPath !== undefined)) fail("--grouped checks the built-in nested fixture and cannot be combined with --fixture/--board/--plan")
+  // A SEED THE SELECTED FIXTURE CANNOT APPLY REFUSES (R3.2, see `refuseSeed`). Checked HERE, before any
+  // fixture is read: a branch below can then never turn an inapplicable seed back into a green.
+  /** The grouped-only seeds this invocation names, in the help text's order. */
+  const groupedSeeds: string[] = [
+    ...(cli.seedWrongAnchor ? ["--seed-wrong-anchor"] : []),
+    ...(cli.seedWrongConsult ? ["--seed-wrong-consult"] : []),
+    ...(cli.seedConsultInNodes ? ["--seed-consult-in-nodes"] : []),
+  ]
+  if (groupedSeeds.length > 0 && !cli.grouped) {
+    /** The first seed the caller named, which is the one the sentence names. */
+    const seed = groupedSeeds[0]
+    refuseSeed(seed, "the GROUPED fixture (`--grouped`)", `node scripts/verify-graph-model.ts --grouped ${seed}`)
+  }
+  // THE RECIPROCAL VACUITY, closed by the same rule: the flat seed on the grouped fixture asserted nothing.
+  if (cli.seedWrongEdge && cli.grouped) refuseSeed("--seed-wrong-edge", "the FLAT fixture (no `--grouped`)", "node scripts/verify-graph-model.ts --seed-wrong-edge")
   return cli
 }
 
@@ -658,10 +827,15 @@ const HELP = [
   "  (no argument)       check the flat fixture (the six-case table), as before groups existed",
   "  --grouped           check the built-in nested (group) fixture",
   "  --emit              print the serialized model snapshot of the fixture being checked",
-  "  --seed-wrong-edge   flip one edge (the negative control) and expect a non-zero exit",
-  "  --seed-wrong-anchor un-anchor one box edge (the grouped negative control)",
+  "  --seed-wrong-edge   flip one edge of the FLAT fixture (the negative control)",
+  "  --seed-wrong-anchor un-anchor one box edge (needs --grouped)",
+  "  --seed-wrong-consult drop one consult row (needs --grouped)",
+  "  --seed-consult-in-nodes move one consult into `nodes` (needs --grouped)",
   "  --self-test         run both directions, the grouped arms and the path forms",
   "  --help              print this text",
+  "",
+  "  A seeded control the selected fixture cannot apply REFUSES with exit 2, because a seed that mutates",
+  "  nothing would exit 0 while asserting nothing.",
 ].join("\n")
 
 /**
@@ -673,10 +847,12 @@ const HELP = [
 function runFixture(fixture: Fixture, cli: Cli): number {
   /** The parsed plan, through the REAL parser. */
   const plan = parsePlanMarkdown(fixture.planText)
+  /** The ROOT frame's consult rows, which the fixture may declare. */
+  const consults = fixture.consults ?? []
   /** The model the core builds from exactly this input. */
-  const model = buildModel({ board: fixture.board, plan })
+  const model = buildModel({ board: fixture.board, plan, ...(consults.length === 0 ? {} : { consults }) })
   /** The model the input declares, by this gate's own reading. */
-  const expected = expectedModel(plan, fixture.board)
+  const expected = expectedModel(plan, fixture.board, consults)
   if (cli.emit) console.log(JSON.stringify(model, null, 2))
   /** The model the comparison judges — mutated only by the deliberate negative control. */
   let judged = model
@@ -804,7 +980,7 @@ function selfTest(): number {
   const groupedAgain = buildGroupedModel(groupFixture)
   arms.push({ name: "grouped determinism: two builds of the tree serialize byte-identically", ok: canonical(groupModel) === canonical(groupedAgain), detail: canonical(groupModel) === canonical(groupedAgain) ? "identical" : "the two builds differ" })
   /** The nested model built from every array reversed, so input order cannot leak into a frame. */
-  const groupedShuffled = buildModel({ board: [...groupFixture.board].reverse(), plan: parsePlanMarkdown(groupFixture.planText), groups: reversedGroupInputs(groupFixture.groups) })
+  const groupedShuffled = buildModel({ board: [...groupFixture.board].reverse(), plan: parsePlanMarkdown(groupFixture.planText), groups: reversedGroupInputs(groupFixture.groups), ...(groupFixture.consults.length === 0 ? {} : { consults: [...groupFixture.consults].reverse() }) })
   arms.push({ name: "grouped input-order independence: reversed boards and subcells build the same tree", ok: canonical(groupedShuffled) === canonical(groupModel), detail: canonical(groupedShuffled) === canonical(groupModel) ? "identical" : "order leaked into the nested model" })
   /** The flat model of the default fixture: the backward guarantee, at the gate. */
   const flatModel = buildModel({ board: fixture.board, plan })
@@ -828,6 +1004,62 @@ function selfTest(): number {
   // the un-anchored box edge, so the FAIL line must name exactly the pair the seed moved.
   const anchorNamed = seededAnchorPair !== "" && anchorRun.output.includes(`FAIL edge ${seededAnchorPair}:`)
   arms.push({ name: "--seed-wrong-anchor exits non-zero and a FAIL line NAMES the un-anchored box edge", ok: anchorRun.status !== 0 && anchorNamed, detail: `exit ${anchorRun.status}: ${anchorRun.output.trim().split("\n").filter((line) => line.includes("FAIL edge"))[0] ?? "(no edge named)"}` })
+  // ── THE CONSULT ARMS (contract §7) ────────────────────────────────────────
+  // A CONSULT-LESS build of the SAME tree, which is what the byte-identity arm compares against.
+  const consultFree = buildModel({ board: groupFixture.board, plan: parsePlanMarkdown(groupFixture.planText), groups: groupFixture.groups.map((group) => stripConsults(group)) })
+  /** The blocks a consult is forbidden to disturb. */
+  const undisturbed = (model: GraphModel): unknown => ({ nodes: model.nodes, edges: model.edges, ranks: model.ranks, cycles: model.cycles, report: model.report, groups: model.groups })
+  /** Whether the two builds' task pictures are the same value. */
+  const identical = canonical(undisturbed(groupModel)) === canonical(undisturbed(consultFree))
+  arms.push({ name: "consults: nodes/edges/ranks/report are byte-identical with and without a consults input", ok: identical, detail: identical ? "identical — a consult takes no rank and draws no edge" : "a consult changed the task picture" })
+  // ABSENCE IS THE BACKWARD GUARANTEE: a build given no consult carries no `consults` key at all.
+  const consultFreeKeys = Object.prototype.hasOwnProperty.call(consultFree, "consults")
+  arms.push({ name: "consults: a build given none carries no `consults` key (backward by absence)", ok: !consultFreeKeys, detail: consultFreeKeys ? "the key was present anyway" : "absent, as before consults existed" })
+  // THE LEAK GUARD ON THE CLEAN MODEL: the shadowing arm below only means something if this one holds.
+  const cleanLeaks = consultLeakFailures(groupModel)
+  arms.push({ name: "consults: a clean model leaks no consult into the task arrays", ok: cleanLeaks.length === 0, detail: cleanLeaks[0] ?? "0 leaks" })
+  // THE PINNED FLAT GOLDEN STAYS GREEN **WITH** CONSULTS ADDED: it must not be edited to accommodate them.
+  const flatWithConsults = buildModel({ board: fixture.board, plan, consults: GROUPED_ROOT_CONSULTS })
+  /** The pinned golden's verdict on the consult-bearing build. */
+  const flatGolden = checkGolden(flatWithConsults, fixture.golden as Golden)
+  /** Whether the flat task picture stayed byte-identical. */
+  const flatUntouched = canonical(undisturbed(flatWithConsults)) === canonical(undisturbed(flatModel))
+  arms.push({ name: "consults: the pinned flat golden still holds with consults added, and no task byte moved", ok: flatGolden.length === 0 && flatUntouched, detail: flatGolden[0] ?? (flatUntouched ? "golden green, task picture unchanged" : "a consult changed the flat task picture") })
+  // THE ORDERING IS THE CONTRACT'S: frame pre-order, then the minted ordinal inside the frame.
+  const modelOrder = (groupModel.consults ?? []).map((row) => row.id)
+  /** The order the contract states for this fixture. */
+  const orderExpected = ["C1", "C2", "teamB::C1"]
+  arms.push({ name: "consults: the array is frame pre-order then ordinal, and each box qualifies its id", ok: canonical(modelOrder) === canonical(orderExpected), detail: `got ${JSON.stringify(modelOrder)}` })
+  // THE DROPPED-ROW NEGATIVE: a red exit is not enough — the FAIL line must name the row that went missing.
+  const dropRun = spawnGate(["--grouped", "--seed-wrong-consult"])
+  /** The id of the row the seed drops, which the FAIL line must name. */
+  const droppedId = (groupModel.consults ?? [])[(groupModel.consults ?? []).length - 1]?.id ?? ""
+  /** Whether the child's output names exactly that row. */
+  const dropNamed = droppedId !== "" && dropRun.output.includes(`consult ${droppedId}:`)
+  arms.push({ name: "--seed-wrong-consult exits non-zero and a FAIL line NAMES the dropped consult", ok: dropRun.status !== 0 && dropNamed, detail: `exit ${dropRun.status}: ${dropRun.output.trim().split("\n").filter((line) => line.includes("FAIL consult "))[0] ?? "(no consult named)"}` })
+  // THE LEAK NEGATIVE: the consult moved into `nodes` must be refused AND named as a leak.
+  const leakRun = spawnGate(["--grouped", "--seed-consult-in-nodes"])
+  /** The id of the row the leak seed moves into `nodes`. */
+  const leakedId = (groupModel.consults ?? [])[0]?.id ?? ""
+  /** Whether the child's output names that leak. */
+  const leakNamed = leakedId !== "" && leakRun.output.includes(`leak: consult "${leakedId}"`)
+  arms.push({ name: "--seed-consult-in-nodes exits non-zero and a FAIL line NAMES the leaked consult", ok: leakRun.status !== 0 && leakNamed, detail: `exit ${leakRun.status}: ${leakRun.output.trim().split("\n").filter((line) => line.includes("FAIL leak:"))[0] ?? "(no leak named)"}` })
+  // ── THE INAPPLICABLE-SEED ARMS (R3.2) ────────────────────────────────────
+  // THE BARE SPELLING CAN NO LONGER PASS. `--help` advertises these flags without the fixture they
+  // belong to, so a caller who omits `--grouped` must be REFUSED (exit 2) instead of comparing an
+  // untouched model and printing PASS — the false-green the verdict measured.
+  /** The bare `--seed-wrong-consult` run. */
+  const bareDrop = spawnGate(["--seed-wrong-consult"])
+  arms.push({ name: "the BARE --seed-wrong-consult REFUSES with exit 2 (never a vacuous 0)", ok: bareDrop.status === 2 && bareDrop.output.includes("--grouped"), detail: `exit ${bareDrop.status}: ${bareDrop.output.trim().split("\n")[0] ?? ""}` })
+  /** The bare `--seed-consult-in-nodes` run, which must refuse the same way. */
+  const bareLeak = spawnGate(["--seed-consult-in-nodes"])
+  arms.push({ name: "the BARE --seed-consult-in-nodes REFUSES with exit 2 (never a vacuous 0)", ok: bareLeak.status === 2 && bareLeak.output.includes("--grouped"), detail: `exit ${bareLeak.status}: ${bareLeak.output.trim().split("\n")[0] ?? ""}` })
+  // THE OTHER TWO PAIRINGS OBEY THE SAME RULE, so no seed can reach a fixture it cannot mutate.
+  /** The bare grouped anchor seed, inapplicable on the flat fixture exactly like the two above. */
+  const bareAnchor = spawnGate(["--seed-wrong-anchor"])
+  /** The flat seed under `--grouped`: the reciprocal vacuity, refused by the same rule. */
+  const flatSeedUnderGrouped = spawnGate(["--grouped", "--seed-wrong-edge"])
+  arms.push({ name: "no seed pairs with a fixture it cannot mutate: bare --seed-wrong-anchor and --grouped --seed-wrong-edge both refuse", ok: bareAnchor.status === 2 && flatSeedUnderGrouped.status === 2, detail: `exit ${bareAnchor.status} and exit ${flatSeedUnderGrouped.status}` })
   for (const arm of arms) console.log(`${PREFIX} self-test ${arm.ok ? "PASS" : "FAIL"} — ${arm.name} :: ${arm.detail.slice(0, 240)}`)
   /** How many arms failed. */
   const failed = arms.filter((arm) => !arm.ok).length
@@ -876,6 +1108,8 @@ interface GroupFixture {
   board: BoardTask[]
   /** The subcells nested inside this one. */
   groups: GroupFixture[]
+  /** The BACKGROUND CONSULTS this subcell's own team started, drawn inside its box. */
+  consults?: GraphConsultInput[]
 }
 
 /** The grouped fixture `--grouped` checks, with the hand-written expectations that judge it. */
@@ -886,6 +1120,8 @@ interface GroupedFixture {
   board: BoardTask[]
   /** The root frame's subcells. */
   groups: GroupFixture[]
+  /** The ROOT frame's own consults: the flat half of the nested consult fixture. */
+  consults: GraphConsultInput[]
   /** The expectations written BY HAND from the contract, independent of the oracle AND of the core. */
   golden: GroupedGolden
 }
@@ -902,6 +1138,13 @@ interface GroupedGolden {
   groups: GraphGroup[]
   /** The root frame's rank buckets, which are the only buckets the model carries. */
   ranks: string[][]
+  /**
+   * The consult cards, in the array order the model must carry them, stated by hand.
+   *
+   * `id` proves the frame-qualified spelling, `group` proves the box attribution, and `visual` proves the
+   * tone mapping — the three things a consult fixture has to pin without reading the implementation.
+   */
+  consults: Array<{ id: string; assignee: string; visual: string; status: string; group?: string }>
   /** The disagreement lists the merge must report across the whole tree. */
   report: {
     /** Ids a frame's board carries and its plan does not. */
@@ -935,6 +1178,8 @@ interface OracleFrame {
   board: readonly BoardTask[]
   /** The nested frames, ordered by the id collator. */
   children: OracleFrame[]
+  /** The consults this frame's own team started. */
+  consults: readonly GraphConsultInput[]
 }
 
 /** One frame's own merge, as the grouped oracle resolves it. */
@@ -981,6 +1226,21 @@ const GROUPED_ROOT_BOARD: BoardTask[] = [
   { id: "T3", subject: "Root verify", kind: "work", status: "pending", blockedBy: ["E1"], depth: 2 },
 ]
 
+/** The root frame's consult rows: one settled, one still running, both minted by the root team. */
+const GROUPED_ROOT_CONSULTS: GraphConsultInput[] = [
+  { consultNumber: 2, consultId: "consult-b", role: "Researcher", task: "Find the upstream rule", state: "running", startedAt: 2000, cellId: "cell-root" },
+  { consultNumber: 1, consultId: "consult-a", role: "Explorer", task: "Map the parser", state: "complete", startedAt: 1000, cellId: "cell-root", elapsedMs: 500 },
+]
+
+/**
+ * The subcell's consult row: `interrupted`, so the fixture pins the one tone that is MAPPED rather than
+ * copied (`interrupted` draws as `cancelled`), and its ordinal restarts at 1 inside its own team — which
+ * is exactly why the node id has to be frame-qualified.
+ */
+const GROUPED_SUBCELL_CONSULTS: GraphConsultInput[] = [
+  { consultNumber: 1, consultId: "consult-c", role: "Deep Worker", task: "Draft the subcell note", state: "interrupted", startedAt: 3000, cellId: "cell-sub", elapsedMs: 900 },
+]
+
 /**
  * The built-in grouped fixture, which exercises EVERY branch of the attachment rule at the GATE:
  *
@@ -1007,6 +1267,7 @@ function defaultGroupFixture(): GroupedFixture {
           { id: "B1", subject: "Child build", kind: "work", status: "in_progress", blockedBy: ["T1"] },
           { id: "B2", subject: "Child adopt", kind: "work", status: "pending", blockedBy: ["B1"] },
         ],
+        consults: GROUPED_SUBCELL_CONSULTS,
         groups: [
           {
             id: "teamB1",
@@ -1024,6 +1285,7 @@ function defaultGroupFixture(): GroupedFixture {
         groups: [],
       },
     ],
+    consults: GROUPED_ROOT_CONSULTS,
     golden: {
       // Written in the order the tree draws them, NOT read back off the model: an id list that came
       // from the implementation would agree with a wrong model forever.
@@ -1059,6 +1321,13 @@ function defaultGroupFixture(): GroupedFixture {
         { id: "teamB1", label: "Subcell B1", parentId: "teamB", memberIds: ["D1"], depth: 1, originTaskId: "B2" },
       ],
       ranks: [["T1"], ["T2"], ["teamB"], ["teamC"], ["T3"]],
+      // FRAME PRE-ORDER: the root frame's two rows by ordinal, then the box's own row. The box's ordinal
+      // restarts at 1, so the qualified id is the only thing that keeps the three apart.
+      consults: [
+        { id: "C1", assignee: "Explorer", visual: "completed", status: "complete" },
+        { id: "C2", assignee: "Researcher", visual: "running", status: "running" },
+        { id: "teamB::C1", assignee: "Deep Worker", visual: "cancelled", status: "interrupted", group: "teamB" },
+      ],
       report: {
         boardOnly: ["B1", "B2", "D1", "E1"],
         planOnly: ["F1"],
@@ -1081,6 +1350,7 @@ function groupInputOf(group: GroupFixture): GraphGroupInput {
     label: group.label,
     board: group.board,
     groups: group.groups.map((child) => groupInputOf(child)),
+    ...(group.consults === undefined ? {} : { consults: group.consults }),
     ...(group.originTaskId === undefined ? {} : { originTaskId: group.originTaskId }),
     ...(group.planText === undefined ? {} : { plan: parsePlanMarkdown(group.planText) }),
   }
@@ -1092,7 +1362,23 @@ function groupInputOf(group: GroupFixture): GraphGroupInput {
  * @returns the model the core builds from its tree.
  */
 function buildGroupedModel(fixture: GroupedFixture): GraphModel {
-  return buildModel({ board: fixture.board, plan: parsePlanMarkdown(fixture.planText), groups: fixture.groups.map((group) => groupInputOf(group)) })
+  return buildModel({ board: fixture.board, plan: parsePlanMarkdown(fixture.planText), groups: fixture.groups.map((group) => groupInputOf(group)), ...(fixture.consults.length === 0 ? {} : { consults: fixture.consults }) })
+}
+
+/**
+ * One subcell with its consult rows REMOVED, so a byte-identity arm can build the same tree without them.
+ * @param group - the fixture's subcell.
+ * @returns the same subcell, its consults omitted at every level.
+ */
+function stripConsults(group: GroupFixture): GraphGroupInput {
+  return {
+    id: group.id,
+    label: group.label,
+    board: group.board,
+    groups: group.groups.map((child) => stripConsults(child)),
+    ...(group.originTaskId === undefined ? {} : { originTaskId: group.originTaskId }),
+    ...(group.planText === undefined ? {} : { plan: parsePlanMarkdown(group.planText) }),
+  }
 }
 
 /**
@@ -1106,6 +1392,7 @@ function reversedGroupInputs(groups: readonly GroupFixture[]): GraphGroupInput[]
     label: group.label,
     board: [...group.board].reverse(),
     groups: reversedGroupInputs(group.groups),
+    ...(group.consults === undefined ? {} : { consults: [...group.consults].reverse() }),
     ...(group.originTaskId === undefined ? {} : { originTaskId: group.originTaskId }),
     ...(group.planText === undefined ? {} : { plan: parsePlanMarkdown(group.planText) }),
   }))
@@ -1127,6 +1414,7 @@ function collectOracleFrame(group: GroupFixture, parent: OracleFrame): OracleFra
     plan: parsePlanMarkdown(group.planText ?? ""),
     board: group.board,
     children: [],
+    consults: group.consults ?? [],
     ...(group.originTaskId === undefined ? {} : { originTaskId: group.originTaskId }),
   }
   frame.children = group.groups.map((child) => collectOracleFrame(child, frame)).sort((left, right) => idCompare(left.id ?? "", right.id ?? ""))
@@ -1215,7 +1503,7 @@ function placeOraclePair(pairs: Map<OracleFrame, Map<string, OraclePair>>, frame
  */
 function expectedGroupedModel(fixture: GroupedFixture): GraphModel {
   /** The root frame. */
-  const root: OracleFrame = { id: null, label: null, parent: null, depth: -1, plan: parsePlanMarkdown(fixture.planText), board: fixture.board, children: [] }
+  const root: OracleFrame = { id: null, label: null, parent: null, depth: -1, plan: parsePlanMarkdown(fixture.planText), board: fixture.board, children: [], consults: fixture.consults }
   root.children = fixture.groups.map((group) => collectOracleFrame(group, root)).sort((left, right) => idCompare(left.id ?? "", right.id ?? ""))
   /** Every frame, pre-order. */
   const frames: OracleFrame[] = []
@@ -1403,6 +1691,13 @@ function expectedGroupedModel(fixture: GroupedFixture): GraphModel {
       ranksDerived: true,
     },
     groups,
+    // THE CONSULT ARRAY IS A SIBLING: frame pre-order, each frame's rows by their ordinal. Written here
+    // so the oracle reaches it the same way the contract states it, never through the node list.
+    ...(() => {
+      /** Every frame's consult nodes, in the order the model draws them. */
+      const consultNodes = frames.flatMap((frame) => consultNodesOracle(frame.id, frame.consults))
+      return consultNodes.length === 0 ? {} : { consults: consultNodes }
+    })(),
   }
 }
 
@@ -1438,6 +1733,9 @@ function checkGroupedGolden(model: GraphModel, golden: GroupedGolden): string[] 
   if (!model.edges.some((edge) => boxIds.has(edge.from) && boxIds.has(edge.to))) failures.push("golden group→group: the fixture declares a dependency between two subcells, so the model must draw at least one box→box edge")
   if (canonical(model.groups) !== canonical(golden.groups)) failures.push(`golden groups: expected ${canonical(golden.groups)} got ${canonical(model.groups)}`)
   if (canonical(model.ranks) !== canonical(golden.ranks)) failures.push(`golden ranks: expected ${canonical(golden.ranks)} got ${canonical(model.ranks)}`)
+  /** The produced consult cards, reduced to the fields the golden states by hand. */
+  const cards = (model.consults ?? []).map((row) => ({ id: row.id, assignee: row.assignee ?? "", visual: row.visual, status: row.status ?? "", ...(row.group === undefined ? {} : { group: row.group }) }))
+  if (canonical(cards) !== canonical(golden.consults)) failures.push(`golden consults: expected ${canonical(golden.consults)} got ${canonical(cards)}`)
   if (canonical(asSet(model.report.boardOnly)) !== canonical(asSet(golden.report.boardOnly))) failures.push(`golden report.boardOnly: expected ${canonical(asSet(golden.report.boardOnly))} got ${canonical(asSet(model.report.boardOnly))}`)
   if (canonical(asSet(model.report.planOnly)) !== canonical(asSet(golden.report.planOnly))) failures.push(`golden report.planOnly: expected ${canonical(asSet(golden.report.planOnly))} got ${canonical(asSet(model.report.planOnly))}`)
   if (canonical(asSet(model.report.edgePlanOnly.map((edge) => `${edge.from}→${edge.to}`))) !== canonical(asSet(golden.report.edgePlanOnly))) failures.push(`golden report.edgePlanOnly: expected ${canonical(asSet(golden.report.edgePlanOnly))} got ${canonical(asSet(model.report.edgePlanOnly.map((edge) => `${edge.from}→${edge.to}`)))}`)
@@ -1458,6 +1756,40 @@ function isBoxEdgeText(text: string, boxes: ReadonlySet<string>): boolean {
   /** The blocked id: everything between the arrow and the `(` that opens the source suffix. */
   const to = text.slice(text.indexOf("→") + 1, text.indexOf("("))
   return boxes.has(from) && boxes.has(to)
+}
+
+/**
+ * DROP one produced consult row, which is the consult negative control.
+ *
+ * The LAST row is dropped so the seeding arm's expected failure names a specific id: a gate that merely
+ * compared array LENGTHS would redden here too, without proving the id-keyed comparison works.
+ * @param model - the produced model.
+ * @returns the seeded model and a one-line note naming what was removed.
+ */
+function seedWrongConsult(model: GraphModel): { model: GraphModel; note: string } {
+  /** Every produced consult row. */
+  const rows = model.consults ?? []
+  if (rows.length === 0) return { model, note: "there is no consult row to drop" }
+  /** The row the seed removes. */
+  const dropped = rows[rows.length - 1]
+  return { model: { ...model, consults: rows.slice(0, -1) }, note: `consult "${dropped.id}" (${dropped.consultId}) removed` }
+}
+
+/**
+ * MOVE one produced consult into the task node list, which is the leak negative control.
+ *
+ * This is exactly the defect the sibling-array design forbids — the TUI would draw it as a ghost task and
+ * the web would drop it — so the gate must refuse it AND name the id that leaked.
+ * @param model - the produced model.
+ * @returns the seeded model and a one-line note naming what leaked.
+ */
+function seedConsultInNodes(model: GraphModel): { model: GraphModel; note: string } {
+  /** Every produced consult row. */
+  const rows = model.consults ?? []
+  if (rows.length === 0) return { model, note: "there is no consult row to leak" }
+  /** The row the seed moves into the task list. */
+  const leaked = rows[0]
+  return { model: { ...model, nodes: [...model.nodes, leaked] }, note: `consult "${leaked.id}" moved into nodes` }
 }
 
 /**
@@ -1522,6 +1854,18 @@ function runGrouped(cli: Cli): number {
     judged = seeded.model
     console.log(`${PREFIX} negative control: ${seeded.note}`)
   }
+  if (cli.seedWrongConsult) {
+    /** The seeded model and the note naming the dropped row. */
+    const seeded = seedWrongConsult(judged)
+    judged = seeded.model
+    console.log(`${PREFIX} negative control: ${seeded.note}`)
+  }
+  if (cli.seedConsultInNodes) {
+    /** The seeded model and the note naming the leaked row. */
+    const seeded = seedConsultInNodes(judged)
+    judged = seeded.model
+    console.log(`${PREFIX} negative control: ${seeded.note}`)
+  }
   /** Every failed expectation: the oracle's and the golden's. */
   const failures = checkModel(judged, expected).concat(checkGroupedGolden(judged, fixture.golden))
   if (failures.length > 0) {
@@ -1529,7 +1873,7 @@ function runGrouped(cli: Cli): number {
     console.log(`${PREFIX} FAIL — ${failures.length} grouped expectation(s) did not hold`)
     return 1
   }
-  console.log(`${PREFIX} PASS — grouped nodes (${model.nodes.length}), edges (${model.edges.length}), groups (${model.groups?.length ?? 0}), ranks and the report equal the declared tree`)
+  console.log(`${PREFIX} PASS — grouped nodes (${model.nodes.length}), edges (${model.edges.length}), groups (${model.groups?.length ?? 0}), consults (${model.consults?.length ?? 0}), ranks and the report equal the declared tree`)
   return 0
 }
 

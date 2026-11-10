@@ -1,0 +1,44 @@
+{
+  "task": "PR #106 CodeRabbit round-2 (Minor) — DSH-Go PIN: packaged mode must excuse an absent file ONLY under .github/**",
+  "branch": "fix/dshgo-1.0.14-repin",
+  "head": "153fc93cee51bf81aeb8038f18d8a5d156e3bca8",
+  "file": "scripts/verify-dshgo-standard.ts",
+  "sha256": "46cb51f70143ca354b60d54e98f8bc66d3b3715ddd5c24a9be57988ad5972953",
+  "newRule": "auditPin: an ABSENT reading is a pin-site-skipped NOTE only when mode is packaged AND the site path is under .github/ (isGithubSite: normalized repo-relative path startsWith '.github/'); every other absent reading — and every absent reading in a checkout — is a pin-site-missing ERROR. A PRESENT file without a 40-hex pin is unchanged: error in both modes.",
+  "armCount": 46,
+  "selfTest": { "argv": ["node", "scripts/verify-dshgo-standard.ts", "--self-test"], "exit": 0, "line": "SELF-TEST PASS — 46 arms (1 clean control + 45 negative controls)" },
+  "gateWithKit": { "argv": ["env", "MPD_DSHGO_KIT=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/dsh-go", "node", "scripts/verify-dshgo-standard.ts"], "exit": 0, "pin": "PIN: PASS — 8 of 8 site readings agree on f36bf91b0736e81ef40c2a7040b2ec337ca1ab40", "result": "RESULT: LEGAL" },
+  "gateWithoutKit": { "argv": ["env", "-u", "MPD_DSHGO_KIT", "node", "scripts/verify-dshgo-standard.ts"], "exit": 3, "result": "RESULT: NOT-PASSED — the official cross-check did not run" },
+  "typecheck": { "argv": ["bun", "run", "typecheck"], "exit": 0, "output": "$ tsgo --noEmit" },
+  "commentCoverage": { "argv": ["node", "scripts/verify-comment-coverage.ts"], "exit": 0, "verdict": "VERDICT: PASS — every declaration in the family carries a precise comment and a full signature." },
+  "packagedE2E": {
+    "method": "npm pack tarball (files allowlist), extracted to .mpd/tmp/pack-e2e-2/tree/package; kit supplied",
+    "tarball": ".mpd/tmp/pack-e2e-2/mpd-dsh-mpd-0.18.0.tgz",
+    "tarballSha256": "9b9655d554f30856f4284368939afc8e236bebcf1ed884fa5bfd7ac5d3cac350",
+    "dotGithubShipped": false,
+    "A_asShipped": { "exit": 0, "pin": "PIN: PASS — 6 of 8 site readings agree (2 skipped: not shipped)", "notes": ["pin-site-skipped .github/workflows/publish.yml", "pin-site-skipped .github/workflows/gates.yml"], "result": "RESULT: LEGAL" },
+    "B_sourceJsonRemoved": { "exit": 1, "pin": "PIN: FAIL — 1 error(s) across 8 site readings", "errors": ["pin-site-missing specs/dsh-go/SOURCE.json"], "skipped": 2, "result": "RESULT: VIOLATIONS — 1 error(s)" },
+    "C_sourceJsonRestored": { "exit": 0, "pin": "PIN: PASS — 6 of 8 (2 skipped: not shipped)", "result": "RESULT: LEGAL" },
+    "D_workflowsPresent": { "exit": 0, "pin": "PIN: PASS — 8 of 8 site readings agree", "result": "RESULT: LEGAL" }
+  },
+  "teeth": {
+    "mutant": "temp copy with the packaged branch reduced to `if (!checkout) {` (old behaviour: excuse every absence)",
+    "exit": 1,
+    "failureLine": "FAIL  C5 PIN: one perturbed site disagreeing with the seven others — the arm itself threw: C5 packaged non-workflow absence: an absent site a packaged tree DOES ship must be exactly one pin-site-missing error and never a skip, got none with skipped 1",
+    "sha256BeforeMutant": "46cb51f70143ca354b60d54e98f8bc66d3b3715ddd5c24a9be57988ad5972953",
+    "sha256AfterMutant": "46cb51f70143ca354b60d54e98f8bc66d3b3715ddd5c24a9be57988ad5972953",
+    "restoredIdentical": true
+  },
+  "coverageAdded": "Inside the EXISTING C5 arm (arm count unchanged at 46): assertPinModeSplit() now builds the SAME PinReading[] shape via extractPins(pinTexts(PIN_FIXTURE_A)) with ONE non-workflow site (SOURCE.json) deleted, runs packaged auditPin(..., false), and requires exactly one pin-site-missing at specs/dsh-go/SOURCE.json with skipped === 0 (never a skip).",
+  "scope": {
+    "modified": ["scripts/verify-dshgo-standard.ts"],
+    "unchanged": ["PIN line format", "exit codes", "arm count (46)", "docs", "all other rules"],
+    "untouchedScopeNote": "No other file edited; no commit made (captain owns git writes)."
+  },
+  "bounds": [
+    "The .github/ test is a repo-relative path prefix (separators normalized to '/'); it excuses a future .github/** site too, as the behaviour requires.",
+    "Packaged A/C/D logs come from the same extracted tarball, built from this working tree (branch HEAD + the uncommitted edit); tarball sha256 recorded above.",
+    "$HOME is read-only in this sandbox, so npm pack needed --cache/--logs-dir inside the workspace; that is an environment workaround, not a repo change.",
+    "Not run: full `bun run verify:gates` (needs the pinned harness on PATH; not required for a scripts-only change) and the Docker lane (release-only). No PR text or commit produced."
+  ]
+}

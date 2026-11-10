@@ -1,0 +1,438 @@
+{
+  "case": "dshgo-1.0.14-repin",
+  "bundle": "evidence/dshgo/standard/2026-11-09T07-13-34-000Z",
+  "contract": ".mpd/plans/dshgo-1.0.14-repin.md",
+  "at": "2026-11-09T07:13:34Z",
+  "supersedes": {
+    "bundle": "evidence/dshgo/standard/2026-11-09T06-47-51-000Z",
+    "previousVerdict": "PASS — D1-D6 all green; C1-C4 applied; 4 tracked files modified; no behavioural change.",
+    "previousDiffScope": [
+      "VENDOR_LOCK.json",
+      "scripts/verify-dshgo-standard.ts",
+      "specs/dsh-go/SOURCE.json",
+      "specs/dsh-go/limits.ts"
+    ],
+    "previousOutOfScope": [
+      "F1 docs/dsh-go-standard.md:7 + docs/dsh-go-standard.zh-CN.md:6 — the bilingual doc still stated the old pin",
+      "F2 .github/workflows/publish.yml:136 + .github/workflows/gates.yml:127 — both CI refs on the old sha",
+      "F4 scripts/verify-gates.ts:102 — the aggregate's own comment on the old sha"
+    ],
+    "why": "That bundle certifies a FOUR-file tree and records F1 (both docs), F2 (both workflow refs) and F4 (the verify-gates comment) as findings OUTSIDE its scope. The tree now holds NINE modified tracked files and F1/F2/F4 are DONE, so the four-file bundle can no longer certify what is on disk. This bundle is written FRESH for the current nine-file tree; the old bundle is deliberately NOT edited (EV-1: an evidence record is history, and a verifier must be able to see what was claimed then)."
+  },
+  "repo": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "branch": "fix/dshgo-1.0.14-repin",
+  "head": "18da0c6cc88429c4be48ca72e472abb8136998c8",
+  "committed": false,
+  "pin": {
+    "from": "d5ad25c5bc4c66ecacee76b3c5378db45e1db3fa",
+    "fromTag": "v1.0.12",
+    "to": "f36bf91b0736e81ef40c2a7040b2ec337ca1ab40",
+    "toTag": "v1.0.14",
+    "peeled": true,
+    "peeledBy": "git rev-parse v1.0.14^{commit}",
+    "tagObjectSha": "4dce2a65cdbf35bef5c8775e90f8378b89b1e6a3",
+    "tagResolution": {
+      "argv": "git -C .mpd/recon/dsh-go rev-parse v1.0.14; git -C .mpd/recon/dsh-go cat-file -t <that>; git -C .mpd/recon/dsh-go rev-parse v1.0.14^{commit}; git -C .mpd/recon/dsh-go cat-file -t <that>",
+      "observed": "4dce2a65cdbf35bef5c8775e90f8378b89b1e6a3 type=tag  ->  f36bf91b0736e81ef40c2a7040b2ec337ca1ab40 type=commit",
+      "kitHead": "git -C .mpd/recon/dsh-go rev-parse HEAD = f36bf91b0736e81ef40c2a7040b2ec337ca1ab40"
+    },
+    "note": "CTR-3 is already applied: every site states the PEELED commit f36bf91b…, never the annotated tag object 4dce2a65… that `git rev-parse v1.0.14` prints. The kit mirror's HEAD is f36bf91b… (verified with `git -C .mpd/recon/dsh-go rev-parse HEAD`)."
+  },
+  "diffScope": {
+    "count": 9,
+    "gitDiffStat": " 9 files changed, 258 insertions(+), 17 deletions(-)",
+    "modified": [
+      {
+        "path": ".github/workflows/gates.yml",
+        "added": 1,
+        "removed": 1,
+        "sha256": "8d75137377b94e99beb56a8a028e537a8381d27344a32130a78257d734dda00b"
+      },
+      {
+        "path": ".github/workflows/publish.yml",
+        "added": 1,
+        "removed": 1,
+        "sha256": "996b1a660897849c71399d01cba1d72be7c8540dc4cd6a95ca0da39206deba46"
+      },
+      {
+        "path": "VENDOR_LOCK.json",
+        "added": 1,
+        "removed": 1,
+        "sha256": "edb079e6171902426c57666c6a77a64d9a437a4873d8bee0b8ae4b59b8d68623"
+      },
+      {
+        "path": "docs/dsh-go-standard.md",
+        "added": 1,
+        "removed": 1,
+        "sha256": "befb00309a26382f7f9f60a0bb6c45b8f878a520de35ea0b3c9befc00e044215"
+      },
+      {
+        "path": "docs/dsh-go-standard.zh-CN.md",
+        "added": 1,
+        "removed": 1,
+        "sha256": "73f502d64551cf585ddb6edd36babf92b61a9a054d70cb4635c09c494b89944b"
+      },
+      {
+        "path": "scripts/verify-dshgo-standard.ts",
+        "added": 248,
+        "removed": 7,
+        "sha256": "04a63d3bfd238faed152942d91ad959f2519bc41b325481ccfe04cbe44228a0b"
+      },
+      {
+        "path": "scripts/verify-gates.ts",
+        "added": 1,
+        "removed": 1,
+        "sha256": "84b4b5e905cd4860583eb40ad526b698ba90bb94c2981318b6080958a46c6760"
+      },
+      {
+        "path": "specs/dsh-go/SOURCE.json",
+        "added": 2,
+        "removed": 2,
+        "sha256": "144188de9ff7fb5c70a5fec6b68451d33842d56c01a5f74700c76a4e4f03b40a"
+      },
+      {
+        "path": "specs/dsh-go/limits.ts",
+        "added": 2,
+        "removed": 2,
+        "sha256": "6fb9b14b06cde2c2b3578a57d44bcdadbf26c25eddceca944f9d9118e9c36201"
+      }
+    ],
+    "forbiddenPathsTouched": "(none)",
+    "packageJsonTouched": "(none)"
+  },
+  "c5": {
+    "requirement": "contract §3 C5 (the verifier's PIN-2): ONE assertion added to scripts/verify-dshgo-standard.ts that reads the dsh-go commit literal from all seven declaration points (eight readings; the workflow point is two files), FAILS with a named finding when any two disagree or any site carries no 40-hex commit, prints its own line in the gate output, and ships a --self-test arm proving it reddens when ONE site is perturbed — with the site contents as INPUT, so the arm never mutates a file.",
+    "design": [
+      "PIN_SITES is the ONE table: eight readings, each { id, file, select, fixture }. `select` is a pure (text) => string|null — JSON `.commit` for SOURCE.json, a marker-captured 40-hex for the seven prose/line sites, so the same code reads the real file and a self-test fixture.",
+      "extractPins(texts) is the PURE half: it takes a Map<siteId, string|null> of SITE CONTENTS and returns the readings. readPins(root) is the only disk reader. auditPin(readings) is the comparator: `pin-site-missing` (error) per site without a 40-hex commit, `pin-disagreement` (error) per site that dissents from the plurality value, with every site's value quoted in the finding.",
+      "render() prints a `PIN:` line of its own, BEFORE the lanes — NOT a sixth lane: `PIN: PASS — 8 site readings agree on <sha>`, or `PIN: FAIL — n error(s) across 8 site readings` followed by the findings. Pin errors are added to the gate's error total, so a disagreement exits 1 (VIOLATIONS).",
+      "`--json` carries the whole check: `pin.commit`, `pin.readings` (all eight) and `pin.findings`, so a verifier reads the per-site values without re-running.",
+      "The pin is read from REPO_ROOT (the repository's own declaration sites), not from `--root`, which selects the PACKAGE to audit. BOUND: a `--root` audit of a packed copy still asserts the REPOSITORY's sites.",
+      "TWO arms were added (44 -> 46): the perturbed-site arm and the no-40-hex arm. Both call extractPins() over in-memory fixtures built from each site's own `fixture()` shape; neither writes or reads a tracked file."
+    ],
+    "sites": [
+      {
+        "site": "SOURCE.json",
+        "file": "specs/dsh-go/SOURCE.json",
+        "commit": "f36bf91b0736e81ef40c2a7040b2ec337ca1ab40"
+      },
+      {
+        "site": "limits.ts header",
+        "file": "specs/dsh-go/limits.ts",
+        "commit": "f36bf91b0736e81ef40c2a7040b2ec337ca1ab40"
+      },
+      {
+        "site": "verify-dshgo-standard.ts header",
+        "file": "scripts/verify-dshgo-standard.ts",
+        "commit": "f36bf91b0736e81ef40c2a7040b2ec337ca1ab40"
+      },
+      {
+        "site": "verify-dshgo-standard.ts render line",
+        "file": "scripts/verify-dshgo-standard.ts",
+        "commit": "f36bf91b0736e81ef40c2a7040b2ec337ca1ab40"
+      },
+      {
+        "site": "docs/dsh-go-standard.md",
+        "file": "docs/dsh-go-standard.md",
+        "commit": "f36bf91b0736e81ef40c2a7040b2ec337ca1ab40"
+      },
+      {
+        "site": "docs/dsh-go-standard.zh-CN.md",
+        "file": "docs/dsh-go-standard.zh-CN.md",
+        "commit": "f36bf91b0736e81ef40c2a7040b2ec337ca1ab40"
+      },
+      {
+        "site": "publish.yml",
+        "file": ".github/workflows/publish.yml",
+        "commit": "f36bf91b0736e81ef40c2a7040b2ec337ca1ab40"
+      },
+      {
+        "site": "gates.yml",
+        "file": ".github/workflows/gates.yml",
+        "commit": "f36bf91b0736e81ef40c2a7040b2ec337ca1ab40"
+      }
+    ],
+    "findings": [],
+    "rules": [
+      "pin-site-missing",
+      "pin-disagreement"
+    ],
+    "selfTest": {
+      "arms": 46,
+      "armsBefore": 44,
+      "addedArms": [
+        "C5 PIN: one perturbed site disagreeing with the seven others",
+        "C5 PIN: a site that states no 40-hex commit"
+      ],
+      "observed": [
+        "PASS  C5 PIN: one perturbed site disagreeing with the seven others",
+        "PASS  C5 PIN: a site that states no 40-hex commit",
+        "[dshgo-standard] SELF-TEST PASS — 46 arms (1 clean control + 45 negative controls)"
+      ]
+    },
+    "perturbedSiteProof": {
+      "method": "A byte-identical MIRROR of the eight declaration sites was built under .qa-tmp/pin-proof (gitignored scratch: scripts/verify-dshgo-standard.ts + its two imports + specs/dsh-go/ + docs/dsh-go-standard{,.zh-CN}.md + .github/workflows/{publish,gates}.yml). The gate reads the pin from ITS OWN repo root, so running the mirror's copy reads the mirror's sites while `--root $PWD` keeps all five lanes on the real package. ONE mirror site was then rewritten to the OLD sha with sed. No tracked file was touched.",
+      "unperturbed": {
+        "exit": 0,
+        "log": "evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/09-pin-proof-unperturbed.log",
+        "tail": [
+          "[dshgo-standard] PIN: PASS — 8 site readings agree on f36bf91b0736e81ef40c2a7040b2ec337ca1ab40",
+          "[dshgo-standard] RESULT: LEGAL — manifest, views, compatibility, host half and the official cross-check all agree",
+          "befb00309a26382f7f9f60a0bb6c45b8f878a520de35ea0b3c9befc00e044215  docs/dsh-go-standard.md"
+        ]
+      },
+      "perturbed": {
+        "site": "docs/dsh-go-standard.md",
+        "rewrittenTo": "d5ad25c5bc4c66ecacee76b3c5378db45e1db3fa",
+        "exit": 1,
+        "log": "evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/10-pin-proof-perturbed.log",
+        "tail": [
+          "[dshgo-standard] PIN: FAIL — 1 error(s) across 8 site readings",
+          "  [error] pin-disagreement docs/dsh-go-standard.md — docs/dsh-go-standard.md states `d5ad25c5bc4c66ecacee76b3c5378db45e1db3fa` while 7 of 8 sites state `f36bf91b0736e81ef40c2a7040b2ec337ca1ab40`: SOURCE.json=f36bf91b0736e81ef40c2a7040b2ec337ca1ab40, limits.ts header=f36bf91b0736e81ef40c2a7040b2ec337ca1ab40, verify-dshgo-standard.ts header=f36bf91b0736e81ef40c2a7040b2ec337ca1ab40, verify-dshgo-standard.ts render line=f36bf91b0736e81ef40c2a7040b2ec337ca1ab40, docs/dsh-go-standard.md=d5ad25c5bc4c66ecacee76b3c5378db45e1db3fa, docs/dsh-go-standard.zh-CN.md=f36bf91b0736e81ef40c2a7040b2ec337ca1ab40, publish.yml=f36bf91b0736e81ef40c2a7040b2ec337ca1ab40, gates.yml=f36bf91b0736e81ef40c2a7040b2ec337ca1ab40",
+          "[dshgo-standard] MANIFEST: PASS (0 error(s), 0 note(s))",
+          "[dshgo-standard] VIEW: PASS (0 error(s), 0 note(s))",
+          "[dshgo-standard] COMPAT: PASS (0 error(s), 0 note(s))",
+          "[dshgo-standard] HOST: PASS (0 error(s), 0 note(s))",
+          "[dshgo-standard] CROSS-CHECK: PASSED — PASSED: verdicts agree — official check.mjs exit=1 stops=false (array-patch false negative excluded: the official checker requires a string patch, DSH allows an array and this gate verified every path); this gate stops=false",
+          "[dshgo-standard] RESULT: VIOLATIONS — 1 error(s)"
+        ]
+      },
+      "restoration": {
+        "log": "evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/11-restoration-check.log",
+        "tail": [
+          "RESTORED: byte-identical to the pre-perturbation hash and states only the new pin"
+        ]
+      }
+    }
+  },
+  "lanes": {
+    "PIN": "PASS — 8 site readings agree on f36bf91b0736e81ef40c2a7040b2ec337ca1ab40",
+    "MANIFEST": "PASS (0 error(s), 0 note(s))",
+    "VIEW": "PASS (0 error(s), 0 note(s))",
+    "COMPAT": "PASS (0 error(s), 0 note(s))",
+    "HOST": "PASS (0 error(s), 0 note(s))",
+    "CROSS-CHECK": "PASSED — official check.mjs exit=1 stops=false; verdicts agree (the string-only `dsh.bundle.patch` false negative is excluded and printed as a note)",
+    "RESULT": "LEGAL — PIN + manifest, views, compatibility, host half and the official cross-check all agree"
+  },
+  "commands": [
+    {
+      "id": "00-self-test",
+      "argv": "node scripts/verify-dshgo-standard.ts --self-test",
+      "exit": 0,
+      "log": "evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/00-self-test.log",
+      "what": "the gate's own 46 arms (was 44; the two new C5 PIN arms prove the check reddens in memory)",
+      "decisiveTail": [
+        "PASS  C5 PIN: one perturbed site disagreeing with the seven others",
+        "PASS  C5 PIN: a site that states no 40-hex commit",
+        "[dshgo-standard] SELF-TEST PASS — 46 arms (1 clean control + 45 negative controls)"
+      ]
+    },
+    {
+      "id": "01-gate-five-lanes",
+      "argv": "MPD_DSHGO_KIT=$PWD/.mpd/recon/dsh-go node scripts/verify-dshgo-standard.ts --json evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/gate.json",
+      "exit": 0,
+      "log": "evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/01-gate-five-lanes.log",
+      "what": "the five lanes + the C5 PIN line + the official cross-check",
+      "decisiveTail": [
+        "[dshgo-standard] PIN: PASS — 8 site readings agree on f36bf91b0736e81ef40c2a7040b2ec337ca1ab40",
+        "[dshgo-standard] MANIFEST: PASS (0 error(s), 0 note(s))",
+        "[dshgo-standard] VIEW: PASS (0 error(s), 0 note(s))",
+        "[dshgo-standard] COMPAT: PASS (0 error(s), 0 note(s))",
+        "[dshgo-standard] HOST: PASS (0 error(s), 0 note(s))",
+        "[dshgo-standard] CROSS-CHECK: PASSED — PASSED: verdicts agree — official check.mjs exit=1 stops=false (array-patch false negative excluded: the official checker requires a string patch, DSH allows an array and this gate verified every path); this gate stops=false",
+        "[dshgo-standard] RESULT: LEGAL — manifest, views, compatibility, host half and the official cross-check all agree"
+      ]
+    },
+    {
+      "id": "02-repin-check",
+      "argv": "node scripts/repin-vendor.ts --check",
+      "exit": 0,
+      "log": "evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/02-repin-check.log",
+      "what": "the vendor corpus re-pin is GREEN against the working tree",
+      "decisiveTail": [
+        "[repin-vendor] CHECK     : GREEN - lock matches the working tree (drift=0, problems=0)"
+      ]
+    },
+    {
+      "id": "03-verify-vendor",
+      "argv": "node scripts/verify-vendor.ts",
+      "exit": 0,
+      "log": "evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/03-verify-vendor.log",
+      "what": "the shipped-asset fingerprints",
+      "decisiveTail": [
+        "[verify-vendor] PASS - 8 shipped asset(s) fingerprinted, upstream identity not checked"
+      ]
+    },
+    {
+      "id": "04-verify-docs-parity",
+      "argv": "node scripts/verify-docs-parity.ts",
+      "exit": 0,
+      "log": "evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/04-verify-docs-parity.log",
+      "what": "the bilingual doc band",
+      "decisiveTail": [
+        "[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=59 failed=0 violations=0 exempt=24 derived=3 links=626 dead=0 — PASS"
+      ]
+    },
+    {
+      "id": "05-verify-workflows",
+      "argv": "node scripts/verify-workflows.ts",
+      "exit": 0,
+      "log": "evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/05-verify-workflows.log",
+      "what": "workflow YAML shape",
+      "decisiveTail": [
+        "[verify-workflows] PASS - every workflow is loadable YAML with a sane job/step shape"
+      ]
+    },
+    {
+      "id": "06-verify-comments",
+      "argv": "node scripts/verify-comment-coverage.ts",
+      "exit": 0,
+      "log": "evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/06-verify-comments.log",
+      "what": "declaration comments (the real spelling of `bun run verify:comments`)",
+      "decisiveTail": [
+        "VERDICT: PASS — every declaration in the family carries a precise comment and a full signature."
+      ]
+    },
+    {
+      "id": "07-verify-dist-fresh",
+      "argv": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "log": "evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/07-verify-dist-fresh.log",
+      "what": "34/34 dist targets rebuild byte-identically",
+      "decisiveTail": [
+        "[verify-dist-fresh] ok: 34/34 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 764ms"
+      ]
+    },
+    {
+      "id": "08-typecheck",
+      "argv": "bun run typecheck",
+      "exit": 0,
+      "log": "evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/08-typecheck.log",
+      "what": "root typecheck (`tsgo --noEmit`)",
+      "decisiveTail": [
+        "$ tsgo --noEmit"
+      ]
+    },
+    {
+      "id": "09-pin-proof-unperturbed",
+      "argv": "MPD_DSHGO_KIT=$PWD/.mpd/recon/dsh-go node .qa-tmp/pin-proof/scripts/verify-dshgo-standard.ts --root $PWD  (+ sha256sum docs/dsh-go-standard.md)",
+      "exit": 0,
+      "log": "evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/09-pin-proof-unperturbed.log",
+      "what": "the mirror's eight sites are byte-identical to the repo's: PIN PASS",
+      "decisiveTail": [
+        "[dshgo-standard] PIN: PASS — 8 site readings agree on f36bf91b0736e81ef40c2a7040b2ec337ca1ab40",
+        "[dshgo-standard] RESULT: LEGAL — manifest, views, compatibility, host half and the official cross-check all agree",
+        "befb00309a26382f7f9f60a0bb6c45b8f878a520de35ea0b3c9befc00e044215  docs/dsh-go-standard.md"
+      ]
+    },
+    {
+      "id": "10-pin-proof-perturbed",
+      "argv": "sed -i s/f36bf91b.../d5ad25c5.../ .qa-tmp/pin-proof/docs/dsh-go-standard.md && MPD_DSHGO_KIT=$PWD/.mpd/recon/dsh-go node .qa-tmp/pin-proof/scripts/verify-dshgo-standard.ts --root $PWD",
+      "exit": 1,
+      "log": "evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/10-pin-proof-perturbed.log",
+      "what": "ONE mirror site reverted to the OLD sha: PIN FAIL + pin-disagreement, exit 1, all five lanes still PASS",
+      "decisiveTail": [
+        "[dshgo-standard] PIN: FAIL — 1 error(s) across 8 site readings",
+        "  [error] pin-disagreement docs/dsh-go-standard.md — docs/dsh-go-standard.md states `d5ad25c5bc4c66ecacee76b3c5378db45e1db3fa` while 7 of 8 sites state `f36bf91b0736e81ef40c2a7040b2ec337ca1ab40`: SOURCE.json=f36bf91b0736e81ef40c2a7040b2ec337ca1ab40, limits.ts header=f36bf91b0736e81ef40c2a7040b2ec337ca1ab40, verify-dshgo-standard.ts header=f36bf91b0736e81ef40c2a7040b2ec337ca1ab40, verify-dshgo-standard.ts render line=f36bf91b0736e81ef40c2a7040b2ec337ca1ab40, docs/dsh-go-standard.md=d5ad25c5bc4c66ecacee76b3c5378db45e1db3fa, docs/dsh-go-standard.zh-CN.md=f36bf91b0736e81ef40c2a7040b2ec337ca1ab40, publish.yml=f36bf91b0736e81ef40c2a7040b2ec337ca1ab40, gates.yml=f36bf91b0736e81ef40c2a7040b2ec337ca1ab40",
+        "[dshgo-standard] MANIFEST: PASS (0 error(s), 0 note(s))",
+        "[dshgo-standard] VIEW: PASS (0 error(s), 0 note(s))",
+        "[dshgo-standard] COMPAT: PASS (0 error(s), 0 note(s))",
+        "[dshgo-standard] HOST: PASS (0 error(s), 0 note(s))",
+        "[dshgo-standard] CROSS-CHECK: PASSED — PASSED: verdicts agree — official check.mjs exit=1 stops=false (array-patch false negative excluded: the official checker requires a string patch, DSH allows an array and this gate verified every path); this gate stops=false",
+        "[dshgo-standard] RESULT: VIOLATIONS — 1 error(s)"
+      ],
+      "expectedExit": "1 — BY DESIGN: the perturbed site must redden the gate"
+    },
+    {
+      "id": "11-restoration-check",
+      "argv": "bash -c 'sha256sum + git diff --numstat + grep new + ! grep old + hash equality on docs/dsh-go-standard.md'",
+      "exit": 0,
+      "log": "evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/11-restoration-check.log",
+      "what": "the REPO's docs/dsh-go-standard.md was never perturbed (hash equality + only the new pin present)",
+      "decisiveTail": [
+        "RESTORED: byte-identical to the pre-perturbation hash and states only the new pin"
+      ]
+    },
+    {
+      "id": "12-bun-test-adapter",
+      "argv": "bun test packages/mpd-dsh-adapter-plugin",
+      "exit": 0,
+      "log": "evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/12-bun-test-adapter.log",
+      "what": "the touched-module package's suite (D6)",
+      "decisiveTail": [
+        " 395 pass",
+        " 0 fail",
+        " 1573 expect() calls",
+        "Ran 395 tests across 27 files. [3.09s]"
+      ]
+    },
+    {
+      "id": "13-final-confirmation",
+      "argv": "node scripts/verify-dshgo-standard.ts --self-test; MPD_DSHGO_KIT=$PWD/.mpd/recon/dsh-go node scripts/verify-dshgo-standard.ts; node scripts/repin-vendor.ts --check",
+      "exit": 0,
+      "log": "evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/13-final-confirmation.log",
+      "what": "re-run AFTER the gate/proof sequence (commands 00-12) and BEFORE the bundle was written: self-test, five lanes + PIN, and repin --check all still green (the tree did not drift)",
+      "decisiveTail": [
+        "PASS  C5 PIN: one perturbed site disagreeing with the seven others",
+        "PASS  C5 PIN: a site that states no 40-hex commit",
+        "[dshgo-standard] SELF-TEST PASS — 46 arms (1 clean control + 45 negative controls)",
+        "[dshgo-standard] PIN: PASS — 8 site readings agree on f36bf91b0736e81ef40c2a7040b2ec337ca1ab40",
+        "[dshgo-standard] RESULT: LEGAL — manifest, views, compatibility, host half and the official cross-check all agree",
+        "[repin-vendor] CHECK     : GREEN - lock matches the working tree (drift=0, problems=0)"
+      ]
+    },
+    {
+      "id": "14-gate-without-kit",
+      "argv": "env -u MPD_DSHGO_KIT node scripts/verify-dshgo-standard.ts",
+      "exit": 3,
+      "log": "evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/14-gate-without-kit.log",
+      "what": "exit-code contract: with no MPD_DSHGO_KIT the gate still exits 3 NOT-PASSED (the new PIN error count does not swallow it)",
+      "decisiveTail": [
+        "[dshgo-standard] PIN: PASS — 8 site readings agree on f36bf91b0736e81ef40c2a7040b2ec337ca1ab40",
+        "[dshgo-standard] CROSS-CHECK: NOT-PASSED — NOT-PASSED: MPD_DSHGO_KIT is not set, so the official checker did not run (a cross-check that did not run is never a green). Provide a dsh-Go checkout: MPD_DSHGO_KIT=<checkout> node scripts/verify-dshgo-standard.ts",
+        "[dshgo-standard] RESULT: NOT-PASSED — the official cross-check did not run"
+      ],
+      "expectedExit": "3 — BY DESIGN: no kit is NOT-PASSED, never a green"
+    }
+  ],
+  "finalConfirmation": {
+    "at": "2026-11-09T07:19Z",
+    "log": "evidence/dshgo/standard/2026-11-09T07-13-34-000Z/logs/13-final-confirmation.log",
+    "selfTest": 0,
+    "gateFiveLanes": 0,
+    "repinCheck": 0,
+    "note": "corrected 2026-11-09: the earlier wording claimed this ran AFTER result.json/output.log, which the original mtimes contradict. It re-ran after the gate/proof sequence (commands 00-12) and BEFORE the bundle was written: this log is 15:17:40, the no-kit negative control (14) is 15:18:31, and result.json/output.log were first written at 15:19:23 (result.json's mtime moved later only because this note was corrected). All three checks exit 0 and the PIN/lane lines are identical to command 01, so nothing in the worktree drifted between the gate evidence and this confirmation"
+  },
+  "findingsOutsideScope": [
+    {
+      "id": "F3",
+      "severity": "note",
+      "path": "VENDOR_LOCK.json:13 (`specs/dsh-go`.`source` prose)",
+      "detail": "still reads `fetched from …@d5ad25c5…, pinned by specs/dsh-go/SOURCE.json`. Carried forward from the four-file bundle, where the captain was asked to rule: it records the FETCH ORIGIN and defers the pin to SOURCE.json, so it is not one of the seven C5 sites and the gate does not assert it. Captain's call; a one-line prose refresh in C4's file would close it."
+    },
+    {
+      "id": "F5",
+      "severity": "note",
+      "path": "dist/mpd-package/{specs/dsh-go/SOURCE.json,specs/dsh-go/limits.ts,VENDOR_LOCK.json,docs/dsh-go-standard*.md,CHANGELOG.md}",
+      "detail": "the packed artifact still carries the old pin because it is a GENERATED copy; D5 forbids touching dist. Regenerated by `node scripts/pack-mpd.ts` at release time. Verified still true in this tree."
+    },
+    {
+      "id": "F6",
+      "severity": "note",
+      "path": "CHANGELOG.md:22",
+      "detail": "a historical v0.18.0 release note quoting the old pin; history, must not be rewritten."
+    }
+  ],
+  "bounds": [
+    "The kit at .mpd/recon/dsh-go is our MIRROR checked out at f36bf91b… (v1.0.14), not a live dsh-Go app: the lanes prove the SPEC contract, not a device run (contract §7).",
+    "CROSS-CHECK still reports the official checker's string-only `dsh.bundle.patch` false negative, normalized and printed as a note (unchanged before and after this wave).",
+    "`bun run verify:gates` (the 11-member aggregate) was NOT run: it needs the pinned harness FIRST on PATH and a clean tree. Its dshgo member is exactly command 01, and the other ten members are out of this wave's scope.",
+    "`bun test` ran ONLY for packages/mpd-dsh-adapter-plugin (D6's named package, the module graph this wave's spec data feeds). No other package's tests ran.",
+    "The C5 check reads the pin from REPO_ROOT, so a `--root` audit of a packed copy asserts the REPOSITORY's sites, not the copy's (see c5.design).",
+    "No `bun build` ran from this wave (no packages/*/src change); verify-dist-fresh rebuilt 34/34 targets itself with the pinned bun and found them byte-identical.",
+    "Dist freshness certifies the committed dist matches a rebuild; it is not a live mount.",
+    "The `bun` on PATH may differ from the `buildToolchain` pin; the only build that ran (inside verify-dist-fresh) used the pinned binary its own gate selects.",
+    "This bundle is UNCOMMITTED worktree evidence: nothing is committed on fix/dshgo-1.0.14-repin, and the nine paths are the working-tree diff against 18da0c6c."
+  ],
+  "verdict": "PASS — the current NINE-file tree: C5 PIN check green (8/8 sites on the peeled commit f36bf91b…), 46/46 self-test arms green (44 existing + 2 new, no existing arm weakened), five lanes LEGAL with the official cross-check, and repin --check / verify-vendor / docs-parity / workflows / comments / dist-fresh / typecheck / adapter tests all green. The perturbed-site proof shows the new assertion reddens on exactly the PIN-2 defect class (one site left on the old sha) while every lane stays green."
+}

@@ -1,0 +1,18 @@
+# TEETH: revert ONLY the new exemption guard on a temp COPY (the real file is never mutated).
+# Mutant = the previous behaviour: every absent file excused in packaged mode.
+$ cp scripts/verify-dshgo-standard.ts scripts/.mutant-verify-dshgo-<pid>.ts
+$ sed -i 's/if (!checkout && isGithubSite(reading.file)) {/if (!checkout) {/' scripts/.mutant-verify-dshgo-<pid>.ts
+$ grep -n "if (!checkout" scripts/.mutant-verify-dshgo-<pid>.ts
+1285:      if (!checkout) {
+$ node scripts/.mutant-verify-dshgo-<pid>.ts --self-test
+[exit 1]
+... 43 PASS lines omitted here (they match the real run) ...
+FAIL  C5 PIN: one perturbed site disagreeing with the seven others — the arm itself threw: C5 packaged non-workflow absence: an absent site a packaged tree DOES ship must be exactly one pin-site-missing error and never a skip, got none with skipped 1
+PASS  C5 PIN: a site that states no 40-hex commit
+[dshgo-standard] SELF-TEST FAILED — 1 arm(s): C5 PIN: one perturbed site disagreeing with the seven others
+
+$ rm -f scripts/.mutant-verify-dshgo-<pid>.ts
+sha256 before mutant: 46cb51f70143ca354b60d54e98f8bc66d3b3715ddd5c24a9be57988ad5972953
+sha256 after mutant:  46cb51f70143ca354b60d54e98f8bc66d3b3715ddd5c24a9be57988ad5972953
+restored identical: YES
+mutant removed: YES

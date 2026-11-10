@@ -1,0 +1,85 @@
+{
+  "ok": true,
+  "slug": "captain-recon-fence-codeRabbit-round1-delta",
+  "domain": "guard",
+  "startedAt": "2026-11-09T04:50:00Z",
+  "subject": "Delta verification of the five CodeRabbit round-1 repairs on fix/captain-self-test-fence (wave 2), against loop-20261109T025106-3ccdf5 and .mpd/plans/captain-recon-fence.md",
+  "branch": "fix/captain-self-test-fence",
+  "head": "754b5aa2",
+  "verdict": "PASS",
+  "findings": [
+    {
+      "id": "A",
+      "filed": "Major — `bun run test` matched no deny row; `bunx`/`bun x` uncovered; the launcher family (npm exec / pnpm dlx / yarn dlx) uncovered",
+      "status": "FIXED",
+      "measured": "deny table 16 -> 19 (three rows appended AFTER every existing row: bun-run-test, bunx-runner, pkg-exec-runner). Post-fix probe: `bun run test` -> bun-run-test REFUSE; `bun run test:unit`/`test:watch` -> bun-run-gate REFUSE (label ownership unchanged); bunx/bun x -> bunx-runner REFUSE; npm exec / pnpm dlx / yarn dlx -> pkg-exec-runner REFUSE; `bun run testimony`, `bun run format`, `npm install`, `git status` ALLOW.",
+      "residual": "DECLARED in the module header: a launcher option taking a SEPARATE value (`npm exec -p typescript tsc`) and the attached `--package=` form stay outside the token table; the probe confirms BOTH are ALLOW, as declared.",
+      "pre_fix": "HEAD 754b5aa2: table length 16; `bun run test`, `bunx tsgo --noEmit`, `bun x tsgo`, `npm exec tsc`, `pnpm dlx tsc`, `yarn dlx tsc` were ALL ALLOWED (probe-prefix-roles.log)."
+    },
+    {
+      "id": "B",
+      "filed": "Minor — the piped-search stdin exemption let `grep -r` (no path) search the whole workspace",
+      "status": "FIXED",
+      "measured": "GREP_RECURSIVE_FLAG_PATTERN + isGrepRecursiveFlag(); readsPipe = patternFirst && fedByPipe && !recursiveGrep. Probe: `true | grep -rn TODO`, `git log | grep -r/-R`, `-rn`, `--recursive`, `--dereference-recursive` REFUSED; `git log | grep fix`, `ls | grep md`, `grep -rn TODO docs/`, `git log | grep -rn TODO docs/` ALLOWED.",
+      "pre_fix": "HEAD 754b5aa2: `true | grep -rn TODO`, `git log | grep -r fix` and `git log | grep --recursive fix` were ALL ALLOWED (probe-prefix-roles.log)."
+    },
+    {
+      "id": "C",
+      "filed": "Minor — `dsh.workspaceRoot(exec)` ran outside the post-execute try, so a throw lost the whole result",
+      "status": "FIXED",
+      "measured": "The resolution now happens INSIDE the try; the catch RETURNS the degraded banner, and `fullPath` is only read on the success path. New arm: a throwing `process.cwd` produces the notice banner containing `cwd unavailable` instead of rejecting.",
+      "pins_the_fix": "PRE-FIX CONTROL (current test file + HEAD src, /tmp copy): the arm FAILS with raw `error: cwd unavailable` thrown at src/index.ts:233 — exactly the writer's reported failure. POST-FIX: passes."
+    },
+    {
+      "id": "D",
+      "filed": "Minor — the failed-log-write fallback could emit overlapping slices around 5,000 chars",
+      "status": "FIXED",
+      "measured": "degradedBudget = max(1, min(maxBytes, text.length - 1)); legacyTruncate's slices are therefore disjoint whenever the banner fits, and the output is strictly smaller than the replaced text on the reachable degraded path (a captain result is always > the cap). New 4,000-8,000-char arm asserts every complete kept line appears exactly once and body.length < text.length.",
+      "pins_the_fix": "PRE-FIX CONTROL (current test file + HEAD src, /tmp copy): the arm FAILS with `Expected: 1085 / Received: 600` — exactly the writer's reported failure. POST-FIX: passes."
+    },
+    {
+      "id": "E",
+      "filed": "Trivial — a test name contradicted its own assertion",
+      "status": "FIXED",
+      "measured": "Renamed to `the `any` opt-out is case-insensitive and whitespace-trimmed; anything else fails CLOSED on verifier`, which matches `resolveEvidenceBy` (trim + lowercase, exact `any` else `verifier`); the added `resolveEvidenceBy(\" any \")` -> \"any\" assertion pins the trim. The behavioural half (misspelled `yes` refuses in the sandbox) still matches the name."
+    }
+  ],
+  "changed_set": {
+    "tracked": [
+      "agent-references/verification-flow.md",
+      "packages/mpd-roles-plugin/dist/index.js",
+      "packages/mpd-roles-plugin/src/captain-shell.ts",
+      "packages/mpd-roles-plugin/test/captain-shell.test.ts",
+      "packages/mpd-tools-plugin/dist/index.js",
+      "packages/mpd-tools-plugin/src/index.ts",
+      "packages/mpd-tools-plugin/test/captain-result-cap.test.ts",
+      "packages/mpd-verify-plugin/test/evidence-by.test.ts"
+    ],
+    "note": "Exactly the five repairs plus the captain's ONE doc token (verification-flow.md `patterns=16` -> `19`). No other tracked file differs from HEAD; the verify plugin's dist is unchanged (E is a test-only edit) and matches the prior PASS record's sha."
+  },
+  "gates": [
+    { "command": ".toolchain/node_modules/.bin/bun test packages/mpd-roles-plugin", "observed": "369 pass / 0 fail / 2720 expect() calls across 18 files", "exit": 0 },
+    { "command": ".toolchain/node_modules/.bin/bun test packages/mpd-tools-plugin", "observed": "25 pass / 0 fail / 96 expect() calls across 2 files", "exit": 0 },
+    { "command": ".toolchain/node_modules/.bin/bun test packages/mpd-verify-plugin", "observed": "102 pass / 0 fail / 700 expect() calls across 6 files", "exit": 0 },
+    { "command": "node scripts/verify-dist-fresh.ts", "observed": "34/34 targets fresh (each rebuilt twice, byte-identical); 1 NOT COVERED (mpd-mcp-codegraph/serve.js, pre-existing)", "exit": 0 }
+  ],
+  "live_mount": {
+    "lane": ".toolchain/node_modules/.bin/bun skills/dsh-qa/scripts/captain-scope.ts",
+    "evidence": "evidence/roles/captain-scope/2026-11-09T04-48-11.924Z/result.json",
+    "observed_boot_line": "[mpd-roles] team plane: readOnlyGuard=installed deny=10 captainInvestigation=deny captainShell=deny patterns=19 delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed questions=relay routes=0 rosterSection=agent-scoped order=605 sessionGate=mechanical sensitivity=easy",
+    "rows": "PASS (8 rows); DISCRIMINATING-guard-state-reported is the arm that asserts the computed table size against the MOUNTED dist",
+    "conclusion": "patterns=19 IS observed in a live mount (not merely unit-verified), so the captain's one-token doc correction is accurate."
+  },
+  "bounds": [
+    "The delta rule set: the five findings as filed plus the task's required probe list. The wave's full contract was NOT re-reviewed (rec-20261109T035722-08673a remains its PASS).",
+    "The verifier READ the implemented code (tools rows, captain-shell decision, verify law) because the delta task requires judging the new tests against the pre-fix logic; the record's derived `blind` basis is therefore a statement about the plugin's observation log, not a claim that no implementation was read.",
+    "Declared residual of the B repair: a QUOTED recursive flag (`grep \"-r\" fix`) still takes the generic piped-search exemption, and a quoted command name (`bun \"test\"`) still bypasses the deny table — the same pre-existing token-table/quote bound as the whole family; the repair strictly NARROWS the hole and does not introduce it (ALLOW both before and after).",
+    "Declared residual of the A repair's launcher rows: global launcher flags before the runner (`bunx --bun tsgo`, `pnpm --silent dlx tsc`) and the `npm exec` alias `npm x tsc` are not matched; the filed spellings are closed. Recorded as a follow-up recommendation, not a blocker for this delta.",
+    "The pre-fix controls ran on a /tmp copy of HEAD's source with the CURRENT tests; the real checkout was not modified. The dist check rebuilds into temp dirs and never writes the tree.",
+    "Not run: full root typecheck/comments/preset-conformance (the wave's PASS carried them and no product source changed after, except the two repaired sources; the repaired sources are covered by the three package suites and the dist rebuild)."
+  ],
+  "evidence": {
+    "dir": "evidence/guard/captain-recon-fence/review-delta-2026-11-09T04-50Z/",
+    "files": ["probe-ab.ts", "probe-ab.log", "probe-prefix-roles.log", "probe-prefix-tools.log", "suites.log", "dist.log", "result.json"]
+  }
+}

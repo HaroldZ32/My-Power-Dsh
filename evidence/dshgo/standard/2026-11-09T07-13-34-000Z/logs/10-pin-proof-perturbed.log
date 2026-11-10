@@ -1,0 +1,11 @@
+[dshgo-standard] root: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+[dshgo-standard] standard: ccch1mneyyy/dsh-Go@f36bf91b0736e81ef40c2a7040b2ec337ca1ab40 (spec data under specs/dsh-go/)
+[dshgo-standard] PIN: FAIL — 1 error(s) across 8 site readings
+  [error] pin-disagreement docs/dsh-go-standard.md — docs/dsh-go-standard.md states `d5ad25c5bc4c66ecacee76b3c5378db45e1db3fa` while 7 of 8 sites state `f36bf91b0736e81ef40c2a7040b2ec337ca1ab40`: SOURCE.json=f36bf91b0736e81ef40c2a7040b2ec337ca1ab40, limits.ts header=f36bf91b0736e81ef40c2a7040b2ec337ca1ab40, verify-dshgo-standard.ts header=f36bf91b0736e81ef40c2a7040b2ec337ca1ab40, verify-dshgo-standard.ts render line=f36bf91b0736e81ef40c2a7040b2ec337ca1ab40, docs/dsh-go-standard.md=d5ad25c5bc4c66ecacee76b3c5378db45e1db3fa, docs/dsh-go-standard.zh-CN.md=f36bf91b0736e81ef40c2a7040b2ec337ca1ab40, publish.yml=f36bf91b0736e81ef40c2a7040b2ec337ca1ab40, gates.yml=f36bf91b0736e81ef40c2a7040b2ec337ca1ab40
+[dshgo-standard] MANIFEST: PASS (0 error(s), 0 note(s))
+[dshgo-standard] VIEW: PASS (0 error(s), 0 note(s))
+[dshgo-standard] COMPAT: PASS (0 error(s), 0 note(s))
+[dshgo-standard] HOST: PASS (0 error(s), 0 note(s))
+[dshgo-standard] CROSS-CHECK: PASSED — PASSED: verdicts agree — official check.mjs exit=1 stops=false (array-patch false negative excluded: the official checker requires a string patch, DSH allows an array and this gate verified every path); this gate stops=false
+  [note] crosscheck-normalized /home/haroldzhao/MyProj/DshProj/My-Power-Dsh — the official checker's only blocking item was its string-only `dsh.bundle.patch` assumption; every declared patch path is resolved by the MANIFEST lane
+[dshgo-standard] RESULT: VIOLATIONS — 1 error(s)

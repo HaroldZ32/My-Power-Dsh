@@ -1,0 +1,212 @@
+{
+  "task": "Delta re-verification of the repairs to rec-20261109T030449-cae6c8 (wave 2, captain recon fence)",
+  "loopId": "loop-20261109T025106-3ccdf5",
+  "verifierSeat": "88755a2a-a6c3-45ba-8a10-30a3d735c220",
+  "priorRecord": ".mpd/verify/records/rec-20261109T030449-cae6c8.json",
+  "contract": {
+    "path": ".mpd/plans/captain-recon-fence.md",
+    "sha256Now": "7e0d429c99e661e6ee41d34e7a79054a190ef58d11a059696d5310101a7c9abf",
+    "sha256AtPriorRecord": "f818032803f44b606baa206dd3af0713d590190b3efc2b4f88e5deb281d6e135",
+    "amendment": "§4 B3 now names a REAL source path (packages/mpd-roles-plugin/src/index.ts) and records the existence filter; §7 records the C2/law.ts and nine-LSP amendments. The current file is the text this delta verifies."
+  },
+  "reproducedByVerifier": {
+    "packageTest": {
+      "argv": ".toolchain/node_modules/.bin/bun test packages/mpd-roles-plugin",
+      "result": "365 pass / 0 fail / 2657 expect() calls / 18 files",
+      "exit": 0,
+      "artifact": "evidence/guard/captain-recon-fence/review-t5-reverify-2026-11-09T03-35Z/gates/package-test.log"
+    },
+    "dist": {
+      "gateEvidenceId": "ev-20261109T033733-7723fd",
+      "argv": "node scripts/verify-dist-fresh.ts",
+      "result": "34/34 targets fresh (each rebuilt twice, byte-identical); roles dist sha f0ec17be51d0…; verify dist sha 0cfbc7a82f06…; 1 NOT COVERED (sha-pinned codegraph serve.js)",
+      "exit": 0
+    },
+    "testsGate": {
+      "gateEvidenceId": "ev-20261109T033337-50288d",
+      "argv": "bun test packages",
+      "result": "3787 pass / 6 skip / 0 fail across 249 files",
+      "exit": 0
+    },
+    "staticGates": {
+      "verify:docs": "PASS — pairs=59 failed=0 violations=0 links=626 dead=0",
+      "verify:rows": "PASS — 36 row ids match the 2-file bundle patch layer",
+      "verify-manual-paths": "PASS — resolved=158 over-report=72 under-report=83 declared=2",
+      "artifact": "evidence/guard/captain-recon-fence/review-t5-reverify-2026-11-09T03-35Z/gates/static-gates.log"
+    },
+    "repairBundleCited": {
+      "final": "evidence/guard/captain-recon-fence/2026-11-09T03-30-57.827Z/",
+      "earlier": [
+        "evidence/guard/captain-recon-fence/2026-11-09T02-34-01.509Z/",
+        "evidence/guard/captain-recon-fence/2026-11-09T02-38-44.426Z/",
+        "evidence/guard/captain-recon-fence/2026-11-09T02-48-44.729Z/"
+      ],
+      "liveMountAfterPersonaEdit": "evidence/dsh-qa/preset-conformance/2026-11-09T03-09-46.911Z/ (ok:33 rows, parity 27/27, session/create agentPreset=mpd, negative control red)"
+    }
+  },
+  "repairs": [
+    {
+      "id": "F1",
+      "filed": "piped search verbs refused",
+      "verdict": "FIXED for the three named commands and for an EXISTING out-of-band path",
+      "evidence": [
+        "ALLOWED git log --oneline | grep fix",
+        "ALLOWED ls -la | grep md",
+        "ALLOWED cat docs/decisions.md | grep TODO",
+        "REFUSED cat docs/decisions.md | grep TODO packages/mpd-roles-plugin/src/index.ts (real source)",
+        "REFUSED rg foo"
+      ],
+      "residual": "the literal arm `cat docs/x | grep TODO packages/y.ts` is ALLOWED because packages/y.ts does not exist and the existence filter drops it before the piped-search stdin exemption; see finding F10"
+    },
+    {
+      "id": "F2",
+      "verdict": "FIXED",
+      "evidence": [
+        "ALLOWED grep -E \"fix|feat\" docs/decisions.md",
+        "ALLOWED grep -E 'TODO|FIXME' docs/x",
+        "REFUSED grep -E \"fix|feat\" packages/mpd-roles-plugin/src/index.ts",
+        "refusal quotes the WHOLE segment (contains the full grep line; no `grep -E \"fix` fragment), length 472"
+      ]
+    },
+    {
+      "id": "F3",
+      "verdict": "FIXED",
+      "evidence": [
+        "REFUSED cd packages && cat mpd-roles-plugin/src/index.ts",
+        "REFUSED cd packages && cd mpd-roles-plugin && cat src/index.ts",
+        "REFUSED cd \"$X\" && cat packages/... (dynamic cd fails closed)",
+        "REFUSED cd $(pwd) && cat docs/decisions.md (the declared deliberate over-block)",
+        "ALLOWED cd docs && cat decisions.md",
+        "absolute candidate unaffected by cd: ALLOWED cd packages && cat <abs docs>, REFUSED cd docs && cat <abs source>"
+      ]
+    },
+    {
+      "id": "F4",
+      "verdict": "FIXED",
+      "evidence": [
+        "ALLOWED rg --files docs/",
+        "ALLOWED rg --files -g '*.md' docs/ and --glob spelling",
+        "REFUSED rg --files",
+        "REFUSED rg --files packages/mpd-roles-plugin/src"
+      ]
+    },
+    {
+      "id": "F5",
+      "verdict": "FIXED",
+      "evidence": [
+        "REFUSED paths:[\"docs/\",42] (names entry 1)",
+        "REFUSED paths:[42,\"docs/\"] (names entry 0)",
+        "REFUSED paths:[\"docs/\",null]",
+        "REFUSED paths:[\"docs/\",\"\"]",
+        "ALLOWED paths:[\"docs/\",\"agent-references/\"]",
+        "REFUSED paths:[] and paths absent (bare-call)",
+        "REFUSED codegraph_explore (bare-call)"
+      ]
+    },
+    {
+      "id": "F6",
+      "verdict": "FIXED by contract amendment + behaviour",
+      "evidence": [
+        "REFUSED cat packages/mpd-roles-plugin/src/index.ts (the amended B3 arm is realisable)",
+        "ALLOWED cat packages/x.ts (the existence filter is unchanged: a non-existent token is not a path candidate)",
+        "contract §4 B3 now names the real source path and records the existence filter"
+      ]
+    },
+    {
+      "id": "F7",
+      "verdict": "FIXED",
+      "evidence": [
+        "presets/mpd.patch.yml READ DISCIPLINE now says `shell read-verbs (file readers and searches — cat, sed, rg, find, …)`",
+        "agent-references/verification-flow.md uses the same open `…` form",
+        "AGENTS.md §5 rule 2 names the class (`shell read-verbs on a source path`), not a closed list",
+        "the QA-pinned literal (captain-scope.ts) derives patterns=<N> from the table; no stale six-name pin"
+      ]
+    },
+    {
+      "id": "F8 (nit 1)",
+      "verdict": "FIXED",
+      "evidence": [
+        "ALLOWED cat docs/decisions.md > package.json",
+        "ALLOWED cat docs/decisions.md 2> packages/err.log",
+        "ALLOWED cat docs/decisions.md >out.txt"
+      ]
+    },
+    {
+      "id": "F9 (nit 2)",
+      "verdict": "FIXED",
+      "evidence": [
+        "ALLOWED sed -i 's/a/b/' packages/mpd-roles-plugin/src/index.ts",
+        "ALLOWED sed -ni '1p' packages/... and sed --in-place ..."
+      ]
+    }
+  ],
+  "newWork": {
+    "substitutionAwarePass": {
+      "verdict": "behaves as described for the READ class",
+      "evidence": [
+        "ALLOWED cat docs/decisions.md && ls packages (no substitution -> whole-line pass skipped)",
+        "ALLOWED cat docs/decisions.md && rm -rf node_modules",
+        "REFUSED echo $(cat packages/mpd-roles-plugin/src/index.ts)",
+        "REFUSED echo `cat packages/x.ts` (relaxed path-shaped rule)",
+        "ALLOWED echo $(cat docs/decisions.md)",
+        "REFUSED echo \"$(cat packages/mpd-roles-plugin/src/index.ts)\""
+      ]
+    },
+    "narrowedStdinExemption": {
+      "verdict": "behaves as described",
+      "evidence": [
+        "REFUSED git log | find",
+        "ALLOWED git log --oneline | grep fix",
+        "REFUSED rg --files (no path; whole-workspace) and REFUSED rg --files | head (rg --files never reads stdin; it enumerates the tree)"
+      ]
+    }
+  },
+  "falsePositiveProbe": [
+    { "command": "git log --stat", "observed": "ALLOWED", "intended": true },
+    { "command": "git diff --stat", "observed": "ALLOWED", "intended": true },
+    { "command": "git status", "observed": "ALLOWED", "intended": true },
+    { "command": "git show HEAD:AGENTS.md", "observed": "ALLOWED", "intended": true, "note": "git verbs are out of the read-route; git show of a source file is the contract §6 declared bound" },
+    { "command": "ls -la docs", "observed": "ALLOWED", "intended": true },
+    { "command": "ls packages", "observed": "ALLOWED", "intended": true },
+    { "command": "mkdir -p .mpd/tmp", "observed": "ALLOWED", "intended": true },
+    { "command": "mv a b", "observed": "ALLOWED", "intended": true },
+    { "command": "cat docs/decisions.md", "observed": "ALLOWED", "intended": true },
+    { "command": "cat docs/decisions.md && ls packages", "observed": "ALLOWED", "intended": true },
+    { "command": "sed -n '1,5p' docs/decisions.md", "observed": "ALLOWED", "intended": true },
+    { "command": "grep -rn TODO docs/", "observed": "ALLOWED", "intended": true },
+    { "command": "echo hi | cat", "observed": "ALLOWED", "intended": true },
+    { "command": "node -e '1+1'", "observed": "ALLOWED", "intended": true },
+    { "command": "wc -l AGENTS.md", "observed": "ALLOWED", "intended": true },
+    { "command": "head -20 CHANGELOG.md", "observed": "ALLOWED", "intended": true, "note": "CHANGELOG.md is a declared ROOT-READABLE band file (CAPTAIN_READABLE_ROOT_FILES + the persona band), NOT an out-of-band file; the task's 'deliberate refusal' premise is wrong for this path" },
+    { "command": "rg TODO docs/", "observed": "ALLOWED", "intended": true },
+    { "command": "git log --oneline | grep fix", "observed": "ALLOWED", "intended": true },
+    { "command": "cat package.json", "observed": "REFUSED", "intended": true, "note": "out-of-band root config; deliberate refusal" }
+  ],
+  "findings": [
+    {
+      "id": "F10",
+      "severity": "minor",
+      "symptom": "F1's stated anti-regression arm `cat docs/x | grep TODO packages/y.ts` is ALLOWED (probe.log line 5), because packages/y.ts does not exist and the read-route's candidate filter ignores a non-existent token, after which the piped-search stdin exemption applies. The writers' own test uses a REAL source path and refuses it.",
+      "expected": "C3 §3's SEARCH rule says any non-flag argument that resolves OUTSIDE the readable band is refused (no existence qualifier), while the amended B3 says a non-existent token is never a path candidate. The two sentences conflict for a piped search. Either the arm must name a real source path (the correction B3 received after F6) or C3's search rule must judge a path-shaped out-of-band argument independently of existence.",
+      "docSource": ".mpd/plans/captain-recon-fence.md",
+      "impact": "No workspace content is exposed: the named file does not exist. The gap is conformance/acceptance-text only. The same existence-filter class also allows `rg --files docs/ packages/nope.ts`."
+    }
+  ],
+  "declinedToJudge": [
+    "`echo $(bun test)` / `x=$(bun test)` / backtick spelling ALLOWED — the substitution body is judged only by the READ route; a gate command inside a substitution is not judged. Pre-existing C1 residual (the deny table was substitution-blind before this delta) and covered by the declared bound that the deny table is a list of command FAMILIES, not a taxonomy of every launch spelling. Follow-up hardening: also run matchCaptainShellDeny on each substituted body.",
+    "`bash -c 'bun test'` / `sh -c ...` ALLOWED — the module header declares that a command assembled by another program is not decomposed; wave 1/2's wrapper list (sudo/command/exec/time/nohup/builtin/env) does not name a shell launcher. Pre-existing, not a delta regression.",
+    "`cat <(cat packages/.../index.ts)` and `diff <(cat docs/x) <(cat packages/...)` ALLOWED — process substitution hides the inner command; the new scanner only looks for `$(`/backtick. Covered by the §6 bound on runtime-assembled commands; a follow-up hardening candidate, not this delta's class.",
+    "`grep -f FILE docs/...` treats FILE as the pattern per the frozen C3 rule 2 ('the first non-flag token is the pattern'); a pattern-file flag breaks that assumption. Fresh-review residual of C3's design, not a repair regression.",
+    "`cat $(git rev-parse --show-toplevel)/packages/.../index.ts` ALLOWED — a runtime-assembled path, the contract §3 C3 explicit bound (`cat \"$F\"`).",
+    "`cat docs/decisions.md && echo \"ran at $(date)\" && ls packages` REFUSED — with a substitution present the whole-line pass still judges the unrelated `packages` token. The module documents the conservative bias; a contrived line, not in the acceptance set.",
+    "`rg --files | head` REFUSED — `rg --files` never reads stdin, so a piped one still enumerates the tree; consistent with the narrowed stdin exemption (`git log | find` refused) and the whole-workspace rule. Not a false positive.",
+    "the 140-character ellipsis in refusal sentences — deliberate cap keeping the sentence inside the 600-character bound; not the F2 mid-pattern fragment (the F2 refusal carries the WHOLE segment)."
+  ],
+  "bounds": [
+    "Delta re-verification only: the four earlier repair bundles and the final 03:30:57Z bundle were read for evidence; the live mount was not re-run by this verifier.",
+    "The pure decisions were probed against the shipped src; the installed dist is certified byte-identical by the dist gate (roles f0ec17be…, verify 0cfbc7a8…), so the probe and the shipped artifact carry the same logic.",
+    "The implementation was read to judge the delta (no blindness claimed; basis unproven). The prior FAIL already licensed diagnosis reading.",
+    "Not run by this verifier: typecheck/comments (reported green by the final bundle), preset-conformance (re-run at 03:09:46Z after the persona edit; ok 33 rows, parity 27/27, negative control red), vendor, pack, docker.",
+    "The contract file changed between the prior record (sha f818…) and this delta (sha 7e0d…): §4 B3's real-source-path correction plus the recorded §7 amendments. This delta judges the amended text."
+  ]
+}

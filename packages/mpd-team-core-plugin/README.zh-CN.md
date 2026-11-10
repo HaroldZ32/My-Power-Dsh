@@ -320,6 +320,10 @@ caller 同样是显式值 —— `{ workspace, sessionId, lineage, title?, agent
 内部节点的 `depth` 是它在**自己框架内**的列，而 `ranks` 仍只装根框架——因此 `/plugins/mpd-team/state` 上某个任务的
 `rank` 依旧是**外层** rank。没有存活子团队时不提供任何分组，其模型与本行在嵌套团队出现之前提供的模型逐字节相同。
 
+**子单元的咨询随它的盒子一起成帧。** `groupInputsOf` 把每个存活子级的 `consults` 行挂在该子级自己的帧上交给
+`mpd-graph-core`，于是子单元的后台 agent 画在它的盒子**内部**，id 是 `<groupId>::C<n>`、带 `group` 归属；那条
+丢掉已结束子级的存活过滤规则，也一并丢掉它的咨询。根团队自己的行以 `C<n>` 进入根帧。
+
 **ID 需要限定，因为每个团队都从 `T1..Tn` 铸号。** 嵌套团队的行以 `<teamId>::<taskId>` 进入模型（与
 `dispatch.ts#ledgerKey` 同一拼法），根框架的 ID 保持**裸**；指向同一框架内任务的 blocker 随之一同限定，其余
 原样保留——它们本就是跨框架引用，正是锚定到盒子边框的那条边的落点。子单元的**计划文档**不会合并进它的盒子：
@@ -406,7 +410,16 @@ fence 或已失败时，该行会被**报告**并保持 pending —— 绝不替
 
 **服务面。** `mpdTeams` 新增 `memberContext`（单个席位的占用）、`depthBudget`（带环检测的有界父链遍历，
 上限取自 `cellwork.depthMax`，默认 3）、`archivedPlans` 与 `cancelTasks`。`mpdTeamActions` 承载无 exec 的
-动作 `fence`、`unfence`、`handoff`、`dispatch`，因此面板按钮、服务调用与工具走同一条序列。
+动作 `fence`、`unfence`、`handoff`、`dispatch`、`upsertConsult` 与 `clearConsults`，因此面板按钮、服务调用与
+工具走同一条序列。
+
+**咨询记录在记录上，看板永远看不到它们。** `TeamRecord.consults?`（配 `nextConsultNumber?`）保存某个 cell
+的座位发起的后台咨询；`upsertConsult` 以 `consultId` 为键记录或更新**一行**，首次见到时铸造单调的
+`consultNumber`，并把行数裁剪到 `CONSULT_RETENTION_MAX`（50）——先裁**最旧的已结算**行，**绝不**裁
+`running` 行。cell 结束时 `clearConsults` 删除这两个键，于是清理后的记录与从未记录过咨询的记录逐字节相同。这些
+是 cellwork 平面的动词，按 `(workspace, teamId)` 寻址，与 `cancelTasks` 完全一样：咨询不是任务，不占 `T<n>`，
+不会被派发，也被排除在 `readyTasks`、统计、干净终止规则与 `T<n>` id 空间之外。`mpdTeams.graph` 把它们投影到
+`GraphModel.consults`（见 `mpd-graph-core`），两个面都据此画在看板旁边。
 
 **workmate 绑定字段。** 已暂存成员会记录 `workmate`、`workmateMode`（由哪条分支绑定）与
 `workmateReason`（原因）；`fenced: false` 会**删除** fence 键，所以「未 fence」在磁盘上只有一种写法。

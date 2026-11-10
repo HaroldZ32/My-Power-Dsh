@@ -1,0 +1,121 @@
+## F1 — piped search verbs
+OK  F1     exp=ALLOWED  got=ALLOWED  "git log --oneline | grep fix"
+OK  F1     exp=ALLOWED  got=ALLOWED  "ls -la | grep md"
+OK  F1     exp=ALLOWED  got=ALLOWED  "cat docs/decisions.md | grep TODO"
+MISMATCH F1     exp=REFUSED  got=ALLOWED  "cat docs/x | grep TODO packages/y.ts"
+OK  F1     exp=REFUSED  got=REFUSED  "cat docs/decisions.md | grep TODO packages/mpd-roles-plugin/src/index.ts" :: [mpd-roles] captain shell: REFUSED — "grep TODO packages/mpd-roles-plugin/src/index.ts" reads workspace content through the shell, and reconnaissance is not the captain's job. Delegate it: mpd_role_spawn {role:"Explorer"
+OK  F1     exp=REFUSED  got=REFUSED  "rg foo" :: [mpd-roles] captain shell: REFUSED — "rg foo" reads workspace content through the shell, and reconnaissance is not the captain's job. Delegate it: mpd_role_spawn {role:"Explorer", task:"find what you need and report it"}
+
+## F2 — quote-aware splitting
+OK  F2     exp=ALLOWED  got=ALLOWED  "grep -E \"fix|feat\" docs/decisions.md"
+OK  F2     exp=ALLOWED  got=ALLOWED  "grep -E 'TODO|FIXME' docs/x"
+OK  F2     exp=REFUSED  got=REFUSED  "grep -E \"fix|feat\" packages/mpd-roles-plugin/src/index.ts" :: [mpd-roles] captain shell: REFUSED — "grep -E "fix|feat" packages/mpd-roles-plugin/src/index.ts" reads workspace content through the shell, and reconnaissance is not the captain's job. Delegate it: mpd_role_spawn {role:"
+  F2 refusal-quote: fullSegment=true truncatedFragment=false length=472
+
+## F3 — cd tracking
+OK  F3     exp=REFUSED  got=REFUSED  "cd packages && cat mpd-roles-plugin/src/index.ts" :: [mpd-roles] captain shell: REFUSED — "cat mpd-roles-plugin/src/index.ts" reads workspace content through the shell, and reconnaissance is not the captain's job. Delegate it: mpd_role_spawn {role:"Explorer", task:"find wh
+OK  F3     exp=REFUSED  got=REFUSED  "cd packages && cd mpd-roles-plugin && cat src/index.ts" :: [mpd-roles] captain shell: REFUSED — "cat src/index.ts" reads workspace content through the shell, and reconnaissance is not the captain's job. Delegate it: mpd_role_spawn {role:"Explorer", task:"find what you need and r
+OK  F3     exp=REFUSED  got=REFUSED  "cd \"$X\" && cat packages/mpd-roles-plugin/src/index.ts" :: [mpd-roles] captain shell: REFUSED — "cat packages/mpd-roles-plugin/src/index.ts" reads workspace content through the shell, and reconnaissance is not the captain's job. Delegate it: mpd_role_spawn {role:"Explorer", task
+OK  F3     exp=REFUSED  got=REFUSED  "cd $(pwd) && cat docs/decisions.md" :: [mpd-roles] captain shell: REFUSED — "cat docs/decisions.md" reads workspace content through the shell, and reconnaissance is not the captain's job. Delegate it: mpd_role_spawn {role:"Explorer", task:"find what you need 
+OK  F3     exp=ALLOWED  got=ALLOWED  "cd docs && cat decisions.md"
+OK  F3     exp=ALLOWED  got=ALLOWED  "cd packages && cat /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docs/decisions.md"
+OK  F3     exp=REFUSED  got=REFUSED  "cd docs && cat /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-roles-plugin/src/index.ts" :: [mpd-roles] captain shell: REFUSED — "cat /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-roles-plugin/src/index.ts" reads workspace content through the shell, and reconnaissance is not the captain's job. Deleg
+
+## F4 — rg --files
+OK  F4     exp=ALLOWED  got=ALLOWED  "rg --files docs/"
+OK  F4     exp=REFUSED  got=REFUSED  "rg --files" :: [mpd-roles] captain shell: REFUSED — "rg --files" reads workspace content through the shell, and reconnaissance is not the captain's job. Delegate it: mpd_role_spawn {role:"Explorer", task:"find what you need and report 
+OK  F4     exp=REFUSED  got=REFUSED  "rg --files packages/mpd-roles-plugin/src" :: [mpd-roles] captain shell: REFUSED — "rg --files packages/mpd-roles-plugin/src" reads workspace content through the shell, and reconnaissance is not the captain's job. Delegate it: mpd_role_spawn {role:"Explorer", task:"
+
+## F5 — ast_grep_search paths every element
+OK  F5     exp=REFUSED  got=REFUSED  mcp__ast_grep__search {"paths":["docs/",42]} :: captain investigation rule: `mcp__ast_grep__search` on (`paths` entry 1 is not a non-empty string: 42) is refused — the `mpd` preset's TOP-LEVEL session does not run reconnaissance, so its context stays small enough for 
+OK  F5     exp=REFUSED  got=REFUSED  mcp__ast_grep__search {"paths":[42,"docs/"]} :: captain investigation rule: `mcp__ast_grep__search` on (`paths` entry 0 is not a non-empty string: 42) is refused — the `mpd` preset's TOP-LEVEL session does not run reconnaissance, so its context stays small enough for 
+OK  F5     exp=REFUSED  got=REFUSED  mcp__ast_grep__search {"paths":["docs/",null]} :: captain investigation rule: `mcp__ast_grep__search` on (`paths` entry 1 is not a non-empty string: null) is refused — the `mpd` preset's TOP-LEVEL session does not run reconnaissance, so its context stays small enough fo
+OK  F5     exp=REFUSED  got=REFUSED  mcp__ast_grep__search {"paths":["docs/",""]} :: captain investigation rule: `mcp__ast_grep__search` on (`paths` entry 1 is not a non-empty string: "") is refused — the `mpd` preset's TOP-LEVEL session does not run reconnaissance, so its context stays small enough for 
+OK  F5     exp=ALLOWED  got=ALLOWED  mcp__ast_grep__search {"paths":["docs/","agent-references/"]}
+OK  F5     exp=REFUSED  got=REFUSED  mcp__ast_grep__search {"paths":[]} :: captain investigation rule: `mcp__ast_grep__search` on (no path argument — a bare search covers the whole workspace) is refused — the `mpd` preset's TOP-LEVEL session does not run reconnaissance, so its context stays sma
+OK  F5     exp=REFUSED  got=REFUSED  mcp__ast_grep__search {} :: captain investigation rule: `mcp__ast_grep__search` on (no path argument — a bare search covers the whole workspace) is refused — the `mpd` preset's TOP-LEVEL session does not run reconnaissance, so its context stays sma
+OK  F5     exp=ALLOWED  got=ALLOWED  mcp__ast_grep__search {"paths":["docs/"]}
+OK  F5     exp=REFUSED  got=REFUSED  mcp__ast_grep__search {"paths":["packages/mpd-roles-plugin/src/index.ts"]} :: captain investigation rule: `mcp__ast_grep__search` on "packages/mpd-roles-plugin/src/index.ts" is refused — the `mpd` preset's TOP-LEVEL session does not run reconnaissance, so its context stays small enough for very la
+OK  F5     exp=REFUSED  got=REFUSED  mcp__codegraph__codegraph_explore {"query":"x"} :: captain investigation rule: `mcp__codegraph__codegraph_explore` on (no path argument — a bare call has no path to judge: it searches the whole workspace, or returns source for a query) is refused — the `mpd` preset's TOP
+
+## F6 — amended B3 arm + existence filter unchanged
+OK  F6     exp=REFUSED  got=REFUSED  "cat packages/mpd-roles-plugin/src/index.ts" :: [mpd-roles] captain shell: REFUSED — "cat packages/mpd-roles-plugin/src/index.ts" reads workspace content through the shell, and reconnaissance is not the captain's job. Delegate it: mpd_role_spawn {role:"Explorer", task
+OK  F6     exp=ALLOWED  got=ALLOWED  "cat packages/x.ts"
+OK  F6     exp=ALLOWED  got=ALLOWED  "rg foo docs/"
+OK  F6     exp=ALLOWED  got=ALLOWED  "sed -n '1,10p' docs/x.md"
+OK  F6     exp=ALLOWED  got=ALLOWED  "cat docs/x.md"
+OK  F6     exp=ALLOWED  got=ALLOWED  "git log -p"
+OK  F6     exp=ALLOWED  got=ALLOWED  "echo hi | cat"
+OK  F6     exp=REFUSED  got=REFUSED  "find . -name '*.ts'" :: [mpd-roles] captain shell: REFUSED — "find . -name '*.ts'" reads workspace content through the shell, and reconnaissance is not the captain's job. Delegate it: mpd_role_spawn {role:"Explorer", task:"find what you need an
+
+## NITS — redirect targets stripped; sed -i is a write
+OK  NIT1   exp=ALLOWED  got=ALLOWED  "cat docs/decisions.md > package.json"
+OK  NIT1   exp=ALLOWED  got=ALLOWED  "cat docs/decisions.md 2> packages/err.log"
+OK  NIT1   exp=ALLOWED  got=ALLOWED  "cat docs/decisions.md >out.txt"
+OK  NIT2   exp=ALLOWED  got=ALLOWED  "sed -i 's/a/b/' packages/mpd-roles-plugin/src/index.ts"
+OK  NIT2   exp=ALLOWED  got=ALLOWED  "sed -ni '1p' packages/mpd-roles-plugin/src/index.ts"
+OK  NIT2   exp=ALLOWED  got=ALLOWED  "sed --in-place 's/a/b/' packages/mpd-roles-plugin/src/index.ts"
+
+## NEW WORK — substitution-aware whole-string pass, stdin exemption narrowed
+OK  NEW    exp=ALLOWED  got=ALLOWED  "cat docs/decisions.md && ls packages"
+OK  NEW    exp=ALLOWED  got=ALLOWED  "cat docs/decisions.md && rm -rf node_modules"
+OK  NEW    exp=REFUSED  got=REFUSED  "echo $(cat packages/mpd-roles-plugin/src/index.ts)" :: [mpd-roles] captain shell: REFUSED — "cat packages/mpd-roles-plugin/src/index.ts" reads workspace content through the shell, and reconnaissance is not the captain's job. Delegate it: mpd_role_spawn {role:"Explorer", task
+OK  NEW    exp=REFUSED  got=REFUSED  "echo `cat packages/x.ts`" :: [mpd-roles] captain shell: REFUSED — "cat packages/x.ts" reads workspace content through the shell, and reconnaissance is not the captain's job. Delegate it: mpd_role_spawn {role:"Explorer", task:"find what you need and 
+OK  NEW    exp=ALLOWED  got=ALLOWED  "echo $(cat docs/decisions.md)"
+OK  NEW    exp=REFUSED  got=REFUSED  "echo \"$(cat packages/mpd-roles-plugin/src/index.ts)\"" :: [mpd-roles] captain shell: REFUSED — "cat packages/mpd-roles-plugin/src/index.ts" reads workspace content through the shell, and reconnaissance is not the captain's job. Delegate it: mpd_role_spawn {role:"Explorer", task
+OK  NEW    exp=REFUSED  got=REFUSED  "git log | find" :: [mpd-roles] captain shell: REFUSED — "find" reads workspace content through the shell, and reconnaissance is not the captain's job. Delegate it: mpd_role_spawn {role:"Explorer", task:"find what you need and report it"}. 
+MISMATCH NEW    exp=ALLOWED  got=REFUSED  "rg --files | head" :: [mpd-roles] captain shell: REFUSED — "rg --files" reads workspace content through the shell, and reconnaissance is not the captain's job. Delegate it: mpd_role_spawn {role:"Explorer", task:"find what you need and report 
+OBSERVE NEW    got=REFUSED  "echo $(cat docs/decisions.md && ls packages)" :: [mpd-roles] captain shell: REFUSED — "cat docs/decisions.md && ls packages" reads workspace content through the shell, and reconnaissance is not the captain's job. Delegate it: mpd_role_spawn {role:"Explorer", task:"find
+OBSERVE NEW    got=ALLOWED  "cat $(git rev-parse --show-toplevel)/packages/mpd-roles-plugin/src/index.ts"
+
+## FALSE-POSITIVE SET — the captain's reasonable command set
+OK  FP     exp=ALLOWED  got=ALLOWED  "git log --stat"
+OK  FP     exp=ALLOWED  got=ALLOWED  "git diff --stat"
+OK  FP     exp=ALLOWED  got=ALLOWED  "git status"
+OK  FP     exp=ALLOWED  got=ALLOWED  "git show HEAD:AGENTS.md"
+OK  FP     exp=ALLOWED  got=ALLOWED  "ls -la docs"
+OK  FP     exp=ALLOWED  got=ALLOWED  "ls packages"
+OK  FP     exp=ALLOWED  got=ALLOWED  "mkdir -p .mpd/tmp"
+OK  FP     exp=ALLOWED  got=ALLOWED  "mv a b"
+OK  FP     exp=ALLOWED  got=ALLOWED  "cat docs/decisions.md"
+OK  FP     exp=ALLOWED  got=ALLOWED  "cat docs/decisions.md && ls packages"
+OK  FP     exp=ALLOWED  got=ALLOWED  "sed -n '1,5p' docs/decisions.md"
+OK  FP     exp=ALLOWED  got=ALLOWED  "grep -rn TODO docs/"
+OK  FP     exp=ALLOWED  got=ALLOWED  "echo hi | cat"
+OK  FP     exp=ALLOWED  got=ALLOWED  "node -e '1+1'"
+OK  FP     exp=ALLOWED  got=ALLOWED  "wc -l AGENTS.md"
+OK  FP     exp=ALLOWED  got=ALLOWED  "head -20 CHANGELOG.md"
+OK  FP     exp=ALLOWED  got=ALLOWED  "rg TODO docs/"
+OK  FP     exp=ALLOWED  got=ALLOWED  "git log --oneline | grep fix"
+OK  FP     exp=REFUSED  got=REFUSED  "cat package.json" :: [mpd-roles] captain shell: REFUSED — "cat package.json" reads workspace content through the shell, and reconnaissance is not the captain's job. Delegate it: mpd_role_spawn {role:"Explorer", task:"find what you need and r
+
+## FALSE-POSITIVE HUNT — extra reasonable captain commands (observed)
+OBSERVE HUNT   got=ALLOWED  "git diff docs/"
+OBSERVE HUNT   got=ALLOWED  "git show HEAD:CHANGELOG.md"
+OBSERVE HUNT   got=ALLOWED  "git show HEAD:package.json"
+OBSERVE HUNT   got=ALLOWED  "ls -la agent-references"
+OBSERVE HUNT   got=ALLOWED  "cat .mpd/plans/captain-recon-fence.md"
+OBSERVE HUNT   got=ALLOWED  "grep -n captain.shell .mpd/mpd.jsonc"
+OBSERVE HUNT   got=ALLOWED  "grep -rn captainShell agent-references/"
+OBSERVE HUNT   got=ALLOWED  "head -5 README.md"
+OBSERVE HUNT   got=ALLOWED  "cat CHANGELOG.md"
+OBSERVE HUNT   got=ALLOWED  "find docs -name '*.md'"
+OBSERVE HUNT   got=ALLOWED  "sed -n '1,10p' docs/decisions.md"
+OBSERVE HUNT   got=ALLOWED  "rg --files docs/"
+OBSERVE HUNT   got=ALLOWED  "wc -l docs/decisions.md"
+OBSERVE HUNT   got=ALLOWED  "diff docs/decisions.md docs/decisions.md"
+OBSERVE HUNT   got=ALLOWED  "sort docs/decisions.md"
+OBSERVE HUNT   got=ALLOWED  "jq . package.json"
+OBSERVE HUNT   got=ALLOWED  "git log --oneline -5"
+OBSERVE HUNT   got=ALLOWED  "git log -p -- docs/decisions.md"
+
+## BAND EDGES (captainReadablePath)
+band "CHANGELOG.md" -> true
+band "README.md" -> true
+band "AGENTS.md" -> true
+band "package.json" -> false
+band "docs/decisions.md" -> true
+band "packages/mpd-roles-plugin/src/index.ts" -> false
+band "docs/../packages/x.ts" -> false
+
+SUMMARY total=70 mismatched=2

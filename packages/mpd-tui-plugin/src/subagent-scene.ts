@@ -51,8 +51,8 @@
 //
 // This file never imports React: it uses `props.React.createElement` (the documented always-safe
 // form), so it cannot drag a second React copy under the host's reconciler.
-import type { TuiScenePropsLike } from "./types.js"
-import { clampCells } from "./sanitize.js"
+import type { TuiScenePropsLike } from "./types.ts"
+import { clampCells } from "./sanitize.ts"
 // THE ROW BUILDER LIVES IN ITS OWN MODULE (`.mpd/plans/tui-panel-wave.md` §4 lane L4): this scene and
 // the sidebar page render the SAME rows, so the projection, the burn projection and the compact row
 // text are imported from `subagent-rows.ts` rather than re-derived here.
@@ -65,7 +65,7 @@ import {
   subagentRowView,
   subagentSectionOf,
   type SubagentRowView,
-} from "./subagent-rows.js"
+} from "./subagent-rows.ts"
 // THE BACK-COMPAT RE-EXPORTS. These symbols MOVED to `subagent-rows.ts`; they stay reachable through
 // this module while the other call site migrates (`panel-dag.ts` belongs to L2), so an existing import
 // keeps working and typechecks instead of breaking the wave's shared build.
@@ -87,13 +87,13 @@ export {
   subagentTeamScope,
   visibleSubagentEntries,
   visibleSubagentRows,
-} from "./subagent-rows.js"
-export type { SubagentRowEntry, SubagentRowView, SubagentSectionRow, SubagentTeamScope } from "./subagent-rows.js"
-import { layoutGraphNatural, legendLines, sliceSpans, type GraphView } from "./graph.js"
-import { modelRanks, modelRows, NO_SESSION_TEAM_MARKER, sessionIdOf, teamWorkflowLines, WORKSPACE_SCOPE_MARKER, type TeamFeedAccessor, type TeamWorkflow } from "./team-state.js"
-import { t } from "./i18n.js"
-import { gutterCellsX, legendLinesFor, panelKit, textRow, toneColor, useTeamFeed, visualGlyph, type PanelKit } from "./panel-core.js"
-import { DAG_ANIM, DAG_CHROME, DAG_TONE_GLYPH, type DagTone } from "./dag-theme.js"
+} from "./subagent-rows.ts"
+export type { SubagentRowEntry, SubagentRowView, SubagentSectionRow, SubagentTeamScope } from "./subagent-rows.ts"
+import { layoutGraphNatural, legendLines, sliceSpans, type GraphView } from "./graph.ts"
+import { modelRanks, modelRows, NO_SESSION_TEAM_MARKER, sessionIdOf, teamWorkflowLines, WORKSPACE_SCOPE_MARKER, type TeamFeedAccessor, type TeamWorkflow } from "./team-state.ts"
+import { t } from "./i18n.ts"
+import { legendLinesFor, panelKit, panelSurfaceWidth, SURFACE_FRAME_PADDING_X, textRow, toneColor, usePanelViewport, useTeamFeed, viewportTrack, visualGlyph, type PanelKit } from "./panel-core.ts"
+import { DAG_ANIM, DAG_CHROME, DAG_TONE_GLYPH, type DagTone } from "./dag-theme.ts"
 
 // ── THE SHARED SURFACE VISUAL SYSTEM ────────────────────────────────────────
 //
@@ -122,6 +122,16 @@ export interface SurfaceKit {
   React: ReactLike
   /** The host's ui kit (`Box`, `Text`, `useInput`, `useTerminalSize`, the timers). */
   ui: UiLike
+  /**
+   * How many cells a row of THIS surface may occupy — the frame's own INTERIOR, from
+   * `panelSurfaceWidth(measured.cols)`.
+   *
+   * IT IS PART OF THE KIT RATHER THAN OF EVERY CALL because the budget is a property of the frame the
+   * rows are drawn in, not of any one row: the host WRAPS a wider row into two visual rows that the
+   * scene's element-counting window never budgeted for, which is the tear the user reported. A kit that
+   * omits it keeps `textRow`'s own default, so a hand-built fixture and an older caller are unaffected.
+   */
+  maxCells?: number
 }
 
 /** The draw instructions one surface row carries. */
@@ -132,6 +142,8 @@ export interface SurfaceRowStyle {
   bold?: boolean
   /** True for a row the surface draws dimmed (its legend, its key hints, its nested detail). */
   dim?: boolean
+  /** This row's own cell budget; omitted falls back to the kit's {@link SurfaceKit.maxCells}. */
+  maxCells?: number
 }
 
 /** The body-row vocabulary: the tone each LABEL draws in, keyed by the label a row opens with. */
@@ -373,14 +385,19 @@ export function surfaceText(kit: SurfaceKit, key: string, text: string, style: S
   //
   // THE CAST IS THE TWO LANE-OWNED KIT TYPES MEETING, and it is sound where it is used: the scene kit
   // and the panel kit are different host objects that both carry `Box`/`Text` (the only members
-  // `textRow` reads), while the two structural declarations list different React members (the scene kit
-  // has no `useRef` contract here, the panel kit has no `useInput`), so neither type is assignable to
-  // the other even though every member `textRow` calls is present.
+  // `textRow` reads), while the two structural declarations list different React members (the panel kit
+  // carries the viewport hook's `useRef`/`useState`, the scene kit's declaration carries `useInput` and
+  // the scene timer), so neither type is assignable to the other even though every member this module
+  // calls is present on the ONE host React instance.
   return textRow(kit as unknown as PanelKit, text, {
     key,
     ...(style.tone === undefined ? {} : { tone: style.tone }),
     ...(style.bold === true ? { bold: true } : {}),
     ...(style.dim === true && style.tone === undefined ? { dim: true } : {}),
+    // THE INTERIOR BUDGET (the tear this wave repairs): the row may occupy the frame's own cells and not
+    // one more. A per-row `maxCells` wins, because a row that knows its own narrower room (the horizontal
+    // rail's own track) must not be widened by the kit's default.
+    ...(style.maxCells === undefined && kit.maxCells === undefined ? {} : { maxCells: style.maxCells ?? kit.maxCells }),
   })
 }
 
@@ -388,8 +405,9 @@ export function surfaceText(kit: SurfaceKit, key: string, text: string, style: S
  * One body row: its LABEL column in the row's own tone, its value in the surface's plain text.
  *
  * A row that does not open with a known label (a task line, a member line, a localized sentence, a
- * blank) is drawn whole. The concatenation of the two spans is byte-identical to the input, so a
- * surface may restyle a body without re-rendering it — the projection stays the body builder's.
+ * blank) is drawn whole. The concatenation of the two spans is byte-identical to the row this builder
+ * DRAWS — the row after the kit's interior clamp, which is the only transform applied here — so a
+ * surface may restyle a body without re-rendering it: the projection stays the body builder's.
  * @param kit - the host kit.
  * @param key - the React key.
  * @param line - the row exactly as the body builder produced it.
@@ -398,13 +416,20 @@ export function surfaceText(kit: SurfaceKit, key: string, text: string, style: S
  * @returns the host element.
  */
 export function surfaceBodyRow(kit: SurfaceKit, key: string, line: string, overrides?: Readonly<Record<string, DagTone>>): unknown {
-  if (line === "") return surfaceText(kit, key, line)
+  // THE SAME INTERIOR BUDGET THE PROSE ROWS GET (frozen criterion W2). This builder writes a `Text` with
+  // TWO child `Text`s instead of going through {@link textRow}, so the kit's clamp would never reach it:
+  // a label row (`scope`, `roster`, `phase`, …) escaped the frame's interior while every prose row around
+  // it was bounded, and the host wrapped exactly that row — the tear the user screenshotted. The clamp is
+  // applied to the LINE, before the split, so the label/value concatenation stays byte-identical.
+  /** The row's text, inside the frame's interior when the kit names one. */
+  const shown = kit.maxCells === undefined ? line : clampCells(line, kit.maxCells)
+  if (shown === "") return surfaceText(kit, key, shown)
   /** How this row splits into a label column and its value, when it is a label row. */
-  const split = labelSplit(line)
+  const split = labelSplit(shown)
   if (split === undefined) {
     // A NESTED ROW IS DIMMED, and that is the whole hierarchy rule: an indented member or task line is
     // detail under a heading the surface already toned, and the drawing below states its own colours.
-    return surfaceText(kit, key, line, line.startsWith("  ") ? { dim: true } : {})
+    return surfaceText(kit, key, shown, shown.startsWith("  ") ? { dim: true } : {})
   }
   /** The label this row opens with, without its padding. */
   const label = split.label.trimEnd()
@@ -486,7 +511,9 @@ export function surfaceFrame(
       flexDirection: "column",
       width: "100%",
       flexGrow: 1,
-      paddingX: 1,
+      // THE ONE SOURCE OF THE HORIZONTAL CHROME: `panelSurfaceWidth` subtracts exactly this padding and
+      // the border below, so a scene's row budget and this frame cannot disagree about the interior.
+      paddingX: SURFACE_FRAME_PADDING_X,
       borderStyle: DAG_CHROME.frameBorder,
       borderColor: toneColor(tone),
       ...(ref === undefined ? {} : { ref }),
@@ -609,6 +636,8 @@ interface HostKit {
   React: ReactLike
   /** The host's ui kit. */
   ui: UiLike
+  /** The frame's interior width, in cells — see {@link SurfaceKit.maxCells}. */
+  maxCells?: number
 }
 
 /** The host's measured geometry, with the documented fallbacks applied. */
@@ -638,9 +667,9 @@ function noopSubscribe(): () => void {
  * @param ui - the props' ui field.
  * @returns the two, typed, or undefined when the host kit is unusable.
  */
-function hostKit(React: unknown, ui: unknown): HostKit | undefined {
+function hostKit(React: unknown, ui: unknown, maxCells?: number): HostKit | undefined {
   if (panelKit(React, ui) === undefined) return undefined
-  return { React: React as ReactLike, ui: ui as UiLike }
+  return { React: React as ReactLike, ui: ui as UiLike, ...(maxCells === undefined ? {} : { maxCells }) }
 }
 
 /**
@@ -666,7 +695,11 @@ function measureTerminal(ui: UiLike): Measured {
   const height = Number(rows)
   return {
     size: `${String(columns)}x${String(rows)}`,
-    cols: Number.isFinite(cols) && cols > 20 ? cols : FALLBACK_COLS,
+    // A MEASURED TERMINAL IS ALWAYS HONOURED, however narrow (frozen criterion W5): the old `> 20` gate
+    // sent a 24-column terminal to the 100-column fallback, and the first frame then drew 80 cells of
+    // row into a 20-cell interior — four or more cells of overdraw per row, wrapped by the host. The
+    // fallback now covers ONLY the unmeasured case, which is exactly what it was documented for.
+    cols: Number.isFinite(cols) && cols > 0 ? Math.floor(cols) : FALLBACK_COLS,
     rows: Number.isFinite(height) && height > 5 ? Math.floor(height) : FALLBACK_ROWS,
   }
 }
@@ -1077,13 +1110,10 @@ export function createSubagentSceneComponent(
     const setDetailScroll = detailScrollState[1] as (next: number) => void
     // THE DAG'S OWN HORIZONTAL WINDOW (frozen clauses T2/T5, captain's ruling R8). It is the DRAWING's
     // offset and nothing else: the team rows, the legend, the detail pane and the hints all stay at the
-    // terminal's width. The purpose, said once: the pan exists so the WHOLE DAG can be seen.
-    /** The DAG's horizontal scroll offset, in cells. */
-    const graphXState = React.useState(0)
-    /** The DAG's horizontal scroll offset, in cells. */
-    const graphX = graphXState[0] as number
-    /** Moves the DAG's horizontal offset. */
-    const setGraphX = graphXState[1] as (next: number) => void
+    // terminal's width. The purpose, said once: the pan exists so the WHOLE DAG can be seen. THE POSITION
+    // ITSELF LIVES ON THE SHARED VIEWPORT HANDLE below (frozen criterion I5) — one scroll state cell for
+    // both axes here was the second copy this wave removes, and the handle's column band is the same
+    // `clampScroll` arithmetic the vertical one uses.
     /** The DAG's vertical scroll offset, in rows — this scene windows the drawing on both axes. */
     const graphYState = React.useState(0)
     /** The DAG's vertical scroll offset. */
@@ -1155,14 +1185,41 @@ export function createSubagentSceneComponent(
 
     /** The host's measured geometry, through its own hook (unconditional, once per render). */
     const measured = measureTerminal(ui)
+    // THE FRAME'S INTERIOR IS THE ONE WIDTH THIS SURFACE BUDGETS AGAINST (frozen criteria W1/W2). The
+    // measured columns are the TERMINAL's: the frame's border and its one-cell padding live INSIDE that
+    // width, so a row built at the terminal's width is four cells too wide and the host wraps it — the
+    // tear the user screenshotted. Every row below is therefore built at `contentCols`, and the kit
+    // carries the budget so `surfaceText` clamps by DEFAULT rather than per call site.
+    /** How many cells this surface's frame interior offers. */
+    const contentCols = panelSurfaceWidth(measured.cols)
+    // The kit is this render's own object, so recording the budget on it is what makes every later
+    // `surfaceText`/`surfaceBodyRow` call bounded without threading a parameter through each one.
+    kit.maxCells = contentCols
+    /** The same host in the PANEL kit's shape: the shared viewport and rail builders take that one. */
+    // The cast is sound because `hostKit` above CALLED `panelKit` with these very arguments and returned
+    // only when it answered a kit; the two declarations differ in their React members alone.
+    const panel = panelKit(props?.React, props?.ui) as PanelKit
+    /**
+     * The sizes the viewport hook and every later closure read.
+     *
+     * Written by this render BEFORE the rail is built: the drawing's width arrives a few lines below,
+     * once the layout has run, and the hook reads through this object so the write is visible to it.
+     */
+    const sizes: { contentRows: number; viewportRows: number; contentCols?: number; viewportCols?: number } = { contentRows: 1, viewportRows: 1 }
+    /** The DAG's ONE horizontal position: the rows, the rail and the wheel all drive this handle. */
+    const viewport = usePanelViewport(panel, () => sizes)
     // THE DAG'S OWN WINDOW, computed ONCE per render and ABOVE the key handler, because the handler must
     // answer `⇧←→`/`⇧PgUp`/`⇧PgDn` against the same bounds the rows are cut with (clause T4: one offset,
     // one band). `undefined` when the team has no task to draw, which is also the key handler's "no DAG
     // on screen" signal.
     /** The DAG box for this render, at its natural width. */
-    const dagView = teamGraphView(workflow, measured.cols)
-    /** The furthest horizontal offset that still fills the viewport; zero when the drawing fits. */
-    const dagXMax = dagView === undefined ? 0 : Math.max(0, dagView.width - measured.cols)
+    const dagView = teamGraphView(workflow, contentCols)
+    // THE DRAWING'S OWN WIDTH IS THE COLUMN BAND, and the interior is the window it moves through: the
+    // rail's length and the band its thumb maps through are the same two numbers the rows are cut with.
+    sizes.contentCols = dagView === undefined ? contentCols : Math.max(contentCols, dagView.width)
+    sizes.viewportCols = contentCols
+    // THE HORIZONTAL BAND IS READ OFF THE HANDLE AT ITS USE SITES (`viewport.colMax` / `colOffset`), so
+    // there is no second copy of it here to drift from the rail the reader drags.
     /** The furthest vertical offset; zero when the drawing fits the terminal. */
     const dagYMax = dagView === undefined ? 0 : Math.max(0, dagView.lines.length - 1)
     /** This render's clock, read ONCE: the burn window and every relative age share one instant. */
@@ -1286,11 +1343,13 @@ export function createSubagentSceneComponent(
         // BOTH flags to `false | undefined` inside such a condition, so re-reading either one is a
         // comparison the type checker rejects (and a reader has to work out which leg is reachable).
         if (dagView !== undefined && key?.shift === true && key?.leftArrow === true) {
-          setGraphX(Math.max(0, Math.min(dagXMax, graphX - 1)))
+          // ONE CELL LEFT through the SHARED handle, so the key, the wheel and the rail all move the same
+          // position and clamp into the same band (frozen criterion I5).
+          viewport.scrollColBy(-1)
           return
         }
         if (dagView !== undefined && key?.shift === true && key?.rightArrow === true) {
-          setGraphX(Math.max(0, Math.min(dagXMax, graphX + 1)))
+          viewport.scrollColBy(1)
           return
         }
         if (dagView !== undefined && key?.shift === true && key?.upArrow === true) {
@@ -1302,11 +1361,13 @@ export function createSubagentSceneComponent(
           return
         }
         if (dagView !== undefined && key?.shift === true && key?.pageUp === true) {
-          setGraphX(Math.max(0, Math.min(dagXMax, graphX - measured.cols)))
+          // A PAGE IS THE WINDOW'S OWN WIDTH, which is the interior the rows were cut to (W1), never the
+          // terminal's raw columns.
+          viewport.scrollColBy(-contentCols)
           return
         }
         if (dagView !== undefined && key?.shift === true && key?.pageDown === true) {
-          setGraphX(Math.max(0, Math.min(dagXMax, graphX + measured.cols)))
+          viewport.scrollColBy(contentCols)
           return
         }
         if (dagView !== undefined && key?.pageUp === true) {
@@ -1456,11 +1517,16 @@ export function createSubagentSceneComponent(
       /** The DAG box, absent when the team has no task to draw. */
       const view = dagView
       if (view !== undefined) {
+        // THE ONE HORIZONTAL POSITION, read off the shared handle: the rows, the header, the rail and the
+        // wheel all read this number, so none of them can disagree about which slice is on screen.
         /** The horizontal offset for THIS render, clamped — the one value every row and the rail read. */
-        const graphXAt = Math.min(Math.max(0, graphX), dagXMax)
+        const graphXAt = viewport.colOffset
         /** The VERTICAL offset for this render, clamped to the drawing — the other axis of the same window. */
         const graphYAt = Math.min(Math.max(0, graphY), dagYMax)
-        children.push(React.createElement(ui.Text, { key: "graphhead", dimColor: true }, safeRow(`task dependency graph${view.mode === "rail" ? " (rail)" : ""}${dagXMax > 0 ? ` ⇠${graphXAt}/${view.width}→` : ""}`)))
+        // THE HEADER IS A ROW LIKE EVERY OTHER (frozen criterion W3): it used to be a raw `Text`, which
+        // is the one shape the kit's interior clamp cannot reach — and at a narrow terminal the offset
+        // token made it the widest row on the surface.
+        children.push(surfaceText(kit, "graphhead", `task dependency graph${view.mode === "rail" ? " (rail)" : ""}${viewport.colOverflow ? ` ⇠${graphXAt}/${view.width}→` : ""}`, { dim: true }))
         for (let index = graphYAt; index < view.lines.length; index += 1) {
           // The spans go through WITHOUT `safeRow`, exactly as the team scene draws them: `graph.ts`
           // already applies `clampCells(stripControl(...))` at layout time, and re-clamping here would
@@ -1470,16 +1536,18 @@ export function createSubagentSceneComponent(
           // THE HORIZONTAL WINDOW IS APPLIED HERE AND NOWHERE ELSE: this is the DAG's own row list, so
           // every other row this scene draws keeps the terminal's full width (R8).
           /** The spans of this row, cut to the viewport and each drawn in its own theme colour. */
-          const spans = sliceSpans(view.lines[index], graphXAt, measured.cols).map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: toneColor(span.tone) }, span.text))
+          // THE CUT IS THE FRAME'S INTERIOR (W1/W3), not the terminal's width: a row cut to `cols` is four
+          // cells wider than the room it is drawn in, and the host wraps the remainder.
+          const spans = sliceSpans(view.lines[index], graphXAt, contentCols).map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: toneColor(span.tone) }, span.text))
           children.push(React.createElement(ui.Text, { key: `graph-${index}` }, ...spans))
         }
         // THE HORIZONTAL RAIL, DIRECTLY BENEATH THE DRAWING (R8), from the SAME offset the rows were cut
-        // with — one position, two views of it (clause T4). Drawn only while the drawing is wider.
-        if (dagXMax > 0) {
-          /** The rail's cells, from `panel-core.ts`'s ONE horizontal-gutter function. */
-          const rail = gutterCellsX(graphXAt, view.width, measured.cols)
-          if (rail !== "") children.push(surfaceText(kit, "hrail", rail, { dim: true }))
-        }
+        // with — one position, two views of it (clause T4). IT IS THE SHARED BUILDER (frozen criterion I5):
+        // `viewportTrack` returns `panel-core.ts`'s own `viewportRail` element, whose `Box` is the drag
+        // target the user reported missing. A drawing that fits answers `undefined` and reserves no row.
+        /** The draggable rail for this render, absent when the drawing fits the interior. */
+        const rail = viewportTrack(panel, viewport, "col", { cols: contentCols })
+        if (rail !== undefined) children.push(rail)
         // THE LEGEND sits directly under the DAG, in the SAME width budget the graph was laid out
         // for, so a line can never claim more cells than the drawing above it used. It is COMPOSED, not
         // private: `graph.ts` owns the drawing's own arrow/focus sentence, and `panel-core.ts`'s
@@ -1491,7 +1559,7 @@ export function createSubagentSceneComponent(
         /** The drawing module's own line: its arrow/focus sentence; the state key belongs to the composer. */
         let arrow: string[] = []
         try {
-          arrow = legendLines(measured.cols)
+          arrow = legendLines(contentCols)
         } catch {
           arrow = []
         }
@@ -1505,7 +1573,7 @@ export function createSubagentSceneComponent(
         /** The composed legend: the drawing's lines followed by the contract's six-state key. */
         let legend: string[] = []
         try {
-          legend = legendLinesFor(measured.cols, arrow)
+          legend = legendLinesFor(contentCols, arrow)
         } catch {
           legend = []
         }
@@ -1533,8 +1601,10 @@ export function createSubagentSceneComponent(
     // THE FRAME: the surface's own border, its title in the border line and its colour carrying the
     // dominant state — the same signal the marker in the title row draws. The host's animation ref goes
     // HERE, because the frame is always on screen while a time-based cell is drawn inside it.
-    /** The border title, clamped to the measured width so it can never shear the frame. */
-    const borderTitle = clampCells(chromeTitle([`${stateMarker(frameTone, phase)} ${t("scene.subagents")}`, measured.size === "" ? undefined : measured.size]), Math.max(8, measured.cols - 6))
+    // The border title, clamped to the frame's INTERIOR so it can never shear the frame — the chrome cells
+    // the frame itself spends are already out of `contentCols` (W1).
+    /** The border title, inside the frame's own interior. */
+    const borderTitle = clampCells(chromeTitle([`${stateMarker(frameTone, phase)} ${t("scene.subagents")}`, measured.size === "" ? undefined : measured.size]), Math.max(8, contentCols - 2))
     return surfaceFrame(kit, "frame", borderTitle, children, frameTone, clock.ref)
   }
 }

@@ -1,0 +1,69 @@
+{
+  "task": "Final delta re-verification of F10 (contract-only amendment), wave 2 captain recon fence",
+  "loopId": "loop-20261109T025106-3ccdf5",
+  "verifierSeat": "beb87c04-36ca-420f-acb7-a16754cd796c",
+  "priorRecord": ".mpd/verify/records/rec-20261109T034942-6f3ee8.json",
+  "contract": {
+    "path": ".mpd/plans/captain-recon-fence.md",
+    "sha256Now": "0bbc583f9bca0d37e3f4f1b5b209c79e6113b7e979c014f12117229595e5ac99",
+    "sha256AtPriorRecord": "7e0d429c99e661e6ee41d34e7a79054a190ef58d11a059696d5310101a7c9abf",
+    "amendment": "Two passages amended, contract text only. (1) §3 C3 SEARCH bullet: the existence qualifier is stated UNIFORMLY — a non-flag argument that names an EXISTING file or directory outside the band is refused, a token that exists nowhere is not a path candidate in either rule, and the superseded wording is named explicitly. (2) §4 B3 piped-search arm: now names the REAL out-of-band path in `cat docs/decisions.md | grep TODO packages/mpd-roles-plugin/src/index.ts` and records the old `packages/y.ts` spelling as unrealisable under the same existence filter."
+  },
+  "deltaAssessment": {
+    "F10": "RESOLVED as a contract matter. The conflict F10 named — C3's search rule carried no existence qualifier while the amended B3 relied on one — is removed: C3 now says a token that exists nowhere is not a path candidate in either rule, so a piped search carrying only a nonexistent out-of-band token is ALLOWED by construction (the piped-search stdin exemption applies), and B3's piped arm now uses a real source path that is REFUSED. The two passages agree, and behaviour is unchanged from the prior FAIL round.",
+    "noRemainingContradiction": "Full-file scan for existence wording found no other sentence asserting an existence-free path test; the file-reader bullet, the amended search bullet and B3 all use the same classifier and the same existence qualifier."
+  },
+  "reproducedByVerifier": {
+    "probe": {
+      "argv": "node evidence/guard/captain-recon-fence/review-final-2026-11-09T03-54Z/probe-final.ts",
+      "artifact": "evidence/guard/captain-recon-fence/review-final-2026-11-09T03-54Z/probe.log",
+      "result": "total=9 mismatched=0 (exit 0)",
+      "rows": [
+        {"group": "F10-B3", "command": "cat docs/decisions.md | grep TODO packages/mpd-roles-plugin/src/index.ts", "expected": "REFUSED", "observed": "REFUSED", "note": "contract B3's amended real-source piped arm; refusal quoted the grep segment and named mpd_role_spawn Explorer"},
+        {"group": "F10-C3", "command": "cat docs/x | grep TODO packages/y.ts", "expected": "ALLOWED", "observed": "ALLOWED", "note": "packages/y.ts exists nowhere, so it is not a path candidate; now the contract's own stated outcome, not a contract violation"},
+        {"group": "C3-uni", "command": "rg --files docs/ packages/nope.ts", "expected": "ALLOWED", "observed": "ALLOWED", "note": "uniform existence qualifier: the nonexistent candidate is ignored, the in-band docs/ is read"},
+        {"group": "C3", "command": "rg foo", "expected": "REFUSED", "observed": "REFUSED"},
+        {"group": "C3", "command": "rg foo docs/", "expected": "ALLOWED", "observed": "ALLOWED"},
+        {"group": "C3", "command": "find . -name '*.ts'", "expected": "REFUSED", "observed": "REFUSED"},
+        {"group": "C3", "command": "git log --oneline | grep fix", "expected": "ALLOWED", "observed": "ALLOWED"},
+        {"group": "C3", "command": "cat packages/mpd-roles-plugin/src/index.ts", "expected": "REFUSED", "observed": "REFUSED"},
+        {"group": "C3", "command": "cat docs/decisions.md", "expected": "ALLOWED", "observed": "ALLOWED"}
+      ],
+      "bandClassifier": {"docs/decisions.md": true, "packages/mpd-roles-plugin/src/index.ts": false, "packages/y.ts": false, "docs/x": true}
+    },
+    "gates": [
+      {"evidenceId": "ev-20261109T035435-99364d", "gate": "tests", "cmd": "bun test packages", "exit": 0, "result": "3787 pass / 6 skip / 0 fail across 249 files", "gateFreeze": "frozen"},
+      {"evidenceId": "ev-20261109T035529-511463", "gate": "dist", "cmd": "node scripts/verify-dist-fresh.ts", "exit": 0, "result": "34/34 targets fresh (each rebuilt twice, byte-identical); roles dist sha f0ec17be51d0…; verify dist sha 0cfbc7a82f06…; 1 NOT COVERED (sha-pinned codegraph serve.js)", "gateFreeze": "frozen"}
+    ]
+  },
+  "nothingElseMoved": {
+    "verdict": "NO product source moved since the 03:49Z prior record.",
+    "gitStatus": "The same ten tracked modifications as at the prior review (AGENTS.md, agent-references/verification-flow.md, the two roles-plugin sources, the two roles-plugin tests, presets/mpd.patch.yml, packages/mpd-verify-plugin/src/law.ts and the two dists); all are the wave's pre-existing uncommitted work, none is new since 03:49Z. Untracked entries are evidence artifacts only.",
+    "mtimes": "Latest mtime among the ten tracked modifications is the roles dist at 2026-11-09T03:31:34Z, 18 minutes BEFORE the prior record (03:49:42Z). A whole-tree scan (excluding .git, .mpd, evidence, node_modules) after 11:49:42 local found only runtime state (ws-unused/.mpd team files, docker/ui/out logs whose content is git-unchanged, and the codegraph index) — no product source.",
+    "distHashes": "roles f0ec17be51d0f03a… and verify 0cfbc7a82f067e8d… are byte-identical to the two shas recorded by the prior record, so the installed artifacts are the ones already verified.",
+    "contract": ".mpd/plans/ is gitignored (.gitignore:22), so the amendment does not appear in git status; its hash moved 7e0d429c… → 0bbc583f…, which is the only change after 03:49Z. No new finding follows."
+  },
+  "findings": [],
+  "fixes": [
+    {
+      "id": "F10",
+      "status": "FIXED",
+      "evidence": "C3's search bullet now states the existence qualifier uniformly and explicitly supersedes the old wording; B3's piped arm names a real source path and records the old spelling as unrealisable. Black-box arms match: real-path piped grep REFUSED, nonexistent-token piped grep ALLOWED, uniform filter confirmed on rg --files."
+    }
+  ],
+  "declinedToJudge": [
+    "The piped-search stdin exemption's interaction with `rg --files` (never reads stdin) — adjudicated in the prior round and unchanged by this contract-only amendment.",
+    "Every other F1–F9 behaviour — the prior record marked them FIXED and no product source changed since (hashes/mtimes above), so re-judging them would be re-reading unchanged material.",
+    "The §7 recorded amendments (C2 write scope widened to law.ts, both stale dists rebuilt, nine LSP readers) — present and unchanged; the prior record verified them.",
+    "The AGENTS.md / verification-flow.md wording (B5) — unchanged since the prior review and already checked there.",
+    "Live-mount/boot behaviour — not re-run in this delta; the 03:09:46Z preset-conformance re-mounted the edited preset after the last source edit (33 rows, parity 27/27, negative control red).",
+    "The verify plugin's record/observation plumbing — consulted to confirm the basis rule; it is tooling, not the captain-fence behaviour under verdict."
+  ],
+  "bounds": [
+    "This delta judges CONTRACT TEXT plus black-box behaviour, not the implementation: no captain-fence source (captain-shell.ts, captain-investigation.ts) was read in this process, and the pure decisions were probed from the shipped src, which the dist gate certifies byte-identical to the shipped dist.",
+    "The contract is gitignored, so the exact pre-amendment bytes are not in git; the hash delta (7e0d… → 0bbc…) and the current text are what I can attest to, not a byte-diff against the old file.",
+    "Not re-run by this verifier: typecheck, verify:comments, verify:rows, verify-manual-paths, preset-conformance, vendor, pack, docker. tests and dist were re-run here (evidence above); the writer's 03:30:57Z bundle reports typecheck and comments green, and no source changed after it.",
+    "Basis: the shipped process-local observation log is empty (no verifyGate in this composition), so the record's derived basis is `blind`; the verdict rests on the amended contract, my prior report and the probes above. Disclosed: the verify plugin's record/tooling source was consulted to confirm the basis semantics — outside the subject of this verdict.",
+    "Read-only discipline: this reviewer edited no product source; the only files written are the probe and log under evidence/guard/captain-recon-fence/review-final-2026-11-09T03-54Z/."
+  ]
+}

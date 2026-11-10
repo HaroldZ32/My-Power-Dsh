@@ -477,6 +477,9 @@
       config:
         mode: hard
         escapeUses: 1
+        # C2: a captain's kind:"gate" evidence is refused (it is verification, and a DIFFERENT agent
+        # produces it); kind:"probe" stays open. "any" restores the captain in mpd.jsonc.
+        evidenceBy: verifier
     # The autoproject discipline AND the merged boulder work-state machine: ONE row registers
     # `mpd_autoproject`, the single `/autoproject` command and every `mpd_boulder_*` tool.
     - id: mpd-autoproject

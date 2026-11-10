@@ -22,6 +22,7 @@ import {
 } from "../src/captain-investigation.ts"
 import type { CaptainInvestigationInput } from "../src/captain-investigation.ts"
 import { sessionIsMpdCaptain } from "../src/complexity-gate.ts"
+import { readTargetPath } from "../../mpd-verify-plugin/src/law.ts"
 import type { DshAdapter, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The workspace root every arm resolves against; classification never touches disk. */
@@ -157,11 +158,144 @@ describe("L1 — the decision function's behaviour table, path by path", () => {
     expect(sessionIsMpdCaptain(MEMBER)).toBe(false)
   })
 
-  test("the rule touches NO tool but the three reconnaissance tools", () => {
+  test("the rule still touches no WRITE tool and no bash — those have their own guards", () => {
     expect(decide("bash", { command: "cat packages/x/src/y.ts" }, CAPTAIN)).toBeUndefined()
     expect(decide("write", { file_path: "packages/x/src/y.ts" }, CAPTAIN)).toBeUndefined()
     expect(decide("edit", { file_path: "packages/x/src/y.ts" }, CAPTAIN)).toBeUndefined()
     expect(decide("", { file_path: "packages/x/src/y.ts" }, CAPTAIN)).toBeUndefined()
+    // AN EXTERNAL CORPUS IS NOT WORKSPACE SOURCE (contract §2): the GitHub code search and the library
+    // docs stay open, so a name absent from the list is genuinely released.
+    expect(decide("mcp__grep_app__searchGitHub", { query: "readTargetPath", path: "src/a.ts" }, CAPTAIN)).toBeUndefined()
+    expect(decide("mcp__context7__query-docs", { libraryId: "/org/project", query: "guards" }, CAPTAIN)).toBeUndefined()
+  })
+})
+
+// THE CAPTAIN RECON FENCE, wave 2 (§3 C2, §4 B2): the tool doors wave 1 left open. Every arm drives the
+// SHIPPED decision, so what is asserted is the registered behaviour, never a re-implementation.
+describe("C2 — every source-returning tool is judged by the SAME path classifier", () => {
+  test("mpd_hashline_read is a full-file reader and is refused on a source path, allowed on the band", () => {
+    expect(String(decide("mpd_hashline_read", { path: "packages/x/src/y.ts" }, CAPTAIN) ?? "")).toContain("captain investigation rule")
+    expect(decide("mpd_hashline_read", { path: "docs/a.md" }, CAPTAIN)).toBeUndefined()
+    // The `./` spelling and the absolute spelling of the band are the SAME band (one classifier).
+    expect(decide("mpd_hashline_read", { path: "./agent-references/glossary.md" }, CAPTAIN)).toBeUndefined()
+    expect(decide("mpd_hashline_read", { path: WORKSPACE + "/docs/a.md" }, CAPTAIN)).toBeUndefined()
+  })
+
+  test("codegraph_explore has NO path argument, so the bare-call rule refuses it", () => {
+    /** The denial a captain's code-graph query produces. */
+    const denial = String(decide("mcp__codegraph__codegraph_explore", { query: "how does the guard work" }, CAPTAIN) ?? "")
+    expect(denial).toContain("captain investigation rule")
+    // The BARE-CALL reason, not a path judgement: this tool is refused for having nothing to judge.
+    expect(denial).toContain("no path argument")
+    // A bare call (no arguments at all) is refused by the same rule, so the door has no other spelling.
+    expect(String(decide("mcp__codegraph__codegraph_explore", undefined, CAPTAIN) ?? "")).toContain("no path argument")
+    // The mode still restores it, for the ONE documented route out.
+    expect(decide("mcp__codegraph__codegraph_explore", { query: "x" }, MEMBER)).toBeUndefined()
+  })
+
+  test("ast_grep_search judges EVERY paths entry, in either order (T8 repair)", () => {
+    // ONE SOURCE ENTRY IS REFUSED, whatever its position: order must not matter.
+    expect(String(decide("mcp__ast_grep__search", { pattern: "x", language: "typescript", paths: ["packages/x/src"] }, CAPTAIN) ?? ""))
+      .toContain("captain investigation rule")
+    // THE BYPASS THIS REPAIR CLOSES: a permitted FIRST entry must not release a source entry behind it.
+    /** The denial for a list whose source entry sits SECOND. */
+    const sourceSecond = String(decide("mcp__ast_grep__search", { pattern: "x", language: "typescript", paths: ["docs/", "packages/x.ts"] }, CAPTAIN) ?? "")
+    expect(sourceSecond).toContain("captain investigation rule")
+    // The sentence NAMES THE OFFENDING ELEMENT, not element zero.
+    expect(sourceSecond).toContain('on "packages/x.ts" is refused')
+    /** The same pair, source entry FIRST — refused by the same rule, no ordering special case. */
+    const sourceFirst = String(decide("mcp__ast_grep__search", { pattern: "x", language: "typescript", paths: ["packages/x.ts", "docs/"] }, CAPTAIN) ?? "")
+    expect(sourceFirst).toContain("captain investigation rule")
+    expect(sourceFirst).toContain('on "packages/x.ts" is refused')
+    // EVERY entry inside the band is ALLOWED (the docs arm is unreachable without the list-aware reader).
+    expect(decide("mcp__ast_grep__search", { pattern: "x", language: "typescript", paths: ["docs/", "agent-references/"] }, CAPTAIN)).toBeUndefined()
+    expect(decide("mcp__ast_grep__search", { pattern: "x", language: "markdown", paths: ["docs"] }, CAPTAIN)).toBeUndefined()
+    // FAIL-CLOSED with nothing to judge: an empty list, a non-string list, and an absent `paths`.
+    expect(String(decide("mcp__ast_grep__search", { pattern: "x", language: "typescript", paths: [] }, CAPTAIN) ?? "")).toContain("no path argument")
+    expect(String(decide("mcp__ast_grep__search", { pattern: "x", language: "typescript", paths: [123] }, CAPTAIN) ?? "")).toContain("no path argument")
+    expect(String(decide("mcp__ast_grep__search", { pattern: "x", language: "typescript" }, CAPTAIN) ?? "")).toContain("no path argument")
+    // ANY ELEMENT THAT IS NOT A NON-EMPTY STRING REFUSES THE WHOLE CALL (F5): it is never filtered out, so
+    // a malformed element cannot ride beside a permitted one and turn into a docs-only search.
+    /** The denial a list carrying a NUMBER after a permitted entry produces. */
+    const nonStringLast = String(decide("mcp__ast_grep__search", { pattern: "x", language: "typescript", paths: ["docs/", 42] }, CAPTAIN) ?? "")
+    expect(nonStringLast).toContain("captain investigation rule")
+    expect(nonStringLast).toContain("not a non-empty string: 42")
+    // ORDER DOES NOT MATTER: the same malformed element FIRST is refused by the same sentence.
+    expect(String(decide("mcp__ast_grep__search", { pattern: "x", language: "typescript", paths: [42, "docs/"] }, CAPTAIN) ?? ""))
+      .toContain("not a non-empty string: 42")
+    // `null` and the EMPTY STRING are the same refused shape, never an ignorable element.
+    expect(String(decide("mcp__ast_grep__search", { pattern: "x", language: "typescript", paths: ["docs/", null] }, CAPTAIN) ?? ""))
+      .toContain("not a non-empty string: null")
+    expect(String(decide("mcp__ast_grep__search", { pattern: "x", language: "typescript", paths: ["docs/", ""] }, CAPTAIN) ?? ""))
+      .toContain('not a non-empty string: ""')
+  })
+
+  test("the SHARED reader still resolves paths[0] for both ast-grep tools — the precedence regression guard", () => {
+    // `readTargetPath` in the verify package is the shared reader for ast-grep's single-path calls; its
+    // contract is deliberately UNCHANGED by the T8 repair (the rewrite reads it, and it is a write tool).
+    // The guard's own ast-grep decision does NOT go through it any more — see the arm above, which is why a
+    // list whose FIRST entry is permitted can no longer read a source entry behind it.
+    expect(readTargetPath("mcp__ast_grep__rewrite", { paths: ["packages/x.ts", "docs/a.md"] })).toBe("packages/x.ts")
+    expect(readTargetPath("mcp__ast_grep__search", { paths: ["packages/x.ts", "docs/a.md"] })).toBe("packages/x.ts")
+    expect(readTargetPath("mcp__ast_grep__search", { paths: ["docs/a.md"] })).toBe("docs/a.md")
+    // The single-spelling tools still resolve through PATH_ARG_KEYS in the order that was frozen before:
+    // `file_path` wins over `path` whatever a caller spells.
+    expect(readTargetPath("read", { file_path: "a.ts", path: "b.ts" })).toBe("a.ts")
+    expect(readTargetPath("grep", { path: "docs" })).toBe("docs")
+    expect(readTargetPath("mcp__lsp__get_hover", { file_path: "x.ts" })).toBe("x.ts")
+    // An absent or empty list resolves to nothing, which the guard then refuses as a bare call.
+    expect(readTargetPath("mcp__ast_grep__search", {})).toBeUndefined()
+    expect(readTargetPath("mcp__ast_grep__search", { paths: [] })).toBeUndefined()
+  })
+
+  test("the LSP readers are judged by file_path, and they keep the band open", () => {
+    /** Every LSP reader the fence names whose harness schema carries a `file_path` to judge. */
+    const readers: readonly string[] = [
+      "mcp__lsp__find_definition",
+      "mcp__lsp__get_hover",
+      "mcp__lsp__find_references",
+      "mcp__lsp__get_diagnostics",
+      "mcp__lsp__find_implementation",
+      "mcp__lsp__prepare_call_hierarchy",
+      "mcp__lsp__get_incoming_calls",
+      "mcp__lsp__get_outgoing_calls",
+    ]
+    for (const tool of readers) {
+      expect(String(decide(tool, { file_path: "packages/x/src/y.ts", line: 3, character: 2, symbol_name: "apply" }, CAPTAIN) ?? ""))
+        .toContain("captain investigation rule")
+      expect(decide(tool, { file_path: "docs/a.md", line: 3, character: 2, symbol_name: "apply" }, CAPTAIN)).toBeUndefined()
+    }
+    // `find_workspace_symbols` carries ONLY a `query` — no path to judge — so the bare-call rule is its
+    // door: a workspace-wide symbol lookup is the same act as a workspace-wide grep.
+    expect(String(decide("mcp__lsp__find_workspace_symbols", { query: "readTargetPath" }, CAPTAIN) ?? ""))
+      .toContain("no path argument")
+  })
+
+  test("the new doors leave a member, another preset and a non-listed tool untouched", () => {
+    // A child session is exactly who the captain hands this work to.
+    expect(decide("mpd_hashline_read", { path: "packages/x/src/y.ts" }, MEMBER)).toBeUndefined()
+    expect(decide("mcp__ast_grep__search", { pattern: "x", language: "typescript", paths: ["packages/x"] }, MEMBER)).toBeUndefined()
+    expect(decide("mcp__lsp__find_definition", { file_path: "packages/x/src/y.ts" }, MEMBER)).toBeUndefined()
+    // The rule is part of what the `mpd` preset MEANS: another preset's top level keeps its recon.
+    expect(decide("mpd_hashline_read", { path: "packages/x/src/y.ts" }, OTHER_PRESET_CAPTAIN)).toBeUndefined()
+    expect(decide("mcp__lsp__get_diagnostics", { file_path: "packages/x/src/y.ts" }, OTHER_PRESET_CAPTAIN)).toBeUndefined()
+  })
+
+  test("mode `allow` releases the new doors too, so the knob covers the WHOLE guard", () => {
+    expect(captainInvestigationDecision({
+      toolName: "mpd_hashline_read",
+      args: { path: "packages/x/src/y.ts" },
+      workspaceRoot: WORKSPACE,
+      topLevel: true,
+      mode: "allow",
+    })).toBeUndefined()
+    expect(captainInvestigationDecision({
+      toolName: "mcp__codegraph__codegraph_explore",
+      args: { query: "x" },
+      workspaceRoot: WORKSPACE,
+      topLevel: true,
+      mode: "allow",
+    })).toBeUndefined()
   })
 })
 

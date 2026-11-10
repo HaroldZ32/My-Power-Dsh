@@ -1,0 +1,10 @@
+[dshgo-standard] root: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+[dshgo-standard] standard: ccch1mneyyy/dsh-Go@d5ad25c5bc4c66ecacee76b3c5378db45e1db3fa (spec data under specs/dsh-go/)
+[dshgo-standard] MANIFEST: PASS (0 error(s), 0 note(s))
+[dshgo-standard] VIEW: PASS (0 error(s), 0 note(s))
+[dshgo-standard] COMPAT: PASS (0 error(s), 0 note(s))
+[dshgo-standard] HOST: PASS (0 error(s), 0 note(s))
+[dshgo-standard] CROSS-CHECK: PASSED — PASSED: verdicts agree — official check.mjs exit=1 stops=false (array-patch false negative excluded: the official checker requires a string patch, DSH allows an array and this gate verified every path); this gate stops=false
+  [note] crosscheck-normalized /home/haroldzhao/MyProj/DshProj/My-Power-Dsh — the official checker's only blocking item was its string-only `dsh.bundle.patch` assumption; every declared patch path is resolved by the MANIFEST lane
+[dshgo-standard] RESULT: LEGAL — manifest, views, compatibility, host half and the official cross-check all agree
+EXIT=0

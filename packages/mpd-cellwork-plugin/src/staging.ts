@@ -187,7 +187,10 @@ export function plannerPrompt(deps: Pick<StageDeps, "cell" | "personaFor">): str
     "  VERBATIM. Answer the captain the same way: `kind:\"answer\", replyTo:<the question's message id>, selected:[…]`.",
     "- Then WAIT for the captain's answer. Do not invent an answer, do not proceed on an assumption.",
     "- If reconnaissance is needed before you can ask a good question, call `cellwork_recon`",
-    "  {role:\"Explorer\"|\"Researcher\", task} — a one-shot READ-ONLY consult; you get its report back.",
+    "  {role:\"Explorer\"|\"Researcher\", task} — a one-shot READ-ONLY consult; you get its report back. Pass",
+    "  `questions:[…]` (1..8) instead of `task` to settle several at once.",
+    "  For side-work you do not have to read immediately, `cellwork_delegate` starts 1..16 BACKGROUND consults",
+    "  in one call and returns their ids; collect them with `cellwork_consult`.",
     // C5/D15, ruling R2: the delegation block is EXPORTED by `prompts.ts` (lane E owns that file) and
     // spliced here, in the PLANNER prompt only. The block opens and closes with an empty line.
     ...PLANNER_RECON_LINES,
@@ -197,7 +200,8 @@ export function plannerPrompt(deps: Pick<StageDeps, "cell" | "personaFor">): str
     "Then call `cellwork_requirements {action:\"finalize\"}` (pass `content` instead of writing the file if that",
     "is easier). A finalized revision unblocks the splitter.",
     "",
-    "YOUR TOOLS: `cellwork_recon`, `cellwork_requirements`, `cellwork_status`, `cellwork_send`/`agent_teams_mail`.",
+    "YOUR TOOLS: `cellwork_recon`, `cellwork_delegate`, `cellwork_consult`, `cellwork_requirements`,",
+    "`cellwork_status`, `cellwork_send`/`agent_teams_mail`.",
     "Do NOT call `ask_user_question` (that is the captain's surface) and do NOT submit a split.",
   ].join("\n")
 }

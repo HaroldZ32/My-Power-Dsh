@@ -1,0 +1,122 @@
+{
+  "task": "T4 — W2-C4: wave-2 gate bundle + evidence (contract §4 B6, §5 evidence)",
+  "wave": "captain recon fence (wave 2)",
+  "owner": "Deep Worker (T4)",
+  "utc": "2026-11-09T02:48:44.729Z",
+  "git_head": "b956b213",
+  "tree_state": {
+    "modified_tracked_files": 10,
+    "files": [
+      "AGENTS.md",
+      "agent-references/verification-flow.md",
+      "packages/mpd-roles-plugin/dist/index.js",
+      "packages/mpd-roles-plugin/src/captain-investigation.ts",
+      "packages/mpd-roles-plugin/src/captain-shell.ts",
+      "packages/mpd-roles-plugin/test/captain-investigation.test.ts",
+      "packages/mpd-roles-plugin/test/captain-shell.test.ts",
+      "packages/mpd-verify-plugin/dist/index.js",
+      "packages/mpd-verify-plugin/src/law.ts",
+      "presets/mpd.patch.yml"
+    ],
+    "dist_note": "both dists were rebuilt by T3 at 10:45:55 local, AFTER the last src edits (captain-investigation.ts 10:37:49, law.ts 10:31:21); verify-dist-fresh now reports 34/34 FRESH, and the roles package's F1 byte-identity arm is GREEN inside G1"
+  },
+  "scope": "evidence/** only — no product code was written by this task; a failing gate would have been recorded against its owning task instead of fixed",
+  "gates": [
+    {
+      "id": "G1",
+      "argv": "bun test packages/mpd-roles-plugin packages/mpd-verify-plugin packages/mpd-tools-plugin",
+      "exit": 0,
+      "summary": "479 pass / 0 fail — 479 tests across 26 files, 3362 expect() calls",
+      "log": "evidence/guard/captain-recon-fence/2026-11-09T02-48-44.729Z/output.log#G1"
+    },
+    {
+      "id": "G2",
+      "argv": "bun run typecheck",
+      "exit": 0,
+      "summary": "tsgo --noEmit clean (no diagnostics printed)",
+      "log": "evidence/guard/captain-recon-fence/2026-11-09T02-48-44.729Z/output.log#G2"
+    },
+    {
+      "id": "G3",
+      "argv": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "summary": "ok: 34/34 targets fresh (each rebuilt twice, byte-identical); 1 NOT COVERED file listed (packages/mpd-mcp-codegraph/dist/serve.js, sha-pinned prebuilt); build toolchain bun 1.4.0 from .toolchain/node_modules/.bin/bun",
+      "log": "evidence/guard/captain-recon-fence/2026-11-09T02-48-44.729Z/output.log#G3"
+    },
+    {
+      "id": "G4",
+      "argv": "bun run verify:comments",
+      "exit": 0,
+      "summary": "PASS — 618 TypeScript files scanned, 55469 declarations inspected, 27178 inline callbacks skipped",
+      "log": "evidence/guard/captain-recon-fence/2026-11-09T02-48-44.729Z/output.log#G4"
+    },
+    {
+      "id": "G5",
+      "argv": "bun run verify:rows",
+      "exit": 0,
+      "summary": "ok: 36 row ids match the 2-file bundle patch layer",
+      "log": "evidence/guard/captain-recon-fence/2026-11-09T02-48-44.729Z/output.log#G5"
+    },
+    {
+      "id": "G6",
+      "argv": "PATH=$PWD/.qa-tmp/dsh-022/bin:$PATH node skills/dsh-qa/scripts/preset-conformance.ts",
+      "exit": 0,
+      "summary": "PASS — 33 harness rows conform, mpd preset 28 child rows, row parity 27/27, session/create answered agentPreset=mpd, negative control reddened",
+      "artifact": "evidence/dsh-qa/preset-conformance/2026-11-09T02-49-10.617Z/",
+      "log": "evidence/guard/captain-recon-fence/2026-11-09T02-48-44.729Z/output.log#G6",
+      "note": "the pinned harness (0.2.2-rc.1 at .qa-tmp/dsh-022) is REQUIRED for this row; the argv records the PATH prefix"
+    },
+    {
+      "id": "G7",
+      "argv": "bun run verify:docs",
+      "exit": 0,
+      "summary": "PASS — pairs=59 failed=0 violations=0 exempt=24 derived=3 links=626 checked=586 resolved=586 dead=0 (34 external + 6 anchor-only ignored)",
+      "log": "evidence/guard/captain-recon-fence/2026-11-09T02-48-44.729Z/output.log#G7"
+    },
+    {
+      "id": "G8",
+      "argv": "node scripts/verify-manual-paths.ts",
+      "exit": 0,
+      "summary": "PASS — resolved=158 over-report=72 under-report=83 declared=2; every audited path exists, the DECLARED anticipatory class is named with its reason",
+      "log": "evidence/guard/captain-recon-fence/2026-11-09T02-48-44.729Z/output.log#G8"
+    },
+    {
+      "id": "G9",
+      "argv": "node scripts/verify-vendor.ts",
+      "exit": 0,
+      "summary": "PASS — 8 shipped assets fingerprinted, upstream identity not checked",
+      "log": "evidence/guard/captain-recon-fence/2026-11-09T02-48-44.729Z/output.log#G9"
+    }
+  ],
+  "gates_not_run": [],
+  "live_mount": {
+    "status": "OBTAINED",
+    "gate_id": "G10",
+    "argv": "PATH=$PWD/.qa-tmp/dsh-022/bin:$PATH bun skills/dsh-qa/scripts/captain-scope.ts",
+    "exit": 0,
+    "summary": "PASS (8 rows), including the DISCRIMINATING boot-line arm",
+    "artifact": "evidence/roles/captain-scope/2026-11-09T02-49-50.747Z/",
+    "boot_line": "[mpd-roles] team plane: readOnlyGuard=installed deny=10 captainInvestigation=deny captainShell=deny patterns=16 delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed questions=relay routes=0 rosterSection=agent-scoped order=605 sessionGate=mechanical sensitivity=easy",
+    "observation_captainInvestigation": "captainInvestigation=deny — the investigation guard installed in deny mode on the booted composition",
+    "observation_captainShell": "captainShell=deny patterns=16 — the shell guard installed in deny mode with a 16-row deny table (wave 2's C1 table; wave 1 booted with patterns=9)",
+    "source_of_truth": "the headless boot's own sandbox workspace row log <sandbox>/.mpd/logs/mpd-roles.log, read by the case; the same run asserts the REAL checkout's row log is byte-identical across the run, so the capture did not come from the live tree",
+    "composition_bound": "a headless boot never composes an agent preset (@deepseek-ai/dsh-headless assertAdoptable refuses it) and these guards are AGENT-SCOPED, so this line proves the guards INSTALLED and report their modes — it does NOT prove a live DENIAL. The denial itself is proven by the shipped-decision arms in T2/T8; a discriminating LIVE denial needs the web profile's session/create with agentPreset=mpd (preset-conformance proves that composition answers, not a denial)."
+  },
+  "evidence_bundle": {
+    "output_log": "evidence/guard/captain-recon-fence/2026-11-09T02-48-44.729Z/output.log",
+    "result_json": "evidence/guard/captain-recon-fence/2026-11-09T02-48-44.729Z/result.json",
+    "log_shape": "one block per gate: '########## G<n> ##########', then ARGV, then EXIT, then the decisive tail",
+    "sibling_artifacts_from_this_run": [
+      "evidence/roles/captain-scope/2026-11-09T02-49-50.747Z/ (G10 live mount)",
+      "evidence/dsh-qa/preset-conformance/2026-11-09T02-49-10.617Z/ (G6 live mount)"
+    ]
+  },
+  "honest_bounds": [
+    "G1-G9 ran with the ambient `bun` on PATH for the bun-invoked rows, exactly as the assignment spelled them; verify-dist-fresh itself rebuilt every target with the PINNED toolchain (bun 1.4.0 from .toolchain/node_modules/.bin/bun) and reported 34/34 fresh.",
+    "G6's preset-conformance needs the PINNED harness first on PATH (0.2.2-rc.1 at .qa-tmp/dsh-022); under the ambient 0.2.1-rc.5 it reddens by design. The argv in the log records that prefix.",
+    "The live DENIAL of the newly gated tools is NOT observed here and is not claimed: headless composition does not arm agent-scoped guards (see live_mount.composition_bound).",
+    "A SKIP is not a pass: no gate reported SKIP in this run.",
+    "This bundle certifies the gate runs listed above; it does not certify the review verdict, which belongs to a different seat."
+  ],
+  "verification": "A DIFFERENT agent verifies this against the frozen contract; nothing here is a self-certification. No product code was written by T4."
+}

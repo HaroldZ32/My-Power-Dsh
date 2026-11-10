@@ -1,0 +1,2 @@
+[repin-vendor] SELF-TEST FAIL - (i) COUNT-ONLY drift -> --check RED (never a POLICY green), --write repairs the count, --check GREEN
+[repin-vendor]   count-only drift check exited 0 (expected 1)

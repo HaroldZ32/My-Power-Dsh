@@ -27,7 +27,7 @@ import { join } from "node:path"
 import type { DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 import { DSH_SEAM_TOOLS, createLazyDshAdapter, dshSeamInject, rowLogLine } from "../../mpd-dsh-adapter-plugin/src/index"
 import { VERIFY_SERVICE } from "./service.ts"
-import { resolvePositiveInt, resolveVerifyMode } from "./law.ts"
+import { resolveEvidenceBy, resolvePositiveInt, resolveVerifyMode } from "./law.ts"
 import { createVerifyRuntime, installDelegationObserver } from "./observe.ts"
 import type { VerifyRuntime } from "./observe.ts"
 import { DEFAULT_GATE_TIMEOUT_MS, DEFAULT_LOOP_TTL_MS, registerVerifyTools, writeBootMarker } from "./tools.ts"
@@ -66,6 +66,8 @@ type Config = {
   loopTtlMs?: unknown
   /** A gate's timeout in milliseconds. */
   gateTimeoutMs?: unknown
+  /** `verifier` (default) refuses a captain's gate evidence; `any` restores it. */
+  evidenceBy?: unknown
 }
 
 /**
@@ -146,6 +148,13 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   /** The mode in force, reported on the boot line so a mount lane can see what it is asserting. */
   const mode = resolveVerifyMode(configValue("verify.mode"))
   outcome.push("mode=" + mode)
+  /**
+   * Who may produce GATE evidence — the captain's caller rule (C2).
+   *
+   * Reported beside the mode for the same reason: a mount lane asserts the knob it is debating, and a
+   * silent default is indistinguishable from a stale build.
+   */
+  outcome.push("evidenceBy=" + resolveEvidenceBy(configValue("verify.evidenceBy")))
   /**
    * Whether the HARNESS exposes the `tools.guard` seam.
    *

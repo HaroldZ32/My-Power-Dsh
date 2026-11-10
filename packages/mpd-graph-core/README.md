@@ -43,13 +43,15 @@ silently:
 The shapes (all plain JSON — no `Map`, no `Set`, no class instance, no function):
 
 ```
-GraphModel  = { nodes, edges, ranks, cycles, report, groups? }
+GraphModel  = { nodes, edges, ranks, cycles, report, groups?, consults? }
 GraphNode   = { id, subject, kind?, visual, assignee?, dependencies, depth, planned, title?, status?, group? }
+GraphConsultNode = GraphNode & { kind: "consult", consultId, cellId, startedAt, elapsedMs? }
 GraphEdge   = { from, to, source: "board" | "plan" | "both" | "derived" }
 GraphReport = { boardOnly, planOnly, edgePlanOnly, edgeBoardOnly,
                 planProblems, unresolved, ranksDerived }
 GraphGroup  = { id, label, parentId, memberIds, depth, originTaskId? }
-GraphGroupInput = { id, label, originTaskId?, board?, plan?, groups? }
+GraphGroupInput = { id, label, originTaskId?, board?, plan?, groups?, consults? }
+GraphConsultInput = { consultNumber, consultId, role, task, state, startedAt, cellId, elapsedMs? }
 ```
 
 `depth` on a node is the RESOLVED column (derived from the blocker graph, or the served-depth
@@ -62,6 +64,29 @@ buckets and both id lists are ordered by the numeric id collator (`T2` before `T
 (`from`, then `to`); plan problems by source line and then by text. No collection that reaches the
 drawing is ordered by a `Map`/`Set` insertion accident. `JSON.stringify` round-trips the model
 unchanged: an absent optional field is an absent key, never an `undefined` value.
+
+## Consults (background agents as nodes)
+
+A cell seat's background consults are drawn BESIDE the tasks and never as tasks. `buildModel` takes
+them as `consults` — on the root input and on every `GroupInput` — and returns them in the SIBLING
+array `GraphModel.consults`, never in `nodes`. That split is a hard rule, not a convenience: a consult
+in `nodes` would be synthesised as a ghost TASK by the TUI and dropped silently by the web's ghost
+whitelist, so the two surfaces would disagree about one model.
+
+- **No edge, no rank.** A consult carries `dependencies: []` and `depth: 0`, and it takes no part in
+  any frame's derivation: `nodes`, `edges`, `ranks` and `report` are byte-identical with and without a
+  `consults` input. An edge would raise the derivation's `resolved` count from 0 to 1 and flip its
+  served-depth fallback, silently re-ranking every task on a legacy board.
+- **Ids are frame-qualified.** `C<n>` in the root frame, `"<groupId>::C<n>"` inside a box — the minted
+  ordinal restarts at 1 in every team, so the bare spelling would collide across boxes.
+- **The tone is the existing six-state one.** `running` → `running`, `complete` → `completed`,
+  `failed` → `failed`, `cancelled` → `cancelled`, and `interrupted` → `cancelled` (the "stopped without
+  a report" tone). An unrecognised word reads as `open`. There is no seventh state.
+- **Ordering** is frame pre-order (the root first, then each box by id), and `consultNumber` ascending
+  inside one frame — the order the user watched the consults start in.
+- **Backward by absence.** A model given no consult carries no `consults` key at all, so a
+  consult-free model is the exact value (and the exact bytes) this package produced before consults
+  existed.
 
 **Cycles and flat boards are rendered honestly.** A dependency cycle keeps every rank finite and is
 listed in `cycles`; a board whose every `blockedBy` is `[]` draws flat, with one rank and no edges —
@@ -265,7 +290,7 @@ resolvePlanFile(workspaceRoot): string | undefined
 readPlanFile(path): PlanDocument
 
 // model.ts — the one model
-buildModel({ board?, plan?, groups? }): GraphModel
+buildModel({ board?, plan?, groups?, consults? }): GraphModel
 
 // watch.ts — one watcher
 watchGraph(targets, options?): GraphWatcher

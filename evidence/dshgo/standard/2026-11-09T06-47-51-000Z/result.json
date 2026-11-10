@@ -1,0 +1,435 @@
+{
+  "case": "dshgo-1.0.14-repin",
+  "contract": ".mpd/plans/dshgo-1.0.14-repin.md",
+  "at": "2026-11-09T06:51:19.753Z",
+  "repo": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "branch": "fix/dshgo-1.0.14-repin",
+  "head": "18da0c6cc88429c4be48ca72e472abb8136998c8",
+  "pin": {
+    "from": "d5ad25c5bc4c66ecacee76b3c5378db45e1db3fa",
+    "fromTag": "v1.0.12",
+    "to": "f36bf91b0736e81ef40c2a7040b2ec337ca1ab40",
+    "toIsCommitObject": true,
+    "tagObjectSha": "4dce2a65cdbf35bef5c8775e90f8378b89b1e6a3",
+    "tagObjectType": "tag",
+    "peeledCommit": "f36bf91b0736e81ef40c2a7040b2ec337ca1ab40",
+    "note": "SOURCE.json `commit` names the COMMIT (as the old value did: d5ad25c5 is the commit tagged v1.0.12). `git rev-parse v1.0.14` prints 4dce2a65, the ANNOTATED TAG OBJECT; `git rev-parse v1.0.14^{commit}` = f36bf91b, the release commit and the mirror's checked-out HEAD. A field named `commit` must name a commit, and the raw.githubusercontent fetch the SOURCE note describes resolves only a commit sha.",
+    "fetchedAt": "2026-11-09T06:48:05Z"
+  },
+  "schemas": {
+    "identical": true,
+    "files": [
+      {
+        "name": "manifest.schema.json",
+        "ours": "1abfff069d68b38a7a8d34bcf49dcbf2093ef7725cb0f7e9c8eff9f99cce6748",
+        "v1014": "1abfff069d68b38a7a8d34bcf49dcbf2093ef7725cb0f7e9c8eff9f99cce6748",
+        "identical": true
+      },
+      {
+        "name": "contributions.schema.json",
+        "ours": "f4a3aa6b82cc944c9ee573eaa9dedf9fa9bf7978f57785e7da319ecfed3f8e58",
+        "v1014": "f4a3aa6b82cc944c9ee573eaa9dedf9fa9bf7978f57785e7da319ecfed3f8e58",
+        "identical": true
+      },
+      {
+        "name": "view.schema.json",
+        "ours": "9b175788448c61af0b41382af7617ac7720151f2f4041fa8f72a03ad7f023153",
+        "v1014": "9b175788448c61af0b41382af7617ac7720151f2f4041fa8f72a03ad7f023153",
+        "identical": true
+      },
+      {
+        "name": "stream.schema.json",
+        "ours": "2377213d296cd361f8584c294bb0c7c35a53e9af476d1e929a09dafaa2f2ab69",
+        "v1014": "2377213d296cd361f8584c294bb0c7c35a53e9af476d1e929a09dafaa2f2ab69",
+        "identical": true
+      },
+      {
+        "name": "invoke.schema.json",
+        "ours": "9a39f0d3aec0fa92a0229e2e49ef1c213649c4196ad716e2658d779bab64621f",
+        "v1014": "9a39f0d3aec0fa92a0229e2e49ef1c213649c4196ad716e2658d779bab64621f",
+        "identical": true
+      }
+    ]
+  },
+  "sourceFiles": {
+    "count": 7,
+    "allTrue": true,
+    "files": [
+      {
+        "path": "runtime/bridge/dsh-go-bridge/lib/native/limits.js",
+        "locked": "bf7215077362ddbd10e8dee7302f7a9ff8c71dc439773c4307de5ef681c6f8ac",
+        "atV1014": "bf7215077362ddbd10e8dee7302f7a9ff8c71dc439773c4307de5ef681c6f8ac",
+        "true": true
+      },
+      {
+        "path": "sdk/plugin-kit/schema/manifest.schema.json",
+        "locked": "1abfff069d68b38a7a8d34bcf49dcbf2093ef7725cb0f7e9c8eff9f99cce6748",
+        "atV1014": "1abfff069d68b38a7a8d34bcf49dcbf2093ef7725cb0f7e9c8eff9f99cce6748",
+        "true": true
+      },
+      {
+        "path": "sdk/plugin-kit/schema/contributions.schema.json",
+        "locked": "f4a3aa6b82cc944c9ee573eaa9dedf9fa9bf7978f57785e7da319ecfed3f8e58",
+        "atV1014": "f4a3aa6b82cc944c9ee573eaa9dedf9fa9bf7978f57785e7da319ecfed3f8e58",
+        "true": true
+      },
+      {
+        "path": "sdk/plugin-kit/schema/view.schema.json",
+        "locked": "9b175788448c61af0b41382af7617ac7720151f2f4041fa8f72a03ad7f023153",
+        "atV1014": "9b175788448c61af0b41382af7617ac7720151f2f4041fa8f72a03ad7f023153",
+        "true": true
+      },
+      {
+        "path": "sdk/plugin-kit/schema/stream.schema.json",
+        "locked": "2377213d296cd361f8584c294bb0c7c35a53e9af476d1e929a09dafaa2f2ab69",
+        "atV1014": "2377213d296cd361f8584c294bb0c7c35a53e9af476d1e929a09dafaa2f2ab69",
+        "true": true
+      },
+      {
+        "path": "sdk/plugin-kit/schema/invoke.schema.json",
+        "locked": "9a39f0d3aec0fa92a0229e2e49ef1c213649c4196ad716e2658d779bab64621f",
+        "atV1014": "9a39f0d3aec0fa92a0229e2e49ef1c213649c4196ad716e2658d779bab64621f",
+        "true": true
+      },
+      {
+        "path": "sdk/plugin-kit/lib/view-check.js",
+        "locked": "9024c9e40e2f7401d84f2c29109ec7a6c2f031fb34038f4da6eca8feffc15250",
+        "atV1014": "9024c9e40e2f7401d84f2c29109ec7a6c2f031fb34038f4da6eca8feffc15250",
+        "true": true
+      }
+    ]
+  },
+  "lanes": {
+    "MANIFEST": "PASS (0 error(s), 0 note(s))",
+    "VIEW": "PASS (0 error(s), 0 note(s))",
+    "COMPAT": "PASS (0 error(s), 0 note(s))",
+    "HOST": "PASS (0 error(s), 0 note(s))",
+    "CROSS-CHECK": "PASSED — PASSED: verdicts agree — official check.mjs exit=1 stops=false (array-patch false negative excluded: the official checker requires a string patch, DSH allows an array and this gate verified every path); this gate stops=false",
+    "RESULT": "LEGAL — manifest, views, compatibility, host half and the official cross-check all agree"
+  },
+  "byteIdentity": {
+    "limitsTsOnlyCommentLines3to4": true,
+    "gateOnlyLines11_12_1097": true,
+    "upstreamSpecDataUnchangedInGap": true,
+    "digests": {
+      "limitsHeadSansHeader": "42a5ee8d66ecba79693eaa1526ae138db5266dca715272112363f1b938d33c63",
+      "limitsWorktreeSansHeader": "42a5ee8d66ecba79693eaa1526ae138db5266dca715272112363f1b938d33c63",
+      "gateHeadSansPin": "edbb841fad1452daf48a2639d5dd714f686b2cccfd5404145528fca20b18829f",
+      "gateWorktreeSansPin": "edbb841fad1452daf48a2639d5dd714f686b2cccfd5404145528fca20b18829f"
+    }
+  },
+  "commands": [
+    {
+      "id": "repin.check.before",
+      "argv": "node scripts/repin-vendor.ts --check",
+      "log": "logs/00-repin-check-before.log",
+      "exit": 0,
+      "decisiveTail": [
+        "[repin-vendor]   computed (LF) : treeSha=a71be3db2d34f7a36e2cf48692968702d7ab00501be9900686f2a2888ecfd33f fileCount=2 (0 file(s) LF-normalized)",
+        "[repin-vendor]   raw-bytes    : a71be3db2d34f7a36e2cf48692968702d7ab00501be9900686f2a2888ecfd33f   <- NEVER write this one",
+        "[repin-vendor]   in sync      : no change",
+        "[repin-vendor] _note: POLICY (not a failure) - underscore-prefixed metadata key: the vendor gate skips these too, so this helper does not re-pin it",
+        "[repin-vendor] packages/mpd-mcp-codegraph/dist/serve.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding the package that emits it, never by rewriting the lock",
+        "[repin-vendor] packages/mpd-bundle-plugin/client.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding the package that emits it, never by rewriting the lock",
+        "[repin-vendor] CHECK     : GREEN - lock matches the working tree (drift=0, problems=0)",
+        "EXIT=0"
+      ]
+    },
+    {
+      "id": "gate.before",
+      "argv": "MPD_DSHGO_KIT=$PWD/.mpd/recon/dsh-go node scripts/verify-dshgo-standard.ts",
+      "log": "logs/01-gate-before.log",
+      "exit": 0,
+      "decisiveTail": [
+        "[dshgo-standard] MANIFEST: PASS (0 error(s), 0 note(s))",
+        "[dshgo-standard] VIEW: PASS (0 error(s), 0 note(s))",
+        "[dshgo-standard] COMPAT: PASS (0 error(s), 0 note(s))",
+        "[dshgo-standard] HOST: PASS (0 error(s), 0 note(s))",
+        "[dshgo-standard] CROSS-CHECK: PASSED — PASSED: verdicts agree — official check.mjs exit=1 stops=false (array-patch false negative excluded: the official checker requires a string patch, DSH allows an array and this gate verified every path); this gate stops=false",
+        "  [note] crosscheck-normalized /home/haroldzhao/MyProj/DshProj/My-Power-Dsh — the official checker's only blocking item was its string-only `dsh.bundle.patch` assumption; every declared patch path is resolved by the MANIFEST lane",
+        "[dshgo-standard] RESULT: LEGAL — manifest, views, compatibility, host half and the official cross-check all agree",
+        "EXIT=0"
+      ]
+    },
+    {
+      "id": "repin.dryrun",
+      "argv": "node scripts/repin-vendor.ts",
+      "log": "logs/02-repin-dryrun-after-edits.log",
+      "exit": 0,
+      "decisiveTail": [
+        "[repin-vendor]   computed (LF) : treeSha=a71be3db2d34f7a36e2cf48692968702d7ab00501be9900686f2a2888ecfd33f fileCount=2 (0 file(s) LF-normalized)",
+        "[repin-vendor]   raw-bytes    : a71be3db2d34f7a36e2cf48692968702d7ab00501be9900686f2a2888ecfd33f   <- NEVER write this one",
+        "[repin-vendor]   in sync      : no change",
+        "[repin-vendor] _note: POLICY (not a failure) - underscore-prefixed metadata key: the vendor gate skips these too, so this helper does not re-pin it",
+        "[repin-vendor] packages/mpd-mcp-codegraph/dist/serve.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding the package that emits it, never by rewriting the lock",
+        "[repin-vendor] packages/mpd-bundle-plugin/client.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding the package that emits it, never by rewriting the lock",
+        "[repin-vendor] DRY RUN   : 1 asset(s) would be re-pinned; nothing was written",
+        "EXIT=0"
+      ]
+    },
+    {
+      "id": "repin.write",
+      "argv": "node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step",
+      "log": "logs/03-repin-write.log",
+      "exit": 0,
+      "decisiveTail": [
+        "[repin-vendor] packages/mpd-mcp-codegraph/dist/serve.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding the package that emits it, never by rewriting the lock",
+        "[repin-vendor] packages/mpd-bundle-plugin/client.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding the package that emits it, never by rewriting the lock",
+        "[repin-vendor] WRITE     : applied 1 field change(s) to /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/VENDOR_LOCK.json",
+        "[repin-vendor]   specs/dsh-go.treeSha: 1f812a48dd2c54fa6529c0c05b355676de902515cfe7fa63fd5328b892da2607 -> a444f9d095ef0c0fda3aed28e6953ac0b01f71693c4edce77aa83cf6dde28eb6",
+        "[repin-vendor]   - (line 12)       \"treeSha\": \"1f812a48dd2c54fa6529c0c05b355676de902515cfe7fa63fd5328b892da2607\",",
+        "[repin-vendor]   + (line 12)       \"treeSha\": \"a444f9d095ef0c0fda3aed28e6953ac0b01f71693c4edce77aa83cf6dde28eb6\",",
+        "[repin-vendor] WRITE     : linesChanged=1 bytes 5027 -> 5027 (differingBytes=63)",
+        "EXIT=0"
+      ]
+    },
+    {
+      "id": "repin.check.after",
+      "argv": "node scripts/repin-vendor.ts --check",
+      "log": "logs/04-repin-check-after.log",
+      "exit": 0,
+      "decisiveTail": [
+        "=== CMD: node scripts/repin-vendor.ts --check (AFTER re-pin)",
+        "[repin-vendor] _note: POLICY (not a failure) - underscore-prefixed metadata key: the vendor gate skips these too, so this helper does not re-pin it",
+        "[repin-vendor] packages/mpd-mcp-codegraph/dist/serve.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding the package that emits it, never by rewriting the lock",
+        "[repin-vendor] packages/mpd-bundle-plugin/client.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding the package that emits it, never by rewriting the lock",
+        "[repin-vendor] CHECK     : GREEN - lock matches the working tree (drift=0, problems=0)",
+        "EXIT=0"
+      ]
+    },
+    {
+      "id": "gate.after",
+      "argv": "MPD_DSHGO_KIT=$PWD/.mpd/recon/dsh-go node scripts/verify-dshgo-standard.ts",
+      "log": "logs/05-gate-after.log",
+      "exit": 0,
+      "decisiveTail": [
+        "[dshgo-standard] MANIFEST: PASS (0 error(s), 0 note(s))",
+        "[dshgo-standard] VIEW: PASS (0 error(s), 0 note(s))",
+        "[dshgo-standard] COMPAT: PASS (0 error(s), 0 note(s))",
+        "[dshgo-standard] HOST: PASS (0 error(s), 0 note(s))",
+        "[dshgo-standard] CROSS-CHECK: PASSED — PASSED: verdicts agree — official check.mjs exit=1 stops=false (array-patch false negative excluded: the official checker requires a string patch, DSH allows an array and this gate verified every path); this gate stops=false",
+        "  [note] crosscheck-normalized /home/haroldzhao/MyProj/DshProj/My-Power-Dsh — the official checker's only blocking item was its string-only `dsh.bundle.patch` assumption; every declared patch path is resolved by the MANIFEST lane",
+        "[dshgo-standard] RESULT: LEGAL — manifest, views, compatibility, host half and the official cross-check all agree",
+        "EXIT=0"
+      ]
+    },
+    {
+      "id": "vendor",
+      "argv": "node scripts/verify-vendor.ts",
+      "log": "logs/06-verify-vendor.log",
+      "exit": 0,
+      "decisiveTail": [
+        "[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files",
+        "[verify-vendor] asset OK: packages/mpd-hashline-plugin/src/vendor 8 files",
+        "[verify-vendor] asset OK: packages/mpd-autoproject-plugin/src/boulder/vendor 13 files",
+        "[verify-vendor] asset OK: packages/mpd-schemastery 19 files",
+        "[verify-vendor] asset OK: packages/mpd-bundle-plugin/adopted 2 files",
+        "[verify-vendor] asset OK: packages/mpd-bundle-plugin/client.js 1 files",
+        "[verify-vendor] PASS - 8 shipped asset(s) fingerprinted, upstream identity not checked",
+        "EXIT=0"
+      ]
+    },
+    {
+      "id": "diff.scope",
+      "argv": "git status --porcelain / git diff --name-only / git diff -- package.json",
+      "log": "logs/07-diff-scope.log",
+      "exit": "n/a",
+      "note": "composite proof block: each sub-command printed its own decisive result, no single exit code applies",
+      "decisiveTail": [
+        "=== packages/ and dist/ touched? ===",
+        "(empty = untouched)",
+        "=== package.json touched? (must be empty) ===",
+        "(empty above = whole file untouched, dshGo block included)",
+        "=== dshgo-view.ts BUDGETS/PROTOCOL/1.0.9 floor unchanged? ===",
+        "(empty = untouched)",
+        "=== .mpd/recon/dsh-go mirror cleanliness ===",
+        "(empty = mirror untouched)"
+      ]
+    },
+    {
+      "id": "typecheck",
+      "argv": "bun run typecheck",
+      "log": "logs/08-typecheck.log",
+      "exit": 0,
+      "decisiveTail": [
+        "=== CMD: bun run typecheck",
+        "$ tsgo --noEmit",
+        "EXIT=0"
+      ]
+    },
+    {
+      "id": "comments",
+      "argv": "bun run verify:comments",
+      "log": "logs/09-comments.log",
+      "exit": 0,
+      "decisiveTail": [
+        "=== CMD: bun run verify:comments",
+        "$ node scripts/verify-comment-coverage.ts",
+        "# verify-comment-coverage",
+        "scanned 618 TypeScript file(s) of 618 in the source set; inspected 55565 declaration(s); skipped 27209 inline callback(s) as out of family",
+        "VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.",
+        "EXIT=0"
+      ]
+    },
+    {
+      "id": "dist.fresh",
+      "argv": "node scripts/verify-dist-fresh.ts",
+      "log": "logs/10-dist-fresh.log",
+      "exit": 0,
+      "decisiveTail": [
+        "  FRESH   packages/mpd-verify-plugin/dist/index.js  sha 0cfbc7a82f06… 20ms  <- packages/mpd-verify-plugin/src/index.ts",
+        "  FRESH   packages/mpd-workmate-plugin/dist/index.js  sha 541fc060fbfc… 25ms  <- packages/mpd-workmate-plugin/src/index.ts",
+        "[verify-dist-fresh] root: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)",
+        "[verify-dist-fresh] build toolchain: bun 1.4.0 from the repository toolchain (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun) · recorded buildToolchain bun@1.4.0",
+        "[verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:",
+        "  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/",
+        "[verify-dist-fresh] ok: 34/34 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 725ms",
+        "EXIT=0"
+      ]
+    },
+    {
+      "id": "adapter.tests",
+      "argv": "bun test packages/mpd-dsh-adapter-plugin",
+      "log": "logs/11-adapter-tests.log",
+      "exit": 0,
+      "decisiveTail": [
+        "(pass) spawnAgentAsync (§D2.1) > an ASYNCHRONOUSLY REJECTED interrupt also falls back to abort() [5.21ms]",
+        "(pass) spawnAgentAsync (§D2.1) > spawnAgent remains the BLOCKING projection with the unchanged shape [0.13ms]",
+        "(pass) spawnAgentAsync on the RETIRED generation (§D2.1) > start() is used and its run handle keeps the non-blocking contract [0.07ms]",
+        " 395 pass",
+        " 0 fail",
+        " 1573 expect() calls",
+        "Ran 395 tests across 27 files. [2.77s]",
+        "EXIT=0"
+      ]
+    },
+    {
+      "id": "gate.selftest",
+      "argv": "node scripts/verify-dshgo-standard.ts --self-test",
+      "log": "logs/12-gate-selftest.log",
+      "exit": 0,
+      "decisiveTail": [
+        "PASS  HOST: a tappable id with no handler",
+        "PASS  HOST: a registration for an id the manifest does not declare",
+        "PASS  HOST: the optional-inject spelling",
+        "PASS  HOST: a top-level inject array carrying dshGo",
+        "PASS  the kit's budget table drifting from the spec is refused",
+        "PASS  HOST: no binding form at all",
+        "[dshgo-standard] SELF-TEST PASS — 44 arms (1 clean control + 43 negative controls)",
+        "EXIT=0"
+      ]
+    },
+    {
+      "id": "byte.identity",
+      "argv": "git show HEAD:<file> | sed … vs sed … (line-exact identity proofs)",
+      "log": "logs/13-byte-identity-proofs.log",
+      "exit": "n/a",
+      "note": "composite proof block: each sub-command printed its own decisive result, no single exit code applies",
+      "decisiveTail": [
+        "worktree minus lines 3-4 : 42a5ee8d66ecba79693eaa1526ae138db5266dca715272112363f1b938d33c63  -",
+        "=== PROOF 2: verify-dshgo-standard.ts differs ONLY on lines 11,12,1097 ===",
+        "HEAD minus 11,12,1097    : edbb841fad1452daf48a2639d5dd714f686b2cccfd5404145528fca20b18829f  -",
+        "worktree minus same lines: edbb841fad1452daf48a2639d5dd714f686b2cccfd5404145528fca20b18829f  -",
+        "=== PROOF 3: upstream spec-data files did NOT change in d5ad25c5..v1.0.14 ===",
+        "(no lines above = no diff = PROTOCOL/LIMITS/VIEW_BUDGETS had nothing to follow)",
+        "=== PROOF 4: SOURCE.json is valid JSON and carries exactly 7 file entries ===",
+        "commit=f36bf91b0736e81ef40c2a7040b2ec337ca1ab40 fetchedAt=2026-11-09T06:48:05Z files=7"
+      ]
+    }
+  ],
+  "gates": {
+    "repin.check.before": 0,
+    "repin.check.after": 0,
+    "verify.vendor": 0,
+    "gate.five.lanes": 0,
+    "gate.self.test": 0,
+    "typecheck": 0,
+    "comments": 0,
+    "dist.fresh": 0,
+    "adapter.tests": 0
+  },
+  "diffScope": {
+    "modified": [
+      "VENDOR_LOCK.json",
+      "scripts/verify-dshgo-standard.ts",
+      "specs/dsh-go/SOURCE.json",
+      "specs/dsh-go/limits.ts"
+    ],
+    "forbiddenPathsTouched": "(none)",
+    "packageJsonTouched": "(none)",
+    "mirrorClean": true
+  },
+  "authorization": {
+    "flag": "--i-know-this-is-the-captains-step",
+    "reason": "C4 of the frozen contract authorises exactly this one --write call for the specs/dsh-go treeSha; the flag is the captain's authorisation recorded in the contract, not a bypass invented here."
+  },
+  "deviations": [
+    {
+      "id": "C3-printed-pin",
+      "what": "scripts/verify-dshgo-standard.ts line 1097 (the `standard: …` line the gate prints on every run) also moved to the new commit.",
+      "why": "It is the same pin FACT in the same file C3 owns; leaving it would make the gate's own transcript in D3 report the OLD standard, contradicting D1. Comment + literal are both display-only: zero behavioural change (see gate.before vs gate.after tails).",
+      "revert": "one-line revert if the captain wants C3 read as comment-only."
+    },
+    {
+      "id": "C1-commit-vs-tag-object",
+      "what": "commit = f36bf91b (v1.0.14^{commit}), not 4dce2a65 (what plain `git rev-parse v1.0.14` prints).",
+      "why": "4dce2a65 is the annotated TAG object; the field is named `commit`, the old value was a commit, and the raw.githubusercontent fetch resolves a commit only."
+    }
+  ],
+  "findingsOutsideScope": [
+    {
+      "id": "F1",
+      "severity": "note",
+      "path": "docs/dsh-go-standard.md:7, docs/dsh-go-standard.zh-CN.md:6",
+      "detail": "the bilingual doc still states the old pin + 2026-11-06; not in C1-C4, so untouched. Needs a follow-up (it is a human-facing claim about the CURRENT standard)."
+    },
+    {
+      "id": "F2",
+      "severity": "note",
+      "path": ".github/workflows/publish.yml:136, .github/workflows/gates.yml:127",
+      "detail": "both CI jobs check out the kit at ref d5ad25c5 (v1.0.12), so CI's CROSS-CHECK lane runs the OLD official checker against a spec now pinned to 1.0.14. Harmless today (the five schemas and both single files are byte-identical across the gap, so the lane still agrees), but it is drift. Not in C1-C4."
+    },
+    {
+      "id": "F3",
+      "severity": "note",
+      "path": "VENDOR_LOCK.json:13 (`specs/dsh-go`.`source` prose)",
+      "detail": "the prose still reads `fetched from …@d5ad25c5…, pinned by specs/dsh-go/SOURCE.json` — it records the FETCH ORIGIN and defers the pin to SOURCE.json, so it is not a second authority; repin-vendor only splices treeSha/fileCount by design. Captain's call whether to refresh it."
+    },
+    {
+      "id": "F4",
+      "severity": "note",
+      "path": "scripts/verify-gates.ts:102",
+      "detail": "a comment naming `ccch1mneyyy/dsh-Go@d5ad25c5…` in the aggregate's own description; not in C1-C4."
+    },
+    {
+      "id": "F5",
+      "severity": "note",
+      "path": "dist/mpd-package/{specs/dsh-go/SOURCE.json,specs/dsh-go/limits.ts,VENDOR_LOCK.json,docs/dsh-go-standard*.md,CHANGELOG.md}",
+      "detail": "the packed artifact carries the old pin because it is a generated copy; D5 forbids touching dist. It is regenerated by `node scripts/pack-mpd.ts` at release time."
+    },
+    {
+      "id": "F6",
+      "severity": "note",
+      "path": "CHANGELOG.md:22",
+      "detail": "a historical v0.18.0 release note quoting the old pin; history, must not be rewritten."
+    }
+  ],
+  "bounds": [
+    "The kit is our MIRROR checked out at v1.0.14, not a live dsh-Go app: the lanes prove the SPEC contract, not a device run (contract §7).",
+    "CROSS-CHECK still reports the official checker's string-only `dsh.bundle.patch` false negative, normalized and printed as a note (unchanged from before this wave).",
+    "`bun run verify:gates` (the 11-member aggregate) was NOT run: it is not in D1-D6 and needs the pinned harness on PATH and a clean tree. Its dsh-go member is exactly the gate run here.",
+    "`bun test` was run ONLY for packages/mpd-dsh-adapter-plugin (D6's named package). No other package's tests ran.",
+    "No `bun build` ran (no src/ change); the dist-fresh gate rebuilt 34/34 targets itself with the pinned bun 1.4.0 and found them byte-identical.",
+    "Dist freshness certifies the committed dist matches a rebuild; it is not a live mount.",
+    "The `bun` on PATH is 1.4.2 while `buildToolchain` pins 1.4.0; the only build that ran (inside verify-dist-fresh) used the pinned 1.4.0 binary. No package build was performed by this wave."
+  ],
+  "verdict": "PASS — D1-D6 all green; C1-C4 applied; 4 tracked files modified; no behavioural change.",
+  "finalConfirmation": {
+    "at": "2026-11-09T06:51:36Z",
+    "log": "logs/14-final-confirmation.log",
+    "repinCheck": 0,
+    "verifyVendor": 0,
+    "gateFiveLanes": 0,
+    "note": "re-run AFTER every edit and after the scratch generator was removed; all three exit 0 and the lane verdicts are byte-identical to gate.after"
+  }
+}

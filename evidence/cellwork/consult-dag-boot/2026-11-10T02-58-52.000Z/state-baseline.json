@@ -1,0 +1,186 @@
+{
+  "ok": true,
+  "workspace": "/tmp/consult-boot/sandbox/ws",
+  "sessionId": "",
+  "workspaceTeams": {
+    "records": [
+      {
+        "id": "team-boot-baseline",
+        "name": "team-boot-baseline",
+        "description": "verifier boot fixture",
+        "phase": "idle",
+        "approvedAt": "2026-11-10T12:00:00.000Z",
+        "tasks": {
+          "total": 2,
+          "completed": 0,
+          "failed": 0
+        },
+        "members": 0,
+        "stage": "person:blocked",
+        "active": true
+      },
+      {
+        "id": "team-boot-child",
+        "name": "team-boot-child",
+        "description": "verifier boot fixture",
+        "phase": "idle",
+        "approvedAt": "2026-11-10T12:00:00.000Z",
+        "tasks": {
+          "total": 1,
+          "completed": 0,
+          "failed": 0
+        },
+        "members": 0,
+        "stage": "idle",
+        "active": false
+      },
+      {
+        "id": "team-boot-consults",
+        "name": "team-boot-consults",
+        "description": "verifier boot fixture",
+        "phase": "idle",
+        "approvedAt": "2026-11-10T12:00:00.000Z",
+        "tasks": {
+          "total": 2,
+          "completed": 0,
+          "failed": 0
+        },
+        "members": 0,
+        "stage": "person:blocked",
+        "active": false
+      },
+      {
+        "id": "team-boot-nested",
+        "name": "team-boot-nested",
+        "description": "verifier boot fixture",
+        "phase": "idle",
+        "approvedAt": "2026-11-10T12:00:00.000Z",
+        "tasks": {
+          "total": 1,
+          "completed": 0,
+          "failed": 0
+        },
+        "members": 0,
+        "stage": "idle",
+        "active": false
+      }
+    ],
+    "activeId": "team-boot-baseline"
+  },
+  "team": {
+    "id": "team-boot-baseline",
+    "name": "team-boot-baseline",
+    "description": "verifier boot fixture",
+    "phase": "idle",
+    "approvedAt": "2026-11-10T12:00:00.000Z",
+    "links": 1
+  },
+  "counts": {
+    "total": 2,
+    "completed": 0,
+    "running": 0,
+    "ready": 1,
+    "blocked": 1,
+    "failed": 0,
+    "releasedByFailure": 0
+  },
+  "members": [],
+  "tasks": [
+    {
+      "id": "T1",
+      "subject": "first task",
+      "kind": "work",
+      "status": "pending",
+      "visual": "open",
+      "owner": "Lead",
+      "progress": 0,
+      "blockedBy": [],
+      "failedBy": [],
+      "depth": 0,
+      "rank": 0
+    },
+    {
+      "id": "T2",
+      "subject": "second task",
+      "kind": "work",
+      "status": "pending",
+      "visual": "blocked",
+      "owner": "Lead",
+      "progress": 0,
+      "blockedBy": [
+        "T1"
+      ],
+      "failedBy": [],
+      "depth": 1,
+      "rank": 1
+    }
+  ],
+  "model": {
+    "nodes": [
+      {
+        "id": "T1",
+        "subject": "first task",
+        "visual": "open",
+        "dependencies": [],
+        "depth": 0,
+        "planned": false,
+        "kind": "work",
+        "assignee": "Lead",
+        "status": "pending"
+      },
+      {
+        "id": "T2",
+        "subject": "second task",
+        "visual": "blocked",
+        "dependencies": [
+          "T1"
+        ],
+        "depth": 1,
+        "planned": false,
+        "kind": "work",
+        "assignee": "Lead",
+        "status": "pending"
+      }
+    ],
+    "edges": [
+      {
+        "from": "T1",
+        "to": "T2",
+        "source": "board"
+      }
+    ],
+    "ranks": [
+      [
+        "T1"
+      ],
+      [
+        "T2"
+      ]
+    ],
+    "cycles": [],
+    "report": {
+      "boardOnly": [
+        "T1",
+        "T2"
+      ],
+      "planOnly": [],
+      "edgePlanOnly": [],
+      "edgeBoardOnly": [
+        {
+          "from": "T1",
+          "to": "T2",
+          "source": "board"
+        }
+      ],
+      "planProblems": [],
+      "unresolved": [],
+      "ranksDerived": true
+    }
+  },
+  "cycles": [],
+  "executor": {
+    "kind": "native",
+    "reason": "native: the default backend — bound startActivation() on the harness subagent seam, and it needs nothing from the official plugin"
+  },
+  "problems": []
+}

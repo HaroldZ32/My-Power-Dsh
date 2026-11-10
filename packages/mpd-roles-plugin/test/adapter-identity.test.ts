@@ -15,6 +15,7 @@ import { mkdtempSync, readFileSync, rmSync, statSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { ADAPTER_IDENTITY_FALLBACK, ADAPTER_IDENTITY_MOUNTED, apply } from "../src/index.ts"
+import { CAPTAIN_SHELL_DENY_PATTERNS } from "../src/captain-shell.ts"
 
 /** The three roster tools this package must register, named once for every arm below. */
 const EXPECTED_TOOLS = ["mpd_roles_list", "mpd_role_spawn", "mpd_role_spawn_async", "mpd_role_consult", "mpd_role_persona"]
@@ -320,14 +321,15 @@ describe("row config fallbacks (2026-10-20 restore)", () => {
   // WHY THIS LIVES HERE: these arms reuse the file's apply harness — a recording ctx plus the ROW LOG —
   // because the boot line is the ONE surface where the row reports the MODE each restored guard
   // resolved. A guard seam is enough for both installs to report a mode instead of `absent`.
-  test("captain.investigation and delegation.gate spelled in the ROW config reach the resolved mode", async () => {
+  test("captain.investigation, captain.shell and delegation.gate spelled in the ROW config reach the resolved mode", async () => {
     /** A ctx exposing the guard seam, so both restored installs report their mode. */
     const fake = fakeCtx({ guard: true })
     /** The row-log lines this apply appended, i.e. the boot signature the assertion reads. */
-    const log = await inRowLog("mpd-roles", () => { apply(fake.ctx, { captain: { investigation: "allow" }, delegation: { gate: "allow" } }) })
+    const log = await inRowLog("mpd-roles", () => { apply(fake.ctx, { captain: { investigation: "allow", shell: "allow" }, delegation: { gate: "allow" } }) })
     /** The `team plane:` signature, which carries both resolved modes. */
     const boot = log.lines.find((line) => line.includes("team plane:")) ?? ""
     expect(boot).toContain("captainInvestigation=allow")
+    expect(boot).toContain("captainShell=allow")
     expect(boot).toContain("delegationGate=allow")
   })
 
@@ -339,6 +341,7 @@ describe("row config fallbacks (2026-10-20 restore)", () => {
     /** The `team plane:` signature under the no-config default. */
     const boot = log.lines.find((line) => line.includes("team plane:")) ?? ""
     expect(boot).toContain("captainInvestigation=deny")
+    expect(boot).toContain("captainShell=deny patterns=" + String(CAPTAIN_SHELL_DENY_PATTERNS.length))
     expect(boot).toContain("delegationGate=deny")
   })
 })

@@ -1,6 +1,6 @@
 // packages/mpd-roles-plugin/src/index.ts
-import { existsSync, readFileSync } from "node:fs";
-import { join as join4, resolve as resolve3 } from "node:path";
+import { existsSync as existsSync2, readFileSync } from "node:fs";
+import { join as join5, resolve as resolve3 } from "node:path";
 
 // packages/mpd-roles-plugin/src/roles.data.ts
 var ROLES = [
@@ -198,8 +198,9 @@ function installReadonlyGuard(dsh, options) {
 
 // packages/mpd-verify-plugin/src/law.ts
 var PATH_ARG_KEYS = ["file_path", "path", "filePath", "target"];
+var PATH_LIST_TOOLS = ["mcp__ast_grep__rewrite", "mcp__ast_grep__search"];
 function readTargetPath(toolName, args) {
-  if (toolName === "mcp__ast_grep__rewrite") {
+  if (PATH_LIST_TOOLS.includes(toolName)) {
     const paths = args?.paths;
     if (Array.isArray(paths) && typeof paths[0] === "string")
       return paths[0];
@@ -790,7 +791,23 @@ function sessionIsMpdCaptain(agent) {
 
 // packages/mpd-roles-plugin/src/captain-investigation.ts
 var INVESTIGATION_CONFIG_KEY = "captain.investigation";
-var INVESTIGATION_TOOLS = ["read", "glob", "grep"];
+var INVESTIGATION_TOOLS = [
+  "read",
+  "glob",
+  "grep",
+  "mpd_hashline_read",
+  "mcp__ast_grep__search",
+  "mcp__lsp__find_definition",
+  "mcp__lsp__get_hover",
+  "mcp__lsp__find_references",
+  "mcp__lsp__get_diagnostics",
+  "mcp__lsp__find_workspace_symbols",
+  "mcp__lsp__find_implementation",
+  "mcp__lsp__prepare_call_hierarchy",
+  "mcp__lsp__get_incoming_calls",
+  "mcp__lsp__get_outgoing_calls",
+  "mcp__codegraph__codegraph_explore"
+];
 var CAPTAIN_READABLE_PREFIXES = [".mpd/", "docs/", "evidence/", "agent-references/"];
 var CAPTAIN_INSTRUCTION_BASENAMES = ["AGENT.md", "AGENTS.md", "CLAUDE.md"];
 var CAPTAIN_READABLE_ROOT_FILES = [
@@ -835,6 +852,24 @@ function isInstructionFile(path) {
     return false;
   return CAPTAIN_INSTRUCTION_BASENAMES.some((name) => name.toLowerCase() === base);
 }
+var AST_GREP_SEARCH_TOOL = "mcp__ast_grep__search";
+function astGrepSearchPaths(args) {
+  const paths = args?.paths;
+  if (!Array.isArray(paths))
+    return { entries: [] };
+  const entries = [];
+  let invalid;
+  for (let index = 0;index < paths.length; index += 1) {
+    const entry = paths[index];
+    if (typeof entry === "string" && entry !== "") {
+      entries.push(entry);
+      continue;
+    }
+    if (invalid === undefined)
+      invalid = { index, value: entry };
+  }
+  return invalid === undefined ? { entries } : { entries, invalid };
+}
 function captainInvestigationDecision(input) {
   if (input.mode !== "deny")
     return;
@@ -843,9 +878,21 @@ function captainInvestigationDecision(input) {
   const toolName = String(input.toolName ?? "");
   if (!INVESTIGATION_TOOLS.includes(toolName))
     return;
+  if (toolName === AST_GREP_SEARCH_TOOL) {
+    const searchPaths = astGrepSearchPaths(input.args);
+    if (searchPaths.entries.length === 0)
+      return investigationRefusal(toolName, "(no path argument — a bare search covers the whole workspace)");
+    const offending = searchPaths.entries.find((entry) => !captainReadablePath(input.workspaceRoot, entry));
+    if (offending !== undefined)
+      return investigationRefusal(toolName, JSON.stringify(offending));
+    if (searchPaths.invalid !== undefined) {
+      return investigationRefusal(toolName, "(`paths` entry " + searchPaths.invalid.index + " is not a non-empty string: " + String(JSON.stringify(searchPaths.invalid.value)) + ")");
+    }
+    return;
+  }
   const raw = readTargetPath(toolName, input.args);
   if (raw === undefined)
-    return investigationRefusal(toolName, "(no path argument — a bare call searches the whole workspace)");
+    return investigationRefusal(toolName, "(no path argument — a bare call has no path to judge: it searches the whole workspace, or returns source for a query)");
   if (captainReadablePath(input.workspaceRoot, raw))
     return;
   return investigationRefusal(toolName, JSON.stringify(raw));
@@ -887,6 +934,507 @@ function installCaptainInvestigationGuard(dsh, options) {
     return { installed: true, mode, ...typeof dispose === "function" ? { dispose } : {} };
   } catch (error) {
     options.warn("installing the captain investigation guard failed (" + (error instanceof Error ? error.message : String(error)) + ")");
+    return { installed: false, mode, reason: "install-failed" };
+  }
+}
+
+// packages/mpd-roles-plugin/src/captain-shell.ts
+import { existsSync } from "node:fs";
+import { join as join2 } from "node:path";
+var CAPTAIN_SHELL_CONFIG_KEY = "captain.shell";
+var CAPTAIN_SHELL_TOOLS = ["bash", "powershell", "pwsh"];
+var CAPTAIN_SHELL_DENY_PATTERNS = [
+  { label: "bun-test", pattern: /^(?:sudo\s+)?bun\s+test\b/i, gateShaped: true },
+  { label: "bun-run-gate", pattern: /^(?:sudo\s+)?bun\s+run\s+(?:verify|test)[:_]/i, gateShaped: true },
+  { label: "bun-run-typecheck", pattern: /^(?:sudo\s+)?bun\s+run\s+typecheck\b/i, gateShaped: true },
+  { label: "node-verify-script", pattern: /^(?:sudo\s+)?node\s+scripts\/verify-/i, gateShaped: true },
+  {
+    label: "node-release-script",
+    pattern: /^(?:sudo\s+)?node\s+scripts\/(?:repin-vendor|pack-mpd|docker-e2e|install-profile)/i,
+    gateShaped: true
+  },
+  { label: "qa-scripts", pattern: /^(?:sudo\s+)?(?:bun|node)\s+skills\/dsh-qa\/scripts\//i, gateShaped: true },
+  { label: "npm-pack", pattern: /^(?:sudo\s+)?npm\s+(?:pack|run\s+pack)\b/i, gateShaped: false },
+  { label: "docker", pattern: /^(?:sudo\s+)?docker\b/i, gateShaped: false },
+  { label: "tsc", pattern: /^(?:sudo\s+)?(?:bun|node|npx)\s+.*\btsc\b/i, gateShaped: true },
+  { label: "bun-build", pattern: /^(?:sudo\s+)?bun\s+build\s+packages\//i, gateShaped: true },
+  { label: "npm-test", pattern: /^(?:sudo\s+)?npm\s+(?:run\s+)?(?:test|typecheck)\b/i, gateShaped: true },
+  { label: "npm-run-gate", pattern: /^(?:sudo\s+)?npm\s+run\s+(?:verify|test)[:_]/i, gateShaped: true },
+  { label: "npx-runner", pattern: /^(?:sudo\s+)?npx\s+(?:tsc|tsgo|jest|vitest|mocha)\b/i, gateShaped: true },
+  { label: "bun-typecheck", pattern: /^(?:sudo\s+)?bun\s+typecheck\b/i, gateShaped: true },
+  { label: "pnpm-test", pattern: /^(?:sudo\s+)?pnpm\s+(?:run\s+)?(?:test|typecheck)\b/i, gateShaped: true },
+  { label: "yarn-test", pattern: /^(?:sudo\s+)?yarn\s+(?:run\s+)?(?:test|typecheck)\b/i, gateShaped: true },
+  { label: "bun-run-test", pattern: /^(?:sudo\s+)?bun\s+run\s+test\b/i, gateShaped: true },
+  { label: "bunx-runner", pattern: /^(?:sudo\s+)?(?:bunx|bun\s+x)\s+(?:--\s+)?(?:tsc|tsgo|jest|vitest|mocha)\b/i, gateShaped: true },
+  { label: "pkg-exec-runner", pattern: /^(?:sudo\s+)?(?:(?:npm|pnpm|yarn)\s+exec|(?:pnpm|yarn)\s+dlx)\s+(?:--\s+)?(?:tsc|tsgo|jest|vitest|mocha)\b/i, gateShaped: true }
+];
+var MAX_QUOTED_SEGMENT = 140;
+function resolveCaptainShellMode(raw) {
+  return raw === "allow" ? "allow" : "deny";
+}
+function splitCaptainShellSegments(command) {
+  const segments = [];
+  let current = "";
+  let quote = null;
+  let fedByPipe = false;
+  const flush = (nextFedByPipe) => {
+    const text = current.trim();
+    if (text !== "")
+      segments.push({ text, fedByPipe });
+    current = "";
+    fedByPipe = nextFedByPipe;
+  };
+  for (let index = 0;index < command.length; index += 1) {
+    const char = command[index] ?? "";
+    if (quote === "'") {
+      current += char;
+      if (char === "'")
+        quote = null;
+      continue;
+    }
+    if (quote === '"') {
+      current += char;
+      if (char === "\\" && index + 1 < command.length) {
+        current += command[index + 1] ?? "";
+        index += 1;
+      } else if (char === '"')
+        quote = null;
+      continue;
+    }
+    if (char === "\\") {
+      current += char;
+      if (index + 1 < command.length) {
+        current += command[index + 1] ?? "";
+        index += 1;
+      }
+      continue;
+    }
+    if (char === "'" || char === '"') {
+      quote = char;
+      current += char;
+      continue;
+    }
+    if (char === "&" && command[index + 1] === "&") {
+      flush(false);
+      index += 1;
+      continue;
+    }
+    if (char === "|" && command[index + 1] === "|") {
+      flush(false);
+      index += 1;
+      continue;
+    }
+    if (char === "|") {
+      const withStderr = command[index + 1] === "&";
+      flush(true);
+      if (withStderr)
+        index += 1;
+      continue;
+    }
+    if (char === ";") {
+      flush(false);
+      continue;
+    }
+    if (char === `
+`) {
+      flush(false);
+      continue;
+    }
+    if (char === "\r")
+      continue;
+    current += char;
+  }
+  flush(false);
+  return segments;
+}
+var SHELL_WRAPPER_COMMANDS = ["sudo", "command", "exec", "time", "nohup", "builtin", "env"];
+var SUDO_ARGUMENT_FLAGS = ["-u", "-g", "-C", "-D", "-h", "-p", "-r", "-t", "-T", "-U"];
+var LAUNCHER_BINARY_BASENAMES = ["bun", "node", "npm", "npx", "tsc", "tsgo", "deno", "pnpm", "yarn", "env"];
+var SHELL_ASSIGNMENT_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*=/;
+var RUN_SCRIPT_FLAGS_PATTERN = /\brun\s+(?:-\S+\s+)+/gi;
+function reduceLauncherPath(token) {
+  if (!token.startsWith("/"))
+    return token;
+  const basename = token.slice(token.lastIndexOf("/") + 1).toLowerCase();
+  return LAUNCHER_BINARY_BASENAMES.includes(basename) ? basename : token;
+}
+function normaliseCaptainShellSegment(segment) {
+  let tokens = segment.trim().split(/\s+/u).filter((token) => token !== "");
+  let reduced = true;
+  while (reduced && tokens.length > 0) {
+    reduced = false;
+    const head = (tokens[0] ?? "").toLowerCase();
+    if (SHELL_WRAPPER_COMMANDS.includes(head)) {
+      tokens.shift();
+      reduced = true;
+      while (tokens.length > 0) {
+        const next = tokens[0] ?? "";
+        if (next.startsWith("-")) {
+          tokens.shift();
+          if (head === "sudo" && SUDO_ARGUMENT_FLAGS.includes(next.toLowerCase()))
+            tokens.shift();
+          continue;
+        }
+        if (!SHELL_ASSIGNMENT_PATTERN.test(next))
+          break;
+        tokens.shift();
+      }
+      continue;
+    }
+    if (SHELL_ASSIGNMENT_PATTERN.test(tokens[0] ?? "")) {
+      tokens.shift();
+      reduced = true;
+      continue;
+    }
+    const reducedHead = reduceLauncherPath(tokens[0] ?? "");
+    if (reducedHead !== tokens[0]) {
+      tokens[0] = reducedHead;
+      reduced = true;
+      continue;
+    }
+    break;
+  }
+  const joined = tokens.join(" ");
+  const collapsed = joined.replace(RUN_SCRIPT_FLAGS_PATTERN, "run ");
+  return collapsed.split(/\s+/u).filter((token) => token !== "").join(" ");
+}
+function matchCaptainShellDeny(segment) {
+  const normalised = normaliseCaptainShellSegment(segment);
+  for (const entry of CAPTAIN_SHELL_DENY_PATTERNS) {
+    if (entry.pattern.test(normalised))
+      return entry;
+  }
+  return;
+}
+var READ_VERB_PATTERN_FIRST = ["rg", "grep", "ag", "ack"];
+var READ_VERB_NO_PATTERN = ["find"];
+var READ_VERB_FILE_READERS = [
+  "cat",
+  "head",
+  "tail",
+  "less",
+  "more",
+  "sed",
+  "awk",
+  "strings",
+  "xxd",
+  "od",
+  "nl"
+];
+var CAPTAIN_SHELL_READ_VERBS = [
+  ...READ_VERB_PATTERN_FIRST,
+  ...READ_VERB_NO_PATTERN,
+  ...READ_VERB_FILE_READERS
+];
+var RG_FILES_MODE_FLAG = "--files";
+var GREP_RECURSIVE_FLAG_PATTERN = /^(?:--recursive|--dereference-recursive|-[A-Za-z]*[rR][A-Za-z]*)$/u;
+var REDIRECT_OPERATOR_PATTERN = /^(?:\d*|&)>>?$/u;
+var REDIRECT_ATTACHED_PATTERN = /^(?:\d*|&)>>?\S+$/u;
+var SED_IN_PLACE_PATTERN = /^(?:-[a-zA-Z]*i|--in-place(?:=|$))/u;
+var CD_DYNAMIC_TARGET_CHARS = ["$", "`", "(", ")", "*", "?", "[", "]", "~"];
+function isAbsolutePathToken(token) {
+  return token.startsWith("/") || /^[a-zA-Z]:[\\/]/u.test(token);
+}
+function stripRedirectTargets(tokens) {
+  const kept = [];
+  for (let index = 0;index < tokens.length; index += 1) {
+    const token = tokens[index] ?? "";
+    if (REDIRECT_OPERATOR_PATTERN.test(token)) {
+      index += 1;
+      continue;
+    }
+    if (REDIRECT_ATTACHED_PATTERN.test(token))
+      continue;
+    kept.push(token);
+  }
+  return kept;
+}
+function isSedInPlaceFlag(token) {
+  return SED_IN_PLACE_PATTERN.test(token);
+}
+function isGrepRecursiveFlag(token) {
+  return GREP_RECURSIVE_FLAG_PATTERN.test(token);
+}
+function resolveRelativeDirectory(cwd, target) {
+  const parts = cwd === "" ? [] : cwd.split("/");
+  for (const piece of target.replace(/\\/g, "/").split("/")) {
+    if (piece === "" || piece === ".")
+      continue;
+    if (piece === "..") {
+      if (parts.length === 0)
+        return;
+      parts.pop();
+      continue;
+    }
+    parts.push(piece);
+  }
+  return parts.join("/");
+}
+function applyCaptainShellCd(segment, workspaceRoot, state) {
+  const tokens = normaliseCaptainShellSegment(segment).split(/\s+/u).filter((token) => token !== "");
+  if ((tokens[0] ?? "").toLowerCase() !== "cd")
+    return;
+  if (state.dynamic)
+    return state;
+  const targets = tokens.slice(1).filter((token) => !token.startsWith("-"));
+  const target = targets.length === 0 ? undefined : stripSurroundingQuotes(targets[0] ?? "");
+  if (target === undefined || target === "")
+    return { cwd: "", dynamic: true };
+  if ([...target].some((char) => CD_DYNAMIC_TARGET_CHARS.includes(char)))
+    return { cwd: "", dynamic: true };
+  if (isAbsolutePathToken(target)) {
+    const normalisedTarget = target.replace(/\\/g, "/").replace(/\/+$/u, "");
+    const root = workspaceRoot.replace(/\\/g, "/").replace(/\/+$/u, "");
+    if (root === "" || normalisedTarget !== root && !normalisedTarget.startsWith(root + "/")) {
+      return { cwd: "", dynamic: true };
+    }
+    if (normalisedTarget === root)
+      return { cwd: "", dynamic: false };
+    const relative = resolveRelativeDirectory("", normalisedTarget.slice(root.length + 1));
+    return relative === undefined ? { cwd: "", dynamic: true } : { cwd: relative, dynamic: false };
+  }
+  const next = resolveRelativeDirectory(state.cwd, target);
+  return next === undefined ? { cwd: "", dynamic: true } : { cwd: next, dynamic: false };
+}
+function stripSurroundingQuotes(token) {
+  if (token.length < 2)
+    return token;
+  const first = token[0];
+  if ((first === '"' || first === "'") && token.endsWith(first))
+    return token.slice(1, -1);
+  return token;
+}
+var COMMAND_SUBSTITUTION_OPENERS = ["$(", "`"];
+function hasCommandSubstitution(command) {
+  return COMMAND_SUBSTITUTION_OPENERS.some((opener) => command.includes(opener));
+}
+function captainShellSubstitutionBodies(command) {
+  const bodies = [];
+  for (let index = 0;index < command.length; index += 1) {
+    const char = command[index] ?? "";
+    if (char === "\\") {
+      index += 1;
+      continue;
+    }
+    if (char === "`") {
+      let close2 = -1;
+      for (let scan = index + 1;scan < command.length; scan += 1) {
+        const inner = command[scan] ?? "";
+        if (inner === "\\") {
+          scan += 1;
+          continue;
+        }
+        if (inner === "`") {
+          close2 = scan;
+          break;
+        }
+      }
+      if (close2 === -1)
+        break;
+      const body2 = command.slice(index + 1, close2);
+      bodies.push(body2, ...captainShellSubstitutionBodies(body2));
+      index = close2;
+      continue;
+    }
+    if (char !== "$" || command[index + 1] !== "(")
+      continue;
+    let depth = 1;
+    let close = -1;
+    for (let scan = index + 2;scan < command.length; scan += 1) {
+      const inner = command[scan] ?? "";
+      if (inner === "\\") {
+        scan += 1;
+        continue;
+      }
+      if (inner === "(")
+        depth += 1;
+      if (inner === ")") {
+        depth -= 1;
+        if (depth === 0) {
+          close = scan;
+          break;
+        }
+      }
+    }
+    if (close === -1)
+      break;
+    const body = command.slice(index + 2, close);
+    bodies.push(body, ...captainShellSubstitutionBodies(body));
+    index = close;
+  }
+  return bodies;
+}
+function captainShellSubstitutionReadRefusal(body, context) {
+  const pathExists = (raw) => raw.includes("/") || context.pathExists(raw);
+  return captainShellReadViolation(body, {
+    workspaceRoot: context.workspaceRoot,
+    pathExists,
+    fedByPipe: false,
+    cwd: context.cwd,
+    cwdDynamic: context.cwdDynamic
+  });
+}
+function captainShellReadRefusalText(segment) {
+  const shown = segment.length > MAX_QUOTED_SEGMENT ? segment.slice(0, MAX_QUOTED_SEGMENT - 1) + "…" : segment;
+  return '[mpd-roles] captain shell: REFUSED — "' + shown + '" reads workspace content through the shell, and' + ` reconnaissance is not the captain's job. Delegate it: mpd_role_spawn {role:"Explorer", task:"find what` + ' you need and report it"}. The documentation band (.mpd/, docs/, evidence/, agent-references/), the' + ' instruction files and the named root documents stay readable; captain.shell:"allow" in mpd.jsonc is' + " the configuration opt-out.";
+}
+function captainShellReadViolation(segment, context) {
+  const tokens = normaliseCaptainShellSegment(segment).split(/\s+/u).filter((token) => token !== "");
+  const verb = (tokens[0] ?? "").toLowerCase();
+  if (verb === "sed" && tokens.slice(1).some((token) => isSedInPlaceFlag(token)))
+    return;
+  if (!CAPTAIN_SHELL_READ_VERBS.includes(verb))
+    return;
+  const nonFlags = stripRedirectTargets(tokens.slice(1).filter((token) => !token.startsWith("-"))).map(stripSurroundingQuotes);
+  const filesMode = verb === "rg" && tokens.slice(1).some((token) => token === RG_FILES_MODE_FLAG);
+  const patternFirst = READ_VERB_PATTERN_FIRST.includes(verb) && !filesMode;
+  const search = patternFirst || filesMode || READ_VERB_NO_PATTERN.includes(verb);
+  const candidates = patternFirst ? nonFlags.slice(1) : nonFlags;
+  let judged = 0;
+  for (const raw of candidates) {
+    if (!isAbsolutePathToken(raw) && context.cwdDynamic)
+      return captainShellReadRefusalText(segment);
+    const resolved = isAbsolutePathToken(raw) || context.cwd === "" ? raw : context.cwd + "/" + raw;
+    const exists = context.pathExists(resolved);
+    const inBand = captainReadablePath(context.workspaceRoot, resolved);
+    if (!exists && !inBand)
+      continue;
+    judged += 1;
+    if (!inBand)
+      return captainShellReadRefusalText(segment);
+  }
+  if (judged > 0)
+    return;
+  const recursiveGrep = verb === "grep" && tokens.slice(1).some((token) => isGrepRecursiveFlag(token));
+  const readsPipe = patternFirst && context.fedByPipe && !recursiveGrep;
+  return search && !readsPipe ? captainShellReadRefusalText(segment) : undefined;
+}
+function captainShellDecision(input) {
+  if (input.mode !== "deny")
+    return;
+  if (!input.topLevel)
+    return;
+  const toolName = String(input.toolName ?? "");
+  if (!CAPTAIN_SHELL_TOOLS.includes(toolName))
+    return;
+  const raw = input.args?.command;
+  if (typeof raw !== "string")
+    return;
+  const segments = splitCaptainShellSegments(raw);
+  for (const segment of segments) {
+    const entry = matchCaptainShellDeny(segment.text);
+    if (entry !== undefined)
+      return captainShellRefusal(segment.text, entry);
+  }
+  const whole = raw.trim();
+  if (whole !== "") {
+    const entry = matchCaptainShellDeny(whole);
+    if (entry !== undefined)
+      return captainShellRefusal(whole, entry);
+  }
+  let directory = { cwd: "", dynamic: false };
+  for (const segment of segments) {
+    for (const body of captainShellSubstitutionBodies(segment.text)) {
+      const substitutedRead = captainShellSubstitutionReadRefusal(body, {
+        workspaceRoot: input.workspaceRoot,
+        pathExists: input.pathExists,
+        fedByPipe: false,
+        cwd: directory.cwd,
+        cwdDynamic: directory.dynamic
+      });
+      if (substitutedRead !== undefined)
+        return substitutedRead;
+    }
+    const moved = applyCaptainShellCd(segment.text, input.workspaceRoot, directory);
+    if (moved !== undefined) {
+      directory = moved;
+      continue;
+    }
+    const read = captainShellReadViolation(segment.text, {
+      workspaceRoot: input.workspaceRoot,
+      pathExists: input.pathExists,
+      fedByPipe: segment.fedByPipe,
+      cwd: directory.cwd,
+      cwdDynamic: directory.dynamic
+    });
+    if (read !== undefined)
+      return read;
+  }
+  if (hasCommandSubstitution(raw) && whole !== "") {
+    const read = captainShellReadViolation(whole, {
+      workspaceRoot: input.workspaceRoot,
+      pathExists: input.pathExists,
+      fedByPipe: false,
+      cwd: "",
+      cwdDynamic: false
+    });
+    if (read !== undefined)
+      return read;
+    for (const body of captainShellSubstitutionBodies(raw)) {
+      const substitutedRead = captainShellSubstitutionReadRefusal(body, {
+        workspaceRoot: input.workspaceRoot,
+        pathExists: input.pathExists,
+        fedByPipe: false,
+        cwd: "",
+        cwdDynamic: false
+      });
+      if (substitutedRead !== undefined)
+        return substitutedRead;
+    }
+  }
+  return;
+}
+function captainShellRefusal(segment, entry) {
+  const shown = segment.length > MAX_QUOTED_SEGMENT ? segment.slice(0, MAX_QUOTED_SEGMENT - 1) + "…" : segment;
+  const evidenceClause = entry.gateShaped ? ' mpd_verify_evidence {kind:"gate"} is refused for the captain too (verify.evidenceBy), so the delegate records it.' : "";
+  return '[mpd-roles] captain shell: REFUSED — "' + shown + '" is a verification command and verification is not' + ` the captain's job. Delegate it: mpd_role_spawn {role:"Reviewer", task:"run <exact command> and` + ' report the outcome"}. bash stays yours for git, filesystem and bookkeeping; captain.shell:"allow"' + " in mpd.jsonc is the configuration opt-out." + evidenceClause;
+}
+function captainShellPathExists(workspaceRoot, raw) {
+  try {
+    if (raw === "")
+      return false;
+    const absolute = raw.startsWith("/") || /^[a-zA-Z]:[\\/]/u.test(raw);
+    return existsSync(absolute || workspaceRoot === "" ? raw : join2(workspaceRoot, raw));
+  } catch {
+    return false;
+  }
+}
+function installCaptainShellGuard(dsh, options) {
+  const mode = resolveCaptainShellMode(options.configValue(CAPTAIN_SHELL_CONFIG_KEY));
+  try {
+    if (dsh.capabilities().toolsGuard !== true) {
+      options.warn("the harness exposes no tools.guard seam — the captain shell guard is NOT installed " + "(the top-level session keeps its shell on verification commands; the rule lives in the instruction text only)");
+      return { installed: false, mode, reason: "no-guard-seam" };
+    }
+    let reportedInternalError = false;
+    const dispose = dsh.guardTool((exec) => {
+      try {
+        const workspaceRoot = (() => {
+          try {
+            return dsh.workspaceRoot(exec);
+          } catch {
+            return "";
+          }
+        })();
+        return captainShellDecision({
+          toolName: String(exec?.name ?? ""),
+          args: exec?.arguments,
+          workspaceRoot,
+          pathExists: (raw) => captainShellPathExists(workspaceRoot, raw),
+          topLevel: sessionIsMpdCaptain(exec?.agent),
+          mode: resolveCaptainShellMode(options.configValue(CAPTAIN_SHELL_CONFIG_KEY))
+        });
+      } catch (error) {
+        if (!reportedInternalError) {
+          reportedInternalError = true;
+          options.warn("the captain shell guard hit an internal error and passed the call through (" + (error instanceof Error ? error.message : String(error)) + ")");
+        }
+        return;
+      }
+    });
+    return { installed: true, mode, ...typeof dispose === "function" ? { dispose } : {} };
+  } catch (error) {
+    options.warn("installing the captain shell guard failed (" + (error instanceof Error ? error.message : String(error)) + ")");
     return { installed: false, mode, reason: "install-failed" };
   }
 }
@@ -1606,8 +2154,8 @@ function bundleRootOf(moduleUrl) {
 // packages/mpd-mcp-shared/log-sink.ts
 import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { isAbsolute, join as join2, relative, resolve, sep } from "node:path";
-var LOG_SUBDIR = join2(".mpd", "logs");
+import { isAbsolute, join as join3, relative, resolve, sep } from "node:path";
+var LOG_SUBDIR = join3(".mpd", "logs");
 var DEFAULT_MAX_BYTES = 1024 * 1024;
 var DEFAULT_MAX_LINE_BYTES = 8192;
 var DEFAULT_RING_LINES = 64;
@@ -1644,9 +2192,9 @@ function resolveLogRoots(env = process.env, cwd) {
 }
 function tryOpenRoot(root, name) {
   try {
-    const dir = join2(root, LOG_SUBDIR);
+    const dir = join3(root, LOG_SUBDIR);
     mkdirSync(dir, { recursive: true });
-    const file = join2(dir, `${name}.log`);
+    const file = join3(dir, `${name}.log`);
     return { fd: openSync(file, "a"), file };
   } catch {
     return null;
@@ -4891,7 +5439,7 @@ function roleSpawnCard(args, value) {
 
 // packages/mpd-roles-plugin/src/spawn-async.ts
 import { mkdirSync as mkdirSync2, writeFileSync } from "node:fs";
-import { join as join3 } from "node:path";
+import { join as join4 } from "node:path";
 var CONSULT_FORCE_AFTER_MS = 900000;
 var CONSULT_TOOL_IN_FLIGHT_MAX_MS = 900000;
 var CONSULT_MAX_DEFAULT = 8;
@@ -4973,7 +5521,7 @@ function createConsultSupervisor(deps) {
     done.catch(() => {
       return;
     });
-    return { id, role: input.role, task: input.task, exec: input.exec, state: "running", startedAt: now(), done, resolve: settle2, reject: fail, reported: false, released: false, held: false };
+    return { id, role: input.role, task: input.task, exec: input.exec, state: "running", startedAt: now(), done, resolve: settle2, reject: fail, reported: false, released: false, held: false, ...input.onSettled === undefined ? {} : { onSettled: input.onSettled } };
   };
   const reportFrom = (record, result) => {
     const structured = result.structured ?? {};
@@ -4988,6 +5536,16 @@ function createConsultSupervisor(deps) {
       consultId: record.id,
       elapsedMs: now() - record.startedAt
     };
+  };
+  const notifySettled = (record) => {
+    const observer = record.onSettled;
+    if (observer === undefined)
+      return;
+    try {
+      observer({ ...viewOf(record), ...record.report === undefined ? {} : { report: record.report }, ...record.failure === undefined ? {} : { error: record.failure } });
+    } catch (error) {
+      deps.log("mpd_role_spawn_async: the onSettled observer threw (" + (error instanceof Error ? error.message : String(error)) + ") — the consult settled anyway");
+    }
   };
   const finish = (record, report) => {
     if (record.reported)
@@ -5006,6 +5564,7 @@ function createConsultSupervisor(deps) {
       release();
     }
     record.resolve(record.report);
+    notifySettled(record);
   };
   const failRecord = (record, error) => {
     if (record.reported)
@@ -5022,6 +5581,7 @@ function createConsultSupervisor(deps) {
       release();
     }
     record.reject(error);
+    notifySettled(record);
   };
   const describeCall = (call) => {
     const args = call.arguments === undefined ? "" : JSON.stringify(call.arguments);
@@ -5052,7 +5612,7 @@ function createConsultSupervisor(deps) {
       const dir = deps.handoffDir(record.exec);
       mkdirSync2(dir, { recursive: true });
       const instant = new Date(now()).toISOString().replace(/[:.]/g, "-");
-      const path = join3(dir, "consult-" + record.id + "-" + instant + ".md");
+      const path = join4(dir, "consult-" + record.id + "-" + instant + ".md");
       const calls = activity === undefined ? [] : activity.history;
       const open = activity?.current;
       const openAgeMs = open === undefined ? 0 : Math.max(0, now() - open.startedAt);
@@ -5275,6 +5835,59 @@ function createConsultSupervisor(deps) {
   return { start, settle, wait, collect, cancel, list };
 }
 
+// packages/mpd-roles-plugin/src/consults.ts
+function createMpConsults(deps) {
+  const viewOf = (consultId) => deps.supervisor.list().find((entry) => entry.consultId === consultId);
+  const settledView = (consultId) => {
+    const view = viewOf(consultId);
+    if (view === undefined)
+      throw new Error("mpdConsults: unknown consultId " + JSON.stringify(consultId) + " — it was collected, cancelled and collected, or never started");
+    return view;
+  };
+  return {
+    canonicalRole: (role, exec) => {
+      const canonical = deps.canonicalRole(String(role ?? ""), exec);
+      return canonical === null ? undefined : canonical;
+    },
+    start: async (spec) => {
+      const role = deps.canonicalRole(spec.role, spec.exec);
+      if (role === null)
+        throw new Error("mpdConsults: unknown role " + JSON.stringify(spec.role) + " — pass a roster NAME (see mpd_roles_list)");
+      const task = String(spec.task ?? "").trim();
+      if (task === "")
+        throw new Error("mpdConsults: task required");
+      const view = deps.supervisor.start({
+        role,
+        task,
+        ...spec.context === undefined ? {} : { context: String(spec.context) },
+        exec: spec.exec,
+        raise: () => deps.raise({ ...spec, role, task }),
+        ...spec.onSettled === undefined ? {} : { onSettled: spec.onSettled }
+      });
+      return { consultId: view.consultId, role, state: "running", startedAt: view.startedAt };
+    },
+    list: () => deps.supervisor.list(),
+    wait: async (consultId, timeoutMs) => {
+      await deps.supervisor.wait(consultId, timeoutMs ?? 30000);
+      return settledView(consultId);
+    },
+    settle: async (consultId) => {
+      try {
+        await deps.supervisor.settle(consultId);
+      } catch {}
+      return settledView(consultId);
+    },
+    collect: (consultId) => {
+      try {
+        return deps.supervisor.collect(consultId);
+      } catch {
+        return;
+      }
+    },
+    cancel: (consultId) => deps.supervisor.cancel(consultId)
+  };
+}
+
 // packages/mpd-roles-plugin/src/index.ts
 var name = "mpd-roles";
 var inject = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_SUBAGENTS);
@@ -5351,12 +5964,12 @@ function roleOfToolInput(surface, key) {
   return surface.roles.find((role) => role.extension !== null && (role.id === raw || normalizeRoleNameKey(role.name) === nameKey)) ?? null;
 }
 function personaPath(config, spec) {
-  return config.personasDir ? join4(resolve3(config.personasDir), spec.id + ".md") : join4(pkgRoot(), "packages", "mpd-roles-plugin", "personas", spec.id + ".md");
+  return config.personasDir ? join5(resolve3(config.personasDir), spec.id + ".md") : join5(pkgRoot(), "packages", "mpd-roles-plugin", "personas", spec.id + ".md");
 }
 function readPersona(config, spec) {
   const p = personaPath(config, spec);
   try {
-    if (existsSync(p)) {
+    if (existsSync2(p)) {
       const t = readFileSync(p, "utf8").trim();
       if (t)
         return t;
@@ -5407,7 +6020,7 @@ function readExtensionPersona(root, file) {
     return null;
   try {
     const path = resolve3(root, file);
-    if (existsSync(path)) {
+    if (existsSync2(path)) {
       const body = readFileSync(path, "utf8").trim();
       if (body)
         return body;
@@ -5733,13 +6346,22 @@ function apply(ctx, config = {}) {
     });
   }
   const consultSupervisor = createConsultSupervisor({
-    handoffDir: (target) => join4(dsh.workspaceRoot(target), ".mpd", "handoff"),
+    handoffDir: (target) => join5(dsh.workspaceRoot(target), ".mpd", "handoff"),
     log: (line) => warn(line),
     activityOf: (childId, role) => childId === undefined || childId === "" ? toolActivity.get(consultLabelKey(role)) : toolActivity.get(childId),
     maxConcurrent: () => consultMaxFromEnv(),
     forceAfterMs: () => consultDeadmanBound(),
     toolInFlightMaxMs: () => consultInFlightBound()
   });
+  ctx.provide("mpdConsults", createMpConsults({
+    supervisor: consultSupervisor,
+    raise: (spec) => raiseConsultAsync(spec, spec.exec, spec.maxDepth),
+    canonicalRole: (role, exec) => {
+      const surface = roleSurface(exec);
+      const spec = roleOfToolInput(surface, String(role ?? ""));
+      return spec === null ? null : spec.name;
+    }
+  }));
   dsh.registerTool({
     name: "mpd_roles_list",
     description: "List the specialist roster — the SAME normal-named specialists team mode stages as teammates, each named for what it does: " + rosterFunctionList() + ". Address a role by that name (any case, space or hyphen spelling). Use this before mpd_role_spawn; for team work stage the roster with `agent_teams_plan` (add_member with the persona text from mpd_role_persona → create_task with its dependency answer → approve) instead of repeated single-call consults.",
@@ -5826,7 +6448,7 @@ Work with the tools your role requires (read-only roles must never modify anythi
       }
     }
   });
-  async function raiseConsultAsync(args, exec) {
+  async function raiseConsultAsync(args, exec, maxDepth) {
     const surface = roleSurface(exec);
     const spec = roleOfToolInput(surface, String(args?.role ?? ""));
     if (spec === null)
@@ -5850,6 +6472,7 @@ Context:
 ` + String(args.context) : "") + `
 
 Work with the tools your role requires (read-only roles must never modify anything). End with ONLY the structured report (role/summary/recommendation/details/evidence).`;
+    const depthCap = typeof maxDepth === "number" && Number.isFinite(maxDepth) && maxDepth >= 1 ? Math.floor(maxDepth) : spawnMaxDepthOf(exec.agent);
     return dsh.spawnAgentAsync({
       label: spec.name,
       prompt,
@@ -5859,7 +6482,7 @@ Work with the tools your role requires (read-only roles must never modify anythi
       model: run.route.model,
       persona: spec.persona,
       outputSchema: REPORT_SCHEMA,
-      maxDepth: spawnMaxDepthOf(exec.agent),
+      maxDepth: depthCap,
       ...run.route.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: run.route.reasoningEffort } },
       ...spec.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {}
     });
@@ -5950,6 +6573,8 @@ state: ` + v.state + " elapsed: " + v.elapsedMs + "ms" : "")) },
       return config.boulder?.dir;
     if (key === INVESTIGATION_CONFIG_KEY)
       return config.captain?.investigation;
+    if (key === CAPTAIN_SHELL_CONFIG_KEY)
+      return config.captain?.shell;
     if (key === DELEGATION_CONFIG_KEY)
       return config.delegation?.gate;
     if (key === CONSULT_FORCE_KEY)
@@ -6000,6 +6625,16 @@ state: ` + v.state + " elapsed: " + v.elapsedMs + "ms" : "")) },
   } catch (error) {
     guardOutcome.push("captainInvestigation=absent reason=threw");
     warnOnce("captain-investigation:threw", "the captain investigation guard could not be installed (" + errText(error) + ")");
+  }
+  try {
+    const shell = installCaptainShellGuard(dsh, {
+      configValue,
+      warn: (line) => warnOnce("captain-shell:" + line, line)
+    });
+    guardOutcome.push(shell.installed ? shell.mode === "allow" ? "captainShell=allow" : "captainShell=deny patterns=" + String(CAPTAIN_SHELL_DENY_PATTERNS.length) : "captainShell=absent reason=" + String(shell.reason));
+  } catch (error) {
+    guardOutcome.push("captainShell=absent reason=threw");
+    warnOnce("captain-shell:threw", "the captain shell guard could not be installed (" + errText(error) + ")");
   }
   try {
     const delegation = installDelegationGate(dsh, {

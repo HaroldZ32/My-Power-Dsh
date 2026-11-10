@@ -1,0 +1,47 @@
+PASS  clean control: a legal manifest, v1 view and host half produce no finding
+PASS  missing dshGo manifest
+PASS  protocol version not 1
+PASS  contributes is not an object
+PASS  a manifest over the 16 KiB budget
+PASS  a slot that is not an array
+PASS  more panels than the protocol allows
+PASS  an id that breaks the protocol pattern
+PASS  the same id declared by two slots
+PASS  an over-length label is a NOTE, not a failure
+PASS  an unknown want value
+PASS  `message` wanted with no message.actions
+PASS  an effect kind outside the six static kinds
+PASS  more than four effects on one action
+PASS  an unknown panel placement
+PASS  an unknown presentation
+PASS  a strip naming an undeclared panel
+PASS  a declared view file that does not exist
+PASS  no engines.dsh is a NOTE
+PASS  no dsh.bundle.patch
+PASS  a declared patch file that does not exist
+PASS  a static view that is not JSON
+PASS  a static view whose root is not a component
+PASS  a v2-only component in a static view
+PASS  an unknown component name in a static view
+PASS  a data binding in a static view
+PASS  a static view over the node budget
+PASS  a static view over the depth budget
+PASS  a static view carrying a style key
+PASS  a static view whose text is empty
+PASS  an image with a web address in a static view
+PASS  a static view declaring v2
+PASS  a static view over the byte budget
+PASS  a tool card builder that constructs a tappable node is a NOTE
+PASS  COMPAT: a v2-only component in a DECLARED static view is refused
+PASS  COMPAT: a data binding in a DECLARED static view is refused
+PASS  COMPAT: a declared static view that does not resolve
+PASS  HOST: a declared panel with no panel registration
+PASS  HOST: a tappable id with no handler
+PASS  HOST: a registration for an id the manifest does not declare
+PASS  HOST: the optional-inject spelling
+PASS  HOST: a top-level inject array carrying dshGo
+PASS  the kit's budget table drifting from the spec is refused
+PASS  HOST: no binding form at all
+PASS  C5 PIN: one perturbed site disagreeing with the seven others
+PASS  C5 PIN: a site that states no 40-hex commit
+[dshgo-standard] SELF-TEST PASS — 46 arms (1 clean control + 45 negative controls)

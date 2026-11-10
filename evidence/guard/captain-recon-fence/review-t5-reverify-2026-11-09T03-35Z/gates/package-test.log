@@ -1,0 +1,6 @@
+(pass) CONTROL: the forwarded cap disturbs neither the route nor the prompt the spawn already carried [0.57ms]
+
+ 365 pass
+ 0 fail
+ 2657 expect() calls
+Ran 365 tests across 18 files. [1025.00ms]

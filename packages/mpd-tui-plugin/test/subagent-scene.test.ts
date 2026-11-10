@@ -29,6 +29,7 @@ import {
   teamGraphView,
 } from "../src/subagent-scene"
 import { legendLines } from "../src/graph"
+import { DAG_CHROME } from "../src/dag-theme"
 import type { TeamWorkflow } from "../src/team-state"
 
 // ── fixtures ────────────────────────────────────────────────────────────────
@@ -931,7 +932,11 @@ describe("the merged panel draws the graph legend under its DAG", () => {
     const merged = readFileSync(join(import.meta.dir, "..", "src", "subagent-scene.ts"), "utf8")
     /** The team scene's source. */
     const team = readFileSync(join(import.meta.dir, "..", "src", "scenes.ts"), "utf8")
-    expect(merged).toContain("legendLines(measured.cols)")
+    // BOTH SCENES NOW NAME THE FRAME'S INTERIOR, which is the ONE content width this wave derives
+    // (`panelSurfaceWidth`): the merged scene computes it once per render as `contentCols`, the team
+    // scene receives it as its pass width. The wiring assertion is unchanged in kind — the frozen
+    // interface is still called with the width the drawing was laid out for.
+    expect(merged).toContain("legendLines(contentCols)")
     expect(team).toContain("legendLines(graphWidth)")
   })
 })
@@ -1037,5 +1042,148 @@ describe("AC6 · the scene opens on the requested member's detail", () => {
     const text = render(makeKit(channelFixture([DETAIL_ROW])), component)
     expect(text).toContain("details: that subagent is no longer in the channel")
     expect(text).toContain("task dependency graph")
+  })
+})
+
+// ── the merged scene's HORIZONTAL rail (frozen criteria I1/I2) ─────────────
+//
+// THE USER'S REPORT was specifically the HORIZONTAL scrollbar. This surface still lays its team DAG out
+// at its NATURAL width and pans it (frozen clauses T1/T2), so it is the one scene that draws a
+// horizontal rail on a real board — and the rail used to be a bare `Text` with no pointer props, which
+// the host's drag protocol cannot even hit-test. The arms below drive the element the scene RENDERED and
+// read the offset off the drawing's own header token (`⇠offset/width→`), so the assertion is a NUMBER
+// and not "something moved".
+
+/** One team projection whose DAG is wider than the scene's 96-cell interior. */
+function wideWorkflow(): TeamWorkflow {
+  /** The base fixture, reshaped. */
+  const workflow = workflowFixture()
+  /** Tasks in ONE rank, each with a subject long enough that the natural drawing overflows. */
+  const tasks = Array.from({ length: 12 }, (_entry, index) => ({
+    id: `W${index + 1}`,
+    subject: `task ${index + 1} with a subject long enough to widen the drawing`,
+    kind: "work",
+    status: "pending",
+    visual: "open",
+    dependencies: [] as string[],
+    failedDependencies: [] as string[],
+    depth: 0,
+  }))
+  return {
+    ...workflow,
+    tasks,
+    counts: { total: tasks.length, completed: 0, inProgress: 0, pending: tasks.length, claimed: 0, failed: 0, cancelled: 0, other: 0 },
+  }
+}
+
+/**
+ * The horizontal window's own position, read off the drawing's header token.
+ * @param text - the flattened rendered text.
+ * @returns the offset and the drawing's width, or undefined when the token is absent (no pan).
+ */
+function panOf(text: string): { at: number; width: number } | undefined {
+  /** The token the scene prints while the drawing is pannable. */
+  const matched = /⇠(\d+)\/(\d+)→/u.exec(text)
+  return matched === null ? undefined : { at: Number(matched[1]), width: Number(matched[2]) }
+}
+
+/**
+ * The rail's cell row, as the scene drew it.
+ * @param tree - the tree the kit last flattened.
+ * @returns the one-row rail's characters, or "" when this render drew no rail.
+ */
+function horizontalRail(tree: unknown): string {
+  /** The rail's Text, found by the key the shared builder gives it. */
+  const cell = elementByKey(tree, "hrail")
+  if (cell === undefined) return ""
+  /** Every character inside it, spans joined with nothing. */
+  const inline = (node: unknown): string => {
+    if (node === null || node === undefined) return ""
+    if (typeof node === "string") return node
+    if (typeof node === "number") return String(node)
+    if (Array.isArray(node)) return node.map(inline).join("")
+    /** This node as an element, the only shape left after the guards. */
+    const element = node as Element
+    return inline(element.props?.children) + inline(element.children ?? [])
+  }
+  return inline(cell.children ?? [])
+}
+
+describe("the merged scene's horizontal rail answers the pointer", () => {
+  test("a grab commits nothing, one cell moves by the DELTA, and the cells track the window", () => {
+    /** The scene over a board wider than its interior. */
+    const component = createSubagentSceneComponent(() => wideWorkflow(), undefined, undefined, undefined, () => FIXED_NOW)
+    /** The host kit. */
+    const kit = makeKit()
+    /** The scene at the left edge of the drawing. */
+    const atLeft = render(kit, component)
+    /** The pan this render reports. */
+    const start = panOf(atLeft)
+    // ASSERTED, NOT ASSUMED: without an overflowing drawing there is no horizontal window to drag, and
+    // the whole arm would pass vacuously. The interior is 96 (`panelSurfaceWidth(100)`).
+    expect(start).toBeDefined()
+    expect(start?.at).toBe(0)
+    expect(start?.width ?? 0).toBeGreaterThan(96)
+    // THE RAIL IS A BOX (criterion I1), never the bare `Text` the user reported: the drag props live on
+    // the element, and its one child is the text row.
+    /** The rail's track element. */
+    const track = elementByKey(kit.last(), "hrail-track")
+    expect(track).toBeDefined()
+    expect(track?.type).toBe(kit.ui.Box)
+    for (const phase of ["onDragStart", "onDragMove", "onDragEnd"] as const) {
+      expect(typeof track?.props?.[phase]).toBe("function")
+    }
+    // THE BAND, in numbers: `max = width - 96` columns; the thumb is `floor(96² / width)` cells of the
+    // 96-cell rail, so the track the pointer scrubs along is `96 - thumb`.
+    /** The pan's furthest offset. */
+    const max = (start?.width ?? 0) - 96
+    /** The rail's cells at the left edge. */
+    const cellsAtLeft = horizontalRail(kit.last())
+    expect(cellsAtLeft.length).toBe(96)
+    /** The thumb's own length, read off the pixels. */
+    const thumb = [...cellsAtLeft].filter((cell) => cell === DAG_CHROME.barFull).length
+    expect(thumb).toBeGreaterThan(0)
+    /** The cells the pointer can actually scrub along. */
+    const travel = 96 - thumb
+    expect(travel).toBeGreaterThan(1)
+    // THE GRAB: press far from the thumb, with the press origin's absolute pair supplied (the host's own
+    // protocol shape). Nothing is committed.
+    ;(track?.props?.onDragStart as (event: unknown) => void)({ localCol: 20, col: 100, startCol: 100 })
+    expect(panOf(render(kit, component))?.at).toBe(0)
+    // THE ANCHOR SURVIVES THE RE-RENDER: the move is delivered to the SECOND rail element, which is the
+    // element the host would hit-test after that render.
+    /** The next render's rail. */
+    const nextTrack = elementByKey(kit.last(), "hrail-track")
+    expect(nextTrack).not.toBe(track)
+    ;(nextTrack?.props?.onDragMove as (event: unknown) => void)({ localCol: 21, col: 101, startCol: 100 })
+    /** The scene after one cell of pointer travel. */
+    const moved = render(kit, component)
+    /** Where the drawing's window now starts. */
+    const movedAt = panOf(moved)?.at
+    /** The DELTA the contract states: `anchor.offset + round((cell − anchor.cell) / travel * max)`. */
+    const deltaStep = Math.round((1 / travel) * max)
+    /** What the ABSOLUTE mapping would have committed at cell 21 — the jump this arm exists to exclude. */
+    const absolute = Math.round((21 / travel) * max)
+    expect(movedAt).toBe(deltaStep)
+    // …AND THE TWO ARE DISTINGUISHABLE, or the assertion above would prove nothing.
+    expect(absolute).toBeGreaterThan(deltaStep)
+    // THE CELLS TRACK THE CLAMPED OFFSET: the rail is a different row of the same length, and its thumb
+    // moved by the same fraction the window did.
+    /** The rail's cells after the drag. */
+    const cellsMoved = horizontalRail(kit.last())
+    expect(cellsMoved).not.toBe(cellsAtLeft)
+    expect(cellsMoved.length).toBe(96)
+    // THE RELEASE CLEARS THE ANCHOR AND KEEPS THE POSITION.
+    ;(nextTrack?.props?.onDragEnd as (event: unknown) => void)({ localCol: 21 })
+    expect(panOf(render(kit, component))?.at).toBe(deltaStep)
+    // AND THE FAR EDGE IS A REAL STOP: holding `⇧→` walks to `max` and clamps there, with the thumb at
+    // the end of the rail — the "cells still track the clamped offset" half of the same criterion.
+    for (let press = 0; press < max + 4; press += 1) kit.press("", { rightArrow: true, shift: true })
+    /** The scene at the right edge. */
+    const atRight = render(kit, component)
+    expect(panOf(atRight)?.at).toBe(max)
+    /** The rail's cells at the right edge. */
+    const cellsAtRight = horizontalRail(kit.last())
+    expect(cellsAtRight.endsWith(DAG_CHROME.barFull)).toBe(true)
   })
 })

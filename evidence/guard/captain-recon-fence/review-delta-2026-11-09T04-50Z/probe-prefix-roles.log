@@ -1,0 +1,12 @@
+PRE-FIX (HEAD 754b5aa2) table length: 16
+ALLOW  "bun run test"
+ALLOW  "bunx tsgo --noEmit"
+ALLOW  "bun x tsgo"
+ALLOW  "npm exec tsc"
+ALLOW  "pnpm dlx tsc"
+ALLOW  "yarn dlx tsc"
+ALLOW  "true | grep -rn TODO"
+ALLOW  "git log | grep -r fix"
+ALLOW  "git log | grep fix"
+ALLOW  "git log | grep -rn TODO docs/"
+ALLOW  "git log | grep --recursive fix"

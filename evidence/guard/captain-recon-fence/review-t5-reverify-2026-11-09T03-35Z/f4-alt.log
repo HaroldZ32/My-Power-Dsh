@@ -1,0 +1,4 @@
+ALLOWED  "rg --files -g '*.md' docs/"
+ALLOWED  "rg --files --glob '*.md' docs/"
+REFUSED  "rg --files docs/ packages/mpd-roles-plugin/src/index.ts"
+ALLOWED  "rg --files docs/ packages/nope.ts"

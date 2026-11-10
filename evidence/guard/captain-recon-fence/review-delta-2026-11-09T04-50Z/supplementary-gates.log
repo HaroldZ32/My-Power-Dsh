@@ -1,0 +1,12 @@
+# Supplementary gates run AFTER the verification record was written (verdict unchanged).
+# Pinned toolchain bun 1.4.0 from the repo root.
+
+## .toolchain/node_modules/.bin/bun run typecheck
+$ tsgo --noEmit
+[exit: 0]
+
+## .toolchain/node_modules/.bin/bun run verify:comments
+scanned 618 TypeScript file(s) of 618 in the source set; inspected 55565 declaration(s); skipped 27209 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+[exit: 0]

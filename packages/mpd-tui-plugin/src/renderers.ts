@@ -55,6 +55,22 @@ function statusGlyph(value: unknown): string | undefined {
 }
 
 /**
+ * One epoch-millisecond payload instant as an ISO-8601 string, or undefined when it is not representable.
+ *
+ * `Number.isFinite` ALONE DOES NOT MAKE `toISOString()` SAFE (the R7.7/R8.5 defect class): a finite
+ * magnitude beyond ±8.64e15 ms is outside the ECMAScript date range, so `new Date(value)` is Invalid and
+ * `toISOString()` throws `RangeError`. The payload is untrusted session data, and a malformed instant
+ * must drop one field of one row, never break the renderer.
+ * @param milliseconds - the instant the payload carries.
+ * @returns the ISO instant, or undefined when the value is not a representable Date.
+ */
+function isoInstantOf(milliseconds: number): string | undefined {
+  /** The instant under test; an out-of-range value reads back as NaN, never as a throw site. */
+  const instant = new Date(milliseconds)
+  return Number.isFinite(instant.getTime()) ? instant.toISOString() : undefined
+}
+
+/**
  * The three-letter kind abbreviation a payload kind draws as — the SAME abbreviation a DAG node label
  * carries, so a reader learns one vocabulary in the transcript and in the drawing.
  * @param value - the payload's `kind` field, of unknown shape.
@@ -182,11 +198,12 @@ export const TRANSCRIPT_RENDERERS: Record<string, (payload: unknown) => TuiRende
     const view = field(payload, "view", 120) ?? "board"
     /** How the board was opened (command or shortcut); `?` when the payload does not say. */
     const via = field(payload, "via", 20) ?? "?"
-    // `new Date(NaN).toISOString()` throws: a number payload field is still
-    // untrusted input, so only a finite timestamp is rendered.
+    // `new Date(NaN).toISOString()` throws, and so does a FINITE epoch outside ±8.64e15: the payload's
+    // `at` is untrusted input, so a malformed instant skips the field instead of throwing.
+    /** The payload's untrusted `at` field. */
     const stamp = (payload as { at?: unknown } | null)?.at
-    /** The event's ISO timestamp, rendered only when the payload carries a finite number. */
-    const at = typeof stamp === "number" && Number.isFinite(stamp) ? new Date(stamp).toISOString() : undefined
+    /** The event's ISO timestamp, omitted when the payload carries no representable instant. */
+    const at = typeof stamp === "number" ? isoInstantOf(stamp) : undefined
     return { title: "mpd board", lines: [`${view} opened via ${via}${at === undefined ? "" : ` at ${at}`}`] }
   },
 }

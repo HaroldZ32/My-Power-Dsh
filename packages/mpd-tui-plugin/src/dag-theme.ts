@@ -273,6 +273,17 @@ export const DAG_GROUP_CHARS_ONE_CELL: boolean = Object.values(DAG_GROUP_CHARS).
 export const DAG_GHOST_MARKER = "+"
 
 /**
+ * The marker a CONSULT node draws INSTEAD OF a state glyph (`cellwork` consult DAG, contract §6).
+ *
+ * A MARKER, NOT A TONE — the same rule the ghost follows: `toneOf` still resolves the node's six-state
+ * tone from its recorded lifecycle word, so a settled consult is drawn in the same colour a completed
+ * task is, and no seventh theme key appears. `@` is one cell and ASCII: it reads as "an agent was paged
+ * for this", it is distinct from the ghost's `+` and from every state mark the theme declares, and it
+ * cannot be mistaken for the `?` a node with an unknown visual falls back to.
+ */
+export const DAG_CONSULT_MARKER = "@"
+
+/**
  * The chrome every DAG surface draws with.
  *
  * `border` is a host style name (not a glyph), so a theme or a host build that renames the styles is

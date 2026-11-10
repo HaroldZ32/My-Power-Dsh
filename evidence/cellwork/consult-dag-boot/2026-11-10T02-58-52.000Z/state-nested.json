@@ -1,0 +1,207 @@
+{
+  "ok": true,
+  "workspace": "/tmp/consult-boot/sandbox/ws",
+  "sessionId": "",
+  "workspaceTeams": {
+    "records": [
+      {
+        "id": "team-boot-baseline",
+        "name": "team-boot-baseline",
+        "description": "verifier boot fixture",
+        "phase": "idle",
+        "approvedAt": "2026-11-10T12:00:00.000Z",
+        "tasks": {
+          "total": 2,
+          "completed": 0,
+          "failed": 0
+        },
+        "members": 0,
+        "stage": "person:blocked",
+        "active": false
+      },
+      {
+        "id": "team-boot-child",
+        "name": "team-boot-child",
+        "description": "verifier boot fixture",
+        "phase": "idle",
+        "approvedAt": "2026-11-10T12:00:00.000Z",
+        "tasks": {
+          "total": 1,
+          "completed": 0,
+          "failed": 0
+        },
+        "members": 0,
+        "stage": "idle",
+        "active": false
+      },
+      {
+        "id": "team-boot-consults",
+        "name": "team-boot-consults",
+        "description": "verifier boot fixture",
+        "phase": "idle",
+        "approvedAt": "2026-11-10T12:00:00.000Z",
+        "tasks": {
+          "total": 2,
+          "completed": 0,
+          "failed": 0
+        },
+        "members": 0,
+        "stage": "person:blocked",
+        "active": false
+      },
+      {
+        "id": "team-boot-nested",
+        "name": "team-boot-nested",
+        "description": "verifier boot fixture",
+        "phase": "idle",
+        "approvedAt": "2026-11-10T12:00:00.000Z",
+        "tasks": {
+          "total": 1,
+          "completed": 0,
+          "failed": 0
+        },
+        "members": 0,
+        "stage": "idle",
+        "active": true
+      }
+    ],
+    "activeId": "team-boot-nested"
+  },
+  "team": {
+    "id": "team-boot-nested",
+    "name": "team-boot-nested",
+    "description": "verifier boot fixture",
+    "phase": "idle",
+    "approvedAt": "2026-11-10T12:00:00.000Z",
+    "links": 0
+  },
+  "counts": {
+    "total": 1,
+    "completed": 0,
+    "running": 0,
+    "ready": 1,
+    "blocked": 0,
+    "failed": 0,
+    "releasedByFailure": 0
+  },
+  "members": [],
+  "tasks": [
+    {
+      "id": "T1",
+      "subject": "root task",
+      "kind": "work",
+      "status": "pending",
+      "visual": "open",
+      "owner": "Lead",
+      "progress": 0,
+      "blockedBy": [],
+      "failedBy": [],
+      "depth": 0,
+      "rank": 0
+    }
+  ],
+  "model": {
+    "nodes": [
+      {
+        "id": "T1",
+        "subject": "root task",
+        "visual": "open",
+        "dependencies": [],
+        "depth": 0,
+        "planned": false,
+        "kind": "work",
+        "assignee": "Lead",
+        "status": "pending"
+      },
+      {
+        "id": "team-boot-child",
+        "subject": "team-boot-child",
+        "visual": "group",
+        "dependencies": [],
+        "depth": 0,
+        "planned": false
+      },
+      {
+        "id": "team-boot-child::T1",
+        "subject": "child task",
+        "visual": "open",
+        "dependencies": [],
+        "depth": 0,
+        "planned": false,
+        "kind": "work",
+        "assignee": "Lead",
+        "status": "pending",
+        "group": "team-boot-child"
+      }
+    ],
+    "edges": [],
+    "ranks": [
+      [
+        "T1",
+        "team-boot-child"
+      ]
+    ],
+    "cycles": [],
+    "report": {
+      "boardOnly": [
+        "T1",
+        "team-boot-child::T1"
+      ],
+      "planOnly": [],
+      "edgePlanOnly": [],
+      "edgeBoardOnly": [],
+      "planProblems": [],
+      "unresolved": [],
+      "ranksDerived": true
+    },
+    "groups": [
+      {
+        "id": "team-boot-child",
+        "label": "team-boot-child",
+        "parentId": null,
+        "memberIds": [
+          "team-boot-child::T1"
+        ],
+        "depth": 0
+      }
+    ],
+    "consults": [
+      {
+        "id": "C1",
+        "subject": "root assignment",
+        "visual": "running",
+        "dependencies": [],
+        "depth": 0,
+        "planned": false,
+        "kind": "consult",
+        "consultId": "consult-root",
+        "cellId": "cell-boot",
+        "startedAt": 1750000001000,
+        "status": "running",
+        "assignee": "Explorer"
+      },
+      {
+        "id": "team-boot-child::C1",
+        "subject": "child assignment",
+        "visual": "cancelled",
+        "dependencies": [],
+        "depth": 0,
+        "planned": false,
+        "kind": "consult",
+        "consultId": "consult-child",
+        "cellId": "cell-boot",
+        "startedAt": 1750000001000,
+        "status": "cancelled",
+        "assignee": "Researcher",
+        "elapsedMs": 500,
+        "group": "team-boot-child"
+      }
+    ]
+  },
+  "cycles": [],
+  "executor": {
+    "kind": "native",
+    "reason": "native: the default backend — bound startActivation() on the harness subagent seam, and it needs nothing from the official plugin"
+  },
+  "problems": []
+}

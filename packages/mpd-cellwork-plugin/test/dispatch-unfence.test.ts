@@ -54,6 +54,8 @@ interface CapturedTool {
   parameters?: { properties?: Record<string, unknown> }
   /** The runner, called with the harness-validated arguments and the dispatch. */
   execute: (args: unknown, exec: unknown) => Promise<unknown>
+  /** The output declaration, whose render is the text a model reads. */
+  output?: { render?: (args: unknown, value: unknown) => unknown }
 }
 
 /** The fake harness one arm drives. */
@@ -147,7 +149,7 @@ function rawMembers(workspace: string): Record<string, Record<string, unknown>> 
  * @param options - `unfenceSeam: false` hides the plane's optional `unfence` half (an older team-core).
  * @returns the harness.
  */
-function makeHarness(cell: CellState, members: DoubleMember[], tasks: DoubleTask[], options: { unfenceSeam?: boolean } = {}): Harness {
+function makeHarness(cell: CellState, members: DoubleMember[], tasks: DoubleTask[], options: { unfenceSeam?: boolean; liveSessions?: readonly string[]; agentsRegistry?: boolean } = {}): Harness {
   /** The fresh temp workspace. */
   const workspace = mkdtempSync(join(tmpdir(), "mpd-cellwork-unfence-"))
   writeCell(workspace, cell)
@@ -172,6 +174,12 @@ function makeHarness(cell: CellState, members: DoubleMember[], tasks: DoubleTask
       send: async (_captain: unknown, handle: string, text: string): Promise<void> => { harness.sends.push({ handle, text }) },
     }),
     executeTool: async (): Promise<Record<string, unknown>> => ({ ok: true, isError: false, value: {} }),
+    // THE LIVENESS SEAM (R4.2/R4.4): an arm names the sessions the registry still holds. `undefined` here
+    // models the older composition whose identity seam answers nothing — which is UNKNOWN, never "dead",
+    // and is exactly the case a forced clear is allowed on.
+    ...(options.liveSessions === undefined ? {} : { liveAgentExact: (id: string): Record<string, unknown> | undefined => options.liveSessions?.includes(id) === true ? { id } : undefined }),
+    // THE PRESENCE PROBE: `false` models a composition with no agents registry at all.
+    capabilities: (): Record<string, unknown> => ({ agents: options.agentsRegistry !== false }),
   }
   installCellworkProtocol({
     dsh: adapter as unknown as DshAdapter,
@@ -202,6 +210,25 @@ async function runTool(harness: Harness, name: string, args: Record<string, unkn
   /** The tool's answer, narrowed to a record. */
   const answer = await tool.execute(args, { name, agent: agent ?? harness.captain })
   return typeof answer === "object" && answer !== null ? answer as Record<string, unknown> : {}
+}
+
+/**
+ * The text a model reads for one answer, through the definition's own renderer.
+ *
+ * @param harness - the harness that captured the definition.
+ * @param name - the tool name.
+ * @param answer - the structured answer to render.
+ * @returns the rendered text, blocks joined by newlines.
+ */
+function renderTool(harness: Harness, name: string, answer: unknown): string {
+  /** The captured definition. */
+  const tool = harness.tools.get(name)
+  /** The formatter the definition declares. */
+  const render = tool?.output?.render
+  if (render === undefined) throw new Error("no renderer on " + name)
+  /** The formatter's answer. */
+  const blocks = render({}, answer)
+  return Array.isArray(blocks) ? blocks.map((block) => String((block as { text?: unknown }).text ?? "")).join("\n") : String(blocks)
 }
 
 test("B2: unfence removes both fence keys, restores `mode: member` and `handoffReady: false`, and keeps `handoffs`", async () => {
@@ -305,7 +332,10 @@ test("round 3: the production give-up clears the CELL row but never claims the T
   expect(harness.record.members[0].fenced).toBeUndefined()
 })
 
-test("B2: a member that is not fenced answers `not-fenced` and the record is never rewritten", async () => {
+test("B2/R4.4: a WAITING handoff is the barrier's window, so it answers `checkpoint-pending` — never `not-fenced`", async () => {
+  // THE CELL ROW'S `handoffReady` IS THE BARRIER'S WINDOW ONE RECORD OVER (R4.4): a member that wrote its
+  // handoff and still waits for the barrier is CLOSED to dispatch, so `not-fenced` was the second
+  // contradictory answer this repair removes. The seat is barrier-owned and nothing is written.
   /** The cell whose member still waits for an ordinary barrier (no give-up marker). */
   const cell = cellWith({ Reviewer: memberRow("Reviewer", { handoffReady: true, handoffs: 1 }) })
   /** The harness with a healthy TEAM row. */
@@ -315,8 +345,8 @@ test("B2: a member that is not fenced answers `not-fenced` and the record is nev
   /** The captain's unfence of a member with nothing to clear. */
   const answer = await runTool(harness, "cellwork_dispatch", { unfence: ["Reviewer"] })
   expect(answer.ok).toBe(true)
-  // HONEST, NOT A SILENT SUCCESS: the row says what happened and names the reason the contract fixes.
-  expect(answer.unfenced).toEqual([{ member: "Reviewer", unfenced: false, reason: "not-fenced" }])
+  // HONEST, NOT A SILENT SUCCESS: the row says the barrier owns the window and that nothing was cleared.
+  expect((answer.unfenced as Array<Record<string, unknown>>)[0]).toMatchObject({ member: "Reviewer", unfenced: false, reason: "checkpoint-pending" })
   // NOTHING WAS ASKED OF THE PLANE, and the cell record was not touched (its waiting handoff stays).
   expect(harness.plane.fences).toHaveLength(0)
   expect(readFileSync(statePath(harness.workspace, CELL_ID), "utf8")).toBe(before)
@@ -670,3 +700,418 @@ test("round 4: a member named twice is unfenced ONCE — one outcome, one seam c
   expect(harness.plane.fences).toHaveLength(1)
   expect(journalRows(harness.workspace, CELL_ID).filter((row) => row.event === "member-unfenced")).toHaveLength(1)
 })
+
+
+// ── R4.4: the bounded FORCED lever ────────────────────────────────────────
+
+test("R4.4: a CELL-only checkpoint answers `checkpoint-pending`, never the false `not-fenced`", async () => {
+  // THE SHAPE THE OLD PREDICATE MISSED: the CELL row is at `checkpoint` with `handoffReady:true` while the
+  // TEAM row still reads `mode:"member"` (a plane write that has not landed yet). The old branch read the
+  // TEAM row alone, fell through every case, and answered `not-fenced` for a seat the guard fences.
+  /** The barrier-owned CELL row, with NO fence marker anywhere. */
+  const cell = cellWith({ "Senior Engineer": memberRow("Senior Engineer", { mode: "checkpoint", handoffReady: true, handoffs: 1 }) })
+  /** The harness whose TEAM row has not caught up with the checkpoint yet. */
+  const harness = makeHarness(cell, [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "member" }], [])
+  /** The captain's UNFORCED unfence. */
+  const answer = await runTool(harness, "cellwork_dispatch", { unfence: ["Senior Engineer"] })
+  expect(answer.ok).toBe(true)
+  /** The one outcome: the barrier owns the window, and nothing was written. */
+  const outcome = (answer.unfenced as Array<Record<string, unknown>>)[0]
+  expect(outcome.unfenced).toBe(false)
+  expect(outcome.reason).toBe("checkpoint-pending")
+  // NEITHER RECORD WAS WRITTEN AND THE SEAM WAS NOT CALLED: the barrier owns this state.
+  expect(harness.plane.fences).toHaveLength(0)
+  expect(rawMembers(harness.workspace)["Senior Engineer"].mode).toBe("checkpoint")
+  expect(harness.record.members[0].mode).toBe("member")
+})
+
+test("R4.4: a bare STRING never forces — an old window alone does not clear a barrier-owned seat", async () => {
+  // The bound is only reachable through the object form. This seat is well past the pending bound, and the
+  // bare string still answers `checkpoint-pending`: a caller cannot force by accident.
+  /** The barrier-owned seat, its window opened long before the call. */
+  const cell = cellWith({ "Senior Engineer": memberRow("Senior Engineer", { mode: "checkpoint", handoffReady: true, handoffs: 2, checkpointSince: "2026-11-04T10:00:00.000Z" }) })
+  /** The TEAM row of the same window. */
+  const harness = makeHarness(cell, [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "checkpoint" }], [])
+  /** The captain's bare-string unfence. */
+  const answer = await runTool(harness, "cellwork_dispatch", { unfence: ["Senior Engineer"] })
+  expect(answer.ok).toBe(true)
+  expect((answer.unfenced as Array<Record<string, unknown>>)[0].reason).toBe("checkpoint-pending")
+  expect(harness.plane.fences).toHaveLength(0)
+  expect(rawMembers(harness.workspace)["Senior Engineer"].mode).toBe("checkpoint")
+})
+
+test("R4.4: `{member, force:true}` reopens a barrier-owned seat once the window is STALE", async () => {
+  // THE DEAD SEAT R4.4 EXISTS FOR: no live session (the harness proves none), a window opened 20 minutes
+  // ago, no recorded barrier failures. The written bound is the STALENESS one.
+  /** The stuck seat: checkpointed 20 minutes before the call, with one handoff already written. */
+  const cell = cellWith({ "Senior Engineer": memberRow("Senior Engineer", { mode: "checkpoint", handoffReady: true, handoffs: 2, checkpointSince: "2026-11-04T11:40:00.000Z" }) })
+  /** The harness whose registry can prove nothing is live (an absent identity seam), with a plane seam. */
+  const harness = makeHarness(cell, [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "checkpoint" }], [], { liveSessions: ["session-someone-else"] })
+  /** The captain's FORCED unfence. */
+  const answer = await runTool(harness, "cellwork_dispatch", { unfence: [{ member: "Senior Engineer", force: true }] })
+  expect(answer.ok).toBe(true)
+  /** The one outcome: the CELL row was reopened, and the answer names the liveness and the bound. */
+  const outcome = (answer.unfenced as Array<Record<string, unknown>>)[0]
+  expect(outcome.member).toBe("Senior Engineer")
+  expect(outcome.unfenced).toBe(true)
+  expect(outcome.forced).toBe(true)
+  expect(outcome.alive).toBe(false)
+  expect(outcome.sessionId).toBe("session-Senior Engineer")
+  expect(outcome.bound).toBe("stale")
+  expect(Number(outcome.pendingMs)).toBeGreaterThanOrEqual(900000)
+  expect(outcome.plane).toBe("unfenced")
+  // THE CELL WRITE: open for reassignment, both window keys removed, the counts KEPT.
+  /** The raw persisted row. */
+  const row = rawMembers(harness.workspace)["Senior Engineer"]
+  expect(row.mode).toBe("member")
+  expect(row.handoffReady).toBe(false)
+  expect("fenced" in row).toBe(false)
+  expect("fencedReason" in row).toBe(false)
+  expect("checkpointSince" in row).toBe(false)
+  expect("barrierFailures" in row).toBe(false)
+  expect(row.handoffs).toBe(2)
+  // THE PLANE HALF AND THE JOURNAL ROW ARE BOTH FACTS.
+  expect(harness.plane.fences).toEqual([{ sessionId: CAPTAIN_SESSION, member: "Senior Engineer" }])
+  expect(harness.record.members[0].mode).toBe("member")
+  /** The forced journal rows. */
+  const forced = journalRows(harness.workspace, CELL_ID).filter((entry) => entry.event === "member-unfenced-forced")
+  expect(forced).toHaveLength(1)
+  expect(forced[0].member).toBe("Senior Engineer")
+  expect(forced[0].by).toBe("captain")
+  expect(forced[0].reason).toBe("stale")
+  expect(forced[0].plane).toBe("unfenced")
+  expect(Number(forced[0].pendingMs)).toBeGreaterThanOrEqual(900000)
+  expect(forced[0].barrierFailures).toBe(0)
+  // THE RENDER SAYS WHAT THE SEAT IS NOW: reopened for reassignment, NOT for work — its context was
+  // never compacted, so a message would resume a context the handoff document already describes.
+  const text = renderTool(harness, "cellwork_dispatch", answer)
+  expect(text).toContain("FORCED")
+  expect(text).toContain("reopened for reassignment, not for work")
+})
+
+test("R4.4: the RETRY BUDGET is the other bound — a fresh window with a spent budget is reopened", async () => {
+  // The failure counter and the clock are SEPARATE bounds: a seat the barrier failed on three times is
+  // eligible even though its window was opened seconds ago.
+  /** The stuck seat: three non-reopening barrier runs, a window opened one second ago. */
+  const cell = cellWith({ "Senior Engineer": memberRow("Senior Engineer", { mode: "checkpoint", handoffReady: true, handoffs: 3, checkpointSince: new Date(Date.now() - 1000).toISOString(), barrierFailures: 3 }) })
+  /** The harness with no provable liveness. */
+  const harness = makeHarness(cell, [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "checkpoint" }], [], { liveSessions: [] })
+  /** The captain's FORCED unfence. */
+  const answer = await runTool(harness, "cellwork_dispatch", { unfence: [{ member: "Senior Engineer", force: true }] })
+  /** The one outcome: the retry budget authorised the clear. */
+  const outcome = (answer.unfenced as Array<Record<string, unknown>>)[0]
+  expect(outcome.unfenced).toBe(true)
+  expect(outcome.bound).toBe("retry-budget")
+  expect(harness.plane.fences).toHaveLength(1)
+  /** The forced journal row quotes the budget it used. */
+  const forced = journalRows(harness.workspace, CELL_ID).filter((entry) => entry.event === "member-unfenced-forced")
+  expect(forced[0].reason).toBe("retry-budget")
+  expect(forced[0].barrierFailures).toBe(3)
+})
+
+test("R4.4 NEGATIVE: force on a LIVE seat writes NOTHING and refuses", async () => {
+  // A live seat is not dead: the identity seam answers an agent, so the forced lever must refuse outright
+  // — even though the window is stale and the budget is spent.
+  /** The stuck-looking seat whose recorded session is still a live agent. */
+  const cell = cellWith({ "Senior Engineer": memberRow("Senior Engineer", { mode: "checkpoint", handoffReady: true, handoffs: 3, checkpointSince: "2026-11-04T09:00:00.000Z", barrierFailures: 9 }) })
+  /** The harness whose registry holds that exact session id. */
+  const harness = makeHarness(cell, [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "checkpoint" }], [], { liveSessions: ["session-Senior Engineer"] })
+  /** The captain's FORCED unfence. */
+  const answer = await runTool(harness, "cellwork_dispatch", { unfence: [{ member: "Senior Engineer", force: true }] })
+  expect(answer.ok).toBe(true)
+  /** The refusal, with the liveness fact the predicate used. */
+  const outcome = (answer.unfenced as Array<Record<string, unknown>>)[0]
+  expect(outcome.unfenced).toBe(false)
+  expect(outcome.reason).toBe("live-session")
+  expect(outcome.alive).toBe(true)
+  expect(outcome.sessionId).toBe("session-Senior Engineer")
+  // NOTHING WAS WRITTEN, NOWHERE.
+  expect(harness.plane.fences).toHaveLength(0)
+  expect(rawMembers(harness.workspace)["Senior Engineer"].mode).toBe("checkpoint")
+  expect(harness.record.members[0].mode).toBe("checkpoint")
+  expect(journalRows(harness.workspace, CELL_ID).filter((entry) => entry.event === "member-unfenced-forced")).toHaveLength(0)
+})
+
+test("R4.4 NEGATIVE: a FRESH window with ZERO failures writes NOTHING", async () => {
+  // A bare force on a seat that just entered the window is not a licence: neither bound is reached.
+  /** The seat that entered the window one second ago. */
+  const cell = cellWith({ "Senior Engineer": memberRow("Senior Engineer", { mode: "checkpoint", handoffReady: true, checkpointSince: new Date(Date.now() - 1000).toISOString() }) })
+  /** The harness with no provable liveness. */
+  const harness = makeHarness(cell, [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "checkpoint" }], [], { liveSessions: [] })
+  /** The captain's FORCED unfence. */
+  const answer = await runTool(harness, "cellwork_dispatch", { unfence: [{ member: "Senior Engineer", force: true }] })
+  /** The refusal: no written bound was reached. */
+  const outcome = (answer.unfenced as Array<Record<string, unknown>>)[0]
+  expect(outcome.unfenced).toBe(false)
+  expect(outcome.reason).toBe("force-not-eligible")
+  expect(Number(outcome.pendingMs)).toBeLessThan(900000)
+  expect(harness.plane.fences).toHaveLength(0)
+  expect(rawMembers(harness.workspace)["Senior Engineer"].mode).toBe("checkpoint")
+})
+
+test("R4.4 NEGATIVE: a MISSING timestamp is not a licence", async () => {
+  // No `checkpointSince` and no `cell.checkpoints` entry for the session: nothing can be measured, so the
+  // fail-closed predicate refuses instead of reading the absence as "infinitely old".
+  /** The seat with no recorded window at all. */
+  const cell = cellWith({ "Senior Engineer": memberRow("Senior Engineer", { mode: "checkpoint", handoffReady: true }) })
+  /** The harness with no provable liveness. */
+  const harness = makeHarness(cell, [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "checkpoint" }], [], { liveSessions: [] })
+  /** The captain's FORCED unfence. */
+  const answer = await runTool(harness, "cellwork_dispatch", { unfence: [{ member: "Senior Engineer", force: true }] })
+  /** The refusal names the missing fact. */
+  const outcome = (answer.unfenced as Array<Record<string, unknown>>)[0]
+  expect(outcome.unfenced).toBe(false)
+  expect(outcome.reason).toBe("force-not-eligible")
+  expect(outcome.pendingMs).toBeUndefined()
+  expect(harness.plane.fences).toHaveLength(0)
+  expect(rawMembers(harness.workspace)["Senior Engineer"].mode).toBe("checkpoint")
+})
+
+// ── R5.2: the dead-reseed seat, ONE predicate, and the plain negatives ──────
+
+/** One dead-reseed seat: the row a reseed leaves when the fresh child never came up. */
+function deadReseedRow(overrides: Partial<CellMemberRecord> = {}): CellMemberRecord {
+  return memberRow("Senior Engineer", { mode: "subcaptain", handoffReady: false, handoffs: 2, sessionId: "session-dead-child", checkpointSince: new Date(Date.now() - 60000).toISOString(), barrierFailures: 1, ...overrides })
+}
+
+/** The TEAM row of the same dead-reseed seat: R4.1 reopened it to `member`, so no checkpoint spelling is left. */
+const DEAD_RESEED_ROSTER: DoubleMember[] = [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "member" }]
+
+test("R5.2 INCIDENT: a reseeded seat whose child is DEAD is force-clearable — `bound:dead-session`", async () => {
+  // THE INCIDENT'S EXACT SHAPE: `mode:"subcaptain"`, `handoffReady:false`, the TEAM row reopened to
+  // `member` — so `barrierOwned` is FALSE — and a recorded session the registry PROVES dead. The window is
+  // FRESH (one minute) and the failure count is 1 of 3, so NEITHER written clock bound is reachable: no
+  // live agent is left to drive the turn a barrier would fire on, and the seat could never reopen. The
+  // forced lever answered `not-fenced` for this seat; the proven-dead session is now its licence.
+  // THE ANCHOR IS WHAT MAKES `dead` PROVABLE (R7.3): the registry resolves the CAPTAIN's own session, so
+  // its silence about the recorded child is a fact about that child.
+  /** The harness whose registry is PRESENT, resolves the captain, and holds nothing under the recorded id. */
+  const harness = makeHarness(cellWith({ "Senior Engineer": deadReseedRow() }), DEAD_RESEED_ROSTER, [], { liveSessions: [CAPTAIN_SESSION] })
+  /** The captain's FORCED unfence. */
+  const answer = await runTool(harness, "cellwork_dispatch", { unfence: [{ member: "Senior Engineer", force: true }] })
+  expect(answer.ok).toBe(true)
+  /** The one outcome. */
+  const outcome = (answer.unfenced as Array<Record<string, unknown>>)[0]
+  expect(outcome.unfenced).toBe(true)
+  expect(outcome.forced).toBe(true)
+  expect(outcome.bound).toBe("dead-session")
+  expect(outcome.liveness).toBe("dead")
+  // THE CELL WRITE: open for reassignment, the window keys gone, the counts kept.
+  /** The raw persisted row. */
+  const row = rawMembers(harness.workspace)["Senior Engineer"]
+  expect(row.mode).toBe("member")
+  expect(row.handoffReady).toBe(false)
+  expect("checkpointSince" in row).toBe(false)
+  expect("barrierFailures" in row).toBe(false)
+  expect(row.handoffs).toBe(2)
+  // BOTH HALVES AND THE JOURNAL ROW ARE FACTS.
+  expect(harness.plane.fences).toEqual([{ sessionId: CAPTAIN_SESSION, member: "Senior Engineer" }])
+  expect(harness.record.members[0].mode).toBe("member")
+  /** The forced journal rows. */
+  const forced = journalRows(harness.workspace, CELL_ID).filter((entry) => entry.event === "member-unfenced-forced")
+  expect(forced).toHaveLength(1)
+  expect(forced[0].reason).toBe("dead-session")
+  expect(forced[0].liveness).toBe("dead")
+})
+
+test("R5.2: the SAME dead-reseed seat answers `checkpoint-pending` UNFORCED and writes nothing", async () => {
+  // THE FROZEN INVARIANT: an unforced clear never touches a held seat — the dead-reseed shape included.
+  // Only the explicit `force` lever clears it.
+  /** The incident's seat, unforced; the registry resolves the captain so the dead child is provable. */
+  const harness = makeHarness(cellWith({ "Senior Engineer": deadReseedRow() }), DEAD_RESEED_ROSTER, [], { liveSessions: [CAPTAIN_SESSION] })
+  /** The captain's bare-string unfence. */
+  const answer = await runTool(harness, "cellwork_dispatch", { unfence: ["Senior Engineer"] })
+  /** The one outcome. */
+  const outcome = (answer.unfenced as Array<Record<string, unknown>>)[0]
+  expect(outcome.unfenced).toBe(false)
+  expect(outcome.reason).toBe("checkpoint-pending")
+  expect(outcome.barrierOwned).toBe(false)
+  expect(outcome.suspect).toBe(true)
+  // NOTHING WAS WRITTEN, NOWHERE — and the seam was never called.
+  expect(harness.plane.fences).toHaveLength(0)
+  expect(rawMembers(harness.workspace)["Senior Engineer"].mode).toBe("subcaptain")
+  expect(harness.record.members[0].mode).toBe("member")
+  // THE RENDER NAMES THE SHAPE, not a barrier that cannot come: the dead-reseed seat is told apart from
+  // the pending window, and the lever that does work is named.
+  /** The text a model reads for the same answer. */
+  const text = renderTool(harness, "cellwork_dispatch", answer)
+  expect(text).toContain("DEAD-RESEED")
+  expect(text).toContain("force:true")
+})
+
+test("R9.1: an EMPTY recorded session answers `unknown`, never a proven-dead child", async () => {
+  // THE ANCHOR RESOLVES HERE, so before R9.1 the registry's silence about the EMPTY id read as a DEAD
+  // child: the sweep flagged `suspect`, the unforced verb answered `checkpoint-pending`, and the forced
+  // lever cleared the seat under `bound:"dead-session"`. An empty id names no session at all, so nothing
+  // about it can be proven: `unknown` is answered BEFORE the anchor check, licensing nothing.
+  /** The dead-reseed shape with its recorded session id EMPTY while the anchor resolves. */
+  const cell = cellWith({ "Senior Engineer": deadReseedRow({ sessionId: "" }) })
+  /** The harness whose registry resolves the captain and holds nothing under the empty id. */
+  const harness = makeHarness(cell, DEAD_RESEED_ROSTER, [], { liveSessions: [CAPTAIN_SESSION] })
+  /** The read-only sweep the captain consults first. */
+  const sweep = await runTool(harness, "cellwork_supervise", {})
+  /** The sweep's measurement of the seat. */
+  const measured = (sweep.members as Array<Record<string, unknown>>).find((entry) => entry.name === "Senior Engineer")
+  expect(measured?.liveness).toBe("unknown")
+  expect(measured !== undefined && "suspect" in measured).toBe(false)
+  // THE UNFORCED VERB: not held, so no `checkpoint-pending` and no `suspect` either.
+  /** The captain's bare-string unfence. */
+  const plain = await runTool(harness, "cellwork_dispatch", { unfence: ["Senior Engineer"] })
+  /** The plain outcome. */
+  const plainOutcome = (plain.unfenced as Array<Record<string, unknown>>)[0]
+  expect(plainOutcome.unfenced).toBe(false)
+  expect(plainOutcome.reason).toBe("not-fenced")
+  expect("suspect" in plainOutcome).toBe(false)
+  // THE FORCED LEVER: `unknown` supplies no `dead-session` licence, so nothing is written anywhere.
+  /** The captain's FORCED unfence. */
+  const forced = await runTool(harness, "cellwork_dispatch", { unfence: [{ member: "Senior Engineer", force: true }] })
+  /** The forced outcome. */
+  const forcedOutcome = (forced.unfenced as Array<Record<string, unknown>>)[0]
+  expect(forcedOutcome.unfenced).toBe(false)
+  expect(forcedOutcome.reason).toBe("not-fenced")
+  expect("bound" in forcedOutcome).toBe(false)
+  expect(harness.plane.fences).toHaveLength(0)
+  expect(rawMembers(harness.workspace)["Senior Engineer"].mode).toBe("subcaptain")
+  expect(journalRows(harness.workspace, CELL_ID).filter((entry) => entry.event === "member-unfenced-forced")).toHaveLength(0)
+})
+
+test("R5.2 NEGATIVE: the dead-reseed shape still refuses a LIVE seat, a stamp-less row and an unproven registry", async () => {
+  // 1. A LIVE seat vetoes the clear: the barrier-owned row whose recorded session is still an agent.
+  /** The stalled-looking window whose session the registry still holds. */
+  const live = makeHarness(cellWith({ "Senior Engineer": memberRow("Senior Engineer", { mode: "checkpoint", handoffReady: true, checkpointSince: "2026-11-04T09:00:00.000Z", barrierFailures: 9 }) }), [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "checkpoint" }], [], { liveSessions: ["session-Senior Engineer"] })
+  /** The forced request. */
+  const liveAnswer = await runTool(live, "cellwork_dispatch", { unfence: [{ member: "Senior Engineer", force: true }] })
+  expect((liveAnswer.unfenced as Array<Record<string, unknown>>)[0].reason).toBe("live-session")
+  expect(live.plane.fences).toHaveLength(0)
+  // 1b. A HEALTHY `subcaptain` (its child IS live) is not a held seat at all: `not-fenced`, not a clear.
+  /** The same post-reseed row with a live child. */
+  const healthy = makeHarness(cellWith({ "Senior Engineer": deadReseedRow() }), DEAD_RESEED_ROSTER, [], { liveSessions: ["session-dead-child"] })
+  /** The forced request. */
+  const healthyAnswer = await runTool(healthy, "cellwork_dispatch", { unfence: [{ member: "Senior Engineer", force: true }] })
+  expect((healthyAnswer.unfenced as Array<Record<string, unknown>>)[0].reason).toBe("not-fenced")
+  expect(healthy.plane.fences).toHaveLength(0)
+  // 2. A missing timestamp is never a licence, even for a proven-dead session.
+  /** The same row with no window stamp at all. */
+  const unstamped = makeHarness(cellWith({ "Senior Engineer": deadReseedRow({ checkpointSince: undefined, barrierFailures: 0 }) }), DEAD_RESEED_ROSTER, [], { liveSessions: [CAPTAIN_SESSION] })
+  /** The forced request. */
+  const unstampedAnswer = await runTool(unstamped, "cellwork_dispatch", { unfence: [{ member: "Senior Engineer", force: true }] })
+  expect((unstampedAnswer.unfenced as Array<Record<string, unknown>>)[0].reason).toBe("force-not-eligible")
+  expect(unstamped.plane.fences).toHaveLength(0)
+  // 3. An ABSENT registry proves nothing: `unknown` is never read as dead, so the seat is not HELD at all
+  // and the plain negative is the honest answer — nothing is written either way.
+  /** The same row in a composition whose agents registry is absent. */
+  const unknown = makeHarness(cellWith({ "Senior Engineer": deadReseedRow() }), DEAD_RESEED_ROSTER, [], { liveSessions: [], agentsRegistry: false })
+  /** The forced request. */
+  const unknownAnswer = await runTool(unknown, "cellwork_dispatch", { unfence: [{ member: "Senior Engineer", force: true }] })
+  expect((unknownAnswer.unfenced as Array<Record<string, unknown>>)[0].reason).toBe("not-fenced")
+  expect(unknown.plane.fences).toHaveLength(0)
+})
+
+test("R5.2 ONE PREDICATE: `supervise.forceEligible` is TRUE for exactly the seats the verb accepts", async () => {
+  // THE DEFECT THIS ENDS: the sweep computed `forceEligible` from a SECOND predicate that never asked
+  // whether the seat was closed, so it advertised a lever the verb refused (`not-fenced`). Both surfaces
+  // now read one implementation, and this arm walks every shape across BOTH of them.
+  /** One seat shape, with the record and the roster it needs. */
+  const shapes: Array<{ label: string; row: CellMemberRecord; roster: DoubleMember[]; liveSessions: readonly string[]; agentsRegistry?: boolean }> = [
+    { label: "dead reseed", row: deadReseedRow(), roster: DEAD_RESEED_ROSTER, liveSessions: [CAPTAIN_SESSION] },
+    { label: "dead reseed, no registry", row: deadReseedRow(), roster: DEAD_RESEED_ROSTER, liveSessions: [CAPTAIN_SESSION], agentsRegistry: false },
+    { label: "dead reseed, live child", row: deadReseedRow(), roster: DEAD_RESEED_ROSTER, liveSessions: [CAPTAIN_SESSION, "session-dead-child"] },
+    { label: "stale barrier window", row: memberRow("Senior Engineer", { mode: "checkpoint", handoffReady: true, handoffs: 2, checkpointSince: "2026-11-04T11:40:00.000Z" }), roster: [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "checkpoint" }], liveSessions: [] },
+    { label: "fresh barrier window", row: memberRow("Senior Engineer", { mode: "checkpoint", handoffReady: true, checkpointSince: new Date(Date.now() - 1000).toISOString() }), roster: [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "checkpoint" }], liveSessions: [] },
+    { label: "healthy member", row: memberRow("Senior Engineer"), roster: [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "member" }], liveSessions: [] },
+  ]
+  for (const shape of shapes) {
+    /** The harness for this shape. */
+    const harness = makeHarness(cellWith({ "Senior Engineer": shape.row }), shape.roster, [], { liveSessions: shape.liveSessions, ...(shape.agentsRegistry === undefined ? {} : { agentsRegistry: shape.agentsRegistry }) })
+    /** What the read-only sweep advertises for the seat. */
+    const sweep = await runTool(harness, "cellwork_supervise", {})
+    /** The closed-seat row, when the sweep reports one. */
+    const closed = (sweep.fenced as Array<Record<string, unknown>>).find((entry) => entry.name === "Senior Engineer")
+    /** What the verb does with the SAME forced request. */
+    const answer = await runTool(harness, "cellwork_dispatch", { unfence: [{ member: "Senior Engineer", force: true }] })
+    /** The verb's one outcome. */
+    const outcome = (answer.unfenced as Array<Record<string, unknown>>)[0]
+    // THE ONE PREDICATE, asserted per shape: the advertised lever is the accepted lever.
+    expect(closed?.forceEligible === true).toBe(outcome.unfenced === true)
+    // AND AN ACCEPTED CLEAR IS NEVER A SILENT `not-fenced`: it names the bound it used.
+    if (outcome.unfenced === true) expect(typeof outcome.bound).toBe("string")
+  }
+})
+
+test("NIT 9: a member with NEITHER fence NOR window answers `not-fenced` and writes nothing", async () => {
+  // THE PLAIN NEGATIVE keeps its own direct arm: the waiting-handoff arm became `checkpoint-pending`, and
+  // with it the only place the plain answer was asserted. Nothing is held here — no marker, no window, no
+  // stamp, no reseed — so the verb must say so and leave both records alone.
+  /** The healthy seat and its healthy roster row. */
+  const harness = makeHarness(cellWith({ "Senior Engineer": memberRow("Senior Engineer") }), [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "member" }], [])
+  /** The captain's unfence, unforced and forced. */
+  const plain = await runTool(harness, "cellwork_dispatch", { unfence: ["Senior Engineer"] })
+  /** The one outcome. */
+  const outcome = (plain.unfenced as Array<Record<string, unknown>>)[0]
+  expect(outcome.member).toBe("Senior Engineer")
+  expect(outcome.unfenced).toBe(false)
+  expect(outcome.reason).toBe("not-fenced")
+  // NOTHING WAS WRITTEN, NOWHERE: no CELL row, no plane call, no journal row.
+  expect(rawMembers(harness.workspace)["Senior Engineer"].mode).toBe("member")
+  expect(harness.plane.fences).toHaveLength(0)
+  expect(journalRows(harness.workspace, CELL_ID).filter((entry) => entry.event === "member-unfenced" || entry.event === "member-unfenced-forced")).toHaveLength(0)
+})
+
+test("R5.4: a REFUSED plane half names the exact retry verb in the answer, the journal and the render", async () => {
+  // THE DEAD END THIS CLOSES: the plane's `unfence` is Lead-only, so it CAN refuse. The CELL row was
+  // repaired and the TEAM row stayed closed, with nothing naming how to retry.
+  /** The give-up fence whose TEAM roster does NOT name the seat, so the plane seam refuses. */
+  const harness = makeHarness(cellWith({ "Senior Engineer": fencedRow("Senior Engineer") }), [], [])
+  /** The captain's unfence. */
+  const answer = await runTool(harness, "cellwork_dispatch", { unfence: ["Senior Engineer"] })
+  /** The one outcome: the CELL half landed, the plane half refused, and the retry is named. */
+  const outcome = (answer.unfenced as Array<Record<string, unknown>>)[0]
+  expect(outcome.unfenced).toBe(true)
+  expect(outcome.plane).toBe("refused")
+  expect(String(outcome.planeReason)).toContain("is on the roster")
+  expect(outcome.retry).toBe('agent_teams_control {action:"unfence", member:"Senior Engineer"}')
+  // THE JOURNAL ROW CARRIES IT TOO, so the refusal is actionable after the answer is gone.
+  /** The reopen row. */
+  const rows = journalRows(harness.workspace, CELL_ID).filter((entry) => entry.event === "member-unfenced")
+  expect(rows).toHaveLength(1)
+  expect(rows[0].plane).toBe("refused")
+  expect(rows[0].retry).toBe('agent_teams_control {action:"unfence", member:"Senior Engineer"}')
+  // AND THE RENDER THE MODEL READS NAMES IT, on the same line as the refusal.
+  /** The text a model reads for the same answer. */
+  const text = renderTool(harness, "cellwork_dispatch", answer)
+  expect(text).toContain('agent_teams_control {action:"unfence", member:"Senior Engineer"}')
+})
+
+test("R5.4: a TEAM `checkpoint` no barrier is pending for is REPORTED with its retry verb", async () => {
+  // THE SHAPE THE BARRIER LEAVES WHEN ITS PLANE HALF WAS REFUSED: the CELL row already left the window
+  // (`subcaptain`, not handoff-ready) while the TEAM row is still `checkpoint` — so no barrier will ever
+  // fire for it. The sweep now names the seat AND the Lead-only verb that reopens it.
+  /** The seat a refused plane reopen left behind. */
+  const harness = makeHarness(cellWith({ "Senior Engineer": deadReseedRow({ sessionId: "session-live-child" }) }), [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "checkpoint" }], [], { liveSessions: ["session-live-child"] })
+  /** The captain's read-only sweep. */
+  const sweep = await runTool(harness, "cellwork_supervise", {})
+  expect(sweep.ok).toBe(true)
+  /** The closed row. */
+  const closed = (sweep.fenced as Array<Record<string, unknown>>).find((entry) => entry.name === "Senior Engineer")
+  if (closed === undefined) throw new Error("the plane-only checkpoint must be reported")
+  expect(closed.giveUp).toBe(false)
+  expect(closed.barrierOwned).toBe(true)
+  expect(closed.forceEligible).toBe(false)
+  expect(closed.retry).toBe('agent_teams_control {action:"unfence", member:"Senior Engineer"}')
+  /** The text a model reads for the same sweep. */
+  const text = renderTool(harness, "cellwork_supervise", sweep)
+  expect(text).toContain('agent_teams_control {action:"unfence", member:"Senior Engineer"}')
+  // THE RENDER DOES NOT PROMISE A BARRIER THAT CANNOT COME: the seat is named as held by the plane.
+  expect(text).toContain("BARRIER-OWNED")
+  // AN EXPLICIT TEAM FENCE IS NOT THIS SHAPE: `cellwork_dispatch {unfence}` clears it itself (the team-only
+  // case), so the sweep does not send the captain past the nearer lever with a plane retry.
+  /** The harness whose TEAM row carries an explicit fence while the CELL row stays healthy. */
+  const explicit = makeHarness(cellWith({ "Senior Engineer": memberRow("Senior Engineer") }), [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", fenced: true, fencedReason: "the plane lost the seat's engine" }], [])
+  /** The captain's sweep over that record. */
+  const explicitSweep = await runTool(explicit, "cellwork_supervise", {})
+  /** The closed row. */
+  const explicitRow = (explicitSweep.fenced as Array<Record<string, unknown>>).find((entry) => entry.name === "Senior Engineer")
+  expect(explicitRow?.giveUp).toBe(true)
+  expect("retry" in (explicitRow ?? {})).toBe(false)
+})
+

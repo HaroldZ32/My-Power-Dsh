@@ -44,6 +44,8 @@ interface FakeKit {
   ui: Record<string, unknown>
   /** Starts a new render pass, so hook slots are keyed from the same position again. */
   reset(): void
+  /** Every state cell's value, in the order the cells were first created — what React would compare. */
+  stateValues(): unknown[]
 }
 
 /**
@@ -108,6 +110,8 @@ function makeHarness(columns: number, rows: number): FakeKit {
     reset: (): void => {
       index = 0
     },
+    stateValues: (): unknown[] =>
+      [...store.entries()].filter(([key]) => key.startsWith("state:")).map(([, value]) => value),
   }
 }
 
@@ -461,5 +465,33 @@ describe("(d) the workmate page's wheel containment", () => {
     let swallowed = 0
     ;(frame?.props.onWheel as (event: unknown) => void)({ deltaY: 1, stopPropagation: (): void => { swallowed += 1 } })
     expect(swallowed).toBe(1)
+  })
+})
+
+// ── (e) the viewport's render trigger ───────────────────────────────────────
+
+describe("(e) the viewport's render tick", () => {
+  test("the SAME number committed on BOTH axes still advances the state cell", () => {
+    /** The kit; both axes overflow, so neither commit below is clamped away from 1. */
+    const kit = makeHarness(40, 10)
+    /** 100 rows in a 10-row window, 200 cells in a 40-cell one: `scrollTo(1)` and `scrollToCol(1)` both land on 1. */
+    const viewport = usePanelViewport(coreKit(kit), () => ({ contentRows: 100, viewportRows: 10, contentCols: 200, viewportCols: 40 }))
+    /** The state cell's value before any commit. */
+    const start = kit.stateValues()[0]
+    // ONE COMMIT ALONE ADVANCES IT: the cell is the host's re-render trigger, so it must never sit still.
+    viewport.scrollTo(1)
+    /** The state cell's value after the row commit. */
+    const afterRow = kit.stateValues()[0]
+    expect(afterRow).not.toBe(start)
+    expect(viewport.offset).toBe(1)
+    // THE DEFECT: this second commit used to write the SAME number into an offset-valued cell, so React's
+    // Object.is bail-out skipped the render and the horizontal move stayed invisible until something else
+    // rendered. The cell now carries a tick, which advances on every commit on either axis.
+    viewport.scrollToCol(1)
+    /** The state cell's value after the column commit. */
+    const afterCol = kit.stateValues()[0]
+    expect(afterCol).not.toBe(afterRow)
+    expect(viewport.offset).toBe(1)
+    expect(viewport.colOffset).toBe(1)
   })
 })

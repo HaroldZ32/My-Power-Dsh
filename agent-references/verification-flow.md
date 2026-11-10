@@ -228,11 +228,18 @@ PLAN/ROSTER SHAPING, releasing a watchdog hold, and the FINAL INTEGRATION. It do
 as "working solo" — sizing decides WHICH executor, never whether to delegate.
 
 **The captain's TOOL PACK — what is direct, and what is delegated.** The WRITE path is DIRECT:
-`write`, `edit`, `bash` and `mpd_hashline_edit` run with no loop armed and no band reserved, and
-`verify.mode` stays withdrawn. RECONNAISSANCE is DELEGATED, again MECHANICALLY (2026-10-20): on the `mpd`
-preset's top-level session `read`/`grep`/`glob` are REFUSED on a SOURCE path, while the documentation band
+`write`/`edit`/`mpd_hashline_edit` stay direct, `bash` stays direct for git/filesystem/bookkeeping but is
+GATE-DENIED for the captain (`captain.shell`, default `deny`), and `mpd_verify_evidence {kind:"gate"}` is
+refused for the captain (`verify.evidenceBy`, default `verifier`) while `kind:"probe"` stays open; no loop
+is armed, no band is reserved, and `verify.mode` stays withdrawn. RECONNAISSANCE is DELEGATED, again
+MECHANICALLY (2026-10-20) and CLOSED FURTHER on 2026-11-09 (`.mpd/plans/captain-recon-fence.md`): on the `mpd`
+preset's top-level session `read`/`grep`/`glob`, `mpd_hashline_read`, the MCP recon tools
+(`codegraph_explore`, `ast_grep_search`, the `lsp` readers) and the shell read-verbs (file readers and
+searches — `cat`, `sed`, `rg`, `find`, …) are REFUSED on a SOURCE path, while the documentation band
 (`.mpd/**`, `docs/**`, `evidence/**`, `agent-references/**`, and the root instruction/overview files) stays
-readable; and the harness's generic spawn tools (`subagent`, `subagent_fork`, `workflow`) are REFUSED for
+readable; the shell read-route reuses the SAME band classifier as the investigation guard
+(`captainReadablePath`, exported from `captain-investigation.ts`) rather than a second definition, so
+one band governs both doors; and the harness's generic spawn tools (`subagent`, `subagent_fork`, `workflow`) are REFUSED for
 the sessions `delegation.gate` covers, so delegation goes through `mpd_role_spawn`, the workmate library
 or Agent Teams. Steering is therefore BOTH: the persona states the rule up front (its READ DISCIPLINE
 block, so the first move is a delegation rather than a refused read), and the two guards make it
@@ -251,16 +258,18 @@ it must be read token by token — the restored guards print MODES, the withdraw
 the session gate prints its restored default:
 
 ```
-[mpd-roles] team plane: readOnlyGuard=installed deny=8 \
+[mpd-roles] team plane: readOnlyGuard=installed deny=10 \
   captainInvestigation=deny \
   delegationGate=deny \
+  captainShell=deny patterns=19 \
   verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) \
-  askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=mechanical
+  askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=mechanical …
 ```
 
-Three guards are installed: the captain investigation guard, the delegation gate, and the roster's
-read-only discipline (`installReadonlyGuard`, the eight-name deny list §13 defines) — plus the
-`ask_user_question` schema backstop. Only the WRITE guard says `absent reason=…`: a token that reported
+The `mpd-verify` row prints its own token, `evidenceBy=verifier`, beside that row's tool surface.
+Four guards are installed: the captain investigation guard, the captain shell guard, the delegation
+gate, and the roster's read-only discipline (`installReadonlyGuard`, the ten-name deny list §13
+defines) — plus the `ask_user_question` schema backstop. Only the WRITE guard says `absent reason=…`: a token that reported
 a MODE for an install that does not run would be a lie a mount lane could not detect, which is why that
 one never prints `installed`/`allow`.
 
@@ -305,7 +314,11 @@ session of ANOTHER preset keeps its own reconnaissance.
 of the 2026-10-10/11 hooks: an A-writes/B-verifies seat plus the mechanical one-git-writer denial for
 member sessions. It is NOT installed: `src/verify-guard.ts` survives as a reference implementation with
 its unit arms, and its boot token is the fixed absence sentence
-(`verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode)`). The other two hooks are
+(`verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode)`). The two knobs the 2026-11-09
+captain self-test fence adds sit BESIDE that withdrawn reason, not in its place: `captain.shell` (default
+`deny`) refuses the verification COMMANDS on the captain's shell route, and `verify.evidenceBy` (default
+`verifier`) refuses the captain `mpd_verify_evidence {kind:"gate"}`; neither touches the write path, and
+`verify.mode` stays the one withdrawn knob. The other two hooks are
 INSTALLED again (2026-10-20) and their tokens print MODES — see the boot line above. The QA cases:
 `skills/dsh-qa/scripts/delegation-gate.ts` asserts the refusal table and the knob spellings;
 `skills/dsh-qa/scripts/captain-scope.ts` asserts the boot-line tokens and the persona rule (it replaced
