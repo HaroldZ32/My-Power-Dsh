@@ -471,17 +471,22 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
    * captain's own session (the caller the cell record names) — and only then does an absent target count.
    * An unresolvable anchor leaves the answer `unknown`, which licenses nothing.
    *
-   * @param sessionId - the session the seat records; "" cannot be proven live.
+   * @param sessionId - the session the seat records; "" names no session at all, so it is `unknown` before
+   *   any lookup: the anchor would resolve and the absent id would otherwise be read as a proven dead child.
    * @param anchorSessionId - the captain's session id, the identity the registry must resolve before an
    *   absent target may be called dead; "" furnishes no anchor.
    * @returns `live` when the registry answers an Agent for the recorded session, `dead` when the anchor
-   *   resolved and the target did not, and `unknown` when the identity seam or the registry capability is
-   *   absent, or the anchor itself cannot be resolved.
+   *   resolved and a NON-EMPTY target did not, and `unknown` when the recorded session id is empty, the
+   *   identity seam or the registry capability is absent, or the anchor itself cannot be resolved.
    */
   const livenessOf = (sessionId: string, anchorSessionId: string): SeatLiveness => {
+    // AN EMPTY RECORDED SESSION IS UNPROVABLE, NOT DEAD (R9.1): "" names no session, so neither the anchor
+    // nor the registry's silence may turn it into a proven-dead child. This precedes every other check, so
+    // no later branch can reach `dead` for it; every non-empty case keeps its existing path.
+    if (sessionId === "") return "unknown"
     if (typeof dsh.liveAgentExact !== "function") return "unknown"
     try {
-      if (sessionId !== "" && dsh.liveAgentExact(sessionId) !== undefined) return "live"
+      if (dsh.liveAgentExact(sessionId) !== undefined) return "live"
       // THE PRESENCE PROBE IS STILL CONSULTED, but only to REFUSE: a composition that reports no agents
       // registry cannot prove anything, whatever a partial seam answered above.
       /** The adapter's capability snapshot, when this composition offers one. */

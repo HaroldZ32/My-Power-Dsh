@@ -939,6 +939,42 @@ test("R5.2: the SAME dead-reseed seat answers `checkpoint-pending` UNFORCED and 
   expect(text).toContain("force:true")
 })
 
+test("R9.1: an EMPTY recorded session answers `unknown`, never a proven-dead child", async () => {
+  // THE ANCHOR RESOLVES HERE, so before R9.1 the registry's silence about the EMPTY id read as a DEAD
+  // child: the sweep flagged `suspect`, the unforced verb answered `checkpoint-pending`, and the forced
+  // lever cleared the seat under `bound:"dead-session"`. An empty id names no session at all, so nothing
+  // about it can be proven: `unknown` is answered BEFORE the anchor check, licensing nothing.
+  /** The dead-reseed shape with its recorded session id EMPTY while the anchor resolves. */
+  const cell = cellWith({ "Senior Engineer": deadReseedRow({ sessionId: "" }) })
+  /** The harness whose registry resolves the captain and holds nothing under the empty id. */
+  const harness = makeHarness(cell, DEAD_RESEED_ROSTER, [], { liveSessions: [CAPTAIN_SESSION] })
+  /** The read-only sweep the captain consults first. */
+  const sweep = await runTool(harness, "cellwork_supervise", {})
+  /** The sweep's measurement of the seat. */
+  const measured = (sweep.members as Array<Record<string, unknown>>).find((entry) => entry.name === "Senior Engineer")
+  expect(measured?.liveness).toBe("unknown")
+  expect(measured !== undefined && "suspect" in measured).toBe(false)
+  // THE UNFORCED VERB: not held, so no `checkpoint-pending` and no `suspect` either.
+  /** The captain's bare-string unfence. */
+  const plain = await runTool(harness, "cellwork_dispatch", { unfence: ["Senior Engineer"] })
+  /** The plain outcome. */
+  const plainOutcome = (plain.unfenced as Array<Record<string, unknown>>)[0]
+  expect(plainOutcome.unfenced).toBe(false)
+  expect(plainOutcome.reason).toBe("not-fenced")
+  expect("suspect" in plainOutcome).toBe(false)
+  // THE FORCED LEVER: `unknown` supplies no `dead-session` licence, so nothing is written anywhere.
+  /** The captain's FORCED unfence. */
+  const forced = await runTool(harness, "cellwork_dispatch", { unfence: [{ member: "Senior Engineer", force: true }] })
+  /** The forced outcome. */
+  const forcedOutcome = (forced.unfenced as Array<Record<string, unknown>>)[0]
+  expect(forcedOutcome.unfenced).toBe(false)
+  expect(forcedOutcome.reason).toBe("not-fenced")
+  expect("bound" in forcedOutcome).toBe(false)
+  expect(harness.plane.fences).toHaveLength(0)
+  expect(rawMembers(harness.workspace)["Senior Engineer"].mode).toBe("subcaptain")
+  expect(journalRows(harness.workspace, CELL_ID).filter((entry) => entry.event === "member-unfenced-forced")).toHaveLength(0)
+})
+
 test("R5.2 NEGATIVE: the dead-reseed shape still refuses a LIVE seat, a stamp-less row and an unproven registry", async () => {
   // 1. A LIVE seat vetoes the clear: the barrier-owned row whose recorded session is still an agent.
   /** The stalled-looking window whose session the registry still holds. */

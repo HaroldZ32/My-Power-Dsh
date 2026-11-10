@@ -7231,10 +7231,12 @@ function installCellworkProtocol(deps) {
   };
   const captainOnly = (caller, tool) => caller.sessionId === "" || caller.cell === null || caller.sessionId !== caller.cell.captainSessionId ? { ok: false, error: tool + " is CAPTAIN-ONLY: the captain of this cell is session " + String(caller.cell?.captainSessionId ?? "none") + ", which is not this caller" } : undefined;
   const livenessOf = (sessionId, anchorSessionId) => {
+    if (sessionId === "")
+      return "unknown";
     if (typeof dsh.liveAgentExact !== "function")
       return "unknown";
     try {
-      if (sessionId !== "" && dsh.liveAgentExact(sessionId) !== undefined)
+      if (dsh.liveAgentExact(sessionId) !== undefined)
         return "live";
       const capabilities = typeof dsh.capabilities === "function" ? dsh.capabilities() : undefined;
       if (capabilities?.agents !== true)
