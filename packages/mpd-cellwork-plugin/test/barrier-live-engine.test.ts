@@ -686,6 +686,36 @@ test("C2: the reseed parent ids are carried, and a host throw during the reseed 
   expect(String(rawMember(harness).fencedReason)).toContain("the reseed failed: the host is out of slots")
 })
 
+// ── R6.2: an ACCEPTED retirement survives the spawn that then fails ───────
+
+test("R6.2: an accepted retirement is journaled when the spawn then THROWS", async () => {
+  /** A LIVE member under a LIVE parent, so the retirement is authorised and the host accepts it. */
+  const harness = makeHarness({ answers: [null] })
+  // The host accepts the retirement and THEN refuses the spawn — the exact window R6.2 is about.
+  harness.adapter.startContinuableAgent = async (): Promise<never> => { throw new Error("the host is out of slots") }
+  await stopListener(harness)({ agent: harness.member })
+  // The premise, asserted rather than assumed: the interrupt really landed on the original session.
+  expect(harness.interruptAccepted).toContain(MEMBER_SESSION)
+  /** The refused outcome's only journal row. */
+  const row = journalRows(harness).find((entry) => entry.event === "checkpoint-unrecoverable")
+  // The record must never say "the reseed failed" while silently dropping that the original WAS retired.
+  expect(row?.retirement).toBe("accepted")
+  expect("retirementReason" in (row ?? {})).toBe(false)
+})
+
+test("R6.2: an accepted retirement is journaled when the spawn mints NO child id", async () => {
+  /** The same live shape, with a host that resolves without a child instead of throwing. */
+  const harness = makeHarness({ answers: [null] })
+  harness.adapter.startContinuableAgent = async (): Promise<unknown> => ({})
+  await stopListener(harness)({ agent: harness.member })
+  expect(harness.interruptAccepted).toContain(MEMBER_SESSION)
+  /** The refused outcome's only journal row. */
+  const row = journalRows(harness).find((entry) => entry.event === "checkpoint-unrecoverable")
+  // BOTH refusal spellings carry it: the reason still names the missing handle, the fact still survives.
+  expect(String(row?.reason)).toContain("the reseed reported no child id")
+  expect(row?.retirement).toBe("accepted")
+})
+
 // ── ROOT CAUSE 1: the engine lives in the preset's ISOLATE realm ───────────
 //
 // dsh-tui 0.18.0 disables the host's root `compaction-basic` row and this bundle's `mpd` preset mounts

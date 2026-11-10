@@ -362,14 +362,24 @@ export interface PromotionResult {
   /**
    * Whether the ORIGINAL session's interrupt was ACCEPTED on the reseed path (R4.7, corrected by R5.1).
    *
-   * ABSENT-NOT-FALSE: the key exists only on a reseed, and `false` says no retirement was confirmed. `true`
-   * requires {@link PromotionResult.retirement} to be `accepted`: a session the identity registry does not
-   * hold is `nothing-to-retire` and is NEVER recorded as retired (the R4 inversion this repairs).
+   * ABSENT-NOT-FALSE: the key exists only on a `reseeded` outcome, and `false` says no retirement was
+   * confirmed. `true` requires {@link PromotionResult.retirement} to be `accepted`: a session the identity
+   * registry does not hold is `nothing-to-retire` and is NEVER recorded as retired (the R4 inversion this
+   * repairs). A reseed that was ATTEMPTED and then REFUSED reports the same fact through `retirement` alone
+   * (R6.2), so its absence here says nothing about the original.
    */
   retired?: boolean
-  /** WHAT the host did with the retirement (R5.1); absent when the reseed path never ran. */
+  /**
+   * WHAT the host did with the retirement (R5.1); absent when no retirement was ATTEMPTED.
+   *
+   * Carried on a `reseeded` outcome AND on a `refused` one whose spawn failed after a retirement was
+   * attempted (R6.2): an accepted retirement is never lost to a spawn that then throws or mints no child id.
+   */
   retirement?: RetirementOutcome
-  /** The host's own sentence when it REFUSED the interrupt (R5.1); absent on every other outcome. */
+  /**
+   * The sentence behind a retirement that was NOT accepted (R5.1): the host's own refusal, or why nothing
+   * could be retired or verified; absent when `retirement` is `accepted` or was never attempted.
+   */
   retirementReason?: string
 }
 
@@ -546,6 +556,9 @@ export function compactionJournalEntry(memberName: string, result: PromotionResu
  * D5 measured what its absence costs: a member fenced-but-owning wrote three handoffs in seven minutes
  * while ten tickets stayed owned by nobody who could claim them.
  *
+ * A refusal that followed an ACCEPTED retirement carries `retirement`/`retirementReason` too (R6.2): this
+ * is the only row a `refused` outcome writes, so it is where that fact must survive.
+ *
  * @param memberName - the member the barrier gave up on.
  * @param result - the barrier's outcome (its attempts and classification are quoted).
  * @returns the journal row.
@@ -556,6 +569,11 @@ export function checkpointUnrecoverableEntry(memberName: string, result: Promoti
     member: memberName,
     attempts: result.attempts,
     reason: result.reason,
+    // AN ACCEPTED RETIREMENT OUTLIVES THE FAILED SPAWN (R6.2): the reseed can throw or mint no child AFTER
+    // the host accepted the original's retirement, and dropping the fact here would leave the record saying
+    // the reseed failed while the original session WAS retired.
+    ...(result.retirement === undefined ? {} : { retirement: result.retirement }),
+    ...(result.retirementReason === undefined ? {} : { retirementReason: result.retirementReason }),
     repair: "reassign the rows this member owns: cellwork_dispatch {reassign:[{task_id, owner}]}",
   }
 }
@@ -753,7 +771,9 @@ export async function promoteAfterHandoff(deps: PromotionDeps): Promise<Promotio
   // THE ORIGINAL IS RETIRED BY ITS LIVE ANCESTOR, AFTER THAT ANCESTOR IS PROVEN (R5.1): the SAME session
   // the child is raised under is the only `ancestor` authority the host accepts, and the member's own
   // handle is the target, never the caller. Retirement lands here — after the parent proof — so a refusal
-  // that never reaches a spawn never kills the original either.
+  // that never reaches a spawn never kills the original either. BOTH REFUSAL RETURNS BELOW CARRY IT (R6.2):
+  // once the host has accepted this retirement, a spawn that throws or mints no child id cannot un-retire
+  // the original, so the fact travels with the `refused` outcome instead of being dropped with the reseed.
   /** What the host did with the original session's retirement. */
   const retirement = retireOriginal(deps, parent.parent)
   try {
@@ -782,10 +802,10 @@ export async function promoteAfterHandoff(deps: PromotionDeps): Promise<Promotio
     }) as { childId?: unknown; id?: unknown } | undefined
     /** The fresh handle the backend minted. */
     const handle = typeof activation?.childId === "string" ? activation.childId : typeof activation?.id === "string" ? activation.id : ""
-    if (handle === "") return { outcome: "refused", attempts: deps.config.compactionRetries, reason: lastReason + busyNote + "; the reseed reported no child id" }
+    if (handle === "") return { outcome: "refused", attempts: deps.config.compactionRetries, reason: lastReason + busyNote + "; the reseed reported no child id", retirement: retirement.retirement, ...(retirement.reason === undefined ? {} : { retirementReason: retirement.reason }) }
     return { outcome: "reseeded", attempts: deps.config.compactionRetries, reason: lastReason + busyNote, newHandle: handle, parentSessionId: parent.sessionId, parentSource: parent.source, retired: retirement.retirement === "accepted", retirement: retirement.retirement, ...(retirement.reason === undefined ? {} : { retirementReason: retirement.reason }) }
   } catch (error) {
-    return { outcome: "refused", attempts: deps.config.compactionRetries, reason: lastReason + busyNote + "; the reseed failed: " + (error instanceof Error ? error.message : String(error)) }
+    return { outcome: "refused", attempts: deps.config.compactionRetries, reason: lastReason + busyNote + "; the reseed failed: " + (error instanceof Error ? error.message : String(error)), retirement: retirement.retirement, ...(retirement.reason === undefined ? {} : { retirementReason: retirement.reason }) }
   }
 }
 
