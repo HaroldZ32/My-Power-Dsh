@@ -445,7 +445,9 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
    * THREE STATES ON PURPOSE (R4.2). `liveAgentExact` answers `undefined` both for a dead session and for
    * a composition whose agents registry is absent (`mpd-dsh-adapter-plugin/src/index.ts#liveAgentExact`),
    * so treating that `undefined` as "dead" would report EVERY seat as suspect on an older composition.
-   * `unknown` is the honest answer there, and nothing is fenced or forced on it.
+   * `unknown` is the honest answer there: NOTHING is fenced automatically on it and it never supplies the
+   * `dead-session` licence, while the forced lever's written bounds (`retry-budget`, `stale`) still apply —
+   * a forced clear is allowed on `unknown` (R7.11 corrects the older sentence that denied it).
    */
   type SeatLiveness = "live" | "dead" | "unknown"
 
@@ -462,23 +464,33 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
   /**
    * The liveness of one recorded session, through the adapter's identity seam.
    *
+   * THE CAPABILITY FLAG NEVER LICENSES `dead` (R7.3). `capabilities().agents` only says a registry
+   * SERVICE is present; it says nothing about whether a lookup can succeed, and the adapter's own
+   * `liveAgentExact` also answers `undefined` when `agents.get` is missing or throws. `dead` is therefore
+   * proved by an ANCHOR: the registry must first resolve an identity that is known to be alive — the
+   * captain's own session (the caller the cell record names) — and only then does an absent target count.
+   * An unresolvable anchor leaves the answer `unknown`, which licenses nothing.
+   *
    * @param sessionId - the session the seat records; "" cannot be proven live.
-   * @returns `live` when the registry answers an Agent for it, `dead` when the registry is present and
-   *   answers nothing, and `unknown` when this composition exposes no identity seam or no registry.
+   * @param anchorSessionId - the captain's session id, the identity the registry must resolve before an
+   *   absent target may be called dead; "" furnishes no anchor.
+   * @returns `live` when the registry answers an Agent for the recorded session, `dead` when the anchor
+   *   resolved and the target did not, and `unknown` when the identity seam or the registry capability is
+   *   absent, or the anchor itself cannot be resolved.
    */
-  const livenessOf = (sessionId: string): SeatLiveness => {
+  const livenessOf = (sessionId: string, anchorSessionId: string): SeatLiveness => {
     if (typeof dsh.liveAgentExact !== "function") return "unknown"
     try {
       if (sessionId !== "" && dsh.liveAgentExact(sessionId) !== undefined) return "live"
-    } catch {
-      return "unknown"
-    }
-    // THE PRESENCE PROBE DECIDES DEAD VS UNKNOWN: only a composition that really serves an agents
-    // registry can call a missing id DEAD; anything else is unproven.
-    try {
+      // THE PRESENCE PROBE IS STILL CONSULTED, but only to REFUSE: a composition that reports no agents
+      // registry cannot prove anything, whatever a partial seam answered above.
       /** The adapter's capability snapshot, when this composition offers one. */
       const capabilities = typeof dsh.capabilities === "function" ? dsh.capabilities() : undefined
-      return capabilities?.agents === true ? "dead" : "unknown"
+      if (capabilities?.agents !== true) return "unknown"
+      // THE ANCHOR IS THE PROOF THE LOOKUP IS TRUSTWORTHY: only a registry that resolves a session known
+      // to be alive can be believed when it answers nothing for the target.
+      if (anchorSessionId === "" || dsh.liveAgentExact(anchorSessionId) === undefined) return "unknown"
+      return "dead"
     } catch {
       return "unknown"
     }
@@ -553,13 +565,14 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
    *                    stands on a WRITTEN bound: the retry budget or the staleness clock. Fail-closed:
    *                    a fresh window and a missing timestamp reach neither.
    *   `deadReseed`   — the DEAD-RESEED shape (R5.1/R4.2): the barrier replaced the session with a child
-   *                    the registry PROVES dead (`liveness === "dead"`, i.e. the registry is present and
-   *                    answers nothing) while the row is still `subcaptain` and not handoff-ready. No live
-   *                    agent is left to drive another turn, so nothing will ever reopen it and the clock
-   *                    bound can never be reached: the PROVEN-DEAD session is the licence
-   *                    (`bound:"dead-session"`). Its window's STAMP is still required for that licence — a
-   *                    missing timestamp is never one (the answer is `force-not-eligible`), and an ABSENT
-   *                    registry (`unknown`) proves nothing at all.
+   *                    the registry PROVES dead (`liveness === "dead"`: the registry is present, its
+   *                    CAPTAIN anchor resolves, and it answers nothing for the recorded session) while the
+   *                    row is still `subcaptain` and not handoff-ready. No live agent is left to drive
+   *                    another turn, so nothing will ever reopen it and the clock bound can never be
+   *                    reached: the PROVEN-DEAD session is the licence (`bound:"dead-session"`). Its
+   *                    window's STAMP is still required for that licence — a missing timestamp is never
+   *                    one (the answer is `force-not-eligible`), and an ABSENT registry — or a present one
+   *                    that cannot resolve the CAPTAIN anchor — answers `unknown` and proves nothing.
    */
   interface ForceReading {
     /** Whether a checkpoint SPELLING on either record is what holds the seat. */
@@ -601,8 +614,8 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
     const since = member === undefined ? undefined : checkpointSinceOf(cell, member)
     /** The window's age, when it can be measured; a missing or unparsable stamp measures nothing. */
     const pendingMs = pendingMsOf(since, now)
-    /** What the identity seam says about the session the row points at. */
-    const liveness = member === undefined ? "unknown" as const : livenessOf(member.sessionId)
+    /** What the identity seam says about the session the row points at, anchored on the captain's own id. */
+    const liveness = member === undefined ? "unknown" as const : livenessOf(member.sessionId, cell.captainSessionId)
     // TWO DIFFERENT FACTS, ONE CLOCK (R5.2). `suspect` is the OBSERVABILITY flag R4.2 introduced: a seat
     // whose recorded session the registry proves dead, whatever else the row says. `deadReseed` is the
     // CLOSURE shape: the same proven-dead session on a row that LEFT the barrier's window (a reseed), so
@@ -1104,7 +1117,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
   // ── cellwork_supervise ───────────────────────────────────────────────────
   disposers.push(dsh.registerTool({
     name: "cellwork_supervise",
-    description: "CAPTAIN only: one READ-ONLY sweep of the cell — every member's mode / handoff state / live context ratio, the pending board tasks, the stale-split flags, the CLOSED seats together with the open rows they own, and the unread mail (including rows whose wake-up never went out). CLOSED SEATS COME IN THREE KINDS and the sweep names which, because only TWO of them are the captain's to repair: a GIVE-UP fence (an explicit `fenced:true` on EITHER record) gets the two levers — `reassign` its open rows with `cellwork_dispatch {reassign:[...]}`, and clear the fence with `cellwork_dispatch {unfence:[...]}`; a BARRIER-OWNED seat (the TEAM/CELL row at `mode:\"checkpoint\"` with NO `fenced` marker, the window every handoff opens) is reported with `barrierOwned`, `forceEligible` and `pendingMs` — the compaction barrier OWES that seat its reopen, but nothing supervises the barrier, so a seat it can no longer run for needs the BOUNDED forced lever (`cellwork_dispatch {unfence:[{member, force:true}]}`, allowed only when the recorded session is not live and the window's written bound is reached). A DEAD-RESEED seat (a reseeded `subcaptain` row whose recorded session the registry PROVES dead and which no barrier will run for) is reported as a closed seat with `barrierOwned:false`, `suspect:true` and the same `forceEligible` answer the verb uses — ONE predicate, so the lever the sweep advertises is the lever `unfence:[{member, force:true}]` accepts. A closed seat whose TEAM half is a `checkpoint` no barrier is pending for carries `retry`, the exact Lead-only verb that reopens it. A member whose recorded session is not live while the registry IS present is reported `suspect:true`. Call it on every wake-up; it mutates nothing.",
+    description: "CAPTAIN only: one READ-ONLY sweep of the cell — every member's mode / handoff state / live context ratio, the pending board tasks, the stale-split flags, the CLOSED seats together with the open rows they own, and the unread mail (including rows whose wake-up never went out). CLOSED SEATS COME IN THREE KINDS and the sweep names which, because only TWO of them are the captain's to repair: a GIVE-UP fence (an explicit `fenced:true` on EITHER record) gets the two levers — `reassign` its open rows with `cellwork_dispatch {reassign:[...]}`, and clear the fence with `cellwork_dispatch {unfence:[...]}`; a BARRIER-OWNED seat (the TEAM/CELL row at `mode:\"checkpoint\"` with NO `fenced` marker, the window every handoff opens) is reported with `barrierOwned`, `forceEligible` and `pendingMs` — the compaction barrier OWES that seat its reopen, but nothing supervises the barrier, so a seat it can no longer run for needs the BOUNDED forced lever (`cellwork_dispatch {unfence:[{member, force:true}]}`, allowed only when the recorded session is not live and the window's written bound is reached). A DEAD-RESEED seat (a reseeded `subcaptain` row whose recorded session the registry PROVES dead and which no barrier will run for) is reported as a closed seat with `barrierOwned:false`, `suspect:true` and the same `forceEligible` answer the verb uses — ONE predicate, so the lever the sweep advertises is the lever `unfence:[{member, force:true}]` accepts. A closed seat whose TEAM half is a `checkpoint` no barrier is pending for carries `retry`, the exact Lead-only verb that reopens it. A member is reported `suspect:true` only when a window stamp exists, the registry is PRESENT, its CAPTAIN anchor resolves, and the recorded session does not — a present registry that cannot resolve that anchor answers `unknown`, which licenses nothing. Call it on every wake-up; it mutates nothing.",
     parameters: { type: "object", properties: {
       limit: { type: "integer", description: "Rows to render (default 20, clamped 1..100)." },
       offset: { type: "integer", description: "First row of the page (default 0)." },
@@ -2088,16 +2101,25 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         deps.warn("[mpd-cellwork] the compaction barrier could not re-read " + fresh.path + ": " + fresh.detail)
         return
       }
-      // THE BARRIER OWES THE SEAT ITS REOPEN (R4.1, the one-way door). Every outcome except `refused`
+      // THE BARRIER OWES THE SEAT ITS REOPEN (R4.1, the one-way door). A run that REOPENED the CELL seat
       // leaves a member that is supposed to WORK again — and `cellwork_handoff` wrote TEAM
       // `mode:"checkpoint"` when the handoff landed, which the guard fences and dispatch refuses to pair.
       // The barrier therefore reopens that plane seat AS THE CAPTAIN, through the SAME implementation the
       // captain's `unfence` uses, and reports which half really happened. Without this call every
       // successful promotion left a dead seat while the team record still said `running`.
-      /** How the plane's half ended; `absent` for a refusal, which reopened nothing and owes nothing. */
-      const plane = result.outcome === "refused"
-        ? { plane: "absent" as const, planeReason: undefined }
-        : await reopenPlaneSeat(caller.cell.captainSessionId, caller.member)
+      // A RUN THAT FENCED THE CELL SEAT OWES THE PLANE NOTHING (R7.2). Since R4.3 `memberAfterBarrier` also
+      // gives up on a `reseeded` run that reaches the retry bound, writing `mode:"checkpoint"` +
+      // `handoffReady:true` + `fenced:true`; reopening the TEAM seat on that same run would leave the two
+      // records DISAGREEING (CELL fenced, TEAM member) — the divergence this repair exists to end. The gate
+      // is therefore the ROW the barrier is about to persist, never the raw outcome.
+      /** The row this barrier leaves behind, computed BEFORE the plane call so the reopen is gated on it. */
+      const barrierRow: CellMemberRecord = memberAfterBarrier(fresh.state.members[caller.member] ?? member, result, config.compactionRetries)
+      /** Whether the barrier actually REOPENED the CELL seat: a give-up fence leaves nothing to reopen. */
+      const cellReopened = barrierRow.fenced !== true
+      /** How the plane's half ended; a fenced run reports the skip instead of claiming a reopen. */
+      const plane = cellReopened
+        ? await reopenPlaneSeat(caller.cell.captainSessionId, caller.member)
+        : { plane: "skipped-fenced" as const, planeReason: "this barrier FENCED the CELL seat on the same run (the retry bound gave up), so the TEAM seat stays closed with it" }
       // THE WRITE IS MERGED INTO A READ TAKEN AFTER THE AWAITED PLANE CALL (R5.3). The snapshot above
       // predates `reopenPlaneSeat`, and writing it back reverted every change a concurrent writer made
       // inside that await — another member's `fenced:true`, an adoption, a promotion. This is the SAME
@@ -2116,7 +2138,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       // duty above, and the plane's half is reported exactly as it ended (`unfenced`/`absent`/`refused`).
       // A REFUSED HALF NAMES ITS RETRY (R5.4): the TEAM seat stays closed and the row carries the exact
       // verb that re-drives the seam, so the operator is not left with a dead end.
-      if (result.outcome !== "refused") {
+      if (cellReopened) {
         appendJournal(caller.workspace, caller.cell.cellId, {
           event: "member-unfenced",
           member: caller.member,
@@ -2124,6 +2146,17 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
           plane: plane.plane,
           ...(plane.planeReason === undefined ? {} : { planeReason: plane.planeReason }),
           ...(plane.plane === "refused" ? { retry: planeRetryOf(caller.member) } : {}),
+        }, now)
+      } else if (result.outcome !== "refused") {
+        // THE SAME-RUN FENCE IS OBSERVABLE, NOT SILENT (R7.2): the barrier did NOT touch the plane, and
+        // the row says so with the honest value rather than leaving the reader to infer it from absence.
+        // A `refused` run writes `checkpoint-unrecoverable` below instead, as it always has.
+        appendJournal(caller.workspace, caller.cell.cellId, {
+          event: "plane-reopen-skipped",
+          member: caller.member,
+          by: "barrier",
+          plane: plane.plane,
+          ...(plane.planeReason === undefined ? {} : { planeReason: plane.planeReason }),
         }, now)
       }
       // THE GIVEN-UP BARRIER GETS ITS OWN JOURNAL ROW (C7): the compaction row below reports the attempt,

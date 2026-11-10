@@ -733,8 +733,10 @@ test("R4.2: a reseeded seat whose recorded session is NOT live is reported `susp
   // promotion. The sweep now measures the window's age and the session's liveness and says so.
   /** The seat a broken reseed left: `subcaptain`, a fresh handle, a window no barrier reopened. */
   const row = memberRow("Senior Engineer", { mode: "subcaptain", handoffReady: false, handoffs: 2, sessionId: "session-dead-child", checkpointSince: new Date(Date.now() - 1800000).toISOString() })
-  /** The harness whose registry is PRESENT and holds nothing under that id. */
-  const harness = makeHarness({ "Senior Engineer": row }, { liveSessions: [] })
+  // THE ANCHOR IS WHAT MAKES `dead` PROVABLE (R7.3): the registry holds the CAPTAIN's own session, so its
+  // refusal to answer for the target is a fact about the target rather than an unproven absence.
+  /** The harness whose registry is PRESENT, resolves the captain's identity, and holds nothing under the target id. */
+  const harness = makeHarness({ "Senior Engineer": row }, { liveSessions: [CAPTAIN_SESSION] })
   /** The captain's sweep. */
   const sweep = await runTool(harness, "cellwork_supervise", {}, harness.captain)
   expect(sweep.ok).toBe(true)
@@ -780,4 +782,23 @@ test("R4.2: an ABSENT agents registry is UNKNOWN — a seat is never reported su
   /** The text a model reads for the same sweep. */
   const text = renderTool(harness, "cellwork_supervise", sweep)
   expect(text).not.toContain("SUSPECT")
+})
+
+test("R7.3: a PRESENT registry that cannot resolve the captain anchor is UNKNOWN, never `dead`", async () => {
+  // THE CAPABILITY FLAG IS NOT PROOF: `capabilities().agents === true` only says a registry service is
+  // mounted. A registry that cannot resolve a session KNOWN to be alive (the captain) may be answering
+  // `undefined` for reasons that have nothing to do with the target, so an absent target proves nothing.
+  /** The same post-reseed row. */
+  const row = memberRow("Senior Engineer", { mode: "subcaptain", handoffReady: false, handoffs: 2, sessionId: "session-dead-child", checkpointSince: new Date(Date.now() - 1800000).toISOString() })
+  /** The harness whose registry is PRESENT but resolves NOTHING — the captain included. */
+  const harness = makeHarness({ "Senior Engineer": row }, { liveSessions: [] })
+  /** The captain's sweep. */
+  const sweep = await runTool(harness, "cellwork_supervise", {}, harness.captain)
+  /** The member row the sweep projects. */
+  const member = (sweep.members as Array<Record<string, unknown>>).find((entry) => entry.name === "Senior Engineer")
+  if (member === undefined) throw new Error("the member must be reported")
+  expect(member.liveness).toBe("unknown")
+  // AND NOTHING IS LICENSED ON IT: no suspect flag, no closed seat, no forced lever.
+  expect("suspect" in member).toBe(false)
+  expect((sweep.fenced as Array<Record<string, unknown>>).some((entry) => entry.name === "Senior Engineer")).toBe(false)
 })

@@ -196,6 +196,17 @@ describe("the pinned detail body: a consult's own facts", () => {
     for (const label of ["verdict", "failedBy", "attempt", "round", "blockedBy", "dependents", "kind"]) expect(text).not.toContain(label)
   })
 
+  test("R7.7: a malformed instant or span degrades to a dash, never a RangeError", () => {
+    // The value comes from a PERSISTED team record: 8.7e15 is finite and outside the ECMAScript date
+    // range, so `Number.isFinite` alone let `toISOString()` throw and broke the whole pinned body.
+    /** The settled fixture with an out-of-range start and a non-finite span. */
+    const malformed = { ...SETTLED, consult: { ...SETTLED.consult, startedAt: 8.7e15, elapsedMs: Number.POSITIVE_INFINITY } }
+    /** The body's text; a throw here fails the arm with the RangeError itself. */
+    const text = pinnedDetailLines(malformed, [malformed], 120).join("\n")
+    expect(text).toContain("started —")
+    expect(text).toContain("elapsed —")
+  })
+
   test("a running consult prints no elapsed time rather than a fabricated one", () => {
     /** The body of the running fixture. */
     const text = pinnedDetailLines({ ...CONSULT_TASK, failedDependencies: [] }, [], 120).join("\n")

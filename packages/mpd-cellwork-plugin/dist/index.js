@@ -4000,6 +4000,19 @@ function taskOfConsult(deps, consultId) {
 async function clearCellConsults(deps) {
   const owned = [...deps.book.get(deps.cellId)?.keys() ?? []];
   deps.book.delete(deps.cellId);
+  const service = deps.consults();
+  for (const consultId of owned) {
+    try {
+      if (typeof service?.cancel !== "function") {
+        appendJournal(deps.workspace, deps.cellId, { event: "consult-cancel-skipped", consultId, reason: "this composition exposes no mpdConsults.cancel seam" }, deps.now);
+        continue;
+      }
+      await Promise.resolve(service.cancel(consultId));
+      appendJournal(deps.workspace, deps.cellId, { event: "consult-cancelled", consultId, by: "stop" }, deps.now);
+    } catch (error) {
+      appendJournal(deps.workspace, deps.cellId, { event: "consult-cancel-skipped", consultId, reason: error instanceof Error ? error.message : String(error) }, deps.now);
+    }
+  }
   if (deps.teamId === "")
     return [];
   const plane = deps.teamActions();
@@ -5066,7 +5079,7 @@ function installCellworkFlow(deps) {
   };
   const consultBook = createConsultBook();
   deps.onConsultStop?.(async (cell) => {
-    await clearCellConsults({ book: consultBook, cellId: cell.cellId, workspace: cell.workspace, teamId: cell.teamId, teamActions, now: new Date });
+    await clearCellConsults({ book: consultBook, cellId: cell.cellId, workspace: cell.workspace, teamId: cell.teamId, teamActions, consults, now: new Date });
   });
   const configService = () => {
     const service = deps.ctx.get?.("mpdConfig", false);
@@ -7217,18 +7230,18 @@ function installCellworkProtocol(deps) {
     return { ...stamped, updatedAt: now.toISOString() };
   };
   const captainOnly = (caller, tool) => caller.sessionId === "" || caller.cell === null || caller.sessionId !== caller.cell.captainSessionId ? { ok: false, error: tool + " is CAPTAIN-ONLY: the captain of this cell is session " + String(caller.cell?.captainSessionId ?? "none") + ", which is not this caller" } : undefined;
-  const livenessOf = (sessionId) => {
+  const livenessOf = (sessionId, anchorSessionId) => {
     if (typeof dsh.liveAgentExact !== "function")
       return "unknown";
     try {
       if (sessionId !== "" && dsh.liveAgentExact(sessionId) !== undefined)
         return "live";
-    } catch {
-      return "unknown";
-    }
-    try {
       const capabilities = typeof dsh.capabilities === "function" ? dsh.capabilities() : undefined;
-      return capabilities?.agents === true ? "dead" : "unknown";
+      if (capabilities?.agents !== true)
+        return "unknown";
+      if (anchorSessionId === "" || dsh.liveAgentExact(anchorSessionId) === undefined)
+        return "unknown";
+      return "dead";
     } catch {
       return "unknown";
     }
@@ -7261,7 +7274,7 @@ function installCellworkProtocol(deps) {
     const barrierOwned = member?.mode === "checkpoint" || member?.handoffReady === true || seat.checkpoint === true;
     const since = member === undefined ? undefined : checkpointSinceOf(cell, member);
     const pendingMs = pendingMsOf(since, now);
-    const liveness = member === undefined ? "unknown" : livenessOf(member.sessionId);
+    const liveness = member === undefined ? "unknown" : livenessOf(member.sessionId, cell.captainSessionId);
     const suspect = since !== undefined && liveness === "dead";
     const deadReseed = !barrierOwned && liveness === "dead" && member !== undefined && member.mode === "subcaptain" && member.handoffReady !== true;
     const closed = barrierOwned || deadReseed;
@@ -7523,7 +7536,7 @@ function installCellworkProtocol(deps) {
   }));
   disposers.push(dsh.registerTool({
     name: "cellwork_supervise",
-    description: "CAPTAIN only: one READ-ONLY sweep of the cell — every member's mode / handoff state / live context ratio, the pending board tasks, the stale-split flags, the CLOSED seats together with the open rows they own, and the unread mail (including rows whose wake-up never went out). CLOSED SEATS COME IN THREE KINDS and the sweep names which, because only TWO of them are the captain's to repair: a GIVE-UP fence (an explicit `fenced:true` on EITHER record) gets the two levers — `reassign` its open rows with `cellwork_dispatch {reassign:[...]}`, and clear the fence with `cellwork_dispatch {unfence:[...]}`; a BARRIER-OWNED seat (the TEAM/CELL row at `mode:\"checkpoint\"` with NO `fenced` marker, the window every handoff opens) is reported with `barrierOwned`, `forceEligible` and `pendingMs` — the compaction barrier OWES that seat its reopen, but nothing supervises the barrier, so a seat it can no longer run for needs the BOUNDED forced lever (`cellwork_dispatch {unfence:[{member, force:true}]}`, allowed only when the recorded session is not live and the window's written bound is reached). A DEAD-RESEED seat (a reseeded `subcaptain` row whose recorded session the registry PROVES dead and which no barrier will run for) is reported as a closed seat with `barrierOwned:false`, `suspect:true` and the same `forceEligible` answer the verb uses — ONE predicate, so the lever the sweep advertises is the lever `unfence:[{member, force:true}]` accepts. A closed seat whose TEAM half is a `checkpoint` no barrier is pending for carries `retry`, the exact Lead-only verb that reopens it. A member whose recorded session is not live while the registry IS present is reported `suspect:true`. Call it on every wake-up; it mutates nothing.",
+    description: "CAPTAIN only: one READ-ONLY sweep of the cell — every member's mode / handoff state / live context ratio, the pending board tasks, the stale-split flags, the CLOSED seats together with the open rows they own, and the unread mail (including rows whose wake-up never went out). CLOSED SEATS COME IN THREE KINDS and the sweep names which, because only TWO of them are the captain's to repair: a GIVE-UP fence (an explicit `fenced:true` on EITHER record) gets the two levers — `reassign` its open rows with `cellwork_dispatch {reassign:[...]}`, and clear the fence with `cellwork_dispatch {unfence:[...]}`; a BARRIER-OWNED seat (the TEAM/CELL row at `mode:\"checkpoint\"` with NO `fenced` marker, the window every handoff opens) is reported with `barrierOwned`, `forceEligible` and `pendingMs` — the compaction barrier OWES that seat its reopen, but nothing supervises the barrier, so a seat it can no longer run for needs the BOUNDED forced lever (`cellwork_dispatch {unfence:[{member, force:true}]}`, allowed only when the recorded session is not live and the window's written bound is reached). A DEAD-RESEED seat (a reseeded `subcaptain` row whose recorded session the registry PROVES dead and which no barrier will run for) is reported as a closed seat with `barrierOwned:false`, `suspect:true` and the same `forceEligible` answer the verb uses — ONE predicate, so the lever the sweep advertises is the lever `unfence:[{member, force:true}]` accepts. A closed seat whose TEAM half is a `checkpoint` no barrier is pending for carries `retry`, the exact Lead-only verb that reopens it. A member is reported `suspect:true` only when a window stamp exists, the registry is PRESENT, its CAPTAIN anchor resolves, and the recorded session does not — a present registry that cannot resolve that anchor answers `unknown`, which licenses nothing. Call it on every wake-up; it mutates nothing.",
     parameters: { type: "object", properties: {
       limit: { type: "integer", description: "Rows to render (default 20, clamped 1..100)." },
       offset: { type: "integer", description: "First row of the page (default 0)." }
@@ -8236,14 +8249,16 @@ acknowledgement refused for ` + String(refused.length) + " row(s), which stay un
         deps.warn("[mpd-cellwork] the compaction barrier could not re-read " + fresh.path + ": " + fresh.detail);
         return;
       }
-      const plane = result.outcome === "refused" ? { plane: "absent", planeReason: undefined } : await reopenPlaneSeat(caller.cell.captainSessionId, caller.member);
+      const barrierRow = memberAfterBarrier(fresh.state.members[caller.member] ?? member, result, config.compactionRetries);
+      const cellReopened = barrierRow.fenced !== true;
+      const plane = cellReopened ? await reopenPlaneSeat(caller.cell.captainSessionId, caller.member) : { plane: "skipped-fenced", planeReason: "this barrier FENCED the CELL seat on the same run (the retry bound gave up), so the TEAM seat stays closed with it" };
       const settled = readCell(caller.workspace, caller.cell.cellId);
       if (!settled.ok)
         deps.warn("[mpd-cellwork] the compaction barrier could not re-read " + settled.path + " after the plane call: " + settled.detail + " — merging into the pre-await snapshot");
       const base = settled.ok ? settled.state : fresh.state;
       const updated = memberAfterBarrier(base.members[caller.member] ?? member, result, config.compactionRetries);
       const next = { ...base, members: { ...base.members, [caller.member]: updated } };
-      if (result.outcome !== "refused") {
+      if (cellReopened) {
         appendJournal(caller.workspace, caller.cell.cellId, {
           event: "member-unfenced",
           member: caller.member,
@@ -8251,6 +8266,14 @@ acknowledgement refused for ` + String(refused.length) + " row(s), which stay un
           plane: plane.plane,
           ...plane.planeReason === undefined ? {} : { planeReason: plane.planeReason },
           ...plane.plane === "refused" ? { retry: planeRetryOf(caller.member) } : {}
+        }, now);
+      } else if (result.outcome !== "refused") {
+        appendJournal(caller.workspace, caller.cell.cellId, {
+          event: "plane-reopen-skipped",
+          member: caller.member,
+          by: "barrier",
+          plane: plane.plane,
+          ...plane.planeReason === undefined ? {} : { planeReason: plane.planeReason }
         }, now);
       }
       if (result.outcome === "refused")

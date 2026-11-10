@@ -756,6 +756,22 @@ export function pinnedDetailLines(task: DagPanelTask, tasks: readonly DagPanelTa
 }
 
 /**
+ * One epoch-millisecond instant as an ISO-8601 string, or a dash when it is not representable.
+ *
+ * `Number.isFinite` ALONE DOES NOT MAKE `toISOString()` SAFE (CodeRabbit round 1, R7.7): a finite
+ * magnitude beyond ±8.64e15 ms is outside the ECMAScript date range, so `new Date(value)` is Invalid and
+ * `toISOString()` throws `RangeError`. The consult badge comes from a PERSISTED team record, and a
+ * malformed value must degrade one line of the pinned body, never break `pinnedDetailLines`.
+ * @param milliseconds - the instant the record carries.
+ * @returns the ISO instant, or `—` when the value is not a representable Date.
+ */
+function isoInstantOf(milliseconds: number): string {
+  /** The instant under test; an out-of-range value reads back as NaN, never as a throw site. */
+  const instant = new Date(milliseconds)
+  return Number.isFinite(instant.getTime()) ? instant.toISOString() : "—"
+}
+
+/**
  * The pinned detail body for a CONSULT node.
  *
  * Deliberately its own body rather than the task body with fields blanked: a consult's facts are a
@@ -768,7 +784,7 @@ export function pinnedDetailLines(task: DagPanelTask, tasks: readonly DagPanelTa
  */
 function consultDetailLines(task: DagPanelTask, badge: NonNullable<DagPanelTask["consult"]>, cols: number): string[] {
   /** The wall-clock start, rendered as an ISO instant so a reader can compare it with a log line. */
-  const started = Number.isFinite(badge.startedAt) ? new Date(badge.startedAt).toISOString() : "—"
+  const started = isoInstantOf(badge.startedAt)
   /** The facts, in a fixed order so the body does not reshuffle between renders. */
   const facts: Array<[string, string]> = [
     ["subject", task.subject === "" ? "—" : task.subject],
@@ -777,7 +793,8 @@ function consultDetailLines(task: DagPanelTask, badge: NonNullable<DagPanelTask[
     ["role", task.assignee === undefined || task.assignee === "" ? "—" : task.assignee],
     ["state", badge.state === "" ? "—" : badge.state],
     ["started", started],
-    ["elapsed", badge.elapsedMs === undefined ? "—" : `${String(Math.max(0, Math.round(badge.elapsedMs / 1000)))}s`],
+    // A NON-FINITE ELAPSED SPAN IS NOT A MEASUREMENT: `Math.round(NaN / 1000)` would print `NaNs`.
+    ["elapsed", badge.elapsedMs === undefined || !Number.isFinite(badge.elapsedMs) ? "—" : `${String(Math.max(0, Math.round(badge.elapsedMs / 1000)))}s`],
     ["cell", badge.cellId === "" ? "—" : badge.cellId],
   ]
   return facts.map(([label, value]) => panelText(`${label} ${value}`, cols))
@@ -1663,7 +1680,18 @@ export function createDagPanelComponent(readWorkflow: (sessionId?: string) => Te
       // THE WORD COMES FROM THE NAMED SOURCE, never from the layout's `derived` flag alone: that flag
       // is `false` by design once a served map is applied, so reading it as "the ranks were served"
       // mislabelled HOST-DERIVED ranks as an untrusted fallback (the verifier's finding).
-      children.push(textRow(kit, `view ${layout.mode}${layout.list ? " (dense)" : ""} · ${order.length} tasks · ranks ${ranksPhrase(page.ranksSource, layout.ranksDerived)}`, { key: "mode", dim: true, maxCells: contentCols }))
+      // A CONSULT IS NOT WORK (R7.9): `order` now also holds the consult nodes the drawing appends, so
+      // counting it would print `3 tasks` for two board rows and one agent. The tasks tally counts only
+      // rows with NO consult badge, and the consults are reported as their own number.
+      /** The board's CONSULT node ids, which the drawing carries but the task tally must not count. */
+      const consultIds = new Set(page.tasks.filter((task) => task.consult !== undefined).map((task) => task.id))
+      /** The drawn nodes that are WORK: every hit that carries no consult badge. */
+      const taskNodes = order.filter((id) => !consultIds.has(id)).length
+      /** The drawn CONSULT nodes, reported separately so an agent is never tallied as a task. */
+      const consultNodes = order.length - taskNodes
+      /** The consults half of the mode line, omitted entirely when the drawing carries none. */
+      const consultsPhrase = consultNodes === 0 ? "" : ` · ${String(consultNodes)} consult${consultNodes === 1 ? "" : "s"}`
+      children.push(textRow(kit, `view ${layout.mode}${layout.list ? " (dense)" : ""} · ${String(taskNodes)} tasks${consultsPhrase} · ranks ${ranksPhrase(page.ranksSource, layout.ranksDerived)}`, { key: "mode", dim: true, maxCells: contentCols }))
       // THE UNRESOLVED BLOCKERS ARE SURFACED, NEVER SWALLOWED (R18). A blocker reference naming no task
       // on the board is the exact shape of the user's own defect — the record says `blockedBy: ["3"]`
       // while its ids are `T3` — and a page that dropped it silently would make a broken board look

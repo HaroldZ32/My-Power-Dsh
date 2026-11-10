@@ -1057,3 +1057,53 @@ describe("the two draggable rails (AC7)", () => {
     expect((rail.children[0] as Element).type).toBe(wide.ui.Text)
   })
 })
+
+
+// ── R7.9: a tally must never count an agent as work ─────────────────────────
+
+describe("R7.9: the mode line counts WORK, never the consults drawn beside it", () => {
+  /**
+   * One projection whose SERVED model carries two board tasks and one consult node.
+   * @returns the workflow the page reads.
+   */
+  function workflowWithConsult(): TeamWorkflow {
+    /** The board fixture this arm extends (it already carries T1/T2 and the two-row board). */
+    const base = workflowFixture()
+    return {
+      ...base,
+      model: {
+        nodes: [
+          { id: "T1", subject: "build the panel", visual: "completed", dependencies: [], depth: 0, planned: false, status: "completed" },
+          { id: "T2", subject: "migrate the plugin", visual: "blocked", dependencies: ["T1"], depth: 1, planned: false, status: "pending" },
+        ],
+        edges: [{ from: "T1", to: "T2", source: "board" }],
+        ranks: [["T1"], ["T2"]],
+        cycles: [],
+        report: { boardOnly: [], planOnly: [], edgePlanOnly: [], edgeBoardOnly: [], planProblems: [], unresolved: [], ranksDerived: true },
+        consults: [{ id: "C1", subject: "map the parser", visual: "running", dependencies: [], depth: 0, planned: false, kind: "consult", consultId: "consult-C1", cellId: "cell-1", startedAt: 1_762_765_200_000, status: "running", assignee: "Explorer" }],
+      },
+    }
+  }
+
+  test("two tasks plus one consult prints `2 tasks · 1 consult`, never `3 tasks`", () => {
+    /** A wide kit, so the drawing (and therefore every hit) really renders. */
+    const kit = makeKit(120)
+    /** The component under test, with the consult-bearing projection injected. */
+    const component = createPanelComponent(() => workflowWithConsult()) as (props: unknown) => unknown
+    /** The rendered tree. */
+    const tree = withClock(DONE_RENDER_AT, () => component({
+      React: kit.React,
+      ui: kit.ui,
+      host: { snapshot: () => ({ subagents: [] }) },
+    }))
+    /** The row texts, in draw order. */
+    const drawOrder = drawnRowTexts(tree)
+    /** The page's own mode line, which names the view, the tally and the rank source. */
+    const modeRow = drawOrder.find((line) => line.includes("view ") && line.includes("· ranks"))
+    if (modeRow === undefined) throw new Error("the page must draw its mode line")
+    expect(modeRow).toContain("2 tasks")
+    expect(modeRow).toContain("1 consult")
+    // THE DEFECT'S OWN SHAPE: the board has two rows, so `3` would count the agent as work.
+    expect(modeRow).not.toContain("3 tasks")
+  })
+})

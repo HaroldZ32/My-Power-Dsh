@@ -9,10 +9,10 @@
 //   - `cellwork_stop` clears the rows AND the book, and a late settlement then writes nothing;
 //   - a cell with `teamId === ""` records NOTHING (the declared bound) and still answers the call.
 import { afterEach, describe, expect, test } from "bun:test"
-import { mkdtempSync, rmSync } from "node:fs"
+import { mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { clearCellConsults, createConsultBook, runConsultAction, startDelegation, type ConsultDeps } from "../src/consults.ts"
+import { clearCellConsults, createConsultBook, runConsultAction, startDelegation, type ConsultClearDeps, type ConsultDeps, type ConsultServiceView } from "../src/consults.ts"
 
 /** The sandboxes this file created, removed after every arm. */
 const sandboxes: string[] = []
@@ -121,7 +121,7 @@ interface Sandbox {
    * @param extra - the fields this arm overrides (`teamId` is the one that matters).
    * @returns the deps object.
    */
-  deps: (extra?: Partial<ConsultDeps>) => ConsultDeps
+  deps: (extra?: Partial<ConsultDeps & ConsultClearDeps>) => ConsultDeps & ConsultClearDeps
 }
 
 /**
@@ -142,7 +142,7 @@ function sandbox(): Sandbox {
     workspace,
     plane,
     consults,
-    deps: (extra: Partial<ConsultDeps> = {}): ConsultDeps => ({
+    deps: (extra: Partial<ConsultDeps & ConsultClearDeps> = {}): ConsultDeps & ConsultClearDeps => ({
       service: (): typeof consults.service => consults.service,
       rosterNames: (): string[] => ["Explorer", "Researcher", "Deep Worker"],
       cellId: "cell-1",
@@ -152,6 +152,7 @@ function sandbox(): Sandbox {
       book,
       teamId: "team-1",
       teamActions: (): typeof plane.service => plane.service,
+      consults: (): ConsultServiceView => consults.service,
       ...extra,
     }),
   }
@@ -279,6 +280,47 @@ describe("acceptance 4: `cellwork_stop` clears the rows and a late settlement wr
     observer?.({ consultId: "consult-1", role: "Explorer", state: "complete", startedAt: 1000, elapsedMs: 700 })
     await flush()
     expect(box.plane.rows.length).toBe(before)
+  })
+})
+
+describe("R7.5: the stop path interrupts the children its book still names", () => {
+  test("every owned consult is cancelled best-effort, one journal row each, before the book is forgotten", async () => {
+    /** The sandbox under test. */
+    const box = sandbox()
+    // Two live children: the stop must interrupt BOTH, not merely forget them.
+    await startDelegation(box.deps(), [{ role: "Explorer", task: "map the parser" }, { role: "Researcher", task: "find the rule" }])
+    /** Every id the stop's cancel call really reached, in call order. */
+    const cancelled: string[] = []
+    /** Whether the book still named the ids WHEN the first cancel arrived (the settle-marker ordering). */
+    const bookHadIds: boolean[] = []
+    box.consults.service.cancel = (consultId: string): unknown => {
+      cancelled.push(consultId)
+      bookHadIds.push(box.deps().book.has("cell-1") === false)
+      return { consultId, role: "Explorer", state: "interrupted", startedAt: 1000, elapsedMs: 120 }
+    }
+    await clearCellConsults(box.deps())
+    expect(cancelled).toEqual(["consult-1", "consult-2"])
+    // THE STOP MARKER IS WRITTEN FIRST: a child settling inside the cancellation loop already reads
+    // "stopped" (the book key is gone) and is journaled instead of re-creating a plane row.
+    expect(bookHadIds).toEqual([true, true])
+    /** The cell journal, read from disk. */
+    const journal = readFileSync(join(box.workspace, ".mpd", "cellwork", "cell-1", "journal.jsonl"), "utf8")
+    /** The cancellation rows, one per child. */
+    const rows = journal.split("\n").filter((line) => line !== "").map((line) => JSON.parse(line) as Record<string, unknown>).filter((row) => row.event === "consult-cancelled")
+    expect(rows.map((row) => row.consultId)).toEqual(["consult-1", "consult-2"])
+    expect(rows.every((row) => row.by === "stop")).toBe(true)
+    expect(box.plane.cleared).toBe(1)
+  })
+
+  test("an absent service is journaled per consult instead of silently leaving the children alive", async () => {
+    /** The sandbox whose composition exposes no `mpdConsults` service. */
+    const box = sandbox()
+    await startDelegation(box.deps(), [{ role: "Explorer", task: "map the parser" }])
+    await clearCellConsults(box.deps({ consults: (): undefined => undefined }))
+    /** The cell journal, read from disk. */
+    const journal = readFileSync(join(box.workspace, ".mpd", "cellwork", "cell-1", "journal.jsonl"), "utf8")
+    expect(journal).toContain("consult-cancel-skipped")
+    expect(journal).toContain("mpdConsults.cancel")
   })
 })
 

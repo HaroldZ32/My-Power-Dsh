@@ -8659,6 +8659,10 @@ function statusGlyph(value) {
   const visual = STATUS_VISUAL[value];
   return visual === undefined ? undefined : DAG_TONE_GLYPH[visual];
 }
+function isoInstantOf(milliseconds) {
+  const instant = new Date(milliseconds);
+  return Number.isFinite(instant.getTime()) ? instant.toISOString() : undefined;
+}
 function kindAbbrev(value) {
   if (typeof value !== "string")
     return;
@@ -8752,7 +8756,7 @@ var TRANSCRIPT_RENDERERS = {
     const view = field(payload, "view", 120) ?? "board";
     const via = field(payload, "via", 20) ?? "?";
     const stamp = payload?.at;
-    const at = typeof stamp === "number" && Number.isFinite(stamp) ? new Date(stamp).toISOString() : undefined;
+    const at = typeof stamp === "number" ? isoInstantOf(stamp) : undefined;
     return { title: "mpd board", lines: [`${view} opened via ${via}${at === undefined ? "" : ` at ${at}`}`] };
   }
 };
@@ -9532,8 +9536,12 @@ function pinnedDetailLines(task, tasks, cols) {
   ];
   return facts.map(([label, value]) => panelText(`${label} ${value}`, cols));
 }
+function isoInstantOf2(milliseconds) {
+  const instant = new Date(milliseconds);
+  return Number.isFinite(instant.getTime()) ? instant.toISOString() : "—";
+}
 function consultDetailLines(task, badge, cols) {
-  const started = Number.isFinite(badge.startedAt) ? new Date(badge.startedAt).toISOString() : "—";
+  const started = isoInstantOf2(badge.startedAt);
   const facts = [
     ["subject", task.subject === "" ? "—" : task.subject],
     ["id", task.id],
@@ -9541,7 +9549,7 @@ function consultDetailLines(task, badge, cols) {
     ["role", task.assignee === undefined || task.assignee === "" ? "—" : task.assignee],
     ["state", badge.state === "" ? "—" : badge.state],
     ["started", started],
-    ["elapsed", badge.elapsedMs === undefined ? "—" : `${String(Math.max(0, Math.round(badge.elapsedMs / 1000)))}s`],
+    ["elapsed", badge.elapsedMs === undefined || !Number.isFinite(badge.elapsedMs) ? "—" : `${String(Math.max(0, Math.round(badge.elapsedMs / 1000)))}s`],
     ["cell", badge.cellId === "" ? "—" : badge.cellId]
   ];
   return facts.map(([label, value]) => panelText(`${label} ${value}`, cols));
@@ -9880,7 +9888,11 @@ function createDagPanelComponent(readWorkflow, options) {
         if (rail !== undefined)
           children.push(rail);
       }
-      children.push(textRow(kit, `view ${layout.mode}${layout.list ? " (dense)" : ""} · ${order.length} tasks · ranks ${ranksPhrase(page.ranksSource, layout.ranksDerived)}`, { key: "mode", dim: true, maxCells: contentCols }));
+      const consultIds = new Set(page.tasks.filter((task) => task.consult !== undefined).map((task) => task.id));
+      const taskNodes = order.filter((id) => !consultIds.has(id)).length;
+      const consultNodes = order.length - taskNodes;
+      const consultsPhrase = consultNodes === 0 ? "" : ` · ${String(consultNodes)} consult${consultNodes === 1 ? "" : "s"}`;
+      children.push(textRow(kit, `view ${layout.mode}${layout.list ? " (dense)" : ""} · ${String(taskNodes)} tasks${consultsPhrase} · ranks ${ranksPhrase(page.ranksSource, layout.ranksDerived)}`, { key: "mode", dim: true, maxCells: contentCols }));
       if (layout.unresolved.length > 0) {
         children.push(textRow(kit, `unresolved blockers: ${layout.unresolved.join(", ")}`, { key: "unresolved", tone: "warning", maxCells: contentCols }));
       }

@@ -227,7 +227,9 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
   deps.onConsultStop?.(async (cell) => {
     // THE CALLER'S WORKSPACE travels with the call: the stop tool resolved it for ITS invocation, and the
     // adapter's exec-less root would be a different tree in a multi-session host.
-    await clearCellConsults({ book: consultBook, cellId: cell.cellId, workspace: cell.workspace, teamId: cell.teamId, teamActions, now: new Date() })
+    // THE LIVE SERVICE TRAVELS TOO (R7.5): stopping a cell interrupts the children its book names, so the
+    // resolver — not a captured service — is handed over and probed at the moment of the stop.
+    await clearCellConsults({ book: consultBook, cellId: cell.cellId, workspace: cell.workspace, teamId: cell.teamId, teamActions, consults, now: new Date() })
   })
   /** The config service, probed per call. */
   const configService = (): ConfigServiceView | undefined => {

@@ -699,9 +699,10 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
       const now = new Date()
       /** The caller's stated reason, or the default that says what happened. */
       const reason = argString(input, "reason") === "" ? (forced ? "forced stop" : "stopped by the captain") : argString(input, "reason")
-      // THE CONSULT ROWS GO WITH THE CELL (contract §5.3): the graph stops drawing them, and the book's
-      // cell key is dropped so a late settlement cannot re-create a row. Best-effort by design — a plane
-      // that cannot answer must not block the stop, whose job is to hand every tool back.
+      // THE CONSULT ROWS GO WITH THE CELL (contract §5.3): the graph stops drawing them, the children the
+      // book still names are interrupted first (R7.5, one journal row each), and the book's cell key is
+      // dropped so a late settlement cannot re-create a row. Best-effort by design — a plane that cannot
+      // answer must not block the stop, whose job is to hand every tool back.
       await stopConsultCleanup?.({ cellId: state.cellId, teamId: state.teamId, workspace })
       /** The archived record: stopped, archived, and no longer the workspace's active cell. */
       const stopped: CellState = { ...state, phase: "stopped", archived: true, stopReason: reason }

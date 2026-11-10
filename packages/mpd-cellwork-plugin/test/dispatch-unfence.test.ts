@@ -883,8 +883,10 @@ test("R5.2 INCIDENT: a reseeded seat whose child is DEAD is force-clearable — 
   // FRESH (one minute) and the failure count is 1 of 3, so NEITHER written clock bound is reachable: no
   // live agent is left to drive the turn a barrier would fire on, and the seat could never reopen. The
   // forced lever answered `not-fenced` for this seat; the proven-dead session is now its licence.
-  /** The harness whose registry is PRESENT and holds nothing under the recorded id. */
-  const harness = makeHarness(cellWith({ "Senior Engineer": deadReseedRow() }), DEAD_RESEED_ROSTER, [], { liveSessions: [] })
+  // THE ANCHOR IS WHAT MAKES `dead` PROVABLE (R7.3): the registry resolves the CAPTAIN's own session, so
+  // its silence about the recorded child is a fact about that child.
+  /** The harness whose registry is PRESENT, resolves the captain, and holds nothing under the recorded id. */
+  const harness = makeHarness(cellWith({ "Senior Engineer": deadReseedRow() }), DEAD_RESEED_ROSTER, [], { liveSessions: [CAPTAIN_SESSION] })
   /** The captain's FORCED unfence. */
   const answer = await runTool(harness, "cellwork_dispatch", { unfence: [{ member: "Senior Engineer", force: true }] })
   expect(answer.ok).toBe(true)
@@ -915,8 +917,8 @@ test("R5.2 INCIDENT: a reseeded seat whose child is DEAD is force-clearable — 
 test("R5.2: the SAME dead-reseed seat answers `checkpoint-pending` UNFORCED and writes nothing", async () => {
   // THE FROZEN INVARIANT: an unforced clear never touches a held seat — the dead-reseed shape included.
   // Only the explicit `force` lever clears it.
-  /** The incident's seat, unforced. */
-  const harness = makeHarness(cellWith({ "Senior Engineer": deadReseedRow() }), DEAD_RESEED_ROSTER, [], { liveSessions: [] })
+  /** The incident's seat, unforced; the registry resolves the captain so the dead child is provable. */
+  const harness = makeHarness(cellWith({ "Senior Engineer": deadReseedRow() }), DEAD_RESEED_ROSTER, [], { liveSessions: [CAPTAIN_SESSION] })
   /** The captain's bare-string unfence. */
   const answer = await runTool(harness, "cellwork_dispatch", { unfence: ["Senior Engineer"] })
   /** The one outcome. */
@@ -954,7 +956,7 @@ test("R5.2 NEGATIVE: the dead-reseed shape still refuses a LIVE seat, a stamp-le
   expect(healthy.plane.fences).toHaveLength(0)
   // 2. A missing timestamp is never a licence, even for a proven-dead session.
   /** The same row with no window stamp at all. */
-  const unstamped = makeHarness(cellWith({ "Senior Engineer": deadReseedRow({ checkpointSince: undefined, barrierFailures: 0 }) }), DEAD_RESEED_ROSTER, [], { liveSessions: [] })
+  const unstamped = makeHarness(cellWith({ "Senior Engineer": deadReseedRow({ checkpointSince: undefined, barrierFailures: 0 }) }), DEAD_RESEED_ROSTER, [], { liveSessions: [CAPTAIN_SESSION] })
   /** The forced request. */
   const unstampedAnswer = await runTool(unstamped, "cellwork_dispatch", { unfence: [{ member: "Senior Engineer", force: true }] })
   expect((unstampedAnswer.unfenced as Array<Record<string, unknown>>)[0].reason).toBe("force-not-eligible")
@@ -975,9 +977,9 @@ test("R5.2 ONE PREDICATE: `supervise.forceEligible` is TRUE for exactly the seat
   // now read one implementation, and this arm walks every shape across BOTH of them.
   /** One seat shape, with the record and the roster it needs. */
   const shapes: Array<{ label: string; row: CellMemberRecord; roster: DoubleMember[]; liveSessions: readonly string[]; agentsRegistry?: boolean }> = [
-    { label: "dead reseed", row: deadReseedRow(), roster: DEAD_RESEED_ROSTER, liveSessions: [] },
-    { label: "dead reseed, no registry", row: deadReseedRow(), roster: DEAD_RESEED_ROSTER, liveSessions: [], agentsRegistry: false },
-    { label: "dead reseed, live child", row: deadReseedRow(), roster: DEAD_RESEED_ROSTER, liveSessions: ["session-dead-child"] },
+    { label: "dead reseed", row: deadReseedRow(), roster: DEAD_RESEED_ROSTER, liveSessions: [CAPTAIN_SESSION] },
+    { label: "dead reseed, no registry", row: deadReseedRow(), roster: DEAD_RESEED_ROSTER, liveSessions: [CAPTAIN_SESSION], agentsRegistry: false },
+    { label: "dead reseed, live child", row: deadReseedRow(), roster: DEAD_RESEED_ROSTER, liveSessions: [CAPTAIN_SESSION, "session-dead-child"] },
     { label: "stale barrier window", row: memberRow("Senior Engineer", { mode: "checkpoint", handoffReady: true, handoffs: 2, checkpointSince: "2026-11-04T11:40:00.000Z" }), roster: [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "checkpoint" }], liveSessions: [] },
     { label: "fresh barrier window", row: memberRow("Senior Engineer", { mode: "checkpoint", handoffReady: true, checkpointSince: new Date(Date.now() - 1000).toISOString() }), roster: [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "checkpoint" }], liveSessions: [] },
     { label: "healthy member", row: memberRow("Senior Engineer"), roster: [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "member" }], liveSessions: [] },

@@ -283,7 +283,15 @@ function makeHarness(): Harness {
   const services: Record<string, unknown> = {
     tools: toolsService,
     commands: commandsService,
-    agents: { list: (): FakeAgent[] => [captain] },
+    // THE IDENTITY SEAM IS A REGISTRY WITH `get`, like the host's: `list` alone is not an identity lookup,
+    // and a composition whose registry cannot resolve a known-live identity may not call anything DEAD
+    // (R7.3). The captain resolves; no member session does, which is the arm's proven-dead premise.
+    agents: {
+      /** The live-session list the adapter's capability probe reads. */
+      list: (): FakeAgent[] => [captain],
+      /** The registry's own lookup: the CAPTAIN resolves, every other id is absent. */
+      get: (id: string): FakeAgent | undefined => (id === captain.id ? captain : undefined),
+    },
     mpdTeams: {
       /**
        * Answer one team read.

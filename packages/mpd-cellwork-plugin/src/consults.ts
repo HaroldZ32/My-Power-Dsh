@@ -615,27 +615,55 @@ export interface ConsultClearDeps {
   teamId: string
   /** The team-plane write service, resolved lazily. */
   teamActions: () => TeamActionsServiceView | undefined
+  /**
+   * The `mpdConsults` service, resolved lazily: the LIVE children a stop has to interrupt (R7.5).
+   *
+   * It is a separate resolver from the plane's because the two are different rows and either may be
+   * absent; an absent one degrades every cancel to a journaled skip rather than to a silent no-op.
+   */
+  consults: () => ConsultServiceView | undefined
   /** The instant to journal with. */
   now: Date
 }
 
 /**
- * Forget EVERY consult of one cell and remove its rows from the team record: the `cellwork_stop` path.
+ * Forget EVERY consult of one cell, interrupt its live children and remove its rows from the team
+ * record: the `cellwork_stop` path.
  *
- * TWO HALVES, ONE INTENT (contract §5.3). The TEAM half removes the rows the graph draws; the BOOK half
- * removes the cell's key, which is also the STOP MARKER the settlement observer reads — so a child that
- * settles after the cell ended is journaled and never re-creates a row. Deleting the book key is what
- * makes "stopped" observable to a callback that has no other channel.
+ * THREE HALVES, ONE INTENT (contract §5.3, extended by CodeRabbit round 1's R7.5). The TEAM half removes
+ * the rows the graph draws; the BOOK half removes the cell's key, which is also the STOP MARKER the
+ * settlement observer reads — so a child that settles after the cell ended is journaled and never
+ * re-creates a row; and the LIVE half interrupts the children the book still names, because dropping the
+ * book alone left every running consult with no owner and no reader. The book key is dropped BEFORE any
+ * await, so a settlement that lands during the cancellation loop already sees "stopped".
  *
- * Never throws: a plane that refuses or is absent leaves the rows to age out through the retention cap,
- * which is the documented bound for a cell that never stops cleanly.
- * @param deps - the consult dependencies (only the book, the workspace and the plane are read).
+ * Never throws: a cancel that the service refuses (or a composition with no service at all) is journaled
+ * per consult (`consult-cancel-skipped`, with the reason), and a plane that refuses or is absent leaves
+ * the rows to age out through the retention cap — the documented bound for a cell that never stops cleanly.
+ * @param deps - the consult dependencies (the book, the workspace, the live service and the plane).
  * @returns the ids the plane reported cleared, or [] when it could not answer.
  */
 export async function clearCellConsults(deps: ConsultClearDeps): Promise<string[]> {
   /** The ids this cell had started, captured before the book is dropped. */
   const owned = [...(deps.book.get(deps.cellId)?.keys() ?? [])]
   deps.book.delete(deps.cellId)
+  // THE RUNNING CHILDREN ARE INTERRUPTED, ONE JOURNAL ROW EACH (R7.5). Best-effort by design: the stop
+  // path must finish even when the service is absent, the child already settled, or the cancel throws.
+  /** The service that holds the live children, when this composition exposes one. */
+  const service = deps.consults()
+  for (const consultId of owned) {
+    try {
+      if (typeof service?.cancel !== "function") {
+        appendJournal(deps.workspace, deps.cellId, { event: "consult-cancel-skipped", consultId, reason: "this composition exposes no mpdConsults.cancel seam" }, deps.now)
+        continue
+      }
+      // A SERVICE MAY ANSWER SYNCHRONOUSLY OR WITH A PROMISE; `resolve` accepts both and surfaces a throw.
+      await Promise.resolve(service.cancel(consultId))
+      appendJournal(deps.workspace, deps.cellId, { event: "consult-cancelled", consultId, by: "stop" }, deps.now)
+    } catch (error) {
+      appendJournal(deps.workspace, deps.cellId, { event: "consult-cancel-skipped", consultId, reason: error instanceof Error ? error.message : String(error) }, deps.now)
+    }
+  }
   if (deps.teamId === "") return []
   /** The plane's write service, when this composition has one. */
   const plane = deps.teamActions()

@@ -908,6 +908,39 @@ test("R5.1/R4.7: a RESEED retires the ORIGINAL session under the LIVE ANCESTOR t
   expect(rawMember(harness).mode).toBe("subcaptain")
 })
 
+test("R7.2: a reseed that hits the RETRY BOUND fences the CELL row and does NOT reopen the plane", async () => {
+  // THE DIVERGENCE THIS ENDS: the plane reopen was gated on `outcome !== "refused"`, but since R4.3 a
+  // `reseeded` run that reaches the retry bound FENCES the CELL row. Reopening the TEAM seat on that same
+  // run leaves CELL `fenced:true` and TEAM `mode:"member"` — the two records disagreeing. With the default
+  // `compactionRetries: 1`, ONE reseed is already the bound (`failures = 1`), so this is the ordinary shape.
+  /** The harness whose first (only) reseed reaches the retry bound, with a plane seam available. */
+  const harness = makeHarness({ answers: [null], planeUnfence: true })
+  await stopListener(harness)({ agent: harness.member })
+  // THE PREMISE: the run really reseeded and really fenced.
+  expect(harness.reseeds.length).toBe(1)
+  /** The persisted member row. */
+  const stored = rawMember(harness)
+  expect(stored.mode).toBe("checkpoint")
+  expect(stored.handoffReady).toBe(true)
+  expect(stored.fenced).toBe(true)
+  expect(String(stored.fencedReason)).toContain("1 of 1")
+  // THE PLANE WAS NEVER ASKED: a seat this run fenced must stay closed on BOTH records.
+  expect(harness.planeUnfences).toEqual([])
+  // AND THE SKIP IS JOURNALED with the honest value, not left to inference.
+  /** The skip row the barrier wrote. */
+  const skipped = journalRows(harness).filter((row) => row.event === "plane-reopen-skipped")
+  expect(skipped).toHaveLength(1)
+  expect(skipped[0].member).toBe(MEMBER_NAME)
+  expect(skipped[0].by).toBe("barrier")
+  expect(skipped[0].plane).toBe("skipped-fenced")
+  // NO REOPEN ROW claims the opposite, and the reseed row carries the skip too.
+  expect(journalRows(harness).filter((row) => row.event === "member-unfenced")).toHaveLength(0)
+  /** The reseed row the same run wrote. */
+  const reseeded = journalRows(harness).filter((row) => row.event === "member-reseeded")
+  expect(reseeded).toHaveLength(1)
+  expect(reseeded[0].plane).toBe("skipped-fenced")
+})
+
 test("R5.1: a DEAD original is `nothing-to-retire` — never `retired:true` — and the reseed still lands", async () => {
   // THE DETACHED SHAPE (the incident's reseed): the recorded session is not a live agent, so the host
   // would answer its documented no-op. That no-op is NOT a retirement: nothing was retired, nothing is

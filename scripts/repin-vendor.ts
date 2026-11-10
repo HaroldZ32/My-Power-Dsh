@@ -6,10 +6,10 @@
 // time. This helper DERIVES that value from the working tree, prints the delta, and applies it only
 // when explicitly asked. It defaults to DRY RUN.
 //
-// AUTHORITY: scripts/verify-vendor.ts owns the fingerprint. The TREE FOLD is mirrored here (that
-// file exports nothing - it is a top-level gate that reads the lock, shells out to git and exits),
-// and `assertAuthorityShape()` re-checks the shape on every run, so a divergence cannot land
-// silently. The pieces:
+// AUTHORITY: scripts/verify-vendor.ts owns the fingerprint. The TREE FOLD and the single-file
+// RAW-bytes sha256 are mirrored here (that file exports nothing - it is a top-level gate that reads
+// the lock, shells out to git and exits), and `assertAuthorityShape()` re-checks the shape on every
+// run, so a divergence cannot land silently. The pieces:
 //   file list     - NOT mirrored any more: BOTH sides import the ONE shared rule
 //                   scripts/lib/asset-files.ts (`listAssetFiles`) - inside a git work tree the TRACKED
 //                   files (`git ls-files`, so a gitignored file sitting in a developer's tree can no
@@ -21,6 +21,9 @@
 //                   (`.gitattributes` declares eol=lf, so a tree hash must be computed on
 //                    LF-normalized bytes; a CRLF working copy would otherwise drift the lock)
 //   tree fold     - mirrored: sorted relpaths, sha256(relpath + "\n" + sha256(fileBytes) + "\n") folded
+//   single file   - mirrored: sha256 over the file's RAW bytes (never LF-normalized); fileCount is the
+//                   shared rule's count (1). R8.1: this branch used to be POLICY-skipped, so `--check`
+//                   could print GREEN while the gate reddened on the same file.
 //
 // USAGE: node scripts/repin-vendor.ts [--lock <path>] [--check] [--write] [--json] [--self-test]
 //   (default)  dry run: print the delta it WOULD write, mutate nothing, exit 0
@@ -67,14 +70,24 @@ const USAGE: string = [
 class Refusal extends Error {}
 
 /** The field names a re-pin is allowed to splice, in report order. */
-type RepinField = "fileCount" | "treeSha"
+type RepinField = "fileCount" | "treeSha" | "sha256"
 
-/** The two fingerprint values the lock declares and the working tree yields. */
+/** The values one asset's lock entry records, whichever fingerprint kind it declares. */
 interface RepinValues {
   /** Number of files inside the asset. */
   fileCount: number
-  /** sha256 fold over the asset's sorted relpaths and LF-normalized per-file hashes. */
-  treeSha: string
+  /** sha256 fold over a TREE asset's sorted relpaths and LF-normalized per-file hashes. */
+  treeSha?: string
+  /** sha256 over a SINGLE-FILE asset's raw bytes (the vendor gate's single-file rule). */
+  sha256?: string
+}
+
+/** The single-file fingerprint `scripts/verify-vendor.ts` checks: a count and a RAW-bytes sha256. */
+interface FileFingerprint {
+  /** Number of shipped files; the shared rule answers 1 for a plain file. */
+  fileCount: number
+  /** sha256 over the file's RAW bytes - never LF-normalized, because a build artifact is one file. */
+  sha256: string
 }
 
 /** The values one tree fold derives from an asset directory, plus the file-list basis it read. */
@@ -93,19 +106,40 @@ interface TreeFingerprint {
   enumeratedFrom: string
 }
 
-/** One treeSha-bearing asset the working tree can be re-pinned from. */
-interface Repin {
+/** One TREE asset the working tree can be re-pinned from: a count plus the LF-normalized fold. */
+interface TreeRepin {
+  /** Which fingerprint rule this asset uses. */
+  kind: "tree"
   /** Asset relpath, i.e. its key in the lock's `assets` table. */
   asset: string
   /** Absolute path of the asset under the working tree. */
   path: string
   /** The fingerprint the lock currently declares. */
-  locked: RepinValues
+  locked: RepinValues & { treeSha: string }
   /** The fingerprint derived from the working tree. */
   computed: TreeFingerprint
   /** Whether the two fingerprints differ, i.e. whether this asset needs a re-pin. */
   drifted: boolean
 }
+
+/** One SINGLE-FILE asset the working tree can be re-pinned from: a count plus the raw-bytes sha256. */
+interface FileRepin {
+  /** Which fingerprint rule this asset uses. */
+  kind: "file"
+  /** Asset relpath, i.e. its key in the lock's `assets` table. */
+  asset: string
+  /** Absolute path of the single file under the working tree. */
+  path: string
+  /** The fingerprint the lock currently declares. */
+  locked: RepinValues & { sha256: string }
+  /** The fingerprint derived from the working tree. */
+  computed: FileFingerprint
+  /** Whether the two fingerprints differ, i.e. whether this asset needs a re-pin. */
+  drifted: boolean
+}
+
+/** One derivable asset: the tree fold or the single-file sha256, decided by the lock's own entry. */
+type Repin = TreeRepin | FileRepin
 
 /** One asset reported without a re-pin: either deliberate POLICY or a blocking problem. */
 interface AssetNote {
@@ -117,7 +151,7 @@ interface AssetNote {
 
 /** The scan's result: assets to re-pin, assets deliberately left alone, and blocking problems. */
 interface AssetPlan {
-  /** Every treeSha-bearing asset derivable from the working tree. */
+  /** Every fingerprint-bearing asset derivable from the working tree (tree fold or single file). */
   repins: Repin[]
   /** Assets this helper deliberately does not re-pin (POLICY, not a failure). */
   skipped: AssetNote[]
@@ -185,14 +219,16 @@ interface CliOptions {
   help: boolean
 }
 
-/** One asset's report record: what the lock says, what the tree computes, and the verdict. */
-interface AssetRecord {
+/** One TREE asset's report record: what the lock says, what the tree computes, and the verdict. */
+interface TreeAssetRecord {
+  /** Which fingerprint rule this asset uses. */
+  kind: "tree"
   /** Asset relpath. */
   asset: string
   /** The fingerprint the lock declares. */
-  locked: RepinValues
+  locked: RepinValues & { treeSha: string }
   /** The fingerprint derived from the working tree. */
-  computed: RepinValues
+  computed: { fileCount: number; treeSha: string }
   /** The LF-normalized value the lock must carry, printed next to the raw variant. */
   lfNormalized: string
   /** The raw-bytes variant, printed only to warn that it must never be written. */
@@ -207,6 +243,27 @@ interface AssetRecord {
   action: string
 }
 
+/** One SINGLE-FILE asset's report record: the same verdict over the raw-bytes sha256. */
+interface FileAssetRecord {
+  /** Which fingerprint rule this asset uses. */
+  kind: "file"
+  /** Asset relpath. */
+  asset: string
+  /** The fingerprint the lock declares. */
+  locked: RepinValues & { sha256: string }
+  /** The fingerprint derived from the working tree. */
+  computed: FileFingerprint
+  /** How the file list was produced; a single-file asset is its own list. */
+  enumeratedFrom: string
+  /** Whether the lock and the working tree disagree about this asset. */
+  drifted: boolean
+  /** What this run did or would do: `unchanged`, `repinned` or `would-repin`. */
+  action: string
+}
+
+/** One asset's report record, discriminated by the fingerprint rule it uses. */
+type AssetRecord = TreeAssetRecord | FileAssetRecord
+
 /** The `VENDOR_LOCK.json` document as this helper reads it. */
 interface RepinLock {
   /** Asset relpath → entry; every entry field is re-checked with `typeof` before use below. */
@@ -215,8 +272,8 @@ interface RepinLock {
 
 /** A mutable view of the lock used only to build the INTENDED document for the splice self-check. */
 interface MutableLock {
-  /** Asset relpath → the fields a re-pin replaces. */
-  assets: Record<string, { fileCount?: number; treeSha?: string }>
+  /** Asset relpath → the fields a re-pin replaces (a count plus one fingerprint kind). */
+  assets: Record<string, { fileCount?: number; treeSha?: string; sha256?: string }>
 }
 
 /** A fixture lock's shape, read back after a `--write` arm to prove what landed on disk. */
@@ -347,15 +404,34 @@ function fingerprint(dir: string): TreeFingerprint {
   }
 }
 
+/**
+ * The single-file fingerprint, mirroring the sha256 branch of `scripts/verify-vendor.ts`.
+ *
+ * The count comes from the SAME shared file-list rule the gate uses (a plain file is its own list,
+ * one shipped file), and the digest is taken over RAW bytes: a single-file asset is a build artifact,
+ * so the corpus's LF normalization does NOT apply to it. R8.1: this branch used to be POLICY-skipped,
+ * which made `--check` print GREEN while the gate reddened on the same file.
+ *
+ * @param path - absolute path of the single-file asset under the working tree.
+ * @returns the shipped count and the raw-bytes sha256 the lock must carry.
+ */
+function fileFingerprint(path: string): FileFingerprint {
+  /** The asset's shipped files, by the one shared rule both sides import. */
+  const enumerated: AssetEnumeration = listAssetFiles(path)
+  return { fileCount: enumerated.fileCount, sha256: createHash("sha256").update(readFileSync(path)).digest("hex") }
+}
+
 // ---------------------------------------------------------------------------------------------
 // Planning and writing
 // ---------------------------------------------------------------------------------------------
 
 /**
- * Decide per asset: re-pin it (treeSha-bearing, derived from the working tree) or report it as a
- * POLICY exclusion. T-71: the skipped assets used to print "NOT REPINNED …", which reads like a
- * failure in a wave log even though it is deliberate policy; the label now says POLICY and the
- * reason says what to do instead. Single-file `sha256` and count-only assets are never rewritten.
+ * Decide per asset: re-pin it (a TREE asset by its LF-normalized fold, a SINGLE-FILE asset by its
+ * raw-bytes sha256) or report it as a POLICY exclusion. T-71: the skipped assets used to print
+ * "NOT REPINNED …", which reads like a failure in a wave log even though it is deliberate policy; the
+ * label now says POLICY and the reason says what to do instead. Only a count-only asset (no
+ * fingerprint the helper can derive) stays POLICY; `scripts/verify-vendor.ts` checks both fingerprint
+ * kinds, so this writing half derives both (R8.1).
  */
 function planAssets(lock: RepinLock): AssetPlan {
   // The JSON boundary: `assets` was already tested as a non-null object, so the cast asserts only
@@ -381,12 +457,15 @@ function planAssets(lock: RepinLock): AssetPlan {
     // with `typeof` before use, so this cast is the JSON boundary rather than a shape assertion.
     /** The entry as a field table, once the object test above has passed. */
     const entry = meta as Record<string, unknown>
-    if (typeof entry.treeSha !== "string") {
-      /** Which flavour of non-derivable asset this is, phrased for the POLICY line. */
-      const kind: string = typeof entry.sha256 === "string"
-        ? "single-file sha256 asset - a build artifact, so re-pin it by rebuilding the package that emits it, never by rewriting the lock"
-        : "count-only asset - carries no fingerprint this helper can derive"
-      skipped.push({ asset, reason: `POLICY (not a failure) - ${kind}` })
+    // A count-only asset carries no fingerprint this helper can derive, so it stays POLICY.
+    if (typeof entry.treeSha !== "string" && typeof entry.sha256 !== "string") {
+      skipped.push({ asset, reason: "POLICY (not a failure) - count-only asset - carries no fingerprint this helper can derive" })
+      continue
+    }
+    // The gate checks whichever fingerprint fields the lock declares; two at once would make this
+    // helper guess which one the re-pin owns, so an ambiguous entry is refused instead.
+    if (typeof entry.treeSha === "string" && typeof entry.sha256 === "string") {
+      problems.push({ asset, reason: "declares BOTH treeSha and sha256 - refusing an ambiguous fingerprint declaration" })
       continue
     }
     /** The asset's path under this repository's working tree. */
@@ -395,12 +474,33 @@ function planAssets(lock: RepinLock): AssetPlan {
       problems.push({ asset, reason: "asset path missing under the working tree" })
       continue
     }
-    if (!statSync(path).isDirectory()) {
-      problems.push({ asset, reason: "treeSha declared on a plain file - refusing to fold a tree hash over it" })
+    if (typeof entry.fileCount !== "number") {
+      problems.push({ asset, reason: "fingerprinted asset has no numeric fileCount - add it by hand once, then re-run" })
       continue
     }
-    if (typeof entry.fileCount !== "number") {
-      problems.push({ asset, reason: "treeSha asset has no numeric fileCount - add it by hand once, then re-run" })
+    if (typeof entry.sha256 === "string") {
+      if (!statSync(path).isFile()) {
+        problems.push({ asset, reason: "sha256 declared on a directory - refusing to hash a directory as a single file" })
+        continue
+      }
+      /** The fingerprint this single file produces right now. */
+      const fileComputed: FileFingerprint = fileFingerprint(path)
+      repins.push({
+        kind: "file",
+        asset,
+        path,
+        locked: { fileCount: entry.fileCount, sha256: entry.sha256 },
+        computed: fileComputed,
+        drifted: fileComputed.sha256 !== entry.sha256 || fileComputed.fileCount !== entry.fileCount,
+      })
+      continue
+    }
+    // The two declaration tests above leave exactly the treeSha kind here; the cast states that
+    // JSON-boundary fact because the compiler cannot correlate the two `typeof` guards.
+    /** The lock's recorded tree fold, narrowed by the declaration tests above. */
+    const lockedTreeSha: string = entry.treeSha as string
+    if (!statSync(path).isDirectory()) {
+      problems.push({ asset, reason: "treeSha declared on a plain file - refusing to fold a tree hash over it" })
       continue
     }
     /** The fingerprint this asset's directory produces right now. */
@@ -416,11 +516,12 @@ function planAssets(lock: RepinLock): AssetPlan {
       continue
     }
     repins.push({
+      kind: "tree",
       asset,
       path,
-      locked: { fileCount: entry.fileCount, treeSha: entry.treeSha },
+      locked: { fileCount: entry.fileCount, treeSha: lockedTreeSha },
       computed,
-      drifted: computed.treeSha !== entry.treeSha || computed.fileCount !== entry.fileCount,
+      drifted: computed.treeSha !== lockedTreeSha || computed.fileCount !== entry.fileCount,
     })
   }
   return { repins, skipped, problems }
@@ -461,10 +562,15 @@ function spliceLock(text: string, repins: Repin[]): SpliceResult {
   const changed: FieldChange[] = []
   for (const repin of repins) {
     /** The `[field, lockedValue, computedValue]` triples to consider, in report order. */
-    const candidates: Array<[RepinField, string | number, string | number]> = [
-      ["fileCount", repin.locked.fileCount, repin.computed.fileCount],
-      ["treeSha", repin.locked.treeSha, repin.computed.treeSha],
-    ]
+    const candidates: Array<[RepinField, string | number, string | number]> = repin.kind === "tree"
+      ? [
+          ["fileCount", repin.locked.fileCount, repin.computed.fileCount],
+          ["treeSha", repin.locked.treeSha, repin.computed.treeSha],
+        ]
+      : [
+          ["fileCount", repin.locked.fileCount, repin.computed.fileCount],
+          ["sha256", repin.locked.sha256, repin.computed.sha256],
+        ]
     /** The subset of `candidates` whose value differs; an unchanged field is never spliced. */
     const wanted: Array<[RepinField, string | number, string | number]> = candidates.filter(
       ([, before, after]: [RepinField, string | number, string | number]): boolean => before !== after,
@@ -504,7 +610,8 @@ function assertSpliceIsExact(text: string, next: string, repins: Repin[]): void 
   const intended = JSON.parse(text) as MutableLock
   for (const repin of repins) {
     if (!repin.drifted) continue
-    intended.assets[repin.asset].treeSha = repin.computed.treeSha
+    if (repin.kind === "tree") intended.assets[repin.asset].treeSha = repin.computed.treeSha
+    else intended.assets[repin.asset].sha256 = repin.computed.sha256
     intended.assets[repin.asset].fileCount = repin.computed.fileCount
   }
   /** The spliced text reparsed: the document the write would actually leave on disk. */
@@ -570,13 +677,13 @@ function parseArgs(argv: string[]): CliOptions {
   return opts
 }
 
-/** The four-line banner naming the mirrored algorithm, the normalization and the raw-bytes warning. */
+/** The four-line banner naming the mirrored algorithm, the two normalization rules and the warning. */
 function algorithmBanner(assetCount: number): string[] {
   return [
-    `${TAG} algorithm : shared rule scripts/lib/asset-files.ts (TRACKED files via \`git ls-files\` inside a work tree, filesystem walk outside one; LF-normalizing reader), imported by BOTH sides + the sorted-relpath tree fold mirrored from scripts/verify-vendor.ts`,
-    `${TAG} normalize : LF - text files (no NUL byte) have CRLF/CR collapsed to LF; binary files (NUL present) are hashed RAW`,
-    `${TAG} WARNING   : the vendor gate compares the LF-NORMALIZED value only. A raw-bytes reading would silently fail \`bun run verify:vendor\` on any corpus containing CRLF/CR bytes - both values are printed per asset below.`,
-    `${TAG} assets    : ${assetCount} treeSha-bearing asset(s) derived from the working tree`,
+    `${TAG} algorithm : shared rule scripts/lib/asset-files.ts (TRACKED files via \`git ls-files\` inside a work tree, filesystem walk outside one), imported by BOTH sides + the sorted-relpath tree fold AND the raw-bytes single-file sha256 mirrored from scripts/verify-vendor.ts`,
+    `${TAG} normalize : tree assets: LF (text files, no NUL byte, have CRLF/CR collapsed; binary files are hashed RAW); single-file sha256 assets: RAW bytes, never normalized`,
+    `${TAG} WARNING   : the vendor gate compares the LF-NORMALIZED tree fold and the RAW single-file sha256 only. A raw-bytes tree reading would silently fail \`bun run verify:vendor\` on any corpus containing CRLF/CR bytes - both tree values are printed per asset below.`,
+    `${TAG} assets    : ${assetCount} fingerprint-bearing asset(s) (tree fold + single-file sha256) derived from the working tree`,
   ]
 }
 
@@ -603,17 +710,28 @@ function runCli(opts: CliOptions): number {
   /** The derivable assets whose fingerprint no longer matches the lock. */
   const drifted: Repin[] = plan.repins.filter((r: Repin): boolean => r.drifted)
   /** One record per derivable asset, shared by the human report and the `--json` document. */
-  const records: AssetRecord[] = plan.repins.map((r: Repin): AssetRecord => ({
-    asset: r.asset,
-    locked: { fileCount: r.locked.fileCount, treeSha: r.locked.treeSha },
-    computed: { fileCount: r.computed.fileCount, treeSha: r.computed.treeSha },
-    lfNormalized: r.computed.treeSha,
-    rawBytesVariant: r.computed.rawTreeSha,
-    normalizedFiles: r.computed.normalizedFiles,
-    enumeratedFrom: r.computed.enumeratedFrom,
-    drifted: r.drifted,
-    action: r.drifted ? (opts.write ? "repinned" : "would-repin") : "unchanged",
-  }))
+  const records: AssetRecord[] = plan.repins.map((r: Repin): AssetRecord => r.kind === "tree"
+    ? {
+        kind: "tree",
+        asset: r.asset,
+        locked: { fileCount: r.locked.fileCount, treeSha: r.locked.treeSha },
+        computed: { fileCount: r.computed.fileCount, treeSha: r.computed.treeSha },
+        lfNormalized: r.computed.treeSha,
+        rawBytesVariant: r.computed.rawTreeSha,
+        normalizedFiles: r.computed.normalizedFiles,
+        enumeratedFrom: r.computed.enumeratedFrom,
+        drifted: r.drifted,
+        action: r.drifted ? (opts.write ? "repinned" : "would-repin") : "unchanged",
+      }
+    : {
+        kind: "file",
+        asset: r.asset,
+        locked: { fileCount: r.locked.fileCount, sha256: r.locked.sha256 },
+        computed: { fileCount: r.computed.fileCount, sha256: r.computed.sha256 },
+        enumeratedFrom: "single file",
+        drifted: r.drifted,
+        action: r.drifted ? (opts.write ? "repinned" : "would-repin") : "unchanged",
+      })
 
   /** What the write applied, or `null` while the run is not a write or nothing needed re-pinning. */
   let writeResult: WriteResult | null = null
@@ -627,7 +745,7 @@ function runCli(opts: CliOptions): number {
     writeResult = { changed, report }
   }
 
-  /** True when no treeSha-bearing asset exists: a check over zero subjects proves nothing. */
+  /** True when no fingerprint-bearing asset exists: a check over zero subjects proves nothing. */
   const zeroSubject: boolean = rePinnable === 0
   /** The `--check` verdict: any problem, drift or zero-subject run is RED. */
   const checkRed: boolean = zeroSubject || plan.problems.length > 0 || drifted.length > 0
@@ -638,9 +756,9 @@ function runCli(opts: CliOptions): number {
     process.stdout.write(`${JSON.stringify({
       mode: opts.check ? "check" : opts.write ? "write" : "dry-run",
       lock: lockPath,
-      algorithm: "shared file-list rule scripts/lib/asset-files.ts (tracked files inside a git work tree, filesystem walk outside one) + the LF-normalized tree fold mirrored from scripts/verify-vendor.ts",
-      normalization: "text (no NUL) CRLF/CR -> LF; binary raw",
-      warning: "the vendor gate compares the LF-normalized value only; a raw-bytes reading would silently fail `bun run verify:vendor`",
+      algorithm: "shared file-list rule scripts/lib/asset-files.ts (tracked files inside a git work tree, filesystem walk outside one) + the LF-normalized tree fold and the raw-bytes single-file sha256 mirrored from scripts/verify-vendor.ts",
+      normalization: "tree: text (no NUL) CRLF/CR -> LF, binary raw; single file: raw bytes",
+      warning: "the vendor gate compares the LF-normalized tree fold and the RAW single-file sha256 only; a raw-bytes tree reading would silently fail `bun run verify:vendor`",
       authority: authorityProof,
       assets: records,
       notRepinned: plan.skipped,
@@ -656,27 +774,40 @@ function runCli(opts: CliOptions): number {
   /** Print one line of the human report on stderr; the write's boolean is unused by every caller. */
   const err = (line: string): boolean => process.stderr.write(`${line}\n`)
   for (const line of algorithmBanner(rePinnable)) out(line)
-  out(`${TAG} lock      : ${lockPath}  (${Buffer.byteLength(text)} bytes, ${rePinnable} treeSha asset(s))`)
+  out(`${TAG} lock      : ${lockPath}  (${Buffer.byteLength(text)} bytes, ${rePinnable} fingerprint-bearing asset(s))`)
   out(`${TAG} authority : ${authorityProof}`)
   out("")
 
   for (const r of records) {
     out(`${TAG} asset          : ${r.asset}`)
-    out(`${TAG}   locked       : treeSha=${r.locked.treeSha} fileCount=${r.locked.fileCount}`)
-    out(`${TAG}   file list    : ${r.enumeratedFrom} (${r.computed.fileCount} shipped file(s))`)
-    out(`${TAG}   computed (LF) : treeSha=${r.computed.treeSha} fileCount=${r.computed.fileCount} (${r.normalizedFiles} file(s) LF-normalized)`)
-    out(`${TAG}   raw-bytes    : ${r.rawBytesVariant}   <- NEVER write this one`)
-    if (r.drifted) {
-      out(`${TAG}   DELTA        : treeSha ${r.locked.treeSha} -> ${r.computed.treeSha}`)
-      if (r.locked.fileCount !== r.computed.fileCount) out(`${TAG}   DELTA        : fileCount ${r.locked.fileCount} -> ${r.computed.fileCount}`)
+    if (r.kind === "tree") {
+      out(`${TAG}   locked       : treeSha=${r.locked.treeSha} fileCount=${r.locked.fileCount}`)
+      out(`${TAG}   file list    : ${r.enumeratedFrom} (${r.computed.fileCount} shipped file(s))`)
+      out(`${TAG}   computed (LF) : treeSha=${r.computed.treeSha} fileCount=${r.computed.fileCount} (${r.normalizedFiles} file(s) LF-normalized)`)
+      out(`${TAG}   raw-bytes    : ${r.rawBytesVariant}   <- NEVER write this one`)
+      if (r.drifted) {
+        out(`${TAG}   DELTA        : treeSha ${r.locked.treeSha} -> ${r.computed.treeSha}`)
+        if (r.locked.fileCount !== r.computed.fileCount) out(`${TAG}   DELTA        : fileCount ${r.locked.fileCount} -> ${r.computed.fileCount}`)
+      } else {
+        out(`${TAG}   in sync      : no change`)
+      }
     } else {
-      out(`${TAG}   in sync      : no change`)
+      out(`${TAG}   kind         : single-file sha256 (raw bytes - the vendor gate's rule)`)
+      out(`${TAG}   locked       : sha256=${r.locked.sha256} fileCount=${r.locked.fileCount}`)
+      out(`${TAG}   file list    : ${r.enumeratedFrom} (${r.computed.fileCount} shipped file(s))`)
+      out(`${TAG}   computed     : sha256=${r.computed.sha256} fileCount=${r.computed.fileCount}`)
+      if (r.drifted) {
+        out(`${TAG}   DELTA        : sha256 ${r.locked.sha256} -> ${r.computed.sha256}`)
+        if (r.locked.fileCount !== r.computed.fileCount) out(`${TAG}   DELTA        : fileCount ${r.locked.fileCount} -> ${r.computed.fileCount}`)
+      } else {
+        out(`${TAG}   in sync      : no change`)
+      }
     }
     out("")
   }
   for (const s of plan.skipped) out(`${TAG} ${s.asset}: ${s.reason}`)
   for (const p of plan.problems) err(`${TAG} PROBLEM ${p.asset}: ${p.reason}`)
-  if (zeroSubject) err(`${TAG} zero-subject run: no treeSha-bearing asset found - refusing to report a clean check`)
+  if (zeroSubject) err(`${TAG} zero-subject run: no fingerprint-bearing asset found - refusing to report a clean check`)
 
   if (opts.write) {
     if (writeResult === null) {
@@ -799,35 +930,44 @@ function selfTest(): number {
     writeFileSync(join(fixture, "corpus", "bin.dat"), Buffer.from([0, 7, 0, 255, 13, 10]))
     writeFileSync(join(fixture, "corpus", "__pycache__", "ignored.pyc"), "ignored")
     writeFileSync(join(fixture, "corpus", "node_modules", "ignored.js"), "ignored")
+    // R8.1's fixture arm needs a REAL single-file asset: the old lock declared one at a path that did
+    // not exist, and the POLICY skip hid that from every arm.
+    mkdirSync(join(fixture, "packages", "x", "dist"), { recursive: true })
+    writeFileSync(join(fixture, "packages", "x", "dist", "cli.js"), "export const cli = 1\n")
     /** The fixture corpus's own fingerprint: what every arm below compares against. */
     const expected = fingerprint(join(fixture, "corpus"))
     expect(expected.fileCount === 4, `fixture fileCount ${expected.fileCount} != 4 (skip rules broken)`)
-    /** Build a fixture lock carrying a treeSha for `corpus` plus the two POLICY-only entries. */
-    const lockText = (treeSha: string): string => `${JSON.stringify({
+    /** The fixture SINGLE FILE's fingerprint: the value the sha256 arms compare against. */
+    const fileExpected = fileFingerprint(join(fixture, "packages", "x", "dist", "cli.js"))
+    expect(fileExpected.fileCount === 1, `fixture single-file count ${fileExpected.fileCount} != 1`)
+    /** Build a fixture lock: one treeSha asset, one single-file sha256 asset, one count-only entry. */
+    const lockText = (treeSha: string, fileSha: string): string => `${JSON.stringify({
       assets: {
         corpus: { fileCount: expected.fileCount, source: "scratch fixture corpus", treeSha },
-        "packages/x/dist/cli.js": { fileCount: 1, source: "build artifact", sha256: "de".repeat(32) },
+        "packages/x/dist/cli.js": { fileCount: fileExpected.fileCount, source: "build artifact", sha256: fileSha },
         countonly: { fileCount: 3 },
       },
     }, null, 2)}\n`
-    /** The scrub lock that already matches the fixture corpus. */
+    /** The scrub lock that already matches the fixture corpus and its single file. */
     const good = join(fixture, "lock.json")
     /** The scrub lock the mutate arms rewrite. */
     const scratch = join(fixture, "scratch.json")
-    writeFileSync(good, lockText(expected.treeSha))
+    writeFileSync(good, lockText(expected.treeSha, fileExpected.sha256))
 
     arm("(a) matching scrub fixture lock -> --check exits 0", (): string => {
       /** The `--check` run of the staged sibling against the scrub lock. */
       const r = run(fixtureScript, ["--check", "--lock", good])
       expect(r.code === 0, `exit ${r.code}, stderr=${r.err.trim()}`)
       expect(r.out.includes("CHECK     : GREEN"), `no GREEN line: ${r.out.trim()}`)
-      expect(r.out.includes("POLICY (not a failure) - single-file sha256 asset"), "sha256 asset was not reported under the POLICY label")
+      expect(r.out.includes("[repin-vendor] asset          : packages/x/dist/cli.js"), "the single-file asset was not derived")
+      expect(r.out.includes(`sha256=${fileExpected.sha256}`), "the single-file sha256 was not compared")
+      expect(!r.out.includes("POLICY (not a failure) - single-file sha256 asset"), "the single-file sha256 asset is still POLICY-skipped")
       expect(r.out.includes("POLICY (not a failure) - count-only asset"), "count-only asset was not reported under the POLICY label")
-      return `exit 0; ${expected.fileCount}-file corpus in sync; non-treeSha assets reported under the POLICY (not a failure) label`
+      return `exit 0; ${expected.fileCount}-file corpus AND the single-file sha256 in sync; only the count-only entry is POLICY`
     })
 
     arm("(b) drifted scratch lock -> --check exits 1 and prints the delta", (): string => {
-      writeFileSync(scratch, lockText("0".repeat(64)))
+      writeFileSync(scratch, lockText("0".repeat(64), fileExpected.sha256))
       /** The `--check` run against the deliberately drifted scratch lock. */
       const r = run(fixtureScript, ["--check", "--lock", scratch])
       expect(r.code === 1, `exit ${r.code} (expected 1)`)
@@ -855,12 +995,12 @@ function selfTest(): number {
       expect(reparsed.assets.corpus.treeSha === expected.treeSha, "written value != LF-normalized value")
       expect(reparsed.assets.corpus.treeSha !== expected.rawTreeSha, "written value is the RAW variant - normalization lost")
       expect(reparsed.assets.corpus.fileCount === expected.fileCount, "fileCount changed unexpectedly")
-      expect(reparsed.assets["packages/x/dist/cli.js"].sha256 === "de".repeat(32), "sha256 asset was touched")
+      expect(reparsed.assets["packages/x/dist/cli.js"].sha256 === fileExpected.sha256, "single-file sha256 was touched")
       expect(reparsed.assets.countonly.fileCount === 3, "count-only asset was touched")
       /** The `--check` run that must now be GREEN. */
       const check = run(fixtureScript, ["--check", "--lock", scratch])
       expect(check.code === 0, `--check after write exited ${check.code}`)
-      return `1 line changed (${report.bytesBefore} -> ${report.bytesAfter} bytes, differingBytes=${report.differingBytes}); sha256+count-only assets untouched; --check GREEN after write`
+      return `1 line changed (${report.bytesBefore} -> ${report.bytesAfter} bytes, differingBytes=${report.differingBytes}); single-file sha256 + count-only untouched; --check GREEN after write`
     })
 
     arm("(d) default VENDOR_LOCK.json guard: --write refuses, real file byte-identical", (): string => {
@@ -877,7 +1017,7 @@ function selfTest(): number {
       /** A copy of the scratch lock at a different path, which the guard must allow. */
       const elsewhere = join(fixture, "nested", "VENDOR_LOCK.json")
       mkdirSync(dirname(elsewhere), { recursive: true })
-      writeFileSync(elsewhere, lockText("0".repeat(64)))
+      writeFileSync(elsewhere, lockText("0".repeat(64), fileExpected.sha256))
       /** The `--write` run against that differently located copy. */
       const r2 = run(fixtureScript, ["--write", "--lock", elsewhere])
       expect(r2.code === 0, `guard is name-scoped: a copy at a different path was refused (exit ${r2.code})`)
@@ -888,7 +1028,7 @@ function selfTest(): number {
     arm("(e) dry run mutates nothing", (): string => {
       /** The scratch lock the dry run is pointed at. */
       const target = join(fixture, "dryrun.json")
-      writeFileSync(target, lockText("0".repeat(64)))
+      writeFileSync(target, lockText("0".repeat(64), fileExpected.sha256))
       /** The target's digest before the dry run. */
       const before = sha(target)
       /** The dry run itself, against the drifted scratch lock. */
@@ -936,6 +1076,35 @@ function selfTest(): number {
       const restored = run(fixtureScript, ["--check", "--lock", good])
       expect(restored.code === 0, `restored authority no longer checks green (exit ${restored.code})`)
       return "tampered mirror token -> exit 1 with 'changed shape'; restored -> exit 0 (falsifiable guard; real authority sha unchanged)"
+    })
+
+    arm("(h) single-file sha256 drift -> --check RED, --write refreshes ONLY that line, --check GREEN", (): string => {
+      /** The scratch lock whose single-file sha256 alone was deliberately corrupted. */
+      const single = join(fixture, "single.json")
+      writeFileSync(single, lockText(expected.treeSha, "0".repeat(64)))
+      /** The `--check` run that must REDDEN on the single-file asset while the tree stays green. */
+      const check = run(fixtureScript, ["--check", "--lock", single])
+      expect(check.code === 1, `drifted single-file check exited ${check.code} (expected 1)`)
+      expect(check.out.includes(`DELTA        : sha256 ${"0".repeat(64)} -> ${fileExpected.sha256}`), `single-file delta line missing: ${check.out.trim()}`)
+      expect(check.out.includes("CHECK     : RED"), "no RED line for the single-file drift")
+      expect(check.out.includes(`treeSha=${expected.treeSha}`), "the treeSha arm did not stay in sync")
+      /** The lock's text before the write, for the one-line report. */
+      const before = readFileSync(single, "utf8")
+      /** The `--write` run that must refresh ONLY the single-file sha256. */
+      const write = run(fixtureScript, ["--write", "--lock", single])
+      expect(write.code === 0, `single-file write exit ${write.code}, stderr=${write.err.trim()}`)
+      /** The lock's text after the write. */
+      const after = readFileSync(single, "utf8")
+      /** The applied edit's line and byte diff. */
+      const report = reportChanges(before, after)
+      expect(report.linesChanged === 1, `linesChanged=${report.linesChanged} (expected exactly 1)`)
+      expect(report.diff[0].includes("sha256"), `changed line is not sha256: ${report.diff.join(" | ")}`)
+      expect(JSON.parse(after).assets.corpus.treeSha === expected.treeSha, "the treeSha arm was touched by the single-file write")
+      expect(readJson<FixtureLock>(single).assets["packages/x/dist/cli.js"].sha256 === fileExpected.sha256, "the single-file value was not written")
+      /** The `--check` run that must now be GREEN again. */
+      const green = run(fixtureScript, ["--check", "--lock", single])
+      expect(green.code === 0, `--check after the single-file write exited ${green.code}`)
+      return `drift -> exit 1 + DELTA sha256 000... -> ${fileExpected.sha256.slice(0, 12)}...; write -> 1 line changed; --check GREEN; corpus treeSha untouched`
     })
   } finally {
     for (const root of roots) {

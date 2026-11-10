@@ -141,10 +141,11 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
   权力，这样的一行没有 `fenced` 键。CELL 行**也没有** `fenced: true` 时，对它执行解围会答复
   `{member, unfenced: false, reason: "checkpoint-pending", detail}`，并且**两个记录都不写**——那个状态归
   屏障所有。上面的 CELL 标记优先：即使 TEAM 行仍写着 `mode: "checkpoint"`，真正的放弃也会被恢复。
-- **`not-fenced` 是事实，不是失败。** 两个记录都没有围栏的成员答复
-  `{member, unfenced: false, reason: "not-fenced"}`；记录不被
-  重写，team 平面也不会被询问。对「CELL 行只带着 `handoffReady: true`、而两个记录都没有标记」的成员，
-  这也是诚实的答案：只有显式的放弃标记会被清除，因为重开一个只是等待的行会招来「第二份交接」的活锁。
+- **`not-fenced` 是事实，不是失败。** 两个记录都**没有持住**（既无显式围栏、也无检查点拼写）的成员答复
+  `{member, unfenced: false, reason: "not-fenced"}`；记录不被重写，team 平面也不会被询问。CELL 行只带着
+  `handoffReady: true` 的成员**不是**这种情况：该标记本身就是一种检查点拼写，座位归压缩屏障所有，未加
+  force 的答复是 `checkpoint-pending`（两个记录都不写），因为重新打开归屏障所有。未加 force 的杠杆只清
+  显式的放弃标记。
 - **名字必须无歧义地解析。** 共享规则是：先精确的成员键，再精确的显示名，最后才是非空且**恰好只有一个**
   成员携带的规范化键；未知或有歧义的拼写（例如 后端1/前端1 下的 `1`）拒绝整个 `unfence` 调用或
   `cellwork_send` 收件人，并点名已记录的成员。什么都不会被清除、写入或投递——拼错一个名字绝不会让清单
@@ -280,16 +281,19 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
   `compactNow` 跑在 `agent.runMaintenance` 里，后者拒绝除 idle 之外的任何阶段，而 `agent/turn-stopping` 是在
   回合内部派发、监听器会被 await 的——原地压缩无法在那个事件上运行，因此重种是唯一出路，reason 文本会记录这
   一点而不是把 `busy` 留成无人解释的话。结果并集恰好是 `promoted` | `reseeded` | `refused`，而 `compacted` 的
-  答案走 `promoted`，且是**同一个** agent —— 不打断、不重种。**非 `refused` 的结果还会重开 TEAM 座位**：以队长
-  身份调用平面的 `unfence` 接缝，记 `member-unfenced` 且 `by: "barrier"`，并报告
-  `plane: "unfenced" | "absent" | "refused"`；重种会记 `member-reseeded`，带上两个 session id、退役事实与平面
+  答案走 `promoted`，且是**同一个** agent —— 不打断、不重种。**只有落盘那一行确实重开了 CELL 座位的屏障轮次，才
+  重开 TEAM 座位**：判据是那一行（`fenced !== true`），而不是原始结果——以队长身份调用平面的 `unfence` 接缝，记
+  `member-unfenced` 且 `by: "barrier"`，并报告 `plane: "unfenced" | "absent" | "refused"`（接缝的三种答复）；
+  而到达重试上限的 `reseeded` 轮会在同一轮**围栏** CELL 行、什么都不重开，改记 `plane-reopen-skipped`，其
+  `plane: "skipped-fenced"`——屏障 `plane` 枚举的第四个取值。重种会记 `member-reseeded`，带上两个 session id、退役事实与平面
   那一半。**退役由活跃祖先授权（R5.1）**——就是这次重种所用的那个 session（成员的持久父会话活跃时用它，否则用
   该 cell 的队长），**绝不是**成员自己的 handle：宿主会在祖先检查之前以 `UNAUTHORIZED "cannot interrupt itself"`
   拒绝它。记录写的是宿主真正做过的事：`retired:true` 只在 `retirement:"accepted"` 时出现；注册表在该 id 下没有
   活跃 session 时是 `"nothing-to-retire"`（绝不算退役）；宿主拒绝时是 `"refused"`，原话在 `retirementReason`；
   组合没有接缝时是 `"unavailable"`。以 `refused` 结束的平面那一半会带 `retry`（那个仅队长可用的确切 verb）。
-  重种**不是**「子代理能工作」的证明：`checkpointSince` 会跨重种保留，而记录里的 session 不活跃（注册表
-  **存在**）的座位会被 `cellwork_supervise` 标成 `suspect`。有界的强制杠杆
+  重种**不是**「子代理能工作」的证明：`checkpointSince` 会跨重种保留，而带时间戳的座位只有在注册表
+  **存在**、其**队长锚点**可解析、且记录的 session 查不到时，才会被 `cellwork_supervise` 标成 `suspect`
+  （注册表存在却解析不了锚点时答案是 `unknown`，什么都不标记）。有界的强制杠杆
   （`unfence: [{member, force: true}]`）是最后手段：活跃 session 与缺失的书面边界（`barrierFailures` 达到
   `compactionRetries`，或窗口早于 `checkpointPendingMaxMs`）都会被失败即拒绝；它把座位重开是为了重新分配，
   不是为了工作。
@@ -338,9 +342,12 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
 - **没有活跃 team 的 cell 什么都不记**（`teamId === ""`）：没有记录可画，于是调用写一行 `consult-unattached`，
   回答不变。平面收不下这次写时同样只记 `consult-unrecorded` —— 写入失败绝不会把一个已经启动的子会话变成失败的
   工具调用。
-- **`cellwork_stop` 会清掉它们。** 停止（含强制停止）对该 cell 的 team 调用 `mpdTeamActions.clearConsults`，并丢掉
-  内存里的 consult book，于是图不再画它们，**并且**之后才落定的子会话只写 journal（`consult-late-settlement`），
-  不会重新造出一行。
+- **`cellwork_stop` 会清掉它们，并中断它们的子会话。** 停止（含强制停止）**先**删掉内存 consult book 里该
+  cell 的键——这正是结算观察者读取的**停止标记**——再通过 `mpdConsults.cancel` 中断那个键仍记着的每一个
+  咨询（每个子会话写一行 `consult-cancelled`；接缝不存在或调用抛错时写带原因的 `consult-cancel-skipped`），
+  最后才对该 cell 的 team 调用 `mpdTeamActions.clearConsults`，于是图不再画它们，**并且**之后才落定的子会话
+  只写 journal（`consult-late-settlement`），不会重新造出一行。没有活跃 team 的 cell 同样会执行上面的取消
+  ——子会话是进程本地的，不属于平面。
 - **行有留存上限，不是无限增长。** 团队平面每个 team 最多留 50 行，先丢**最旧的已结算**行，绝不丢 `running` 行；
   因此一个永不清停的 cell 只会自然老化，而不是无限膨胀。
 - **这里没有任何东西是任务。** 咨询不占 `T<n>`，不被派发，也被排除在看板统计、`readyTasks`、干净终止规则与验证者
