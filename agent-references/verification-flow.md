@@ -332,3 +332,29 @@ does not [help to delegate]" is not the normal path for code, and "verify everyt
 yourself" is not how the main agent closes work — a claim is closed by a DIFFERENT agent's recorded
 verdict, and the main agent's own reading of a result is INTEGRATION, which is not verification. What
 changed is only the ENFORCEMENT: the write rule is a discipline the agent keeps, not a hook that refuses.
+
+## The Docker lane is a FROZEN release requirement (user-set, 2026-11-11)
+
+The lane's policy lives with the gate table above. What is frozen is that it RUNS, every version
+iteration, and that its shape is checkable:
+
+- **THREE lanes, not "Docker ran".** `--mode source --require-docker --live`,
+  `--mode oneclick --require-docker --live`, and the credential-free
+  `--mode source --require-docker --no-browser` regression. The third exists because a credentialed run
+  cannot see a path that depends on an EMPTY model catalog (measured 2026-10-23, PR #62); `--no-browser`
+  is the credential-free spelling, while a browser-enabled run records `ui.replyRendered` as a DECLARED
+  BOUND that the required-arm gate turns into exit 3 by design.
+- **PARALLEL where the daemon allows it, each lane in its OWN work dir.** A shared checkout would let one
+  lane's build become another's input, which is exactly the shape a release sweep must not have. A
+  serial fallback for daemon contention is allowed; an UNRECORDED one is not — the release body names
+  which lanes actually overlapped.
+- **A SKIP, an exit 3, or an absent lane is a FAILED release requirement.** `--require-docker` already
+  turns a skip into exit 3; the freeze adds that nobody may downgrade that to a notice. CI having run a
+  Docker lane is NOT a substitute for the three stamps.
+- **The USER-SURFACE arm (14b) keeps its own rule**: `userSurface.*` rows are required in EVERY mode,
+  and a lane that never ran them exits 3.
+
+Measurement that motivated the freeze: a release wave reached its final gate with the three lanes run
+SEQUENTIALLY out of one checkout, so the oneclick lane's pack saw the source lane's build output and the
+`files`-allowlist defect the credential-free lane later caught was masked for two rounds. Running the
+lanes from distinct work dirs in parallel would have surfaced it on the first pass.
