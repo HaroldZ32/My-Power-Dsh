@@ -1,0 +1,13 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+(pass) A9: a write that changes only the BOARD inside the window is REFUSED — the raw bytes are the predicate [7.31ms]
+(pass) A9: a write confined to handoffs/consults is REFUSED as well — no part of the record is exempt [4.00ms]
+(pass) A9: the SAME seed binds normally when NO external write lands (the contrast) [4.25ms]
+
+ 3 pass
+ 16 filtered out
+ 0 fail
+ 25 expect() calls
+Ran 3 tests across 1 file. [207.00ms]
+exit=0

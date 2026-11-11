@@ -1,0 +1,23 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+506 |   const harness = makeHarness({ member: stranded, team: plane })
+507 |   /** The captain's status read (the tool lives in the row, so it is registered through `apply`). */
+508 |   const status = await statusHarness(stranded, { team: plane }).run()
+509 |   /** The status member row. */
+510 |   const statusRow = (status.members as Array<Record<string, unknown>>)[0]
+511 |   expect(statusRow.liveness).toBe("dead")
+                                   ^
+error: expect(received).toBe(expected)
+
+Expected: "dead"
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:511:30)
+(fail) A4: a DEAD subcaptain renders live-by-liveness and force-eligible on BOTH surfaces [4.11ms]
+
+ 0 pass
+ 8 filtered out
+ 1 fail
+ 1 expect() calls
+Ran 1 test across 1 file. [183.00ms]

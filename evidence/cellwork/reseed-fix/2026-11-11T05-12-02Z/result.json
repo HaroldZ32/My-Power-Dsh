@@ -1,0 +1,195 @@
+{
+ "round": "PR #109 repair round 6 (blind FAIL rec-20261111T044746-ba0a51: 1 High evidence gap + 2 Medium code + 2 Nit)",
+ "branch": "fix/cellwork-reseed",
+ "contract": {
+  ".mpd/plans/cellwork-reseed-fix.md": "§3 A5 (amended) + A11; this round adds A17–A19 and the R2–R4 rules from the record's findings"
+ },
+ "landings": {
+  "R1_high_rebind_teammutation_unexercised": {
+   "code": [
+    "packages/mpd-cellwork-plugin/src/protocol.ts#rebindSeats (unchanged write path, now proven by an arm)"
+   ],
+   "arms": {
+    "A17": {
+     "seed": "TEAM row executorRef=OLD_HANDLE at mode checkpoint; CELL row sessionId/executorRef=NEW_HANDLE; registry holds NEW_HANDLE",
+     "asserts": [
+      "pre-call TEAM executorRef=OLD and mode=checkpoint (the premise, asserted not assumed)",
+      "post-call TEAM executorRef=NEW_HANDLE and mode=member (the DEFINING effect)",
+      "handoff preserved as history",
+      "CELL mirror: sessionId/executorRef=NEW_HANDLE, mode=member, handoffReady=false",
+      "member-rebound row: member/previousSessionId/handle/cellRow=mirrored",
+      "outcome rebound=true, previousSessionId=OLD, handle=NEW, liveness=live",
+      "second harness without the registry entry: same repair succeeds and reports liveness=unproven (the documented policy)"
+     ]
+    },
+    "A18": {
+     "seed": "CELL row sessionId/executorRef=NEW_HANDLE, fenced=true with an exact fencedReason; TEAM row OLD at checkpoint",
+     "asserts": [
+      "rebind ALONE (no unfence key)",
+      "CELL fenced still true and fencedReason byte-identical",
+      "no unfenced key in the answer",
+      "TEAM row re-pointed and promoted (rebind did its own job)",
+      "member-rebound present, no member-unfenced row"
+     ]
+    },
+    "A19": {
+     "seed": "record path replaced by a FIFO served by a background writer: read #1 = document A (snapshot), read #2 = document B (the external commit); plane answers from memory so the pipe is not drained early",
+     "asserts": [
+      "outcome rebound=false, reason=team-record-changed, detail names the changed write",
+      "record path is STILL a FIFO afterwards => no document was renamed over the other writer",
+      "member-rebind-failed row with reason team-record-changed and the requested handle",
+      "CELL row untouched"
+     ]
+    }
+   },
+   "mutation_witness": {
+    "what": "the single `atomicWriteText(path, JSON.stringify(next, null, 2) + \"\\n\")` line inside rebindSeats replaced by `void next`",
+    "diff_file": "evidence/cellwork/reseed-fix/2026-11-11T05-12-02Z/mutation-teambind.diff",
+    "pre_sha256": "cb22299f530ebbeb9b2ae1f1e39fdd4e322f7e2eab589959d2218f4836c5bfd6",
+    "mutated_sha256": "8079c8b899663810620af7fcb3ce0010efe844eae59248a2c67b3bc67cce96e9",
+    "red_run": {
+     "cmd": ".toolchain/node_modules/.bin/bun test packages/mpd-cellwork-plugin/test/reseed-binding.test.ts -t A17",
+     "result": "1 fail / 0 pass",
+     "exit": 1,
+     "log": "evidence/cellwork/reseed-fix/2026-11-11T05-12-02Z/mutation-A17-red.log",
+     "first_failing_assertion": "expect(outcome?.rebound).toBe(true) -> Received: false (test line 1412)"
+    },
+    "restored_sha256": "cb22299f530ebbeb9b2ae1f1e39fdd4e322f7e2eab589959d2218f4836c5bfd6 (identical to pre)",
+    "green_run": {
+     "cmd": "same, restored tree",
+     "result": "1 pass / 0 fail",
+     "exit": 0,
+     "log": "evidence/cellwork/reseed-fix/2026-11-11T05-12-02Z/mutation-A17-restored-green.log"
+    }
+   }
+  },
+  "R2_medium_handle_validation": {
+   "code": [
+    "packages/mpd-cellwork-plugin/src/protocol.ts#SESSION_HANDLE_SHAPE (module const)",
+    "protocol.ts#cellwork_dispatch argument parsing: member+handle trimmed, handle must match 8-4-4-4-12 hex UUID, else the WHOLE call is refused and journaled",
+    "protocol.ts#handleLivenessOf: live | unproven | unknown (the registry's answer, never a claim)",
+    "protocol.ts#handleEvidenceOf: the handle must already be named by the seat's TEAM executorRef, the CELL row, or a journal orphanChild/newHandle row",
+    "protocol.ts tool schema (rebind array + handle + rebound output)",
+    "protocol.ts dispatch render names liveness",
+    "protocol-core.ts#reconcileRepairOf no longer calls the handle a live child"
+   ],
+   "policy_choice": "when liveAgentExact exists and does NOT hold the handle: REPORT liveness=\"unproven\" and proceed (the documented option), never upgrade it to live; OWNERSHIP is enforced separately by the record-trail evidence rule (a handle outside this seat's records is refused)",
+   "evidence_basis": [
+    "TEAM member row executorRef",
+    "CELL member row sessionId/executorRef",
+    "journal rows for the same member whose orphanChild or newHandle equals the handle"
+   ],
+   "docs": [
+    "docs/cellwork.md (rebind paragraph + dispatch table row + journal row list)",
+    "docs/cellwork.zh-CN.md (mirror)",
+    "packages/mpd-cellwork-plugin/README.md + README.zh-CN.md (contract bullet)"
+   ],
+   "arms": {
+    "A20": "typo handle refused with the expected form in the sentence + member-rebind-failed row; padded handle (\"  <uuid>\\n\") accepted and stored TRIMMED",
+    "A21": "a well-formed LIVE handle belonging to another session refused per entry (handle-unevidenced); neither record moved; journal row present"
+   }
+  },
+  "R3_medium_displaced_handle": {
+   "code": [
+    "protocol.ts#bindReseededSeat computes displacedExecutorRef (non-empty, different from the fresh handle) and displacedUnproven (registry cannot prove it live)",
+    "protocol-core.ts#SeatBindResult + PromotionResult carry both fields",
+    "protocol-core.ts#compactionJournalEntry adds them to the compaction row",
+    "protocol.ts#runBarrier adds them to seat-rebound and member-reseeded"
+   ],
+   "decision_kept": "the re-entry guard stays inert when the TEAM handle is not proven live (unchanged, as instructed); only the RECORD of the overwritten handle is added",
+   "arm": {
+    "A22": "TEAM row names an unproven DISPLACED handle; reseed succeeds; compaction, seat-rebound and member-reseeded each carry displacedExecutorRef=DISPLACED and displacedUnproven=true"
+   }
+  },
+  "R4_nits": {
+   "failed_rebind_entries_journaled": {
+    "code": "protocol.ts#failRebind writes member-rebind-failed for every per-entry failure; argument-level refusals go through rejectRebind with the same event",
+    "reasons": [
+     "no-team-record",
+     "team-record-unreadable",
+     "team-record",
+     "team-member",
+     "handle-unevidenced",
+     "team-record-changed",
+     "write-failed",
+     "team-record-verify",
+     "invalid-argument",
+     "invalid-handle",
+     "unknown-member",
+     "ambiguous-member"
+    ],
+    "arms": [
+     "A19 (team-record-changed)",
+     "A20 (invalid-handle)",
+     "A21 (handle-unevidenced)"
+    ]
+   },
+   "a11_sentence_distinction": {
+    "code": "protocol-core.ts#rollbackBind sets survivingReadable; promoteAfterHandoff has a THIRD branch: 'the surviving record is READABLE but carries no string executorRef for <member>' vs 'could not be read'",
+    "arm": "A23: parsable surviving document with a non-string executorRef -> sentence contains READABLE and 'carries no string executorRef', does NOT contain 'could not be read'; child kept; orphanChild present"
+   },
+   "fault_injection_witness": {
+    "diff": "evidence/cellwork/reseed-fix/2026-11-11T05-12-02Z/mutation-teambind.diff",
+    "pinned_toolchain": ".toolchain/node_modules/.bin/bun 1.4.0",
+    "logs": [
+     "evidence/cellwork/reseed-fix/2026-11-11T05-12-02Z/mutation-A17-red.log",
+     "evidence/cellwork/reseed-fix/2026-11-11T05-12-02Z/mutation-A17-restored-green.log"
+    ]
+   }
+  }
+ },
+ "gates": [
+  {
+   "cmd": "bun run typecheck",
+   "exit": 0,
+   "log": "evidence/cellwork/reseed-fix/2026-11-11T05-12-02Z/gate-typecheck.log",
+   "observed": "$ tsgo --noEmit"
+  },
+  {
+   "cmd": "bun run verify:comments",
+   "exit": 0,
+   "log": "evidence/cellwork/reseed-fix/2026-11-11T05-12-02Z/gate-comments.log",
+   "observed": "VERDICT: PASS — 633 files, 58166 declarations; every declaration carries a precise comment and a full signature"
+  },
+  {
+   "cmd": "bun run verify:docs",
+   "exit": 0,
+   "log": "evidence/cellwork/reseed-fix/2026-11-11T05-12-02Z/gate-docs.log",
+   "observed": "pairs=59 failed=0 violations=0 links=626 dead=0 — PASS"
+  },
+  {
+   "cmd": "bun test packages/mpd-cellwork-plugin",
+   "exit": 0,
+   "log": "evidence/cellwork/reseed-fix/2026-11-11T05-12-02Z/gate-tests-package.log",
+   "observed": "403 pass / 0 fail, 34 files, 3923 expect() calls"
+  },
+  {
+   "cmd": "bun test packages",
+   "exit": 0,
+   "log": "evidence/cellwork/reseed-fix/2026-11-11T05-12-02Z/gate-tests-all.log",
+   "observed": "4035 pass / 6 skip / 0 fail, 4041 tests across 261 files"
+  },
+  {
+   "cmd": ".toolchain/node_modules/.bin/bun build packages/mpd-cellwork-plugin/src/index.ts --target node --format esm --outfile packages/mpd-cellwork-plugin/dist/index.js",
+   "exit": 0,
+   "log": "evidence/cellwork/reseed-fix/2026-11-11T05-12-02Z/gate-dist-build.log",
+   "observed": "Bundled 31 modules, index.js 0.56 MB"
+  },
+  {
+   "cmd": "bun run verify:dist",
+   "exit": 0,
+   "log": "evidence/cellwork/reseed-fix/2026-11-11T05-12-02Z/gate-dist-fresh.log",
+   "observed": "34/34 targets fresh; build toolchain bun 1.4.0 (pinned); 1 NOT COVERED prebuilt file listed (mpd-mcp-codegraph/serve.js)"
+  }
+ ],
+ "bounds": [
+  "The working tree was ALREADY dirty when this round started (5 prior rounds, no git writes allowed): `git status` at session start listed src/index.ts among others. This round's own edits are protocol.ts, protocol-core.ts, test/reseed-binding.test.ts, the docs pair, the README pair and dist/index.js; src/index.ts was NOT touched this round and the cumulative wave.diff includes the earlier rounds.",
+  "A19's external write is injected at the FILESYSTEM level (a FIFO served by a background writer) because rebind's read->compare->rename window is synchronous: an in-process writer cannot interleave. It reproduces the byte change the compare sees, not a second team-core process's read-modify-write.",
+  "The R2 policy is REPORT-then-proceed for an unproven handle (liveness=\"unproven\"), with OWNERSHIP enforced by the record-trail rule; it is not a refusal on liveness. This is the documented choice the review allowed.",
+  "The A17 mutation witness mutates rebindSeats only (the verb under review), not the reseed bind; the reseed bind's TEAM write is already exercised by A1a/A2/A8.",
+  "R3 records the displaced handle but deliberately does not tighten the re-entry guard (the review said to keep that decision).",
+  "Test fixtures: OLD_HANDLE/NEW_HANDLE became UUID-shaped constants because the new shape check applies to every rebind input; no production behavior depends on those literals.",
+  "evidence/wave.diff is the CUMULATIVE HEAD->worktree diff (all six rounds); it is not a round-only diff (no pre-round snapshot existed)."
+ ],
+ "evidence_dir": "evidence/cellwork/reseed-fix/2026-11-11T05-12-02Z"
+}

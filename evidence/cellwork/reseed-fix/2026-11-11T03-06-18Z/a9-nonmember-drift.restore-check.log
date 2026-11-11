@@ -1,0 +1,4 @@
+packages/mpd-cellwork-plugin/src/protocol-core.ts: OK
+packages/mpd-cellwork-plugin/src/protocol.ts: OK
+packages/mpd-cellwork-plugin/src/index.ts: OK
+restore-exit=0

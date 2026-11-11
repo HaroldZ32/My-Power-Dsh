@@ -1,0 +1,10 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+(pass) A2: a reseed that cannot write the TEAM row NEVER reports `reseeded` — it names the surface, fences and hands over the retry [8.07ms]
+
+ 1 pass
+ 8 filtered out
+ 0 fail
+ 10 expect() calls
+Ran 1 test across 1 file. [193.00ms]

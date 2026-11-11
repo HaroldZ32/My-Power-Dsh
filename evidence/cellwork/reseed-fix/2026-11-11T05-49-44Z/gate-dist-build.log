@@ -1,0 +1,7 @@
+cmd: .toolchain/node_modules/.bin/bun build packages/mpd-cellwork-plugin/src/index.ts --target node --format esm --outfile packages/mpd-cellwork-plugin/dist/index.js
+version: 1.4.0
+Bundled 31 modules in 11ms
+
+  index.js  0.56 MB  (entry point)
+
+[build exit: 0]

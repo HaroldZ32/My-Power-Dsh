@@ -1,0 +1,14 @@
+# Round-9 baseline check against the LIVE tree (after this round's edits).
+# Expected: the three files this round edits (test + two docs) report FAILED because they moved;
+# every other line must report OK — that is what proves the delivered SOURCE is the round-9 baseline.
+packages/mpd-cellwork-plugin/src/protocol.ts: OK
+packages/mpd-cellwork-plugin/src/protocol-core.ts: OK
+packages/mpd-cellwork-plugin/src/index.ts: OK
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts: FAILED
+docs/cellwork.md: FAILED
+docs/cellwork.zh-CN.md: FAILED
+packages/mpd-cellwork-plugin/README.md: OK
+packages/mpd-cellwork-plugin/README.zh-CN.md: OK
+packages/mpd-cellwork-plugin/dist/index.js: OK
+sha256sum: WARNING: 3 computed checksums did NOT match
+EXIT=1

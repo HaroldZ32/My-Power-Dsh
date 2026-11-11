@@ -1,0 +1,89 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+(pass) A1a: a reseed puts the fresh handle on the TEAM member row and leaves the checkpoint window [7.03ms]
+(pass) A1b: a reseed re-points every non-terminal board row the old handle owned [3.41ms]
+(pass) A2: a reseed that cannot write the TEAM row NEVER reports `reseeded` — it names the surface, fences and hands over the retry [3.37ms]
+(pass) A3: the promotion directive is delivered to the NEW handle on the reseed path [3.33ms]
+(pass) A4: a DEAD subcaptain renders live-by-liveness and force-eligible on BOTH surfaces [2.52ms]
+(pass) A4: an UNKNOWN liveness is reported as unverified, never as health, and suppresses no lever field [0.77ms]
+(pass) A5: a record re-read failure journals the branch and NEVER writes the pre-await snapshot — the fence is reported `not-persisted` [2.81ms]
+(pass) A5: a throw AFTER the spawn is journaled, fences the seat and RELEASES the activation [5.13ms]
+(pass) A6: a spawn that answers without a child id disposes the activation [3.09ms]
+(pass) A7: a team record that EXISTS but cannot be read NEVER reports `reseeded` — it names the surface, fences and releases [3.20ms]
+(pass) A7: a plane read that THROWS while the record exists is the unreadable case, never `absent` [3.24ms]
+(pass) A7: a cell whose workspace holds NO team record answers `absent` and still reseeds (the control) [3.49ms]
+(pass) A8: a write that lands between the bind's read and its rename is REFUSED, not overwritten [3.49ms]
+(pass) A8: a record that carries a REVISION is refused when that revision moved inside the window [3.42ms]
+(pass) A8: without an external write the SAME harness binds normally (the control) [3.29ms]
+(pass) A9: a write that changes only the BOARD inside the window is REFUSED — the raw bytes are the predicate [3.40ms]
+(pass) A9: a write confined to handoffs/consults is REFUSED as well — no part of the record is exempt [3.31ms]
+(pass) A9: the SAME seed binds normally when NO external write lands (the contrast) [3.28ms]
+(pass) A10: with NO team plane but a readable record file, the bind uses the FILE, verifies from it, and says `plane:"bound"` [3.72ms]
+(pass) A11: a read-back that answers a STALE handle ROLLS BACK the TEAM row and the board owners — both surfaces stay consistent [3.52ms]
+(pass) A12: a rollback that meets a CONCURRENT WRITE refuses to overwrite it and says so [6.26ms]
+(pass) A12b: a refused rollback whose surviving document PRESERVES the fresh handle KEEPS the child and hands over the rebind [5.21ms]
+(pass) A12c: a rollback that could not be WRITTEN keeps the child too — an unproven record never proves a child unbindable [3.50ms]
+(pass) A29: a refused rollback KEEPS the child even when the surviving document names ANOTHER handle (Minor-1) [3.61ms]
+(pass) A13: a record re-read failure writes NOTHING — a concurrent writer's fields survive and the fence is `not-persisted` [3.21ms]
+(pass) A14: the status RENDER carries liveness/closed/deadReseed/unverified/forceEligible — and leaves a LIVE seat's line unchanged [1.78ms]
+(pass) A15: a board row owned by the SEAT'S NAME is re-pointed too — terminal rows keep their owner [3.41ms]
+(pass) A16: a seat the TEAM row already binds to a LIVE child is NOT reseeded again — the skip is journaled and the rebind repair reconciles the records [1.27ms]
+(pass) A17: `rebind` rewrites a TEAM row that names a DIFFERENT handle and leaves the checkpoint window [1.50ms]
+(pass) A18: `rebind` ALONE leaves fenced/fencedReason byte-for-byte — the fence belongs to `unfence` [0.75ms]
+(pass) A28: a combined {rebind, unfence} call whose rebind FAILS leaves the fence CLOSED and says `fence stayed closed` [1.64ms]
+(pass) A30: a rebind whose CELL mirror write FAILS answers `cellRow:"failed: …"` and withholds the unfence [1.24ms]
+(pass) A31: one unevidenced entry among two withholds the unfence for EVERY declared target, not only its own [1.86ms]
+(pass) A32: `rebind` re-points every NON-TERMINAL board row the old handle owned, leaves terminal rows, and reports live rows in tasksNeedingRelease [0.76ms]
+(pass) A32b: a REFUSED `rebind` moves NO board row — every owner and revision stays byte-identical [0.55ms]
+2004 |   /** The rendered blocks, flattened the way the adapter shows them. */
+2005 |   const rendered = harness.tools.get("cellwork_dispatch")!.output!.render!({}, repaired) as Array<{ text?: unknown }>
+2006 |   /** Every rendered line this answer produced. */
+2007 |   const text = rendered.map((block) => String(block.text ?? "")).join("\n")
+2008 |   // THE HAND-OVER IS VISIBLE ON THE LINE ITSELF.
+2009 |   expect(text).toContain("board: 2 row(s) handed over")
+                      ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "board: 2 row(s) handed over"
+Received: "rebind Senior Engineer: executorRef \"6b1f7a2c-0000-4000-8000-000000000001\" -> \"2f86e074-1a13-4871-881f-7af634ff4f3c\" (evidence: cell; displaced \"6b1f7a2c-0000-4000-8000-000000000001\" liveness: live; new handle liveness: live; record-current — the identity registry's answer, not a claim)\nnothing else dispatched"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:2009:16)
+(fail) A34: a landed `rebind` RENDERS the rows it handed over AND the ones still needing a release [1.05ms]
+(pass) A34b: a re-point that hands nothing over renders NO board clause — the append is conditional [0.61ms]
+2106 |   expect(harness.record().members.find((member) => member.name === MEMBER_NAME)?.executorRef).toBe(NEW_HANDLE)
+2107 |   // THE ADOPTION IS ON THE RENDERED LINE TOO (R11-2): an operator reading only the text still learns that
+2108 |   // this handle came from the journal's orphan row rather than from a current record.
+2109 |   /** The rendered blocks of the landing repair, flattened the way the adapter shows them. */
+2110 |   const rendered = harness.tools.get("cellwork_dispatch")!.output!.render!({}, repaired) as Array<{ text?: unknown }>
+2111 |   expect(rendered.map((block) => String(block.text ?? "")).join("\n")).toContain("handle adopted from the orphan evidence row")
+                                                                              ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "handle adopted from the orphan evidence row"
+Received: "rebind Senior Engineer: executorRef \"6b1f7a2c-0000-4000-8000-000000000001\" -> \"2f86e074-1a13-4871-881f-7af634ff4f3c\" (evidence: journal:checkpoint-unrecoverable; displaced \"6b1f7a2c-0000-4000-8000-000000000001\" liveness: live; new handle liveness: live — the identity registry's answer, not a claim)\nunfence Senior Engineer: cell row cleared and the TEAM seat reopened through the plane\nnothing else dispatched"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:2111:72)
+(fail) A33: `rebind` adopts the kept child's orphan row when BOTH current records still name the old handle — end to end [4.63ms]
+(pass) A33b: a record that PROVABLY postdates the orphan row REFUSES the adoption — the journal never vetoes recency [3.99ms]
+(pass) m6: a rebind outcome OMITS previousSessionId/previousSessionIdLiveness when the TEAM record is missing or unreadable [0.75ms]
+(pass) A19: a write by ANOTHER PROCESS inside rebind's window is refused (`team-record-changed`), never overwritten [28.18ms]
+(pass) A20: the handle is TRIMMED and must be the host's UUID form — a typo refuses the whole call, journaled [1.57ms]
+(pass) A21: a handle this seat's records never name is refused per entry — the registry proves liveness, not ownership [0.66ms]
+(pass) A22: a reseed that overwrites an UNPROVEN TEAM handle journals the displaced handle (R3) [2.95ms]
+(pass) A23: a refused rollback whose surviving record is READABLE but carries no executorRef says exactly that [3.31ms]
+(pass) A24: a handle only an OLDER compaction row names is refused `handle-superseded` — the LATEST hand-over wins (M1) [0.84ms]
+(pass) A25: the DISPLACED handle's liveness is surfaced — a live previousSessionId says `live` in the answer AND the row (M1/N1) [0.86ms]
+(pass) A26a: a handle named by ANOTHER seat's TEAM executorRef is refused (`handle-unevidenced`); both records stay put [0.72ms]
+(pass) A26b: a handle named by ANOTHER seat's journal hand-over is refused (`handle-unevidenced`); both records stay put [0.73ms]
+(pass) A27: a record written AFTER the last hand-over with no journal row of its own is ACCEPTED — never superseded, never advised backwards (F1) [1.00ms]
+(pass) A27 control: with NO current handle the journal's latest hand-over still decides — an older row is never evidence (F1) [1.24ms]
+
+2 tests failed:
+(fail) A34: a landed `rebind` RENDERS the rows it handed over AND the ones still needing a release [1.05ms]
+(fail) A33: `rebind` adopts the kept child's orphan row when BOTH current records still name the old handle — end to end [4.63ms]
+
+ 49 pass
+ 2 fail
+ 558 expect() calls
+Ran 51 tests across 1 file. [304.00ms]

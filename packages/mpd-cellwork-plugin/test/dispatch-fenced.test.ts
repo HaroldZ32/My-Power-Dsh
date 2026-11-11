@@ -777,11 +777,19 @@ test("R4.2: an ABSENT agents registry is UNKNOWN — a seat is never reported su
   // removes.
   expect(Number(member.pendingMs)).toBeGreaterThanOrEqual(1800000)
   expect(member.forceEligible).toBe(false)
-  // AND THE SAME SEAT IS NOT REPORTED CLOSED: nothing holds it while liveness is unknown.
-  expect((sweep.fenced as Array<Record<string, unknown>>).some((row) => row.name === "Senior Engineer")).toBe(false)
+  // AND THE SEAT IS REPORTED AS UNVERIFIED, NOT SUPPRESSED (R3): an `unknown` liveness is exactly the case
+  // the incident hid — a dead `subcaptain` and a healthy one were indistinguishable — so the row appears in
+  // `fenced[]` with `unverified:true`, its refusal named, and no lever licensed.
+  /** The closed-seat row this sweep reports for the member. */
+  const reported = (sweep.fenced as Array<Record<string, unknown>>).find((row) => row.name === "Senior Engineer")
+  expect(reported?.unverified).toBe(true)
+  expect(reported?.liveness).toBe("unknown")
+  expect(reported?.forceEligible).toBe(false)
+  expect(reported?.forceRefusal).toBe("liveness-unknown")
   /** The text a model reads for the same sweep. */
   const text = renderTool(harness, "cellwork_supervise", sweep)
   expect(text).not.toContain("SUSPECT")
+  expect(text).toContain("UNVERIFIED")
 })
 
 test("R7.3: a PRESENT registry that cannot resolve the captain anchor is UNKNOWN, never `dead`", async () => {
@@ -798,7 +806,12 @@ test("R7.3: a PRESENT registry that cannot resolve the captain anchor is UNKNOWN
   const member = (sweep.members as Array<Record<string, unknown>>).find((entry) => entry.name === "Senior Engineer")
   if (member === undefined) throw new Error("the member must be reported")
   expect(member.liveness).toBe("unknown")
-  // AND NOTHING IS LICENSED ON IT: no suspect flag, no closed seat, no forced lever.
+  // AND NOTHING IS LICENSED ON IT: no suspect flag, no forced lever — but the seat is NOT suppressed
+  // either (R3): an unprovable seat is reported as UNVERIFIED, never as health.
   expect("suspect" in member).toBe(false)
-  expect((sweep.fenced as Array<Record<string, unknown>>).some((entry) => entry.name === "Senior Engineer")).toBe(false)
+  expect(member.forceEligible).toBe(false)
+  /** The closed-seat row this sweep reports for the member. */
+  const reported = (sweep.fenced as Array<Record<string, unknown>>).find((entry) => entry.name === "Senior Engineer")
+  expect(reported?.unverified).toBe(true)
+  expect(reported?.forceEligible).toBe(false)
 })

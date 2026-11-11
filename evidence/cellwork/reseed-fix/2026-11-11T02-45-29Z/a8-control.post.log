@@ -1,0 +1,10 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+(pass) A8: without an external write the SAME harness binds normally (the control) [6.87ms]
+
+ 1 pass
+ 14 filtered out
+ 0 fail
+ 4 expect() calls
+Ran 1 test across 1 file. [181.00ms]

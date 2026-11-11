@@ -1,0 +1,23 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+(pass) A1a: a reseed puts the fresh handle on the TEAM member row and leaves the checkpoint window [7.24ms]
+(pass) A1b: a reseed re-points every non-terminal board row the old handle owned [3.02ms]
+(pass) A2: a reseed that cannot write the TEAM row NEVER reports `reseeded` — it names the surface, fences and hands over the retry [3.64ms]
+(pass) A3: the promotion directive is delivered to the NEW handle on the reseed path [3.13ms]
+(pass) A4: a DEAD subcaptain renders live-by-liveness and force-eligible on BOTH surfaces [4.53ms]
+(pass) A4: an UNKNOWN liveness is reported as unverified, never as health, and suppresses no lever field [0.75ms]
+(pass) A5: a record re-read failure journals the branch and FENCES the seat [3.62ms]
+(pass) A5: a throw AFTER the spawn is journaled, fences the seat and RELEASES the activation [3.75ms]
+(pass) A6: a spawn that answers without a child id disposes the activation [3.16ms]
+(pass) A7: a team record that EXISTS but cannot be read NEVER reports `reseeded` — it names the surface, fences and releases [3.65ms]
+(pass) A7: a plane read that THROWS while the record exists is the unreadable case, never `absent` [3.77ms]
+(pass) A7: a cell whose workspace holds NO team record answers `absent` and still reseeds (the control) [4.03ms]
+(pass) A8: a write that lands between the bind's read and its rename is REFUSED, not overwritten [4.30ms]
+(pass) A8: a record that carries a REVISION is refused when that revision moved inside the window [3.98ms]
+(pass) A8: without an external write the SAME harness binds normally (the control) [3.89ms]
+
+ 15 pass
+ 0 fail
+ 103 expect() calls
+Ran 15 tests across 1 file. [244.00ms]

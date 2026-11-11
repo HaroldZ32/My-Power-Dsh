@@ -7820,8 +7820,105 @@ function compactionJournalEntry(memberName, result) {
     attempts: result.attempts,
     reason: result.reason,
     ...result.newHandle === undefined ? {} : { newHandle: result.newHandle },
-    ...result.parentSource === undefined ? {} : { parentSource: result.parentSource, parentSessionId: result.parentSessionId }
+    ...result.parentSource === undefined ? {} : { parentSource: result.parentSource, parentSessionId: result.parentSessionId },
+    ...result.displacedExecutorRef === undefined ? {} : { displacedExecutorRef: result.displacedExecutorRef, displacedUnproven: result.displacedUnproven === true }
   };
+}
+function seatLivenessOf(seam, sessionId, anchorSessionId) {
+  if (sessionId === "")
+    return "unknown";
+  if (typeof seam.liveAgentExact !== "function")
+    return "unknown";
+  try {
+    if (seam.liveAgentExact(sessionId) !== undefined)
+      return "live";
+    const capabilities = typeof seam.capabilities === "function" ? seam.capabilities() : undefined;
+    if (capabilities?.agents !== true)
+      return "unknown";
+    if (anchorSessionId === "" || seam.liveAgentExact(anchorSessionId) === undefined)
+      return "unknown";
+    return "dead";
+  } catch {
+    return "unknown";
+  }
+}
+function planeSeatOf(record, name) {
+  if (typeof record !== "object" || record === null)
+    return {};
+  const rows = Array.isArray(record.members) ? record.members.filter((row2) => typeof row2 === "object" && row2 !== null) : [];
+  const row = rows.find((candidate) => candidate.name === name || candidate.id === name);
+  if (row === undefined)
+    return {};
+  const mode = typeof row.mode === "string" && row.mode !== "" ? row.mode : undefined;
+  const fenced = row.fenced === true;
+  const closed = row.mode === "checkpoint" || fenced;
+  if (!closed)
+    return mode === undefined ? {} : { mode };
+  const reason = fenced ? "the plane fenced this seat" + (typeof row.fencedReason === "string" && row.fencedReason !== "" ? " (" + row.fencedReason + ")" : "") : "the plane recorded a checkpoint for this seat (mode `checkpoint`), so it is fenced until the barrier reopens it";
+  return { mode: "checkpoint", checkpoint: true, fenced, fenceReason: reason };
+}
+function checkpointSinceOf(cell, member) {
+  if (member.checkpointSince !== undefined)
+    return member.checkpointSince;
+  for (let index = cell.checkpoints.length - 1;index >= 0; index -= 1) {
+    const entry = cell.checkpoints[index];
+    if (entry.sessionId !== "" && entry.sessionId === member.sessionId)
+      return entry.at;
+  }
+  return;
+}
+function pendingMsOf(since, now) {
+  if (since === undefined || since === "")
+    return;
+  const opened = Date.parse(since);
+  return Number.isFinite(opened) ? Math.max(0, now.getTime() - opened) : undefined;
+}
+function forceBoundOf(member, pendingMs, retryBound, staleMs) {
+  if ((member.barrierFailures ?? 0) >= retryBound)
+    return "retry-budget";
+  if (pendingMs !== undefined && pendingMs >= staleMs)
+    return "stale";
+  return;
+}
+function seatForceReadingOf(input) {
+  const member = input.member;
+  const barrierOwned = member?.mode === "checkpoint" || member?.handoffReady === true || input.seat.checkpoint === true;
+  const pendingMs = pendingMsOf(input.checkpointSince, input.now);
+  const suspect = input.checkpointSince !== undefined && input.liveness === "dead";
+  const deadReseed = !barrierOwned && input.liveness === "dead" && member !== undefined && member.mode === "subcaptain" && member.handoffReady !== true;
+  const closed = barrierOwned || deadReseed;
+  const unverified = !barrierOwned && input.liveness === "unknown" && member !== undefined && member.mode === "subcaptain" && member.handoffReady !== true;
+  const measured = { barrierOwned, suspect, deadReseed, closed, unverified, liveness: input.liveness, ...pendingMs === undefined ? {} : { pendingMs } };
+  if (!closed)
+    return { ...measured, forceEligible: false, ...unverified ? { refusal: "liveness-unknown" } : {} };
+  if (input.liveness === "live")
+    return { ...measured, forceEligible: false, refusal: "live-session" };
+  const bound = deadReseed ? input.checkpointSince === undefined ? member === undefined ? undefined : forceBoundOf(member, pendingMs, input.retryBound, input.staleMs) : "dead-session" : member === undefined ? undefined : forceBoundOf(member, pendingMs, input.retryBound, input.staleMs);
+  if (bound === undefined)
+    return { ...measured, forceEligible: false, refusal: "force-not-eligible" };
+  return { ...measured, bound, forceEligible: true };
+}
+function barrierFailedRow(previous, retryBound, reason, now) {
+  const failures = Math.max((previous.barrierFailures ?? 0) + 1, retryBound);
+  return {
+    name: previous.name,
+    role: previous.role,
+    sessionId: previous.sessionId,
+    executorRef: previous.executorRef,
+    mode: "checkpoint",
+    handoffReady: true,
+    handoffs: previous.handoffs,
+    joinedAt: previous.joinedAt,
+    ...previous.adopted === true ? { adopted: true } : {},
+    ...previous.grown === true ? { grown: true } : {},
+    checkpointSince: previous.checkpointSince ?? now.toISOString(),
+    barrierFailures: failures,
+    fenced: true,
+    fencedReason: reason
+  };
+}
+function reconcileRepairOf(memberName, handle) {
+  return "cellwork_dispatch {rebind:[{member:" + JSON.stringify(memberName) + ", handle:" + JSON.stringify(handle) + "}], unfence:[" + JSON.stringify(memberName) + ']} re-points executorRef to the handle the surviving record names (its answer reports `liveness` live/unproven/unknown — the bind proves nothing by itself), mirrors it into the CELL row, hands over the NON-TERMINAL board rows the old handle owned (a `claimed`/`in_progress` row answers `tasksNeedingRelease` and must be freed first with agent_teams_task {action:"release"}), then clears the give-up fence — `unfence` alone never touches the handle';
 }
 function checkpointUnrecoverableEntry(memberName, result) {
   return {
@@ -7831,7 +7928,11 @@ function checkpointUnrecoverableEntry(memberName, result) {
     reason: result.reason,
     ...result.retirement === undefined ? {} : { retirement: result.retirement },
     ...result.retirementReason === undefined ? {} : { retirementReason: result.retirementReason },
-    repair: "reassign the rows this member owns: cellwork_dispatch {reassign:[{task_id, owner}]}"
+    ...result.failedSurface === undefined ? {} : { surface: result.failedSurface, retry: "cellwork_dispatch {unfence:[{member, force:true}]} reopens the seat, then agent_teams_dispatch {reassign:[{task_id, owner}]} hands the rows over" },
+    ...result.bindRollback === undefined ? {} : { rollback: result.bindRollback },
+    ...result.bindRollbackReason === undefined ? {} : { rollbackReason: result.bindRollbackReason },
+    ...result.orphanChild === undefined ? {} : { retry: reconcileRepairOf(memberName, result.orphanChild), orphanChild: result.orphanChild, ...result.reconcileRequired === true ? { reconcileRequired: true } : {} },
+    repair: result.orphanChild === undefined ? "reassign the rows this member owns: cellwork_dispatch {reassign:[{task_id, owner}]}" : reconcileRepairOf(memberName, result.orphanChild)
   };
 }
 function memberAfterBarrier(previous, result, retryBound) {
@@ -7917,25 +8018,76 @@ async function promoteAfterHandoff(deps) {
     };
   }
   const retirement = retireOriginal(deps, parent.parent);
+  const directive = promotionDirective(deps.cell.cellId, deps.memberName, deps.cell.depth + 1, deps.nextStep);
+  let activation;
   try {
-    const activation = await deps.dsh.startContinuableAgent({
+    activation = await deps.dsh.startContinuableAgent({
       provider: "spawn",
       label: deps.memberName + " · " + deps.cell.teamId,
       request: {
         prompt: [{ type: "text", text: deps.handoffText + `
 
-` + promotionDirective(deps.cell.cellId, deps.memberName, deps.cell.depth + 1, deps.nextStep) }],
+` + directive }],
         parent: parent.parent,
         maxDepth: reseedMaxDepthOf(parent.parent)
       },
       signal: compactionSignal().signal
     });
-    const handle = typeof activation?.childId === "string" ? activation.childId : typeof activation?.id === "string" ? activation.id : "";
-    if (handle === "")
-      return { outcome: "refused", attempts: deps.config.compactionRetries, reason: lastReason + busyNote + "; the reseed reported no child id", retirement: retirement.retirement, ...retirement.reason === undefined ? {} : { retirementReason: retirement.reason } };
-    return { outcome: "reseeded", attempts: deps.config.compactionRetries, reason: lastReason + busyNote, newHandle: handle, parentSessionId: parent.sessionId, parentSource: parent.source, retired: retirement.retirement === "accepted", retirement: retirement.retirement, ...retirement.reason === undefined ? {} : { retirementReason: retirement.reason } };
   } catch (error) {
     return { outcome: "refused", attempts: deps.config.compactionRetries, reason: lastReason + busyNote + "; the reseed failed: " + (error instanceof Error ? error.message : String(error)), retirement: retirement.retirement, ...retirement.reason === undefined ? {} : { retirementReason: retirement.reason } };
+  }
+  const started = activation;
+  const handle = typeof started?.childId === "string" ? started.childId : typeof started?.id === "string" ? started.id : "";
+  try {
+    if (handle === "") {
+      const released = await releaseActivation2(activation);
+      return { outcome: "refused", attempts: deps.config.compactionRetries, reason: lastReason + busyNote + "; the reseed reported no child id" + (released ? " (the activation it created was RELEASED through its dispose seam, so no child slot is held)" : " (no dispose seam was exposed or the one that exists threw, so the activation could not be released)"), retirement: retirement.retirement, ...retirement.reason === undefined ? {} : { retirementReason: retirement.reason } };
+    }
+    const bind = deps.bindSeat === undefined ? { ok: true, plane: "absent", tasks: 0 } : await deps.bindSeat({ handle, previousSessionId: deps.sessionId });
+    if (!bind.ok) {
+      const keepChild = bind.rollback === "failed" || bind.rollback === "refused";
+      const namedBySurvivor = bind.survivingExecutorRef === handle;
+      const survivingWithoutHandle = bind.survivingReadable === true && bind.survivingExecutorRef === undefined;
+      const released = keepChild ? false : await releaseActivation2(activation);
+      return {
+        outcome: "refused",
+        attempts: deps.config.compactionRetries,
+        reason: lastReason + busyNote + "; the fresh child was started but its seat could not be bound: " + (bind.surface ?? "unknown") + " could not be written (" + (bind.reason ?? "no reason was reported") + ")" + (keepChild ? "; BINDING KEPT: " + (bind.rollback === "failed" ? "the rollback itself could not be written (" + (bind.rollbackReason ?? "no reason was reported") + "), so the surviving record cannot prove the child unbindable" : namedBySurvivor ? "the rollback refused to overwrite a concurrent writer, and the surviving record names child " + JSON.stringify(handle) : survivingWithoutHandle ? "the rollback refused to overwrite a concurrent writer, and the surviving record is READABLE but carries no string executorRef for " + JSON.stringify(deps.memberName) : "the rollback refused to overwrite a concurrent writer, and the surviving record could not be read") + ", so the child was NOT released" + (bind.rollback === "refused" ? ": that writer may still commit a roster naming it (team-core's `cancelTasks` writes back the roster it read while this bind was in flight), and a released child behind such a roster is a dangling handle" : "") + "; repair with " + reconcileRepairOf(deps.memberName, handle) + "; THAT REPAIR WORKS EVEN WHEN BOTH CURRENT RECORDS STILL NAME THE OLD HANDLE: this row's `orphanChild` is the ownership evidence `rebind` accepts (it must stay the seat's latest hand-over; a later record that provably postdates it wins)" : released ? "; the fresh child's activation was RELEASED through its dispose seam (a best-effort attempt that resolved)" : "; the fresh child's activation could not be released: no dispose seam was exposed, or the one that exists threw"),
+        failedSurface: bind.surface ?? "unknown",
+        ...bind.rollback === undefined ? {} : { bindRollback: bind.rollback },
+        ...bind.rollbackReason === undefined ? {} : { bindRollbackReason: bind.rollbackReason },
+        ...keepChild ? { orphanChild: handle, reconcileRequired: true } : {},
+        retirement: retirement.retirement,
+        ...retirement.reason === undefined ? {} : { retirementReason: retirement.reason }
+      };
+    }
+    let delivered = false;
+    let directiveError;
+    if (deps.deliverDirective === undefined) {
+      directiveError = "this composition exposes no delivery seam, so the directive went only in the child's first prompt";
+    } else {
+      try {
+        await deps.deliverDirective(parent.parent, handle, directive);
+        delivered = true;
+      } catch (error) {
+        directiveError = error instanceof Error ? error.message : String(error);
+      }
+    }
+    return { outcome: "reseeded", attempts: deps.config.compactionRetries, reason: lastReason + busyNote, newHandle: handle, parentSessionId: parent.sessionId, parentSource: parent.source, retired: retirement.retirement === "accepted", retirement: retirement.retirement, ...retirement.reason === undefined ? {} : { retirementReason: retirement.reason }, directiveDelivered: delivered, ...directiveError === undefined ? {} : { directiveError }, boundTasks: bind.tasks ?? 0, ...bind.plane === undefined ? {} : { bindPlane: bind.plane }, ...bind.displacedExecutorRef === undefined ? {} : { displacedExecutorRef: bind.displacedExecutorRef, displacedUnproven: bind.displacedUnproven === true } };
+  } catch (error) {
+    const released = await releaseActivation2(activation);
+    return { outcome: "refused", attempts: deps.config.compactionRetries, reason: lastReason + busyNote + "; the reseed failed after the child started: " + (error instanceof Error ? error.message : String(error)) + (released ? "; its activation was RELEASED" : ""), retirement: retirement.retirement, ...retirement.reason === undefined ? {} : { retirementReason: retirement.reason } };
+  }
+}
+async function releaseActivation2(activation) {
+  const dispose = activation?.dispose;
+  if (typeof dispose !== "function")
+    return false;
+  try {
+    await dispose.call(activation);
+    return true;
+  } catch {
+    return false;
   }
 }
 function nextStepOf(text2) {
@@ -7944,7 +8096,9 @@ function nextStepOf(text2) {
 }
 
 // packages/mpd-cellwork-plugin/src/protocol.ts
-import { readFileSync as readFileSync8 } from "node:fs";
+import { readFileSync as readFileSync8, statSync as statSync4 } from "node:fs";
+import { createHash } from "node:crypto";
+import { join as join7 } from "node:path";
 function workspaceConfigReader(ctx) {
   return (dottedKey) => {
     const service = ctx.get?.("mpdConfig", false);
@@ -8066,6 +8220,103 @@ function superviseTaskRow(task) {
     ...typeof task.kind === "string" ? { kind: task.kind } : {}
   };
 }
+function handoverOf(row) {
+  const event = typeof row.event === "string" ? row.event : "";
+  if (!HANDOVER_EVENTS.has(event))
+    return;
+  for (const field of HANDOVER_HANDLE_FIELDS) {
+    const value = row[field];
+    if (typeof value === "string" && value !== "") {
+      const orphan = event === "checkpoint-unrecoverable" && field === "orphanChild" && row.reconcileRequired === true;
+      return { event, handle: value, field, ...typeof row.at === "string" ? { at: row.at } : {}, ...orphan ? { orphan: true } : {} };
+    }
+  }
+  return;
+}
+function isPlainRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function contentHashOf(value) {
+  return createHash("sha256").update(JSON.stringify(value) ?? "undefined").digest("hex");
+}
+var SESSION_HANDLE_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+var HANDOVER_EVENTS = new Set(["compaction", "seat-rebound", "member-reseeded", "reseed-parent", "member-rebound", "checkpoint-unrecoverable", "member-adopted"]);
+var HANDOVER_HANDLE_FIELDS = ["newHandle", "newSessionId", "handle", "orphanChild", "sessionId"];
+function readTeamRecordSnapshot(path) {
+  let text2;
+  try {
+    text2 = readFileSync8(path, "utf8");
+  } catch (error) {
+    const code = error.code;
+    if (code === "ENOENT")
+      return { kind: "absent" };
+    return { kind: "unreadable", detail: "the team record " + JSON.stringify(path) + " exists but could not be read (" + errorText4(error) + ")" };
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(text2);
+  } catch (error) {
+    return { kind: "unreadable", detail: "the team record " + JSON.stringify(path) + " exists but is not valid JSON (" + errorText4(error) + ")" };
+  }
+  if (!isPlainRecord(parsed)) {
+    return { kind: "unreadable", detail: "the team record " + JSON.stringify(path) + " exists but carries " + (Array.isArray(parsed) ? "an array" : typeof parsed) + " instead of a JSON object" };
+  }
+  return {
+    kind: "ok",
+    snapshot: {
+      record: parsed,
+      text: text2,
+      revision: typeof parsed.revision === "number" ? parsed.revision : undefined,
+      updatedAt: typeof parsed.updatedAt === "string" ? parsed.updatedAt : undefined,
+      membersHash: contentHashOf(parsed.members)
+    }
+  };
+}
+function recordMtimeOf(path) {
+  try {
+    return statSync4(path).mtime.toISOString();
+  } catch {
+    return;
+  }
+}
+function recordWriteInstantOf(snapshot, path) {
+  const stated = snapshot.updatedAt;
+  if (stated !== undefined && stated !== "" && !Number.isNaN(Date.parse(stated)))
+    return stated;
+  return recordMtimeOf(path);
+}
+function concurrentWriteOf(path, snapshot) {
+  let now;
+  try {
+    now = readFileSync8(path, "utf8");
+  } catch (error) {
+    return "it could not be re-read before the write (" + errorText4(error) + ")";
+  }
+  if (now === snapshot.text)
+    return;
+  let parsed;
+  try {
+    parsed = JSON.parse(now);
+  } catch {
+    return "its bytes changed and no longer parse as JSON";
+  }
+  if (!isPlainRecord(parsed))
+    return "its bytes changed";
+  const revision = typeof parsed.revision === "number" ? parsed.revision : undefined;
+  if (revision !== snapshot.revision)
+    return "its revision moved from " + JSON.stringify(snapshot.revision ?? null) + " to " + JSON.stringify(revision ?? null);
+  const updatedAt = typeof parsed.updatedAt === "string" ? parsed.updatedAt : undefined;
+  if (updatedAt !== snapshot.updatedAt)
+    return "its updatedAt moved from " + JSON.stringify(snapshot.updatedAt ?? null) + " to " + JSON.stringify(updatedAt ?? null);
+  if (contentHashOf(parsed.members) !== snapshot.membersHash)
+    return "its member roster changed";
+  return "its contents changed";
+}
+function seatRowOf(record, memberName) {
+  if (record === undefined || !Array.isArray(record.members))
+    return;
+  return record.members.find((row) => isPlainRecord(row) && (row.name === memberName || row.id === memberName));
+}
 function installCellworkProtocol(deps) {
   const dsh = deps.dsh;
   const config = deps.config;
@@ -8118,22 +8369,7 @@ function installCellworkProtocol(deps) {
     }
     return ids;
   };
-  const recordSeat = (cell, workspace, name) => {
-    const record = recordOf2(workspace, cell.teamId);
-    if (record === undefined)
-      return {};
-    const rows = Array.isArray(record.members) ? record.members.filter((row2) => typeof row2 === "object" && row2 !== null) : [];
-    const row = rows.find((candidate) => candidate.name === name || candidate.id === name);
-    if (row === undefined)
-      return {};
-    const mode = typeof row.mode === "string" && row.mode !== "" ? row.mode : undefined;
-    const fenced = row.fenced === true;
-    const closed = row.mode === "checkpoint" || fenced;
-    if (!closed)
-      return mode === undefined ? {} : { mode };
-    const reason = fenced ? "the plane fenced this seat" + (typeof row.fencedReason === "string" && row.fencedReason !== "" ? " (" + row.fencedReason + ")" : "") : "the plane recorded a checkpoint for this seat (mode `checkpoint`), so it is fenced until the barrier reopens it";
-    return { mode: "checkpoint", checkpoint: true, fenced, fenceReason: reason };
-  };
+  const recordSeat = (cell, workspace, name) => planeSeatOf(recordOf2(workspace, cell.teamId), name);
   const transition = (workspace, next, entry, now) => {
     const lines = appendJournal(workspace, next.cellId, entry, now);
     const stamped = { ...next, journalCursor: lines > 0 ? lines : next.journalCursor };
@@ -8141,66 +8377,15 @@ function installCellworkProtocol(deps) {
     return { ...stamped, updatedAt: now.toISOString() };
   };
   const captainOnly = (caller, tool) => caller.sessionId === "" || caller.cell === null || caller.sessionId !== caller.cell.captainSessionId ? { ok: false, error: tool + " is CAPTAIN-ONLY: the captain of this cell is session " + String(caller.cell?.captainSessionId ?? "none") + ", which is not this caller" } : undefined;
-  const livenessOf = (sessionId, anchorSessionId) => {
-    if (sessionId === "")
-      return "unknown";
-    if (typeof dsh.liveAgentExact !== "function")
-      return "unknown";
-    try {
-      if (dsh.liveAgentExact(sessionId) !== undefined)
-        return "live";
-      const capabilities = typeof dsh.capabilities === "function" ? dsh.capabilities() : undefined;
-      if (capabilities?.agents !== true)
-        return "unknown";
-      if (anchorSessionId === "" || dsh.liveAgentExact(anchorSessionId) === undefined)
-        return "unknown";
-      return "dead";
-    } catch {
-      return "unknown";
-    }
-  };
-  const checkpointSinceOf = (cell, member) => {
-    if (member.checkpointSince !== undefined)
-      return member.checkpointSince;
-    for (let index = cell.checkpoints.length - 1;index >= 0; index -= 1) {
-      const entry = cell.checkpoints[index];
-      if (entry.sessionId !== "" && entry.sessionId === member.sessionId)
-        return entry.at;
-    }
-    return;
-  };
-  const pendingMsOf = (since, now) => {
-    if (since === undefined || since === "")
-      return;
-    const opened = Date.parse(since);
-    return Number.isFinite(opened) ? Math.max(0, now.getTime() - opened) : undefined;
-  };
-  const forceBoundOf = (member, pendingMs) => {
-    if ((member.barrierFailures ?? 0) >= config.compactionRetries)
-      return "retry-budget";
-    if (pendingMs !== undefined && pendingMs >= config.checkpointPendingMaxMs)
-      return "stale";
-    return;
-  };
-  const forceReadingOf = (cell, workspace, member, now) => {
-    const seat = recordSeat(cell, workspace, member?.name ?? "");
-    const barrierOwned = member?.mode === "checkpoint" || member?.handoffReady === true || seat.checkpoint === true;
-    const since = member === undefined ? undefined : checkpointSinceOf(cell, member);
-    const pendingMs = pendingMsOf(since, now);
-    const liveness = member === undefined ? "unknown" : livenessOf(member.sessionId, cell.captainSessionId);
-    const suspect = since !== undefined && liveness === "dead";
-    const deadReseed = !barrierOwned && liveness === "dead" && member !== undefined && member.mode === "subcaptain" && member.handoffReady !== true;
-    const closed = barrierOwned || deadReseed;
-    const measured = { barrierOwned, suspect, deadReseed, closed, liveness, ...pendingMs === undefined ? {} : { pendingMs } };
-    if (!closed)
-      return { ...measured, forceEligible: false };
-    if (liveness === "live")
-      return { ...measured, forceEligible: false, refusal: "live-session" };
-    const bound = deadReseed ? since === undefined ? member === undefined ? undefined : forceBoundOf(member, pendingMs) : "dead-session" : member === undefined ? undefined : forceBoundOf(member, pendingMs);
-    if (bound === undefined)
-      return { ...measured, forceEligible: false, refusal: "force-not-eligible" };
-    return { ...measured, bound, forceEligible: true };
-  };
+  const forceReadingOf = (cell, workspace, member, now) => seatForceReadingOf({
+    member,
+    seat: recordSeat(cell, workspace, member?.name ?? ""),
+    ...member === undefined ? {} : { checkpointSince: checkpointSinceOf(cell, member) },
+    liveness: member === undefined ? "unknown" : seatLivenessOf(dsh, member.sessionId, cell.captainSessionId),
+    now,
+    retryBound: config.compactionRetries,
+    staleMs: config.checkpointPendingMaxMs
+  });
   const planeRetryOf = (name) => 'agent_teams_control {action:"unfence", member:' + JSON.stringify(name) + "}";
   const reopenPlaneSeat = async (sessionId, name) => {
     const plane = actions();
@@ -8293,9 +8478,244 @@ function installCellworkProtocol(deps) {
     const next = { ...base, members, journalCursor: cursor > 0 ? cursor : base.journalCursor };
     return { cell: writeCell(caller.workspace, next), outcomes };
   };
+  const handleLivenessOf = (handle) => {
+    if (handle === "")
+      return "unknown";
+    const seam = dsh.liveAgentExact;
+    if (typeof seam !== "function")
+      return "unknown";
+    try {
+      return seam.call(dsh, handle) === undefined ? "unproven" : "live";
+    } catch {
+      return "unknown";
+    }
+  };
+  const handleEvidenceOf = (workspace, cellId, memberName, handle, teamSeat, cellRow, recordAt) => {
+    const teamHandle = typeof teamSeat?.executorRef === "string" ? teamSeat.executorRef : "";
+    const cellHandle = typeof cellRow?.sessionId === "string" && cellRow.sessionId !== "" ? cellRow.sessionId : typeof cellRow?.executorRef === "string" ? cellRow.executorRef : "";
+    const namedBy = [];
+    if (teamHandle === handle)
+      namedBy.push("team");
+    if (cellHandle === handle)
+      namedBy.push("cell");
+    const handleRecordCurrent = namedBy.length > 0;
+    const recordNamesAny = teamHandle !== "" || cellHandle !== "";
+    let text2 = "";
+    try {
+      text2 = readFileSync8(journalPath(workspace, cellId), "utf8");
+    } catch {
+      text2 = "";
+    }
+    let latest;
+    let lastMention;
+    for (const line of text2.split(`
+`)) {
+      if (line.trim() === "")
+        continue;
+      try {
+        const row = JSON.parse(line);
+        if (row.member !== memberName)
+          continue;
+        const handover = handoverOf(row);
+        if (handover === undefined)
+          continue;
+        latest = handover;
+        if (handover.handle === handle)
+          lastMention = handover;
+      } catch {}
+    }
+    if (latest !== undefined && latest.handle === handle)
+      namedBy.push("journal:" + latest.event);
+    else if (lastMention !== undefined)
+      namedBy.push("journal:" + lastMention.event);
+    const evidenced = handleRecordCurrent || !recordNamesAny && (latest === undefined ? namedBy.length > 0 : latest.handle === handle);
+    const supersededBy = !handleRecordCurrent && latest !== undefined && latest.handle !== handle && lastMention !== undefined ? latest : undefined;
+    const recordHandle = teamHandle !== "" ? teamHandle : cellHandle;
+    const journalHandoverOlder = recordNamesAny && latest !== undefined && recordHandle !== "" && latest.handle !== recordHandle && recordAt !== undefined && latest.at !== undefined && latest.at < recordAt;
+    const handleOrphanAdopted = latest !== undefined && latest.orphan === true && latest.handle === handle && !journalHandoverOlder;
+    return {
+      evidenced: evidenced || handleOrphanAdopted,
+      namedBy,
+      ...latest === undefined ? {} : { latest },
+      ...supersededBy === undefined ? {} : { supersededBy },
+      ...handleRecordCurrent ? { handleRecordCurrent: true } : {},
+      ...journalHandoverOlder ? { journalHandoverOlder: true } : {},
+      ...handleOrphanAdopted ? { handleOrphanAdopted: true } : {}
+    };
+  };
+  const rebindSeats = (caller, cell, teamId, targets, now) => {
+    const outcomes = [];
+    const mirroredRows = new Map;
+    const landed = [];
+    const evidenceFieldsOf = (evidence, seatState) => ({
+      namedBy: evidence?.namedBy ?? [],
+      ...evidence?.handleRecordCurrent === true ? { handleRecordCurrent: true } : {},
+      ...evidence?.journalHandoverOlder === true ? { journalHandoverOlder: true } : {},
+      ...evidence?.supersededBy === undefined ? {} : { supersededBy: evidence.supersededBy },
+      ...seatState === undefined ? {} : { previousSessionId: seatState.previousSessionId, previousSessionIdLiveness: seatState.previousSessionIdLiveness }
+    });
+    const failRebind = (target, reason, detail, evidence, seatState) => {
+      const fields = evidenceFieldsOf(evidence, seatState);
+      outcomes.push({ member: target.name, rebound: false, reason, detail, ...fields });
+      appendJournal(caller.workspace, cell.cellId, { event: "member-rebind-failed", member: target.name, by: "captain", reason, detail, handle: target.handle, ...fields }, now);
+    };
+    for (const target of targets) {
+      const cellRow2 = cell.members[target.key];
+      let teamSeat;
+      let evidence;
+      let previousSessionId = "";
+      let previousSessionIdLiveness = "unknown";
+      const seatStateOf = () => teamSeat === undefined ? undefined : { previousSessionId, previousSessionIdLiveness };
+      if (teamId === "") {
+        evidence = handleEvidenceOf(caller.workspace, cell.cellId, target.name, target.handle, undefined, cellRow2, undefined);
+        failRebind(target, "no-team-record", "this cell names no team, so there is no TEAM member row to re-point", evidence);
+        continue;
+      }
+      const path = teamRecordPathOf(caller.workspace, teamId);
+      const read = readTeamRecordSnapshot(path);
+      if (read.kind !== "ok") {
+        evidence = handleEvidenceOf(caller.workspace, cell.cellId, target.name, target.handle, undefined, cellRow2, undefined);
+        failRebind(target, read.kind === "absent" ? "no-team-record" : "team-record-unreadable", read.kind === "absent" ? "the team record " + JSON.stringify(path) + " does not exist" : read.detail, evidence);
+        continue;
+      }
+      const snapshot = read.snapshot;
+      const record = snapshot.record;
+      const recordAt = recordWriteInstantOf(snapshot, path);
+      const members2 = Array.isArray(record.members) ? record.members.filter((row) => typeof row === "object" && row !== null) : undefined;
+      if (members2 === undefined) {
+        evidence = handleEvidenceOf(caller.workspace, cell.cellId, target.name, target.handle, undefined, cellRow2, undefined);
+        failRebind(target, "team-record", "the team record for " + JSON.stringify(teamId) + " carries no readable member roster", evidence);
+        continue;
+      }
+      const seat = members2.findIndex((row) => row.name === target.name || row.id === target.name);
+      if (seat < 0) {
+        evidence = handleEvidenceOf(caller.workspace, cell.cellId, target.name, target.handle, undefined, cellRow2, undefined);
+        failRebind(target, "team-member", "team " + JSON.stringify(teamId) + " names no member " + JSON.stringify(target.name) + ", so there is no TEAM row to re-point", evidence);
+        continue;
+      }
+      teamSeat = members2[seat];
+      previousSessionId = typeof teamSeat.executorRef === "string" ? String(teamSeat.executorRef) : "";
+      previousSessionIdLiveness = handleLivenessOf(previousSessionId);
+      evidence = handleEvidenceOf(caller.workspace, cell.cellId, target.name, target.handle, teamSeat, cellRow2, recordAt);
+      if (evidence.supersededBy !== undefined) {
+        const newer = evidence.supersededBy;
+        const recordHandle = previousSessionId !== "" ? previousSessionId : String(cellRow2?.sessionId ?? (cellRow2?.executorRef ?? ""));
+        const recordClaim = recordHandle === "" ? "neither current TEAM/CELL row names a handle" : "the record currently names " + JSON.stringify(recordHandle);
+        const latestClaim = "the journal's last hand-over `" + newer.event + "`" + (newer.at === undefined ? "" : " at " + newer.at) + " named " + JSON.stringify(newer.handle);
+        failRebind(target, "handle-superseded", "handle " + JSON.stringify(target.handle) + " is named only by an OLDER hand-over row; " + recordClaim + "; " + latestClaim + "; reconcile the two records before re-pointing — this verb refuses to move a seat backwards", evidence, seatStateOf());
+        continue;
+      }
+      if (!evidence.evidenced) {
+        const latestNote = evidence.latest === undefined ? "the journal carries no hand-over row for it" : "the journal's last hand-over is `" + evidence.latest.event + "` naming " + JSON.stringify(evidence.latest.handle);
+        const olderNote = evidence.journalHandoverOlder === true ? " (the record's own write postdates that row, so the RECORD wins)" : "";
+        failRebind(target, "handle-unevidenced", "no CURRENT record of this seat names handle " + JSON.stringify(target.handle) + " (the TEAM row's executorRef is " + JSON.stringify(previousSessionId) + ", the CELL row names " + JSON.stringify(String(cellRow2?.sessionId ?? "")) + ", and " + latestNote + olderNote + "), so this verb refuses to bind a handle nothing here vouches for", evidence, seatStateOf());
+        continue;
+      }
+      const liveness = handleLivenessOf(target.handle);
+      const displacedExecutorRef = previousSessionId !== "" && previousSessionId !== target.handle ? previousSessionId : undefined;
+      const displacedUnproven = displacedExecutorRef === undefined ? false : previousSessionIdLiveness !== "live";
+      const previousTaskRows = Array.isArray(record.tasks) ? record.tasks : undefined;
+      const seatOwners = new Set([target.name]);
+      for (const identity of [teamSeat.name, teamSeat.id]) {
+        if (typeof identity === "string" && identity !== "")
+          seatOwners.add(identity);
+      }
+      let tasksRebound = 0;
+      const tasksNeedingRelease = [];
+      const reboundTasks = previousTaskRows === undefined || previousSessionId === "" || previousSessionId === target.handle ? record.tasks : previousTaskRows.map((task) => {
+        if (typeof task !== "object" || task === null)
+          return task;
+        const row = task;
+        const owner = String(row.owner ?? "");
+        if (owner !== previousSessionId && !seatOwners.has(owner))
+          return task;
+        const status = String(row.status ?? "");
+        if (status === "completed" || status === "failed" || status === "cancelled")
+          return task;
+        const taskId = String(row.id ?? "");
+        if (status === "claimed" || status === "in_progress") {
+          tasksNeedingRelease.push({ taskId, status, release: 'agent_teams_task {action:"release", task_id:' + JSON.stringify(taskId) + "}" });
+          return task;
+        }
+        tasksRebound += 1;
+        return { ...row, owner: target.handle, revision: (typeof row.revision === "number" ? row.revision : 0) + 1, updatedAt: now.toISOString() };
+      });
+      const reboundSeat = { ...teamSeat, executorRef: target.handle, mode: teamSeat.mode === "checkpoint" || teamSeat.mode === undefined ? "member" : teamSeat.mode };
+      const next = { ...record, members: members2.map((row, index) => index === seat ? reboundSeat : row), tasks: reboundTasks };
+      const moved = concurrentWriteOf(path, snapshot);
+      if (moved !== undefined) {
+        failRebind(target, "team-record-changed", "the team record " + JSON.stringify(path) + " changed while this rebind was building its write (" + moved + "), so it refuses to overwrite the other writer", evidence, seatStateOf());
+        continue;
+      }
+      try {
+        atomicWriteText(path, JSON.stringify(next, null, 2) + `
+`);
+      } catch (error) {
+        failRebind(target, "write-failed", "writing " + path + " failed (" + errorText4(error) + ")", evidence, seatStateOf());
+        continue;
+      }
+      let after;
+      try {
+        after = recordOf2(caller.workspace, teamId);
+        if (after === undefined) {
+          const again = readTeamRecordSnapshot(path);
+          after = again.kind === "ok" ? again.snapshot.record : undefined;
+        }
+      } catch {
+        after = undefined;
+      }
+      const afterSeat = seatRowOf(after, target.name);
+      if (afterSeat?.executorRef !== target.handle) {
+        failRebind(target, "team-record-verify", "the record was written but its re-read answers " + JSON.stringify(String(afterSeat?.executorRef ?? "")) + " instead of " + JSON.stringify(target.handle), evidence, seatStateOf());
+        continue;
+      }
+      if (cellRow2 !== undefined)
+        mirroredRows.set(target.key, { ...cellRow2, sessionId: target.handle, executorRef: target.handle, mode: "member", handoffReady: false });
+      landed.push({ name: target.name, previousSessionId, previousSessionIdLiveness, handle: target.handle, namedBy: evidence.namedBy, liveness, tasksRebound, tasksNeedingRelease, ...evidence.handleRecordCurrent === true ? { handleRecordCurrent: true } : {}, ...evidence.journalHandoverOlder === true ? { journalHandoverOlder: true } : {}, ...evidence.handleOrphanAdopted === true ? { handleOrphanAdopted: true } : {}, ...displacedExecutorRef === undefined ? {} : { displacedExecutorRef, displacedUnproven } });
+      outcomes.push({ member: target.name, rebound: true, previousSessionId, previousSessionIdLiveness, handle: target.handle, namedBy: evidence.namedBy, plane: "bound", liveness, tasksRebound, ...tasksNeedingRelease.length === 0 ? {} : { tasksNeedingRelease }, ...evidence.handleRecordCurrent === true ? { handleRecordCurrent: true } : {}, ...evidence.journalHandoverOlder === true ? { journalHandoverOlder: true } : {}, ...evidence.handleOrphanAdopted === true ? { handleOrphanAdopted: true } : {}, ...displacedExecutorRef === undefined ? {} : { displacedExecutorRef, displacedUnproven } });
+    }
+    if (landed.length === 0)
+      return { cell, outcomes };
+    const fresh = readCell(caller.workspace, cell.cellId);
+    const base = fresh.ok ? fresh.state : cell;
+    const members = { ...base.members };
+    for (const [key, mirrored] of mirroredRows)
+      members[key] = mirrored;
+    let cellRow = "mirrored";
+    let written = base;
+    try {
+      written = writeCell(caller.workspace, { ...base, members });
+    } catch (error) {
+      cellRow = "failed: " + (error instanceof Error ? error.message : String(error));
+    }
+    for (const entry of landed) {
+      appendJournal(caller.workspace, cell.cellId, {
+        event: "member-rebound",
+        member: entry.name,
+        by: "captain",
+        previousSessionId: entry.previousSessionId,
+        previousSessionIdLiveness: entry.previousSessionIdLiveness,
+        handle: entry.handle,
+        namedBy: entry.namedBy,
+        ...entry.handleRecordCurrent === true ? { handleRecordCurrent: true } : {},
+        ...entry.journalHandoverOlder === true ? { journalHandoverOlder: true } : {},
+        tasksRebound: entry.tasksRebound,
+        ...entry.tasksNeedingRelease.length === 0 ? {} : { tasksNeedingRelease: entry.tasksNeedingRelease },
+        ...entry.handleOrphanAdopted === true ? { handleOrphanAdopted: true } : {},
+        liveness: entry.liveness,
+        plane: "bound",
+        cellRow,
+        ...entry.displacedExecutorRef === undefined ? {} : { displacedExecutorRef: entry.displacedExecutorRef, displacedUnproven: entry.displacedUnproven === true }
+      }, now);
+    }
+    return {
+      cell: written,
+      outcomes: cellRow === "mirrored" ? outcomes : outcomes.map((outcome) => outcome.rebound === true ? { ...outcome, cellRow } : outcome)
+    };
+  };
   disposers.push(dsh.registerTool({
     name: "cellwork_dispatch",
-    description: "CAPTAIN only: one owner-only dispatch pass over the live board. A ready task is paired ONLY with its declared owner; a busy, absent, FENCED or failed owner is REPORTED and the task left pending — never substituted (a fenced member is never messaged). `reassign` hands named rows to another member FIRST: each row is claimed for that member through the board, journaled as `task-reassigned`, then delivered — the repair for a fenced owner. `unfence` clears named members' compaction GIVE-UP fences BEFORE the pass — the repair for the other deadlock: a fenced row keeps `handoffReady:true`, so `cellwork_handoff` refuses it as STILL WAITING while only another SUCCESSFUL barrier could clear it, which a fenced member cannot start. THE CELL ROW'S OWN `fenced:true` IS THE GIVE-UP FACT (the compaction barrier writes the fence on the CELL row and nowhere else): that row loses `fenced`/`fencedReason`, returns to `mode: member` with `handoffReady:false` (its `handoffs` count is unchanged), AND the TEAM seat is reopened through the plane's `unfence` seam when this composition exposes one — the plane's `mode:\"checkpoint\"` counts as a closed seat and that seam clears it too. The answer reports the plane's half honestly as `unfenced`, `absent` or `refused` and never claims the member was reopened when no seam exists. A TEAM row at `mode:\"checkpoint\"` with NO `fenced` flag is a PENDING compaction, not a give-up — UNLESS the CELL row carries the marker above, in which case the CELL marker decides; on its own that pending checkpoint answers `{member, unfenced:false, reason:\"checkpoint-pending\"}` and NEITHER record is written, because the barrier owns it. A barrier-owned checkpoint is NOT a dead end: the forced lever `unfence:[{member, force:true}]` reopens it only at a written bound (`barrierFailures` at `compactionRetries`, a `checkpointSince` older than `checkpointPendingMaxMs`, or the DEAD-RESEED shape — a reseeded `subcaptain` row whose recorded session the registry PROVES dead, `bound:\"dead-session\"`), and a plane half that ends `refused` carries `retry`, the exact `agent_teams_control {action:\"unfence\", member}` verb that re-drives it; the `unfence` parameter below spells out every bound. An explicit `fenced:true` recorded ONLY on the TEAM record is cleared through that seam while the CELL row is left untouched, and the outcome says which half was cleared. A member that is not fenced in either record answers `{member, unfenced:false, reason: not-fenced}` (never a silent success), and an unknown name refuses the whole call with the recorded members named. `unfence` and `reassign` may travel in ONE call and neither interferes with the other. Delivery goes through the team executor and is journaled.",
+    description: 'CAPTAIN only: one owner-only dispatch pass over the live board. A ready task is paired ONLY with its declared owner; a busy, absent, FENCED or failed owner is REPORTED and the task left pending — never substituted (a fenced member is never messaged). `reassign` hands named rows to another member FIRST: each row is claimed for that member through the board, journaled as `task-reassigned`, then delivered — the repair for a fenced owner. `rebind` RE-POINTS named seats to the handle their CURRENT record names (the journal only corroborates): it re-points `executorRef` (the TEAM row), mirrors that handle into the CELL row, AND hands over every NON-TERMINAL board row the OLD handle (or the seat\'s own name) owned — `tasksRebound` counts them, while a `claimed`/`in_progress` row is NOT force-reassigned and is reported in `tasksNeedingRelease` with the exact `agent_teams_task {action:"release"}` verb to run first; `unfence` alone never touches the handle, and `reassign` only moves board rows — a refused-rollback seat needs `rebind` (contract §3 A11). ORDER IS THE CONTRACT: `rebind` runs FIRST, and a combined call\'s `unfence` runs ONLY after EVERY `rebind` entry answered `rebound:true` AND its CELL mirror was confirmed; a failed rebind, or a mirror the record refused, leaves the fences CLOSED, executes no unfence, journals `dispatch-unfence-withheld` and answers `unfenceWithheld` whose sentence says `fence stayed closed` with the next step. The CURRENT TEAM/CELL row is authoritative: a handle either names is accepted and no journal row can veto it; the journal\'s recency decides only when NEITHER current row names a handle. THE ONE NARROW EXCEPTION IS A KEPT CHILD (CodeRabbit round 3, Major-2): a `checkpoint-unrecoverable` row carrying `orphanChild` + `reconcileRequired` is accepted even when BOTH current rows still name the old handle, because it is the only durable proof this seat started that child — it must still be the journal\'s LATEST hand-over and the record must not provably postdate it. A handle only an OLDER hand-over row names is refused `handle-superseded` with a reconcile sentence that states the record\'s current handle and the journal\'s last hand-over but NEVER chooses a direction for the operator; a record written after the last hand-over with no journal row of its own is accepted and marked `handleRecordCurrent:true`/`journalHandoverOlder:true` (the crash window). Every outcome reports `namedBy`; the displaced handle (`previousSessionId`) and its liveness are reported when the TEAM row is readable and omitted when the TEAM record is missing or unreadable. `unfence` clears named members\' compaction GIVE-UP fences AFTER `rebind` and BEFORE the pass — the repair for the other deadlock: a fenced row keeps `handoffReady:true`, so `cellwork_handoff` refuses it as STILL WAITING while only another SUCCESSFUL barrier could clear it, which a fenced member cannot start. THE CELL ROW\'S OWN `fenced:true` IS THE GIVE-UP FACT (the compaction barrier writes the fence on the CELL row and nowhere else): that row loses `fenced`/`fencedReason`, returns to `mode: member` with `handoffReady:false` (its `handoffs` count is unchanged), AND the TEAM seat is reopened through the plane\'s `unfence` seam when this composition exposes one — the plane\'s `mode:"checkpoint"` counts as a closed seat and that seam clears it too. The answer reports the plane\'s half honestly as `unfenced`, `absent` or `refused` and never claims the member was reopened when no seam exists. A TEAM row at `mode:"checkpoint"` with NO `fenced` flag is a PENDING compaction, not a give-up — UNLESS the CELL row carries the marker above, in which case the CELL marker decides; on its own that pending checkpoint answers `{member, unfenced:false, reason:"checkpoint-pending"}` and NEITHER record is written, because the barrier owns it. A barrier-owned checkpoint is NOT a dead end: the forced lever `unfence:[{member, force:true}]` reopens it only at a written bound (`barrierFailures` at `compactionRetries`, a `checkpointSince` older than `checkpointPendingMaxMs`, or the DEAD-RESEED shape — a reseeded `subcaptain` row whose recorded session the registry PROVES dead, `bound:"dead-session"`), and a plane half that ends `refused` carries `retry`, the exact `agent_teams_control {action:"unfence", member}` verb that re-drives it; the `unfence` parameter below spells out every bound. An explicit `fenced:true` recorded ONLY on the TEAM record is cleared through that seam while the CELL row is left untouched, and the outcome says which half was cleared. A member that is not fenced in either record answers `{member, unfenced:false, reason: not-fenced}` (never a silent success), and an unknown name refuses the whole call with the recorded members named. `unfence` and `reassign` may travel in ONE call and neither interferes with the other. Delivery goes through the team executor and is journaled.',
     parameters: {
       type: "object",
       properties: {
@@ -8309,6 +8729,19 @@ function installCellworkProtocol(deps) {
               owner: { type: "string", description: "The member that should own and receive the row." }
             },
             required: ["task_id", "owner"],
+            additionalProperties: false
+          }
+        },
+        rebind: {
+          type: "array",
+          description: "Re-point named seats to the handle their CURRENT record names — the journal only corroborates (the repair for a refused rollback, contract §3 A11). The `handle` is trimmed and must be the host-minted UUID form, and it must be a handle the CURRENT record names — the TEAM member row's `executorRef` or the CELL member row. The journal only corroborates: its recency decides only when NEITHER current row names a handle, and it can never veto a handle either row names (F1). A record written after the last hand-over with no journal row of its own is therefore accepted, marked `handleRecordCurrent:true`/`journalHandoverOlder:true`. A handle only an OLDER hand-over row names is refused per entry with `reason:\"handle-superseded\"` and a `supersededBy` naming the later row, because the journal is append-only and an old failure sentence can quote a child a later reseed replaced; its detail states what the record currently names and what the journal's last hand-over named, and NEVER advises which handle to pass; a handle nothing current names is refused as `handle-unevidenced` (the registry proves liveness, never ownership). Each entry writes the TEAM member row's `executorRef` (and `mode:\"member\"` from a checkpoint) through the record file with the same compare-and-set the reseed bind uses, verifies the write through `mpdTeams`, and MIRRORS the handle into the CELL row (`sessionId`, `executorRef`, `mode:\"member\"`, `handoffReady:false` — the handoff a reseed consumed is not pending). A concurrent commit inside the window refuses that entry (`reason:\"team-record-changed\"`) instead of overwriting it; a read-back that answers another handle reports `reason:\"team-record-verify\"` and says the TEAM write had already landed. Every outcome reports `namedBy` (`team`, `cell`, `journal:<event>`) and `previousSessionId`/`previousSessionIdLiveness`; a landed re-point also carries `displacedExecutorRef`/`displacedUnproven` when it overwrote a different handle (the same pair the reseed bind journals). It ALSO hands over every NON-TERMINAL board row the old handle (or the seat's own name) owned and reports `tasksRebound`; a `claimed`/`in_progress` row is NOT force-reassigned — it is left in place and listed in `tasksNeedingRelease` with the exact `agent_teams_task {action:\"release\"}` verb that must run first (terminal rows keep their owner). THE KEPT-CHILD EVIDENCE (CodeRabbit round 3, Major-2): when a refused/failed rollback kept the fresh child, its `checkpoint-unrecoverable` row (`orphanChild` + `reconcileRequired`) is accepted as the seat's latest hand-over EVEN IF both current rows still name the old handle — the record must not provably postdate that row, and an out-of-date orphan row is still refused. It does NOT clear a fence: `fenced`/`fencedReason` belong to `unfence`, so a seat that needs both names both in one call. `unfence` alone never re-points `executorRef`. Every failed entry is journaled as `member-rebind-failed` as well as reported.",
+          items: {
+            type: "object",
+            properties: {
+              member: { type: "string", description: "The seat's board name (or the cell record's key): the TEAM row it names is the one rewritten." },
+              handle: { type: "string", description: "The host-minted session handle (8-4-4-4-12 hex UUID) a CURRENT record must name — the TEAM `executorRef` or the CELL row. The journal only corroborates: its latest hand-over decides only when NEITHER current row names a handle, and it never vetoes a handle either row names (F1) — EXCEPT a kept child's `checkpoint-unrecoverable` row (`orphanChild` + `reconcileRequired`), which is accepted even when both rows name the old handle because it is the only durable proof this seat started that child. Trimmed before use; anything else refuses the whole call. A handle only an OLDER hand-over row names is refused `handle-superseded` (the answer and journal name the later row), so a pasted historical handle can never pull the seat back to a replaced child. The answer's `liveness` reports `live` only when the identity registry answers for the requested handle, `unproven` when the registry answers nothing, and `unknown` when this composition has no registry; `previousSessionIdLiveness` does the same for the handle the re-point would displace — the verb binds the identity, it never claims a child is alive." }
+            },
+            required: ["member", "handle"],
             additionalProperties: false
           }
         },
@@ -8343,7 +8776,9 @@ function installCellworkProtocol(deps) {
           skipped: { type: "array", items: { type: "object" } },
           reassigned: { type: "array", items: { type: "object" }, description: "One entry per readable `reassign` pair: whether the board claim landed and whether the message was delivered." },
           reassignInvalid: { type: "array", items: { type: "string" }, description: "One sentence per `reassign` entry this call refused to read." },
+          rebound: { type: "array", items: { type: "object" }, description: 'One entry per distinct `rebind` seat. Success: `{member, rebound:true, previousSessionId?, previousSessionIdLiveness?, handle, namedBy, plane:"bound", liveness}` (the `previousSessionId`/`previousSessionIdLiveness` pair is present only when the TEAM row was readable) (plus `handleRecordCurrent:true` and, when the record provably postdates the journal row, `journalHandoverOlder:true`) after the TEAM row was re-pointed and the CELL row mirrored (a failed CELL mirror adds `cellRow`; a different overwritten handle adds `displacedExecutorRef`/`displacedUnproven`; `tasksRebound` counts the non-terminal board rows handed over; `tasksNeedingRelease:[{taskId,status,release}]` names the live rows that need the quoted `release` verb first; `handleOrphanAdopted:true` marks the kept-child evidence). `namedBy` is the surface(s) that proved the handle (`team`, `cell`, `journal:<event>`); `liveness` is the identity registry\'s answer for the requested handle and `previousSessionIdLiveness` the same three-state answer (`live`/`unproven`/`unknown`) for the displaced handle — neither is ever upgraded to a claim. Failure: `{member, rebound:false, reason, detail, namedBy, ...}` — `reason` is `no-team-record`, `team-record-unreadable`, `team-record`, `team-member`, `handle-unevidenced` (nothing in this seat\'s CURRENT trail names the requested handle), `handle-superseded` (only an OLDER hand-over row named it; `supersededBy:{event, handle, at?}` names the later row, and `detail` states both records without advising a direction), `team-record-changed` (a concurrent writer\'s document was refused, never overwritten), `write-failed` or `team-record-verify` (the write could not be read back). Every failure is also journaled as `member-rebind-failed`, and an argument-level refusal records the requested `handle` (bounded, with `handleTruncated` when cut).' },
           unfenced: { type: "array", items: { type: "object" }, description: 'One entry per distinct `unfence` member (duplicates collapse to one): `{member, unfenced:true, plane, planeReason?}` for a cleared CELL give-up fence (the CELL row\'s `fenced:true`, whatever the TEAM row says), `{member, unfenced:false, reason:"not-fenced"}` when neither record reports a marker, `{member, unfenced:false, reason:"checkpoint-pending", detail}` only when the CELL row carries no `fenced:true` AND the TEAM row is at `mode:"checkpoint"` with no `fenced` flag (the compaction barrier owns it, nothing was written), and `{member, unfenced, cellRow:"untouched", plane, planeReason?}` when an explicit TEAM-only fence was cleared while the CELL row was left untouched. `plane` is `unfenced` (the TEAM seat was reopened through the seam), `absent` (this composition exposes no `unfence` seam, so no reopen is claimed) or `refused` (with the plane\'s own sentence in `planeReason`). A FORCED clear answers `{member, unfenced:true, forced:true, alive:false, liveness:"dead"|"unknown", sessionId, bound:"retry-budget"|"stale", pendingMs?, plane, planeReason?}`, and a forced request that is refused writes nothing and answers `reason:"live-session"` or `reason:"force-not-eligible"` with a `detail` sentence. The dead-reseed seat (a reseeded `subcaptain` row whose recorded session the registry PROVES dead) is held by the SAME predicate and its forced clear names `bound:"dead-session"`. Any outcome whose plane half ended `refused` ALSO carries `retry`: the exact Lead-only verb (`agent_teams_control {action:"unfence", member}`) that re-drives the seam, echoed in the render and in the journal row.' },
+          unfenceWithheld: { type: "object", description: 'Present ONLY when this call named both `rebind` and `unfence` and the unfence was withheld: every `rebind` entry must answer `rebound:true` with its CELL mirror confirmed before any fence is cleared. `{reason: "rebind-failed"|"cell-mirror-unconfirmed", members, failed:[{member, reason, cellRow?}], detail, next}`; `detail` says `fence stayed closed` and `next` names the re-run. The same call journals `dispatch-unfence-withheld`, and no `unfenced` entry is produced.' },
           refused: { type: "string" },
           seats: {
             type: "object",
@@ -8368,8 +8803,19 @@ function installCellworkProtocol(deps) {
         const retryOf = (row) => typeof row.retry === "string" && row.retry !== "" ? " · the plane half still needs: " + row.retry : "";
         const lines = unfenced.map((row) => row.forced === true ? "unfence " + String(row.member) + " (FORCED, " + String(row.reason ?? row.bound ?? "bound reached") + "): reopened for reassignment, not for work — the barrier never reopened this seat (" + (row.plane === "unfenced" ? "the TEAM row was reopened through the plane" : row.plane === "absent" ? "this composition exposes no mpdTeamActions.unfence seam, so the TEAM row may still be closed" : "the TEAM row was NOT cleared: " + String(row.planeReason ?? "the team plane refused the unfence")) + ")" : row.reason === "live-session" || row.reason === "force-not-eligible" ? "unfence " + String(row.member) + ": NOT cleared (" + String(row.reason) + ") — " + String(row.detail ?? "") : row.cellRow === "untouched" ? "unfence " + String(row.member) + ": the CELL row carried no fence marker, so it was left untouched — " + (row.plane === "unfenced" ? "the TEAM row was unfenced through the plane" : row.plane === "absent" ? "the TEAM record reports the seat fenced, but this composition exposes no mpdTeamActions.unfence seam, so the TEAM row is STILL fenced" : "the TEAM row was NOT cleared: " + String(row.planeReason ?? "the team plane refused the unfence")) : "unfence " + String(row.member) + ": " + (row.unfenced !== true ? row.reason === "checkpoint-pending" ? row.suspect === true ? "DEAD-RESEED — no barrier will run for this seat again and no live agent is left, so nothing was cleared; the FORCED lever cellwork_dispatch {unfence:[{member:" + JSON.stringify(String(row.member)) + ", force:true}]} reopens it for reassignment" : "checkpoint pending — the compaction barrier owns this seat, so nothing was cleared in either record" : "not fenced — nothing was written" : row.plane === "absent" ? "cell row cleared — this composition exposes no mpdTeamActions.unfence seam, so the TEAM seat was NOT reopened (it stays closed until the barrier or the plane reopens it)" : row.plane === "refused" ? "cell row cleared, but the TEAM seat was NOT reopened: " + String(row.planeReason ?? "the team plane refused the unfence") : "cell row cleared and the TEAM seat reopened through the plane"));
         const clears = lines.map((line, index) => line + retryOf(unfenced[index]));
+        const withheld = typeof result.unfenceWithheld === "object" && result.unfenceWithheld !== null ? result.unfenceWithheld : undefined;
+        const withheldLines = withheld === undefined ? [] : ["unfence WITHHELD — " + String(withheld.detail ?? "fence stayed closed") + (typeof withheld.next === "string" ? " · next: " + withheld.next : "")];
+        const reboundRows = Array.isArray(result.rebound) ? result.rebound : [];
+        const evidenceOf = (row) => Array.isArray(row.namedBy) && row.namedBy.length > 0 ? row.namedBy.map((entry) => String(entry)).join("+") : "no surface named it";
+        const boardClausesOf = (row) => {
+          const handed = typeof row.tasksRebound === "number" ? row.tasksRebound : 0;
+          const needing = Array.isArray(row.tasksNeedingRelease) ? row.tasksNeedingRelease : [];
+          const ids = needing.map((entry) => String(entry.taskId ?? "")).filter((id) => id !== "");
+          return (handed > 0 ? "; board: " + String(handed) + " row(s) handed over" : "") + (ids.length > 0 ? "; " + String(ids.length) + " row(s) still need release: " + ids.join(", ") + ' — run agent_teams_task {action:"release", task_id} first' : "") + (row.handleOrphanAdopted === true ? "; handle adopted from the orphan evidence row" : "");
+        };
+        const rebounds = reboundRows.map((row) => row.rebound === true ? "rebind " + String(row.member) + ": executorRef " + JSON.stringify(String(row.previousSessionId ?? "")) + " -> " + JSON.stringify(String(row.handle)) + " (evidence: " + evidenceOf(row) + (typeof row.displacedExecutorRef === "string" ? "; displaced " + JSON.stringify(row.displacedExecutorRef) + " liveness: " + String(row.previousSessionIdLiveness ?? "unknown") : "") + "; new handle liveness: " + String(row.liveness ?? "unknown") + (row.handleRecordCurrent === true ? "; record-current" : "") + (row.journalHandoverOlder === true ? "; journal hand-over older" : "") + (row.cellRow === undefined ? "" : "; CELL row " + String(row.cellRow)) + " — the identity registry's answer, not a claim)" + boardClausesOf(row) : "rebind " + String(row.member) + ": NOT re-pointed (" + String(row.reason ?? "unknown") + ") — " + String(row.detail ?? "no detail was reported") + (typeof row.supersededBy === "object" && row.supersededBy !== null ? " [the journal's last hand-over journal:" + String(row.supersededBy.event) + " named " + JSON.stringify(String(row.supersededBy.handle ?? "")) + "; reconcile before re-pointing]" : "") + " [named by: " + evidenceOf(row) + (row.previousSessionId === undefined ? "" : "; current handle " + JSON.stringify(String(row.previousSessionId)) + " liveness: " + String(row.previousSessionIdLiveness ?? "unknown")) + "]");
         if (result.ok === false)
-          return render(["cellwork_dispatch refused: " + String(result.error ?? "unknown refusal"), ...clears].join(`
+          return render(["cellwork_dispatch refused: " + String(result.error ?? "unknown refusal"), ...rebounds, ...clears, ...withheldLines].join(`
 `));
         const pairs = Array.isArray(result.pairs) ? result.pairs : [];
         const skipped = Array.isArray(result.skipped) ? result.skipped : [];
@@ -8377,12 +8823,12 @@ function installCellworkProtocol(deps) {
         const invalid = Array.isArray(result.reassignInvalid) ? result.reassignInvalid.map((entry) => String(entry)) : [];
         const handovers = reassigned.map((row) => "reassign " + String(row.taskId) + " -> " + String(row.owner) + ": " + (row.delivered === true ? "claimed on the board and delivered" : row.claimed === true ? "CLAIMED, delivery failed: " + String(row.reason ?? "unknown") : "not claimed: " + String(row.reason ?? "unknown")));
         if (typeof result.refused === "string")
-          return render([...clears, ...handovers, ...invalid, "cellwork_dispatch refused: " + result.refused].join(`
+          return render([...rebounds, ...clears, ...withheldLines, ...handovers, ...invalid, "cellwork_dispatch refused: " + result.refused].join(`
 `));
         const grown = Array.isArray(result.grownSeats) ? result.grownSeats : [];
         const seatLines = grown.length === 0 ? [] : ["grew " + String(grown.length) + " seat(s): " + grown.map((row) => String(row.name) + " (" + String(row.role) + ")" + (String(row.rosterRole ?? "") === "" ? " [the member record carries NO role — §7.1b]" : "") + " for " + String(row.taskId)).join(", ")];
         const seatWarnings = Array.isArray(result.seatWarnings) ? result.seatWarnings.map((row) => String(row)) : [];
-        return render([...clears, ...handovers, ...invalid, ...seatLines, ...seatWarnings, ...pairs.length === 0 ? ["nothing else dispatched" + (skipped.length === 0 ? "" : " (" + skipped.map((row) => String(row.subject) + ": " + String(row.reason)).join("; ") + ")")] : [...pairs.map((row) => String(row.subject) + " -> " + String(row.memberName)), ...skipped.length === 0 ? [] : ["reported: " + skipped.length]]].join(`
+        return render([...rebounds, ...clears, ...withheldLines, ...handovers, ...invalid, ...seatLines, ...seatWarnings, ...pairs.length === 0 ? ["nothing else dispatched" + (skipped.length === 0 ? "" : " (" + skipped.map((row) => String(row.subject) + ": " + String(row.reason)).join("; ") + ")")] : [...pairs.map((row) => String(row.subject) + " -> " + String(row.memberName)), ...skipped.length === 0 ? [] : ["reported: " + skipped.length]]].join(`
 `));
       }
     },
@@ -8433,16 +8879,111 @@ function installCellworkProtocol(deps) {
         seenTargets.add(resolved.key);
         unfenceTargets.push({ key: resolved.key, name: resolved.member.name, force: request.force });
       }
+      const rebindRefusedAt = new Date;
+      const requestedHandleText = (value) => {
+        if (value === undefined)
+          return;
+        let text2;
+        if (typeof value === "string")
+          text2 = value;
+        else {
+          try {
+            text2 = JSON.stringify(value) ?? String(value);
+          } catch {
+            text2 = String(value);
+          }
+        }
+        return text2.length <= 120 ? { text: text2, truncated: false } : { text: text2.slice(0, 117) + "...", truncated: true };
+      };
+      const rejectRebind = (name, reason, detail, requested) => {
+        const requestedHandle = requestedHandleText(requested);
+        appendJournal(caller.workspace, cell.cellId, {
+          event: "member-rebind-failed",
+          member: name,
+          by: "captain",
+          reason,
+          detail,
+          namedBy: [],
+          ...requestedHandle === undefined ? {} : { handle: requestedHandle.text, ...requestedHandle.truncated ? { handleTruncated: true } : {} }
+        }, rebindRefusedAt);
+        return { ok: false, error: detail };
+      };
+      const rawRebind = readArgs2(args)["rebind"];
+      if (rawRebind !== undefined && !Array.isArray(rawRebind))
+        return rejectRebind("", "invalid-argument", "cellwork_dispatch: `rebind` must be an array of `{member, handle}` objects");
+      const rebindRequests = [];
+      for (const entry of rawRebind ?? []) {
+        if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
+          return rejectRebind("", "invalid-argument", "cellwork_dispatch: every `rebind` entry must be an object `{member, handle}`");
+        }
+        const shaped = entry;
+        const memberSpelling = typeof shaped.member === "string" ? shaped.member.trim() : "";
+        if (typeof shaped.member !== "string" || memberSpelling === "") {
+          return rejectRebind("", "invalid-argument", "cellwork_dispatch: a `{member, handle}` entry must name a non-empty `member`", shaped.handle);
+        }
+        const handle = typeof shaped.handle === "string" ? shaped.handle.trim() : "";
+        if (handle === "") {
+          return rejectRebind(memberSpelling, "invalid-handle", "cellwork_dispatch: a `{member, handle}` entry must name a non-empty `handle`", shaped.handle);
+        }
+        if (!SESSION_HANDLE_SHAPE.test(handle)) {
+          return rejectRebind(memberSpelling, "invalid-handle", "cellwork_dispatch: handle " + JSON.stringify(shaped.handle) + " is not the host-minted session form (8-4-4-4-12 hex UUID), so the whole call is refused and no seat is half-repaired", shaped.handle);
+        }
+        rebindRequests.push({ name: memberSpelling, handle });
+      }
+      const rebindTargets = [];
+      const seenRebinds = new Map;
+      for (const request of rebindRequests) {
+        const resolved = resolveMemberName(cell.members, request.name);
+        if (resolved === undefined) {
+          const recorded = Object.keys(cell.members);
+          return rejectRebind(request.name, "unknown-member", "cellwork_dispatch: " + JSON.stringify(request.name) + " is not a member of cell " + cell.cellId + " (members: " + (recorded.length === 0 ? "none recorded" : recorded.join(", ")) + ")", request.handle);
+        }
+        const previousHandle = seenRebinds.get(resolved.key);
+        if (previousHandle !== undefined) {
+          if (previousHandle !== request.handle)
+            return rejectRebind(resolved.member.name, "ambiguous-member", "cellwork_dispatch: member " + JSON.stringify(resolved.member.name) + " is named twice in `rebind` with two different handles — one seat names ONE child", request.handle);
+          continue;
+        }
+        seenRebinds.set(resolved.key, request.handle);
+        rebindTargets.push({ key: resolved.key, name: resolved.member.name, handle: request.handle });
+      }
       const plane = actions();
       if (plane?.dispatch === undefined)
         return { ok: false, error: "cellwork_dispatch: this composition exposes no mpdTeamActions service, so the team plane cannot be asked to pair rows" };
       const now = new Date;
       const board = boardOf(caller.workspace, cell);
       const boardCell = board.teamId === "" || board.teamId === cell.teamId ? cell : { ...cell, teamId: board.teamId };
-      const applied = unfenceTargets.length === 0 ? { cell: boardCell, outcomes: [] } : await unfenceSeats(caller, boardCell, unfenceTargets, now);
+      const resolvedTeamId = board.teamId === "" ? boardCell.teamId : board.teamId;
+      const rebound = rebindTargets.length === 0 ? { cell: boardCell, outcomes: [] } : rebindSeats(caller, boardCell, resolvedTeamId, rebindTargets, now);
+      const reboundOutcomes = rebound.outcomes;
+      let current = rebound.cell.teamId === resolvedTeamId ? rebound.cell : { ...rebound.cell, teamId: resolvedTeamId };
+      const rebindFailures = reboundOutcomes.filter((outcome) => outcome.rebound !== true);
+      const mirrorFailures = reboundOutcomes.filter((outcome) => outcome.rebound === true && outcome.cellRow !== undefined);
+      const unfenceWithheld = unfenceTargets.length === 0 || rebindFailures.length === 0 && mirrorFailures.length === 0 ? undefined : {
+        reason: rebindFailures.length > 0 ? "rebind-failed" : "cell-mirror-unconfirmed",
+        members: unfenceTargets.map((target) => target.name),
+        failed: [...rebindFailures, ...mirrorFailures].map((outcome) => ({
+          member: outcome.member,
+          reason: String(outcome.reason ?? "cell-mirror-unconfirmed"),
+          ...outcome.cellRow === undefined ? {} : { cellRow: String(outcome.cellRow) }
+        })),
+        detail: "fence stayed closed: the `unfence` half of this call did not run because " + (rebindFailures.length > 0 ? String(rebindFailures.length) + " `rebind` entr" + (rebindFailures.length === 1 ? "y" : "ies") + " did not re-point the seat (" + rebindFailures.map((outcome) => String(outcome.member) + ": " + String(outcome.reason ?? "unknown")).join("; ") + ")" : "the CELL mirror of " + String(mirrorFailures.length) + " re-pointed seat(s) was not confirmed") + ", so every fence named by this call is still closed",
+        next: "repair what the `rebind` reported, then re-run cellwork_dispatch {rebind:[…], unfence:[…]}: the unfence runs only when every entry answers rebound:true and no cellRow failure is reported"
+      };
+      if (unfenceWithheld !== undefined) {
+        appendJournal(caller.workspace, cell.cellId, {
+          event: "dispatch-unfence-withheld",
+          by: "captain",
+          reason: unfenceWithheld.reason,
+          members: unfenceWithheld.members,
+          failed: unfenceWithheld.failed,
+          detail: unfenceWithheld.detail,
+          next: unfenceWithheld.next
+        }, now);
+      }
+      const applied = unfenceWithheld !== undefined || unfenceTargets.length === 0 ? { cell: current, outcomes: [] } : await unfenceSeats(caller, current, unfenceTargets, now);
       const unfenced = applied.outcomes;
-      const resolvedTeamId = board.teamId === "" ? applied.cell.teamId : board.teamId;
-      let current = applied.cell.teamId === resolvedTeamId ? applied.cell : { ...applied.cell, teamId: resolvedTeamId };
+      current = applied.cell.teamId === resolvedTeamId ? applied.cell : { ...applied.cell, teamId: resolvedTeamId };
       const rawReassign = readArgs2(args)["reassign"];
       const growth = await growExecutionSeats({
         dsh,
@@ -8470,7 +9011,7 @@ function installCellworkProtocol(deps) {
         ...reassignArg === undefined ? {} : { reassign: reassignArg }
       });
       if (reply?.ok === false)
-        return { ok: false, error: String(reply.error ?? "the team plane refused the pass"), ...unfenced.length === 0 ? {} : { unfenced } };
+        return { ok: false, error: String(reply.error ?? "the team plane refused the pass"), ...unfenced.length === 0 ? {} : { unfenced }, ...reboundOutcomes.length === 0 ? {} : { rebound: reboundOutcomes }, ...unfenceWithheld === undefined ? {} : { unfenceWithheld } };
       const pairs = Array.isArray(reply.pairs) ? reply.pairs : [];
       const reassigned = Array.isArray(reply.reassigned) ? reply.reassigned : [];
       const skipped = Array.isArray(reply.skipped) ? reply.skipped.map((row) => row.reason === "cancelled" ? { ...row, reason: "CANCELLED — the row is terminal on the board, so no pass may pair it" } : row).filter((row) => row.reason !== "already completed" && !String(row.reason).startsWith("not ready (status ")) : [];
@@ -8495,6 +9036,8 @@ function installCellworkProtocol(deps) {
         pairs,
         skipped: skippedWithSeats,
         ...unfenced.length === 0 ? {} : { unfenced },
+        ...reboundOutcomes.length === 0 ? {} : { rebound: reboundOutcomes },
+        ...unfenceWithheld === undefined ? {} : { unfenceWithheld },
         ...reassigned.length === 0 ? {} : { reassigned },
         seats: {
           execution: seatProjection.execution,
@@ -8548,7 +9091,7 @@ function installCellworkProtocol(deps) {
           splitRevision: { oneOf: [{ type: "number" }, { type: "null" }] },
           requirementsRevision: { type: "number" },
           handoffReady: { type: "array", items: { type: "string" } },
-          fenced: { type: "array", items: { type: "object" }, description: 'Every CLOSED member with the reason and the OPEN board rows it still owns. Each row carries `giveUp:true` for a real GIVE-UP fence (an explicit `fenced:true` on either record) — the rows a `reassign` pass repairs and `cellwork_dispatch {unfence:[name]}` clears — or `giveUp:false` for a HELD seat with no fence marker — the compaction barrier\'s `mode:"checkpoint"` window, or the DEAD-RESEED shape flagged `deadReseed:true`. Every closed-seat row ALSO carries `barrierOwned` (a checkpoint spelling, not a fence marker, is what holds it), `forceEligible` (the FORCED `unfence:[{member, force:true}]` lever would be allowed RIGHT NOW — computed by the SAME predicate the verb decides with, so the two cannot disagree), `pendingMs` (how long the window has been open, when a timestamp exists), `suspect:true` for the DEAD-RESEED shape (a reseeded seat whose recorded session the registry proves dead), and `retry` when the TEAM half is a `checkpoint` no barrier is pending for — the exact Lead-only verb that reopens it (R5.4). A barrier-owned seat is not automatically safe: nothing supervises the barrier, so the render names the force lever and its bound instead of promising that no action is needed.' },
+          fenced: { type: "array", items: { type: "object" }, description: 'Every CLOSED member with the reason and the OPEN board rows it still owns. Each row carries `giveUp:true` for a real GIVE-UP fence (an explicit `fenced:true` on either record) — the rows a `reassign` pass repairs and `cellwork_dispatch {unfence:[name]}` clears — or `giveUp:false` for a HELD seat with no fence marker — the compaction barrier\'s `mode:"checkpoint"` window, or the DEAD-RESEED shape flagged `deadReseed:true`. Every closed-seat row ALSO carries `barrierOwned` (a checkpoint spelling, not a fence marker, is what holds it), `forceEligible` (the FORCED `unfence:[{member, force:true}]` lever would be allowed RIGHT NOW — computed by the SAME predicate the verb decides with, so the two cannot disagree), `pendingMs` (how long the window has been open, when a timestamp exists), `suspect:true` for the DEAD-RESEED shape (a reseeded seat whose recorded session the registry proves dead), and `retry` when the TEAM half is a `checkpoint` no barrier is pending for — the exact Lead-only verb that reopens it (R5.4). A barrier-owned seat is not automatically safe: nothing supervises the barrier, so the render names the force lever and its bound instead of promising that no action is needed. An `unknown` liveness never drops a seat from this list: a `subcaptain` that left the barrier\'s window with an unprovable session is listed `unverified:true` with `forceEligible:false` and its `forceRefusal`, reported as unverified rather than as health.' },
           unreadMail: { type: "number" },
           wakeFailures: { type: "array", items: { type: "object" } }
         },
@@ -8574,6 +9117,9 @@ function installCellworkProtocol(deps) {
             const name = String(row.name);
             const reason = String(row.reason);
             const owned = Array.isArray(row.tasks) ? row.tasks.map((id) => String(id)) : [];
+            if (row.unverified === true) {
+              return name + " (UNVERIFIED: " + reason + ") " + (owned.length > 0 ? "owns " + owned.join(", ") + " — " : "") + "no lever is licensed: the seat is reported so an operator can retire it deliberately (cellwork_dispatch {reassign:[{task_id, owner}]} moves its rows, and a forced clear stays refused while no liveness can be proven)";
+            }
             if (row.giveUp !== true) {
               const deadReseed = row.deadReseed === true;
               const blocked = row.liveness === "live" ? "the recorded session is still a LIVE agent" : row.pendingMs === undefined ? "no checkpoint timestamp is recorded, and a missing timestamp is never a licence" : "the written bound is not reached yet (`barrierFailures` below the retry budget and the window younger than the pending bound)";
@@ -8616,9 +9162,12 @@ function installCellworkProtocol(deps) {
           windowTokens: pressure.windowTokens,
           provenance: pressure.provenance,
           liveness: reading.liveness,
+          closed: reading.closed,
           ...reading.pendingMs === undefined ? {} : { pendingMs: reading.pendingMs },
           ...reading.suspect ? { suspect: true } : {},
-          ...reading.pendingMs === undefined && !reading.closed ? {} : { forceEligible: reading.forceEligible }
+          ...reading.deadReseed ? { deadReseed: true } : {},
+          forceEligible: reading.forceEligible,
+          ...reading.refusal === undefined ? {} : { forceRefusal: reading.refusal }
         };
       });
       const messages = foldCellMail(readCellMail(caller.workspace, cell.cellId));
@@ -8627,14 +9176,16 @@ function installCellworkProtocol(deps) {
         const giveUp = member.fenced === true || seat.fenced === true;
         const reason = member.fenced === true ? fenceReasonOf(member) : seat.fenceReason ?? fenceReasonOf(member);
         const reading = forceReadingOf(boardCell, caller.workspace, member, now);
-        if (!reading.closed && !giveUp || reason === undefined)
+        const unverified = reading.unverified;
+        if (!reading.closed && !giveUp && !unverified || reason === undefined && !unverified)
           return [];
         const planeOnly = seat.checkpoint === true && seat.fenced !== true && member.mode !== "checkpoint" && member.handoffReady !== true;
         const owned = tasks.filter((task) => {
           const status = String(task.status ?? "");
           return status !== "completed" && status !== "failed" && nameKey(String(task.owner ?? "")) === nameKey(member.name);
         }).map((task) => String(task.id ?? ""));
-        return [{ name: member.name, mode: seat.mode ?? member.mode, reason, tasks: owned, giveUp, barrierOwned: reading.barrierOwned, forceEligible: reading.forceEligible, liveness: reading.liveness, ...reading.suspect ? { suspect: true } : {}, ...reading.deadReseed ? { deadReseed: true } : {}, ...reading.pendingMs === undefined ? {} : { pendingMs: reading.pendingMs }, ...planeOnly ? { retry: planeRetryOf(member.name) } : {} }];
+        const rowReason = reason ?? "its recorded session cannot be verified (this composition exposes no agents registry, or no live anchor to prove it), so the seat is UNVERIFIED — never reported as healthy";
+        return [{ name: member.name, mode: seat.mode ?? member.mode, reason: rowReason, tasks: owned, giveUp, barrierOwned: reading.barrierOwned, forceEligible: reading.forceEligible, liveness: reading.liveness, ...reading.suspect ? { suspect: true } : {}, ...reading.deadReseed ? { deadReseed: true } : {}, ...unverified ? { unverified: true } : {}, ...reading.refusal === undefined ? {} : { forceRefusal: reading.refusal }, ...reading.pendingMs === undefined ? {} : { pendingMs: reading.pendingMs }, ...planeOnly ? { retry: planeRetryOf(member.name) } : {} }];
       });
       const seatProjection = seatProjectionOf(cell, config);
       const growthRefusal = lastSeatGrowthRefusalOf(caller.workspace, cell.cellId);
@@ -9223,19 +9774,210 @@ acknowledgement refused for ` + String(refused.length) + " row(s), which stay un
   const preStepDispose = dsh.onAgentPreStep(onPreStep);
   if (typeof preStepDispose === "function")
     disposers.push(preStepDispose);
+  const teamRecordPathOf = (workspace, teamId) => {
+    const cleaned = String(teamId).replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^[.-]+/, "").replace(/-+$/, "");
+    return join7(workspace, ".mpd", "team", "teams", (cleaned === "" ? "unnamed" : cleaned) + ".json");
+  };
+  const bindReseededSeat = (input) => {
+    if (input.workspace === "" || input.teamId === "")
+      return { ok: true, plane: "absent", tasks: 0 };
+    const path = teamRecordPathOf(input.workspace, input.teamId);
+    const read = readTeamRecordSnapshot(path);
+    if (read.kind === "absent")
+      return { ok: true, plane: "absent", tasks: 0 };
+    if (read.kind === "unreadable")
+      return { ok: false, surface: "team-record-unreadable", reason: read.detail };
+    const snapshot = read.snapshot;
+    const service = teams();
+    if (service !== undefined) {
+      let planeRecord;
+      try {
+        planeRecord = service.get?.(input.workspace, input.teamId);
+      } catch (error) {
+        return { ok: false, surface: "team-record-unreadable", reason: "the team record " + JSON.stringify(path) + " exists but the plane's read threw (" + errorText4(error) + ")" };
+      }
+      if (!isPlainRecord(planeRecord)) {
+        return { ok: false, surface: "team-record-unreadable", reason: "the team record " + JSON.stringify(path) + " exists but the plane answers " + (planeRecord === undefined ? "nothing" : "a value that is not a team record") + " for it, so this bind cannot trust the surface it would rewrite" };
+      }
+    }
+    const record = snapshot.record;
+    const members = Array.isArray(record.members) ? record.members.filter((row) => typeof row === "object" && row !== null) : undefined;
+    if (members === undefined)
+      return { ok: false, surface: "team-record", reason: "the team record for " + JSON.stringify(input.teamId) + " carries no readable member roster" };
+    const seat = members.findIndex((row) => row.name === input.memberName || row.id === input.memberName);
+    if (seat < 0)
+      return { ok: false, surface: "team-member", reason: "team " + JSON.stringify(input.teamId) + " names no member " + JSON.stringify(input.memberName) + ", so the fresh handle has no roster row to bind" };
+    const previousSeat = members[seat];
+    const displacedExecutorRef = typeof previousSeat.executorRef === "string" && previousSeat.executorRef !== "" && previousSeat.executorRef !== input.newHandle ? previousSeat.executorRef : undefined;
+    const displacedUnproven = displacedExecutorRef === undefined ? false : handleLivenessOf(displacedExecutorRef) !== "live";
+    const previousTasks = record.tasks;
+    const previousTaskRows = Array.isArray(record.tasks) ? record.tasks : undefined;
+    const nowIso = new Date().toISOString();
+    const reboundSeat = { ...members[seat], executorRef: input.newHandle, mode: members[seat].mode === "checkpoint" || members[seat].mode === undefined ? "member" : members[seat].mode };
+    let rePointed = 0;
+    const seatOwners = new Set([input.memberName]);
+    for (const identity of [members[seat].name, members[seat].id]) {
+      if (typeof identity === "string" && identity !== "")
+        seatOwners.add(identity);
+    }
+    const reboundTasks = previousTaskRows === undefined ? record.tasks : previousTaskRows.map((task) => {
+      if (typeof task !== "object" || task === null)
+        return task;
+      const row = task;
+      if (input.previousSessionId === "")
+        return task;
+      const owner = String(row.owner ?? "");
+      if (owner !== input.previousSessionId && !seatOwners.has(owner))
+        return task;
+      const status = String(row.status ?? "");
+      if (status === "completed" || status === "failed" || status === "cancelled")
+        return task;
+      rePointed += 1;
+      return { ...row, owner: input.newHandle, revision: (typeof row.revision === "number" ? row.revision : 0) + 1, updatedAt: nowIso };
+    });
+    const next = { ...record, members: members.map((row, index) => index === seat ? reboundSeat : row), tasks: reboundTasks };
+    const moved = concurrentWriteOf(path, snapshot);
+    if (moved !== undefined) {
+      return { ok: false, surface: "team-record-changed", reason: "the team record " + JSON.stringify(path) + " changed while this bind was building its write (" + moved + "), so the bind refuses to overwrite the other writer" };
+    }
+    const rollbackBind = (surface, cause) => {
+      let current;
+      try {
+        current = readFileSync8(path, "utf8");
+      } catch (error) {
+        return { ok: false, surface, reason: cause + "; the rollback FAILED: the record could not be re-read (" + errorText4(error) + "), so the pre-bind row was NOT restored", rollback: "failed", rollbackReason: "re-read failed: " + errorText4(error) };
+      }
+      if (current !== writtenText) {
+        let survivingExecutorRef;
+        let survivingReadable = false;
+        try {
+          const surviving = JSON.parse(current);
+          survivingReadable = isPlainRecord(surviving);
+          const survivingSeat = survivingReadable ? seatRowOf(surviving, input.memberName) : undefined;
+          survivingExecutorRef = typeof survivingSeat?.executorRef === "string" ? survivingSeat.executorRef : undefined;
+        } catch {
+          survivingExecutorRef = undefined;
+          survivingReadable = false;
+        }
+        return { ok: false, surface, reason: cause + "; rollback refused due to concurrent change: the record no longer carries this bind's bytes, so the other writer's document is left untouched", rollback: "refused", rollbackReason: "the bytes changed between this bind's write and its rollback", survivingReadable, ...survivingExecutorRef === undefined ? {} : { survivingExecutorRef } };
+      }
+      const restored = {
+        ...next,
+        members: next.members.map((row, index) => index === seat ? previousSeat : row),
+        tasks: previousTasks
+      };
+      try {
+        atomicWriteText(path, JSON.stringify(restored, null, 2) + `
+`);
+      } catch (error) {
+        return { ok: false, surface, reason: cause + "; the rollback FAILED: rewriting the pre-bind record threw (" + errorText4(error) + "), so the TEAM row may still name the fresh handle", rollback: "failed", rollbackReason: "write failed: " + errorText4(error) };
+      }
+      return { ok: false, surface, reason: cause + "; the bind was ROLLED BACK to the pre-bind TEAM member row and board owners", rollback: "restored" };
+    };
+    const writtenText = JSON.stringify(next, null, 2) + `
+`;
+    try {
+      atomicWriteText(path, writtenText);
+    } catch (error) {
+      return { ok: false, surface: "team-record", reason: "writing " + path + " failed (" + errorText4(error) + ")" };
+    }
+    let after;
+    let verifyFailure;
+    try {
+      if (service !== undefined) {
+        after = recordOf2(input.workspace, input.teamId);
+        if (after === undefined)
+          verifyFailure = "the plane answered nothing for a record this bind just wrote";
+      } else {
+        const again = readTeamRecordSnapshot(path);
+        after = again.kind === "ok" ? again.snapshot.record : undefined;
+        if (after === undefined)
+          verifyFailure = again.kind === "unreadable" ? again.detail : "the record file could not be re-read after the write";
+      }
+    } catch (error) {
+      verifyFailure = errorText4(error);
+    }
+    if (verifyFailure !== undefined) {
+      return rollbackBind("team-record-verify", "the read-back after the child started failed (" + verifyFailure + ")");
+    }
+    const afterSeat = seatRowOf(after, input.memberName);
+    if (afterSeat?.executorRef !== input.newHandle) {
+      return rollbackBind("team-member", "the record was written but the " + (service !== undefined ? "plane" : "file") + " reads " + JSON.stringify(String(afterSeat?.executorRef ?? "")) + " for " + JSON.stringify(input.memberName) + " instead of the fresh handle");
+    }
+    return { ok: true, plane: "bound", tasks: rePointed, ...displacedExecutorRef === undefined ? {} : { displacedExecutorRef, displacedUnproven } };
+  };
+  const recordBarrierFailure = (agent, error) => {
+    const caller = callerContext(dsh, { agent }, { teams });
+    if (caller.cell === null || caller.member === "")
+      return;
+    const member = caller.cell.members[caller.member];
+    if (member === undefined)
+      return;
+    const now = new Date;
+    const detail = error instanceof Error ? error.message : String(error);
+    const failed = barrierFailedRow(member, config.compactionRetries, "the compaction barrier threw after the seat was handed over: " + detail, now);
+    let fenced = "written";
+    try {
+      writeCell(caller.workspace, { ...caller.cell, members: { ...caller.cell.members, [caller.member]: failed } });
+    } catch (writeError) {
+      fenced = "failed: " + (writeError instanceof Error ? writeError.message : String(writeError));
+    }
+    appendJournal(caller.workspace, caller.cell.cellId, {
+      event: "barrier-failed",
+      member: caller.member,
+      branch: "throw",
+      detail,
+      fenced,
+      forceEligible: fenced === "written",
+      retry: "cellwork_dispatch {unfence:[{member: " + JSON.stringify(caller.member) + ", force: true}]}"
+    }, now);
+  };
   const parentSessionOf = (agent) => {
     const handle = typeof agent === "object" && agent !== null ? agent : undefined;
     const session = typeof handle?.session === "object" && handle.session !== null ? handle.session : undefined;
     const header = typeof session?.header === "object" && session.header !== null ? session.header : undefined;
     return typeof header?.parentSession === "string" ? header.parentSession : "";
   };
+  const alreadyBoundHandleOf = (workspace, cell, memberName, recordedSessionId) => {
+    if (recordedSessionId === "")
+      return;
+    const board = boardOf(workspace, cell);
+    const seat = board.record === undefined ? undefined : seatRowOf(board.record, memberName);
+    const handle = typeof seat?.executorRef === "string" ? seat.executorRef : "";
+    if (handle === "" || handle === recordedSessionId)
+      return;
+    const seam = dsh.liveAgentExact;
+    if (typeof seam !== "function")
+      return;
+    try {
+      return seam.call(dsh, handle) === undefined ? undefined : handle;
+    } catch {
+      return;
+    }
+  };
   const runBarrier = async (agent) => {
     const caller = callerContext(dsh, { agent }, { teams });
     if (caller.cell === null || caller.member === "")
       return;
-    const member = caller.cell.members[caller.member];
+    const cell = caller.cell;
+    const member = cell.members[caller.member];
     if (member === undefined || !member.handoffReady)
       return;
+    const boundHandle = alreadyBoundHandleOf(caller.workspace, cell, caller.member, member.sessionId);
+    if (boundHandle !== undefined) {
+      appendJournal(caller.workspace, cell.cellId, {
+        event: "barrier-skipped",
+        member: caller.member,
+        branch: "reseed-already-bound",
+        handle: boundHandle,
+        recordedSessionId: member.sessionId,
+        reconcileRequired: true,
+        reason: "the TEAM row already names the LIVE child " + JSON.stringify(boundHandle) + " for this seat while the CELL row records " + JSON.stringify(member.sessionId) + ", so no second child was spawned and neither record was rewritten",
+        retry: "cellwork_dispatch {rebind:[{member:" + JSON.stringify(caller.member) + ", handle:" + JSON.stringify(boundHandle) + "}], unfence:[" + JSON.stringify(caller.member) + "]} mirrors the bound handle into the CELL row and clears a give-up fence if one is present — `unfence` alone never re-points executorRef"
+      }, new Date);
+      deps.warn("[mpd-cellwork] the compaction barrier skipped " + caller.member + ": the TEAM row already names the live child " + boundHandle + " (the CELL row records " + member.sessionId + "); no second child was spawned");
+      return;
+    }
     const key = caller.cell.cellId + "/" + caller.member;
     if (inFlight.has(key))
       return;
@@ -9265,12 +10007,35 @@ acknowledgement refused for ` + String(refused.length) + " row(s), which stay un
             deps.warn("[mpd-cellwork] the promotion directive could not be injected: " + (error instanceof Error ? error.message : String(error)));
           }
         },
-        sleep: (ms) => new Promise((resolve4) => setTimeout(resolve4, ms))
+        sleep: (ms) => new Promise((resolve4) => setTimeout(resolve4, ms)),
+        bindSeat: async (input) => bindReseededSeat({
+          workspace: caller.workspace,
+          teamId: cell.teamId,
+          memberName: caller.member,
+          previousSessionId: input.previousSessionId,
+          newHandle: input.handle
+        }),
+        deliverDirective: async (authority, handle, text2) => {
+          const send = sendThroughExecutor(dsh.teamExecutor(), authority);
+          if (send === undefined)
+            throw new Error("this composition exposes no team executor, so the fresh child could not be messaged by handle");
+          await send(handle, text2);
+        }
       });
       const now = new Date;
       const fresh = readCell(caller.workspace, caller.cell.cellId);
       if (!fresh.ok) {
-        deps.warn("[mpd-cellwork] the compaction barrier could not re-read " + fresh.path + ": " + fresh.detail);
+        appendJournal(caller.workspace, caller.cell.cellId, {
+          event: "barrier-record-unreadable",
+          member: caller.member,
+          path: fresh.path,
+          detail: fresh.detail,
+          fenced: "not-persisted",
+          forceEligible: false,
+          recovery: "the record was NOT rewritten: this run wrote no fence and no seat row. Repair " + fresh.path + " first; the barrier re-runs on the member's next turn-end.",
+          retry: "no forced clear is available yet: this run persisted no fence AND the seat carries no written bound. Repair " + fresh.path + " first; ONCE a written bound exists (`barrierFailures` at compactionRetries, or a `checkpointSince` older than checkpointPendingMaxMs), cellwork_dispatch {unfence:[{member: " + JSON.stringify(caller.member) + ", force: true}]} is the lever"
+        }, now);
+        deps.warn("[mpd-cellwork] the compaction barrier could not re-read " + fresh.path + ": " + fresh.detail + " — nothing was written; the fence is not persisted");
         return;
       }
       const barrierRow = memberAfterBarrier(fresh.state.members[caller.member] ?? member, result, config.compactionRetries);
@@ -9304,6 +10069,18 @@ acknowledgement refused for ` + String(refused.length) + " row(s), which stay un
         appendJournal(caller.workspace, caller.cell.cellId, checkpointUnrecoverableEntry(caller.member, result), now);
       if (result.outcome === "reseeded") {
         appendJournal(caller.workspace, caller.cell.cellId, {
+          event: "seat-rebound",
+          member: caller.member,
+          previousSessionId: member.sessionId,
+          newHandle: result.newHandle ?? "",
+          plane: result.bindPlane ?? "absent",
+          tasks: result.boundTasks ?? 0,
+          cellFenced: cellReopened ? false : true,
+          ...result.displacedExecutorRef === undefined ? {} : { displacedExecutorRef: result.displacedExecutorRef, displacedUnproven: result.displacedUnproven === true }
+        }, now);
+      }
+      if (result.outcome === "reseeded") {
+        appendJournal(caller.workspace, caller.cell.cellId, {
           event: "member-reseeded",
           member: caller.member,
           previousSessionId: member.sessionId,
@@ -9311,7 +10088,10 @@ acknowledgement refused for ` + String(refused.length) + " row(s), which stay un
           retired: result.retired === true,
           ...result.retirement === undefined ? {} : { retirement: result.retirement },
           ...result.retirementReason === undefined ? {} : { retirementReason: result.retirementReason },
-          plane: plane.plane
+          plane: plane.plane,
+          directiveDelivered: result.directiveDelivered === true,
+          ...result.directiveError === undefined ? {} : { directiveError: result.directiveError },
+          ...result.displacedExecutorRef === undefined ? {} : { displacedExecutorRef: result.displacedExecutorRef, displacedUnproven: result.displacedUnproven === true }
         }, now);
       }
       if (result.outcome === "reseeded" && result.parentSource !== undefined) {
@@ -9335,6 +10115,7 @@ acknowledgement refused for ` + String(refused.length) + " row(s), which stay un
       if (agent === undefined || agent === null)
         return;
       return runBarrier(agent).catch((error) => {
+        recordBarrierFailure(agent, error);
         deps.warn("[mpd-cellwork] the compaction barrier failed: " + (error instanceof Error ? error.message : String(error)));
       });
     } catch (error) {
@@ -9424,6 +10205,10 @@ function liveSubcellIds(workspace, ids) {
 function refusalText3(failure) {
   return "the cell record at " + failure.path + " cannot be read (" + failure.reason + ": " + failure.detail + ") — nothing was changed; repair or archive that file first";
 }
+function memberLineOf(member) {
+  const liveness = typeof member.liveness === "string" ? member.liveness : "";
+  return String(member.name) + "[" + String(member.mode) + (member.planning === true ? ",planning" : "") + (member.grown === true ? ",grown" : "") + (member.adopted === true ? ",adopted" : "") + (liveness !== "" && liveness !== "live" ? "," + liveness : "") + (member.closed === true ? ",closed" : "") + (member.deadReseed === true ? ",dead-reseed" : "") + (member.unverified === true ? ",unverified" : "") + (member.forceEligible === true ? ",force-eligible" : "") + "]";
+}
 function render2(value) {
   const result = typeof value === "object" && value !== null ? value : {};
   if (result.ok === false)
@@ -9447,7 +10232,7 @@ state: ` + result.path : ""));
   the cell record names team ` + result.recordedTeamId + " (stale; the board above is what the dispatcher uses)" : "") + (typeof result.boardResolutionNote === "string" ? `
   ` + result.boardResolutionNote : "") + (seats === undefined ? "" : `
   seats: ` + String(seats.execution) + " execution / " + String(seats.planning) + " planning · caps " + String(seats.cap) + "/" + String(seats.capPerRole) + " · grown " + String(seats.grown)) + `
-  members (` + members.length + "): " + (members.length === 0 ? "-" : members.map((member) => String(member.name) + "[" + String(member.mode) + (member.planning === true ? ",planning" : "") + (member.grown === true ? ",grown" : "") + (member.adopted === true ? ",adopted" : "") + "]").join(", ")) + `
+  members (` + members.length + "): " + (members.length === 0 ? "-" : members.map(memberLineOf).join(", ")) + `
   checkpoints injected: ` + String(result.checkpoints) + `
   state: ` + String(result.statePath));
   }
@@ -9472,7 +10257,7 @@ function apply(ctx, config = {}) {
     disposers.push(guard.dispose);
   disposers.push(dsh.registerTool({
     name: "cellwork_status",
-    description: "Report one cell: phase, objective, captain, requirements/split revisions, members and their modes, injected checkpoints, the live team's member/task counts and the on-disk paths. Defaults to the workspace's ACTIVE cell; pass `cellId` to read another. Never transitions the cell: its ONE write is ADOPTING a live team seat the record never learned, so a member added mid-run is reportable.",
+    description: "Report one cell: phase, objective, captain, requirements/split revisions, members with their modes, their seat LIVENESS (`live`/`dead`/`unknown` from the identity registry) and the shared closure reading (`closed`, `forceEligible`, `forceRefusal`, `suspect`, `deadReseed`, `unverified`), injected checkpoints, the live team's member/task counts and the on-disk paths. Defaults to the workspace's ACTIVE cell; pass `cellId` to read another. Never transitions the cell: its ONE write is ADOPTING a live team seat the record never learned, so a member added mid-run is reportable.",
     parameters: {
       type: "object",
       properties: { cellId: { type: "string", description: "The cell to report; omitted reads the workspace's active cell." } },
@@ -9559,6 +10344,7 @@ function apply(ctx, config = {}) {
       const teamRecord = board.record;
       const counts = teamCounts(teamRecord);
       const seats = seatProjectionOf(state, cfg);
+      const now = new Date;
       return {
         ok: true,
         cellId: state.cellId,
@@ -9578,7 +10364,36 @@ function apply(ctx, config = {}) {
         splitRevision: state.splitRevision,
         splitStale: state.splitStale,
         startedAt: state.startedAt,
-        members: Object.values(state.members).map((member) => ({ name: member.name, role: member.role, mode: member.mode, sessionId: member.sessionId, ...member.adopted === true ? { adopted: true } : {}, ...member.grown === true ? { grown: true } : {}, ...isPlanningSeatName(member.name) ? { planning: true } : {} })),
+        members: Object.values(state.members).map((member) => {
+          const since = checkpointSinceOf(state, member);
+          const reading = seatForceReadingOf({
+            member,
+            seat: planeSeatOf(teamRecord, member.name),
+            ...since === undefined ? {} : { checkpointSince: since },
+            liveness: seatLivenessOf(dsh, member.sessionId, state.captainSessionId),
+            now,
+            retryBound: cfg.compactionRetries,
+            staleMs: cfg.checkpointPendingMaxMs
+          });
+          return {
+            name: member.name,
+            role: member.role,
+            mode: member.mode,
+            sessionId: member.sessionId,
+            liveness: reading.liveness,
+            ...member.fenced === true ? { fenced: true, ...member.fencedReason === undefined ? {} : { fencedReason: member.fencedReason } } : {},
+            closed: reading.closed,
+            ...reading.suspect ? { suspect: true } : {},
+            ...reading.deadReseed ? { deadReseed: true } : {},
+            ...reading.unverified ? { unverified: true } : {},
+            ...reading.pendingMs === undefined ? {} : { pendingMs: reading.pendingMs },
+            forceEligible: reading.forceEligible,
+            ...reading.refusal === undefined ? {} : { forceRefusal: reading.refusal },
+            ...member.adopted === true ? { adopted: true } : {},
+            ...member.grown === true ? { grown: true } : {},
+            ...isPlanningSeatName(member.name) ? { planning: true } : {}
+          };
+        }),
         checkpoints: state.checkpoints.length,
         seat: caller.seat === undefined ? null : { name: caller.seat.name, mode: caller.seat.mode },
         teamMembers: counts.members,

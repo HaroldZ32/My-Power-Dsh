@@ -1,0 +1,36 @@
+# Gate summary — round 10 (details in the per-gate logs of this directory)
+
+## gate-typecheck.log
+EXIT_TYPECHECK=0
+
+## gate-comments.log
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+EXIT_COMMENTS=0
+
+## gate-docs.log
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=59 failed=0 violations=0 exempt=24 derived=3 links=626 dead=0 — PASS
+EXIT_DOCS=0
+
+## gate-tests-package.log
+ 414 pass
+ 0 fail
+EXIT_PACKAGE=0
+
+## gate-tests-all.log
+VERDICT: PASS (10/10 checks)
+ 4046 pass
+ 0 fail
+EXIT_ALL=0
+
+## gate-dist-build.log
+BUILD_EXIT=0
+
+## gate-dist-fresh.log
+[verify-dist-fresh] ok: 34/34 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 755ms
+EXIT_DIST_FRESH=0
+
+## post-fix-arms.log
+ 45 pass
+ 0 fail
+EXIT_POST_FIX=0
+

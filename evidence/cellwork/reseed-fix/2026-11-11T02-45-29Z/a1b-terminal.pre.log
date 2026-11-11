@@ -1,0 +1,23 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+472 |   /** The team record as the plane reads it after the barrier. */
+473 |   const record = harness.record()
+474 |   /** The board rows by id. */
+475 |   const tasks = new Map(record.tasks.map((task) => [String(task.id), task]))
+476 |   // SURFACE 2: the in_progress row the dead handle owned is re-pointed, revision bumped like the store does.
+477 |   expect(tasks.get("T1")?.owner).toBe(NEW_HANDLE)
+                                       ^
+error: expect(received).toBe(expected)
+
+Expected: "handle-fresh-child"
+Received: "session-old-member"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:477:34)
+(fail) A1b: a reseed re-points every non-terminal board row the old handle owned [6.18ms]
+
+ 0 pass
+ 14 filtered out
+ 1 fail
+ 1 expect() calls
+Ran 1 test across 1 file. [190.00ms]

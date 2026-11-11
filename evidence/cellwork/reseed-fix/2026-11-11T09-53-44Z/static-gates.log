@@ -1,0 +1,19 @@
+## typecheck
+$ tsgo --noEmit
+[exit 0]
+## verify:comments
+
+scanned 633 TypeScript file(s) of 633 in the source set; inspected 58371 declaration(s); skipped 28841 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+[exit 0]
+## verify:docs
+[verify-docs-parity] links=626 checked=586 resolved=586 dead=0 exemptProvenance=0 absentSite=0 ignoredExternal=34 ignoredAnchorOnly=6 files=139
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=59 failed=0 violations=0 exempt=24 derived=3 links=626 dead=0 — PASS
+[exit 0]
+## verify-dist-fresh
+[verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] ok: 34/34 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 736ms
+[exit 0]

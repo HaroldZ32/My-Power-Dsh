@@ -1,0 +1,52 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+828 |   })
+829 |   await stopListener(harness)({ agent: harness.member })
+830 |   /** The journal rows. */
+831 |   const rows = journalRows(harness)
+832 |   // THE BIND REFUSED: no success is claimed over the other writer's board.
+833 |   expect(rows.some((row) => row.event === "compaction" && row.outcome === "reseeded")).toBe(false)
+                                                                                             ^
+error: expect(received).toBe(expected)
+
+Expected: false
+Received: true
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:833:88)
+(fail) A9: a write that changes only the BOARD inside the window is REFUSED — the raw bytes are the predicate [6.04ms]
+864 |     }),
+865 |   })
+866 |   await stopListener(harness)({ agent: harness.member })
+867 |   /** The journal rows. */
+868 |   const rows = journalRows(harness)
+869 |   expect(rows.some((row) => row.event === "compaction" && row.outcome === "reseeded")).toBe(false)
+                                                                                             ^
+error: expect(received).toBe(expected)
+
+Expected: false
+Received: true
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:869:88)
+(fail) A9: a write confined to handoffs/consults is REFUSED as well — no part of the record is exempt [3.20ms]
+893 |   /** The journal rows. */
+894 |   const rows = journalRows(harness)
+895 |   expect(rows.some((row) => row.event === "compaction" && row.outcome === "reseeded")).toBe(true)
+896 |   /** The bind row. */
+897 |   const bound = rows.find((row) => row.event === "seat-rebound")
+898 |   expect(bound?.plane).toBe("bound")
+                             ^
+error: expect(received).toBe(expected)
+
+Expected: "bound"
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:898:24)
+(fail) A9: the SAME seed binds normally when NO external write lands (the contrast) [4.24ms]
+
+ 0 pass
+ 16 filtered out
+ 3 fail
+ 4 expect() calls
+Ran 3 tests across 1 file. [202.00ms]
+exit=1

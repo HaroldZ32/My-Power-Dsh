@@ -1,0 +1,33 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+1804 |   expect(rebounds[0]?.rebound).toBe(true)
+1805 |   expect(rebounds[1]?.rebound).toBe(false)
+1806 |   expect(rebounds[1]?.reason).toBe("handle-unevidenced")
+1807 |   // THE WHOLE CALL IS WITHHELD: every declared target is named, only the failed entry is in `failed`, and
+1808 |   // the entry that DID land produced no `unfenced` outcome.
+1809 |   expect(result.unfenced).toBeUndefined()
+                                 ^
+error: expect(received).toBeUndefined()
+
+Received: [
+  {
+    member: "Senior Engineer",
+    unfenced: true,
+    plane: "unfenced",
+  }, {
+    member: "Deep Worker",
+    unfenced: true,
+    plane: "unfenced",
+  }
+]
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/reseed-mutation/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:1809:27)
+(fail) A31: one unevidenced entry among two withholds the unfence for EVERY declared target, not only its own [5.66ms]
+
+ 0 pass
+ 44 filtered out
+ 1 fail
+ 5 expect() calls
+Ran 1 test across 1 file. [30.00ms]
+EXIT=1

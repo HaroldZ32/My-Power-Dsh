@@ -1,0 +1,24 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+1407 |   const repaired = await harness.tools.get("cellwork_dispatch")!.execute({ rebind: [{ member: MEMBER_NAME, handle: NEW_HANDLE }] }, { name: "cellwork_dispatch", agent: harness.captain }) as Record<string, unknown>
+1408 |   /** The rebound outcomes. */
+1409 |   const rebounds = Array.isArray(repaired.rebound) ? repaired.rebound as Array<Record<string, unknown>> : []
+1410 |   /** This seat's outcome. */
+1411 |   const outcome = rebounds.find((entry) => entry.member === MEMBER_NAME)
+1412 |   expect(outcome?.rebound).toBe(true)
+                                  ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: false
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:1412:28)
+(fail) A17: `rebind` rewrites a TEAM row that names a DIFFERENT handle and leaves the checkpoint window [4.40ms]
+
+ 0 pass
+ 33 filtered out
+ 1 fail
+ 3 expect() calls
+Ran 1 test across 1 file. [190.00ms]
+EXIT=1

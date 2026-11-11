@@ -1,0 +1,22 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+576 |   /** The harness whose plane read throws (the bind cannot even read the record). */
+577 |   const harness = makeHarness({ planeThrows: true })
+578 |   await stopListener(harness)({ agent: harness.member })
+579 |   /** The give-up row: the refused outcome carries the branch's own sentence. */
+580 |   const row = journalRows(harness).find((entry) => entry.event === "checkpoint-unrecoverable")
+581 |   expect(row).toBeDefined()
+                    ^
+error: expect(received).toBeDefined()
+
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:581:15)
+(fail) A5: a throw AFTER the spawn is journaled, fences the seat and RELEASES the activation [6.07ms]
+
+ 0 pass
+ 8 filtered out
+ 1 fail
+ 1 expect() calls
+Ran 1 test across 1 file. [186.00ms]

@@ -1,0 +1,18 @@
+# PR #109 round 9 — gate sweep on the FINAL tree (every value copied from the named log)
+
+| gate | observed exit | summary |
+|---|---|---|
+| `bun run typecheck` | [exit code: 0] | `tsgo --noEmit` clean |
+| `bun run verify:comments` | [exit code: 0] | VERDICT: PASS — every declaration in the family carries a precise comment and a full signature. |
+| `bun run verify:docs` | [exit code: 0] | [verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=59 failed=0 violations=0 exempt=24 derived=3 links=626 dead=0 — PASS |
+| `bun test packages/mpd-cellwork-plugin` | [exit code: 0] | 411 pass / 0 fail (Ran 411 tests across 34 files. [628.00ms]) |
+| `bun test packages` | [exit code: 0] | 4043 pass / 6 skip / 0 fail (Ran 4049 tests across 261 files. [36.11s]) |
+| pinned `.toolchain` bun build (mpd-cellwork-plugin) | [exit code: 0] | Bundled 31 modules in 12ms |
+| `node scripts/verify-dist-fresh.ts` | [exit code: 0] | [verify-dist-fresh] ok: 34/34 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 743ms |
+
+Fail-before (round-8 `protocol.ts` + `protocol-core.ts` installed from `../2026-11-11T06-27-13Z/`; installed hashes in `swap.sha256.txt`; restore verified with `sha256sum -c fixed.sha256.txt`):
+
+- A28 on round-8 sources: [exit code: 1] — RED: the merged call's `unfence` cleared the fence (`{unfenced:true, plane:"unfenced"}`) while the `rebind` answered `handle-unevidenced` (`fail-before-A28.log`).
+- A29 on round-8 sources: [exit code: 1] — RED: the refused rollback RELEASED the child (`disposed === true`) instead of keeping it (`fail-before-A29.log`).
+
+Post-fix on the final sources: A28 + A29 [exit code: 0] — GREEN (`post-fix-arms.log`).

@@ -1,0 +1,11 @@
+--- a/packages/mpd-cellwork-plugin/src/protocol.ts
++++ b/packages/mpd-cellwork-plugin/src/protocol.ts
+@@ -1062,7 +1062,7 @@
+         /** One parsed journal row. */
+         const row = JSON.parse(line) as Record<string, unknown>
+         // THIS SEAT ONLY: another member's hand-over row is never ownership evidence for this one (A26).
+-        if (row.member !== memberName) continue
++        // MUTATION (A26b witness): the member guard is dropped, so a GLOBAL journal scan would count.
+         /** The hand-over this row records, when it records one. */
+         const handover = handoverOf(row)
+         if (handover === undefined) continue

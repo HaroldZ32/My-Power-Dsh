@@ -1,0 +1,167 @@
+{
+  "round": "PR #109 repair round 8 — blind FAIL rec-20261111T061440-a5c0b9 (F1 Medium = M1, F2 Nit = N1)",
+  "branch": "fix/cellwork-reseed",
+  "head": "2a5126cd (uncommitted round-1..7 wave retained; this round edits no commit history)",
+  "contract": {
+    "path": ".mpd/plans/cellwork-reseed-fix.md",
+    "sections": [
+      "§3 A11",
+      "§3 A24/A26 (arms strengthened)",
+      "§3 A27 (added this round)"
+    ],
+    "verdict_being_repaired": "rec-20261111T061440-a5c0b9"
+  },
+  "landings": {
+    "F1_M1_record_first_evidence": {
+      "code": [
+        "protocol.ts#handleEvidenceOf: record-first decision — handleRecordCurrent = the CURRENT TEAM executorRef or CELL row names the requested handle; when true the handle is evidenced and supersededBy is never set, regardless of the journal",
+        "protocol.ts#handleEvidenceOf: recordNamesAny = either current row names ANY handle; the journal's latest hand-over decides only when neither does (record-silent branch). When a current row names a DIFFERENT handle the request is refused and journal recency may only classify the refusal (superseded vs unevidenced)",
+        "protocol.ts#handleEvidenceOf: new markers handleRecordCurrent (record names the requested handle) and journalHandoverOlder (record names a different handle AND its write instant is provably later than the journal's last hand-over stamp)",
+        "protocol.ts#recordMtimeOf + rebindSeats: recordAt = snapshot.updatedAt ?? file mtime, passed into handleEvidenceOf; the marker is omitted when the ordering cannot be proven",
+        "protocol.ts#evidenceFieldsOf/landed/member-rebound: both markers are carried on every outcome and the member-rebound journal row",
+        "protocol.ts#handle-superseded detail: REMOVED 'pass <latest.handle>'; the refusal now states the record's current handle, the journal's last hand-over event/handle/time, and asks to reconcile — it never chooses a direction",
+        "protocol.ts#render: the superseded line now reads 'the journal's last hand-over journal:<event> named <handle>; reconcile before re-pointing' (no arrow/direction); success lines show record-current / journal-hand-over-older",
+        "protocol.ts#tool description + output schema: the precedence is documented in the shipped schema text"
+      ],
+      "docs": [
+        "docs/cellwork.md — 'The current record wins; the journal only corroborates'; the crash window and the markers are documented; tool table + journal table updated",
+        "docs/cellwork.zh-CN.md — same, 简体中文",
+        "packages/mpd-cellwork-plugin/README.md — same precedence in the reseed/rebind paragraph",
+        "packages/mpd-cellwork-plugin/README.zh-CN.md — same, 简体中文"
+      ]
+    },
+    "F2_N1_failure_path_fields": {
+      "A24_added": [
+        "outcome.previousSessionId = CURRENT",
+        "outcome.previousSessionIdLiveness = 'live'",
+        "outcome.detail does not contain 'pass '",
+        "failed.namedBy = ['journal:compaction']",
+        "failed.previousSessionId = CURRENT",
+        "failed.previousSessionIdLiveness = 'live'"
+      ],
+      "A26b_added": [
+        "outcome.previousSessionId = OLD_HANDLE",
+        "outcome.previousSessionIdLiveness = 'live'",
+        "failed.namedBy = []",
+        "failed.previousSessionId = OLD_HANDLE",
+        "failed.previousSessionIdLiveness = 'live'"
+      ],
+      "choice": "assert the shipped fields (the implementation already carried them); the docs claim was NOT narrowed"
+    }
+  },
+  "arms": {
+    "A27_main": {
+      "seed": "TEAM row executorRef=CURRENT (mode member); CELL row sessionId/executorRef=CURRENT; record.updatedAt=2026-11-11T00:05:00.000Z; journal carries ONE hand-over row for this seat: compaction newHandle=OLD_HANDLE at 2026-11-11T00:02:00.000Z (the record write postdates the last hand-over and has no journal row of its own); rebind request = CURRENT",
+      "asserts": [
+        "outcome.rebound=true, reason=undefined, supersededBy=undefined, handle=CURRENT",
+        "outcome.handleRecordCurrent=true, outcome.journalHandoverOlder=true",
+        "JSON.stringify(outcome) and the declared render contain neither OLD_HANDLE nor 'pass '",
+        "TEAM executorRef and CELL sessionId/executorRef still CURRENT (no backwards re-point)",
+        "member-rebound row: handle=CURRENT, handleRecordCurrent=true, journalHandoverOlder=true; no member-rebind-failed row"
+      ],
+      "premise": "the round-7 code refuses this exact seed with handle-superseded and advises passing OLD_HANDLE (see fail-before)"
+    },
+    "A27_control": {
+      "seed": "TEAM row names NO executorRef; CELL row sessionId='' and executorRef=''; journal rows (oldest first): compaction newHandle=OLD_HANDLE at 00:02Z, compaction newHandle=CURRENT at 00:03Z",
+      "asserts": [
+        "rebind OLD_HANDLE -> rebound=false, reason='handle-superseded', namedBy=['journal:compaction'], supersededBy.handle=CURRENT (the OLDER row is never evidence)",
+        "detail does not contain 'pass '",
+        "TEAM executorRef stays undefined",
+        "rebind CURRENT -> rebound=true, namedBy=['journal:compaction'], handleRecordCurrent undefined, TEAM executorRef=CURRENT (the journal still decides when the record is silent)"
+      ]
+    }
+  },
+  "fail_before": {
+    "source": "protocol.ts restored from evidence/cellwork/reseed-fix/2026-11-11T06-27-13Z/round7-src/protocol.ts, sha256 f15ce3b452163248d7439cb2ddebc313044c4266435bdd3e9c82e17161caf9a7 == round-7 final-sources.sha256.txt",
+    "cmd": ".toolchain/node_modules/.bin/bun test packages/mpd-cellwork-plugin/test/reseed-binding.test.ts",
+    "result": "37 pass / 3 fail / 364 expect() calls / exit 1",
+    "reds": {
+      "A24": "test line 1758 expect(detail).not.toContain('pass ') -> received the round-7 sentence ending '... pass \"<CURRENT>\" (or repair the record that row names)'",
+      "A27_main": "test line 1935 expect(outcome.rebound).toBe(true) -> received false (round-7 refused the record-current handle as handle-superseded)",
+      "A27_control": "test line 1996 expect(detail).not.toContain('pass ') -> received the round-7 sentence '... pass \"<CURRENT>\" ...'"
+    },
+    "restore": "working protocol.ts restored byte-for-byte to sha256 573c05d6925a9ad23c41e97a883215a83c279b20bc7fc37e1500ca57d3da9206",
+    "log": "evidence/cellwork/reseed-fix/2026-11-11T06-27-13Z/fail-before-A27.log"
+  },
+  "gates": [
+    {
+      "cmd": "bun run typecheck",
+      "exit": 0,
+      "observed": "$ tsgo --noEmit (no diagnostics)",
+      "log": "evidence/cellwork/reseed-fix/2026-11-11T06-27-13Z/gate-typecheck.log"
+    },
+    {
+      "cmd": "bun run verify:comments",
+      "exit": 0,
+      "observed": "PASS — every declaration in the family carries a precise comment and a full signature; 633 files / 58265 declarations",
+      "log": "evidence/cellwork/reseed-fix/2026-11-11T06-27-13Z/gate-comments.log"
+    },
+    {
+      "cmd": "bun run verify:docs",
+      "exit": 0,
+      "observed": "pairs=59 failed=0 violations=0 exempt=24 derived=3 links=626 dead=0 — PASS",
+      "log": "evidence/cellwork/reseed-fix/2026-11-11T06-27-13Z/gate-docs.log"
+    },
+    {
+      "cmd": ".toolchain/node_modules/.bin/bun test packages/mpd-cellwork-plugin/test/reseed-binding.test.ts",
+      "exit": 0,
+      "observed": "40 pass / 0 fail / 395 expect() calls",
+      "log": "evidence/cellwork/reseed-fix/2026-11-11T06-27-13Z/post-fix-arms.log"
+    },
+    {
+      "cmd": "bun test packages/mpd-cellwork-plugin",
+      "exit": 0,
+      "observed": "409 pass / 0 fail / 4013 expect() calls across 34 files",
+      "log": "evidence/cellwork/reseed-fix/2026-11-11T06-27-13Z/gate-tests-package.log"
+    },
+    {
+      "cmd": "bun test packages",
+      "exit": 0,
+      "observed": "4041 pass / 6 skip / 0 fail / 53588 expect() calls across 261 files",
+      "log": "evidence/cellwork/reseed-fix/2026-11-11T06-27-13Z/gate-tests-all.log"
+    },
+    {
+      "cmd": ".toolchain/node_modules/.bin/bun build packages/mpd-cellwork-plugin/src/index.ts --target node --format esm --outfile packages/mpd-cellwork-plugin/dist/index.js",
+      "exit": 0,
+      "observed": "Bundled 31 modules; dist sha256 458d40f58a3e003cd056809a96d0e53c091432401fb901777373247121ce0457",
+      "log": "evidence/cellwork/reseed-fix/2026-11-11T06-27-13Z/gate-dist-build.log"
+    },
+    {
+      "cmd": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "observed": "ok: 34/34 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED (prebuilt vendored serve.js); build toolchain bun 1.4.0 from .toolchain",
+      "log": "evidence/cellwork/reseed-fix/2026-11-11T06-27-13Z/gate-dist-fresh.log"
+    }
+  ],
+  "final_hashes": {
+    "packages/mpd-cellwork-plugin/src/protocol.ts": "573c05d6925a9ad23c41e97a883215a83c279b20bc7fc37e1500ca57d3da9206",
+    "packages/mpd-cellwork-plugin/src/protocol-core.ts": "36aec4e6a07ab5cf3f7bc729e0683c33e822e180315308566ebdc03b3d9b6cd6 (unchanged from round 7)",
+    "packages/mpd-cellwork-plugin/src/index.ts": "855ac94364b766f29ce250acca0fb71f91814c0946b4885ef4807552af42ad1b (unchanged from round 7)",
+    "packages/mpd-cellwork-plugin/test/reseed-binding.test.ts": "f8c1179ec5d798a89b9bd3d1f266f136fa912f11bd04ac9aeab767b0a56f4593",
+    "docs/cellwork.md": "b7c080eb7aca601e708d2ed01b21470cf0830ee45cc22a8fd01c3e32e456779a",
+    "docs/cellwork.zh-CN.md": "f73295245e37e052b246375c14435ccf75f6bc88a932d5773b511e3720269c34",
+    "packages/mpd-cellwork-plugin/README.md": "1f034a764dff778f34f9993ad78a425e384b79e9df02ecb5e3890dc88957799d",
+    "packages/mpd-cellwork-plugin/README.zh-CN.md": "631f491b9bbd56e9d7e8decf60c0a25a1f22a53a5a42cbb7b2c3f5892caebcc6",
+    "packages/mpd-cellwork-plugin/dist/index.js": "458d40f58a3e003cd056809a96d0e53c091432401fb901777373247121ce0457"
+  },
+  "bounds": [
+    "A request named by the journal's LATEST row but by NEITHER current record is refused (handle-unevidenced) when the record names a DIFFERENT handle: F1 makes the record authoritative and limits journal recency to the record-silent case. This is a deliberate behaviour change from round 7 and is documented in bounds.md.",
+    "journalHandoverOlder is emitted only when the record write instant (updatedAt or mtime) and the journal row `at` are both known and the row provably predates the record; otherwise the marker is omitted, never guessed.",
+    "A27 asserts the rebind entry and its render, not the whole cellwork_dispatch answer (unrelated board rows may still name the terminal old owner by F3 history).",
+    "The cross-process compare/rename residual and every other round-1..7 bound are unchanged."
+  ],
+  "not_touched": [
+    "packages/mpd-dsh-adapter-plugin/**",
+    "packages/mpd-team-core-plugin/**",
+    "packages/mpd-cellwork-plugin/src/{elastic,staging,split,flow}.ts",
+    "no git write operation was run"
+  ],
+  "files": {
+    "evidenceDir": "evidence/cellwork/reseed-fix/2026-11-11T06-27-13Z",
+    "fail_before_log": "evidence/cellwork/reseed-fix/2026-11-11T06-27-13Z/fail-before-A27.log",
+    "round7_baseline": "evidence/cellwork/reseed-fix/2026-11-11T06-27-13Z/round7-src.sha256.txt",
+    "src_diff_vs_round7": "evidence/cellwork/reseed-fix/2026-11-11T06-27-13Z/round8-src.diff",
+    "wave_diff_vs_round7": "evidence/cellwork/reseed-fix/2026-11-11T06-27-13Z/round8-wave.diff",
+    "bounds": "evidence/cellwork/reseed-fix/2026-11-11T06-27-13Z/bounds.md"
+  }
+}
