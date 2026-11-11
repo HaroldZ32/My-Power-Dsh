@@ -8,13 +8,14 @@ import { createTeamActionsDouble } from "./lib/team-actions-double.ts"
 // in-process, and whose `subagents` service raises team members. Every workspace is a fresh temp
 // directory, and every assertion reads what the plugin actually wrote there.
 import { test, expect } from "bun:test"
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs"
-import { join } from "node:path"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs"
+import { dirname, join } from "node:path"
 import { tmpdir } from "node:os"
 import { apply } from "../src/index.ts"
 import { materializeSplit, type ActivateDeps } from "../src/activate.ts"
 import { DEFAULT_CELLWORK_CONFIG } from "../src/config.ts"
 import { journalPath, readActiveCell, readCell, statePath } from "../src/state.ts"
+import { teamRecordPath } from "../../mpd-team-core-plugin/src/team-store.ts"
 import { readSplit } from "../src/split.ts"
 import type { DispatchMemberView, DispatchRecordView } from "../src/dispatch.ts"
 
@@ -58,6 +59,18 @@ interface Injection {
   taskFailAt: number
   /** Throw on the team-record read the DISPATCH stage performs (after the loops, before any send). */
   dispatchReadThrows: boolean
+  /** Fail the MEMBER the mint stages on the not-yet-approved plan (the seed seat), once. */
+  mintMemberFails: boolean
+  /** Fail the `delete` the mint performs to leave a failed slot clean, once. */
+  deleteFails: boolean
+  /**
+   * Team ids whose record the service answers as UNREADABLE while a record FILE still exists on disk.
+   *
+   * This is the M2 shape: absent, unparsable, a different version and a transient read failure all
+   * collapse to the same `undefined` at the reader, so the plugin must consult the path to tell them
+   * apart instead of minting a duplicate team beside a live-but-momentarily-unreadable one.
+   */
+  unreadableTeamIds: string[]
 }
 
 /** The full fake harness one arm drives. */
@@ -161,7 +174,7 @@ function makeHarness(): Harness {
   /** Whether the dispatch-stage read has already been made to throw. */
   let dispatchReadThrown = false
   /** The injection switches, read by the doubles below. */
-  const injection: Injection = { openFailAt: 0, memberFailAt: 0, taskFailAt: 0, dispatchReadThrows: false }
+  const injection: Injection = { openFailAt: 0, memberFailAt: 0, taskFailAt: 0, dispatchReadThrows: false, mintMemberFails: false, deleteFails: false, unreadableTeamIds: [] }
   /** The captain's handle. */
   const captain: FakeAgent = { id: "session-captain", session: { id: "session-captain", header: { cwd: workspace } }, followup: (): void => { events.push("submit") } }
   /**
@@ -170,7 +183,7 @@ function makeHarness(): Harness {
    * @param args - its arguments.
    * @returns the harness-shaped raw result.
    */
-  const answerTool = (name: string, args: Record<string, any>): { isError: boolean; value: unknown } => {
+  const answerTool = (name: string, args: Record<string, any>): { isError: boolean; value?: unknown; error?: Error } => {
     if (name === "agent_teams_plan") {
       /** The plan action the fake answers. */
       const action = String(args.action ?? "")
@@ -179,15 +192,26 @@ function makeHarness(): Harness {
         plan = { planId: "plan-1", name: args.name, description: args.description, approval: "required", members: [], tasks: [] }
         return { isError: false, value: { plan } }
       }
+      if (action === "delete") {
+        // THE MINT'S CLEANUP: a failed member append archives the empty slot, and the answer is CHECKED.
+        events.push("delete-plan")
+        if (injection.deleteFails) return { isError: true, error: new Error("the injected plan-delete failure") }
+        plan = null
+        return { isError: false, value: { archived: true } }
+      }
       if (action === "add_member") {
         events.push("add-member")
         /** The member row the caller asked for. */
         const member = args.member as Record<string, any>
         if (plan !== null && plan.approvedAt === undefined) {
+          // THE MINT'S SEED MEMBER is staged on the not-yet-approved plan; this is its own failure arm.
+          if (injection.mintMemberFails) return { isError: true, error: new Error("the injected plan-member failure") }
           plan.members.push(member)
           return { isError: false, value: { plan } }
         }
         if (record === null) throw new Error("no plan and no team")
+        // THE REAL TEAM PLANE REFUSES A LIVE APPEND TO AN ENDED TEAM (its live arms filter `endedAt`).
+        if (record.endedAt !== undefined) return { isError: true, value: { error: "no team is staged in this session — call `agent_teams_plan {action:\"create\"}` first" } }
         memberAttempts.push(String(member.name))
         if (injection.memberFailAt === memberAttempts.length) return { isError: true, value: { error: "the injected raise failure for " + String(member.name) } }
         if (record.members.some((row: Record<string, any>) => row.name === member.name)) return { isError: true, value: { error: "teammate " + JSON.stringify(String(member.name)) + " is already on the roster" } }
@@ -207,6 +231,7 @@ function makeHarness(): Harness {
           return { isError: false, value: { plan } }
         }
         if (record === null) throw new Error("no plan and no team")
+        if (record.endedAt !== undefined) return { isError: true, value: { error: "no team is staged in this session — call `agent_teams_plan {action:\"create\"}` first" } }
         taskAttempts.push(String(task.subject))
         if (injection.taskFailAt === taskAttempts.length) return { isError: true, value: { error: "the injected append failure for " + String(task.subject) } }
         /** The board id the append mints. */
@@ -219,7 +244,12 @@ function makeHarness(): Harness {
       if (action === "approve") {
         if (plan === null) throw new Error("no plan")
         record = {
-          teamId: "team-1",
+          // A FRESH ID PER APPROVAL: the ended planning team keeps its own record (`team-1`), so a mint
+          // is visible as a DIFFERENT team rather than an overwrite of the dead one.
+          teamId: "team-" + String(teamRecords.size + 1),
+          // THE PHASE A REAL APPROVAL WRITES: every seed member is running, so team-core derives `active`.
+          // The exact value is asserted by the MINT arm (N3), never merely "not ended".
+          phase: "active",
           members: plan.members.map((member: Record<string, any>, index: number) => {
             /** The executor handle the approval mints for this member. */
             const executorRef = "handle-" + String(member.name)
@@ -228,7 +258,7 @@ function makeHarness(): Harness {
           }),
           tasks: plan.tasks.map((task: Record<string, any>, index: number) => ({ ...task, id: "T" + String(index + 1), status: "pending" })),
         }
-        teamRecords.set("team-1", record)
+        teamRecords.set(String(record.teamId), record)
         /** The created rows the approval answer reports. */
         const created = { members: record.members.map((member: Record<string, any>) => ({ name: member.name, id: member.executorRef })), tasks: record.tasks.map((task: Record<string, any>) => ({ subject: task.subject, id: task.id })) }
         plan = { ...plan, approvedAt: "now" }
@@ -278,7 +308,7 @@ function makeHarness(): Harness {
     // `mpdTeamActions` now, so this harness answers it with the shared in-memory plane over the SAME
     // record map `mpdTeams` answers, delivering into `sends`.
     mpdTeamActions: createTeamActionsDouble({
-      record: () => teamRecords.get("team-1") as unknown as Parameters<typeof createTeamActionsDouble>[0]["record"] extends () => infer R ? R : never,
+      record: () => record as unknown as Parameters<typeof createTeamActionsDouble>[0]["record"] extends () => infer R ? R : never,
       send: (handle: string, text: string) => { sends.push({ handle, text }) },
     }).service,
     mpdTeams: {
@@ -293,6 +323,9 @@ function makeHarness(): Harness {
           dispatchReadThrown = true
           throw new Error("the injected dispatch-stage team read failed")
         }
+        // M2: the reader collapses every failure to `undefined`; the FILE on disk is what tells the
+        // plugin "exists but unreadable" from "absent" (the arm writes it).
+        if (injection.unreadableTeamIds.includes(teamId)) return undefined
         return teamRecords.get(teamId)
       },
     },
@@ -1014,4 +1047,376 @@ test("F3: the cellwork_activate schema DECLARES `reused` and the description nam
   expect(description).toContain(["opens a verify loop for EVERY code task", "that has none yet", "BEFORE dispatch"].join(" "))
   expect(description).toContain(["A failed pass is checkpointed", "and the SAME accepted revision resumes it"].join(" "))
   expect(description).toContain(["a newer accepted revision", "supersedes an older in-flight one"].join(" "))
+})
+
+// ── the AUTO-END mint (release 0.18.2 defect ①): activation must MINT, never refuse ──────────
+
+test("MINT: a planning board ended before activation is replaced by a fresh execution team", async () => {
+  /** The harness with an accepted split. */
+  const harness = makeHarness()
+  /** The cell id. */
+  const cellId = await startCell(harness)
+  await finalizeRequirements(harness)
+  await submitSplit(harness)
+  // THE MEASURED FIELD STATE: mpd-roles' clean-terminal auto-end stamps the planning record `ended`
+  // between the split's acceptance and the captain's next step. The record still EXISTS; it is not live.
+  /** The planning record the cell names. */
+  const planning = harness.teamRecords.get("team-1")
+  if (planning === undefined) throw new Error("the planning team record is missing")
+  planning.phase = "ended"
+  planning.endedAt = "2026-11-11T00:00:00.000Z"
+  /** The planning board's row count before activation, so the arm proves it was not written again. */
+  const planningTasksBefore = planning.tasks.length
+  /** The record before activation: the dead planning team is the only id the cell knows. */
+  const before = readStateJson(harness.workspace, cellId)
+  expect(before.teamId).toBe("team-1")
+  expect(before.planningTeamId).toBe("")
+  /** The activation that must mint. */
+  const activated = await runTool(harness, "cellwork_activate", {})
+  expect(activated.ok).toBe(true)
+  // THE REPLY CARRIES THE MINT (blind review M2): an operator sees the execution team and WHY it was
+  // created without opening the journal, and `ended` is distinguishable from `absent`.
+  expect(activated.mintedTeamId).toBe("team-2")
+  expect(activated.mintTrigger).toBe("ended")
+  // THE TWO-ID STATE docs/cellwork.md promises: the execution board is a NEW team, the ended planning
+  // team survives as `planningTeamId`.
+  /** The record after activation. */
+  const after = readStateJson(harness.workspace, cellId)
+  expect(after.teamId).toBe("team-2")
+  expect(after.planningTeamId).toBe("team-1")
+  expect(after.phase).toBe("executing")
+  expect(after.activatedRevision).toBe(1)
+  expect(Object.keys(after.activatedTasks).sort()).toEqual(["auth-core", "auth-review", "cli-core", "cli-review"])
+  // M1: THE MARKER IS CLEARED BY A SUCCESSFUL MINT — step 0 accepts `mintedTeamId` on its own authority
+  // EVEN WHEN THAT TEAM READS TERMINAL, so a marker left behind after success would make a LATER re-split
+  // land on the execution team after it ended. Empty here means step 0 is inert from now on.
+  expect(after.mintedTeamId).toBe("")
+  // THE MINTED BOARD carries every split row; the ended record was never written again.
+  /** The minted team record. */
+  const minted = harness.teamRecords.get("team-2")
+  if (minted === undefined) throw new Error("no execution team was minted")
+  expect(minted.tasks.length).toBe(4)
+  // THREE distinct owners: the seed member (Senior Engineer) plus Reviewer and Deep Worker; both review
+  // tasks name the same `Reviewer`, so the pass raises it once (contract C1).
+  expect(minted.members.length).toBe(3)
+  expect(planning.endedAt).toBe("2026-11-11T00:00:00.000Z")
+  // The ended record was never appended to: its board is byte-for-byte the staging shape it had.
+  expect(planning.tasks.length).toBe(planningTasksBefore)
+  // The journal names the mint and the replaced board, so a later reader can reconstruct the path.
+  /** The activation journal row. */
+  const row = journalEntries(harness.workspace, cellId).find((entry) => entry.event === "activate")
+  expect(row?.mintedTeamId).toBe("team-2")
+  expect(row?.planningTeamId).toBe("team-1")
+  expect(row?.teamId).toBe("team-2")
+  // N3: the PHASE IS EXACT. "not ended" also passes for a missing/unknown phase, which is exactly the
+  // looseness the blind review flagged; a real approval derives `active` (every seed member is running).
+  expect(minted.phase).toBe("active")
+  // M2: the mint trigger is a durable, distinguishable fact on the journal row.
+  expect(row?.mintTrigger).toBe("ended")
+})
+
+test("MINT NEGATIVE CONTROL: a LIVE planning board is still addressed in place (no second team)", async () => {
+  /** The harness with an accepted split on a team that is still live. */
+  const harness = makeHarness()
+  /** The cell id. */
+  const cellId = await startCell(harness)
+  await finalizeRequirements(harness)
+  await submitSplit(harness)
+  /** The `create` calls staging already spent, so the delta measures activation alone. */
+  const createsBefore = harness.calls.filter((call) => call.name === "agent_teams_plan" && call.arguments.action === "create").length
+  /** The activation on the live record. */
+  const activated = await runTool(harness, "cellwork_activate", {})
+  expect(activated.ok).toBe(true)
+  // THE NORMAL PATH IS UNCHANGED: one team exists, the record's own id is the execution board, and no
+  // `create` was spent minting a replacement.
+  expect(harness.teamRecords.size).toBe(1)
+  expect(readStateJson(harness.workspace, cellId).teamId).toBe("team-1")
+  expect(readStateJson(harness.workspace, cellId).planningTeamId).toBe("")
+  /** The `create` calls activation itself made. */
+  const creates = harness.calls.filter((call) => call.name === "agent_teams_plan" && call.arguments.action === "create").length
+  expect(creates - createsBefore).toBe(0)
+})
+
+// ── H1: a FAILED mint is resumable — the retry lands on the team the failure created ──────────────
+
+/**
+ * Start a cell whose planning team has been ENDED, which is the state that forces a mint.
+ *
+ * @param harness - the harness.
+ * @returns the cell id and the ended planning record.
+ */
+async function endedPlanningCell(harness: Harness): Promise<{ cellId: string; planning: Record<string, any> }> {
+  /** The cell id. */
+  const cellId = await startCell(harness)
+  await finalizeRequirements(harness)
+  await submitSplit(harness)
+  /** The planning record the cell names. */
+  const planning = harness.teamRecords.get("team-1")
+  if (planning === undefined) throw new Error("the planning team record is missing")
+  planning.phase = "ended"
+  planning.endedAt = "2026-11-11T00:00:00.000Z"
+  return { cellId, planning }
+}
+
+/**
+ * How many `agent_teams_plan {action:"create"}` calls a harness has made (staging included).
+ *
+ * @param harness - the harness.
+ * @returns the count.
+ */
+function createCalls(harness: Harness): number {
+  return harness.calls.filter((call) => call.name === "agent_teams_plan" && call.arguments.action === "create").length
+}
+
+/**
+ * How many LIVE board-append calls a harness has attempted (`add_member` plus `create_task`).
+ *
+ * Staging writes are included, which is why every arm compares a BEFORE and an AFTER count: the delta is
+ * what the pass under test added.
+ *
+ * @param harness - the harness.
+ * @returns the count.
+ */
+function teamWriteCalls(harness: Harness): number {
+  return harness.calls.filter((call) => call.name === "agent_teams_plan" && (call.arguments.action === "add_member" || call.arguments.action === "create_task")).length
+}
+
+test("MINT RETRY A: a failure BEFORE the first board row reuses the minted team; `create` stays spent once", async () => {
+  /** The harness on an ended planning board. */
+  const harness = makeHarness()
+  /** The cell and the dead planning record. */
+  const { cellId, planning } = await endedPlanningCell(harness)
+  /** The board rows the planning team carried before activation (it must stay untouched). */
+  const planningTasksBefore = planning.tasks.length
+  /** The `create` calls staging spent before activation. */
+  const createsBefore = createCalls(harness)
+  // FAIL BEFORE ANY BOARD ROW: the first LIVE member append (Reviewer; the seed member was raised by the
+  // mint's own approval) is refused after the mint succeeded and before `create_task` ever ran.
+  harness.injection.memberFailAt = 1
+  /** The failed pass. */
+  const failed = await runTool(harness, "cellwork_activate", {})
+  expect(failed.ok).toBe(false)
+  // THE FAILURE REPLY NAMES THE MINT TOO, so the captain knows which team the retry will address.
+  expect(failed.mintedTeamId).toBe("team-2")
+  // THE MINT IS PERSISTED ON THE FAILURE PATH: the team id, the marker and the trigger, on the cell
+  // record AND on the journal row, so the retry has something to reuse.
+  /** The cell record after the failed pass. */
+  const partial = readStateJson(harness.workspace, cellId)
+  expect(partial.mintedTeamId).toBe("team-2")
+  expect(partial.teamId).toBe("team-2")
+  expect(partial.planningTeamId).toBe("team-1")
+  expect(Object.keys(partial.activatedTasks).length).toBe(0)
+  /** The failure row the pass journaled. */
+  const failureRow = journalEntries(harness.workspace, cellId).filter((entry) => entry.event === "cell-activation-partial").pop()
+  expect(failureRow?.mintedTeamId).toBe("team-2")
+  expect(failureRow?.minted).toBe(true)
+  expect(failureRow?.mintTrigger).toBe("ended")
+  expect(createCalls(harness)).toBe(createsBefore + 1)
+  // THE RETRY: the SAME accepted revision, no second mint.
+  harness.injection.memberFailAt = 0
+  /** The resumed pass. */
+  const retried = await runTool(harness, "cellwork_activate", {})
+  expect(retried.ok).toBe(true)
+  expect(createCalls(harness)).toBe(createsBefore + 1)
+  expect(harness.teamRecords.size).toBe(2)
+  expect(planning.tasks.length).toBe(planningTasksBefore)
+  /** The cell record after the successful retry. */
+  const after = readStateJson(harness.workspace, cellId)
+  expect(after.teamId).toBe("team-2")
+  expect(after.planningTeamId).toBe("team-1")
+  // M1: the retry's success CLEARS the marker too, so step 0 stops preferring the old minted id.
+  expect(after.mintedTeamId).toBe("")
+  // The minted board carries every split row: the retry appended to the team the FAILURE created.
+  expect(harness.teamRecords.get("team-2")?.tasks.length).toBe(4)
+})
+
+test("MINT RETRY B: a failure AFTER the first board row stays on the minted team and never touches the dead one", async () => {
+  /** The harness on an ended planning board. */
+  const harness = makeHarness()
+  /** The cell and the dead planning record. */
+  const { cellId, planning } = await endedPlanningCell(harness)
+  /** The `create` calls staging spent before activation. */
+  const createsBefore = createCalls(harness)
+  /** The dead record's bytes before the first pass, so the retry can be compared against them. */
+  const deadBefore = JSON.stringify(planning)
+  // FAIL AFTER EXACTLY ONE BOARD ROW: the second `create_task` is refused, so the partial records
+  // `auth-core`'s minted id and the retry has BOTH a mint and a board id to reconcile.
+  harness.injection.taskFailAt = 2
+  /** The failed pass. */
+  const failed = await runTool(harness, "cellwork_activate", {})
+  expect(failed.ok).toBe(false)
+  /** The cell record after the failed pass. */
+  const partial = readStateJson(harness.workspace, cellId)
+  expect(partial.mintedTeamId).toBe("team-2")
+  expect(partial.activatedTasks).toEqual({ "auth-core": "T1" })
+  /** The minted team record. */
+  const minted = harness.teamRecords.get("team-2")
+  if (minted === undefined) throw new Error("no execution team was minted")
+  expect(minted.tasks.length).toBe(1)
+  expect(createCalls(harness)).toBe(createsBefore + 1)
+  // THE RETRY.
+  harness.injection.taskFailAt = 0
+  /** The resumed pass. */
+  const retried = await runTool(harness, "cellwork_activate", {})
+  expect(retried.ok).toBe(true)
+  // THE DEAD RECORD IS BYTE-FOR-BYTE UNTOUCHED: every retry write landed on the minted team.
+  expect(JSON.stringify(planning)).toBe(deadBefore)
+  // The minted board GREW from one row to the whole split, and no second team was created.
+  expect(minted.tasks.length).toBe(4)
+  expect(harness.teamRecords.size).toBe(2)
+  expect(createCalls(harness)).toBe(createsBefore + 1)
+  /** The cell record after the successful retry. */
+  const after = readStateJson(harness.workspace, cellId)
+  expect(after.teamId).toBe("team-2")
+  expect(after.planningTeamId).toBe("team-1")
+  // M1: the retry's success CLEARS the marker too, so step 0 stops preferring the old minted id.
+  expect(after.mintedTeamId).toBe("")
+  expect(Object.keys(after.activatedTasks).length).toBe(4)
+})
+
+// ── H1-2: a READABLE TERMINAL recorded board is REFUSED, never a landing target ───────────────────
+
+test("H1-2: a re-split onto a READABLE TERMINAL recorded team is refused by name and appends nothing", async () => {
+  /** The harness with a successfully activated revision one. */
+  const harness = makeHarness()
+  /** The cell id. */
+  const cellId = await startCell(harness)
+  await finalizeRequirements(harness)
+  await submitSplit(harness)
+  /** The first activation: the planning team is still live, so `teamId` keeps naming it. */
+  const first = await runTool(harness, "cellwork_activate", {})
+  expect(first.ok).toBe(true)
+  /** The recorded execution board. */
+  const recorded = harness.teamRecords.get("team-1")
+  if (recorded === undefined) throw new Error("the recorded team is missing")
+  expect(readStateJson(harness.workspace, cellId).teamId).toBe("team-1")
+  // THE H1-2 SHAPE: the recorded team is READABLE and PROVEN TERMINAL. The resolver refuses it, so the
+  // fifth state must not quietly take it back and append to the dead board.
+  recorded.phase = "ended"
+  recorded.endedAt = "2026-11-11T01:00:00.000Z"
+  /** The dead record's bytes, so the arm can prove not one byte moved. */
+  const deadBefore = JSON.stringify(recorded)
+  /** The dead board's row count before the refused pass. */
+  const rowsBefore = recorded.tasks.length
+  // A NEW ACCEPTED REVISION: the requirements move on and revision two is accepted.
+  await runTool(harness, "cellwork_requirements", { action: "update", content: COMPLETE_REQUIREMENTS + "\n## Extra\nmore\n" }, plannerAgent(harness))
+  /** The accepted revision two. */
+  const rev2 = await runTool(harness, "cellwork_split", { action: "submit", tasks: revisionTwoTasks() }, splitterAgent(harness))
+  expect(rev2.accepted).toBe(true)
+  expect(rev2.revision).toBe(2)
+  /** The board-append calls before the re-split. */
+  const writesBefore = teamWriteCalls(harness)
+  /** The `create` calls before the re-split. */
+  const createsBefore = createCalls(harness)
+  /** The re-split that must REFUSE rather than append to the dead board. */
+  const refused = await runTool(harness, "cellwork_activate", {})
+  // NOTHING WAS APPENDED: on the pre-repair build the fifth state reached `add_member` on the ended board;
+  // the repaired pass refuses before the first team write. That delta is the behaviour this arm exists for.
+  expect(teamWriteCalls(harness)).toBe(writesBefore)
+  expect(refused.ok).toBe(false)
+  /** The refusal sentence. */
+  const sentence = String(refused.error)
+  expect(sentence).toContain("team-1")
+  expect(sentence).toContain("TERMINAL")
+  expect(sentence).toContain("never a landing target")
+  expect(sentence).toContain("REFUSES")
+  // THE DEAD RECORD IS BYTE-IDENTICAL, and no second team was created.
+  expect(JSON.stringify(recorded)).toBe(deadBefore)
+  expect(recorded.tasks.length).toBe(rowsBefore)
+  expect(createCalls(harness)).toBe(createsBefore)
+  // THE CELL RECORD IS UNTOUCHED: no partial checkpoint, no revision move and no phase change.
+  const after = readStateJson(harness.workspace, cellId)
+  expect(after.teamId).toBe("team-1")
+  expect(after.activatedRevision).toBe(1)
+  expect(after.activationInFlight).toBe(null)
+  expect(after.phase).toBe("executing")
+  /** The journal rows written so far. */
+  const rows = journalEntries(harness.workspace, cellId)
+  expect(rows.filter((row) => row.event === "activate" && row.splitRevision === 2).length).toBe(0)
+  expect(rows.filter((row) => row.event === "cell-activation-partial").length).toBe(0)
+})
+
+test("H1-2 NEGATIVE CONTROL: an UNREADABLE recorded team still takes the documented fifth state", async () => {
+  /** The harness with a successfully activated revision one. */
+  const harness = makeHarness()
+  /** The cell id. */
+  const cellId = await startCell(harness)
+  await finalizeRequirements(harness)
+  await submitSplit(harness)
+  /** The first activation: the planning team is still live, so it appends in place. */
+  const first = await runTool(harness, "cellwork_activate", {})
+  expect(first.ok).toBe(true)
+  /** The recorded execution board. */
+  const recorded = harness.teamRecords.get("team-1")
+  if (recorded === undefined) throw new Error("the recorded team is missing")
+  /** The board rows before the re-split's append. */
+  const rowsBefore = recorded.tasks.length
+  // THE CONTROL: the record still EXISTS (the object is right here) but no seam can READ it — the one
+  // case the documented fallback exists for (an old cell whose board no seam can read any more).
+  harness.injection.unreadableTeamIds = ["team-1"]
+  await runTool(harness, "cellwork_requirements", { action: "update", content: COMPLETE_REQUIREMENTS + "\n## Extra\nmore\n" }, plannerAgent(harness))
+  /** The accepted revision two. */
+  const rev2 = await runTool(harness, "cellwork_split", { action: "submit", tasks: revisionTwoTasks() }, splitterAgent(harness))
+  expect(rev2.accepted).toBe(true)
+  expect(rev2.revision).toBe(2)
+  // BEHAVIOUR UNCHANGED: the re-split continues on the RECORDED id and SAYS the resolution is unverified.
+  const resplit = await runTool(harness, "cellwork_activate", {})
+  expect(resplit.ok).toBe(true)
+  expect(resplit.revision).toBe(2)
+  expect(String(resplit.boardNote)).toContain("UNVERIFIED")
+  expect(String(resplit.boardNote)).toContain("team-1")
+  // AND IT REALLY APPENDED: the new revision's rows landed on the recorded board.
+  expect(recorded.tasks.length).toBeGreaterThan(rowsBefore)
+  /** The re-split's activation row. */
+  const activationRow = journalEntries(harness.workspace, cellId).find((row) => row.event === "activate" && row.splitRevision === 2)
+  expect(activationRow).toMatchObject({ boardResolution: "unverified" })
+  // The marker stays empty: the fifth state does not need it.
+  expect(readStateJson(harness.workspace, cellId).mintedTeamId).toBe("")
+})
+
+// ── M2: a record that EXISTS but cannot be read must not mint a duplicate team ────────────────────
+
+test("M2: an EXISTING but unreadable team record refuses the mint and names the path", async () => {
+  /** The harness with an accepted split. */
+  const harness = makeHarness()
+  await startCell(harness)
+  await finalizeRequirements(harness)
+  await submitSplit(harness)
+  /** The record path a real team-core row would occupy. */
+  const recordPath = teamRecordPath(harness.workspace, "team-1")
+  mkdirSync(dirname(recordPath), { recursive: true })
+  writeFileSync(recordPath, "{ this is not a team record\n")
+  // THE READ COLLAPSES TO `undefined` (a transient failure, a version mismatch and an unparsable body are
+  // one answer at the reader): the FILE is the evidence that the team EXISTS.
+  harness.injection.unreadableTeamIds = ["team-1"]
+  /** The `create` calls staging spent before activation. */
+  const createsBefore = createCalls(harness)
+  /** The refused activation. */
+  const failed = await runTool(harness, "cellwork_activate", {})
+  expect(failed.ok).toBe(false)
+  expect(String(failed.error)).toContain("could not be read")
+  expect(String(failed.error)).toContain(recordPath)
+  // FAIL-CLOSED: no second team, and no `create` spent on one.
+  expect(createCalls(harness)).toBe(createsBefore)
+  expect(harness.teamRecords.size).toBe(1)
+})
+
+// ── N2: the mint's cleanup answer is REPORTED, not assumed ────────────────────────────────────────
+
+test("N2: a failed mint member reports whether the empty plan slot was really deleted", async () => {
+  /** The harness on an ended planning board. */
+  const harness = makeHarness()
+  await endedPlanningCell(harness)
+  // BOTH the seed-member append AND the cleanup `delete` fail.
+  harness.injection.mintMemberFails = true
+  harness.injection.deleteFails = true
+  /** The refused activation. */
+  const failed = await runTool(harness, "cellwork_activate", {})
+  expect(failed.ok).toBe(false)
+  // The sentence names the MEMBER failure AND the failed cleanup, so an operator knows the slot is dirty.
+  expect(String(failed.error)).toContain("the injected plan-member failure")
+  expect(String(failed.error)).toContain("could NOT be deleted")
+  expect(String(failed.error)).toContain("the injected plan-delete failure")
+  expect(harness.calls.some((call) => call.name === "agent_teams_plan" && call.arguments.action === "delete")).toBe(true)
+  expect(harness.teamRecords.size).toBe(1)
 })

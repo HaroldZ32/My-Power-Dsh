@@ -371,7 +371,7 @@ describe("C7-4 F1 — a mid-run append lands on the APPROVED record", () => {
     /** The thrown refusal for a session that belongs to nothing. */
     const failure = await h.call("agent_teams_plan", { action: "create_task", task: { subject: "x", description: "d", blocked_by: [] } }, "sess-nobody").then(() => undefined, (error: unknown) => error)
     expect(failure).toBeInstanceOf(Error)
-    expect(String((failure as Error).message)).toBe("no team is staged in this session — call agent_teams_create first")
+    expect(String((failure as Error).message)).toBe("no team is staged in this session — call `agent_teams_plan {action:\"create\"}` first")
   })
 })
 

@@ -1,0 +1,24 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/activate-resume.test.ts:
+1310 |   const createsBefore = createCalls(harness)
+1311 |   /** The re-split that must REFUSE rather than append to the dead board. */
+1312 |   const refused = await runTool(harness, "cellwork_activate", {})
+1313 |   // NOTHING WAS APPENDED: on the pre-repair build the fifth state reached `add_member` on the ended board;
+1314 |   // the repaired pass refuses before the first team write. That delta is the behaviour this arm exists for.
+1315 |   expect(teamWriteCalls(harness)).toBe(writesBefore)
+                                         ^
+error: expect(received).toBe(expected)
+
+Expected: 11
+Received: 12
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/activate-mint-w4/head-76254694/packages/mpd-cellwork-plugin/test/activate-resume.test.ts:1315:35)
+(fail) H1-2: a re-split onto a READABLE TERMINAL recorded team is refused by name and appends nothing [15.79ms]
+(pass) H1-2 NEGATIVE CONTROL: an UNREADABLE recorded team still takes the documented fifth state [4.09ms]
+
+ 1 pass
+ 18 filtered out
+ 1 fail
+ 21 expect() calls
+Ran 2 tests across 1 file. [77.00ms]

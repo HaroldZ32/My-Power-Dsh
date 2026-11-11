@@ -1,0 +1,16 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/resolve-cell-team.test.ts:
+(pass) N1: the cellwork live-phase set is bound to team-core's TeamPhase and matches its live list [0.05ms]
+(pass) resolver: a TERMINAL recorded team is not a landing target, even when its board ids match [0.29ms]
+(pass) resolver: an UNREADABLE recorded team is NOT terminal — the fifth state stays available [0.03ms]
+(pass) resolver: a TERMINAL planning fallback is refused when the cell has no activated ids yet [0.02ms]
+(pass) resolver: the MINTED team a failed pass recorded is the FIRST candidate [0.02ms]
+(pass) resolver: an explicitly recorded MINTED id is accepted even if its own phase reads terminal [0.02ms]
+(pass) resolver NEGATIVE CONTROL: a LIVE recorded team still resolves on its matching board [0.06ms]
+(pass) resolver NEGATIVE CONTROL: an UNKNOWN phase spelling is not proven terminal, so it still resolves [0.02ms]
+
+ 8 pass
+ 0 fail
+ 18 expect() calls
+Ran 8 tests across 1 file. [191.00ms]

@@ -1,0 +1,23 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/activate-resume.test.ts:
+1270 |   harness.injection.unreadableTeamIds = ["team-1"]
+1271 |   /** The `create` calls staging spent before activation. */
+1272 |   const createsBefore = createCalls(harness)
+1273 |   /** The refused activation. */
+1274 |   const failed = await runTool(harness, "cellwork_activate", {})
+1275 |   expect(failed.ok).toBe(false)
+                           ^
+error: expect(received).toBe(expected)
+
+Expected: false
+Received: true
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/activate-resume.test.ts:1275:21)
+(fail) M2: an EXISTING but unreadable team record refuses the mint and names the path [14.19ms]
+
+ 0 pass
+ 17 filtered out
+ 1 fail
+ 4 expect() calls
+Ran 1 test across 1 file. [212.00ms]

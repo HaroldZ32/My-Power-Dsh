@@ -1,0 +1,4 @@
+FAIL (mint) after the clean-terminal auto-end, cellwork_activate mints a FRESH execution team and succeeds — activate.ok=false error=cellwork_activate could not raise "Senior Engineer": no team is staged in this session — call agent_teams_create first dead=team-20261111130716984-myxd-002(endedAt=2026-11-11T13:07:16.988Z) minted=(none)(phase=(none), tasks=0) cell.teamId=team-20261111130716984-myxd-002 cell.planningTeamId= phase=split revision=null deadRecordUntouched=true journal.mintedTeamId=(none)
+ok   (live) NEGATIVE CONTROL: a live planning board is addressed in place (no second team, no mint) — activate.ok=true teams=1[team-20261111130716993-myxd-004] cell.teamId=team-20261111130716993-myxd-004 cell.planningTeamId= phase=executing boardTasks=6 createsDuringActivation=0
+[cellwork-activate-mint] SELF-TEST FAIL (1/2 arms)
+qa_exit=1

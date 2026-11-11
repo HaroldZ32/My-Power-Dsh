@@ -1,0 +1,10 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/activate-resume.test.ts:
+(pass) N2: a failed mint member reports whether the empty plan slot was really deleted [12.50ms]
+
+ 1 pass
+ 17 filtered out
+ 0 fail
+ 9 expect() calls
+Ran 1 test across 1 file. [213.00ms]

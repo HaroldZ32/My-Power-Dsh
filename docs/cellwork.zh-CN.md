@@ -96,6 +96,15 @@ bundle 里除了 `/cellwork` 命令之外没有任何入口能启动这个模式
 的冻结合约会被视为已武装：该任务跳过，合约**不会**被重写（只有真正没有循环、或合约仍带着开环前占位句的任务才会
 新开一条）。只有在派发成功之后才写入 `activatedRevision`，所以再次失败仍会留下新的可续做记录。
 
+**铸出过执行 team 的失败同样可续做。** 当这一趟不得不铸队（规划板已是终态，或根本没有记录）随后失败时，
+检查点会带上这次铸队：`cell-activation-partial` 行与 cell 记录都点名 `mintedTeamId`（另带 `minted` 标记与
+`mintTrigger`），`teamId` 改为这个铸出的 team，已结束的规划 id 保留在 `planningTeamId`。因此重试会把该 cell
+视为**已经落在看板上**：解析器**第一步**先取铸出的 team，且**绝不**再铸第二个——再铸一次会让第一个 team 与它
+`approve` 时拉起的活种子席位变成无人可寻的孤儿。套件覆盖两种形态：在**第一条看板行落地之前**失败（没有记录任何
+看板 id）时，重试复用已铸 team，`create` 调用次数保持不变；在**已有至少一条看板行之后**失败时，重试的每次写入
+都落在铸出的看板上，而死掉的规划记录保持**逐字节不变**。激活**成功**后清空 `mintedTeamId`，因为此后
+`teamId` 就是执行 team。
+
 **更新的**被接受修订号会**取代**更旧的在飞部分激活：这一趟会记入 journal（`activation-in-flight-superseded`，
 点名两个修订号并说明更旧的部分产物被放弃），而新切分的物化会核对已记录的行：保留下来的键复用其看板 id，被去掉
 的工作按重切分规则标记 `cancelled`，因此旧产物既不会重复，也不会丢失。只有**低于**在飞修订号的被接受修订号会被
@@ -729,7 +738,7 @@ cell 内的智能体可以互相通信，不经过用户界面，也不经过队
 
 | 路径 | 内容 |
 |---|---|
-| `state.json` | cell 记录：阶段、队长 session、深度、父 cell、team id（**执行**看板——两者不同时，暂存 team 保留在 `planningTeamId`）、规划器/切分器 handle、被 stage 的切分票看板 id（`splitTaskId`）、成员及其模式（含可选的 `fenced`/`fencedReason`、`adopted: true` 与 `grown: true` 标记）、切分修订号、检查点、journal 游标，以及两个可选的「在飞激活」字段：`activationInFlight`（正在物化的被接受修订号）与 `activatedLoops`（切分键 → 验证循环 id） |
+| `state.json` | cell 记录：阶段、队长 session、深度、父 cell、team id（**执行**看板——两者不同时，暂存 team 保留在 `planningTeamId`）、规划器/切分器 handle、被 stage 的切分票看板 id（`splitTaskId`）、成员及其模式（含可选的 `fenced`/`fencedReason`、`adopted: true` 与 `grown: true` 标记）、切分修订号、检查点、journal 游标、可选的「在飞激活」字段 `activationInFlight`（正在物化的被接受修订号）与 `activatedLoops`（切分键 → 验证循环 id），以及 `mintedTeamId`——一次**失败**的激活铸出的执行 team；它让重试复用该 team 而不是再铸一个，并在激活**成功**后清空为 `""` |
 | `journal.jsonl` | 只追加的迁移：阶段、派发、检查点、压缩、晋升、拒绝，以及取代行（`split-superseded`、`activation-in-flight-superseded`）；一趟激活每个产物写一条紧凑的 `cell-activation-progress` 行、失败时只写一条完整的 `cell-activation-partial` 行，修复行是 `task-reassigned`、`dispatch-reassign`、`checkpoint-unrecoverable`、`member-adopted`、`member-unfenced`、`member-rebound`（`rebind` 修复；带 `previousSessionId`/`previousSessionIdLiveness`、`namedBy`（证据来源：`team`/`cell`/`journal:<event>`），记录压过更早 journal 行时带 F1 来源标记 `handleRecordCurrent`/`journalHandoverOlder`，看板那一半带 `tasksRebound`/`tasksNeedingRelease`，被保留子代理的孤儿行作证时带 `handleOrphanAdopted`，重指覆盖了另一个 handle 时还带 `displacedExecutorRef`/`displacedUnproven`）、`member-rebind-failed`（被拒绝的 `rebind` 条目或参数：`reason`、请求的 `handle`、`namedBy`、`previousSessionId`/`previousSessionIdLiveness`，被后续交接取代时带 `supersededBy`；文案绝不替操作员选择方向）、`seat-rebound`（三面绑定；若绑定覆盖了另一个 handle，它带 `displacedExecutorRef`/`displacedUnproven`）、`barrier-skipped`（`reseed-already-bound` 重入守卫）、`barrier-record-unreadable` 与 `barrier-failed`（过去只会 `warn` 的两条分支），以及 `dispatch-unfence-withheld`（`{rebind, unfence}` 合并调用里 `rebind` 没有完全落地：`reason` = `rebind-failed` or `cell-mirror-unconfirmed`、`members`、`failed:[{member, reason, cellRow?}]`、写明 `fence stayed closed` 的 `detail`，以及重跑用的 `next`） |
 | `mail.jsonl`（旧格式） | 统一**之前**的按 cell 邮件日志，仍会被**读取**并合并进视图；新邮件**不再**写在这里：它们住在 workspace 存储 `<workspace>/.mpd/team/mailbox.jsonl`，盖上本 cell 的 `teamId` 与 `cellId`（跨 cell 发送者还会盖上 `fromCell`），由 `cellwork_inbox` 读取，并在那里随后跟一条单独的 `wake` 记录说明唤醒尝试的结果；对**这些**旧格式行的确认会追加回本文件，而统一之后的行则在存储里确认 |
 | `requirements.md` | 经校验的需求文档，带修订号；一次变更会提升修订号并把切分标记为过期 |
@@ -751,19 +760,41 @@ cell id 形如 `cell-<UTC 时刻>`；子 cell 会记录 `parentCellId` 与 `dept
 ——规划 team 可以先变成 clean-terminal、执行 team 随后才铸出，而这正是本 bundle 的**常态**路径——因此每个
 读者都经**同一条**规则解析看板（cellwork 状态模块导出的 `resolveCellTeam`）：
 
-1. 记录的 `teamId`，仅当它的记录携带本 cell `activatedTasks` 里的某个看板 id（或该 cell 还没有已激活 id）时
-   才被接受；
+1. 记录的 `teamId`，仅当它的记录携带本 cell `activatedTasks` 里的某个看板 id（或该 cell 还没有已激活 id），
+   **且**该记录未被证明为终态（没有 `endedAt`、不是 `ended`、也不是手工改写的 `archived`）时才被接受。新建的
+   执行 team 从 `T1` 开始编号，与已结束的规划板**编号相同**，所以只靠 id 匹配分不清活板与死板；
 2. 否则为**团队平面**就本 cell 的队长 session 给出的解析结果——正是 `cellwork_dispatch` 走的同一条路径；
 3. 否则为「看板携带本 cell 已激活任务 id」的那个活跃 team；
 4. 否则回退到 `planningTeamId`，即保留的暂存 id（旧 cell 的回退）。
 
-**第五种状态是「未验证」回落，且只有重切分才会走。** 四步解析什么都没找到、而记录的 `teamId` 非空时，重切分
-（`activatedTasks` 已带看板 id 的 cell）仍继续使用**记录里的** id——旧 cell 可能指向一个任何接缝都读不到的看板，
-拒绝它会搁浅本来可续做的工作——但这个 id 是**被信任**而非被验证的：答复携带 `boardNote` 说明这一点，同一事实
-写入 journal（`boardResolution: "unverified"`），note 会打印记录 id，并在解析器看到另一个候选时连那个 id 一起
-打印——两个 id 都可见。note 是**提示性的**，不是拒绝：它说明工作只会追加到那条记录上，绝不叫操作者去跑
-`cellwork_start`（team id 确实已记录），看到它的操作者也不应新开 cell。**首次**激活绝不走这条路径（它没有已铸出
-的 id 可供核对记录），而记录 id 为空的重切分仍以 `cellwork_start` 的指引拒绝。
+**第 0 步先于以上四步**：cell 记录了 `mintedTeamId`（一次**失败**的激活铸出的执行 team，见「激活中途失败可以
+续做」）时，这个 id **就是**看板，按自身权威直接返回——即使它的 phase 读起来是终态，因为调用方点名的正是那块
+看板。它是区分两块编号相同的看板的**唯一**证据，也是重试绝不会再铸第二个 team 的原因。激活**成功**后清空该
+标记。终态规则适用于**其他每一个**候选（团队平面、已激活 id 扫描、规划回退）：终态记录永远不是落地目标；而本
+构建**不认识**的 phase 拼写不会被当成终态，旧记录因此仍能解析。这条规则可独立测试：`isTerminalTeamRecord` 与
+`resolveCellTeam` 都是导出的，`test/resolve-cell-team.test.ts` 覆盖了拒绝、铸出 id 优先与活板/旧记录对照臂。
+
+**铸队会写明触发原因，而不可读的记录会拒绝铸队。** 铸队在 journal 与答复里带 `mintTrigger`：规划记录是终态时
+为 `ended`，记录文件不存在时为 `absent`。**存在但读不出来**的记录——无法解析的正文、本构建读不了的版本、瞬时
+I/O 失败，读取器会把它们都塌成同一个 `undefined`——**不是**铸队的理由：这一趟会**拒绝**、点名记录的绝对路径并
+什么都不写。在一块暂时读不出的 team 旁边铸新队，会复制出一个席位可能仍在运行的 team，比一次重试更糟。
+
+**第五种状态是「未验证」回落，且只有重切分才会走——并且只在记录里的 team 读不出来、或不是终态时才走。**
+四步解析什么都没找到、而记录的 `teamId` 非空时，重切分（`activatedTasks` 已带看板 id 的 cell）仍继续使用
+**记录里的** id——旧 cell 可能指向一个任何接缝都读不到的看板，拒绝它会搁浅本来可续做的工作——但这个 id 是
+**被信任**而非被验证的：答复携带 `boardNote` 说明这一点，同一事实写入 journal
+（`boardResolution: "unverified"`），note 会打印记录 id，并在解析器看到另一个候选时连那个 id 一起打印——
+两个 id 都可见。note 是**提示性的**，不是拒绝：它说明工作只会追加到那条记录上，绝不叫操作者去跑
+`cellwork_start`（team id 确实已记录），看到它的操作者也不应新开 cell。**首次**激活绝不走这条路径（它没有已
+铸出的 id 可供核对记录），而记录 id 为空的重切分仍以 `cellwork_start` 的指引拒绝。
+
+**可读但终态的记录一律拒绝，绝不是落地目标。** 上面的回退只留给「任何接缝都读不到」的记录；当记录里的
+记录**可读**且被证明为终态（带 `endedAt`、`ended` 阶段，或手工改写的 `archived` 拼写）时，激活会**拒绝**这次
+重切分、在句子里点名那个 team id，并且什么都不写——不写合约、不拉成员、不追加看板行、不写部分检查点。静默
+追加到死看板正是这条规则要防的缺陷，「终态绝不是落地目标」优先于「旧 cell 必须还能跑」。恢复方式是**一块新的
+活跃执行看板**：本构建没有为「已经物化过某个修订」的 cell 重新铸执行看板的动词，因此 `cellwork_stop` 之后重新
+`/cellwork`（新的 cell id）才是随包提供的路径，新 cell 不继承已停止 cell 的看板。
+两句话永远不可能同时打印：`boardNote` 披露的是**被信任**的 id，而终态 id 永远到不了它那里。
 
 `cellwork_status`、`cellwork_supervise`、`cellwork_context`、`cellwork_stop` 的活任务守卫、座位解析、本 cell
 的需求重切分路径以及激活自己的写入，读的都是**这条解析**，绝不是裸字段。激活还会把执行看板 id **持久化**为
@@ -773,8 +804,9 @@ cell id 形如 `cell-<UTC 时刻>`；子 cell 会记录 `parentCellId` 与 `dept
 **分歧会被报告，绝不静默。** 记录的 id 与胜出的解析指向不同 team 时，界面会同时打印**两个** id 以及哪条解析
 胜出（若记录的 id 被否决，还会说明其看板不携带本 cell 的任何已激活任务）。`cellwork_stop` 的活任务守卫
 针对**解析出的** team 运行，所以那块看板还有活任务时，非强制 stop 会被**拒绝**；而 stop **不会**自己结束
-team——它的答复携带 `teamId`（它留下继续运行的执行 team）与 `endTeamCommand`（精确的重试动词
-`agent_teams_control {action:"end", team_id:"<id>"}`），渲染会把两者都打印出来。操作者停止 cell 后若想让
+team——**成功** stop 的答复才携带 `teamId`（它留下继续运行的执行 team）与 `endTeamCommand`（精确的重试动词
+`agent_teams_control {action:"end", team_id:"<id>"}`），渲染会把两者都打印出来。**被拒绝**的 stop 只回
+它那句 error，这是有意为之：任务还在跑时建议“结束该队”会与守卫自身的理由相反。操作者停止 cell 后若想让
 agent 退出，必须调用该动词。
 
 ## 配置
@@ -843,6 +875,11 @@ agent 退出，必须调用该动词。
 - **分析泳道没有自动超时。** 弃用的泳道由队长关闭；一个从不把发现邮件回来的泳道，插件不会重试。
 - **只保留一个切分修订。** 多泳道切分不在范围内：重切分是由需求 `update` 喂出一个**新的**被接受修订，
   绝不是两张同时活跃的切分图。
+- **终态铸出 id 的重试会被第 0 步接受，然后在看板上失败。** 解析器按自身权威返回 `mintedTeamId`——它是区分
+  两块编号相同看板的**唯一**证据——而这种接受**有意**在团队读起来是终态时依然成立。如果铸出的执行 team 在失败
+  与重试之间**结束**了，重试仍会指向它，最终由团队平面自己的拒绝来终止追加：这一趟仍然可续做，但在操作者介入
+  之前无法成功。第 0 步存在的意义是让重试留在它那次失败所创建的看板上，而不是复活一块已证明死掉的看板；
+  没有任何测试臂覆盖「铸出 team 已终态」的重试。
 - **不宣称做过真·LLM 端到端 cell 运行。** 单元测试用假上下文证明命令面、各模式下守卫的判定、状态存储、
   估算算术与协议逻辑；Wave-3 的 QA 用例证明命令已注册、其处理函数确实提交了指令，并复现挂载。两者都不是
   模型驱动的运行。

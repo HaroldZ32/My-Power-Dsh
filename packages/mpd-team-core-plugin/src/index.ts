@@ -2110,7 +2110,7 @@ export function apply(ctx: any): void {
         // feed every panel follows fires.
         /** The caller's live team, or the sentence saying why none unambiguous resolved. */
         const resolved = resolveForWrite(workspace, sessionId, lineage, delegated, sessionTitleOf(exec))
-        if (resolved.record === undefined) throw new Error(resolved.refusal ?? "no team is staged in this session — call agent_teams_create first")
+        if (resolved.record === undefined) throw new Error(resolved.refusal ?? "no team is staged in this session — call `agent_teams_plan {action:\"create\"}` first")
         // ── LEAD AUTHORIZATION ON THE LIVE ROSTER (PR #42 review F-A, CWE-862) ──
         // The staged-plan arm above is the caller's OWN staging file; this arm writes a LIVE team every
         // surface already reads, so it is the Lead's to change. `agent_teams_plan` is NOT on the
@@ -2264,7 +2264,7 @@ export function apply(ctx: any): void {
         // record through `addTeamTask` + `writeTeam`, carrying the requirement-chain fields.
         /** The caller's live team, or the sentence saying why none unambiguous resolved. */
         const resolved = resolveForWrite(workspace, sessionId, lineage, delegated, sessionTitleOf(exec))
-        if (resolved.record === undefined) throw new Error(resolved.refusal ?? "no team is staged in this session — call agent_teams_create first")
+        if (resolved.record === undefined) throw new Error(resolved.refusal ?? "no team is staged in this session — call `agent_teams_plan {action:\"create\"}` first")
         // ── LEAD AUTHORIZATION ON THE LIVE BOARD (PR #42 review F-A, CWE-862) ──
         // Same rule as the live roster arm: a member must not assign arbitrary ownership or
         // `write_scopes` on a running team's board. See that arm's comment for the narrowing.

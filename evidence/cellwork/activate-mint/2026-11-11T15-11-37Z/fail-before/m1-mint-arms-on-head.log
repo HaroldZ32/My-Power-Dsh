@@ -1,0 +1,13 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/activate-resume.test.ts:
+(pass) MINT: a planning board ended before activation is replaced by a fresh execution team [14.17ms]
+(pass) MINT NEGATIVE CONTROL: a LIVE planning board is still addressed in place (no second team) [2.79ms]
+(pass) MINT RETRY A: a failure BEFORE the first board row reuses the minted team; `create` stays spent once [3.11ms]
+(pass) MINT RETRY B: a failure AFTER the first board row stays on the minted team and never touches the dead one [2.90ms]
+
+ 4 pass
+ 16 filtered out
+ 0 fail
+ 69 expect() calls
+Ran 4 tests across 1 file. [86.00ms]

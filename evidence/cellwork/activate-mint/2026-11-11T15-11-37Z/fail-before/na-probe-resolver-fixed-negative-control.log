@@ -1,0 +1,22 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/na-probe-resolver.test.ts:
+15 |     workspace: "/ws",
+16 |     cell: { cellId: "cell-1", teamId: "team-1", planningTeamId: "", captainSessionId: "session-captain", activatedTasks: { "auth-core": "T1" } },
+17 |     teams: { get: (_workspace: string, teamId: string): unknown => (teamId === "team-1" ? dead : undefined) },
+18 |   })
+19 |   // THE DEFECT: no terminal check on this source, so the ended record wins on the colliding T1.
+20 |   expect(result.teamId).toBe("team-1")
+                             ^
+error: expect(received).toBe(expected)
+
+Expected: "team-1"
+Received: ""
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/activate-mint-w4/fixed/packages/mpd-cellwork-plugin/test/na-probe-resolver.test.ts:20:25)
+(fail) N-a PROBE: on 4affc62d the ENDED recorded team is resolved as the board (arm B's target) [0.52ms]
+
+ 0 pass
+ 1 fail
+ 1 expect() calls
+Ran 1 test across 1 file. [42.00ms]
