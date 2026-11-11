@@ -296,7 +296,7 @@ owner**、绝不替换的；在 cell 模式之外，**等声明的 owner 空出�
 | `cellwork_consult` | 规划器、副队长、成员 | 对本 cell 通过 `cellwork_delegate` 发起的咨询做 `list` / `wait` / `collect` / `cancel`：`list` 只列本 cell 的、监督器仍然记得的 id；`wait` 收敛到 1..60000 ms（默认 30000），超时返回 `state:\"running\"`；`collect` 返回报告并**释放**记录；`cancel` 中断子会话并记 `consult-cancelled`；不是本 cell 发起的 id 会被一句教学式拒绝 |
 | `cellwork_split` | 切分器 | `submit` 任务图让插件度量（每个任务可声明自己的看板 `member`），或 `show` 上一次的裁定；每次拒绝都把 findings 持久化到 `split/<修订>.refused.json`；一个**非致命**的 `warnings` 列表按切分键点名每个没有写作用域的 `work`/`repair`/`integration` 任务（`write-scopes-empty`），以及每个就绪前沿宽度超过其已声明 `member` 名的 owner role（`seat-width-short`），且永不改变 `accepted` |
 | `cellwork_activate` | 队长 | 把被接受的切分物化到活跃 team 记录、写合约（同时点名 owner role 与成员）、对每个不同的 `member` 只拉起一个成员、打开验证循环、派发；中途失败的一轮会被检查点记录，同一个修订号可以续做，而更新的被接受修订号会取代更旧的在飞部分激活；返回的 `reused` 列出从 cell 记录或活跃名册解析（而不是新拉起）的成员名，而保留了任务的重切分还会返回 `notice`（合约不被重写、扩展作用域需要手工重新冻结加新的验证循环、就绪行按仅声明所有者派发）；成员行的**另外两种**出现方式是暂存与采纳（见「成员：暂存的、拉起的与采纳的」） |
-| `cellwork_dispatch` | 队长 | 在 team 看板上做一次「仅声明所有者」的派发；owner 忙、缺席或被围栏时如实报告、任务保持待派发；`reassign` 先把点名的行交给另一个成员（看板 claim → `task-reassigned` journal → 投递），而 `unfence` 在派发**之前**清除点名成员**已放弃**的围栏：CELL 行的 `fenced: true` **就是**放弃（两个键被删除、`mode: member`、`handoffReady: false`、`handoffs` 保留、记 `member-unfenced`），并通过团队平面的 `unfence` 接缝重新打开 TEAM 座位（该接缝也清掉 `mode: checkpoint`；没有接缝时报告 `plane: "absent"` 且不声称已重开）；**待处理**的检查点（CELL 行 `mode: checkpoint` 或 `handoffReady: true`，或 TEAM 行 `mode: checkpoint` 且没有 `fenced` 标志）——以及**死重种**座位（R5.2：`subcaptain`、非交接就绪、记录的 session 被证明已死）——答复 `checkpoint-pending` 且什么都不写，除非条目请求**失败即拒绝**的强制杠杆（`{member, force: true}`：活跃 session 直接拒绝，只有达到重试预算、超过 `checkpointPendingMaxMs`，或凭死重种形态那个**被证明已死**的 session 且记录里有时间戳才允许（`bound: "dead-session"`），并记 `member-unfenced-forced`）；平面那一半若以 `refused` 结束，答复、journal 行与渲染里都会带 `retry`（确切的 `agent_teams_control {action: "unfence", member}` verb）；`not-fenced` 如实回答，未知或有歧义的名字拒绝整个调用，两种形式可以放在同一次调用里；`rebind: [{member, handle}]` 把座位的 TEAM `executorRef` **重新指向**本座位**当前记录**点名的 handle（journal 只作佐证：其最新一条只在两条当前行都不点名任何 handle 时才参与判定），与重种绑定相同的 compare-and-set 与平面回读（窗口内有人提交则答 `team-record-changed`，绝不覆盖），并把该 handle 镜像进 CELL 行（`sessionId`、`executorRef`、`mode: member`、`handoffReady: false`），记 `member-rebound` 并报告 `rebound`；`handle` 会先 trim、必须是宿主铸造的 UUID 形态，且必须被**当前记录**点名——TEAM `executorRef` 或 CELL 行；记录写入晚于最后一次交接、且自身没有 journal 行时会被接受并标记 `handleRecordCurrent:true`/`journalHandoverOlder:true`（绝不判 `handle-superseded`、绝不反向建议）。只有更早交接行点名的 handle 会拒绝为 `handle-superseded` 并点名取代它的那一行；文案只陈述事实，绝不替操作员选择方向（journal 只追加，旧失败文案仍会引用被后续重种替换的子代理）；当前记录与 journal 最新交接行都不点名的才是 `handle-unevidenced`（归属靠证据，注册表只证明存活）；每条结果都带 `namedBy`（`team`/`cell`/`journal:<event>`）与 `previousSessionId`/`previousSessionIdLiveness`（`live`/`unproven`/`unknown`），真正落地的重指还会带 `displacedExecutorRef`/`displacedUnproven`，而每一条失败条目（包括参数级拒绝，会记下请求的 `handle`）都会记 `member-rebind-failed`；它不清围栏，而 `unfence` 单独用**永远不会**重新指向 handle。**同一次调用里 `rebind` 先执行：** 它的 `unfence` 一半只在每个 `rebind` 条目都答复 `rebound:true` 且 CELL 镜像确认之后才执行；`rebind` 失败（或镜像未确认）时所有点名围栏保持**关闭**、不执行任何 `unfence`、记 `dispatch-unfence-withheld` 并答复 `unfenceWithheld`（`detail` 写明 `fence stayed closed`，`next` 给出重跑）。落地的重指若 CELL 镜像失败会带 `cellRow:"failed: …"`，**修复未完成**；TEAM 记录缺失或不可读时 `previousSessionId` 这一对会被省略 |
+| `cellwork_dispatch` | 队长 | 在 team 看板上做一次「仅声明所有者」的派发；owner 忙、缺席或被围栏时如实报告、任务保持待派发；`reassign` 先把点名的行交给另一个成员（看板 claim → `task-reassigned` journal → 投递），而 `unfence` 在派发**之前**清除点名成员**已放弃**的围栏：CELL 行的 `fenced: true` **就是**放弃（两个键被删除、`mode: member`、`handoffReady: false`、`handoffs` 保留、记 `member-unfenced`），并通过团队平面的 `unfence` 接缝重新打开 TEAM 座位（该接缝也清掉 `mode: checkpoint`；没有接缝时报告 `plane: "absent"` 且不声称已重开）；**待处理**的检查点（CELL 行 `mode: checkpoint` 或 `handoffReady: true`，或 TEAM 行 `mode: checkpoint` 且没有 `fenced` 标志）——以及**死重种**座位（R5.2：`subcaptain`、非交接就绪、记录的 session 被证明已死）——答复 `checkpoint-pending` 且什么都不写，除非条目请求**失败即拒绝**的强制杠杆（`{member, force: true}`：活跃 session 直接拒绝，只有达到重试预算、超过 `checkpointPendingMaxMs`，或凭死重种形态那个**被证明已死**的 session 且记录里有时间戳才允许（`bound: "dead-session"`），并记 `member-unfenced-forced`）；平面那一半若以 `refused` 结束，答复、journal 行与渲染里都会带 `retry`（确切的 `agent_teams_control {action: "unfence", member}` verb）；`not-fenced` 如实回答，未知或有歧义的名字拒绝整个调用，两种形式可以放在同一次调用里；`rebind: [{member, handle}]` 把座位的 TEAM `executorRef` **重新指向**本座位**当前记录**点名的 handle（journal 只作佐证：其最新一条只在两条当前行都不点名任何 handle 时才参与判定），与重种绑定相同的 compare-and-set 与平面回读（窗口内有人提交则答 `team-record-changed`，绝不覆盖），并把该 handle 镜像进 CELL 行（`sessionId`、`executorRef`、`mode: member`、`handoffReady: false`），还会改派旧 handle（或座位自己的名字）名下**非终态**的看板行（`tasksRebound` 计数；`claimed`/`in_progress` 的行**不会被强改**，而是列进 `tasksNeedingRelease` 并给出确切的 `agent_teams_task {action: "release"}` 动词，终态行保留原 owner），记 `member-rebound` 并报告 `rebound`；`handle` 会先 trim、必须是宿主铸造的 UUID 形态，且必须被**当前记录**点名——TEAM `executorRef` 或 CELL 行；记录写入晚于最后一次交接、且自身没有 journal 行时会被接受并标记 `handleRecordCurrent:true`/`journalHandoverOlder:true`（绝不判 `handle-superseded`、绝不反向建议）。只有更早交接行点名的 handle 会拒绝为 `handle-superseded` 并点名取代它的那一行；文案只陈述事实，绝不替操作员选择方向（journal 只追加，旧失败文案仍会引用被后续重种替换的子代理）；当前记录与 journal 最新交接行都不点名的才是 `handle-unevidenced`（归属靠证据，注册表只证明存活）——**唯一的窄例外是被保留的子代理**：`checkpoint-unrecoverable` 行同时带 `orphanChild` 与 `reconcileRequired` 时，即使两条当前行都仍点名旧 handle 也被接受（它必须是 journal 最新一条交接，且记录不能证明写入更晚；结果标 `handleOrphanAdopted`）；每条结果都带 `namedBy`（`team`/`cell`/`journal:<event>`）与 `previousSessionId`/`previousSessionIdLiveness`（`live`/`unproven`/`unknown`），真正落地的重指还会带 `displacedExecutorRef`/`displacedUnproven`，而每一条失败条目（包括参数级拒绝，会记下请求的 `handle`）都会记 `member-rebind-failed`；它不清围栏，而 `unfence` 单独用**永远不会**重新指向 handle。**同一次调用里 `rebind` 先执行：** 它的 `unfence` 一半只在每个 `rebind` 条目都答复 `rebound:true` 且 CELL 镜像确认之后才执行；`rebind` 失败（或镜像未确认）时所有点名围栏保持**关闭**、不执行任何 `unfence`、记 `dispatch-unfence-withheld` 并答复 `unfenceWithheld`（`detail` 写明 `fence stayed closed`，`next` 给出重跑）。落地的重指若 CELL 镜像失败会带 `cellRow:"failed: …"`，**修复未完成**；TEAM 记录缺失或不可读时 `previousSessionId` 这一对会被省略 |
 | `cellwork_supervise` | 队长 | 只读巡检：待处理的检查点、压缩、晋升、过期切分、未读邮件、每一条**未投递**的邮件行，以及每个**关闭**座位与其仍拥有的未关闭行——每行标记 `giveUp:true`（任一记录上显式 `fenced:true`，用 `reassign` 加 `unfence` 修复）或 `giveUp:false`（被持有的座位：归屏障所有的窗口，或标了 `deadReseed:true` 的死重种形态），后者还带 `barrierOwned`、`forceEligible` 与 `pendingMs`，并在没有监管者能重开它时点名有界的强制杠杆；`forceEligible` 与 `cellwork_dispatch {unfence:…, force:true}` 用的是**同一个判据**，绝不是第二份拷贝；TEAM 那一半是没有屏障再挂起的 `checkpoint` 的关闭座位会带 `retry`（那个仅队长可用的确切 verb）；只有带时间戳、注册表**存在**、其**队长锚点**可解析、且记录里的 session 查不到时，成员才会标 `suspect:true`（注册表存在却解析不了锚点是 `unknown`，什么都不许可）；`unknown` 的存活状态**绝不**让该行消失——一个离开屏障窗口、session 又无法证明的 `subcaptain` 会以 `unverified:true` 列出，带 `forceEligible:false` 与它自己的 `forceRefusal`，被报告为「未验证」而不是被并进「健康」里；每个投影都是无损 JSON，没有 `undefined` 自有键 |
 | `cellwork_context` | 成员 | 调用者自己的实时占用、度量所用的窗口，以及该窗口的来源 |
 | `cellwork_handoff` | 成员 | 写入并校验检查点交接文档；把检查点标记为就绪；第一份仍在等待屏障时，**第二份**会被拒绝；只被**活跃** team 记录认识的成员会先被采纳（见「成员：暂存的、拉起的与采纳的」），因此拿到同一条通道 |
@@ -509,7 +509,9 @@ UTF-8 字符 3 字节、按每字符 1 token），因此中文密集的任务只
    不再点这个子代理——因此同样**保留**子代理。本轮以 `orphanChild: "<handle>"` 与 `reconcileRequired: true` 拒绝，文案
    写明 `BINDING KEPT` 并点名这个「待提交写入」的风险，journal 行的 `retry`/`repair` 给出**调和两份记录**的动词：
    `cellwork_dispatch {rebind:[{member, handle}], unfence:[member]}`——`rebind` 重新指向 TEAM 的 `executorRef`
-   并把 handle 镜像进 CELL 行；`unfence` 单独用**永远不会碰 handle**，`reassign` 只移动看板行。TEAM 行与看板 owner 通过
+   并把 handle 镜像进 CELL 行，还会改派旧 handle（或座位名字）名下**非终态**的看板行；
+   `claimed`/`in_progress` 的行留原样并列进 `tasksNeedingRelease`，因为派发契约要求先
+   `agent_teams_task {action: "release"}`；`unfence` 单独用**永远不会碰 handle**，`reassign` 只移动看板行。TEAM 行与看板 owner 通过
    记录文件写入，并用 `mpdTeams` **回读验证**，因为平面没有能重新指向它们的动词——**已声明边界**：等
    `mpdTeamActions` 长出座位重绑动词，这次写入就变成一次委派，路径知识随之消失。
 
@@ -525,9 +527,9 @@ UTF-8 字符 3 字节、按每字符 1 token），因此中文密集的任务只
    `member-rebind-failed` 行会记下被拒绝的 `handle`（有长度上限，截断时带 `handleTruncated`），所以拼错或粘贴截断
    都能从 journal 复现。该 handle 还必须被**本座位当前的记录**点名：TEAM 行的 `executorRef` 或 CELL
    成员行——或者，当**两条当前行都没有点名任何 handle** 时，由 journal **最新一条**交接行点名（记录沉默时，
-   时间上的最新就是唯一剩下的证据）。**当前记录优先，journal 只作佐证**——只要任一当前行点名了请求的 handle 就接受，无论只追加的 journal
-   说什么。journal 的「最新一条」只在**两条当前行都没有点名任何 handle** 时才参与判定；其余情况下它可以解释一次
-   拒绝，但绝不能否决记录。这样，当记录写入发生在最后一次交接**之后**、且它自己没有 journal 行时，更早的
+   时间上的最新就是唯一剩下的证据）。**journal 可以为「当前记录没有点名的 handle」提供证据，但永远不会否决「当前记录已经点名的
+   handle」**——只要任一当前行点名了请求的 handle 就接受，无论只追加的 journal 说什么。journal 的「最新一条」只在**两条当前行都没有
+   点名任何 handle** 时才参与判定；其余情况下它可以解释一次拒绝，但绝不能否决记录点名的 handle。这样，当记录写入发生在最后一次交接**之后**、且它自己没有 journal 行时，更早的
    `compaction`/`seat-rebound`/`member-reseeded`/`reseed-parent`/`member-rebound`/`checkpoint-unrecoverable`
    `orphanChild`/`member-adopted` 旧行就无法否决它——那种答复会把记录当前的 handle 说成过期，并建议**反向**
    重指。当记录点名了请求的 handle、且能证明记录的写入晚于 journal 最后一条交接行时，结果会带
@@ -535,7 +537,11 @@ UTF-8 字符 3 字节、按每字符 1 token），因此中文密集的任务只
    拒绝为 `reason:"handle-superseded"`，其 `supersededBy`（答复、journal 行与渲染都带）点名后来那条事件与
    handle；拒绝文案只说当前记录点名了什么、journal 最后一条交接点名了什么，**绝不替操作员选择方向**——它要求
    先调和两份记录。当前记录与 journal 最新交接行**都**不点名的 handle 才拒绝为 `reason:"handle-unevidenced"`
-   （也就是上面那个「记录沉默」的例外：记录里没有任何一行点名时，journal 最新一条交接行才是证据）。两种结果都带 `namedBy`——`team`、
+   （也就是上面那个「记录沉默」的例外：记录里没有任何一行点名时，journal 最新一条交接行才是证据）。
+   **唯一的窄例外是被保留的子代理（第三轮 Major-2）：** 同时带 `orphanChild` 与 `reconcileRequired` 的
+   `checkpoint-unrecoverable` 行即使两条当前行都仍点名旧 handle 也被接受——它是「本座位启动过该子代理」的唯一
+   持久证据；它必须是 journal 最新一条交接、且记录不能证明写入更晚，结果标 `handleOrphanAdopted:true`。
+   更晚的记录若点名了别的 handle 仍然压过它（F1）。两种结果都带 `namedBy`——`team`、
    `cell` 或 `journal:<event>`——所以证据来源不会是死字段。**当 TEAM 行可读时**，每条结果还报
    `previousSessionId`/`previousSessionIdLiveness`（只有 `liveAgentExact` 有答复才是 `live`，接缝存在但答复为空是
    `unproven`，组合根本没有接缝是 `unknown`）；**TEAM 记录缺失或不可读时这一对会被省略**，因为那时没有可报告的
@@ -545,6 +551,19 @@ UTF-8 字符 3 字节、按每字符 1 token），因此中文密集的任务只
    尝试过的修复不会只存在于答复里。被**重种顶掉**的 handle 同样有记录：当 TEAM 行本来点名了另一个非空
    `executorRef`、且没有任何证据证明它已死（重入守卫在这里按设计是惰性的）时，`compaction`、`seat-rebound`、
    `member-reseeded` 三行都会带 `displacedExecutorRef` 与 `displacedUnproven`，被覆盖的子代理仍然可追。
+
+   **`rebind` 同样改派看板，且绝不强改活跃行（第三轮 Major-1）。** TEAM `executorRef` 重指之后，**同一次**
+   compare-and-set 写入还会改派 owner 为旧 handle——或座位自己记录的名字/id（Minor-6 拼写）——的每一条
+   **非终态**看板行，规则与重种绑定完全相同。终态行（`completed`/`failed`/`cancelled`）保留真正做事的 owner，
+   别的座位的行不受影响，移动了多少行由 `tasksRebound` 计数。`claimed`/`in_progress` 的行**不会**被移动：
+   派发契约要求先 release（release 会把行退回 `pending`），所以条目会带
+   `tasksNeedingRelease: [{taskId, status, release}]`，其中 `release` 是确切的
+   `agent_teams_task {action:"release", task_id:"<id>"}` 动词；先执行它，再
+   `cellwork_dispatch {reassign:[...]}`。同样的信息也记在 `member-rebound` 行上，并且**渲染出来的落地行**同样带着它们——
+   `; board: N row(s) handed over`、`; M row(s) still need release: <ids> — run agent_teams_task {action:"release", task_id} first`，
+   以及被保留的子代理被采纳时的 `; handle adopted from the orphan evidence row`——所以一次仍让活跃行指着死 handle 的修复，
+   绝不会被渲染成无条件的成功。**一条写明的限定（NIT-6）：** 当 TEAM 行完全没有点名任何 handle 时，一条看板行都不会被改派——
+   包括座位名字持有的行——因为名字持有的行仍能路由到该座位；改派只在身份变化时发生。
 
    **CELL 镜像没确认，这次 `rebind` 就不算修完（第二轮 minor）。** 一条落地的条目只要 TEAM 行被重指并回读通过就答复
    `rebound:true`；CELL 镜像**是第二次写入**。镜像写入失败时，该条目仍是 `rebound:true`，但会带
@@ -711,7 +730,7 @@ cell 内的智能体可以互相通信，不经过用户界面，也不经过队
 | 路径 | 内容 |
 |---|---|
 | `state.json` | cell 记录：阶段、队长 session、深度、父 cell、team id（**执行**看板——两者不同时，暂存 team 保留在 `planningTeamId`）、规划器/切分器 handle、被 stage 的切分票看板 id（`splitTaskId`）、成员及其模式（含可选的 `fenced`/`fencedReason`、`adopted: true` 与 `grown: true` 标记）、切分修订号、检查点、journal 游标，以及两个可选的「在飞激活」字段：`activationInFlight`（正在物化的被接受修订号）与 `activatedLoops`（切分键 → 验证循环 id） |
-| `journal.jsonl` | 只追加的迁移：阶段、派发、检查点、压缩、晋升、拒绝，以及取代行（`split-superseded`、`activation-in-flight-superseded`）；一趟激活每个产物写一条紧凑的 `cell-activation-progress` 行、失败时只写一条完整的 `cell-activation-partial` 行，修复行是 `task-reassigned`、`dispatch-reassign`、`checkpoint-unrecoverable`、`member-adopted`、`member-unfenced`、`member-rebound`（`rebind` 修复；带 `previousSessionId`/`previousSessionIdLiveness`、`namedBy`（证据来源：`team`/`cell`/`journal:<event>`），记录压过更早 journal 行时带 F1 来源标记 `handleRecordCurrent`/`journalHandoverOlder`，重指覆盖了另一个 handle 时还带 `displacedExecutorRef`/`displacedUnproven`）、`member-rebind-failed`（被拒绝的 `rebind` 条目或参数：`reason`、请求的 `handle`、`namedBy`、`previousSessionId`/`previousSessionIdLiveness`，被后续交接取代时带 `supersededBy`；文案绝不替操作员选择方向）、`seat-rebound`（三面绑定；若绑定覆盖了另一个 handle，它带 `displacedExecutorRef`/`displacedUnproven`）、`barrier-skipped`（`reseed-already-bound` 重入守卫）、`barrier-record-unreadable` 与 `barrier-failed`（过去只会 `warn` 的两条分支），以及 `dispatch-unfence-withheld`（`{rebind, unfence}` 合并调用里 `rebind` 没有完全落地：`reason` = `rebind-failed` or `cell-mirror-unconfirmed`、`members`、`failed:[{member, reason, cellRow?}]`、写明 `fence stayed closed` 的 `detail`，以及重跑用的 `next`） |
+| `journal.jsonl` | 只追加的迁移：阶段、派发、检查点、压缩、晋升、拒绝，以及取代行（`split-superseded`、`activation-in-flight-superseded`）；一趟激活每个产物写一条紧凑的 `cell-activation-progress` 行、失败时只写一条完整的 `cell-activation-partial` 行，修复行是 `task-reassigned`、`dispatch-reassign`、`checkpoint-unrecoverable`、`member-adopted`、`member-unfenced`、`member-rebound`（`rebind` 修复；带 `previousSessionId`/`previousSessionIdLiveness`、`namedBy`（证据来源：`team`/`cell`/`journal:<event>`），记录压过更早 journal 行时带 F1 来源标记 `handleRecordCurrent`/`journalHandoverOlder`，看板那一半带 `tasksRebound`/`tasksNeedingRelease`，被保留子代理的孤儿行作证时带 `handleOrphanAdopted`，重指覆盖了另一个 handle 时还带 `displacedExecutorRef`/`displacedUnproven`）、`member-rebind-failed`（被拒绝的 `rebind` 条目或参数：`reason`、请求的 `handle`、`namedBy`、`previousSessionId`/`previousSessionIdLiveness`，被后续交接取代时带 `supersededBy`；文案绝不替操作员选择方向）、`seat-rebound`（三面绑定；若绑定覆盖了另一个 handle，它带 `displacedExecutorRef`/`displacedUnproven`）、`barrier-skipped`（`reseed-already-bound` 重入守卫）、`barrier-record-unreadable` 与 `barrier-failed`（过去只会 `warn` 的两条分支），以及 `dispatch-unfence-withheld`（`{rebind, unfence}` 合并调用里 `rebind` 没有完全落地：`reason` = `rebind-failed` or `cell-mirror-unconfirmed`、`members`、`failed:[{member, reason, cellRow?}]`、写明 `fence stayed closed` 的 `detail`，以及重跑用的 `next`） |
 | `mail.jsonl`（旧格式） | 统一**之前**的按 cell 邮件日志，仍会被**读取**并合并进视图；新邮件**不再**写在这里：它们住在 workspace 存储 `<workspace>/.mpd/team/mailbox.jsonl`，盖上本 cell 的 `teamId` 与 `cellId`（跨 cell 发送者还会盖上 `fromCell`），由 `cellwork_inbox` 读取，并在那里随后跟一条单独的 `wake` 记录说明唤醒尝试的结果；对**这些**旧格式行的确认会追加回本文件，而统一之后的行则在存储里确认 |
 | `requirements.md` | 经校验的需求文档，带修订号；一次变更会提升修订号并把切分标记为过期 |
 | `split/<rev>.json` | 切分器的提案，加上插件的实测估算与接受/拒绝裁定 |

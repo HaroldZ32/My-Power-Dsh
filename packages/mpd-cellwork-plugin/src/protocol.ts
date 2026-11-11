@@ -356,6 +356,15 @@ interface JournalHandover {
   field: string
   /** The row's own `at` stamp, when it carried one. */
   at?: string
+  /**
+   * The row is a KEPT-CHILD record: a `checkpoint-unrecoverable` row that carries `orphanChild` AND
+   * `reconcileRequired:true` (the double marker `checkpointUnrecoverableEntry` writes only on that path).
+   *
+   * Such a row is the ONE hand-over whose child the seat started but could not bind; it is accepted even
+   * when both current rows still name the handle it replaced (CodeRabbit round 3, Major-2), because the
+   * record naming the OLD handle does not contradict the orphan child's ownership.
+   */
+  orphan?: true
 }
 
 /**
@@ -383,6 +392,12 @@ interface HandleEvidence {
   handleRecordCurrent?: boolean
   /** The record's current naming is provably LATER than the journal's last hand-over (F1's crash window). */
   journalHandoverOlder?: boolean
+  /**
+   * The requested handle is the KEPT CHILD of this seat (a `checkpoint-unrecoverable` + `orphanChild` +
+   * `reconcileRequired` row is the journal's latest hand-over), so `rebind` may adopt it even though both
+   * current rows still name the handle it replaced (CodeRabbit round 3, Major-2).
+   */
+  handleOrphanAdopted?: boolean
 }
 
 /**
@@ -402,7 +417,13 @@ function handoverOf(row: Record<string, unknown>): JournalHandover | undefined {
     /** The handle this field carries, when it carries a non-empty string. */
     const value = row[field]
     if (typeof value === "string" && value !== "") {
-      return { event, handle: value, field, ...(typeof row.at === "string" ? { at: row.at } : {}) }
+      // THE KEPT-CHILD MARKER IS NARROW ON PURPOSE (CodeRabbit round 3, Major-2): ONLY the orphan field of
+      // a `checkpoint-unrecoverable` row that ALSO carries `reconcileRequired:true` qualifies — the exact
+      // double marker the keep path writes (`protocol-core.ts#checkpointUnrecoverableEntry`). A bare
+      // `orphanChild` or any other event's `sessionId` stays ordinary journal text.
+      /** Whether this row records a kept child that `rebind` may adopt as ownership evidence. */
+      const orphan = event === "checkpoint-unrecoverable" && field === "orphanChild" && row.reconcileRequired === true
+      return { event, handle: value, field, ...(typeof row.at === "string" ? { at: row.at } : {}), ...(orphan ? { orphan: true as const } : {}) }
     }
   }
   return undefined
@@ -513,6 +534,26 @@ function recordMtimeOf(path: string): string | undefined {
   } catch {
     return undefined
   }
+}
+
+/**
+ * The instant the record says it was written: its own `updatedAt` when that is a PARSEABLE instant, else
+ * the file's mtime (NIT-5).
+ *
+ * A `??` fallback is not enough: an EMPTY string or a non-ISO value is `!== undefined`, so it would be
+ * returned as-is and the lexical `latest.at < recordAt` comparison (F1's crash-window proof) would run
+ * against garbage — an empty string sorts BELOW every stamp, so the marker would go quiet exactly when the
+ * record carried a broken one. A non-ISO value is therefore treated as ABSENT, never as a stamp.
+ *
+ * @param snapshot - the snapshot the compare-and-set holds.
+ * @param path - the absolute team record path (the mtime fallback).
+ * @returns an ISO instant, or undefined when neither the record nor the filesystem supplies one.
+ */
+function recordWriteInstantOf(snapshot: TeamRecordSnapshot, path: string): string | undefined {
+  /** The record's own stamp, usable only when it really parses as an instant. */
+  const stated = snapshot.updatedAt
+  if (stated !== undefined && stated !== "" && !Number.isNaN(Date.parse(stated))) return stated
+  return recordMtimeOf(path)
 }
 
 /**
@@ -1115,11 +1156,14 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
     // operator pasted from, and the refusal must say so instead of pretending nothing named it at all.
     else if (lastMention !== undefined) namedBy.push("journal:" + lastMention.event)
     /**
-     * The decision: the current record first, the journal only when the record names no handle at all.
+     * The decision: the current record first, then a KEPT CHILD, then the journal when the record names no
+     * handle at all.
      *
-     * A record that names a DIFFERENT handle already refuses the request; the journal's recency may then
+     * A record that names a DIFFERENT handle refuses an ordinary request; the journal's recency may then
      * CLASSIFY the refusal as `superseded` (the requested handle exists only in an older row) or
-     * `unevidenced`, but it can never turn the refusal into a bind.
+     * `unevidenced`, but it can never turn an ordinary refusal into a bind. The ONE exception is the kept
+     * child below: an orphan row proves THIS seat started the requested child and could not bind it, which
+     * the record naming the old handle does not contradict.
      */
     const evidenced = handleRecordCurrent || (!recordNamesAny && (latest === undefined ? namedBy.length > 0 : latest.handle === handle))
     /** The newer row that replaced the requested handle, quoted only when an OLDER row named the request. */
@@ -1132,13 +1176,23 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
      * only makes the divergence visible in the answer and the journal row instead of silent.
      */
     const journalHandoverOlder = recordNamesAny && latest !== undefined && recordHandle !== "" && latest.handle !== recordHandle && recordAt !== undefined && latest.at !== undefined && latest.at < recordAt
+    /**
+     * THE KEPT CHILD IS ADOPTABLE (CodeRabbit round 3, Major-2). A refused or failed rollback keeps the
+     * fresh child, and its `checkpoint-unrecoverable` row carries `orphanChild` + `reconcileRequired`; when
+     * BOTH current rows still name the old handle, that row is the seat's latest hand-over and the ONLY
+     * durable proof the child belongs to this seat. It is accepted here — but ONLY while it is the latest
+     * hand-over AND the crash-window marker does not prove the record's naming is NEWER (a later record
+     * that names another handle still wins, as F1 requires).
+     */
+    const handleOrphanAdopted = latest !== undefined && latest.orphan === true && latest.handle === handle && !journalHandoverOlder
     return {
-      evidenced,
+      evidenced: evidenced || handleOrphanAdopted,
       namedBy,
       ...(latest === undefined ? {} : { latest }),
       ...(supersededBy === undefined ? {} : { supersededBy }),
       ...(handleRecordCurrent ? { handleRecordCurrent: true } : {}),
       ...(journalHandoverOlder ? { journalHandoverOlder: true } : {}),
+      ...(handleOrphanAdopted ? { handleOrphanAdopted: true } : {}),
     }
   }
 
@@ -1176,7 +1230,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
     /** The CELL rows this call mirrored, keyed by the record's own key; merged after the TEAM writes. */
     const mirroredRows = new Map<string, CellMemberRecord>()
     /** The TEAM writes that landed, kept so the journal rows are written only after the CELL mirror. */
-    const landed: Array<{ name: string; previousSessionId: string; previousSessionIdLiveness: string; handle: string; namedBy: string[]; liveness: string; handleRecordCurrent?: boolean; journalHandoverOlder?: boolean; displacedExecutorRef?: string; displacedUnproven?: boolean }> = []
+    const landed: Array<{ name: string; previousSessionId: string; previousSessionIdLiveness: string; handle: string; namedBy: string[]; liveness: string; tasksRebound: number; tasksNeedingRelease: Array<{ taskId: string; status: string; release: string }>; handleRecordCurrent?: boolean; journalHandoverOlder?: boolean; handleOrphanAdopted?: boolean; displacedExecutorRef?: string; displacedUnproven?: boolean }> = []
     /**
      * The evidence/liveness fields EVERY `rebind` outcome (and its journal row) carries (M1/N1/F1).
      *
@@ -1254,8 +1308,8 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       const snapshot = read.snapshot
       /** The record this verb rewrites. */
       const record = snapshot.record
-      /** The instant this record was last written: its own `updatedAt` when present, else the file's mtime. */
-      const recordAt = snapshot.updatedAt ?? recordMtimeOf(path)
+      /** The instant this record was last written: its own `updatedAt` when it parses, else the file's mtime. */
+      const recordAt = recordWriteInstantOf(snapshot, path)
       /** The roster rows this build can read. */
       const members = Array.isArray(record.members) ? record.members.filter((row) => typeof row === "object" && row !== null) as Array<Record<string, unknown>> : undefined
       if (members === undefined) {
@@ -1298,7 +1352,9 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       if (!evidence.evidenced) {
         /** What the journal's latest hand-over row says, so the refusal cannot be mistaken for "no history". */
         const latestNote = evidence.latest === undefined ? "the journal carries no hand-over row for it" : "the journal's last hand-over is `" + evidence.latest.event + "` naming " + JSON.stringify(evidence.latest.handle)
-        failRebind(target, "handle-unevidenced", "no CURRENT record of this seat names handle " + JSON.stringify(target.handle) + " (the TEAM row's executorRef is " + JSON.stringify(previousSessionId) + ", the CELL row names " + JSON.stringify(String(cellRow?.sessionId ?? "")) + ", and " + latestNote + "), so this verb refuses to bind a handle nothing here vouches for", evidence, seatStateOf())
+        /** The crash-window clause: the record's own write provably postdates the journal row that named the handle. */
+        const olderNote = evidence.journalHandoverOlder === true ? " (the record's own write postdates that row, so the RECORD wins)" : ""
+        failRebind(target, "handle-unevidenced", "no CURRENT record of this seat names handle " + JSON.stringify(target.handle) + " (the TEAM row's executorRef is " + JSON.stringify(previousSessionId) + ", the CELL row names " + JSON.stringify(String(cellRow?.sessionId ?? "")) + ", and " + latestNote + olderNote + "), so this verb refuses to bind a handle nothing here vouches for", evidence, seatStateOf())
         continue
       }
       /** What the identity registry proves about the handle; reported, never claimed (R2). */
@@ -1307,10 +1363,52 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       const displacedExecutorRef = previousSessionId !== "" && previousSessionId !== target.handle ? previousSessionId : undefined
       /** Whether the displaced handle could NOT be proven live — the R3 marker, carried by `rebind` too. */
       const displacedUnproven = displacedExecutorRef === undefined ? false : previousSessionIdLiveness !== "live"
+      /**
+       * The board rows this rebind hands over: every NON-TERMINAL row the OLD handle (or the seat's own
+       * name, Minor-6/F3) owns — the SAME rule the reseed bind applies (CodeRabbit round 3, Major-1).
+       *
+       * A `claimed`/`in_progress` row is NOT force-reassigned: the dispatch contract requires a release
+       * first (`agent_teams_task {action:"release"}` returns it to `pending`), so those rows keep their
+       * owner and are REPORTED in `tasksNeedingRelease` with the exact verb instead of being silently
+       * skipped. Terminal rows are history and never move. Nothing is re-pointed when the TEAM row already
+       * names the requested handle: there is no old owner to hand over.
+       */
+      const previousTaskRows = Array.isArray(record.tasks) ? record.tasks as unknown[] : undefined
+      /** The identities the BOARD may spell this seat's owner with, beside the old session handle. */
+      const seatOwners = new Set<string>([target.name])
+      for (const identity of [teamSeat.name, teamSeat.id]) {
+        if (typeof identity === "string" && identity !== "") seatOwners.add(identity)
+      }
+      /** How many board rows this rebind re-points. */
+      let tasksRebound = 0
+      /** The non-terminal rows a release must free before they can be reassigned, with the exact verb. */
+      const tasksNeedingRelease: Array<{ taskId: string; status: string; release: string }> = []
+      /** The board after this rebind's owner cells move (unchanged when the TEAM row already names the handle). */
+      const reboundTasks = previousTaskRows === undefined || previousSessionId === "" || previousSessionId === target.handle ? record.tasks : previousTaskRows.map((task) => {
+        if (typeof task !== "object" || task === null) return task
+        /** The row, read structurally. */
+        const row = task as Record<string, unknown>
+        /** The owner as the board spells it. */
+        const owner = String(row.owner ?? "")
+        if (owner !== previousSessionId && !seatOwners.has(owner)) return task
+        /** The row's status. */
+        const status = String(row.status ?? "")
+        // A TERMINAL ROW RECORDS WHO DID THE WORK (`completed`, `failed`, `cancelled`): re-pointing it would
+        // rewrite history and hand a finished task to a child that never touched it.
+        if (status === "completed" || status === "failed" || status === "cancelled") return task
+        /** The row id the release verb needs. */
+        const taskId = String(row.id ?? "")
+        if (status === "claimed" || status === "in_progress") {
+          tasksNeedingRelease.push({ taskId, status, release: 'agent_teams_task {action:"release", task_id:' + JSON.stringify(taskId) + '}' })
+          return task
+        }
+        tasksRebound += 1
+        return { ...row, owner: target.handle, revision: (typeof row.revision === "number" ? row.revision : 0) + 1, updatedAt: now.toISOString() }
+      })
       /** The roster row after the rebind: the named handle, an open seat, everything else kept. */
       const reboundSeat: Record<string, unknown> = { ...teamSeat, executorRef: target.handle, mode: teamSeat.mode === "checkpoint" || teamSeat.mode === undefined ? "member" : teamSeat.mode }
-      /** The record to persist: ONLY this seat's row moves. */
-      const next: Record<string, unknown> = { ...record, members: members.map((row, index) => (index === seat ? reboundSeat : row)) }
+      /** The record to persist: this seat's row AND the owner cells this rebind hands over. */
+      const next: Record<string, unknown> = { ...record, members: members.map((row, index) => (index === seat ? reboundSeat : row)), tasks: reboundTasks }
       // THE COMPARE IMMEDIATELY BEFORE THE RENAME, exactly as the bind does: a commit inside the window is
       // another writer's document, and this verb refuses rather than overwrite it.
       /** The sentence naming what another writer moved, or undefined when the snapshot still holds. */
@@ -1346,8 +1444,8 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       }
       /** The CELL row this handle is mirrored into: the seat now names the child and has no pending handoff. */
       if (cellRow !== undefined) mirroredRows.set(target.key, { ...cellRow, sessionId: target.handle, executorRef: target.handle, mode: "member", handoffReady: false })
-      landed.push({ name: target.name, previousSessionId, previousSessionIdLiveness, handle: target.handle, namedBy: evidence.namedBy, liveness, ...(evidence.handleRecordCurrent === true ? { handleRecordCurrent: true } : {}), ...(evidence.journalHandoverOlder === true ? { journalHandoverOlder: true } : {}), ...(displacedExecutorRef === undefined ? {} : { displacedExecutorRef, displacedUnproven }) })
-      outcomes.push({ member: target.name, rebound: true, previousSessionId, previousSessionIdLiveness, handle: target.handle, namedBy: evidence.namedBy, plane: "bound", liveness, ...(evidence.handleRecordCurrent === true ? { handleRecordCurrent: true } : {}), ...(evidence.journalHandoverOlder === true ? { journalHandoverOlder: true } : {}), ...(displacedExecutorRef === undefined ? {} : { displacedExecutorRef, displacedUnproven }) })
+      landed.push({ name: target.name, previousSessionId, previousSessionIdLiveness, handle: target.handle, namedBy: evidence.namedBy, liveness, tasksRebound, tasksNeedingRelease, ...(evidence.handleRecordCurrent === true ? { handleRecordCurrent: true } : {}), ...(evidence.journalHandoverOlder === true ? { journalHandoverOlder: true } : {}), ...(evidence.handleOrphanAdopted === true ? { handleOrphanAdopted: true } : {}), ...(displacedExecutorRef === undefined ? {} : { displacedExecutorRef, displacedUnproven }) })
+      outcomes.push({ member: target.name, rebound: true, previousSessionId, previousSessionIdLiveness, handle: target.handle, namedBy: evidence.namedBy, plane: "bound", liveness, tasksRebound, ...(tasksNeedingRelease.length === 0 ? {} : { tasksNeedingRelease }), ...(evidence.handleRecordCurrent === true ? { handleRecordCurrent: true } : {}), ...(evidence.journalHandoverOlder === true ? { journalHandoverOlder: true } : {}), ...(evidence.handleOrphanAdopted === true ? { handleOrphanAdopted: true } : {}), ...(displacedExecutorRef === undefined ? {} : { displacedExecutorRef, displacedUnproven }) })
     }
     if (landed.length === 0) return { cell, outcomes }
     // THE CELL MIRROR MERGES INTO A FRESH READ, exactly as `unfenceSeats` does: the TEAM write above may
@@ -1384,6 +1482,13 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         // THE F1 PROVENANCE MARKERS: the record won, and (when provable) its write postdates the journal row.
         ...(entry.handleRecordCurrent === true ? { handleRecordCurrent: true } : {}),
         ...(entry.journalHandoverOlder === true ? { journalHandoverOlder: true } : {}),
+        // THE BOARD HALF OF THE REPAIR (CodeRabbit round 3, Major-1): the rows handed over, and the live rows
+        // that need a release before they can follow — never silently skipped.
+        tasksRebound: entry.tasksRebound,
+        ...(entry.tasksNeedingRelease.length === 0 ? {} : { tasksNeedingRelease: entry.tasksNeedingRelease }),
+        // THE ORPHAN ADOPTION IS VISIBLE (CodeRabbit round 3, Major-2): the row proves the seat adopted the
+        // child it kept from a refused rollback, so the evidence path is never invisible in the trail.
+        ...(entry.handleOrphanAdopted === true ? { handleOrphanAdopted: true } : {}),
         liveness: entry.liveness,
         plane: "bound",
         cellRow,
@@ -1401,7 +1506,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
   // ── cellwork_dispatch ────────────────────────────────────────────────────
   disposers.push(dsh.registerTool({
     name: "cellwork_dispatch",
-    description: "CAPTAIN only: one owner-only dispatch pass over the live board. A ready task is paired ONLY with its declared owner; a busy, absent, FENCED or failed owner is REPORTED and the task left pending — never substituted (a fenced member is never messaged). `reassign` hands named rows to another member FIRST: each row is claimed for that member through the board, journaled as `task-reassigned`, then delivered — the repair for a fenced owner. `rebind` RE-POINTS named seats to the handle their CURRENT record names (the journal only corroborates): it is the ONLY verb that re-points `executorRef` (the TEAM row) and it mirrors that handle into the CELL row; `unfence` alone never touches the handle, and `reassign` only moves board rows — a refused-rollback seat needs `rebind` (contract §3 A11). ORDER IS THE CONTRACT: `rebind` runs FIRST, and a combined call's `unfence` runs ONLY after EVERY `rebind` entry answered `rebound:true` AND its CELL mirror was confirmed; a failed rebind, or a mirror the record refused, leaves the fences CLOSED, executes no unfence, journals `dispatch-unfence-withheld` and answers `unfenceWithheld` whose sentence says `fence stayed closed` with the next step. The CURRENT TEAM/CELL row is authoritative: a handle either names is accepted and no journal row can veto it; the journal's recency decides only when NEITHER current row names a handle. A handle only an OLDER hand-over row names is refused `handle-superseded` with a reconcile sentence that states the record's current handle and the journal's last hand-over but NEVER chooses a direction for the operator; a record written after the last hand-over with no journal row of its own is accepted and marked `handleRecordCurrent:true`/`journalHandoverOlder:true` (the crash window). Every outcome reports `namedBy`; the displaced handle (`previousSessionId`) and its liveness are reported when the TEAM row is readable and omitted when the TEAM record is missing or unreadable. `unfence` clears named members' compaction GIVE-UP fences AFTER `rebind` and BEFORE the pass — the repair for the other deadlock: a fenced row keeps `handoffReady:true`, so `cellwork_handoff` refuses it as STILL WAITING while only another SUCCESSFUL barrier could clear it, which a fenced member cannot start. THE CELL ROW'S OWN `fenced:true` IS THE GIVE-UP FACT (the compaction barrier writes the fence on the CELL row and nowhere else): that row loses `fenced`/`fencedReason`, returns to `mode: member` with `handoffReady:false` (its `handoffs` count is unchanged), AND the TEAM seat is reopened through the plane's `unfence` seam when this composition exposes one — the plane's `mode:\"checkpoint\"` counts as a closed seat and that seam clears it too. The answer reports the plane's half honestly as `unfenced`, `absent` or `refused` and never claims the member was reopened when no seam exists. A TEAM row at `mode:\"checkpoint\"` with NO `fenced` flag is a PENDING compaction, not a give-up — UNLESS the CELL row carries the marker above, in which case the CELL marker decides; on its own that pending checkpoint answers `{member, unfenced:false, reason:\"checkpoint-pending\"}` and NEITHER record is written, because the barrier owns it. A barrier-owned checkpoint is NOT a dead end: the forced lever `unfence:[{member, force:true}]` reopens it only at a written bound (`barrierFailures` at `compactionRetries`, a `checkpointSince` older than `checkpointPendingMaxMs`, or the DEAD-RESEED shape — a reseeded `subcaptain` row whose recorded session the registry PROVES dead, `bound:\"dead-session\"`), and a plane half that ends `refused` carries `retry`, the exact `agent_teams_control {action:\"unfence\", member}` verb that re-drives it; the `unfence` parameter below spells out every bound. An explicit `fenced:true` recorded ONLY on the TEAM record is cleared through that seam while the CELL row is left untouched, and the outcome says which half was cleared. A member that is not fenced in either record answers `{member, unfenced:false, reason: not-fenced}` (never a silent success), and an unknown name refuses the whole call with the recorded members named. `unfence` and `reassign` may travel in ONE call and neither interferes with the other. Delivery goes through the team executor and is journaled.",
+    description: "CAPTAIN only: one owner-only dispatch pass over the live board. A ready task is paired ONLY with its declared owner; a busy, absent, FENCED or failed owner is REPORTED and the task left pending — never substituted (a fenced member is never messaged). `reassign` hands named rows to another member FIRST: each row is claimed for that member through the board, journaled as `task-reassigned`, then delivered — the repair for a fenced owner. `rebind` RE-POINTS named seats to the handle their CURRENT record names (the journal only corroborates): it re-points `executorRef` (the TEAM row), mirrors that handle into the CELL row, AND hands over every NON-TERMINAL board row the OLD handle (or the seat's own name) owned — `tasksRebound` counts them, while a `claimed`/`in_progress` row is NOT force-reassigned and is reported in `tasksNeedingRelease` with the exact `agent_teams_task {action:\"release\"}` verb to run first; `unfence` alone never touches the handle, and `reassign` only moves board rows — a refused-rollback seat needs `rebind` (contract §3 A11). ORDER IS THE CONTRACT: `rebind` runs FIRST, and a combined call's `unfence` runs ONLY after EVERY `rebind` entry answered `rebound:true` AND its CELL mirror was confirmed; a failed rebind, or a mirror the record refused, leaves the fences CLOSED, executes no unfence, journals `dispatch-unfence-withheld` and answers `unfenceWithheld` whose sentence says `fence stayed closed` with the next step. The CURRENT TEAM/CELL row is authoritative: a handle either names is accepted and no journal row can veto it; the journal's recency decides only when NEITHER current row names a handle. THE ONE NARROW EXCEPTION IS A KEPT CHILD (CodeRabbit round 3, Major-2): a `checkpoint-unrecoverable` row carrying `orphanChild` + `reconcileRequired` is accepted even when BOTH current rows still name the old handle, because it is the only durable proof this seat started that child — it must still be the journal's LATEST hand-over and the record must not provably postdate it. A handle only an OLDER hand-over row names is refused `handle-superseded` with a reconcile sentence that states the record's current handle and the journal's last hand-over but NEVER chooses a direction for the operator; a record written after the last hand-over with no journal row of its own is accepted and marked `handleRecordCurrent:true`/`journalHandoverOlder:true` (the crash window). Every outcome reports `namedBy`; the displaced handle (`previousSessionId`) and its liveness are reported when the TEAM row is readable and omitted when the TEAM record is missing or unreadable. `unfence` clears named members' compaction GIVE-UP fences AFTER `rebind` and BEFORE the pass — the repair for the other deadlock: a fenced row keeps `handoffReady:true`, so `cellwork_handoff` refuses it as STILL WAITING while only another SUCCESSFUL barrier could clear it, which a fenced member cannot start. THE CELL ROW'S OWN `fenced:true` IS THE GIVE-UP FACT (the compaction barrier writes the fence on the CELL row and nowhere else): that row loses `fenced`/`fencedReason`, returns to `mode: member` with `handoffReady:false` (its `handoffs` count is unchanged), AND the TEAM seat is reopened through the plane's `unfence` seam when this composition exposes one — the plane's `mode:\"checkpoint\"` counts as a closed seat and that seam clears it too. The answer reports the plane's half honestly as `unfenced`, `absent` or `refused` and never claims the member was reopened when no seam exists. A TEAM row at `mode:\"checkpoint\"` with NO `fenced` flag is a PENDING compaction, not a give-up — UNLESS the CELL row carries the marker above, in which case the CELL marker decides; on its own that pending checkpoint answers `{member, unfenced:false, reason:\"checkpoint-pending\"}` and NEITHER record is written, because the barrier owns it. A barrier-owned checkpoint is NOT a dead end: the forced lever `unfence:[{member, force:true}]` reopens it only at a written bound (`barrierFailures` at `compactionRetries`, a `checkpointSince` older than `checkpointPendingMaxMs`, or the DEAD-RESEED shape — a reseeded `subcaptain` row whose recorded session the registry PROVES dead, `bound:\"dead-session\"`), and a plane half that ends `refused` carries `retry`, the exact `agent_teams_control {action:\"unfence\", member}` verb that re-drives it; the `unfence` parameter below spells out every bound. An explicit `fenced:true` recorded ONLY on the TEAM record is cleared through that seam while the CELL row is left untouched, and the outcome says which half was cleared. A member that is not fenced in either record answers `{member, unfenced:false, reason: not-fenced}` (never a silent success), and an unknown name refuses the whole call with the recorded members named. `unfence` and `reassign` may travel in ONE call and neither interferes with the other. Delivery goes through the team executor and is journaled.",
     parameters: {
       type: "object",
       properties: {
@@ -1420,12 +1525,12 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         },
         rebind: {
           type: "array",
-          description: "Re-point named seats to the handle their CURRENT record names — the journal only corroborates (the repair for a refused rollback, contract §3 A11). The `handle` is trimmed and must be the host-minted UUID form, and it must be a handle the CURRENT record names — the TEAM member row's `executorRef` or the CELL member row. The journal only corroborates: its recency decides only when NEITHER current row names a handle, and it can never veto a handle either row names (F1). A record written after the last hand-over with no journal row of its own is therefore accepted, marked `handleRecordCurrent:true`/`journalHandoverOlder:true`. A handle only an OLDER hand-over row names is refused per entry with `reason:\"handle-superseded\"` and a `supersededBy` naming the later row, because the journal is append-only and an old failure sentence can quote a child a later reseed replaced; its detail states what the record currently names and what the journal's last hand-over named, and NEVER advises which handle to pass; a handle nothing current names is refused as `handle-unevidenced` (the registry proves liveness, never ownership). Each entry writes the TEAM member row's `executorRef` (and `mode:\"member\"` from a checkpoint) through the record file with the same compare-and-set the reseed bind uses, verifies the write through `mpdTeams`, and MIRRORS the handle into the CELL row (`sessionId`, `executorRef`, `mode:\"member\"`, `handoffReady:false` — the handoff a reseed consumed is not pending). A concurrent commit inside the window refuses that entry (`reason:\"team-record-changed\"`) instead of overwriting it; a read-back that answers another handle reports `reason:\"team-record-verify\"` and says the TEAM write had already landed. Every outcome reports `namedBy` (`team`, `cell`, `journal:<event>`) and `previousSessionId`/`previousSessionIdLiveness`; a landed re-point also carries `displacedExecutorRef`/`displacedUnproven` when it overwrote a different handle (the same pair the reseed bind journals). It does NOT clear a fence: `fenced`/`fencedReason` belong to `unfence`, so a seat that needs both names both in one call. `unfence` alone never re-points `executorRef`. Every failed entry is journaled as `member-rebind-failed` as well as reported.",
+          description: "Re-point named seats to the handle their CURRENT record names — the journal only corroborates (the repair for a refused rollback, contract §3 A11). The `handle` is trimmed and must be the host-minted UUID form, and it must be a handle the CURRENT record names — the TEAM member row's `executorRef` or the CELL member row. The journal only corroborates: its recency decides only when NEITHER current row names a handle, and it can never veto a handle either row names (F1). A record written after the last hand-over with no journal row of its own is therefore accepted, marked `handleRecordCurrent:true`/`journalHandoverOlder:true`. A handle only an OLDER hand-over row names is refused per entry with `reason:\"handle-superseded\"` and a `supersededBy` naming the later row, because the journal is append-only and an old failure sentence can quote a child a later reseed replaced; its detail states what the record currently names and what the journal's last hand-over named, and NEVER advises which handle to pass; a handle nothing current names is refused as `handle-unevidenced` (the registry proves liveness, never ownership). Each entry writes the TEAM member row's `executorRef` (and `mode:\"member\"` from a checkpoint) through the record file with the same compare-and-set the reseed bind uses, verifies the write through `mpdTeams`, and MIRRORS the handle into the CELL row (`sessionId`, `executorRef`, `mode:\"member\"`, `handoffReady:false` — the handoff a reseed consumed is not pending). A concurrent commit inside the window refuses that entry (`reason:\"team-record-changed\"`) instead of overwriting it; a read-back that answers another handle reports `reason:\"team-record-verify\"` and says the TEAM write had already landed. Every outcome reports `namedBy` (`team`, `cell`, `journal:<event>`) and `previousSessionId`/`previousSessionIdLiveness`; a landed re-point also carries `displacedExecutorRef`/`displacedUnproven` when it overwrote a different handle (the same pair the reseed bind journals). It ALSO hands over every NON-TERMINAL board row the old handle (or the seat's own name) owned and reports `tasksRebound`; a `claimed`/`in_progress` row is NOT force-reassigned — it is left in place and listed in `tasksNeedingRelease` with the exact `agent_teams_task {action:\"release\"}` verb that must run first (terminal rows keep their owner). THE KEPT-CHILD EVIDENCE (CodeRabbit round 3, Major-2): when a refused/failed rollback kept the fresh child, its `checkpoint-unrecoverable` row (`orphanChild` + `reconcileRequired`) is accepted as the seat's latest hand-over EVEN IF both current rows still name the old handle — the record must not provably postdate that row, and an out-of-date orphan row is still refused. It does NOT clear a fence: `fenced`/`fencedReason` belong to `unfence`, so a seat that needs both names both in one call. `unfence` alone never re-points `executorRef`. Every failed entry is journaled as `member-rebind-failed` as well as reported.",
           items: {
             type: "object",
             properties: {
               member: { type: "string", description: "The seat's board name (or the cell record's key): the TEAM row it names is the one rewritten." },
-              handle: { type: "string", description: "The host-minted session handle (8-4-4-4-12 hex UUID) a CURRENT record must name — the TEAM `executorRef` or the CELL row. The journal only corroborates: its latest hand-over decides only when NEITHER current row names a handle, and it never vetoes a handle either row names (F1). Trimmed before use; anything else refuses the whole call. A handle only an OLDER hand-over row names is refused `handle-superseded` (the answer and journal name the later row), so a pasted historical handle can never pull the seat back to a replaced child. The answer's `liveness` reports `live` only when the identity registry answers for the requested handle, `unproven` when the registry answers nothing, and `unknown` when this composition has no registry; `previousSessionIdLiveness` does the same for the handle the re-point would displace — the verb binds the identity, it never claims a child is alive." },
+              handle: { type: "string", description: "The host-minted session handle (8-4-4-4-12 hex UUID) a CURRENT record must name — the TEAM `executorRef` or the CELL row. The journal only corroborates: its latest hand-over decides only when NEITHER current row names a handle, and it never vetoes a handle either row names (F1) — EXCEPT a kept child's `checkpoint-unrecoverable` row (`orphanChild` + `reconcileRequired`), which is accepted even when both rows name the old handle because it is the only durable proof this seat started that child. Trimmed before use; anything else refuses the whole call. A handle only an OLDER hand-over row names is refused `handle-superseded` (the answer and journal name the later row), so a pasted historical handle can never pull the seat back to a replaced child. The answer's `liveness` reports `live` only when the identity registry answers for the requested handle, `unproven` when the registry answers nothing, and `unknown` when this composition has no registry; `previousSessionIdLiveness` does the same for the handle the re-point would displace — the verb binds the identity, it never claims a child is alive." },
             },
             required: ["member", "handle"],
             additionalProperties: false,
@@ -1462,7 +1567,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
           skipped: { type: "array", items: { type: "object" } },
           reassigned: { type: "array", items: { type: "object" }, description: "One entry per readable `reassign` pair: whether the board claim landed and whether the message was delivered." },
           reassignInvalid: { type: "array", items: { type: "string" }, description: "One sentence per `reassign` entry this call refused to read." },
-          rebound: { type: "array", items: { type: "object" }, description: "One entry per distinct `rebind` seat. Success: `{member, rebound:true, previousSessionId?, previousSessionIdLiveness?, handle, namedBy, plane:\"bound\", liveness}` (the `previousSessionId`/`previousSessionIdLiveness` pair is present only when the TEAM row was readable) (plus `handleRecordCurrent:true` and, when the record provably postdates the journal row, `journalHandoverOlder:true`) after the TEAM row was re-pointed and the CELL row mirrored (a failed CELL mirror adds `cellRow`; a different overwritten handle adds `displacedExecutorRef`/`displacedUnproven`). `namedBy` is the surface(s) that proved the handle (`team`, `cell`, `journal:<event>`); `liveness` is the identity registry's answer for the requested handle and `previousSessionIdLiveness` the same three-state answer (`live`/`unproven`/`unknown`) for the displaced handle — neither is ever upgraded to a claim. Failure: `{member, rebound:false, reason, detail, namedBy, ...}` — `reason` is `no-team-record`, `team-record-unreadable`, `team-record`, `team-member`, `handle-unevidenced` (nothing in this seat's CURRENT trail names the requested handle), `handle-superseded` (only an OLDER hand-over row named it; `supersededBy:{event, handle, at?}` names the later row, and `detail` states both records without advising a direction), `team-record-changed` (a concurrent writer's document was refused, never overwritten), `write-failed` or `team-record-verify` (the write could not be read back). Every failure is also journaled as `member-rebind-failed`, and an argument-level refusal records the requested `handle` (bounded, with `handleTruncated` when cut)." },
+          rebound: { type: "array", items: { type: "object" }, description: "One entry per distinct `rebind` seat. Success: `{member, rebound:true, previousSessionId?, previousSessionIdLiveness?, handle, namedBy, plane:\"bound\", liveness}` (the `previousSessionId`/`previousSessionIdLiveness` pair is present only when the TEAM row was readable) (plus `handleRecordCurrent:true` and, when the record provably postdates the journal row, `journalHandoverOlder:true`) after the TEAM row was re-pointed and the CELL row mirrored (a failed CELL mirror adds `cellRow`; a different overwritten handle adds `displacedExecutorRef`/`displacedUnproven`; `tasksRebound` counts the non-terminal board rows handed over; `tasksNeedingRelease:[{taskId,status,release}]` names the live rows that need the quoted `release` verb first; `handleOrphanAdopted:true` marks the kept-child evidence). `namedBy` is the surface(s) that proved the handle (`team`, `cell`, `journal:<event>`); `liveness` is the identity registry's answer for the requested handle and `previousSessionIdLiveness` the same three-state answer (`live`/`unproven`/`unknown`) for the displaced handle — neither is ever upgraded to a claim. Failure: `{member, rebound:false, reason, detail, namedBy, ...}` — `reason` is `no-team-record`, `team-record-unreadable`, `team-record`, `team-member`, `handle-unevidenced` (nothing in this seat's CURRENT trail names the requested handle), `handle-superseded` (only an OLDER hand-over row named it; `supersededBy:{event, handle, at?}` names the later row, and `detail` states both records without advising a direction), `team-record-changed` (a concurrent writer's document was refused, never overwritten), `write-failed` or `team-record-verify` (the write could not be read back). Every failure is also journaled as `member-rebind-failed`, and an argument-level refusal records the requested `handle` (bounded, with `handleTruncated` when cut)." },
           unfenced: { type: "array", items: { type: "object" }, description: "One entry per distinct `unfence` member (duplicates collapse to one): `{member, unfenced:true, plane, planeReason?}` for a cleared CELL give-up fence (the CELL row's `fenced:true`, whatever the TEAM row says), `{member, unfenced:false, reason:\"not-fenced\"}` when neither record reports a marker, `{member, unfenced:false, reason:\"checkpoint-pending\", detail}` only when the CELL row carries no `fenced:true` AND the TEAM row is at `mode:\"checkpoint\"` with no `fenced` flag (the compaction barrier owns it, nothing was written), and `{member, unfenced, cellRow:\"untouched\", plane, planeReason?}` when an explicit TEAM-only fence was cleared while the CELL row was left untouched. `plane` is `unfenced` (the TEAM seat was reopened through the seam), `absent` (this composition exposes no `unfence` seam, so no reopen is claimed) or `refused` (with the plane's own sentence in `planeReason`). A FORCED clear answers `{member, unfenced:true, forced:true, alive:false, liveness:\"dead\"|\"unknown\", sessionId, bound:\"retry-budget\"|\"stale\", pendingMs?, plane, planeReason?}`, and a forced request that is refused writes nothing and answers `reason:\"live-session\"` or `reason:\"force-not-eligible\"` with a `detail` sentence. The dead-reseed seat (a reseeded `subcaptain` row whose recorded session the registry PROVES dead) is held by the SAME predicate and its forced clear names `bound:\"dead-session\"`. Any outcome whose plane half ended `refused` ALSO carries `retry`: the exact Lead-only verb (`agent_teams_control {action:\"unfence\", member}`) that re-drives the seam, echoed in the render and in the journal row." },
           unfenceWithheld: { type: "object", description: "Present ONLY when this call named both `rebind` and `unfence` and the unfence was withheld: every `rebind` entry must answer `rebound:true` with its CELL mirror confirmed before any fence is cleared. `{reason: \"rebind-failed\"|\"cell-mirror-unconfirmed\", members, failed:[{member, reason, cellRow?}], detail, next}`; `detail` says `fence stayed closed` and `next` names the re-run. The same call journals `dispatch-unfence-withheld`, and no `unfenced` entry is produced." },
           refused: { type: "string" },
@@ -1530,9 +1635,29 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         const reboundRows = Array.isArray(result.rebound) ? result.rebound as Array<Record<string, unknown>> : []
         /** The surfaces one outcome says evidenced the handle (`team`, `cell`, `journal:<event>`), rendered. */
         const evidenceOf = (row: Record<string, unknown>): string => Array.isArray(row.namedBy) && row.namedBy.length > 0 ? row.namedBy.map((entry) => String(entry)).join("+") : "no surface named it"
+        /**
+         * The BOARD half of one landed `rebind`, appended to its success line only when it has something to
+         * say (R11-2, PR #109's final repair round): a row count that MOVED, the ids still needing a release with the exact verb,
+         * and the orphan adoption. Without these clauses a rebind that left an `in_progress` row pointing at
+         * the dead handle rendered as an unconditional success.
+         *
+         * @param row - one landed `rebind` outcome (the answer's own shape, not the journal row).
+         * @returns the clauses to append, or "" when this re-point was a no-op.
+         */
+        const boardClausesOf = (row: Record<string, unknown>): string => {
+          /** The non-terminal rows this re-point handed over. */
+          const handed = typeof row.tasksRebound === "number" ? row.tasksRebound : 0
+          /** The live rows that must be released before they can follow (never force-moved). */
+          const needing = Array.isArray(row.tasksNeedingRelease) ? row.tasksNeedingRelease as Array<Record<string, unknown>> : []
+          /** The ids of those rows, in board order, for the operator to paste. */
+          const ids = needing.map((entry) => String(entry.taskId ?? "")).filter((id) => id !== "")
+          return (handed > 0 ? "; board: " + String(handed) + " row(s) handed over" : "")
+            + (ids.length > 0 ? "; " + String(ids.length) + " row(s) still need release: " + ids.join(", ") + ' — run agent_teams_task {action:"release", task_id} first' : "")
+            + (row.handleOrphanAdopted === true ? "; handle adopted from the orphan evidence row" : "")
+        }
         /** One line per rebind: what was re-pointed (with its evidence and the displaced child's liveness), or why not. */
         const rebounds = reboundRows.map((row) => row.rebound === true
-          ? "rebind " + String(row.member) + ": executorRef " + JSON.stringify(String(row.previousSessionId ?? "")) + " -> " + JSON.stringify(String(row.handle)) + " (evidence: " + evidenceOf(row) + (typeof row.displacedExecutorRef === "string" ? "; displaced " + JSON.stringify(row.displacedExecutorRef) + " liveness: " + String(row.previousSessionIdLiveness ?? "unknown") : "") + "; new handle liveness: " + String(row.liveness ?? "unknown") + (row.handleRecordCurrent === true ? "; record-current" : "") + (row.journalHandoverOlder === true ? "; journal hand-over older" : "") + (row.cellRow === undefined ? "" : "; CELL row " + String(row.cellRow)) + " — the identity registry's answer, not a claim)"
+          ? "rebind " + String(row.member) + ": executorRef " + JSON.stringify(String(row.previousSessionId ?? "")) + " -> " + JSON.stringify(String(row.handle)) + " (evidence: " + evidenceOf(row) + (typeof row.displacedExecutorRef === "string" ? "; displaced " + JSON.stringify(row.displacedExecutorRef) + " liveness: " + String(row.previousSessionIdLiveness ?? "unknown") : "") + "; new handle liveness: " + String(row.liveness ?? "unknown") + (row.handleRecordCurrent === true ? "; record-current" : "") + (row.journalHandoverOlder === true ? "; journal hand-over older" : "") + (row.cellRow === undefined ? "" : "; CELL row " + String(row.cellRow)) + " — the identity registry's answer, not a claim)" + boardClausesOf(row)
           : "rebind " + String(row.member) + ": NOT re-pointed (" + String(row.reason ?? "unknown") + ") — " + String(row.detail ?? "no detail was reported") + (typeof row.supersededBy === "object" && row.supersededBy !== null ? " [the journal's last hand-over journal:" + String((row.supersededBy as Record<string, unknown>).event) + " named " + JSON.stringify(String((row.supersededBy as Record<string, unknown>).handle ?? "")) + "; reconcile before re-pointing]" : "") + " [named by: " + evidenceOf(row) + (row.previousSessionId === undefined ? "" : "; current handle " + JSON.stringify(String(row.previousSessionId)) + " liveness: " + String(row.previousSessionIdLiveness ?? "unknown")) + "]")
         if (result.ok === false) return render(["cellwork_dispatch refused: " + String(result.error ?? "unknown refusal"), ...rebounds, ...clears, ...withheldLines].join("\n"))
         /** The delivered pairs. */

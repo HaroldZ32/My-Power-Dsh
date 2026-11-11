@@ -52,7 +52,24 @@
 //       list BOTH declared unfence targets in `members`, ONLY the failed entry in `failed`, and produce no
 //       `unfenced` outcome at all; the paired control clears both fences when both entries are evidenced;
 //   m6  the displaced-handle pair (`previousSessionId`/`previousSessionIdLiveness`) is OMITTED when the
-//       TEAM record is missing or unreadable — the docs said it, no arm proved it.
+//       TEAM record is missing or unreadable — the docs said it, no arm proved it;
+//   A32 `rebind` hands the BOARD over too: pending rows owned by the old handle (or the seat's name) move,
+//       terminal rows keep their owner, another seat's rows are untouched, and a `claimed`/`in_progress`
+//       row is reported in `tasksNeedingRelease` with the release verb instead of being force-moved
+//       (round 3, Major-1);
+//   A33 a KEPT CHILD is repairable end to end even when BOTH current records still name the old handle:
+//       the `checkpoint-unrecoverable` + `orphanChild` + `reconcileRequired` row is the accepted evidence
+//       (`handleOrphanAdopted`), while a FOREIGN handle is still refused on the same record
+//       (round 3, Major-2);
+//   A33b the adoption is BOUNDED: a record whose `updatedAt` provably postdates the orphan row refuses
+//       with `handle-unevidenced`, carries no `handleOrphanAdopted` anywhere, and moves neither record
+//       (R11-1 — the paired negative A33 lacked);
+//   A32b a REFUSED `rebind` leaves every board row's owner and revision byte-identical — "no document was
+//       renamed" is a claim about the write, not about the board half (R11-3);
+//   A34  the `rebind` RENDER carries the board half: the hand-over count, the ids still needing a release
+//       with the exact verb, and (only on adoption) the orphan clause — a live `in_progress` row can no
+//       longer render as an unconditional success (R11-2); A34b is the paired control (a no-op
+//       re-point renders none of those clauses).
 //
 // Every workspace is a fresh temp dir; nothing here reads the repository's own state.
 import { test, expect } from "bun:test"
@@ -1862,6 +1879,299 @@ test("A31: one unevidenced entry among two withholds the unfence for EVERY decla
   expect(controlCell.state.members[SECOND]?.sessionId).toBe(SECOND_NEW)
 })
 
+// ── A32: `rebind` hands the BOARD over too, and never force-moves a live row (round 3, Major-1) ─────
+
+test("A32: `rebind` re-points every NON-TERMINAL board row the old handle owned, leaves terminal rows, and reports live rows in tasksNeedingRelease", async () => {
+  // THE INCONSISTENCY (CodeRabbit round 3, Major-1). `bindReseededSeat` handed the board over; `rebind` only
+  // re-pointed `executorRef` and the CELL mirror — so a manual repair left the board naming the dead child
+  // and dispatch could not pair the seat's own work. This arm seeds one row of each shape and asserts the
+  // SAME rules the bind applies: pending rows move (handle spelling AND seat-name spelling), terminal rows
+  // keep history, another seat's row is untouched, and a `claimed`/`in_progress` row is REPORTED with the
+  // exact release verb instead of being force-moved.
+  /** The TEAM row starts at the old handle; the CELL row (below) is what evidences the requested one. */
+  const seeded = teamRecord([{ id: "M1", name: MEMBER_NAME, role: MEMBER_NAME, status: "running", executorRef: OLD_HANDLE, mode: "checkpoint" }])
+  /** The board this arm seeds. */
+  seeded.tasks = [
+    // THE ROWS THAT MUST MOVE: pending, owned by the old handle and by the seat's display name.
+    { id: "T1", subject: "waiting for the seat", status: "pending", owner: OLD_HANDLE, revision: 3 },
+    { id: "T7", subject: "waiting, name-owned", status: "pending", owner: MEMBER_NAME, revision: 4 },
+    // THE LIVE ROW: it must stay exactly as it is and be REPORTED, because a release comes first.
+    { id: "T2", subject: "being worked", status: "in_progress", owner: OLD_HANDLE, revision: 5, startedAt: "2026-11-11T00:00:30.000Z" },
+    // TERMINAL ROWS ARE HISTORY, whichever way they finished (F3).
+    { id: "T0", subject: "completed work", status: "completed", owner: OLD_HANDLE, revision: 6 },
+    { id: "T3", subject: "failed work", status: "failed", owner: OLD_HANDLE, revision: 7 },
+    { id: "T4", subject: "cancelled work", status: "cancelled", owner: OLD_HANDLE, revision: 8 },
+    // ANOTHER SEAT'S ROW IS NOT THIS SEAT'S TO HAND OVER.
+    { id: "T5", subject: "another seat's row", status: "pending", owner: "session-other-seat", revision: 9 },
+  ]
+  /** The harness whose CELL row names the fresh handle (the documented rebind evidence). */
+  const harness = makeHarness({ team: seeded, liveSessions: [NEW_HANDLE], member: memberRow({ sessionId: NEW_HANDLE, executorRef: NEW_HANDLE }) })
+  /** The captain's repair. */
+  const repaired = await harness.tools.get("cellwork_dispatch")!.execute({ rebind: [{ member: MEMBER_NAME, handle: NEW_HANDLE }] }, { name: "cellwork_dispatch", agent: harness.captain }) as Record<string, unknown>
+  /** This seat's outcome. */
+  const outcome = (Array.isArray(repaired.rebound) ? repaired.rebound as Array<Record<string, unknown>> : [])[0] as Record<string, unknown>
+  expect(outcome.rebound).toBe(true)
+  /** The board after the repair, by id. */
+  const byId = new Map(harness.record().tasks.map((task) => [String(task.id), task]))
+  // THE PAIRED ROWS MOVED, with the revision bumped exactly as the bind's re-point does.
+  expect(byId.get("T1")?.owner).toBe(NEW_HANDLE)
+  expect(byId.get("T1")?.revision).toBe(4)
+  expect(byId.get("T7")?.owner).toBe(NEW_HANDLE)
+  expect(byId.get("T7")?.revision).toBe(5)
+  // TERMINAL ROWS KEEP THE OWNER THAT DID THE WORK.
+  expect(byId.get("T0")?.owner).toBe(OLD_HANDLE)
+  expect(byId.get("T3")?.owner).toBe(OLD_HANDLE)
+  expect(byId.get("T4")?.owner).toBe(OLD_HANDLE)
+  // ANOTHER SEAT'S ROW IS UNTOUCHED, revision included.
+  expect(byId.get("T5")?.owner).toBe("session-other-seat")
+  expect(byId.get("T5")?.revision).toBe(9)
+  // THE LIVE ROW IS REPORTED, NOT FORCE-MOVED: the dispatch contract requires a release first, and the
+  // answer supplies the EXACT verb instead of leaving the operator to infer one.
+  expect(byId.get("T2")?.owner).toBe(OLD_HANDLE)
+  expect(byId.get("T2")?.revision).toBe(5)
+  /** The live rows the outcome says need a release. */
+  const needing = Array.isArray(outcome.tasksNeedingRelease) ? outcome.tasksNeedingRelease as Array<Record<string, unknown>> : []
+  expect(needing).toHaveLength(1)
+  expect(needing[0].taskId).toBe("T2")
+  expect(needing[0].status).toBe("in_progress")
+  expect(String(needing[0].release)).toContain('agent_teams_task {action:"release", task_id:"T2"}')
+  // THE COUNT IS THE OUTCOME'S, AND THE JOURNAL ROW CARRIES BOTH FACTS.
+  expect(outcome.tasksRebound).toBe(2)
+  /** This arm's `member-rebound` row. */
+  const row = journalRows(harness).find((entry) => entry.event === "member-rebound")
+  expect(row?.tasksRebound).toBe(2)
+  expect(row?.tasksNeedingRelease).toEqual(needing)
+})
+
+// ── A32b: a REFUSED rebind leaves the board exactly as it found it, owner and revision included ──────
+
+test("A32b: a REFUSED `rebind` moves NO board row — every owner and revision stays byte-identical", async () => {
+  // THE ASSERTION THE EARLIER ARMS LACKED (R11-3). "No TEAM document was renamed" is a statement about the
+  // WRITE; it stays green if a future implementation hands board rows over FIRST and only then discovers
+  // the handle is unevidenced. This arm seeds A32's board, asks for a FOREIGN handle, and reads the board
+  // back FROM DISK after the per-entry refusal.
+  /** The TEAM row starts at the old handle; the CELL row (below) evidences the fresh one. */
+  const seeded = teamRecord([{ id: "M1", name: MEMBER_NAME, role: MEMBER_NAME, status: "running", executorRef: OLD_HANDLE, mode: "checkpoint" }])
+  /** The board this arm seeds, in A32's shapes: pending, live, terminal and another seat's row. */
+  seeded.tasks = [
+    { id: "T1", subject: "waiting for the seat", status: "pending", owner: OLD_HANDLE, revision: 3 },
+    { id: "T7", subject: "waiting, name-owned", status: "pending", owner: MEMBER_NAME, revision: 4 },
+    { id: "T2", subject: "being worked", status: "in_progress", owner: OLD_HANDLE, revision: 5, startedAt: "2026-11-11T00:00:30.000Z" },
+    { id: "T0", subject: "completed work", status: "completed", owner: OLD_HANDLE, revision: 6 },
+    { id: "T5", subject: "another seat's row", status: "pending", owner: "session-other-seat", revision: 9 },
+  ]
+  /** The harness whose CELL row names the fresh handle — the ordinary evidence path. */
+  const harness = makeHarness({ team: seeded, liveSessions: [NEW_HANDLE], member: memberRow({ sessionId: NEW_HANDLE, executorRef: NEW_HANDLE }) })
+  /** The seed's board, as the exact cells a hand-over would rewrite. */
+  const before = harness.record().tasks.map((task) => [task.id, task.owner, task.revision])
+  /** A host-shaped handle nothing in this workspace has ever named. */
+  const FOREIGN = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
+  /** The refused repair. */
+  const refused = await harness.tools.get("cellwork_dispatch")!.execute({ rebind: [{ member: MEMBER_NAME, handle: FOREIGN }] }, { name: "cellwork_dispatch", agent: harness.captain }) as Record<string, unknown>
+  /** This seat's outcome. */
+  const outcome = (Array.isArray(refused.rebound) ? refused.rebound as Array<Record<string, unknown>> : [])[0] as Record<string, unknown>
+  expect(outcome.rebound).toBe(false)
+  expect(outcome.reason).toBe("handle-unevidenced")
+  // THE BOARD IS UNTOUCHED, row by row: the refusal never reached the write that would carry it. A split
+  // implementation (board first, TEAM row second) would move T1/T7 here and fail this assertion.
+  expect(harness.record().tasks.map((task) => [task.id, task.owner, task.revision])).toEqual(before)
+  expect(harness.record().tasks.find((task) => task.id === "T1")?.owner).toBe(OLD_HANDLE)
+  expect(harness.record().tasks.find((task) => task.id === "T1")?.revision).toBe(3)
+  // AND THE TEAM ROW IS STILL THE OLD ONE: neither half of the repair landed.
+  expect(harness.record().members.find((member) => member.name === MEMBER_NAME)?.executorRef).toBe(OLD_HANDLE)
+})
+
+// ── A34: the rebind RENDER carries the board half instead of an unconditional success (R11-2) ─
+
+test("A34: a landed `rebind` RENDERS the rows it handed over AND the ones still needing a release", async () => {
+  // THE INVISIBILITY (R11-2). `tasksRebound`/`tasksNeedingRelease` were in the ANSWER, but the rendered line
+  // printed only evidence/displaced/liveness/cellRow — so a repair that left an `in_progress` row pointing
+  // at the DEAD handle rendered exactly like a finished one. The seed is A32's: T1 and T7 are handed over,
+  // T2 is live and must be released first.
+  /** The TEAM row starts at the old handle; the CELL row (below) evidences the requested one. */
+  const seeded = teamRecord([{ id: "M1", name: MEMBER_NAME, role: MEMBER_NAME, status: "running", executorRef: OLD_HANDLE, mode: "checkpoint" }])
+  /** The board this arm seeds (A32's exact shapes). */
+  seeded.tasks = [
+    { id: "T1", subject: "waiting for the seat", status: "pending", owner: OLD_HANDLE, revision: 3 },
+    { id: "T7", subject: "waiting, name-owned", status: "pending", owner: MEMBER_NAME, revision: 4 },
+    { id: "T2", subject: "being worked", status: "in_progress", owner: OLD_HANDLE, revision: 5, startedAt: "2026-11-11T00:00:30.000Z" },
+    { id: "T0", subject: "completed work", status: "completed", owner: OLD_HANDLE, revision: 6 },
+  ]
+  /** The harness whose CELL row names the fresh handle (the documented rebind evidence). */
+  const harness = makeHarness({ team: seeded, liveSessions: [NEW_HANDLE], member: memberRow({ sessionId: NEW_HANDLE, executorRef: NEW_HANDLE }) })
+  /** The captain's repair. */
+  const repaired = await harness.tools.get("cellwork_dispatch")!.execute({ rebind: [{ member: MEMBER_NAME, handle: NEW_HANDLE }] }, { name: "cellwork_dispatch", agent: harness.captain }) as Record<string, unknown>
+  /** The rendered blocks, flattened the way the adapter shows them. */
+  const rendered = harness.tools.get("cellwork_dispatch")!.output!.render!({}, repaired) as Array<{ text?: unknown }>
+  /** Every rendered line this answer produced. */
+  const text = rendered.map((block) => String(block.text ?? "")).join("\n")
+  // THE HAND-OVER IS VISIBLE ON THE LINE ITSELF.
+  expect(text).toContain("board: 2 row(s) handed over")
+  // THE LIVE ROW IS NAMED WITH ITS OWN ID AND THE EXACT VERB — never a silent success.
+  expect(text).toContain("1 row(s) still need release: T2")
+  expect(text).toContain('run agent_teams_task {action:"release", task_id} first')
+  // AND THE ORPHAN CLAUSE IS ABSENT: this repair adopted nothing from the journal.
+  expect(text).not.toContain("handle adopted from the orphan evidence row")
+})
+
+test("A34b: a re-point that hands nothing over renders NO board clause — the append is conditional", async () => {
+  // THE OTHER HALF OF "on demand" (R11-2): the clauses appear when they have something to say, so a reader
+  // can tell a hand-over from a plain confirmation. Here the TEAM row ALREADY names the child and the board
+  // already belongs to it, so `tasksRebound` is 0 and no row needs a release.
+  /** The TEAM row already bound to the fresh handle, mode open. */
+  const seeded = teamRecord([{ id: "M1", name: MEMBER_NAME, role: MEMBER_NAME, status: "running", executorRef: NEW_HANDLE, mode: "member" }])
+  /** The board, already owned by the fresh handle. */
+  seeded.tasks = [{ id: "T1", subject: "already the child's", status: "pending", owner: NEW_HANDLE, revision: 3 }]
+  /** The harness whose CELL row names the same handle. */
+  const harness = makeHarness({ team: seeded, liveSessions: [NEW_HANDLE], member: memberRow({ sessionId: NEW_HANDLE, executorRef: NEW_HANDLE, mode: "member", handoffReady: false }) })
+  /** The confirmation call. */
+  const repaired = await harness.tools.get("cellwork_dispatch")!.execute({ rebind: [{ member: MEMBER_NAME, handle: NEW_HANDLE }] }, { name: "cellwork_dispatch", agent: harness.captain }) as Record<string, unknown>
+  /** The landed outcome, so the arm proves the call really landed before reading its render. */
+  const outcome = (Array.isArray(repaired.rebound) ? repaired.rebound as Array<Record<string, unknown>> : [])[0] as Record<string, unknown>
+  expect(outcome.rebound).toBe(true)
+  expect(outcome.tasksRebound).toBe(0)
+  /** The rendered blocks, flattened the way the adapter shows them. */
+  const rendered = harness.tools.get("cellwork_dispatch")!.output!.render!({}, repaired) as Array<{ text?: unknown }>
+  /** Every rendered line this answer produced. */
+  const text = rendered.map((block) => String(block.text ?? "")).join("\n")
+  expect(text).toContain("rebind " + MEMBER_NAME + ": executorRef")
+  expect(text).not.toContain("row(s) handed over")
+  expect(text).not.toContain("still need release")
+  expect(text).not.toContain("handle adopted from the orphan evidence row")
+})
+
+// ── A33: a kept child is REPAIRABLE even when both current records name the old handle (round 3, Major-2) ─
+
+test("A33: `rebind` adopts the kept child's orphan row when BOTH current records still name the old handle — end to end", async () => {
+  // THE ORPHAN (CodeRabbit round 3, Major-2). A refused rollback keeps the fresh child, but when the
+  // surviving document names the OLD handle (the pending `cancelTasks` shape A29 proves), neither current
+  // record names the child, so `rebind` used to answer `handle-unevidenced` — the kept child was a permanent
+  // orphan. The barrier's `checkpoint-unrecoverable` row (`orphanChild` + `reconcileRequired`) is the seat's
+  // latest hand-over and IS accepted; this arm drives the failure and the repair end to end, then proves a
+  // FOREIGN handle is still refused on the SAME record (the evidence rules are not loosened).
+  /** The marker the concurrent writer's document carries, so the arm proves it survived the refused rollback. */
+  const MARKER = "pending-cancel-writer-a33"
+  /** The harness whose refused rollback leaves the OLD-handle document in place. */
+  const harness = makeHarness({
+    liveSessions: [NEW_HANDLE],
+    externalWriteAtVerify: (written) => ({
+      ...written,
+      phase: MARKER,
+      members: written.members.map((member) => (member.name === MEMBER_NAME ? { ...member, executorRef: OLD_HANDLE, mode: "checkpoint" } : member)),
+      tasks: written.tasks.map((task) => (String(task.id) === "T1" ? { ...task, owner: OLD_HANDLE } : task)),
+    }),
+  })
+  await stopListener(harness)({ agent: harness.member })
+  /** The give-up row this refusal writes: the ONLY durable proof the child belongs to this seat. */
+  const failed = journalRows(harness).find((entry) => entry.event === "checkpoint-unrecoverable")
+  expect(failed?.rollback).toBe("refused")
+  expect(failed?.orphanChild).toBe(NEW_HANDLE)
+  expect(failed?.reconcileRequired).toBe(true)
+  // THE PREMISE, ASSERTED: both current records still name the OLD handle, so the ordinary evidence path
+  // would refuse the child.
+  expect(harness.record().members.find((member) => member.name === MEMBER_NAME)?.executorRef).toBe(OLD_HANDLE)
+  expect(cellMember(harness).sessionId).toBe(OLD_HANDLE)
+  /** The captain's repair, driven exactly as the refusal sentence spells it. */
+  const repaired = await harness.tools.get("cellwork_dispatch")!.execute({ rebind: [{ member: MEMBER_NAME, handle: NEW_HANDLE }], unfence: [MEMBER_NAME] }, { name: "cellwork_dispatch", agent: harness.captain }) as Record<string, unknown>
+  /** This seat's outcome. */
+  const outcome = (Array.isArray(repaired.rebound) ? repaired.rebound as Array<Record<string, unknown>> : [])[0] as Record<string, unknown>
+  expect(outcome.rebound).toBe(true)
+  // THE EVIDENCE PATH IS NAMED: the journal orphan row, and the adoption marker.
+  expect(outcome.handleOrphanAdopted).toBe(true)
+  expect(outcome.namedBy).toEqual(["journal:checkpoint-unrecoverable"])
+  // THE SEAT REALLY MOVED, on both records.
+  expect(harness.record().members.find((member) => member.name === MEMBER_NAME)?.executorRef).toBe(NEW_HANDLE)
+  expect(harness.record().members.find((member) => member.name === MEMBER_NAME)?.mode).toBe("member")
+  /** The CELL row after the repair. */
+  const cell = cellMember(harness)
+  expect(cell.sessionId).toBe(NEW_HANDLE)
+  expect(cell.executorRef).toBe(NEW_HANDLE)
+  expect(cell.fenced).not.toBe(true)
+  // THE BOARD HALF OF THE SAME REPAIR (Major-1): T1 is in_progress, so it must be REPORTED, not moved.
+  /** The live rows the outcome says need a release. */
+  const needing = Array.isArray(outcome.tasksNeedingRelease) ? outcome.tasksNeedingRelease as Array<Record<string, unknown>> : []
+  expect(needing.map((entry) => entry.taskId)).toEqual(["T1"])
+  expect(harness.record().tasks.find((task) => String(task.id) === "T1")?.owner).toBe(OLD_HANDLE)
+  // AND THE EVIDENCE RULES ARE NOT LOOSENED: a handle no current row and no orphan row names is still
+  // refused by the same verb on the SAME repaired record.
+  /** A host-shaped handle nothing here has ever named. */
+  const FOREIGN = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
+  /** The refused foreign request. */
+  const foreign = await harness.tools.get("cellwork_dispatch")!.execute({ rebind: [{ member: MEMBER_NAME, handle: FOREIGN }] }, { name: "cellwork_dispatch", agent: harness.captain }) as Record<string, unknown>
+  /** That refusal's outcome. */
+  const foreignOutcome = (Array.isArray(foreign.rebound) ? foreign.rebound as Array<Record<string, unknown>> : [])[0] as Record<string, unknown>
+  expect(foreignOutcome.rebound).toBe(false)
+  expect(foreignOutcome.reason).toBe("handle-unevidenced")
+  // THE RECORD WAS NOT TOUCHED BY THE REFUSAL.
+  expect(harness.record().members.find((member) => member.name === MEMBER_NAME)?.executorRef).toBe(NEW_HANDLE)
+  // THE ADOPTION IS ON THE RENDERED LINE TOO (R11-2): an operator reading only the text still learns that
+  // this handle came from the journal's orphan row rather than from a current record.
+  /** The rendered blocks of the landing repair, flattened the way the adapter shows them. */
+  const rendered = harness.tools.get("cellwork_dispatch")!.output!.render!({}, repaired) as Array<{ text?: unknown }>
+  expect(rendered.map((block) => String(block.text ?? "")).join("\n")).toContain("handle adopted from the orphan evidence row")
+})
+
+test("A33b: a record that PROVABLY postdates the orphan row REFUSES the adoption — the journal never vetoes recency", async () => {
+  // THE PAIRED NEGATIVE (R11-1). A33 proves the orphan row is ACCEPTED; this arm proves that acceptance is
+  // BOUNDED, so the exception cannot become a back door. The seat's surviving record carries an `updatedAt`
+  // that provably postdates the orphan row's own stamp, which is exactly F1's crash window: the record's
+  // naming is NEWER, so the kept child can no longer be adopted. The SAME request that lands in A33 must be
+  // refused here, with no adoption marker anywhere and neither record moved by a byte.
+  /** The marker the concurrent writer's document carries, so the arm proves it survived the refused rollback. */
+  const MARKER = "pending-cancel-writer-a33b"
+  /** THE PROOF OF RECENCY: an instant no journal row of this run can reach. */
+  const LATER = "2027-01-01T00:00:00.000Z"
+  /** The record sealed LATER than the journal row this run will write. */
+  const later: TeamRecordFile = { ...teamRecord(), updatedAt: LATER }
+  /** The harness whose refused rollback leaves that LATER-stamped document in place. */
+  const harness = makeHarness({
+    team: later,
+    liveSessions: [NEW_HANDLE],
+    externalWriteAtVerify: (written) => ({
+      ...written,
+      phase: MARKER,
+      updatedAt: LATER,
+      members: written.members.map((member) => (member.name === MEMBER_NAME ? { ...member, executorRef: OLD_HANDLE, mode: "checkpoint" } : member)),
+      tasks: written.tasks.map((task) => (String(task.id) === "T1" ? { ...task, owner: OLD_HANDLE } : task)),
+    }),
+  })
+  await stopListener(harness)({ agent: harness.member })
+  /** The give-up row whose stamp the surviving record postdates: the evidence the refusal must weigh. */
+  const failed = journalRows(harness).find((entry) => entry.event === "checkpoint-unrecoverable")
+  expect(failed?.rollback).toBe("refused")
+  expect(failed?.orphanChild).toBe(NEW_HANDLE)
+  expect(failed?.reconcileRequired).toBe(true)
+  // THE PREMISE, ASSERTED: the surviving record is the LATER-stamped one and it still names the OLD handle.
+  expect(harness.record().updatedAt).toBe(LATER)
+  expect(harness.record().members.find((member) => member.name === MEMBER_NAME)?.executorRef).toBe(OLD_HANDLE)
+  expect(cellMember(harness).sessionId).toBe(OLD_HANDLE)
+  /** The TEAM bytes before the refused repair: a refusal may not rewrite one byte of them. */
+  const teamBefore = readFileSync(harness.recordPath, "utf8")
+  /** The CELL bytes before the refused repair. */
+  const cellBefore = readFileSync(statePath(harness.workspace, CELL_ID), "utf8")
+  /** The captain's repair — the SAME request A33 accepts. */
+  const repaired = await harness.tools.get("cellwork_dispatch")!.execute({ rebind: [{ member: MEMBER_NAME, handle: NEW_HANDLE }] }, { name: "cellwork_dispatch", agent: harness.captain }) as Record<string, unknown>
+  /** This seat's outcome. */
+  const outcome = (Array.isArray(repaired.rebound) ? repaired.rebound as Array<Record<string, unknown>> : [])[0] as Record<string, unknown>
+  expect(outcome.rebound).toBe(false)
+  expect(outcome.reason).toBe("handle-unevidenced")
+  // THE ADOPTION MARKER IS NOWHERE: not on the outcome, not on the failure row it journals.
+  expect("handleOrphanAdopted" in outcome).toBe(false)
+  /** The failure row this refusal journals. */
+  const failedRow = journalRows(harness).find((entry) => entry.event === "member-rebind-failed")
+  expect(failedRow?.reason).toBe("handle-unevidenced")
+  expect(failedRow !== undefined && "handleOrphanAdopted" in failedRow).toBe(false)
+  // AND THE REFUSAL STATES THE REASON: the record's own write postdates that row, so the RECORD wins.
+  expect(String(outcome.detail)).toContain("the record's own write postdates that row")
+  // NEITHER RECORD MOVED — not one byte of the TEAM document or the CELL record.
+  expect(readFileSync(harness.recordPath, "utf8")).toBe(teamBefore)
+  expect(readFileSync(statePath(harness.workspace, CELL_ID), "utf8")).toBe(cellBefore)
+  // THE RENDER DOES NOT CLAIM AN ADOPTION EITHER.
+  /** The rendered blocks of the refused repair, flattened the way the adapter shows them. */
+  const rendered = harness.tools.get("cellwork_dispatch")!.output!.render!({}, repaired) as Array<{ text?: unknown }>
+  expect(rendered.map((block) => String(block.text ?? "")).join("\n")).not.toContain("handle adopted from the orphan evidence row")
+})
+
 // ── m6: the displaced-handle pair is OMITTED when the TEAM record cannot be read ─────────────────────
 
 test("m6: a rebind outcome OMITS previousSessionId/previousSessionIdLiveness when the TEAM record is missing or unreadable", async () => {
@@ -1915,6 +2225,15 @@ test.skipIf(process.platform === "win32")("A19: a write by ANOTHER PROCESS insid
   const first = teamRecord()
   /** The OTHER WRITER's document: a different phase marker, delivered to the COMPARE read. */
   const second: TeamRecordFile = { ...teamRecord(), phase: "concurrent-writer-inside-rebind-window" }
+  /**
+   * The board cells a hand-over would rewrite, as exact `[id, owner, revision]` triples (R11-3).
+   *
+   * @param doc - one of the two documents the background writer serves.
+   * @returns every row's id, owner and revision, in board order.
+   */
+  const boardOf = (doc: TeamRecordFile): Array<[unknown, unknown, unknown]> => (doc.tasks ?? []).map((task) => [task.id, task.owner, task.revision])
+  /** The two seed boards captured BEFORE the call: a refused compare-and-set may not move one cell. */
+  const boardsBefore = [boardOf(first), boardOf(second)]
   /** The harness whose plane answers from memory, so the pipe is not drained before `rebind` opens it. */
   const harness = makeHarness({ rebindWindowWrite: { first, second }, team: first, member: memberRow({ sessionId: NEW_HANDLE, executorRef: NEW_HANDLE, mode: "member", handoffReady: false }) })
   /** The FIFO that replaces the record file. */
@@ -1965,6 +2284,13 @@ test.skipIf(process.platform === "win32")("A19: a write by ANOTHER PROCESS insid
     // AND THE CELL ROW WAS NOT MIRRORED: a refused TEAM write never leaves the two records disagreeing.
     expect(cellMember(harness).sessionId).toBe(NEW_HANDLE)
     expect(cellMember(harness).executorRef).toBe(NEW_HANDLE)
+    // THE BOARD HALF, STATED EXPLICITLY (R11-3). "Nothing was renamed over the pipe" is a claim about the
+    // DOCUMENT; this is the claim about the ROWS. Together they say no board write was committed on either
+    // document: a future split into two writes (board first, TEAM row second) would have to commit the board
+    // somewhere, and no committed write here can be invisible to both assertions.
+    expect([boardOf(first), boardOf(second)]).toEqual(boardsBefore)
+    // Every seeded row still names the dead handle at its seeded revision — no row was handed over.
+    expect(boardOf(first)).toEqual([["T1", OLD_HANDLE, 7], ["T0", OLD_HANDLE, 4], ["T2", OLD_HANDLE, 5], ["T3", OLD_HANDLE, 6]])
   } finally {
     // THE WRITER'S WHOLE GROUP IS KILLED, then the pipe goes away so no blocked `cat` outlives the arm.
     try {

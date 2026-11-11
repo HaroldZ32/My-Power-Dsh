@@ -988,7 +988,7 @@ export function barrierFailedRow(previous: CellMemberRecord, retryBound: number,
  * @returns the exact repair sentence the journal and the refusal carry.
  */
 function reconcileRepairOf(memberName: string, handle: string): string {
-  return "cellwork_dispatch {rebind:[{member:" + JSON.stringify(memberName) + ", handle:" + JSON.stringify(handle) + "}], unfence:[" + JSON.stringify(memberName) + "]} re-points executorRef to the handle the surviving record names (its answer reports `liveness` live/unproven/unknown — the bind proves nothing by itself) and mirrors it into the CELL row, then clears the give-up fence — `unfence` alone never touches the handle"
+  return "cellwork_dispatch {rebind:[{member:" + JSON.stringify(memberName) + ", handle:" + JSON.stringify(handle) + "}], unfence:[" + JSON.stringify(memberName) + "]} re-points executorRef to the handle the surviving record names (its answer reports `liveness` live/unproven/unknown — the bind proves nothing by itself), mirrors it into the CELL row, hands over the NON-TERMINAL board rows the old handle owned (a `claimed`/`in_progress` row answers `tasksNeedingRelease` and must be freed first with agent_teams_task {action:\"release\"}), then clears the give-up fence — `unfence` alone never touches the handle"
 }
 
 /**
@@ -1328,7 +1328,7 @@ export async function promoteAfterHandoff(deps: PromotionDeps): Promise<Promotio
                   : "the rollback refused to overwrite a concurrent writer, and the surviving record could not be read")
               + ", so the child was NOT released"
               + (bind.rollback === "refused" ? ": that writer may still commit a roster naming it (team-core's `cancelTasks` writes back the roster it read while this bind was in flight), and a released child behind such a roster is a dangling handle" : "")
-              + "; repair with " + reconcileRepairOf(deps.memberName, handle)
+              + "; repair with " + reconcileRepairOf(deps.memberName, handle) + "; THAT REPAIR WORKS EVEN WHEN BOTH CURRENT RECORDS STILL NAME THE OLD HANDLE: this row's `orphanChild` is the ownership evidence `rebind` accepts (it must stay the seat's latest hand-over; a later record that provably postdates it wins)"
             : released ? "; the fresh child's activation was RELEASED through its dispose seam (a best-effort attempt that resolved)" : "; the fresh child's activation could not be released: no dispose seam was exposed, or the one that exists threw"),
         failedSurface: bind.surface ?? "unknown",
         // THE ROLLBACK OUTCOME TRAVELS WITH THE REFUSAL (Major-7): the journal row that `failedSurface`

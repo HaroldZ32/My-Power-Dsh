@@ -315,8 +315,8 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
   （team-core 的 `cancelTasks`）也可能在之后才提交它**在本次绑定进行期间**读到的名册——那份文档点的正是新 handle。
   只有真正把绑定前行**恢复**（`restored`）的回滚才释放子代理。保留体现在 journal 行的 `orphanChild` +
   `reconcileRequired` 上；`rollback:"failed"` 是同样的「未证明」状态，同样保留。失败文案交出 `cellwork_dispatch {rebind:[{member, handle}], unfence:[member]}`——
-  `rebind` **先执行**，是**唯一**能重新指向 `executorRef` 的动词（并把 handle 镜像进 CELL 行）；`unfence` 单独用永远不碰
-  handle，`reassign` 只移动看板行。**合并调用里的 `unfence` 只在每个 `rebind` 条目都答复 `rebound:true` 且 CELL 镜像确认
+  `rebind` **先执行**，是**唯一**能重新指向 `executorRef` 的动词（并把 handle 镜像进 CELL 行，同时改派旧 handle 名下
+  **非终态**的看板行）；`unfence` 单独用永远不碰 handle，`reassign` 只移动看板行。**合并调用里的 `unfence` 只在每个 `rebind` 条目都答复 `rebound:true` 且 CELL 镜像确认
   之后才执行**：否则所有点名围栏保持**关闭**、不执行任何 `unfence`、journal 记 `dispatch-unfence-withheld`，答复里的
   `unfenceWithheld` 写明 `fence stayed closed` 并给出下一步。落地的重指若 CELL 镜像失败，仍是 `rebound:true`，但会带
   `cellRow:"failed: …"`——**必须检查 `cellRow`**：只有它缺席才代表两份记录一致，镜像失败同样会扣住 `unfence`。恢复路径不会被再次进入：当 TEAM 行已点名一个注册表证明**活着**、且不同于 CELL 行
@@ -334,13 +334,21 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
   写入仍可能被覆盖：这条跨进程残余是收窄，不是消除。F3：终态行（`completed`/`failed`/`cancelled`）保留原
   owner——历史绝不重指。**`rebind` 会校验它的 handle，并记录它自己的结论（M1/N1/F1）：** handle 先 trim，必须是宿主铸造的
   8-4-4-4-12 UUID 形态，且必须被本座位**当前的记录**点名——TEAM 行或 CELL 行；**当两条当前行都没有点名任何 handle
-  时，journal 的最新一条交接行同样可以作证**。**当前记录优先，journal 只作
-  佐证：** journal 的「最新一条」只在**两条当前行都没有点名任何 handle** 时才参与判定，且绝不能否决任一当前行
-  点名的 handle。因此，记录写入晚于最后一次交接、且自身没有 journal 行时，该 handle 会被接受并标记
+  时，journal 的最新一条交接行同样可以作证**。**唯一的窄例外是被保留的子代理：** 同时带 `orphanChild` 与
+  `reconcileRequired` 的 `checkpoint-unrecoverable` 行，即使两条当前行都仍点名旧 handle 也被接受——它是「本座位
+  启动过该子代理」的唯一持久证据——但仅当它是 journal 最新一条交接、且记录不能证明写入更晚；结果标
+  `handleOrphanAdopted:true`，更晚的记录若点名别的 handle 仍然胜出（F1）。**journal 可以为「当前记录没有点名的 handle」
+  提供证据，但永远不会否决「当前记录已经点名的 handle」：** journal 的「最新一条」只在**两条当前行都没有点名任何 handle** 时才参与
+  判定，也绝不能否决任一当前行点名的 handle。因此，记录写入晚于最后一次交接、且自身没有 journal 行时，该 handle 会被接受并标记
   `handleRecordCurrent:true` 与（能证明写入更晚时）`journalHandoverOlder:true`，而不是被判
   `handle-superseded` 并反向建议。只有更早交接行点名的 handle 会拒绝为 `handle-superseded` 并点名后来的
   那一行；文案只陈述两方事实，绝不替操作员选择方向（注册表只证明**存活**，从不证明**归属**，存活也不能让旧
-  handle 变回当前）。每条结果都带 `namedBy`（`team`/`cell`/`journal:<event>`）；
+  handle 变回当前）。每条结果都带 `namedBy`（`team`/`cell`/`journal:<event>`）；落地的重指还会报 `tasksRebound`（改派的
+  非终态看板行数；终态行保留原 owner）与 `tasksNeedingRelease`（`claimed`/`in_progress` 的行**不被强改**，条目的
+  `release` 字段给出确切的 `agent_teams_task {action:"release", task_id:"…"}` 动词）；**渲染出来的落地行**同样带着这些事实
+  （`board: N row(s) handed over`、`M row(s) still need release: <ids> — run agent_teams_task {action:"release", task_id} first`，
+  以及被采纳时的 `handle adopted from the orphan evidence row`），所以只修了一半的修复绝不会读起来像无条件的成功；当 TEAM 行
+  完全没有点名任何 handle 时，一条看板行都不会被改派——名字持有的行仍能路由到该座位，因此只有身份变化才会移动看板行；
   `previousSessionId`/`previousSessionIdLiveness`（`live`/`unproven`/`unknown`）**只在 TEAM 行可读时**报告，
   TEAM 记录缺失或不可读时会**省略**（没有可报告的被替换 handle）。真正落地的重指会带上与重种绑定
   相同的 `displacedExecutorRef`/`displacedUnproven`，每一条失败条目（包括参数拒绝，会记下请求的 `handle`）都记

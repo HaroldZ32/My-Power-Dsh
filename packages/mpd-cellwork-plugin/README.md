@@ -397,8 +397,9 @@ whose window cannot be read can be certified deliberately, and it is recorded as
   kept child is reported with `orphanChild` + `reconcileRequired` on the journal row; a
   `rollback:"failed"` is the same unproven state and keeps it too. The failure sentence hands over
   `cellwork_dispatch {rebind:[{member, handle}], unfence:[member]}` — `rebind` runs FIRST and is the ONLY
-  verb that re-points `executorRef` (it also mirrors the handle into the CELL row); `unfence` alone never
-  touches the handle and `reassign` only moves board rows. A combined call's `unfence` runs ONLY when
+  verb that re-points `executorRef` (it also mirrors the handle into the CELL row and hands over the
+  non-terminal board rows the old handle owned); `unfence` alone never touches the handle and `reassign`
+  only moves board rows. A combined call's `unfence` runs ONLY when
   every `rebind` entry answered `rebound:true` with its CELL mirror confirmed: otherwise the fences stay
   CLOSED, nothing is unfenced, the journal gets `dispatch-unfence-withheld`, and the answer's
   `unfenceWithheld` says `fence stayed closed` with the next step. A landed re-point whose CELL mirror
@@ -425,14 +426,26 @@ whose window cannot be read can be certified deliberately, and it is recorded as
   re-pointed. **`rebind` validates its handle and records its own
   claims (M1/N1/F1):** the handle is trimmed, must be the host-minted 8-4-4-4-12 UUID form, and must be
   named by the seat's CURRENT record — its TEAM row or its CELL row — OR, when NEITHER current row names a
-  handle, by the journal's LATEST hand-over row. **The current record wins; the journal only
-  corroborates:** that latest hand-over decides only in the record-silent case, and it can never veto a
-  handle either row names. A record written after the last hand-over with
+  handle, by the journal's LATEST hand-over row. **The one narrow exception is a KEPT CHILD:** a
+  `checkpoint-unrecoverable` row carrying `orphanChild` AND `reconcileRequired` is accepted even when BOTH
+  current rows still name the old handle — it is the only durable proof this seat started that child — but
+  only while it is the journal's LATEST hand-over and the record does not provably postdate it; the outcome
+  is marked `handleOrphanAdopted:true` and a later record naming another handle still wins (F1). **The journal
+  can EVIDENCE a handle no current record names, but it never VETOES a handle a current record does name:**
+  that latest hand-over decides only in the record-silent case, and it can never make a handle either row
+  names refuse. A record written after the last hand-over with
   no journal row of its own is therefore accepted, marked `handleRecordCurrent:true` and (when its write
   provably postdates that row) `journalHandoverOlder:true`, instead of being called `handle-superseded`
   and advised backwards. A handle only an OLDER hand-over row names is refused `handle-superseded` with
   the later row named; the detail states both facts and never chooses a direction (the registry proves
-  LIVENESS, never OWNERSHIP, and liveness does not make an old handle current). Every outcome reports `namedBy` (`team`/`cell`/`journal:<event>`);
+  LIVENESS, never OWNERSHIP, and liveness does not make an old handle current). Every outcome reports `namedBy` (`team`/`cell`/`journal:<event>`); a landed re-point also reports
+  `tasksRebound` (the non-terminal board rows handed over, terminal rows keep their owner) and
+  `tasksNeedingRelease` for a `claimed`/`in_progress` row — it is NOT force-moved, and its entry carries the
+  exact `agent_teams_task {action:"release", task_id:"…"}` verb to run first; the RENDERED landed line carries
+  the same facts (`board: N row(s) handed over`, `M row(s) still need release: <ids> — run agent_teams_task
+  {action:"release", task_id} first`, and `handle adopted from the orphan evidence row` on adoption), so a
+  partial repair never reads as an unconditional success; when the TEAM row names NO handle at all, no board
+  row is handed over — a name-owned row still routes to the seat, so only an identity change moves rows;
   `previousSessionId`/`previousSessionIdLiveness` (`live`/`unproven`/`unknown`) is reported WHEN THE TEAM ROW
   IS READABLE and is OMITTED when the TEAM record is missing or unreadable (there is no displaced handle to
   report). A landed re-point carries
