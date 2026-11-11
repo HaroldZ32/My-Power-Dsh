@@ -361,6 +361,15 @@ export const FROZEN_COUPLINGS: readonly string[] = [
   "packages/mpd-team-core-plugin/src/team-web.ts :: import type { MailAnswer, MailQuestion } from \"../../mpd-mail-protocol/src/index\"",
   // §7.2 (cellwork-elastic-planning): the seven-section handoff contract is written ONCE on the team plane — cellwork re-exports its validator instead of keeping a second copy that could drift.
   "packages/mpd-cellwork-plugin/src/handoff.ts :: export { validateHandoffText, type HandoffValidation } from \"../../mpd-team-core-plugin/src/team-handoff\"",
+  // BLIND-REVIEW REPAIR ON PR #110 (H1/M2/N1, 2026-11-11): two deliberate compile-time edges, both
+  // sanctioned classes from docs/independence.md §4. `activate.ts` imports the team store's OWN
+  // `teamRecordPath` (and its `sanitizeId`) instead of forking the `.mpd/team/teams/<id>.json` layout to
+  // tell "absent" from "exists but unreadable" (§4 class 3: a shared pure module imported instead of
+  // forked — a private copy is how the path and its sanitizer drift apart). `state.ts` imports
+  // `type TeamPhase` so the live-phase set is bound to team-core's union instead of an untyped literal
+  // (§4 class 4: type-only, erased by the build). Two entries added; no other edge moved.
+  "packages/mpd-cellwork-plugin/src/activate.ts :: import { teamRecordPath } from \"../../mpd-team-core-plugin/src/team-store\"",
+  "packages/mpd-cellwork-plugin/src/state.ts :: import type { TeamPhase } from \"../../mpd-team-core-plugin/src/team-store\"",
 ]
 
 /** Blank out comments while preserving BOTH the character count and every newline, so a

@@ -37,7 +37,8 @@
 // failure snapshot, and the retry reconciles that artifact from the live roster/state instead of
 // failing on a duplicate.
 import { existsSync, readFileSync } from "node:fs"
-import { atomicWriteText, appendJournal, contractPath, resolveCellTeam, type BoardTeamService, type CellMemberRecord, type CellState } from "./state"
+import { atomicWriteText, appendJournal, contractPath, isTerminalTeamRecord, resolveCellTeam, type BoardTeamService, type CellMemberRecord, type CellState } from "./state"
+import { teamRecordPath } from "../../mpd-team-core-plugin/src/team-store"
 import type { CellworkConfig } from "./config"
 import type { SplitTaskVerdict, SplitVerdict } from "./split"
 import { roleKey } from "./split"
@@ -206,6 +207,15 @@ export interface ActivateOutcome {
    */
   teamId?: string
   /**
+   * The execution team this pass MINTED, when it did (the same id {@link ActivateOutcome.teamId} names).
+   *
+   * Reported so the reply distinguishes "appended to a live board" from "created the board": the mint is
+   * a fact an operator must be able to see (blind review M2). Absent on the live path.
+   */
+  mintedTeamId?: string
+  /** Why the pass minted, when it did — `ended` or `absent`, never `unreadable` (that pass refuses). */
+  mintTrigger?: MintTrigger
+  /**
    * The staging team id preserved when {@link ActivateOutcome.teamId} replaced it (§7.1).
    *
    * Travels WITH `teamId` only: a record whose ids agree needs no rewrite.
@@ -218,7 +228,8 @@ export interface ActivateOutcome {
  *
  * The caller persists this on the cell record under `cell-activation-partial`, and a retry of the SAME
  * accepted revision reuses every entry instead of re-raising a member, re-minting a task or re-opening a
- * loop.
+ * loop — INCLUDING the execution team a failed pass MINTED (blind review H1): without the id below a
+ * retry either mints a second team or resolves the dead planning board by its colliding board ids.
  */
 export interface ActivatePartial {
   /** The members ensured so far, keyed by board name (raised, or resolved from the live roster). */
@@ -229,7 +240,22 @@ export interface ActivatePartial {
   loopIds: Record<string, string>
   /** The frozen contract paths written so far, by split key. */
   contracts: Record<string, string>
+  /** The execution team this pass MINTED, or absent when it addressed a live board or never minted. */
+  mintedTeamId?: string
+  /** Marker that a team was minted by this pass, so the checkpoint says so even beside the id. */
+  minted?: boolean
+  /** Why the pass minted: the planning record is terminal, or no record exists at all (M2). */
+  mintTrigger?: MintTrigger
 }
+
+/**
+ * Why an activation minted a fresh execution team (blind review M2).
+ *
+ * `ended` and `absent` are recoverable facts; `unreadable` is NOT a reason to mint — it is recorded so a
+ * reader can tell the three apart, and the pass REFUSES rather than create a duplicate beside a record
+ * whose live seats may still be running.
+ */
+export type MintTrigger = "ended" | "absent" | "unreadable"
 
 /** The activation result: the outcome, or the refusal sentence plus the partial once anything was written. */
 export type ActivateResult =
@@ -453,20 +479,36 @@ function contractAlreadyNamesLoop(deps: Pick<ActivateDeps, "workspace" | "cell">
 /**
  * Whether a team record still names a board this pass may WRITE to.
  *
- * Read structurally, never through another package's source: a record that carries `endedAt` or a phase
- * outside team-core's live set (`staged` | `active` | `idle`) is terminal — the clean-terminal auto-end
- * stamps exactly those two fields. An UNREADABLE record is reported as not live here, because the caller
- * that cannot read the board also cannot append to it; the mint below is the only write path left.
+ * Read structurally, through the resolver's ONE terminal rule (blind review N1): a record that carries
+ * `endedAt`, the `ended` phase or the hand-patched `archived` spelling is PROVEN terminal — the
+ * clean-terminal auto-end stamps the first two. `undefined` is "no readable board"; the CALLER decides,
+ * from the record PATH, whether that means "absent" or "exists but unreadable" (M2), because minting over
+ * the latter would duplicate a team whose seats may still be running.
  *
  * @param record - the team record, or undefined when the service could not answer.
  * @returns true only for a record a live append can still target.
  */
 function isLiveTeamRecord(record: object | undefined): boolean {
-  if (record === undefined) return false
-  if ("endedAt" in record && record.endedAt !== undefined) return false
-  /** The phase the record spells, defaulting to the live spelling when it carries none. */
-  const phase = "phase" in record && typeof record.phase === "string" && record.phase !== "" ? record.phase : "active"
-  return phase === "staged" || phase === "active" || phase === "idle"
+  // The cast is safe: the caller hands back the same structural record the resolver reads, and
+  // `isTerminalTeamRecord` only inspects `endedAt`/`phase` — never an index signature.
+  return record !== undefined && !isTerminalTeamRecord(record as Record<string, unknown>)
+}
+
+/**
+ * Why a resolved board is about to be replaced by a mint (blind review M2).
+ *
+ * The three answers are deliberately distinguishable: the reader collapses an absent file, an
+ * unparsable body, a version mismatch and a transient I/O failure into the SAME `undefined`, so the
+ * record PATH is the only evidence that separates "no team yet" from "a team exists but cannot be read".
+ *
+ * @param workspace - the workspace root the cell lives in.
+ * @param teamId - the board the resolution named.
+ * @param record - the record the service/reader answered, or undefined.
+ * @returns `ended` for a readable terminal record, `unreadable` when a file exists, else `absent`.
+ */
+function mintTriggerFor(workspace: string, teamId: string, record: object | undefined): MintTrigger {
+  if (record !== undefined) return "ended"
+  return existsSync(teamRecordPath(workspace, teamId)) ? "unreadable" : "absent"
 }
 
 /** One `agent_teams_plan` call, as {@link materializeSplit} performs it: a value or one refusal sentence. */
@@ -513,9 +555,17 @@ async function mintExecutionTeam(call: PlanCall, input: MintExecutionInput): Pro
   const added = await call({ action: "add_member", member: { ...input.member } })
   if (!added.ok) {
     // LEAVE THE SLOT CLEAN: an empty plan would make the retry's own `approve` refuse (an EMPTY shell is
-    // not a team), so the failed slot is archived before the refusal is returned.
-    await call({ action: "delete" })
-    return { ok: false, error: "the mint member could not be staged: " + added.error }
+    // not a team), so the failed slot is archived before the refusal is returned — and the cleanup's OWN
+    // answer is CHECKED (blind review N2): a sentence that only named the member failure would hide a
+    // slot that still holds a staged plan, which the retry's `create` would then collide with.
+    /** The cleanup's answer. */
+    const cleaned = await call({ action: "delete" })
+    return {
+      ok: false,
+      error: "the mint member could not be staged: " + added.error + (cleaned.ok
+        ? " (the empty plan slot was deleted)"
+        : " (AND the empty plan slot could NOT be deleted: " + cleaned.error + " — clear that staged plan before retrying)"),
+    }
   }
   /** The approval, which creates the record and raises the seed seat. */
   const approved = await call({ action: "approve" })
@@ -539,13 +589,20 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
   // planning team goes clean-terminal and activation lands on a FRESH team, so `cell.teamId` names the
   // dead one. Every team read below — the live-roster seed, the cancellation, the final report — goes
   // through this ONE resolution instead of `deps.cell.teamId`.
-  // THE START-OF-PASS RESOLUTION IS EVIDENCE-GATED: an INITIAL activation has no minted board ids to
-  // verify `teamId` against, so it reads NOTHING extra (the writes resolve the live team themselves and
-  // the end-of-pass resolution names the board by its own minted ids). A RE-SPLIT does have minted ids,
-  // so its seed/cancel path resolves the execution board and never the dead planning team (§7.1a site 8).
-  /** Whether this pass is a RE-SPLIT, whose recorded team must be verified against the minted ids. */
-  const resplit = Object.values(deps.cell.activatedTasks ?? {}).some((id) => id !== "")
-  /** The resolver's answer for a RE-SPLIT; an INITIAL activation resolves nothing (the evidence gate). */
+  // THE START-OF-PASS RESOLUTION IS EVIDENCE-GATED: an INITIAL activation has no minted board ids and no
+  // recorded mint to verify `teamId` against, so it reads NOTHING extra (the writes resolve the live team
+  // themselves and the end-of-pass resolution names the board by its own minted ids). A RE-SPLIT — or a
+  // RETRY of a pass that MINTED a team before failing (blind review H1) — does have that evidence, so its
+  // seed/cancel path resolves the execution board and never the dead planning team (§7.1a site 8).
+  /** The execution team a FAILED earlier pass minted, or "" when none is recorded (blind review H1). */
+  const recordedMinted = (deps.cell.mintedTeamId ?? "").trim()
+  /**
+   * Whether this pass continues a board that already exists: a re-split's minted rows, or the team a
+   * failed pass minted. A RETRY MUST COUNT AS ONE (H1) — otherwise the mint arm below runs a SECOND time
+   * and orphans the first team and the live seed seat its approval raised.
+   */
+  const resplit = recordedMinted !== "" || Object.values(deps.cell.activatedTasks ?? {}).some((id) => id !== "")
+  /** The resolver's answer when a board already exists; an INITIAL activation resolves nothing. */
   const resolved = resplit
     ? resolveCellTeam({ workspace: deps.workspace, cell: deps.cell, teams: deps.teams?.(), recordFor: deps.recordFor })
     : undefined
@@ -587,7 +644,17 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     deps.progress({ stage, key, ordinal: artifacts, total })
   }
   /** A fresh copy of the partial, so the failure snapshot can never alias a later mutation. */
-  const snapshot = (): ActivatePartial => ({ members: { ...partial.members }, boardIds: { ...partial.boardIds }, loopIds: { ...partial.loopIds }, contracts: { ...partial.contracts } })
+  const snapshot = (): ActivatePartial => ({
+    members: { ...partial.members },
+    boardIds: { ...partial.boardIds },
+    loopIds: { ...partial.loopIds },
+    contracts: { ...partial.contracts },
+    // THE MINT TRAVELS WITH THE FAILURE (blind review H1): the snapshot is what the caller writes to the
+    // cell record, so a mint that is not copied here is lost to every later retry.
+    ...(partial.mintedTeamId === undefined ? {} : { mintedTeamId: partial.mintedTeamId }),
+    ...(partial.minted === undefined ? {} : { minted: partial.minted }),
+    ...(partial.mintTrigger === undefined ? {} : { mintTrigger: partial.mintTrigger }),
+  })
   /** The failure arm: the sentence, plus the partial once anything was written. */
   const fail = (error: string): ActivateResult => ({ ok: false, error, ...(mutated ? { partial: snapshot() } : {}) })
   /** A message from an unknown thrown value, without assuming it is an Error. */
@@ -654,11 +721,25 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
   // `endedAt`/a terminal phase, so every live append would answer "no team is staged in this session".
   // The execution team is MINTED here through the same create+approve verbs staging uses; a board that
   // still resolves takes the unchanged path below and is never re-created.
-  /** The team this pass minted to replace an ended planning board, or "" on the live path. */
+  /** The team this pass minted to replace a terminal planning board, or "" on the live path. */
   let mintedTeamId = ""
-  // A RE-SPLIT IS DELIBERATELY OUT OF THIS ARM: its kept rows are board ids from the team being replaced,
-  // and re-minting them is a different repair. Its resolution already prefers the LIVE execution board.
-  if (!resplit && !isLiveTeamRecord(live)) {
+  /** Why this pass minted, when it did — the distinguishable, durable fact M2 asks for. */
+  let mintTrigger: MintTrigger | undefined
+  // A RE-SPLIT OR A RETRY OF A MINT IS DELIBERATELY OUT OF THIS ARM (blind review H1): its kept rows are
+  // board ids from a team that already exists, and minting again would orphan that team and the live seed
+  // seat its approval raised. `recordedMinted !== ""` is BELT AND BRACES beside `resplit`, because "never
+  // mint a second execution team" is the invariant, not a side effect of how `resplit` happens to be
+  // computed.
+  if (recordedMinted === "" && !resplit && !isLiveTeamRecord(live)) {
+    /** WHY the resolved board is being replaced; `unreadable` is a REFUSAL, never a reason to mint (M2). */
+    const trigger = mintTriggerFor(deps.workspace, teamId, live)
+    if (trigger === "unreadable") {
+      // FAIL-CLOSED (blind review M2): the reader collapses an absent file, an unparsable body, a version
+      // mismatch and a transient I/O failure into one `undefined`. A record that EXISTS but could not be
+      // read may belong to a LIVE team whose seats are still running, so minting beside it would duplicate
+      // it. The pass names the path and writes nothing.
+      return fail("cellwork_activate: the team record " + JSON.stringify(teamId) + " exists at " + teamRecordPath(deps.workspace, teamId) + " but could not be read (an unparsable body, a version this build does not read, or a transient read failure) — refusing to mint a second execution team; re-read that record (or repair it) before retrying")
+    }
     /** The split's FIRST task, whose member seeds the mint's non-empty plan. */
     const seedTask = deps.split.tasks[0]
     /** The seed member's board name. */
@@ -676,7 +757,16 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     })
     if (!minted.ok) return fail("cellwork_activate could not mint the execution team after the planning team " + JSON.stringify(teamId) + " ended: " + minted.error)
     mintedTeamId = minted.teamId
+    mintTrigger = trigger
     teamId = minted.teamId
+    // THE MINT IS PERSISTED EVEN IF THE REST OF THE PASS FAILS (blind review H1): without these three
+    // fields a retry cannot tell the fresh board from the dead planning board (both number from `T1`) and
+    // mints a second team. `mutated` is set directly because a mint creates a real team and a live seat
+    // WITHOUT journaling an artifact row, and `fail()` only hands a partial back after a mutation.
+    partial.mintedTeamId = minted.teamId
+    partial.minted = true
+    partial.mintTrigger = trigger
+    mutated = true
     // THE LIVE SEED IS THE MINTED TEAM, re-read so the seed member the approval raised is reused.
     try { live = deps.recordFor(teamId) } catch { live = undefined }
   }
@@ -1039,8 +1129,10 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     mode,
     splitRevision: deps.split.revision,
     // THE MINT IS A FACT A LATER READER MUST SEE (defect: activation had no minting path at all): the
-    // journal names both the execution team this pass created and the ended planning team it replaced.
-    ...(mintedTeamId === "" ? {} : { mintedTeamId, planningTeamId }),
+    // journal names both the execution team this pass created and the ended planning team it replaced,
+    // plus WHY it minted — `ended` and `absent` are distinguishable, and `unreadable` never reaches a
+    // successful pass (it refuses) (blind review M2).
+    ...(mintedTeamId === "" ? {} : { mintedTeamId, planningTeamId, ...(mintTrigger === undefined ? {} : { mintTrigger }) }),
     // THE BOARD RESOLUTION IS JOURNALED WITH THE PASS (CodeRabbit #108): an `unverified` fallback is a FACT
     // a later reader must be able to see, not a detail that lived only in this call's local variables.
     ...(unverified ? { boardResolution: "unverified", ...(boardNote === undefined ? {} : { boardNote }) } : {}),
@@ -1080,6 +1172,9 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
       dispatch,
       // §7.1: the record takes the execution board id and preserves the staging id beside it.
       ...(executionTeamId === "" || executionTeamId === planningTeamId ? {} : { teamId: executionTeamId, planningTeamId }),
+      // THE MINT IS REPORTED, not only journaled (blind review M2): an operator reading the reply can tell
+      // a fresh execution team from an append to an existing one.
+      ...(mintedTeamId === "" ? {} : { mintedTeamId, ...(mintTrigger === undefined ? {} : { mintTrigger }) }),
       ...(splitTaskId === "" ? {} : { splitTaskId }),
       ...(boardNote === undefined ? {} : { boardNote }),
       ...(notice === undefined ? {} : { notice }),

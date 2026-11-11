@@ -126,6 +126,18 @@ contract is NOT rewritten (only a task with no loop, or whose contract still car
 placeholder, gets one). `activatedRevision` is set only after the dispatch pass succeeds, so another failure
 leaves another resumable record.
 
+**A FAILED PASS THAT MINTED ITS EXECUTION TEAM IS RESUMABLE TOO.** When the pass had to mint (the planning
+board was already terminal, or no record existed) and then failed, the checkpoint carries the mint: the
+`cell-activation-partial` row and the cell record name `mintedTeamId` (plus a `minted` marker and the
+`mintTrigger`), `teamId` moves to the minted team, and the ended planning id is preserved as
+`planningTeamId`. A retry therefore treats the cell as already on a board, resolves the MINTED team FIRST
+(resolver step 0 below), and never mints a second one — a second mint would orphan the first team and the
+live seed seat its approval raised. Two shapes are covered: a failure BEFORE the first board row (no board
+id recorded) reuses the minted team with the `create` call count unchanged, and a failure AFTER one or more
+board rows keeps every retry write on the minted board while the dead planning record stays byte-for-byte
+untouched. A SUCCESSFUL activation clears `mintedTeamId`, because `teamId` names the execution team from
+then on.
+
 A NEWER accepted revision SUPERSEDES an older in-flight partial: the pass is journaled
 (`activation-in-flight-superseded`, naming both revisions and stating that the older partial is abandoned),
 and the newer split's materialisation reconciles the recorded rows: a kept key reuses its board id, while
@@ -964,11 +976,32 @@ execution team is minted after it, which is the bundle's NORMAL path — so ever
 board through ONE rule (the exported `resolveCellTeam` in the cellwork state module):
 
 1. the recorded `teamId`, accepted only when its record carries one of the cell's `activatedTasks` board
-   ids (or when the cell has no activated ids to check);
+   ids (or when the cell has no activated ids to check) AND the record is not PROVEN TERMINAL — an
+   `endedAt` stamp, the `ended` phase, or the hand-patched `archived` spelling. A fresh execution team
+   numbers its board from `T1`, the SAME ids the ended planning board carries, so an id-only match cannot
+   tell the live board from the dead one;
 2. otherwise the PLANE's own resolution for the cell's captain session — the exact path
    `cellwork_dispatch` uses;
 3. otherwise the live team whose board carries the cell's activated task ids;
 4. otherwise `planningTeamId`, the preserved staging id, as the legacy fallback.
+
+Step 0 comes before all four: when the cell records `mintedTeamId` (the execution team a FAILED pass
+created — see "A failed activation resumes"), that id IS the board and is returned on its own authority,
+even if its own phase reads terminal: the caller asked for exactly that board. It is the only evidence
+that separates the two identically-numbered boards, and it is why a retry never mints a second team. A
+SUCCESSFUL activation clears the marker. The terminal rule applies to EVERY other candidate (plane,
+activated-id scan, planning fallback): a terminal record is never a landing target. A phase spelling this
+build does not recognize is NOT treated as terminal, so a legacy record keeps resolving. The rule is
+independently testable: `isTerminalTeamRecord` and `resolveCellTeam` are exported, and
+`test/resolve-cell-team.test.ts` covers the rejection, the minted-id preference and the live/legacy
+controls.
+
+**A mint names its trigger, and an unreadable record refuses the mint.** The mint is journaled and
+reported with `mintTrigger`: `ended` for a terminal planning record, `absent` when no record file exists.
+A record that EXISTS but cannot be read — an unparsable body, a version this build does not read, a
+transient I/O failure, all of which the reader collapses into the same `undefined` — is NOT a reason to
+mint: the pass REFUSES, names the record's absolute path and writes nothing. Minting beside a momentarily
+unreadable team would duplicate a team whose seats may still be running, which is worse than a retry.
 
 **The fifth state is an UNVERIFIED fallback, and only a RE-SPLIT takes it.** When all four steps resolve
 NOTHING and the record's `teamId` is non-empty, a re-split (a cell whose `activatedTasks` already name
