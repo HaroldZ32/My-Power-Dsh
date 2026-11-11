@@ -1,0 +1,52 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/activate-resume.test.ts:
+1074 |   /** The activation that must mint. */
+1075 |   const activated = await runTool(harness, "cellwork_activate", {})
+1076 |   expect(activated.ok).toBe(true)
+1077 |   // THE REPLY CARRIES THE MINT (blind review M2): an operator sees the execution team and WHY it was
+1078 |   // created without opening the journal, and `ended` is distinguishable from `absent`.
+1079 |   expect(activated.mintedTeamId).toBe("team-2")
+                                        ^
+error: expect(received).toBe(expected)
+
+Expected: "team-2"
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/activate-resume.test.ts:1079:34)
+(fail) MINT: a planning board ended before activation is replaced by a fresh execution team [14.82ms]
+(pass) MINT NEGATIVE CONTROL: a LIVE planning board is still addressed in place (no second team) [2.74ms]
+1178 |   harness.injection.memberFailAt = 1
+1179 |   /** The failed pass. */
+1180 |   const failed = await runTool(harness, "cellwork_activate", {})
+1181 |   expect(failed.ok).toBe(false)
+1182 |   // THE FAILURE REPLY NAMES THE MINT TOO, so the captain knows which team the retry will address.
+1183 |   expect(failed.mintedTeamId).toBe("team-2")
+                                     ^
+error: expect(received).toBe(expected)
+
+Expected: "team-2"
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/activate-resume.test.ts:1183:31)
+(fail) MINT RETRY A: a failure BEFORE the first board row reuses the minted team; `create` stays spent once [2.23ms]
+1226 |   /** The failed pass. */
+1227 |   const failed = await runTool(harness, "cellwork_activate", {})
+1228 |   expect(failed.ok).toBe(false)
+1229 |   /** The cell record after the failed pass. */
+1230 |   const partial = readStateJson(harness.workspace, cellId)
+1231 |   expect(partial.mintedTeamId).toBe("team-2")
+                                      ^
+error: expect(received).toBe(expected)
+
+Expected: "team-2"
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/activate-resume.test.ts:1231:32)
+(fail) MINT RETRY B: a failure AFTER the first board row stays on the minted team and never touches the dead one [2.19ms]
+
+ 1 pass
+ 14 filtered out
+ 3 fail
+ 25 expect() calls
+Ran 4 tests across 1 file. [220.00ms]

@@ -1,0 +1,76 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/resolve-cell-team.test.ts:
+48 |   // renamed or dropped upstream stops this file type-checking, instead of leaving a stale literal.
+49 |   /** The phase list, typed against the upstream union. */
+50 |   const bound: readonly TeamPhase[] = cellworkState.LIVE_CELL_TEAM_PHASES
+51 |   // THE RUNTIME HALF: a live phase ADDED upstream (say `paused`) must be adopted here too, or a record
+52 |   // in that phase would be treated as terminal by cellwork while team-core still lets it resolve.
+53 |   expect([...bound] as readonly string[]).toEqual(LIVE_TEAM_PHASES)
+                  ^
+TypeError: Spread syntax requires ...iterable not be null or undefined
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/resolve-cell-team.test.ts:53:14)
+(fail) N1: the cellwork live-phase set is bound to team-core's TeamPhase and matches its live list [0.23ms]
+60 |   const result = resolve({
+61 |     cell: { cellId: "cell-1", teamId: "team-plan", planningTeamId: "", captainSessionId: "session-captain", activatedTasks: { "auth-core": "T1" } },
+62 |     records: { "team-plan": dead },
+63 |   })
+64 |   // The board ids match only because BOTH boards number from T1; the phase is what disqualifies it.
+65 |   expect(result.teamId).toBe("")
+                             ^
+error: expect(received).toBe(expected)
+
+Expected: ""
+Received: "team-plan"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/resolve-cell-team.test.ts:65:25)
+(fail) resolver: a TERMINAL recorded team is not a landing target, even when its board ids match [0.41ms]
+73 |   const result = resolve({
+74 |     cell: { cellId: "cell-1", teamId: "", planningTeamId: "team-plan", captainSessionId: "session-captain", activatedTasks: {} },
+75 |     records: { "team-plan": dead },
+76 |   })
+77 |   // With no activated ids the activated-task check is vacuous; the terminal phase must decide instead.
+78 |   expect(result.teamId).toBe("")
+                             ^
+error: expect(received).toBe(expected)
+
+Expected: ""
+Received: "team-plan"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/resolve-cell-team.test.ts:78:25)
+(fail) resolver: a TERMINAL planning fallback is refused when the cell has no activated ids yet [0.06ms]
+87 |   /** The resolution a retry takes. */
+88 |   const result = resolve({
+89 |     cell: { cellId: "cell-1", teamId: "team-plan", planningTeamId: "", captainSessionId: "session-captain", activatedTasks: { "auth-core": "T1" }, mintedTeamId: "team-exec" },
+90 |     records: { "team-plan": dead, "team-exec": minted },
+91 |   })
+92 |   expect(result.teamId).toBe("team-exec")
+                             ^
+error: expect(received).toBe(expected)
+
+Expected: "team-exec"
+Received: "team-plan"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/resolve-cell-team.test.ts:92:25)
+(fail) resolver: the MINTED team a failed pass recorded is the FIRST candidate [0.05ms]
+ 99 |   /** The resolution: the minted id is evidence of its own, not a guess from board ids. */
+100 |   const result = resolve({
+101 |     cell: { cellId: "cell-1", teamId: "", planningTeamId: "", captainSessionId: "session-captain", activatedTasks: {}, mintedTeamId: "team-exec" },
+102 |     records: { "team-exec": minted },
+103 |   })
+104 |   expect(result.teamId).toBe("team-exec")
+                              ^
+error: expect(received).toBe(expected)
+
+Expected: "team-exec"
+Received: ""
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/resolve-cell-team.test.ts:104:25)
+(fail) resolver: an explicitly recorded MINTED id is accepted even if its own phase reads terminal [0.05ms]
+(pass) resolver NEGATIVE CONTROL: a LIVE recorded team still resolves on its matching board [0.02ms]
+(pass) resolver NEGATIVE CONTROL: an UNKNOWN phase spelling is not proven terminal, so it still resolves [0.02ms]
+
+ 2 pass
+ 5 fail
+ 8 expect() calls
+Ran 7 tests across 1 file. [191.00ms]

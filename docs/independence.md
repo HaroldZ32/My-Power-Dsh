@@ -137,6 +137,16 @@ Four kinds of coupling are **allowed**; they are called out here so "independent
    edge, but it is still a source-level dependency on a sibling's internal module path, so it is
    frozen like any other.
 
+**Declared exception — a runtime I/O helper (2026-11-11, PR #110 N-c).** `mpd-cellwork-plugin`'s
+`activate.ts` imports the runtime `teamRecordPath` from `mpd-team-core-plugin`'s `team-store`, so it can
+tell "absent" from "exists but unreadable" without forking the `.mpd/team/teams/<id>.json` layout. It is
+**neither** class 3 (that class is a SHARED PURE MODULE; `team-store` reads and writes the filesystem)
+**nor** class 4 (the import is a runtime value, not type-only). The four classes above have no slot for
+it, so it is recorded here as a **frozen, downgraded exception** rather than mislabelled into a class it
+does not fit. It stays because the path and its sanitizer are the store's ONE definition — a private copy
+is how the two spellings drift apart, and the M2 "exists but unreadable" refusal names that exact path.
+The coupling inventory freezes the edge, so it cannot grow silently.
+
 ## 5. The pinned debt: the retired body's vendored `schemastery` — CLOSED
 
 **STATUS: CLOSED by the `de-vendor-and-verify-law` wave (2026-10-07).** The closure measurement is the

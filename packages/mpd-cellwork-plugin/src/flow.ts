@@ -86,6 +86,13 @@ interface FlowFailure {
   error: string
   /** The state path, when the refusal is about a record this build could not read. */
   path?: string
+  /**
+   * The execution team a FAILED activation minted before it stopped (blind review H1).
+   *
+   * The id is persisted on the cell record anyway; naming it here too means the captain sees WHICH team
+   * the retry will address without reading the record first.
+   */
+  mintedTeamId?: string
 }
 
 /**
@@ -1062,6 +1069,11 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
           ok: { type: "boolean" },
           error: { type: "string" },
           path: { type: "string" },
+          // THE MINT IS PART OF THE ANSWER (blind review M2): present on a successful mint and on a
+          // failure that minted before stopping, so a captain can tell a fresh execution team from an
+          // append to a live board without reading the record or the journal.
+          mintedTeamId: { type: "string", description: "The execution team this pass MINTED, when it did — also present on a failure that minted before stopping, naming the team a retry will address." },
+          mintTrigger: { type: "string", enum: ["ended", "absent"], description: "Why the pass minted: `ended` (the planning record is terminal) or `absent` (no record exists). `unreadable` is never reported here — that pass REFUSES instead of minting." },
           cellId: { type: "string" },
           mode: { type: "string", description: "`initial` for the first materialisation, `resplit` when a newer revision appended to the same team." },
           revision: { type: "number" },
@@ -1161,6 +1173,18 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
        * @param error - the failure sentence, on the final write for a failed pass.
        */
       const persistPartial = (partial: ActivatePartial, error?: string): void => {
+        // THE MINT IS PERSISTED WITH THE PARTIAL (blind review H1): the cell record moves to the execution
+        // team the failure created and remembers the id in its own field, so `resplit` and the resolver
+        // both see the mint on the retry instead of the ended planning team. `planningTeamId` keeps the
+        // staging id WITHOUT overwriting one an earlier activation already preserved.
+        /** The mint fields this checkpoint adds, or an empty object when the pass never minted. */
+        const mintRecord = partial.mintedTeamId === undefined
+          ? {}
+          : {
+            mintedTeamId: partial.mintedTeamId,
+            teamId: partial.mintedTeamId,
+            planningTeamId: state.planningTeamId === "" ? state.teamId : state.planningTeamId,
+          }
         /** The record after the partial checkpoint. */
         const next: CellState = {
           ...state,
@@ -1168,8 +1192,20 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
           members: { ...state.members, ...partial.members },
           activatedTasks: { ...state.activatedTasks, ...partial.boardIds },
           activatedLoops: { ...(state.activatedLoops ?? {}), ...partial.loopIds },
+          ...mintRecord,
         }
-        transition(caller.workspace, next, { event: "cell-activation-partial", revision: acceptedRevision, members: Object.keys(partial.members), tasks: partial.boardIds, loops: partial.loopIds, contracts: Object.values(partial.contracts), ...(error === undefined ? {} : { error }) }, activatedAt)
+        transition(caller.workspace, next, {
+          event: "cell-activation-partial",
+          revision: acceptedRevision,
+          members: Object.keys(partial.members),
+          tasks: partial.boardIds,
+          loops: partial.loopIds,
+          contracts: Object.values(partial.contracts),
+          // A FAILED PASS JOURNALS ITS MINT TOO (blind review H1): success is not the only moment the id
+          // matters, and the trigger keeps "ended" distinguishable from "absent" (M2).
+          ...(partial.mintedTeamId === undefined ? {} : { mintedTeamId: partial.mintedTeamId, minted: partial.minted === true, ...(partial.mintTrigger === undefined ? {} : { mintTrigger: partial.mintTrigger }) }),
+          ...(error === undefined ? {} : { error }),
+        }, activatedAt)
       }
       /** The materialisation. */
       const activated: ActivateResult = await materializeSplit({
@@ -1199,9 +1235,10 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
       })
       if (!activated.ok) {
         // THE FAILURE IS ITSELF A RESUMABLE STATE: persist the FINAL partial (the whole-state snapshot
-        // exists exactly once, here) together with the sentence that stopped the pass.
+        // exists exactly once, here) together with the sentence that stopped the pass. A minted execution
+        // team travels with it (blind review H1) — in the record, in the journal and in this reply.
         if (activated.partial !== undefined) persistPartial(activated.partial, activated.error)
-        return { ok: false, error: activated.error }
+        return { ok: false, error: activated.error, ...(activated.partial?.mintedTeamId === undefined ? {} : { mintedTeamId: activated.partial.mintedTeamId }) }
       }
       /** The cancellations this activation recorded, keyed by split key for the cell record. */
       const cancelledNow: Record<string, string> = {}
@@ -1223,6 +1260,9 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         phase: "executing",
         activatedRevision: acceptedRevision,
         activationInFlight: null,
+        // THE MINT IS NO LONGER IN FLIGHT: `teamId` now names the execution board for good, and keeping
+        // the marker would pin every later resolution to an id that a re-split no longer needs (H1).
+        mintedTeamId: "",
         activatedTasks: { ...activated.outcome.boardIds },
         activatedLoops: loopTable,
         cancelledTasks: { ...state.cancelledTasks, ...cancelledNow },
@@ -1232,7 +1272,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         splitTaskId: (activated.outcome.splitTaskId ?? "") === "" ? (state.splitTaskId ?? "") : String(activated.outcome.splitTaskId),
         members: { ...state.members, ...activated.outcome.members },
       }
-      transition(caller.workspace, next, { event: "cell-activation", mode: activated.outcome.mode, revision: acceptedRevision, tasks: activated.outcome.tasks.length, kept: activated.outcome.kept.length, cancelled: activated.outcome.cancelled.length, loops: activated.outcome.loops.length, reused: activated.outcome.reused, ...(activated.outcome.splitTaskId === undefined ? {} : { splitTaskId: activated.outcome.splitTaskId }) }, activatedAt)
+      transition(caller.workspace, next, { event: "cell-activation", mode: activated.outcome.mode, revision: acceptedRevision, tasks: activated.outcome.tasks.length, kept: activated.outcome.kept.length, cancelled: activated.outcome.cancelled.length, loops: activated.outcome.loops.length, reused: activated.outcome.reused, ...(activated.outcome.splitTaskId === undefined ? {} : { splitTaskId: activated.outcome.splitTaskId }), ...(activated.outcome.mintedTeamId === undefined ? {} : { mintedTeamId: activated.outcome.mintedTeamId, ...(activated.outcome.mintTrigger === undefined ? {} : { mintTrigger: activated.outcome.mintTrigger }) }) }, activatedAt)
       return {
         ok: true,
         cellId: state.cellId,
@@ -1248,6 +1288,9 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         dispatch: activated.outcome.dispatch,
         ...(activated.outcome.notice === undefined ? {} : { notice: activated.outcome.notice }),
         ...(activated.outcome.boardNote === undefined ? {} : { boardNote: activated.outcome.boardNote }),
+        // THE MINT IS PART OF THE ANSWER (blind review M2): a captain can tell a fresh execution team
+        // from an append to a live board without reading the journal.
+        ...(activated.outcome.mintedTeamId === undefined ? {} : { mintedTeamId: activated.outcome.mintedTeamId, ...(activated.outcome.mintTrigger === undefined ? {} : { mintTrigger: activated.outcome.mintTrigger }) }),
       }
     },
   }))

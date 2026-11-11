@@ -1,0 +1,1360 @@
+diff --git a/docs/cellwork.md b/docs/cellwork.md
+index 1f8451f8..a8965be5 100644
+--- a/docs/cellwork.md
++++ b/docs/cellwork.md
+@@ -126,6 +126,18 @@ contract is NOT rewritten (only a task with no loop, or whose contract still car
+ placeholder, gets one). `activatedRevision` is set only after the dispatch pass succeeds, so another failure
+ leaves another resumable record.
+ 
++**A FAILED PASS THAT MINTED ITS EXECUTION TEAM IS RESUMABLE TOO.** When the pass had to mint (the planning
++board was already terminal, or no record existed) and then failed, the checkpoint carries the mint: the
++`cell-activation-partial` row and the cell record name `mintedTeamId` (plus a `minted` marker and the
++`mintTrigger`), `teamId` moves to the minted team, and the ended planning id is preserved as
++`planningTeamId`. A retry therefore treats the cell as already on a board, resolves the MINTED team FIRST
++(resolver step 0 below), and never mints a second one — a second mint would orphan the first team and the
++live seed seat its approval raised. Two shapes are covered: a failure BEFORE the first board row (no board
++id recorded) reuses the minted team with the `create` call count unchanged, and a failure AFTER one or more
++board rows keeps every retry write on the minted board while the dead planning record stays byte-for-byte
++untouched. A SUCCESSFUL activation clears `mintedTeamId`, because `teamId` names the execution team from
++then on.
++
+ A NEWER accepted revision SUPERSEDES an older in-flight partial: the pass is journaled
+ (`activation-in-flight-superseded`, naming both revisions and stating that the older partial is abandoned),
+ and the newer split's materialisation reconciles the recorded rows: a kept key reuses its board id, while
+@@ -964,12 +976,33 @@ execution team is minted after it, which is the bundle's NORMAL path — so ever
+ board through ONE rule (the exported `resolveCellTeam` in the cellwork state module):
+ 
+ 1. the recorded `teamId`, accepted only when its record carries one of the cell's `activatedTasks` board
+-   ids (or when the cell has no activated ids to check);
++   ids (or when the cell has no activated ids to check) AND the record is not PROVEN TERMINAL — an
++   `endedAt` stamp, the `ended` phase, or the hand-patched `archived` spelling. A fresh execution team
++   numbers its board from `T1`, the SAME ids the ended planning board carries, so an id-only match cannot
++   tell the live board from the dead one;
+ 2. otherwise the PLANE's own resolution for the cell's captain session — the exact path
+    `cellwork_dispatch` uses;
+ 3. otherwise the live team whose board carries the cell's activated task ids;
+ 4. otherwise `planningTeamId`, the preserved staging id, as the legacy fallback.
+ 
++Step 0 comes before all four: when the cell records `mintedTeamId` (the execution team a FAILED pass
++created — see "A failed activation resumes"), that id IS the board and is returned on its own authority,
++even if its own phase reads terminal: the caller asked for exactly that board. It is the only evidence
++that separates the two identically-numbered boards, and it is why a retry never mints a second team. A
++SUCCESSFUL activation clears the marker. The terminal rule applies to EVERY other candidate (plane,
++activated-id scan, planning fallback): a terminal record is never a landing target. A phase spelling this
++build does not recognize is NOT treated as terminal, so a legacy record keeps resolving. The rule is
++independently testable: `isTerminalTeamRecord` and `resolveCellTeam` are exported, and
++`test/resolve-cell-team.test.ts` covers the rejection, the minted-id preference and the live/legacy
++controls.
++
++**A mint names its trigger, and an unreadable record refuses the mint.** The mint is journaled and
++reported with `mintTrigger`: `ended` for a terminal planning record, `absent` when no record file exists.
++A record that EXISTS but cannot be read — an unparsable body, a version this build does not read, a
++transient I/O failure, all of which the reader collapses into the same `undefined` — is NOT a reason to
++mint: the pass REFUSES, names the record's absolute path and writes nothing. Minting beside a momentarily
++unreadable team would duplicate a team whose seats may still be running, which is worse than a retry.
++
+ **The fifth state is an UNVERIFIED fallback, and only a RE-SPLIT takes it.** When all four steps resolve
+ NOTHING and the record's `teamId` is non-empty, a re-split (a cell whose `activatedTasks` already name
+ board ids) still continues on the RECORDED id — an old cell may name a board no seam can read any more,
+diff --git a/docs/cellwork.zh-CN.md b/docs/cellwork.zh-CN.md
+index cdec0cf8..081e2aa0 100644
+--- a/docs/cellwork.zh-CN.md
++++ b/docs/cellwork.zh-CN.md
+@@ -96,6 +96,15 @@ bundle 里除了 `/cellwork` 命令之外没有任何入口能启动这个模式
+ 的冻结合约会被视为已武装：该任务跳过，合约**不会**被重写（只有真正没有循环、或合约仍带着开环前占位句的任务才会
+ 新开一条）。只有在派发成功之后才写入 `activatedRevision`，所以再次失败仍会留下新的可续做记录。
+ 
++**铸出过执行 team 的失败同样可续做。** 当这一趟不得不铸队（规划板已是终态，或根本没有记录）随后失败时，
++检查点会带上这次铸队：`cell-activation-partial` 行与 cell 记录都点名 `mintedTeamId`（另带 `minted` 标记与
++`mintTrigger`），`teamId` 改为这个铸出的 team，已结束的规划 id 保留在 `planningTeamId`。因此重试会把该 cell
++视为**已经落在看板上**：解析器**第一步**先取铸出的 team，且**绝不**再铸第二个——再铸一次会让第一个 team 与它
++`approve` 时拉起的活种子席位变成无人可寻的孤儿。套件覆盖两种形态：在**第一条看板行落地之前**失败（没有记录任何
++看板 id）时，重试复用已铸 team，`create` 调用次数保持不变；在**已有至少一条看板行之后**失败时，重试的每次写入
++都落在铸出的看板上，而死掉的规划记录保持**逐字节不变**。激活**成功**后清空 `mintedTeamId`，因为此后
++`teamId` 就是执行 team。
++
+ **更新的**被接受修订号会**取代**更旧的在飞部分激活：这一趟会记入 journal（`activation-in-flight-superseded`，
+ 点名两个修订号并说明更旧的部分产物被放弃），而新切分的物化会核对已记录的行：保留下来的键复用其看板 id，被去掉
+ 的工作按重切分规则标记 `cancelled`，因此旧产物既不会重复，也不会丢失。只有**低于**在飞修订号的被接受修订号会被
+@@ -751,12 +760,25 @@ cell id 形如 `cell-<UTC 时刻>`；子 cell 会记录 `parentCellId` 与 `dept
+ ——规划 team 可以先变成 clean-terminal、执行 team 随后才铸出，而这正是本 bundle 的**常态**路径——因此每个
+ 读者都经**同一条**规则解析看板（cellwork 状态模块导出的 `resolveCellTeam`）：
+ 
+-1. 记录的 `teamId`，仅当它的记录携带本 cell `activatedTasks` 里的某个看板 id（或该 cell 还没有已激活 id）时
+-   才被接受；
++1. 记录的 `teamId`，仅当它的记录携带本 cell `activatedTasks` 里的某个看板 id（或该 cell 还没有已激活 id），
++   **且**该记录未被证明为终态（没有 `endedAt`、不是 `ended`、也不是手工改写的 `archived`）时才被接受。新建的
++   执行 team 从 `T1` 开始编号，与已结束的规划板**编号相同**，所以只靠 id 匹配分不清活板与死板；
+ 2. 否则为**团队平面**就本 cell 的队长 session 给出的解析结果——正是 `cellwork_dispatch` 走的同一条路径；
+ 3. 否则为「看板携带本 cell 已激活任务 id」的那个活跃 team；
+ 4. 否则回退到 `planningTeamId`，即保留的暂存 id（旧 cell 的回退）。
+ 
++**第 0 步先于以上四步**：cell 记录了 `mintedTeamId`（一次**失败**的激活铸出的执行 team，见「激活中途失败可以
++续做」）时，这个 id **就是**看板，按自身权威直接返回——即使它的 phase 读起来是终态，因为调用方点名的正是那块
++看板。它是区分两块编号相同的看板的**唯一**证据，也是重试绝不会再铸第二个 team 的原因。激活**成功**后清空该
++标记。终态规则适用于**其他每一个**候选（团队平面、已激活 id 扫描、规划回退）：终态记录永远不是落地目标；而本
++构建**不认识**的 phase 拼写不会被当成终态，旧记录因此仍能解析。这条规则可独立测试：`isTerminalTeamRecord` 与
++`resolveCellTeam` 都是导出的，`test/resolve-cell-team.test.ts` 覆盖了拒绝、铸出 id 优先与活板/旧记录对照臂。
++
++**铸队会写明触发原因，而不可读的记录会拒绝铸队。** 铸队在 journal 与答复里带 `mintTrigger`：规划记录是终态时
++为 `ended`，记录文件不存在时为 `absent`。**存在但读不出来**的记录——无法解析的正文、本构建读不了的版本、瞬时
++I/O 失败，读取器会把它们都塌成同一个 `undefined`——**不是**铸队的理由：这一趟会**拒绝**、点名记录的绝对路径并
++什么都不写。在一块暂时读不出的 team 旁边铸新队，会复制出一个席位可能仍在运行的 team，比一次重试更糟。
++
+ **第五种状态是「未验证」回落，且只有重切分才会走。** 四步解析什么都没找到、而记录的 `teamId` 非空时，重切分
+ （`activatedTasks` 已带看板 id 的 cell）仍继续使用**记录里的** id——旧 cell 可能指向一个任何接缝都读不到的看板，
+ 拒绝它会搁浅本来可续做的工作——但这个 id 是**被信任**而非被验证的：答复携带 `boardNote` 说明这一点，同一事实
+diff --git a/packages/mpd-cellwork-plugin/dist/index.js b/packages/mpd-cellwork-plugin/dist/index.js
+index 5d0e5e44..0725f14a 100644
+--- a/packages/mpd-cellwork-plugin/dist/index.js
++++ b/packages/mpd-cellwork-plugin/dist/index.js
+@@ -2472,6 +2472,7 @@ function newCellState(input) {
+     activatedTasks: {},
+     activatedLoops: {},
+     activationInFlight: null,
++    mintedTeamId: "",
+     cancelledTasks: {},
+     splitStale: false,
+     startedAt: "",
+@@ -2565,6 +2566,16 @@ function appendJournal(workspace, cellId, entry, now) {
+     return 0;
+   }
+ }
++var LIVE_CELL_TEAM_PHASES = ["staged", "active", "idle"];
++var KNOWN_TEAM_PHASES = [...LIVE_CELL_TEAM_PHASES, "ended", "archived"];
++function isTerminalTeamRecord(record) {
++  if ("endedAt" in record && record.endedAt !== undefined)
++    return true;
++  const phase = "phase" in record && typeof record.phase === "string" && record.phase !== "" ? record.phase : "active";
++  if (!KNOWN_TEAM_PHASES.includes(phase))
++    return false;
++  return !LIVE_CELL_TEAM_PHASES.includes(phase);
++}
+ function teamRecordOf(deps, teamId) {
+   if (teamId === "")
+     return;
+@@ -2595,13 +2606,18 @@ function holdsActivatedTask(record, activatedIds) {
+ }
+ function resolveCellTeam(deps) {
+   const recorded = typeof deps.cell.teamId === "string" ? deps.cell.teamId : "";
++  const minted = typeof deps.cell.mintedTeamId === "string" ? deps.cell.mintedTeamId : "";
+   const planning = typeof deps.cell.planningTeamId === "string" ? deps.cell.planningTeamId : "";
+   const activatedIds = new Set(Object.values(deps.cell.activatedTasks ?? {}).filter((id) => typeof id === "string" && id !== ""));
++  const mintedRecord = minted === "" ? undefined : teamRecordOf(deps, minted);
+   const recordedRecord = teamRecordOf(deps, recorded);
++  const recordedTerminal = recordedRecord !== undefined && isTerminalTeamRecord(recordedRecord);
+   let planeId = "";
+   let planeRecord;
+   let chosen;
+-  if (recordedRecord !== undefined && holdsActivatedTask(recordedRecord, activatedIds)) {
++  if (minted !== "")
++    chosen = { id: minted, record: mintedRecord, source: "minted" };
++  if (chosen === undefined && recordedRecord !== undefined && !recordedTerminal && holdsActivatedTask(recordedRecord, activatedIds)) {
+     chosen = { id: recorded, record: recordedRecord, source: "state.teamId" };
+   }
+   const recordedRejected = recordedRecord !== undefined && chosen === undefined;
+@@ -2617,7 +2633,7 @@ function resolveCellTeam(deps) {
+       planeId = typeof plane.teamId === "string" ? plane.teamId : "";
+       planeRecord = Array.isArray(plane.tasks) ? plane : teamRecordOf(deps, planeId);
+     }
+-    if (planeId !== "" && planeRecord !== undefined && holdsActivatedTask(planeRecord, activatedIds)) {
++    if (planeId !== "" && planeRecord !== undefined && !isTerminalTeamRecord(planeRecord) && holdsActivatedTask(planeRecord, activatedIds)) {
+       chosen = { id: planeId, record: planeRecord, source: "plane" };
+     }
+   }
+@@ -2637,6 +2653,8 @@ function resolveCellTeam(deps) {
+       const id = typeof record.teamId === "string" ? record.teamId : "";
+       if (id === "" || id === recorded && recordedRejected)
+         continue;
++      if (isTerminalTeamRecord(record))
++        continue;
+       const count = teamTaskRows(record).filter((task) => typeof task.id === "string" && activatedIds.has(task.id)).length;
+       if (count > bestCount) {
+         best = { id, record };
+@@ -2648,7 +2666,7 @@ function resolveCellTeam(deps) {
+   }
+   if (chosen === undefined && planning !== "" && planning !== recorded) {
+     const planningRecord = teamRecordOf(deps, planning);
+-    if (planningRecord !== undefined && holdsActivatedTask(planningRecord, activatedIds))
++    if (planningRecord !== undefined && !isTerminalTeamRecord(planningRecord) && holdsActivatedTask(planningRecord, activatedIds))
+       chosen = { id: planning, record: planningRecord, source: "planningTeamId" };
+   }
+   const resolvedId = chosen?.id ?? "";
+@@ -2657,9 +2675,9 @@ function resolveCellTeam(deps) {
+   if (disagreement) {
+     note = "the cell record names team " + JSON.stringify(recorded) + " while the " + (chosen?.source ?? "none") + " resolution names " + JSON.stringify(resolvedId === "" ? planeId : resolvedId) + (resolvedId === "" ? " (no team could be verified)" : " — the " + (chosen?.source ?? "none") + " board is reported");
+     if (recordedRejected)
+-      note += "; the recorded team's board holds none of this cell's activated tasks (" + [...activatedIds].join(", ") + ")";
++      note += recordedTerminal ? "; the recorded team is TERMINAL (an `endedAt` stamp or a non-live phase), so it is never a landing target" : "; the recorded team's board holds none of this cell's activated tasks (" + [...activatedIds].join(", ") + ")";
+   } else if (recordedRejected && chosen === undefined) {
+-    note = "the cell record names team " + JSON.stringify(recorded) + " whose board holds none of this cell's activated tasks (" + [...activatedIds].join(", ") + "), and no live team holds them — no board is reported";
++    note = recordedTerminal ? "the cell record names team " + JSON.stringify(recorded) + " which is TERMINAL (an `endedAt` stamp or a terminal phase), so it is never a landing target, and no live team could be verified — no board is reported" : "the cell record names team " + JSON.stringify(recorded) + " whose board holds none of this cell's activated tasks (" + [...activatedIds].join(", ") + "), and no live team holds them — no board is reported";
+   }
+   return {
+     teamId: resolvedId,
+@@ -2789,6 +2807,7 @@ function normalizeCellState(raw) {
+     activatedTasks: stringMap(raw.activatedTasks),
+     activatedLoops: stringMap(raw.activatedLoops),
+     activationInFlight: typeof raw.activationInFlight === "number" ? raw.activationInFlight : null,
++    mintedTeamId: typeof raw.mintedTeamId === "string" ? raw.mintedTeamId : "",
+     cancelledTasks: stringMap(raw.cancelledTasks),
+     splitStale: raw.splitStale === true,
+     startedAt: typeof raw.startedAt === "string" ? raw.startedAt : "",
+@@ -4514,6 +4533,24 @@ async function runRecon(deps, input) {
+ // packages/mpd-cellwork-plugin/src/activate.ts
+ import { existsSync as existsSync5, readFileSync as readFileSync5 } from "node:fs";
+ 
++// packages/mpd-team-core-plugin/src/team-store.ts
++import { join as join5 } from "node:path";
++function teamRoot(workspace) {
++  return join5(workspace, ".mpd", "team");
++}
++function teamsDir(workspace) {
++  return join5(teamRoot(workspace), "teams");
++}
++function teamRecordPath(workspace, teamId) {
++  return join5(teamsDir(workspace), sanitizeId(teamId) + ".json");
++}
++function sanitizeId(value) {
++  const cleaned = String(value).replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^[.-]+/, "").replace(/-+$/, "");
++  return cleaned === "" ? "unnamed" : cleaned;
++}
++var teamStateObservers = new Set;
++var PROCESS_ID_TAG = Math.random().toString(36).slice(2, 6);
++
+ // packages/mpd-cellwork-plugin/src/dispatch.ts
+ function nameKey(name) {
+   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+@@ -5521,12 +5558,12 @@ function contractAlreadyNamesLoop(deps, taskKey) {
+   }
+ }
+ function isLiveTeamRecord(record) {
+-  if (record === undefined)
+-    return false;
+-  if ("endedAt" in record && record.endedAt !== undefined)
+-    return false;
+-  const phase = "phase" in record && typeof record.phase === "string" && record.phase !== "" ? record.phase : "active";
+-  return phase === "staged" || phase === "active" || phase === "idle";
++  return record !== undefined && !isTerminalTeamRecord(record);
++}
++function mintTriggerFor(workspace, teamId, record) {
++  if (record !== undefined)
++    return "ended";
++  return existsSync5(teamRecordPath(workspace, teamId)) ? "unreadable" : "absent";
+ }
+ async function mintExecutionTeam(call, input) {
+   const created = await call({ action: "create", name: input.planName, description: input.description });
+@@ -5534,8 +5571,11 @@ async function mintExecutionTeam(call, input) {
+     return { ok: false, error: "the mint plan could not be staged: " + created.error };
+   const added = await call({ action: "add_member", member: { ...input.member } });
+   if (!added.ok) {
+-    await call({ action: "delete" });
+-    return { ok: false, error: "the mint member could not be staged: " + added.error };
++    const cleaned = await call({ action: "delete" });
++    return {
++      ok: false,
++      error: "the mint member could not be staged: " + added.error + (cleaned.ok ? " (the empty plan slot was deleted)" : " (AND the empty plan slot could NOT be deleted: " + cleaned.error + " — clear that staged plan before retrying)")
++    };
+   }
+   const approved = await call({ action: "approve" });
+   if (!approved.ok)
+@@ -5547,7 +5587,8 @@ async function mintExecutionTeam(call, input) {
+   return { ok: true, teamId };
+ }
+ async function materializeSplit(deps) {
+-  const resplit = Object.values(deps.cell.activatedTasks ?? {}).some((id) => id !== "");
++  const recordedMinted = (deps.cell.mintedTeamId ?? "").trim();
++  const resplit = recordedMinted !== "" || Object.values(deps.cell.activatedTasks ?? {}).some((id) => id !== "");
+   const resolved = resplit ? resolveCellTeam({ workspace: deps.workspace, cell: deps.cell, teams: deps.teams?.(), recordFor: deps.recordFor }) : undefined;
+   const unverified = resplit && (resolved?.teamId ?? "") === "" && deps.cell.teamId !== "";
+   const boardNote = unverified ? "the re-split resolved no live team for " + deps.cell.cellId + ", so this activation continues on the RECORDED team " + JSON.stringify(deps.cell.teamId) + " — the board resolution is UNVERIFIED" + (resolved?.note === undefined ? "" : " (" + resolved.note + ")") + "; work is appended to that record only." : undefined;
+@@ -5565,7 +5606,15 @@ async function materializeSplit(deps) {
+     artifacts += 1;
+     deps.progress({ stage, key, ordinal: artifacts, total });
+   };
+-  const snapshot = () => ({ members: { ...partial.members }, boardIds: { ...partial.boardIds }, loopIds: { ...partial.loopIds }, contracts: { ...partial.contracts } });
++  const snapshot = () => ({
++    members: { ...partial.members },
++    boardIds: { ...partial.boardIds },
++    loopIds: { ...partial.loopIds },
++    contracts: { ...partial.contracts },
++    ...partial.mintedTeamId === undefined ? {} : { mintedTeamId: partial.mintedTeamId },
++    ...partial.minted === undefined ? {} : { minted: partial.minted },
++    ...partial.mintTrigger === undefined ? {} : { mintTrigger: partial.mintTrigger }
++  });
+   const fail = (error) => ({ ok: false, error, ...mutated ? { partial: snapshot() } : {} });
+   const errorText4 = (error) => error instanceof Error ? error.message : String(error);
+   const call = async (arguments_) => {
+@@ -5612,7 +5661,12 @@ async function materializeSplit(deps) {
+     live = undefined;
+   }
+   let mintedTeamId = "";
+-  if (!resplit && !isLiveTeamRecord(live)) {
++  let mintTrigger;
++  if (recordedMinted === "" && !resplit && !isLiveTeamRecord(live)) {
++    const trigger = mintTriggerFor(deps.workspace, teamId, live);
++    if (trigger === "unreadable") {
++      return fail("cellwork_activate: the team record " + JSON.stringify(teamId) + " exists at " + teamRecordPath(deps.workspace, teamId) + " but could not be read (an unparsable body, a version this build does not read, or a transient read failure) — refusing to mint a second execution team; re-read that record (or repair it) before retrying");
++    }
+     const seedTask = deps.split.tasks[0];
+     const seedMember = seedTask === undefined ? "" : resolvedMemberName(seedTask);
+     if (seedMember === "")
+@@ -5627,7 +5681,12 @@ async function materializeSplit(deps) {
+     if (!minted.ok)
+       return fail("cellwork_activate could not mint the execution team after the planning team " + JSON.stringify(teamId) + " ended: " + minted.error);
+     mintedTeamId = minted.teamId;
++    mintTrigger = trigger;
+     teamId = minted.teamId;
++    partial.mintedTeamId = minted.teamId;
++    partial.minted = true;
++    partial.mintTrigger = trigger;
++    mutated = true;
+     try {
+       live = deps.recordFor(teamId);
+     } catch {
+@@ -5883,7 +5942,7 @@ async function materializeSplit(deps) {
+     ...executionTeamId === teamId ? {} : { recordedTeamId: teamId },
+     mode,
+     splitRevision: deps.split.revision,
+-    ...mintedTeamId === "" ? {} : { mintedTeamId, planningTeamId },
++    ...mintedTeamId === "" ? {} : { mintedTeamId, planningTeamId, ...mintTrigger === undefined ? {} : { mintTrigger } },
+     ...unverified ? { boardResolution: "unverified", ...boardNote === undefined ? {} : { boardNote } } : {},
+     producer: producerIdentity(deps.cell.cellId),
+     tasks: activated.map((task) => ({ key: task.key, boardId: task.boardId, owner: task.memberName, kind: task.kind })),
+@@ -5915,6 +5974,7 @@ async function materializeSplit(deps) {
+       loops,
+       dispatch,
+       ...executionTeamId === "" || executionTeamId === planningTeamId ? {} : { teamId: executionTeamId, planningTeamId },
++      ...mintedTeamId === "" ? {} : { mintedTeamId, ...mintTrigger === undefined ? {} : { mintTrigger } },
+       ...splitTaskId === "" ? {} : { splitTaskId },
+       ...boardNote === undefined ? {} : { boardNote },
+       ...notice === undefined ? {} : { notice }
+@@ -6662,6 +6722,8 @@ Remedy: ` + remedies.join("; ");
+           ok: { type: "boolean" },
+           error: { type: "string" },
+           path: { type: "string" },
++          mintedTeamId: { type: "string", description: "The execution team this pass MINTED, when it did — also present on a failure that minted before stopping, naming the team a retry will address." },
++          mintTrigger: { type: "string", enum: ["ended", "absent"], description: "Why the pass minted: `ended` (the planning record is terminal) or `absent` (no record exists). `unreadable` is never reported here — that pass REFUSES instead of minting." },
+           cellId: { type: "string" },
+           mode: { type: "string", description: "`initial` for the first materialisation, `resplit` when a newer revision appended to the same team." },
+           revision: { type: "number" },
+@@ -6736,14 +6798,29 @@ BOARD: ` + result.boardNote : ""));
+         return { ok: false, error: "cellwork_activate: revision " + String(acceptedRevision) + " was REFUSED by the measured verdict — the splitter must fix the findings and resubmit" };
+       const activatedAt = new Date;
+       const persistPartial = (partial, error) => {
++        const mintRecord = partial.mintedTeamId === undefined ? {} : {
++          mintedTeamId: partial.mintedTeamId,
++          teamId: partial.mintedTeamId,
++          planningTeamId: state.planningTeamId === "" ? state.teamId : state.planningTeamId
++        };
+         const next2 = {
+           ...state,
+           activationInFlight: acceptedRevision,
+           members: { ...state.members, ...partial.members },
+           activatedTasks: { ...state.activatedTasks, ...partial.boardIds },
+-          activatedLoops: { ...state.activatedLoops ?? {}, ...partial.loopIds }
++          activatedLoops: { ...state.activatedLoops ?? {}, ...partial.loopIds },
++          ...mintRecord
+         };
+-        transition(caller.workspace, next2, { event: "cell-activation-partial", revision: acceptedRevision, members: Object.keys(partial.members), tasks: partial.boardIds, loops: partial.loopIds, contracts: Object.values(partial.contracts), ...error === undefined ? {} : { error } }, activatedAt);
++        transition(caller.workspace, next2, {
++          event: "cell-activation-partial",
++          revision: acceptedRevision,
++          members: Object.keys(partial.members),
++          tasks: partial.boardIds,
++          loops: partial.loopIds,
++          contracts: Object.values(partial.contracts),
++          ...partial.mintedTeamId === undefined ? {} : { mintedTeamId: partial.mintedTeamId, minted: partial.minted === true, ...partial.mintTrigger === undefined ? {} : { mintTrigger: partial.mintTrigger } },
++          ...error === undefined ? {} : { error }
++        }, activatedAt);
+       };
+       const activated = await materializeSplit({
+         dsh,
+@@ -6765,7 +6842,7 @@ BOARD: ` + result.boardNote : ""));
+       if (!activated.ok) {
+         if (activated.partial !== undefined)
+           persistPartial(activated.partial, activated.error);
+-        return { ok: false, error: activated.error };
++        return { ok: false, error: activated.error, ...activated.partial?.mintedTeamId === undefined ? {} : { mintedTeamId: activated.partial.mintedTeamId } };
+       }
+       const cancelledNow = {};
+       for (const entry of activated.outcome.cancelled)
+@@ -6780,6 +6857,7 @@ BOARD: ` + result.boardNote : ""));
+         phase: "executing",
+         activatedRevision: acceptedRevision,
+         activationInFlight: null,
++        mintedTeamId: "",
+         activatedTasks: { ...activated.outcome.boardIds },
+         activatedLoops: loopTable,
+         cancelledTasks: { ...state.cancelledTasks, ...cancelledNow },
+@@ -6787,7 +6865,7 @@ BOARD: ` + result.boardNote : ""));
+         splitTaskId: (activated.outcome.splitTaskId ?? "") === "" ? state.splitTaskId ?? "" : String(activated.outcome.splitTaskId),
+         members: { ...state.members, ...activated.outcome.members }
+       };
+-      transition(caller.workspace, next, { event: "cell-activation", mode: activated.outcome.mode, revision: acceptedRevision, tasks: activated.outcome.tasks.length, kept: activated.outcome.kept.length, cancelled: activated.outcome.cancelled.length, loops: activated.outcome.loops.length, reused: activated.outcome.reused, ...activated.outcome.splitTaskId === undefined ? {} : { splitTaskId: activated.outcome.splitTaskId } }, activatedAt);
++      transition(caller.workspace, next, { event: "cell-activation", mode: activated.outcome.mode, revision: acceptedRevision, tasks: activated.outcome.tasks.length, kept: activated.outcome.kept.length, cancelled: activated.outcome.cancelled.length, loops: activated.outcome.loops.length, reused: activated.outcome.reused, ...activated.outcome.splitTaskId === undefined ? {} : { splitTaskId: activated.outcome.splitTaskId }, ...activated.outcome.mintedTeamId === undefined ? {} : { mintedTeamId: activated.outcome.mintedTeamId, ...activated.outcome.mintTrigger === undefined ? {} : { mintTrigger: activated.outcome.mintTrigger } } }, activatedAt);
+       return {
+         ok: true,
+         cellId: state.cellId,
+@@ -6802,7 +6880,8 @@ BOARD: ` + result.boardNote : ""));
+         loops: activated.outcome.loops,
+         dispatch: activated.outcome.dispatch,
+         ...activated.outcome.notice === undefined ? {} : { notice: activated.outcome.notice },
+-        ...activated.outcome.boardNote === undefined ? {} : { boardNote: activated.outcome.boardNote }
++        ...activated.outcome.boardNote === undefined ? {} : { boardNote: activated.outcome.boardNote },
++        ...activated.outcome.mintedTeamId === undefined ? {} : { mintedTeamId: activated.outcome.mintedTeamId, ...activated.outcome.mintTrigger === undefined ? {} : { mintTrigger: activated.outcome.mintTrigger } }
+       };
+     }
+   }));
+@@ -6812,10 +6891,6 @@ function text(value) {
+   return [{ type: "text", text: value }];
+ }
+ 
+-// packages/mpd-team-core-plugin/src/team-store.ts
+-var teamStateObservers = new Set;
+-var PROCESS_ID_TAG = Math.random().toString(36).slice(2, 6);
+-
+ // packages/mpd-team-core-plugin/src/team-handoff.ts
+ var HANDOFF_SECTIONS = [
+   { key: "task", title: "Task", aliases: ["task", "current task"] },
+@@ -6896,11 +6971,11 @@ function writeHandoff(workspace, cellId, member, ordinal, text2) {
+ 
+ // packages/mpd-cellwork-plugin/src/mail.ts
+ import { appendFileSync as appendFileSync3, mkdirSync as mkdirSync4, readFileSync as readFileSync7 } from "node:fs";
+-import { join as join6 } from "node:path";
++import { join as join7 } from "node:path";
+ 
+ // packages/mpd-team-core-plugin/src/mailbox-store.ts
+ import { appendFileSync as appendFileSync2, existsSync as existsSync6, mkdirSync as mkdirSync3, readFileSync as readFileSync6 } from "node:fs";
+-import { join as join5 } from "node:path";
++import { join as join6 } from "node:path";
+ 
+ // packages/mpd-mail-protocol/src/types.ts
+ function isMailKind(value) {
+@@ -7255,7 +7330,7 @@ function truncateMailBody(text2) {
+   return { body: text2.slice(0, MAIL_BODY_MAX), truncated: true, originalLength: text2.length };
+ }
+ function mailboxPath(workspace) {
+-  return join5(workspace, ".mpd", "team", "mailbox.jsonl");
++  return join6(workspace, ".mpd", "team", "mailbox.jsonl");
+ }
+ function fold(records) {
+   const folded = foldMail(records);
+@@ -7314,7 +7389,7 @@ function readMailbox(workspace) {
+   return fold(readRecords(workspace));
+ }
+ function appendRecord(workspace, record) {
+-  mkdirSync3(join5(workspace, ".mpd", "team"), { recursive: true });
++  mkdirSync3(join6(workspace, ".mpd", "team"), { recursive: true });
+   appendFileSync2(mailboxPath(workspace), JSON.stringify(record) + `
+ `);
+ }
+@@ -7462,7 +7537,7 @@ function acknowledge(workspace, ids, ack, now) {
+ // packages/mpd-cellwork-plugin/src/mail.ts
+ var CELL_MAIL_FILE = "mail.jsonl";
+ function cellMailPath(workspace, cellId) {
+-  return join6(cellDir(workspace, cellId), CELL_MAIL_FILE);
++  return join7(cellDir(workspace, cellId), CELL_MAIL_FILE);
+ }
+ function nextCellMailId(workspace, now) {
+   const stem = "mail-" + now.toISOString().replace(/[-:.TZ]/g, "").slice(0, 14) + "-";
+@@ -8159,7 +8234,7 @@ function nextStepOf(text2) {
+ // packages/mpd-cellwork-plugin/src/protocol.ts
+ import { readFileSync as readFileSync8, statSync as statSync4 } from "node:fs";
+ import { createHash } from "node:crypto";
+-import { join as join7 } from "node:path";
++import { join as join8 } from "node:path";
+ function workspaceConfigReader(ctx) {
+   return (dottedKey) => {
+     const service = ctx.get?.("mpdConfig", false);
+@@ -9837,7 +9912,7 @@ acknowledgement refused for ` + String(refused.length) + " row(s), which stay un
+     disposers.push(preStepDispose);
+   const teamRecordPathOf = (workspace, teamId) => {
+     const cleaned = String(teamId).replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^[.-]+/, "").replace(/-+$/, "");
+-    return join7(workspace, ".mpd", "team", "teams", (cleaned === "" ? "unnamed" : cleaned) + ".json");
++    return join8(workspace, ".mpd", "team", "teams", (cleaned === "" ? "unnamed" : cleaned) + ".json");
+   };
+   const bindReseededSeat = (input) => {
+     if (input.workspace === "" || input.teamId === "")
+diff --git a/packages/mpd-cellwork-plugin/src/activate.ts b/packages/mpd-cellwork-plugin/src/activate.ts
+index bc914127..8a70e684 100644
+--- a/packages/mpd-cellwork-plugin/src/activate.ts
++++ b/packages/mpd-cellwork-plugin/src/activate.ts
+@@ -37,7 +37,8 @@
+ // failure snapshot, and the retry reconciles that artifact from the live roster/state instead of
+ // failing on a duplicate.
+ import { existsSync, readFileSync } from "node:fs"
+-import { atomicWriteText, appendJournal, contractPath, resolveCellTeam, type BoardTeamService, type CellMemberRecord, type CellState } from "./state"
++import { atomicWriteText, appendJournal, contractPath, isTerminalTeamRecord, resolveCellTeam, type BoardTeamService, type CellMemberRecord, type CellState } from "./state"
++import { teamRecordPath } from "../../mpd-team-core-plugin/src/team-store"
+ import type { CellworkConfig } from "./config"
+ import type { SplitTaskVerdict, SplitVerdict } from "./split"
+ import { roleKey } from "./split"
+@@ -205,6 +206,15 @@ export interface ActivateOutcome {
+    * The caller persists it as the cell's `teamId`; absent means the record already names the right team.
+    */
+   teamId?: string
++  /**
++   * The execution team this pass MINTED, when it did (the same id {@link ActivateOutcome.teamId} names).
++   *
++   * Reported so the reply distinguishes "appended to a live board" from "created the board": the mint is
++   * a fact an operator must be able to see (blind review M2). Absent on the live path.
++   */
++  mintedTeamId?: string
++  /** Why the pass minted, when it did — `ended` or `absent`, never `unreadable` (that pass refuses). */
++  mintTrigger?: MintTrigger
+   /**
+    * The staging team id preserved when {@link ActivateOutcome.teamId} replaced it (§7.1).
+    *
+@@ -218,7 +228,8 @@ export interface ActivateOutcome {
+  *
+  * The caller persists this on the cell record under `cell-activation-partial`, and a retry of the SAME
+  * accepted revision reuses every entry instead of re-raising a member, re-minting a task or re-opening a
+- * loop.
++ * loop — INCLUDING the execution team a failed pass MINTED (blind review H1): without the id below a
++ * retry either mints a second team or resolves the dead planning board by its colliding board ids.
+  */
+ export interface ActivatePartial {
+   /** The members ensured so far, keyed by board name (raised, or resolved from the live roster). */
+@@ -229,8 +240,23 @@ export interface ActivatePartial {
+   loopIds: Record<string, string>
+   /** The frozen contract paths written so far, by split key. */
+   contracts: Record<string, string>
++  /** The execution team this pass MINTED, or absent when it addressed a live board or never minted. */
++  mintedTeamId?: string
++  /** Marker that a team was minted by this pass, so the checkpoint says so even beside the id. */
++  minted?: boolean
++  /** Why the pass minted: the planning record is terminal, or no record exists at all (M2). */
++  mintTrigger?: MintTrigger
+ }
+ 
++/**
++ * Why an activation minted a fresh execution team (blind review M2).
++ *
++ * `ended` and `absent` are recoverable facts; `unreadable` is NOT a reason to mint — it is recorded so a
++ * reader can tell the three apart, and the pass REFUSES rather than create a duplicate beside a record
++ * whose live seats may still be running.
++ */
++export type MintTrigger = "ended" | "absent" | "unreadable"
++
+ /** The activation result: the outcome, or the refusal sentence plus the partial once anything was written. */
+ export type ActivateResult =
+   | { ok: true; outcome: ActivateOutcome }
+@@ -453,20 +479,36 @@ function contractAlreadyNamesLoop(deps: Pick<ActivateDeps, "workspace" | "cell">
+ /**
+  * Whether a team record still names a board this pass may WRITE to.
+  *
+- * Read structurally, never through another package's source: a record that carries `endedAt` or a phase
+- * outside team-core's live set (`staged` | `active` | `idle`) is terminal — the clean-terminal auto-end
+- * stamps exactly those two fields. An UNREADABLE record is reported as not live here, because the caller
+- * that cannot read the board also cannot append to it; the mint below is the only write path left.
++ * Read structurally, through the resolver's ONE terminal rule (blind review N1): a record that carries
++ * `endedAt`, the `ended` phase or the hand-patched `archived` spelling is PROVEN terminal — the
++ * clean-terminal auto-end stamps the first two. `undefined` is "no readable board"; the CALLER decides,
++ * from the record PATH, whether that means "absent" or "exists but unreadable" (M2), because minting over
++ * the latter would duplicate a team whose seats may still be running.
+  *
+  * @param record - the team record, or undefined when the service could not answer.
+  * @returns true only for a record a live append can still target.
+  */
+ function isLiveTeamRecord(record: object | undefined): boolean {
+-  if (record === undefined) return false
+-  if ("endedAt" in record && record.endedAt !== undefined) return false
+-  /** The phase the record spells, defaulting to the live spelling when it carries none. */
+-  const phase = "phase" in record && typeof record.phase === "string" && record.phase !== "" ? record.phase : "active"
+-  return phase === "staged" || phase === "active" || phase === "idle"
++  // The cast is safe: the caller hands back the same structural record the resolver reads, and
++  // `isTerminalTeamRecord` only inspects `endedAt`/`phase` — never an index signature.
++  return record !== undefined && !isTerminalTeamRecord(record as Record<string, unknown>)
++}
++
++/**
++ * Why a resolved board is about to be replaced by a mint (blind review M2).
++ *
++ * The three answers are deliberately distinguishable: the reader collapses an absent file, an
++ * unparsable body, a version mismatch and a transient I/O failure into the SAME `undefined`, so the
++ * record PATH is the only evidence that separates "no team yet" from "a team exists but cannot be read".
++ *
++ * @param workspace - the workspace root the cell lives in.
++ * @param teamId - the board the resolution named.
++ * @param record - the record the service/reader answered, or undefined.
++ * @returns `ended` for a readable terminal record, `unreadable` when a file exists, else `absent`.
++ */
++function mintTriggerFor(workspace: string, teamId: string, record: object | undefined): MintTrigger {
++  if (record !== undefined) return "ended"
++  return existsSync(teamRecordPath(workspace, teamId)) ? "unreadable" : "absent"
+ }
+ 
+ /** One `agent_teams_plan` call, as {@link materializeSplit} performs it: a value or one refusal sentence. */
+@@ -513,9 +555,17 @@ async function mintExecutionTeam(call: PlanCall, input: MintExecutionInput): Pro
+   const added = await call({ action: "add_member", member: { ...input.member } })
+   if (!added.ok) {
+     // LEAVE THE SLOT CLEAN: an empty plan would make the retry's own `approve` refuse (an EMPTY shell is
+-    // not a team), so the failed slot is archived before the refusal is returned.
+-    await call({ action: "delete" })
+-    return { ok: false, error: "the mint member could not be staged: " + added.error }
++    // not a team), so the failed slot is archived before the refusal is returned — and the cleanup's OWN
++    // answer is CHECKED (blind review N2): a sentence that only named the member failure would hide a
++    // slot that still holds a staged plan, which the retry's `create` would then collide with.
++    /** The cleanup's answer. */
++    const cleaned = await call({ action: "delete" })
++    return {
++      ok: false,
++      error: "the mint member could not be staged: " + added.error + (cleaned.ok
++        ? " (the empty plan slot was deleted)"
++        : " (AND the empty plan slot could NOT be deleted: " + cleaned.error + " — clear that staged plan before retrying)"),
++    }
+   }
+   /** The approval, which creates the record and raises the seed seat. */
+   const approved = await call({ action: "approve" })
+@@ -539,13 +589,20 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
+   // planning team goes clean-terminal and activation lands on a FRESH team, so `cell.teamId` names the
+   // dead one. Every team read below — the live-roster seed, the cancellation, the final report — goes
+   // through this ONE resolution instead of `deps.cell.teamId`.
+-  // THE START-OF-PASS RESOLUTION IS EVIDENCE-GATED: an INITIAL activation has no minted board ids to
+-  // verify `teamId` against, so it reads NOTHING extra (the writes resolve the live team themselves and
+-  // the end-of-pass resolution names the board by its own minted ids). A RE-SPLIT does have minted ids,
+-  // so its seed/cancel path resolves the execution board and never the dead planning team (§7.1a site 8).
+-  /** Whether this pass is a RE-SPLIT, whose recorded team must be verified against the minted ids. */
+-  const resplit = Object.values(deps.cell.activatedTasks ?? {}).some((id) => id !== "")
+-  /** The resolver's answer for a RE-SPLIT; an INITIAL activation resolves nothing (the evidence gate). */
++  // THE START-OF-PASS RESOLUTION IS EVIDENCE-GATED: an INITIAL activation has no minted board ids and no
++  // recorded mint to verify `teamId` against, so it reads NOTHING extra (the writes resolve the live team
++  // themselves and the end-of-pass resolution names the board by its own minted ids). A RE-SPLIT — or a
++  // RETRY of a pass that MINTED a team before failing (blind review H1) — does have that evidence, so its
++  // seed/cancel path resolves the execution board and never the dead planning team (§7.1a site 8).
++  /** The execution team a FAILED earlier pass minted, or "" when none is recorded (blind review H1). */
++  const recordedMinted = (deps.cell.mintedTeamId ?? "").trim()
++  /**
++   * Whether this pass continues a board that already exists: a re-split's minted rows, or the team a
++   * failed pass minted. A RETRY MUST COUNT AS ONE (H1) — otherwise the mint arm below runs a SECOND time
++   * and orphans the first team and the live seed seat its approval raised.
++   */
++  const resplit = recordedMinted !== "" || Object.values(deps.cell.activatedTasks ?? {}).some((id) => id !== "")
++  /** The resolver's answer when a board already exists; an INITIAL activation resolves nothing. */
+   const resolved = resplit
+     ? resolveCellTeam({ workspace: deps.workspace, cell: deps.cell, teams: deps.teams?.(), recordFor: deps.recordFor })
+     : undefined
+@@ -587,7 +644,17 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
+     deps.progress({ stage, key, ordinal: artifacts, total })
+   }
+   /** A fresh copy of the partial, so the failure snapshot can never alias a later mutation. */
+-  const snapshot = (): ActivatePartial => ({ members: { ...partial.members }, boardIds: { ...partial.boardIds }, loopIds: { ...partial.loopIds }, contracts: { ...partial.contracts } })
++  const snapshot = (): ActivatePartial => ({
++    members: { ...partial.members },
++    boardIds: { ...partial.boardIds },
++    loopIds: { ...partial.loopIds },
++    contracts: { ...partial.contracts },
++    // THE MINT TRAVELS WITH THE FAILURE (blind review H1): the snapshot is what the caller writes to the
++    // cell record, so a mint that is not copied here is lost to every later retry.
++    ...(partial.mintedTeamId === undefined ? {} : { mintedTeamId: partial.mintedTeamId }),
++    ...(partial.minted === undefined ? {} : { minted: partial.minted }),
++    ...(partial.mintTrigger === undefined ? {} : { mintTrigger: partial.mintTrigger }),
++  })
+   /** The failure arm: the sentence, plus the partial once anything was written. */
+   const fail = (error: string): ActivateResult => ({ ok: false, error, ...(mutated ? { partial: snapshot() } : {}) })
+   /** A message from an unknown thrown value, without assuming it is an Error. */
+@@ -654,11 +721,25 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
+   // `endedAt`/a terminal phase, so every live append would answer "no team is staged in this session".
+   // The execution team is MINTED here through the same create+approve verbs staging uses; a board that
+   // still resolves takes the unchanged path below and is never re-created.
+-  /** The team this pass minted to replace an ended planning board, or "" on the live path. */
++  /** The team this pass minted to replace a terminal planning board, or "" on the live path. */
+   let mintedTeamId = ""
+-  // A RE-SPLIT IS DELIBERATELY OUT OF THIS ARM: its kept rows are board ids from the team being replaced,
+-  // and re-minting them is a different repair. Its resolution already prefers the LIVE execution board.
+-  if (!resplit && !isLiveTeamRecord(live)) {
++  /** Why this pass minted, when it did — the distinguishable, durable fact M2 asks for. */
++  let mintTrigger: MintTrigger | undefined
++  // A RE-SPLIT OR A RETRY OF A MINT IS DELIBERATELY OUT OF THIS ARM (blind review H1): its kept rows are
++  // board ids from a team that already exists, and minting again would orphan that team and the live seed
++  // seat its approval raised. `recordedMinted !== ""` is BELT AND BRACES beside `resplit`, because "never
++  // mint a second execution team" is the invariant, not a side effect of how `resplit` happens to be
++  // computed.
++  if (recordedMinted === "" && !resplit && !isLiveTeamRecord(live)) {
++    /** WHY the resolved board is being replaced; `unreadable` is a REFUSAL, never a reason to mint (M2). */
++    const trigger = mintTriggerFor(deps.workspace, teamId, live)
++    if (trigger === "unreadable") {
++      // FAIL-CLOSED (blind review M2): the reader collapses an absent file, an unparsable body, a version
++      // mismatch and a transient I/O failure into one `undefined`. A record that EXISTS but could not be
++      // read may belong to a LIVE team whose seats are still running, so minting beside it would duplicate
++      // it. The pass names the path and writes nothing.
++      return fail("cellwork_activate: the team record " + JSON.stringify(teamId) + " exists at " + teamRecordPath(deps.workspace, teamId) + " but could not be read (an unparsable body, a version this build does not read, or a transient read failure) — refusing to mint a second execution team; re-read that record (or repair it) before retrying")
++    }
+     /** The split's FIRST task, whose member seeds the mint's non-empty plan. */
+     const seedTask = deps.split.tasks[0]
+     /** The seed member's board name. */
+@@ -676,7 +757,16 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
+     })
+     if (!minted.ok) return fail("cellwork_activate could not mint the execution team after the planning team " + JSON.stringify(teamId) + " ended: " + minted.error)
+     mintedTeamId = minted.teamId
++    mintTrigger = trigger
+     teamId = minted.teamId
++    // THE MINT IS PERSISTED EVEN IF THE REST OF THE PASS FAILS (blind review H1): without these three
++    // fields a retry cannot tell the fresh board from the dead planning board (both number from `T1`) and
++    // mints a second team. `mutated` is set directly because a mint creates a real team and a live seat
++    // WITHOUT journaling an artifact row, and `fail()` only hands a partial back after a mutation.
++    partial.mintedTeamId = minted.teamId
++    partial.minted = true
++    partial.mintTrigger = trigger
++    mutated = true
+     // THE LIVE SEED IS THE MINTED TEAM, re-read so the seed member the approval raised is reused.
+     try { live = deps.recordFor(teamId) } catch { live = undefined }
+   }
+@@ -1039,8 +1129,10 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
+     mode,
+     splitRevision: deps.split.revision,
+     // THE MINT IS A FACT A LATER READER MUST SEE (defect: activation had no minting path at all): the
+-    // journal names both the execution team this pass created and the ended planning team it replaced.
+-    ...(mintedTeamId === "" ? {} : { mintedTeamId, planningTeamId }),
++    // journal names both the execution team this pass created and the ended planning team it replaced,
++    // plus WHY it minted — `ended` and `absent` are distinguishable, and `unreadable` never reaches a
++    // successful pass (it refuses) (blind review M2).
++    ...(mintedTeamId === "" ? {} : { mintedTeamId, planningTeamId, ...(mintTrigger === undefined ? {} : { mintTrigger }) }),
+     // THE BOARD RESOLUTION IS JOURNALED WITH THE PASS (CodeRabbit #108): an `unverified` fallback is a FACT
+     // a later reader must be able to see, not a detail that lived only in this call's local variables.
+     ...(unverified ? { boardResolution: "unverified", ...(boardNote === undefined ? {} : { boardNote }) } : {}),
+@@ -1080,6 +1172,9 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
+       dispatch,
+       // §7.1: the record takes the execution board id and preserves the staging id beside it.
+       ...(executionTeamId === "" || executionTeamId === planningTeamId ? {} : { teamId: executionTeamId, planningTeamId }),
++      // THE MINT IS REPORTED, not only journaled (blind review M2): an operator reading the reply can tell
++      // a fresh execution team from an append to an existing one.
++      ...(mintedTeamId === "" ? {} : { mintedTeamId, ...(mintTrigger === undefined ? {} : { mintTrigger }) }),
+       ...(splitTaskId === "" ? {} : { splitTaskId }),
+       ...(boardNote === undefined ? {} : { boardNote }),
+       ...(notice === undefined ? {} : { notice }),
+diff --git a/packages/mpd-cellwork-plugin/src/flow.ts b/packages/mpd-cellwork-plugin/src/flow.ts
+index f16e446a..127fe7c3 100644
+--- a/packages/mpd-cellwork-plugin/src/flow.ts
++++ b/packages/mpd-cellwork-plugin/src/flow.ts
+@@ -86,6 +86,13 @@ interface FlowFailure {
+   error: string
+   /** The state path, when the refusal is about a record this build could not read. */
+   path?: string
++  /**
++   * The execution team a FAILED activation minted before it stopped (blind review H1).
++   *
++   * The id is persisted on the cell record anyway; naming it here too means the captain sees WHICH team
++   * the retry will address without reading the record first.
++   */
++  mintedTeamId?: string
+ }
+ 
+ /**
+@@ -1062,6 +1069,11 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
+           ok: { type: "boolean" },
+           error: { type: "string" },
+           path: { type: "string" },
++          // THE MINT IS PART OF THE ANSWER (blind review M2): present on a successful mint and on a
++          // failure that minted before stopping, so a captain can tell a fresh execution team from an
++          // append to a live board without reading the record or the journal.
++          mintedTeamId: { type: "string", description: "The execution team this pass MINTED, when it did — also present on a failure that minted before stopping, naming the team a retry will address." },
++          mintTrigger: { type: "string", enum: ["ended", "absent"], description: "Why the pass minted: `ended` (the planning record is terminal) or `absent` (no record exists). `unreadable` is never reported here — that pass REFUSES instead of minting." },
+           cellId: { type: "string" },
+           mode: { type: "string", description: "`initial` for the first materialisation, `resplit` when a newer revision appended to the same team." },
+           revision: { type: "number" },
+@@ -1161,6 +1173,18 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
+        * @param error - the failure sentence, on the final write for a failed pass.
+        */
+       const persistPartial = (partial: ActivatePartial, error?: string): void => {
++        // THE MINT IS PERSISTED WITH THE PARTIAL (blind review H1): the cell record moves to the execution
++        // team the failure created and remembers the id in its own field, so `resplit` and the resolver
++        // both see the mint on the retry instead of the ended planning team. `planningTeamId` keeps the
++        // staging id WITHOUT overwriting one an earlier activation already preserved.
++        /** The mint fields this checkpoint adds, or an empty object when the pass never minted. */
++        const mintRecord = partial.mintedTeamId === undefined
++          ? {}
++          : {
++            mintedTeamId: partial.mintedTeamId,
++            teamId: partial.mintedTeamId,
++            planningTeamId: state.planningTeamId === "" ? state.teamId : state.planningTeamId,
++          }
+         /** The record after the partial checkpoint. */
+         const next: CellState = {
+           ...state,
+@@ -1168,8 +1192,20 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
+           members: { ...state.members, ...partial.members },
+           activatedTasks: { ...state.activatedTasks, ...partial.boardIds },
+           activatedLoops: { ...(state.activatedLoops ?? {}), ...partial.loopIds },
++          ...mintRecord,
+         }
+-        transition(caller.workspace, next, { event: "cell-activation-partial", revision: acceptedRevision, members: Object.keys(partial.members), tasks: partial.boardIds, loops: partial.loopIds, contracts: Object.values(partial.contracts), ...(error === undefined ? {} : { error }) }, activatedAt)
++        transition(caller.workspace, next, {
++          event: "cell-activation-partial",
++          revision: acceptedRevision,
++          members: Object.keys(partial.members),
++          tasks: partial.boardIds,
++          loops: partial.loopIds,
++          contracts: Object.values(partial.contracts),
++          // A FAILED PASS JOURNALS ITS MINT TOO (blind review H1): success is not the only moment the id
++          // matters, and the trigger keeps "ended" distinguishable from "absent" (M2).
++          ...(partial.mintedTeamId === undefined ? {} : { mintedTeamId: partial.mintedTeamId, minted: partial.minted === true, ...(partial.mintTrigger === undefined ? {} : { mintTrigger: partial.mintTrigger }) }),
++          ...(error === undefined ? {} : { error }),
++        }, activatedAt)
+       }
+       /** The materialisation. */
+       const activated: ActivateResult = await materializeSplit({
+@@ -1199,9 +1235,10 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
+       })
+       if (!activated.ok) {
+         // THE FAILURE IS ITSELF A RESUMABLE STATE: persist the FINAL partial (the whole-state snapshot
+-        // exists exactly once, here) together with the sentence that stopped the pass.
++        // exists exactly once, here) together with the sentence that stopped the pass. A minted execution
++        // team travels with it (blind review H1) — in the record, in the journal and in this reply.
+         if (activated.partial !== undefined) persistPartial(activated.partial, activated.error)
+-        return { ok: false, error: activated.error }
++        return { ok: false, error: activated.error, ...(activated.partial?.mintedTeamId === undefined ? {} : { mintedTeamId: activated.partial.mintedTeamId }) }
+       }
+       /** The cancellations this activation recorded, keyed by split key for the cell record. */
+       const cancelledNow: Record<string, string> = {}
+@@ -1223,6 +1260,9 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
+         phase: "executing",
+         activatedRevision: acceptedRevision,
+         activationInFlight: null,
++        // THE MINT IS NO LONGER IN FLIGHT: `teamId` now names the execution board for good, and keeping
++        // the marker would pin every later resolution to an id that a re-split no longer needs (H1).
++        mintedTeamId: "",
+         activatedTasks: { ...activated.outcome.boardIds },
+         activatedLoops: loopTable,
+         cancelledTasks: { ...state.cancelledTasks, ...cancelledNow },
+@@ -1232,7 +1272,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
+         splitTaskId: (activated.outcome.splitTaskId ?? "") === "" ? (state.splitTaskId ?? "") : String(activated.outcome.splitTaskId),
+         members: { ...state.members, ...activated.outcome.members },
+       }
+-      transition(caller.workspace, next, { event: "cell-activation", mode: activated.outcome.mode, revision: acceptedRevision, tasks: activated.outcome.tasks.length, kept: activated.outcome.kept.length, cancelled: activated.outcome.cancelled.length, loops: activated.outcome.loops.length, reused: activated.outcome.reused, ...(activated.outcome.splitTaskId === undefined ? {} : { splitTaskId: activated.outcome.splitTaskId }) }, activatedAt)
++      transition(caller.workspace, next, { event: "cell-activation", mode: activated.outcome.mode, revision: acceptedRevision, tasks: activated.outcome.tasks.length, kept: activated.outcome.kept.length, cancelled: activated.outcome.cancelled.length, loops: activated.outcome.loops.length, reused: activated.outcome.reused, ...(activated.outcome.splitTaskId === undefined ? {} : { splitTaskId: activated.outcome.splitTaskId }), ...(activated.outcome.mintedTeamId === undefined ? {} : { mintedTeamId: activated.outcome.mintedTeamId, ...(activated.outcome.mintTrigger === undefined ? {} : { mintTrigger: activated.outcome.mintTrigger }) }) }, activatedAt)
+       return {
+         ok: true,
+         cellId: state.cellId,
+@@ -1248,6 +1288,9 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
+         dispatch: activated.outcome.dispatch,
+         ...(activated.outcome.notice === undefined ? {} : { notice: activated.outcome.notice }),
+         ...(activated.outcome.boardNote === undefined ? {} : { boardNote: activated.outcome.boardNote }),
++        // THE MINT IS PART OF THE ANSWER (blind review M2): a captain can tell a fresh execution team
++        // from an append to a live board without reading the journal.
++        ...(activated.outcome.mintedTeamId === undefined ? {} : { mintedTeamId: activated.outcome.mintedTeamId, ...(activated.outcome.mintTrigger === undefined ? {} : { mintTrigger: activated.outcome.mintTrigger }) }),
+       }
+     },
+   }))
+diff --git a/packages/mpd-cellwork-plugin/src/state.ts b/packages/mpd-cellwork-plugin/src/state.ts
+index 753da305..619bd3cc 100644
+--- a/packages/mpd-cellwork-plugin/src/state.ts
++++ b/packages/mpd-cellwork-plugin/src/state.ts
+@@ -20,6 +20,10 @@
+ // possible in principle and never trusted as state: `state.json` is the truth, the journal is history.
+ import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs"
+ import { dirname, join } from "node:path"
++// THE LIVE-PHASE SET IS TYPED AGAINST TEAM-CORE'S UNION (blind review N1): the type import is erased at
++// build time, so the cellwork plugin keeps reading team records structurally while a phase renamed or
++// removed upstream stops this file type-checking instead of leaving a stale literal behind.
++import type { TeamPhase } from "../../mpd-team-core-plugin/src/team-store"
+ 
+ /** The schema version this build reads and writes; a record carrying any other value is REFUSED. */
+ export const CELLWORK_STATE_VERSION = 1
+@@ -221,6 +225,17 @@ export interface CellState {
+    * materialisation succeeds, because that field is the refusal condition for a second activation.
+    */
+   activationInFlight?: number | null
++  /**
++   * The execution team a FAILED activation MINTED, or `""`/absent when no mint is in flight.
++   *
++   * WHY IT EXISTS (blind review H1): a pass that mints the execution team and then fails used to leave
++   * this id nowhere — the cell kept the ENDED planning team and the journal only wrote the mint on
++   * success. A retry then either minted a SECOND team (when no board row had landed yet) or, worse,
++   * resolved the ended planning record by its colliding `T<n>` board ids and appended to the dead board
++   * forever. The partial checkpoint records the minted id here, {@link CellState.teamId} moves with it,
++   * and every retry addresses THIS team first; a successful activation clears the marker.
++   */
++  mintedTeamId?: string
+   /**
+    * Split keys an activation CANCELLED, mapped to the board id their row still carries.
+    *
+@@ -413,6 +428,8 @@ export function newCellState(input: NewCellInput): CellState {
+     activatedTasks: {},
+     activatedLoops: {},
+     activationInFlight: null,
++    // No mint is in flight until a failed activation records one (blind review H1).
++    mintedTeamId: "",
+     cancelledTasks: {},
+     splitStale: false,
+     startedAt: "",
+@@ -612,7 +629,7 @@ export interface CellTeamResolutionDeps {
+   /** The workspace root the caller resolved through the adapter. */
+   workspace: string
+   /** The cell record's board-shaped fields; a `Pick` so a partial record can be resolved too. */
+-  cell: Pick<CellState, "cellId" | "teamId" | "planningTeamId" | "captainSessionId" | "activatedTasks">
++  cell: Pick<CellState, "cellId" | "teamId" | "planningTeamId" | "captainSessionId" | "activatedTasks" | "mintedTeamId">
+   /** The team service, probed per call; absent means the record's own ids are the only evidence. */
+   teams?: BoardTeamService
+   /**
+@@ -625,7 +642,49 @@ export interface CellTeamResolutionDeps {
+ }
+ 
+ /** Which evidence named the team {@link resolveCellTeam} answered with. */
+-export type CellTeamResolutionSource = "state.teamId" | "plane" | "activated-tasks" | "planningTeamId" | "none"
++export type CellTeamResolutionSource = "minted" | "state.teamId" | "plane" | "activated-tasks" | "planningTeamId" | "none"
++
++/**
++ * The team phases a LIVE append may still target — team-core's own live set.
++ *
++ * TYPED AGAINST `TeamPhase` (blind review N1), and asserted equal to team-core's `LIVE_TEAM_PHASES` at
++ * runtime by `test/resolve-cell-team.test.ts`: a phase widened upstream reddens that arm instead of
++ * silently becoming "terminal" here.
++ */
++export const LIVE_CELL_TEAM_PHASES: readonly TeamPhase[] = ["staged", "active", "idle"]
++
++/**
++ * Every phase spelling this module KNOWS: the live set above plus the two terminal spellings.
++ *
++ * `ended` is the union's terminal member; `archived` is the hand-patched spelling team-core's lifecycle
++ * also treats as terminal (it is deliberately outside the union). A spelling NOT listed here is not
++ * PROVEN terminal: legacy and foreign records (this package's own older shapes included) must keep
++ * resolving rather than be rejected as dead.
++ */
++const KNOWN_TEAM_PHASES: readonly string[] = [...LIVE_CELL_TEAM_PHASES, "ended", "archived"]
++
++/**
++ * Whether one team record is PROVEN TERMINAL and therefore never a landing target (blind review H1/M2).
++ *
++ * The clean-terminal auto-end stamps `endedAt` and the `ended` phase, but a fresh execution team numbers
++ * its board from `T1` — the SAME ids the ended planning board carries — so an id-only match cannot tell
++ * the two boards apart. Callers that hold the minted id bypass this check explicitly; every OTHER
++ * candidate is rejected when this answers true.
++ *
++ * @param record - one readable team record.
++ * @returns true when the record carries `endedAt`, `ended`, or the hand-patched `archived` phase.
++ */
++export function isTerminalTeamRecord(record: Record<string, unknown>): boolean {
++  if ("endedAt" in record && record.endedAt !== undefined) return true
++  /** The phase the record spells, defaulting to the live spelling when it carries none (team-core's read). */
++  const phase = "phase" in record && typeof record.phase === "string" && record.phase !== "" ? record.phase : "active"
++  // An UNKNOWN spelling is not terminal: a record this build cannot classify keeps resolving, and the
++  // write gate in `activate.ts` remains the place that decides whether an append may target it.
++  if (!KNOWN_TEAM_PHASES.includes(phase)) return false
++  // The list is narrowed to `string` for the membership test: `phase` comes from an untrusted record and
++  // is NOT known to be a `TeamPhase` until this check — that is what the check is for.
++  return !(LIVE_CELL_TEAM_PHASES as readonly string[]).includes(phase)
++}
+ 
+ /** One board resolution: the team the cell's board is CURRENTLY on, plus the evidence behind it. */
+ export interface CellTeamResolution {
+@@ -703,9 +762,12 @@ function holdsActivatedTask(record: Record<string, unknown>, activatedIds: Reado
+  * The team this cell's board is CURRENTLY on — the ONE resolution every reader uses (§7.1/§7.1a).
+  *
+  * THE RESOLUTION IS EVIDENCE-FIRST, and the record's own `teamId` is only the FAST PATH:
++ *   0. `mintedTeamId`, the execution team a FAILED activation created (H1): it is the only evidence that
++ *      tells a fresh board from the ended planning board it replaced, because both number rows from `T1`.
++ *      It is returned on its own authority, even when its phase reads terminal (explicit hit).
+  *   1. `teamId`'s record, accepted when it carries one of the cell's `activatedTasks` board ids (or when
+- *      the cell has no activated ids to check). This keeps the hot path — one `get` — cheap for a
+- *      healthy cell, which is what lets the guard call it on every tool dispatch.
++ *      the cell has no activated ids to check) AND it is not TERMINAL. This keeps the hot path — one
++ *      `get` — cheap for a healthy cell, which is what lets the guard call it on every tool dispatch.
+  *   2. when the fast path cannot be VERIFIED (the field defect: `teamId` names the ended planning team),
+  *      the PLANE's own resolution for the cell's captain session — the exact path `cellwork_dispatch`
+  *      uses — accepted under the same activated-task check.
+@@ -723,22 +785,34 @@ function holdsActivatedTask(record: Record<string, unknown>, activatedIds: Reado
+ export function resolveCellTeam(deps: CellTeamResolutionDeps): CellTeamResolution {
+   /** The id the cell record names (the fast path). */
+   const recorded = typeof deps.cell.teamId === "string" ? deps.cell.teamId : ""
++  /** The execution team a FAILED activation MINTED, when the partial checkpoint recorded one (H1). */
++  const minted = typeof deps.cell.mintedTeamId === "string" ? deps.cell.mintedTeamId : ""
+   /** The id the record preserved as its staging team, when activation learned a different board. */
+   const planning = typeof deps.cell.planningTeamId === "string" ? deps.cell.planningTeamId : ""
+   /** Every board id the cell's activation minted, which is the evidence a candidate must satisfy. */
+   const activatedIds = new Set(Object.values(deps.cell.activatedTasks ?? {}).filter((id): id is string => typeof id === "string" && id !== ""))
++  // 0. THE MINTED TEAM IS THE FIRST CANDIDATE (blind review H1). A failed pass recorded the team it
++  // created, and that id is the ONLY evidence that distinguishes the fresh board from the ended planning
++  // board it replaced: both number their rows from `T1`, so an id-only match cannot. It is accepted on
++  // its own authority even when its phase reads terminal — the caller asked for THAT board explicitly,
++  // and its write reports what it finds there.
++  /** The minted id's record, when one is recorded. */
++  const mintedRecord = minted === "" ? undefined : teamRecordOf(deps, minted)
+   /** The fast-path record, when the recorded id is readable at all. */
+   const recordedRecord = teamRecordOf(deps, recorded)
++  /** Whether the recorded record is readable but TERMINAL, which is its own rejection reason. */
++  const recordedTerminal = recordedRecord !== undefined && isTerminalTeamRecord(recordedRecord)
+   /** The plane's binding for this cell's captain, read only when the fast path cannot be verified. */
+   let planeId = ""
+   /** The plane's record for that binding. */
+   let planeRecord: Record<string, unknown> | undefined
+   /** The resolution being built: the winner's id, record and evidence. */
+   let chosen: { id: string; record?: Record<string, unknown>; source: CellTeamResolutionSource } | undefined
++  if (minted !== "") chosen = { id: minted, record: mintedRecord, source: "minted" }
+   // 1. THE FAST PATH, VERIFIED. A record that carries this cell's own minted board ids is the board,
+   // full stop; the plane read below is then skipped, which keeps the guard's per-dispatch resolution to
+-  // the same single read it always paid.
+-  if (recordedRecord !== undefined && holdsActivatedTask(recordedRecord, activatedIds)) {
++  // the same single read it always paid. A TERMINAL record is never this path (blind review H1/M2).
++  if (chosen === undefined && recordedRecord !== undefined && !recordedTerminal && holdsActivatedTask(recordedRecord, activatedIds)) {
+     chosen = { id: recorded, record: recordedRecord, source: "state.teamId" }
+   }
+   /** Whether the fast path failed the activated-task check (as opposed to being unreadable). */
+@@ -760,7 +834,7 @@ export function resolveCellTeam(deps: CellTeamResolutionDeps): CellTeamResolutio
+       // names only the id) is read back through `get`, so the activated-task check sees the real board.
+       planeRecord = Array.isArray(plane.tasks) ? plane : teamRecordOf(deps, planeId)
+     }
+-    if (planeId !== "" && planeRecord !== undefined && holdsActivatedTask(planeRecord, activatedIds)) {
++    if (planeId !== "" && planeRecord !== undefined && !isTerminalTeamRecord(planeRecord) && holdsActivatedTask(planeRecord, activatedIds)) {
+       chosen = { id: planeId, record: planeRecord, source: "plane" }
+     }
+   }
+@@ -785,6 +859,9 @@ export function resolveCellTeam(deps: CellTeamResolutionDeps): CellTeamResolutio
+       /** Its id, which names it in every report. */
+       const id = typeof record.teamId === "string" ? record.teamId : ""
+       if (id === "" || id === recorded && recordedRejected) continue
++      // A TERMINAL candidate is never a landing target (blind review H1/M2): its board ids may match this
++      // cell's only because every fresh team renumbers from `T1`.
++      if (isTerminalTeamRecord(record)) continue
+       /** How many of the cell's board ids it carries. */
+       const count = teamTaskRows(record).filter((task) => typeof task.id === "string" && activatedIds.has(task.id)).length
+       if (count > bestCount) {
+@@ -799,7 +876,7 @@ export function resolveCellTeam(deps: CellTeamResolutionDeps): CellTeamResolutio
+   if (chosen === undefined && planning !== "" && planning !== recorded) {
+     /** The staging record, when it is readable. */
+     const planningRecord = teamRecordOf(deps, planning)
+-    if (planningRecord !== undefined && holdsActivatedTask(planningRecord, activatedIds)) chosen = { id: planning, record: planningRecord, source: "planningTeamId" }
++    if (planningRecord !== undefined && !isTerminalTeamRecord(planningRecord) && holdsActivatedTask(planningRecord, activatedIds)) chosen = { id: planning, record: planningRecord, source: "planningTeamId" }
+   }
+   // 5. NOTHING RESOLVED. The record is NOT presented: nothing proves it is this cell's board.
+   /** The resolved id, or "". */
+@@ -810,9 +887,13 @@ export function resolveCellTeam(deps: CellTeamResolutionDeps): CellTeamResolutio
+   let note: string | undefined
+   if (disagreement) {
+     note = "the cell record names team " + JSON.stringify(recorded) + " while the " + (chosen?.source ?? "none") + " resolution names " + JSON.stringify(resolvedId === "" ? planeId : resolvedId) + (resolvedId === "" ? " (no team could be verified)" : " — the " + (chosen?.source ?? "none") + " board is reported")
+-    if (recordedRejected) note += "; the recorded team's board holds none of this cell's activated tasks (" + [...activatedIds].join(", ") + ")"
++    if (recordedRejected) note += recordedTerminal
++      ? "; the recorded team is TERMINAL (an `endedAt` stamp or a non-live phase), so it is never a landing target"
++      : "; the recorded team's board holds none of this cell's activated tasks (" + [...activatedIds].join(", ") + ")"
+   } else if (recordedRejected && chosen === undefined) {
+-    note = "the cell record names team " + JSON.stringify(recorded) + " whose board holds none of this cell's activated tasks (" + [...activatedIds].join(", ") + "), and no live team holds them — no board is reported"
++    note = recordedTerminal
++      ? "the cell record names team " + JSON.stringify(recorded) + " which is TERMINAL (an `endedAt` stamp or a terminal phase), so it is never a landing target, and no live team could be verified — no board is reported"
++      : "the cell record names team " + JSON.stringify(recorded) + " whose board holds none of this cell's activated tasks (" + [...activatedIds].join(", ") + "), and no live team holds them — no board is reported"
+   }
+   return {
+     teamId: resolvedId,
+@@ -1029,6 +1110,9 @@ function normalizeCellState(raw: unknown): CellState | null {
+     // activation is running" — never a reason to refuse the record.
+     activatedLoops: stringMap(raw.activatedLoops),
+     activationInFlight: typeof raw.activationInFlight === "number" ? raw.activationInFlight : null,
++    // TOLERANT READ: a record written before the mint checkpoint carries no key, and reads as "no mint in
++    // flight" — never as a reason to refuse the record.
++    mintedTeamId: typeof raw.mintedTeamId === "string" ? raw.mintedTeamId : "",
+     cancelledTasks: stringMap(raw.cancelledTasks),
+     splitStale: raw.splitStale === true,
+     startedAt: typeof raw.startedAt === "string" ? raw.startedAt : "",
+diff --git a/packages/mpd-cellwork-plugin/test/activate-resume.test.ts b/packages/mpd-cellwork-plugin/test/activate-resume.test.ts
+index e250f9aa..136d6b40 100644
+--- a/packages/mpd-cellwork-plugin/test/activate-resume.test.ts
++++ b/packages/mpd-cellwork-plugin/test/activate-resume.test.ts
+@@ -8,13 +8,14 @@ import { createTeamActionsDouble } from "./lib/team-actions-double.ts"
+ // in-process, and whose `subagents` service raises team members. Every workspace is a fresh temp
+ // directory, and every assertion reads what the plugin actually wrote there.
+ import { test, expect } from "bun:test"
+-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs"
+-import { join } from "node:path"
++import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs"
++import { dirname, join } from "node:path"
+ import { tmpdir } from "node:os"
+ import { apply } from "../src/index.ts"
+ import { materializeSplit, type ActivateDeps } from "../src/activate.ts"
+ import { DEFAULT_CELLWORK_CONFIG } from "../src/config.ts"
+ import { journalPath, readActiveCell, readCell, statePath } from "../src/state.ts"
++import { teamRecordPath } from "../../mpd-team-core-plugin/src/team-store.ts"
+ import { readSplit } from "../src/split.ts"
+ import type { DispatchMemberView, DispatchRecordView } from "../src/dispatch.ts"
+ 
+@@ -58,6 +59,18 @@ interface Injection {
+   taskFailAt: number
+   /** Throw on the team-record read the DISPATCH stage performs (after the loops, before any send). */
+   dispatchReadThrows: boolean
++  /** Fail the MEMBER the mint stages on the not-yet-approved plan (the seed seat), once. */
++  mintMemberFails: boolean
++  /** Fail the `delete` the mint performs to leave a failed slot clean, once. */
++  deleteFails: boolean
++  /**
++   * Team ids whose record the service answers as UNREADABLE while a record FILE still exists on disk.
++   *
++   * This is the M2 shape: absent, unparsable, a different version and a transient read failure all
++   * collapse to the same `undefined` at the reader, so the plugin must consult the path to tell them
++   * apart instead of minting a duplicate team beside a live-but-momentarily-unreadable one.
++   */
++  unreadableTeamIds: string[]
+ }
+ 
+ /** The full fake harness one arm drives. */
+@@ -161,7 +174,7 @@ function makeHarness(): Harness {
+   /** Whether the dispatch-stage read has already been made to throw. */
+   let dispatchReadThrown = false
+   /** The injection switches, read by the doubles below. */
+-  const injection: Injection = { openFailAt: 0, memberFailAt: 0, taskFailAt: 0, dispatchReadThrows: false }
++  const injection: Injection = { openFailAt: 0, memberFailAt: 0, taskFailAt: 0, dispatchReadThrows: false, mintMemberFails: false, deleteFails: false, unreadableTeamIds: [] }
+   /** The captain's handle. */
+   const captain: FakeAgent = { id: "session-captain", session: { id: "session-captain", header: { cwd: workspace } }, followup: (): void => { events.push("submit") } }
+   /**
+@@ -170,7 +183,7 @@ function makeHarness(): Harness {
+    * @param args - its arguments.
+    * @returns the harness-shaped raw result.
+    */
+-  const answerTool = (name: string, args: Record<string, any>): { isError: boolean; value: unknown } => {
++  const answerTool = (name: string, args: Record<string, any>): { isError: boolean; value?: unknown; error?: Error } => {
+     if (name === "agent_teams_plan") {
+       /** The plan action the fake answers. */
+       const action = String(args.action ?? "")
+@@ -179,11 +192,20 @@ function makeHarness(): Harness {
+         plan = { planId: "plan-1", name: args.name, description: args.description, approval: "required", members: [], tasks: [] }
+         return { isError: false, value: { plan } }
+       }
++      if (action === "delete") {
++        // THE MINT'S CLEANUP: a failed member append archives the empty slot, and the answer is CHECKED.
++        events.push("delete-plan")
++        if (injection.deleteFails) return { isError: true, error: new Error("the injected plan-delete failure") }
++        plan = null
++        return { isError: false, value: { archived: true } }
++      }
+       if (action === "add_member") {
+         events.push("add-member")
+         /** The member row the caller asked for. */
+         const member = args.member as Record<string, any>
+         if (plan !== null && plan.approvedAt === undefined) {
++          // THE MINT'S SEED MEMBER is staged on the not-yet-approved plan; this is its own failure arm.
++          if (injection.mintMemberFails) return { isError: true, error: new Error("the injected plan-member failure") }
+           plan.members.push(member)
+           return { isError: false, value: { plan } }
+         }
+@@ -225,6 +247,9 @@ function makeHarness(): Harness {
+           // A FRESH ID PER APPROVAL: the ended planning team keeps its own record (`team-1`), so a mint
+           // is visible as a DIFFERENT team rather than an overwrite of the dead one.
+           teamId: "team-" + String(teamRecords.size + 1),
++          // THE PHASE A REAL APPROVAL WRITES: every seed member is running, so team-core derives `active`.
++          // The exact value is asserted by the MINT arm (N3), never merely "not ended".
++          phase: "active",
+           members: plan.members.map((member: Record<string, any>, index: number) => {
+             /** The executor handle the approval mints for this member. */
+             const executorRef = "handle-" + String(member.name)
+@@ -298,6 +323,9 @@ function makeHarness(): Harness {
+           dispatchReadThrown = true
+           throw new Error("the injected dispatch-stage team read failed")
+         }
++        // M2: the reader collapses every failure to `undefined`; the FILE on disk is what tells the
++        // plugin "exists but unreadable" from "absent" (the arm writes it).
++        if (injection.unreadableTeamIds.includes(teamId)) return undefined
+         return teamRecords.get(teamId)
+       },
+     },
+@@ -1046,6 +1074,10 @@ test("MINT: a planning board ended before activation is replaced by a fresh exec
+   /** The activation that must mint. */
+   const activated = await runTool(harness, "cellwork_activate", {})
+   expect(activated.ok).toBe(true)
++  // THE REPLY CARRIES THE MINT (blind review M2): an operator sees the execution team and WHY it was
++  // created without opening the journal, and `ended` is distinguishable from `absent`.
++  expect(activated.mintedTeamId).toBe("team-2")
++  expect(activated.mintTrigger).toBe("ended")
+   // THE TWO-ID STATE docs/cellwork.md promises: the execution board is a NEW team, the ended planning
+   // team survives as `planningTeamId`.
+   /** The record after activation. */
+@@ -1072,6 +1104,11 @@ test("MINT: a planning board ended before activation is replaced by a fresh exec
+   expect(row?.mintedTeamId).toBe("team-2")
+   expect(row?.planningTeamId).toBe("team-1")
+   expect(row?.teamId).toBe("team-2")
++  // N3: the PHASE IS EXACT. "not ended" also passes for a missing/unknown phase, which is exactly the
++  // looseness the blind review flagged; a real approval derives `active` (every seed member is running).
++  expect(minted.phase).toBe("active")
++  // M2: the mint trigger is a durable, distinguishable fact on the journal row.
++  expect(row?.mintTrigger).toBe("ended")
+ })
+ 
+ test("MINT NEGATIVE CONTROL: a LIVE planning board is still addressed in place (no second team)", async () => {
+@@ -1095,3 +1132,170 @@ test("MINT NEGATIVE CONTROL: a LIVE planning board is still addressed in place (
+   const creates = harness.calls.filter((call) => call.name === "agent_teams_plan" && call.arguments.action === "create").length
+   expect(creates - createsBefore).toBe(0)
+ })
++
++// ── H1: a FAILED mint is resumable — the retry lands on the team the failure created ──────────────
++
++/**
++ * Start a cell whose planning team has been ENDED, which is the state that forces a mint.
++ *
++ * @param harness - the harness.
++ * @returns the cell id and the ended planning record.
++ */
++async function endedPlanningCell(harness: Harness): Promise<{ cellId: string; planning: Record<string, any> }> {
++  /** The cell id. */
++  const cellId = await startCell(harness)
++  await finalizeRequirements(harness)
++  await submitSplit(harness)
++  /** The planning record the cell names. */
++  const planning = harness.teamRecords.get("team-1")
++  if (planning === undefined) throw new Error("the planning team record is missing")
++  planning.phase = "ended"
++  planning.endedAt = "2026-11-11T00:00:00.000Z"
++  return { cellId, planning }
++}
++
++/**
++ * How many `agent_teams_plan {action:"create"}` calls a harness has made (staging included).
++ *
++ * @param harness - the harness.
++ * @returns the count.
++ */
++function createCalls(harness: Harness): number {
++  return harness.calls.filter((call) => call.name === "agent_teams_plan" && call.arguments.action === "create").length
++}
++
++test("MINT RETRY A: a failure BEFORE the first board row reuses the minted team; `create` stays spent once", async () => {
++  /** The harness on an ended planning board. */
++  const harness = makeHarness()
++  /** The cell and the dead planning record. */
++  const { cellId, planning } = await endedPlanningCell(harness)
++  /** The board rows the planning team carried before activation (it must stay untouched). */
++  const planningTasksBefore = planning.tasks.length
++  /** The `create` calls staging spent before activation. */
++  const createsBefore = createCalls(harness)
++  // FAIL BEFORE ANY BOARD ROW: the first LIVE member append (Reviewer; the seed member was raised by the
++  // mint's own approval) is refused after the mint succeeded and before `create_task` ever ran.
++  harness.injection.memberFailAt = 1
++  /** The failed pass. */
++  const failed = await runTool(harness, "cellwork_activate", {})
++  expect(failed.ok).toBe(false)
++  // THE FAILURE REPLY NAMES THE MINT TOO, so the captain knows which team the retry will address.
++  expect(failed.mintedTeamId).toBe("team-2")
++  // THE MINT IS PERSISTED ON THE FAILURE PATH: the team id, the marker and the trigger, on the cell
++  // record AND on the journal row, so the retry has something to reuse.
++  /** The cell record after the failed pass. */
++  const partial = readStateJson(harness.workspace, cellId)
++  expect(partial.mintedTeamId).toBe("team-2")
++  expect(partial.teamId).toBe("team-2")
++  expect(partial.planningTeamId).toBe("team-1")
++  expect(Object.keys(partial.activatedTasks).length).toBe(0)
++  /** The failure row the pass journaled. */
++  const failureRow = journalEntries(harness.workspace, cellId).filter((entry) => entry.event === "cell-activation-partial").pop()
++  expect(failureRow?.mintedTeamId).toBe("team-2")
++  expect(failureRow?.minted).toBe(true)
++  expect(failureRow?.mintTrigger).toBe("ended")
++  expect(createCalls(harness)).toBe(createsBefore + 1)
++  // THE RETRY: the SAME accepted revision, no second mint.
++  harness.injection.memberFailAt = 0
++  /** The resumed pass. */
++  const retried = await runTool(harness, "cellwork_activate", {})
++  expect(retried.ok).toBe(true)
++  expect(createCalls(harness)).toBe(createsBefore + 1)
++  expect(harness.teamRecords.size).toBe(2)
++  expect(planning.tasks.length).toBe(planningTasksBefore)
++  /** The cell record after the successful retry. */
++  const after = readStateJson(harness.workspace, cellId)
++  expect(after.teamId).toBe("team-2")
++  expect(after.planningTeamId).toBe("team-1")
++  // The minted board carries every split row: the retry appended to the team the FAILURE created.
++  expect(harness.teamRecords.get("team-2")?.tasks.length).toBe(4)
++})
++
++test("MINT RETRY B: a failure AFTER the first board row stays on the minted team and never touches the dead one", async () => {
++  /** The harness on an ended planning board. */
++  const harness = makeHarness()
++  /** The cell and the dead planning record. */
++  const { cellId, planning } = await endedPlanningCell(harness)
++  /** The `create` calls staging spent before activation. */
++  const createsBefore = createCalls(harness)
++  /** The dead record's bytes before the first pass, so the retry can be compared against them. */
++  const deadBefore = JSON.stringify(planning)
++  // FAIL AFTER EXACTLY ONE BOARD ROW: the second `create_task` is refused, so the partial records
++  // `auth-core`'s minted id and the retry has BOTH a mint and a board id to reconcile.
++  harness.injection.taskFailAt = 2
++  /** The failed pass. */
++  const failed = await runTool(harness, "cellwork_activate", {})
++  expect(failed.ok).toBe(false)
++  /** The cell record after the failed pass. */
++  const partial = readStateJson(harness.workspace, cellId)
++  expect(partial.mintedTeamId).toBe("team-2")
++  expect(partial.activatedTasks).toEqual({ "auth-core": "T1" })
++  /** The minted team record. */
++  const minted = harness.teamRecords.get("team-2")
++  if (minted === undefined) throw new Error("no execution team was minted")
++  expect(minted.tasks.length).toBe(1)
++  expect(createCalls(harness)).toBe(createsBefore + 1)
++  // THE RETRY.
++  harness.injection.taskFailAt = 0
++  /** The resumed pass. */
++  const retried = await runTool(harness, "cellwork_activate", {})
++  expect(retried.ok).toBe(true)
++  // THE DEAD RECORD IS BYTE-FOR-BYTE UNTOUCHED: every retry write landed on the minted team.
++  expect(JSON.stringify(planning)).toBe(deadBefore)
++  // The minted board GREW from one row to the whole split, and no second team was created.
++  expect(minted.tasks.length).toBe(4)
++  expect(harness.teamRecords.size).toBe(2)
++  expect(createCalls(harness)).toBe(createsBefore + 1)
++  /** The cell record after the successful retry. */
++  const after = readStateJson(harness.workspace, cellId)
++  expect(after.teamId).toBe("team-2")
++  expect(after.planningTeamId).toBe("team-1")
++  expect(Object.keys(after.activatedTasks).length).toBe(4)
++})
++
++// ── M2: a record that EXISTS but cannot be read must not mint a duplicate team ────────────────────
++
++test("M2: an EXISTING but unreadable team record refuses the mint and names the path", async () => {
++  /** The harness with an accepted split. */
++  const harness = makeHarness()
++  await startCell(harness)
++  await finalizeRequirements(harness)
++  await submitSplit(harness)
++  /** The record path a real team-core row would occupy. */
++  const recordPath = teamRecordPath(harness.workspace, "team-1")
++  mkdirSync(dirname(recordPath), { recursive: true })
++  writeFileSync(recordPath, "{ this is not a team record\n")
++  // THE READ COLLAPSES TO `undefined` (a transient failure, a version mismatch and an unparsable body are
++  // one answer at the reader): the FILE is the evidence that the team EXISTS.
++  harness.injection.unreadableTeamIds = ["team-1"]
++  /** The `create` calls staging spent before activation. */
++  const createsBefore = createCalls(harness)
++  /** The refused activation. */
++  const failed = await runTool(harness, "cellwork_activate", {})
++  expect(failed.ok).toBe(false)
++  expect(String(failed.error)).toContain("could not be read")
++  expect(String(failed.error)).toContain(recordPath)
++  // FAIL-CLOSED: no second team, and no `create` spent on one.
++  expect(createCalls(harness)).toBe(createsBefore)
++  expect(harness.teamRecords.size).toBe(1)
++})
++
++// ── N2: the mint's cleanup answer is REPORTED, not assumed ────────────────────────────────────────
++
++test("N2: a failed mint member reports whether the empty plan slot was really deleted", async () => {
++  /** The harness on an ended planning board. */
++  const harness = makeHarness()
++  await endedPlanningCell(harness)
++  // BOTH the seed-member append AND the cleanup `delete` fail.
++  harness.injection.mintMemberFails = true
++  harness.injection.deleteFails = true
++  /** The refused activation. */
++  const failed = await runTool(harness, "cellwork_activate", {})
++  expect(failed.ok).toBe(false)
++  // The sentence names the MEMBER failure AND the failed cleanup, so an operator knows the slot is dirty.
++  expect(String(failed.error)).toContain("the injected plan-member failure")
++  expect(String(failed.error)).toContain("could NOT be deleted")
++  expect(String(failed.error)).toContain("the injected plan-delete failure")
++  expect(harness.calls.some((call) => call.name === "agent_teams_plan" && call.arguments.action === "delete")).toBe(true)
++  expect(harness.teamRecords.size).toBe(1)
++})
+diff --git a/packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts b/packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts
+index 3942d99e..0034fb2d 100644
+--- a/packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts
++++ b/packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts
+@@ -361,6 +361,15 @@ export const FROZEN_COUPLINGS: readonly string[] = [
+   "packages/mpd-team-core-plugin/src/team-web.ts :: import type { MailAnswer, MailQuestion } from \"../../mpd-mail-protocol/src/index\"",
+   // §7.2 (cellwork-elastic-planning): the seven-section handoff contract is written ONCE on the team plane — cellwork re-exports its validator instead of keeping a second copy that could drift.
+   "packages/mpd-cellwork-plugin/src/handoff.ts :: export { validateHandoffText, type HandoffValidation } from \"../../mpd-team-core-plugin/src/team-handoff\"",
++  // BLIND-REVIEW REPAIR ON PR #110 (H1/M2/N1, 2026-11-11): two deliberate compile-time edges, both
++  // sanctioned classes from docs/independence.md §4. `activate.ts` imports the team store's OWN
++  // `teamRecordPath` (and its `sanitizeId`) instead of forking the `.mpd/team/teams/<id>.json` layout to
++  // tell "absent" from "exists but unreadable" (§4 class 3: a shared pure module imported instead of
++  // forked — a private copy is how the path and its sanitizer drift apart). `state.ts` imports
++  // `type TeamPhase` so the live-phase set is bound to team-core's union instead of an untyped literal
++  // (§4 class 4: type-only, erased by the build). Two entries added; no other edge moved.
++  "packages/mpd-cellwork-plugin/src/activate.ts :: import { teamRecordPath } from \"../../mpd-team-core-plugin/src/team-store\"",
++  "packages/mpd-cellwork-plugin/src/state.ts :: import type { TeamPhase } from \"../../mpd-team-core-plugin/src/team-store\"",
+ ]
+ 
+ /** Blank out comments while preserving BOTH the character count and every newline, so a

@@ -126,6 +126,18 @@ contract is NOT rewritten (only a task with no loop, or whose contract still car
 placeholder, gets one). `activatedRevision` is set only after the dispatch pass succeeds, so another failure
 leaves another resumable record.
 
+**A FAILED PASS THAT MINTED ITS EXECUTION TEAM IS RESUMABLE TOO.** When the pass had to mint (the planning
+board was already terminal, or no record existed) and then failed, the checkpoint carries the mint: the
+`cell-activation-partial` row and the cell record name `mintedTeamId` (plus a `minted` marker and the
+`mintTrigger`), `teamId` moves to the minted team, and the ended planning id is preserved as
+`planningTeamId`. A retry therefore treats the cell as already on a board, resolves the MINTED team FIRST
+(resolver step 0 below), and never mints a second one — a second mint would orphan the first team and the
+live seed seat its approval raised. Two shapes are covered: a failure BEFORE the first board row (no board
+id recorded) reuses the minted team with the `create` call count unchanged, and a failure AFTER one or more
+board rows keeps every retry write on the minted board while the dead planning record stays byte-for-byte
+untouched. A SUCCESSFUL activation clears `mintedTeamId`, because `teamId` names the execution team from
+then on.
+
 A NEWER accepted revision SUPERSEDES an older in-flight partial: the pass is journaled
 (`activation-in-flight-superseded`, naming both revisions and stating that the older partial is abandoned),
 and the newer split's materialisation reconciles the recorded rows: a kept key reuses its board id, while
@@ -938,7 +950,7 @@ Everything lives under the workspace, in gitignored runtime state:
 
 | Path | Content |
 |---|---|
-| `state.json` | the cell record: phase, captain session, depth, parent cell, team id (the EXECUTION board — the staging team is preserved as `planningTeamId` when they differ), planner/splitter handles, the staged split ticket's board id (`splitTaskId`), members and their modes (with the optional `fenced`/`fencedReason`, `adopted: true` and `grown: true` markers), split revision, checkpoints, journal cursor, and the two optional in-flight activation fields: `activationInFlight` (the accepted revision whose materialisation is running) and `activatedLoops` (split key → verify-loop id) |
+| `state.json` | the cell record: phase, captain session, depth, parent cell, team id (the EXECUTION board — the staging team is preserved as `planningTeamId` when they differ), planner/splitter handles, the staged split ticket's board id (`splitTaskId`), members and their modes (with the optional `fenced`/`fencedReason`, `adopted: true` and `grown: true` markers), split revision, checkpoints, journal cursor, the optional in-flight activation fields `activationInFlight` (the accepted revision whose materialisation is running) and `activatedLoops` (split key → verify-loop id), and `mintedTeamId` — the execution team a FAILED activation minted, which makes the retry reuse that team instead of minting a second one and which a SUCCESSFUL activation clears to `""` |
 | `journal.jsonl` | append-only transitions: phase, dispatch, checkpoint, compaction, promotion, refusal, and the supersession rows (`split-superseded`, `activation-in-flight-superseded`); an activation pass writes one compact `cell-activation-progress` row per artifact and a single full `cell-activation-partial` row on failure, and the repair rows are `task-reassigned`, `dispatch-reassign`, `checkpoint-unrecoverable`, `member-adopted`, `member-unfenced`, `member-rebound` (a `rebind` repair; it carries `previousSessionId`/`previousSessionIdLiveness`, `namedBy` (the evidence source: `team`/`cell`/`journal:<event>`), the F1 provenance markers `handleRecordCurrent`/`journalHandoverOlder` when the record won over an older journal row, the board half `tasksRebound`/`tasksNeedingRelease`, the kept-child marker `handleOrphanAdopted` when the kept child's orphan row evidenced the handle, and `displacedExecutorRef`/`displacedUnproven` when the re-point overwrote a different handle), `member-rebind-failed` (a refused `rebind` entry or argument: `reason`, the requested `handle`, `namedBy`, `previousSessionId`/`previousSessionIdLiveness`, and `supersededBy` when a later hand-over replaced it; its `detail` never chooses a direction), `seat-rebound` (the three-surface bind; it carries `displacedExecutorRef`/`displacedUnproven` when the bind overwrote a different handle), `barrier-skipped` (the `reseed-already-bound` re-entry guard), `barrier-record-unreadable` and `barrier-failed` (the two former warn-only branches), and `dispatch-unfence-withheld` (a combined `{rebind, unfence}` call whose `rebind` did not fully land: `reason` = `rebind-failed` or `cell-mirror-unconfirmed`, `members`, `failed:[{member, reason, cellRow?}]`, a `detail` saying `fence stayed closed`, and the `next` re-run) |
 | `mail.jsonl` (legacy) | a PRE-unification per-cell mail log, still READ and merged into the cell view; new mail is NOT written here: it lives in the workspace store `<workspace>/.mpd/team/mailbox.jsonl`, stamped with this cell's `teamId` and `cellId` (plus `fromCell` on a cross-cell sender), read by `cellwork_inbox`, and followed there by a separate `wake` record stating what the wake-up attempt did; an acknowledgement of one of THESE legacy rows is appended back to this file, while a unified row is acknowledged in the store |
 | `requirements.md` | the validated requirements document, revisioned; a change bumps the revision and marks the split stale |
@@ -964,23 +976,55 @@ execution team is minted after it, which is the bundle's NORMAL path — so ever
 board through ONE rule (the exported `resolveCellTeam` in the cellwork state module):
 
 1. the recorded `teamId`, accepted only when its record carries one of the cell's `activatedTasks` board
-   ids (or when the cell has no activated ids to check);
+   ids (or when the cell has no activated ids to check) AND the record is not PROVEN TERMINAL — an
+   `endedAt` stamp, the `ended` phase, or the hand-patched `archived` spelling. A fresh execution team
+   numbers its board from `T1`, the SAME ids the ended planning board carries, so an id-only match cannot
+   tell the live board from the dead one;
 2. otherwise the PLANE's own resolution for the cell's captain session — the exact path
    `cellwork_dispatch` uses;
 3. otherwise the live team whose board carries the cell's activated task ids;
 4. otherwise `planningTeamId`, the preserved staging id, as the legacy fallback.
 
-**The fifth state is an UNVERIFIED fallback, and only a RE-SPLIT takes it.** When all four steps resolve
-NOTHING and the record's `teamId` is non-empty, a re-split (a cell whose `activatedTasks` already name
-board ids) still continues on the RECORDED id — an old cell may name a board no seam can read any more,
-and refusing it would strand work that is otherwise resumable — but the id is TRUSTED, never verified:
-the answer carries `boardNote` saying so, the same fact is journaled (`boardResolution: "unverified"`),
-and the note prints the recorded id and, when the resolver saw another candidate, that id too — so both
-ids are visible. The note is ADVISORY, not a refusal: it says work is appended to that record only, it
-never tells the operator to run `cellwork_start` (a team id IS recorded), and an operator who sees it
-should not start a new cell. An INITIAL activation never takes this path (it has no minted ids to verify
-the record against), and a re-split with NO recorded id still refuses with the `cellwork_start`
-instruction.
+Step 0 comes before all four: when the cell records `mintedTeamId` (the execution team a FAILED pass
+created — see "A failed activation resumes"), that id IS the board and is returned on its own authority,
+even if its own phase reads terminal: the caller asked for exactly that board. It is the only evidence
+that separates the two identically-numbered boards, and it is why a retry never mints a second team. A
+SUCCESSFUL activation clears the marker. The terminal rule applies to EVERY other candidate (plane,
+activated-id scan, planning fallback): a terminal record is never a landing target. A phase spelling this
+build does not recognize is NOT treated as terminal, so a legacy record keeps resolving. The rule is
+independently testable: `isTerminalTeamRecord` and `resolveCellTeam` are exported, and
+`test/resolve-cell-team.test.ts` covers the rejection, the minted-id preference and the live/legacy
+controls.
+
+**A mint names its trigger, and an unreadable record refuses the mint.** The mint is journaled and
+reported with `mintTrigger`: `ended` for a terminal planning record, `absent` when no record file exists.
+A record that EXISTS but cannot be read — an unparsable body, a version this build does not read, a
+transient I/O failure, all of which the reader collapses into the same `undefined` — is NOT a reason to
+mint: the pass REFUSES, names the record's absolute path and writes nothing. Minting beside a momentarily
+unreadable team would duplicate a team whose seats may still be running, which is worse than a retry.
+
+**The fifth state is an UNVERIFIED fallback, and only a RE-SPLIT takes it — AND ONLY WHEN THE RECORDED
+TEAM CANNOT BE READ OR IS NOT TERMINAL.** When all four steps resolve NOTHING and the record's `teamId` is
+non-empty, a re-split (a cell whose `activatedTasks` already name board ids) still continues on the
+RECORDED id — an old cell may name a board no seam can read any more, and refusing it would strand work
+that is otherwise resumable — but the id is TRUSTED, never verified: the answer carries `boardNote` saying
+so, the same fact is journaled (`boardResolution: "unverified"`), and the note prints the recorded id and,
+when the resolver saw another candidate, that id too — so both ids are visible. The note is ADVISORY, not
+a refusal: it says work is appended to that record only, it never tells the operator to run
+`cellwork_start` (a team id IS recorded), and an operator who sees it should not start a new cell. An
+INITIAL activation never takes this path (it has no minted ids to verify the record against), and a
+re-split with NO recorded id still refuses with the `cellwork_start` instruction.
+
+**A READABLE but TERMINAL recorded team is REFUSED, never a landing target.** The fallback above is
+reserved for a record no seam can read; when the recorded record IS readable and proven terminal (an
+`endedAt` stamp, the `ended` phase or the hand-patched `archived` spelling), activation REFUSES the
+re-split, names that team id in its sentence, and writes nothing — no contract, no member, no board row,
+no partial checkpoint. Silently appending to the dead board is exactly the defect this rule exists to
+prevent, and "never a landing target" outranks "an old cell must still run". Recovery is a NEW live
+execution board: this build has no verb that re-mints an execution board for a cell that already
+materialised a revision, so `cellwork_stop` followed by `/cellwork` (a new cell id) is the shipped path,
+and a new cell does not inherit the stopped cell's board. The two sentences can never both be printed:
+`boardNote` discloses a TRUSTED id, and a terminal id never reaches it.
 
 `cellwork_status`, `cellwork_supervise`, `cellwork_context`, `cellwork_stop`'s live-task guard, seat
 resolution, this cell's requirements re-split path and activation's own writes all read THAT resolution,
@@ -993,9 +1037,11 @@ and the stale field is only the fast path.
 different teams, the surface prints BOTH ids and which resolution won (and, for a rejected recorded id,
 that its board holds none of the cell's activated tasks). `cellwork_stop` runs its live-task guard
 against the RESOLVED team, so a non-forced stop is REFUSED while that board still has live tasks; and
-the stop does NOT end the team by itself — its answer carries `teamId` (the execution team it leaves
-running) and `endTeamCommand` (the exact retry verb
-`agent_teams_control {action:"end", team_id:"<id>"}`), and the render prints both. An operator who
+the stop does NOT end the team by itself — a SUCCESSFUL stop's answer carries `teamId` (the execution
+team it leaves running) and `endTeamCommand` (the exact retry verb
+`agent_teams_control {action:"end", team_id:"<id>"}`), and the render prints both. A REFUSED stop
+answers only its error sentence, deliberately: while tasks are still running, suggesting "end that
+team" would contradict the guard's own reason. An operator who
 stops a cell and wants the agents gone must call that verb.
 
 ## Configuration
@@ -1081,6 +1127,13 @@ whose window cannot be read can be certified deliberately, and it is recorded as
   that never mails its findings is not retried by the plugin.
 - **One split revision stands.** Multi-lane splitting is out of scope: a re-split is a requirements
   `update` feeding a NEW accepted revision, never two live split graphs.
+- **A terminal-MINTED retry is accepted by step 0 and then fails at the board.** The resolver returns
+  `mintedTeamId` on its own authority — it is the only evidence that separates two identically-numbered
+  boards — and that acceptance deliberately survives the team reading terminal. If the minted execution
+  team ENDS between the failed pass and the retry, the retry still addresses it and the team plane's own
+  refusal is what stops the append: the pass stays resumable but cannot succeed until an operator
+  intervenes. Step 0 exists to keep a retry on the board its failure created, not to resurrect a board
+  that is provably dead; no arm exercises the ended-minted retry.
 - **No live-LLM end-to-end cell run is claimed.** The unit suite proves the command surface, the guard
   decisions per mode, the state store, the estimator arithmetic and the protocol logic against a fake
   context; the Wave-3 QA cases prove that the command is registered and that its handler submits the

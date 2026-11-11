@@ -1,0 +1,481 @@
+diff --git a/docs/cellwork.md b/docs/cellwork.md
+index a8965be5..9847beca 100644
+--- a/docs/cellwork.md
++++ b/docs/cellwork.md
+@@ -950,7 +950,7 @@ Everything lives under the workspace, in gitignored runtime state:
+ 
+ | Path | Content |
+ |---|---|
+-| `state.json` | the cell record: phase, captain session, depth, parent cell, team id (the EXECUTION board — the staging team is preserved as `planningTeamId` when they differ), planner/splitter handles, the staged split ticket's board id (`splitTaskId`), members and their modes (with the optional `fenced`/`fencedReason`, `adopted: true` and `grown: true` markers), split revision, checkpoints, journal cursor, and the two optional in-flight activation fields: `activationInFlight` (the accepted revision whose materialisation is running) and `activatedLoops` (split key → verify-loop id) |
++| `state.json` | the cell record: phase, captain session, depth, parent cell, team id (the EXECUTION board — the staging team is preserved as `planningTeamId` when they differ), planner/splitter handles, the staged split ticket's board id (`splitTaskId`), members and their modes (with the optional `fenced`/`fencedReason`, `adopted: true` and `grown: true` markers), split revision, checkpoints, journal cursor, the optional in-flight activation fields `activationInFlight` (the accepted revision whose materialisation is running) and `activatedLoops` (split key → verify-loop id), and `mintedTeamId` — the execution team a FAILED activation minted, which makes the retry reuse that team instead of minting a second one and which a SUCCESSFUL activation clears to `""` |
+ | `journal.jsonl` | append-only transitions: phase, dispatch, checkpoint, compaction, promotion, refusal, and the supersession rows (`split-superseded`, `activation-in-flight-superseded`); an activation pass writes one compact `cell-activation-progress` row per artifact and a single full `cell-activation-partial` row on failure, and the repair rows are `task-reassigned`, `dispatch-reassign`, `checkpoint-unrecoverable`, `member-adopted`, `member-unfenced`, `member-rebound` (a `rebind` repair; it carries `previousSessionId`/`previousSessionIdLiveness`, `namedBy` (the evidence source: `team`/`cell`/`journal:<event>`), the F1 provenance markers `handleRecordCurrent`/`journalHandoverOlder` when the record won over an older journal row, the board half `tasksRebound`/`tasksNeedingRelease`, the kept-child marker `handleOrphanAdopted` when the kept child's orphan row evidenced the handle, and `displacedExecutorRef`/`displacedUnproven` when the re-point overwrote a different handle), `member-rebind-failed` (a refused `rebind` entry or argument: `reason`, the requested `handle`, `namedBy`, `previousSessionId`/`previousSessionIdLiveness`, and `supersededBy` when a later hand-over replaced it; its `detail` never chooses a direction), `seat-rebound` (the three-surface bind; it carries `displacedExecutorRef`/`displacedUnproven` when the bind overwrote a different handle), `barrier-skipped` (the `reseed-already-bound` re-entry guard), `barrier-record-unreadable` and `barrier-failed` (the two former warn-only branches), and `dispatch-unfence-withheld` (a combined `{rebind, unfence}` call whose `rebind` did not fully land: `reason` = `rebind-failed` or `cell-mirror-unconfirmed`, `members`, `failed:[{member, reason, cellRow?}]`, a `detail` saying `fence stayed closed`, and the `next` re-run) |
+ | `mail.jsonl` (legacy) | a PRE-unification per-cell mail log, still READ and merged into the cell view; new mail is NOT written here: it lives in the workspace store `<workspace>/.mpd/team/mailbox.jsonl`, stamped with this cell's `teamId` and `cellId` (plus `fromCell` on a cross-cell sender), read by `cellwork_inbox`, and followed there by a separate `wake` record stating what the wake-up attempt did; an acknowledgement of one of THESE legacy rows is appended back to this file, while a unified row is acknowledged in the store |
+ | `requirements.md` | the validated requirements document, revisioned; a change bumps the revision and marks the split stale |
+@@ -1003,17 +1003,28 @@ transient I/O failure, all of which the reader collapses into the same `undefine
+ mint: the pass REFUSES, names the record's absolute path and writes nothing. Minting beside a momentarily
+ unreadable team would duplicate a team whose seats may still be running, which is worse than a retry.
+ 
+-**The fifth state is an UNVERIFIED fallback, and only a RE-SPLIT takes it.** When all four steps resolve
+-NOTHING and the record's `teamId` is non-empty, a re-split (a cell whose `activatedTasks` already name
+-board ids) still continues on the RECORDED id — an old cell may name a board no seam can read any more,
+-and refusing it would strand work that is otherwise resumable — but the id is TRUSTED, never verified:
+-the answer carries `boardNote` saying so, the same fact is journaled (`boardResolution: "unverified"`),
+-and the note prints the recorded id and, when the resolver saw another candidate, that id too — so both
+-ids are visible. The note is ADVISORY, not a refusal: it says work is appended to that record only, it
+-never tells the operator to run `cellwork_start` (a team id IS recorded), and an operator who sees it
+-should not start a new cell. An INITIAL activation never takes this path (it has no minted ids to verify
+-the record against), and a re-split with NO recorded id still refuses with the `cellwork_start`
+-instruction.
++**The fifth state is an UNVERIFIED fallback, and only a RE-SPLIT takes it — AND ONLY WHEN THE RECORDED
++TEAM CANNOT BE READ OR IS NOT TERMINAL.** When all four steps resolve NOTHING and the record's `teamId` is
++non-empty, a re-split (a cell whose `activatedTasks` already name board ids) still continues on the
++RECORDED id — an old cell may name a board no seam can read any more, and refusing it would strand work
++that is otherwise resumable — but the id is TRUSTED, never verified: the answer carries `boardNote` saying
++so, the same fact is journaled (`boardResolution: "unverified"`), and the note prints the recorded id and,
++when the resolver saw another candidate, that id too — so both ids are visible. The note is ADVISORY, not
++a refusal: it says work is appended to that record only, it never tells the operator to run
++`cellwork_start` (a team id IS recorded), and an operator who sees it should not start a new cell. An
++INITIAL activation never takes this path (it has no minted ids to verify the record against), and a
++re-split with NO recorded id still refuses with the `cellwork_start` instruction.
++
++**A READABLE but TERMINAL recorded team is REFUSED, never a landing target.** The fallback above is
++reserved for a record no seam can read; when the recorded record IS readable and proven terminal (an
++`endedAt` stamp, the `ended` phase or the hand-patched `archived` spelling), activation REFUSES the
++re-split, names that team id in its sentence, and writes nothing — no contract, no member, no board row,
++no partial checkpoint. Silently appending to the dead board is exactly the defect this rule exists to
++prevent, and "never a landing target" outranks "an old cell must still run". Recovery is a NEW live
++execution board: this build has no verb that re-mints an execution board for a cell that already
++materialised a revision, so `cellwork_stop` followed by `/cellwork` (a new cell id) is the shipped path,
++and a new cell does not inherit the stopped cell's board. The two sentences can never both be printed:
++`boardNote` discloses a TRUSTED id, and a terminal id never reaches it.
+ 
+ `cellwork_status`, `cellwork_supervise`, `cellwork_context`, `cellwork_stop`'s live-task guard, seat
+ resolution, this cell's requirements re-split path and activation's own writes all read THAT resolution,
+@@ -1116,6 +1127,13 @@ whose window cannot be read can be certified deliberately, and it is recorded as
+   that never mails its findings is not retried by the plugin.
+ - **One split revision stands.** Multi-lane splitting is out of scope: a re-split is a requirements
+   `update` feeding a NEW accepted revision, never two live split graphs.
++- **A terminal-MINTED retry is accepted by step 0 and then fails at the board.** The resolver returns
++  `mintedTeamId` on its own authority — it is the only evidence that separates two identically-numbered
++  boards — and that acceptance deliberately survives the team reading terminal. If the minted execution
++  team ENDS between the failed pass and the retry, the retry still addresses it and the team plane's own
++  refusal is what stops the append: the pass stays resumable but cannot succeed until an operator
++  intervenes. Step 0 exists to keep a retry on the board its failure created, not to resurrect a board
++  that is provably dead; no arm exercises the ended-minted retry.
+ - **No live-LLM end-to-end cell run is claimed.** The unit suite proves the command surface, the guard
+   decisions per mode, the state store, the estimator arithmetic and the protocol logic against a fake
+   context; the Wave-3 QA cases prove that the command is registered and that its handler submits the
+diff --git a/docs/cellwork.zh-CN.md b/docs/cellwork.zh-CN.md
+index 081e2aa0..99acc053 100644
+--- a/docs/cellwork.zh-CN.md
++++ b/docs/cellwork.zh-CN.md
+@@ -738,7 +738,7 @@ cell 内的智能体可以互相通信，不经过用户界面，也不经过队
+ 
+ | 路径 | 内容 |
+ |---|---|
+-| `state.json` | cell 记录：阶段、队长 session、深度、父 cell、team id（**执行**看板——两者不同时，暂存 team 保留在 `planningTeamId`）、规划器/切分器 handle、被 stage 的切分票看板 id（`splitTaskId`）、成员及其模式（含可选的 `fenced`/`fencedReason`、`adopted: true` 与 `grown: true` 标记）、切分修订号、检查点、journal 游标，以及两个可选的「在飞激活」字段：`activationInFlight`（正在物化的被接受修订号）与 `activatedLoops`（切分键 → 验证循环 id） |
++| `state.json` | cell 记录：阶段、队长 session、深度、父 cell、team id（**执行**看板——两者不同时，暂存 team 保留在 `planningTeamId`）、规划器/切分器 handle、被 stage 的切分票看板 id（`splitTaskId`）、成员及其模式（含可选的 `fenced`/`fencedReason`、`adopted: true` 与 `grown: true` 标记）、切分修订号、检查点、journal 游标、可选的「在飞激活」字段 `activationInFlight`（正在物化的被接受修订号）与 `activatedLoops`（切分键 → 验证循环 id），以及 `mintedTeamId`——一次**失败**的激活铸出的执行 team；它让重试复用该 team 而不是再铸一个，并在激活**成功**后清空为 `""` |
+ | `journal.jsonl` | 只追加的迁移：阶段、派发、检查点、压缩、晋升、拒绝，以及取代行（`split-superseded`、`activation-in-flight-superseded`）；一趟激活每个产物写一条紧凑的 `cell-activation-progress` 行、失败时只写一条完整的 `cell-activation-partial` 行，修复行是 `task-reassigned`、`dispatch-reassign`、`checkpoint-unrecoverable`、`member-adopted`、`member-unfenced`、`member-rebound`（`rebind` 修复；带 `previousSessionId`/`previousSessionIdLiveness`、`namedBy`（证据来源：`team`/`cell`/`journal:<event>`），记录压过更早 journal 行时带 F1 来源标记 `handleRecordCurrent`/`journalHandoverOlder`，看板那一半带 `tasksRebound`/`tasksNeedingRelease`，被保留子代理的孤儿行作证时带 `handleOrphanAdopted`，重指覆盖了另一个 handle 时还带 `displacedExecutorRef`/`displacedUnproven`）、`member-rebind-failed`（被拒绝的 `rebind` 条目或参数：`reason`、请求的 `handle`、`namedBy`、`previousSessionId`/`previousSessionIdLiveness`，被后续交接取代时带 `supersededBy`；文案绝不替操作员选择方向）、`seat-rebound`（三面绑定；若绑定覆盖了另一个 handle，它带 `displacedExecutorRef`/`displacedUnproven`）、`barrier-skipped`（`reseed-already-bound` 重入守卫）、`barrier-record-unreadable` 与 `barrier-failed`（过去只会 `warn` 的两条分支），以及 `dispatch-unfence-withheld`（`{rebind, unfence}` 合并调用里 `rebind` 没有完全落地：`reason` = `rebind-failed` or `cell-mirror-unconfirmed`、`members`、`failed:[{member, reason, cellRow?}]`、写明 `fence stayed closed` 的 `detail`，以及重跑用的 `next`） |
+ | `mail.jsonl`（旧格式） | 统一**之前**的按 cell 邮件日志，仍会被**读取**并合并进视图；新邮件**不再**写在这里：它们住在 workspace 存储 `<workspace>/.mpd/team/mailbox.jsonl`，盖上本 cell 的 `teamId` 与 `cellId`（跨 cell 发送者还会盖上 `fromCell`），由 `cellwork_inbox` 读取，并在那里随后跟一条单独的 `wake` 记录说明唤醒尝试的结果；对**这些**旧格式行的确认会追加回本文件，而统一之后的行则在存储里确认 |
+ | `requirements.md` | 经校验的需求文档，带修订号；一次变更会提升修订号并把切分标记为过期 |
+@@ -779,13 +779,22 @@ cell id 形如 `cell-<UTC 时刻>`；子 cell 会记录 `parentCellId` 与 `dept
+ I/O 失败，读取器会把它们都塌成同一个 `undefined`——**不是**铸队的理由：这一趟会**拒绝**、点名记录的绝对路径并
+ 什么都不写。在一块暂时读不出的 team 旁边铸新队，会复制出一个席位可能仍在运行的 team，比一次重试更糟。
+ 
+-**第五种状态是「未验证」回落，且只有重切分才会走。** 四步解析什么都没找到、而记录的 `teamId` 非空时，重切分
+-（`activatedTasks` 已带看板 id 的 cell）仍继续使用**记录里的** id——旧 cell 可能指向一个任何接缝都读不到的看板，
+-拒绝它会搁浅本来可续做的工作——但这个 id 是**被信任**而非被验证的：答复携带 `boardNote` 说明这一点，同一事实
+-写入 journal（`boardResolution: "unverified"`），note 会打印记录 id，并在解析器看到另一个候选时连那个 id 一起
+-打印——两个 id 都可见。note 是**提示性的**，不是拒绝：它说明工作只会追加到那条记录上，绝不叫操作者去跑
+-`cellwork_start`（team id 确实已记录），看到它的操作者也不应新开 cell。**首次**激活绝不走这条路径（它没有已铸出
+-的 id 可供核对记录），而记录 id 为空的重切分仍以 `cellwork_start` 的指引拒绝。
++**第五种状态是「未验证」回落，且只有重切分才会走——并且只在记录里的 team 读不出来、或不是终态时才走。**
++四步解析什么都没找到、而记录的 `teamId` 非空时，重切分（`activatedTasks` 已带看板 id 的 cell）仍继续使用
++**记录里的** id——旧 cell 可能指向一个任何接缝都读不到的看板，拒绝它会搁浅本来可续做的工作——但这个 id 是
++**被信任**而非被验证的：答复携带 `boardNote` 说明这一点，同一事实写入 journal
++（`boardResolution: "unverified"`），note 会打印记录 id，并在解析器看到另一个候选时连那个 id 一起打印——
++两个 id 都可见。note 是**提示性的**，不是拒绝：它说明工作只会追加到那条记录上，绝不叫操作者去跑
++`cellwork_start`（team id 确实已记录），看到它的操作者也不应新开 cell。**首次**激活绝不走这条路径（它没有已
++铸出的 id 可供核对记录），而记录 id 为空的重切分仍以 `cellwork_start` 的指引拒绝。
++
++**可读但终态的记录一律拒绝，绝不是落地目标。** 上面的回退只留给「任何接缝都读不到」的记录；当记录里的
++记录**可读**且被证明为终态（带 `endedAt`、`ended` 阶段，或手工改写的 `archived` 拼写）时，激活会**拒绝**这次
++重切分、在句子里点名那个 team id，并且什么都不写——不写合约、不拉成员、不追加看板行、不写部分检查点。静默
++追加到死看板正是这条规则要防的缺陷，「终态绝不是落地目标」优先于「旧 cell 必须还能跑」。恢复方式是**一块新的
++活跃执行看板**：本构建没有为「已经物化过某个修订」的 cell 重新铸执行看板的动词，因此 `cellwork_stop` 之后重新
++`/cellwork`（新的 cell id）才是随包提供的路径，新 cell 不继承已停止 cell 的看板。
++两句话永远不可能同时打印：`boardNote` 披露的是**被信任**的 id，而终态 id 永远到不了它那里。
+ 
+ `cellwork_status`、`cellwork_supervise`、`cellwork_context`、`cellwork_stop` 的活任务守卫、座位解析、本 cell
+ 的需求重切分路径以及激活自己的写入，读的都是**这条解析**，绝不是裸字段。激活还会把执行看板 id **持久化**为
+@@ -866,6 +875,11 @@ agent 退出，必须调用该动词。
+ - **分析泳道没有自动超时。** 弃用的泳道由队长关闭；一个从不把发现邮件回来的泳道，插件不会重试。
+ - **只保留一个切分修订。** 多泳道切分不在范围内：重切分是由需求 `update` 喂出一个**新的**被接受修订，
+   绝不是两张同时活跃的切分图。
++- **终态铸出 id 的重试会被第 0 步接受，然后在看板上失败。** 解析器按自身权威返回 `mintedTeamId`——它是区分
++  两块编号相同看板的**唯一**证据——而这种接受**有意**在团队读起来是终态时依然成立。如果铸出的执行 team 在失败
++  与重试之间**结束**了，重试仍会指向它，最终由团队平面自己的拒绝来终止追加：这一趟仍然可续做，但在操作者介入
++  之前无法成功。第 0 步存在的意义是让重试留在它那次失败所创建的看板上，而不是复活一块已证明死掉的看板；
++  没有任何测试臂覆盖「铸出 team 已终态」的重试。
+ - **不宣称做过真·LLM 端到端 cell 运行。** 单元测试用假上下文证明命令面、各模式下守卫的判定、状态存储、
+   估算算术与协议逻辑；Wave-3 的 QA 用例证明命令已注册、其处理函数确实提交了指令，并复现挂载。两者都不是
+   模型驱动的运行。
+diff --git a/docs/independence.md b/docs/independence.md
+index c4277c61..eac41c36 100644
+--- a/docs/independence.md
++++ b/docs/independence.md
+@@ -137,6 +137,16 @@ Four kinds of coupling are **allowed**; they are called out here so "independent
+    edge, but it is still a source-level dependency on a sibling's internal module path, so it is
+    frozen like any other.
+ 
++**Declared exception — a runtime I/O helper (2026-11-11, PR #110 N-c).** `mpd-cellwork-plugin`'s
++`activate.ts` imports the runtime `teamRecordPath` from `mpd-team-core-plugin`'s `team-store`, so it can
++tell "absent" from "exists but unreadable" without forking the `.mpd/team/teams/<id>.json` layout. It is
++**neither** class 3 (that class is a SHARED PURE MODULE; `team-store` reads and writes the filesystem)
++**nor** class 4 (the import is a runtime value, not type-only). The four classes above have no slot for
++it, so it is recorded here as a **frozen, downgraded exception** rather than mislabelled into a class it
++does not fit. It stays because the path and its sanitizer are the store's ONE definition — a private copy
++is how the two spellings drift apart, and the M2 "exists but unreadable" refusal names that exact path.
++The coupling inventory freezes the edge, so it cannot grow silently.
++
+ ## 5. The pinned debt: the retired body's vendored `schemastery` — CLOSED
+ 
+ **STATUS: CLOSED by the `de-vendor-and-verify-law` wave (2026-10-07).** The closure measurement is the
+diff --git a/docs/independence.zh-CN.md b/docs/independence.zh-CN.md
+index 0e8bdd11..01a294b1 100644
+--- a/docs/independence.zh-CN.md
++++ b/docs/independence.zh-CN.md
+@@ -116,6 +116,14 @@ bundle 的 `exports` 通配（`./packages/*`）挂载，MCP 启动器目录 `mpd
+    "../../mpd-team-core-plugin/src/team-store.js"` 的语句在构建时被**擦除**，不产生任何运行期边，但它
+    依然是对兄弟包内部模块路径的源码级依赖，因此与其它耦合一样被冻结。
+ 
++**已声明例外——一个运行期 I/O 辅助函数（2026-11-11，PR #110 N-c）。** `mpd-cellwork-plugin` 的
++`activate.ts` 从 `mpd-team-core-plugin` 的 `team-store` import 运行期的 `teamRecordPath`，用来区分
++「不存在」与「存在但读不出来」，而不去分叉 `.mpd/team/teams/<id>.json` 的目录布局。它**不属于**类别 3
++（那一类是**共享纯模块**，而 `team-store` 会读写文件系统），也**不属于**类别 4（这个 import 是运行期值，
++不是仅类型）。上面四类都没有它的位置，因此这里把它记为一条**冻结的降级例外**，而不是硬塞进一个并不匹配的
++类别。它保留的理由是：路径与它的 sanitizer 只有存储模块这**一份**定义——私有副本正是两种写法开始漂移的
++起点，而 M2 的「存在但读不出来」拒绝会点名那条精确路径。耦合清单冻结了这条边，因此它无法静默增长。
++
+ ## 5. 钉住的债：已退役主体内置的 `schemastery` —— 已关闭
+ 
+ **状态：由 `de-vendor-and-verify-law` 波次关闭（2026-10-07）。** 关闭度量即后续动作当初指明的那一项，
+diff --git a/packages/mpd-cellwork-plugin/dist/index.js b/packages/mpd-cellwork-plugin/dist/index.js
+index 0725f14a..33bd0c7b 100644
+--- a/packages/mpd-cellwork-plugin/dist/index.js
++++ b/packages/mpd-cellwork-plugin/dist/index.js
+@@ -2684,6 +2684,7 @@ function resolveCellTeam(deps) {
+     ...chosen?.record === undefined ? {} : { record: chosen.record },
+     resolution: chosen?.source ?? "none",
+     recordedTeamId: recorded,
++    recordedTerminal,
+     planningTeamId: planning,
+     planeTeamId: planeId,
+     disagreement,
+@@ -5590,7 +5591,15 @@ async function materializeSplit(deps) {
+   const recordedMinted = (deps.cell.mintedTeamId ?? "").trim();
+   const resplit = recordedMinted !== "" || Object.values(deps.cell.activatedTasks ?? {}).some((id) => id !== "");
+   const resolved = resplit ? resolveCellTeam({ workspace: deps.workspace, cell: deps.cell, teams: deps.teams?.(), recordFor: deps.recordFor }) : undefined;
+-  const unverified = resplit && (resolved?.teamId ?? "") === "" && deps.cell.teamId !== "";
++  const fallbackToRecorded = resplit && (resolved?.teamId ?? "") === "" && deps.cell.teamId !== "";
++  const terminalRecorded = fallbackToRecorded && resolved?.recordedTerminal === true;
++  if (terminalRecorded) {
++    return {
++      ok: false,
++      error: "cellwork_activate: the cell record names team " + JSON.stringify(deps.cell.teamId) + " which is TERMINAL (an `endedAt` stamp or a terminal phase) — a terminal record is never a landing target, so this re-split REFUSES to append to it and wrote nothing. Revision " + String(deps.split.revision) + " cannot land on it: this cell has already materialised a revision, so no shipped verb re-mints its execution board; `cellwork_stop` followed by `/cellwork` (a NEW cell, which does not inherit this board) is the path to a fresh live execution board."
++    };
++  }
++  const unverified = fallbackToRecorded && resolved?.recordedTerminal !== true;
+   const boardNote = unverified ? "the re-split resolved no live team for " + deps.cell.cellId + ", so this activation continues on the RECORDED team " + JSON.stringify(deps.cell.teamId) + " — the board resolution is UNVERIFIED" + (resolved?.note === undefined ? "" : " (" + resolved.note + ")") + "; work is appended to that record only." : undefined;
+   const board = unverified ? { teamId: deps.cell.teamId } : resolved ?? { teamId: deps.cell.teamId };
+   const planningTeamId = deps.cell.teamId;
+diff --git a/packages/mpd-cellwork-plugin/src/activate.ts b/packages/mpd-cellwork-plugin/src/activate.ts
+index 8a70e684..d71ddaea 100644
+--- a/packages/mpd-cellwork-plugin/src/activate.ts
++++ b/packages/mpd-cellwork-plugin/src/activate.ts
+@@ -611,8 +611,25 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
+   // fallback is NOT silent — it is marked `unverified` and the note below says the record's id was trusted
+   // rather than verified — and it never tells the operator to run `cellwork_start`, because a team id IS
+   // recorded; only a cell with NO id at all gets that instruction.
++  /** Whether this pass would take the documented fifth state: no resolver evidence, and a recorded id. */
++  const fallbackToRecorded = resplit && (resolved?.teamId ?? "") === "" && deps.cell.teamId !== ""
++  // A READABLE TERMINAL RECORD IS NOT A LANDING TARGET — NOT EVEN FOR THE FIFTH STATE (blind review H1-2):
++  // the resolver refuses the terminal id, and falling back to it here would append to the very dead board
++  // it just rejected. Only an UNREADABLE or NON-TERMINAL recorded record may take the fallback; a readable
++  // terminal one is REFUSED by name below, before any write, and never silently lands on the dead board.
++  /** Whether the fifth state's target is readable and PROVEN TERMINAL, which is its own refusal. */
++  const terminalRecorded = fallbackToRecorded && resolved?.recordedTerminal === true
++  if (terminalRecorded) {
++    return {
++      ok: false,
++      error: "cellwork_activate: the cell record names team " + JSON.stringify(deps.cell.teamId) + " which is TERMINAL (an `endedAt` stamp or a terminal phase) — a terminal record is never a landing target, so this re-split REFUSES to append to it and wrote nothing. Revision " + String(deps.split.revision) + " cannot land on it: this cell has already materialised a revision, so no shipped verb re-mints its execution board; `cellwork_stop` followed by `/cellwork` (a NEW cell, which does not inherit this board) is the path to a fresh live execution board.",
++    }
++  }
+   /** Whether the recorded team id is being trusted WITHOUT resolver evidence (a re-split only). */
+-  const unverified = resplit && (resolved?.teamId ?? "") === "" && deps.cell.teamId !== ""
++  const unverified = fallbackToRecorded && resolved?.recordedTerminal !== true
++  // THE NOTE'S TWO STATEMENTS ARE MUTUALLY EXCLUSIVE: this note only exists when the resolver did NOT prove
++  // the recorded record terminal, so its "continues on the RECORDED team" sentence is never printed beside
++  // the resolver's "never a landing target" sentence — that combination is the refusal above.
+   /** The note an unverified board resolution carries onto the outcome and the journal. */
+   const boardNote = unverified
+     ? "the re-split resolved no live team for " + deps.cell.cellId + ", so this activation continues on the RECORDED team " + JSON.stringify(deps.cell.teamId) + " — the board resolution is UNVERIFIED" + (resolved?.note === undefined ? "" : " (" + resolved.note + ")") + "; work is appended to that record only."
+diff --git a/packages/mpd-cellwork-plugin/src/state.ts b/packages/mpd-cellwork-plugin/src/state.ts
+index 619bd3cc..71d24a24 100644
+--- a/packages/mpd-cellwork-plugin/src/state.ts
++++ b/packages/mpd-cellwork-plugin/src/state.ts
+@@ -696,6 +696,14 @@ export interface CellTeamResolution {
+   resolution: CellTeamResolutionSource
+   /** The id the CELL RECORD names (`teamId`), preserved for the disagreement report. */
+   recordedTeamId: string
++  /**
++   * Whether the recorded id names a READABLE but PROVEN TERMINAL team.
++   *
++   * Such an id is never a landing target, so a caller that would otherwise fall back to it (the
++   * documented "unverified" fifth state) must REFUSE and name the id instead. False when the record
++   * cannot be read at all: an unreadable record is exactly the case the fallback exists for.
++   */
++  recordedTerminal: boolean
+   /** The id the record preserved as the staging team, or "". */
+   planningTeamId: string
+   /** The id the PLANE resolved for the captain session, or "" when it named none. */
+@@ -765,6 +773,10 @@ function holdsActivatedTask(record: Record<string, unknown>, activatedIds: Reado
+  *   0. `mintedTeamId`, the execution team a FAILED activation created (H1): it is the only evidence that
+  *      tells a fresh board from the ended planning board it replaced, because both number rows from `T1`.
+  *      It is returned on its own authority, even when its phase reads terminal (explicit hit).
++ *      DECLARED BOUND: a minted team that itself ENDS between the failure and the retry is still
++ *      accepted here, and the retry's append then fails with the team service's own sentence — the pass
++ *      stays resumable but cannot succeed until an operator intervenes. Step 0 exists to keep a retry
++ *      on the board its failure created, not to resurrect a board that is provably dead.
+  *   1. `teamId`'s record, accepted when it carries one of the cell's `activatedTasks` board ids (or when
+  *      the cell has no activated ids to check) AND it is not TERMINAL. This keeps the hot path — one
+  *      `get` — cheap for a healthy cell, which is what lets the guard call it on every tool dispatch.
+@@ -900,6 +912,7 @@ export function resolveCellTeam(deps: CellTeamResolutionDeps): CellTeamResolutio
+     ...(chosen?.record === undefined ? {} : { record: chosen.record }),
+     resolution: chosen?.source ?? "none",
+     recordedTeamId: recorded,
++    recordedTerminal,
+     planningTeamId: planning,
+     planeTeamId: planeId,
+     disagreement,
+diff --git a/packages/mpd-cellwork-plugin/test/activate-resume.test.ts b/packages/mpd-cellwork-plugin/test/activate-resume.test.ts
+index 136d6b40..284f52c1 100644
+--- a/packages/mpd-cellwork-plugin/test/activate-resume.test.ts
++++ b/packages/mpd-cellwork-plugin/test/activate-resume.test.ts
+@@ -1087,6 +1087,10 @@ test("MINT: a planning board ended before activation is replaced by a fresh exec
+   expect(after.phase).toBe("executing")
+   expect(after.activatedRevision).toBe(1)
+   expect(Object.keys(after.activatedTasks).sort()).toEqual(["auth-core", "auth-review", "cli-core", "cli-review"])
++  // M1: THE MARKER IS CLEARED BY A SUCCESSFUL MINT — step 0 accepts `mintedTeamId` on its own authority
++  // EVEN WHEN THAT TEAM READS TERMINAL, so a marker left behind after success would make a LATER re-split
++  // land on the execution team after it ended. Empty here means step 0 is inert from now on.
++  expect(after.mintedTeamId).toBe("")
+   // THE MINTED BOARD carries every split row; the ended record was never written again.
+   /** The minted team record. */
+   const minted = harness.teamRecords.get("team-2")
+@@ -1164,6 +1168,19 @@ function createCalls(harness: Harness): number {
+   return harness.calls.filter((call) => call.name === "agent_teams_plan" && call.arguments.action === "create").length
+ }
+ 
++/**
++ * How many LIVE board-append calls a harness has attempted (`add_member` plus `create_task`).
++ *
++ * Staging writes are included, which is why every arm compares a BEFORE and an AFTER count: the delta is
++ * what the pass under test added.
++ *
++ * @param harness - the harness.
++ * @returns the count.
++ */
++function teamWriteCalls(harness: Harness): number {
++  return harness.calls.filter((call) => call.name === "agent_teams_plan" && (call.arguments.action === "add_member" || call.arguments.action === "create_task")).length
++}
++
+ test("MINT RETRY A: a failure BEFORE the first board row reuses the minted team; `create` stays spent once", async () => {
+   /** The harness on an ended planning board. */
+   const harness = makeHarness()
+@@ -1207,6 +1224,8 @@ test("MINT RETRY A: a failure BEFORE the first board row reuses the minted team;
+   const after = readStateJson(harness.workspace, cellId)
+   expect(after.teamId).toBe("team-2")
+   expect(after.planningTeamId).toBe("team-1")
++  // M1: the retry's success CLEARS the marker too, so step 0 stops preferring the old minted id.
++  expect(after.mintedTeamId).toBe("")
+   // The minted board carries every split row: the retry appended to the team the FAILURE created.
+   expect(harness.teamRecords.get("team-2")?.tasks.length).toBe(4)
+ })
+@@ -1250,9 +1269,111 @@ test("MINT RETRY B: a failure AFTER the first board row stays on the minted team
+   const after = readStateJson(harness.workspace, cellId)
+   expect(after.teamId).toBe("team-2")
+   expect(after.planningTeamId).toBe("team-1")
++  // M1: the retry's success CLEARS the marker too, so step 0 stops preferring the old minted id.
++  expect(after.mintedTeamId).toBe("")
+   expect(Object.keys(after.activatedTasks).length).toBe(4)
+ })
+ 
++// ── H1-2: a READABLE TERMINAL recorded board is REFUSED, never a landing target ───────────────────
++
++test("H1-2: a re-split onto a READABLE TERMINAL recorded team is refused by name and appends nothing", async () => {
++  /** The harness with a successfully activated revision one. */
++  const harness = makeHarness()
++  /** The cell id. */
++  const cellId = await startCell(harness)
++  await finalizeRequirements(harness)
++  await submitSplit(harness)
++  /** The first activation: the planning team is still live, so `teamId` keeps naming it. */
++  const first = await runTool(harness, "cellwork_activate", {})
++  expect(first.ok).toBe(true)
++  /** The recorded execution board. */
++  const recorded = harness.teamRecords.get("team-1")
++  if (recorded === undefined) throw new Error("the recorded team is missing")
++  expect(readStateJson(harness.workspace, cellId).teamId).toBe("team-1")
++  // THE H1-2 SHAPE: the recorded team is READABLE and PROVEN TERMINAL. The resolver refuses it, so the
++  // fifth state must not quietly take it back and append to the dead board.
++  recorded.phase = "ended"
++  recorded.endedAt = "2026-11-11T01:00:00.000Z"
++  /** The dead record's bytes, so the arm can prove not one byte moved. */
++  const deadBefore = JSON.stringify(recorded)
++  /** The dead board's row count before the refused pass. */
++  const rowsBefore = recorded.tasks.length
++  // A NEW ACCEPTED REVISION: the requirements move on and revision two is accepted.
++  await runTool(harness, "cellwork_requirements", { action: "update", content: COMPLETE_REQUIREMENTS + "\n## Extra\nmore\n" }, plannerAgent(harness))
++  /** The accepted revision two. */
++  const rev2 = await runTool(harness, "cellwork_split", { action: "submit", tasks: revisionTwoTasks() }, splitterAgent(harness))
++  expect(rev2.accepted).toBe(true)
++  expect(rev2.revision).toBe(2)
++  /** The board-append calls before the re-split. */
++  const writesBefore = teamWriteCalls(harness)
++  /** The `create` calls before the re-split. */
++  const createsBefore = createCalls(harness)
++  /** The re-split that must REFUSE rather than append to the dead board. */
++  const refused = await runTool(harness, "cellwork_activate", {})
++  // NOTHING WAS APPENDED: on the pre-repair build the fifth state reached `add_member` on the ended board;
++  // the repaired pass refuses before the first team write. That delta is the behaviour this arm exists for.
++  expect(teamWriteCalls(harness)).toBe(writesBefore)
++  expect(refused.ok).toBe(false)
++  /** The refusal sentence. */
++  const sentence = String(refused.error)
++  expect(sentence).toContain("team-1")
++  expect(sentence).toContain("TERMINAL")
++  expect(sentence).toContain("never a landing target")
++  expect(sentence).toContain("REFUSES")
++  // THE DEAD RECORD IS BYTE-IDENTICAL, and no second team was created.
++  expect(JSON.stringify(recorded)).toBe(deadBefore)
++  expect(recorded.tasks.length).toBe(rowsBefore)
++  expect(createCalls(harness)).toBe(createsBefore)
++  // THE CELL RECORD IS UNTOUCHED: no partial checkpoint, no revision move and no phase change.
++  const after = readStateJson(harness.workspace, cellId)
++  expect(after.teamId).toBe("team-1")
++  expect(after.activatedRevision).toBe(1)
++  expect(after.activationInFlight).toBe(null)
++  expect(after.phase).toBe("executing")
++  /** The journal rows written so far. */
++  const rows = journalEntries(harness.workspace, cellId)
++  expect(rows.filter((row) => row.event === "activate" && row.splitRevision === 2).length).toBe(0)
++  expect(rows.filter((row) => row.event === "cell-activation-partial").length).toBe(0)
++})
++
++test("H1-2 NEGATIVE CONTROL: an UNREADABLE recorded team still takes the documented fifth state", async () => {
++  /** The harness with a successfully activated revision one. */
++  const harness = makeHarness()
++  /** The cell id. */
++  const cellId = await startCell(harness)
++  await finalizeRequirements(harness)
++  await submitSplit(harness)
++  /** The first activation: the planning team is still live, so it appends in place. */
++  const first = await runTool(harness, "cellwork_activate", {})
++  expect(first.ok).toBe(true)
++  /** The recorded execution board. */
++  const recorded = harness.teamRecords.get("team-1")
++  if (recorded === undefined) throw new Error("the recorded team is missing")
++  /** The board rows before the re-split's append. */
++  const rowsBefore = recorded.tasks.length
++  // THE CONTROL: the record still EXISTS (the object is right here) but no seam can READ it — the one
++  // case the documented fallback exists for (an old cell whose board no seam can read any more).
++  harness.injection.unreadableTeamIds = ["team-1"]
++  await runTool(harness, "cellwork_requirements", { action: "update", content: COMPLETE_REQUIREMENTS + "\n## Extra\nmore\n" }, plannerAgent(harness))
++  /** The accepted revision two. */
++  const rev2 = await runTool(harness, "cellwork_split", { action: "submit", tasks: revisionTwoTasks() }, splitterAgent(harness))
++  expect(rev2.accepted).toBe(true)
++  expect(rev2.revision).toBe(2)
++  // BEHAVIOUR UNCHANGED: the re-split continues on the RECORDED id and SAYS the resolution is unverified.
++  const resplit = await runTool(harness, "cellwork_activate", {})
++  expect(resplit.ok).toBe(true)
++  expect(resplit.revision).toBe(2)
++  expect(String(resplit.boardNote)).toContain("UNVERIFIED")
++  expect(String(resplit.boardNote)).toContain("team-1")
++  // AND IT REALLY APPENDED: the new revision's rows landed on the recorded board.
++  expect(recorded.tasks.length).toBeGreaterThan(rowsBefore)
++  /** The re-split's activation row. */
++  const activationRow = journalEntries(harness.workspace, cellId).find((row) => row.event === "activate" && row.splitRevision === 2)
++  expect(activationRow).toMatchObject({ boardResolution: "unverified" })
++  // The marker stays empty: the fifth state does not need it.
++  expect(readStateJson(harness.workspace, cellId).mintedTeamId).toBe("")
++})
++
+ // ── M2: a record that EXISTS but cannot be read must not mint a duplicate team ────────────────────
+ 
+ test("M2: an EXISTING but unreadable team record refuses the mint and names the path", async () => {
+diff --git a/packages/mpd-cellwork-plugin/test/resolve-cell-team.test.ts b/packages/mpd-cellwork-plugin/test/resolve-cell-team.test.ts
+index 80b85d11..bf5b1e41 100644
+--- a/packages/mpd-cellwork-plugin/test/resolve-cell-team.test.ts
++++ b/packages/mpd-cellwork-plugin/test/resolve-cell-team.test.ts
+@@ -64,6 +64,22 @@ test("resolver: a TERMINAL recorded team is not a landing target, even when its
+   // The board ids match only because BOTH boards number from T1; the phase is what disqualifies it.
+   expect(result.teamId).toBe("")
+   expect(result.resolution).toBe("none")
++  // THE FIFTH STATE'S PRECONDITION (blind review H1-2): the recorded record is READABLE and terminal, so
++  // an activation must refuse the fallback instead of re-adopting the id the resolver just rejected.
++  expect(result.recordedTerminal).toBe(true)
++})
++
++test("resolver: an UNREADABLE recorded team is NOT terminal — the fifth state stays available", () => {
++  // The reader collapses every read failure into `undefined`; that is exactly the shape the documented
++  // `unverified` fallback exists for, so it must not look terminal.
++  /** The resolution for a recorded id no record answers. */
++  const result = resolve({
++    cell: { cellId: "cell-1", teamId: "team-unreadable", planningTeamId: "", captainSessionId: "session-captain", activatedTasks: { "auth-core": "T1" } },
++    records: {},
++  })
++  expect(result.teamId).toBe("")
++  expect(result.resolution).toBe("none")
++  expect(result.recordedTerminal).toBe(false)
+ })
+ 
+ test("resolver: a TERMINAL planning fallback is refused when the cell has no activated ids yet", () => {
+@@ -116,6 +132,8 @@ test("resolver NEGATIVE CONTROL: a LIVE recorded team still resolves on its matc
+   // The terminal rule must not reject the healthy path: the fast path keeps answering it.
+   expect(result.teamId).toBe("team-live")
+   expect(result.resolution).toBe("state.teamId")
++  // A live record is not terminal, so the fifth state's precondition would not refuse a fallback either.
++  expect(result.recordedTerminal).toBe(false)
+ })
+ 
+ test("resolver NEGATIVE CONTROL: an UNKNOWN phase spelling is not proven terminal, so it still resolves", () => {
+diff --git a/packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts b/packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts
+index 0034fb2d..35458e6e 100644
+--- a/packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts
++++ b/packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts
+@@ -361,13 +361,17 @@ export const FROZEN_COUPLINGS: readonly string[] = [
+   "packages/mpd-team-core-plugin/src/team-web.ts :: import type { MailAnswer, MailQuestion } from \"../../mpd-mail-protocol/src/index\"",
+   // §7.2 (cellwork-elastic-planning): the seven-section handoff contract is written ONCE on the team plane — cellwork re-exports its validator instead of keeping a second copy that could drift.
+   "packages/mpd-cellwork-plugin/src/handoff.ts :: export { validateHandoffText, type HandoffValidation } from \"../../mpd-team-core-plugin/src/team-handoff\"",
+-  // BLIND-REVIEW REPAIR ON PR #110 (H1/M2/N1, 2026-11-11): two deliberate compile-time edges, both
+-  // sanctioned classes from docs/independence.md §4. `activate.ts` imports the team store's OWN
+-  // `teamRecordPath` (and its `sanitizeId`) instead of forking the `.mpd/team/teams/<id>.json` layout to
+-  // tell "absent" from "exists but unreadable" (§4 class 3: a shared pure module imported instead of
+-  // forked — a private copy is how the path and its sanitizer drift apart). `state.ts` imports
+-  // `type TeamPhase` so the live-phase set is bound to team-core's union instead of an untyped literal
+-  // (§4 class 4: type-only, erased by the build). Two entries added; no other edge moved.
++  // BLIND-REVIEW REPAIR ON PR #110 (H1/M2/N1, 2026-11-11; N-c re-classified 2026-11-11): two deliberate
++  // compile-time edges. `state.ts` imports `type TeamPhase` so the live-phase set is bound to team-core's
++  // union instead of an untyped literal (docs/independence.md §4 class 4: type-only, erased by the build).
++  // `activate.ts` imports the team store's OWN `teamRecordPath` (and its `sanitizeId`) instead of forking
++  // the `.mpd/team/teams/<id>.json` layout to tell "absent" from "exists but unreadable". THAT edge is
++  // NOT class 3: class 3 is a SHARED PURE MODULE, and `team-store` is an I/O module (fs reads/writes),
++  // so the import is a runtime value edge into a sibling's I/O layer. §4 has no class for it, so it is
++  // recorded as a FROZEN, DOWNGRADED EXCEPTION (see docs/independence.md §4, "Declared exception"), never
++  // as a sanctioned class it does not fit: the path layout and its sanitizer are ONE definition, a private
++  // copy is how they drift apart, and the M2 "exists but unreadable" detection depends on the exact path.
++  // It cannot grow silently — this inventory freezes it. Two entries; no other edge moved.
+   "packages/mpd-cellwork-plugin/src/activate.ts :: import { teamRecordPath } from \"../../mpd-team-core-plugin/src/team-store\"",
+   "packages/mpd-cellwork-plugin/src/state.ts :: import type { TeamPhase } from \"../../mpd-team-core-plugin/src/team-store\"",
+ ]

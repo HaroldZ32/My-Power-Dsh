@@ -1,0 +1,55 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/resolve-cell-team.test.ts:
+(pass) N1: the cellwork live-phase set is bound to team-core's TeamPhase and matches its live list [0.06ms]
+64 |   // The board ids match only because BOTH boards number from T1; the phase is what disqualifies it.
+65 |   expect(result.teamId).toBe("")
+66 |   expect(result.resolution).toBe("none")
+67 |   // THE FIFTH STATE'S PRECONDITION (blind review H1-2): the recorded record is READABLE and terminal, so
+68 |   // an activation must refuse the fallback instead of re-adopting the id the resolver just rejected.
+69 |   expect(result.recordedTerminal).toBe(true)
+                                       ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/activate-mint-w4/head-76254694/packages/mpd-cellwork-plugin/test/resolve-cell-team.test.ts:69:35)
+(fail) resolver: a TERMINAL recorded team is not a landing target, even when its board ids match [0.61ms]
+77 |     cell: { cellId: "cell-1", teamId: "team-unreadable", planningTeamId: "", captainSessionId: "session-captain", activatedTasks: { "auth-core": "T1" } },
+78 |     records: {},
+79 |   })
+80 |   expect(result.teamId).toBe("")
+81 |   expect(result.resolution).toBe("none")
+82 |   expect(result.recordedTerminal).toBe(false)
+                                       ^
+error: expect(received).toBe(expected)
+
+Expected: false
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/activate-mint-w4/head-76254694/packages/mpd-cellwork-plugin/test/resolve-cell-team.test.ts:82:35)
+(fail) resolver: an UNREADABLE recorded team is NOT terminal — the fifth state stays available [0.09ms]
+(pass) resolver: a TERMINAL planning fallback is refused when the cell has no activated ids yet [0.04ms]
+(pass) resolver: the MINTED team a failed pass recorded is the FIRST candidate [0.03ms]
+(pass) resolver: an explicitly recorded MINTED id is accepted even if its own phase reads terminal [0.02ms]
+131 |   })
+132 |   // The terminal rule must not reject the healthy path: the fast path keeps answering it.
+133 |   expect(result.teamId).toBe("team-live")
+134 |   expect(result.resolution).toBe("state.teamId")
+135 |   // A live record is not terminal, so the fifth state's precondition would not refuse a fallback either.
+136 |   expect(result.recordedTerminal).toBe(false)
+                                        ^
+error: expect(received).toBe(expected)
+
+Expected: false
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/activate-mint-w4/head-76254694/packages/mpd-cellwork-plugin/test/resolve-cell-team.test.ts:136:35)
+(fail) resolver NEGATIVE CONTROL: a LIVE recorded team still resolves on its matching board [0.14ms]
+(pass) resolver NEGATIVE CONTROL: an UNKNOWN phase spelling is not proven terminal, so it still resolves [0.03ms]
+
+ 5 pass
+ 3 fail
+ 18 expect() calls
+Ran 8 tests across 1 file. [50.00ms]

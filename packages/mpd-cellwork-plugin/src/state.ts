@@ -20,6 +20,10 @@
 // possible in principle and never trusted as state: `state.json` is the truth, the journal is history.
 import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
+// THE LIVE-PHASE SET IS TYPED AGAINST TEAM-CORE'S UNION (blind review N1): the type import is erased at
+// build time, so the cellwork plugin keeps reading team records structurally while a phase renamed or
+// removed upstream stops this file type-checking instead of leaving a stale literal behind.
+import type { TeamPhase } from "../../mpd-team-core-plugin/src/team-store"
 
 /** The schema version this build reads and writes; a record carrying any other value is REFUSED. */
 export const CELLWORK_STATE_VERSION = 1
@@ -222,6 +226,17 @@ export interface CellState {
    */
   activationInFlight?: number | null
   /**
+   * The execution team a FAILED activation MINTED, or `""`/absent when no mint is in flight.
+   *
+   * WHY IT EXISTS (blind review H1): a pass that mints the execution team and then fails used to leave
+   * this id nowhere — the cell kept the ENDED planning team and the journal only wrote the mint on
+   * success. A retry then either minted a SECOND team (when no board row had landed yet) or, worse,
+   * resolved the ended planning record by its colliding `T<n>` board ids and appended to the dead board
+   * forever. The partial checkpoint records the minted id here, {@link CellState.teamId} moves with it,
+   * and every retry addresses THIS team first; a successful activation clears the marker.
+   */
+  mintedTeamId?: string
+  /**
    * Split keys an activation CANCELLED, mapped to the board id their row still carries.
    *
    * Work a later revision DROPS is marked cancelled on the cell record and never deleted: the board
@@ -413,6 +428,8 @@ export function newCellState(input: NewCellInput): CellState {
     activatedTasks: {},
     activatedLoops: {},
     activationInFlight: null,
+    // No mint is in flight until a failed activation records one (blind review H1).
+    mintedTeamId: "",
     cancelledTasks: {},
     splitStale: false,
     startedAt: "",
@@ -612,7 +629,7 @@ export interface CellTeamResolutionDeps {
   /** The workspace root the caller resolved through the adapter. */
   workspace: string
   /** The cell record's board-shaped fields; a `Pick` so a partial record can be resolved too. */
-  cell: Pick<CellState, "cellId" | "teamId" | "planningTeamId" | "captainSessionId" | "activatedTasks">
+  cell: Pick<CellState, "cellId" | "teamId" | "planningTeamId" | "captainSessionId" | "activatedTasks" | "mintedTeamId">
   /** The team service, probed per call; absent means the record's own ids are the only evidence. */
   teams?: BoardTeamService
   /**
@@ -625,7 +642,49 @@ export interface CellTeamResolutionDeps {
 }
 
 /** Which evidence named the team {@link resolveCellTeam} answered with. */
-export type CellTeamResolutionSource = "state.teamId" | "plane" | "activated-tasks" | "planningTeamId" | "none"
+export type CellTeamResolutionSource = "minted" | "state.teamId" | "plane" | "activated-tasks" | "planningTeamId" | "none"
+
+/**
+ * The team phases a LIVE append may still target — team-core's own live set.
+ *
+ * TYPED AGAINST `TeamPhase` (blind review N1), and asserted equal to team-core's `LIVE_TEAM_PHASES` at
+ * runtime by `test/resolve-cell-team.test.ts`: a phase widened upstream reddens that arm instead of
+ * silently becoming "terminal" here.
+ */
+export const LIVE_CELL_TEAM_PHASES: readonly TeamPhase[] = ["staged", "active", "idle"]
+
+/**
+ * Every phase spelling this module KNOWS: the live set above plus the two terminal spellings.
+ *
+ * `ended` is the union's terminal member; `archived` is the hand-patched spelling team-core's lifecycle
+ * also treats as terminal (it is deliberately outside the union). A spelling NOT listed here is not
+ * PROVEN terminal: legacy and foreign records (this package's own older shapes included) must keep
+ * resolving rather than be rejected as dead.
+ */
+const KNOWN_TEAM_PHASES: readonly string[] = [...LIVE_CELL_TEAM_PHASES, "ended", "archived"]
+
+/**
+ * Whether one team record is PROVEN TERMINAL and therefore never a landing target (blind review H1/M2).
+ *
+ * The clean-terminal auto-end stamps `endedAt` and the `ended` phase, but a fresh execution team numbers
+ * its board from `T1` — the SAME ids the ended planning board carries — so an id-only match cannot tell
+ * the two boards apart. Callers that hold the minted id bypass this check explicitly; every OTHER
+ * candidate is rejected when this answers true.
+ *
+ * @param record - one readable team record.
+ * @returns true when the record carries `endedAt`, `ended`, or the hand-patched `archived` phase.
+ */
+export function isTerminalTeamRecord(record: Record<string, unknown>): boolean {
+  if ("endedAt" in record && record.endedAt !== undefined) return true
+  /** The phase the record spells, defaulting to the live spelling when it carries none (team-core's read). */
+  const phase = "phase" in record && typeof record.phase === "string" && record.phase !== "" ? record.phase : "active"
+  // An UNKNOWN spelling is not terminal: a record this build cannot classify keeps resolving, and the
+  // write gate in `activate.ts` remains the place that decides whether an append may target it.
+  if (!KNOWN_TEAM_PHASES.includes(phase)) return false
+  // The list is narrowed to `string` for the membership test: `phase` comes from an untrusted record and
+  // is NOT known to be a `TeamPhase` until this check — that is what the check is for.
+  return !(LIVE_CELL_TEAM_PHASES as readonly string[]).includes(phase)
+}
 
 /** One board resolution: the team the cell's board is CURRENTLY on, plus the evidence behind it. */
 export interface CellTeamResolution {
@@ -637,6 +696,14 @@ export interface CellTeamResolution {
   resolution: CellTeamResolutionSource
   /** The id the CELL RECORD names (`teamId`), preserved for the disagreement report. */
   recordedTeamId: string
+  /**
+   * Whether the recorded id names a READABLE but PROVEN TERMINAL team.
+   *
+   * Such an id is never a landing target, so a caller that would otherwise fall back to it (the
+   * documented "unverified" fifth state) must REFUSE and name the id instead. False when the record
+   * cannot be read at all: an unreadable record is exactly the case the fallback exists for.
+   */
+  recordedTerminal: boolean
   /** The id the record preserved as the staging team, or "". */
   planningTeamId: string
   /** The id the PLANE resolved for the captain session, or "" when it named none. */
@@ -703,9 +770,16 @@ function holdsActivatedTask(record: Record<string, unknown>, activatedIds: Reado
  * The team this cell's board is CURRENTLY on — the ONE resolution every reader uses (§7.1/§7.1a).
  *
  * THE RESOLUTION IS EVIDENCE-FIRST, and the record's own `teamId` is only the FAST PATH:
+ *   0. `mintedTeamId`, the execution team a FAILED activation created (H1): it is the only evidence that
+ *      tells a fresh board from the ended planning board it replaced, because both number rows from `T1`.
+ *      It is returned on its own authority, even when its phase reads terminal (explicit hit).
+ *      DECLARED BOUND: a minted team that itself ENDS between the failure and the retry is still
+ *      accepted here, and the retry's append then fails with the team service's own sentence — the pass
+ *      stays resumable but cannot succeed until an operator intervenes. Step 0 exists to keep a retry
+ *      on the board its failure created, not to resurrect a board that is provably dead.
  *   1. `teamId`'s record, accepted when it carries one of the cell's `activatedTasks` board ids (or when
- *      the cell has no activated ids to check). This keeps the hot path — one `get` — cheap for a
- *      healthy cell, which is what lets the guard call it on every tool dispatch.
+ *      the cell has no activated ids to check) AND it is not TERMINAL. This keeps the hot path — one
+ *      `get` — cheap for a healthy cell, which is what lets the guard call it on every tool dispatch.
  *   2. when the fast path cannot be VERIFIED (the field defect: `teamId` names the ended planning team),
  *      the PLANE's own resolution for the cell's captain session — the exact path `cellwork_dispatch`
  *      uses — accepted under the same activated-task check.
@@ -723,22 +797,34 @@ function holdsActivatedTask(record: Record<string, unknown>, activatedIds: Reado
 export function resolveCellTeam(deps: CellTeamResolutionDeps): CellTeamResolution {
   /** The id the cell record names (the fast path). */
   const recorded = typeof deps.cell.teamId === "string" ? deps.cell.teamId : ""
+  /** The execution team a FAILED activation MINTED, when the partial checkpoint recorded one (H1). */
+  const minted = typeof deps.cell.mintedTeamId === "string" ? deps.cell.mintedTeamId : ""
   /** The id the record preserved as its staging team, when activation learned a different board. */
   const planning = typeof deps.cell.planningTeamId === "string" ? deps.cell.planningTeamId : ""
   /** Every board id the cell's activation minted, which is the evidence a candidate must satisfy. */
   const activatedIds = new Set(Object.values(deps.cell.activatedTasks ?? {}).filter((id): id is string => typeof id === "string" && id !== ""))
+  // 0. THE MINTED TEAM IS THE FIRST CANDIDATE (blind review H1). A failed pass recorded the team it
+  // created, and that id is the ONLY evidence that distinguishes the fresh board from the ended planning
+  // board it replaced: both number their rows from `T1`, so an id-only match cannot. It is accepted on
+  // its own authority even when its phase reads terminal — the caller asked for THAT board explicitly,
+  // and its write reports what it finds there.
+  /** The minted id's record, when one is recorded. */
+  const mintedRecord = minted === "" ? undefined : teamRecordOf(deps, minted)
   /** The fast-path record, when the recorded id is readable at all. */
   const recordedRecord = teamRecordOf(deps, recorded)
+  /** Whether the recorded record is readable but TERMINAL, which is its own rejection reason. */
+  const recordedTerminal = recordedRecord !== undefined && isTerminalTeamRecord(recordedRecord)
   /** The plane's binding for this cell's captain, read only when the fast path cannot be verified. */
   let planeId = ""
   /** The plane's record for that binding. */
   let planeRecord: Record<string, unknown> | undefined
   /** The resolution being built: the winner's id, record and evidence. */
   let chosen: { id: string; record?: Record<string, unknown>; source: CellTeamResolutionSource } | undefined
+  if (minted !== "") chosen = { id: minted, record: mintedRecord, source: "minted" }
   // 1. THE FAST PATH, VERIFIED. A record that carries this cell's own minted board ids is the board,
   // full stop; the plane read below is then skipped, which keeps the guard's per-dispatch resolution to
-  // the same single read it always paid.
-  if (recordedRecord !== undefined && holdsActivatedTask(recordedRecord, activatedIds)) {
+  // the same single read it always paid. A TERMINAL record is never this path (blind review H1/M2).
+  if (chosen === undefined && recordedRecord !== undefined && !recordedTerminal && holdsActivatedTask(recordedRecord, activatedIds)) {
     chosen = { id: recorded, record: recordedRecord, source: "state.teamId" }
   }
   /** Whether the fast path failed the activated-task check (as opposed to being unreadable). */
@@ -760,7 +846,7 @@ export function resolveCellTeam(deps: CellTeamResolutionDeps): CellTeamResolutio
       // names only the id) is read back through `get`, so the activated-task check sees the real board.
       planeRecord = Array.isArray(plane.tasks) ? plane : teamRecordOf(deps, planeId)
     }
-    if (planeId !== "" && planeRecord !== undefined && holdsActivatedTask(planeRecord, activatedIds)) {
+    if (planeId !== "" && planeRecord !== undefined && !isTerminalTeamRecord(planeRecord) && holdsActivatedTask(planeRecord, activatedIds)) {
       chosen = { id: planeId, record: planeRecord, source: "plane" }
     }
   }
@@ -785,6 +871,9 @@ export function resolveCellTeam(deps: CellTeamResolutionDeps): CellTeamResolutio
       /** Its id, which names it in every report. */
       const id = typeof record.teamId === "string" ? record.teamId : ""
       if (id === "" || id === recorded && recordedRejected) continue
+      // A TERMINAL candidate is never a landing target (blind review H1/M2): its board ids may match this
+      // cell's only because every fresh team renumbers from `T1`.
+      if (isTerminalTeamRecord(record)) continue
       /** How many of the cell's board ids it carries. */
       const count = teamTaskRows(record).filter((task) => typeof task.id === "string" && activatedIds.has(task.id)).length
       if (count > bestCount) {
@@ -799,7 +888,7 @@ export function resolveCellTeam(deps: CellTeamResolutionDeps): CellTeamResolutio
   if (chosen === undefined && planning !== "" && planning !== recorded) {
     /** The staging record, when it is readable. */
     const planningRecord = teamRecordOf(deps, planning)
-    if (planningRecord !== undefined && holdsActivatedTask(planningRecord, activatedIds)) chosen = { id: planning, record: planningRecord, source: "planningTeamId" }
+    if (planningRecord !== undefined && !isTerminalTeamRecord(planningRecord) && holdsActivatedTask(planningRecord, activatedIds)) chosen = { id: planning, record: planningRecord, source: "planningTeamId" }
   }
   // 5. NOTHING RESOLVED. The record is NOT presented: nothing proves it is this cell's board.
   /** The resolved id, or "". */
@@ -810,15 +899,20 @@ export function resolveCellTeam(deps: CellTeamResolutionDeps): CellTeamResolutio
   let note: string | undefined
   if (disagreement) {
     note = "the cell record names team " + JSON.stringify(recorded) + " while the " + (chosen?.source ?? "none") + " resolution names " + JSON.stringify(resolvedId === "" ? planeId : resolvedId) + (resolvedId === "" ? " (no team could be verified)" : " — the " + (chosen?.source ?? "none") + " board is reported")
-    if (recordedRejected) note += "; the recorded team's board holds none of this cell's activated tasks (" + [...activatedIds].join(", ") + ")"
+    if (recordedRejected) note += recordedTerminal
+      ? "; the recorded team is TERMINAL (an `endedAt` stamp or a non-live phase), so it is never a landing target"
+      : "; the recorded team's board holds none of this cell's activated tasks (" + [...activatedIds].join(", ") + ")"
   } else if (recordedRejected && chosen === undefined) {
-    note = "the cell record names team " + JSON.stringify(recorded) + " whose board holds none of this cell's activated tasks (" + [...activatedIds].join(", ") + "), and no live team holds them — no board is reported"
+    note = recordedTerminal
+      ? "the cell record names team " + JSON.stringify(recorded) + " which is TERMINAL (an `endedAt` stamp or a terminal phase), so it is never a landing target, and no live team could be verified — no board is reported"
+      : "the cell record names team " + JSON.stringify(recorded) + " whose board holds none of this cell's activated tasks (" + [...activatedIds].join(", ") + "), and no live team holds them — no board is reported"
   }
   return {
     teamId: resolvedId,
     ...(chosen?.record === undefined ? {} : { record: chosen.record }),
     resolution: chosen?.source ?? "none",
     recordedTeamId: recorded,
+    recordedTerminal,
     planningTeamId: planning,
     planeTeamId: planeId,
     disagreement,
@@ -1029,6 +1123,9 @@ function normalizeCellState(raw: unknown): CellState | null {
     // activation is running" — never a reason to refuse the record.
     activatedLoops: stringMap(raw.activatedLoops),
     activationInFlight: typeof raw.activationInFlight === "number" ? raw.activationInFlight : null,
+    // TOLERANT READ: a record written before the mint checkpoint carries no key, and reads as "no mint in
+    // flight" — never as a reason to refuse the record.
+    mintedTeamId: typeof raw.mintedTeamId === "string" ? raw.mintedTeamId : "",
     cancelledTasks: stringMap(raw.cancelledTasks),
     splitStale: raw.splitStale === true,
     startedAt: typeof raw.startedAt === "string" ? raw.startedAt : "",

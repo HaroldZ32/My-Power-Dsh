@@ -1,0 +1,6 @@
+packages/mpd-cellwork-plugin/test/activate-resume.test.ts(198,60): error TS2561: Object literal may only specify known properties, but 'error' does not exist in type '{ isError: boolean; value: unknown; }'. Did you mean to write 'isError'?
+packages/mpd-cellwork-plugin/test/activate-resume.test.ts(208,66): error TS2561: Object literal may only specify known properties, but 'error' does not exist in type '{ isError: boolean; value: unknown; }'. Did you mean to write 'isError'?
+packages/mpd-cellwork-plugin/test/resolve-cell-team.test.ts(53,30): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'string[]' is not assignable to parameter of type 'TeamPhase[]'.
+      Type 'string' is not assignable to type 'TeamPhase'.
