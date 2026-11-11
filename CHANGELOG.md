@@ -14,6 +14,51 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
+## 0.18.2 — elastic cell seats, a bound reseed, and a frozen Docker release lane
+
+**Fixed — a respawned cell seat can no longer be silently unbound.** The compaction reseed now BINDS the
+seat to all three surfaces — its team row, its non-terminal board rows and its cell record — and verifies
+the write by re-reading them. A surface it cannot write turns the run into `checkpoint-unrecoverable`,
+naming that `surface` and the exact `retry`, fencing the seat and releasing the activation; a bind it
+could not verify is never reported as `reseeded`.
+
+**Added — `cellwork_dispatch {rebind}` repairs a seat's handle with record-first evidence.** The verb
+re-points `executorRef` on the TEAM row, mirrors that handle into the CELL row, and hands over every
+NON-TERMINAL board row the old handle (or the seat's own name) owned, reporting `tasksRebound`. A
+`claimed` / `in_progress` row is never force-moved: it is listed in `tasksNeedingRelease` with the
+`agent_teams_task {action:"release", task_id}` call that must run first, because a live row has to be
+released before it can be reassigned. A kept child is not left a permanent orphan either: a
+`checkpoint-unrecoverable` row carrying `orphanChild` and `reconcileRequired` is accepted as the seat's
+latest hand-over evidence even when both current rows still name the old handle, and the answer says so
+(`handleOrphanAdopted`). `rebind` never clears a fence and `unfence` never moves a handle — a seat that
+needs both names both in one call, where the rebind runs FIRST.
+
+**Added — cell seats grow, and the planning phase runs lanes in parallel.** A dispatch pass now grows a
+role whose declared owner is live but busy: it reuses an idle `<base>-<n>`, else stages the seat on the
+LIVE team through `agent_teams_plan {action:"add_member"}`, then claims the row in the SAME pass. Growth
+is capped by `cellwork.seats.maxPerRole` (8) and `cellwork.seats.max` (32), and planning seats,
+verifier-only seats, checkpoint/fenced seats, blocked rows, claimed rows and non-roster bases never grow.
+Planning itself fans out: `cellwork.planning.analysts` (2, 0–8) stages `cell-analyst-1..K` with one
+analysis board task each and blocks the split task behind requirements AND every lane, the splitter
+prompt carries the `member` field plus the "declare DIFFERENT member names" rule, and a non-blocking
+warning computes the exact maximum antichain per role and names the fix. `analysts=0` reproduces the old
+two-seat shape.
+
+**Changed — the concurrency budget is higher by default and queues instead of failing.** The host's
+`ACTIVATION_LIMIT_REACHED` is a retryable queue signal now — slot released for the whole backoff,
+re-entry at the FIFO front, at most 8 attempts, `hostRetries` observable — instead of a row recorded as
+`failed`. `cellwork_delegate` starts 32 consults and `cellwork_recon` 16 by default, and a declared
+`MPD_DSH_CONSULT_MAX` still wins. Declared bound: the host's own `maxActiveSubagents` (default 8) cannot
+be set by this bundle — it is a one-time operator action (Settings → Subagent limits, 32–64), and the
+code only queues and names it.
+
+**Changed — the Docker real-machine lane is a FROZEN release requirement.** No version iteration is
+releasable without all three lanes: the credentialed `--mode source --live`, the credentialed
+`--mode oneclick --live`, and the credential-free `--mode source --no-browser` regression. They run in
+parallel in distinct work dirs, each lane cites its OWN stamp, and the release records which lanes
+actually overlapped. A lane that SKIPS, exits 3 or is absent is a FAILED requirement — never a green —
+and "CI ran Docker" is no substitute for the three stamps.
+
 ## 0.18.1 — consults become DAG nodes, and the compaction reseed gets its root cause
 
 **Added — a cell seat can dispatch consults.** `cellwork_delegate` lets a planner, a subcaptain or a

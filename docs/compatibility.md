@@ -2,7 +2,7 @@
 
 **English** | [中文](./compatibility.zh-CN.md)
 
-This page is the **three-plane compatibility matrix** of the `0.18.1` release: what each upstream plane
+This page is the **three-plane compatibility matrix** of the `0.18.2` release: what each upstream plane
 guarantees, what degrades on an older host, and what is **not available** there. Every line is traceable to
 a gate run, a mounted boot in an isolated `DSH_HOME`, or a source of the upstream package named beside it —
 never to a device, because this repository contains no Flutter host and no phone.
