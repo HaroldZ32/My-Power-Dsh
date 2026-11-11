@@ -1,0 +1,28 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/activate-resume.test.ts:
+(pass) A1–A3: a verify-loop failure records the partial in-flight state, and the retry resumes it [15.18ms]
+(pass) A2/A3: a member-raise failure records the member, and the retry reuses it instead of re-raising [2.96ms]
+(pass) A2/A3: a task-creation failure records the minted id, and the retry reuses it [2.96ms]
+(pass) A2/A3: a dispatch-stage failure records every artifact, and the retry dispatches once [3.54ms]
+(pass) A4: the verify-loop opener is the captain's live agent, and the producer survives only as data [2.32ms]
+(pass) A3: a duplicate-roster answer is resolved from the live roster, never fatal [2.08ms]
+(pass) A4: activation without a live caller agent refuses before any write [1.42ms]
+(pass) A1: a record written before the in-flight fields existed still reads [0.81ms]
+(pass) F1: a pre-upgrade kept code task with an armed contract is skipped and its contract is never rewritten [3.70ms]
+(pass) F2: a newer accepted revision supersedes an older in-flight partial and journals it [3.59ms]
+(pass) F2: a LOWER accepted revision still cannot supersede an in-flight one [3.84ms]
+(pass) F3: the cellwork_activate schema DECLARES `reused` and the description names the new behaviours [0.30ms]
+(pass) MINT: a planning board ended before activation is replaced by a fresh execution team [2.33ms]
+(pass) MINT NEGATIVE CONTROL: a LIVE planning board is still addressed in place (no second team) [1.93ms]
+(pass) MINT RETRY A: a failure BEFORE the first board row reuses the minted team; `create` stays spent once [2.51ms]
+(pass) MINT RETRY B: a failure AFTER the first board row stays on the minted team and never touches the dead one [2.25ms]
+(pass) H1-2: a re-split onto a READABLE TERMINAL recorded team is refused by name and appends nothing [2.94ms]
+(pass) H1-2 NEGATIVE CONTROL: an UNREADABLE recorded team still takes the documented fifth state [3.23ms]
+(pass) M2: an EXISTING but unreadable team record refuses the mint and names the path [1.38ms]
+(pass) N2: a failed mint member reports whether the empty plan slot was really deleted [1.30ms]
+
+ 20 pass
+ 0 fail
+ 295 expect() calls
+Ran 20 tests across 1 file. [260.00ms]

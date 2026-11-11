@@ -1,0 +1,10 @@
+ M docs/cellwork.md
+ M docs/cellwork.zh-CN.md
+ M docs/independence.md
+ M docs/independence.zh-CN.md
+ M packages/mpd-cellwork-plugin/dist/index.js
+ M packages/mpd-cellwork-plugin/src/activate.ts
+ M packages/mpd-cellwork-plugin/src/state.ts
+ M packages/mpd-cellwork-plugin/test/activate-resume.test.ts
+ M packages/mpd-cellwork-plugin/test/resolve-cell-team.test.ts
+ M packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts

@@ -1,0 +1,9 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/na-probe-resolver.test.ts:
+(pass) N-a PROBE: on 4affc62d the ENDED recorded team is resolved as the board (arm B's target) [0.40ms]
+
+ 1 pass
+ 0 fail
+ 2 expect() calls
+Ran 1 test across 1 file. [40.00ms]

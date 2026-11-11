@@ -696,6 +696,14 @@ export interface CellTeamResolution {
   resolution: CellTeamResolutionSource
   /** The id the CELL RECORD names (`teamId`), preserved for the disagreement report. */
   recordedTeamId: string
+  /**
+   * Whether the recorded id names a READABLE but PROVEN TERMINAL team.
+   *
+   * Such an id is never a landing target, so a caller that would otherwise fall back to it (the
+   * documented "unverified" fifth state) must REFUSE and name the id instead. False when the record
+   * cannot be read at all: an unreadable record is exactly the case the fallback exists for.
+   */
+  recordedTerminal: boolean
   /** The id the record preserved as the staging team, or "". */
   planningTeamId: string
   /** The id the PLANE resolved for the captain session, or "" when it named none. */
@@ -765,6 +773,10 @@ function holdsActivatedTask(record: Record<string, unknown>, activatedIds: Reado
  *   0. `mintedTeamId`, the execution team a FAILED activation created (H1): it is the only evidence that
  *      tells a fresh board from the ended planning board it replaced, because both number rows from `T1`.
  *      It is returned on its own authority, even when its phase reads terminal (explicit hit).
+ *      DECLARED BOUND: a minted team that itself ENDS between the failure and the retry is still
+ *      accepted here, and the retry's append then fails with the team service's own sentence — the pass
+ *      stays resumable but cannot succeed until an operator intervenes. Step 0 exists to keep a retry
+ *      on the board its failure created, not to resurrect a board that is provably dead.
  *   1. `teamId`'s record, accepted when it carries one of the cell's `activatedTasks` board ids (or when
  *      the cell has no activated ids to check) AND it is not TERMINAL. This keeps the hot path — one
  *      `get` — cheap for a healthy cell, which is what lets the guard call it on every tool dispatch.
@@ -900,6 +912,7 @@ export function resolveCellTeam(deps: CellTeamResolutionDeps): CellTeamResolutio
     ...(chosen?.record === undefined ? {} : { record: chosen.record }),
     resolution: chosen?.source ?? "none",
     recordedTeamId: recorded,
+    recordedTerminal,
     planningTeamId: planning,
     planeTeamId: planeId,
     disagreement,

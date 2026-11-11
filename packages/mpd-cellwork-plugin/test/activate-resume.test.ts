@@ -1087,6 +1087,10 @@ test("MINT: a planning board ended before activation is replaced by a fresh exec
   expect(after.phase).toBe("executing")
   expect(after.activatedRevision).toBe(1)
   expect(Object.keys(after.activatedTasks).sort()).toEqual(["auth-core", "auth-review", "cli-core", "cli-review"])
+  // M1: THE MARKER IS CLEARED BY A SUCCESSFUL MINT — step 0 accepts `mintedTeamId` on its own authority
+  // EVEN WHEN THAT TEAM READS TERMINAL, so a marker left behind after success would make a LATER re-split
+  // land on the execution team after it ended. Empty here means step 0 is inert from now on.
+  expect(after.mintedTeamId).toBe("")
   // THE MINTED BOARD carries every split row; the ended record was never written again.
   /** The minted team record. */
   const minted = harness.teamRecords.get("team-2")
@@ -1164,6 +1168,19 @@ function createCalls(harness: Harness): number {
   return harness.calls.filter((call) => call.name === "agent_teams_plan" && call.arguments.action === "create").length
 }
 
+/**
+ * How many LIVE board-append calls a harness has attempted (`add_member` plus `create_task`).
+ *
+ * Staging writes are included, which is why every arm compares a BEFORE and an AFTER count: the delta is
+ * what the pass under test added.
+ *
+ * @param harness - the harness.
+ * @returns the count.
+ */
+function teamWriteCalls(harness: Harness): number {
+  return harness.calls.filter((call) => call.name === "agent_teams_plan" && (call.arguments.action === "add_member" || call.arguments.action === "create_task")).length
+}
+
 test("MINT RETRY A: a failure BEFORE the first board row reuses the minted team; `create` stays spent once", async () => {
   /** The harness on an ended planning board. */
   const harness = makeHarness()
@@ -1207,6 +1224,8 @@ test("MINT RETRY A: a failure BEFORE the first board row reuses the minted team;
   const after = readStateJson(harness.workspace, cellId)
   expect(after.teamId).toBe("team-2")
   expect(after.planningTeamId).toBe("team-1")
+  // M1: the retry's success CLEARS the marker too, so step 0 stops preferring the old minted id.
+  expect(after.mintedTeamId).toBe("")
   // The minted board carries every split row: the retry appended to the team the FAILURE created.
   expect(harness.teamRecords.get("team-2")?.tasks.length).toBe(4)
 })
@@ -1250,7 +1269,109 @@ test("MINT RETRY B: a failure AFTER the first board row stays on the minted team
   const after = readStateJson(harness.workspace, cellId)
   expect(after.teamId).toBe("team-2")
   expect(after.planningTeamId).toBe("team-1")
+  // M1: the retry's success CLEARS the marker too, so step 0 stops preferring the old minted id.
+  expect(after.mintedTeamId).toBe("")
   expect(Object.keys(after.activatedTasks).length).toBe(4)
+})
+
+// ── H1-2: a READABLE TERMINAL recorded board is REFUSED, never a landing target ───────────────────
+
+test("H1-2: a re-split onto a READABLE TERMINAL recorded team is refused by name and appends nothing", async () => {
+  /** The harness with a successfully activated revision one. */
+  const harness = makeHarness()
+  /** The cell id. */
+  const cellId = await startCell(harness)
+  await finalizeRequirements(harness)
+  await submitSplit(harness)
+  /** The first activation: the planning team is still live, so `teamId` keeps naming it. */
+  const first = await runTool(harness, "cellwork_activate", {})
+  expect(first.ok).toBe(true)
+  /** The recorded execution board. */
+  const recorded = harness.teamRecords.get("team-1")
+  if (recorded === undefined) throw new Error("the recorded team is missing")
+  expect(readStateJson(harness.workspace, cellId).teamId).toBe("team-1")
+  // THE H1-2 SHAPE: the recorded team is READABLE and PROVEN TERMINAL. The resolver refuses it, so the
+  // fifth state must not quietly take it back and append to the dead board.
+  recorded.phase = "ended"
+  recorded.endedAt = "2026-11-11T01:00:00.000Z"
+  /** The dead record's bytes, so the arm can prove not one byte moved. */
+  const deadBefore = JSON.stringify(recorded)
+  /** The dead board's row count before the refused pass. */
+  const rowsBefore = recorded.tasks.length
+  // A NEW ACCEPTED REVISION: the requirements move on and revision two is accepted.
+  await runTool(harness, "cellwork_requirements", { action: "update", content: COMPLETE_REQUIREMENTS + "\n## Extra\nmore\n" }, plannerAgent(harness))
+  /** The accepted revision two. */
+  const rev2 = await runTool(harness, "cellwork_split", { action: "submit", tasks: revisionTwoTasks() }, splitterAgent(harness))
+  expect(rev2.accepted).toBe(true)
+  expect(rev2.revision).toBe(2)
+  /** The board-append calls before the re-split. */
+  const writesBefore = teamWriteCalls(harness)
+  /** The `create` calls before the re-split. */
+  const createsBefore = createCalls(harness)
+  /** The re-split that must REFUSE rather than append to the dead board. */
+  const refused = await runTool(harness, "cellwork_activate", {})
+  // NOTHING WAS APPENDED: on the pre-repair build the fifth state reached `add_member` on the ended board;
+  // the repaired pass refuses before the first team write. That delta is the behaviour this arm exists for.
+  expect(teamWriteCalls(harness)).toBe(writesBefore)
+  expect(refused.ok).toBe(false)
+  /** The refusal sentence. */
+  const sentence = String(refused.error)
+  expect(sentence).toContain("team-1")
+  expect(sentence).toContain("TERMINAL")
+  expect(sentence).toContain("never a landing target")
+  expect(sentence).toContain("REFUSES")
+  // THE DEAD RECORD IS BYTE-IDENTICAL, and no second team was created.
+  expect(JSON.stringify(recorded)).toBe(deadBefore)
+  expect(recorded.tasks.length).toBe(rowsBefore)
+  expect(createCalls(harness)).toBe(createsBefore)
+  // THE CELL RECORD IS UNTOUCHED: no partial checkpoint, no revision move and no phase change.
+  const after = readStateJson(harness.workspace, cellId)
+  expect(after.teamId).toBe("team-1")
+  expect(after.activatedRevision).toBe(1)
+  expect(after.activationInFlight).toBe(null)
+  expect(after.phase).toBe("executing")
+  /** The journal rows written so far. */
+  const rows = journalEntries(harness.workspace, cellId)
+  expect(rows.filter((row) => row.event === "activate" && row.splitRevision === 2).length).toBe(0)
+  expect(rows.filter((row) => row.event === "cell-activation-partial").length).toBe(0)
+})
+
+test("H1-2 NEGATIVE CONTROL: an UNREADABLE recorded team still takes the documented fifth state", async () => {
+  /** The harness with a successfully activated revision one. */
+  const harness = makeHarness()
+  /** The cell id. */
+  const cellId = await startCell(harness)
+  await finalizeRequirements(harness)
+  await submitSplit(harness)
+  /** The first activation: the planning team is still live, so it appends in place. */
+  const first = await runTool(harness, "cellwork_activate", {})
+  expect(first.ok).toBe(true)
+  /** The recorded execution board. */
+  const recorded = harness.teamRecords.get("team-1")
+  if (recorded === undefined) throw new Error("the recorded team is missing")
+  /** The board rows before the re-split's append. */
+  const rowsBefore = recorded.tasks.length
+  // THE CONTROL: the record still EXISTS (the object is right here) but no seam can READ it — the one
+  // case the documented fallback exists for (an old cell whose board no seam can read any more).
+  harness.injection.unreadableTeamIds = ["team-1"]
+  await runTool(harness, "cellwork_requirements", { action: "update", content: COMPLETE_REQUIREMENTS + "\n## Extra\nmore\n" }, plannerAgent(harness))
+  /** The accepted revision two. */
+  const rev2 = await runTool(harness, "cellwork_split", { action: "submit", tasks: revisionTwoTasks() }, splitterAgent(harness))
+  expect(rev2.accepted).toBe(true)
+  expect(rev2.revision).toBe(2)
+  // BEHAVIOUR UNCHANGED: the re-split continues on the RECORDED id and SAYS the resolution is unverified.
+  const resplit = await runTool(harness, "cellwork_activate", {})
+  expect(resplit.ok).toBe(true)
+  expect(resplit.revision).toBe(2)
+  expect(String(resplit.boardNote)).toContain("UNVERIFIED")
+  expect(String(resplit.boardNote)).toContain("team-1")
+  // AND IT REALLY APPENDED: the new revision's rows landed on the recorded board.
+  expect(recorded.tasks.length).toBeGreaterThan(rowsBefore)
+  /** The re-split's activation row. */
+  const activationRow = journalEntries(harness.workspace, cellId).find((row) => row.event === "activate" && row.splitRevision === 2)
+  expect(activationRow).toMatchObject({ boardResolution: "unverified" })
+  // The marker stays empty: the fifth state does not need it.
+  expect(readStateJson(harness.workspace, cellId).mintedTeamId).toBe("")
 })
 
 // ── M2: a record that EXISTS but cannot be read must not mint a duplicate team ────────────────────

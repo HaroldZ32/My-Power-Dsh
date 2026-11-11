@@ -611,8 +611,25 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
   // fallback is NOT silent — it is marked `unverified` and the note below says the record's id was trusted
   // rather than verified — and it never tells the operator to run `cellwork_start`, because a team id IS
   // recorded; only a cell with NO id at all gets that instruction.
+  /** Whether this pass would take the documented fifth state: no resolver evidence, and a recorded id. */
+  const fallbackToRecorded = resplit && (resolved?.teamId ?? "") === "" && deps.cell.teamId !== ""
+  // A READABLE TERMINAL RECORD IS NOT A LANDING TARGET — NOT EVEN FOR THE FIFTH STATE (blind review H1-2):
+  // the resolver refuses the terminal id, and falling back to it here would append to the very dead board
+  // it just rejected. Only an UNREADABLE or NON-TERMINAL recorded record may take the fallback; a readable
+  // terminal one is REFUSED by name below, before any write, and never silently lands on the dead board.
+  /** Whether the fifth state's target is readable and PROVEN TERMINAL, which is its own refusal. */
+  const terminalRecorded = fallbackToRecorded && resolved?.recordedTerminal === true
+  if (terminalRecorded) {
+    return {
+      ok: false,
+      error: "cellwork_activate: the cell record names team " + JSON.stringify(deps.cell.teamId) + " which is TERMINAL (an `endedAt` stamp or a terminal phase) — a terminal record is never a landing target, so this re-split REFUSES to append to it and wrote nothing. Revision " + String(deps.split.revision) + " cannot land on it: this cell has already materialised a revision, so no shipped verb re-mints its execution board; `cellwork_stop` followed by `/cellwork` (a NEW cell, which does not inherit this board) is the path to a fresh live execution board.",
+    }
+  }
   /** Whether the recorded team id is being trusted WITHOUT resolver evidence (a re-split only). */
-  const unverified = resplit && (resolved?.teamId ?? "") === "" && deps.cell.teamId !== ""
+  const unverified = fallbackToRecorded && resolved?.recordedTerminal !== true
+  // THE NOTE'S TWO STATEMENTS ARE MUTUALLY EXCLUSIVE: this note only exists when the resolver did NOT prove
+  // the recorded record terminal, so its "continues on the RECORDED team" sentence is never printed beside
+  // the resolver's "never a landing target" sentence — that combination is the refusal above.
   /** The note an unverified board resolution carries onto the outcome and the journal. */
   const boardNote = unverified
     ? "the re-split resolved no live team for " + deps.cell.cellId + ", so this activation continues on the RECORDED team " + JSON.stringify(deps.cell.teamId) + " — the board resolution is UNVERIFIED" + (resolved?.note === undefined ? "" : " (" + resolved.note + ")") + "; work is appended to that record only."

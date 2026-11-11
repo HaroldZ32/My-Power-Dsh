@@ -1,0 +1,10 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/activate-resume.test.ts:
+(pass) N-a PROBE: on 4affc62d arm A's retry mints a SECOND execution team (create +2) [14.66ms]
+
+ 1 pass
+ 20 filtered out
+ 0 fail
+ 10 expect() calls
+Ran 1 test across 1 file. [69.00ms]

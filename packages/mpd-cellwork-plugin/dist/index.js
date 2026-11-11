@@ -2684,6 +2684,7 @@ function resolveCellTeam(deps) {
     ...chosen?.record === undefined ? {} : { record: chosen.record },
     resolution: chosen?.source ?? "none",
     recordedTeamId: recorded,
+    recordedTerminal,
     planningTeamId: planning,
     planeTeamId: planeId,
     disagreement,
@@ -5590,7 +5591,15 @@ async function materializeSplit(deps) {
   const recordedMinted = (deps.cell.mintedTeamId ?? "").trim();
   const resplit = recordedMinted !== "" || Object.values(deps.cell.activatedTasks ?? {}).some((id) => id !== "");
   const resolved = resplit ? resolveCellTeam({ workspace: deps.workspace, cell: deps.cell, teams: deps.teams?.(), recordFor: deps.recordFor }) : undefined;
-  const unverified = resplit && (resolved?.teamId ?? "") === "" && deps.cell.teamId !== "";
+  const fallbackToRecorded = resplit && (resolved?.teamId ?? "") === "" && deps.cell.teamId !== "";
+  const terminalRecorded = fallbackToRecorded && resolved?.recordedTerminal === true;
+  if (terminalRecorded) {
+    return {
+      ok: false,
+      error: "cellwork_activate: the cell record names team " + JSON.stringify(deps.cell.teamId) + " which is TERMINAL (an `endedAt` stamp or a terminal phase) — a terminal record is never a landing target, so this re-split REFUSES to append to it and wrote nothing. Revision " + String(deps.split.revision) + " cannot land on it: this cell has already materialised a revision, so no shipped verb re-mints its execution board; `cellwork_stop` followed by `/cellwork` (a NEW cell, which does not inherit this board) is the path to a fresh live execution board."
+    };
+  }
+  const unverified = fallbackToRecorded && resolved?.recordedTerminal !== true;
   const boardNote = unverified ? "the re-split resolved no live team for " + deps.cell.cellId + ", so this activation continues on the RECORDED team " + JSON.stringify(deps.cell.teamId) + " — the board resolution is UNVERIFIED" + (resolved?.note === undefined ? "" : " (" + resolved.note + ")") + "; work is appended to that record only." : undefined;
   const board = unverified ? { teamId: deps.cell.teamId } : resolved ?? { teamId: deps.cell.teamId };
   const planningTeamId = deps.cell.teamId;

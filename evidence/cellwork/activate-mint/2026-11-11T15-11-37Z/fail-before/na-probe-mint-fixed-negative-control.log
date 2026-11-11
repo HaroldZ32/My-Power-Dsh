@@ -1,0 +1,23 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/activate-resume.test.ts:
+1447 |   harness.injection.memberFailAt = 0
+1448 |   /** The resumed pass. */
+1449 |   const retried = await runTool(harness, "cellwork_activate", {})
+1450 |   expect(retried.ok).toBe(true)
+1451 |   // THE DEFECT, AS NUMBERS: one more `create` than the fixed build (team-3 beside the orphaned team-2).
+1452 |   expect(createCalls(harness)).toBe(createsBefore + 2)
+                                      ^
+error: expect(received).toBe(expected)
+
+Expected: 3
+Received: 2
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/activate-mint-w4/fixed/packages/mpd-cellwork-plugin/test/activate-resume.test.ts:1452:32)
+(fail) N-a PROBE: on 4affc62d arm A's retry mints a SECOND execution team (create +2) [14.76ms]
+
+ 0 pass
+ 20 filtered out
+ 1 fail
+ 7 expect() calls
+Ran 1 test across 1 file. [77.00ms]

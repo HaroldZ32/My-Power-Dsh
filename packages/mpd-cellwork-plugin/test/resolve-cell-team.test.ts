@@ -64,6 +64,22 @@ test("resolver: a TERMINAL recorded team is not a landing target, even when its 
   // The board ids match only because BOTH boards number from T1; the phase is what disqualifies it.
   expect(result.teamId).toBe("")
   expect(result.resolution).toBe("none")
+  // THE FIFTH STATE'S PRECONDITION (blind review H1-2): the recorded record is READABLE and terminal, so
+  // an activation must refuse the fallback instead of re-adopting the id the resolver just rejected.
+  expect(result.recordedTerminal).toBe(true)
+})
+
+test("resolver: an UNREADABLE recorded team is NOT terminal — the fifth state stays available", () => {
+  // The reader collapses every read failure into `undefined`; that is exactly the shape the documented
+  // `unverified` fallback exists for, so it must not look terminal.
+  /** The resolution for a recorded id no record answers. */
+  const result = resolve({
+    cell: { cellId: "cell-1", teamId: "team-unreadable", planningTeamId: "", captainSessionId: "session-captain", activatedTasks: { "auth-core": "T1" } },
+    records: {},
+  })
+  expect(result.teamId).toBe("")
+  expect(result.resolution).toBe("none")
+  expect(result.recordedTerminal).toBe(false)
 })
 
 test("resolver: a TERMINAL planning fallback is refused when the cell has no activated ids yet", () => {
@@ -116,6 +132,8 @@ test("resolver NEGATIVE CONTROL: a LIVE recorded team still resolves on its matc
   // The terminal rule must not reject the healthy path: the fast path keeps answering it.
   expect(result.teamId).toBe("team-live")
   expect(result.resolution).toBe("state.teamId")
+  // A live record is not terminal, so the fifth state's precondition would not refuse a fallback either.
+  expect(result.recordedTerminal).toBe(false)
 })
 
 test("resolver NEGATIVE CONTROL: an UNKNOWN phase spelling is not proven terminal, so it still resolves", () => {
