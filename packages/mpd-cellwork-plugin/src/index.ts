@@ -28,7 +28,7 @@ import { CELLWORK_USAGE } from "./prompts"
 import { openCell, type OpenCellOutcome } from "./open"
 import { installCellworkFlow, type FlowCtx } from "./flow"
 import { installCellworkProtocol } from "./protocol"
-import type { ProtocolCtx } from "./protocol-core"
+import { checkpointSinceOf, planeSeatOf, seatForceReadingOf, seatLivenessOf, type ProtocolCtx } from "./protocol-core"
 import { stagePlanningTeam } from "./staging"
 import { roleKey } from "./split"
 import { cellDir, freeCellId, journalPath, newCellState, readActiveCell, readCell, recordTransition, requirementsPath, resolveCellTeam, statePath, writeCell, type CellReadFailure, type CellState } from "./state"
@@ -435,7 +435,7 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
   // ── cellwork_status ───────────────────────────────────────────────────────
   disposers.push(dsh.registerTool({
     name: "cellwork_status",
-    description: "Report one cell: phase, objective, captain, requirements/split revisions, members and their modes, injected checkpoints, the live team's member/task counts and the on-disk paths. Defaults to the workspace's ACTIVE cell; pass `cellId` to read another. Never transitions the cell: its ONE write is ADOPTING a live team seat the record never learned, so a member added mid-run is reportable.",
+    description: "Report one cell: phase, objective, captain, requirements/split revisions, members with their modes, their seat LIVENESS (`live`/`dead`/`unknown` from the identity registry) and the shared closure reading (`closed`, `forceEligible`, `forceRefusal`, `suspect`, `deadReseed`, `unverified`), injected checkpoints, the live team's member/task counts and the on-disk paths. Defaults to the workspace's ACTIVE cell; pass `cellId` to read another. Never transitions the cell: its ONE write is ADOPTING a live team seat the record never learned, so a member added mid-run is reportable.",
     parameters: {
       type: "object",
       properties: { cellId: { type: "string", description: "The cell to report; omitted reads the workspace's active cell." } },
@@ -533,6 +533,8 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
       const counts = teamCounts(teamRecord)
       /** The seat projection this read reports (§4.2). */
       const seats = seatProjectionOf(state, cfg)
+      /** The instant every seat's window is measured at, read once for the whole answer. */
+      const now = new Date()
       return {
         ok: true,
         cellId: state.cellId,
@@ -556,7 +558,44 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
         splitRevision: state.splitRevision,
         splitStale: state.splitStale,
         startedAt: state.startedAt,
-        members: Object.values(state.members).map((member) => ({ name: member.name, role: member.role, mode: member.mode, sessionId: member.sessionId, ...(member.adopted === true ? { adopted: true } : {}), ...(member.grown === true ? { grown: true } : {}), ...(isPlanningSeatName(member.name) ? { planning: true } : {}) })),
+        // THE SEAT'S LIVENESS IS PART OF ITS STATE (R3): the incident's dead `subcaptain` rendered
+        // byte-identical to a healthy one, because the projection carried only name/role/mode/sessionId.
+        // `liveness` is the identity seam's answer (`live`/`dead`/`unknown`), and an UNVERIFIED seat is
+        // reported with its closure reading — `forceEligible`/`forceRefusal` — instead of being suppressed.
+        members: Object.values(state.members).map((member) => {
+          /** The window's recorded instant, when either source carries one. */
+          const since = checkpointSinceOf(state, member)
+          /** The shared closure reading: the SAME implementation `cellwork_supervise` and the force lever use. */
+          const reading = seatForceReadingOf({
+            member,
+            seat: planeSeatOf(teamRecord, member.name),
+            ...(since === undefined ? {} : { checkpointSince: since }),
+            liveness: seatLivenessOf(dsh, member.sessionId, state.captainSessionId),
+            now,
+            retryBound: cfg.compactionRetries,
+            staleMs: cfg.checkpointPendingMaxMs,
+          })
+          return {
+            name: member.name,
+            role: member.role,
+            mode: member.mode,
+            sessionId: member.sessionId,
+            liveness: reading.liveness,
+            // A give-up fence is a FACT on the row; a barrier-owned window is the barrier's, and `closed`
+            // says which one this seat is without the reader re-deriving it from the mode string.
+            ...(member.fenced === true ? { fenced: true, ...(member.fencedReason === undefined ? {} : { fencedReason: member.fencedReason }) } : {}),
+            closed: reading.closed,
+            ...(reading.suspect ? { suspect: true } : {}),
+            ...(reading.deadReseed ? { deadReseed: true } : {}),
+            ...(reading.unverified ? { unverified: true } : {}),
+            ...(reading.pendingMs === undefined ? {} : { pendingMs: reading.pendingMs }),
+            forceEligible: reading.forceEligible,
+            ...(reading.refusal === undefined ? {} : { forceRefusal: reading.refusal }),
+            ...(member.adopted === true ? { adopted: true } : {}),
+            ...(member.grown === true ? { grown: true } : {}),
+            ...(isPlanningSeatName(member.name) ? { planning: true } : {}),
+          }
+        }),
         checkpoints: state.checkpoints.length,
         seat: caller.seat === undefined ? null : { name: caller.seat.name, mode: caller.seat.mode },
         teamMembers: counts.members,

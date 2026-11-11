@@ -1,0 +1,23 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+593 |   /** The activation the backend answered with: a release seam and NO child id. */
+594 |   const activation = { disposed: false, dispose: async (): Promise<void> => { activation.disposed = true } }
+595 |   /** The harness whose backend mints no handle. */
+596 |   const harness = makeHarness({ start: (): unknown => activation })
+597 |   await stopListener(harness)({ agent: harness.member })
+598 |   expect(activation.disposed).toBe(true)
+                                    ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: false
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:598:31)
+(fail) A6: a spawn that answers without a child id disposes the activation [5.80ms]
+
+ 0 pass
+ 8 filtered out
+ 1 fail
+ 1 expect() calls
+Ran 1 test across 1 file. [185.00ms]

@@ -381,6 +381,18 @@ whose window cannot be read can be certified deliberately, and it is recorded as
   (`unfence: [{member, force: true}]`) is the last resort, fail-closed on a live session and on a
   missing written bound (`barrierFailures` at `compactionRetries`, or a window older than
   `checkpointPendingMaxMs`); it reopens the seat for reassignment, not for work.
+- **The reseed contract (R1–R5, F1–F3), in brief.** R1: `reseeded` is journaled only after the fresh
+  handle names the TEAM member row, every NON-TERMINAL board row the old handle owned, and the CELL row —
+  else the run refuses (`checkpoint-unrecoverable` + `surface`), fences the seat and releases the child.
+  R2: the promotion directive reaches the NEW handle through the executor's `send`. R3: status/supervise
+  report each seat's `liveness` (`live`/`dead`/`unknown`) and never suppress `fenced[]`/`forceEligible`
+  for `unknown`. R4: no warn-only branch — a re-read failure and a post-spawn throw each journal a row and
+  fence, and the throw disposes. R5: a spawn with no child id disposes its activation; the ORIGINAL
+  session is INTERRUPTED, not disposed. F1: `absent` (no record) ≠ `unreadable` (exists but cannot be read
+  — a refusal). F2: the bind is a compare-and-set on the record's **whole bytes**; a change inside the
+  compare→rename window is refused (`team-record-changed`), the fields only explain what moved, and the
+  cross-process residual is narrowed, not closed. F3: terminal rows (`completed`/`failed`/`cancelled`)
+  keep their owner — history is never re-pointed. `docs/cellwork.md` is the authority.
 - **Mail and reseed bounds.** Cell mail is durable first and woken best-effort. `cellwork_send` resolves
   the recipient in the cell tree — a member name, `captain`, or the cross-cell form
   `"<cellId>/<captain|member>"`, where `<cellId>` must be a sub-cell THIS cell registered or this cell's

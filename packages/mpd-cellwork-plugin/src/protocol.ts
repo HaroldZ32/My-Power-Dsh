@@ -4,7 +4,7 @@
 // `cellwork_subteam`, `cellwork_send`, `cellwork_inbox`. The listeners: the host-plane `agent/pre-step`
 // checkpoint detector and the `agent/turn-stopping` compaction barrier. The decision logic they share
 // lives in `protocol-core.ts` (pure, unit-testable); this file binds it to the adapter and to disk.
-import { appendJournal, freeCellId, handoffPath, newCellState, readCell, resolveCellTeam, writeCell, type CellMemberRecord, type CellState } from "./state"
+import { appendJournal, atomicWriteText, freeCellId, handoffPath, newCellState, readCell, resolveCellTeam, writeCell, type CellMemberRecord, type CellState } from "./state"
 import { callerContext, type CallerContext, type TeamActionsServiceView, type TeamsServiceView } from "./caller"
 import type { CellworkConfig } from "./config"
 import { fenceReasonOf, nameKey, resolveMemberName, sendThroughExecutor } from "./dispatch"
@@ -17,18 +17,30 @@ import { fanOutTargets } from "../../mpd-mail-protocol/src/index"
 import type { MailAddress, MailAnswer, MailKind, MailOption, MailQuestion } from "../../mpd-mail-protocol/src/index"
 import {
   applyCheckpoint,
+  barrierFailedRow,
   checkpointDirective,
+  checkpointSinceOf,
   checkpointUnrecoverableEntry,
   compactionJournalEntry,
   handoffWrittenDirective,
   memberAfterBarrier,
   nextStepOf,
   planCheckpoint,
+  planeSeatOf,
   promoteAfterHandoff,
+  seatForceReadingOf,
+  seatLivenessOf,
   subteamDirective,
   type CheckpointPlan,
+  type PlaneSeatView,
+  type SeatBindResult,
+  type SeatForceBound,
+  type SeatForceReading,
+  type SeatLiveness,
 } from "./protocol-core"
 import { readFileSync } from "node:fs"
+import { createHash } from "node:crypto"
+import { join } from "node:path"
 import type { DshAdapter, DshContextPressure, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 import type { ProtocolCtx, ProtocolDeps } from "./protocol-core"
 
@@ -307,6 +319,148 @@ function superviseTaskRow(task: Record<string, unknown>): Record<string, unknown
   }
 }
 
+/** One BIND's snapshot of the team record file it is about to rewrite (F2). */
+interface TeamRecordSnapshot {
+  /** The record exactly as the file carried it: the copy this bind modifies. */
+  record: Record<string, unknown>
+  /** The exact bytes that copy was parsed from, which is the compare-and-set base. */
+  text: string
+  /** The record's own document revision, when this shape carries one (today's `TeamRecord` does not). */
+  revision: number | undefined
+  /** The record's own `updatedAt`, when this shape carries one (today's `TeamRecord` does not). */
+  updatedAt: string | undefined
+  /** sha256 of the member roster: the always-present half of the fingerprint. */
+  membersHash: string
+}
+
+/**
+ * What one read of the team record file proved: it is ABSENT, it is UNREADABLE, or it was read.
+ *
+ * THE THREE-WAY SPLIT IS THE FIX (F1). The plane's own read (`team-store.ts#readTeam`) answers
+ * `undefined` for BOTH a missing file and a corrupt one, so collapsing the two made an unreadable record
+ * look like a surface that never existed — the vacuous success that let a reseed report `reseeded` while
+ * nothing was bound.
+ */
+type TeamRecordRead =
+  | { kind: "absent" }
+  | { kind: "unreadable"; detail: string }
+  | { kind: "ok"; snapshot: TeamRecordSnapshot }
+
+/**
+ * Whether a parsed JSON value is a plain object, the only shape a team record can have.
+ *
+ * @param value - the value to test.
+ * @returns true for a non-null, non-array object.
+ */
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+/**
+ * sha256 of one JSON-serializable value, used for the member-roster half of a bind snapshot (F2).
+ *
+ * @param value - the value to fingerprint.
+ * @returns the lowercase hex digest.
+ */
+function contentHashOf(value: unknown): string {
+  return createHash("sha256").update(JSON.stringify(value) ?? "undefined").digest("hex")
+}
+
+/**
+ * Read the team record file a bind is about to rewrite, distinguishing ABSENCE from UNREADABILITY (F1).
+ *
+ * The filesystem is the ground truth here because this same path is what the bind RENAMES over: a record
+ * that cannot be read must never be treated as a record that does not exist (the defect F1 repairs), and
+ * a missing file must not be turned into a refusal (the control case: a cell with no team has no surface).
+ *
+ * @param path - the absolute team record path.
+ * @returns `absent` for ENOENT, `unreadable` for every other read/parse failure, or the snapshot.
+ */
+function readTeamRecordSnapshot(path: string): TeamRecordRead {
+  /** The file's text, or the reason it could not be read. */
+  let text: string
+  try {
+    text = readFileSync(path, "utf8")
+  } catch (error) {
+    /** The `code` a Node fs error carries; read structurally because the thrown value is unknown. */
+    const code = (error as { code?: unknown }).code
+    // ONLY A MISSING FILE IS ABSENCE. EACCES, EISDIR, EIO and every other failure mean the record EXISTS
+    // and cannot be read — the case that must refuse (F1), never the vacuous success.
+    if (code === "ENOENT") return { kind: "absent" }
+    return { kind: "unreadable", detail: "the team record " + JSON.stringify(path) + " exists but could not be read (" + errorText(error) + ")" }
+  }
+  /** The parsed document, or the reason the bytes are not JSON. */
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(text)
+  } catch (error) {
+    return { kind: "unreadable", detail: "the team record " + JSON.stringify(path) + " exists but is not valid JSON (" + errorText(error) + ")" }
+  }
+  if (!isPlainRecord(parsed)) {
+    return { kind: "unreadable", detail: "the team record " + JSON.stringify(path) + " exists but carries " + (Array.isArray(parsed) ? "an array" : typeof parsed) + " instead of a JSON object" }
+  }
+  return {
+    kind: "ok",
+    snapshot: {
+      record: parsed,
+      text,
+      revision: typeof parsed.revision === "number" ? parsed.revision : undefined,
+      updatedAt: typeof parsed.updatedAt === "string" ? parsed.updatedAt : undefined,
+      membersHash: contentHashOf(parsed.members),
+    },
+  }
+}
+
+/**
+ * Detect an external write inside one bind's read-modify-write window (F2).
+ *
+ * THE COMPARE HAPPENS IMMEDIATELY BEFORE THE RENAME and names WHICH half moved, so the operator can find
+ * the other writer. `revision` and `updatedAt` are used when this record shape carries them; the member
+ * roster's hash is the always-present half, and identical bytes are the final proof that nothing moved.
+ *
+ * @param path - the absolute team record path.
+ * @param snapshot - the copy this bind read and intends to rewrite.
+ * @returns the sentence naming what moved, or undefined when the file still matches the snapshot.
+ */
+function concurrentWriteOf(path: string, snapshot: TeamRecordSnapshot): string | undefined {
+  /** The file's bytes right now. */
+  let now: string
+  try {
+    now = readFileSync(path, "utf8")
+  } catch (error) {
+    return "it could not be re-read before the write (" + errorText(error) + ")"
+  }
+  if (now === snapshot.text) return undefined
+  /** The other writer's document, when it is still JSON. */
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(now)
+  } catch {
+    return "its bytes changed and no longer parse as JSON"
+  }
+  if (!isPlainRecord(parsed)) return "its bytes changed"
+  /** That document's own revision. */
+  const revision = typeof parsed.revision === "number" ? parsed.revision : undefined
+  if (revision !== snapshot.revision) return "its revision moved from " + JSON.stringify(snapshot.revision ?? null) + " to " + JSON.stringify(revision ?? null)
+  /** That document's own `updatedAt`. */
+  const updatedAt = typeof parsed.updatedAt === "string" ? parsed.updatedAt : undefined
+  if (updatedAt !== snapshot.updatedAt) return "its updatedAt moved from " + JSON.stringify(snapshot.updatedAt ?? null) + " to " + JSON.stringify(updatedAt ?? null)
+  if (contentHashOf(parsed.members) !== snapshot.membersHash) return "its member roster changed"
+  return "its contents changed"
+}
+
+/**
+ * The roster row one seat is addressed by, or undefined when the record does not name it.
+ *
+ * @param record - a team record, or undefined when the read answered nothing.
+ * @param memberName - the seat's board name.
+ * @returns the member row.
+ */
+function seatRowOf(record: Record<string, unknown> | undefined, memberName: string): Record<string, unknown> | undefined {
+  if (record === undefined || !Array.isArray(record.members)) return undefined
+  return (record.members as unknown[]).find((row) => isPlainRecord(row) && (row.name === memberName || row.id === memberName)) as Record<string, unknown> | undefined
+}
+
 /**
  * Install the seven protocol tools and the two protocol listeners.
  *
@@ -431,28 +585,8 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
    * closed one (the display derivation plus the row's own explicit give-up flag), and `{}` when the
    * record does not name it.
    */
-  const recordSeat = (cell: CellState, workspace: string, name: string): { mode?: string; checkpoint?: boolean; fenced?: boolean; fenceReason?: string } => {
-    /** The live team record for this cell. */
-    const record = recordOf(workspace, cell.teamId)
-    if (record === undefined) return {}
-    /** The roster rows this build can read. */
-    const rows = Array.isArray(record.members) ? record.members.filter((row) => typeof row === "object" && row !== null) as Array<Record<string, unknown>> : []
-    /** The row this name names. */
-    const row = rows.find((candidate) => candidate.name === name || candidate.id === name)
-    if (row === undefined) return {}
-    /** The plane's mode for the seat, when it states one. */
-    const mode = typeof row.mode === "string" && row.mode !== "" ? row.mode : undefined
-    /** Whether the plane's row carries its EXPLICIT give-up marker (never the `checkpoint` derivation). */
-    const fenced = row.fenced === true
-    /** Whether the plane reports the seat CLOSED, by either of its two spellings. */
-    const closed = row.mode === "checkpoint" || fenced
-    if (!closed) return mode === undefined ? {} : { mode }
-    /** Why the plane closed it, in the plane's own vocabulary. */
-    const reason = fenced
-      ? "the plane fenced this seat" + (typeof row.fencedReason === "string" && row.fencedReason !== "" ? " (" + row.fencedReason + ")" : "")
-      : "the plane recorded a checkpoint for this seat (mode `checkpoint`), so it is fenced until the barrier reopens it"
-    return { mode: "checkpoint", checkpoint: true, fenced, fenceReason: reason }
-  }
+  const recordSeat = (cell: CellState, workspace: string, name: string): PlaneSeatView => planeSeatOf(recordOf(workspace, cell.teamId), name)
+
 
   /**
    * Persist one transition: journal first, then the record.
@@ -510,206 +644,28 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
    * `dead-session` licence, while the forced lever's written bounds (`retry-budget`, `stale`) still apply —
    * a forced clear is allowed on `unknown` (R7.11 corrects the older sentence that denied it).
    */
-  type SeatLiveness = "live" | "dead" | "unknown"
-
   /**
-   * The WRITTEN licence a forced clear stands on (R4.4, extended by R5.2).
+   * The ONE forced-lever reading for one seat (R3/R5.2).
    *
-   *   `retry-budget` the barrier already spent `compactionRetries` consecutive runs on the seat;
-   *   `stale`        the checkpoint window outlived `checkpointPendingMaxMs`;
-   *   `dead-session` the DEAD-RESEED licence: the recorded session is proven dead, so neither clock
-   *                  bound can ever be reached by a seat no live agent can drive a turn in.
+   * Assembled here (the PLANE's seat view, the CELL row, the identity seam, the knobs) and decided by
+   * `protocol-core.ts#seatForceReadingOf`, so `cellwork_dispatch {unfence}`, `cellwork_supervise` and
+   * `cellwork_status` cannot disagree about whether a seat is held or clearable.
+   *
+   * @param cell - the cell whose records are read.
+   * @param workspace - the caller's workspace root.
+   * @param member - the member row, when the cell record has one.
+   * @param now - the instant the reading is measured at.
+   * @returns the shared reading.
    */
-  type SeatForceBound = "retry-budget" | "stale" | "dead-session"
-
-  /**
-   * The liveness of one recorded session, through the adapter's identity seam.
-   *
-   * THE CAPABILITY FLAG NEVER LICENSES `dead` (R7.3). `capabilities().agents` only says a registry
-   * SERVICE is present; it says nothing about whether a lookup can succeed, and the adapter's own
-   * `liveAgentExact` also answers `undefined` when `agents.get` is missing or throws. `dead` is therefore
-   * proved by an ANCHOR: the registry must first resolve an identity that is known to be alive — the
-   * captain's own session (the caller the cell record names) — and only then does an absent target count.
-   * An unresolvable anchor leaves the answer `unknown`, which licenses nothing.
-   *
-   * @param sessionId - the session the seat records; "" names no session at all, so it is `unknown` before
-   *   any lookup: the anchor would resolve and the absent id would otherwise be read as a proven dead child.
-   * @param anchorSessionId - the captain's session id, the identity the registry must resolve before an
-   *   absent target may be called dead; "" furnishes no anchor.
-   * @returns `live` when the registry answers an Agent for the recorded session, `dead` when the anchor
-   *   resolved and a NON-EMPTY target did not, and `unknown` when the recorded session id is empty, the
-   *   identity seam or the registry capability is absent, or the anchor itself cannot be resolved.
-   */
-  const livenessOf = (sessionId: string, anchorSessionId: string): SeatLiveness => {
-    // AN EMPTY RECORDED SESSION IS UNPROVABLE, NOT DEAD (R9.1): "" names no session, so neither the anchor
-    // nor the registry's silence may turn it into a proven-dead child. This precedes every other check, so
-    // no later branch can reach `dead` for it; every non-empty case keeps its existing path.
-    if (sessionId === "") return "unknown"
-    if (typeof dsh.liveAgentExact !== "function") return "unknown"
-    try {
-      if (dsh.liveAgentExact(sessionId) !== undefined) return "live"
-      // THE PRESENCE PROBE IS STILL CONSULTED, but only to REFUSE: a composition that reports no agents
-      // registry cannot prove anything, whatever a partial seam answered above.
-      /** The adapter's capability snapshot, when this composition offers one. */
-      const capabilities = typeof dsh.capabilities === "function" ? dsh.capabilities() : undefined
-      if (capabilities?.agents !== true) return "unknown"
-      // THE ANCHOR IS THE PROOF THE LOOKUP IS TRUSTWORTHY: only a registry that resolves a session known
-      // to be alive can be believed when it answers nothing for the target.
-      if (anchorSessionId === "" || dsh.liveAgentExact(anchorSessionId) === undefined) return "unknown"
-      return "dead"
-    } catch {
-      return "unknown"
-    }
-  }
-
-  /**
-   * The instant one seat entered the checkpoint window, or undefined when nothing recorded it.
-   *
-   * The member row is the primary source (R4.3 writes it at the ONE ownerless close); a row written by an
-   * older build falls back to the LAST `cell.checkpoints` entry for the SAME session, which is the
-   * documented fallback and never a substitute for a missing fact.
-   *
-   * @param cell - the cell that holds both records.
-   * @param member - the member row being measured.
-   * @returns the ISO instant, or undefined when neither source names one.
-   */
-  const checkpointSinceOf = (cell: CellState, member: CellMemberRecord): string | undefined => {
-    if (member.checkpointSince !== undefined) return member.checkpointSince
-    for (let index = cell.checkpoints.length - 1; index >= 0; index -= 1) {
-      /** The checkpoint entry at this position. */
-      const entry = cell.checkpoints[index]
-      if (entry.sessionId !== "" && entry.sessionId === member.sessionId) return entry.at
-    }
-    return undefined
-  }
-
-  /**
-   * How long one seat has been in the checkpoint window, in milliseconds.
-   *
-   * @param since - the ISO instant the window opened, when one is recorded.
-   * @param now - the instant the answer is measured at.
-   * @returns the age, or undefined when no usable instant exists (an unparsable stamp is not a licence).
-   */
-  const pendingMsOf = (since: string | undefined, now: Date): number | undefined => {
-    if (since === undefined || since === "") return undefined
-    /** The parsed instant; an unparsable value is refused rather than read as zero. */
-    const opened = Date.parse(since)
-    return Number.isFinite(opened) ? Math.max(0, now.getTime() - opened) : undefined
-  }
-
-  /**
-   * Which written bound authorises a FORCED clear of one barrier-owned seat, if any (R4.4).
-   *
-   * FAIL-CLOSED: a bare `force` is never a licence on its own, and a missing timestamp with zero recorded
-   * failures reaches no bound at all.
-   *
-   * @param member - the member row the bound is measured on.
-   * @param pendingMs - the measured window age, when one exists.
-   * @returns `retry-budget` when the barrier already spent its consecutive-run budget, `stale` when the
-   *   window outlived `checkpointPendingMaxMs`, and undefined when neither bound is reached.
-   */
-  const forceBoundOf = (member: CellMemberRecord, pendingMs: number | undefined): "retry-budget" | "stale" | undefined => {
-    if ((member.barrierFailures ?? 0) >= config.compactionRetries) return "retry-budget"
-    if (pendingMs !== undefined && pendingMs >= config.checkpointPendingMaxMs) return "stale"
-    return undefined
-  }
-
-  /**
-   * The ONE reading of "is this seat held, and would the FORCED lever clear it" (R5.2).
-   *
-   * ONE IMPLEMENTATION, TWO SURFACES: `cellwork_dispatch {unfence}` decides its forced branch from this
-   * object and `cellwork_supervise` projects the SAME object, so the lever the sweep advertises and the
-   * lever the verb accepts cannot disagree again. The divergence this ends was the incident's exact
-   * shape: a reseeded seat (`mode:"subcaptain"`, `handoffReady:false`, TEAM row reopened to `member`) is
-   * NOT barrier-owned, so the verb fell through to `not-fenced` while the sweep advertised
-   * `forceEligible:true` from a SECOND predicate that never asked whether the seat was closed at all.
-   *
-   * TWO CLOSURE SHAPES, both held:
-   *
-   *   `barrierOwned` — a checkpoint SPELLING (CELL `mode:"checkpoint"` / `handoffReady:true`, or the
-   *                    plane's `mode:"checkpoint"`). The barrier owes it a reopen, and the forced lever
-   *                    stands on a WRITTEN bound: the retry budget or the staleness clock. Fail-closed:
-   *                    a fresh window and a missing timestamp reach neither.
-   *   `deadReseed`   — the DEAD-RESEED shape (R5.1/R4.2): the barrier replaced the session with a child
-   *                    the registry PROVES dead (`liveness === "dead"`: the registry is present, its
-   *                    CAPTAIN anchor resolves, and it answers nothing for the recorded session) while the
-   *                    row is still `subcaptain` and not handoff-ready. No live agent is left to drive
-   *                    another turn, so nothing will ever reopen it and the clock bound can never be
-   *                    reached: the PROVEN-DEAD session is the licence (`bound:"dead-session"`). Its
-   *                    window's STAMP is still required for that licence — a missing timestamp is never
-   *                    one (the answer is `force-not-eligible`), and an ABSENT registry — or a present one
-   *                    that cannot resolve the CAPTAIN anchor — answers `unknown` and proves nothing.
-   */
-  interface ForceReading {
-    /** Whether a checkpoint SPELLING on either record is what holds the seat. */
-    barrierOwned: boolean
-    /** The R4.2 OBSERVABILITY flag: a stamped window whose recorded session the registry proves dead. */
-    suspect: boolean
-    /** Whether the seat is the DEAD-RESEED closure shape (`suspect` without any checkpoint spelling). */
-    deadReseed: boolean
-    /** Whether the seat is held at all (`barrierOwned || deadReseed`) — what an UNFORCED clear refuses. */
-    closed: boolean
-    /** The measured age of the window, when a stamp exists. */
-    pendingMs?: number
-    /** What the identity seam says about the session the row records. */
-    liveness: SeatLiveness
-    /** The written licence a FORCED clear stands on, when one is reached. */
-    bound?: SeatForceBound
-    /** Whether `unfence:[{member, force:true}]` would clear this seat RIGHT NOW. */
-    forceEligible: boolean
-    /** Why the forced lever refuses a HELD seat, in the answer's own two spellings. */
-    refusal?: "live-session" | "force-not-eligible"
-  }
-
-  /**
-   * Evaluate the ONE forced-lever predicate for one seat.
-   *
-   * @param cell - the cell whose records are read (the CELL row and its checkpoints history).
-   * @param workspace - the caller's workspace root, where the TEAM record lives.
-   * @param member - the CELL row; `undefined` means the CELL record does not name the seat (a plane-only
-   *   checkpoint is still readable, but nothing about it can be measured or forced).
-   * @param now - the instant the window's age is measured against.
-   * @returns the reading both surfaces consume; total, never throws.
-   */
-  const forceReadingOf = (cell: CellState, workspace: string, member: CellMemberRecord | undefined, now: Date): ForceReading => {
-    /** The plane's reading of the same seat: its `mode:"checkpoint"` is a closed spelling too. */
-    const seat = recordSeat(cell, workspace, member?.name ?? "")
-    /** The barrier's WINDOW, whichever record still carries it. */
-    const barrierOwned = member?.mode === "checkpoint" || member?.handoffReady === true || seat.checkpoint === true
-    /** The instant the window opened, when either source recorded one. */
-    const since = member === undefined ? undefined : checkpointSinceOf(cell, member)
-    /** The window's age, when it can be measured; a missing or unparsable stamp measures nothing. */
-    const pendingMs = pendingMsOf(since, now)
-    /** What the identity seam says about the session the row points at, anchored on the captain's own id. */
-    const liveness = member === undefined ? "unknown" as const : livenessOf(member.sessionId, cell.captainSessionId)
-    // TWO DIFFERENT FACTS, ONE CLOCK (R5.2). `suspect` is the OBSERVABILITY flag R4.2 introduced: a seat
-    // whose recorded session the registry proves dead, whatever else the row says. `deadReseed` is the
-    // CLOSURE shape: the same proven-dead session on a row that LEFT the barrier's window (a reseed), so
-    // no agent is left to drive the turn a barrier would fire on. Only the second one is a forced-lever
-    // licence — a checkpointed seat keeps the clock/retry bounds, and a healthy `subcaptain` is neither.
-    /** Whether the recorded session is proven dead while a window stamp exists (R4.2's flag). */
-    const suspect = since !== undefined && liveness === "dead"
-    /** Whether this is the DEAD-RESEED closure shape rather than the barrier's own window. */
-    const deadReseed = !barrierOwned && liveness === "dead" && member !== undefined && member.mode === "subcaptain" && member.handoffReady !== true
-    /** Whether the seat is held at all. */
-    const closed = barrierOwned || deadReseed
-    /** The measured fields every answer shares. */
-    const measured = { barrierOwned, suspect, deadReseed, closed, liveness, ...(pendingMs === undefined ? {} : { pendingMs }) }
-    // AN OPEN SEAT IS `not-fenced`, NEVER A FORCE VERDICT: the forced lever is about a HELD seat, and a
-    // `force-not-eligible` answer here would claim a window the record does not have.
-    if (!closed) return { ...measured, forceEligible: false }
-    // A LIVE SESSION VETOES EVERY FORCED CLEAR: the seat is not dead, whatever its age or failed runs say.
-    if (liveness === "live") return { ...measured, forceEligible: false, refusal: "live-session" }
-    /** The written licence, if any: the dead-reseed shape stands on its proven-dead session. */
-    // THE LICENCE IS STILL WRITTEN: the dead-reseed shape stands on its PROVEN-DEAD session, but only
-    // once the record carries the window's stamp — a missing timestamp falls back to the retry budget,
-    // and with neither the answer is `force-not-eligible` rather than a silent clear.
-    const bound = deadReseed
-      ? (since === undefined ? (member === undefined ? undefined : forceBoundOf(member, pendingMs)) : "dead-session" as const)
-      : (member === undefined ? undefined : forceBoundOf(member, pendingMs))
-    if (bound === undefined) return { ...measured, forceEligible: false, refusal: "force-not-eligible" }
-    return { ...measured, bound, forceEligible: true }
-  }
+  const forceReadingOf = (cell: CellState, workspace: string, member: CellMemberRecord | undefined, now: Date): SeatForceReading => seatForceReadingOf({
+    member,
+    seat: recordSeat(cell, workspace, member?.name ?? ""),
+    ...(member === undefined ? {} : { checkpointSince: checkpointSinceOf(cell, member) }),
+    liveness: member === undefined ? "unknown" : seatLivenessOf(dsh, member.sessionId, cell.captainSessionId),
+    now,
+    retryBound: config.compactionRetries,
+    staleMs: config.checkpointPendingMaxMs,
+  })
 
   /**
    * The EXACT verb that retries a plane half the seam REFUSED (R5.4).
@@ -1318,7 +1274,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
           splitRevision: { oneOf: [{ type: "number" }, { type: "null" }] },
           requirementsRevision: { type: "number" },
           handoffReady: { type: "array", items: { type: "string" } },
-          fenced: { type: "array", items: { type: "object" }, description: "Every CLOSED member with the reason and the OPEN board rows it still owns. Each row carries `giveUp:true` for a real GIVE-UP fence (an explicit `fenced:true` on either record) — the rows a `reassign` pass repairs and `cellwork_dispatch {unfence:[name]}` clears — or `giveUp:false` for a HELD seat with no fence marker — the compaction barrier's `mode:\"checkpoint\"` window, or the DEAD-RESEED shape flagged `deadReseed:true`. Every closed-seat row ALSO carries `barrierOwned` (a checkpoint spelling, not a fence marker, is what holds it), `forceEligible` (the FORCED `unfence:[{member, force:true}]` lever would be allowed RIGHT NOW — computed by the SAME predicate the verb decides with, so the two cannot disagree), `pendingMs` (how long the window has been open, when a timestamp exists), `suspect:true` for the DEAD-RESEED shape (a reseeded seat whose recorded session the registry proves dead), and `retry` when the TEAM half is a `checkpoint` no barrier is pending for — the exact Lead-only verb that reopens it (R5.4). A barrier-owned seat is not automatically safe: nothing supervises the barrier, so the render names the force lever and its bound instead of promising that no action is needed." },
+          fenced: { type: "array", items: { type: "object" }, description: "Every CLOSED member with the reason and the OPEN board rows it still owns. Each row carries `giveUp:true` for a real GIVE-UP fence (an explicit `fenced:true` on either record) — the rows a `reassign` pass repairs and `cellwork_dispatch {unfence:[name]}` clears — or `giveUp:false` for a HELD seat with no fence marker — the compaction barrier's `mode:\"checkpoint\"` window, or the DEAD-RESEED shape flagged `deadReseed:true`. Every closed-seat row ALSO carries `barrierOwned` (a checkpoint spelling, not a fence marker, is what holds it), `forceEligible` (the FORCED `unfence:[{member, force:true}]` lever would be allowed RIGHT NOW — computed by the SAME predicate the verb decides with, so the two cannot disagree), `pendingMs` (how long the window has been open, when a timestamp exists), `suspect:true` for the DEAD-RESEED shape (a reseeded seat whose recorded session the registry proves dead), and `retry` when the TEAM half is a `checkpoint` no barrier is pending for — the exact Lead-only verb that reopens it (R5.4). A barrier-owned seat is not automatically safe: nothing supervises the barrier, so the render names the force lever and its bound instead of promising that no action is needed. An `unknown` liveness never drops a seat from this list: a `subcaptain` that left the barrier's window with an unprovable session is listed `unverified:true` with `forceEligible:false` and its `forceRefusal`, reported as unverified rather than as health." },
           unreadMail: { type: "number" },
           wakeFailures: { type: "array", items: { type: "object" } },
         },
@@ -1359,6 +1315,11 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
               const reason = String(row.reason)
               /** The open board rows this seat still owns, if any. */
               const owned = Array.isArray(row.tasks) ? (row.tasks as unknown[]).map((id) => String(id)) : []
+              // AN UNVERIFIED SEAT SPEAKS IN ITS OWN WORDS (R3): nothing proved it dead and nothing proved it
+              // works, so it is reported as UNVERIFIED — neither "held by the barrier" nor "healthy".
+              if (row.unverified === true) {
+                return name + " (UNVERIFIED: " + reason + ") " + (owned.length > 0 ? "owns " + owned.join(", ") + " — " : "") + "no lever is licensed: the seat is reported so an operator can retire it deliberately (cellwork_dispatch {reassign:[{task_id, owner}]} moves its rows, and a forced clear stays refused while no liveness can be proven)"
+              }
               // A BARRIER-OWNED SEAT IS NOT AUTOMATICALLY SAFE (R4.5): nothing supervises the barrier —
               // no timer, no queue, no retry owner — so the old "nothing for you to do" was a promise the
               // code cannot keep. The render names the barrier's duty AND the bounded lever's state: the
@@ -1447,9 +1408,15 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
           windowTokens: pressure.windowTokens,
           provenance: pressure.provenance,
           liveness: reading.liveness,
+          closed: reading.closed,
           ...(reading.pendingMs === undefined ? {} : { pendingMs: reading.pendingMs }),
           ...(reading.suspect ? { suspect: true } : {}),
-          ...(reading.pendingMs === undefined && !reading.closed ? {} : { forceEligible: reading.forceEligible }),
+          ...(reading.deadReseed ? { deadReseed: true } : {}),
+          // THE LEVER IS ALWAYS ANSWERED, NEVER SUPPRESSED (R3): an omitted field read as "healthy", which
+          // is how a dead `subcaptain` disappeared — so `forceEligible` is present on EVERY seat and the
+          // refusal names why it is false.
+          forceEligible: reading.forceEligible,
+          ...(reading.refusal === undefined ? {} : { forceRefusal: reading.refusal }),
         }
       })
       /** The folded mail. */
@@ -1481,9 +1448,13 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         // behind is REPORTED here with the same lever the verb accepts, instead of disappearing.
         /** The one forced-lever reading for this seat, shared with `cellwork_dispatch {unfence}`. */
         const reading = forceReadingOf(boardCell, caller.workspace, member, now)
-        // THREE WAYS A SEAT IS CLOSED: the explicit give-up marker (either record), the barrier's window,
-        // and the dead-reseed shape. The give-up needs no reading — its marker IS the fact.
-        if ((!reading.closed && !giveUp) || reason === undefined) return []
+        // FOUR WAYS A SEAT IS CLOSED OR UNVERIFIED: the explicit give-up marker (either record), the
+        // barrier's window, the dead-reseed shape, and — added by R3 — a `subcaptain` whose recorded session
+        // NOTHING can prove either way. An `unknown` liveness never suppresses the row: the seat is reported
+        // as UNVERIFIED (`forceEligible:false` with its refusal) rather than as health.
+        /** Whether the record cannot say whether this seat works (`subcaptain`, dead-or-alive unknown). */
+        const unverified = reading.unverified
+        if ((!reading.closed && !giveUp && !unverified) || (reason === undefined && !unverified)) return []
         // THE THREE FIELDS THE CAPTAIN ACTS ON (R4.5). `giveUp` stays untouched, so `reassign`/`unfence`
         // keep their meaning; these say what KIND of closed seat this is and whether the bounded force
         // lever applies RIGHT NOW. Nothing here promises the barrier will come back — nothing supervises it.
@@ -1504,7 +1475,9 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
           const status = String(task.status ?? "")
           return status !== "completed" && status !== "failed" && nameKey(String(task.owner ?? "")) === nameKey(member.name)
         }).map((task) => String(task.id ?? ""))
-        return [{ name: member.name, mode: seat.mode ?? member.mode, reason, tasks: owned, giveUp, barrierOwned: reading.barrierOwned, forceEligible: reading.forceEligible, liveness: reading.liveness, ...(reading.suspect ? { suspect: true } : {}), ...(reading.deadReseed ? { deadReseed: true } : {}), ...(reading.pendingMs === undefined ? {} : { pendingMs: reading.pendingMs }), ...(planeOnly ? { retry: planeRetryOf(member.name) } : {}) }]
+        /** The sentence a row reports: the closure's own reason, or the UNVERIFIED one (R3). */
+        const rowReason = reason ?? "its recorded session cannot be verified (this composition exposes no agents registry, or no live anchor to prove it), so the seat is UNVERIFIED — never reported as healthy"
+        return [{ name: member.name, mode: seat.mode ?? member.mode, reason: rowReason, tasks: owned, giveUp, barrierOwned: reading.barrierOwned, forceEligible: reading.forceEligible, liveness: reading.liveness, ...(reading.suspect ? { suspect: true } : {}), ...(reading.deadReseed ? { deadReseed: true } : {}), ...(unverified ? { unverified: true } : {}), ...(reading.refusal === undefined ? {} : { forceRefusal: reading.refusal }), ...(reading.pendingMs === undefined ? {} : { pendingMs: reading.pendingMs }), ...(planeOnly ? { retry: planeRetryOf(member.name) } : {}) }]
       })
       /** The seat projection this sweep reports (§4.2). */
       const seatProjection = seatProjectionOf(cell, config)
@@ -2262,6 +2235,193 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
 
   // ── the compaction barrier (agent/turn-stopping) ─────────────────────────
   /**
+   * The workspace path of one team record, derived exactly as `team-store.ts#teamRecordPath` does.
+   *
+   * THE BIND HAS NO PLANE VERB (declared bound, R1). `mpdTeamActions` exposes `unfence` (which clears a
+   * TEAM `mode:"checkpoint"`) but NOTHING that re-points a member's `executorRef` or a board row's
+   * `owner`, and this write scope excludes the team-core package. The record is therefore patched through
+   * its own file, and the write is VERIFIED by re-reading it through the PLANE (`mpdTeams.get`), so a
+   * write the plane cannot see is a failure rather than a claim. When team-core grows a `rebindSeat`
+   * verb, this function becomes a delegation and the path knowledge goes away.
+   *
+   * @param workspace - the workspace root.
+   * @param teamId - the team id the cell record names.
+   * @returns the absolute record path.
+   */
+  const teamRecordPathOf = (workspace: string, teamId: string): string => {
+    // The SAME reduction `team-store.ts#sanitizeId` applies: ids are minted there, and a record read back
+    // from disk must land in the file the plane reads.
+    /** The sanitized id. */
+    const cleaned = String(teamId).replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^[.-]+/, "").replace(/-+$/, "")
+    return join(workspace, ".mpd", "team", "teams", (cleaned === "" ? "unnamed" : cleaned) + ".json")
+  }
+
+  /**
+   * Bind a fresh reseed child to its seat on the TEAM roster and the BOARD (R1).
+   *
+   * THE THREE SURFACES: the CELL record is written by the barrier itself (its own row already carries the
+   * fresh handle); this function binds the TWO the plane owns — the member row (`executorRef` = the fresh
+   * handle, and `mode` back to `member` with the handoff kept as history) and every NON-TERMINAL board row
+   * still owned by the OLD handle. A TERMINAL row (`completed`, `failed`, `cancelled`) is history, not a
+   * hand-over, so it keeps the owner that actually did the work.
+   *
+   * ABSENT IS NOT UNREADABLE (F1). A record that DOES NOT EXIST answers `plane:"absent"` — a vacuous
+   * success, because there is no member row and no board to bind, and refusing a healthy child for a
+   * plane nothing created would strand it. A record that EXISTS but cannot be read (corrupt JSON, EACCES,
+   * a plane read that throws or answers garbage) is a REFUSAL with `surface:"team-record-unreadable"`:
+   * the barrier then journals `checkpoint-unrecoverable`, fences the seat and releases the fresh child,
+   * instead of reporting a success over a surface nobody can see.
+   *
+   * THE WRITE IS A COMPARE-AND-SET (F2). The snapshot comes from the SAME file this function rewrites,
+   * and immediately before the rename that file is re-read and its revision / updatedAt / member roster
+   * compared with the snapshot. Any change means another writer committed inside the window, so the bind
+   * REFUSES (`surface:"team-record-changed"`) rather than overwriting it.
+   *
+   * SYNCHRONOUS BY CONTRACT: read -> re-read -> temp+rename MUST stay ONE synchronous block. This function
+   * is deliberately NOT `async`, and no `await` may be introduced between the snapshot and the
+   * `atomicWriteText` call — a yield inside the window would let another writer commit after the compare
+   * and before the rename, which is the exact overwrite the compare-and-set exists to prevent. The caller
+   * awaits the promise wrapper, never anything inside this body.
+   *
+   * @param input - the workspace, the team, the seat's name, the old handle and the fresh one.
+   * @returns what was written, or the surface that refused.
+   */
+  const bindReseededSeat = (input: { workspace: string; teamId: string; memberName: string; previousSessionId: string; newHandle: string }): SeatBindResult => {
+    // NO ID, NO SURFACE: an empty workspace/team pair names no record, so there is nothing to classify.
+    if (input.workspace === "" || input.teamId === "") return { ok: true, plane: "absent", tasks: 0 }
+    /** The record file this bind reads AND rewrites. */
+    const path = teamRecordPathOf(input.workspace, input.teamId)
+    /** The file as this bind's snapshot read it. */
+    const read = readTeamRecordSnapshot(path)
+    if (read.kind === "absent") return { ok: true, plane: "absent", tasks: 0 }
+    if (read.kind === "unreadable") return { ok: false, surface: "team-record-unreadable", reason: read.detail }
+    /** The snapshot this bind's write is a compare-and-set against. */
+    const snapshot = read.snapshot
+    // THE PLANE MUST ALSO BE ABLE TO READ WHAT EXISTS (F1). A file that parses is not yet a record the
+    // plane can serve, and a THROWING plane read is not "no plane": both mean the record EXISTS and its
+    // reader is broken — the unreadable case this refusal names.
+    /** The plane service, probed per call. */
+    const service = teams()
+    if (service !== undefined) {
+      /** The plane's own answer for the record that exists. */
+      let planeRecord: unknown
+      try {
+        planeRecord = service.get?.(input.workspace, input.teamId)
+      } catch (error) {
+        return { ok: false, surface: "team-record-unreadable", reason: "the team record " + JSON.stringify(path) + " exists but the plane's read threw (" + errorText(error) + ")" }
+      }
+      if (!isPlainRecord(planeRecord)) {
+        return { ok: false, surface: "team-record-unreadable", reason: "the team record " + JSON.stringify(path) + " exists but the plane answers " + (planeRecord === undefined ? "nothing" : "a value that is not a team record") + " for it, so this bind cannot trust the surface it would rewrite" }
+      }
+    }
+    /** The record this bind rewrites: the FILE's copy, which is the document the rename replaces. */
+    const record = snapshot.record
+    /** The roster rows this build can read. */
+    const members = Array.isArray(record.members) ? record.members.filter((row) => typeof row === "object" && row !== null) as Array<Record<string, unknown>> : undefined
+    if (members === undefined) return { ok: false, surface: "team-record", reason: "the team record for " + JSON.stringify(input.teamId) + " carries no readable member roster" }
+    /** The seat this reseed belongs to. */
+    const seat = members.findIndex((row) => row.name === input.memberName || row.id === input.memberName)
+    if (seat < 0) return { ok: false, surface: "team-member", reason: "team " + JSON.stringify(input.teamId) + " names no member " + JSON.stringify(input.memberName) + ", so the fresh handle has no roster row to bind" }
+    /** The instant the patched rows are stamped with. */
+    const nowIso = new Date().toISOString()
+    /** The roster row after the bind: the fresh handle, an open seat, and the handoff untouched. */
+    const reboundSeat: Record<string, unknown> = { ...members[seat], executorRef: input.newHandle, mode: members[seat].mode === "checkpoint" || members[seat].mode === undefined ? "member" : members[seat].mode }
+    /** How many rows this bind re-points. */
+    let rePointed = 0
+    /** The board with those rows re-pointed, revision bumped exactly as `team-store.ts#updateTeamTask` does. */
+    const reboundTasks = Array.isArray(record.tasks) ? (record.tasks as unknown[]).map((task) => {
+      if (typeof task !== "object" || task === null) return task
+      /** The row, read structurally. */
+      const row = task as Record<string, unknown>
+      if (input.previousSessionId === "" || String(row.owner ?? "") !== input.previousSessionId) return task
+      // A TERMINAL ROW RECORDS WHO DID THE WORK (`completed`, `failed`, `cancelled`): re-pointing it would
+      // rewrite history and hand a finished task to a child that never touched it.
+      /** The row's status. */
+      const status = String(row.status ?? "")
+      if (status === "completed" || status === "failed" || status === "cancelled") return task
+      rePointed += 1
+      return { ...row, owner: input.newHandle, revision: (typeof row.revision === "number" ? row.revision : 0) + 1, updatedAt: nowIso }
+    }) : record.tasks
+    /** The record to persist: ONLY the seat row and the owner cells move. */
+    const next: Record<string, unknown> = { ...record, members: members.map((row, index) => (index === seat ? reboundSeat : row)), tasks: reboundTasks }
+    // THE COMPARE IMMEDIATELY BEFORE THE RENAME (F2). There is NO `await` between this re-read and the
+    // write below — the whole read -> compare -> temp+rename sequence is one synchronous block, so no
+    // other writer can commit inside it in this process. The check is what catches a writer in ANOTHER
+    // process (or a test's injected write) whose commit landed while this bind was building `next`.
+    /** The sentence naming what another writer moved, or undefined when the snapshot still holds. */
+    const moved = concurrentWriteOf(path, snapshot)
+    if (moved !== undefined) {
+      return { ok: false, surface: "team-record-changed", reason: "the team record " + JSON.stringify(path) + " changed while this bind was building its write (" + moved + "), so the bind refuses to overwrite the other writer" }
+    }
+    try {
+      atomicWriteText(path, JSON.stringify(next, null, 2) + "\n")
+    } catch (error) {
+      return { ok: false, surface: "team-record", reason: "writing " + path + " failed (" + errorText(error) + ")" }
+    }
+    // THE WRITE IS ONLY A CLAIM UNTIL IT IS READ BACK (R1): a record nobody can see bound nothing, and
+    // reporting `reseeded` on it is the incident this contract repairs. The reading is the PLANE's when
+    // this composition has one, and the FILE's otherwise (a composition without the team plane still has
+    // the surface this function just rewrote).
+    /** The record as a FRESH read answers it after the write. */
+    let after: Record<string, unknown> | undefined
+    if (service !== undefined) {
+      after = recordOf(input.workspace, input.teamId)
+    } else {
+      /** The file's own answer, for a composition with no plane service to re-read it. */
+      const again = readTeamRecordSnapshot(path)
+      after = again.kind === "ok" ? again.snapshot.record : undefined
+    }
+    /** The member row that re-read reports. */
+    const afterSeat = seatRowOf(after, input.memberName)
+    if (afterSeat?.executorRef !== input.newHandle) {
+      return { ok: false, surface: "team-member", reason: "the record was written but the " + (service !== undefined ? "plane" : "file") + " reads " + JSON.stringify(String(afterSeat?.executorRef ?? "")) + " for " + JSON.stringify(input.memberName) + " instead of the fresh handle" }
+    }
+    return { ok: true, plane: "bound", tasks: rePointed }
+  }
+
+  /**
+   * Journal and fence the seat of a barrier run that THREW (R4).
+   *
+   * The listener's catch is the only place a throw reaches, and because every pre-spawn failure inside
+   * `promoteAfterHandoff` is already classified, a throw here happened AFTER the seat was handed over. The
+   * row names the branch and the seat; the written licence (`barrierFailures` at the retry bound) is what
+   * makes `cellwork_dispatch {unfence:[{member, force:true}]}` able to clear it.
+   *
+   * @param agent - the stopping agent the event carried.
+   * @param error - the thrown value.
+   */
+  const recordBarrierFailure = (agent: unknown, error: unknown): void => {
+    /** The caller's context, resolved the same way the barrier resolves it. */
+    const caller = callerContext(dsh, { agent } as DshToolExec, { teams })
+    if (caller.cell === null || caller.member === "") return
+    /** The member row the barrier was about. */
+    const member = caller.cell.members[caller.member]
+    if (member === undefined) return
+    /** The instant the row is stamped with. */
+    const now = new Date()
+    /** The sentence the row and the journal both carry. */
+    const detail = error instanceof Error ? error.message : String(error)
+    /** The fenced row this branch leaves. */
+    const failed = barrierFailedRow(member, config.compactionRetries, "the compaction barrier threw after the seat was handed over: " + detail, now)
+    /** Whether that row could be persisted. */
+    let fenced = "written"
+    try {
+      writeCell(caller.workspace, { ...caller.cell, members: { ...caller.cell.members, [caller.member]: failed } })
+    } catch (writeError) {
+      fenced = "failed: " + (writeError instanceof Error ? writeError.message : String(writeError))
+    }
+    appendJournal(caller.workspace, caller.cell.cellId, {
+      event: "barrier-failed",
+      member: caller.member,
+      branch: "throw",
+      detail,
+      fenced,
+      forceEligible: fenced === "written",
+      retry: 'cellwork_dispatch {unfence:[{member: ' + JSON.stringify(caller.member) + ', force: true}]}',
+    }, now)
+  }
+
+  /**
    * The durable parent session a stopping agent's header carries, when it carries one.
    *
    * Read structurally because an Agent is opaque to a plugin: the harness records the parent link at
@@ -2289,8 +2449,10 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
     /** The caller's context. */
     const caller = callerContext(dsh, { agent } as DshToolExec, { teams })
     if (caller.cell === null || caller.member === "") return
+    /** The cell this run belongs to, named once so the closures below keep the narrowing. */
+    const cell = caller.cell
     /** The member row as the event found it. */
-    const member = caller.cell.members[caller.member]
+    const member = cell.members[caller.member]
     if (member === undefined || !member.handoffReady) return
     /** The in-flight key, so one turn cannot start two barriers. */
     const key = caller.cell.cellId + "/" + caller.member
@@ -2330,12 +2492,50 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
           }
         },
         sleep: (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms)),
+        // R1: THE THREE SURFACES ARE BOUND HERE, BEFORE `promoteAfterHandoff` may answer `reseeded`.
+        bindSeat: async (input): Promise<SeatBindResult> => bindReseededSeat({
+          workspace: caller.workspace,
+          teamId: cell.teamId,
+          memberName: caller.member,
+          previousSessionId: input.previousSessionId,
+          newHandle: input.handle,
+        }),
+        // R2: the fresh child is addressed by HANDLE through the team executor (`send` cold-resumes an
+        // absent direct child), authorised by the SAME live parent session the reseed was raised under.
+        deliverDirective: async (authority: unknown, handle: string, text: string): Promise<void> => {
+          /** The team executor's own delivery binding for this composition. */
+          const send = sendThroughExecutor(dsh.teamExecutor(), authority)
+          if (send === undefined) throw new Error("this composition exposes no team executor, so the fresh child could not be messaged by handle")
+          await send(handle, text)
+        },
       })
       /** The instant the outcome is stamped with. */
       const now = new Date()
       // RE-READ before writing: a concurrent claim/complete may have moved the record during the await.
       const fresh = readCell(caller.workspace, caller.cell.cellId)
       if (!fresh.ok) {
+        // R4: NO SILENT EARLY RETURN. The record could not be re-read, so this run cannot write a verdict —
+        // and the seat must not be left looking healthy. The journal row names the branch and the seat, the
+        // row is FENCED with the forced lever's written licence, and the write is attempted from the
+        // pre-await snapshot (their changes are what the failed read could not be trusted for).
+        /** The fenced row this branch leaves: at least the retry bound, so `force` can clear it. */
+        const failed = barrierFailedRow(member, config.compactionRetries, "the compaction barrier could not re-read " + fresh.path + " (" + fresh.detail + "), so no barrier outcome was written", now)
+        /** Whether that row could be persisted at all. */
+        let fenced = "written"
+        try {
+          writeCell(caller.workspace, { ...caller.cell, members: { ...caller.cell.members, [caller.member]: failed } })
+        } catch (error) {
+          fenced = "failed: " + (error instanceof Error ? error.message : String(error))
+        }
+        appendJournal(caller.workspace, caller.cell.cellId, {
+          event: "barrier-record-unreadable",
+          member: caller.member,
+          path: fresh.path,
+          detail: fresh.detail,
+          fenced,
+          forceEligible: fenced === "written",
+          retry: 'cellwork_dispatch {unfence:[{member: ' + JSON.stringify(caller.member) + ', force: true}]}',
+        }, now)
         deps.warn("[mpd-cellwork] the compaction barrier could not re-read " + fresh.path + ": " + fresh.detail)
         return
       }
@@ -2400,6 +2600,23 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       // THE GIVEN-UP BARRIER GETS ITS OWN JOURNAL ROW (C7): the compaction row below reports the attempt,
       // this one reports that the member is now OUT OF SERVICE and which verb repairs its rows.
       if (result.outcome === "refused") appendJournal(caller.workspace, caller.cell.cellId, checkpointUnrecoverableEntry(caller.member, result), now)
+      // THE THREE-SURFACE BIND IS A FACT WITH ITS OWN ROW (R1): the seat now names the fresh handle on the
+      // TEAM roster and every board row it owned was re-pointed, so a reader never has to infer the
+      // hand-over from two other records. `plane:"absent"` says this cell has NO team record at all: a
+      // record that exists but cannot be read is a REFUSAL, never this row (F1).
+      if (result.outcome === "reseeded") {
+        appendJournal(caller.workspace, caller.cell.cellId, {
+          event: "seat-rebound",
+          member: caller.member,
+          previousSessionId: member.sessionId,
+          newHandle: result.newHandle ?? "",
+          plane: result.bindPlane ?? "absent",
+          tasks: result.boundTasks ?? 0,
+          // THE CELL ROW WAS FENCED ON THIS SAME RUN (the retry bound): the TEAM seat still names the live
+          // child, and this flag says the CELL half is a give-up the captain must clear explicitly.
+          cellFenced: cellReopened ? false : true,
+        }, now)
+      }
       // THE RESEED RETIRES A SESSION, SO BOTH SESSIONS ARE NAMED (R4.7): a fresh handle is not proof the
       // ORIGINAL child stopped, and the seat record now points at the new one — the row is what makes the
       // hand-over (and the plane's half) observable instead of inferred from two other rows.
@@ -2416,6 +2633,9 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
           ...(result.retirement === undefined ? {} : { retirement: result.retirement }),
           ...(result.retirementReason === undefined ? {} : { retirementReason: result.retirementReason }),
           plane: plane.plane,
+          // R2: whether the replacement was TOLD what to do through its handle, and why not when it was not.
+          directiveDelivered: result.directiveDelivered === true,
+          ...(result.directiveError === undefined ? {} : { directiveError: result.directiveError }),
         }, now)
       }
       // THE SEEDED CHILD'S LINEAGE IS A FACT, NOT AN INFERENCE (C2): one row names the live session the
@@ -2452,6 +2672,10 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       // The catch is attached HERE, so a barrier failure is a log line and never a rejection of the
       // promise the host is awaiting.
       return runBarrier(agent).catch((error: unknown) => {
+        // R4: A THROW IS NEVER A WARN-ONLY BRANCH. The seat is journaled with the branch's sentence and
+        // FENCED with the forced lever's licence, so a run that crashed after the spawn cannot leave a
+        // seat that looks healthy and can never be cleared.
+        recordBarrierFailure(agent, error)
         deps.warn("[mpd-cellwork] the compaction barrier failed: " + (error instanceof Error ? error.message : String(error)))
       })
     } catch (error) {

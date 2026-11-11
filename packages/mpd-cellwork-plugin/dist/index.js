@@ -7823,6 +7823,99 @@ function compactionJournalEntry(memberName, result) {
     ...result.parentSource === undefined ? {} : { parentSource: result.parentSource, parentSessionId: result.parentSessionId }
   };
 }
+function seatLivenessOf(seam, sessionId, anchorSessionId) {
+  if (sessionId === "")
+    return "unknown";
+  if (typeof seam.liveAgentExact !== "function")
+    return "unknown";
+  try {
+    if (seam.liveAgentExact(sessionId) !== undefined)
+      return "live";
+    const capabilities = typeof seam.capabilities === "function" ? seam.capabilities() : undefined;
+    if (capabilities?.agents !== true)
+      return "unknown";
+    if (anchorSessionId === "" || seam.liveAgentExact(anchorSessionId) === undefined)
+      return "unknown";
+    return "dead";
+  } catch {
+    return "unknown";
+  }
+}
+function planeSeatOf(record, name) {
+  if (typeof record !== "object" || record === null)
+    return {};
+  const rows = Array.isArray(record.members) ? record.members.filter((row2) => typeof row2 === "object" && row2 !== null) : [];
+  const row = rows.find((candidate) => candidate.name === name || candidate.id === name);
+  if (row === undefined)
+    return {};
+  const mode = typeof row.mode === "string" && row.mode !== "" ? row.mode : undefined;
+  const fenced = row.fenced === true;
+  const closed = row.mode === "checkpoint" || fenced;
+  if (!closed)
+    return mode === undefined ? {} : { mode };
+  const reason = fenced ? "the plane fenced this seat" + (typeof row.fencedReason === "string" && row.fencedReason !== "" ? " (" + row.fencedReason + ")" : "") : "the plane recorded a checkpoint for this seat (mode `checkpoint`), so it is fenced until the barrier reopens it";
+  return { mode: "checkpoint", checkpoint: true, fenced, fenceReason: reason };
+}
+function checkpointSinceOf(cell, member) {
+  if (member.checkpointSince !== undefined)
+    return member.checkpointSince;
+  for (let index = cell.checkpoints.length - 1;index >= 0; index -= 1) {
+    const entry = cell.checkpoints[index];
+    if (entry.sessionId !== "" && entry.sessionId === member.sessionId)
+      return entry.at;
+  }
+  return;
+}
+function pendingMsOf(since, now) {
+  if (since === undefined || since === "")
+    return;
+  const opened = Date.parse(since);
+  return Number.isFinite(opened) ? Math.max(0, now.getTime() - opened) : undefined;
+}
+function forceBoundOf(member, pendingMs, retryBound, staleMs) {
+  if ((member.barrierFailures ?? 0) >= retryBound)
+    return "retry-budget";
+  if (pendingMs !== undefined && pendingMs >= staleMs)
+    return "stale";
+  return;
+}
+function seatForceReadingOf(input) {
+  const member = input.member;
+  const barrierOwned = member?.mode === "checkpoint" || member?.handoffReady === true || input.seat.checkpoint === true;
+  const pendingMs = pendingMsOf(input.checkpointSince, input.now);
+  const suspect = input.checkpointSince !== undefined && input.liveness === "dead";
+  const deadReseed = !barrierOwned && input.liveness === "dead" && member !== undefined && member.mode === "subcaptain" && member.handoffReady !== true;
+  const closed = barrierOwned || deadReseed;
+  const unverified = !barrierOwned && input.liveness === "unknown" && member !== undefined && member.mode === "subcaptain" && member.handoffReady !== true;
+  const measured = { barrierOwned, suspect, deadReseed, closed, unverified, liveness: input.liveness, ...pendingMs === undefined ? {} : { pendingMs } };
+  if (!closed)
+    return { ...measured, forceEligible: false, ...unverified ? { refusal: "liveness-unknown" } : {} };
+  if (input.liveness === "live")
+    return { ...measured, forceEligible: false, refusal: "live-session" };
+  const bound = deadReseed ? input.checkpointSince === undefined ? member === undefined ? undefined : forceBoundOf(member, pendingMs, input.retryBound, input.staleMs) : "dead-session" : member === undefined ? undefined : forceBoundOf(member, pendingMs, input.retryBound, input.staleMs);
+  if (bound === undefined)
+    return { ...measured, forceEligible: false, refusal: "force-not-eligible" };
+  return { ...measured, bound, forceEligible: true };
+}
+function barrierFailedRow(previous, retryBound, reason, now) {
+  const failures = Math.max((previous.barrierFailures ?? 0) + 1, retryBound);
+  return {
+    name: previous.name,
+    role: previous.role,
+    sessionId: previous.sessionId,
+    executorRef: previous.executorRef,
+    mode: "checkpoint",
+    handoffReady: true,
+    handoffs: previous.handoffs,
+    joinedAt: previous.joinedAt,
+    ...previous.adopted === true ? { adopted: true } : {},
+    ...previous.grown === true ? { grown: true } : {},
+    checkpointSince: previous.checkpointSince ?? now.toISOString(),
+    barrierFailures: failures,
+    fenced: true,
+    fencedReason: reason
+  };
+}
 function checkpointUnrecoverableEntry(memberName, result) {
   return {
     event: "checkpoint-unrecoverable",
@@ -7831,6 +7924,7 @@ function checkpointUnrecoverableEntry(memberName, result) {
     reason: result.reason,
     ...result.retirement === undefined ? {} : { retirement: result.retirement },
     ...result.retirementReason === undefined ? {} : { retirementReason: result.retirementReason },
+    ...result.failedSurface === undefined ? {} : { surface: result.failedSurface, retry: "cellwork_dispatch {unfence:[{member, force:true}]} reopens the seat, then agent_teams_dispatch {reassign:[{task_id, owner}]} hands the rows over" },
     repair: "reassign the rows this member owns: cellwork_dispatch {reassign:[{task_id, owner}]}"
   };
 }
@@ -7917,25 +8011,70 @@ async function promoteAfterHandoff(deps) {
     };
   }
   const retirement = retireOriginal(deps, parent.parent);
+  const directive = promotionDirective(deps.cell.cellId, deps.memberName, deps.cell.depth + 1, deps.nextStep);
+  let activation;
   try {
-    const activation = await deps.dsh.startContinuableAgent({
+    activation = await deps.dsh.startContinuableAgent({
       provider: "spawn",
       label: deps.memberName + " · " + deps.cell.teamId,
       request: {
         prompt: [{ type: "text", text: deps.handoffText + `
 
-` + promotionDirective(deps.cell.cellId, deps.memberName, deps.cell.depth + 1, deps.nextStep) }],
+` + directive }],
         parent: parent.parent,
         maxDepth: reseedMaxDepthOf(parent.parent)
       },
       signal: compactionSignal().signal
     });
-    const handle = typeof activation?.childId === "string" ? activation.childId : typeof activation?.id === "string" ? activation.id : "";
-    if (handle === "")
-      return { outcome: "refused", attempts: deps.config.compactionRetries, reason: lastReason + busyNote + "; the reseed reported no child id", retirement: retirement.retirement, ...retirement.reason === undefined ? {} : { retirementReason: retirement.reason } };
-    return { outcome: "reseeded", attempts: deps.config.compactionRetries, reason: lastReason + busyNote, newHandle: handle, parentSessionId: parent.sessionId, parentSource: parent.source, retired: retirement.retirement === "accepted", retirement: retirement.retirement, ...retirement.reason === undefined ? {} : { retirementReason: retirement.reason } };
   } catch (error) {
     return { outcome: "refused", attempts: deps.config.compactionRetries, reason: lastReason + busyNote + "; the reseed failed: " + (error instanceof Error ? error.message : String(error)), retirement: retirement.retirement, ...retirement.reason === undefined ? {} : { retirementReason: retirement.reason } };
+  }
+  const started = activation;
+  const handle = typeof started?.childId === "string" ? started.childId : typeof started?.id === "string" ? started.id : "";
+  try {
+    if (handle === "") {
+      const released = await releaseActivation2(activation);
+      return { outcome: "refused", attempts: deps.config.compactionRetries, reason: lastReason + busyNote + "; the reseed reported no child id" + (released ? " (the activation it created was RELEASED, so no child slot is held)" : " (this composition exposes no dispose seam, so the activation could not be released)"), retirement: retirement.retirement, ...retirement.reason === undefined ? {} : { retirementReason: retirement.reason } };
+    }
+    const bind = deps.bindSeat === undefined ? { ok: true, plane: "absent", tasks: 0 } : await deps.bindSeat({ handle, previousSessionId: deps.sessionId });
+    if (!bind.ok) {
+      const released = await releaseActivation2(activation);
+      return {
+        outcome: "refused",
+        attempts: deps.config.compactionRetries,
+        reason: lastReason + busyNote + "; the fresh child was started but its seat could not be bound: " + (bind.surface ?? "unknown") + " could not be written (" + (bind.reason ?? "no reason was reported") + ")" + (released ? "; the fresh child's activation was RELEASED" : ""),
+        failedSurface: bind.surface ?? "unknown",
+        retirement: retirement.retirement,
+        ...retirement.reason === undefined ? {} : { retirementReason: retirement.reason }
+      };
+    }
+    let delivered = false;
+    let directiveError;
+    if (deps.deliverDirective === undefined) {
+      directiveError = "this composition exposes no delivery seam, so the directive went only in the child's first prompt";
+    } else {
+      try {
+        await deps.deliverDirective(parent.parent, handle, directive);
+        delivered = true;
+      } catch (error) {
+        directiveError = error instanceof Error ? error.message : String(error);
+      }
+    }
+    return { outcome: "reseeded", attempts: deps.config.compactionRetries, reason: lastReason + busyNote, newHandle: handle, parentSessionId: parent.sessionId, parentSource: parent.source, retired: retirement.retirement === "accepted", retirement: retirement.retirement, ...retirement.reason === undefined ? {} : { retirementReason: retirement.reason }, directiveDelivered: delivered, ...directiveError === undefined ? {} : { directiveError }, boundTasks: bind.tasks ?? 0, ...bind.plane === undefined ? {} : { bindPlane: bind.plane } };
+  } catch (error) {
+    const released = await releaseActivation2(activation);
+    return { outcome: "refused", attempts: deps.config.compactionRetries, reason: lastReason + busyNote + "; the reseed failed after the child started: " + (error instanceof Error ? error.message : String(error)) + (released ? "; its activation was RELEASED" : ""), retirement: retirement.retirement, ...retirement.reason === undefined ? {} : { retirementReason: retirement.reason } };
+  }
+}
+async function releaseActivation2(activation) {
+  const dispose = activation?.dispose;
+  if (typeof dispose !== "function")
+    return false;
+  try {
+    await dispose.call(activation);
+    return true;
+  } catch {
+    return false;
   }
 }
 function nextStepOf(text2) {
@@ -7945,6 +8084,8 @@ function nextStepOf(text2) {
 
 // packages/mpd-cellwork-plugin/src/protocol.ts
 import { readFileSync as readFileSync8 } from "node:fs";
+import { createHash } from "node:crypto";
+import { join as join7 } from "node:path";
 function workspaceConfigReader(ctx) {
   return (dottedKey) => {
     const service = ctx.get?.("mpdConfig", false);
@@ -8066,6 +8207,74 @@ function superviseTaskRow(task) {
     ...typeof task.kind === "string" ? { kind: task.kind } : {}
   };
 }
+function isPlainRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function contentHashOf(value) {
+  return createHash("sha256").update(JSON.stringify(value) ?? "undefined").digest("hex");
+}
+function readTeamRecordSnapshot(path) {
+  let text2;
+  try {
+    text2 = readFileSync8(path, "utf8");
+  } catch (error) {
+    const code = error.code;
+    if (code === "ENOENT")
+      return { kind: "absent" };
+    return { kind: "unreadable", detail: "the team record " + JSON.stringify(path) + " exists but could not be read (" + errorText4(error) + ")" };
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(text2);
+  } catch (error) {
+    return { kind: "unreadable", detail: "the team record " + JSON.stringify(path) + " exists but is not valid JSON (" + errorText4(error) + ")" };
+  }
+  if (!isPlainRecord(parsed)) {
+    return { kind: "unreadable", detail: "the team record " + JSON.stringify(path) + " exists but carries " + (Array.isArray(parsed) ? "an array" : typeof parsed) + " instead of a JSON object" };
+  }
+  return {
+    kind: "ok",
+    snapshot: {
+      record: parsed,
+      text: text2,
+      revision: typeof parsed.revision === "number" ? parsed.revision : undefined,
+      updatedAt: typeof parsed.updatedAt === "string" ? parsed.updatedAt : undefined,
+      membersHash: contentHashOf(parsed.members)
+    }
+  };
+}
+function concurrentWriteOf(path, snapshot) {
+  let now;
+  try {
+    now = readFileSync8(path, "utf8");
+  } catch (error) {
+    return "it could not be re-read before the write (" + errorText4(error) + ")";
+  }
+  if (now === snapshot.text)
+    return;
+  let parsed;
+  try {
+    parsed = JSON.parse(now);
+  } catch {
+    return "its bytes changed and no longer parse as JSON";
+  }
+  if (!isPlainRecord(parsed))
+    return "its bytes changed";
+  const revision = typeof parsed.revision === "number" ? parsed.revision : undefined;
+  if (revision !== snapshot.revision)
+    return "its revision moved from " + JSON.stringify(snapshot.revision ?? null) + " to " + JSON.stringify(revision ?? null);
+  const updatedAt = typeof parsed.updatedAt === "string" ? parsed.updatedAt : undefined;
+  if (updatedAt !== snapshot.updatedAt)
+    return "its updatedAt moved from " + JSON.stringify(snapshot.updatedAt ?? null) + " to " + JSON.stringify(updatedAt ?? null);
+  if (contentHashOf(parsed.members) !== snapshot.membersHash)
+    return "its member roster changed";
+  return "its contents changed";
+}
+function seatRowOf(record, memberName) {
+  if (record === undefined || !Array.isArray(record.members))
+    return;
+  return record.members.find((row) => isPlainRecord(row) && (row.name === memberName || row.id === memberName));
+}
 function installCellworkProtocol(deps) {
   const dsh = deps.dsh;
   const config = deps.config;
@@ -8118,22 +8327,7 @@ function installCellworkProtocol(deps) {
     }
     return ids;
   };
-  const recordSeat = (cell, workspace, name) => {
-    const record = recordOf2(workspace, cell.teamId);
-    if (record === undefined)
-      return {};
-    const rows = Array.isArray(record.members) ? record.members.filter((row2) => typeof row2 === "object" && row2 !== null) : [];
-    const row = rows.find((candidate) => candidate.name === name || candidate.id === name);
-    if (row === undefined)
-      return {};
-    const mode = typeof row.mode === "string" && row.mode !== "" ? row.mode : undefined;
-    const fenced = row.fenced === true;
-    const closed = row.mode === "checkpoint" || fenced;
-    if (!closed)
-      return mode === undefined ? {} : { mode };
-    const reason = fenced ? "the plane fenced this seat" + (typeof row.fencedReason === "string" && row.fencedReason !== "" ? " (" + row.fencedReason + ")" : "") : "the plane recorded a checkpoint for this seat (mode `checkpoint`), so it is fenced until the barrier reopens it";
-    return { mode: "checkpoint", checkpoint: true, fenced, fenceReason: reason };
-  };
+  const recordSeat = (cell, workspace, name) => planeSeatOf(recordOf2(workspace, cell.teamId), name);
   const transition = (workspace, next, entry, now) => {
     const lines = appendJournal(workspace, next.cellId, entry, now);
     const stamped = { ...next, journalCursor: lines > 0 ? lines : next.journalCursor };
@@ -8141,66 +8335,15 @@ function installCellworkProtocol(deps) {
     return { ...stamped, updatedAt: now.toISOString() };
   };
   const captainOnly = (caller, tool) => caller.sessionId === "" || caller.cell === null || caller.sessionId !== caller.cell.captainSessionId ? { ok: false, error: tool + " is CAPTAIN-ONLY: the captain of this cell is session " + String(caller.cell?.captainSessionId ?? "none") + ", which is not this caller" } : undefined;
-  const livenessOf = (sessionId, anchorSessionId) => {
-    if (sessionId === "")
-      return "unknown";
-    if (typeof dsh.liveAgentExact !== "function")
-      return "unknown";
-    try {
-      if (dsh.liveAgentExact(sessionId) !== undefined)
-        return "live";
-      const capabilities = typeof dsh.capabilities === "function" ? dsh.capabilities() : undefined;
-      if (capabilities?.agents !== true)
-        return "unknown";
-      if (anchorSessionId === "" || dsh.liveAgentExact(anchorSessionId) === undefined)
-        return "unknown";
-      return "dead";
-    } catch {
-      return "unknown";
-    }
-  };
-  const checkpointSinceOf = (cell, member) => {
-    if (member.checkpointSince !== undefined)
-      return member.checkpointSince;
-    for (let index = cell.checkpoints.length - 1;index >= 0; index -= 1) {
-      const entry = cell.checkpoints[index];
-      if (entry.sessionId !== "" && entry.sessionId === member.sessionId)
-        return entry.at;
-    }
-    return;
-  };
-  const pendingMsOf = (since, now) => {
-    if (since === undefined || since === "")
-      return;
-    const opened = Date.parse(since);
-    return Number.isFinite(opened) ? Math.max(0, now.getTime() - opened) : undefined;
-  };
-  const forceBoundOf = (member, pendingMs) => {
-    if ((member.barrierFailures ?? 0) >= config.compactionRetries)
-      return "retry-budget";
-    if (pendingMs !== undefined && pendingMs >= config.checkpointPendingMaxMs)
-      return "stale";
-    return;
-  };
-  const forceReadingOf = (cell, workspace, member, now) => {
-    const seat = recordSeat(cell, workspace, member?.name ?? "");
-    const barrierOwned = member?.mode === "checkpoint" || member?.handoffReady === true || seat.checkpoint === true;
-    const since = member === undefined ? undefined : checkpointSinceOf(cell, member);
-    const pendingMs = pendingMsOf(since, now);
-    const liveness = member === undefined ? "unknown" : livenessOf(member.sessionId, cell.captainSessionId);
-    const suspect = since !== undefined && liveness === "dead";
-    const deadReseed = !barrierOwned && liveness === "dead" && member !== undefined && member.mode === "subcaptain" && member.handoffReady !== true;
-    const closed = barrierOwned || deadReseed;
-    const measured = { barrierOwned, suspect, deadReseed, closed, liveness, ...pendingMs === undefined ? {} : { pendingMs } };
-    if (!closed)
-      return { ...measured, forceEligible: false };
-    if (liveness === "live")
-      return { ...measured, forceEligible: false, refusal: "live-session" };
-    const bound = deadReseed ? since === undefined ? member === undefined ? undefined : forceBoundOf(member, pendingMs) : "dead-session" : member === undefined ? undefined : forceBoundOf(member, pendingMs);
-    if (bound === undefined)
-      return { ...measured, forceEligible: false, refusal: "force-not-eligible" };
-    return { ...measured, bound, forceEligible: true };
-  };
+  const forceReadingOf = (cell, workspace, member, now) => seatForceReadingOf({
+    member,
+    seat: recordSeat(cell, workspace, member?.name ?? ""),
+    ...member === undefined ? {} : { checkpointSince: checkpointSinceOf(cell, member) },
+    liveness: member === undefined ? "unknown" : seatLivenessOf(dsh, member.sessionId, cell.captainSessionId),
+    now,
+    retryBound: config.compactionRetries,
+    staleMs: config.checkpointPendingMaxMs
+  });
   const planeRetryOf = (name) => 'agent_teams_control {action:"unfence", member:' + JSON.stringify(name) + "}";
   const reopenPlaneSeat = async (sessionId, name) => {
     const plane = actions();
@@ -8548,7 +8691,7 @@ function installCellworkProtocol(deps) {
           splitRevision: { oneOf: [{ type: "number" }, { type: "null" }] },
           requirementsRevision: { type: "number" },
           handoffReady: { type: "array", items: { type: "string" } },
-          fenced: { type: "array", items: { type: "object" }, description: 'Every CLOSED member with the reason and the OPEN board rows it still owns. Each row carries `giveUp:true` for a real GIVE-UP fence (an explicit `fenced:true` on either record) — the rows a `reassign` pass repairs and `cellwork_dispatch {unfence:[name]}` clears — or `giveUp:false` for a HELD seat with no fence marker — the compaction barrier\'s `mode:"checkpoint"` window, or the DEAD-RESEED shape flagged `deadReseed:true`. Every closed-seat row ALSO carries `barrierOwned` (a checkpoint spelling, not a fence marker, is what holds it), `forceEligible` (the FORCED `unfence:[{member, force:true}]` lever would be allowed RIGHT NOW — computed by the SAME predicate the verb decides with, so the two cannot disagree), `pendingMs` (how long the window has been open, when a timestamp exists), `suspect:true` for the DEAD-RESEED shape (a reseeded seat whose recorded session the registry proves dead), and `retry` when the TEAM half is a `checkpoint` no barrier is pending for — the exact Lead-only verb that reopens it (R5.4). A barrier-owned seat is not automatically safe: nothing supervises the barrier, so the render names the force lever and its bound instead of promising that no action is needed.' },
+          fenced: { type: "array", items: { type: "object" }, description: 'Every CLOSED member with the reason and the OPEN board rows it still owns. Each row carries `giveUp:true` for a real GIVE-UP fence (an explicit `fenced:true` on either record) — the rows a `reassign` pass repairs and `cellwork_dispatch {unfence:[name]}` clears — or `giveUp:false` for a HELD seat with no fence marker — the compaction barrier\'s `mode:"checkpoint"` window, or the DEAD-RESEED shape flagged `deadReseed:true`. Every closed-seat row ALSO carries `barrierOwned` (a checkpoint spelling, not a fence marker, is what holds it), `forceEligible` (the FORCED `unfence:[{member, force:true}]` lever would be allowed RIGHT NOW — computed by the SAME predicate the verb decides with, so the two cannot disagree), `pendingMs` (how long the window has been open, when a timestamp exists), `suspect:true` for the DEAD-RESEED shape (a reseeded seat whose recorded session the registry proves dead), and `retry` when the TEAM half is a `checkpoint` no barrier is pending for — the exact Lead-only verb that reopens it (R5.4). A barrier-owned seat is not automatically safe: nothing supervises the barrier, so the render names the force lever and its bound instead of promising that no action is needed. An `unknown` liveness never drops a seat from this list: a `subcaptain` that left the barrier\'s window with an unprovable session is listed `unverified:true` with `forceEligible:false` and its `forceRefusal`, reported as unverified rather than as health.' },
           unreadMail: { type: "number" },
           wakeFailures: { type: "array", items: { type: "object" } }
         },
@@ -8574,6 +8717,9 @@ function installCellworkProtocol(deps) {
             const name = String(row.name);
             const reason = String(row.reason);
             const owned = Array.isArray(row.tasks) ? row.tasks.map((id) => String(id)) : [];
+            if (row.unverified === true) {
+              return name + " (UNVERIFIED: " + reason + ") " + (owned.length > 0 ? "owns " + owned.join(", ") + " — " : "") + "no lever is licensed: the seat is reported so an operator can retire it deliberately (cellwork_dispatch {reassign:[{task_id, owner}]} moves its rows, and a forced clear stays refused while no liveness can be proven)";
+            }
             if (row.giveUp !== true) {
               const deadReseed = row.deadReseed === true;
               const blocked = row.liveness === "live" ? "the recorded session is still a LIVE agent" : row.pendingMs === undefined ? "no checkpoint timestamp is recorded, and a missing timestamp is never a licence" : "the written bound is not reached yet (`barrierFailures` below the retry budget and the window younger than the pending bound)";
@@ -8616,9 +8762,12 @@ function installCellworkProtocol(deps) {
           windowTokens: pressure.windowTokens,
           provenance: pressure.provenance,
           liveness: reading.liveness,
+          closed: reading.closed,
           ...reading.pendingMs === undefined ? {} : { pendingMs: reading.pendingMs },
           ...reading.suspect ? { suspect: true } : {},
-          ...reading.pendingMs === undefined && !reading.closed ? {} : { forceEligible: reading.forceEligible }
+          ...reading.deadReseed ? { deadReseed: true } : {},
+          forceEligible: reading.forceEligible,
+          ...reading.refusal === undefined ? {} : { forceRefusal: reading.refusal }
         };
       });
       const messages = foldCellMail(readCellMail(caller.workspace, cell.cellId));
@@ -8627,14 +8776,16 @@ function installCellworkProtocol(deps) {
         const giveUp = member.fenced === true || seat.fenced === true;
         const reason = member.fenced === true ? fenceReasonOf(member) : seat.fenceReason ?? fenceReasonOf(member);
         const reading = forceReadingOf(boardCell, caller.workspace, member, now);
-        if (!reading.closed && !giveUp || reason === undefined)
+        const unverified = reading.unverified;
+        if (!reading.closed && !giveUp && !unverified || reason === undefined && !unverified)
           return [];
         const planeOnly = seat.checkpoint === true && seat.fenced !== true && member.mode !== "checkpoint" && member.handoffReady !== true;
         const owned = tasks.filter((task) => {
           const status = String(task.status ?? "");
           return status !== "completed" && status !== "failed" && nameKey(String(task.owner ?? "")) === nameKey(member.name);
         }).map((task) => String(task.id ?? ""));
-        return [{ name: member.name, mode: seat.mode ?? member.mode, reason, tasks: owned, giveUp, barrierOwned: reading.barrierOwned, forceEligible: reading.forceEligible, liveness: reading.liveness, ...reading.suspect ? { suspect: true } : {}, ...reading.deadReseed ? { deadReseed: true } : {}, ...reading.pendingMs === undefined ? {} : { pendingMs: reading.pendingMs }, ...planeOnly ? { retry: planeRetryOf(member.name) } : {} }];
+        const rowReason = reason ?? "its recorded session cannot be verified (this composition exposes no agents registry, or no live anchor to prove it), so the seat is UNVERIFIED — never reported as healthy";
+        return [{ name: member.name, mode: seat.mode ?? member.mode, reason: rowReason, tasks: owned, giveUp, barrierOwned: reading.barrierOwned, forceEligible: reading.forceEligible, liveness: reading.liveness, ...reading.suspect ? { suspect: true } : {}, ...reading.deadReseed ? { deadReseed: true } : {}, ...unverified ? { unverified: true } : {}, ...reading.refusal === undefined ? {} : { forceRefusal: reading.refusal }, ...reading.pendingMs === undefined ? {} : { pendingMs: reading.pendingMs }, ...planeOnly ? { retry: planeRetryOf(member.name) } : {} }];
       });
       const seatProjection = seatProjectionOf(cell, config);
       const growthRefusal = lastSeatGrowthRefusalOf(caller.workspace, cell.cellId);
@@ -9223,6 +9374,104 @@ acknowledgement refused for ` + String(refused.length) + " row(s), which stay un
   const preStepDispose = dsh.onAgentPreStep(onPreStep);
   if (typeof preStepDispose === "function")
     disposers.push(preStepDispose);
+  const teamRecordPathOf = (workspace, teamId) => {
+    const cleaned = String(teamId).replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^[.-]+/, "").replace(/-+$/, "");
+    return join7(workspace, ".mpd", "team", "teams", (cleaned === "" ? "unnamed" : cleaned) + ".json");
+  };
+  const bindReseededSeat = (input) => {
+    if (input.workspace === "" || input.teamId === "")
+      return { ok: true, plane: "absent", tasks: 0 };
+    const path = teamRecordPathOf(input.workspace, input.teamId);
+    const read = readTeamRecordSnapshot(path);
+    if (read.kind === "absent")
+      return { ok: true, plane: "absent", tasks: 0 };
+    if (read.kind === "unreadable")
+      return { ok: false, surface: "team-record-unreadable", reason: read.detail };
+    const snapshot = read.snapshot;
+    const service = teams();
+    if (service !== undefined) {
+      let planeRecord;
+      try {
+        planeRecord = service.get?.(input.workspace, input.teamId);
+      } catch (error) {
+        return { ok: false, surface: "team-record-unreadable", reason: "the team record " + JSON.stringify(path) + " exists but the plane's read threw (" + errorText4(error) + ")" };
+      }
+      if (!isPlainRecord(planeRecord)) {
+        return { ok: false, surface: "team-record-unreadable", reason: "the team record " + JSON.stringify(path) + " exists but the plane answers " + (planeRecord === undefined ? "nothing" : "a value that is not a team record") + " for it, so this bind cannot trust the surface it would rewrite" };
+      }
+    }
+    const record = snapshot.record;
+    const members = Array.isArray(record.members) ? record.members.filter((row) => typeof row === "object" && row !== null) : undefined;
+    if (members === undefined)
+      return { ok: false, surface: "team-record", reason: "the team record for " + JSON.stringify(input.teamId) + " carries no readable member roster" };
+    const seat = members.findIndex((row) => row.name === input.memberName || row.id === input.memberName);
+    if (seat < 0)
+      return { ok: false, surface: "team-member", reason: "team " + JSON.stringify(input.teamId) + " names no member " + JSON.stringify(input.memberName) + ", so the fresh handle has no roster row to bind" };
+    const nowIso = new Date().toISOString();
+    const reboundSeat = { ...members[seat], executorRef: input.newHandle, mode: members[seat].mode === "checkpoint" || members[seat].mode === undefined ? "member" : members[seat].mode };
+    let rePointed = 0;
+    const reboundTasks = Array.isArray(record.tasks) ? record.tasks.map((task) => {
+      if (typeof task !== "object" || task === null)
+        return task;
+      const row = task;
+      if (input.previousSessionId === "" || String(row.owner ?? "") !== input.previousSessionId)
+        return task;
+      const status = String(row.status ?? "");
+      if (status === "completed" || status === "failed" || status === "cancelled")
+        return task;
+      rePointed += 1;
+      return { ...row, owner: input.newHandle, revision: (typeof row.revision === "number" ? row.revision : 0) + 1, updatedAt: nowIso };
+    }) : record.tasks;
+    const next = { ...record, members: members.map((row, index) => index === seat ? reboundSeat : row), tasks: reboundTasks };
+    const moved = concurrentWriteOf(path, snapshot);
+    if (moved !== undefined) {
+      return { ok: false, surface: "team-record-changed", reason: "the team record " + JSON.stringify(path) + " changed while this bind was building its write (" + moved + "), so the bind refuses to overwrite the other writer" };
+    }
+    try {
+      atomicWriteText(path, JSON.stringify(next, null, 2) + `
+`);
+    } catch (error) {
+      return { ok: false, surface: "team-record", reason: "writing " + path + " failed (" + errorText4(error) + ")" };
+    }
+    let after;
+    if (service !== undefined) {
+      after = recordOf2(input.workspace, input.teamId);
+    } else {
+      const again = readTeamRecordSnapshot(path);
+      after = again.kind === "ok" ? again.snapshot.record : undefined;
+    }
+    const afterSeat = seatRowOf(after, input.memberName);
+    if (afterSeat?.executorRef !== input.newHandle) {
+      return { ok: false, surface: "team-member", reason: "the record was written but the " + (service !== undefined ? "plane" : "file") + " reads " + JSON.stringify(String(afterSeat?.executorRef ?? "")) + " for " + JSON.stringify(input.memberName) + " instead of the fresh handle" };
+    }
+    return { ok: true, plane: "bound", tasks: rePointed };
+  };
+  const recordBarrierFailure = (agent, error) => {
+    const caller = callerContext(dsh, { agent }, { teams });
+    if (caller.cell === null || caller.member === "")
+      return;
+    const member = caller.cell.members[caller.member];
+    if (member === undefined)
+      return;
+    const now = new Date;
+    const detail = error instanceof Error ? error.message : String(error);
+    const failed = barrierFailedRow(member, config.compactionRetries, "the compaction barrier threw after the seat was handed over: " + detail, now);
+    let fenced = "written";
+    try {
+      writeCell(caller.workspace, { ...caller.cell, members: { ...caller.cell.members, [caller.member]: failed } });
+    } catch (writeError) {
+      fenced = "failed: " + (writeError instanceof Error ? writeError.message : String(writeError));
+    }
+    appendJournal(caller.workspace, caller.cell.cellId, {
+      event: "barrier-failed",
+      member: caller.member,
+      branch: "throw",
+      detail,
+      fenced,
+      forceEligible: fenced === "written",
+      retry: "cellwork_dispatch {unfence:[{member: " + JSON.stringify(caller.member) + ", force: true}]}"
+    }, now);
+  };
   const parentSessionOf = (agent) => {
     const handle = typeof agent === "object" && agent !== null ? agent : undefined;
     const session = typeof handle?.session === "object" && handle.session !== null ? handle.session : undefined;
@@ -9233,7 +9482,8 @@ acknowledgement refused for ` + String(refused.length) + " row(s), which stay un
     const caller = callerContext(dsh, { agent }, { teams });
     if (caller.cell === null || caller.member === "")
       return;
-    const member = caller.cell.members[caller.member];
+    const cell = caller.cell;
+    const member = cell.members[caller.member];
     if (member === undefined || !member.handoffReady)
       return;
     const key = caller.cell.cellId + "/" + caller.member;
@@ -9265,11 +9515,40 @@ acknowledgement refused for ` + String(refused.length) + " row(s), which stay un
             deps.warn("[mpd-cellwork] the promotion directive could not be injected: " + (error instanceof Error ? error.message : String(error)));
           }
         },
-        sleep: (ms) => new Promise((resolve4) => setTimeout(resolve4, ms))
+        sleep: (ms) => new Promise((resolve4) => setTimeout(resolve4, ms)),
+        bindSeat: async (input) => bindReseededSeat({
+          workspace: caller.workspace,
+          teamId: cell.teamId,
+          memberName: caller.member,
+          previousSessionId: input.previousSessionId,
+          newHandle: input.handle
+        }),
+        deliverDirective: async (authority, handle, text2) => {
+          const send = sendThroughExecutor(dsh.teamExecutor(), authority);
+          if (send === undefined)
+            throw new Error("this composition exposes no team executor, so the fresh child could not be messaged by handle");
+          await send(handle, text2);
+        }
       });
       const now = new Date;
       const fresh = readCell(caller.workspace, caller.cell.cellId);
       if (!fresh.ok) {
+        const failed = barrierFailedRow(member, config.compactionRetries, "the compaction barrier could not re-read " + fresh.path + " (" + fresh.detail + "), so no barrier outcome was written", now);
+        let fenced = "written";
+        try {
+          writeCell(caller.workspace, { ...caller.cell, members: { ...caller.cell.members, [caller.member]: failed } });
+        } catch (error) {
+          fenced = "failed: " + (error instanceof Error ? error.message : String(error));
+        }
+        appendJournal(caller.workspace, caller.cell.cellId, {
+          event: "barrier-record-unreadable",
+          member: caller.member,
+          path: fresh.path,
+          detail: fresh.detail,
+          fenced,
+          forceEligible: fenced === "written",
+          retry: "cellwork_dispatch {unfence:[{member: " + JSON.stringify(caller.member) + ", force: true}]}"
+        }, now);
         deps.warn("[mpd-cellwork] the compaction barrier could not re-read " + fresh.path + ": " + fresh.detail);
         return;
       }
@@ -9304,6 +9583,17 @@ acknowledgement refused for ` + String(refused.length) + " row(s), which stay un
         appendJournal(caller.workspace, caller.cell.cellId, checkpointUnrecoverableEntry(caller.member, result), now);
       if (result.outcome === "reseeded") {
         appendJournal(caller.workspace, caller.cell.cellId, {
+          event: "seat-rebound",
+          member: caller.member,
+          previousSessionId: member.sessionId,
+          newHandle: result.newHandle ?? "",
+          plane: result.bindPlane ?? "absent",
+          tasks: result.boundTasks ?? 0,
+          cellFenced: cellReopened ? false : true
+        }, now);
+      }
+      if (result.outcome === "reseeded") {
+        appendJournal(caller.workspace, caller.cell.cellId, {
           event: "member-reseeded",
           member: caller.member,
           previousSessionId: member.sessionId,
@@ -9311,7 +9601,9 @@ acknowledgement refused for ` + String(refused.length) + " row(s), which stay un
           retired: result.retired === true,
           ...result.retirement === undefined ? {} : { retirement: result.retirement },
           ...result.retirementReason === undefined ? {} : { retirementReason: result.retirementReason },
-          plane: plane.plane
+          plane: plane.plane,
+          directiveDelivered: result.directiveDelivered === true,
+          ...result.directiveError === undefined ? {} : { directiveError: result.directiveError }
         }, now);
       }
       if (result.outcome === "reseeded" && result.parentSource !== undefined) {
@@ -9335,6 +9627,7 @@ acknowledgement refused for ` + String(refused.length) + " row(s), which stay un
       if (agent === undefined || agent === null)
         return;
       return runBarrier(agent).catch((error) => {
+        recordBarrierFailure(agent, error);
         deps.warn("[mpd-cellwork] the compaction barrier failed: " + (error instanceof Error ? error.message : String(error)));
       });
     } catch (error) {
@@ -9472,7 +9765,7 @@ function apply(ctx, config = {}) {
     disposers.push(guard.dispose);
   disposers.push(dsh.registerTool({
     name: "cellwork_status",
-    description: "Report one cell: phase, objective, captain, requirements/split revisions, members and their modes, injected checkpoints, the live team's member/task counts and the on-disk paths. Defaults to the workspace's ACTIVE cell; pass `cellId` to read another. Never transitions the cell: its ONE write is ADOPTING a live team seat the record never learned, so a member added mid-run is reportable.",
+    description: "Report one cell: phase, objective, captain, requirements/split revisions, members with their modes, their seat LIVENESS (`live`/`dead`/`unknown` from the identity registry) and the shared closure reading (`closed`, `forceEligible`, `forceRefusal`, `suspect`, `deadReseed`, `unverified`), injected checkpoints, the live team's member/task counts and the on-disk paths. Defaults to the workspace's ACTIVE cell; pass `cellId` to read another. Never transitions the cell: its ONE write is ADOPTING a live team seat the record never learned, so a member added mid-run is reportable.",
     parameters: {
       type: "object",
       properties: { cellId: { type: "string", description: "The cell to report; omitted reads the workspace's active cell." } },
@@ -9559,6 +9852,7 @@ function apply(ctx, config = {}) {
       const teamRecord = board.record;
       const counts = teamCounts(teamRecord);
       const seats = seatProjectionOf(state, cfg);
+      const now = new Date;
       return {
         ok: true,
         cellId: state.cellId,
@@ -9578,7 +9872,36 @@ function apply(ctx, config = {}) {
         splitRevision: state.splitRevision,
         splitStale: state.splitStale,
         startedAt: state.startedAt,
-        members: Object.values(state.members).map((member) => ({ name: member.name, role: member.role, mode: member.mode, sessionId: member.sessionId, ...member.adopted === true ? { adopted: true } : {}, ...member.grown === true ? { grown: true } : {}, ...isPlanningSeatName(member.name) ? { planning: true } : {} })),
+        members: Object.values(state.members).map((member) => {
+          const since = checkpointSinceOf(state, member);
+          const reading = seatForceReadingOf({
+            member,
+            seat: planeSeatOf(teamRecord, member.name),
+            ...since === undefined ? {} : { checkpointSince: since },
+            liveness: seatLivenessOf(dsh, member.sessionId, state.captainSessionId),
+            now,
+            retryBound: cfg.compactionRetries,
+            staleMs: cfg.checkpointPendingMaxMs
+          });
+          return {
+            name: member.name,
+            role: member.role,
+            mode: member.mode,
+            sessionId: member.sessionId,
+            liveness: reading.liveness,
+            ...member.fenced === true ? { fenced: true, ...member.fencedReason === undefined ? {} : { fencedReason: member.fencedReason } } : {},
+            closed: reading.closed,
+            ...reading.suspect ? { suspect: true } : {},
+            ...reading.deadReseed ? { deadReseed: true } : {},
+            ...reading.unverified ? { unverified: true } : {},
+            ...reading.pendingMs === undefined ? {} : { pendingMs: reading.pendingMs },
+            forceEligible: reading.forceEligible,
+            ...reading.refusal === undefined ? {} : { forceRefusal: reading.refusal },
+            ...member.adopted === true ? { adopted: true } : {},
+            ...member.grown === true ? { grown: true } : {},
+            ...isPlanningSeatName(member.name) ? { planning: true } : {}
+          };
+        }),
         checkpoints: state.checkpoints.length,
         seat: caller.seat === undefined ? null : { name: caller.seat.name, mode: caller.seat.mode },
         teamMembers: counts.members,

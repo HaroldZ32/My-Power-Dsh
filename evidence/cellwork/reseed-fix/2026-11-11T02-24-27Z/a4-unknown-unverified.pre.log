@@ -1,0 +1,23 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+533 |   const harness = makeHarness({ member: stranded, agentsRegistry: false, team: plane })
+534 |   /** The captain's status read, on the composition whose registry is ABSENT. */
+535 |   const status = await statusHarness(stranded, { agentsRegistry: false, team: plane }).run()
+536 |   /** The status member row. */
+537 |   const statusRow = (status.members as Array<Record<string, unknown>>)[0]
+538 |   expect(statusRow.liveness).toBe("unknown")
+                                   ^
+error: expect(received).toBe(expected)
+
+Expected: "unknown"
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:538:30)
+(fail) A4: an UNKNOWN liveness is reported as unverified, never as health, and suppresses no lever field [3.98ms]
+
+ 0 pass
+ 8 filtered out
+ 1 fail
+ 1 expect() calls
+Ran 1 test across 1 file. [185.00ms]

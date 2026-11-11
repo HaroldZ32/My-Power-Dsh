@@ -1,0 +1,10 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+(pass) A3: the promotion directive is delivered to the NEW handle on the reseed path [6.67ms]
+
+ 1 pass
+ 8 filtered out
+ 0 fail
+ 5 expect() calls
+Ran 1 test across 1 file. [182.00ms]

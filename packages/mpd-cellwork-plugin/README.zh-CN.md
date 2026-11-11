@@ -304,6 +304,15 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
   （`unfence: [{member, force: true}]`）是最后手段：活跃 session 与缺失的书面边界（`barrierFailures` 达到
   `compactionRetries`，或窗口早于 `checkpointPendingMaxMs`）都会被失败即拒绝；它把座位重开是为了重新分配，
   不是为了工作。
+- **重种契约（R1–R5、F1–F3）速览。** R1：只有新 handle 已同时写进 TEAM 成员行、旧 handle 名下所有**非终态**
+  看板行和 CELL 行，才允许记 `reseeded`；否则整轮拒绝（`checkpoint-unrecoverable` + `surface`）、围栏座位并
+  释放子代理。R2：晋升指令经执行器的 `send` 投递到**新** handle。R3：status / supervise 报出每个座位的
+  `liveness`（`live`/`dead`/`unknown`），且对 `unknown` 绝不隐藏 `fenced[]`/`forceEligible`。R4：没有只 warn
+  的分支——记录重读失败与 spawn 之后抛出都各记一行并围栏，后者还会 dispose。R5：spawn 没给出 child id 时
+  dispose 它的激活；**原**会话是被中断（interrupt），不是 dispose。F1：`absent`（无记录）≠ `unreadable`
+  （存在但读不出，这是拒绝）。F2：绑定是对记录**完整字节**的 compare-and-set；compare→rename 窗口内任何变化
+  都拒绝（`team-record-changed`），字段只用于说明什么变了，跨进程残余是收窄而非消除。F3：终态行
+  （`completed`/`failed`/`cancelled`）保留原 owner——历史绝不重指。`docs/cellwork.md` 是权威。
 - **邮件与重种边界。** cell 邮件先落盘（持久），唤醒尽力而为。`cellwork_send` 在 cell 树里解析收件人 ——
   成员名、`captain`，或跨 cell 形式 `"<cellId>/<captain|member>"`，其中 `<cellId>` 必须是**本** cell 登记过的
   子 cell 或本 cell 的父 cell（`cell.subcellIds` / `cell.parentCellId`），其它一律以

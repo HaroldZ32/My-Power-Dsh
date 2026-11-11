@@ -1,0 +1,10 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+(pass) A7: a plane read that THROWS while the record exists is the unreadable case, never `absent` [6.34ms]
+
+ 1 pass
+ 14 filtered out
+ 0 fail
+ 7 expect() calls
+Ran 1 test across 1 file. [195.00ms]

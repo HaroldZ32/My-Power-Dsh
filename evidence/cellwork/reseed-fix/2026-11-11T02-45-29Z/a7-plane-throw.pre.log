@@ -1,0 +1,23 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+700 |   const harness = makeHarness({ planeThrowsAt: "read" })
+701 |   await stopListener(harness)({ agent: harness.member })
+702 |   /** The journal rows. */
+703 |   const rows = journalRows(harness)
+704 |   // THE EXISTING RECORD IS NOT RE-READ AS "NOTHING": the failure names the unreadable surface.
+705 |   expect(rows.some((row) => row.event === "compaction" && row.outcome === "reseeded")).toBe(false)
+                                                                                             ^
+error: expect(received).toBe(expected)
+
+Expected: false
+Received: true
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:705:88)
+(fail) A7: a plane read that THROWS while the record exists is the unreadable case, never `absent` [6.09ms]
+
+ 0 pass
+ 14 filtered out
+ 1 fail
+ 1 expect() calls
+Ran 1 test across 1 file. [173.00ms]

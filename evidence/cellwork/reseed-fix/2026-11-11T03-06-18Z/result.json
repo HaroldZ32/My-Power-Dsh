@@ -1,0 +1,155 @@
+{
+  "schema": "cellwork/reseed-fix/2",
+  "contract": ".mpd/plans/cellwork-reseed-fix.md",
+  "contractSha256": "707a929b28006001ea0773435bb6ee0169fd1c8b28946241d5f4c41148b032d6",
+  "followUp": "the five follow-ups N1-N5 of the blind FAIL review rec-20261111T025817-7525e7; the R1-R5 logic was NOT redone",
+  "priorEvidence": [
+    "evidence/cellwork/reseed-fix/2026-11-11T02-24-27Z/ (untouched)",
+    "evidence/cellwork/reseed-fix/2026-11-11T02-45-29Z/ (untouched)"
+  ],
+  "branch": "fix/cellwork-reseed",
+  "baseCommit": "2e8391117e6698e58281ec6a701fdbaa69010413",
+  "producedAt": "2026-11-11T03:10:00.000Z",
+  "sourceUnchanged": {
+    "claim": "F1/F2/F3 logic untouched: the three SOURCE files and dist are byte-identical to the previous round's evidence",
+    "files": {
+      "packages/mpd-cellwork-plugin/src/protocol-core.ts": "ad576927486db322d7c003c48c231022ee9aa48326729a49233031a0ef6b0955",
+      "packages/mpd-cellwork-plugin/src/protocol.ts": "0ed6eef8983cfb24fd7521a13c3f0c51c397d8e5a912be83a50da05435186019",
+      "packages/mpd-cellwork-plugin/src/index.ts": "2dee591ef86cdfe1d054fdac3ac7b828806b8f1eee3b356cc33f418217ea462e",
+      "packages/mpd-cellwork-plugin/dist/index.js": "5395da46251caec14e5153f57f4a7ff7115f569a1153678ce281424713bad78b"
+    }
+  },
+  "method": {
+    "failBefore": "for each new arm: restore the three SOURCE files from `git show HEAD:<path>` (reads only; this seat runs no git write), run `<pinned bun> test <testFile> -t <filter>`, then copy the FIXED bytes back (the copy is verified with `sha256sum -c restore.sha256.txt`, logged per arm in <arm>.restore-check.log) and re-run",
+    "passAfter": "the same command on the restored fixed sources; `whole-file.post.log` is the entire file in one run",
+    "bun": ".toolchain/node_modules/.bin/bun (pinned 1.4.0 per package.json buildToolchain) for the arm runs and the dist build; ambient bun 1.4.2 for the `bun run <gate>` gates, as the gate names them",
+    "testFile": "packages/mpd-cellwork-plugin/test/reseed-binding.test.ts",
+    "restoredSha256": [
+      "ad576927486db322d7c003c48c231022ee9aa48326729a49233031a0ef6b0955  packages/mpd-cellwork-plugin/src/protocol-core.ts",
+      "0ed6eef8983cfb24fd7521a13c3f0c51c397d8e5a912be83a50da05435186019  packages/mpd-cellwork-plugin/src/protocol.ts",
+      "2dee591ef86cdfe1d054fdac3ac7b828806b8f1eee3b356cc33f418217ea462e  packages/mpd-cellwork-plugin/src/index.ts",
+      "326e829596a8bf39de5c47e8e002726de39f7077b0bd1d0ee7639f7b1bb92e9f  packages/mpd-cellwork-plugin/test/reseed-binding.test.ts",
+      "a88365e090813e24fcb7aa92497ae1e21767402e38b5472ebd078f60ba576385  docs/cellwork.md",
+      "cfd1d8ff7ccee3569648f67a327039c96d4c5fdf8e4325da4c2825986960ac83  docs/cellwork.zh-CN.md",
+      "825119f20c3cdc1bb1becf0b1abbf9701b9a0071dd59f2ec3f37534b2f977f00  packages/mpd-cellwork-plugin/README.md",
+      "b82e078e5a1fbb86f6aa8441af80a2af19010d9ef26fbb28fd47f703eb760fe1  packages/mpd-cellwork-plugin/README.zh-CN.md",
+      "5395da46251caec14e5153f57f4a7ff7115f569a1153678ce281424713bad78b  packages/mpd-cellwork-plugin/dist/index.js"
+    ]
+  },
+  "requirementMap": {
+    "N1": {
+      "severity": "Medium",
+      "what": "the CAS is described as WHOLE-BYTE identity, not a field fingerprint; the fields only EXPLAIN the change in the reason sentence",
+      "landing": [
+        "docs/cellwork.md:644-654 — `THE BIND IS A COMPARE-AND-SET ON THE RECORD'S BYTES (F2)`",
+        "docs/cellwork.zh-CN.md:509-515 — `绑定是对记录字节的 compare-and-set（F2）`"
+      ],
+      "codeBehindIt": "protocol.ts#concurrentWriteOf: `now === snapshot.text` is the only success; every other byte difference returns a sentence (revision / updatedAt / member hash are branches of the EXPLANATION, never the predicate) — verified by reading protocol.ts:425-450"
+    },
+    "N2": {
+      "severity": "Medium",
+      "what": "the CAS residual is stated in full: a cross-PROCESS write between compare and rename is still overwritten; the mitigation NARROWS, the repair is team-core's seat-rebind verb",
+      "landing": [
+        "docs/cellwork.md:655-663 — `THE CAS NARROWS THE WINDOW, IT DOES NOT CLOSE IT (F2's residual)`",
+        "docs/cellwork.zh-CN.md:516-522 — `CAS 只是收窄窗口，不是消除（F2 的残余）`"
+      ],
+      "codeBehindIt": "state.ts:883-898 `atomicWriteText` = writeFileSync + renameSync (synchronous), so same-process interleaving is impossible; the compare and the rename stay two filesystem calls, so the cross-process residual is real"
+    },
+    "N3": {
+      "severity": "Nit",
+      "what": "new arm A9: drift OUTSIDE the member row (board / handoffs / consults) between the bind's read and its rename must be REFUSED; no `reseeded`, fenced + released, the other writer's bytes survive; contrast: no injection binds normally",
+      "landing": [
+        "packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:817-853 — A9 board-only drift",
+        "packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:855-885 — A9 handoffs/consults-only drift",
+        "packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:887-903 — A9 contrast (no injection)"
+      ],
+      "seed": "the harness's default team record: members=[Senior Engineer @ checkpoint, executorRef=session-old-member], tasks=[T1 in_progress(rev 7), T0 completed, T2 failed, T3 cancelled], top-level revision/updatedAt ABSENT (today's TeamRecord shape)",
+      "assertions": [
+        "no `compaction:reseeded` and no `seat-rebound` row",
+        "`checkpoint-unrecoverable.surface === \"team-record-changed\"`",
+        "the reason contains `its contents changed` and NOT `member roster changed` — that is the raw-byte branch, which no watched field can produce",
+        "the other writer's board row (status review, revision 99, owner OLD_HANDLE) / its handoffs+consults ledgers are still on disk",
+        "the CELL row is fenced and the one activation is disposed",
+        "contrast: no injected write -> `seat-rebound.plane === \"bound\"`, tasks=1, roster carries the fresh handle"
+      ]
+    },
+    "N4": {
+      "severity": "Nit",
+      "what": "new arm A10: `mpdTeams` NOT mounted but the team record FILE readable -> snapshot/write/verify from the FILE, `seat-rebound.plane` says `bound` (not `absent`), read back the FILE",
+      "landing": [
+        "packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:905-940 — A10 unmounted plane + readable record"
+      ],
+      "assertions": [
+        "the reseed completes: `compaction:reseeded` present, no `checkpoint-unrecoverable`",
+        "`seat-rebound.plane === \"bound\"` (NOT `absent`: `absent` belongs only to a workspace with no record)",
+        "`seat-rebound.tasks === 1` and `newHandle === handle-fresh-child`",
+        "the FILE read back from disk carries executorRef=NEW, mode=member and T1.owner=NEW",
+        "the CELL row carries the fresh handle and is not fenced"
+      ],
+      "defectCheck": "NO real defect found on this path: protocol.ts:2304 skips the plane probe when the service is undefined, protocol.ts:2367-2372 reads the FILE back when it is undefined, and the arm is green with no source change. Nothing was changed in src/."
+    },
+    "N5": {
+      "severity": "Nit",
+      "what": "README pair gains a compact R1-R5 + F1-F3 contract summary; docs/cellwork*.md stays the authority",
+      "landing": [
+        "packages/mpd-cellwork-plugin/README.md:384-394 — `The reseed contract (R1–R5, F1–F3), in brief`",
+        "packages/mpd-cellwork-plugin/README.zh-CN.md:307-316 — `重种契约（R1–R5、F1–F3）速览`"
+      ]
+    }
+  },
+  "arms": [
+    {
+      "arm": "a9-nonmember-drift",
+      "filter": "A9",
+      "preFix": {
+        "exit": 1,
+        "log": "a9-nonmember-drift.pre.log",
+        "observed": "0 pass / 3 fail: both drift arms fail at `reseeded === false` (pre-fix code reports `reseeded:true` over the drifting record — the defect shape); the contrast fails at `seat-rebound.plane === \"bound\"` because pre-fix code journals no bind row"
+      },
+      "restore": {
+        "log": "a9-nonmember-drift.restore-check.log",
+        "observed": "protocol-core.ts: OK / protocol.ts: OK / index.ts: OK / restore-exit=0"
+      },
+      "postFix": {
+        "exit": 0,
+        "log": "a9-nonmember-drift.post.log",
+        "observed": "3 pass / 0 fail / 25 expect() calls"
+      }
+    },
+    {
+      "arm": "a10-plane-unmounted",
+      "filter": "A10",
+      "preFix": {
+        "exit": 1,
+        "log": "a10-plane-unmounted.pre.log",
+        "observed": "0 pass / 1 fail at `expect(bound?.plane).toBe(\"bound\")` — Received: undefined (no bind row on pre-fix code)"
+      },
+      "restore": {
+        "log": "a10-plane-unmounted.restore-check.log",
+        "observed": "protocol-core.ts: OK / protocol.ts: OK / index.ts: OK / restore-exit=0"
+      },
+      "postFix": {
+        "exit": 0,
+        "log": "a10-plane-unmounted.post.log",
+        "observed": "1 pass / 0 fail / 10 expect() calls"
+      }
+    }
+  ],
+  "gates": [
+    { "cmd": "bun run typecheck", "exit": 0, "log": "gate-typecheck.log" },
+    { "cmd": "bun run verify:comments", "exit": 0, "log": "gate-comments.log", "observed": "633/633 TS files, 57947 declarations, VERDICT: PASS" },
+    { "cmd": "bun run verify:docs", "exit": 0, "log": "gate-docs.log", "observed": "pairs=59 failed=0 violations=0 dead=0 — PASS" },
+    { "cmd": "bun test packages/mpd-cellwork-plugin", "exit": 0, "log": "gate-tests.log", "observed": "388 pass / 0 fail / 3756 expect() calls / 34 files" },
+    { "cmd": ".toolchain/node_modules/.bin/bun build packages/mpd-cellwork-plugin/src/index.ts --target node --format esm --outfile packages/mpd-cellwork-plugin/dist/index.js", "exit": 0, "log": "gate-dist-build.log", "observed": "Bundled 31 modules; sha256 5395da46… unchanged" },
+    { "cmd": "node scripts/verify-dist-fresh.ts", "exit": 0, "log": "gate-dist-fresh.log", "observed": "bun 1.4.0 from .toolchain; 34/34 targets fresh; 1 NOT COVERED listed by design" },
+    { "cmd": ".toolchain/node_modules/.bin/bun test packages/mpd-cellwork-plugin/test/reseed-binding.test.ts", "exit": 0, "log": "whole-file.post.log", "observed": "19 pass / 0 fail / 138 expect() calls" }
+  ],
+  "bounds": [
+    "Only the cellwork package was tested (`bun test packages/mpd-cellwork-plugin`, the gate this task names); the repo-wide `bun test packages` was NOT re-run, and the QA live cases, row/preset gates, pack closure and the Docker lane were NOT run.",
+    "A10 proves the bind completes with NO plane service mounted and that the FILE on disk carries the bound seat (no plane could have answered), but it cannot black-box observe WHICH reader performed the read-back: the file branch is proven structurally from protocol.ts:2367-2372, whose source is byte-identical to the prior round.",
+    "The A9/A10 pre-fix logs prove the PRE-FIX code misbehaves (it reports `reseeded` over a drifting record and never journals a bind); they cannot prove a field-level fingerprint existed and failed, because pre-fix has no bind at all. Same fail-before method the prior round used.",
+    "The sixth finding of rec-20261111T025817-7525e7, `F1-surface-name` (a mounted plane answering a non-record is reported as `team-record-unreadable`, which blames the record rather than the plane), is NOT in the N1-N5 list and was NOT changed — it remains open.",
+    "N1/N2/N5 are documentation only; no `src/` byte changed (the three source sha256 and dist sha256 equal the prior round's). F1/F2/F3 logic was not touched.",
+    "The README section is a summary; `docs/cellwork.md` (and its zh-CN twin) remains the authority for the barrier."
+  ]
+}

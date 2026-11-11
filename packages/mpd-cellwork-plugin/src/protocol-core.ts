@@ -322,10 +322,49 @@ export interface PromotionDeps {
   nextStep: string
   /** Inject the promotion directive into the SAME agent (the inbox seam). */
   injectDirective: (text: string) => void
+  /**
+   * Bind the fresh child to its seat on EVERY surface that names the old handle (R1).
+   *
+   * Supplied by the row, which owns the workspace, the board read and the plane write. Omitted only by a
+   * composition/test that models NO team plane at all: the reseed then reports `bindPlane:"absent"`,
+   * because a surface that does not exist is not a surface that refused.
+   */
+  bindSeat?: (input: { handle: string; previousSessionId: string }) => Promise<SeatBindResult>
+  /**
+   * Deliver the promotion directive to the FRESH child's handle (R2).
+   *
+   * The child is addressable by handle only (it has no live Agent in this process yet), so this goes
+   * through the team executor's own delivery seam. Omitted when the composition exposes no executor: the
+   * reseed then records `directiveDelivered:false` with the reason instead of pretending it landed.
+   */
+  deliverDirective?: (authority: unknown, handle: string, text: string) => Promise<void>
   /** The barrier's retry wait; injected so tests do not sleep. */
   sleep: (ms: number) => Promise<void>
   /** The event's cancellation, when it carried one. */
   signal?: AbortSignal
+}
+
+/**
+ * What one seat BIND did (R1): the three surfaces either all name the fresh handle, or the reseed is
+ * refused with the surface that failed.
+ *
+ * `plane:"absent"` is a vacuous success, never a refusal: a cell whose workspace holds NO team record has
+ * no team row and no board to bind, and failing the reseed for a surface nothing created would strand a
+ * healthy child. A record that EXISTS but cannot be read is the opposite case and is a REFUSAL
+ * (`surface:"team-record-unreadable"`), never this vacuous success: an unreadable surface is not an
+ * absent one, and reporting `reseeded` over it is the defect F1 repairs.
+ */
+export interface SeatBindResult {
+  /** Whether every surface that EXISTS for this seat now names the fresh handle. */
+  ok: boolean
+  /** The surface that could not be written, when `ok` is false (`team-record`, `team-member`, …). */
+  surface?: string
+  /** The sentence behind that failure. */
+  reason?: string
+  /** How many board rows were re-pointed from the old handle. */
+  tasks?: number
+  /** Which plane answered: `bound` when a record was written, `absent` when this cell has none. */
+  plane?: "bound" | "absent"
 }
 
 /**
@@ -381,6 +420,22 @@ export interface PromotionResult {
    * could be retired or verified; absent when `retirement` is `accepted` or was never attempted.
    */
   retirementReason?: string
+  /**
+   * The surface that refused to bind the fresh child (R1), on a `refused` outcome.
+   *
+   * Present means a child WAS started and could not be given its seat: the row is journaled
+   * `checkpoint-unrecoverable` with this surface named, the seat is fenced, and the answer carries the
+   * retry. Absent on every other refusal, which never reached a spawn.
+   */
+  failedSurface?: string
+  /** Whether the promotion directive reached the FRESH child's handle on the reseed path (R2). */
+  directiveDelivered?: boolean
+  /** Why that delivery failed, when it did; the reseed still reports what it did. */
+  directiveError?: string
+  /** How many board rows were re-pointed to the fresh handle (R1). */
+  boundTasks?: number
+  /** Whether the seat was bound on a plane record or the plane was absent (R1). */
+  bindPlane?: "bound" | "absent"
 }
 
 /**
@@ -549,6 +604,296 @@ export function compactionJournalEntry(memberName: string, result: PromotionResu
 }
 
 /**
+ * The identity seam the three-state liveness rule reads — a structural slice of the adapter.
+ *
+ * Declared here rather than imported so the rule can be unit-tested against a literal and so the SAME
+ * implementation serves `cellwork_status` and `cellwork_supervise` (R3: one reading, two surfaces).
+ */
+export interface LivenessSeam {
+  /** The exact-agent lookup the adapter forwards (`agents.get`), when the composition exposes it. */
+  liveAgentExact?: (sessionId: string) => unknown
+  /** The adapter's capability snapshot, consulted only to REFUSE a `dead` answer. */
+  capabilities?: () => { agents?: boolean } | undefined
+}
+
+/** What the identity registry proves about one recorded session (R3). */
+export type SeatLiveness = "live" | "dead" | "unknown"
+
+/**
+ * The liveness of one recorded session, through the adapter's identity seam.
+ *
+ * THE CAPABILITY FLAG NEVER LICENSES `dead` (R7.3). `capabilities().agents` only says a registry SERVICE
+ * is present; it says nothing about whether a lookup can succeed. `dead` is therefore proved by an
+ * ANCHOR: the registry must first resolve an identity known to be alive — the captain's own session —
+ * and only then does an absent target count. Everything else is `unknown`, which licenses nothing and is
+ * reported as unverified rather than as health (R3).
+ *
+ * @param seam - the identity seam (an absent one answers `unknown`).
+ * @param sessionId - the session the seat records; "" names no session, so it is `unknown` up front.
+ * @param anchorSessionId - the captain's session id, the identity the registry must resolve first.
+ * @returns `live` when the registry answers for the recorded session, `dead` when the anchor resolved and
+ *   a NON-EMPTY target did not, and `unknown` when nothing can be proven.
+ */
+export function seatLivenessOf(seam: LivenessSeam, sessionId: string, anchorSessionId: string): SeatLiveness {
+  // AN EMPTY RECORDED SESSION IS UNPROVABLE, NOT DEAD (R9.1): "" names no session, so neither the anchor
+  // nor the registry's silence may turn it into a proven-dead child.
+  if (sessionId === "") return "unknown"
+  if (typeof seam.liveAgentExact !== "function") return "unknown"
+  try {
+    if (seam.liveAgentExact(sessionId) !== undefined) return "live"
+    /** The adapter's capability snapshot, when this composition offers one. */
+    const capabilities = typeof seam.capabilities === "function" ? seam.capabilities() : undefined
+    if (capabilities?.agents !== true) return "unknown"
+    // THE ANCHOR IS THE PROOF THE LOOKUP IS TRUSTWORTHY: only a registry that resolves a session known to
+    // be alive can be believed when it answers nothing for the target.
+    if (anchorSessionId === "" || seam.liveAgentExact(anchorSessionId) === undefined) return "unknown"
+    return "dead"
+  } catch {
+    return "unknown"
+  }
+}
+
+/** The seat as the PLANE's record reads it, reduced to what a closure decision needs (R5.2). */
+export interface PlaneSeatView {
+  /** The plane's mode for the seat, when it states one. */
+  mode?: string
+  /** Whether the plane reports the seat CLOSED by its `checkpoint` spelling. */
+  checkpoint?: boolean
+  /** Whether the plane's row carries its EXPLICIT give-up marker. */
+  fenced?: boolean
+  /** Why the plane closed it, in the plane's own vocabulary. */
+  fenceReason?: string
+}
+
+/**
+ * Read one seat out of a team record, structurally (the plane's record is read, never imported).
+ *
+ * @param record - the team record, or undefined when this cell has no readable board.
+ * @param name - the member's board name (or its row id).
+ * @returns the seat view; `{}` when the record names no such row (the plane cannot answer).
+ */
+export function planeSeatOf(record: unknown, name: string): PlaneSeatView {
+  if (typeof record !== "object" || record === null) return {}
+  /** The roster rows this build can read. */
+  const rows = Array.isArray((record as { members?: unknown }).members) ? ((record as { members: unknown[] }).members).filter((row) => typeof row === "object" && row !== null) as Array<Record<string, unknown>> : []
+  /** The row this name names. */
+  const row = rows.find((candidate) => candidate.name === name || candidate.id === name)
+  if (row === undefined) return {}
+  /** The plane's mode for the seat, when it states one. */
+  const mode = typeof row.mode === "string" && row.mode !== "" ? row.mode : undefined
+  /** Whether the plane's row carries its EXPLICIT give-up marker (never the `checkpoint` derivation). */
+  const fenced = row.fenced === true
+  /** Whether the plane reports the seat CLOSED, by either of its two spellings. */
+  const closed = row.mode === "checkpoint" || fenced
+  if (!closed) return mode === undefined ? {} : { mode }
+  /** Why the plane closed it, in the plane's own vocabulary. */
+  const reason = fenced
+    ? "the plane fenced this seat" + (typeof row.fencedReason === "string" && row.fencedReason !== "" ? " (" + row.fencedReason + ")" : "")
+    : "the plane recorded a checkpoint for this seat (mode `checkpoint`), so it is fenced until the barrier reopens it"
+  return { mode: "checkpoint", checkpoint: true, fenced, fenceReason: reason }
+}
+
+/**
+ * The instant one seat entered the checkpoint window, or undefined when nothing recorded it.
+ *
+ * The member row is the primary source (R4.3 writes it at the ONE ownerless close); a row written by an
+ * older build falls back to the LAST `cell.checkpoints` entry for the SAME session, which is the
+ * documented fallback and never a substitute for a missing fact.
+ *
+ * @param cell - the cell that holds both records.
+ * @param member - the member row being measured.
+ * @returns the ISO instant, or undefined when neither source names one.
+ */
+export function checkpointSinceOf(cell: CellState, member: CellMemberRecord): string | undefined {
+  if (member.checkpointSince !== undefined) return member.checkpointSince
+  for (let index = cell.checkpoints.length - 1; index >= 0; index -= 1) {
+    /** The checkpoint entry at this position. */
+    const entry = cell.checkpoints[index]
+    if (entry.sessionId !== "" && entry.sessionId === member.sessionId) return entry.at
+  }
+  return undefined
+}
+
+/**
+ * How long one seat has been in the checkpoint window, in milliseconds.
+ *
+ * @param since - the ISO instant the window opened, when one is recorded.
+ * @param now - the instant the answer is measured at.
+ * @returns the age, or undefined when no usable instant exists (an unparsable stamp is not a licence).
+ */
+export function pendingMsOf(since: string | undefined, now: Date): number | undefined {
+  if (since === undefined || since === "") return undefined
+  /** The parsed instant; an unparsable value is refused rather than read as zero. */
+  const opened = Date.parse(since)
+  return Number.isFinite(opened) ? Math.max(0, now.getTime() - opened) : undefined
+}
+
+/**
+ * Which written bound authorises a FORCED clear of one barrier-owned seat, if any (R4.4).
+ *
+ * FAIL-CLOSED: a bare `force` is never a licence on its own, and a missing timestamp with zero recorded
+ * failures reaches no bound at all.
+ *
+ * @param member - the member row the bound is measured on.
+ * @param pendingMs - the measured window age, when one exists.
+ * @param retryBound - the consecutive-run bound the seat's `barrierFailures` is measured against.
+ * @param staleMs - how old the window must be before the staleness bound is reached.
+ * @returns `retry-budget` when the budget is spent, `stale` when the window outlived the clock, and
+ *   undefined when neither bound is reached.
+ */
+export function forceBoundOf(member: CellMemberRecord, pendingMs: number | undefined, retryBound: number, staleMs: number): "retry-budget" | "stale" | undefined {
+  if ((member.barrierFailures ?? 0) >= retryBound) return "retry-budget"
+  if (pendingMs !== undefined && pendingMs >= staleMs) return "stale"
+  return undefined
+}
+
+/**
+ * The WRITTEN licence a forced clear stands on (R4.4, extended by R5.2).
+ *
+ *   `retry-budget` the barrier already spent `compactionRetries` consecutive runs on the seat;
+ *   `stale`        the checkpoint window outlived `checkpointPendingMaxMs`;
+ *   `dead-session` the DEAD-RESEED licence: the recorded session is proven dead, so neither clock bound
+ *                  can ever be reached by a seat no live agent can drive a turn in.
+ */
+export type SeatForceBound = "retry-budget" | "stale" | "dead-session"
+
+/** The ONE reading of "is this seat held, and would the FORCED lever clear it" (R5.2). */
+export interface SeatForceReading {
+  /** Whether a checkpoint SPELLING on either record is what holds the seat. */
+  barrierOwned: boolean
+  /** The R4.2 OBSERVABILITY flag: a stamped window whose recorded session the registry proves dead. */
+  suspect: boolean
+  /** Whether the seat is the DEAD-RESEED closure shape (`suspect` without any checkpoint spelling). */
+  deadReseed: boolean
+  /** Whether the seat is held at all (`barrierOwned || deadReseed`). */
+  closed: boolean
+  /**
+   * Whether NOTHING can prove this seat dead OR working (R3): a `subcaptain` that left the barrier's
+   * window whose recorded session the identity seam cannot classify. It is reported as UNVERIFIED — never
+   * as health and never silently dropped.
+   */
+  unverified: boolean
+  /** The measured age of the window, when a stamp exists. */
+  pendingMs?: number
+  /** What the identity seam says about the session the row records. */
+  liveness: SeatLiveness
+  /** The written licence a FORCED clear stands on, when one is reached. */
+  bound?: SeatForceBound
+  /** Whether `unfence:[{member, force:true}]` would clear this seat RIGHT NOW. */
+  forceEligible: boolean
+  /** Why the lever is refused, when it is (a refusal is REPORTED, never an absent field). */
+  refusal?: string
+}
+
+/**
+ * Decide whether one seat is held and whether the FORCED lever may clear it — ONE implementation for
+ * `cellwork_dispatch {unfence}`, `cellwork_supervise` and `cellwork_status` (R3/R5.2).
+ *
+ * TWO CLOSURE SHAPES, both held:
+ *
+ *   `barrierOwned` — a checkpoint SPELLING (CELL `mode:"checkpoint"` / `handoffReady:true`, or the
+ *                    plane's `mode:"checkpoint"`). The barrier owes it a reopen, and the forced lever
+ *                    stands on a WRITTEN bound: the retry budget or the staleness clock. Fail-closed:
+ *                    a fresh window and a missing timestamp reach neither.
+ *   `deadReseed`   — the DEAD-RESEED shape (R5.1/R4.2): the barrier replaced the session with a child
+ *                    the registry PROVES dead while the row is still `subcaptain` and not handoff-ready.
+ *                    No live agent is left to drive another turn, so the PROVEN-DEAD session is the
+ *                    licence (`bound:"dead-session"`) — but only when the window carries a STAMP.
+ *
+ * AN `unknown` LIVENESS NEVER HIDES A SEAT (R3): an unverified `subcaptain` row (the dead-reseed shape
+ * nobody can prove, or a healthy one nobody can verify) is reported with `closed:false`,
+ * `forceEligible:false` and the explicit `refusal:"liveness-unknown"`, so the operator sees an
+ * UNVERIFIED seat rather than health. An absent field would read as healthy, which is the incident.
+ *
+ * @param input - the member row, the plane's seat view, the recorded window stamp and the knobs.
+ * @returns the reading; every field is always present except the measured/bound ones.
+ */
+export function seatForceReadingOf(input: {
+  /** The member row the reading is about; undefined when the cell record has no such row. */
+  member: CellMemberRecord | undefined
+  /** The plane's own view of the seat. */
+  seat: PlaneSeatView
+  /** The recorded window instant, when either source carries one. */
+  checkpointSince?: string
+  /** What the identity seam proved about the recorded session. */
+  liveness: SeatLiveness
+  /** The instant the reading is measured at. */
+  now: Date
+  /** The barrier's `compactionRetries` bound. */
+  retryBound: number
+  /** The `checkpointPendingMaxMs` staleness bound. */
+  staleMs: number
+}): SeatForceReading {
+  /** The member row, for the shorthand below. */
+  const member = input.member
+  /** The barrier's WINDOW, whichever record still carries it. */
+  const barrierOwned = member?.mode === "checkpoint" || member?.handoffReady === true || input.seat.checkpoint === true
+  /** The window's age, when it can be measured; a missing or unparsable stamp measures nothing. */
+  const pendingMs = pendingMsOf(input.checkpointSince, input.now)
+  // TWO DIFFERENT FACTS, ONE CLOCK (R5.2). `suspect` is the OBSERVABILITY flag R4.2 introduced: a seat
+  // whose recorded session the registry proves dead, whatever else the row says. `deadReseed` is the
+  // CLOSURE shape: the same proven-dead session on a row that LEFT the barrier's window (a reseed), so
+  // no agent is left to drive the turn a barrier would fire on.
+  /** Whether the recorded session is proven dead while a window stamp exists (R4.2's flag). */
+  const suspect = input.checkpointSince !== undefined && input.liveness === "dead"
+  /** Whether this is the DEAD-RESEED closure shape rather than the barrier's own window. */
+  const deadReseed = !barrierOwned && input.liveness === "dead" && member !== undefined && member.mode === "subcaptain" && member.handoffReady !== true
+  /** Whether the seat is held at all. */
+  const closed = barrierOwned || deadReseed
+  /** An UNVERIFIED subcaptain-shaped seat: nothing proves it dead, and nothing proves it works (R3). */
+  const unverified = !barrierOwned && input.liveness === "unknown" && member !== undefined && member.mode === "subcaptain" && member.handoffReady !== true
+  /** The measured fields every answer shares. */
+  const measured = { barrierOwned, suspect, deadReseed, closed, unverified, liveness: input.liveness, ...(pendingMs === undefined ? {} : { pendingMs }) }
+  // AN OPEN SEAT IS `not-fenced`, NEVER A FORCE VERDICT: the forced lever is about a HELD seat, and a
+  // `force-not-eligible` answer here would claim a window the record does not have. An UNVERIFIED one
+  // says WHY it cannot be judged, instead of vanishing from the answer (R3).
+  if (!closed) return { ...measured, forceEligible: false, ...(unverified ? { refusal: "liveness-unknown" } : {}) }
+  // A LIVE SESSION VETOES EVERY FORCED CLEAR: the seat is not dead, whatever its age or failed runs say.
+  if (input.liveness === "live") return { ...measured, forceEligible: false, refusal: "live-session" }
+  /** The written licence, if any: the dead-reseed shape stands on its proven-dead session. */
+  const bound = deadReseed
+    ? (input.checkpointSince === undefined ? (member === undefined ? undefined : forceBoundOf(member, pendingMs, input.retryBound, input.staleMs)) : "dead-session" as const)
+    : (member === undefined ? undefined : forceBoundOf(member, pendingMs, input.retryBound, input.staleMs))
+  if (bound === undefined) return { ...measured, forceEligible: false, refusal: "force-not-eligible" }
+  return { ...measured, bound, forceEligible: true }
+}
+
+/**
+ * The row a barrier leaves when it can no longer trust the record (R4).
+ *
+ * A re-read that FAILS (or a throw after the seat was handed over) must not leave a seat that looks
+ * healthy: the row is FENCED with the branch's own sentence, its window clock survives (or is stamped
+ * now, so the staleness bound exists), and `barrierFailures` is raised to at least the retry bound — the
+ * written licence the forced lever reads. Without that, the seat was invisible AND unclearable.
+ *
+ * @param previous - the member row as the barrier knew it.
+ * @param retryBound - the consecutive-run bound the forced lever measures.
+ * @param reason - the branch's own sentence (what failed, and where).
+ * @param now - the instant the row is stamped with.
+ * @returns the row to persist.
+ */
+export function barrierFailedRow(previous: CellMemberRecord, retryBound: number, reason: string, now: Date): CellMemberRecord {
+  /** The failures this row records: at least the bound, so the force lever's licence is WRITTEN. */
+  const failures = Math.max((previous.barrierFailures ?? 0) + 1, retryBound)
+  return {
+    name: previous.name,
+    role: previous.role,
+    sessionId: previous.sessionId,
+    executorRef: previous.executorRef,
+    mode: "checkpoint",
+    handoffReady: true,
+    handoffs: previous.handoffs,
+    joinedAt: previous.joinedAt,
+    ...(previous.adopted === true ? { adopted: true } : {}),
+    ...(previous.grown === true ? { grown: true } : {}),
+    checkpointSince: previous.checkpointSince ?? now.toISOString(),
+    barrierFailures: failures,
+    fenced: true,
+    fencedReason: reason,
+  }
+}
+
+/**
  * The journal row a GIVEN-UP compaction barrier writes (contract C7).
  *
  * Deliberately separate from {@link compactionJournalEntry}: that row reports one barrier OUTCOME, while
@@ -574,6 +919,9 @@ export function checkpointUnrecoverableEntry(memberName: string, result: Promoti
     // the reseed failed while the original session WAS retired.
     ...(result.retirement === undefined ? {} : { retirement: result.retirement }),
     ...(result.retirementReason === undefined ? {} : { retirementReason: result.retirementReason }),
+    // THE SURFACE THAT REFUSED IS NAMED (R1), and the retry is handed over: a reseed that spawned but
+    // could not be BOUND is not a mystery the operator has to reconstruct from three records.
+    ...(result.failedSurface === undefined ? {} : { surface: result.failedSurface, retry: 'cellwork_dispatch {unfence:[{member, force:true}]} reopens the seat, then agent_teams_dispatch {reassign:[{task_id, owner}]} hands the rows over' }),
     repair: "reassign the rows this member owns: cellwork_dispatch {reassign:[{task_id, owner}]}",
   }
 }
@@ -776,9 +1124,12 @@ export async function promoteAfterHandoff(deps: PromotionDeps): Promise<Promotio
   // the original, so the fact travels with the `refused` outcome instead of being dropped with the reseed.
   /** What the host did with the original session's retirement. */
   const retirement = retireOriginal(deps, parent.parent)
+  /** The directive the replacement is given — as its first prompt AND, on the reseed path, by delivery (R2). */
+  const directive = promotionDirective(deps.cell.cellId, deps.memberName, deps.cell.depth + 1, deps.nextStep)
+  /** The activation the reseed creates, kept so a failure AFTER the spawn can release it (R4/R5). */
+  let activation: unknown
   try {
-    /** The fresh durable child's activation. */
-    const activation = await deps.dsh.startContinuableAgent({
+    activation = await deps.dsh.startContinuableAgent({
       provider: "spawn",
       label: deps.memberName + " · " + deps.cell.teamId,
       request: {
@@ -789,7 +1140,7 @@ export async function promoteAfterHandoff(deps: PromotionDeps): Promise<Promotio
         // string block ("cannot represent user/tool-result content undefined", code UNSUPPORTED_CONTENT),
         // the child dies before its first turn, and because the poisoned message is permanent history
         // every later delivery re-fails identically. Measured on the VEdit incident's four reseeds.
-        prompt: [{ type: "text", text: deps.handoffText + "\n\n" + promotionDirective(deps.cell.cellId, deps.memberName, deps.cell.depth + 1, deps.nextStep) }],
+        prompt: [{ type: "text", text: deps.handoffText + "\n\n" + directive }],
         // THE LIVE PARENT, never `deps.agent` (C2): the member's own handle is detached, and the host
         // refuses a parent it no longer holds.
         parent: parent.parent,
@@ -799,13 +1150,88 @@ export async function promoteAfterHandoff(deps: PromotionDeps): Promise<Promotio
         maxDepth: reseedMaxDepthOf(parent.parent),
       },
       signal: compactionSignal().signal,
-    }) as { childId?: unknown; id?: unknown } | undefined
-    /** The fresh handle the backend minted. */
-    const handle = typeof activation?.childId === "string" ? activation.childId : typeof activation?.id === "string" ? activation.id : ""
-    if (handle === "") return { outcome: "refused", attempts: deps.config.compactionRetries, reason: lastReason + busyNote + "; the reseed reported no child id", retirement: retirement.retirement, ...(retirement.reason === undefined ? {} : { retirementReason: retirement.reason }) }
-    return { outcome: "reseeded", attempts: deps.config.compactionRetries, reason: lastReason + busyNote, newHandle: handle, parentSessionId: parent.sessionId, parentSource: parent.source, retired: retirement.retirement === "accepted", retirement: retirement.retirement, ...(retirement.reason === undefined ? {} : { retirementReason: retirement.reason }) }
+    })
   } catch (error) {
     return { outcome: "refused", attempts: deps.config.compactionRetries, reason: lastReason + busyNote + "; the reseed failed: " + (error instanceof Error ? error.message : String(error)), retirement: retirement.retirement, ...(retirement.reason === undefined ? {} : { retirementReason: retirement.reason }) }
+  }
+  /** The activation read structurally: the backend's child id, and the release seam it may expose. */
+  const started = activation as { childId?: unknown; id?: unknown } | undefined
+  /** The fresh handle the backend minted. */
+  const handle = typeof started?.childId === "string" ? started.childId : typeof started?.id === "string" ? started.id : ""
+  try {
+    if (handle === "") {
+      // R5: THE SLOT IS RELEASED. The harness counted the child the moment the activation started, so a
+      // refusal that walked away would leak exactly one slot per attempt — the adapter's team path
+      // disposes for this reason, and the reseed path owes the same.
+      /** Whether the activation's own dispose seam ran. */
+      const released = await releaseActivation(activation)
+      return { outcome: "refused", attempts: deps.config.compactionRetries, reason: lastReason + busyNote + "; the reseed reported no child id" + (released ? " (the activation it created was RELEASED, so no child slot is held)" : " (this composition exposes no dispose seam, so the activation could not be released)"), retirement: retirement.retirement, ...(retirement.reason === undefined ? {} : { retirementReason: retirement.reason }) }
+    }
+    // R1: THE THREE SURFACES ARE BOUND BEFORE ANYTHING IS CALLED A RESEED. A child nobody can address is
+    // the incident this contract repairs: the seat keeps the dead handle, the board keeps the dead owner,
+    // and the replacement has no identity. A surface that refuses makes this a REFUSAL, not a success.
+    /** What the bind did. */
+    const bind: SeatBindResult = deps.bindSeat === undefined
+      ? { ok: true, plane: "absent", tasks: 0 }
+      : await deps.bindSeat({ handle, previousSessionId: deps.sessionId })
+    if (!bind.ok) {
+      /** Whether the now-unbindable child was released. */
+      const released = await releaseActivation(activation)
+      return {
+        outcome: "refused",
+        attempts: deps.config.compactionRetries,
+        reason: lastReason + busyNote + "; the fresh child was started but its seat could not be bound: " + (bind.surface ?? "unknown") + " could not be written (" + (bind.reason ?? "no reason was reported") + ")" + (released ? "; the fresh child's activation was RELEASED" : ""),
+        failedSurface: bind.surface ?? "unknown",
+        retirement: retirement.retirement,
+        ...(retirement.reason === undefined ? {} : { retirementReason: retirement.reason }),
+      }
+    }
+    // R2: THE REPLACEMENT IS TOLD WHAT TO DO. Its first prompt already carries the directive; the delivery
+    // makes it reachable on a seat the host may not have resumed yet, and its outcome is REPORTED.
+    /** Whether the directive reached the fresh handle. */
+    let delivered = false
+    /** Why it did not, when it did not. */
+    let directiveError: string | undefined
+    if (deps.deliverDirective === undefined) {
+      directiveError = "this composition exposes no delivery seam, so the directive went only in the child's first prompt"
+    } else {
+      try {
+        await deps.deliverDirective(parent.parent, handle, directive)
+        delivered = true
+      } catch (error) {
+        directiveError = error instanceof Error ? error.message : String(error)
+      }
+    }
+    return { outcome: "reseeded", attempts: deps.config.compactionRetries, reason: lastReason + busyNote, newHandle: handle, parentSessionId: parent.sessionId, parentSource: parent.source, retired: retirement.retirement === "accepted", retirement: retirement.retirement, ...(retirement.reason === undefined ? {} : { retirementReason: retirement.reason }), directiveDelivered: delivered, ...(directiveError === undefined ? {} : { directiveError }), boundTasks: bind.tasks ?? 0, ...(bind.plane === undefined ? {} : { bindPlane: bind.plane }) }
+  } catch (error) {
+    // R4: A THROW AFTER THE SPAWN RELEASES WHAT IT CREATED. Without this the child keeps a slot no verb
+    // can clear AND the seat is left half-bound with no journal row naming the branch.
+    /** Whether the activation was released on this throw. */
+    const released = await releaseActivation(activation)
+    return { outcome: "refused", attempts: deps.config.compactionRetries, reason: lastReason + busyNote + "; the reseed failed after the child started: " + (error instanceof Error ? error.message : String(error)) + (released ? "; its activation was RELEASED" : ""), retirement: retirement.retirement, ...(retirement.reason === undefined ? {} : { retirementReason: retirement.reason }) }
+  }
+}
+
+/**
+ * Run an activation's own dispose seam, best-effort, and report whether it ran (R5).
+ *
+ * The host counts a child the moment its activation starts, so the ONLY release this bundle has is the
+ * activation's `dispose()`. A composition that exposes no such seam answers `false` — the caller then
+ * says so instead of claiming a release that never happened.
+ *
+ * @param activation - the value the start seam resolved with.
+ * @returns true when a callable `dispose` was found and ran without throwing.
+ */
+async function releaseActivation(activation: unknown): Promise<boolean> {
+  /** The handle's own teardown member; only a callable may be invoked. */
+  const dispose = (activation as { dispose?: unknown } | undefined)?.dispose
+  if (typeof dispose !== "function") return false
+  try {
+    await (dispose as () => unknown).call(activation)
+    return true
+  } catch {
+    // A teardown that throws did not release the slot, and saying otherwise would be a false claim.
+    return false
   }
 }
 

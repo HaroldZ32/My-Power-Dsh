@@ -373,7 +373,7 @@ merely theoretical risk.
 |---|---|---|
 | (the `/cellwork` command) | you | writes the one cell record and submits the one activation directive |
 | `cellwork_start` | captain | opens the requirements phase of the active cell; validates cell and caller, stamps `startedAt`, journals it |
-| `cellwork_status` | captain, member | phase, objective, captain, requirements/split revisions, members and their modes, injected checkpoints, live team counts, the recorded split-ticket board id, the cell-record vs live-roster divergence (`missingFromCell` / `missingFromTeam` / `inSync`), the caller's own seat and the on-disk paths — its ONE write is ADOPTING a live team seat the record never learned, never a phase transition |
+| `cellwork_status` | captain, member | phase, objective, captain, requirements/split revisions, members with their modes AND their seat liveness (`liveness: live | dead | unknown` from the identity registry, the shared `closed` / `forceEligible` / `forceRefusal` closure reading, and `suspect` / `deadReseed` / `unverified`), injected checkpoints, live team counts, the recorded split-ticket board id, the cell-record vs live-roster divergence (`missingFromCell` / `missingFromTeam` / `inSync`), the caller's own seat and the on-disk paths — its ONE write is ADOPTING a live team seat the record never learned, never a phase transition |
 | `cellwork_requirements` | planner | `finalize` a requirements document, or `update` it: an update bumps the revision and marks the split stale; a section body runs to the next heading of the same or a higher level, so `###` subheadings stay inside their parent |
 | `cellwork_recon` | planner, subcaptain | READ-ONLY consult (Explorer/Researcher) raised through `mpdConsults`, so the roles row applies its read-only deny list to the child and places it one level below the caller as a LEAF (`cellwork.depthMax` counts nested CELLS and never caps the child); `{role, task}` returns one report (the legacy shape), `{role, questions}` runs 1..`cellwork.recon.maxQuestions` (default 16) CONCURRENTLY and returns only when all are settled, one row per question; every report is journaled |
 | `cellwork_delegate` | planner, subcaptain, member | start 1..`cellwork.delegate.maxTasks` (default 32) BACKGROUND consults in ONE call and return their `consultId`s immediately, before any child settles; roles are ANY roster role (writers included) and are canonicalised by the roles row; ALL-OR-NOTHING validation (an unknown role, an empty field or more tasks than that bound starts nothing); over-cap work QUEUES on the ONE shared supervisor (the per-start budget is `cellwork.consultMax`, default 32; a declared `MPD_DSH_CONSULT_MAX` wins) and the queue itself is UNBOUNDED |
@@ -381,7 +381,7 @@ merely theoretical risk.
 | `cellwork_split` | splitter | `submit` a graph so the plugin can measure it (each task may declare its board `member`), or `show` the last verdict; every refusal persists its findings at `split/<revision>.refused.json`; a NON-FATAL `warnings` list names every `work`/`repair`/`integration` task with no write scopes (`write-scopes-empty`) and every owner role whose ready-frontier width exceeds its declared `member` names (`seat-width-short`), by key, and never changes `accepted` |
 | `cellwork_activate` | captain | materialise an accepted split on the live team record, write contracts (owner role AND member), raise one member per distinct `member`, open verify loops, dispatch; a failed pass is checkpointed and the SAME revision resumes it, while a newer accepted revision supersedes an older in-flight one; the answer's `reused` list names the members resolved from the cell record or the live roster instead of raised, and a re-split that kept tasks also returns a `notice` (contracts not rewritten, scope expansion needs a manual re-freeze plus a new verify loop, ready rows dispatched owner-only); the OTHER ways a member row appears are staging and adoption (see "Members: staged, activated or adopted") |
 | `cellwork_dispatch` | captain | one owner-only dispatch pass over the team board; a busy, absent or fenced owner is reported and the row left pending; `reassign` hands named rows to another member FIRST (board claim → `task-reassigned` journal → delivery), and `unfence` clears named members' GIVEN-UP fences BEFORE the pass (both keys deleted, `mode: member`, `handoffReady: false`, `handoffs` kept, `member-unfenced` journaled; the TEAM row only through the plane's `unfence` seam, with `plane: "absent"` reported when the composition exposes none); a PENDING/barrier-owned window (CELL `mode: checkpoint` OR `handoffReady: true`, or the TEAM row at `mode: checkpoint`, with no `fenced` flag) — and the DEAD-RESEED seat (R5.2: `subcaptain`, not handoff-ready, recorded session proven dead) — answers `checkpoint-pending` and writes nothing unless the entry asks for the FAIL-CLOSED forced lever (`{member, force: true}`: refused for a live session, allowed only at the retry budget, past `checkpointPendingMaxMs`, or ON the dead-reseed shape's proven-dead session with a recorded stamp, `bound:"dead-session"`, journaled as `member-unfenced-forced`); a plane half that ends `refused` carries `retry` (the exact `agent_teams_control {action:"unfence", member}` verb) in the answer, the journal row and the render; `not-fenced` is honest, an unknown or ambiguous name refuses the call, and the two forms may travel together |
-| `cellwork_supervise` | captain | read-only sweep: pending checkpoints, compactions, promotions, stale splits, unread mail, every UNDELIVERED mail row, and every CLOSED seat with the open rows it still owns — each marked `giveUp:true` (an explicit `fenced:true` on either record, repaired with `reassign` plus `unfence`) or `giveUp:false` (a held seat: a barrier-owned window, or the DEAD-RESEED shape flagged `deadReseed:true`), which also carries `barrierOwned`, `forceEligible` and `pendingMs` and names the bounded forced lever when no supervisor can reopen it; `forceEligible` is the SAME predicate `cellwork_dispatch {unfence:…, force:true}` decides with, never a second copy; a closed seat whose TEAM half is a `checkpoint` no barrier is pending for carries `retry`, the exact Lead-only verb that reopens it; a member is `suspect:true` only when a window stamp exists, the registry is PRESENT, its CAPTAIN anchor resolves, and the recorded session does not (a present registry that cannot resolve the anchor is `unknown`, which licenses nothing); every projection is lossless JSON, with no `undefined` own key |
+| `cellwork_supervise` | captain | read-only sweep: pending checkpoints, compactions, promotions, stale splits, unread mail, every UNDELIVERED mail row, and every CLOSED seat with the open rows it still owns — each marked `giveUp:true` (an explicit `fenced:true` on either record, repaired with `reassign` plus `unfence`) or `giveUp:false` (a held seat: a barrier-owned window, or the DEAD-RESEED shape flagged `deadReseed:true`), which also carries `barrierOwned`, `forceEligible` and `pendingMs` and names the bounded forced lever when no supervisor can reopen it; `forceEligible` is the SAME predicate `cellwork_dispatch {unfence:…, force:true}` decides with, never a second copy; a closed seat whose TEAM half is a `checkpoint` no barrier is pending for carries `retry`, the exact Lead-only verb that reopens it; a member is `suspect:true` only when a window stamp exists, the registry is PRESENT, its CAPTAIN anchor resolves, and the recorded session does not (a present registry that cannot resolve the anchor is `unknown`, which licenses nothing); an `unknown` liveness NEVER suppresses the row — a `subcaptain` that left the barrier's window with an unprovable session is listed `unverified:true` with `forceEligible:false` and its `forceRefusal`, reported as unverified instead of vanishing into health; every projection is lossless JSON, with no `undefined` own key |
 | `cellwork_context` | member | the caller's own live occupancy, the window it was measured against, and that window's provenance |
 | `cellwork_handoff` | member | write and validate the checkpoint handoff document; marks the checkpoint ready; a SECOND document is refused while the first still waits for the barrier; a member known only to the LIVE team record is adopted first (see "Members: staged, activated or adopted"), so it gets the same channel |
 | `cellwork_subteam` | promoted subcaptain | register a sub-cell, enforce the depth cap, return the sub-captain directive |
@@ -609,12 +609,66 @@ and hands the work to a successor. The sequence is mechanical:
 5. **Promote or reseed**: the outcome union is exactly `promoted | reseeded | refused`. On a successful
    compaction the SAME member is promoted in place — no interrupt, no reseed — its session's mode becomes
    `subcaptain` and it receives the promotion directive (depth + 1, the remaining scope taken from the
-   handoff, the sub-team protocol). If there is no safe range, or compaction fails, the activation is
-   disposed and a fresh child is started with the handoff text as its prompt plus the same promotion
-   directive — but never from the member's own dead Agent: the reseed parent is, in order, the member's
+   handoff, the sub-team protocol). If there is no safe range, or compaction fails, the ORIGINAL
+   session is INTERRUPTED (retired through its live ancestor — the reseed path never `dispose`s it) and a
+   fresh child is started with the handoff text as its prompt plus the same promotion directive — but
+   never from the member's own dead Agent: the reseed parent is, in order, the member's
    recorded `parentSession` resolved live, then the cell's captain, and when neither is live the barrier
    REFUSES with the distinct reason `reseed-parent-unavailable`. The parent actually used is journaled
    (`parentSource` + `parentSessionId`), so lineage is observable rather than inferred.
+
+   **THE RESEED BINDS ITS SEAT OR SAYS IT DID NOT (R1).** A resolved child handle is not yet a seat. Before
+   anything is journaled as `reseeded`, THREE surfaces must name the fresh handle: the TEAM member row
+   (`executorRef` = the new handle, `mode` back to `member`, the handoff kept as history), every
+   NON-TERMINAL board row whose `owner` is the old handle, and the CELL row the barrier itself writes. A
+   TERMINAL row — `completed`, `failed` or `cancelled` — records who actually did the work, so its `owner`
+   is never rewritten. If a surface refuses — an unreadable roster, a roster that never carried the seat, a
+   record the plane does not read back — the run is a REFUSAL: it journals `checkpoint-unrecoverable`
+   with `surface` naming the failure and `retry` naming the repair, fences the CELL row, and RELEASES the
+   fresh child's activation (a child nobody can address must not hold a slot). `seat-rebound` is the row
+   that reports what landed. The TEAM row and the board owners are written through the record file and
+   VERIFIED by re-reading it through `mpdTeams`, because the plane exposes no verb that re-points them —
+   DECLARED BOUND: when `mpdTeamActions` grows a seat-rebind verb, that write becomes a delegation and the
+   path knowledge goes away.
+
+   **ABSENT IS NOT UNREADABLE (F1).** A cell whose workspace holds **no team record** (`ENOENT` on
+   `.mpd/team/teams/<id>.json`) answers `plane: "absent"`: there is no member row and no board to bind,
+   and refusing a healthy child for a plane nothing created would be the defect, not the fix. A record
+   that **exists** but cannot be read — corrupt JSON, `EACCES`, a plane read that throws, or an answer
+   that is not a record — is the opposite case and is a REFUSAL: `checkpoint-unrecoverable` carries
+   `surface: "team-record-unreadable"`, the seat is fenced, the fresh child is released, and the
+   unreadable bytes are left untouched. The distinction matters because a record read that answers
+   "nothing" cannot tell the two cases apart, and treating an unreadable surface as an absent one is
+   exactly how a reseed reported success while nothing was bound.
+
+   **THE BIND IS A COMPARE-AND-SET ON THE RECORD'S BYTES (F2).** The snapshot is taken from the same
+   record file the bind rewrites; immediately before the temp+rename that file is re-read and the two
+   copies are compared **as whole byte strings**. ANY byte change is a refusal — not merely a change to a
+   field the bind happens to watch. The fields (`revision`, `updatedAt`, the member roster's hash) are
+   only how the refusal EXPLAINS what moved in its `reason` sentence: evidence, never the predicate. If
+   another writer committed inside that window, the bind REFUSES with
+   `surface: "team-record-changed"` and the same failure shape (no `reseeded`, fenced seat, released
+   child) instead of overwriting their write. The read → compare → temp+rename sequence is ONE synchronous
+   block by contract: `atomicWriteText` is synchronous, so no write can interleave inside it **in this
+   process**, and no `await` may be introduced inside the window.
+
+   **THE CAS NARROWS THE WINDOW, IT DOES NOT CLOSE IT (F2's residual).** The compare and the rename are
+   two filesystem calls, so a write from ANOTHER PROCESS that commits between them — after the compare,
+   before the rename — is still overwritten: the window shrinks from "the whole build" to "two adjacent
+   calls", it does not disappear. The repair is team-core's seat-rebind verb: once it exists this bind
+   delegates the write, the record's owner makes the read-modify-write atomic on its side, and the
+   residual goes away. Until then it is DECLARED, not erased.
+
+   **THE REPLACEMENT IS TOLD WHAT TO DO (R2).** Its first prompt carries the handoff plus the promotion
+   directive, and the barrier ALSO delivers that directive to the NEW handle through the team executor's
+   `send`; `member-reseeded` records `directiveDelivered` (and `directiveError` when it could not land)
+   instead of leaving the seat's idleness to inference.
+
+   **NO BRANCH IS SILENT (R4).** A record re-read failure journals `barrier-record-unreadable`, a throw
+   after the seat was handed over journals `barrier-failed`, and both FENCE the seat with the forced
+   lever's written licence (a `checkpoint` window whose `barrierFailures` reaches the retry bound) so the
+   captain can see it and `cellwork_dispatch {unfence:[{member, force:true}]}` can clear it. A throw after
+   the spawn also releases the activation it created.
 
    **The barrier OWES the seat its reopen, and this is its DUTY (R4.1).** `cellwork_handoff` writes TEAM
    `mode: "checkpoint"` when the document lands, and that spelling closes the seat for the guard and for
@@ -763,7 +817,7 @@ Everything lives under the workspace, in gitignored runtime state:
 | Path | Content |
 |---|---|
 | `state.json` | the cell record: phase, captain session, depth, parent cell, team id (the EXECUTION board — the staging team is preserved as `planningTeamId` when they differ), planner/splitter handles, the staged split ticket's board id (`splitTaskId`), members and their modes (with the optional `fenced`/`fencedReason`, `adopted: true` and `grown: true` markers), split revision, checkpoints, journal cursor, and the two optional in-flight activation fields: `activationInFlight` (the accepted revision whose materialisation is running) and `activatedLoops` (split key → verify-loop id) |
-| `journal.jsonl` | append-only transitions: phase, dispatch, checkpoint, compaction, promotion, refusal, and the supersession rows (`split-superseded`, `activation-in-flight-superseded`); an activation pass writes one compact `cell-activation-progress` row per artifact and a single full `cell-activation-partial` row on failure, and the repair rows are `task-reassigned`, `dispatch-reassign`, `checkpoint-unrecoverable`, `member-adopted` and `member-unfenced` |
+| `journal.jsonl` | append-only transitions: phase, dispatch, checkpoint, compaction, promotion, refusal, and the supersession rows (`split-superseded`, `activation-in-flight-superseded`); an activation pass writes one compact `cell-activation-progress` row per artifact and a single full `cell-activation-partial` row on failure, and the repair rows are `task-reassigned`, `dispatch-reassign`, `checkpoint-unrecoverable`, `member-adopted`, `member-unfenced`, `seat-rebound` (the three-surface bind), `barrier-record-unreadable` and `barrier-failed` (the two former warn-only branches) |
 | `mail.jsonl` (legacy) | a PRE-unification per-cell mail log, still READ and merged into the cell view; new mail is NOT written here: it lives in the workspace store `<workspace>/.mpd/team/mailbox.jsonl`, stamped with this cell's `teamId` and `cellId` (plus `fromCell` on a cross-cell sender), read by `cellwork_inbox`, and followed there by a separate `wake` record stating what the wake-up attempt did; an acknowledgement of one of THESE legacy rows is appended back to this file, while a unified row is acknowledged in the store |
 | `requirements.md` | the validated requirements document, revisioned; a change bumps the revision and marks the split stale |
 | `split/<rev>.json` | the splitter's proposal plus the plugin's measured estimates and accept/refuse verdict |
@@ -929,8 +983,11 @@ whose window cannot be read can be certified deliberately, and it is recorded as
   reviewed lanes (released immediately, no verdict recorded). Cell dispatch is owner-only and never
   substitutes: outside cell mode, wait for the declared owner, or release and reassign deliberately.
   Review-by-writer is not a theoretical risk.
-- **Reseed is best-effort.** The native backend exposes no dispose for a settled activation, so the old
-  child is interrupted best-effort and the fresh handle is recorded on the cell.
+- **Reseed is best-effort.** The native backend exposes no dispose for a SETTLED activation, so the old
+  child is interrupted best-effort; the fresh child's activation is released only when it cannot be
+  handed over (no child id, a surface that refused to bind, or a throw after the spawn). What this
+  guarantees is narrower and checkable: our side never claims `reseeded` while the seat is unbound, and a
+  dead seat is visible and clearable.
 - **Checkpoints need an observed window.** No observation means no checkpoint: the ratio is never
   applied to a guessed window.
 - **Cancellation lives on the cell record, not the team plane.** The team plane exposes no cancel verb: a
