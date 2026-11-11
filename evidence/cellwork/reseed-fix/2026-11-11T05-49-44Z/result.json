@@ -1,0 +1,177 @@
+{
+  "round": "PR #109 repair round 7 — blind FAIL rec-20261111T052401-f05473 (M1 + M2 + N1-N4)",
+  "branch": "fix/cellwork-reseed",
+  "head": "2a5126cd",
+  "contract": {
+    ".mpd/plans/cellwork-reseed-fix.md": "§3 A11 (the rebind repair verb); this round tightens its ownership rule to the LATEST hand-over and surfaces the evidence source and displaced-handle liveness"
+  },
+  "landings": {
+    "M1_medium_rebind_ownership_too_wide": {
+      "code": [
+        "packages/mpd-cellwork-plugin/src/protocol.ts#handleEvidenceOf: ownership is the seat's LATEST hand-over journal row (compaction, seat-rebound, member-reseeded, reseed-parent, member-rebound, checkpoint-unrecoverable.orphanChild, member-adopted) or the current TEAM/CELL row; an OLDER row is no evidence",
+        "protocol.ts#rebindSeats: a handle named only by an older hand-over row is refused per entry `handle-superseded`, `supersededBy:{event,handle,at?}` names the later row in the answer, the journal row and the render; `handle-unevidenced` now quotes the latest hand-over row instead of claiming no history",
+        "protocol.ts#handleEvidenceOf: `namedBy` is spelled `team` / `cell` / `journal:<event>` (M1/N2)",
+        "protocol.ts#rebindSeats: every success and failure outcome carries `namedBy`, `previousSessionId`/`previousSessionIdLiveness`; a landed re-point also carries `displacedExecutorRef`/`displacedUnproven` (M1/N1)",
+        "protocol.ts#member-rebound journal row: `previousSessionIdLiveness`, `namedBy`, `liveness`, `displacedExecutorRef`/`displacedUnproven`",
+        "protocol.ts#cellwork_dispatch render: evidence source, superseded source, displaced liveness and current-handle liveness are rendered (N2)"
+      ],
+      "arms": {
+        "A24": {
+          "seed": "TEAM row executorRef=CURRENT (mode member); CELL row sessionId/executorRef=CURRENT; registry holds BOTH the stale handle (still LIVE) and CURRENT; journal appends, in order: `compaction newHandle=STALE`, then `compaction newHandle=CURRENT`",
+          "asserts": [
+            "premise asserted: the stale child is LIVE (registry.has(STALE))",
+            "outcome rebound=false, reason=`handle-superseded`",
+            "outcome.namedBy=[`journal:compaction`] (where the stale handle WAS named)",
+            "supersededBy.event=`compaction`, supersededBy.handle=CURRENT; detail names the event and CURRENT",
+            "TEAM executorRef and CELL sessionId/executorRef still name CURRENT (neither record moved)",
+            "`member-rebind-failed` row carries reason, the requested STALE handle and the same supersededBy; NO `member-rebound` row exists"
+          ]
+        },
+        "A25": {
+          "seed": "TEAM row executorRef=OLD (registry holds OLD, so the displaced child is LIVE); CELL row sessionId/executorRef=NEW; registry holds NEW; no journal hand-over rows",
+          "asserts": [
+            "premise asserted: registry.has(OLD)",
+            "outcome rebound=true, previousSessionId=OLD, previousSessionIdLiveness=`live`, displacedExecutorRef=OLD, displacedUnproven=false, namedBy=[`cell`], liveness=`live`",
+            "`member-rebound` row carries previousSessionIdLiveness=`live`, displacedExecutorRef=OLD, displacedUnproven=false, namedBy=[`cell`], handle=NEW, liveness=`live`"
+          ]
+        }
+      },
+      "fail_before": {
+        "cmd": ".toolchain/node_modules/.bin/bun test packages/mpd-cellwork-plugin/test/reseed-binding.test.ts (with the round-6 `protocol.ts` restored from the hash-verified reconstruction)",
+        "result": "33 pass / 5 fail / exit 1",
+        "A24_first_failing_assertion": "expect(outcome?.rebound).toBe(false) -> Received: true (the round-6 code accepted the stale handle through the older compaction row)",
+        "A25_first_failing_assertion": "expect(outcome?.previousSessionIdLiveness).toBe(\"live\") -> Received: undefined",
+        "log": "evidence/cellwork/reseed-fix/2026-11-11T05-49-44Z/fail-before.log"
+      }
+    },
+    "M2_medium_A21_counterexample_not_armed": {
+      "code": [
+        "protocol.ts#handleEvidenceOf keeps the member scope `row.member !== memberName` explicit, and the TEAM evidence is still the ONE resolved seat row (members[seat])"
+      ],
+      "arms": {
+        "A26a": {
+          "seed": "TEAM roster: this seat executorRef=OLD, `Deep Worker` executorRef=FOREIGN; registry holds FOREIGN LIVE; this seat's CELL row names OLD; no journal rows",
+          "asserts": [
+            "handle-unevidenced",
+            "namedBy=[]",
+            "this seat's TEAM/CELL rows unchanged",
+            "the other seat's TEAM executorRef unchanged",
+            "member-rebind-failed journals the requested FOREIGN handle",
+            "no member-rebound row"
+          ]
+        },
+        "A26b": {
+          "seed": "TEAM roster as above (the other seat does NOT name FOREIGN); journal carries `compaction member=\"Deep Worker\" newHandle=FOREIGN`; registry holds FOREIGN LIVE; this seat's records name only OLD",
+          "asserts": [
+            "handle-unevidenced",
+            "namedBy=[]",
+            "both TEAM rows and the CELL row unchanged",
+            "member-rebind-failed carries FOREIGN",
+            "no member-rebound row"
+          ]
+        },
+        "A21_control": "kept unchanged: FOREIGN is only in the registry, named by no record at all -> handle-unevidenced"
+      },
+      "mutation_witness": {
+        "A26b": {
+          "mutation": "drop `if (row.member !== memberName) continue` in handleEvidenceOf (a GLOBAL journal scan)",
+          "diff": "mutation-a26-journal.diff",
+          "red": "A26b 0 pass / 1 fail / exit 1 at expect(outcome?.rebound).toBe(false) -> Received: true",
+          "log": "mutation-A26-journal-red.log",
+          "restored_sha256": "f15ce3b452163248d7439cb2ddebc313044c4266435bdd3e9c82e17161caf9a7"
+        },
+        "A26a": {
+          "mutation": "accept any roster row's executorRef (`members.find(row => row.executorRef === handle)` passed into handleEvidenceOf) — a GLOBAL member scan",
+          "diff": "mutation-a26-team.diff",
+          "red": "A26a 0 pass / 1 fail / exit 1 at expect(outcome?.rebound).toBe(false) -> Received: true",
+          "log": "mutation-A26-team-red.log",
+          "restored_sha256": "f15ce3b452163248d7439cb2ddebc313044c4266435bdd3e9c82e17161caf9a7"
+        }
+      }
+    },
+    "N1_rebind_displaced_pair": {
+      "code": [
+        "protocol.ts#rebindSeats: previousSessionIdLiveness = handleLivenessOf(previousSessionId); displacedExecutorRef = previousSessionId when non-empty and different; displacedUnproven = its liveness is not `live`",
+        "outcome, `member-rebound` row and render all carry the pair — the same pair the reseed bind writes on `seat-rebound`/`member-reseeded`/`compaction` (R3/A22), so no exemption is claimed"
+      ],
+      "arm": "A25 asserts displacedExecutorRef=OLD and displacedUnproven=false with a LIVE displaced child; the fail-before log shows the round-6 code carried neither"
+    },
+    "N2_namedBy_consumed": {
+      "code": [
+        "handleEvidenceOf returns `namedBy`; rebindSeats puts it on every outcome and on `member-rebound`; failRebind puts it on `member-rebind-failed`; the dispatch render prints `evidence: <source>` (success) / `[named by: ...]` (failure); the tool schema documents it"
+      ],
+      "dead_field_check": "no `namedBy` declaration is left without a consumer: grep finds it in handleEvidenceOf, evidenceFieldsOf, failRebind, success outcome, member-rebound row, rejectRebind rows and the render"
+    },
+    "N3_bound_correction_and_round_diff": {
+      "correction": "the prior `wave.diff` (05-12-02Z) is `git diff HEAD` = ROUNDS 4-6 only, because HEAD `2a5126cd` already contains rounds 1-3; the prior result.json wording `all six rounds` is corrected in bounds-correction.md (no prior evidence file overwritten)",
+      "round7_src_diff": "round7-src.diff — only protocol.ts has hunks; protocol-core.ts and index.ts are byte-identical this round",
+      "round7_wave_diff": "round7-wave.diff — 7 files (protocol.ts, test, dist, docs pair, README pair)",
+      "baseline_proof": "git archive HEAD + patch -p1 of the round-6 wave.diff reproduces all eight hashes recorded in 05-12-02Z/sha256.txt, including protocol.ts cb22299f…; see bounds-correction.md"
+    },
+    "N4_argument_refusal_carries_handle": {
+      "code": [
+        "protocol.ts#rejectRebind: every argument-level `member-rebind-failed` row records the requested `handle` (JSON-safe text, bounded at 120 chars, `handleTruncated:true` when cut) and `namedBy:[]`",
+        "call sites pass shaped.handle / request.handle: invalid-argument, invalid-handle (empty and shape), unknown-member, ambiguous-member"
+      ],
+      "arm": "A20 asserts `failed.handle === \"not-a-handle\"` and that a 200-char pasted value is recorded CUT (`handleTruncated:true`, `\"x\"*117 + \"...\"`); the fail-before log shows the round-6 row had no handle field at all (undefined)"
+    }
+  },
+  "gates": {
+    "typecheck": {
+      "cmd": "bun run typecheck",
+      "exit": 0,
+      "log": "gate-typecheck.log"
+    },
+    "comments": {
+      "cmd": "bun run verify:comments",
+      "exit": 0,
+      "observed": "VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.",
+      "log": "gate-comments.log"
+    },
+    "docs": {
+      "cmd": "bun run verify:docs",
+      "exit": 0,
+      "observed": "pairs=59 failed=0 violations=0 links=626 dead=0 — PASS",
+      "log": "gate-docs.log"
+    },
+    "tests_package": {
+      "cmd": "bun test packages/mpd-cellwork-plugin",
+      "exit": 0,
+      "observed": "407 pass / 0 fail / 3975 expect() calls",
+      "log": "gate-tests-package.log"
+    },
+    "tests_all": {
+      "cmd": "bun test packages",
+      "exit": 0,
+      "observed": "4039 pass / 6 skip / 0 fail / 53550 expect() calls / 4045 tests across 261 files",
+      "log": "gate-tests-all.log",
+      "skips": "real svn CLI (svn/svnadmin absent), the official team live readout (no live team in this process), comment-checker binary absent"
+    },
+    "dist_build": {
+      "cmd": ".toolchain/node_modules/.bin/bun build packages/mpd-cellwork-plugin/src/index.ts --target node --format esm --outfile packages/mpd-cellwork-plugin/dist/index.js",
+      "toolchain": "bun 1.4.0 (pinned; PATH bun is 1.4.2)",
+      "exit": 0,
+      "log": "gate-dist-build.log"
+    },
+    "dist_fresh": {
+      "cmd": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "observed": "ok: 34/34 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED (prebuilt codegraph serve.js, by design)",
+      "log": "gate-dist-fresh.log"
+    },
+    "post_fix_arms": {
+      "cmd": ".toolchain/node_modules/.bin/bun test packages/mpd-cellwork-plugin/test/reseed-binding.test.ts -t A2",
+      "exit": 0,
+      "observed": "9 pass / 0 fail (A2, A20-A26b)",
+      "log": "post-fix-arms.log"
+    }
+  },
+  "bounds": [
+    "Recency is JOURNAL FILE ORDER (append order), not the row's `at` stamp: the journal is append-only by contract, and a foreign writer that reorders lines is out of scope.",
+    "Strictness chosen deliberately: when the LATEST hand-over row names a different handle, a requested handle evidenced only by current TEAM/CELL rows is refused `handle-superseded`. The crash window where a record row was written after the last hand-over but its own journal row never appended therefore fails CLOSED; the operator passes the handle the latest row names or repairs through the normal hand-over. Safety over availability, declared.",
+    "A26's scope dimension is proven by the two mutation witnesses, not by the pre-fix run: on the round-6 code A26a/A26b already refused the foreign handle and failed only on the absent `namedBy` field (N2). The mutations show each arm RED when the corresponding global scan is introduced.",
+    "Unit-level arms only: the fake adapter plus a REAL team-record file and REAL cell journal in a temp workspace. No live dsh boot and no real subagent session was mounted; the change is a tool-level record repair and no mount/patch row changed.",
+    "The `rebind` render was changed; no UI/snapshot test reads that text. Render coverage is the code path plus the schema description, not a golden snapshot.",
+    "No git write was performed; all seven evidence round directories exist side by side and none was overwritten."
+  ]
+}

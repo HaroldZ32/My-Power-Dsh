@@ -1,0 +1,92 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+(pass) A1a: a reseed puts the fresh handle on the TEAM member row and leaves the checkpoint window [6.67ms]
+(pass) A1b: a reseed re-points every non-terminal board row the old handle owned [2.94ms]
+(pass) A2: a reseed that cannot write the TEAM row NEVER reports `reseeded` — it names the surface, fences and hands over the retry [4.25ms]
+(pass) A3: the promotion directive is delivered to the NEW handle on the reseed path [3.73ms]
+(pass) A4: a DEAD subcaptain renders live-by-liveness and force-eligible on BOTH surfaces [3.96ms]
+(pass) A4: an UNKNOWN liveness is reported as unverified, never as health, and suppresses no lever field [0.78ms]
+(pass) A5: a record re-read failure journals the branch and NEVER writes the pre-await snapshot — the fence is reported `not-persisted` [3.17ms]
+(pass) A5: a throw AFTER the spawn is journaled, fences the seat and RELEASES the activation [4.39ms]
+(pass) A6: a spawn that answers without a child id disposes the activation [3.65ms]
+(pass) A7: a team record that EXISTS but cannot be read NEVER reports `reseeded` — it names the surface, fences and releases [3.81ms]
+(pass) A7: a plane read that THROWS while the record exists is the unreadable case, never `absent` [3.54ms]
+(pass) A7: a cell whose workspace holds NO team record answers `absent` and still reseeds (the control) [3.12ms]
+(pass) A8: a write that lands between the bind's read and its rename is REFUSED, not overwritten [3.31ms]
+(pass) A8: a record that carries a REVISION is refused when that revision moved inside the window [3.23ms]
+(pass) A8: without an external write the SAME harness binds normally (the control) [3.51ms]
+(pass) A9: a write that changes only the BOARD inside the window is REFUSED — the raw bytes are the predicate [3.28ms]
+(pass) A9: a write confined to handoffs/consults is REFUSED as well — no part of the record is exempt [3.37ms]
+(pass) A9: the SAME seed binds normally when NO external write lands (the contrast) [3.36ms]
+(pass) A10: with NO team plane but a readable record file, the bind uses the FILE, verifies from it, and says `plane:"bound"` [3.67ms]
+(pass) A11: a read-back that answers a STALE handle ROLLS BACK the TEAM row and the board owners — both surfaces stay consistent [3.64ms]
+(pass) A12: a rollback that meets a CONCURRENT WRITE refuses to overwrite it and says so [6.79ms]
+(pass) A12b: a refused rollback whose surviving document PRESERVES the fresh handle KEEPS the child and hands over the rebind [5.18ms]
+(pass) A12c: a rollback that could not be WRITTEN keeps the child too — an unproven record never proves a child unbindable [3.15ms]
+(pass) A13: a record re-read failure writes NOTHING — a concurrent writer's fields survive and the fence is `not-persisted` [3.40ms]
+(pass) A14: the status RENDER carries liveness/closed/deadReseed/unverified/forceEligible — and leaves a LIVE seat's line unchanged [1.90ms]
+(pass) A15: a board row owned by the SEAT'S NAME is re-pointed too — terminal rows keep their owner [3.15ms]
+(pass) A16: a seat the TEAM row already binds to a LIVE child is NOT reseeded again — the skip is journaled and the rebind repair reconciles the records [1.55ms]
+(pass) A17: `rebind` rewrites a TEAM row that names a DIFFERENT handle and leaves the checkpoint window [1.23ms]
+(pass) A18: `rebind` ALONE leaves fenced/fencedReason byte-for-byte — the fence belongs to `unfence` [0.63ms]
+(pass) A19: a write by ANOTHER PROCESS inside rebind's window is refused (`team-record-changed`), never overwritten [28.63ms]
+(pass) A20: the handle is TRIMMED and must be the host's UUID form — a typo refuses the whole call, journaled [1.52ms]
+(pass) A21: a handle this seat's records never name is refused per entry — the registry proves liveness, not ownership [0.66ms]
+(pass) A22: a reseed that overwrites an UNPROVEN TEAM handle journals the displaced handle (R3) [3.57ms]
+(pass) A23: a refused rollback whose surviving record is READABLE but carries no executorRef says exactly that [3.89ms]
+1753 |   // not only the success path, carries the pair.
+1754 |   expect(outcome?.previousSessionId).toBe(CURRENT)
+1755 |   expect(outcome?.previousSessionIdLiveness).toBe("live")
+1756 |   // AND IT NEVER ADVISES A DIRECTION (F1): the old sentence told the operator to `pass <latest.handle>`,
+1757 |   // which is the backwards re-point in the crash window; the safe wording states both facts only.
+1758 |   expect(String(outcome?.detail)).not.toContain("pass ")
+                                             ^
+error: expect(received).not.toContain(expected)
+
+Expected to not contain: "pass "
+Received: "handle \"1a2b3c4d-1111-4111-8111-11111111a24a\" is STALE: the later hand-over row `compaction` at 2026-11-11T00:02:00.000Z names \"2f86e074-1a13-4871-881f-7af634ff4f3c\" for this seat, so this verb refuses to re-point the seat backwards — pass \"2f86e074-1a13-4871-881f-7af634ff4f3c\" (or repair the record that row names)"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:1758:39)
+(fail) A24: a handle only an OLDER compaction row names is refused `handle-superseded` — the LATEST hand-over wins (M1) [1.19ms]
+(pass) A25: the DISPLACED handle's liveness is surfaced — a live previousSessionId says `live` in the answer AND the row (M1/N1) [0.82ms]
+(pass) A26a: a handle named by ANOTHER seat's TEAM executorRef is refused (`handle-unevidenced`); both records stay put [0.56ms]
+(pass) A26b: a handle named by ANOTHER seat's journal hand-over is refused (`handle-unevidenced`); both records stay put [0.56ms]
+1930 |   /** The captain's repair, asking for the handle the CURRENT records name. */
+1931 |   const repaired = await harness.tools.get("cellwork_dispatch")!.execute({ rebind: [{ member: MEMBER_NAME, handle: CURRENT }] }, { name: "cellwork_dispatch", agent: harness.captain }) as Record<string, unknown>
+1932 |   /** This seat's outcome. */
+1933 |   const outcome = (Array.isArray(repaired.rebound) ? repaired.rebound as Array<Record<string, unknown>> : []).find((entry) => entry.member === MEMBER_NAME)
+1934 |   // THE RECORD WINS: no supersession and no refusal.
+1935 |   expect(outcome?.rebound).toBe(true)
+                                  ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: false
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:1935:28)
+(fail) A27: a record written AFTER the last hand-over with no journal row of its own is ACCEPTED — never superseded, never advised backwards (F1) [0.69ms]
+1991 |   expect(refusal?.rebound).toBe(false)
+1992 |   expect(refusal?.reason).toBe("handle-superseded")
+1993 |   expect(refusal?.namedBy).toEqual(["journal:compaction"])
+1994 |   expect((refusal?.supersededBy as Record<string, unknown> | undefined)?.handle).toBe(CURRENT)
+1995 |   // THE SAFE WORDING: no `pass <CURRENT>` direction, only the reconcile sentence.
+1996 |   expect(String(refusal?.detail)).not.toContain("pass ")
+                                             ^
+error: expect(received).not.toContain(expected)
+
+Expected to not contain: "pass "
+Received: "handle \"6b1f7a2c-0000-4000-8000-000000000001\" is STALE: the later hand-over row `compaction` at 2026-11-11T00:03:00.000Z names \"2f86e074-1a13-4871-881f-7af634ff4f3c\" for this seat, so this verb refuses to re-point the seat backwards — pass \"2f86e074-1a13-4871-881f-7af634ff4f3c\" (or repair the record that row names)"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:1996:39)
+(fail) A27 control: with NO current handle the journal's latest hand-over still decides — an older row is never evidence (F1) [0.68ms]
+
+3 tests failed:
+(fail) A24: a handle only an OLDER compaction row names is refused `handle-superseded` — the LATEST hand-over wins (M1) [1.19ms]
+(fail) A27: a record written AFTER the last hand-over with no journal row of its own is ACCEPTED — never superseded, never advised backwards (F1) [0.69ms]
+(fail) A27 control: with NO current handle the journal's latest hand-over still decides — an older row is never evidence (F1) [0.68ms]
+
+ 37 pass
+ 3 fail
+ 364 expect() calls
+Ran 40 tests across 1 file. [350.00ms]

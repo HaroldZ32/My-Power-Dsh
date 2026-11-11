@@ -1,0 +1,5 @@
+cmd: bun run typecheck
+bun: 1.4.2
+pinned: 1.4.0
+$ tsgo --noEmit
+[typecheck exit: 0]

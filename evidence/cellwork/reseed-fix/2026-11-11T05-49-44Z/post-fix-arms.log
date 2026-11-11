@@ -1,0 +1,21 @@
+cmd: .toolchain/node_modules/.bin/bun test packages/mpd-cellwork-plugin/test/reseed-binding.test.ts -t A2
+source sha: f15ce3b452163248d7439cb2ddebc313044c4266435bdd3e9c82e17161caf9a7  packages/mpd-cellwork-plugin/src/protocol.ts
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+(pass) A2: a reseed that cannot write the TEAM row NEVER reports `reseeded` — it names the surface, fences and hands over the retry [7.22ms]
+(pass) A20: the handle is TRIMMED and must be the host's UUID form — a typo refuses the whole call, journaled [2.84ms]
+(pass) A21: a handle this seat's records never name is refused per entry — the registry proves liveness, not ownership [0.65ms]
+(pass) A22: a reseed that overwrites an UNPROVEN TEAM handle journals the displaced handle (R3) [3.73ms]
+(pass) A23: a refused rollback whose surviving record is READABLE but carries no executorRef says exactly that [3.60ms]
+(pass) A24: a handle only an OLDER compaction row names is refused `handle-superseded` — the LATEST hand-over wins (M1) [0.62ms]
+(pass) A25: the DISPLACED handle's liveness is surfaced — a live previousSessionId says `live` in the answer AND the row (M1/N1) [0.68ms]
+(pass) A26a: a handle named by ANOTHER seat's TEAM executorRef is refused (`handle-unevidenced`); both records stay put [0.51ms]
+(pass) A26b: a handle named by ANOTHER seat's journal hand-over is refused (`handle-unevidenced`); both records stay put [0.51ms]
+
+ 9 pass
+ 29 filtered out
+ 0 fail
+ 95 expect() calls
+Ran 9 tests across 1 file. [228.00ms]
+[post-fix-arms exit: 0]

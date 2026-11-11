@@ -1,0 +1,152 @@
+{
+  "schema": "cellwork/reseed-fix/4",
+  "contract": ".mpd/plans/cellwork-reseed-fix.md",
+  "contractSha256": "2d667f57089650bd3b76c787f767c64d67e64225c2f0247fb50c14d2d1262123",
+  "contractRevision": "CAPTAIN AMENDMENT 2026-11-11 (this revision): §3 A5 rewritten (the record-read-failure branch journals + reports fenced:\"not-persisted\" and NEVER writes a fence from the untrusted pre-await snapshot) and §3 A11 ADDED (a refused rollback must not release a child the surviving document names; the failure sentence must name a verb that re-points executorRef). The previous record rec-20261111T040107-f69be2 cites sha 707a929b… (pre-amendment).",
+  "round": "4th blind verdict FAIL rec-20261111T040107-f69be2 (findings F1–F4): mandatory 1 (High, the Major-7 real hole), mandatory 2 (Medium, recovery re-entry), mandatory 3 (nits: comments count, forced-lever wording, A15 negative control, fail-before byte arm)",
+  "priorEvidence": [
+    "evidence/cellwork/reseed-fix/2026-11-11T02-24-27Z/ (untouched)",
+    "evidence/cellwork/reseed-fix/2026-11-11T02-45-29Z/ (untouched)",
+    "evidence/cellwork/reseed-fix/2026-11-11T03-06-18Z/ (untouched)",
+    "evidence/cellwork/reseed-fix/2026-11-11T03-41-48Z/ (untouched)"
+  ],
+  "branch": "fix/cellwork-reseed",
+  "baseCommit": "2a5126cd3f4e2438d9de740de4309bbc9a7bf484",
+  "producedAt": "2026-11-11T04:37:33Z",
+  "requirementMap": {
+    "MUST-1 (High, contract §3 A11 / finding F2)": {
+      "what": "`promoteAfterHandoff` released the fresh child UNCONDITIONALLY when `!bind.ok`. When the rollback was REFUSED because another writer committed, the surviving document (team-core's read-modify-write shape) still carries this bind's fresh `executorRef`; releasing the child left the TEAM row naming a released seat while the CELL row named the old, fenced session, and the retry only offered `unfence` (never touches the handle) and `reassign` (board only). The seat became unaddressable.",
+      "landing": [
+        "packages/mpd-cellwork-plugin/src/protocol-core.ts#SeatBindResult.survivingExecutorRef — the surviving document's seat `executorRef`, read from the same bytes the rollback compared",
+        "packages/mpd-cellwork-plugin/src/protocol-core.ts#PromotionResult.orphanChild/reconcileRequired",
+        "packages/mpd-cellwork-plugin/src/protocol-core.ts#promoteAfterHandoff — conditional release: a `refused` rollback releases ONLY when the surviving document provably names ANOTHER handle; an unreadable survivor keeps the child. A `failed` rollback (its own write/re-read did not land) is the same unproven state and keeps it too.",
+        "packages/mpd-cellwork-plugin/src/protocol-core.ts#reconcileRepairOf — the one repair sentence both the failure reason and the journal row carry",
+        "packages/mpd-cellwork-plugin/src/protocol-core.ts#checkpointUnrecoverableEntry — journal `orphanChild`, `reconcileRequired`, and `retry`/`repair` overridden with the rebind sentence",
+        "packages/mpd-cellwork-plugin/src/protocol.ts#rollbackBind — reports `survivingExecutorRef` on a refused rollback (parses the surviving bytes; unparsable ⇒ undefined)",
+        "packages/mpd-cellwork-plugin/src/protocol.ts#rebindSeats + `cellwork_dispatch {rebind:[{member, handle}]}` — the repair verb that RE-POINTS the TEAM `executorRef` (compare-and-set + plane read-back) and mirrors the handle into the CELL row (`sessionId`, `executorRef`, `mode:\"member\"`, `handoffReady:false`), journaling `member-rebound`"
+      ],
+      "failureSentence": "; BINDING KEPT: … the child was NOT released; repair with cellwork_dispatch {rebind:[{member:\"<name>\", handle:\"<handle>\"}], unfence:[\"<name>\"]} re-points executorRef to the surviving child and mirrors the handle into the CELL row, then clears the give-up fence — `unfence` alone never touches the handle",
+      "answerSurface": "the same sentence reaches the CELL row's `fencedReason` (memberAfterBarrier copies result.reason), so `cellwork_supervise` renders it as well as the journal row",
+      "arms": [
+        "A12b (NEW): a throwing read-back + a concurrent document that PRESERVES the fresh handle ⇒ `rollback:\"refused\"`, child NOT released (`activations[0].disposed === false`), journal `orphanChild===NEW_HANDLE` + `reconcileRequired===true`, reason contains `BINDING KEPT` and the handle, retry contains `rebind:`; the other writer's document survives intact (its phase marker and the fresh executorRef are still what the file carries); then the operator drives the exact sentence (`cellwork_dispatch {rebind:[…], unfence:[…]}`) and the TEAM row + CELL row both name the surviving child, mode member, handoffReady false, fence cleared",
+        "A12c (NEW): a rollback that cannot be written (`rollback:\"failed\"`) keeps the child too, with the same reconcile marker",
+        "A12 (existing, benign old/old shape): unchanged — survives a document that names the OLD handle, so the fresh child IS released"
+      ]
+    },
+    "MUST-2 (Medium, recovery re-entry)": {
+      "what": "the unreadable-record branch writes no CELL row and leaves `handoffReady:true`. After the record is repaired, the fresh child's turn-end resolves back to the member through the TEAM row and `runBarrier` would spawn a SECOND child for one seat (the first still alive, the TEAM row overwritten ⇒ another seat with no identity).",
+      "landing": [
+        "packages/mpd-cellwork-plugin/src/protocol.ts#alreadyBoundHandleOf — the recovery reading: the TEAM row's `executorRef` when it differs from the CELL row's recorded session AND the identity registry proves it live",
+        "packages/mpd-cellwork-plugin/src/protocol.ts#runBarrier — the guard runs BEFORE any compaction attempt/spawn: nothing is spawned, nothing is rewritten; journal `barrier-skipped` with `branch:\"reseed-already-bound\"`, `handle`, `recordedSessionId`, `reconcileRequired:true`, reason and a `rebind` retry",
+        "narrow consent: an EMPTY recorded session, an EQUAL handle, a DEAD handle, an absent registry/seam, or a throwing lookup never trigger the skip (documented in the code)"
+      ],
+      "arms": [
+        "A16 (NEW): TEAM row already names a LIVE fresh handle while the CELL row names the old session and stays handoffReady ⇒ `activations` length 0, no `compaction` row, `barrier-skipped` row with the handle + recorded session + `rebind` retry, both records left exactly as they were; then the `rebind` verb mirrors the handle into the CELL row (sessionId/executorRef = fresh handle, mode member, handoffReady false)"
+      ]
+    },
+    "MUST-3 (nits)": {
+      "commentsCount": "the previous result.json said 58008 while its log said 58009. THIS round's result quotes the observed log verbatim: `inspected 58085 declaration(s)` — evidence/cellwork/reseed-fix/2026-11-11T04-28-18Z/gate-comments.log",
+      "forcedLeverWording": "the `barrier-record-unreadable` journal row now says `no forced clear is available yet: this run persisted no fence AND the seat carries no written bound … ONCE a written bound exists (barrierFailures at compactionRetries, or a checkpointSince older than checkpointPendingMaxMs), cellwork_dispatch {unfence:[{member, force:true}]} is the lever`, consistent with `forceEligible:false`; A5/A13 assert the conditional wording",
+      "A15NegativeControl": "A15 now also seeds a row held by ANOTHER seat by display name (`Junior Engineer`) and by session handle (`session-other-seat`): both owners and both revisions stay untouched; the seat's own two rows still move and `seat-rebound.tasks` stays 2",
+      "failBeforeByteArm": "A5-first and A13 now assert BYTE IDENTITY as their FIRST assertion (before the journal flags), so the byte/concurrency property is what stops the pre-fix run. See failBefore below: the previous delivered code already writes nothing (Major-8 landed last round), so a literal byte-red against it is impossible; the assertion's falsifiability is proven by restoring the exact pre-Major-8 write in a fault-injection copy."
+    }
+  },
+  "gates": {
+    "typecheck": {
+      "cmd": "bun run typecheck",
+      "exit": 0,
+      "log": "gate-typecheck.log"
+    },
+    "comments": {
+      "cmd": "bun run verify:comments",
+      "exit": 0,
+      "observed": "scanned 633 TypeScript file(s) of 633 in the source set; inspected 58085 declaration(s); skipped 28681 inline callback(s) as out of family — VERDICT: PASS",
+      "log": "gate-comments.log"
+    },
+    "docs": {
+      "cmd": "bun run verify:docs",
+      "exit": 0,
+      "observed": "pairs=59 failed=0 violations=0 exempt=24 derived=3 links=626 dead=0 — PASS",
+      "log": "gate-docs.log"
+    },
+    "testsCellwork": {
+      "cmd": "bun test packages/mpd-cellwork-plugin",
+      "exit": 0,
+      "observed": "396 pass / 0 fail / 34 files",
+      "log": "gate-tests.log"
+    },
+    "testsAllPackages": {
+      "cmd": "bun test packages",
+      "exit": 0,
+      "observed": "4028 pass / 6 skip / 0 fail / 4034 tests across 261 files",
+      "log": "gate-tests-all.log"
+    },
+    "distBuild": {
+      "cmd": ".toolchain/node_modules/.bin/bun build packages/mpd-cellwork-plugin/src/index.ts --target node --format esm --outfile packages/mpd-cellwork-plugin/dist/index.js",
+      "exit": 0,
+      "observed": "Bundled 31 modules; index.js 0.55 MB",
+      "log": "gate-dist-build.log"
+    },
+    "distFresh": {
+      "cmd": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "observed": "ok: 34/34 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed; build toolchain bun 1.4.0 from the repository toolchain",
+      "log": "gate-dist-fresh.log"
+    },
+    "reseedArms": {
+      "cmd": "bun test packages/mpd-cellwork-plugin/test/reseed-binding.test.ts",
+      "exit": 0,
+      "observed": "27 pass / 0 fail / 235 expect() calls",
+      "log": "post.new-arms.log"
+    }
+  },
+  "failBefore": {
+    "baseline": "the PREVIOUS DELIVERED code (the tree the 4th blind verifier judged): HEAD 2a5126cd + evidence/cellwork/reseed-fix/2026-11-11T03-41-48Z/wave.diff restricted to the three src files, reconstructed under .mpd/tmp/prefix-round3. Its sha256 matches the previous round's fixed.sha256.txt EXACTLY (protocol.ts 673a4186…, protocol-core.ts 4f79c03f…, index.ts 855ac943…). The CURRENT test file is run against it.",
+    "observedRound3": {
+      "log": "fail-before.round3.log",
+      "exit": 1,
+      "failedArms": [
+        "A5 — red on the NEW conditional forced-lever wording (`Expected to contain \"ONCE a written bound exists\"`; received the unconditional verb)",
+        "A12b — red on the CORE concurrency field: `harness.activations[0].disposed` Expected false, Received true (the surviving document names the fresh child and the old code released it)",
+        "A12c — red on `orphanChild` Expected \"handle-fresh-child\", Received undefined",
+        "A13 — red on the NEW conditional forced-lever wording",
+        "A16 — red on the CORE re-entry field: `harness.activations` Expected length 0, Received length 1 (a second child was spawned)"
+      ]
+    },
+    "byteArmFalsifiability": {
+      "log": "fail-before.lostupdate.log",
+      "why": "the previous delivered code already implements Major-8 (the unreadable branch writes nothing), so its byte assertion PASSES by construction; a byte-red against that code is impossible, not missing. To prove the reordered assertion is falsifiable, `.mpd/tmp/prefix-round3-lostupdate` restores the exact PRE-Major-8 line (`writeCell(caller.workspace, caller.cell)` inside the `!fresh.ok` branch) and the same test file is run.",
+      "observed": [
+        "A5 — red on the FIRST assertion: `readFileSync(statePath(...))` expected the corrupt text `{ this is not the record`, received the pre-await snapshot (`\"version\": 1, …`)",
+        "A13 — red on the FIRST assertion: expected bytes carrying the concurrent writer's `\"version\": 999` and its `updatedAt`, received `\"version\": 1` with the snapshot's `updatedAt` — the lost update, exactly the byte/concurrency field the arm exists to guard"
+      ]
+    },
+    "postRun": "the same 27 arms pass on the delivered tree: post.new-arms.log (27 pass / 0 fail)"
+  },
+  "changedFiles": {
+    "packages/mpd-cellwork-plugin/src/protocol-core.ts": "sha256 9035edeb709cddae04e55347c2257024ddb9533b903e6c39f10a683acc26bdd3",
+    "packages/mpd-cellwork-plugin/src/protocol.ts": "sha256 ffce98026ed9335ab3906f197966a6f731bddc13d9a53ea3880e61037a83d5cf",
+    "packages/mpd-cellwork-plugin/src/index.ts": "sha256 855ac94364b766f29ce250acca0fb71f91814c0946b4885ef4807552af42ad1b (unchanged this round; carries the previous wave's status render)",
+    "packages/mpd-cellwork-plugin/dist/index.js": "sha256 646549d6f2c962ba50b0b077061140d5b8b25122ccfe8b7cf44870c6815751dd (pinned bun 1.4.0)",
+    "packages/mpd-cellwork-plugin/test/reseed-binding.test.ts": "sha256 ef6f1e97ed8a08c27faeda23ac854e3aa57679b3cdfa65f578b0e924ac3a410c — A12b, A12c, A16 added; A5/A13 reordered; A15 negative control",
+    "docs/cellwork.md + docs/cellwork.zh-CN.md": "R1/A11 + R4 wording + re-entry guard + cellwork_dispatch table row (rebind) + journal row list",
+    "packages/mpd-cellwork-plugin/README.md + README.zh-CN.md": "same facts in brief",
+    "hashes": "sha256.txt (9 files), fixed.sha256.txt (3 src), wave.diff (git diff HEAD), round4-src.diff (round3 src → now)"
+  },
+  "declaredBounds": [
+    "The `rollback:\"failed\"` shape is now KEPT by the same evidence rule, but its arm (A12c) is driven by REMOVING the record before the rollback's re-read; the OTHER failed sub-shape (atomicWriteText throwing while the record still exists) is not separately injected.",
+    "The `rebind` verb writes the TEAM record FILE (the plane exposes no seat-rebind verb); it uses the same snapshot → compare → temp+rename CAS and the same plane read-back as the bind, so the same cross-process residual between compare and rename remains DECLARED (docs §F2), not closed.",
+    "`rebind` is a parameter of `cellwork_dispatch`, which requires the team plane's `mpdTeamActions` service; in this bundle `mpdTeams` (the record) and `mpdTeamActions` are served by the SAME team-core row, so a composition that owns a team record also owns the repair verb.",
+    "A `rebind` re-points identity and mirrors the CELL row; it does NOT clear a fence (the unfence lever owns `fenced`/`fencedReason`), so the repair sentence names BOTH verbs in one call.",
+    "The re-entry guard requires the registry to PROVE liveness. On a composition whose adapter exposes no `liveAgentExact` (or whose lookup throws) the guard is inert and the old path runs; that is deliberate (an unproven seat is never a reason to skip), and A16 exercises only the proven-live path.",
+    "The guard only fires when the CELL row records a NON-EMPTY session different from the live TEAM handle; a cell row whose `sessionId` is empty keeps the pre-fix behaviour by design.",
+    "No adapter / team-core / elastic / staging / split / flow file was touched; no git write operation was run."
+  ],
+  "reproduction": [
+    "bun test packages/mpd-cellwork-plugin/test/reseed-binding.test.ts  → 27 pass",
+    "bun test packages/mpd-cellwork-plugin  → 396 pass",
+    "bun test packages  → 4028 pass / 6 skip",
+    "bun run typecheck / verify:comments / verify:docs",
+    ".toolchain/node_modules/.bin/bun build packages/mpd-cellwork-plugin/src/index.ts --target node --format esm --outfile packages/mpd-cellwork-plugin/dist/index.js && node scripts/verify-dist-fresh.ts"
+  ]
+}

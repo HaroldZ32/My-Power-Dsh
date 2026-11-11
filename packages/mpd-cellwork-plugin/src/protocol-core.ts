@@ -365,6 +365,53 @@ export interface SeatBindResult {
   tasks?: number
   /** Which plane answered: `bound` when a record was written, `absent` when this cell has none. */
   plane?: "bound" | "absent"
+  /**
+   * What the ROLLBACK did after the read-back refused a write that had already landed (CodeRabbit Major-7).
+   *
+   * `restored` the pre-bind TEAM row (handle AND mode) and board owners were put back;
+   * `refused`  another writer committed after this bind, so the rollback left that document untouched;
+   * `failed`   the rollback itself could not be written (the sentence in `rollbackReason` says why).
+   *
+   * Absent when the bind never wrote, or when its read-back confirmed the write.
+   */
+  rollback?: "restored" | "refused" | "failed"
+  /** The sentence behind a rollback that did not restore; the journal row carries it (Major-7). */
+  rollbackReason?: string
+  /**
+   * The `executorRef` the SURVIVING document carries after a rollback was refused (contract §3 A11).
+   *
+   * A refused rollback means another writer committed after this bind, and its document is now the
+   * authority. This value is that document's seat row, read from the same bytes the rollback compared —
+   * so a caller can tell whether the surviving record still names the child this run started. `undefined`
+   * means the bytes did not parse or carried no seat row: the child is then UNPROVEN, never released.
+   */
+  survivingExecutorRef?: string
+  /**
+   * Whether the surviving document PARSED as a JSON record after a refused rollback (R4).
+   *
+   * The refusal sentence must not call a record "unreadable" when it was read fine and simply carries no
+   * string `executorRef`: the first is a broken surface, the second is a readable document that does not
+   * name a child. This flag is what lets the caller tell the operator WHICH of the two happened; it is
+   * absent unless a rollback was refused.
+   */
+  survivingReadable?: boolean
+  /**
+   * The non-empty `executorRef` this bind OVERWROTE because the seat already named a DIFFERENT handle (R3).
+   *
+   * The re-entry guard is inert when the identity registry cannot prove the TEAM row's handle live, so a
+   * bind may legitimately replace a handle nobody proved dead. Without this field that displaced handle
+   * would vanish from every record. It travels into the `seat-rebound`/`member-reseeded`/`compaction`
+   * journal rows so an orphaned child stays traceable.
+   */
+  displacedExecutorRef?: string
+  /**
+   * Whether the identity registry could NOT prove the displaced handle live (R3).
+   *
+   * `true` is the `unprovenPreviousHandle` marker: the handle that was overwritten may still be a live
+   * child, which is exactly the orphan an operator has to be able to find. `false` means the registry
+   * answered for it at bind time.
+   */
+  displacedUnproven?: boolean
 }
 
 /**
@@ -436,6 +483,37 @@ export interface PromotionResult {
   boundTasks?: number
   /** Whether the seat was bound on a plane record or the plane was absent (R1). */
   bindPlane?: "bound" | "absent"
+  /**
+   * What the bind's ROLLBACK did, when its read-back refused a write that had already landed (Major-7):
+   * `restored` | `refused` | `failed`. Present only on that refusal shape, beside `failedSurface`.
+   */
+  bindRollback?: "restored" | "refused" | "failed"
+  /** Why the rollback did not restore the pre-bind record, when it did not (Major-7). */
+  bindRollbackReason?: string
+  /**
+   * The fresh child this run started and deliberately did NOT release, on a refusal whose rollback was
+   * `refused` (contract §3 A11).
+   *
+   * The rollback could not prove the child unbindable: a concurrent writer's surviving document may still
+   * name it, and releasing it would leave that document pointing at a released child — the exact stranded
+   * seat this contract repairs. The handle travels here so the answer and the journal can hand the
+   * operator a repair that RE-POINTS `executorRef` (`unfence` alone never touches the handle).
+   */
+  orphanChild?: string
+  /**
+   * Whether the refused rollback needs an explicit reconcile: the child is alive and the two records may
+   * disagree about its handle. Present only beside {@link PromotionResult.orphanChild}.
+   */
+  reconcileRequired?: boolean
+  /**
+   * The handle this reseed's bind OVERWROTE on the TEAM row, when the seat already named a different one (R3).
+   *
+   * Present only when the bind displaced a non-empty handle; the journal rows (`seat-rebound`,
+   * `member-reseeded`, `compaction`) carry it so an orphaned child is traceable from the record trail.
+   */
+  displacedExecutorRef?: string
+  /** Whether the identity registry could not prove that displaced handle live (R3, `unprovenPreviousHandle`). */
+  displacedUnproven?: boolean
 }
 
 /**
@@ -600,6 +678,9 @@ export function compactionJournalEntry(memberName: string, result: PromotionResu
     reason: result.reason,
     ...(result.newHandle === undefined ? {} : { newHandle: result.newHandle }),
     ...(result.parentSource === undefined ? {} : { parentSource: result.parentSource, parentSessionId: result.parentSessionId }),
+    // THE HANDLE THIS RESEED DISPLACED IS A FACT OF ITS OWN (R3): the re-entry guard never fired because
+    // nothing proved that handle dead, so the row names what the bind overwrote and whether it was proven.
+    ...(result.displacedExecutorRef === undefined ? {} : { displacedExecutorRef: result.displacedExecutorRef, displacedUnproven: result.displacedUnproven === true }),
   }
 }
 
@@ -894,6 +975,23 @@ export function barrierFailedRow(previous: CellMemberRecord, retryBound: number,
 }
 
 /**
+ * The repair verb a REFUSED-ROLLBACK seat hands the operator (contract §3 A11).
+ *
+ * `unfence` reopens the seat but never touches `executorRef`, so a seat whose TEAM row and CELL row
+ * disagree about the child can be reopened while still pointing at the wrong handle. `rebind` is the
+ * verb that RE-POINTS it (it writes the TEAM row and mirrors the handle into the CELL row); `unfence`
+ * clears the give-up fence. Both travel in ONE call so the operator gets one executable sentence.
+ *
+ * @param memberName - the seat's board name, spelled the way the records spell it.
+ * @param handle - the handle the surviving record names; the verb reports whether the identity registry
+ *   proves it live rather than calling it live.
+ * @returns the exact repair sentence the journal and the refusal carry.
+ */
+function reconcileRepairOf(memberName: string, handle: string): string {
+  return "cellwork_dispatch {rebind:[{member:" + JSON.stringify(memberName) + ", handle:" + JSON.stringify(handle) + "}], unfence:[" + JSON.stringify(memberName) + "]} re-points executorRef to the handle the surviving record names (its answer reports `liveness` live/unproven/unknown — the bind proves nothing by itself) and mirrors it into the CELL row, then clears the give-up fence — `unfence` alone never touches the handle"
+}
+
+/**
  * The journal row a GIVEN-UP compaction barrier writes (contract C7).
  *
  * Deliberately separate from {@link compactionJournalEntry}: that row reports one barrier OUTCOME, while
@@ -922,7 +1020,19 @@ export function checkpointUnrecoverableEntry(memberName: string, result: Promoti
     // THE SURFACE THAT REFUSED IS NAMED (R1), and the retry is handed over: a reseed that spawned but
     // could not be BOUND is not a mystery the operator has to reconstruct from three records.
     ...(result.failedSurface === undefined ? {} : { surface: result.failedSurface, retry: 'cellwork_dispatch {unfence:[{member, force:true}]} reopens the seat, then agent_teams_dispatch {reassign:[{task_id, owner}]} hands the rows over' }),
-    repair: "reassign the rows this member owns: cellwork_dispatch {reassign:[{task_id, owner}]}",
+    // A ROLLBACK IS A FACT, NOT A HOPE (CodeRabbit Major-7): a bind whose read-back refused it either put
+    // the pre-bind TEAM row/owners back, refused to overwrite another writer, or could not write the
+    // rollback at all. The row names which one — and why — so a half-bound seat is visible, not inferred.
+    ...(result.bindRollback === undefined ? {} : { rollback: result.bindRollback }),
+    ...(result.bindRollbackReason === undefined ? {} : { rollbackReason: result.bindRollbackReason }),
+    // THE CHILD THE SURVIVING DOCUMENT MAY STILL NAME IS A FACT OF ITS OWN (contract §3 A11): the refused
+    // rollback left the other writer's document in place, so the child this run started is deliberately
+    // alive and the two records may disagree about its handle. The row carries the handle AND the repair
+    // that re-points `executorRef`, overriding the generic retry above with the executable sentence.
+    ...(result.orphanChild === undefined ? {} : { retry: reconcileRepairOf(memberName, result.orphanChild), orphanChild: result.orphanChild, ...(result.reconcileRequired === true ? { reconcileRequired: true } : {}) }),
+    repair: result.orphanChild === undefined
+      ? "reassign the rows this member owns: cellwork_dispatch {reassign:[{task_id, owner}]}"
+      : reconcileRepairOf(memberName, result.orphanChild),
   }
 }
 
@@ -1175,13 +1285,47 @@ export async function promoteAfterHandoff(deps: PromotionDeps): Promise<Promotio
       ? { ok: true, plane: "absent", tasks: 0 }
       : await deps.bindSeat({ handle, previousSessionId: deps.sessionId })
     if (!bind.ok) {
-      /** Whether the now-unbindable child was released. */
-      const released = await releaseActivation(activation)
+      // THE SURVIVING DOCUMENT IS THE AUTHORITY (contract §3 A11, the Major-7 hole). A `refused` rollback
+      // means another writer committed after this bind, and its document may STILL NAME the child this run
+      // started. A `failed` rollback is the same unproven state from this side: its write or its own re-read
+      // did not land, so no reader can say the record stopped naming the child. Releasing in either shape
+      // would leave a record pointing at a released seat — the exact stranded seat this contract repairs —
+      // so the release is CONDITIONAL on evidence: only a surviving document that provably names ANOTHER
+      // handle (or a rollback that restored the pre-bind row) proves the child unbindable.
+      /** Whether the surviving record may still name this run's child, so the child must be kept alive. */
+      const keepChild = bind.rollback === "failed" || (bind.rollback === "refused" && (bind.survivingExecutorRef === undefined || bind.survivingExecutorRef === handle))
+      /** Whether the surviving record PROVES it names the child this run started. */
+      const namedBySurvivor = bind.survivingExecutorRef === handle
+      // A READABLE DOCUMENT WITHOUT A HANDLE IS NOT AN UNREADABLE ONE (R4.2): the sentence the operator acts
+      // on must say which of the two it met, because "could not be read" sends them to repair a file the
+      // reader opened fine, while "carries no executorRef" sends them to reconcile the roster row.
+      /** Whether the surviving document parsed but carried no string `executorRef` for this seat. */
+      const survivingWithoutHandle = bind.survivingReadable === true && bind.survivingExecutorRef === undefined
+      /** Whether the now-unbindable child was released; a kept child is never released. */
+      const released = keepChild ? false : await releaseActivation(activation)
       return {
         outcome: "refused",
         attempts: deps.config.compactionRetries,
-        reason: lastReason + busyNote + "; the fresh child was started but its seat could not be bound: " + (bind.surface ?? "unknown") + " could not be written (" + (bind.reason ?? "no reason was reported") + ")" + (released ? "; the fresh child's activation was RELEASED" : ""),
+        reason: lastReason + busyNote + "; the fresh child was started but its seat could not be bound: " + (bind.surface ?? "unknown") + " could not be written (" + (bind.reason ?? "no reason was reported") + ")"
+          + (keepChild
+            ? "; BINDING KEPT: " + (bind.rollback === "failed"
+              ? "the rollback itself could not be written (" + (bind.rollbackReason ?? "no reason was reported") + "), so the surviving record cannot prove the child unbindable"
+              : namedBySurvivor
+                ? "the rollback refused to overwrite a concurrent writer, and the surviving record names child " + JSON.stringify(handle)
+                : survivingWithoutHandle
+                  ? "the rollback refused to overwrite a concurrent writer, and the surviving record is READABLE but carries no string executorRef for " + JSON.stringify(deps.memberName)
+                  : "the rollback refused to overwrite a concurrent writer, and the surviving record could not be read")
+              + ", so the child was NOT released"
+              + "; repair with " + reconcileRepairOf(deps.memberName, handle)
+            : released ? "; the fresh child's activation was RELEASED" : "; the fresh child's activation could not be released (this composition exposes no dispose seam)"),
         failedSurface: bind.surface ?? "unknown",
+        // THE ROLLBACK OUTCOME TRAVELS WITH THE REFUSAL (Major-7): the journal row that `failedSurface`
+        // produces also carries whether the pre-bind TEAM row/owners were restored, refused or failed.
+        ...(bind.rollback === undefined ? {} : { bindRollback: bind.rollback }),
+        ...(bind.rollbackReason === undefined ? {} : { bindRollbackReason: bind.rollbackReason }),
+        // A KEPT CHILD IS A RECORD-BEARING FACT, NOT A FOOTNOTE (A11): the handle travels so the journal row
+        // and `cellwork_supervise` can name it, and `reconcileRequired` says the two records may disagree.
+        ...(keepChild ? { orphanChild: handle, reconcileRequired: true } : {}),
         retirement: retirement.retirement,
         ...(retirement.reason === undefined ? {} : { retirementReason: retirement.reason }),
       }
@@ -1202,7 +1346,7 @@ export async function promoteAfterHandoff(deps: PromotionDeps): Promise<Promotio
         directiveError = error instanceof Error ? error.message : String(error)
       }
     }
-    return { outcome: "reseeded", attempts: deps.config.compactionRetries, reason: lastReason + busyNote, newHandle: handle, parentSessionId: parent.sessionId, parentSource: parent.source, retired: retirement.retirement === "accepted", retirement: retirement.retirement, ...(retirement.reason === undefined ? {} : { retirementReason: retirement.reason }), directiveDelivered: delivered, ...(directiveError === undefined ? {} : { directiveError }), boundTasks: bind.tasks ?? 0, ...(bind.plane === undefined ? {} : { bindPlane: bind.plane }) }
+    return { outcome: "reseeded", attempts: deps.config.compactionRetries, reason: lastReason + busyNote, newHandle: handle, parentSessionId: parent.sessionId, parentSource: parent.source, retired: retirement.retirement === "accepted", retirement: retirement.retirement, ...(retirement.reason === undefined ? {} : { retirementReason: retirement.reason }), directiveDelivered: delivered, ...(directiveError === undefined ? {} : { directiveError }), boundTasks: bind.tasks ?? 0, ...(bind.plane === undefined ? {} : { bindPlane: bind.plane }), ...(bind.displacedExecutorRef === undefined ? {} : { displacedExecutorRef: bind.displacedExecutorRef, displacedUnproven: bind.displacedUnproven === true }) }
   } catch (error) {
     // R4: A THROW AFTER THE SPAWN RELEASES WHAT IT CREATED. Without this the child keeps a slot no verb
     // can clear AND the seat is left half-bound with no journal row naming the branch.

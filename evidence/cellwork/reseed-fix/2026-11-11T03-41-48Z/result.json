@@ -1,0 +1,137 @@
+{
+  "schema": "cellwork/reseed-fix/3",
+  "contract": ".mpd/plans/cellwork-reseed-fix.md",
+  "contractSha256": "707a929b28006001ea0773435bb6ee0169fd1c8b28946241d5f4c41148b032d6",
+  "round": "CodeRabbit round 1 on PR #109 (8 findings: 6 Minor + 2 Major); R1-R5/F1-F3 design NOT redone",
+  "priorEvidence": [
+    "evidence/cellwork/reseed-fix/2026-11-11T02-24-27Z/ (untouched)",
+    "evidence/cellwork/reseed-fix/2026-11-11T02-45-29Z/ (untouched)",
+    "evidence/cellwork/reseed-fix/2026-11-11T03-06-18Z/ (untouched)"
+  ],
+  "branch": "fix/cellwork-reseed",
+  "baseCommit": "2a5126cd3f4e2438d9de740de4309bbc9a7bf484",
+  "producedAt": "2026-11-11T03:55:00.000Z",
+  "requirementMap": {
+    "Major-7": {
+      "severity": "Major",
+      "what": "the post-write read-back in `bindReseededSeat` must ROLL BACK a write that landed when it throws or answers another handle, must not overwrite a concurrent writer's newer document, and must report a rollback that did not restore",
+      "landing": [
+        "packages/mpd-cellwork-plugin/src/protocol.ts#bindReseededSeat — `rollbackBind(surface, cause)`, `writtenText` (the exact bytes written)",
+        "packages/mpd-cellwork-plugin/src/protocol-core.ts#SeatBindResult — `rollback`/`rollbackReason`",
+        "packages/mpd-cellwork-plugin/src/protocol-core.ts#PromotionResult — `bindRollback`/`bindRollbackReason`",
+        "packages/mpd-cellwork-plugin/src/protocol-core.ts#checkpointUnrecoverableEntry — journal fields `rollback`/`rollbackReason`",
+        "packages/mpd-cellwork-plugin/src/protocol-core.ts#promoteAfterHandoff — carries the rollback on the refusal"
+      ],
+      "implementation": {
+        "restore": "the SNAPSHOT's seat row (`previousSeat`: executorRef AND mode, handoff kept) and the SNAPSHOT's board field (`previousTasks`, restored wholesale) are written back; the CELL row is the barrier's and is written later from the refusal outcome, so it keeps the old session and is fenced",
+        "no-overwrite": "the rollback re-reads the file and rewrites ONLY when its bytes are EXACTLY `writtenText`; any difference answers `rollback:\"refused\"` and the reason sentence contains the literal `rollback refused due to concurrent change` — the other writer's document is left untouched",
+        "failure-is-loud": "a rollback whose re-read or write fails answers `rollback:\"failed\"` with the sentence and `rollbackReason`; the bind's `reason` (which carries that sentence) is the `checkpoint-unrecoverable.reason` and the two rollback fields land on the same journal row",
+        "throw-and-mismatch": "the read-back is wrapped in try/catch; a throw is classified `surface:\"team-record-verify\"` (the sentence keeps `after the child started`, so the existing A5 throw arm still measures it), a non-throwing wrong handle is `surface:\"team-member\"` — BOTH go through `rollbackBind`"
+      },
+      "arms": [
+        "A5 (second arm, extended): a read-back that THROWS rolls back — journal `rollback:\"restored\"`, TEAM `executorRef` and board `T1.owner` both back to the OLD handle",
+        "A11: a STALE non-throwing read-back rolls back — seat row `executorRef`/`mode`/handoff and `T1.owner`/revision restored, cell row keeps the old session and is fenced",
+        "A12: a concurrent write at the read-back makes the rollback refuse — `rollback:\"refused\"`, the other writer's document (`phase:\"concurrent-writer\"`, old/old pair) is byte-preserved, and the captain's `cellwork_dispatch {unfence:[\"Senior Engineer\"]}` clears the fence (recoverable)"
+      ]
+    },
+    "Major-8": {
+      "severity": "Major",
+      "what": "the unreadable-record branch must never write the PRE-AWAIT `caller.cell` snapshot over the record; the refused file is preserved and the fence is reported `not persisted` with a recovery path",
+      "landing": [
+        "packages/mpd-cellwork-plugin/src/protocol.ts#runBarrier — the `if (!fresh.ok)` branch no longer calls `writeCell` at all"
+      ],
+      "implementation": {
+        "no-write": "the branch's only write is `appendJournal` (a DIFFERENT file); `writeCell(caller.workspace, {...caller.cell, ...})` is deleted, so no pre-await snapshot can land",
+        "honest-row": "journal row `barrier-record-unreadable` carries `fenced:\"not-persisted\"`, `forceEligible:false`, the branch's `detail`, an explicit `recovery` sentence (`the record was NOT rewritten … Repair <path> first; the barrier re-runs on the member's next turn-end`) and `retry` naming `cellwork_dispatch {unfence:[…, force:true]}` for a later written bound; the warn line says nothing was written",
+        "refused-file": "the record file is never touched by the branch, so its exact bytes survive"
+      },
+      "arms": [
+        "A5 (first arm, rewritten): a corrupt record fails the re-read — journal `fenced:\"not-persisted\"`, `forceEligible:false`, `recovery` present, `retry` names the verb, and the corrupt bytes are byte-identical afterwards",
+        "A13: the record is valid JSON this build REFUSES (version 999) and already carries a concurrent writer's member row — the file is byte-identical after the barrier, that row still exists, no `reseeded`, keyed on the pre-await snapshot that does NOT know the concurrent row"
+      ]
+    },
+    "Minor-5": {
+      "severity": "Minor",
+      "what": "`cellwork_status`'s TEXT render must carry `liveness`/`closed`/`deadReseed`/`unverified`/`forceEligible`, while a live/open member's line stays exactly as it was",
+      "landing": [
+        "packages/mpd-cellwork-plugin/src/index.ts#memberLineOf (new) + the `members.map(memberLineOf)` call in `render`",
+        "packages/mpd-cellwork-plugin/src/index.ts#CellworkStatusResult.members — the optional fields the render reads"
+      ],
+      "implementation": "base line `name[mode,planning,grown,adopted]` is unchanged; the tags `,<dead|unknown>`, `,closed`, `,dead-reseed`, `,unverified`, `,force-eligible` are appended ONLY for non-default values, so a live/open row gains nothing",
+      "arms": [
+        "A14: a DEAD `subcaptain` line contains `dead`, `closed`, `dead-reseed`, `force-eligible`; an UNKNOWN-liveness row contains `unknown` + `unverified` and NOT `force-eligible`; a LIVE/open row's line is exactly `  members (1): Senior Engineer[member]`"
+      ]
+    },
+    "Minor-6": {
+      "severity": "Minor",
+      "what": "`reboundTasks` must match the old session handle AND the seat's own member name (existing seat identity values), keep the empty-handle guard, and leave terminal rows alone",
+      "landing": [
+        "packages/mpd-cellwork-plugin/src/protocol.ts#bindReseededSeat — `seatOwners` (input.memberName + the seat row's own `name`/`id`) and the owner predicate"
+      ],
+      "implementation": "`if (input.previousSessionId === \"\") return task` (guard kept), then `owner !== input.previousSessionId && !seatOwners.has(owner)` skips; the terminal-status filter is untouched",
+      "arms": [
+        "A15: `T1.owner = \"Senior Engineer\"` (the member NAME) is re-pointed to the fresh handle, a handle-owned `T4` too, terminal rows keep their owner, and `seat-rebound.tasks === 2`"
+      ]
+    },
+    "Minor-1": {
+      "severity": "Minor",
+      "what": "R1 summary must acknowledge the absent-plane exception (no team record → success without a TEAM member row/board row)",
+      "landing": [
+        "packages/mpd-cellwork-plugin/README.md — `THE ABSENT-PLANE EXCEPTION` in the reseed-contract bullet",
+        "packages/mpd-cellwork-plugin/README.zh-CN.md — `无平面例外` in the same bullet"
+      ],
+      "docsSync": "docs/cellwork.md + docs/cellwork.zh-CN.md already carried `ABSENT IS NOT UNREADABLE (F1)` / `不存在不等于不可读（F1）` and were left stating it"
+    },
+    "Minor-2": {
+      "severity": "Minor",
+      "what": "the promotion directive is an ATTEMPT through the executor's `send`, not a guarantee",
+      "landing": [
+        "packages/mpd-cellwork-plugin/README.md — `R2: … is **ATTEMPTED** … (directiveDelivered:false + directiveError)`",
+        "packages/mpd-cellwork-plugin/README.zh-CN.md — `R2：… **尝试投递** …`"
+      ],
+      "docsSync": "docs/cellwork.md / docs/cellwork.zh-CN.md already recorded `directiveDelivered` + `directiveError` and were left unchanged"
+    },
+    "Minor-3": {
+      "severity": "Minor",
+      "what": "the ORIGINAL session's interrupt is an ATTEMPT (retirement may be refused or unavailable while the reseed continues)",
+      "landing": [
+        "packages/mpd-cellwork-plugin/README.md — `R5: … the ORIGINAL session's INTERRUPT is **ATTEMPTED**, not guaranteed … retirement:\"refused\"/\"unavailable\" … the reseed still proceeds`",
+        "packages/mpd-cellwork-plugin/README.zh-CN.md — `R5：… **尝试**，不是保证 …`"
+      ],
+      "docsSync": "docs/cellwork.md / docs/cellwork.zh-CN.md already enumerated `accepted`/`nothing-to-retire`/`refused`/`unavailable` and 'the reseed proceeds on every one of those answers'"
+    },
+    "Minor-4": {
+      "severity": "Minor",
+      "what": "F2 must distinguish 'detected at the compare → refused' from 'after the compare, before the rename, a cross-process write may still be overwritten' — never claim every in-window change is refused",
+      "landing": [
+        "packages/mpd-cellwork-plugin/README.md — `a change **DETECTED AT THE COMPARE** is refused … a write that commits **AFTER the compare and BEFORE the rename** can still be overwritten: that cross-process residual is narrowed, not closed`",
+        "packages/mpd-cellwork-plugin/README.zh-CN.md — `**在比较时检测到**的变化会被拒绝 … **比较之后、rename 之前**跨进程提交的写入仍可能被覆盖 …`"
+      ],
+      "docsSync": "docs/cellwork.md / docs/cellwork.zh-CN.md already had `THE CAS NARROWS THE WINDOW, IT DOES NOT CLOSE IT (F2's residual)`; they were not weakened"
+    }
+  },
+  "method": {
+    "failBefore": "the three SOURCE files were copied aside, then restored from `git show HEAD:<path>` (READ-only git use; no git write was run), `bun test packages/mpd-cellwork-plugin/test/reseed-binding.test.ts` was run against the HEAD sources with the FINAL test file (7 failures, one per A5-first/A5-second/A11/A12/A13/A14/A15), and the fixed bytes were copied back and verified with `sha256sum -c fixed.sha256.txt` (3/3 OK — the reconstructed sources are byte-identical to the ones the post-fix run and the dist build used)",
+    "bun": "ambient bun 1.4.2 for `bun run <gate>` and `bun test`; pinned `.toolchain/node_modules/.bin/bun` 1.4.0 for the dist build",
+    "testFile": "packages/mpd-cellwork-plugin/test/reseed-binding.test.ts",
+    "preFixResults": "fail-before.new-arms.log: 17 pass / 7 fail",
+    "postFixResults": "post.new-arms.log: 24 pass / 0 fail"
+  },
+  "gates": [
+    { "cmd": "bun run typecheck", "exit": 0, "log": "gate-typecheck.log", "observed": "tsgo --noEmit, no diagnostics" },
+    { "cmd": "bun run verify:comments", "exit": 0, "log": "gate-comments.log", "observed": "633 TypeScript files, 58008 declarations, VERDICT: PASS" },
+    { "cmd": "bun run verify:docs", "exit": 0, "log": "gate-docs.log", "observed": "pairs=59 failed=0 violations=0 dead=0 links=626 — PASS" },
+    { "cmd": "bun test packages/mpd-cellwork-plugin", "exit": 0, "log": "gate-tests.log", "observed": "393 pass / 0 fail / 3804 expect() calls / 34 files" },
+    { "cmd": ".toolchain/node_modules/.bin/bun build packages/mpd-cellwork-plugin/src/index.ts --target node --format esm --outfile packages/mpd-cellwork-plugin/dist/index.js", "exit": 0, "log": "gate-dist-build.log", "observed": "Bundled 31 modules; dist sha256 09c2533e…" },
+    { "cmd": "node scripts/verify-dist-fresh.ts", "exit": 0, "log": "gate-dist-fresh.log", "observed": "bun 1.4.0 from the repository toolchain; 34/34 targets fresh (rebuilt twice, byte-identical); 1 NOT COVERED listed by design" }
+  ],
+  "bounds": [
+    "Only the cellwork package was tested (`bun test packages/mpd-cellwork-plugin`, the gate this task names). The repo-wide `bun test packages`, the QA live cases, row/preset gates, pack closure and the Docker lane were NOT run.",
+    "The fail-before log proves the FINAL arms red on the HEAD sources and the post log proves them green on the fixed sources; it is not a per-arm revert/restore cycle (one revert covered all seven red arms).",
+    "A12's recoverability assertion drives the REAL `cellwork_dispatch {unfence}` tool over a fake plane (`mpdTeamActions.unfence` + a no-op `dispatch`), so it proves the tool-level lever, not a live team-core write.",
+    "The rollback concurrency check is exact-byte identity against the bytes this bind wrote. A writer whose document happens to be byte-identical to ours is indistinguishable — that is the CAS's inherent bound, not a new one.",
+    "Major-8 removed the branch's FENCE entirely (the record is unreadable, so no merge base exists). Contract §3 A5's phrase 'fences the seat' is therefore reconciled as: journaled always, fenced only when a trustworthy write exists — the task's Major-8 explicitly requires `not persisted` over a claimed fence.",
+    "No `unfenceSeats`/`adoptSeat` read-failure fallback (pre-existing: an unreadable record falls back to the pre-await snapshot) was changed; that code is outside the 8 findings.",
+    "The dist stamp was built from the same source hashes recorded in sha256.txt; `verify-dist-fresh` re-derives them, so the committed dist is proven fresh, not merely rebuilt."
+  ]
+}

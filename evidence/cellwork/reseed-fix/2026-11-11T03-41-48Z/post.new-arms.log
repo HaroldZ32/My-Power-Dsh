@@ -1,0 +1,32 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+(pass) A1a: a reseed puts the fresh handle on the TEAM member row and leaves the checkpoint window [7.46ms]
+(pass) A1b: a reseed re-points every non-terminal board row the old handle owned [4.31ms]
+(pass) A2: a reseed that cannot write the TEAM row NEVER reports `reseeded` — it names the surface, fences and hands over the retry [3.65ms]
+(pass) A3: the promotion directive is delivered to the NEW handle on the reseed path [3.94ms]
+(pass) A4: a DEAD subcaptain renders live-by-liveness and force-eligible on BOTH surfaces [2.95ms]
+(pass) A4: an UNKNOWN liveness is reported as unverified, never as health, and suppresses no lever field [0.69ms]
+(pass) A5: a record re-read failure journals the branch and NEVER writes the pre-await snapshot — the fence is reported `not-persisted` [3.66ms]
+(pass) A5: a throw AFTER the spawn is journaled, fences the seat and RELEASES the activation [6.24ms]
+(pass) A6: a spawn that answers without a child id disposes the activation [3.54ms]
+(pass) A7: a team record that EXISTS but cannot be read NEVER reports `reseeded` — it names the surface, fences and releases [3.95ms]
+(pass) A7: a plane read that THROWS while the record exists is the unreadable case, never `absent` [3.76ms]
+(pass) A7: a cell whose workspace holds NO team record answers `absent` and still reseeds (the control) [3.07ms]
+(pass) A8: a write that lands between the bind's read and its rename is REFUSED, not overwritten [3.98ms]
+(pass) A8: a record that carries a REVISION is refused when that revision moved inside the window [3.53ms]
+(pass) A8: without an external write the SAME harness binds normally (the control) [3.62ms]
+(pass) A9: a write that changes only the BOARD inside the window is REFUSED — the raw bytes are the predicate [3.18ms]
+(pass) A9: a write confined to handoffs/consults is REFUSED as well — no part of the record is exempt [3.67ms]
+(pass) A9: the SAME seed binds normally when NO external write lands (the contrast) [3.34ms]
+(pass) A10: with NO team plane but a readable record file, the bind uses the FILE, verifies from it, and says `plane:"bound"` [3.61ms]
+(pass) A11: a read-back that answers a STALE handle ROLLS BACK the TEAM row and the board owners — both surfaces stay consistent [3.51ms]
+(pass) A12: a rollback that meets a CONCURRENT WRITE refuses to overwrite it and says so [5.66ms]
+(pass) A13: a record re-read failure writes NOTHING — a concurrent writer's fields survive and the fence is `not-persisted` [3.13ms]
+(pass) A14: the status RENDER carries liveness/closed/deadReseed/unverified/forceEligible — and leaves a LIVE seat's line unchanged [2.18ms]
+(pass) A15: a board row owned by the SEAT'S NAME is re-pointed too — terminal rows keep their owner [3.33ms]
+
+ 24 pass
+ 0 fail
+ 186 expect() calls
+Ran 24 tests across 1 file. [232.00ms]

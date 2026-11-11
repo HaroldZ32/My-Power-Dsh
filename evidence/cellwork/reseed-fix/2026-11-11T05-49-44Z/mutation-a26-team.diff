@@ -1,0 +1,13 @@
+--- a/packages/mpd-cellwork-plugin/src/protocol.ts
++++ b/packages/mpd-cellwork-plugin/src/protocol.ts
+@@ -1213,7 +1213,9 @@
+       // so the record trail decides — and the answer reports what liveness could be proven separately.
+       // M1: the trail is the seat's LATEST hand-over, never its whole append-only history, so an old handle
+       // pasted out of an earlier failure sentence cannot pull the seat back to a replaced child.
+-      evidence = handleEvidenceOf(caller.workspace, cell.cellId, target.name, target.handle, teamSeat, cellRow)
++      /** MUTATION (A26a witness): any roster row's executorRef is accepted — a GLOBAL member scan. */
++      const foreignSeat = members.find((row) => row.executorRef === target.handle)
++      evidence = handleEvidenceOf(caller.workspace, cell.cellId, target.name, target.handle, foreignSeat ?? teamSeat, cellRow)
+       if (evidence.supersededBy !== undefined) {
+         /** The later hand-over row that replaced the requested handle, quoted with its stamp when it has one. */
+         const newer = evidence.supersededBy

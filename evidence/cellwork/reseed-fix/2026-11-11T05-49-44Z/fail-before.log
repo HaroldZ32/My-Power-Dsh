@@ -1,0 +1,122 @@
+PRE-FIX source sha: cb22299f530ebbeb9b2ae1f1e39fdd4e322f7e2eab589959d2218f4836c5bfd6  packages/mpd-cellwork-plugin/src/protocol.ts
+test sha (final): 86711f76297a5d62034bb8c4e86e2b3a9d83d515925b5809b87f4756bf3c0d7b  packages/mpd-cellwork-plugin/test/reseed-binding.test.ts
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+(pass) A1a: a reseed puts the fresh handle on the TEAM member row and leaves the checkpoint window [7.39ms]
+(pass) A1b: a reseed re-points every non-terminal board row the old handle owned [3.13ms]
+(pass) A2: a reseed that cannot write the TEAM row NEVER reports `reseeded` — it names the surface, fences and hands over the retry [3.40ms]
+(pass) A3: the promotion directive is delivered to the NEW handle on the reseed path [3.51ms]
+(pass) A4: a DEAD subcaptain renders live-by-liveness and force-eligible on BOTH surfaces [4.23ms]
+(pass) A4: an UNKNOWN liveness is reported as unverified, never as health, and suppresses no lever field [0.74ms]
+(pass) A5: a record re-read failure journals the branch and NEVER writes the pre-await snapshot — the fence is reported `not-persisted` [3.08ms]
+(pass) A5: a throw AFTER the spawn is journaled, fences the seat and RELEASES the activation [3.84ms]
+(pass) A6: a spawn that answers without a child id disposes the activation [3.16ms]
+(pass) A7: a team record that EXISTS but cannot be read NEVER reports `reseeded` — it names the surface, fences and releases [3.25ms]
+(pass) A7: a plane read that THROWS while the record exists is the unreadable case, never `absent` [3.05ms]
+(pass) A7: a cell whose workspace holds NO team record answers `absent` and still reseeds (the control) [3.34ms]
+(pass) A8: a write that lands between the bind's read and its rename is REFUSED, not overwritten [3.47ms]
+(pass) A8: a record that carries a REVISION is refused when that revision moved inside the window [3.31ms]
+(pass) A8: without an external write the SAME harness binds normally (the control) [3.40ms]
+(pass) A9: a write that changes only the BOARD inside the window is REFUSED — the raw bytes are the predicate [3.53ms]
+(pass) A9: a write confined to handoffs/consults is REFUSED as well — no part of the record is exempt [3.23ms]
+(pass) A9: the SAME seed binds normally when NO external write lands (the contrast) [3.39ms]
+(pass) A10: with NO team plane but a readable record file, the bind uses the FILE, verifies from it, and says `plane:"bound"` [3.52ms]
+(pass) A11: a read-back that answers a STALE handle ROLLS BACK the TEAM row and the board owners — both surfaces stay consistent [3.62ms]
+(pass) A12: a rollback that meets a CONCURRENT WRITE refuses to overwrite it and says so [6.60ms]
+(pass) A12b: a refused rollback whose surviving document PRESERVES the fresh handle KEEPS the child and hands over the rebind [4.41ms]
+(pass) A12c: a rollback that could not be WRITTEN keeps the child too — an unproven record never proves a child unbindable [3.42ms]
+(pass) A13: a record re-read failure writes NOTHING — a concurrent writer's fields survive and the fence is `not-persisted` [3.14ms]
+(pass) A14: the status RENDER carries liveness/closed/deadReseed/unverified/forceEligible — and leaves a LIVE seat's line unchanged [1.66ms]
+(pass) A15: a board row owned by the SEAT'S NAME is re-pointed too — terminal rows keep their owner [3.34ms]
+(pass) A16: a seat the TEAM row already binds to a LIVE child is NOT reseeded again — the skip is journaled and the rebind repair reconciles the records [1.19ms]
+(pass) A17: `rebind` rewrites a TEAM row that names a DIFFERENT handle and leaves the checkpoint window [1.31ms]
+(pass) A18: `rebind` ALONE leaves fenced/fencedReason byte-for-byte — the fence belongs to `unfence` [0.77ms]
+(pass) A19: a write by ANOTHER PROCESS inside rebind's window is refused (`team-record-changed`), never overwritten [29.44ms]
+1593 |   /** The failure row. */
+1594 |   const failed = rows.find((entry) => entry.event === "member-rebind-failed")
+1595 |   expect(failed?.reason).toBe("invalid-handle")
+1596 |   expect(failed?.member).toBe(MEMBER_NAME)
+1597 |   // N4: THE TYPO ITSELF IS IN THE ROW, so the refused value can be reproduced without the answer.
+1598 |   expect(failed?.handle).toBe("not-a-handle")
+                                ^
+error: expect(received).toBe(expected)
+
+Expected: "not-a-handle"
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:1598:26)
+(fail) A20: the handle is TRIMMED and must be the host's UUID form — a typo refuses the whole call, journaled [1.24ms]
+(pass) A21: a handle this seat's records never name is refused per entry — the registry proves liveness, not ownership [0.65ms]
+(pass) A22: a reseed that overwrites an UNPROVEN TEAM handle journals the displaced handle (R3) [3.16ms]
+(pass) A23: a refused rollback whose surviving record is READABLE but carries no executorRef says exactly that [4.03ms]
+1732 |   ])
+1733 |   /** The captain's repair, using the handle an old failure sentence quoted. */
+1734 |   const refused = await harness.tools.get("cellwork_dispatch")!.execute({ rebind: [{ member: MEMBER_NAME, handle: STALE }] }, { name: "cellwork_dispatch", agent: harness.captain }) as Record<string, unknown>
+1735 |   /** This seat's outcome. */
+1736 |   const outcome = (Array.isArray(refused.rebound) ? refused.rebound as Array<Record<string, unknown>> : []).find((entry) => entry.member === MEMBER_NAME)
+1737 |   expect(outcome?.rebound).toBe(false)
+                                  ^
+error: expect(received).toBe(expected)
+
+Expected: false
+Received: true
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:1737:28)
+(fail) A24: a handle only an OLDER compaction row names is refused `handle-superseded` — the LATEST hand-over wins (M1) [1.30ms]
+1777 |   /** This seat's outcome. */
+1778 |   const outcome = (Array.isArray(repaired.rebound) ? repaired.rebound as Array<Record<string, unknown>> : []).find((entry) => entry.member === MEMBER_NAME)
+1779 |   expect(outcome?.rebound).toBe(true)
+1780 |   expect(outcome?.previousSessionId).toBe(OLD_HANDLE)
+1781 |   // THE THREE-STATE ANSWER FOR THE DISPLACED CHILD, and the R3 marker pair beside it.
+1782 |   expect(outcome?.previousSessionIdLiveness).toBe("live")
+                                                    ^
+error: expect(received).toBe(expected)
+
+Expected: "live"
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:1782:46)
+(fail) A25: the DISPLACED handle's liveness is surfaced — a live previousSessionId says `live` in the answer AND the row (M1/N1) [0.89ms]
+1818 |   /** This seat's outcome. */
+1819 |   const outcome = (Array.isArray(repaired.rebound) ? repaired.rebound as Array<Record<string, unknown>> : []).find((entry) => entry.member === MEMBER_NAME)
+1820 |   expect(outcome?.rebound).toBe(false)
+1821 |   expect(outcome?.reason).toBe("handle-unevidenced")
+1822 |   // THE EVIDENCE LIST IS EMPTY: no surface OF THIS SEAT named the foreign handle.
+1823 |   expect(outcome?.namedBy).toEqual([])
+                                  ^
+error: expect(received).toEqual(expected)
+
+Expected: []
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:1823:28)
+(fail) A26a: a handle named by ANOTHER seat's TEAM executorRef is refused (`handle-unevidenced`); both records stay put [0.67ms]
+1857 |   const repaired = await harness.tools.get("cellwork_dispatch")!.execute({ rebind: [{ member: MEMBER_NAME, handle: FOREIGN }] }, { name: "cellwork_dispatch", agent: harness.captain }) as Record<string, unknown>
+1858 |   /** This seat's outcome. */
+1859 |   const outcome = (Array.isArray(repaired.rebound) ? repaired.rebound as Array<Record<string, unknown>> : []).find((entry) => entry.member === MEMBER_NAME)
+1860 |   expect(outcome?.rebound).toBe(false)
+1861 |   expect(outcome?.reason).toBe("handle-unevidenced")
+1862 |   expect(outcome?.namedBy).toEqual([])
+                                  ^
+error: expect(received).toEqual(expected)
+
+Expected: []
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:1862:28)
+(fail) A26b: a handle named by ANOTHER seat's journal hand-over is refused (`handle-unevidenced`); both records stay put [0.65ms]
+
+5 tests failed:
+(fail) A20: the handle is TRIMMED and must be the host's UUID form — a typo refuses the whole call, journaled [1.24ms]
+(fail) A24: a handle only an OLDER compaction row names is refused `handle-superseded` — the LATEST hand-over wins (M1) [1.30ms]
+(fail) A25: the DISPLACED handle's liveness is surfaced — a live previousSessionId says `live` in the answer AND the row (M1/N1) [0.89ms]
+(fail) A26a: a handle named by ANOTHER seat's TEAM executorRef is refused (`handle-unevidenced`); both records stay put [0.67ms]
+(fail) A26b: a handle named by ANOTHER seat's journal hand-over is refused (`handle-unevidenced`); both records stay put [0.65ms]
+
+ 33 pass
+ 5 fail
+ 313 expect() calls
+Ran 38 tests across 1 file. [350.00ms]
+[fail-before exit: 1]
+RESTORED source sha: f15ce3b452163248d7439cb2ddebc313044c4266435bdd3e9c82e17161caf9a7  packages/mpd-cellwork-plugin/src/protocol.ts

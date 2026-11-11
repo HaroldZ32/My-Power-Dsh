@@ -14,10 +14,36 @@
 //   A8 an external write inside the bind window is never overwritten (F2);
 //   A9 drift OUTSIDE the member roster (board / handoffs / consults) is refused too (F2's byte predicate);
 //   A10 an unmounted plane with a readable record FILE binds and verifies from the file (F1).
+//   A11 a STALE read-back rolls the TEAM row and the board owners back (Major-7);
+//   A12 a rollback that meets a concurrent write REFUSES to overwrite it and reports that;
+//   A12b a surviving document that PRESERVES the fresh handle keeps that child alive, records the
+//        reconcile marker and hands over a repair that re-points `executorRef` (the A11 hole);
+//        A12c the same rule for a rollback that could not be written (`failed`): unproven is never released;
+//   A13 a record re-read failure NEVER writes the pre-await snapshot (Major-8);
+//   A14 the status RENDER carries the closure reading for a non-live seat and leaves a live one unchanged;
+//   A15 a board row owned by the seat's NAME is re-pointed as well — and ANOTHER seat's rows are not;
+//   A16 the recovery path is NOT re-entered: a TEAM row already bound to a LIVE child spawns no second one;
+//   A17 `rebind` REWRITES a TEAM row that names a DIFFERENT handle (and a non-member mode) — the verb's
+//        defining effect, which no earlier arm exercised because their TEAM row already named the handle;
+//   A18 `rebind` ALONE leaves `fenced`/`fencedReason` untouched (A12b combined it with `unfence`, so it
+//        could not tell "preserved" from "cleared");
+//   A19 a write by another process INSIDE rebind's window is refused (`team-record-changed`), not overwritten;
+//   A20 the handle is trimmed and must be the host's UUID form — a typo refuses the whole call, journaled;
+//   A21 a handle this seat's records never name is refused per entry (`handle-unevidenced`);
+//   A22 the handle a reseed DISPLACES is journaled (`displacedExecutorRef` + `displacedUnproven`, R3);
+//   A23 a refused rollback whose surviving record is READABLE but carries no string `executorRef` says so
+//        instead of calling it unreadable (R4.2);
+//   A24 a handle only an OLDER hand-over row names is refused `handle-superseded` — the latest row wins (M1);
+//   A25 a displaced handle that is still LIVE is surfaced on the answer and the `member-rebound` row (M1/N1);
+//   A26 ANOTHER seat's TEAM row or journal hand-over is never ownership evidence for this seat (M2);
+//   A27 the CURRENT record wins: a record written after the last hand-over with no journal row of its own
+//       is accepted (never `handle-superseded`, never advised backwards), and with no current handle the
+//       journal's latest row still decides while an older row stays non-evidence (F1).
 //
 // Every workspace is a fresh temp dir; nothing here reads the repository's own state.
 import { test, expect } from "bun:test"
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
+import { execFileSync, spawn } from "node:child_process"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 
@@ -40,13 +66,13 @@ const CAPTAIN_SESSION = "session-captain"
 const MEMBER_NAME = "Senior Engineer"
 
 /** The DEAD handle the reseed replaces: the cell row's session, the TEAM `executorRef` and the board owner. */
-const OLD_HANDLE = "session-old-member"
+const OLD_HANDLE = "6b1f7a2c-0000-4000-8000-000000000001"
 
 /** The live parent the reseed is raised under. */
 const PARENT_SESSION = "session-parent"
 
-/** The fresh handle the backend mints for the replacement session. */
-const NEW_HANDLE = "handle-fresh-child"
+/** The fresh handle the backend mints for the replacement session (the field incident's own UUID form). */
+const NEW_HANDLE = "2f86e074-1a13-4871-881f-7af634ff4f3c"
 
 /** A fake live agent: the id the registry keys it by and the session header the workspace resolves from. */
 interface FakeAgent {
@@ -64,6 +90,8 @@ interface CapturedTool {
   name: string
   /** The runner, called with the harness-validated arguments and the dispatch. */
   execute: (args: unknown, exec: unknown) => Promise<unknown>
+  /** The tool's output contract; the adapter moves the row's declared `render` in here (A14). */
+  output?: { render?: (args: unknown, value: unknown) => unknown }
 }
 
 /** The team record this harness serves through `mpdTeams` and writes to disk. */
@@ -72,6 +100,8 @@ interface TeamRecordFile {
   version: number
   /** A document revision, when the record shape carries one (today's `TeamRecord` does not). */
   revision?: number
+  /** The record's own write instant, when it carries one: F1's proof that it postdates a journal row. */
+  updatedAt?: string
   /** The team id. */
   teamId: string
   /** ISO instant the team was created. */
@@ -138,14 +168,41 @@ interface HarnessOptions {
    * the read just served and returns the document another writer left on disk.
    */
   externalWriteAfterRead?: (served: TeamRecordFile) => TeamRecordFile
+  /**
+   * A STALE read-back (A11): once the fresh handle is on disk, the plane answers a copy that still names
+   * the OLD handle instead of the file. The write happened, so the bind must ROLL IT BACK.
+   */
+  staleVerify?: boolean
+  /**
+   * An EXTERNAL WRITE that commits AT the read-back (A12): it receives the record the bind just wrote and
+   * returns the document another writer left on disk. The bind then sees the mismatch and must find the
+   * file changed, so its rollback REFUSES instead of overwriting that writer.
+   */
+  externalWriteAtVerify?: (written: TeamRecordFile) => TeamRecordFile
   /** The cell row the barrier starts from. */
   member?: CellMemberRecord
+  /**
+   * Runs immediately BEFORE the A5 read-back throw.
+   *
+   * A12c uses it to remove the record file: the rollback's own re-read then fails, which is the
+   * `rollback:"failed"` shape — the record state is unproven, so the child must be kept like a refused one.
+   */
+  duringVerifyThrow?: () => void
   /** Whether the agents registry exists at all (false = liveness is always `unknown`). */
   agentsRegistry?: boolean
   /** Extra live sessions the registry holds (A4's dead seat needs the captain ONLY). */
   liveSessions?: readonly string[]
   /** The knobs that change the arm's timing/bounds. */
   knobs?: Partial<typeof DEFAULT_CELLWORK_CONFIG>
+  /**
+   * A WRITE FROM ANOTHER PROCESS inside `rebind`'s compare-and-set window (A19).
+   *
+   * The record path is handed to a FIFO whose two reads answer `first` then `second`, so the bytes the verb's
+   * compare reads are NOT the bytes its snapshot read — an external commit landing inside the window. The
+   * plane's `get` answers `team` (or the default record) from memory for this arm so the pipe is not drained
+   * before `rebind` opens it.
+   */
+  rebindWindowWrite?: { first: TeamRecordFile; second: TeamRecordFile }
 }
 
 /** One member row as the CELL record stores it: handoff written, waiting for the barrier. */
@@ -262,6 +319,13 @@ function makeHarness(options: HarnessOptions = {}): Harness {
   let armed = false
   /** Whether the A8 external write has already landed (it commits ONCE, on the bind's snapshot read). */
   let injected = false
+  /**
+   * Whether the A5 read-back throw has already fired.
+   *
+   * ONE-SHOT on purpose: the arm needs the bind's verification read to fail, while a LATER reader (the
+   * operator's `rebind` repair, A12b) must be able to read the record the surviving writer left.
+   */
+  let verifyThrew = false
   /** The adapter double: the shape the host exposes, narrowed to what the barrier touches. */
   const adapter: Record<string, unknown> = {
     registerTool: (definition: CapturedTool): (() => void) => { tools.set(definition.name, definition); return (): void => {} },
@@ -282,8 +346,10 @@ function makeHarness(options: HarnessOptions = {}): Harness {
     interruptAgent: (): void => {},
     startContinuableAgent: async (): Promise<unknown> => {
       options.duringSpawn?.()
-      // THE BIND RUNS ONLY AFTER THE SPAWN: from here on, the next team-record read is the bind's.
-      if (options.externalWriteAfterRead !== undefined) armed = true
+      // A8/A12: an EXTERNAL WRITE arms only after the spawn, so it lands inside the BIND's window: the
+      // barrier reads the team record through `callerContext` BEFORE the spawn, and that earlier read must
+      // not be the one that injects.
+      if (options.externalWriteAfterRead !== undefined || options.externalWriteAtVerify !== undefined) armed = true
       if (options.start !== undefined) return options.start()
       /** The activation the backend mints: a child id AND the release seam every real one carries. */
       const activation = { childId: NEW_HANDLE, disposed: false, dispose: async (): Promise<void> => { activation.disposed = true } }
@@ -300,14 +366,39 @@ function makeHarness(options: HarnessOptions = {}): Harness {
           if (options.planeRead === false) return undefined
           return {
             get: (): unknown => {
+              // A19: THE PIPE IS NOT DRAINED BY THE BOARD RESOLUTION. The record path is a FIFO whose reads
+              // must start at `rebind`'s own snapshot, so this plane answers from memory for that arm.
+              if (options.rebindWindowWrite !== undefined) return options.team ?? teamRecord()
               // A7b: the plane's SNAPSHOT read throws while a readable record exists on disk — the
               // "exists but unreadable" case F1 refuses, which is not the same thing as "no record".
               if (options.planeThrowsAt === "read") throw new Error("the mpdTeams record read blew up")
               /** The record this read answers, read ONCE so an external write cannot land mid-answer. */
               const served = recordOnDisk()
+              // A12: ANOTHER WRITER COMMITS BETWEEN THE BIND'S WRITE AND ITS READ-BACK. The file moves to
+              // the other writer's document, and THAT is what this read answers — the mismatch the bind
+              // must detect, and the file state its rollback must refuse to overwrite. Runs BEFORE the
+              // read-back throw below so A12b can combine the two: a surviving document that PRESERVES the
+              // fresh handle while the read-back itself fails.
+              /** The document the other writer committed, when this read lands one. */
+              let external: TeamRecordFile | undefined
+              if (served !== undefined && armed && !injected && options.externalWriteAtVerify !== undefined && served.members.some((row) => row.executorRef === NEW_HANDLE)) {
+                injected = true
+                external = options.externalWriteAtVerify(served)
+                writeFileSync(recordPath, JSON.stringify(external, null, 2) + "\n", "utf8")
+              }
               // A5: the read-BACK after this bind's write throws. Keyed on the COMMITTED shape (the fresh
               // handle is already on disk), so the snapshot read — which sees the OLD record — succeeds.
-              if (options.planeThrowsAt === "verify" && served?.members.some((row) => row.executorRef === NEW_HANDLE) === true) throw new Error("the mpdTeams read-back blew up")
+              if (!verifyThrew && options.planeThrowsAt === "verify" && served?.members.some((row) => row.executorRef === NEW_HANDLE) === true) {
+                verifyThrew = true
+                options.duringVerifyThrow?.()
+                throw new Error("the mpdTeams read-back blew up")
+              }
+              if (external !== undefined) return external
+              // A11: THE PLANE'S READ-BACK IS STALE. The bind's write is on disk, but this answer still names
+              // the old handle — a non-throwing verification failure that also owes a rollback.
+              if (options.staleVerify === true && served?.members.some((row) => row.executorRef === NEW_HANDLE) === true) {
+                return { ...served, members: served.members.map((row) => (row.name === MEMBER_NAME ? { ...row, executorRef: OLD_HANDLE } : row)) }
+              }
               // A8: an EXTERNAL WRITE commits AFTER this read served its snapshot and BEFORE the bind's
               // rename. The reader still gets the pre-write document, which is what makes the bind's
               // compare-and-set the thing this arm measures.
@@ -325,6 +416,9 @@ function makeHarness(options: HarnessOptions = {}): Harness {
             planeUnfences.push({ sessionId: input.sessionId, member: input.member })
             return { ok: true }
           },
+          // A NO-OP PASS, so the captain's `unfence` verb can be driven end-to-end: the pairing engine is
+          // the plane's, and this arm measures the LEVER, not a second dispatch implementation.
+          dispatch: async (): Promise<Record<string, unknown>> => ({ ok: true, pairs: [], skipped: [], reassigned: [] }),
         }
       },
     },
@@ -345,9 +439,9 @@ function makeHarness(options: HarnessOptions = {}): Harness {
  *
  * @param row - the cell member row the status read reports.
  * @param options - whether an agents registry exists at all, and which sessions it holds.
- * @returns the tool runner and the captain handle it runs as.
+ * @returns the tool runner, the tool's text render and the captain handle it runs as.
  */
-function statusHarness(row: CellMemberRecord, options: { agentsRegistry?: boolean; liveSessions?: readonly string[]; team?: TeamRecordFile } = {}): { run: () => Promise<Record<string, unknown>>; captain: FakeAgent } {
+function statusHarness(row: CellMemberRecord, options: { agentsRegistry?: boolean; liveSessions?: readonly string[]; team?: TeamRecordFile } = {}): { run: () => Promise<Record<string, unknown>>; render: (value: unknown) => string; captain: FakeAgent } {
   /** The fresh temp workspace. */
   const workspace = mkdtempSync(join(tmpdir(), "mpd-cellwork-status-liveness-"))
   /** The cell record, persisted so the read finds it. */
@@ -405,6 +499,16 @@ function statusHarness(row: CellMemberRecord, options: { agentsRegistry?: boolea
       if (tool === undefined) throw new Error("cellwork_status was not registered")
       return await tool.execute({}, { name: "cellwork_status", agent: captain }) as Record<string, unknown>
     },
+    render: (value: unknown): string => {
+      /** The captured status definition. */
+      const tool = tools.find((candidate) => candidate.name === "cellwork_status")
+      /** The declared render, which the adapter carries inside the output contract. */
+      const renderValue = tool?.output?.render
+      if (renderValue === undefined) throw new Error("cellwork_status declared no render")
+      /** The content blocks the render produced. */
+      const blocks = renderValue({}, value) as Array<{ text?: unknown }>
+      return Array.isArray(blocks) ? blocks.map((block) => String(block.text ?? "")).join("\n") : ""
+    },
   }
 }
 
@@ -452,6 +556,20 @@ function cellMember(harness: Harness): CellMemberRecord {
   const row = read.state.members[MEMBER_NAME]
   if (row === undefined) throw new Error("the member row must exist")
   return row
+}
+
+/**
+ * Seed the cell's append-only journal BEFORE the tool runs, in append order.
+ *
+ * The arms use this to prove that only the LATEST hand-over row is ownership evidence (M1), and that
+ * another seat's row is never evidence for this one (A26). Each line is written the way `appendJournal`
+ * writes it: one JSON object per line, oldest first.
+ *
+ * @param harness - the harness whose cell journal is seeded.
+ * @param rows - the rows, oldest first; `at` defaults to a fixed stamp for deterministic assertions.
+ */
+function seedJournal(harness: Harness, rows: Array<Record<string, unknown>>): void {
+  writeFileSync(journalPath(harness.workspace, CELL_ID), rows.map((row) => JSON.stringify({ at: "2026-11-11T00:02:00.000Z", ...row }) + "\n").join(""), "utf8")
 }
 
 // ── A1: the three surfaces name the fresh handle ────────────────────────────
@@ -611,25 +729,32 @@ test("A4: an UNKNOWN liveness is reported as unverified, never as health, and su
 
 // ── A5: no warn-only branch ─────────────────────────────────────────────────
 
-test("A5: a record re-read failure journals the branch and FENCES the seat", async () => {
+test("A5: a record re-read failure journals the branch and NEVER writes the pre-await snapshot — the fence is reported `not-persisted`", async () => {
   // The record is corrupted INSIDE the spawn, i.e. after the barrier read it and before it writes: the
-  // re-read then fails, which used to be one `warn` line and a silent return.
+  // re-read then fails. The refused bytes are PRESERVED (a pre-await snapshot must never overwrite them)
+  // and the journal says the fence did not persist instead of claiming a fence nothing can see.
+  /** The invalid document this arm seeds, kept so the arm can prove it was not rewritten. */
+  const corrupt = "{ this is not the record"
   /** The harness whose record is corrupted mid-run (the hook runs at barrier time, after construction). */
   let harness: Harness
-  harness = makeHarness({ duringSpawn: (): void => { writeFileSync(statePath(harness.workspace, CELL_ID), "{ this is not the record", "utf8") } })
+  harness = makeHarness({ duringSpawn: (): void => { writeFileSync(statePath(harness.workspace, CELL_ID), corrupt, "utf8") } })
   await stopListener(harness)({ agent: harness.member })
+  // THE REFUSED FILE COMES FIRST (contract §5's fail-before rule): this is the assertion Major-8 exists to
+  // protect, and it must be the one that goes RED on the pre-fix behaviour — not a journal flag downstream
+  // of it, which stops the test before the bytes are ever compared.
+  expect(readFileSync(statePath(harness.workspace, CELL_ID), "utf8")).toBe(corrupt)
   /** The branch's journal row. */
   const row = journalRows(harness).find((entry) => entry.event === "barrier-record-unreadable")
   expect(row).toBeDefined()
   expect(row?.member).toBe(MEMBER_NAME)
-  expect(row?.fenced).toBe("written")
-  expect(String(row?.retry)).toContain("force: true")
-  // THE SEAT IS FENCED WITH THE FORCED LEVER'S WRITTEN LICENCE, not left looking healthy.
-  /** The cell's member row. */
-  const cell = cellMember(harness)
-  expect(cell.fenced).toBe(true)
-  expect(cell.mode).toBe("checkpoint")
-  expect(cell.barrierFailures).toBeGreaterThanOrEqual(DEFAULT_CELLWORK_CONFIG.compactionRetries)
+  // HONEST: nothing was persisted, so no fence and no lever is claimed.
+  expect(row?.fenced).toBe("not-persisted")
+  expect(row?.forceEligible).toBe(false)
+  // THE FORCED LEVER IS CONDITIONAL, AND THE ROW SAYS SO: it needs a WRITTEN bound, and this run persisted
+  // no fence at all — naming the verb unconditionally beside `forceEligible:false` contradicted itself.
+  expect(String(row?.retry)).toContain("ONCE a written bound exists")
+  expect(String(row?.retry)).toContain("cellwork_dispatch")
+  expect(String(row?.recovery)).toContain("NOT rewritten")
 })
 
 test("A5: a throw AFTER the spawn is journaled, fences the seat and RELEASES the activation", async () => {
@@ -645,6 +770,13 @@ test("A5: a throw AFTER the spawn is journaled, fences the seat and RELEASES the
   // THE CHILD THE SPAWN CREATED IS RELEASED: nothing keeps a slot for a half-bound seat.
   expect(harness.activations).toHaveLength(1)
   expect(harness.activations[0].disposed).toBe(true)
+  // THE BIND IS ROLLED BACK (Major-7): the write that preceded the failed read-back is undone, so the TEAM
+  // row and the board owner name the OLD handle again — no half-bound seat survives the failure.
+  expect(row?.rollback).toBe("restored")
+  /** The team record after the rollback. */
+  const record = harness.record()
+  expect(record.members.find((seat) => seat.name === MEMBER_NAME)?.executorRef).toBe(OLD_HANDLE)
+  expect(record.tasks.find((task) => String(task.id) === "T1")?.owner).toBe(OLD_HANDLE)
   // THE SEAT IS FENCED, so the captain can see it and the forced lever can clear it.
   expect(cellMember(harness).fenced).toBe(true)
 })
@@ -934,4 +1066,942 @@ test("A10: with NO team plane but a readable record file, the bind uses the FILE
   // AND THE CELL SURFACE NAMES THE FRESH HANDLE, unfenced: the bind was reported only after the file read.
   expect(cellMember(harness).sessionId).toBe(NEW_HANDLE)
   expect(cellMember(harness).fenced).not.toBe(true)
+})
+
+// ── A11/A12: a failed verification ROLLS BACK, or refuses to overwrite a concurrent write ────────────
+
+test("A11: a read-back that answers a STALE handle ROLLS BACK the TEAM row and the board owners — both surfaces stay consistent", async () => {
+  // A NON-THROWING verification failure: the write landed, the plane's read-back answers the OLD handle.
+  // The bind must undo its own write instead of leaving the TEAM record bound to a child while the CELL
+  // row still names the dead session (the half-bound seat the defect is about).
+  /** The harness whose plane read-back is stale. */
+  const harness = makeHarness({ staleVerify: true })
+  await stopListener(harness)({ agent: harness.member })
+  /** The journal rows. */
+  const rows = journalRows(harness)
+  expect(rows.some((row) => row.event === "compaction" && row.outcome === "reseeded")).toBe(false)
+  /** The give-up row. */
+  const row = rows.find((entry) => entry.event === "checkpoint-unrecoverable")
+  expect(row?.rollback).toBe("restored")
+  expect(String(row?.reason)).toContain("ROLLED BACK")
+  // BOTH SURFACES ROLLED BACK TOGETHER: the TEAM row carries the pre-bind handle and mode, and the board
+  // owner is the old handle again.
+  /** The record as the file answers it after the rollback. */
+  const record = harness.record()
+  /** The seat row. */
+  const seat = record.members.find((member) => member.name === MEMBER_NAME)
+  expect(seat?.executorRef).toBe(OLD_HANDLE)
+  expect(seat?.mode).toBe("checkpoint")
+  expect(seat?.handoff).toEqual({ path: ".mpd/team/handoffs/senior-engineer-1.md", at: "2026-11-11T00:01:00.000Z" })
+  /** The board rows by id. */
+  const tasks = new Map(record.tasks.map((task) => [String(task.id), task]))
+  expect(tasks.get("T1")?.owner).toBe(OLD_HANDLE)
+  expect(tasks.get("T1")?.revision).toBe(7)
+  // THE CELL ROW KEEPS THE OLD SESSION AND IS FENCED, naming the refused surface in its reason.
+  /** The cell's member row. */
+  const cell = cellMember(harness)
+  expect(cell.sessionId).toBe(OLD_HANDLE)
+  expect(cell.fenced).toBe(true)
+  expect(String(cell.fencedReason)).toContain("could not be bound")
+  // AND THE CHILD THAT COULD NOT BE BOUND IS RELEASED.
+  expect(harness.activations).toHaveLength(1)
+  expect(harness.activations[0].disposed).toBe(true)
+})
+
+// ── A12/A12b: a rollback that meets a concurrent write refuses to release what it still names ─────────
+
+test("A12: a rollback that meets a CONCURRENT WRITE refuses to overwrite it and says so", async () => {
+  // THE ROLLBACK'S OWN RACE: another writer commits between the bind's write and its read-back. The
+  // rollback must compare the bytes it wrote with the file, and on a difference REFUSE — a rollback that
+  // clobbered that writer would be the same lost update in the other direction.
+  /** The marker the other writer's document carries, so the arm can prove it survived. */
+  const MARKER = "concurrent-writer"
+  /** The harness whose file moves to another writer's document at the read-back. */
+  const harness = makeHarness({ externalWriteAtVerify: (written) => ({
+    ...written,
+    phase: MARKER,
+    members: written.members.map((member) => (member.name === MEMBER_NAME ? { ...member, executorRef: OLD_HANDLE, mode: "checkpoint" } : member)),
+    tasks: written.tasks.map((task) => (String(task.id) === "T1" ? { ...task, owner: OLD_HANDLE } : task)),
+  }) })
+  await stopListener(harness)({ agent: harness.member })
+  /** The journal rows. */
+  const rows = journalRows(harness)
+  expect(rows.some((row) => row.event === "compaction" && row.outcome === "reseeded")).toBe(false)
+  /** The give-up row. */
+  const row = rows.find((entry) => entry.event === "checkpoint-unrecoverable")
+  expect(row?.rollback).toBe("refused")
+  expect(String(row?.reason)).toContain("rollback refused due to concurrent change")
+  // THE OTHER WRITER'S DOCUMENT IS UNTOUCHED: the rollback read it, proved it was no longer this bind's
+  // write, and refused. Its old/old pair is what a reader now sees.
+  /** The record on disk. */
+  const record = harness.record()
+  expect(record.phase).toBe(MARKER)
+  /** The seat row the other writer left. */
+  const seat = record.members.find((member) => member.name === MEMBER_NAME)
+  expect(seat?.executorRef).toBe(OLD_HANDLE)
+  expect(record.tasks.find((task) => String(task.id) === "T1")?.owner).toBe(OLD_HANDLE)
+  // THE SEAT IS FENCED AND RECOVERABLE: the CELL fence is the give-up fact the captain's `unfence` lever
+  // reopens, so a refused rollback never leaves an unclearable seat behind.
+  /** The cell's member row. */
+  const cell = cellMember(harness)
+  expect(cell.fenced).toBe(true)
+  expect(cell.barrierFailures).toBe(1)
+  /** The captain's unfence call, over the SAME harness the barrier ran in. */
+  const cleared = await harness.tools.get("cellwork_dispatch")!.execute({ unfence: [MEMBER_NAME] }, { name: "cellwork_dispatch", agent: harness.captain }) as Record<string, unknown>
+  /** The unfence outcomes. */
+  const outcomes = Array.isArray(cleared.unfenced) ? cleared.unfenced as Array<Record<string, unknown>> : []
+  expect(outcomes.find((entry) => entry.member === MEMBER_NAME)?.unfenced).toBe(true)
+  expect(cellMember(harness).fenced).not.toBe(true)
+  expect(harness.activations[0].disposed).toBe(true)
+})
+
+test("A12b: a refused rollback whose surviving document PRESERVES the fresh handle KEEPS the child and hands over the rebind", async () => {
+  // THE HOLE A12'S OLD/OLD SHAPE COULD NOT REACH (contract §3 A11). A real concurrent writer — team-core's
+  // own read-modify-write — commits a document that still carries THIS bind's fresh `executorRef`, and the
+  // read-back then fails for its own reason (a throwing plane read). The rollback refuses to overwrite that
+  // document, so the surviving record NAMES the child: releasing it would leave the record pointing at a
+  // released seat, the exact stranded seat this contract repairs. The child must stay alive, the journal
+  // must carry the reconcile marker, and the failure sentence must name a verb that RE-POINTS
+  // `executorRef` (`unfence` alone never touches the handle).
+  /** The marker the other writer's document carries, so the arm proves it survived. */
+  const MARKER = "concurrent-writer-preserves-child"
+  /** The harness whose file moves to a new-handle-preserving document and whose read-back then throws. */
+  const harness = makeHarness({
+    planeThrowsAt: "verify",
+    externalWriteAtVerify: (written) => ({
+      ...written,
+      phase: MARKER,
+      members: written.members.map((member) => (member.name === MEMBER_NAME ? { ...member, executorRef: NEW_HANDLE } : member)),
+    }),
+  })
+  await stopListener(harness)({ agent: harness.member })
+  /** Every journal row. */
+  const rows = journalRows(harness)
+  expect(rows.some((row) => row.event === "compaction" && row.outcome === "reseeded")).toBe(false)
+  /** The give-up row this refusal writes. */
+  const row = rows.find((entry) => entry.event === "checkpoint-unrecoverable")
+  expect(row?.rollback).toBe("refused")
+  // THE CHILD IS NOT RELEASED: the surviving document names it, so it is still a legitimate seat holder.
+  expect(harness.activations).toHaveLength(1)
+  expect(harness.activations[0].disposed).toBe(false)
+  // THE REFUSAL IS A RECORD, NOT A HOPE: the row names the kept child, the reconcile requirement, the fact
+  // that the binding was kept, and a repair verb that re-points `executorRef`.
+  expect(row?.orphanChild).toBe(NEW_HANDLE)
+  expect(row?.reconcileRequired).toBe(true)
+  expect(String(row?.reason)).toContain("BINDING KEPT")
+  expect(String(row?.reason)).toContain(NEW_HANDLE)
+  expect(String(row?.retry)).toContain("rebind:")
+  // THE OPERATOR'S ANSWER IS THE CELL RECORD ITSELF: the barrier writes `fencedReason` from the refusal's
+  // reason, so `cellwork_supervise` shows the same repair sentence the journal row carries.
+  expect(String(cellMember(harness).fencedReason)).toContain("rebind")
+  // THE OTHER WRITER'S DOCUMENT SURVIVED BYTE-FOR-BYTE: its phase marker is still what the file carries.
+  /** The record on disk. */
+  const record = harness.record()
+  expect(record.phase).toBe(MARKER)
+  expect(record.members.find((member) => member.name === MEMBER_NAME)?.executorRef).toBe(NEW_HANDLE)
+  // AND THE OPERATOR'S FAILURE-SENTENCE REPAIR ACTUALLY RECOVERS THE SEAT: rebind re-points the TEAM row and
+  // mirrors the handle into the CELL row, unfence clears the give-up marker, both in ONE call.
+  /** The captain's repair, driven exactly as the failure sentence spells it. */
+  const repaired = await harness.tools.get("cellwork_dispatch")!.execute({ rebind: [{ member: MEMBER_NAME, handle: NEW_HANDLE }], unfence: [MEMBER_NAME] }, { name: "cellwork_dispatch", agent: harness.captain }) as Record<string, unknown>
+  /** The rebind outcomes. */
+  const rebounds = Array.isArray(repaired.rebound) ? repaired.rebound as Array<Record<string, unknown>> : []
+  expect(rebounds.find((entry) => entry.member === MEMBER_NAME)?.rebound).toBe(true)
+  /** The cell row after the repair: the surviving child's handle, an open seat, no pending handoff. */
+  const repairedCell = cellMember(harness)
+  expect(repairedCell.sessionId).toBe(NEW_HANDLE)
+  expect(repairedCell.executorRef).toBe(NEW_HANDLE)
+  expect(repairedCell.mode).toBe("member")
+  expect(repairedCell.handoffReady).toBe(false)
+  expect(repairedCell.fenced).not.toBe(true)
+  /** The TEAM row after the repair. */
+  const repairedSeat = harness.record().members.find((member) => member.name === MEMBER_NAME)
+  expect(repairedSeat?.executorRef).toBe(NEW_HANDLE)
+  expect(repairedSeat?.mode).toBe("member")
+})
+
+test("A12c: a rollback that could not be WRITTEN keeps the child too — an unproven record never proves a child unbindable", async () => {
+  // THE OTHER UNPROVEN SHAPE (contract §3 A11 applied to its own evidence rule). The read-back throws, and
+  // by the time the rollback re-reads the record the file is gone: the rollback cannot be written, so NO
+  // reader can say whether the record still named the child. Releasing on that silence is the same bet A11
+  // forbids for a refused rollback, so the child is kept and the reconcile marker travels.
+  /** The harness whose record disappears before the rollback can read it. */
+  let harness: Harness
+  harness = makeHarness({ planeThrowsAt: "verify", duringVerifyThrow: (): void => { rmSync(harness.recordPath, { force: true }) } })
+  await stopListener(harness)({ agent: harness.member })
+  /** Every journal row. */
+  const rows = journalRows(harness)
+  expect(rows.some((row) => row.event === "compaction" && row.outcome === "reseeded")).toBe(false)
+  /** The give-up row this refusal writes. */
+  const row = rows.find((entry) => entry.event === "checkpoint-unrecoverable")
+  expect(row?.rollback).toBe("failed")
+  expect(row?.orphanChild).toBe(NEW_HANDLE)
+  expect(row?.reconcileRequired).toBe(true)
+  expect(String(row?.reason)).toContain("BINDING KEPT")
+  expect(String(row?.retry)).toContain("rebind:")
+  // THE CHILD IS NOT RELEASED, and the seat is fenced so the operator sees it.
+  expect(harness.activations).toHaveLength(1)
+  expect(harness.activations[0].disposed).toBe(false)
+  expect(cellMember(harness).fenced).toBe(true)
+})
+
+// ── A13: the pre-await snapshot is NEVER written back ───────────────────────────────────────────────
+
+test("A13: a record re-read failure writes NOTHING — a concurrent writer's fields survive and the fence is `not-persisted`", async () => {
+  // THE LOST UPDATE. The record is valid JSON this build REFUSES (a future version) and it already carries
+  // ANOTHER writer's row. The barrier's pre-await snapshot knows nothing about that row; writing it back
+  // would delete it. The branch must write NOTHING, report `fenced:"not-persisted"` and hand over a recovery.
+  /** The concurrent writer's row key. */
+  const CONCURRENT = "Concurrent Writer"
+  /** The exact bytes of the refused document, captured so byte identity can be asserted. */
+  let refused = ""
+  /** The harness whose record is replaced at spawn time by the concurrent writer's document. */
+  let harness: Harness
+  harness = makeHarness({ duringSpawn: (): void => {
+    /** The current record, read so the concurrent row is ADDED rather than invented. */
+    const doc = JSON.parse(readFileSync(statePath(harness.workspace, CELL_ID), "utf8")) as Record<string, unknown>
+    doc.version = 999
+    doc.members = { ...(doc.members as Record<string, unknown>), [CONCURRENT]: { name: CONCURRENT, role: CONCURRENT, sessionId: "session-concurrent", executorRef: "session-concurrent", mode: "member", handoffReady: false, handoffs: 1, joinedAt: "2026-11-11T00:02:00.000Z" } }
+    refused = JSON.stringify(doc, null, 2) + "\n"
+    writeFileSync(statePath(harness.workspace, CELL_ID), refused, "utf8")
+  } })
+  await stopListener(harness)({ agent: harness.member })
+  // THE REFUSED BYTES COME FIRST (contract §5's fail-before rule): byte identity is the property Major-8
+  // exists to protect, so this assertion — not a journal flag downstream of it — is the one that must go RED
+  // on the pre-fix behaviour.
+  expect(readFileSync(statePath(harness.workspace, CELL_ID), "utf8")).toBe(refused)
+  /** The branch's journal row. */
+  const row = journalRows(harness).find((entry) => entry.event === "barrier-record-unreadable")
+  expect(row).toBeDefined()
+  expect(row?.fenced).toBe("not-persisted")
+  expect(row?.forceEligible).toBe(false)
+  expect(String(row?.recovery)).toContain("NOT rewritten")
+  expect(String(row?.retry)).toContain("ONCE a written bound exists")
+  expect(String(row?.retry)).toContain("cellwork_dispatch")
+  /** The refused document as it stands on disk. */
+  const onDisk = JSON.parse(readFileSync(statePath(harness.workspace, CELL_ID), "utf8")) as Record<string, unknown>
+  expect((onDisk.members as Record<string, unknown>)[CONCURRENT]).toBeDefined()
+  // AND NOTHING CLAIMED A RESEED.
+  expect(journalRows(harness).some((entry) => entry.event === "compaction" && entry.outcome === "reseeded")).toBe(false)
+})
+
+// ── A14: the status RENDER carries the closure reading ──────────────────────────────────────────────
+
+test("A14: the status RENDER carries liveness/closed/deadReseed/unverified/forceEligible — and leaves a LIVE seat's line unchanged", async () => {
+  // THE INCIDENT'S INVISIBILITY: a dead `subcaptain` rendered byte-identical to a healthy one. The TEXT
+  // render must carry the closure reading, not only the structured result.
+  /** The dead row A4 uses. */
+  const stranded = memberRow({ mode: "subcaptain", handoffReady: false, handoffs: 1, sessionId: "session-dead-child", executorRef: "session-dead-child", checkpointSince: new Date(Date.now() - 1800000).toISOString() })
+  /** The plane row naming the dead child as an open seat. */
+  const plane = teamRecord([{ id: "M1", name: MEMBER_NAME, role: MEMBER_NAME, status: "running", executorRef: "session-dead-child", mode: "member" }])
+  /** The dead seat's status harness. */
+  const deadHarness = statusHarness(stranded, { team: plane })
+  /** The rendered dead-seat status. */
+  const deadText = deadHarness.render(await deadHarness.run())
+  /** The rendered member line. */
+  const deadLine = deadText.split("\n").find((line) => line.includes("members (1):")) ?? ""
+  expect(deadLine).toContain("dead")
+  expect(deadLine).toContain("closed")
+  expect(deadLine).toContain("dead-reseed")
+  expect(deadLine).toContain("force-eligible")
+  // AN UNVERIFIED SEAT IS NAMED TOO, and its refused lever is never rendered as eligible.
+  /** The same row on a composition with NO registry. */
+  const unknownHarness = statusHarness(stranded, { agentsRegistry: false, team: plane })
+  /** The rendered unknown-seat status. */
+  const unknownText = unknownHarness.render(await unknownHarness.run())
+  /** The rendered member line. */
+  const unknownLine = unknownText.split("\n").find((line) => line.includes("members (1):")) ?? ""
+  expect(unknownLine).toContain("unknown")
+  expect(unknownLine).toContain("unverified")
+  expect(unknownLine).not.toContain("force-eligible")
+  // A LIVE, OPEN SEAT GAINS NO NOISE: the mode/flags output is exactly what it was.
+  /** A healthy row whose recorded session the registry holds. */
+  const liveRow = memberRow({ mode: "member", handoffReady: false, handoffs: 1 })
+  /** The plane row naming the live session. */
+  const livePlane = teamRecord([{ id: "M1", name: MEMBER_NAME, role: MEMBER_NAME, status: "running", executorRef: OLD_HANDLE, mode: "member" }])
+  /** The live seat's status harness. */
+  const liveHarness = statusHarness(liveRow, { team: livePlane, liveSessions: [OLD_HANDLE] })
+  /** The rendered live-seat status. */
+  const liveText = liveHarness.render(await liveHarness.run())
+  /** The rendered member line. */
+  const liveLine = liveText.split("\n").find((line) => line.includes("members (1):")) ?? ""
+  expect(liveLine).toBe("  members (1): Senior Engineer[member]")
+})
+
+// ── A15: an owner spelled as the SEAT'S NAME is the same seat ───────────────────────────────────────
+
+test("A15: a board row owned by the SEAT'S NAME is re-pointed too — terminal rows keep their owner", async () => {
+  // A board row can name the seat by DISPLAY NAME instead of its session handle. Both spellings are the
+  // same seat, so both move; a terminal row remains history whichever spelling it used.
+  /** The default record, reshaped so T1 is owned by the member NAME. */
+  const seeded = teamRecord()
+  /** The board this arm seeds: one name-owned row plus one handle-owned row. */
+  const tasks = seeded.tasks.map((task) => (String(task.id) === "T1" ? { ...task, owner: MEMBER_NAME } : task))
+  tasks.push({ id: "T4", subject: "owned by the old handle", status: "in_progress", owner: OLD_HANDLE, revision: 2 })
+  // THE NEGATIVE CONTROL (contract §3 A15): a row held by ANOTHER seat is never re-pointed. The name
+  // spelling moves only the rows this seat holds, so a second member's row — by display name AND by
+  // session handle — must survive the bind untouched, revision included.
+  tasks.push({ id: "T5", subject: "held by another seat (name)", status: "in_progress", owner: "Junior Engineer", revision: 11 })
+  tasks.push({ id: "T6", subject: "held by another seat (handle)", status: "in_progress", owner: "session-other-seat", revision: 12 })
+  /** The harness whose board mixes both owner spellings. */
+  const harness = makeHarness({ team: { ...seeded, tasks } })
+  await stopListener(harness)({ agent: harness.member })
+  /** The team record after the bind. */
+  const record = harness.record()
+  /** The rows by id. */
+  const byId = new Map(record.tasks.map((task) => [String(task.id), task]))
+  // THE MEMBER-NAME SPELLING IS THE SAME SEAT, so it is re-pointed exactly like the handle spelling.
+  expect(byId.get("T1")?.owner).toBe(NEW_HANDLE)
+  expect(byId.get("T4")?.owner).toBe(NEW_HANDLE)
+  // TERMINAL ROWS ARE HISTORY, whichever spelling their owner used.
+  expect(byId.get("T0")?.owner).toBe(OLD_HANDLE)
+  expect(byId.get("T2")?.owner).toBe(OLD_HANDLE)
+  // ANOTHER SEAT'S ROWS ARE NOT THIS SEAT'S TO HAND OVER — neither spelling, and not even the revision.
+  expect(byId.get("T5")?.owner).toBe("Junior Engineer")
+  expect(byId.get("T5")?.revision).toBe(11)
+  expect(byId.get("T6")?.owner).toBe("session-other-seat")
+  expect(byId.get("T6")?.revision).toBe(12)
+  // AND THE BIND REPORTED BOTH RE-POINTS.
+  expect(journalRows(harness).find((entry) => entry.event === "seat-rebound")?.tasks).toBe(2)
+})
+
+// ── A16: the recovery path is NOT re-entered ────────────────────────────────────────────────────────
+
+test("A16: a seat the TEAM row already binds to a LIVE child is NOT reseeded again — the skip is journaled and the rebind repair reconciles the records", async () => {
+  // THE RE-ENTRY (contract §3 A11's recovery path). An earlier run spawned the fresh child and its bind
+  // SUCCEEDED, but the CELL record could not be re-read afterwards, so it still names the dead session and
+  // still says `handoffReady:true`. The fresh child's own turn-end resolves back to this seat through the
+  // TEAM row; without a guard the barrier would raise a SECOND child for one seat — one more seat nobody
+  // can address. The guard refuses to spawn and says what reconciles the two records.
+  /** The TEAM row the earlier bind left: the LIVE fresh handle, an open seat. */
+  const seeded = teamRecord([{ id: "M1", name: MEMBER_NAME, role: MEMBER_NAME, status: "running", executorRef: NEW_HANDLE, mode: "member" }])
+  /** The board row that moved with that bind. */
+  seeded.tasks = seeded.tasks.map((task) => (String(task.id) === "T1" ? { ...task, owner: NEW_HANDLE } : task))
+  /** The harness whose registry holds the fresh child as a live agent. */
+  const harness = makeHarness({ team: seeded, liveSessions: [NEW_HANDLE] })
+  /** The fresh child's own handle: its turn-end resolves to this seat through the TEAM row. */
+  const freshChild: FakeAgent = { id: NEW_HANDLE, session: { id: NEW_HANDLE, header: { cwd: harness.workspace } } }
+  await stopListener(harness)({ agent: freshChild })
+  // NOTHING WAS SPAWNED: no second child, and no compaction attempt was even tried.
+  expect(harness.activations).toHaveLength(0)
+  /** Every journal row. */
+  const rows = journalRows(harness)
+  expect(rows.some((row) => row.event === "compaction")).toBe(false)
+  /** The skip row this run wrote instead. */
+  const row = rows.find((entry) => entry.event === "barrier-skipped")
+  expect(row?.branch).toBe("reseed-already-bound")
+  expect(row?.handle).toBe(NEW_HANDLE)
+  expect(row?.recordedSessionId).toBe(OLD_HANDLE)
+  expect(row?.reconcileRequired).toBe(true)
+  expect(String(row?.retry)).toContain("rebind:")
+  // THE RECORDS ARE LEFT AS THEY WERE: this is a record repair, not a barrier outcome, and a second writer
+  // over a record that was just repaired is exactly what the guard exists to prevent.
+  expect(cellMember(harness).sessionId).toBe(OLD_HANDLE)
+  expect(cellMember(harness).handoffReady).toBe(true)
+  expect(harness.record().members.find((member) => member.name === MEMBER_NAME)?.executorRef).toBe(NEW_HANDLE)
+  // THE REPAIR THE ROW NAMES RECONCILES THE TWO RECORDS: the CELL row now names the live child and has no
+  // pending handoff, so the guard's premise is gone and the seat is addressable again.
+  await harness.tools.get("cellwork_dispatch")!.execute({ rebind: [{ member: MEMBER_NAME, handle: NEW_HANDLE }] }, { name: "cellwork_dispatch", agent: harness.captain })
+  expect(cellMember(harness).sessionId).toBe(NEW_HANDLE)
+  expect(cellMember(harness).executorRef).toBe(NEW_HANDLE)
+  expect(cellMember(harness).handoffReady).toBe(false)
+  expect(cellMember(harness).mode).toBe("member")
+})
+
+// ── A17: rebind's DEFINING effect — a DIFFERENT TEAM handle is rewritten ─────────────────────────────
+
+test("A17: `rebind` rewrites a TEAM row that names a DIFFERENT handle and leaves the checkpoint window", async () => {
+  // THE HOLE THIS ARM CLOSES. A12b and A16 both seed the TEAM row with the handle the repair is CALLED with,
+  // so "the TEAM row names the handle after the call" was true BEFORE the call: a `rebind` whose TEAM write
+  // was broken or absent passed both. Here the TEAM row names the OLD handle at `mode:"checkpoint"` and only
+  // the CELL row names the fresh one, so this arm can only pass if the verb really writes the TEAM roster row.
+  /** The TEAM row the repair starts from: a DIFFERENT handle, still inside the checkpoint window. */
+  const seeded = teamRecord([{ id: "M1", name: MEMBER_NAME, role: MEMBER_NAME, status: "running", executorRef: OLD_HANDLE, mode: "checkpoint", handoff: { path: ".mpd/team/handoffs/senior-engineer-1.md", at: "2026-11-11T00:01:00.000Z" } }])
+  /** The CELL row only: it is what evidences the fresh handle for the operator's repair. */
+  const cellRow = memberRow({ sessionId: NEW_HANDLE, executorRef: NEW_HANDLE, mode: "member", handoffReady: false })
+  /** The harness whose identity registry PROVES the fresh child live. */
+  const harness = makeHarness({ team: seeded, liveSessions: [NEW_HANDLE], member: cellRow })
+  /** The TEAM seat row before the call. */
+  const before = harness.record().members.find((member) => member.name === MEMBER_NAME)
+  // THE PREMISE, ASSERTED — not assumed: the row the verb is supposed to rewrite is NOT already the answer.
+  expect(before?.executorRef).toBe(OLD_HANDLE)
+  expect(before?.mode).toBe("checkpoint")
+  /** The captain's repair, driven exactly as A11's failure sentence spells it. */
+  const repaired = await harness.tools.get("cellwork_dispatch")!.execute({ rebind: [{ member: MEMBER_NAME, handle: NEW_HANDLE }] }, { name: "cellwork_dispatch", agent: harness.captain }) as Record<string, unknown>
+  /** The rebound outcomes. */
+  const rebounds = Array.isArray(repaired.rebound) ? repaired.rebound as Array<Record<string, unknown>> : []
+  /** This seat's outcome. */
+  const outcome = rebounds.find((entry) => entry.member === MEMBER_NAME)
+  expect(outcome?.rebound).toBe(true)
+  expect(outcome?.previousSessionId).toBe(OLD_HANDLE)
+  expect(outcome?.handle).toBe(NEW_HANDLE)
+  // R2: THE REGISTRY'S ANSWER IS REPORTED, never upgraded: this composition holds the child, so it is `live`.
+  expect(outcome?.liveness).toBe("live")
+  // THE DEFINING EFFECT: the TEAM row now names the fresh handle AND has left the checkpoint window.
+  /** The TEAM seat row after the repair. */
+  const seat = harness.record().members.find((member) => member.name === MEMBER_NAME)
+  expect(seat?.executorRef).toBe(NEW_HANDLE)
+  expect(seat?.mode).toBe("member")
+  // THE HANDOFF IS HISTORY, not deleted by the re-point.
+  expect(seat?.handoff).toEqual({ path: ".mpd/team/handoffs/senior-engineer-1.md", at: "2026-11-11T00:01:00.000Z" })
+  // THE CELL MIRROR AGREES: both records name the same child, and no handoff is left pending.
+  /** The CELL row after the repair. */
+  const cell = cellMember(harness)
+  expect(cell.sessionId).toBe(NEW_HANDLE)
+  expect(cell.executorRef).toBe(NEW_HANDLE)
+  expect(cell.mode).toBe("member")
+  expect(cell.handoffReady).toBe(false)
+  // AND THE HAND-OVER IS JOURNALED with the displaced spelling quoted.
+  /** This arm's journal rows. */
+  const rows = journalRows(harness)
+  /** The rebind row. */
+  const row = rows.find((entry) => entry.event === "member-rebound")
+  expect(row?.member).toBe(MEMBER_NAME)
+  expect(row?.previousSessionId).toBe(OLD_HANDLE)
+  expect(row?.handle).toBe(NEW_HANDLE)
+  expect(row?.cellRow).toBe("mirrored")
+  // THE DOCUMENTED POLICY FOR AN UNPROVEN HANDLE: it is REPORTED (`unproven`), not refused and never called
+  // live. The SAME seeded record on a composition whose registry never learned the child.
+  /** The harness whose registry does NOT hold the fresh handle. */
+  const unprovenHarness = makeHarness({ team: seeded, member: cellRow })
+  /** The same repair on that composition. */
+  const unproven = await unprovenHarness.tools.get("cellwork_dispatch")!.execute({ rebind: [{ member: MEMBER_NAME, handle: NEW_HANDLE }] }, { name: "cellwork_dispatch", agent: unprovenHarness.captain }) as Record<string, unknown>
+  /** That seat's outcome. */
+  const unprovenOutcome = (Array.isArray(unproven.rebound) ? unproven.rebound as Array<Record<string, unknown>> : []).find((entry) => entry.member === MEMBER_NAME)
+  expect(unprovenOutcome?.rebound).toBe(true)
+  expect(unprovenOutcome?.liveness).toBe("unproven")
+  expect(unprovenHarness.record().members.find((member) => member.name === MEMBER_NAME)?.executorRef).toBe(NEW_HANDLE)
+})
+
+// ── A18: rebind ALONE never clears a fence ──────────────────────────────────────────────────────────
+
+test("A18: `rebind` ALONE leaves fenced/fencedReason byte-for-byte — the fence belongs to `unfence`", async () => {
+  // A12b drives `rebind` and `unfence` in ONE call and asserts the final unfenced state, so a `rebind` that
+  // silently cleared the give-up marker would pass it. This arm drives `rebind` ALONE and pins the marker.
+  /** The give-up sentence the CELL row already carries; the arm compares it byte-for-byte afterwards. */
+  const FENCE_REASON = "the reseed rollback was refused; repair with cellwork_dispatch {rebind:[...], unfence:[...]}"
+  /** The TEAM row: the old handle, inside the checkpoint window (rebind's documented promotion target). */
+  const seeded = teamRecord([{ id: "M1", name: MEMBER_NAME, role: MEMBER_NAME, status: "running", executorRef: OLD_HANDLE, mode: "checkpoint" }])
+  /** The harness whose CELL row is fenced but already names the handle the repair asks for. */
+  const harness = makeHarness({ team: seeded, member: memberRow({ sessionId: NEW_HANDLE, executorRef: NEW_HANDLE, mode: "checkpoint", fenced: true, fencedReason: FENCE_REASON, handoffReady: true }) })
+  /** `rebind` alone: no `unfence` key at all. */
+  const repaired = await harness.tools.get("cellwork_dispatch")!.execute({ rebind: [{ member: MEMBER_NAME, handle: NEW_HANDLE }] }, { name: "cellwork_dispatch", agent: harness.captain }) as Record<string, unknown>
+  // NO UNFENCE OUTCOME EXISTS, because none was asked for.
+  expect(repaired.unfenced).toBeUndefined()
+  /** The CELL row after the repair. */
+  const cell = cellMember(harness)
+  // THE MARKER SURVIVED, EXACTLY.
+  expect(cell.fenced).toBe(true)
+  expect(cell.fencedReason).toBe(FENCE_REASON)
+  // AND THE VERB DID DO ITS OWN JOB: the TEAM row left the checkpoint window.
+  expect(harness.record().members.find((member) => member.name === MEMBER_NAME)?.executorRef).toBe(NEW_HANDLE)
+  expect(harness.record().members.find((member) => member.name === MEMBER_NAME)?.mode).toBe("member")
+  /** This arm's journal rows. */
+  const rows = journalRows(harness)
+  expect(rows.some((entry) => entry.event === "member-rebound")).toBe(true)
+  // NOT ONE ROW CLAIMS A CLEAR: the fence is still the barrier's give-up fact.
+  expect(rows.some((entry) => entry.event === "member-unfenced" || entry.event === "member-unfenced-forced")).toBe(false)
+})
+
+// ── A19: a write from another PROCESS inside rebind's window is refused ─────────────────────────────
+
+test.skipIf(process.platform === "win32")("A19: a write by ANOTHER PROCESS inside rebind's window is refused (`team-record-changed`), never overwritten", async () => {
+  // THE WINDOW IS SYNCHRONOUS (read -> compare -> temp+rename is one block), so an in-process writer cannot
+  // land inside it. The arm therefore moves the window to the FILESYSTEM: the record path is a FIFO served by
+  // a BACKGROUND WRITER, which answers the verb's SNAPSHOT with document A and its COMPARE with document B.
+  // That is exactly the shape A8 measures for the reseed bind — another writer's document appears between
+  // the read and the rename — and the verb must refuse it rather than overwrite the other writer.
+  /** The document the SNAPSHOT reads: the seat at `checkpoint`, naming the old handle. */
+  const first = teamRecord()
+  /** The OTHER WRITER's document: a different phase marker, delivered to the COMPARE read. */
+  const second: TeamRecordFile = { ...teamRecord(), phase: "concurrent-writer-inside-rebind-window" }
+  /** The harness whose plane answers from memory, so the pipe is not drained before `rebind` opens it. */
+  const harness = makeHarness({ rebindWindowWrite: { first, second }, team: first, member: memberRow({ sessionId: NEW_HANDLE, executorRef: NEW_HANDLE, mode: "member", handoffReady: false }) })
+  /** The FIFO that replaces the record file. */
+  rmSync(harness.recordPath, { force: true })
+  execFileSync("mkfifo", [harness.recordPath])
+  /** The two documents the background writer serves, in order. */
+  const docA = join(harness.workspace, "snapshot-document.json")
+  /** The other writer's document, served to the verb's COMPARE read. */
+  const docB = join(harness.workspace, "external-write-document.json")
+  writeFileSync(docA, JSON.stringify(first, null, 2) + "\n", "utf8")
+  writeFileSync(docB, JSON.stringify(second, null, 2) + "\n", "utf8")
+  /** The handshake file the writer touches once bash is running, before it blocks on the first open. */
+  const ready = join(harness.workspace, "feeder.ready")
+  /**
+   * The background writer: serve A to the first reader, B to the second, then keep serving B so any later
+   * read (or a diagnostic) still terminates instead of blocking on an empty pipe.
+   */
+  const script = 'set -eu; : > "$READY"; cat "$DOC_A" > "$FIFO"; cat "$DOC_B" > "$FIFO"; while :; do cat "$DOC_B" > "$FIFO"; done'
+  /** The background writer process, killed in the arm's `finally`. */
+  const feeder = spawn("bash", ["-c", script], { stdio: "ignore", detached: true, env: { ...process.env, READY: ready, DOC_A: docA, DOC_B: docB, FIFO: harness.recordPath } })
+  try {
+    // WAIT FOR THE WRITER TO EXIST before the window opens: the OS must have it running before the read.
+    /** The deadline after which the handshake is treated as failed. */
+    const deadline = Date.now() + 5000
+    while (!existsSync(ready) && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 10))
+    expect(existsSync(ready)).toBe(true)
+    /** The captain's repair, on the record whose bytes another process moves inside the window. */
+    const repaired = await harness.tools.get("cellwork_dispatch")!.execute({ rebind: [{ member: MEMBER_NAME, handle: NEW_HANDLE }] }, { name: "cellwork_dispatch", agent: harness.captain }) as Record<string, unknown>
+    /** The rebound outcomes. */
+    const rebounds = Array.isArray(repaired.rebound) ? repaired.rebound as Array<Record<string, unknown>> : []
+    /** This seat's outcome. */
+    const outcome = rebounds.find((entry) => entry.member === MEMBER_NAME)
+    // THE SAME CAS SEMANTICS AS F2: the concurrent document is refused, never overwritten.
+    expect(outcome?.rebound).toBe(false)
+    expect(outcome?.reason).toBe("team-record-changed")
+    expect(String(outcome?.detail)).toContain("changed while this rebind was building its write")
+    // NOTHING WAS RENAMED OVER THE PIPE: the record path is still the FIFO the other writer serves, which is
+    // the strongest proof that this verb wrote no document at all.
+    expect(statSync(harness.recordPath).isFIFO()).toBe(true)
+    // R4.1: THE FAILED ENTRY IS JOURNALED, not only answered.
+    /** This arm's journal rows. */
+    const rows = journalRows(harness)
+    /** The failure row. */
+    const failed = rows.find((entry) => entry.event === "member-rebind-failed")
+    expect(failed?.member).toBe(MEMBER_NAME)
+    expect(failed?.reason).toBe("team-record-changed")
+    expect(failed?.handle).toBe(NEW_HANDLE)
+    // AND THE CELL ROW WAS NOT MIRRORED: a refused TEAM write never leaves the two records disagreeing.
+    expect(cellMember(harness).sessionId).toBe(NEW_HANDLE)
+    expect(cellMember(harness).executorRef).toBe(NEW_HANDLE)
+  } finally {
+    // THE WRITER'S WHOLE GROUP IS KILLED, then the pipe goes away so no blocked `cat` outlives the arm.
+    try {
+      process.kill(-(feeder.pid as number), "SIGKILL")
+    } catch {
+      feeder.kill("SIGKILL")
+    }
+    rmSync(harness.recordPath, { force: true })
+    rmSync(docA, { force: true })
+    rmSync(docB, { force: true })
+    rmSync(ready, { force: true })
+  }
+})
+
+// ── A20/A21: the handle is validated — shape, trimming, and OWNERSHIP evidence (R2) ────────────────
+
+test("A20: the handle is TRIMMED and must be the host's UUID form — a typo refuses the whole call, journaled", async () => {
+  /** The TEAM row this arm repairs. */
+  const seeded = teamRecord([{ id: "M1", name: MEMBER_NAME, role: MEMBER_NAME, status: "running", executorRef: OLD_HANDLE, mode: "checkpoint" }])
+  /** The harness whose registry proves the fresh child live. */
+  const harness = makeHarness({ team: seeded, liveSessions: [NEW_HANDLE], member: memberRow({ sessionId: NEW_HANDLE, executorRef: NEW_HANDLE, mode: "member", handoffReady: false }) })
+  /** The dispatch tool. */
+  const dispatch = harness.tools.get("cellwork_dispatch")!
+  // A TYPO IS REFUSED BEFORE ANY WRITE, and the sentence names the expected form.
+  /** The refusal for a handle that is not the host's form. */
+  const refusedResult = await dispatch.execute({ rebind: [{ member: MEMBER_NAME, handle: "not-a-handle" }] }, { name: "cellwork_dispatch", agent: harness.captain }) as Record<string, unknown>
+  expect(refusedResult.ok).toBe(false)
+  expect(String(refusedResult.error)).toContain("8-4-4-4-12")
+  // R4.1: THE ARGUMENT REFUSAL IS JOURNALED TOO.
+  /** This arm's journal rows. */
+  const rows = journalRows(harness)
+  /** The failure row. */
+  const failed = rows.find((entry) => entry.event === "member-rebind-failed")
+  expect(failed?.reason).toBe("invalid-handle")
+  expect(failed?.member).toBe(MEMBER_NAME)
+  // N4: THE TYPO ITSELF IS IN THE ROW, so the refused value can be reproduced without the answer.
+  expect(failed?.handle).toBe("not-a-handle")
+  // A VALUE PAST THE JOURNAL BOUND IS RECORDED AS CUT, never silently dropped or written whole.
+  /** A paste long enough to exceed the row's `handle` bound (120 chars). */
+  const LONG_TYPO = "x".repeat(200)
+  await dispatch.execute({ rebind: [{ member: MEMBER_NAME, handle: LONG_TYPO }] }, { name: "cellwork_dispatch", agent: harness.captain })
+  /** The LAST failure row, which is the long-value refusal. */
+  const truncated = journalRows(harness).filter((entry) => entry.event === "member-rebind-failed").pop()
+  expect(truncated?.handleTruncated).toBe(true)
+  expect(String(truncated?.handle)).toBe("x".repeat(117) + "...")
+  // NOTHING MOVED: the refused call wrote no record.
+  expect(harness.record().members.find((member) => member.name === MEMBER_NAME)?.executorRef).toBe(OLD_HANDLE)
+  // THE WHITESPACE A PASTE ADDS IS NOT PART OF THE IDENTITY: the padded handle is accepted, and the records
+  // carry the TRIMMED value (so the next comparison cannot miss it).
+  /** The same repair, with the handle padded as a copy/paste leaves it. */
+  const accepted = await dispatch.execute({ rebind: [{ member: MEMBER_NAME, handle: "  " + NEW_HANDLE + "\n" }] }, { name: "cellwork_dispatch", agent: harness.captain }) as Record<string, unknown>
+  /** The accepted outcome. */
+  const outcome = (Array.isArray(accepted.rebound) ? accepted.rebound as Array<Record<string, unknown>> : []).find((entry) => entry.member === MEMBER_NAME)
+  expect(outcome?.rebound).toBe(true)
+  expect(outcome?.handle).toBe(NEW_HANDLE)
+  expect(harness.record().members.find((member) => member.name === MEMBER_NAME)?.executorRef).toBe(NEW_HANDLE)
+  expect(cellMember(harness).sessionId).toBe(NEW_HANDLE)
+})
+
+test("A21: a handle this seat's records never name is refused per entry — the registry proves liveness, not ownership", async () => {
+  // A REAL, LIVE, WELL-FORMED HANDLE THAT BELONGS TO SOMEWHERE ELSE. The registry answers for it, so a verb
+  // that trusted liveness would bind this seat to another session's child and the paired `unfence` would
+  // reopen a seat on a ghost identity. Ownership is decided by THIS seat's own record trail.
+  /** The foreign handle: shaped like the host mints them, held by the registry, named by no record of this seat. */
+  const FOREIGN = "9a0c1d2e-0000-4000-8000-0000000beef0"
+  /** The harness whose registry proves the FOREIGN handle live. */
+  const harness = makeHarness({ liveSessions: [FOREIGN] })
+  /** The captain's repair. */
+  const repaired = await harness.tools.get("cellwork_dispatch")!.execute({ rebind: [{ member: MEMBER_NAME, handle: FOREIGN }] }, { name: "cellwork_dispatch", agent: harness.captain }) as Record<string, unknown>
+  /** This seat's outcome. */
+  const outcome = (Array.isArray(repaired.rebound) ? repaired.rebound as Array<Record<string, unknown>> : []).find((entry) => entry.member === MEMBER_NAME)
+  expect(outcome?.rebound).toBe(false)
+  expect(outcome?.reason).toBe("handle-unevidenced")
+  expect(String(outcome?.detail)).toContain("nothing here vouches for")
+  // NEITHER RECORD MOVED.
+  expect(harness.record().members.find((member) => member.name === MEMBER_NAME)?.executorRef).toBe(OLD_HANDLE)
+  expect(cellMember(harness).sessionId).toBe(OLD_HANDLE)
+  expect(cellMember(harness).executorRef).toBe(OLD_HANDLE)
+  // AND THE ATTEMPT IS IN THE JOURNAL.
+  /** This arm's journal rows. */
+  const rows = journalRows(harness)
+  /** The failure row. */
+  const failed = rows.find((entry) => entry.event === "member-rebind-failed")
+  expect(failed?.reason).toBe("handle-unevidenced")
+  expect(failed?.handle).toBe(FOREIGN)
+})
+
+// ── A22: the handle a reseed DISPLACES is journaled (R3) ────────────────────────────────────────────
+
+test("A22: a reseed that overwrites an UNPROVEN TEAM handle journals the displaced handle (R3)", async () => {
+  // THE GUARD IS INERT HERE ON PURPOSE: nothing proves the TEAM row's handle dead, and the decision to keep
+  // that behaviour is deliberate. The consequence is that the bind replaces it — so the displaced handle must
+  // stay findable, or an orphaned child disappears from every record.
+  /** The handle the TEAM row names that no registry lookup proved dead. */
+  const DISPLACED = "3c9b2a10-0000-4000-8000-0000000d15a0"
+  /** The TEAM row that names it. */
+  const seeded = teamRecord([{ id: "M1", name: MEMBER_NAME, role: MEMBER_NAME, status: "running", executorRef: DISPLACED, mode: "checkpoint" }])
+  /** The harness whose registry holds neither the displaced handle nor the fresh one. */
+  const harness = makeHarness({ team: seeded })
+  await stopListener(harness)({ agent: harness.member })
+  /** This arm's journal rows. */
+  const rows = journalRows(harness)
+  // THE RESEED ITSELF STILL SUCCEEDED: the new handle is bound.
+  expect(rows.some((entry) => entry.event === "compaction" && entry.outcome === "reseeded")).toBe(true)
+  expect(harness.record().members.find((member) => member.name === MEMBER_NAME)?.executorRef).toBe(NEW_HANDLE)
+  // THE DISPLACED HANDLE IS ON EVERY ROW THAT REPORTS THE HAND-OVER, with the unproven marker beside it.
+  for (const event of ["compaction", "seat-rebound", "member-reseeded"]) {
+    /** The row this event wrote. */
+    const row = rows.find((entry) => entry.event === event)
+    expect(row?.displacedExecutorRef).toBe(DISPLACED)
+    expect(row?.displacedUnproven).toBe(true)
+  }
+})
+
+// ── A23: an unreadable record and a readable one WITHOUT a handle are told apart (R4.2) ─────────────
+
+test("A23: a refused rollback whose surviving record is READABLE but carries no executorRef says exactly that", async () => {
+  // "COULD NOT BE READ" SENDS THE OPERATOR TO REPAIR A FILE THE READER OPENED FINE. The two shapes must be
+  // distinguishable in the sentence the refusal and the journal carry.
+  /** The marker the other writer's document carries, so the arm proves it survived. */
+  const MARKER = "readable-without-handle"
+  /** The harness whose other writer leaves a PARSABLE record with a non-string `executorRef`. */
+  const harness = makeHarness({
+    planeThrowsAt: "verify",
+    externalWriteAtVerify: (written) => ({
+      ...written,
+      phase: MARKER,
+      members: written.members.map((member) => (member.name === MEMBER_NAME ? { ...member, executorRef: 42 } : member)),
+    }),
+  })
+  await stopListener(harness)({ agent: harness.member })
+  /** This arm's journal rows. */
+  const rows = journalRows(harness)
+  /** The give-up row this refusal writes. */
+  const row = rows.find((entry) => entry.event === "checkpoint-unrecoverable")
+  expect(row?.rollback).toBe("refused")
+  // THE SENTENCE NAMES THE REAL SHAPE.
+  expect(String(row?.reason)).toContain("READABLE")
+  expect(String(row?.reason)).toContain("carries no string executorRef")
+  expect(String(row?.reason)).not.toContain("could not be read")
+  // THE CHILD IS STILL KEPT: an unproven record never proves a child unbindable (contract §3 A11).
+  expect(harness.activations).toHaveLength(1)
+  expect(harness.activations[0].disposed).toBe(false)
+  expect(row?.orphanChild).toBe(NEW_HANDLE)
+  // THE OTHER WRITER'S DOCUMENT SURVIVED.
+  expect(harness.record().phase).toBe(MARKER)
+})
+
+// ── A24/A25: OWNERSHIP IS THE LATEST HAND-OVER, AND THE DISPLACED CHILD'S LIVENESS IS SURFACED (M1) ───
+
+test("A24: a handle only an OLDER compaction row names is refused `handle-superseded` — the LATEST hand-over wins (M1)", async () => {
+  // THE HOLE THIS ARM CLOSES. The journal is append-only, so a failure sentence from an EARLIER reseed still
+  // quotes that reseed's child. Treating "any historical row named it" as ownership let an operator paste
+  // that old handle and re-point the seat BACKWARDS — even to a child the registry still holds live — while
+  // the CURRENT child became only `previousSessionId`. Here both records and the NEWER compaction row name
+  // the current child; the stale handle exists only in the older row.
+  /** The stale handle an operator pastes out of an earlier failure sentence; the registry still holds it. */
+  const STALE = "1a2b3c4d-1111-4111-8111-11111111a24a"
+  /** The current child: both records and the newer hand-over row name it. */
+  const CURRENT = NEW_HANDLE
+  /** The TEAM row as the CURRENT child left it — NOT the stale handle the request will name. */
+  const seeded = teamRecord([{ id: "M1", name: MEMBER_NAME, role: MEMBER_NAME, status: "running", executorRef: CURRENT, mode: "member" }])
+  /** The harness whose registry proves BOTH children live, so only the recency rule can refuse the stale one. */
+  const harness = makeHarness({ team: seeded, liveSessions: [STALE, CURRENT], member: memberRow({ sessionId: CURRENT, executorRef: CURRENT, mode: "member", handoffReady: false }) })
+  // THE PREMISE, ASSERTED: the old child is still LIVE — this is not a "dead handle" refusal.
+  expect(harness.registry.has(STALE)).toBe(true)
+  // THE APPEND-ONLY TRAIL: the older row created STALE, the newer row replaced it with CURRENT.
+  seedJournal(harness, [
+    { event: "compaction", member: MEMBER_NAME, outcome: "reseeded", attempts: 3, reason: "busy", newHandle: STALE },
+    { event: "compaction", member: MEMBER_NAME, outcome: "reseeded", attempts: 3, reason: "busy", newHandle: CURRENT },
+  ])
+  /** The captain's repair, using the handle an old failure sentence quoted. */
+  const refused = await harness.tools.get("cellwork_dispatch")!.execute({ rebind: [{ member: MEMBER_NAME, handle: STALE }] }, { name: "cellwork_dispatch", agent: harness.captain }) as Record<string, unknown>
+  /** This seat's outcome. */
+  const outcome = (Array.isArray(refused.rebound) ? refused.rebound as Array<Record<string, unknown>> : []).find((entry) => entry.member === MEMBER_NAME)
+  expect(outcome?.rebound).toBe(false)
+  expect(outcome?.reason).toBe("handle-superseded")
+  // THE EVIDENCE AND THE SUPERSEDING ROW ARE BOTH NAMED, per entry (M1).
+  expect(outcome?.namedBy).toEqual(["journal:compaction"])
+  /** The structured source that replaced the request. */
+  const supersededBy = outcome?.supersededBy as Record<string, unknown> | undefined
+  expect(supersededBy?.event).toBe("compaction")
+  expect(supersededBy?.handle).toBe(CURRENT)
+  expect(String(outcome?.detail)).toContain("compaction")
+  expect(String(outcome?.detail)).toContain(CURRENT)
+  // THE REFUSAL REPORTS WHAT IT WOULD HAVE DISPLACED AND WHETHER THAT CHILD IS LIVE (N1/F2): the answer,
+  // not only the success path, carries the pair.
+  expect(outcome?.previousSessionId).toBe(CURRENT)
+  expect(outcome?.previousSessionIdLiveness).toBe("live")
+  // AND IT NEVER ADVISES A DIRECTION (F1): the old sentence told the operator to `pass <latest.handle>`,
+  // which is the backwards re-point in the crash window; the safe wording states both facts only.
+  expect(String(outcome?.detail)).not.toContain("pass ")
+  // NEITHER RECORD MOVED: the TEAM row still names the current child and the CELL row still mirrors it.
+  expect(harness.record().members.find((member) => member.name === MEMBER_NAME)?.executorRef).toBe(CURRENT)
+  expect(cellMember(harness).sessionId).toBe(CURRENT)
+  expect(cellMember(harness).executorRef).toBe(CURRENT)
+  // AND THE REFUSAL IS JOURNALED WITH THE SAME SUPERSEDING SOURCE, not only in the answer.
+  /** This arm's journal rows. */
+  const rows = journalRows(harness)
+  /** The failed entry's row. */
+  const failed = rows.find((entry) => entry.event === "member-rebind-failed")
+  expect(failed?.reason).toBe("handle-superseded")
+  expect(failed?.handle).toBe(STALE)
+  expect((failed?.supersededBy as Record<string, unknown> | undefined)?.event).toBe("compaction")
+  // THE FAILURE PATH CARRIES THE SAME EVIDENCE AND DISPLACEMENT PAIR AS THE ANSWER (N1/F2): a regression that
+  // drops `namedBy` or `previousSessionId`/`previousSessionIdLiveness` from a refusal now reddens here, not
+  // only on the success path A25 pins.
+  expect(failed?.namedBy).toEqual(["journal:compaction"])
+  expect(failed?.previousSessionId).toBe(CURRENT)
+  expect(failed?.previousSessionIdLiveness).toBe("live")
+  // AND THE STALE REQUEST LANDED NO `member-rebound` ROW: nothing was re-pointed.
+  expect(rows.some((entry) => entry.event === "member-rebound")).toBe(false)
+})
+
+test("A25: the DISPLACED handle's liveness is surfaced — a live previousSessionId says `live` in the answer AND the row (M1/N1)", async () => {
+  // A rebind overwrites the TEAM `executorRef`, so a child that is still live can be replaced silently. The
+  // answer and the `member-rebound` journal row must say which handle was displaced and whether the registry
+  // still holds it, using the SAME `displacedExecutorRef`/`displacedUnproven` pair the reseed bind journals.
+  /** The TEAM row: the live-but-replaced child, at the checkpoint window the repair promotes out of. */
+  const seeded = teamRecord([{ id: "M1", name: MEMBER_NAME, role: MEMBER_NAME, status: "running", executorRef: OLD_HANDLE, mode: "checkpoint" }])
+  /** The CELL row: the CURRENT child the repair asks for (and the only surface that names it). */
+  const cellRow = memberRow({ sessionId: NEW_HANDLE, executorRef: NEW_HANDLE, mode: "member", handoffReady: false })
+  /** The harness whose registry proves the CURRENT child live and still holds the child it displaces. */
+  const harness = makeHarness({ team: seeded, liveSessions: [NEW_HANDLE], member: cellRow })
+  // THE PREMISE, ASSERTED: the displaced child is LIVE, so this is the visible-loss shape, not a dead handle.
+  expect(harness.registry.has(OLD_HANDLE)).toBe(true)
+  /** The captain's repair. */
+  const repaired = await harness.tools.get("cellwork_dispatch")!.execute({ rebind: [{ member: MEMBER_NAME, handle: NEW_HANDLE }] }, { name: "cellwork_dispatch", agent: harness.captain }) as Record<string, unknown>
+  /** This seat's outcome. */
+  const outcome = (Array.isArray(repaired.rebound) ? repaired.rebound as Array<Record<string, unknown>> : []).find((entry) => entry.member === MEMBER_NAME)
+  expect(outcome?.rebound).toBe(true)
+  expect(outcome?.previousSessionId).toBe(OLD_HANDLE)
+  // THE THREE-STATE ANSWER FOR THE DISPLACED CHILD, and the R3 marker pair beside it.
+  expect(outcome?.previousSessionIdLiveness).toBe("live")
+  expect(outcome?.displacedExecutorRef).toBe(OLD_HANDLE)
+  expect(outcome?.displacedUnproven).toBe(false)
+  // THE EVIDENCE SOURCE IS NAMED: the CELL row was the only surface that named the requested handle.
+  expect(outcome?.namedBy).toEqual(["cell"])
+  // THE JOURNAL ROW CARRIES THE SAME CLAIMS — an operator reading the record later sees the live child.
+  /** This arm's journal rows. */
+  const rows = journalRows(harness)
+  /** The hand-over row. */
+  const row = rows.find((entry) => entry.event === "member-rebound")
+  expect(row?.previousSessionId).toBe(OLD_HANDLE)
+  expect(row?.previousSessionIdLiveness).toBe("live")
+  expect(row?.displacedExecutorRef).toBe(OLD_HANDLE)
+  expect(row?.displacedUnproven).toBe(false)
+  expect(row?.namedBy).toEqual(["cell"])
+  expect(row?.handle).toBe(NEW_HANDLE)
+  expect(row?.liveness).toBe("live")
+})
+
+// ── A26: ANOTHER SEAT'S RECORD IS NEVER THIS SEAT'S OWNERSHIP EVIDENCE (M2) ──────────────────────────
+
+test("A26a: a handle named by ANOTHER seat's TEAM executorRef is refused (`handle-unevidenced`); both records stay put", async () => {
+  // THE DECISIVE COUNTEREXAMPLE the earlier A21 could not make: A21 seeded FOREIGN only in the identity
+  // registry, so an implementation that scanned EVERY member row would still pass it. Here FOREIGN is the
+  // OTHER seat's TEAM `executorRef` — a global scan would happily bind this seat to it.
+  /** A real, live, well-formed handle that belongs to the OTHER seat. */
+  const FOREIGN = "9a0c1d2e-0000-4000-8000-0000000beef0"
+  /** The roster: this seat at the old handle, the other seat at FOREIGN. */
+  const seeded = teamRecord([
+    { id: "M1", name: MEMBER_NAME, role: MEMBER_NAME, status: "running", executorRef: OLD_HANDLE, mode: "checkpoint" },
+    { id: "M2", name: "Deep Worker", role: "Deep Worker", status: "running", executorRef: FOREIGN, mode: "member" },
+  ])
+  /** The harness whose registry proves FOREIGN live, so only OWNERSHIP can refuse it. */
+  const harness = makeHarness({ team: seeded, liveSessions: [FOREIGN] })
+  /** The captain asks for the OTHER seat's child. */
+  const repaired = await harness.tools.get("cellwork_dispatch")!.execute({ rebind: [{ member: MEMBER_NAME, handle: FOREIGN }] }, { name: "cellwork_dispatch", agent: harness.captain }) as Record<string, unknown>
+  /** This seat's outcome. */
+  const outcome = (Array.isArray(repaired.rebound) ? repaired.rebound as Array<Record<string, unknown>> : []).find((entry) => entry.member === MEMBER_NAME)
+  expect(outcome?.rebound).toBe(false)
+  expect(outcome?.reason).toBe("handle-unevidenced")
+  // THE EVIDENCE LIST IS EMPTY: no surface OF THIS SEAT named the foreign handle.
+  expect(outcome?.namedBy).toEqual([])
+  // NEITHER RECORD MOVED — this seat's row AND the other seat's row.
+  /** The team record as it stands after the refusal. */
+  const record = harness.record()
+  expect(record.members.find((member) => member.name === MEMBER_NAME)?.executorRef).toBe(OLD_HANDLE)
+  expect(record.members.find((member) => member.name === "Deep Worker")?.executorRef).toBe(FOREIGN)
+  expect(cellMember(harness).sessionId).toBe(OLD_HANDLE)
+  expect(cellMember(harness).executorRef).toBe(OLD_HANDLE)
+  // AND THE ATTEMPT IS JOURNALED.
+  /** This arm's journal rows. */
+  const rows = journalRows(harness)
+  /** The failed entry's row. */
+  const failed = rows.find((entry) => entry.event === "member-rebind-failed")
+  expect(failed?.reason).toBe("handle-unevidenced")
+  expect(failed?.handle).toBe(FOREIGN)
+  expect(rows.some((entry) => entry.event === "member-rebound")).toBe(false)
+})
+
+test("A26b: a handle named by ANOTHER seat's journal hand-over is refused (`handle-unevidenced`); both records stay put", async () => {
+  // THE JOURNAL HALF OF A26a. A global journal scan (dropping `row.member === memberName`) would accept this
+  // foreign handle; the member-scoped rule must not. A21 remains the paired control: a live registry handle
+  // that NO record names at all is refused the same way.
+  /** The OTHER seat's child, live and named only by that seat's journal row. */
+  const FOREIGN = "9a0c1d2e-0000-4000-8000-0000000beef0"
+  /** The roster: this seat at the old handle; the other seat is the one the journal row names. */
+  const seeded = teamRecord([
+    { id: "M1", name: MEMBER_NAME, role: MEMBER_NAME, status: "running", executorRef: OLD_HANDLE, mode: "checkpoint" },
+    { id: "M2", name: "Deep Worker", role: "Deep Worker", status: "running", executorRef: OLD_HANDLE, mode: "member" },
+  ])
+  /** The harness whose registry proves FOREIGN live. */
+  const harness = makeHarness({ team: seeded, liveSessions: [FOREIGN] })
+  // THE OTHER SEAT'S HAND-OVER: a valid compaction row, for a DIFFERENT member.
+  seedJournal(harness, [{ event: "compaction", member: "Deep Worker", outcome: "reseeded", attempts: 3, reason: "busy", newHandle: FOREIGN }])
+  /** The captain asks this seat for the other seat's child. */
+  const repaired = await harness.tools.get("cellwork_dispatch")!.execute({ rebind: [{ member: MEMBER_NAME, handle: FOREIGN }] }, { name: "cellwork_dispatch", agent: harness.captain }) as Record<string, unknown>
+  /** This seat's outcome. */
+  const outcome = (Array.isArray(repaired.rebound) ? repaired.rebound as Array<Record<string, unknown>> : []).find((entry) => entry.member === MEMBER_NAME)
+  expect(outcome?.rebound).toBe(false)
+  expect(outcome?.reason).toBe("handle-unevidenced")
+  expect(outcome?.namedBy).toEqual([])
+  // THE REFUSAL STILL REPORTS THE HANDLE IT WOULD HAVE DISPLACED AND ITS LIVENESS (N1/F2): the member this
+  // seat still names is the live session the harness holds, and the answer must say so on the failure path.
+  expect(outcome?.previousSessionId).toBe(OLD_HANDLE)
+  expect(outcome?.previousSessionIdLiveness).toBe("live")
+  // NEITHER RECORD MOVED.
+  /** The team record as it stands after the refusal. */
+  const record = harness.record()
+  expect(record.members.find((member) => member.name === MEMBER_NAME)?.executorRef).toBe(OLD_HANDLE)
+  expect(record.members.find((member) => member.name === "Deep Worker")?.executorRef).toBe(OLD_HANDLE)
+  expect(cellMember(harness).sessionId).toBe(OLD_HANDLE)
+  expect(cellMember(harness).executorRef).toBe(OLD_HANDLE)
+  // AND THE FAILED ENTRY IS JOURNALED, with the requested handle.
+  /** This arm's journal rows. */
+  const rows = journalRows(harness)
+  /** The failed entry's row. */
+  const failed = rows.find((entry) => entry.event === "member-rebind-failed")
+  expect(failed?.reason).toBe("handle-unevidenced")
+  expect(failed?.handle).toBe(FOREIGN)
+  // THE FAILURE ROW CARRIES THE SAME PAIR AS THE ANSWER (N1/F2), so the evidence source and the displaced
+  // handle survive the call even when the operator reads only the journal.
+  expect(failed?.namedBy).toEqual([])
+  expect(failed?.previousSessionId).toBe(OLD_HANDLE)
+  expect(failed?.previousSessionIdLiveness).toBe("live")
+  expect(rows.some((entry) => entry.event === "member-rebound")).toBe(false)
+})
+
+// ── A27: THE CURRENT RECORD WINS; THE JOURNAL ONLY CORROBORATES (F1) ────────────────────────────────
+
+test("A27: a record written AFTER the last hand-over with no journal row of its own is ACCEPTED — never superseded, never advised backwards (F1)", async () => {
+  // THE WRITER'S OWN CRASH WINDOW. The record write lands after the last hand-over row and leaves no journal
+  // row of its own, so the journal's "latest" row is OLDER than the record's current identity. The old rule
+  // trusted that row: it marked the record's CURRENT handle `handle-superseded` and advised `pass <OLD>`,
+  // which re-points the seat BACKWARDS. The current record must win, the answer must never mention the old
+  // handle as a destination, and both records must stay on CURRENT.
+  /** The record's CURRENT child: what both current records name and what the operator asks for. */
+  const CURRENT = NEW_HANDLE
+  /** The handle the last hand-over left behind; its row predates the record's own write. */
+  const OLDER = OLD_HANDLE
+  /** The record as the LATER write left it, stamped after the journal row seeded below. */
+  const seeded: TeamRecordFile = {
+    ...teamRecord([{ id: "M1", name: MEMBER_NAME, role: MEMBER_NAME, status: "running", executorRef: CURRENT, mode: "member" }]),
+    tasks: [],
+    updatedAt: "2026-11-11T00:05:00.000Z",
+  }
+  /** The harness: both current records name CURRENT, so the request cannot be stale. */
+  const harness = makeHarness({ team: seeded, liveSessions: [CURRENT], member: memberRow({ sessionId: CURRENT, executorRef: CURRENT, mode: "member", handoffReady: false }) })
+  // THE CRASH WINDOW, SEEDED LITERALLY: the journal's LAST hand-over named OLDER at 00:02Z; the record was
+  // then written at 00:05Z naming CURRENT, and NO journal row records that write.
+  seedJournal(harness, [{ event: "compaction", member: MEMBER_NAME, outcome: "reseeded", attempts: 3, reason: "busy", newHandle: OLDER, at: "2026-11-11T00:02:00.000Z" }])
+  /** The captain's repair, asking for the handle the CURRENT records name. */
+  const repaired = await harness.tools.get("cellwork_dispatch")!.execute({ rebind: [{ member: MEMBER_NAME, handle: CURRENT }] }, { name: "cellwork_dispatch", agent: harness.captain }) as Record<string, unknown>
+  /** This seat's outcome. */
+  const outcome = (Array.isArray(repaired.rebound) ? repaired.rebound as Array<Record<string, unknown>> : []).find((entry) => entry.member === MEMBER_NAME)
+  // THE RECORD WINS: no supersession and no refusal.
+  expect(outcome?.rebound).toBe(true)
+  expect(outcome?.reason).toBeUndefined()
+  expect(outcome?.supersededBy).toBeUndefined()
+  expect(outcome?.handle).toBe(CURRENT)
+  // THE F1 MARKERS make the divergence explicit instead of silent.
+  expect(outcome?.handleRecordCurrent).toBe(true)
+  expect(outcome?.journalHandoverOlder).toBe(true)
+  // NO COUNTER-ADVICE ANYWHERE IN THIS ENTRY: the answer never names the older handle and never says `pass`.
+  const answer = JSON.stringify(outcome)
+  expect(answer).not.toContain(OLDER)
+  expect(answer).not.toContain("pass ")
+  // THE RENDER OF THE SAME ANSWER CARRIES NEITHER THE OLDER HANDLE NOR A DIRECTION EITHER.
+  /** The tool's declared render. */
+  const render = harness.tools.get("cellwork_dispatch")!.output?.render
+  /** The rendered blocks, flattened the way the adapter shows them. */
+  const blocks = typeof render === "function" ? render({ rebind: [{ member: MEMBER_NAME, handle: CURRENT }] }, repaired) as Array<{ text?: unknown }> : []
+  /** The text a reader would see. */
+  const rendered = Array.isArray(blocks) ? blocks.map((block) => String(block.text ?? "")).join("\n") : ""
+  expect(rendered).not.toContain(OLDER)
+  expect(rendered).not.toContain("pass ")
+  // THE RECORDS DID NOT MOVE BACKWARDS.
+  expect(harness.record().members.find((member) => member.name === MEMBER_NAME)?.executorRef).toBe(CURRENT)
+  expect(cellMember(harness).sessionId).toBe(CURRENT)
+  expect(cellMember(harness).executorRef).toBe(CURRENT)
+  // THE LANDED ROW CARRIES THE SAME PROVENANCE, and no failed row was written.
+  /** This arm's journal rows. */
+  const rows = journalRows(harness)
+  /** The hand-over row. */
+  const row = rows.find((entry) => entry.event === "member-rebound")
+  expect(row?.handle).toBe(CURRENT)
+  expect(row?.handleRecordCurrent).toBe(true)
+  expect(row?.journalHandoverOlder).toBe(true)
+  expect(rows.some((entry) => entry.event === "member-rebind-failed")).toBe(false)
+})
+
+test("A27 control: with NO current handle the journal's latest hand-over still decides — an older row is never evidence (F1)", async () => {
+  // THE PAIRED CONTROL. The record names NO handle at all, so the journal is the only trail: its LATEST row
+  // names CURRENT and its older row names OLDER. Requesting OLDER must still refuse `handle-superseded` (an
+  // older row is not evidence), while requesting CURRENT — the latest row's handle — is accepted. The journal
+  // stays useful exactly where the record is silent, and it never overrides a record that speaks.
+  /** The stale handle only the OLDER row names. */
+  const OLDER = OLD_HANDLE
+  /** The handle the LATEST hand-over row names, and the only one the journal vouches for. */
+  const CURRENT = NEW_HANDLE
+  /** The roster: this seat exists but names NO executor handle. */
+  const seeded = teamRecord([{ id: "M1", name: MEMBER_NAME, role: MEMBER_NAME, status: "running", mode: "member" }])
+  /** The harness whose TEAM row and CELL row both name no handle. */
+  const harness = makeHarness({ team: seeded, liveSessions: [CURRENT], member: memberRow({ sessionId: "", executorRef: "", mode: "member", handoffReady: false }) })
+  seedJournal(harness, [
+    { event: "compaction", member: MEMBER_NAME, outcome: "reseeded", attempts: 3, reason: "busy", newHandle: OLDER, at: "2026-11-11T00:02:00.000Z" },
+    { event: "compaction", member: MEMBER_NAME, outcome: "reseeded", attempts: 3, reason: "busy", newHandle: CURRENT, at: "2026-11-11T00:03:00.000Z" },
+  ])
+  /** The captain asks for the handle only the OLDER row names. */
+  const refused = await harness.tools.get("cellwork_dispatch")!.execute({ rebind: [{ member: MEMBER_NAME, handle: OLDER }] }, { name: "cellwork_dispatch", agent: harness.captain }) as Record<string, unknown>
+  /** This seat's refusal. */
+  const refusal = (Array.isArray(refused.rebound) ? refused.rebound as Array<Record<string, unknown>> : []).find((entry) => entry.member === MEMBER_NAME)
+  expect(refusal?.rebound).toBe(false)
+  expect(refusal?.reason).toBe("handle-superseded")
+  expect(refusal?.namedBy).toEqual(["journal:compaction"])
+  expect((refusal?.supersededBy as Record<string, unknown> | undefined)?.handle).toBe(CURRENT)
+  // THE SAFE WORDING: no `pass <CURRENT>` direction, only the reconcile sentence.
+  expect(String(refusal?.detail)).not.toContain("pass ")
+  // NOTHING MOVED ON THE OLDER REQUEST.
+  expect(harness.record().members.find((member) => member.name === MEMBER_NAME)?.executorRef).toBeUndefined()
+  // AND WITH THE RECORD SILENT THE LATEST ROW STILL DECIDES: the same harness accepts CURRENT.
+  const accepted = await harness.tools.get("cellwork_dispatch")!.execute({ rebind: [{ member: MEMBER_NAME, handle: CURRENT }] }, { name: "cellwork_dispatch", agent: harness.captain }) as Record<string, unknown>
+  /** This seat's acceptance. */
+  const success = (Array.isArray(accepted.rebound) ? accepted.rebound as Array<Record<string, unknown>> : []).find((entry) => entry.member === MEMBER_NAME)
+  expect(success?.rebound).toBe(true)
+  expect(success?.namedBy).toEqual(["journal:compaction"])
+  expect(success?.handleRecordCurrent).toBeUndefined()
+  expect(harness.record().members.find((member) => member.name === MEMBER_NAME)?.executorRef).toBe(CURRENT)
 })

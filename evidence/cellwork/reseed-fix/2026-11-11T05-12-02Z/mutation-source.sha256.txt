@@ -1,0 +1,1 @@
+8079c8b899663810620af7fcb3ce0010efe844eae59248a2c67b3bc67cce96e9  packages/mpd-cellwork-plugin/src/protocol.ts

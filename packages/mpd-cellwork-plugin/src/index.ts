@@ -99,8 +99,8 @@ interface CellworkStatusResult {
   splitStale: boolean
   /** ISO instant the planner team was staged, or "". */
   startedAt: string
-  /** The cell's members, in board order. */
-  members: Array<{ name: string; role: string; mode: string; sessionId: string; adopted?: boolean; grown?: boolean; planning?: boolean }>
+  /** The cell's members, in board order, with the closure reading the render also prints (Minor-5). */
+  members: Array<{ name: string; role: string; mode: string; sessionId: string; liveness?: string; closed?: boolean; deadReseed?: boolean; unverified?: boolean; forceEligible?: boolean; adopted?: boolean; grown?: boolean; planning?: boolean }>
   /** The seat projection (§4.2): execution/planning counts, the two caps and the grown count. */
   seats: { execution: number; planning: number; cap: number; capPerRole: number; grown: number }
   /** How many checkpoints were injected so far. */
@@ -348,6 +348,31 @@ function refusalText(failure: CellReadFailure): string {
 }
 
 /**
+ * One member line of the `cellwork_status` render (Minor-5).
+ *
+ * The BASE line is exactly the pre-existing `name[mode,planning,grown,adopted]` shape. A NON-LIVE or held
+ * seat appends the closure reading — `dead`/`unknown`, `closed`, `dead-reseed`, `unverified`,
+ * `force-eligible` — while a live, open seat gains no tag at all, so the healthy output is unchanged.
+ *
+ * @param member - one `cellwork_status` member row.
+ * @returns the rendered member line.
+ */
+function memberLineOf(member: Record<string, unknown>): string {
+  /** The identity seam's answer; an absent field is neither health nor a label, so it renders nothing. */
+  const liveness = typeof member.liveness === "string" ? member.liveness : ""
+  return String(member.name) + "[" + String(member.mode)
+    + (member.planning === true ? ",planning" : "")
+    + (member.grown === true ? ",grown" : "")
+    + (member.adopted === true ? ",adopted" : "")
+    + (liveness !== "" && liveness !== "live" ? "," + liveness : "")
+    + (member.closed === true ? ",closed" : "")
+    + (member.deadReseed === true ? ",dead-reseed" : "")
+    + (member.unverified === true ? ",unverified" : "")
+    + (member.forceEligible === true ? ",force-eligible" : "")
+    + "]"
+}
+
+/**
  * The one-line render every cellwork tool result uses.
  *
  * @param value - the tool's structured result.
@@ -381,7 +406,7 @@ function render(value: unknown): unknown {
       + (typeof result.recordedTeamId === "string" && result.recordedTeamId !== "" && result.recordedTeamId !== result.teamId ? "\n  the cell record names team " + result.recordedTeamId + " (stale; the board above is what the dispatcher uses)" : "")
       + (typeof result.boardResolutionNote === "string" ? "\n  " + result.boardResolutionNote : "")
       + (seats === undefined ? "" : "\n  seats: " + String(seats.execution) + " execution / " + String(seats.planning) + " planning · caps " + String(seats.cap) + "/" + String(seats.capPerRole) + " · grown " + String(seats.grown))
-      + "\n  members (" + members.length + "): " + (members.length === 0 ? "-" : members.map((member) => String(member.name) + "[" + String(member.mode) + (member.planning === true ? ",planning" : "") + (member.grown === true ? ",grown" : "") + (member.adopted === true ? ",adopted" : "") + "]").join(", "))
+      + "\n  members (" + members.length + "): " + (members.length === 0 ? "-" : members.map(memberLineOf).join(", "))
       + "\n  checkpoints injected: " + String(result.checkpoints)
       + "\n  state: " + String(result.statePath))
   }
