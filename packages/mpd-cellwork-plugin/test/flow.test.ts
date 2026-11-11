@@ -888,6 +888,48 @@ test("activate: a STALE split is refused unless its revision is passed explicitl
   expect(explicit.ok).toBe(true)
 })
 
+test("CR #108: a RE-SPLIT never overwrites the staging id an earlier activation preserved", async () => {
+  /** The harness with a finalized, accepted cell. */
+  const harness = makeHarness()
+  /** The started cell's id. */
+  const cellId = await startCell(harness)
+  await runTool(harness, "cellwork_requirements", { action: "finalize", content: COMPLETE_REQUIREMENTS }, plannerAgent(harness))
+  await runTool(harness, "cellwork_split", { action: "submit", tasks: validTasks() }, splitterAgent(harness))
+  /** The FIRST activation. */
+  const first = await runTool(harness, "cellwork_activate", {}, harness.captain)
+  expect(first.ok).toBe(true)
+  /** The record after the first activation. */
+  const activated = readCell(harness.workspace, cellId)
+  expect(activated.ok).toBe(true)
+  if (!activated.ok) return
+  // THE LEGACY SHAPE the resolver must repair (§7.1 step 4): the recorded `teamId` is unreadable, the
+  // preserved staging id names the live board that carries this cell's activated rows. A RE-SPLIT's outcome
+  // then reports the id it STARTED from as `planningTeamId` — and the old merge wrote that over the
+  // preserved staging id, losing the only record of where staging happened.
+  /** The live board the first activation wrote. */
+  const executed = harness.teamRecords.get("team-1")
+  expect(executed).toBeDefined()
+  harness.teamRecords.set("team-planning", executed as Record<string, any>)
+  writeCell(harness.workspace, { ...activated.state, teamId: "team-dead", planningTeamId: "team-planning" })
+  // A NEW accepted revision, which is the re-split path.
+  await runTool(harness, "cellwork_requirements", { action: "update", content: COMPLETE_REQUIREMENTS + "\n## Extra\nmore\n" }, plannerAgent(harness))
+  /** The accepted revision-2 split. */
+  const resubmitted = await runTool(harness, "cellwork_split", { action: "submit", revision: 2, tasks: validTasks() }, splitterAgent(harness))
+  expect(resubmitted.accepted).toBe(true)
+  /** The re-split's activation. */
+  const resplit = await runTool(harness, "cellwork_activate", { revision: 2 }, harness.captain)
+  expect(resplit.ok).toBe(true)
+  /** The record the re-split persisted. */
+  const after = readCell(harness.workspace, cellId)
+  expect(after.ok).toBe(true)
+  if (!after.ok) return
+  // THE STAGING ID IS THE RECORD'S, NOT THE PASS'S STARTING POINT: "team-dead" was the stale execution id
+  // the re-split started from, and writing it here would have erased "team-planning".
+  expect(after.state.planningTeamId).toBe("team-planning")
+  // The execution board the resolver named is persisted as `teamId`.
+  expect(after.state.teamId).toBe("team-planning")
+})
+
 // ── B7: the owner-only dispatch decision ───────────────────────────────────
 
 // PROVENANCE (wave T45): the arm that used to live here drove `dispatchOwnerOnly` directly to assert the

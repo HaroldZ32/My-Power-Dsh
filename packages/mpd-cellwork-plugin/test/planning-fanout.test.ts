@@ -387,16 +387,29 @@ test("an analysis lane that never settles does not wedge the idempotent path, an
 // ── §5.2: the binding prompt text ───────────────────────────────────────────
 
 test("the planner prompt carries the MAXIMUM-PARALLELISM section and keeps the ONE-question rule for the USER only", () => {
-  /** The planner prompt under test. */
-  const prompt = plannerPrompt({ cell: makeStagingHarness(2).cell, personaFor: (): string | null => null })
+  /** The planner prompt under test, staged with two analysis lanes. */
+  const prompt = plannerPrompt({ cell: makeStagingHarness(2).cell, personaFor: (): string | null => null, planningSeats: ["cell-analyst-1", "cell-analyst-2"] })
   expect(prompt).toContain("MAXIMUM PARALLELISM")
   expect(prompt).toContain("MORE AGENTS IS THE DEFAULT")
   expect(prompt).toContain("Run INDEPENDENT investigations")
   expect(prompt).toContain("`cellwork_delegate` starts a BATCH of background consults in ONE call")
-  expect(prompt).toContain("cell-analyst-1 … cell-analyst-K")
+  // THE LANES ARE THE ONES THIS CELL STAGED, not a `1 … K` promise (CodeRabbit #108).
+  expect(prompt).toContain("`cell-analyst-1` · `cell-analyst-2` are ALREADY running")
   // The interview rule STAYS, and it is scoped to the USER.
   expect(prompt).toContain("Ask the USER ONE question at a time")
   expect(prompt).not.toContain("1. Ask ONE question at a time.")
+})
+
+test("CR #108: analysts=0 means the planner prompt NEVER claims analysis lanes are running, nor names one", () => {
+  /** The planner prompt with NO analysis lane staged, which is the `cellwork.planning.analysts=0` shape. */
+  const prompt = plannerPrompt({ cell: makeStagingHarness(0).cell, personaFor: (): string | null => null, planningSeats: [] })
+  // THE DEFECT: the old prompt said the analysts were ALREADY running even when staging raised none, so the
+  // planner waited for reports nobody would ever send. Silence is the correct text for zero lanes.
+  expect(prompt).not.toContain("cell-analyst")
+  expect(prompt).not.toContain("ALREADY running")
+  // THE REST OF THE SECTION SURVIVES: recon and background delegation still fan work out.
+  expect(prompt).toContain("MAXIMUM PARALLELISM")
+  expect(prompt).toContain("cellwork_delegate")
 })
 
 test("the splitter prompt lists `member` with its one-seat/multi-seat explanation, the caps and the no-token-saving rule", () => {

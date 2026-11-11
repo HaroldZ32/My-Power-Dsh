@@ -1,0 +1,3 @@
+      // THE GROWN SEATS ARE PERSISTED ON THE CELL RECORD before the pass, so the guard and every later
+      // reader see the same roster the board carries. The journal rows are already written by growth.
+      if (Object.keys(growth.members).length > 0) writeCell(caller.workspace, { ...current, members: { ...current.members, ...growth.members } })

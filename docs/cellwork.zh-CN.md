@@ -190,8 +190,8 @@ cell 的 `state.json` 维护一张 `members` 表：每个座位一行，携带 r
 （`cell-planner`、`cell-splitter`、`cell-analyst-*`）、纯验证者座位、处于 `checkpoint` 模式或被围栏的
 座位、被阻塞的任务、已被 claim 的任务，以及由队长 claim 的行。增长是幂等的：同一看板跑两趟，只要还有空闲
 座位就不会建第二个，名册上的名字绝不重复，追加与 cell 记录写入之间崩溃由下一趟采纳活跃名册行来修复。
-运行中的 `add_member` **不带 `role`** 是合法的，但答复会**警告**（一句话）：该座位无法按 role 匹配路由，
-将继承调用会话的路由——请传 `role`。
+运行中的 `add_member` **不带 `role`** 是合法的，但答复会**警告**（一句话）：该座位**可能**匹配不到角色路由
+（路由解析还会读描述头与成员名，而两者都不保证匹配）——**届时**才继承调用会话的路由；仍建议传 `role`。
 
 ## 被围栏的成员、改派与解围杠杆
 
@@ -635,6 +635,14 @@ cell id 形如 `cell-<UTC 时刻>`；子 cell 会记录 `parentCellId` 与 `dept
 2. 否则为**团队平面**就本 cell 的队长 session 给出的解析结果——正是 `cellwork_dispatch` 走的同一条路径；
 3. 否则为「看板携带本 cell 已激活任务 id」的那个活跃 team；
 4. 否则回退到 `planningTeamId`，即保留的暂存 id（旧 cell 的回退）。
+
+**第五种状态是「未验证」回落，且只有重切分才会走。** 四步解析什么都没找到、而记录的 `teamId` 非空时，重切分
+（`activatedTasks` 已带看板 id 的 cell）仍继续使用**记录里的** id——旧 cell 可能指向一个任何接缝都读不到的看板，
+拒绝它会搁浅本来可续做的工作——但这个 id 是**被信任**而非被验证的：答复携带 `boardNote` 说明这一点，同一事实
+写入 journal（`boardResolution: "unverified"`），note 会打印记录 id，并在解析器看到另一个候选时连那个 id 一起
+打印——两个 id 都可见。note 是**提示性的**，不是拒绝：它说明工作只会追加到那条记录上，绝不叫操作者去跑
+`cellwork_start`（team id 确实已记录），看到它的操作者也不应新开 cell。**首次**激活绝不走这条路径（它没有已铸出
+的 id 可供核对记录），而记录 id 为空的重切分仍以 `cellwork_start` 的指引拒绝。
 
 `cellwork_status`、`cellwork_supervise`、`cellwork_context`、`cellwork_stop` 的活任务守卫、座位解析、本 cell
 的需求重切分路径以及激活自己的写入，读的都是**这条解析**，绝不是裸字段。激活还会把执行看板 id **持久化**为

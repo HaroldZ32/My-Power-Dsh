@@ -1,0 +1,10 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-cellwork-plugin/test/elastic-seats.test.ts:
+(pass) CR #108: a re-split that resolves no team continues on the RECORDED id, marked unverified [1.69ms]
+
+ 1 pass
+ 30 filtered out
+ 0 fail
+ 6 expect() calls
+Ran 1 test across 1 file. [154.00ms]

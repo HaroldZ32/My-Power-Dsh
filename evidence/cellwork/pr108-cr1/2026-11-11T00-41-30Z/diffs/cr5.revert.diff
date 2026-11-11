@@ -1,0 +1,14 @@
+--- a/packages/mpd-cellwork-plugin/src/flow.ts (fixed)
++++ b/packages/mpd-cellwork-plugin/src/flow.ts (reverted)
+@@ -1216,10 +1216,7 @@
+         ...state,
+         // §7.1: the record takes the EXECUTION board id, preserving the staging id beside it.
+         ...(activated.outcome.teamId === undefined ? {} : { teamId: activated.outcome.teamId }),
+-        // THE STAGING ID IS WRITTEN ONCE (CodeRabbit #108): a RE-SPLIT's outcome reports the id this pass
+-        // STARTED from, which on a legacy cell is not necessarily the id the record preserved for staging —
+-        // overwriting it would lose the original. Only a record that carries NO staging id learns one here.
+-        ...(activated.outcome.planningTeamId === undefined || state.planningTeamId !== "" ? {} : { planningTeamId: activated.outcome.planningTeamId }),
++        ...(activated.outcome.planningTeamId === undefined ? {} : { planningTeamId: activated.outcome.planningTeamId }),
+         phase: "executing",
+         activatedRevision: acceptedRevision,
+         activationInFlight: null,

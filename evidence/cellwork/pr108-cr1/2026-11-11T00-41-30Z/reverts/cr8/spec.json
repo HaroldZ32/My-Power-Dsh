@@ -1,0 +1,6 @@
+{
+  "id": "cr8",
+  "file": "packages/mpd-cellwork-plugin/src/staging.ts",
+  "expectedSha256": "282f049303660e159354d8594d1e29ce974054a3e098208a2d4e68e50b021ed3",
+  "hunks": [{"before":"before-1.txt","after":"after-1.txt"}]
+}

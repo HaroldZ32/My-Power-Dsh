@@ -1,0 +1,6 @@
+{
+  "id": "cr5",
+  "file": "packages/mpd-cellwork-plugin/src/flow.ts",
+  "expectedSha256": "7d75e1898ad0a670de04e642508cd9a52220723ef60b2c4e813e805b4282076b",
+  "hunks": [{"before":"before-1.txt","after":"after-1.txt"}]
+}

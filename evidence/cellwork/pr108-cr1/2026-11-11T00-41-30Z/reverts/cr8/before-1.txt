@@ -1,0 +1,8 @@
+    // THE ANALYSIS LANES ARE NAMED ONLY WHEN THEY EXIST (CodeRabbit #108): with
+    // `cellwork.planning.analysts=0` the staging pass raises no analyst at all, so the old unconditional
+    // "ALREADY running" claim sent the planner looking for reports nobody would ever send.
+    ...(deps.planningSeats.length === 0 ? [] : [
+      "- The analysis lanes " + deps.planningSeats.map((name) => "`" + name + "`").join(" · ") + " are ALREADY running for you and mail their findings",
+      "  to you and to `cell-splitter`. Do not re-derive what they were sent for, and do not wait idle for them:",
+      "  keep interviewing while they work.",
+    ]),

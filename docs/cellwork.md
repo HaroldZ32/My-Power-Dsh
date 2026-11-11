@@ -247,8 +247,9 @@ verifier-only seat, a seat in `checkpoint` mode or fenced, a blocked task, a tas
 row claimed by the captain. Growth is idempotent: two passes over the same board create no second seat
 while an idle one exists, a name is never duplicated on the roster, and a crash between the append and
 the cell-record write is repaired by the next pass adopting the live roster row. A mid-run
-`add_member` that carries NO `role` is legal but the answer WARNS (one sentence) that the seat cannot
-be matched by role and inherits the calling session's route — pass `role`.
+`add_member` that carries NO `role` is legal but the answer WARNS (one sentence) that the seat may not
+match a role route — resolution also reads the description head and the member name, and neither is
+guaranteed — in which case it inherits the calling session's route; passing `role` is still recommended.
 
 ## Fenced members, reassignment and the unfence lever
 
@@ -355,8 +356,8 @@ three signals, and a fenced member is never messaged.
   that STAYS in the window across runs — a seat whose session died starts no further run and is bounded
   by the forced lever below.
 
-**The generic team verb is OWNER-ONLY by default; only its explicit roster mode carries a hazard cell
-mode does not.** `agent_teams_dispatch` pairs a ready task with its DECLARED OWNER, and the positional
+**The generic team verb is OWNER-ONLY by default; only its explicit roster mode carries a hazard that
+cell mode does not.** `agent_teams_dispatch` pairs a ready task with its DECLARED OWNER, and the positional
 fallback exists ONLY behind the explicit `mode:"roster"` argument. That mode is what handed a REVIEW
 task to the member that had WRITTEN the reviewed lanes during the field wave; the captain released the
 pairing immediately, restored the row to the independent reviewer, and the writer disclosed it had only
@@ -792,6 +793,18 @@ board through ONE rule (the exported `resolveCellTeam` in the cellwork state mod
    `cellwork_dispatch` uses;
 3. otherwise the live team whose board carries the cell's activated task ids;
 4. otherwise `planningTeamId`, the preserved staging id, as the legacy fallback.
+
+**The fifth state is an UNVERIFIED fallback, and only a RE-SPLIT takes it.** When all four steps resolve
+NOTHING and the record's `teamId` is non-empty, a re-split (a cell whose `activatedTasks` already name
+board ids) still continues on the RECORDED id — an old cell may name a board no seam can read any more,
+and refusing it would strand work that is otherwise resumable — but the id is TRUSTED, never verified:
+the answer carries `boardNote` saying so, the same fact is journaled (`boardResolution: "unverified"`),
+and the note prints the recorded id and, when the resolver saw another candidate, that id too — so both
+ids are visible. The note is ADVISORY, not a refusal: it says work is appended to that record only, it
+never tells the operator to run `cellwork_start` (a team id IS recorded), and an operator who sees it
+should not start a new cell. An INITIAL activation never takes this path (it has no minted ids to verify
+the record against), and a re-split with NO recorded id still refuses with the `cellwork_start`
+instruction.
 
 `cellwork_status`, `cellwork_supervise`, `cellwork_context`, `cellwork_stop`'s live-task guard, seat
 resolution, this cell's requirements re-split path and activation's own writes all read THAT resolution,

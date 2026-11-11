@@ -188,6 +188,15 @@ export interface ActivateOutcome {
    */
   notice?: string
   /**
+   * The board-resolution note when a RE-SPLIT ran on the RECORDED id because no resolver evidence verified
+   * it (`unverified`); absent when the board really resolved (or the pass is an initial activation).
+   *
+   * The old cell must still run, so the fallback is allowed — but it is REPORTED, never silent: the note
+   * names the recorded id, says the resolution is unverified, and carries the resolver's own note when it
+   * had one. This is also what tells the operator NOT to run `cellwork_start` again.
+   */
+  boardNote?: string
+  /**
    * The team the EXECUTION board landed on, when it differs from the record's previous `teamId` (§7.1).
    *
    * The caller persists it as the cell's `teamId`; absent means the record already names the right team.
@@ -455,10 +464,23 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
   // so its seed/cancel path resolves the execution board and never the dead planning team (§7.1a site 8).
   /** Whether this pass is a RE-SPLIT, whose recorded team must be verified against the minted ids. */
   const resplit = Object.values(deps.cell.activatedTasks ?? {}).some((id) => id !== "")
-  /** The board this activation's seed and cancellation read. */
-  const board = resplit
+  /** The resolver's answer for a RE-SPLIT; an INITIAL activation resolves nothing (the evidence gate). */
+  const resolved = resplit
     ? resolveCellTeam({ workspace: deps.workspace, cell: deps.cell, teams: deps.teams?.(), recordFor: deps.recordFor })
-    : { teamId: deps.cell.teamId }
+    : undefined
+  // A RE-SPLIT THAT RESOLVES NO TEAM STILL RUNS ON THE RECORDED ID (CodeRabbit #108): an old cell may carry
+  // a board no seam can read any more, and refusing it would strand work that is otherwise resumable. The
+  // fallback is NOT silent — it is marked `unverified` and the note below says the record's id was trusted
+  // rather than verified — and it never tells the operator to run `cellwork_start`, because a team id IS
+  // recorded; only a cell with NO id at all gets that instruction.
+  /** Whether the recorded team id is being trusted WITHOUT resolver evidence (a re-split only). */
+  const unverified = resplit && (resolved?.teamId ?? "") === "" && deps.cell.teamId !== ""
+  /** The note an unverified board resolution carries onto the outcome and the journal. */
+  const boardNote = unverified
+    ? "the re-split resolved no live team for " + deps.cell.cellId + ", so this activation continues on the RECORDED team " + JSON.stringify(deps.cell.teamId) + " — the board resolution is UNVERIFIED" + (resolved?.note === undefined ? "" : " (" + resolved.note + ")") + "; work is appended to that record only."
+    : undefined
+  /** The board this activation's seed and cancellation read: the verified resolution, or the recorded id. */
+  const board = unverified ? { teamId: deps.cell.teamId } : resolved ?? { teamId: deps.cell.teamId }
   /** The staging team id the record carried BEFORE this pass, preserved on the outcome (§7.1). */
   const planningTeamId = deps.cell.teamId
   /** The team id every write addresses; a cell with no team was never staged. */
@@ -796,12 +818,16 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
       /** The plane's answer for the cancellation. */
       const closed = (await plane.cancelTasks({ workspace: deps.workspace, teamId, taskIds: cancelledIds, note: "the accepted split no longer carries this task" })) as Record<string, unknown>
       if (closed?.ok === false) return fail("cellwork_activate could not close the dropped row(s): " + String(closed.error ?? "the team plane refused the cancellation"))
-      // A ROW THE PLANE SKIPPED IS NOT CANCELLED. The old path reported success for an answer whose every
-      // entry was skipped; the rows would stay dispatchable, which is the defect this step exists to remove.
-      /** The rows the plane did not cancel, with its reason. */
-      const uncancelled = Array.isArray(closed.skipped) ? (closed.skipped as Array<Record<string, unknown>>).filter((row) => typeof row.taskId === "string") : []
+      // A SKIPPED ROW IS CLASSIFIED BY THE STATUS THE PLANE REPORTS, NEVER BY ITS REASON TEXT (CodeRabbit
+      // #108): a terminal row (completed / failed / cancelled) is ALREADY CLOSED — exactly the state this
+      // step exists to establish — so the activation continues; a MISSING or non-terminal row would stay
+      // dispatchable, which must fail the pass. An absent status is read as "not closed" (fail-closed).
+      /** The statuses that mean the board row is already terminal. */
+      const closedStatuses = new Set(["completed", "failed", "cancelled"])
+      /** The skipped rows that are NOT already closed, with the plane's own status and reason. */
+      const uncancelled = Array.isArray(closed.skipped) ? (closed.skipped as Array<Record<string, unknown>>).filter((row) => typeof row.taskId === "string" && !closedStatuses.has(String(row.status ?? ""))) : []
       if (uncancelled.length > 0) {
-        return fail("cellwork_activate could not close " + String(uncancelled.length) + " dropped row(s) on team " + teamId + ": " + uncancelled.map((row) => String(row.taskId) + " (" + String(row.reason ?? "the plane skipped it") + ")").join("; ") + " — the activation is left un-dispatched and can be resumed")
+        return fail("cellwork_activate could not close " + String(uncancelled.length) + " dropped row(s) on team " + teamId + ": " + uncancelled.map((row) => String(row.taskId) + " (status " + String(row.status ?? "unknown") + ": " + String(row.reason ?? "the plane skipped it") + ")").join("; ") + " — the activation is left un-dispatched and can be resumed")
       }
     }
   }
@@ -885,6 +911,9 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     ...(executionTeamId === teamId ? {} : { recordedTeamId: teamId }),
     mode,
     splitRevision: deps.split.revision,
+    // THE BOARD RESOLUTION IS JOURNALED WITH THE PASS (CodeRabbit #108): an `unverified` fallback is a FACT
+    // a later reader must be able to see, not a detail that lived only in this call's local variables.
+    ...(unverified ? { boardResolution: "unverified", ...(boardNote === undefined ? {} : { boardNote }) } : {}),
     producer: producerIdentity(deps.cell.cellId),
     tasks: activated.map((task) => ({ key: task.key, boardId: task.boardId, owner: task.memberName, kind: task.kind })),
     kept: [...keptKeys],
@@ -922,6 +951,7 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
       // §7.1: the record takes the execution board id and preserves the staging id beside it.
       ...(executionTeamId === "" || executionTeamId === planningTeamId ? {} : { teamId: executionTeamId, planningTeamId }),
       ...(splitTaskId === "" ? {} : { splitTaskId }),
+      ...(boardNote === undefined ? {} : { boardNote }),
       ...(notice === undefined ? {} : { notice }),
     },
   }

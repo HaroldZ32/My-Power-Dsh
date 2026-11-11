@@ -20,7 +20,7 @@
 // row, an unbound session with no history is still refused, a delegation child is not healed into the
 // lead history, and a colliding id REDDENS.
 import { afterEach, describe, expect, test } from "bun:test"
-import { existsSync, mkdtempSync, rmSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { apply, TEAMS_SERVICE, type MpdTeamsService } from "../src/index.ts"
@@ -301,6 +301,11 @@ describe("C7-4 F1 — a mid-run append lands on the APPROVED record", () => {
     expect(typeof answer.warning).toBe("string")
     expect(answer.warning).toContain("no `role`")
     expect(answer.warning).toContain("Reviewer 3")
+    // THE SENTENCE NAMES THE REAL PRECEDENCE (CodeRabbit #108): a role route is not impossible — the adapter
+    // also matches the description head and the member name — so an omitted role makes the route a MAY, never
+    // a "cannot". The inheritance clause stays, because it is what happens when no role route matches.
+    expect(answer.warning).toContain("may not match a role route")
+    expect(answer.warning).toContain("description head")
     expect(answer.warning).toContain("inherits the calling session's route")
     /** The appended member as the record holds it — created, and honestly role-less. */
     const added = readTeam(h.workspace, teamId)?.members.find((member) => member.name === "Reviewer 3")
@@ -312,6 +317,37 @@ describe("C7-4 F1 — a mid-run append lands on the APPROVED record", () => {
     expect(rows.length).toBe(1)
     expect(rows[0]?.member).toBe("Reviewer 3")
     expect(rows[0]?.reason).toBe(answer.warning)
+  })
+
+  test("CR #108: a THROWING journal append does not strand the append — the member is still raised, with no ghost", async () => {
+    /** The harness this arm drives. */
+    const h = harness()
+    /** The approved team. */
+    const teamId = await approveTeam(h)
+    // THE INJECTED FAILURE: `appendTeamJournal` appends to `<ws>/.mpd/team/journal.jsonl`, and a DIRECTORY at
+    // that path makes the append throw (EISDIR) while every other write stays healthy. Before the repair the
+    // tool threw here AFTER `writeTeam` had already persisted the roster row, leaving a member nothing ever
+    // spawned — the ghost the retry then collided with by name.
+    mkdirSync(join(h.workspace, ".mpd", "team", "journal.jsonl"), { recursive: true })
+    /** The tool's answer: the raise happened despite the journal failure. */
+    const answer = await h.call("agent_teams_plan", { action: "add_member", member: { name: "Reviewer 4", description: "Reviewer 4 (verifier)", prompt: "You review." } }, LEAD) as { warning?: string; spawned?: string; appended?: string }
+    expect(answer.spawned).toBe("child-Reviewer-4")
+    expect(answer.appended).toContain("live team " + teamId)
+    // The answer still carries the §7.1b warning, because the omitted role is independent of the journal.
+    expect(answer.warning).toContain("no `role`")
+    /** The appended member as the record holds it — RAISED, so no ghost row was left behind. */
+    const added = readTeam(h.workspace, teamId)?.members.find((member) => member.name === "Reviewer 4")
+    expect(added?.status).toBe("running")
+    expect(added?.executorRef).toBe("child-Reviewer-4")
+  })
+
+  test("CR #108: the team-journal seam is imported with the repository's explicit `.ts` specifier", () => {
+    // THE RULE IS ABOUT THE SPECIFIER, not the behaviour: both spellings resolve under bun, so only a source
+    // assertion can pin it. `packages/*/src` is built by bun and read by node's type stripping elsewhere, and
+    // the repository's convention is the explicit `.ts` form this arm holds.
+    /** The plugin entry, read as text. */
+    const source = readFileSync(join(import.meta.dir, "../src/index.ts"), "utf8")
+    expect(source).toContain('import { appendTeamJournal } from "./team-journal.ts"')
   })
 
   test("NEGATIVE CONTROL: a plan that IS staged and already approved still refuses", async () => {

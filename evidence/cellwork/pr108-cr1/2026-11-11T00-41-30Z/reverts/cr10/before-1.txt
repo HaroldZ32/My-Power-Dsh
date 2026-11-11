@@ -1,0 +1,1 @@
+          ? "member " + JSON.stringify(added.name) + " was added with no `role` — route resolution may not match a role route (it also matches the description head and the member name, which is not guaranteed), in which case the seat inherits the calling session's route; pass `role` with the roster label this seat answers to."

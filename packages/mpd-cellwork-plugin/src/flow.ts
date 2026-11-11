@@ -1074,6 +1074,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
           loops: { type: "array", items: { type: "object" } },
           dispatch: { type: "object" },
           notice: { type: "string", description: "Present on a re-split: how many tasks were kept, that their frozen contracts are NOT rewritten, what a scope expansion therefore needs, that this activation dispatched owner-only, and the stage-4 rebuild exception." },
+          boardNote: { type: "string", description: "Present when a re-split ran on the RECORDED team id because no resolver evidence verified it (`unverified`): names the recorded id, says the resolution is unverified, and carries the resolver's own note. It is a warning, not a refusal — the old cell still runs; do NOT start a new cell." },
         },
         required: ["ok"],
       },
@@ -1087,7 +1088,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         const pairs = Array.isArray(dispatch.pairs) ? dispatch.pairs as Array<Record<string, unknown>> : []
         /** The tasks left out. */
         const skipped = Array.isArray(dispatch.skipped) ? dispatch.skipped as Array<Record<string, unknown>> : []
-        return text("cell activated on split revision " + String(result.revision ?? "?") + (result.mode === "resplit" ? " (re-split: " + String(Array.isArray(result.kept) ? result.kept.length : 0) + " kept, " + String(Array.isArray(result.cancelled) ? result.cancelled.length : 0) + " cancelled)" : "") + ": " + String(Array.isArray(result.tasks) ? result.tasks.length : 0) + " task(s), " + String(Array.isArray(result.loops) ? result.loops.length : 0) + " verify loop(s), " + pairs.length + " dispatched" + (skipped.length === 0 ? "" : ", " + skipped.length + " reported: " + skipped.map((row) => String(row.subject ?? row.taskId) + ": " + String(row.reason)).join("; ")) + (typeof result.notice === "string" ? "\nNOTICE: " + result.notice : ""))
+        return text("cell activated on split revision " + String(result.revision ?? "?") + (result.mode === "resplit" ? " (re-split: " + String(Array.isArray(result.kept) ? result.kept.length : 0) + " kept, " + String(Array.isArray(result.cancelled) ? result.cancelled.length : 0) + " cancelled)" : "") + ": " + String(Array.isArray(result.tasks) ? result.tasks.length : 0) + " task(s), " + String(Array.isArray(result.loops) ? result.loops.length : 0) + " verify loop(s), " + pairs.length + " dispatched" + (skipped.length === 0 ? "" : ", " + skipped.length + " reported: " + skipped.map((row) => String(row.subject ?? row.taskId) + ": " + String(row.reason)).join("; ")) + (typeof result.notice === "string" ? "\nNOTICE: " + result.notice : "") + (typeof result.boardNote === "string" ? "\nBOARD: " + result.boardNote : ""))
       },
     },
     execute: async (args: unknown, exec: DshToolExec): Promise<FlowResult> => {
@@ -1215,7 +1216,10 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         ...state,
         // §7.1: the record takes the EXECUTION board id, preserving the staging id beside it.
         ...(activated.outcome.teamId === undefined ? {} : { teamId: activated.outcome.teamId }),
-        ...(activated.outcome.planningTeamId === undefined ? {} : { planningTeamId: activated.outcome.planningTeamId }),
+        // THE STAGING ID IS WRITTEN ONCE (CodeRabbit #108): a RE-SPLIT's outcome reports the id this pass
+        // STARTED from, which on a legacy cell is not necessarily the id the record preserved for staging —
+        // overwriting it would lose the original. Only a record that carries NO staging id learns one here.
+        ...(activated.outcome.planningTeamId === undefined || state.planningTeamId !== "" ? {} : { planningTeamId: activated.outcome.planningTeamId }),
         phase: "executing",
         activatedRevision: acceptedRevision,
         activationInFlight: null,
@@ -1243,6 +1247,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         loops: activated.outcome.loops,
         dispatch: activated.outcome.dispatch,
         ...(activated.outcome.notice === undefined ? {} : { notice: activated.outcome.notice }),
+        ...(activated.outcome.boardNote === undefined ? {} : { boardNote: activated.outcome.boardNote }),
       }
     },
   }))

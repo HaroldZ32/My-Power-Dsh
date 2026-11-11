@@ -1,0 +1,10 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-team-core-plugin/test/c74-midrun-and-binding.test.ts:
+(pass) C7-4 F1 — a mid-run append lands on the APPROVED record > §7.1b: a mid-run add_member WITHOUT role still creates the member, WARNS in the answer, and journals the omission [4.09ms]
+
+ 1 pass
+ 19 filtered out
+ 0 fail
+ 12 expect() calls
+Ran 1 test across 1 file. [158.00ms]

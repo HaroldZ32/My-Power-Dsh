@@ -1,0 +1,17 @@
+  /** The resolver's answer for a RE-SPLIT; an INITIAL activation resolves nothing (the evidence gate). */
+  const resolved = resplit
+    ? resolveCellTeam({ workspace: deps.workspace, cell: deps.cell, teams: deps.teams?.(), recordFor: deps.recordFor })
+    : undefined
+  // A RE-SPLIT THAT RESOLVES NO TEAM STILL RUNS ON THE RECORDED ID (CodeRabbit #108): an old cell may carry
+  // a board no seam can read any more, and refusing it would strand work that is otherwise resumable. The
+  // fallback is NOT silent — it is marked `unverified` and the note below says the record's id was trusted
+  // rather than verified — and it never tells the operator to run `cellwork_start`, because a team id IS
+  // recorded; only a cell with NO id at all gets that instruction.
+  /** Whether the recorded team id is being trusted WITHOUT resolver evidence (a re-split only). */
+  const unverified = resplit && (resolved?.teamId ?? "") === "" && deps.cell.teamId !== ""
+  /** The note an unverified board resolution carries onto the outcome and the journal. */
+  const boardNote = unverified
+    ? "the re-split resolved no live team for " + deps.cell.cellId + ", so this activation continues on the RECORDED team " + JSON.stringify(deps.cell.teamId) + " — the board resolution is UNVERIFIED" + (resolved?.note === undefined ? "" : " (" + resolved.note + ")") + "; work is appended to that record only."
+    : undefined
+  /** The board this activation's seed and cancellation read: the verified resolution, or the recorded id. */
+  const board = unverified ? { teamId: deps.cell.teamId } : resolved ?? { teamId: deps.cell.teamId }

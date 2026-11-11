@@ -72,6 +72,13 @@ interface HarnessOptions {
   cell?: (workspace: string) => CellState
   /** The meter read the fake `mpdTeams` exposes. */
   memberContext?: FakeTeams["memberContext"]
+  /**
+   * Called INSIDE each live `add_member` append, which is the harness's await window.
+   *
+   * The growth pass awaits one append per seat; an arm uses this hook to make a CONCURRENT record write
+   * (the compaction barrier's `fenced`, a `journalCursor` advance, or a corrupt file) land inside it.
+   */
+  onMemberAppend?: (workspace: string, name: string) => void
 }
 
 /** The harness one arm drives. */
@@ -94,6 +101,8 @@ interface Harness {
   added: Array<Record<string, unknown>>
   /** Every `plane.dispatch` input the double answered, in order. */
   dispatches: Array<Record<string, unknown>>
+  /** The shared plane double, so an arm can assert the seam calls (the `unfence` half) the plugin made. */
+  plane: TeamActionsDouble
 }
 
 /**
@@ -276,6 +285,9 @@ function makeHarness(options: HarnessOptions = {}): Harness {
           ...(options.dropRole === true || typeof payloadRow.role !== "string" ? {} : { role: payloadRow.role }),
         }
         board.members.push(row)
+        // THE CONCURRENCY WINDOW: the production growth awaits this append, so an arm may write the cell
+        // record here and prove the dispatch pass merges into a FRESH read instead of its pre-await snapshot.
+        options.onMemberAppend?.(workspace, memberName)
         return { value: { spawned: row.executorRef, member: row, team: board, appended: "member appended" } }
       }
       // THE TASK APPEND: a live `create_task` lands on the SAME board the members do, which is how the
@@ -326,7 +338,7 @@ function makeHarness(options: HarnessOptions = {}): Harness {
   } as unknown as Parameters<typeof apply>[0]
   apply(ctx, (options.rowConfig ?? {}) as Parameters<typeof apply>[1])
   writeCell(workspace, (options.cell ?? ((): CellState => executingCell(board)))(workspace))
-  return { workspace, captain, board, planning, tools, calls, sends, added, dispatches: double.dispatches }
+  return { workspace, captain, board, planning, tools, calls, sends, added, dispatches: double.dispatches, plane: double }
 }
 
 /**
@@ -409,6 +421,82 @@ test("W1 §4.1: four ready rows on one BUSY seat grow seats and the same pass ha
   const onDisk = recordOnDisk(harness).members as Record<string, Record<string, unknown>>
   for (const name of ["Deep Worker-2", "Deep Worker-3", "Deep Worker-4", "Deep Worker-5"]) expect(onDisk[name]?.grown).toBe(true)
   expect(answer.seats).toEqual({ execution: 6, planning: 0, cap: 32, capPerRole: 8, grown: 4, reused: 0 })
+})
+
+// ── CR #108: ONE resolved board for unfence, growth and the pass ─────────────────────────────────
+
+test("CR #108: cellwork_dispatch unfences on the RESOLVED board, not the record's stale teamId", async () => {
+  // THE DEFECT: the unfence resolved the seat through the raw record (`cell.teamId`), so a legacy cell whose
+  // id names the dead planning team read the WRONG roster row, answered `not-fenced`, and never called the
+  // plane's seam — while the execution board carried the real fence.
+  /** The execution board, where the seat's TEAM-only fence really lives. */
+  const execution: DoubleTeamRecord = { teamId: EXEC_TEAM, members: [member("M1", "Reviewer", { status: "running", fenced: true, fencedReason: "the plane fenced this seat" })], tasks: [task("T1", "Reviewer")] }
+  /** The stale staging record the cell still names; its Reviewer is NOT fenced, which is the old misread. */
+  const planning: DoubleTeamRecord = { teamId: PLAN_TEAM, members: [member("P1", "Reviewer", { status: "running" })], tasks: [] }
+  /** The legacy cell: `teamId` names staging, the activated id proves the execution board. */
+  const harness = makeHarness({ board: execution, planning, cell: (): CellState => executingCell(execution, PLAN_TEAM) })
+  /** The captain's unfence of the seat the EXECUTION record carries. */
+  const answer = await runTool(harness, "cellwork_dispatch", { unfence: ["Reviewer"] })
+  expect(answer.ok).toBe(true)
+  // THE TEAM-ONLY FENCE IS CLEARED THROUGH THE SEAM, on the roster the resolver named.
+  expect(answer.unfenced).toEqual([{ member: "Reviewer", unfenced: true, cellRow: "untouched", plane: "unfenced" }])
+  expect(harness.plane.fences).toEqual([{ sessionId: CAPTAIN_SESSION, member: "Reviewer" }])
+  // The CELL row carried no marker, so it was left untouched: no `fenced` key was invented on it.
+  expect("fenced" in ((recordOnDisk(harness).members as Record<string, Record<string, unknown>>).Reviewer ?? {})).toBe(false)
+  // And the stale staging record is the one the old code read: still unfenced, still untouched.
+  expect(harness.planning?.members[0].fenced).toBeUndefined()
+})
+
+// ── CR #108 (Major): growth merges into a FRESH read ─────────────────────────────────────────────
+
+test("CR #108: a concurrent barrier write inside seat growth SURVIVES the pass", async () => {
+  // THE DEFECT: growth awaits one `add_member` per seat and the old code then wrote its PRE-await snapshot
+  // back, reverting whatever another writer put on the record inside those awaits — a `fenced` give-up
+  // fence, an adoption, a `journalCursor` advance.
+  /** Whether the concurrent write already landed (the hook fires once per grown seat). */
+  let injected = false
+  /** The harness whose append window performs one concurrent record write. */
+  const harness = makeHarness({
+    onMemberAppend: (workspace: string): void => {
+      if (injected) return
+      injected = true
+      /** The record as the append leaves it, before the growth pass returns. */
+      const current = readCell(workspace, CELL_ID)
+      if (!current.ok) throw new Error("the fixture cannot read its own record")
+      writeCell(workspace, {
+        ...current.state,
+        journalCursor: 77,
+        members: { ...current.state.members, Reviewer: { ...current.state.members.Reviewer, fenced: true, fencedReason: "the barrier gave up during the append" } },
+      })
+    },
+  })
+  /** The dispatch pass. */
+  const answer = await runTool(harness, "cellwork_dispatch")
+  expect(answer.ok).toBe(true)
+  /** The record as the pass left it. */
+  const onDisk = recordOnDisk(harness)
+  /** The persisted member table. */
+  const members = onDisk.members as Record<string, Record<string, unknown>>
+  // BOTH writes are present: this pass's grown seats AND the concurrent writer's facts.
+  expect(members["Deep Worker-2"]?.grown).toBe(true)
+  expect(members.Reviewer?.fenced).toBe(true)
+  expect(String(members.Reviewer?.fencedReason)).toContain("during the append")
+  expect(onDisk.journalCursor).toBe(77)
+})
+
+test("CR #108: an unreadable record after growth STOPS the pass before it pairs anything", async () => {
+  // THE SAFE FAILURE PATH: there is no state the pass may safely write over, and it must not pair rows it
+  // cannot record. The corrupt file is the falsifier — the old code overwrote it and dispatched anyway.
+  /** The harness whose append window corrupts the record. */
+  const harness = makeHarness({ onMemberAppend: (workspace: string): void => { writeFileSync(statePath(workspace, CELL_ID), "{not json") } })
+  /** The dispatch pass. */
+  const answer = await runTool(harness, "cellwork_dispatch")
+  expect(answer.ok).toBe(false)
+  expect(String(answer.error)).toContain("could not re-read")
+  expect(String(answer.error)).toContain("no row was paired")
+  // NOTHING was dispatched, and the unreadable bytes were NOT overwritten with a stale snapshot.
+  expect(harness.dispatches.length).toBe(0)
+  expect(readFileSync(statePath(harness.workspace, CELL_ID), "utf8")).toBe("{not json")
 })
 
 // ── §4.1 arm 2: the caps are named, and a second pass creates nothing ─────────────────────────────
@@ -905,6 +993,61 @@ test("C3 §7.1a: a re-split with EMPTY activatedTasks still resolves the recorde
   expect(fixture.calls.some((call) => call.name === "agent_teams_plan" && call.arguments.action === "add_member")).toBe(true)
 })
 
+// ── CR #108: the re-split's UNVERIFIED fallback ──────────────────────────────────────────────────
+
+test("CR #108: a re-split that resolves no team continues on the RECORDED id, marked unverified", async () => {
+  // THE DEFECT: the fallback to the record was SILENT, so an operator could not tell a verified board from a
+  // trusted id — and the refusal path told them to start a new cell even though one was recorded.
+  /** The temp workspace. */
+  const workspace = mkdtempSync(join(tmpdir(), "mpd-cellwork-cr108-unverified-"))
+  /** The cell id. */
+  const cellId = "cell-cr108-unverified"
+  /** The accepted re-split, whose single key the previous revision already materialised. */
+  const split = await splitFixture(workspace, cellId, 2, ["old"])
+  /** The fresh-record base. */
+  const base = newCellState({ cellId, objective: "re-split an old cell", captainSessionId: CAPTAIN_SESSION, now: new Date("2026-11-11T00:00:00.000Z") })
+  /** The legacy executing cell: an activated id exists, so this is a RE-SPLIT. */
+  const cell: CellState = { ...base, phase: "executing", teamId: "team-recorded-only", activatedRevision: 1, splitRevision: 1, activatedTasks: { old: "T7" } }
+  writeCell(workspace, cell)
+  // NO seam can verify the recorded team: every read answers a record carrying none of the cell's board ids.
+  /** The fixture whose resolver answers `none`. */
+  const fixture = directActivation({ workspace, cell, split, teams: { get: (): unknown => undefined }, recordFor: (teamId: string): Record<string, unknown> => ({ teamId, members: [], tasks: [] }) })
+  /** The materialisation: the old cell must still RUN. */
+  const result = await materializeSplit(fixture.deps)
+  expect(result.ok).toBe(true)
+  if (!result.ok) return
+  expect(String(result.outcome.boardNote)).toContain("UNVERIFIED")
+  expect(String(result.outcome.boardNote)).toContain("team-recorded-only")
+  // The RESOLVER'S OWN NOTE travels with it, so the operator sees WHY nothing verified the id.
+  expect(String(result.outcome.boardNote)).toContain("no live team holds them")
+  // IT NEVER TELLS THE OPERATOR TO START A NEW CELL: a team id IS recorded.
+  expect(String(result.outcome.boardNote)).not.toContain("cellwork_start")
+  // The journal row carries the same fact, so a later reader sees how this board was named.
+  /** The activation's journal rows. */
+  const journal = readFileSync(journalPath(workspace, cellId), "utf8").split("\n").filter((line) => line.trim() !== "").map((line) => JSON.parse(line) as Record<string, unknown>)
+  expect(journal.find((row) => row.event === "activate")).toMatchObject({ boardResolution: "unverified" })
+})
+
+test("CR #108 NEGATIVE CONTROL: only a cell with NO recorded team is told to run `cellwork_start`", async () => {
+  /** The temp workspace. */
+  const workspace = mkdtempSync(join(tmpdir(), "mpd-cellwork-cr108-empty-"))
+  /** The cell id. */
+  const cellId = "cell-cr108-empty"
+  /** The accepted re-split. */
+  const split = await splitFixture(workspace, cellId, 2, ["old"])
+  /** The fresh-record base. */
+  const base = newCellState({ cellId, objective: "re-split a descheduled cell", captainSessionId: CAPTAIN_SESSION, now: new Date("2026-11-11T00:00:00.000Z") })
+  /** A RE-SPLIT with NO recorded team id at all — the ONE shape that may ask for `cellwork_start`. */
+  const cell: CellState = { ...base, phase: "executing", teamId: "", activatedRevision: 1, splitRevision: 1, activatedTasks: { old: "T7" } }
+  /** The fixture: nothing can resolve and nothing is recorded. */
+  const fixture = directActivation({ workspace, cell, split, teams: { get: (): unknown => undefined }, recordFor: (): undefined => undefined })
+  /** The refusal. */
+  const result = await materializeSplit(fixture.deps)
+  expect(result.ok).toBe(false)
+  if (result.ok) return
+  expect(result.error).toContain("cellwork_start")
+})
+
 // ── C4: §7.1a SITE 3 — the activation cancel path, on the RESOLVED team ────────────────────────
 
 /** The planning record a legacy cell's `teamId` still names. */
@@ -997,6 +1140,37 @@ test("C4 §7.1a site 3: the resolved team is the cancel target, and a real cance
   expect(observed.teamId).toBe(EXEC_TEAM)
   expect(observed.taskIds).toEqual(["T7"])
   expect(result.outcome.cancelled).toEqual([{ key: "dropped", boardId: "T7" }])
+})
+
+// ── CR #108: a skipped cancel row is classified by STATUS, never by its reason TEXT ────────────
+
+test("CR #108: a terminal skipped row is ALREADY CLOSED (activation proceeds); a live row FAILS it", async () => {
+  // THE DEFECT: every skipped row failed the activation, so a row that was already `completed` (the state the
+  // cancel step exists to establish) aborted a resplit that had nothing wrong with it.
+  /** The workspace whose plane reports the dropped row already COMPLETED. */
+  const terminalWorkspace = mkdtempSync(join(tmpdir(), "mpd-cellwork-cr108-terminal-"))
+  /** What the terminal cancel call targeted. */
+  const terminalObserved: { teamId?: string; taskIds?: string[] } = {}
+  /** The terminal fixture. */
+  const terminal = await cancelFixture(terminalWorkspace, (): Record<string, unknown> => ({ ok: true, cancelled: [], skipped: [{ taskId: "T7", status: "completed", reason: "row T7 is already completed — a terminal row is never re-cancelled" }] }), terminalObserved)
+  /** The materialisation: an already-closed row is not a failure. */
+  const closed = await materializeSplit(terminal.fixture.deps)
+  expect(closed.ok).toBe(true)
+  // It still TARGETED the resolved execution board, and the cell still records the key as dropped.
+  expect(terminalObserved.teamId).toBe(EXEC_TEAM)
+  expect(terminalObserved.taskIds).toEqual(["T7"])
+  if (closed.ok) expect(closed.outcome.cancelled).toEqual([{ key: "dropped", boardId: "T7" }])
+
+  /** The workspace whose plane reports the dropped row still LIVE. */
+  const liveWorkspace = mkdtempSync(join(tmpdir(), "mpd-cellwork-cr108-live-"))
+  /** The live fixture. */
+  const live = await cancelFixture(liveWorkspace, (): Record<string, unknown> => ({ ok: true, cancelled: [], skipped: [{ taskId: "T7", status: "in_progress", reason: "row T7 is in progress" }] }), {})
+  /** The materialisation: a row that would stay dispatchable MUST fail the pass. */
+  const refused = await materializeSplit(live.fixture.deps)
+  expect(refused.ok).toBe(false)
+  if (refused.ok) return
+  expect(refused.error).toContain("could not close")
+  expect(refused.error).toContain("in_progress")
 })
 
 // ── N1: the cap sentence names BOTH the key and the value ──────────────────────────────────────

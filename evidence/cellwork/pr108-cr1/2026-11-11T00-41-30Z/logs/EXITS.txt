@@ -1,0 +1,43 @@
+# Every arm, the exact command, and the exit code observed at the shell.
+# The matching stdout/stderr is logs/<id>.red.log / logs/<id>.green.log.
+# `apply`/`restore` lines are reverts/apply.mjs invocations; restore asserts the baseline sha256 (exit 2 on drift).
+
+CR2  red    bun test packages/mpd-cellwork-plugin/test/elastic-seats.test.ts -t "a re-split that resolves no team"          exit 1
+CR2  green  bun test packages/mpd-cellwork-plugin/test/elastic-seats.test.ts -t "a re-split that resolves no team"          exit 0
+
+CR3  red    bun test packages/mpd-cellwork-plugin/test/elastic-seats.test.ts -t "a terminal skipped row is ALREADY CLOSED"   exit 1
+CR3  green  bun test packages/mpd-cellwork-plugin/test/elastic-seats.test.ts -t "a terminal skipped row is ALREADY CLOSED"   exit 0
+
+CR5  red    bun test packages/mpd-cellwork-plugin/test/flow.test.ts -t "a RE-SPLIT never overwrites the staging id"          exit 1
+CR5  green  bun test packages/mpd-cellwork-plugin/test/flow.test.ts -t "a RE-SPLIT never overwrites the staging id"          exit 0
+
+CR6  red    bun test packages/mpd-cellwork-plugin/test/elastic-seats.test.ts -t "unfences on the RESOLVED board"             exit 1
+CR6  green  bun test packages/mpd-cellwork-plugin/test/elastic-seats.test.ts -t "unfences on the RESOLVED board"             exit 0
+
+CR7  red A  bun test packages/mpd-cellwork-plugin/test/elastic-seats.test.ts -t "a concurrent barrier write inside seat growth SURVIVES"   exit 1
+CR7  green A bun test packages/mpd-cellwork-plugin/test/elastic-seats.test.ts -t "a concurrent barrier write inside seat growth SURVIVES"  exit 0
+CR7  red B  bun test packages/mpd-cellwork-plugin/test/elastic-seats.test.ts -t "an unreadable record after growth STOPS the pass"         exit 1
+CR7  green B bun test packages/mpd-cellwork-plugin/test/elastic-seats.test.ts -t "an unreadable record after growth STOPS the pass"        exit 0
+
+CR8  red    bun test packages/mpd-cellwork-plugin/test/planning-fanout.test.ts -t "analysts=0 means the planner prompt NEVER claims"      exit 1
+CR8  green  bun test packages/mpd-cellwork-plugin/test/planning-fanout.test.ts -t "analysts=0 means the planner prompt NEVER claims"      exit 0
+
+CR9  red    bun test packages/mpd-team-core-plugin/test/c74-midrun-and-binding.test.ts -t "the team-journal seam is imported"              exit 1
+CR9  green  bun test packages/mpd-team-core-plugin/test/c74-midrun-and-binding.test.ts -t "the team-journal seam is imported"              exit 0
+
+CR10 red    bun test packages/mpd-team-core-plugin/test/c74-midrun-and-binding.test.ts -t "a mid-run add_member WITHOUT role still creates the member"  exit 1
+CR10 green  bun test packages/mpd-team-core-plugin/test/c74-midrun-and-binding.test.ts -t "a mid-run add_member WITHOUT role still creates the member"  exit 0
+
+CR11 red    bun test packages/mpd-team-core-plugin/test/c74-midrun-and-binding.test.ts -t "a THROWING journal append does not strand"      exit 1
+CR11 green  bun test packages/mpd-team-core-plugin/test/c74-midrun-and-binding.test.ts -t "a THROWING journal append does not strand"      exit 0
+
+CR1  red    git show HEAD:docs/cellwork.md | tr '\n' ' ' | grep -c 'carries a hazard that cell mode does not'                               exit 1 (0 matches)
+CR1  green  tr '\n' ' ' < docs/cellwork.md | grep -c 'carries a hazard that cell mode does not'                                           exit 0 (1 match)
+
+# Gates (all run from the repository root)
+G1   bun run typecheck                                                                                                        exit 0
+G2   bun run verify:comments                                                                                                  exit 0
+G3   bun run verify:docs                                                                                                      exit 0
+G4   bun test packages/mpd-cellwork-plugin                                                                                     exit 0
+G5   bun test packages/mpd-team-core-plugin                                                                                    exit 0
+G6   node scripts/verify-dist-fresh.ts                                                                                        exit 0

@@ -1,0 +1,14 @@
+== CR1 probe: the frozen contract's required sentence (newlines normalized to spaces) ==
+-- HEAD bytes (pre-fix), lines 357-361 --
+
+**The generic team verb is OWNER-ONLY by default; only its explicit roster mode carries a hazard cell
+mode does not.** `agent_teams_dispatch` pairs a ready task with its DECLARED OWNER, and the positional
+fallback exists ONLY behind the explicit `mode:"roster"` argument. That mode is what handed a REVIEW
+task to the member that had WRITTEN the reviewed lanes during the field wave; the captain released the
+-- HEAD normalized exact-phrase count (expect 0 = RED) --
+0
+HEAD_GREP_EXIT=1
+-- working tree normalized exact-phrase count (expect 1 = GREEN) --
+1
+WORKING_GREP_EXIT=0
+-- note: no repository test or gate asserts this prose; verify:docs checks pairs/headings/links only --

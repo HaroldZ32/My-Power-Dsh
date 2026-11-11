@@ -1,0 +1,6 @@
+{
+  "id": "cr2",
+  "file": "packages/mpd-cellwork-plugin/src/activate.ts",
+  "expectedSha256": "e4a13bb578b7175e9e7d1f4b9f14a70fb087dc79a970d3c06d8d431789f9af48",
+  "hunks": [{"before":"before-1.txt","after":"after-1.txt"},{"before":"before-2.txt","after":"after-2.txt"},{"before":"before-3.txt","after":"after-3.txt"}]
+}

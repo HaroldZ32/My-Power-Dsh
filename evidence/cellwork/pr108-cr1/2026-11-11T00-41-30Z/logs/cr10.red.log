@@ -1,0 +1,23 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-team-core-plugin/test/c74-midrun-and-binding.test.ts:
+302 |     expect(answer.warning).toContain("no `role`")
+303 |     expect(answer.warning).toContain("Reviewer 3")
+304 |     // THE SENTENCE NAMES THE REAL PRECEDENCE (CodeRabbit #108): a role route is not impossible — the adapter
+305 |     // also matches the description head and the member name — so an omitted role makes the route a MAY, never
+306 |     // a "cannot". The inheritance clause stays, because it is what happens when no role route matches.
+307 |     expect(answer.warning).toContain("may not match a role route")
+                                 ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "may not match a role route"
+Received: "member \"Reviewer 3\" was added with no `role` — route resolution cannot match it by role, so the seat inherits the calling session's route; pass `role` with the roster label this seat answers to."
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-team-core-plugin/test/c74-midrun-and-binding.test.ts:307:28)
+(fail) C7-4 F1 — a mid-run append lands on the APPROVED record > §7.1b: a mid-run add_member WITHOUT role still creates the member, WARNS in the answer, and journals the omission [5.92ms]
+
+ 0 pass
+ 19 filtered out
+ 1 fail
+ 5 expect() calls
+Ran 1 test across 1 file. [165.00ms]

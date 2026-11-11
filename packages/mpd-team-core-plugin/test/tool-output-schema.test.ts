@@ -754,6 +754,9 @@ describe("the dispatch seam (W2)", () => {
       const again = await actions(f).cancelTasks({ workspace: f.workspace, teamId, taskIds: ["T1", "T9"] })
       expect(again.cancelled).toEqual([])
       expect(again.skipped.map((row: { taskId: string }) => row.taskId)).toEqual(["T1", "T9"])
+      // EACH SKIP CARRIES THE ROW'S OWN STATUS (CodeRabbit #108): a caller classifies by state, never by
+      // matching the reason's prose — `cancelled` is already closed, `missing` is not a row at all.
+      expect(again.skipped.map((row: { status: string }) => row.status)).toEqual(["cancelled", "missing"])
       expect(String(again.skipped[0].reason)).toContain("already cancelled")
       expect(String(again.skipped[1].reason)).toContain("no board row is named")
     } finally {

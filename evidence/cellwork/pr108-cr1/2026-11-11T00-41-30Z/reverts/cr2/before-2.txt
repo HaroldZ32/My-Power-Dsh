@@ -1,0 +1,3 @@
+    // THE BOARD RESOLUTION IS JOURNALED WITH THE PASS (CodeRabbit #108): an `unverified` fallback is a FACT
+    // a later reader must be able to see, not a detail that lived only in this call's local variables.
+    ...(unverified ? { boardResolution: "unverified", ...(boardNote === undefined ? {} : { boardNote }) } : {}),

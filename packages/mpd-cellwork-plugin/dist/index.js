@@ -4632,9 +4632,11 @@ function plannerPrompt(deps) {
     "  them with `cellwork_consult`.",
     ...PLANNER_RECON_LINES,
     "MAXIMUM PARALLELISM — MANY agents is the default, FEW is never the optimisation:",
-    "- The analysis lanes `cell-analyst-1 … cell-analyst-K` are ALREADY running for you and mail their findings",
-    "  to you and to `cell-splitter`. Do not re-derive what they were sent for, and do not wait idle for them:",
-    "  keep interviewing while they work.",
+    ...deps.planningSeats.length === 0 ? [] : [
+      "- The analysis lanes " + deps.planningSeats.map((name) => "`" + name + "`").join(" · ") + " are ALREADY running for you and mail their findings",
+      "  to you and to `cell-splitter`. Do not re-derive what they were sent for, and do not wait idle for them:",
+      "  keep interviewing while they work."
+    ],
     "- Fan the analysis OUT: `cellwork_recon` {role, questions:[…]} settles SEVERAL questions in one call, and",
     "  `cellwork_delegate` starts a BATCH of background consults in ONE call. Run INDEPENDENT investigations",
     "  CONCURRENTLY — never one-at-a-time — and start every lane the objective's unknowns justify.",
@@ -4827,7 +4829,7 @@ function planBlockersOf(row) {
 }
 function planningSeats(deps, lanes) {
   const seats = [
-    { name: PLANNER_MEMBER, role: PLANNER_ROLE, prompt: plannerPrompt(deps) },
+    { name: PLANNER_MEMBER, role: PLANNER_ROLE, prompt: plannerPrompt({ cell: deps.cell, personaFor: deps.personaFor, planningSeats: lanes.map((lane) => analystMemberName(lane)) }) },
     { name: SPLITTER_MEMBER, role: SPLITTER_ROLE, prompt: splitterPrompt(deps) }
   ];
   for (const lane of lanes) {
@@ -5520,7 +5522,10 @@ function contractAlreadyNamesLoop(deps, taskKey) {
 }
 async function materializeSplit(deps) {
   const resplit = Object.values(deps.cell.activatedTasks ?? {}).some((id) => id !== "");
-  const board = resplit ? resolveCellTeam({ workspace: deps.workspace, cell: deps.cell, teams: deps.teams?.(), recordFor: deps.recordFor }) : { teamId: deps.cell.teamId };
+  const resolved = resplit ? resolveCellTeam({ workspace: deps.workspace, cell: deps.cell, teams: deps.teams?.(), recordFor: deps.recordFor }) : undefined;
+  const unverified = resplit && (resolved?.teamId ?? "") === "" && deps.cell.teamId !== "";
+  const boardNote = unverified ? "the re-split resolved no live team for " + deps.cell.cellId + ", so this activation continues on the RECORDED team " + JSON.stringify(deps.cell.teamId) + " — the board resolution is UNVERIFIED" + (resolved?.note === undefined ? "" : " (" + resolved.note + ")") + "; work is appended to that record only." : undefined;
+  const board = unverified ? { teamId: deps.cell.teamId } : resolved ?? { teamId: deps.cell.teamId };
   const planningTeamId = deps.cell.teamId;
   const teamId = board.teamId;
   if (teamId === "")
@@ -5762,9 +5767,10 @@ async function materializeSplit(deps) {
       const closed = await plane.cancelTasks({ workspace: deps.workspace, teamId, taskIds: cancelledIds, note: "the accepted split no longer carries this task" });
       if (closed?.ok === false)
         return fail("cellwork_activate could not close the dropped row(s): " + String(closed.error ?? "the team plane refused the cancellation"));
-      const uncancelled = Array.isArray(closed.skipped) ? closed.skipped.filter((row) => typeof row.taskId === "string") : [];
+      const closedStatuses = new Set(["completed", "failed", "cancelled"]);
+      const uncancelled = Array.isArray(closed.skipped) ? closed.skipped.filter((row) => typeof row.taskId === "string" && !closedStatuses.has(String(row.status ?? ""))) : [];
       if (uncancelled.length > 0) {
-        return fail("cellwork_activate could not close " + String(uncancelled.length) + " dropped row(s) on team " + teamId + ": " + uncancelled.map((row) => String(row.taskId) + " (" + String(row.reason ?? "the plane skipped it") + ")").join("; ") + " — the activation is left un-dispatched and can be resumed");
+        return fail("cellwork_activate could not close " + String(uncancelled.length) + " dropped row(s) on team " + teamId + ": " + uncancelled.map((row) => String(row.taskId) + " (status " + String(row.status ?? "unknown") + ": " + String(row.reason ?? "the plane skipped it") + ")").join("; ") + " — the activation is left un-dispatched and can be resumed");
       }
     }
   }
@@ -5817,6 +5823,7 @@ async function materializeSplit(deps) {
     ...executionTeamId === teamId ? {} : { recordedTeamId: teamId },
     mode,
     splitRevision: deps.split.revision,
+    ...unverified ? { boardResolution: "unverified", ...boardNote === undefined ? {} : { boardNote } } : {},
     producer: producerIdentity(deps.cell.cellId),
     tasks: activated.map((task) => ({ key: task.key, boardId: task.boardId, owner: task.memberName, kind: task.kind })),
     kept: [...keptKeys],
@@ -5848,6 +5855,7 @@ async function materializeSplit(deps) {
       dispatch,
       ...executionTeamId === "" || executionTeamId === planningTeamId ? {} : { teamId: executionTeamId, planningTeamId },
       ...splitTaskId === "" ? {} : { splitTaskId },
+      ...boardNote === undefined ? {} : { boardNote },
       ...notice === undefined ? {} : { notice }
     }
   };
@@ -6604,7 +6612,8 @@ Remedy: ` + remedies.join("; ");
           cancelled: { type: "array", items: { type: "object" }, description: "Work this revision dropped: `{key, boardId}`, marked cancelled on the cell record and never deleted." },
           loops: { type: "array", items: { type: "object" } },
           dispatch: { type: "object" },
-          notice: { type: "string", description: "Present on a re-split: how many tasks were kept, that their frozen contracts are NOT rewritten, what a scope expansion therefore needs, that this activation dispatched owner-only, and the stage-4 rebuild exception." }
+          notice: { type: "string", description: "Present on a re-split: how many tasks were kept, that their frozen contracts are NOT rewritten, what a scope expansion therefore needs, that this activation dispatched owner-only, and the stage-4 rebuild exception." },
+          boardNote: { type: "string", description: "Present when a re-split ran on the RECORDED team id because no resolver evidence verified it (`unverified`): names the recorded id, says the resolution is unverified, and carries the resolver's own note. It is a warning, not a refusal — the old cell still runs; do NOT start a new cell." }
         },
         required: ["ok"]
       },
@@ -6616,7 +6625,8 @@ Remedy: ` + remedies.join("; ");
         const pairs = Array.isArray(dispatch.pairs) ? dispatch.pairs : [];
         const skipped = Array.isArray(dispatch.skipped) ? dispatch.skipped : [];
         return text("cell activated on split revision " + String(result.revision ?? "?") + (result.mode === "resplit" ? " (re-split: " + String(Array.isArray(result.kept) ? result.kept.length : 0) + " kept, " + String(Array.isArray(result.cancelled) ? result.cancelled.length : 0) + " cancelled)" : "") + ": " + String(Array.isArray(result.tasks) ? result.tasks.length : 0) + " task(s), " + String(Array.isArray(result.loops) ? result.loops.length : 0) + " verify loop(s), " + pairs.length + " dispatched" + (skipped.length === 0 ? "" : ", " + skipped.length + " reported: " + skipped.map((row) => String(row.subject ?? row.taskId) + ": " + String(row.reason)).join("; ")) + (typeof result.notice === "string" ? `
-NOTICE: ` + result.notice : ""));
+NOTICE: ` + result.notice : "") + (typeof result.boardNote === "string" ? `
+BOARD: ` + result.boardNote : ""));
       }
     },
     execute: async (args, exec) => {
@@ -6705,7 +6715,7 @@ NOTICE: ` + result.notice : ""));
       const next = {
         ...state,
         ...activated.outcome.teamId === undefined ? {} : { teamId: activated.outcome.teamId },
-        ...activated.outcome.planningTeamId === undefined ? {} : { planningTeamId: activated.outcome.planningTeamId },
+        ...activated.outcome.planningTeamId === undefined || state.planningTeamId !== "" ? {} : { planningTeamId: activated.outcome.planningTeamId },
         phase: "executing",
         activatedRevision: acceptedRevision,
         activationInFlight: null,
@@ -6730,7 +6740,8 @@ NOTICE: ` + result.notice : ""));
         cancelled: activated.outcome.cancelled,
         loops: activated.outcome.loops,
         dispatch: activated.outcome.dispatch,
-        ...activated.outcome.notice === undefined ? {} : { notice: activated.outcome.notice }
+        ...activated.outcome.notice === undefined ? {} : { notice: activated.outcome.notice },
+        ...activated.outcome.boardNote === undefined ? {} : { boardNote: activated.outcome.boardNote }
       };
     }
   }));
@@ -8426,11 +8437,13 @@ function installCellworkProtocol(deps) {
       if (plane?.dispatch === undefined)
         return { ok: false, error: "cellwork_dispatch: this composition exposes no mpdTeamActions service, so the team plane cannot be asked to pair rows" };
       const now = new Date;
-      const applied = unfenceTargets.length === 0 ? { cell, outcomes: [] } : await unfenceSeats(caller, cell, unfenceTargets, now);
+      const board = boardOf(caller.workspace, cell);
+      const boardCell = board.teamId === "" || board.teamId === cell.teamId ? cell : { ...cell, teamId: board.teamId };
+      const applied = unfenceTargets.length === 0 ? { cell: boardCell, outcomes: [] } : await unfenceSeats(caller, boardCell, unfenceTargets, now);
       const unfenced = applied.outcomes;
-      const current = applied.cell;
+      const resolvedTeamId = board.teamId === "" ? applied.cell.teamId : board.teamId;
+      let current = applied.cell.teamId === resolvedTeamId ? applied.cell : { ...applied.cell, teamId: resolvedTeamId };
       const rawReassign = readArgs2(args)["reassign"];
-      const board = boardOf(caller.workspace, current);
       const growth = await growExecutionSeats({
         dsh,
         workspace: caller.workspace,
@@ -8444,8 +8457,12 @@ function installCellworkProtocol(deps) {
         excludeTaskIds: reassignedTaskIds(rawReassign),
         now
       });
-      if (Object.keys(growth.members).length > 0)
-        writeCell(caller.workspace, { ...current, members: { ...current.members, ...growth.members } });
+      if (Object.keys(growth.members).length > 0) {
+        const settled = readCell(caller.workspace, current.cellId);
+        if (!settled.ok)
+          return { ok: false, error: "cellwork_dispatch: could not re-read " + settled.path + " after seat growth (" + settled.detail + ") — no grown seat was written and no row was paired; retry the pass once the record is readable" };
+        current = writeCell(caller.workspace, { ...settled.state, members: { ...settled.state.members, ...growth.members } });
+      }
       const reassignArg = growth.reassign.length === 0 ? rawReassign : rawReassign === undefined || !Array.isArray(rawReassign) ? growth.reassign : [...rawReassign, ...growth.reassign];
       const reply = await plane.dispatch({
         sessionId: caller.sessionId,

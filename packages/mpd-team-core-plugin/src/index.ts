@@ -84,7 +84,7 @@ import { planForSession, registerTeamRoutes, TEAM_ACTION_ROUTES, TEAM_ROUTES, ty
 // branches, so a tool call, the `mpdTeamActions` service and an HTTP route all drive ONE sequence.
 import { approveTeam, cancelTasks, clearConsults, endTeam, fenceMember, forceWedgedTask, graceWedgedTask, runDispatch, TEAM_ACTIONS_SERVICE, unfenceMember, upsertConsult, writeMemberHandoff, type MpdTeamActionsService, type TeamActionCaller, type TeamActionDeps } from "./team-actions"
 import { installIdleGuard, withIdlePreamble } from "./idle-guard"
-import { appendTeamJournal } from "./team-journal"
+import { appendTeamJournal } from "./team-journal.ts"
 import { GraphModels } from "./graph-model"
 import type { GraphModel } from "../../mpd-graph-core/src/index.ts"
 import { ChangeFeed } from "./change-feed"
@@ -2129,14 +2129,24 @@ export function apply(ctx: any): void {
         /** The member this append minted — the LAST row of the new roster. */
         const added = roster.members[roster.members.length - 1]
         writeTeam(workspace, withDerivedPhase(roster))
-        // §7.1b: an OMITTED `role` is legal but silently costly — a seat with no role cannot be matched by
-        // role during route resolution, so it inherits the CALLING session's route. ONE sentence, never a
-        // refusal: it rides the answer's existing `warning` field and one journal row.
+        // §7.1b: an OMITTED `role` is legal but silently costly — role matching is the FIRST channel, and
+        // without it resolution falls back to the description head and the member name, so a role route is
+        // only a POSSIBILITY. ONE sentence, never a refusal: it rides the answer's existing `warning` field
+        // and one journal row.
         /** The one warning this append owes when the caller omitted the member's role. */
         const roleWarning = input.role === undefined || input.role.trim() === ""
-          ? "member " + JSON.stringify(added.name) + " was added with no `role` — route resolution cannot match it by role, so the seat inherits the calling session's route; pass `role` with the roster label this seat answers to."
+          ? "member " + JSON.stringify(added.name) + " was added with no `role` — route resolution may not match a role route (it also matches the description head and the member name, which is not guaranteed), in which case the seat inherits the calling session's route; pass `role` with the roster label this seat answers to."
           : undefined
-        if (roleWarning !== undefined) appendTeamJournal(workspace, { event: "member-role-omitted", teamId: roster.teamId, at: now().toISOString(), member: added.name, reason: roleWarning })
+        // THE JOURNAL WRITE MUST NOT STRAND THE APPEND (CodeRabbit #108, finding 9): the roster row is already
+        // on disk, so a throwing journal append here used to leave a member nothing ever spawned — a ghost the
+        // retry then collided with by name. The failure is ONE warning line; the raise below still runs.
+        if (roleWarning !== undefined) {
+          try {
+            appendTeamJournal(workspace, { event: "member-role-omitted", teamId: roster.teamId, at: now().toISOString(), member: added.name, reason: roleWarning })
+          } catch (error) {
+            rowLogLine("mpd-team-core", "the `member-role-omitted` journal row for " + JSON.stringify(added.name) + " could not be written (" + String((error as Error)?.message ?? error) + ") — the member is still raised and the warning still rides the answer")
+          }
+        }
         // THE MEMBER IS RAISED HERE, exactly as approval raises one: a roster row nothing ever spawned
         // would be the C7-3 ghost class again. A failed raise is written on the row AND reported in the
         // answer, never left silent.

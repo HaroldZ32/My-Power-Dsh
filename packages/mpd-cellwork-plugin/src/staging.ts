@@ -231,10 +231,10 @@ function createdTasks(value: ToolValue): Array<{ subject: string; id: string }> 
 /**
  * The planner's instantiation prompt: the Socratic interview, the relay protocol and its tools.
  *
- * @param deps - the cell and the persona reader.
+ * @param deps - the cell, the persona reader and the analysis lanes this cell actually staged (their board names).
  * @returns the prompt text.
  */
-export function plannerPrompt(deps: Pick<StageDeps, "cell" | "personaFor">): string {
+export function plannerPrompt(deps: Pick<StageDeps, "cell" | "personaFor"> & { planningSeats: readonly string[] }): string {
   /** The persona text, when the roster service answered. */
   const persona = deps.personaFor(PLANNER_ROLE)
   return [
@@ -272,9 +272,14 @@ export function plannerPrompt(deps: Pick<StageDeps, "cell" | "personaFor">): str
     // spliced here, in the PLANNER prompt only. The block opens and closes with an empty line.
     ...PLANNER_RECON_LINES,
     "MAXIMUM PARALLELISM — MANY agents is the default, FEW is never the optimisation:",
-    "- The analysis lanes `cell-analyst-1 … cell-analyst-K` are ALREADY running for you and mail their findings",
-    "  to you and to `cell-splitter`. Do not re-derive what they were sent for, and do not wait idle for them:",
-    "  keep interviewing while they work.",
+    // THE ANALYSIS LANES ARE NAMED ONLY WHEN THEY EXIST (CodeRabbit #108): with
+    // `cellwork.planning.analysts=0` the staging pass raises no analyst at all, so the old unconditional
+    // "ALREADY running" claim sent the planner looking for reports nobody would ever send.
+    ...(deps.planningSeats.length === 0 ? [] : [
+      "- The analysis lanes " + deps.planningSeats.map((name) => "`" + name + "`").join(" · ") + " are ALREADY running for you and mail their findings",
+      "  to you and to `cell-splitter`. Do not re-derive what they were sent for, and do not wait idle for them:",
+      "  keep interviewing while they work.",
+    ]),
     "- Fan the analysis OUT: `cellwork_recon` {role, questions:[…]} settles SEVERAL questions in one call, and",
     "  `cellwork_delegate` starts a BATCH of background consults in ONE call. Run INDEPENDENT investigations",
     "  CONCURRENTLY — never one-at-a-time — and start every lane the objective's unknowns justify.",
@@ -599,7 +604,7 @@ function planBlockersOf(row: ToolValue): string[] | undefined {
 function planningSeats(deps: StageDeps, lanes: readonly number[]): PlanningSeat[] {
   /** The two permanent seats: the interviewer and the graph designer. */
   const seats: PlanningSeat[] = [
-    { name: PLANNER_MEMBER, role: PLANNER_ROLE, prompt: plannerPrompt(deps) },
+    { name: PLANNER_MEMBER, role: PLANNER_ROLE, prompt: plannerPrompt({ cell: deps.cell, personaFor: deps.personaFor, planningSeats: lanes.map((lane) => analystMemberName(lane)) }) },
     { name: SPLITTER_MEMBER, role: SPLITTER_ROLE, prompt: splitterPrompt(deps) },
   ]
   /** The analysis lanes, alternating the two read-only roster roles (§5.1). */

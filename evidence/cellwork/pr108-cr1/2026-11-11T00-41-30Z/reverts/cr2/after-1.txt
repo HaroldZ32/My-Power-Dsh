@@ -1,0 +1,4 @@
+  /** The board this activation's seed and cancellation read. */
+  const board = resplit
+    ? resolveCellTeam({ workspace: deps.workspace, cell: deps.cell, teams: deps.teams?.(), recordFor: deps.recordFor })
+    : { teamId: deps.cell.teamId }

@@ -44,8 +44,9 @@ import { teamRoot } from "./team-store"
  * id and ordinal instead of a `taskId`.
  *
  * `member-role-omitted` is the §7.1b non-blocking warning: a member was appended to a LIVE roster with
- * NO `role`, so route resolution cannot match it by role and the seat inherits the calling session's
- * route. The `reason` carries the one-sentence warning; the append itself still happens.
+ * NO `role`, so route resolution may fail to match a role route (the description head and the member name
+ * are the remaining channels, and neither is guaranteed) — in which case the seat inherits the calling
+ * session's route. The `reason` carries the one-sentence warning; the append itself still happens.
  */
 export type TeamJournalEvent = "task-reassigned" | "task-cancelled" | "member-fenced" | "member-unfenced" | "handoff-written" | "team-ended" | "wedged-force" | "wedged-grace" | "consult-upsert" | "consult-clear" | "member-role-omitted"
 

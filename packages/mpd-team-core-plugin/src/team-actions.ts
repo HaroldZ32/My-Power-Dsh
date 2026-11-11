@@ -57,6 +57,7 @@ import {
   withDerivedPhase,
   writeTeam,
   type MemberIdentity,
+  type TaskStatus,
   type TeamConsultUpsertInput,
   type TeamMemberMode,
 } from "./team-store"
@@ -366,8 +367,14 @@ export interface TeamCancelPayload {
   teamId: string
   /** The task ids this call actually cancelled, in the caller's order. */
   cancelled: string[]
-  /** One entry per id this call did NOT cancel, with the reason it did not. */
-  skipped: Array<{ taskId: string; reason: string }>
+  /**
+   * One entry per id this call did NOT cancel, with the status that decided it and the reason.
+   *
+   * `status` is the BOARD's own reading — `completed` / `failed` / `cancelled` for an already-terminal
+   * row, the live status for a row this call refused, and `missing` when the record names no such row —
+   * so a caller classifies a skip by the row's state instead of matching the reason's prose.
+   */
+  skipped: Array<{ taskId: string; status: TaskStatus | "missing"; reason: string }>
 }
 
 /**
@@ -2855,8 +2862,8 @@ export async function cancelTasks(deps: TeamActionDeps, input: TeamCancelInput):
     if (record === undefined) return { ok: false, error: `no team record is named ${JSON.stringify(input.teamId)} in this workspace` }
     /** The ids this call cancelled. */
     const cancelled: string[] = []
-    /** One entry per id this call refused. */
-    const skipped: Array<{ taskId: string; reason: string }> = []
+    /** One entry per id this call refused, carrying the row's OWN status (`missing` when there is no row). */
+    const skipped: Array<{ taskId: string; status: TaskStatus | "missing"; reason: string }> = []
     // THE PATCHES ARE APPLIED TO ONE RUNNING RECORD and written ONCE: a per-row write would rewrite the
     // whole team document for every id, and two ids in one call would race each other's snapshot.
     /** The record as this call mutates it. */
@@ -2865,11 +2872,11 @@ export async function cancelTasks(deps: TeamActionDeps, input: TeamCancelInput):
       /** The row this id names on the record as it stands. */
       const row = next.tasks.find((task) => task.id === taskId)
       if (row === undefined) {
-        skipped.push({ taskId, reason: `no board row is named ${JSON.stringify(taskId)}` })
+        skipped.push({ taskId, status: "missing", reason: `no board row is named ${JSON.stringify(taskId)}` })
         continue
       }
       if (row.status === "completed" || row.status === "failed" || row.status === "cancelled") {
-        skipped.push({ taskId, reason: `row ${taskId} is already ${row.status} — a terminal row is never re-cancelled` })
+        skipped.push({ taskId, status: row.status, reason: `row ${taskId} is already ${row.status} — a terminal row is never re-cancelled` })
         continue
       }
       next = updateTeamTask(next, taskId, { status: "cancelled", ...(input.note === undefined ? {} : { note: input.note }) }, deps.now())
