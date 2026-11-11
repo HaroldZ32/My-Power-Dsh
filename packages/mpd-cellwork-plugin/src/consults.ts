@@ -20,8 +20,11 @@ import { appendJournal } from "./state"
 import { captainRefusal, checkpointRefusal, verifierDelegationRefusal, type CellworkSeat } from "./guard"
 import type { TeamActionsServiceView } from "./caller"
 
-/** The most tasks ONE `cellwork_delegate` call may start (contract §3.2). */
-export const DELEGATE_MAX_TASKS = 16
+/**
+ * The most tasks ONE `cellwork_delegate` call may start when `cellwork.delegate.maxTasks` declares
+ * nothing (contract §3.2; the knob's documented default is 32).
+ */
+export const DELEGATE_MAX_TASKS = 32
 
 /** The default `wait` bound, milliseconds (the same default `mpd_role_consult` uses). */
 export const CONSULT_WAIT_DEFAULT_MS = 30000
@@ -59,6 +62,13 @@ export interface ConsultServiceView {
     exec: unknown
     maxDepth?: number
     /**
+     * The per-start concurrency budget (§6.2).
+     *
+     * PRECEDENCE: an explicitly declared `MPD_DSH_CONSULT_MAX` wins at every value (the operator's hard
+     * cap); this request applies only when the env declares none. Same supervisor, same counter.
+     */
+    maxConcurrent?: number
+    /**
      * Fired ONCE when the consult leaves `running` (consult DAG, contract §5.2).
      *
      * This is the call's only way to learn that a child settled without a seat asking: the DAG must not
@@ -77,6 +87,13 @@ export interface ConsultServiceView {
   collect?: (consultId: string) => unknown
   /** Interrupt one consult's child. */
   cancel?: (consultId: string) => unknown
+  /**
+   * The cap a start requesting this budget would really get (§6.2 precedence: a declared env wins).
+   *
+   * The operator render reads THIS number (via {@link effectiveBudgetValueOf}) instead of re-deriving
+   * the precedence; absent on an older roles row, which degrades to the budget line alone.
+   */
+  effectiveBudgetOf?: (requested?: number) => unknown
 }
 
 /** One consult as this package reports it: the fields a cell consumer reads, JSON-safe. */
@@ -97,6 +114,8 @@ export interface ConsultRow {
   report?: ConsultReportRow
   /** The failure text of a consult whose child could not be raised. */
   error?: string
+  /** How many HOST slot refusals the consult survived before it started; absent/0 = none (§6.1). */
+  hostRetries?: number
 }
 
 /** The settled report a collect answers, projected to the fields a cell consumer reads. */
@@ -213,7 +232,42 @@ export function consultRowOf(value: unknown): ConsultRow | undefined {
     ...(typeof record.handoff === "string" && record.handoff !== "" ? { handoff: record.handoff } : {}),
     ...(report === undefined ? {} : { report }),
     ...(typeof record.error === "string" && record.error !== "" ? { error: record.error } : {}),
+    ...(typeof record.hostRetries === "number" && Number.isFinite(record.hostRetries) && record.hostRetries > 0 ? { hostRetries: wholeNumber(record.hostRetries) } : {}),
   }
+}
+
+/**
+ * The effective consult budget of this cell's starts, as the service reports it (§6.3 data surface).
+ *
+ * TOTAL: a service that cannot answer (an older roles row) leaves the render with the budget alone,
+ * which is the documented degradation — never a thrown render and never a guessed number.
+ * @param service - the `mpdConsults` service slice, or undefined when the roles row is not mounted.
+ * @param requested - the budget this plane requested (`cellwork.consultMax`).
+ * @returns the effective cap, or undefined when no mounted service can say.
+ */
+export function effectiveBudgetValueOf(service: ConsultServiceView | undefined, requested: number): number | undefined {
+  try {
+    /** The service's own answer, read as untrusted. */
+    const answer = service?.effectiveBudgetOf?.(requested)
+    return typeof answer === "number" && Number.isFinite(answer) && answer > 0 ? Math.trunc(answer) : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * How many of the given consult views report a HOST slot refusal (§6.3 data surface).
+ *
+ * A consumer (the `cellwork_status` / `cellwork_supervise` render) passes the `mpdConsults` service's
+ * `list()` answer and one line of operator advice follows from this count. It reads the SAME
+ * `hostRetries` the supervisor publishes, so the render never re-derives the retry rule.
+ * @param views - the service's views, read as untrusted values.
+ * @returns how many of them survived at least one host refusal.
+ */
+export function hostRefusalsOf(views: readonly unknown[]): number {
+  /** The consult rows this boundary could read. */
+  const rows = views.map(consultRowOf).filter((row): row is ConsultRow => row !== undefined)
+  return rows.filter((row) => row.hostRetries !== undefined && row.hostRetries > 0).length
 }
 
 /**
@@ -278,6 +332,20 @@ export interface ConsultDeps {
   teamId: string
   /** The team-plane write service, resolved lazily per call; undefined degrades to journal-only. */
   teamActions: () => TeamActionsServiceView | undefined
+  /**
+   * The per-call bound this delegation may start (`cellwork.delegate.maxTasks`, default 32).
+   *
+   * Absent means the row did not resolve the knob, and the shipped default applies — never an error, so
+   * an older composition keeps working.
+   */
+  maxTasks?: number
+  /**
+   * The concurrency budget EVERY start of this call requests (`cellwork.consultMax`, default 32).
+   *
+   * Forwarded as `maxConcurrent` to the ONE supervisor: an explicitly declared `MPD_DSH_CONSULT_MAX`
+   * still wins. No second counter is involved.
+   */
+  consultMax?: number
 }
 
 /** The answer of a successful `cellwork_delegate`. */
@@ -323,12 +391,13 @@ function missingRosterRefusal(): string {
  * ALL-OR-NOTHING: the FIRST bad entry refuses the whole call, and the caller starts nothing.
  *
  * @param raw - the raw `tasks` argument.
+ * @param maxTasks - the bound this call enforces (`cellwork.delegate.maxTasks` when resolved).
  * @returns the parsed tasks, or the refusal sentence.
  */
-export function readDelegateTasks(raw: unknown): { tasks: Array<{ role: string; task: string; context?: string }> } | ConsultRefusal {
-  if (!Array.isArray(raw)) return { ok: false, error: "cellwork_delegate: `tasks` must be an array of 1.." + String(DELEGATE_MAX_TASKS) + " `{role, task}` objects — nothing was started" }
+export function readDelegateTasks(raw: unknown, maxTasks: number = DELEGATE_MAX_TASKS): { tasks: Array<{ role: string; task: string; context?: string }> } | ConsultRefusal {
+  if (!Array.isArray(raw)) return { ok: false, error: "cellwork_delegate: `tasks` must be an array of 1.." + String(maxTasks) + " `{role, task}` objects — nothing was started" }
   if (raw.length === 0) return { ok: false, error: "cellwork_delegate: `tasks` is empty — name at least one `{role, task}` to start; nothing was started" }
-  if (raw.length > DELEGATE_MAX_TASKS) return { ok: false, error: "cellwork_delegate: `tasks` carries " + String(raw.length) + " entries, more than the " + String(DELEGATE_MAX_TASKS) + " this call starts — split it into batches; nothing was started" }
+  if (raw.length > maxTasks) return { ok: false, error: "cellwork_delegate: `tasks` carries " + String(raw.length) + " entries, more than the " + String(maxTasks) + " this call starts — split it into batches; nothing was started" }
   /** The parsed rows, in the caller's order. */
   const tasks: Array<{ role: string; task: string; context?: string }> = []
   for (let index = 0; index < raw.length; index += 1) {
@@ -456,6 +525,11 @@ function settlementObserverOf(deps: ConsultDeps): (outcome: unknown) => void {
     }
     /** The assignment text this cell remembered at start, so the card keeps its title. */
     const task = ownedConsult(deps.book, deps.cellId, row.consultId)?.question ?? ""
+    // THE HOST-REFUSAL TRACE (§6.3): one durable row per consult the host refused at least once, so the
+    // operator advice can be derived from the cell's own history instead of a process-local guess.
+    if (row.hostRetries !== undefined && row.hostRetries > 0) {
+      appendJournal(deps.workspace, deps.cellId, { event: "consult-host-refused", consultId: row.consultId, hostRetries: row.hostRetries }, deps.now)
+    }
     // FIRE AND FORGET: the observer is called from the supervisor's settlement path, which must not
     // await a disk write; the row lands a moment later and the graph refreshes through the change feed.
     void recordConsultRow(deps, row, task)
@@ -475,8 +549,8 @@ function settlementObserverOf(deps: ConsultDeps): (outcome: unknown) => void {
  * @returns the ids, or the refusal naming what blocked the call.
  */
 export async function startDelegation(deps: ConsultDeps, rawTasks: unknown): Promise<DelegateStarted | ConsultRefusal> {
-  /** The parsed task list, or the refusal that replaced it. */
-  const parsed = readDelegateTasks(rawTasks)
+  /** The parsed task list, or the refusal that replaced it (the configured bound when the row passed one). */
+  const parsed = readDelegateTasks(rawTasks, deps.maxTasks ?? DELEGATE_MAX_TASKS)
   if ("ok" in parsed) return parsed
   /** The service, or the honest absence refusal (never an unsupervised spawn). */
   const service = deps.service()
@@ -520,6 +594,8 @@ export async function startDelegation(deps: ConsultDeps, rawTasks: unknown): Pro
         task: task.task,
         ...(task.context === undefined ? {} : { context: task.context }),
         exec: deps.exec,
+        // THE PLANE'S OWN BUDGET (§6.2): an argument to the SAME supervisor, never a second counter.
+        ...(deps.consultMax === undefined ? {} : { maxConcurrent: deps.consultMax }),
         // THE OBSERVER IS ARMED BEFORE THE START RESOLVES, so a child that settles immediately still
         // reports: the roles row fires it once from its one settlement path.
         onSettled: settlementObserverOf(deps),
@@ -755,7 +831,9 @@ export async function runConsultAction(deps: ConsultDeps, args: { action: string
         forgetConsult(deps.book, deps.cellId, owned.consultId)
         continue
       }
-      consults.push({ consultId: row.consultId, role: row.role === "" ? owned.role : row.role, state: row.state, startedAt: row.startedAt, elapsedMs: row.elapsedMs, question: owned.question })
+      // `hostRetries` rides the row so a caller can SEE that the host refused this consult at least once
+      // (§6.1); absent for a consult the host admitted first time.
+      consults.push({ consultId: row.consultId, role: row.role === "" ? owned.role : row.role, state: row.state, startedAt: row.startedAt, elapsedMs: row.elapsedMs, ...(row.hostRetries === undefined ? {} : { hostRetries: row.hostRetries }), question: owned.question })
     }
     return { ok: true, action, consults }
   }

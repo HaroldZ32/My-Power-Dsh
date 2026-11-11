@@ -178,6 +178,9 @@ test("THE PROMPT: the planner's instantiation prompt carries the delegation bloc
   const deps = {
     cell: { cellId: "cell-1", objective: "ship the widget" } as unknown as Parameters<typeof plannerPrompt>[0]["cell"],
     personaFor: (): string | null => null,
+    // This arm measures the SPLICE, not the analysis lanes: no lane is staged, so the prompt omits the
+    // "ALREADY running" paragraph (CodeRabbit #108) and the delegation block is what remains under test.
+    planningSeats: [] as readonly string[],
   }
   /** The planner's instantiation prompt, as `cellwork_start` would build it. */
   const prompt = plannerPrompt(deps)

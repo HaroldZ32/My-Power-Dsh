@@ -1,0 +1,48 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+1895 |   const outcome = (Array.isArray(repaired.rebound) ? repaired.rebound as Array<Record<string, unknown>> : [])[0] as Record<string, unknown>
+1896 |   expect(outcome.rebound).toBe(true)
+1897 |   /** The board after the repair, by id. */
+1898 |   const byId = new Map(harness.record().tasks.map((task) => [String(task.id), task]))
+1899 |   // THE PAIRED ROWS MOVED, with the revision bumped exactly as the bind's re-point does.
+1900 |   expect(byId.get("T1")?.owner).toBe(NEW_HANDLE)
+                                       ^
+error: expect(received).toBe(expected)
+
+Expected: "2f86e074-1a13-4871-881f-7af634ff4f3c"
+Received: "6b1f7a2c-0000-4000-8000-000000000001"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:1900:33)
+(fail) A32: `rebind` re-points every NON-TERMINAL board row the old handle owned, leaves terminal rows, and reports live rows in tasksNeedingRelease [5.03ms]
+
+ 0 pass
+ 46 filtered out
+ 1 fail
+ 2 expect() calls
+Ran 1 test across 1 file. [224.00ms]
+[A32 exit 1]
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+1959 |   expect(cellMember(harness).sessionId).toBe(OLD_HANDLE)
+1960 |   /** The captain's repair, driven exactly as the refusal sentence spells it. */
+1961 |   const repaired = await harness.tools.get("cellwork_dispatch")!.execute({ rebind: [{ member: MEMBER_NAME, handle: NEW_HANDLE }], unfence: [MEMBER_NAME] }, { name: "cellwork_dispatch", agent: harness.captain }) as Record<string, unknown>
+1962 |   /** This seat's outcome. */
+1963 |   const outcome = (Array.isArray(repaired.rebound) ? repaired.rebound as Array<Record<string, unknown>> : [])[0] as Record<string, unknown>
+1964 |   expect(outcome.rebound).toBe(true)
+                                 ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: false
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:1964:27)
+(fail) A33: `rebind` adopts the kept child's orphan row when BOTH current records still name the old handle — end to end [10.44ms]
+
+ 0 pass
+ 46 filtered out
+ 1 fail
+ 6 expect() calls
+Ran 1 test across 1 file. [216.00ms]
+[A33 exit 1]

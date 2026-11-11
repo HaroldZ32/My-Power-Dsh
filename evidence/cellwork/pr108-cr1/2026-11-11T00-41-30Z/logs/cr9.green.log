@@ -1,0 +1,10 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-team-core-plugin/test/c74-midrun-and-binding.test.ts:
+(pass) C7-4 F1 — a mid-run append lands on the APPROVED record > CR #108: the team-journal seam is imported with the repository's explicit `.ts` specifier [0.50ms]
+
+ 1 pass
+ 19 filtered out
+ 0 fail
+ 1 expect() calls
+Ran 1 test across 1 file. [152.00ms]

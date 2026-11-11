@@ -1,0 +1,27 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+(pass) A1a: a reseed puts the fresh handle on the TEAM member row and leaves the checkpoint window [6.97ms]
+(pass) A1b: a reseed re-points every non-terminal board row the old handle owned [3.43ms]
+(pass) A2: a reseed that cannot write the TEAM row NEVER reports `reseeded` — it names the surface, fences and hands over the retry [3.48ms]
+(pass) A3: the promotion directive is delivered to the NEW handle on the reseed path [3.21ms]
+(pass) A4: a DEAD subcaptain renders live-by-liveness and force-eligible on BOTH surfaces [3.89ms]
+(pass) A4: an UNKNOWN liveness is reported as unverified, never as health, and suppresses no lever field [0.74ms]
+(pass) A5: a record re-read failure journals the branch and FENCES the seat [2.84ms]
+(pass) A5: a throw AFTER the spawn is journaled, fences the seat and RELEASES the activation [3.72ms]
+(pass) A6: a spawn that answers without a child id disposes the activation [2.95ms]
+(pass) A7: a team record that EXISTS but cannot be read NEVER reports `reseeded` — it names the surface, fences and releases [3.01ms]
+(pass) A7: a plane read that THROWS while the record exists is the unreadable case, never `absent` [3.43ms]
+(pass) A7: a cell whose workspace holds NO team record answers `absent` and still reseeds (the control) [3.20ms]
+(pass) A8: a write that lands between the bind's read and its rename is REFUSED, not overwritten [3.37ms]
+(pass) A8: a record that carries a REVISION is refused when that revision moved inside the window [3.21ms]
+(pass) A8: without an external write the SAME harness binds normally (the control) [3.39ms]
+(pass) A9: a write that changes only the BOARD inside the window is REFUSED — the raw bytes are the predicate [3.27ms]
+(pass) A9: a write confined to handoffs/consults is REFUSED as well — no part of the record is exempt [3.26ms]
+(pass) A9: the SAME seed binds normally when NO external write lands (the contrast) [3.18ms]
+(pass) A10: with NO team plane but a readable record file, the bind uses the FILE, verifies from it, and says `plane:"bound"` [3.54ms]
+
+ 19 pass
+ 0 fail
+ 138 expect() calls
+Ran 19 tests across 1 file. [271.00ms]

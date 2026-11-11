@@ -1,0 +1,116 @@
+{
+  "round": "PR #109 repair round 9 — CodeRabbit round 2 (1 Major + 5 Minor), reconcile in place",
+  "branch": "fix/cellwork-reseed",
+  "head": "84f6dd47 (working tree carries the uncommitted round-1..9 wave; this round edits no commit history and runs no git write)",
+  "contract": {
+    "path": ".mpd/plans/cellwork-reseed-fix.md",
+    "sections_read_first": ["§2 R1-R5", "§3 A1-A11 (incl. the A5 amendment)", "§4 scope", "§5 verification", "§6 bounds"],
+    "baseline": "round 8 final sources: protocol.ts 573c05d6…, protocol-core.ts 36aec4e6… (see ../2026-11-11T06-27-13Z/final-sources.sha256.txt)",
+    "scope": "packages/mpd-cellwork-plugin/src/{protocol.ts,protocol-core.ts} + test/reseed-binding.test.ts + docs/cellwork{,.zh-CN}.md + packages/mpd-cellwork-plugin/README{,.zh-CN}.md + dist/index.js"
+  },
+  "findings": {
+    "M1_Major_order_and_withhold": {
+      "code": [
+        "protocol.ts#cellwork_dispatch execute (≈1743-1802): `rebind` now runs FIRST; the unfence consumes the REBOUND record; a failed rebind or an unconfirmed CELL mirror withholds the unfence list entirely",
+        "protocol.ts#unfenceWithheld (1770-1784): {reason: rebind-failed|cell-mirror-unconfirmed, members, failed:[{member,reason,cellRow?}], detail ('fence stayed closed: …'), next}",
+        "protocol.ts#dispatch-unfence-withheld journal row (1785-1798) with the same reason/members/failed/detail/next",
+        "protocol.ts#render (1522-1530): rebind lines render before unfence lines; one `unfence WITHHELD — fence stayed closed … · next: …` line",
+        "protocol.ts#output schema (1467): `unfenceWithheld` declared",
+        "protocol.ts#tool description (1404): ORDER IS THE CONTRACT sentence; unfence clears AFTER rebind and BEFORE the pass"
+      ],
+      "docs": [
+        "docs/cellwork.md — 'A COMBINED CALL RUNS rebind FIRST AND WITHHOLDS THE unfence ON FAILURE (round 2, Major-1)'; tool table + journal table (dispatch-unfence-withheld)",
+        "docs/cellwork.zh-CN.md — 同段 简体中文；工具表 + journal 表",
+        "packages/mpd-cellwork-plugin/README.md — same ordering/withhold paragraph in the reseed contract",
+        "packages/mpd-cellwork-plugin/README.zh-CN.md — 同上"
+      ],
+      "arms": [
+        "A28 (test/reseed-binding.test.ts:1572): combined {rebind, unfence} with an unevidenced handle → rebind answers handle-unevidenced, unfenced is ABSENT, CELL fenced + fencedReason byte-identical, plane un-fence seam NOT called, answer carries unfenceWithheld.reason='rebind-failed' + detail contains 'fence stayed closed', render contains it, journal has dispatch-unfence-withheld and NO member-unfenced row; PAIRED CONTROL: the same call with an evidenced handle clears the fence and the CELL row still names the rebound handle"
+      ],
+      "fail_before": "fail-before-A28.log — RED on round-8 sources: result.unfenced == [{member, unfenced:true, plane:'unfenced'}] while the rebind refused"
+    },
+    "M2_Minor_keep_child_on_refused_rollback": {
+      "choice": "KEEP the child for ANY refused rollback (plus the existing failed-rollback keep); only `restored` releases. The pending-write shape cannot be disproved from this side, so the conservative side is the one that cannot produce a dangling roster.",
+      "cost": "one idle activation kept until the operator reconciles (visible as orphanChild + reconcileRequired + the fenced seat); the alternative releases a child a late cancelTasks roster can still name.",
+      "code": [
+        "protocol-core.ts#keepChild (1307): `bind.rollback === 'failed' || bind.rollback === 'refused'`",
+        "protocol-core.ts#reason (1321-1337): BINDING KEPT +, for a refused rollback, 'that writer may still commit a roster naming it (team-core's `cancelTasks` …)'",
+        "protocol-core.ts#release sentences (1278, 1341): the release is reported as the dispose seam's real outcome (ran / no seam or threw)"
+      ],
+      "docs": [
+        "docs/cellwork.md — 'A REFUSED ROLLBACK KEEPS THE CHILD (A11; widened in round 2)' + the cancelTasks reason",
+        "docs/cellwork.zh-CN.md — 同段",
+        "README.md / README.zh-CN.md — same rule"
+      ],
+      "arms": [
+        "A29 (test/reseed-binding.test.ts:1262): refused rollback whose surviving document names the OLD handle → displaced=NEW_HANDLE is KEPT (disposed=false), orphanChild + reconcileRequired + reason contains cancelTasks; a later stale roster naming NEW_HANDLE is written and the handle resolves to a LIVE child",
+        "A12 (1118) updated to the new expectation (kept child, fence still recoverable with unfence)",
+        "control: A11 still asserts a `restored` rollback RELEASES the child"
+      ],
+      "fail_before": "fail-before-A29.log — RED on round-8 sources: expect(activations[0].disposed).toBe(false) received true"
+    },
+    "m3_release_is_an_attempt": {
+      "docs": [
+        "docs/cellwork.md: 'ATTEMPTS to release … (the seam may be ABSENT or THROW …)' + the unreadable-record case + the declared-bound line",
+        "docs/cellwork.zh-CN.md: 对应三处",
+        "README.md / README.zh-CN.md: 'ATTEMPTS to release through its dispose() seam (a missing or throwing seam is reported, never claimed)'"
+      ],
+      "code": "protocol-core.ts sentences now report 'no seam was exposed or the one that exists threw' instead of claiming the only cause was an absent seam"
+    },
+    "m4_cell_mirror_is_not_done": {
+      "docs": [
+        "docs/cellwork.md — 'A REBIND IS NOT COMPLETE UNTIL THE CELL MIRROR IS CONFIRMED': cellRow:'failed: …', check cellRow, absence == mirrored, mirror failure withholds the unfence, rebind vs unfence distinct",
+        "docs/cellwork.zh-CN.md — 同段",
+        "README.md / README.zh-CN.md — 'CHECK cellRow' sentence"
+      ]
+    },
+    "m5_journal_is_evidence_when_records_are_silent": {
+      "docs": [
+        "README.md / README.zh-CN.md — the handle may be named by a current record OR (when neither current row names one) by the journal's LATEST hand-over row",
+        "docs/cellwork.md / docs/cellwork.zh-CN.md — the same fallback stated explicitly"
+      ]
+    },
+    "m6_previousSessionId_pair_is_conditional": {
+      "docs": [
+        "docs/cellwork.md / docs/cellwork.zh-CN.md — the pair is reported WHEN THE TEAM ROW IS READABLE and OMITTED when the TEAM record is missing or unreadable",
+        "README.md / README.zh-CN.md — same conditional wording"
+      ]
+    }
+  },
+  "gates": {
+    "bun run typecheck": "exit 0 (`tsgo --noEmit`)",
+    "bun run verify:comments": "exit 0 (PASS, 633 files, 58294 declarations)",
+    "bun run verify:docs": "exit 0 (PASS, pairs=59 failed=0 violations=0 links=626 dead=0)",
+    "bun test packages/mpd-cellwork-plugin": "exit 0 (411 pass, 0 fail, 34 files)",
+    "bun test packages": "exit 0 (4043 pass, 6 skip, 0 fail, 261 files)",
+    "pinned bun build": "exit 0 (.toolchain/node_modules/.bin/bun 1.4.0, 31 modules)",
+    "node scripts/verify-dist-fresh.ts": "exit 0 (34/34 targets fresh, 1 NOT COVERED file listed)"
+  },
+  "files": {
+    "evidenceDir": "evidence/cellwork/reseed-fix/2026-11-11T08-12-09Z",
+    "gates": "gates.log",
+    "fail_before_A28": "fail-before-A28.log",
+    "fail_before_A29": "fail-before-A29.log",
+    "post_fix_arms": "post-fix-arms.log",
+    "round8_baseline_hashes": "round8-baseline.sha256.txt",
+    "swapped_source_hashes": "swap.sha256.txt",
+    "fixed_source_backup_hashes": "fixed.sha256.txt",
+    "final_sources": "final-sources.sha256.txt",
+    "round9_src_diff": "round9-src.diff",
+    "wave_vs_head": "wave-vs-head.diff",
+    "bounds": "bounds.md"
+  },
+  "not_proven": [
+    "The docs sentences themselves are not asserted by a test; verify:docs checks the pair/switch link/heading tree/link resolution only.",
+    "'CELL mirror confirmed' means the mirror's writeCell returned without throwing (the outcome/journal cellRow fact); it is not a third independent read of the CELL file after that write.",
+    "The withheld-unfence rule is whole-call: one failed rebind withholds the unfence for every seat the call names. Deliberate; stated in the docs.",
+    "The pending cancelTasks write is not driven end-to-end (team-core is out of scope); A29 proves the decision (child kept) and that a late roster naming it resolves to a live child.",
+    "No live model-driven cell run; the arms run the real protocol tools over a real team-record file with a fake plane."
+  ],
+  "not_touched": [
+    "packages/mpd-dsh-adapter-plugin/**",
+    "packages/mpd-team-core-plugin/**",
+    "packages/mpd-cellwork-plugin/src/{elastic,staging,split,flow,index}.ts",
+    "no git write operation was run"
+  ]
+}

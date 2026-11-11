@@ -1,0 +1,22 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+558 |   let harness: Harness
+559 |   harness = makeHarness({ duringSpawn: (): void => { writeFileSync(statePath(harness.workspace, CELL_ID), "{ this is not the record", "utf8") } })
+560 |   await stopListener(harness)({ agent: harness.member })
+561 |   /** The branch's journal row. */
+562 |   const row = journalRows(harness).find((entry) => entry.event === "barrier-record-unreadable")
+563 |   expect(row).toBeDefined()
+                    ^
+error: expect(received).toBeDefined()
+
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:563:15)
+(fail) A5: a record re-read failure journals the branch and FENCES the seat [6.53ms]
+
+ 0 pass
+ 8 filtered out
+ 1 fail
+ 1 expect() calls
+Ran 1 test across 1 file. [183.00ms]

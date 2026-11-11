@@ -1,0 +1,200 @@
+{
+  "round": "PR #109 — final repair round (user ruling: no fourth CodeRabbit round; the two Mediums then merge)",
+  "branch": "fix/cellwork-reseed",
+  "pr": 109,
+  "priorVerdict": {
+    "record": ".mpd/verify/records/rec-20261111T100546-25c83d.json",
+    "verdict": "FAIL",
+    "scopeOfFailure": "evidence and observability only — the two Majors were confirmed correct (the board hand-over is the SAME CAS write as the TEAM row; the orphan evidence is narrow: checkpoint-unrecoverable + orphanChild + reconcileRequired only)"
+  },
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "changeDiff": {
+    "path": "evidence/cellwork/reseed-r11/2026-11-11T10-21-40Z/change.diff",
+    "lines": 1114,
+    "paths": [
+      "docs/cellwork.md",
+      "docs/cellwork.zh-CN.md",
+      "packages/mpd-cellwork-plugin/README.md",
+      "packages/mpd-cellwork-plugin/README.zh-CN.md",
+      "packages/mpd-cellwork-plugin/dist/index.js",
+      "packages/mpd-cellwork-plugin/src/protocol-core.ts",
+      "packages/mpd-cellwork-plugin/src/protocol.ts",
+      "packages/mpd-cellwork-plugin/test/reseed-binding.test.ts"
+    ],
+    "note": "git diff against HEAD (52bb524c) restricted to this round's in-scope paths; the branch is UNCOMMITTED and the captain commits. Because HEAD is round 2's commit, the diff also carries rounds 3-4 as uncommitted work. THIS ROUND's own files are: src/protocol.ts, test/reseed-binding.test.ts, docs/cellwork.md, docs/cellwork.zh-CN.md, packages/mpd-cellwork-plugin/README.md and README.zh-CN.md, and the rebuilt dist/index.js. src/protocol-core.ts appears in the diff from the PREVIOUS round (reconcileRepairOf's board sentence) and was NOT edited by this round.",
+    "sha256": "7f5085f02d697345b13d4aa721ef8ddc9891b26b0654ff7792e4f42dff1779ab"
+  },
+  "items": {
+    "R11-2": {
+      "kind": "behaviour-free rendering + docs + arm",
+      "render": "packages/mpd-cellwork-plugin/src/protocol.ts:1647 (boardClausesOf) appended at :1660",
+      "clauses": [
+        "; board: N row(s) handed over  (N = tasksRebound, only when N > 0)",
+        "; M row(s) still need release: <ids> — run agent_teams_task {action:\"release\", task_id} first  (M > 0)",
+        "; handle adopted from the orphan evidence row  (only when handleOrphanAdopted)"
+      ],
+      "docs": [
+        "docs/cellwork.md:714-718",
+        "docs/cellwork.zh-CN.md:562-565",
+        "packages/mpd-cellwork-plugin/README.md:444-447",
+        "packages/mpd-cellwork-plugin/README.zh-CN.md:348-351"
+      ],
+      "arm": "test/reseed-binding.test.ts:1986 (A34, A32's seed: T1/T7 handed over, T2 in_progress reported) and :2017 (A34b, the paired control: no clause on a no-op re-point); A33 also asserts the adoption sentence at :2105-2111",
+      "r11_2_status": "FIXED"
+    },
+    "R11-1": {
+      "kind": "evidence only (paired negative)",
+      "arm": "test/reseed-binding.test.ts:2114 (A33b)",
+      "seed": "A33's harness plus a surviving record stamped updatedAt=2027-01-01T00:00:00.000Z (provably later than the orphan row's own journal at), both current records still naming OLD_HANDLE",
+      "assertions": [
+        "rebound:false, reason:handle-unevidenced",
+        "\"handleOrphanAdopted\" in outcome === false AND absent from the member-rebind-failed row",
+        "outcome.detail contains \"the record's own write postdates that row\" (the refusal is FOR the recency, not an unrelated failure)",
+        "TEAM record bytes and CELL record bytes are identical before/after the refused call",
+        "the rendered text does not contain the adoption sentence"
+      ],
+      "r11_1_status": "EVIDENCED (the implementation already refused; this arm is the missing negative — it passes on both sides of the round, stated in fail-before.log)"
+    },
+    "R11-3": {
+      "kind": "evidence only",
+      "arms": [
+        "test/reseed-binding.test.ts:2231-2293 (A19, the CAS-refused path): the two documents the FIFO writer serves keep their exact [id, owner, revision] triples, plus the literal seed board T1/T0/T2/T3 at revisions 7/4/5/6",
+        "test/reseed-binding.test.ts:1948 (A32b): a board-carrying seed refused per entry leaves every on-disk row's owner and revision byte-identical and the TEAM row untouched"
+      ],
+      "r11_3_status": "EVIDENCED, with a stated bound: on A19 the board is observable only as the served documents plus statSync(recordPath).isFIFO() (nothing else can commit); A32b supplies the on-disk board check but on a per-entry refusal, because rebind's snapshot->compare window is synchronous and exposes no injection point"
+    },
+    "R11-4": {
+      "kind": "evidence ledger",
+      "answer": "this result.json; bounds below name EVERY out-of-wave changed path"
+    },
+    "NIT-5": {
+      "kind": "source hardening",
+      "landing": "packages/mpd-cellwork-plugin/src/protocol.ts:552 (recordWriteInstantOf), used at :1312",
+      "rule": "snapshot.updatedAt is a stamp only when Date.parse succeeds and it is not the empty string; otherwise the file mtime is used (an mtime that is also unavailable leaves the marker silent rather than guessing)"
+    },
+    "NIT-7": {
+      "kind": "docs wording",
+      "sentence": "The journal can EVIDENCE a handle no current record names, but it never VETOES a handle a current record does name",
+      "landing": [
+        "docs/cellwork.md:676-679",
+        "docs/cellwork.zh-CN.md:530-533",
+        "packages/mpd-cellwork-plugin/README.md:433-436",
+        "packages/mpd-cellwork-plugin/README.zh-CN.md:340-343"
+      ]
+    },
+    "NIT-6": {
+      "kind": "docs limitation only — behaviour deliberately unchanged",
+      "sentence": "when the TEAM row names NO handle at all, no board row is handed over (not even one owned by the seat's name), because a name-owned row still routes to the seat",
+      "landing": [
+        "docs/cellwork.md:718-720",
+        "docs/cellwork.zh-CN.md:565-566",
+        "packages/mpd-cellwork-plugin/README.md:447-448",
+        "packages/mpd-cellwork-plugin/README.zh-CN.md:351"
+      ]
+    }
+  },
+  "failBefore": {
+    "path": "evidence/cellwork/reseed-r11/2026-11-11T10-21-40Z/fail-before.log",
+    "method": "the final test bytes (assertions unchanged after a comment-label normalization) run with ONLY the render append (+ boardClausesOf(row)) removed from protocol.ts; no test or gate was edited. The append was then restored and `sha256sum -c final-shas.txt` proves protocol.ts and dist/index.js are byte-identical to the gated state (2c80dedb…ac2bcef2ac / 68a60713…af1a3fcbe).",
+    "observed": "49 pass / 2 fail — A34 fails with `Expected to contain: \"board: 2 row(s) handed over\"`; A33 fails with `Expected to contain: \"handle adopted from the orphan evidence row\"`. A33b, A32b, A19 and A34b pass on both sides (they are evidence/regression arms, not behaviour changes).",
+    "capturedAtTestCount": "51 tests, 49 pass / 2 fail, 558 expect() calls"
+  },
+  "gates": [
+    {
+      "name": "typecheck",
+      "command": "bun run typecheck",
+      "exit": 0,
+      "observed": "$ tsgo --noEmit — no diagnostics (exit 0)",
+      "log": "typecheck.log"
+    },
+    {
+      "name": "verify:comments",
+      "command": "bun run verify:comments",
+      "exit": 0,
+      "observed": "VERDICT: PASS — 633 files, 58408 declarations, 0 violations",
+      "log": "verify-comments.log"
+    },
+    {
+      "name": "verify:docs",
+      "command": "bun run verify:docs",
+      "exit": 0,
+      "observed": "pairs=59 failed=0 violations=0 dead=0 exempt=24 derived=3 — PASS",
+      "log": "verify-docs.log"
+    },
+    {
+      "name": "plugin tests",
+      "command": "bun test packages/mpd-cellwork-plugin",
+      "exit": 0,
+      "observed": "420 pass / 0 fail, 4179 expect() calls, 34 files",
+      "log": "test-cellwork-plugin.log"
+    },
+    {
+      "name": "all packages",
+      "command": "bun test packages",
+      "exit": 0,
+      "observed": "4052 pass / 6 skip / 0 fail, 53754 expect() calls, 4058 tests across 261 files",
+      "log": "test-packages.log",
+      "skips": "pre-existing environment bounds: 2 Subversion-CLI arms (no svn/svnadmin), 1 official live-team readout, 3 mpd_comment_check arms (comment-checker binary absent)"
+    },
+    {
+      "name": "dist rebuild",
+      "command": ".toolchain/node_modules/.bin/bun build packages/mpd-cellwork-plugin/src/index.ts --target node --format esm --outfile packages/mpd-cellwork-plugin/dist/index.js",
+      "exit": 0,
+      "observed": "bun 1.4.0 (package.json buildToolchain), Bundled 31 modules, index.js 0.58 MB"
+    },
+    {
+      "name": "dist freshness",
+      "command": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "observed": "ok: 34/34 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED (packages/mpd-mcp-codegraph/dist/serve.js, prebuilt vendored)",
+      "log": "verify-dist-fresh.log"
+    }
+  ],
+  "bounds": {
+    "outOfWaveChangedPaths": [
+      {
+        "path": "AGENTS.md",
+        "status": "MODIFIED in the working tree, NOT by this round",
+        "content": "the captain's concurrent Docker-freeze ruling: §4's Docker real-machine row now says MANDATORY for EVERY version iteration (user-set 2026-11-11) and §11 step 2 replaced BOTH-runs wording with THREE frozen lanes",
+        "outsideThisRoundsChangeDiff": true
+      },
+      {
+        "path": "agent-references/verification-flow.md",
+        "status": "MODIFIED in the working tree, NOT by this round",
+        "content": "the captain's concurrent Docker-freeze section: 'The Docker lane is a FROZEN release requirement (user-set, 2026-11-11)' — three lanes, parallel in distinct work dirs, SKIP/exit 3/absent = FAILED requirement, the 14b user-surface arm",
+        "outsideThisRoundsChangeDiff": true
+      }
+    ],
+    "noteOnChangeDiff": "Both paths above are EXCLUDED from change.diff by construction (git diff restricted to this round's in-scope paths); their own gates (e.g. node scripts/verify-manual-paths.ts for the manual edit) belong to that change, not to this round.",
+    "other": [
+      "the branch is UNCOMMITTED — no git write operation was run; the captain commits",
+      "no Docker lane was run: this round's stated gate list does not include it and the change touches no install/mount path"
+    ],
+    "workingTree": {
+      "trackedModified": 10,
+      "inScope": 8,
+      "outOfWave": [
+        "AGENTS.md",
+        "agent-references/verification-flow.md"
+      ],
+      "untracked": {
+        "count": 76,
+        "note": "pre-existing evidence directories from earlier waves, plus THIS round's evidence/cellwork/reseed-r11/2026-11-11T10-21-40Z/. No source, doc or dist path outside the list above differs from HEAD."
+      }
+    }
+  },
+  "notProven": [
+    "A19's board assertion is a seed-integrity statement about the two documents the FIFO writer serves; the proof that no board write was COMMITTED on that arm remains statSync(recordPath).isFIFO(). An on-disk board check on the CAS path itself is impossible without an injection point inside rebind's synchronous snapshot->compare window — A32b provides the on-disk check on a per-entry refusal instead, and that difference is deliberate and stated.",
+    "A34/A34b/A33/A33b read the registered tool's declared render function directly (the established pattern of A14/A28 in this file); the adapter's block flattening and the operator-facing block count are not exercised.",
+    "A33b asserts `handle-unevidenced`, the reason the implementation actually chooses for a provably-later record; the task allowed either reason, and the assertion pins the real one rather than accepting both.",
+    "NIT-5 guards snapshot.updatedAt only. A non-ISO `at` on a JOURNAL row is still compared lexically against recordAt — outside the stated NIT, left unchanged, and not covered by any arm.",
+    "The 6 skipped arms in `bun test packages` were not individually re-verified; skip reasons are quoted from the log and none touches the cellwork plugin.",
+    "The full `bun run verify:gates` aggregate and the Docker lane were NOT run in this round (out of the stated gate list); nothing here should be read as a release-sweep result."
+  ],
+  "finalStateProof": {
+    "file": "final-shas.txt",
+    "protocolTs": "2c80dedb1ca1976c40fde37fe565376c7f8c5862cf1e6a3b460082ac2bcef2ac",
+    "distIndexJs": "68a60713606abf20d749e9569d840673484077041762626c3d3a194af1a3fcbe",
+    "note": "the fail-before capture removed and restored the render append; sha256sum -c passed, so the gate logs describe exactly the bytes on disk now"
+  }
+}

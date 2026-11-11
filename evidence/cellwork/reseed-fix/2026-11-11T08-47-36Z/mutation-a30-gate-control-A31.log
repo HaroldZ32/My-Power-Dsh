@@ -1,0 +1,11 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+(pass) A31: one unevidenced entry among two withholds the unfence for EVERY declared target, not only its own [6.29ms]
+
+ 1 pass
+ 44 filtered out
+ 0 fail
+ 29 expect() calls
+Ran 1 test across 1 file. [31.00ms]
+EXIT=0

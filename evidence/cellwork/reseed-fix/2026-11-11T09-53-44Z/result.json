@@ -1,0 +1,40 @@
+{
+  "task": "CodeRabbit round 3 — PR #109 (fix/cellwork-reseed @ 52bb524c)",
+  "round": 3,
+  "stale_verification": {
+    "1_readme_rebind_current_record_only": "STALE — README.md:425-429 (grep 427) carries 'OR, when NEITHER current row names a handle, by the journal's LATEST hand-over row'; README.zh-CN.md:336-337 carries the same OR fallback. docs/cellwork.md:672-673 unchanged in substance.",
+    "2_previousSessionId_every_outcome": "STALE — README.md:435-438 ('reported WHEN THE TEAM ROW IS READABLE and is OMITTED when the TEAM record is missing or unreadable'); README.zh-CN.md:344-345 ('只在 TEAM 行可读时报告 … 会省略').",
+    "3_keepChild_releases_refused": "STALE — protocol-core.ts:1307 `const keepChild = bind.rollback === \"failed\" || bind.rollback === \"refused\"`; :1316 `released = keepChild ? false : …`. Both refused and failed keep the child."
+  },
+  "fixes": {
+    "4_rebind_board_reassignment": {
+      "files": ["packages/mpd-cellwork-plugin/src/protocol.ts", "docs/cellwork.md", "docs/cellwork.zh-CN.md", "packages/mpd-cellwork-plugin/README.md", "packages/mpd-cellwork-plugin/README.zh-CN.md"],
+      "behaviour": "rebindSeats now re-points, in the SAME CAS write as the TEAM executorRef, every NON-TERMINAL board row owned by the old handle or the seat's own name/id (same rule as bindReseededSeat). Terminal rows keep their owner. claimed/in_progress rows are NOT force-moved: they are listed in tasksNeedingRelease[{taskId,status,release}] with the exact agent_teams_task {action:\"release\", task_id} verb, and the count lands in tasksRebound on the outcome and on the member-rebound journal row."
+    },
+    "5_kept_child_recoverable": {
+      "choice": "narrow orphan evidence accepted by rebind (option A), not a new verb",
+      "why_it_was_refused_before": "handleEvidenceOf's predicate was `evidenced = handleRecordCurrent || (!recordNamesAny && journal latest names it)`. When BOTH current rows name the OLD handle, recordNamesAny is true, so the journal's latest hand-over (the kept child's checkpoint-unrecoverable row) could never turn the refusal into a bind — hence handle-unevidenced and a permanent orphan.",
+      "behaviour": "a checkpoint-unrecoverable row carrying orphanChild AND reconcileRequired:true is a hand-over row whose `orphan` marker is accepted when it is the seat's LATEST hand-over and !journalHandoverOlder (a record proving its write is later still wins, F1). The outcome and member-rebound row carry handleOrphanAdopted:true. Foreign handles remain refused (A21/A26 green). The keep-path failure sentence now names the executable repair and states the row's orphanChild is the evidence accepted even when both current records name the old handle."
+    }
+  },
+  "tests": {
+    "A32": "seed: TEAM old handle + CELL new handle; board T1 pending/old, T7 pending/name, T2 in_progress/old, T0 completed, T3 failed, T4 cancelled, T5 another seat. asserts T1/T7 moved with revision bump, terminal untouched, T5 untouched, T2 unchanged + tasksNeedingRelease with release verb, tasksRebound=2 on outcome and member-rebound row.",
+    "A33": "seed: the A29 refused-rollback shape (both current records name OLD_HANDLE, journal checkpoint-unrecoverable with orphanChild=NEW_HANDLE + reconcileRequired). asserts rebind+unfence lands, handleOrphanAdopted true, namedBy journal:checkpoint-unrecoverable, TEAM+CELL at NEW_HANDLE, T1 in_progress reported not moved, FOREIGN handle still handle-unevidenced.",
+    "fail_before": "HEAD protocol.ts/protocol-core.ts swapped back in: A32 fails (T1 owner OLD_HANDLE), A33 fails (rebound false) — both exit 1; log in fail-before.log; sources restored afterwards."
+  },
+  "gates": {
+    "typecheck": "bun run typecheck (tsgo --noEmit) — exit 0",
+    "verify_comments": "bun run verify:comments — VERDICT: PASS (633 files, 58371 declarations) — exit 0",
+    "verify_docs": "bun run verify:docs — pairs=59 failed=0 violations=0 dead=0 PASS — exit 0 (re-run after a concurrent AGENTS.md edit by another writer)",
+    "tests_package": "bun test packages/mpd-cellwork-plugin — 416 pass / 0 fail — exit 0",
+    "tests_all": "bun test packages — 4048 pass / 6 skip / 0 fail — exit 0",
+    "dist": "pinned .toolchain bun 1.4.0 rebuild of packages/mpd-cellwork-plugin/src/index.ts; verify-dist-fresh: 34/34 fresh (1 NOT COVERED pre-existing), exit 0"
+  },
+  "bounds": [
+    "No Docker lane was run: the task's gate list does not include it and this is a PR fix, not a release sweep; the concurrent AGENTS.md edit now makes Docker mandatory for VERSION ITERATIONS, which this is not.",
+    "No git write was performed (no commit/add/checkout/stash); the scoped change.diff is evidence only.",
+    "AGENTS.md was modified concurrently by ANOTHER writer during this session (Docker policy freeze); it is NOT part of this wave and was neither touched nor reverted.",
+    "rebind has no rollback: a read-back failure still leaves the TEAM write landed (pre-existing behaviour, documented); the board half now travels in that same write, so it shares that bound."
+  ],
+  "evidence": "evidence/cellwork/reseed-fix/2026-11-11T09-53-44Z/"
+}

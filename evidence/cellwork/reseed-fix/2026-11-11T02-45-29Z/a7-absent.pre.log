@@ -1,0 +1,23 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+724 |   const rows = journalRows(harness)
+725 |   expect(rows.some((row) => row.event === "compaction" && row.outcome === "reseeded")).toBe(true)
+726 |   // THE BIND ROW SAYS WHICH PLANE ANSWERED, and it answered `absent` rather than `bound`.
+727 |   /** The bind row. */
+728 |   const bound = rows.find((row) => row.event === "seat-rebound")
+729 |   expect(bound?.plane).toBe("absent")
+                             ^
+error: expect(received).toBe(expected)
+
+Expected: "absent"
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:729:24)
+(fail) A7: a cell whose workspace holds NO team record answers `absent` and still reseeds (the control) [6.27ms]
+
+ 0 pass
+ 14 filtered out
+ 1 fail
+ 2 expect() calls
+Ran 1 test across 1 file. [181.00ms]

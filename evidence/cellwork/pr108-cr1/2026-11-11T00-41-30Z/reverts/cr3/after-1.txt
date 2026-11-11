@@ -1,0 +1,7 @@
+      // A ROW THE PLANE SKIPPED IS NOT CANCELLED. The old path reported success for an answer whose every
+      // entry was skipped; the rows would stay dispatchable, which is the defect this step exists to remove.
+      /** The rows the plane did not cancel, with its reason. */
+      const uncancelled = Array.isArray(closed.skipped) ? (closed.skipped as Array<Record<string, unknown>>).filter((row) => typeof row.taskId === "string") : []
+      if (uncancelled.length > 0) {
+        return fail("cellwork_activate could not close " + String(uncancelled.length) + " dropped row(s) on team " + teamId + ": " + uncancelled.map((row) => String(row.taskId) + " (" + String(row.reason ?? "the plane skipped it") + ")").join("; ") + " — the activation is left un-dispatched and can be resumed")
+      }

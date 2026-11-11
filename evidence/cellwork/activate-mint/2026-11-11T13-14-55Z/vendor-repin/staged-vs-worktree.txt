@@ -1,0 +1,4 @@
+=== staged blob (:VENDOR_LOCK.json) ===
+{"fileCount":392,"treeSha":"f58bd90ae4e0d0d1dee936e6a8124deb6b193456950d74024b866f84dd550676"}
+=== working tree (VENDOR_LOCK.json) ===
+{"fileCount":393,"treeSha":"2997619a891615643e81f91ae051f99f79f23053fae6fdc45165a3904baad3de"}

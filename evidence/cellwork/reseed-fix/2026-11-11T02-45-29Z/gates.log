@@ -1,0 +1,43 @@
+evidence: evidence/cellwork/reseed-fix/2026-11-11T02-45-29Z
+bun(ambient)=1.4.2  bun(pinned)=1.4.0  node=v24.21.0
+
+== 1) bun run typecheck ==
+$ tsgo --noEmit
+[exit 0]
+
+== 2) bun run verify:comments ==
+# verify-comment-coverage
+
+scanned 633 TypeScript file(s) of 633 in the source set; inspected 57927 declaration(s); skipped 28587 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+[exit 0]
+
+== 3) bun run verify:docs ==
+[verify-docs-parity] links=626 checked=586 resolved=586 dead=0 exemptProvenance=0 absentSite=0 ignoredExternal=34 ignoredAnchorOnly=6 files=139
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=59 failed=0 violations=0 exempt=24 derived=3 links=626 dead=0 — PASS
+[exit 0]
+
+== 4) bun test packages/mpd-cellwork-plugin ==
+(pass) R3.5: the reseed's depth derivation agrees with the roster's spawn rule > an agent with no session at all answers the same cap from both helpers
+
+ 384 pass
+ 0 fail
+ 3721 expect() calls
+Ran 384 tests across 34 files. [529.00ms]
+[exit 0]
+
+== 5a) pinned dist rebuild ==
+Bundled 31 modules in 10ms
+
+  index.js  0.53 MB  (entry point)
+
+[exit 0]
+
+== 5b) node scripts/verify-dist-fresh.ts ==
+  FRESH   packages/mpd-cellwork-plugin/dist/index.js  sha 5395da46251c… 24ms  <- packages/mpd-cellwork-plugin/src/index.ts
+[verify-dist-fresh] build toolchain: bun 1.4.0 from the repository toolchain (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun) · recorded buildToolchain bun@1.4.0
+[verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:
+[verify-dist-fresh] ok: 34/34 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 735ms
+[exit 0]

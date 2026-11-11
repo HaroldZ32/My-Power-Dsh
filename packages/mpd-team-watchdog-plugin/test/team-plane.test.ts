@@ -257,3 +257,38 @@ describe("the applied row reads the MPD plane PER CALL (T3 wiring)", () => {
     }
   })
 })
+
+// ── THE NEGATIVE CACHE (release 0.18.2 defect ②): the DEFAULT window must not blind a young lane ──
+
+test("DEFAULT teamCacheMs: an empty readout is not cached, so a team created inside the window is named", () => {
+  /** The sandbox workspace, cleaned up even when an assertion fails. */
+  const box = sandbox()
+  try {
+    /** The plugin context whose adapter is the real registration surface. */
+    const ctx = pluginCtx(box.workspace)
+    // NO `teamCacheMs` HERE ON PURPOSE: the row's shipped default (2000 ms) is the subject. A lane's
+    // first heartbeat arrives ~100 ms BEFORE its team record's `createdAt`, so the first read is EMPTY
+    // and the second one is separated from it by far less than the window.
+    const report = apply(ctx, { stateDir: box.stateDir, tickIntervalMs: 3_600_000, warnSilenceMs: 7_200_000 })
+    try {
+      /** The live agent as the harness reports it; its id IS the member's executor handle. */
+      const agent = { id: "sess-m1", session: { id: "sess-m1", header: { cwd: box.workspace } } }
+      // FIRST STAMP (no team record yet): the empty answer the defect used to cache.
+      const early = report.engine?.stamp("turn-start", agent)
+      expect(early?.teamId).toBeNull()
+      expect(early?.member).toBeNull()
+      // THE TEAM IS CREATED ~100 ms LATER — inside the 2 s window — and the service mounts then too.
+      ctx.services.set("mpdTeams", mpdTeamsWith(mpdRecord()))
+      // SECOND STAMP: an empty read must never have been cached, so this one must resolve the team.
+      const later = report.engine?.stamp("turn-start", agent)
+      expect(later?.teamId).toBe(MPD_TEAM_ID)
+      expect(later?.member).toBe("Senior Engineer")
+      expect(later?.memberKey).toBe("Senior Engineer")
+    } finally {
+      report.engine?.stop()
+      ctx.__dispose()
+    }
+  } finally {
+    box.cleanup()
+  }
+})

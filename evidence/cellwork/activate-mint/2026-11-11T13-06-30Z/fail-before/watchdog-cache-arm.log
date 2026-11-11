@@ -1,0 +1,24 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-team-watchdog-plugin/test/team-plane.test.ts:
+279 |       expect(early?.member).toBeNull()
+280 |       // THE TEAM IS CREATED ~100 ms LATER — inside the 2 s window — and the service mounts then too.
+281 |       ctx.services.set("mpdTeams", mpdTeamsWith(mpdRecord()))
+282 |       // SECOND STAMP: an empty read must never have been cached, so this one must resolve the team.
+283 |       const later = report.engine?.stamp("turn-start", agent)
+284 |       expect(later?.teamId).toBe(MPD_TEAM_ID)
+                                  ^
+error: expect(received).toBe(expected)
+
+Expected: "team-20261006120000"
+Received: null
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-team-watchdog-plugin/test/team-plane.test.ts:284:29)
+(fail) DEFAULT teamCacheMs: an empty readout is not cached, so a team created inside the window is named [1.42ms]
+
+ 0 pass
+ 10 filtered out
+ 1 fail
+ 3 expect() calls
+Ran 1 test across 1 file. [22.00ms]
+watchdog_exit=1

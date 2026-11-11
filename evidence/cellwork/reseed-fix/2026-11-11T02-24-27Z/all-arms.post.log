@@ -1,0 +1,17 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+(pass) A1a: a reseed puts the fresh handle on the TEAM member row and leaves the checkpoint window [7.07ms]
+(pass) A1b: a reseed re-points every non-terminal board row the old handle owned [4.40ms]
+(pass) A2: a reseed that cannot write the TEAM row NEVER reports `reseeded` — it names the surface, fences and hands over the retry [4.23ms]
+(pass) A3: the promotion directive is delivered to the NEW handle on the reseed path [4.02ms]
+(pass) A4: a DEAD subcaptain renders live-by-liveness and force-eligible on BOTH surfaces [3.86ms]
+(pass) A4: an UNKNOWN liveness is reported as unverified, never as health, and suppresses no lever field [0.76ms]
+(pass) A5: a record re-read failure journals the branch and FENCES the seat [4.05ms]
+(pass) A5: a throw AFTER the spawn is journaled, fences the seat and RELEASES the activation [3.93ms]
+(pass) A6: a spawn that answers without a child id disposes the activation [3.49ms]
+
+ 9 pass
+ 0 fail
+ 57 expect() calls
+Ran 9 tests across 1 file. [217.00ms]

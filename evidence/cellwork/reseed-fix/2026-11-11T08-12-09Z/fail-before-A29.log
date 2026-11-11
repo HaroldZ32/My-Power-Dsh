@@ -1,0 +1,25 @@
+$ bun test packages/mpd-cellwork-plugin/test/reseed-binding.test.ts -t 'A29'   # round-8 sources installed (see swap.sha256.txt)
+bun test v1.4.2 (744846f84)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+1282 |   /** The give-up row this refusal writes. */
+1283 |   const row = rows.find((entry) => entry.event === "checkpoint-unrecoverable")
+1284 |   expect(row?.rollback).toBe("refused")
+1285 |   // THE CHILD IS ALIVE AND RECORDED: the refusal names it and requires a reconcile.
+1286 |   expect(harness.activations).toHaveLength(1)
+1287 |   expect(harness.activations[0].disposed).toBe(false)
+                                                 ^
+error: expect(received).toBe(expected)
+
+Expected: false
+Received: true
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:1287:43)
+(fail) A29: a refused rollback KEEPS the child even when the surviving document names ANOTHER handle (Minor-1) [6.01ms]
+
+ 0 pass
+ 41 filtered out
+ 1 fail
+ 3 expect() calls
+Ran 1 test across 1 file. [151.00ms]
+[exit code: 1]

@@ -1,0 +1,269 @@
+{
+  "round": "PR #108 — CodeRabbit review round 1",
+  "reviewedAt": "2026-11-10T18:14:49Z",
+  "repairsVerdict": "rec-20261111T003404-c37d51 (FAIL: R1-01, R1-02, R1-03, R1-04)",
+  "loopContract": ".mpd/plans/pr-108-cr-round1.md",
+  "branch": "feature/cellwork-elastic-planning",
+  "capturedAtUtc": "2026-11-11T00-41-30Z",
+  "method": "Per finding: exact-string revert (byte blocks recorded under reverts/<id>/), one RED run of the cited arm, byte-exact restore from reverts/<id>/fixed.snapshot with a sha256 assertion, then the same arm GREEN. The production source tree was never committed and every revert was restored in the same loop.",
+  "toolchain": {
+    "tests": "bun 1.4.2 (PATH)",
+    "build": "bun 1.4.0 from .toolchain (verify-dist-fresh)",
+    "node": "the repository's engines floor, used for node scripts/*.ts"
+  },
+  "findings": {
+    "CR1": {
+      "kind": "text assertion (documentation prose)",
+      "site": "docs/cellwork.md:358-359 (the owner-only roster-mode hazard sentence)",
+      "defect": "the sentence read '…carries a hazard cell mode does not' — the missing conjunction made it a garden-path sentence; the fix adds 'that' and reflows.",
+      "failBefore": "by construction: the pre-fix bytes at git HEAD do not contain the frozen contract's required sentence. NO repository test or gate asserts this prose (verify:docs checks pairs, heading trees and link resolution only), so the executable probe is an exact-string match against the contract text.",
+      "revert": {
+        "diff": "diffs/cr1 is not a source revert — the probe compares HEAD bytes with the working tree",
+        "probe": "git show HEAD:docs/cellwork.md | tr '\\n' ' ' | grep -c 'carries a hazard that cell mode does not'"
+      },
+      "red": { "arm": "the probe over HEAD bytes", "exit": 1, "snippet": "0 matches on HEAD (pre-fix) => exit 1", "log": "logs/cr1.probe.log" },
+      "green": { "arm": "the same probe over docs/cellwork.md", "exit": 0, "snippet": "1 match in the working tree => exit 0", "log": "logs/cr1.probe.log" }
+    },
+    "CR2": {
+      "kind": "behaviour",
+      "site": "packages/mpd-cellwork-plugin/src/activate.ts — materializeSplit: board resolution (lines 467-483 plus the journal and outcome spreads)",
+      "defect": "a re-split that resolved no team refused with 'run cellwork_start' although the record carried a team id; the fallback to the recorded id was silent (no `unverified` mark, no note, no journal fact).",
+      "revert": {
+        "diff": "diffs/cr2.revert.diff",
+        "hunks": 3,
+        "reverted_sha256": "a909d32d5228410d634a51c97451c6d7b4b68764bdc9a31022843a5ee7ab6b73"
+      },
+      "red": {
+        "arm": "bun test packages/mpd-cellwork-plugin/test/elastic-seats.test.ts -t 'a re-split that resolves no team'",
+        "exit": 1,
+        "snippet": "expect(result.ok).toBe(true) at elastic-seats.test.ts:1017 — Expected: true, Received: false",
+        "log": "logs/cr2.red.log"
+      },
+      "sha_before": "e4a13bb578b7175e9e7d1f4b9f14a70fb087dc79a970d3c06d8d431789f9af48",
+      "sha_after_restore": "e4a13bb578b7175e9e7d1f4b9f14a70fb087dc79a970d3c06d8d431789f9af48",
+      "green": {
+        "arm": "the same filtered test",
+        "exit": 0,
+        "snippet": "1 pass, 0 fail, 6 expect() calls",
+        "log": "logs/cr2.green.log"
+      }
+    },
+    "CR3": {
+      "kind": "behaviour",
+      "site": "packages/mpd-cellwork-plugin/src/activate.ts — materializeSplit: skipped cancel rows (lines 821-831)",
+      "defect": "every skipped cancel row failed the activation, including a row the plane reported as already `completed` — the state the cancel step exists to establish.",
+      "revert": {
+        "diff": "diffs/cr3.revert.diff",
+        "hunks": 1,
+        "reverted_sha256": "1dddba37eaf39e89926dc9c3df890569d8065801b1e933299f0b6c2cd4338150"
+      },
+      "red": {
+        "arm": "bun test packages/mpd-cellwork-plugin/test/elastic-seats.test.ts -t 'a terminal skipped row is ALREADY CLOSED'",
+        "exit": 1,
+        "snippet": "expect(closed.ok).toBe(true) at elastic-seats.test.ts:1158 — Expected: true, Received: false",
+        "log": "logs/cr3.red.log"
+      },
+      "sha_before": "e4a13bb578b7175e9e7d1f4b9f14a70fb087dc79a970d3c06d8d431789f9af48",
+      "sha_after_restore": "e4a13bb578b7175e9e7d1f4b9f14a70fb087dc79a970d3c06d8d431789f9af48",
+      "green": { "arm": "the same filtered test", "exit": 0, "snippet": "1 pass, 0 fail, 7 expect() calls", "log": "logs/cr3.green.log" }
+    },
+    "CR5": {
+      "kind": "behaviour",
+      "site": "packages/mpd-cellwork-plugin/src/flow.ts — installCellworkFlow: the `next` record write (lines 1219-1222)",
+      "defect": "a re-split wrote the pass's STARTING team id into `planningTeamId`, erasing the staging id an earlier activation had preserved.",
+      "revert": {
+        "diff": "diffs/cr5.revert.diff",
+        "hunks": 1,
+        "reverted_sha256": "4ecce425bd39d859197ba7daf487391efcc538f3b141e91bd2cdd61054926eb3"
+      },
+      "red": {
+        "arm": "bun test packages/mpd-cellwork-plugin/test/flow.test.ts -t 'a RE-SPLIT never overwrites the staging id'",
+        "exit": 1,
+        "snippet": "expect(after.state.planningTeamId).toBe('team-planning') at flow.test.ts:928 — Expected: 'team-planning', Received: 'team-dead'",
+        "log": "logs/cr5.red.log"
+      },
+      "sha_before": "7d75e1898ad0a670de04e642508cd9a52220723ef60b2c4e813e805b4282076b",
+      "sha_after_restore": "7d75e1898ad0a670de04e642508cd9a52220723ef60b2c4e813e805b4282076b",
+      "green": { "arm": "the same filtered test", "exit": 0, "snippet": "1 pass, 0 fail, 8 expect() calls", "log": "logs/cr5.green.log" }
+    },
+    "CR6": {
+      "kind": "behaviour",
+      "site": "packages/mpd-cellwork-plugin/src/protocol.ts — cellwork_dispatch: board resolution before `unfenceSeats` (lines 1145-1168)",
+      "defect": "the unfence resolved the seat through the raw record (`cell.teamId`), so a legacy cell whose id named the dead planning team read the wrong roster row, answered `not-fenced`, and never called the plane's seam while the execution board carried the real fence.",
+      "revert": {
+        "diff": "diffs/cr6.revert.diff",
+        "hunks": 1,
+        "note": "the restored pre-fix block declares `let current: CellState` instead of HEAD's `const current` so the CR7 fix (which reassigns it) still type-checks; this is a CR6-only revert, not a whole-file checkout.",
+        "reverted_sha256": "76de770b31089e1a074b7e8e1996c7dd9d8b5763612e57cd8a23aea11daf9e25"
+      },
+      "red": {
+        "arm": "bun test packages/mpd-cellwork-plugin/test/elastic-seats.test.ts -t 'unfences on the RESOLVED board'",
+        "exit": 1,
+        "snippet": "at elastic-seats.test.ts:442: expected [{member:'Reviewer', cellRow:'untouched', plane:'unfenced', unfenced:true}] but received [{member:'Reviewer', reason:'not-fenced', unfenced:false}]",
+        "log": "logs/cr6.red.log"
+      },
+      "sha_before": "3c7c8554322a9b7380f795044999b40bb8c9e6ddc8a4ac20c61aaf4b1e3a8961",
+      "sha_after_restore": "3c7c8554322a9b7380f795044999b40bb8c9e6ddc8a4ac20c61aaf4b1e3a8961",
+      "green": { "arm": "the same filtered test", "exit": 0, "snippet": "1 pass, 0 fail, 5 expect() calls", "log": "logs/cr6.green.log" }
+    },
+    "CR7": {
+      "kind": "behaviour (two arms)",
+      "site": "packages/mpd-cellwork-plugin/src/protocol.ts — cellwork_dispatch: grown seats merged into a fresh read (lines 1183-1196)",
+      "defect": "growth awaits one `add_member` per seat and the pass then wrote its PRE-await snapshot back, reverting a concurrent `fenced` / `journalCursor` / adoption write; an unreadable record was overwritten and the pass dispatched anyway.",
+      "revert": {
+        "diff": "diffs/cr7.revert.diff",
+        "hunks": 1,
+        "reverted_sha256": "8a4854fc78f6a2ec17d58952ae043e5667d75d04a74d0e83168b04119c7f7688"
+      },
+      "red": [
+        {
+          "arm": "bun test packages/mpd-cellwork-plugin/test/elastic-seats.test.ts -t 'a concurrent barrier write inside seat growth SURVIVES'",
+          "exit": 1,
+          "snippet": "expect(members.Reviewer?.fenced).toBe(true) at elastic-seats.test.ts:482 — Expected: true, Received: undefined (the concurrent fence write was reverted by the pass)",
+          "log": "logs/cr7-armA.red.log"
+        },
+        {
+          "arm": "bun test packages/mpd-cellwork-plugin/test/elastic-seats.test.ts -t 'an unreadable record after growth STOPS the pass'",
+          "exit": 1,
+          "snippet": "expect(answer.ok).toBe(false) at elastic-seats.test.ts:494 — Expected: false, Received: true (the pass overwrote the corrupt record and dispatched)",
+          "log": "logs/cr7-armB.red.log"
+        }
+      ],
+      "sha_before": "3c7c8554322a9b7380f795044999b40bb8c9e6ddc8a4ac20c61aaf4b1e3a8961",
+      "sha_after_restore": "3c7c8554322a9b7380f795044999b40bb8c9e6ddc8a4ac20c61aaf4b1e3a8961",
+      "green": [
+        { "arm": "arm A, the same filtered test", "exit": 0, "snippet": "1 pass, 0 fail, 5 expect() calls", "log": "logs/cr7-armA.green.log" },
+        { "arm": "arm B, the same filtered test", "exit": 0, "snippet": "1 pass, 0 fail, 5 expect() calls", "log": "logs/cr7-armB.green.log" }
+      ]
+    },
+    "CR8": {
+      "kind": "text assertion (prompt prose; behavioural consequence is the planner being told lanes are running)",
+      "site": "packages/mpd-cellwork-plugin/src/staging.ts — plannerPrompt (lines 275-282)",
+      "defect": "with `cellwork.planning.analysts=0` the prompt still claimed the analysis lanes `cell-analyst-1 … cell-analyst-K` were ALREADY running.",
+      "failBefore": "by construction: the pre-fix paragraph is unconditional. Reverting only the prompt paragraph (keeping the new `planningSeats` parameter) makes the assertion red.",
+      "revert": {
+        "diff": "diffs/cr8.revert.diff",
+        "hunks": 1,
+        "reverted_sha256": "26a67f526417700309a9da58d105ec496000c28cc9527a051f5d31cac6d15ffc"
+      },
+      "red": {
+        "arm": "bun test packages/mpd-cellwork-plugin/test/planning-fanout.test.ts -t 'analysts=0 means the planner prompt NEVER claims'",
+        "exit": 1,
+        "snippet": "expect(prompt).not.toContain('cell-analyst') at planning-fanout.test.ts:408 — Expected to not contain: 'cell-analyst'",
+        "log": "logs/cr8.red.log"
+      },
+      "sha_before": "282f049303660e159354d8594d1e29ce974054a3e098208a2d4e68e50b021ed3",
+      "sha_after_restore": "282f049303660e159354d8594d1e29ce974054a3e098208a2d4e68e50b021ed3",
+      "green": { "arm": "the same filtered test", "exit": 0, "snippet": "1 pass, 0 fail, 4 expect() calls", "log": "logs/cr8.green.log" }
+    },
+    "CR9": {
+      "kind": "text assertion (import specifier; both spellings resolve under bun)",
+      "site": "packages/mpd-team-core-plugin/src/index.ts:87",
+      "defect": "the seam was imported as './team-journal' without the repository's mandatory explicit `.ts` extension.",
+      "failBefore": "by construction: only the specifier's spelling differs. Reverting the specifier makes the source assertion red.",
+      "revert": {
+        "diff": "diffs/cr9.revert.diff",
+        "hunks": 1,
+        "reverted_sha256": "00d0e6f6a75a34e6ed97d3b13d58a8e8a5a36c3430365ed4d931158fce66f7db"
+      },
+      "red": {
+        "arm": "bun test packages/mpd-team-core-plugin/test/c74-midrun-and-binding.test.ts -t 'the team-journal seam is imported'",
+        "exit": 1,
+        "snippet": "expect(source).toContain('import { appendTeamJournal } from \"./team-journal.ts\"') at c74-midrun-and-binding.test.ts:350 — Expected to contain",
+        "log": "logs/cr9.red.log"
+      },
+      "sha_before": "216fa5e245f71ba114be44ca63f9b3adf01f35c400ec8ee53088ea8b68120769",
+      "sha_after_restore": "216fa5e245f71ba114be44ca63f9b3adf01f35c400ec8ee53088ea8b68120769",
+      "green": { "arm": "the same filtered test", "exit": 0, "snippet": "1 pass, 0 fail, 1 expect() call", "log": "logs/cr9.green.log" }
+    },
+    "CR10": {
+      "kind": "text assertion (warning prose)",
+      "site": "packages/mpd-team-core-plugin/src/index.ts:2138",
+      "defect": "the role-omitted warning said route resolution 'cannot match it by role' although the description head and the member name also participate.",
+      "failBefore": "by construction: the pre-fix sentence is restored verbatim from HEAD; the test's new substrings ('may not match a role route', 'description head') are absent from it.",
+      "revert": {
+        "diff": "diffs/cr10.revert.diff",
+        "hunks": 1,
+        "reverted_sha256": "775197cd3e5fea10a14cbad10593d33540d836e78fab89286d9b68f00e7fcbd6"
+      },
+      "red": {
+        "arm": "bun test packages/mpd-team-core-plugin/test/c74-midrun-and-binding.test.ts -t 'a mid-run add_member WITHOUT role still creates the member'",
+        "exit": 1,
+        "snippet": "at c74-midrun-and-binding.test.ts:307 — Expected to contain: 'may not match a role route'; Received: '…route resolution cannot match it by role…'",
+        "log": "logs/cr10.red.log"
+      },
+      "sha_before": "216fa5e245f71ba114be44ca63f9b3adf01f35c400ec8ee53088ea8b68120769",
+      "sha_after_restore": "216fa5e245f71ba114be44ca63f9b3adf01f35c400ec8ee53088ea8b68120769",
+      "green": { "arm": "the same filtered test", "exit": 0, "snippet": "1 pass, 0 fail, 12 expect() calls", "log": "logs/cr10.green.log" }
+    },
+    "CR11": {
+      "kind": "behaviour",
+      "site": "packages/mpd-team-core-plugin/src/index.ts:2140-2149 (agent_teams_plan add_member, role-omitted journal write)",
+      "defect": "a throwing `appendTeamJournal` after `writeTeam` aborted the append, stranding a roster row nothing ever spawned (the C7-3 ghost class).",
+      "revert": {
+        "diff": "diffs/cr11.revert.diff",
+        "hunks": 1,
+        "reverted_sha256": "dc22955a7e68012402a0723be0750edc8906b50f520db01fce4575da6d385d56"
+      },
+      "red": {
+        "arm": "bun test packages/mpd-team-core-plugin/test/c74-midrun-and-binding.test.ts -t 'a THROWING journal append does not strand'",
+        "exit": 1,
+        "snippet": "EISDIR at team-journal.ts:100 (appendTeamJournal) reached from src/index.ts:2140 — the tool threw after the roster write; the member was never raised",
+        "log": "logs/cr11.red.log"
+      },
+      "sha_before": "216fa5e245f71ba114be44ca63f9b3adf01f35c400ec8ee53088ea8b68120769",
+      "sha_after_restore": "216fa5e245f71ba114be44ca63f9b3adf01f35c400ec8ee53088ea8b68120769",
+      "green": { "arm": "the same filtered test", "exit": 0, "snippet": "1 pass, 0 fail, 5 expect() calls", "log": "logs/cr11.green.log" }
+    }
+  },
+  "outOfScope": {
+    "CR4": "DECLINED by the frozen contract (§ Dispositions): the fallback stays the SHIPPED default with one log line. Behaviour unchanged; no revert exists."
+  },
+  "verdictFindings": {
+    "R1-01": {
+      "status": "SATISFIED by this directory",
+      "detail": "Every behavioural finding (CR2, CR3, CR5, CR6, CR7 both arms, CR11) carries path+symbol, the exact revert hunks, the RED output with its exit code, the post-restore sha256 and the GREEN run. Text findings (CR1, CR8, CR9, CR10) carry the fail-before-by-construction argument and a red/green probe of the assertion itself."
+    },
+    "R1-02": {
+      "status": "ALREADY SATISFIED",
+      "detail": "The frozen acceptance text exists at .mpd/plans/pr-108-cr-round1.md (47 lines, FROZEN 2026-11-11 by the captain). No edit was made to it."
+    },
+    "R1-03": {
+      "status": "FIXED in both languages",
+      "en": "A mid-run `add_member` that carries NO `role` is legal but the answer WARNS (one sentence) that the seat may not match a role route — resolution also reads the description head and the member name, and neither is guaranteed — in which case it inherits the calling session's route; passing `role` is still recommended.",
+      "zh": "运行中的 `add_member` **不带 `role`** 是合法的，但答复会**警告**（一句话）：该座位**可能**匹配不到角色路由（路由解析还会读描述头与成员名，而两者都不保证匹配）——**届时**才继承调用会话的路由；仍建议传 `role`。",
+      "files": ["docs/cellwork.md (Members section end)", "docs/cellwork.zh-CN.md (same section)"],
+      "packageReadmes": "checked — no packages/*/README*.md carries the sentence (grep for 'cannot be matched by role' / '无法按角色匹配路由' across docs, packages, skills and AGENTS.md returns no hit)"
+    },
+    "R1-04": {
+      "status": "FIXED in both languages",
+      "en": "The fifth state is an UNVERIFIED fallback, and only a RE-SPLIT takes it. When all four steps resolve NOTHING and the record's `teamId` is non-empty, a re-split still continues on the RECORDED id — but the id is TRUSTED, never verified: the answer carries `boardNote` saying so, the same fact is journaled (`boardResolution: \"unverified\"`), and the note prints the recorded id and, when the resolver saw another candidate, that id too — so both ids are visible. The note is ADVISORY, not a refusal: work is appended to that record only and it never tells the operator to run `cellwork_start`.",
+      "zh": "**第五种状态是「未验证」回落，且只有重切分才会走。** 四步解析什么都没找到、而记录的 `teamId` 非空时，重切分仍继续使用**记录里的** id——但这个 id 是**被信任**而非被验证的：答复携带 `boardNote` 说明这一点，同一事实写入 journal（`boardResolution: \"unverified\"`），note 会打印记录 id，并在解析器看到另一个候选时连那个 id 一起打印——两个 id 都可见。note 是**提示性的**，不是拒绝。",
+      "files": ["docs/cellwork.md (The board the cell is working on)", "docs/cellwork.zh-CN.md (same section)"]
+    }
+  },
+  "gates": {
+    "typecheck": { "command": "bun run typecheck", "exit": 0, "log": "gates/typecheck.log", "observed": "$ tsgo --noEmit" },
+    "comments": { "command": "bun run verify:comments", "exit": 0, "log": "gates/comments.log", "observed": "scanned 632 TypeScript file(s) of 632; VERDICT: PASS — every declaration in the family carries a precise comment and a full signature." },
+    "docs": { "command": "bun run verify:docs", "exit": 0, "log": "gates/docs.log", "observed": "pairs=59 failed=0 violations=0 exempt=24 derived=3 links=626 dead=0 — PASS" },
+    "testsCellwork": { "command": "bun test packages/mpd-cellwork-plugin", "exit": 0, "log": "gates/test-cellwork.log", "observed": "369 pass / 0 fail / 3612 expect() calls / 33 files" },
+    "testsTeamCore": { "command": "bun test packages/mpd-team-core-plugin", "exit": 0, "log": "gates/test-team-core.log", "observed": "637 pass / 0 fail / 3130 expect() calls / 45 files" },
+    "distFresh": { "command": "node scripts/verify-dist-fresh.ts", "exit": 0, "log": "gates/dist-fresh.log", "observed": "ok: 34/34 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED file listed — bun 1.4.0 from .toolchain" }
+  },
+  "integrity": {
+    "sourceFilesUnchanged": true,
+    "shaManifest": "sha256.txt",
+    "gitStatusBefore": "git-status-before.txt",
+    "gitStatusAfter": "git-status-after.txt",
+    "statusDelta": ["M docs/cellwork.zh-CN.md (new; task 3/2)", "?? evidence/cellwork/pr108-cr1/ (this artifact)"],
+    "detail": "All seven touched source files hash to their pre-round values after every revert was restored; the only tracked-file changes beyond the round's own uncommitted fix set are the two docs. No commit was made (the captain is the only git writer)."
+  },
+  "bounds": [
+    "CR1 is not covered by any automated gate: verify:docs checks pairs, heading trees and link resolution, not prose. Its proof is the frozen contract's literal sentence, probed by normalized exact-string grep over HEAD bytes (0 matches, exit 1) and the working tree (1 match, exit 0).",
+    "Reverts were applied by exact-string replacement rather than `git checkout HEAD -- <file>` because several files carry more than one finding; the diffs show the exact bytes removed. The CR6 revert deliberately keeps `let current: CellState` (HEAD had `const`) so the CR7 fix still type-checks — it is a CR6-only revert.",
+    "The red arms ran with `bun` 1.4.2 from PATH (the documented test command); the pinned `.toolchain` bun 1.4.0 was used only by verify-dist-fresh's rebuild, as that gate reports itself.",
+    "CR4 is DECLINED by the frozen contract; no evidence was produced for it and its behaviour was not touched.",
+    "The evidence directory includes nine `fixed.snapshot` copies (1.5 MB of the 2.1 MB total) so a restore is self-contained and byte-asserted; they are copies of the round's already-uncommitted source files.",
+    "Nothing here proves the PR is mergeable: CodeRabbit round 1 must still be reconciled as FIXED/STALE/STILL-VALID in the PR, and the independent verifier's PASS is a separate record."
+  ]
+}

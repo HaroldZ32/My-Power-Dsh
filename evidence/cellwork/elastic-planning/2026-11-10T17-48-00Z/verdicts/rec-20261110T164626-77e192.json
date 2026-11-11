@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "recordId": "rec-20261110T164626-77e192",
+  "loopId": "loop-20261110T162130-28c338",
+  "taskId": "T7",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "writerId": "senior-engineer-9",
+  "verifierId": "f7301e14-1955-4be3-b8eb-8083bc5173ff",
+  "basis": {
+    "kind": "blind",
+    "frozenContract": {
+      "path": ".mpd/plans/cellwork-elastic-planning.md",
+      "sha256": "2fc77022510bd9cfb67c8362df66b5406611ecbf6dabe36fd17d1c09ad4439cc"
+    },
+    "docs": [
+      {
+        "path": ".mpd/plans/cellwork-elastic-planning.md",
+        "sha256": "2fc77022510bd9cfb67c8362df66b5406611ecbf6dabe36fd17d1c09ad4439cc"
+      }
+    ],
+    "probe": [
+      {
+        "path": "packages/mpd-cellwork-plugin/src/staging.ts",
+        "bytes": 55432,
+        "sha256": "277ec9246d03b5bcd666c3498194c58ae9dc8ce4b00bf6867c108deb9f9dd93d",
+        "mtime": "2026-11-10T16:40:06.832Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/prompts.ts",
+        "bytes": 8230,
+        "sha256": "0bfe344940aa454f1e2c1a15a88350bea9e48459a4ece721644374faa7681aa4",
+        "mtime": "2026-11-10T16:40:06.832Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/split.ts",
+        "bytes": 46225,
+        "sha256": "c187d593abcc3abd2cd758a699bb862aaa94788405de7d0a457baab3b3bab558",
+        "mtime": "2026-11-10T16:35:43.737Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/test/planning-fanout.test.ts",
+        "bytes": 24654,
+        "sha256": "4efb05a85b9ff9fea718f01659445b83c1940f22da250cef44861af62f3c30d5",
+        "mtime": "2026-11-10T16:34:48.944Z"
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": ".mpd/plans/cellwork-elastic-planning.md",
+      "sha256": "2fc77022510bd9cfb67c8362df66b5406611ecbf6dabe36fd17d1c09ad4439cc"
+    },
+    {
+      "path": "docs/cellwork.md",
+      "sha256": "7000ee69212a3d717d78c3cb3591babf00a5b7e23b9f6bf1d31d9efd84f7cc36"
+    },
+    {
+      "path": "packages/mpd-cellwork-plugin/README.md",
+      "sha256": "6df0c83fe2709cf80c6ef92d0fc9db94a9c7139eeab987d2f25a08d9c5b62c9a"
+    }
+  ],
+  "gateEvidence": [
+    {
+      "evidenceId": "ev-20261110T164239-193512",
+      "cmd": "bun run typecheck",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261110T164239-193512.log",
+      "logSha256": "7904edfdd1adef86c59dc610b46a625b1cb3d1d923e5be526a8c1ec37860788c"
+    },
+    {
+      "evidenceId": "ev-20261110T164244-12a74e",
+      "cmd": "bun run verify:comments",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261110T164244-12a74e.log",
+      "logSha256": "d9f1620a191e4757253615d4a3b94013bec620a996f60d148ad2001e94f6f111"
+    },
+    {
+      "evidenceId": "ev-20261110T164248-062f1e",
+      "cmd": "bun test packages",
+      "exit": 1,
+      "logPath": ".mpd/verify/evidence/ev-20261110T164248-062f1e.log",
+      "logSha256": "a14f6e4fbea9545c878cdf7e422e00094c326d4bdfe5edcac082ed9f5d36f1f2"
+    }
+  ],
+  "verdict": "PASS",
+  "findings": [],
+  "unlockedReads": [],
+  "createdAt": "2026-11-10T16:46:26.400Z",
+  "notes": [
+    "Contract basis: §5.1 (analysts K staging, split task blocked by requirements AND every lane), §5.2 (both prompts), §5.3 (non-blocking width warning), §5.4 acceptance 1-5.",
+    "typecheck gate ev-...193512 exit 0; comments gate ev-...12a74e exit 0 (629 files per writer).",
+    "tests gate ev-...062f1e (bun test packages) 3950 pass / 6 skip / 1 fail: the ONLY failure is the T-62 shipped-dist byte-identity check, expected red until the integration task rebuilds dist (captain-declared; not a T2 defect).",
+    "bun test packages/mpd-cellwork-plugin run separately: 327 pass / 0 fail / 31 files, including the 14 planning-fanout arms whose names cover §5.4 1-5 (analysts=3 five seats/five tasks, analysts=0 two/two, prompt sections, three warning arms, never-refuse).",
+    "Docs in-tree are pre-T4 (no analyst/planning-key text); §7.4 doc updates are T4 scope, so their absence is not scored against T2.",
+    "Bound: gate evidence covers the shared working tree with several wave tasks in flight, not an isolated T2 commit; T2 attribution rests on the loop scope + planning-fanout.test.ts.",
+    "Declared residual (captain-disclosed): flow.ts renders ALL split warnings under one SCOPE WARNING(S) heading with a writeScopes remedy, so a seat-width warning appears mislabelled; judge severity in the report (candidate Nit, rendering file outside T2's scope)."
+  ]
+}

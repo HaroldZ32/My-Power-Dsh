@@ -1,0 +1,2 @@
+2c80dedb1ca1976c40fde37fe565376c7f8c5862cf1e6a3b460082ac2bcef2ac  packages/mpd-cellwork-plugin/src/protocol.ts
+68a60713606abf20d749e9569d840673484077041762626c3d3a194af1a3fcbe  packages/mpd-cellwork-plugin/dist/index.js

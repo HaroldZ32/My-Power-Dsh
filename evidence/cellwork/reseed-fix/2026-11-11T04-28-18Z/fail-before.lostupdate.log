@@ -1,0 +1,206 @@
+bun test v1.4.2 (744846f84)
+
+.mpd/tmp/prefix-round3-lostupdate/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+(pass) A1a: a reseed puts the fresh handle on the TEAM member row and leaves the checkpoint window [6.72ms]
+(pass) A1b: a reseed re-points every non-terminal board row the old handle owned [3.43ms]
+(pass) A2: a reseed that cannot write the TEAM row NEVER reports `reseeded` — it names the surface, fences and hands over the retry [3.46ms]
+(pass) A3: the promotion directive is delivered to the NEW handle on the reseed path [3.25ms]
+(pass) A4: a DEAD subcaptain renders live-by-liveness and force-eligible on BOTH surfaces [3.77ms]
+(pass) A4: an UNKNOWN liveness is reported as unverified, never as health, and suppresses no lever field [0.70ms]
+695 |   harness = makeHarness({ duringSpawn: (): void => { writeFileSync(statePath(harness.workspace, CELL_ID), corrupt, "utf8") } })
+696 |   await stopListener(harness)({ agent: harness.member })
+697 |   // THE REFUSED FILE COMES FIRST (contract §5's fail-before rule): this is the assertion Major-8 exists to
+698 |   // protect, and it must be the one that goes RED on the pre-fix behaviour — not a journal flag downstream
+699 |   // of it, which stops the test before the bytes are ever compared.
+700 |   expect(readFileSync(statePath(harness.workspace, CELL_ID), "utf8")).toBe(corrupt)
+                                                                            ^
+error: expect(received).toBe(expected)
+
+- "{ this is not the record"
++ "{
++   "version": 1,
++   "cellId": "cell-20261111T000000000Z",
++   "phase": "executing",
++   "archived": false,
++   "objective": "ship the widget",
++   "createdAt": "2026-11-11T00:00:00.000Z",
++   "updatedAt": "2026-11-11T04:33:58.973Z",
++   "captainSessionId": "session-captain",
++   "depth": 0,
++   "parentCellId": null,
++   "teamId": "team-reseed-bind",
++   "planningTeamId": "",
++   "parentTeamId": "",
++   "subcellIds": [],
++   "requirementsRevision": 0,
++   "splitRevision": null,
++   "splitTaskId": "",
++   "activatedRevision": null,
++   "activatedTasks": {},
++   "activatedLoops": {},
++   "activationInFlight": null,
++   "cancelledTasks": {},
++   "splitStale": false,
++   "startedAt": "",
++   "stopReason": "",
++   "members": {
++     "Senior Engineer": {
++       "name": "Senior Engineer",
++       "role": "Senior Engineer",
++       "sessionId": "session-old-member",
++       "executorRef": "session-old-member",
++       "mode": "checkpoint",
++       "handoffReady": true,
++       "handoffs": 1,
++       "joinedAt": "2026-11-11T00:00:00.000Z"
++     }
++   },
++   "checkpoints": [],
++   "journalCursor": 0
++ }
++ "
+
+- Expected  - 1
++ Received  + 42
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/prefix-round3-lostupdate/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:700:71)
+(fail) A5: a record re-read failure journals the branch and NEVER writes the pre-await snapshot — the fence is reported `not-persisted` [3.55ms]
+(pass) A5: a throw AFTER the spawn is journaled, fences the seat and RELEASES the activation [3.80ms]
+(pass) A6: a spawn that answers without a child id disposes the activation [2.92ms]
+(pass) A7: a team record that EXISTS but cannot be read NEVER reports `reseeded` — it names the surface, fences and releases [2.87ms]
+(pass) A7: a plane read that THROWS while the record exists is the unreadable case, never `absent` [3.16ms]
+(pass) A7: a cell whose workspace holds NO team record answers `absent` and still reseeds (the control) [3.25ms]
+(pass) A8: a write that lands between the bind's read and its rename is REFUSED, not overwritten [3.32ms]
+(pass) A8: a record that carries a REVISION is refused when that revision moved inside the window [3.24ms]
+(pass) A8: without an external write the SAME harness binds normally (the control) [3.99ms]
+(pass) A9: a write that changes only the BOARD inside the window is REFUSED — the raw bytes are the predicate [3.72ms]
+(pass) A9: a write confined to handoffs/consults is REFUSED as well — no part of the record is exempt [3.59ms]
+(pass) A9: the SAME seed binds normally when NO external write lands (the contrast) [3.09ms]
+(pass) A10: with NO team plane but a readable record file, the bind uses the FILE, verifies from it, and says `plane:"bound"` [3.55ms]
+(pass) A11: a read-back that answers a STALE handle ROLLS BACK the TEAM row and the board owners — both surfaces stay consistent [3.49ms]
+(pass) A12: a rollback that meets a CONCURRENT WRITE refuses to overwrite it and says so [5.45ms]
+1136 |   /** The give-up row this refusal writes. */
+1137 |   const row = rows.find((entry) => entry.event === "checkpoint-unrecoverable")
+1138 |   expect(row?.rollback).toBe("refused")
+1139 |   // THE CHILD IS NOT RELEASED: the surviving document names it, so it is still a legitimate seat holder.
+1140 |   expect(harness.activations).toHaveLength(1)
+1141 |   expect(harness.activations[0].disposed).toBe(false)
+                                                 ^
+error: expect(received).toBe(expected)
+
+Expected: false
+Received: true
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/prefix-round3-lostupdate/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:1141:43)
+(fail) A12b: a refused rollback whose surviving document PRESERVES the fresh handle KEEPS the child and hands over the rebind [3.30ms]
+1187 |   const rows = journalRows(harness)
+1188 |   expect(rows.some((row) => row.event === "compaction" && row.outcome === "reseeded")).toBe(false)
+1189 |   /** The give-up row this refusal writes. */
+1190 |   const row = rows.find((entry) => entry.event === "checkpoint-unrecoverable")
+1191 |   expect(row?.rollback).toBe("failed")
+1192 |   expect(row?.orphanChild).toBe(NEW_HANDLE)
+                                  ^
+error: expect(received).toBe(expected)
+
+Expected: "handle-fresh-child"
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/prefix-round3-lostupdate/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:1192:28)
+(fail) A12c: a rollback that could not be WRITTEN keeps the child too — an unproven record never proves a child unbindable [3.72ms]
+1221 |   } })
+1222 |   await stopListener(harness)({ agent: harness.member })
+1223 |   // THE REFUSED BYTES COME FIRST (contract §5's fail-before rule): byte identity is the property Major-8
+1224 |   // exists to protect, so this assertion — not a journal flag downstream of it — is the one that must go RED
+1225 |   // on the pre-fix behaviour.
+1226 |   expect(readFileSync(statePath(harness.workspace, CELL_ID), "utf8")).toBe(refused)
+                                                                             ^
+error: expect(received).toBe(expected)
+
+  "{
+-   "version": 999,
++   "version": 1,
+    "cellId": "cell-20261111T000000000Z",
+    "phase": "executing",
+    "archived": false,
+    "objective": "ship the widget",
+    "createdAt": "2026-11-11T00:00:00.000Z",
+-   "updatedAt": "2026-11-11T04:33:59.031Z",
++   "updatedAt": "2026-11-11T04:33:59.034Z",
+    "captainSessionId": "session-captain",
+    "depth": 0,
+    "parentCellId": null,
+    "teamId": "team-reseed-bind",
+    "planningTeamId": "",
+    "parentTeamId": "",
+    "subcellIds": [],
+    "requirementsRevision": 0,
+    "splitRevision": null,
+    "splitTaskId": "",
+    "activatedRevision": null,
+    "activatedTasks": {},
+    "activatedLoops": {},
+    "activationInFlight": null,
+    "cancelledTasks": {},
+    "splitStale": false,
+    "startedAt": "",
+    "stopReason": "",
+    "members": {
+      "Senior Engineer": {
+        "name": "Senior Engineer",
+        "role": "Senior Engineer",
+        "sessionId": "session-old-member",
+        "executorRef": "session-old-member",
+        "mode": "checkpoint",
+        "handoffReady": true,
+        "handoffs": 1,
+        "joinedAt": "2026-11-11T00:00:00.000Z"
+-     },
+-     "Concurrent Writer": {
+-       "name": "Concurrent Writer",
+-       "role": "Concurrent Writer",
+-       "sessionId": "session-concurrent",
+-       "executorRef": "session-concurrent",
+-       "mode": "member",
+-       "handoffReady": false,
+-       "handoffs": 1,
+-       "joinedAt": "2026-11-11T00:02:00.000Z"
+      }
+    },
+    "checkpoints": [],
+    "journalCursor": 0
+  }
+  "
+
+- Expected  - 12
++ Received  + 2
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/prefix-round3-lostupdate/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:1226:71)
+(fail) A13: a record re-read failure writes NOTHING — a concurrent writer's fields survive and the fence is `not-persisted` [3.59ms]
+(pass) A14: the status RENDER carries liveness/closed/deadReseed/unverified/forceEligible — and leaves a LIVE seat's line unchanged [1.36ms]
+(pass) A15: a board row owned by the SEAT'S NAME is re-pointed too — terminal rows keep their owner [3.93ms]
+1335 |   const harness = makeHarness({ team: seeded, liveSessions: [NEW_HANDLE] })
+1336 |   /** The fresh child's own handle: its turn-end resolves to this seat through the TEAM row. */
+1337 |   const freshChild: FakeAgent = { id: NEW_HANDLE, session: { id: NEW_HANDLE, header: { cwd: harness.workspace } } }
+1338 |   await stopListener(harness)({ agent: freshChild })
+1339 |   // NOTHING WAS SPAWNED: no second child, and no compaction attempt was even tried.
+1340 |   expect(harness.activations).toHaveLength(0)
+                                     ^
+error: expect(received).toHaveLength(expected)
+
+Expected length: 0
+Received length: 1
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/prefix-round3-lostupdate/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:1340:31)
+(fail) A16: a seat the TEAM row already binds to a LIVE child is NOT reseeded again — the skip is journaled and the rebind repair reconciles the records [4.39ms]
+
+5 tests failed:
+(fail) A5: a record re-read failure journals the branch and NEVER writes the pre-await snapshot — the fence is reported `not-persisted` [3.55ms]
+(fail) A12b: a refused rollback whose surviving document PRESERVES the fresh handle KEEPS the child and hands over the rebind [3.30ms]
+(fail) A12c: a rollback that could not be WRITTEN keeps the child too — an unproven record never proves a child unbindable [3.72ms]
+(fail) A13: a record re-read failure writes NOTHING — a concurrent writer's fields survive and the fence is `not-persisted` [3.59ms]
+(fail) A16: a seat the TEAM row already binds to a LIVE child is NOT reseeded again — the skip is journaled and the rebind repair reconciles the records [4.39ms]
+
+ 22 pass
+ 5 fail
+ 185 expect() calls
+Ran 27 tests across 1 file. [116.00ms]

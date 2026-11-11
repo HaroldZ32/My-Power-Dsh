@@ -18,8 +18,12 @@
 // WRITES ARE ATOMIC (tmp file + rename in the SAME directory, so the rename cannot cross a
 // filesystem), and the journal is opened in append mode only — a torn journal line is therefore
 // possible in principle and never trusted as state: `state.json` is the truth, the journal is history.
-import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, unlinkSync, writeFileSync } from "node:fs"
+import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
+// THE LIVE-PHASE SET IS TYPED AGAINST TEAM-CORE'S UNION (blind review N1): the type import is erased at
+// build time, so the cellwork plugin keeps reading team records structurally while a phase renamed or
+// removed upstream stops this file type-checking instead of leaving a stale literal behind.
+import type { TeamPhase } from "../../mpd-team-core-plugin/src/team-store"
 
 /** The schema version this build reads and writes; a record carrying any other value is REFUSED. */
 export const CELLWORK_STATE_VERSION = 1
@@ -112,6 +116,14 @@ export interface CellMemberRecord {
    * once; the marker is what lets a reader tell the two histories apart.
    */
   adopted?: boolean
+  /**
+   * True when RUNTIME SEAT GROWTH created this row (`cellwork.seats.*`, wave W1 §4.1).
+   *
+   * OPTIONAL AND ADDITIVE, and `true` is the only value ever written — its ABSENCE is "the split or
+   * staging declared this member". Growth journals one `seat-grown` row per created seat and marks
+   * the row here so the operator surfaces can count grown seats without re-deriving the naming rule.
+   */
+  grown?: boolean
 }
 
 /** One injected checkpoint, recorded so a second injection for the same turn is suppressed. */
@@ -153,6 +165,15 @@ export interface CellState {
   parentCellId: string | null
   /** The live team record this cell drives, or `""` until `cellwork_start` approved one. */
   teamId: string
+  /**
+   * The STAGING team id, preserved when activation names a different execution board (§7.1).
+   *
+   * OPTIONAL AND ADDITIVE on disk: a record written before this field existed reads as `""`. When
+   * activation resolves the board its execution tasks actually live on and that id differs from the
+   * staging one, `teamId` becomes the execution board and the staging id lands here, so the planning
+   * team is never lost. A cell whose two ids are equal keeps this equal to `teamId`.
+   */
+  planningTeamId: string
   /**
    * The TEAM ID of the parent cell at the moment this cell was registered as its sub-cell, or `""`.
    *
@@ -204,6 +225,17 @@ export interface CellState {
    * materialisation succeeds, because that field is the refusal condition for a second activation.
    */
   activationInFlight?: number | null
+  /**
+   * The execution team a FAILED activation MINTED, or `""`/absent when no mint is in flight.
+   *
+   * WHY IT EXISTS (blind review H1): a pass that mints the execution team and then fails used to leave
+   * this id nowhere — the cell kept the ENDED planning team and the journal only wrote the mint on
+   * success. A retry then either minted a SECOND team (when no board row had landed yet) or, worse,
+   * resolved the ended planning record by its colliding `T<n>` board ids and appended to the dead board
+   * forever. The partial checkpoint records the minted id here, {@link CellState.teamId} moves with it,
+   * and every retry addresses THIS team first; a successful activation clears the marker.
+   */
+  mintedTeamId?: string
   /**
    * Split keys an activation CANCELLED, mapped to the board id their row still carries.
    *
@@ -383,6 +415,8 @@ export function newCellState(input: NewCellInput): CellState {
     depth: input.depth ?? 0,
     parentCellId: input.parentCellId ?? null,
     teamId: "",
+    // No team has been approved yet, so there is no staging team to preserve either.
+    planningTeamId: "",
     // A cell is registered before it has its own team, and a TOP cell has no parent team at all; the
     // sub-cell's value is stamped by `cellwork_subteam` from the parent's live team id.
     parentTeamId: "",
@@ -394,6 +428,8 @@ export function newCellState(input: NewCellInput): CellState {
     activatedTasks: {},
     activatedLoops: {},
     activationInFlight: null,
+    // No mint is in flight until a failed activation records one (blind review H1).
+    mintedTeamId: "",
     cancelledTasks: {},
     splitStale: false,
     startedAt: "",
@@ -482,10 +518,54 @@ export function writeCell(workspace: string, state: CellState): CellState {
 }
 
 /**
+ * The last observed shape of ONE journal file, so an append can answer its cursor without re-reading.
+ *
+ * The size is the consistency token: a writer that finds the file UNCHANGED since its own last append
+ * knows the exact line count this process wrote, which is what makes the append O(1) at 32 concurrent
+ * agents. A foreign writer (another process, a hand edit) moves the size, and the derivation path below
+ * re-derives the count ONCE instead of guessing.
+ */
+interface JournalCursorCache {
+  /** The file size in bytes AFTER the append this cache describes. */
+  size: number
+  /** The number of NON-EMPTY lines the file held at that size. */
+  lines: number
+  /** Whether the file ended with a newline at that size; without one the next append extends the last line. */
+  endsWithNewline: boolean
+}
+
+/** The in-process cursor cache, keyed by the journal's absolute path. */
+const journalCursors = new Map<string, JournalCursorCache>()
+
+/**
+ * The size of one file in bytes, or 0 when it does not exist.
+ *
+ * Total on purpose: an absent journal is the state just before the first append, and any other I/O
+ * failure must fall through to the derivation path rather than escaping `appendJournal`.
+ *
+ * @param path - the absolute journal path.
+ * @returns the byte size, or 0 when it cannot be read.
+ */
+function journalSize(path: string): number {
+  try {
+    return statSync(path).size
+  } catch {
+    return 0
+  }
+}
+
+/**
  * Append one journal entry to the cell's history, and answer the new line count.
  *
  * The entry is stamped with its own `at` instant. The journal is NOT the state: a torn last line
  * costs one history row, never the record, which is why nothing reads it back to make decisions.
+ *
+ * THE COUNT IS O(1) IN THE COMMON CASE (wave W1 §4.3). The old body re-read the whole file after every
+ * append to count its lines, which is O(n) per row and quadratic across a 32-agent board. The cursor now
+ * comes from a per-process cache keyed by the file's observed SIZE: an append that finds the file exactly
+ * as this process left it answers `lines + 1` (or `lines` when the previous tail had no newline), and only
+ * an unknown base — the first append in this process, a foreign writer, a torn tail — re-derives the count
+ * with ONE read. The answer is semantically identical to the old one: the number of non-empty lines.
  *
  * @param workspace - the workspace root the caller resolved through the adapter.
  * @param cellId - the cell whose journal is appended.
@@ -496,12 +576,347 @@ export function writeCell(workspace: string, state: CellState): CellState {
 export function appendJournal(workspace: string, cellId: string, entry: Record<string, unknown>, now: Date): number {
   /** The journal path, whose directory the record write has normally created already. */
   const path = journalPath(workspace, cellId)
+  /** The exact bytes this append adds, so the post-append size can be checked without trusting the write. */
+  const line = JSON.stringify({ at: now.toISOString(), ...entry }) + "\n"
   try {
     mkdirSync(dirname(path), { recursive: true })
-    appendFileSync(path, JSON.stringify({ at: now.toISOString(), ...entry }) + "\n", "utf8")
-    return readFileSync(path, "utf8").split("\n").filter((line) => line.trim() !== "").length
+    /** The size the cache is compared against, taken BEFORE the write. */
+    const before = journalSize(path)
+    appendFileSync(path, line, "utf8")
+    /** The size after the write; equal to `before + lineBytes` unless a foreign writer interleaved. */
+    const after = journalSize(path)
+    /** The cache entry this process holds, when it holds one. */
+    const cached = journalCursors.get(path)
+    /** The bytes the appended line occupies in UTF-8. */
+    const lineBytes = Buffer.byteLength(line, "utf8")
+    if (cached !== undefined && cached.size === before && after === before + lineBytes) {
+      // THE KNOWN CASE: the file is exactly what this process last saw, so the previous count plus this
+      // row is exact. A tail without a newline means this row EXTENDED the last line instead of adding one.
+      /** The line count after this append. */
+      const lines = cached.lines + (cached.endsWithNewline ? 1 : 0)
+      journalCursors.set(path, { size: after, lines, endsWithNewline: true })
+      return lines
+    }
+    // THE UNKNOWN CASE (derive ONCE): read the file and count exactly as the old body did. This is what
+    // keeps every existing journal correct — a cell whose counter is absent derives it here, and a foreign
+    // writer's rows are counted rather than assumed.
+    /** The file's full text, after this append. */
+    const text = readFileSync(path, "utf8")
+    /** The number of non-empty lines, which is the cursor every caller has always received. */
+    const lines = text.split("\n").filter((row) => row.trim() !== "").length
+    journalCursors.set(path, { size: after, lines, endsWithNewline: text.endsWith("\n") })
+    return lines
   } catch {
     return 0
+  }
+}
+
+/**
+ * The team-service slice the board resolver reads — structururally, so `state.ts` stays free of a
+ * service import and an older composition that lacks a member degrades instead of failing a boot.
+ */
+export interface BoardTeamService {
+  /** One team record by id, or undefined for an unknown/unreadable id. */
+  get?: (workspace: string, teamId: string) => unknown
+  /** The team bound to one session by the PLANE's own resolution (the path a dispatch pass uses). */
+  active?: (workspace: string, sessionId?: string) => unknown
+  /** Every team this workspace holds, NEWEST first. */
+  list?: (workspace: string) => unknown
+}
+
+/** What {@link resolveCellTeam} needs: the workspace, the record being read and the two read seams. */
+export interface CellTeamResolutionDeps {
+  /** The workspace root the caller resolved through the adapter. */
+  workspace: string
+  /** The cell record's board-shaped fields; a `Pick` so a partial record can be resolved too. */
+  cell: Pick<CellState, "cellId" | "teamId" | "planningTeamId" | "captainSessionId" | "activatedTasks" | "mintedTeamId">
+  /** The team service, probed per call; absent means the record's own ids are the only evidence. */
+  teams?: BoardTeamService
+  /**
+   * Read one team record by id, when the row's own service view has no `get`.
+   *
+   * Total by contract: an unreadable record answers undefined and the resolution falls through rather
+   * than throwing on a render path.
+   */
+  recordFor?: (teamId: string) => Record<string, unknown> | undefined
+}
+
+/** Which evidence named the team {@link resolveCellTeam} answered with. */
+export type CellTeamResolutionSource = "minted" | "state.teamId" | "plane" | "activated-tasks" | "planningTeamId" | "none"
+
+/**
+ * The team phases a LIVE append may still target — team-core's own live set.
+ *
+ * TYPED AGAINST `TeamPhase` (blind review N1), and asserted equal to team-core's `LIVE_TEAM_PHASES` at
+ * runtime by `test/resolve-cell-team.test.ts`: a phase widened upstream reddens that arm instead of
+ * silently becoming "terminal" here.
+ */
+export const LIVE_CELL_TEAM_PHASES: readonly TeamPhase[] = ["staged", "active", "idle"]
+
+/**
+ * Every phase spelling this module KNOWS: the live set above plus the two terminal spellings.
+ *
+ * `ended` is the union's terminal member; `archived` is the hand-patched spelling team-core's lifecycle
+ * also treats as terminal (it is deliberately outside the union). A spelling NOT listed here is not
+ * PROVEN terminal: legacy and foreign records (this package's own older shapes included) must keep
+ * resolving rather than be rejected as dead.
+ */
+const KNOWN_TEAM_PHASES: readonly string[] = [...LIVE_CELL_TEAM_PHASES, "ended", "archived"]
+
+/**
+ * Whether one team record is PROVEN TERMINAL and therefore never a landing target (blind review H1/M2).
+ *
+ * The clean-terminal auto-end stamps `endedAt` and the `ended` phase, but a fresh execution team numbers
+ * its board from `T1` — the SAME ids the ended planning board carries — so an id-only match cannot tell
+ * the two boards apart. Callers that hold the minted id bypass this check explicitly; every OTHER
+ * candidate is rejected when this answers true.
+ *
+ * @param record - one readable team record.
+ * @returns true when the record carries `endedAt`, `ended`, or the hand-patched `archived` phase.
+ */
+export function isTerminalTeamRecord(record: Record<string, unknown>): boolean {
+  if ("endedAt" in record && record.endedAt !== undefined) return true
+  /** The phase the record spells, defaulting to the live spelling when it carries none (team-core's read). */
+  const phase = "phase" in record && typeof record.phase === "string" && record.phase !== "" ? record.phase : "active"
+  // An UNKNOWN spelling is not terminal: a record this build cannot classify keeps resolving, and the
+  // write gate in `activate.ts` remains the place that decides whether an append may target it.
+  if (!KNOWN_TEAM_PHASES.includes(phase)) return false
+  // The list is narrowed to `string` for the membership test: `phase` comes from an untrusted record and
+  // is NOT known to be a `TeamPhase` until this check — that is what the check is for.
+  return !(LIVE_CELL_TEAM_PHASES as readonly string[]).includes(phase)
+}
+
+/** One board resolution: the team the cell's board is CURRENTLY on, plus the evidence behind it. */
+export interface CellTeamResolution {
+  /** The resolved team id, or "" when no team resolved. */
+  teamId: string
+  /** The resolved team's live record, or undefined when it could not be read. */
+  record?: Record<string, unknown>
+  /** Which evidence won (`none` when nothing resolved). */
+  resolution: CellTeamResolutionSource
+  /** The id the CELL RECORD names (`teamId`), preserved for the disagreement report. */
+  recordedTeamId: string
+  /**
+   * Whether the recorded id names a READABLE but PROVEN TERMINAL team.
+   *
+   * Such an id is never a landing target, so a caller that would otherwise fall back to it (the
+   * documented "unverified" fifth state) must REFUSE and name the id instead. False when the record
+   * cannot be read at all: an unreadable record is exactly the case the fallback exists for.
+   */
+  recordedTerminal: boolean
+  /** The id the record preserved as the staging team, or "". */
+  planningTeamId: string
+  /** The id the PLANE resolved for the captain session, or "" when it named none. */
+  planeTeamId: string
+  /** Whether the record and the winning resolution name DIFFERENT teams. */
+  disagreement: boolean
+  /** The sentence naming both ids and the resolution that won; present whenever they disagree. */
+  note?: string
+}
+
+/**
+ * Read one team record through whichever seam the caller exposed.
+ *
+ * @param deps - the resolution's seams.
+ * @param teamId - the id to read; "" answers undefined without touching a seam.
+ * @returns the record, or undefined.
+ */
+function teamRecordOf(deps: CellTeamResolutionDeps, teamId: string): Record<string, unknown> | undefined {
+  if (teamId === "") return undefined
+  /** A record handed back by the caller's own reader, which wins over a service read. */
+  let record: unknown
+  try {
+    record = deps.recordFor?.(teamId)
+  } catch {
+    record = undefined
+  }
+  if (record === undefined) {
+    try {
+      record = deps.teams?.get?.(deps.workspace, teamId)
+    } catch {
+      record = undefined
+    }
+  }
+  return typeof record === "object" && record !== null && !Array.isArray(record) ? record as Record<string, unknown> : undefined
+}
+
+/**
+ * The task rows of one team record, read defensively.
+ *
+ * @param record - the team record.
+ * @returns the rows that are objects, in board order.
+ */
+function teamTaskRows(record: Record<string, unknown> | undefined): Array<Record<string, unknown>> {
+  if (record === undefined || !Array.isArray(record.tasks)) return []
+  return record.tasks.filter((row): row is Record<string, unknown> => typeof row === "object" && row !== null)
+}
+
+/**
+ * Whether one team record carries ANY of the board ids this cell's activation minted.
+ *
+ * With no activated ids (a cell that never materialised a split) there is nothing to contradict, so
+ * the answer is true and the record is accepted on the strength of the id.
+ *
+ * @param record - the candidate team record.
+ * @param activatedIds - every board id the cell's `activatedTasks` maps to.
+ * @returns true when the record may be presented as this cell's board.
+ */
+function holdsActivatedTask(record: Record<string, unknown>, activatedIds: ReadonlySet<string>): boolean {
+  if (activatedIds.size === 0) return true
+  return teamTaskRows(record).some((task) => typeof task.id === "string" && activatedIds.has(task.id))
+}
+
+/**
+ * The team this cell's board is CURRENTLY on — the ONE resolution every reader uses (§7.1/§7.1a).
+ *
+ * THE RESOLUTION IS EVIDENCE-FIRST, and the record's own `teamId` is only the FAST PATH:
+ *   0. `mintedTeamId`, the execution team a FAILED activation created (H1): it is the only evidence that
+ *      tells a fresh board from the ended planning board it replaced, because both number rows from `T1`.
+ *      It is returned on its own authority, even when its phase reads terminal (explicit hit).
+ *      DECLARED BOUND: a minted team that itself ENDS between the failure and the retry is still
+ *      accepted here, and the retry's append then fails with the team service's own sentence — the pass
+ *      stays resumable but cannot succeed until an operator intervenes. Step 0 exists to keep a retry
+ *      on the board its failure created, not to resurrect a board that is provably dead.
+ *   1. `teamId`'s record, accepted when it carries one of the cell's `activatedTasks` board ids (or when
+ *      the cell has no activated ids to check) AND it is not TERMINAL. This keeps the hot path — one
+ *      `get` — cheap for a healthy cell, which is what lets the guard call it on every tool dispatch.
+ *   2. when the fast path cannot be VERIFIED (the field defect: `teamId` names the ended planning team),
+ *      the PLANE's own resolution for the cell's captain session — the exact path `cellwork_dispatch`
+ *      uses — accepted under the same activated-task check.
+ *   3. the live team whose board carries the cell's activated ids, found by scanning `list()`; this is
+ *      what makes a legacy cell show its REAL board with no migration and no state rewrite.
+ *   4. `planningTeamId` as the legacy fallback, accepted under the same check.
+ * `none` answers with no record rather than presenting a planning team the cell never worked on.
+ *
+ * DISAGREEMENT IS REPORTED, NEVER SILENT: whenever the winning id differs from the record's `teamId`,
+ * or the plane names a different team, the answer carries BOTH ids and the resolution that won.
+ *
+ * @param deps - the workspace, the record and the read seams.
+ * @returns the resolution; total, never throws.
+ */
+export function resolveCellTeam(deps: CellTeamResolutionDeps): CellTeamResolution {
+  /** The id the cell record names (the fast path). */
+  const recorded = typeof deps.cell.teamId === "string" ? deps.cell.teamId : ""
+  /** The execution team a FAILED activation MINTED, when the partial checkpoint recorded one (H1). */
+  const minted = typeof deps.cell.mintedTeamId === "string" ? deps.cell.mintedTeamId : ""
+  /** The id the record preserved as its staging team, when activation learned a different board. */
+  const planning = typeof deps.cell.planningTeamId === "string" ? deps.cell.planningTeamId : ""
+  /** Every board id the cell's activation minted, which is the evidence a candidate must satisfy. */
+  const activatedIds = new Set(Object.values(deps.cell.activatedTasks ?? {}).filter((id): id is string => typeof id === "string" && id !== ""))
+  // 0. THE MINTED TEAM IS THE FIRST CANDIDATE (blind review H1). A failed pass recorded the team it
+  // created, and that id is the ONLY evidence that distinguishes the fresh board from the ended planning
+  // board it replaced: both number their rows from `T1`, so an id-only match cannot. It is accepted on
+  // its own authority even when its phase reads terminal — the caller asked for THAT board explicitly,
+  // and its write reports what it finds there.
+  /** The minted id's record, when one is recorded. */
+  const mintedRecord = minted === "" ? undefined : teamRecordOf(deps, minted)
+  /** The fast-path record, when the recorded id is readable at all. */
+  const recordedRecord = teamRecordOf(deps, recorded)
+  /** Whether the recorded record is readable but TERMINAL, which is its own rejection reason. */
+  const recordedTerminal = recordedRecord !== undefined && isTerminalTeamRecord(recordedRecord)
+  /** The plane's binding for this cell's captain, read only when the fast path cannot be verified. */
+  let planeId = ""
+  /** The plane's record for that binding. */
+  let planeRecord: Record<string, unknown> | undefined
+  /** The resolution being built: the winner's id, record and evidence. */
+  let chosen: { id: string; record?: Record<string, unknown>; source: CellTeamResolutionSource } | undefined
+  if (minted !== "") chosen = { id: minted, record: mintedRecord, source: "minted" }
+  // 1. THE FAST PATH, VERIFIED. A record that carries this cell's own minted board ids is the board,
+  // full stop; the plane read below is then skipped, which keeps the guard's per-dispatch resolution to
+  // the same single read it always paid. A TERMINAL record is never this path (blind review H1/M2).
+  if (chosen === undefined && recordedRecord !== undefined && !recordedTerminal && holdsActivatedTask(recordedRecord, activatedIds)) {
+    chosen = { id: recorded, record: recordedRecord, source: "state.teamId" }
+  }
+  /** Whether the fast path failed the activated-task check (as opposed to being unreadable). */
+  const recordedRejected = recordedRecord !== undefined && chosen === undefined
+  // 2. THE PLANE, the path a dispatch pass uses. It is read whenever the fast path did not verify.
+  if (chosen === undefined) {
+    /** The plane's answer, read as an untrusted value. */
+    let answer: unknown
+    try {
+      answer = deps.teams?.active?.(deps.workspace, deps.cell.captainSessionId)
+    } catch {
+      answer = undefined
+    }
+    if (typeof answer === "object" && answer !== null && !Array.isArray(answer)) {
+      /** The answer as a record; it IS a team record for the real service. */
+      const plane = answer as Record<string, unknown>
+      planeId = typeof plane.teamId === "string" ? plane.teamId : ""
+      // THE ANSWER IS THE RECORD when it carries a board; a thinner answer (an older service view that
+      // names only the id) is read back through `get`, so the activated-task check sees the real board.
+      planeRecord = Array.isArray(plane.tasks) ? plane : teamRecordOf(deps, planeId)
+    }
+    if (planeId !== "" && planeRecord !== undefined && !isTerminalTeamRecord(planeRecord) && holdsActivatedTask(planeRecord, activatedIds)) {
+      chosen = { id: planeId, record: planeRecord, source: "plane" }
+    }
+  }
+  // 3. THE ACTIVATED TASK IDS, scanned across every live team — the legacy path. The scan is skipped for
+  // a cell with no minted ids (nothing to find) and for one already resolved.
+  if (chosen === undefined && activatedIds.size > 0) {
+    /** Every team the workspace holds, read defensively. */
+    let rows: unknown
+    try {
+      rows = deps.teams?.list?.(deps.workspace)
+    } catch {
+      rows = undefined
+    }
+    /** The best candidate: the record carrying the MOST of the cell's board ids. */
+    let best: { id: string; record: Record<string, unknown> } | undefined
+    /** The best candidate's match count. */
+    let bestCount = 0
+    for (const row of Array.isArray(rows) ? rows : []) {
+      if (typeof row !== "object" || row === null || Array.isArray(row)) continue
+      /** The candidate record. */
+      const record = row as Record<string, unknown>
+      /** Its id, which names it in every report. */
+      const id = typeof record.teamId === "string" ? record.teamId : ""
+      if (id === "" || id === recorded && recordedRejected) continue
+      // A TERMINAL candidate is never a landing target (blind review H1/M2): its board ids may match this
+      // cell's only because every fresh team renumbers from `T1`.
+      if (isTerminalTeamRecord(record)) continue
+      /** How many of the cell's board ids it carries. */
+      const count = teamTaskRows(record).filter((task) => typeof task.id === "string" && activatedIds.has(task.id)).length
+      if (count > bestCount) {
+        best = { id, record }
+        bestCount = count
+      }
+    }
+    if (best !== undefined) chosen = { id: best.id, record: best.record, source: "activated-tasks" }
+  }
+  // 4. THE PLANNING TEAM, as the legacy fallback: presented ONLY when it passes the same activated-task
+  // check (a planning team whose board is not this cell's work is never shown).
+  if (chosen === undefined && planning !== "" && planning !== recorded) {
+    /** The staging record, when it is readable. */
+    const planningRecord = teamRecordOf(deps, planning)
+    if (planningRecord !== undefined && !isTerminalTeamRecord(planningRecord) && holdsActivatedTask(planningRecord, activatedIds)) chosen = { id: planning, record: planningRecord, source: "planningTeamId" }
+  }
+  // 5. NOTHING RESOLVED. The record is NOT presented: nothing proves it is this cell's board.
+  /** The resolved id, or "". */
+  const resolvedId = chosen?.id ?? ""
+  /** Whether the record and the resolution name different teams. */
+  const disagreement = (resolvedId !== "" && recorded !== "" && resolvedId !== recorded) || (planeId !== "" && recorded !== "" && planeId !== recorded)
+  /** The disagreement sentence, naming both ids and the resolution that won; absent when nothing disagrees. */
+  let note: string | undefined
+  if (disagreement) {
+    note = "the cell record names team " + JSON.stringify(recorded) + " while the " + (chosen?.source ?? "none") + " resolution names " + JSON.stringify(resolvedId === "" ? planeId : resolvedId) + (resolvedId === "" ? " (no team could be verified)" : " — the " + (chosen?.source ?? "none") + " board is reported")
+    if (recordedRejected) note += recordedTerminal
+      ? "; the recorded team is TERMINAL (an `endedAt` stamp or a non-live phase), so it is never a landing target"
+      : "; the recorded team's board holds none of this cell's activated tasks (" + [...activatedIds].join(", ") + ")"
+  } else if (recordedRejected && chosen === undefined) {
+    note = recordedTerminal
+      ? "the cell record names team " + JSON.stringify(recorded) + " which is TERMINAL (an `endedAt` stamp or a terminal phase), so it is never a landing target, and no live team could be verified — no board is reported"
+      : "the cell record names team " + JSON.stringify(recorded) + " whose board holds none of this cell's activated tasks (" + [...activatedIds].join(", ") + "), and no live team holds them — no board is reported"
+  }
+  return {
+    teamId: resolvedId,
+    ...(chosen?.record === undefined ? {} : { record: chosen.record }),
+    resolution: chosen?.source ?? "none",
+    recordedTeamId: recorded,
+    recordedTerminal,
+    planningTeamId: planning,
+    planeTeamId: planeId,
+    disagreement,
+    ...(note === undefined ? {} : { note }),
   }
 }
 
@@ -621,6 +1036,9 @@ function normalizeMember(name: string, raw: unknown): CellMemberRecord | null {
     // ADDITIVE AND PRESERVED for the same reason as `fenced`: an adopted row must still read as adopted
     // after a restart, and a row activation created must not grow `adopted: false`.
     ...(raw.adopted === true ? { adopted: true } : {}),
+    // ADDITIVE AND PRESERVED for the same reason: a seat created by runtime growth (§4.1) must still be
+    // counted as grown after a restart, and a declared row must not grow `grown: false`.
+    ...(raw.grown === true ? { grown: true } : {}),
   }
 }
 
@@ -687,6 +1105,9 @@ function normalizeCellState(raw: unknown): CellState | null {
     depth: typeof raw.depth === "number" ? raw.depth : 0,
     parentCellId: typeof raw.parentCellId === "string" ? raw.parentCellId : null,
     teamId: typeof raw.teamId === "string" ? raw.teamId : "",
+    // TOLERANT READ: a record written before §7.1 carries no key, and reads as "no separate staging
+    // team" — never as a reason to refuse the record.
+    planningTeamId: typeof raw.planningTeamId === "string" ? raw.planningTeamId : "",
     // TOLERANT READ: a record written before nested teams existed carries no key, and reads as "no parent
     // team" rather than as a broken record — the whole nesting feature is additive on both planes.
     parentTeamId: typeof raw.parentTeamId === "string" ? raw.parentTeamId : "",
@@ -702,6 +1123,9 @@ function normalizeCellState(raw: unknown): CellState | null {
     // activation is running" — never a reason to refuse the record.
     activatedLoops: stringMap(raw.activatedLoops),
     activationInFlight: typeof raw.activationInFlight === "number" ? raw.activationInFlight : null,
+    // TOLERANT READ: a record written before the mint checkpoint carries no key, and reads as "no mint in
+    // flight" — never as a reason to refuse the record.
+    mintedTeamId: typeof raw.mintedTeamId === "string" ? raw.mintedTeamId : "",
     cancelledTasks: stringMap(raw.cancelledTasks),
     splitStale: raw.splitStale === true,
     startedAt: typeof raw.startedAt === "string" ? raw.startedAt : "",

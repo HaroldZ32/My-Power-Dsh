@@ -1,0 +1,123 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+(pass) A1a: a reseed puts the fresh handle on the TEAM member row and leaves the checkpoint window [5.42ms]
+(pass) A1b: a reseed re-points every non-terminal board row the old handle owned [3.98ms]
+(pass) A2: a reseed that cannot write the TEAM row NEVER reports `reseeded` — it names the surface, fences and hands over the retry [3.59ms]
+(pass) A3: the promotion directive is delivered to the NEW handle on the reseed path [3.52ms]
+(pass) A4: a DEAD subcaptain renders live-by-liveness and force-eligible on BOTH surfaces [2.92ms]
+(pass) A4: an UNKNOWN liveness is reported as unverified, never as health, and suppresses no lever field [0.77ms]
+672 |   /** The branch's journal row. */
+673 |   const row = journalRows(harness).find((entry) => entry.event === "barrier-record-unreadable")
+674 |   expect(row).toBeDefined()
+675 |   expect(row?.member).toBe(MEMBER_NAME)
+676 |   // HONEST: nothing was persisted, so no fence and no lever is claimed.
+677 |   expect(row?.fenced).toBe("not-persisted")
+                            ^
+error: expect(received).toBe(expected)
+
+Expected: "not-persisted"
+Received: "written"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:677:23)
+(fail) A5: a record re-read failure journals the branch and NEVER writes the pre-await snapshot — the fence is reported `not-persisted` [3.64ms]
+695 |   // THE CHILD THE SPAWN CREATED IS RELEASED: nothing keeps a slot for a half-bound seat.
+696 |   expect(harness.activations).toHaveLength(1)
+697 |   expect(harness.activations[0].disposed).toBe(true)
+698 |   // THE BIND IS ROLLED BACK (Major-7): the write that preceded the failed read-back is undone, so the TEAM
+699 |   // row and the board owner name the OLD handle again — no half-bound seat survives the failure.
+700 |   expect(row?.rollback).toBe("restored")
+                              ^
+error: expect(received).toBe(expected)
+
+Expected: "restored"
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:700:25)
+(fail) A5: a throw AFTER the spawn is journaled, fences the seat and RELEASES the activation [3.95ms]
+(pass) A6: a spawn that answers without a child id disposes the activation [3.18ms]
+(pass) A7: a team record that EXISTS but cannot be read NEVER reports `reseeded` — it names the surface, fences and releases [3.68ms]
+(pass) A7: a plane read that THROWS while the record exists is the unreadable case, never `absent` [3.53ms]
+(pass) A7: a cell whose workspace holds NO team record answers `absent` and still reseeds (the control) [3.63ms]
+(pass) A8: a write that lands between the bind's read and its rename is REFUSED, not overwritten [3.59ms]
+(pass) A8: a record that carries a REVISION is refused when that revision moved inside the window [3.01ms]
+(pass) A8: without an external write the SAME harness binds normally (the control) [3.20ms]
+(pass) A9: a write that changes only the BOARD inside the window is REFUSED — the raw bytes are the predicate [3.60ms]
+(pass) A9: a write confined to handoffs/consults is REFUSED as well — no part of the record is exempt [3.62ms]
+(pass) A9: the SAME seed binds normally when NO external write lands (the contrast) [3.38ms]
+(pass) A10: with NO team plane but a readable record file, the bind uses the FILE, verifies from it, and says `plane:"bound"` [3.60ms]
+1005 |   /** The journal rows. */
+1006 |   const rows = journalRows(harness)
+1007 |   expect(rows.some((row) => row.event === "compaction" && row.outcome === "reseeded")).toBe(false)
+1008 |   /** The give-up row. */
+1009 |   const row = rows.find((entry) => entry.event === "checkpoint-unrecoverable")
+1010 |   expect(row?.rollback).toBe("restored")
+                               ^
+error: expect(received).toBe(expected)
+
+Expected: "restored"
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:1010:25)
+(fail) A11: a read-back that answers a STALE handle ROLLS BACK the TEAM row and the board owners — both surfaces stay consistent [3.46ms]
+1050 |   /** The journal rows. */
+1051 |   const rows = journalRows(harness)
+1052 |   expect(rows.some((row) => row.event === "compaction" && row.outcome === "reseeded")).toBe(false)
+1053 |   /** The give-up row. */
+1054 |   const row = rows.find((entry) => entry.event === "checkpoint-unrecoverable")
+1055 |   expect(row?.rollback).toBe("refused")
+                               ^
+error: expect(received).toBe(expected)
+
+Expected: "refused"
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:1055:25)
+(fail) A12: a rollback that meets a CONCURRENT WRITE refuses to overwrite it and says so [3.45ms]
+1100 |   } })
+1101 |   await stopListener(harness)({ agent: harness.member })
+1102 |   /** The branch's journal row. */
+1103 |   const row = journalRows(harness).find((entry) => entry.event === "barrier-record-unreadable")
+1104 |   expect(row).toBeDefined()
+1105 |   expect(row?.fenced).toBe("not-persisted")
+                             ^
+error: expect(received).toBe(expected)
+
+Expected: "not-persisted"
+Received: "written"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:1105:23)
+(fail) A13: a record re-read failure writes NOTHING — a concurrent writer's fields survive and the fence is `not-persisted` [3.41ms]
+1128 |   const deadHarness = statusHarness(stranded, { team: plane })
+1129 |   /** The rendered dead-seat status. */
+1130 |   const deadText = deadHarness.render(await deadHarness.run())
+1131 |   /** The rendered member line. */
+1132 |   const deadLine = deadText.split("\n").find((line) => line.includes("members (1):")) ?? ""
+1133 |   expect(deadLine).toContain("dead")
+                          ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "dead"
+Received: "  members (1): Senior Engineer[subcaptain]"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:1133:20)
+(fail) A14: the status RENDER carries liveness/closed/deadReseed/unverified/forceEligible — and leaves a LIVE seat's line unchanged [1.06ms]
+1174 |   /** The team record after the bind. */
+1175 |   const record = harness.record()
+1176 |   /** The rows by id. */
+1177 |   const byId = new Map(record.tasks.map((task) => [String(task.id), task]))
+1178 |   // THE MEMBER-NAME SPELLING IS THE SAME SEAT, so it is re-pointed exactly like the handle spelling.
+1179 |   expect(byId.get("T1")?.owner).toBe(NEW_HANDLE)
+                                       ^
+error: expect(received).toBe(expected)
+
+Expected: "handle-fresh-child"
+Received: "Senior Engineer"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:1179:33)
+(fail) A15: a board row owned by the SEAT'S NAME is re-pointed too — terminal rows keep their owner [3.35ms]
+
+ 17 pass
+ 7 fail
+ 142 expect() calls
+Ran 24 tests across 1 file. [229.00ms]

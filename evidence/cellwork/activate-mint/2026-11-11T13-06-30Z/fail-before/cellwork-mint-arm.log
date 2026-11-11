@@ -1,0 +1,25 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-cellwork-plugin/test/activate-resume.test.ts:
+1043 |   const before = readStateJson(harness.workspace, cellId)
+1044 |   expect(before.teamId).toBe("team-1")
+1045 |   expect(before.planningTeamId).toBe("")
+1046 |   /** The activation that must mint. */
+1047 |   const activated = await runTool(harness, "cellwork_activate", {})
+1048 |   expect(activated.ok).toBe(true)
+                              ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: false
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/activate-resume.test.ts:1048:24)
+(fail) MINT: a planning board ended before activation is replaced by a fresh execution team [7.25ms]
+(pass) MINT NEGATIVE CONTROL: a LIVE planning board is still addressed in place (no second team) [3.09ms]
+
+ 1 pass
+ 12 filtered out
+ 1 fail
+ 14 expect() calls
+Ran 2 tests across 1 file. [32.00ms]
+cellwork_exit=1

@@ -1,0 +1,24 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+915 |   // THE RESEED COMPLETED — the unmounted plane is NOT an absent record.
+916 |   expect(rows.some((row) => row.event === "compaction" && row.outcome === "reseeded")).toBe(true)
+917 |   expect(rows.some((row) => row.event === "checkpoint-unrecoverable")).toBe(false)
+918 |   /** The bind row: `bound` says a RECORD surfaced this bind, and in this composition that record is the file. */
+919 |   const bound = rows.find((row) => row.event === "seat-rebound")
+920 |   expect(bound?.plane).toBe("bound")
+                             ^
+error: expect(received).toBe(expected)
+
+Expected: "bound"
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:920:24)
+(fail) A10: with NO team plane but a readable record file, the bind uses the FILE, verifies from it, and says `plane:"bound"` [6.60ms]
+
+ 0 pass
+ 18 filtered out
+ 1 fail
+ 3 expect() calls
+Ran 1 test across 1 file. [186.00ms]
+exit=1

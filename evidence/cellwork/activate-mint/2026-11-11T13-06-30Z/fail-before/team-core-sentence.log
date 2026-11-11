@@ -1,0 +1,24 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-team-core-plugin/test/c74-midrun-and-binding.test.ts:
+369 |     /** The harness this arm drives. */
+370 |     const h = harness()
+371 |     /** The thrown refusal for a session that belongs to nothing. */
+372 |     const failure = await h.call("agent_teams_plan", { action: "create_task", task: { subject: "x", description: "d", blocked_by: [] } }, "sess-nobody").then(() => undefined, (error: unknown) => error)
+373 |     expect(failure).toBeInstanceOf(Error)
+374 |     expect(String((failure as Error).message)).toBe("no team is staged in this session — call `agent_teams_plan {action:\"create\"}` first")
+                                                     ^
+error: expect(received).toBe(expected)
+
+Expected: "no team is staged in this session — call `agent_teams_plan {action:"create"}` first"
+Received: "no team is staged in this session — call agent_teams_create first"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-team-core-plugin/test/c74-midrun-and-binding.test.ts:374:48)
+(fail) C7-4 F1 — a mid-run append lands on the APPROVED record > NEGATIVE CONTROL: no staged plan and no live team keeps the standing sentence [1.71ms]
+
+ 0 pass
+ 19 filtered out
+ 1 fail
+ 2 expect() calls
+Ran 1 test across 1 file. [22.00ms]
+teamcore_exit=1

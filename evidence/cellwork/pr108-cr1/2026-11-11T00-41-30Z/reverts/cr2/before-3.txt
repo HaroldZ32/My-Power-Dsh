@@ -1,0 +1,1 @@
+      ...(boardNote === undefined ? {} : { boardNote }),

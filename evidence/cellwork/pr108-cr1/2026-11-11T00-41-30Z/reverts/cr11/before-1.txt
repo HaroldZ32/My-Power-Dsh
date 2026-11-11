@@ -1,0 +1,10 @@
+        // THE JOURNAL WRITE MUST NOT STRAND THE APPEND (CodeRabbit #108, finding 9): the roster row is already
+        // on disk, so a throwing journal append here used to leave a member nothing ever spawned — a ghost the
+        // retry then collided with by name. The failure is ONE warning line; the raise below still runs.
+        if (roleWarning !== undefined) {
+          try {
+            appendTeamJournal(workspace, { event: "member-role-omitted", teamId: roster.teamId, at: now().toISOString(), member: added.name, reason: roleWarning })
+          } catch (error) {
+            rowLogLine("mpd-team-core", "the `member-role-omitted` journal row for " + JSON.stringify(added.name) + " could not be written (" + String((error as Error)?.message ?? error) + ") — the member is still raised and the warning still rides the answer")
+          }
+        }

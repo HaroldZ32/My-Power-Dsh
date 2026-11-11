@@ -1,0 +1,3 @@
+    "- The analysis lanes `cell-analyst-1 … cell-analyst-K` are ALREADY running for you and mail their findings",
+    "  to you and to `cell-splitter`. Do not re-derive what they were sent for, and do not wait idle for them:",
+    "  keep interviewing while they work.",

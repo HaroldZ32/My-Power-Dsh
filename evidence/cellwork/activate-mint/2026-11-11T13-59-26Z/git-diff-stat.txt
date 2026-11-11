@@ -1,0 +1,9 @@
+ docs/cellwork.md                                   |  35 +++-
+ docs/cellwork.zh-CN.md                             |  26 ++-
+ packages/mpd-cellwork-plugin/dist/index.js         | 141 ++++++++++----
+ packages/mpd-cellwork-plugin/src/activate.ts       | 151 ++++++++++++---
+ packages/mpd-cellwork-plugin/src/flow.ts           |  51 ++++-
+ packages/mpd-cellwork-plugin/src/state.ts          | 104 +++++++++-
+ .../test/activate-resume.test.ts                   | 212 ++++++++++++++++++++-
+ .../test/cross-package-coupling-inventory.test.ts  |   9 +
+ 8 files changed, 647 insertions(+), 82 deletions(-)

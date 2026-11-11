@@ -1,0 +1,23 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+406 |   /** The team record as the plane reads it after the barrier. */
+407 |   const record = harness.record()
+408 |   /** The seat row. */
+409 |   const seat = record.members.find((row) => row.name === MEMBER_NAME)
+410 |   // SURFACE 1, BOTH FIELDS: the fresh handle, and the seat back OUT of the checkpoint window.
+411 |   expect(seat?.executorRef).toBe(NEW_HANDLE)
+                                  ^
+error: expect(received).toBe(expected)
+
+Expected: "handle-fresh-child"
+Received: "session-old-member"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:411:29)
+(fail) A1a: a reseed puts the fresh handle on the TEAM member row and leaves the checkpoint window [6.34ms]
+
+ 0 pass
+ 8 filtered out
+ 1 fail
+ 1 expect() calls
+Ran 1 test across 1 file. [184.00ms]

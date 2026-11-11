@@ -1,0 +1,18 @@
+# ROUND-8 BASELINE — what the previous round's file SHOULD have recorded.
+# The round-9 evidence carried round8-baseline.sha256.txt; its lines are reproduced here with the
+# hashes this round computed from the same bytes, so the mislabel is visible side by side.
+#
+# 1) WHAT round8-baseline.sha256.txt ACTUALLY HASHED (round-7 sources, under the round-8 name):
+f15ce3b452163248d7439cb2ddebc313044c4266435bdd3e9c82e17161caf9a7  evidence/cellwork/reseed-fix/2026-11-11T06-27-13Z/round7-src/protocol.ts
+36aec4e6a07ab5cf3f7bc729e0683c33e822e180315308566ebdc03b3d9b6cd6  evidence/cellwork/reseed-fix/2026-11-11T06-27-13Z/round7-src/protocol-core.ts
+# -> the round-7 protocol.ts is f15ce3b4…, which the round-8 FINAL list never contained.
+#
+# 2) WHAT THE ROUND-8 FINALS ACTUALLY ARE (result.json's claim, now checkable):
+573c05d6925a9ad23c41e97a883215a83c279b20bc7fc37e1500ca57d3da9206  evidence/cellwork/reseed-fix/2026-11-11T06-27-13Z/round8-protocol.ts
+#    round-8 final protocol.ts = 573c05d6… (the file above).
+#    round-8 final protocol-core.ts = 36aec4e6…, recorded in 06-27-13Z/final-sources.sha256.txt;
+#    the round-8 directory kept no separate copy because the file did not move that round — the
+#    live copy is 06-27-13Z/round7-src/protocol-core.ts, printed above with the SAME hash.
+#
+# CONCLUSION: the old file's NAME was wrong, its BYTES were honest. This round's baseline is named
+# round9-baseline.sha256.txt and matches result.json's baseline; the old directory is untouched.

@@ -1,0 +1,10 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+(pass) A7: a cell whose workspace holds NO team record answers `absent` and still reseeds (the control) [7.26ms]
+
+ 1 pass
+ 14 filtered out
+ 0 fail
+ 5 expect() calls
+Ran 1 test across 1 file. [181.00ms]

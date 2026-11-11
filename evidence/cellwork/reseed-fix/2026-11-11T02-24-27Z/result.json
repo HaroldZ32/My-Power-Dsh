@@ -1,0 +1,266 @@
+{
+  "schema": "cellwork/reseed-fix/1",
+  "contract": ".mpd/plans/cellwork-reseed-fix.md",
+  "branch": "fix/cellwork-reseed",
+  "baseCommit": "2e8391117e6698e58281ec6a701fdbaa69010413",
+  "producedAt": "2026-11-11T02:25:08.975Z",
+  "method": {
+    "failBefore": "for each arm: restore the three SOURCE files from `git show HEAD:<path>` (a READ; this seat runs no git write), run `bun test <testFile> -t <arm filter>`, then copy the FIXED bytes back and re-run",
+    "passAfter": "the same command on the restored fixed sources",
+    "bun": ".toolchain/node_modules/.bin/bun (pinned 1.4.0 from package.json buildToolchain)",
+    "testFile": "packages/mpd-cellwork-plugin/test/reseed-binding.test.ts",
+    "fixedSourcesSha256": [
+      "4653d45596cbe55c1b71c42efd839300616d016ce25b073b506d8128021a1cec  packages/mpd-cellwork-plugin/src/protocol-core.ts",
+      "1145a9ba06c157cc62b6c4be8f02d8a7f99b2301e7f915cdf59ec09c61222ffe  packages/mpd-cellwork-plugin/src/protocol.ts",
+      "2dee591ef86cdfe1d054fdac3ac7b828806b8f1eee3b356cc33f418217ea462e  packages/mpd-cellwork-plugin/src/index.ts",
+      "a8737d7fad8cf72d0cebc479433902fdf4b9bf23964d95b5db18c67756e3d1de  packages/mpd-cellwork-plugin/test/reseed-binding.test.ts"
+    ]
+  },
+  "arms": [
+    {
+      "arm": "a1-team-row",
+      "filter": "A1a:",
+      "preFix": {
+        "exit": 1,
+        "observed": [
+          "411 |   expect(seat?.executorRef).toBe(NEW_HANDLE)",
+          "error: expect(received).toBe(expected)",
+          "Expected: \"handle-fresh-child\"",
+          "Received: \"session-old-member\"",
+          "(fail) A1a: a reseed puts the fresh handle on the TEAM member row and leaves the checkpoint window [6.34ms]",
+          " 1 expect() calls"
+        ]
+      },
+      "postFix": {
+        "exit": 0,
+        "observed": [
+          "(pass) A1a: a reseed puts the fresh handle on the TEAM member row and leaves the checkpoint window [6.95ms]",
+          " 3 expect() calls"
+        ]
+      }
+    },
+    {
+      "arm": "a1-board-owner",
+      "filter": "A1b:",
+      "preFix": {
+        "exit": 1,
+        "observed": [
+          "426 |   expect(tasks.get(\"T1\")?.owner).toBe(NEW_HANDLE)",
+          "error: expect(received).toBe(expected)",
+          "Expected: \"handle-fresh-child\"",
+          "Received: \"session-old-member\"",
+          "(fail) A1b: a reseed re-points every non-terminal board row the old handle owned [6.75ms]",
+          " 1 expect() calls"
+        ]
+      },
+      "postFix": {
+        "exit": 0,
+        "observed": [
+          "(pass) A1b: a reseed re-points every non-terminal board row the old handle owned [6.82ms]",
+          " 9 expect() calls"
+        ]
+      }
+    },
+    {
+      "arm": "a2-loud-failure",
+      "filter": "A2:",
+      "preFix": {
+        "exit": 1,
+        "observed": [
+          "458 |   expect(rows.some((row) => row.event === \"compaction\" && row.outcome === \"reseeded\")).toBe(false)",
+          "error: expect(received).toBe(expected)",
+          "Expected: false",
+          "Received: true",
+          "(fail) A2: a reseed that cannot write the TEAM row NEVER reports `reseeded` — it names the surface, fences and hands over the retry [6.12ms]",
+          " 1 expect() calls"
+        ]
+      },
+      "postFix": {
+        "exit": 0,
+        "observed": [
+          "(pass) A2: a reseed that cannot write the TEAM row NEVER reports `reseeded` — it names the surface, fences and hands over the retry [8.07ms]",
+          " 10 expect() calls"
+        ]
+      }
+    },
+    {
+      "arm": "a3-directive-to-new-handle",
+      "filter": "A3:",
+      "preFix": {
+        "exit": 1,
+        "observed": [
+          "484 |   expect(harness.sends).toHaveLength(1)",
+          "error: expect(received).toHaveLength(expected)",
+          "(fail) A3: the promotion directive is delivered to the NEW handle on the reseed path [6.49ms]",
+          " 1 expect() calls"
+        ]
+      },
+      "postFix": {
+        "exit": 0,
+        "observed": [
+          "(pass) A3: the promotion directive is delivered to the NEW handle on the reseed path [6.67ms]",
+          " 5 expect() calls"
+        ]
+      }
+    },
+    {
+      "arm": "a4-dead-seat-visible",
+      "filter": "A4: a DEAD",
+      "preFix": {
+        "exit": 1,
+        "observed": [
+          "511 |   expect(statusRow.liveness).toBe(\"dead\")",
+          "error: expect(received).toBe(expected)",
+          "Expected: \"dead\"",
+          "Received: undefined",
+          "(fail) A4: a DEAD subcaptain renders live-by-liveness and force-eligible on BOTH surfaces [4.11ms]",
+          " 1 expect() calls"
+        ]
+      },
+      "postFix": {
+        "exit": 0,
+        "observed": [
+          "(pass) A4: a DEAD subcaptain renders live-by-liveness and force-eligible on BOTH surfaces [5.07ms]",
+          " 7 expect() calls"
+        ]
+      }
+    },
+    {
+      "arm": "a4-unknown-unverified",
+      "filter": "A4: an UNKNOWN",
+      "preFix": {
+        "exit": 1,
+        "observed": [
+          "538 |   expect(statusRow.liveness).toBe(\"unknown\")",
+          "error: expect(received).toBe(expected)",
+          "Expected: \"unknown\"",
+          "Received: undefined",
+          "(fail) A4: an UNKNOWN liveness is reported as unverified, never as health, and suppresses no lever field [3.98ms]",
+          " 1 expect() calls"
+        ]
+      },
+      "postFix": {
+        "exit": 0,
+        "observed": [
+          "(pass) A4: an UNKNOWN liveness is reported as unverified, never as health, and suppresses no lever field [5.10ms]",
+          " 6 expect() calls"
+        ]
+      }
+    },
+    {
+      "arm": "a5-record-unreadable",
+      "filter": "A5: a record re-read",
+      "preFix": {
+        "exit": 1,
+        "observed": [
+          "563 |   expect(row).toBeDefined()",
+          "error: expect(received).toBeDefined()",
+          "Received: undefined",
+          "(fail) A5: a record re-read failure journals the branch and FENCES the seat [6.53ms]",
+          " 1 expect() calls"
+        ]
+      },
+      "postFix": {
+        "exit": 0,
+        "observed": [
+          "(pass) A5: a record re-read failure journals the branch and FENCES the seat [7.46ms]",
+          " 7 expect() calls"
+        ]
+      }
+    },
+    {
+      "arm": "a5-post-spawn-throw",
+      "filter": "A5: a throw",
+      "preFix": {
+        "exit": 1,
+        "observed": [
+          "581 |   expect(row).toBeDefined()",
+          "error: expect(received).toBeDefined()",
+          "Received: undefined",
+          "(fail) A5: a throw AFTER the spawn is journaled, fences the seat and RELEASES the activation [6.07ms]",
+          " 1 expect() calls"
+        ]
+      },
+      "postFix": {
+        "exit": 0,
+        "observed": [
+          "(pass) A5: a throw AFTER the spawn is journaled, fences the seat and RELEASES the activation [6.78ms]",
+          " 5 expect() calls"
+        ]
+      }
+    },
+    {
+      "arm": "a6-release-no-child-id",
+      "filter": "A6:",
+      "preFix": {
+        "exit": 1,
+        "observed": [
+          "598 |   expect(activation.disposed).toBe(true)",
+          "error: expect(received).toBe(expected)",
+          "Expected: true",
+          "Received: false",
+          "(fail) A6: a spawn that answers without a child id disposes the activation [5.80ms]",
+          " 1 expect() calls"
+        ]
+      },
+      "postFix": {
+        "exit": 0,
+        "observed": [
+          "(pass) A6: a spawn that answers without a child id disposes the activation [7.21ms]",
+          " 5 expect() calls"
+        ]
+      }
+    }
+  ],
+  "summary": {
+    "arms": 9,
+    "allRedBefore": true,
+    "allGreenAfter": true,
+    "wholeFileExit": 0
+  },
+  "gates": {
+    "log": "gates.log",
+    "typecheck": {
+      "command": "bun run typecheck",
+      "exit": 0
+    },
+    "comments": {
+      "command": "bun run verify:comments",
+      "exit": 0,
+      "verdict": "PASS - every declaration in the family carries a precise comment and a full signature"
+    },
+    "docs": {
+      "command": "bun run verify:docs",
+      "exit": 0,
+      "verdict": "pairs=59 failed=0 violations=0 links=626 dead=0 - PASS"
+    },
+    "tests": {
+      "command": "bun test packages/mpd-cellwork-plugin",
+      "exit": 0,
+      "result": "378 pass / 0 fail across 34 files"
+    },
+    "dist": {
+      "build": "bun build packages/mpd-cellwork-plugin/src/index.ts --target node --format esm --outfile packages/mpd-cellwork-plugin/dist/index.js (pinned bun)",
+      "verify": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "result": "34/34 targets fresh; the single NOT COVERED entry is pre-existing (packages/mpd-mcp-codegraph/dist/serve.js)"
+    }
+  },
+  "requirementMap": {
+    "R1": "protocol-core.ts#promoteAfterHandoff (bind before the `reseeded` outcome; release the activation on refusal) + protocol.ts#bindReseededSeat (TEAM row executorRef + mode, non-terminal board owners, verified by re-reading through mpdTeams); journal rows `seat-rebound` and `checkpoint-unrecoverable{surface,retry}`",
+    "R2": "protocol-core.ts#promoteAfterHandoff calls deps.deliverDirective(authority, handle, directive); protocol.ts#runBarrier implements it as sendThroughExecutor(dsh.teamExecutor(), parentAgent).send; `member-reseeded` carries directiveDelivered/directiveError",
+    "R3": "protocol-core.ts#seatLivenessOf + #planeSeatOf + #seatForceReadingOf (with SeatForceReading.unverified) are the ONE reading; protocol.ts#forceReadingOf delegates to them; supervise lists unverified seats and always answers forceEligible/forceRefusal; index.ts cellwork_status members carry liveness/closed/forceEligible/forceRefusal/suspect/deadReseed/unverified",
+    "R4": "protocol.ts#runBarrier record-re-read branch (`barrier-record-unreadable` + fence) and protocol.ts#recordBarrierFailure (`barrier-failed` + fence); protocol-core.ts#barrierFailedRow writes the forced lever's licence; protocol-core.ts#releaseActivation disposes on a post-spawn throw",
+    "R5": "protocol-core.ts#releaseActivation on the no-child-id path (parity with the adapter team path at :4973-4975; NO adapter change was needed because startContinuableAgent hands the activation back, so dispose is reachable from cellwork); docs/cellwork.md + docs/cellwork.zh-CN.md now state that the ORIGINAL session is interrupted (never disposed) and the FRESH activation is released only when it cannot be handed over"
+  },
+  "declaredBounds": [
+    "The three-surface bind has NO plane verb: mpdTeamActions exposes unfence (which clears a TEAM mode:checkpoint) but nothing that re-points executorRef/owner, and team-core is outside this task's write scope. The TEAM record file is therefore patched (atomic temp+rename) and the write is VERIFIED by re-reading it through mpdTeams.get, so a write the plane cannot see is a FAILURE. When team-core grows a seat-rebind verb this must become a delegation.",
+    "Terminal board rows (completed/failed/cancelled) keep their recorded owner: a terminal row is history, not a hand-over (the incident's stranded rows are in_progress).",
+    "A cell whose workspace holds no readable team record answers plane:'absent' (a vacuous success): there is no surface to bind, and refusing a healthy child for a plane nothing created would be the defect.",
+    "A `reseeded` run that reaches the retry bound still FENCES the CELL row (the unchanged R4.3 rule) while the bind opens the TEAM seat to the live child; `seat-rebound{cellFenced:true}` reports that divergence and `cellwork_dispatch {unfence}` is the repair.",
+    "The R2 delivery is an ADDITIONAL message beside the directive already embedded in the reseed prompt; a composition with no team executor records directiveDelivered:false with its reason."
+  ],
+  "findings": [
+    "packages/mpd-cellwork-plugin/README.md (+ README.zh-CN.md) still describes the barrier without R1-R5. It is not the frozen R5 target (docs/cellwork*.md is) and is outside this task's write scope - a follow-up doc pass is recommended."
+  ]
+}

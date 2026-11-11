@@ -1,0 +1,11 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+(pass) A28: a combined {rebind, unfence} call whose rebind FAILS leaves the fence CLOSED and says `fence stayed closed` [5.91ms]
+
+ 1 pass
+ 44 filtered out
+ 0 fail
+ 21 expect() calls
+Ran 1 test across 1 file. [30.00ms]
+EXIT=0

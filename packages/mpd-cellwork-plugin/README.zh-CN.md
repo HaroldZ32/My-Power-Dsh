@@ -71,24 +71,25 @@ team，`cellwork_subteam` 在 `depth + 1 > depthMax` 时拒绝。**智能体委�
 
 flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正文延伸到同级或更高级的下一个标题，因此
 `###` 留在父章节内）、`cellwork_recon`（规划器的**只读**咨询——`{role, task}` 问一个问题，
-`{role, questions:[…]}` 并发问 1..8 个并全部落定后返回）、`cellwork_split`（切分器的按度量图——每个
+`{role, questions:[…]}` 并发问 1..`cellwork.recon.maxQuestions`（默认 16）个并全部落定后返回）、`cellwork_split`（切分器的按度量图——每个
 任务可声明自己的看板 `member`，拒绝会把 findings 持久化到 `split/<rev>.refused.json`）、
 `cellwork_activate`（队长的物化；对每个不同的 `member` 只拉起一个成员，每份合约同时点名 owner role 与成员，
 其返回的 `reused` 列出从 cell 记录或活跃名册解析、而不是新拉起的成员名；成员行的**另外两种**出现方式
 是暂存与采纳，见下文）。
 
 **后台委派**这一对，给 cell 座位使用（规划器、副队长、普通成员——绝不是队长）：`cellwork_delegate`
-一趟启动 1..16 个咨询并**立即**返回它们的 `consultId`，角色由名册行**自己的**解析器规范化
+一趟启动 1..`cellwork.delegate.maxTasks`（默认 32）个咨询并**立即**返回它们的 `consultId`，角色由名册行**自己的**解析器规范化
 （`DeepWorker`、`deep worker`、`deep-worker` 与 `Deep Worker` 是**同一个** agent）、可以是**任意**名册角色
 （写作角色也算）；`cellwork_consult` 列出、等待、收取（会**释放**记录）与取消**本 cell** 发起的咨询。两者都走
-`mpd-roles` 行在它**唯一**的咨询监督器之上提供的 `mpdConsults` 服务——一个注册表、一个
-`MPD_DSH_CONSULT_MAX` 上限（超上限的工作**排队**）、一个静默死信器——服务缺席时按名字拒绝，绝不用无监督的
+`mpd-roles` 行在它**唯一**的咨询监督器之上提供的 `mpdConsults` 服务——一个注册表、一个并发上限
+（每次启动的预算是 `cellwork.consultMax`，默认 32；显式声明的 `MPD_DSH_CONSULT_MAX` **优先**，两者都没有时
+行默认值是 8；超上限的工作**排队**，且队列**没有长度上限**——上限只管**活跃**子会话）、一个静默死信器——服务缺席时按名字拒绝，绝不用无监督的
 启动替代。三个咨询动词**都**走该服务（旧有的 `cellwork_recon {role, task}` 形态也算），因此只挂 cellwork、
 **不挂** `mpd-roles` 行的组合连那个形态也会失去；随包发布的 bundle 同时挂载两行，所以只有手工搭建的组合会受
 影响。校验是**全有或全无**，而这条规则只管**校验**：如果某个启动在**已经启动了部分子会话之后**失败，答复是
 `ok:false` 并点名**确实已启动**的 id——那些子会话继续运行并保持记录，供 `cellwork_consult` 收取。
 
-协议工具：`cellwork_dispatch`（一次仅声明所有者的派发，外加 `reassign` 改派与 `unfence` 解围）、
+协议工具：`cellwork_dispatch`（一次仅声明所有者的派发，外加 `reassign` 改派、`unfence` 解围与 `rebind` 身份修复）、
 `cellwork_supervise`（队长的只读巡检，含每个**关闭**座位——放弃围栏或归屏障所有的检查点——与其仍拥有的
 未关闭行）、`cellwork_context`
 （成员自己的占用）、`cellwork_handoff`（检查点交接文档；第一份仍在等待屏障时**第二份**被拒绝，而只被
@@ -171,6 +172,12 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
 `compactionHeadroomTokens` 65536 · `compactionRetries` 3 · `idleBarrierDelayMs` 200 ·
 `checkpointPendingMaxMs` 900000 · `asciiCharsPerToken` 3 · `cjkCharsPerToken` 1 · `contractGates` [] ·
 `windowOverride` null。
+
+六个**座位与并发**键是 `cellwork.seats.maxPerRole`（8，`1..32`）、`cellwork.seats.max`（32，`1..64`）、
+`cellwork.consultMax`（32，`1..256`）、`cellwork.planning.analysts`（2，`0..8`）、
+`cellwork.delegate.maxTasks`（32，`1..64`）与 `cellwork.recon.maxQuestions`（16，`1..64`）。`seats.*`
+是**嵌套**键（`cellwork.seats.maxPerRole` / `cellwork.seats.max`）；越界或畸形的值会回退到默认值，并在该行
+日志里用**一条**行点名真正的点号路径。
 
 邮件上限是这张表**唯一**的例外：`mail.maxUndelivered`（默认 8，`0` 表示关闭；缺失或不可用的值回退到 8）是
 `mail.*` 键，因为**两个**邮件工具都读它，并且经同一个共享存储执行（见下文「邮件与重种边界」）。
@@ -297,6 +304,56 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
   （`unfence: [{member, force: true}]`）是最后手段：活跃 session 与缺失的书面边界（`barrierFailures` 达到
   `compactionRetries`，或窗口早于 `checkpointPendingMaxMs`）都会被失败即拒绝；它把座位重开是为了重新分配，
   不是为了工作。
+- **重种契约（R1–R5、F1–F3）速览。** R1：只有新 handle 已同时写进 TEAM 成员行、旧 handle 名下所有**非终态**
+  看板行（或以该座位自己的名字拼写的行）和 CELL 行，才允许记 `reseeded`；否则整轮拒绝
+  （`checkpoint-unrecoverable` + `surface`）、围栏座位，并**尝试**通过 `dispose()` 接缝释放子代理（接缝缺失或抛错会
+  被如实报告，绝不冒充一次释放）。**无平面例外**：workspace 里**根本没有
+  team 记录**时没有 TEAM 行、也没有看板，重种可以在**没有**它们的情况下成功（`plane: "absent"`）——不存在
+  不等于不可读（F1）。绑定若在回读验证时抛错或读到的 handle 不符，会**回滚**到绑定前的 TEAM 行与看板 owner；
+  若期间已有别的写入者提交，回滚**拒绝覆盖**并如实报告。**回滚被拒时一律保留子代理（A11；第二轮放宽）：**
+  最常见的并发形态会保留本次绑定的新 `executorRef`；而且即使**当时读到的文档点的是另一个 handle**，并发的读-改-写
+  （team-core 的 `cancelTasks`）也可能在之后才提交它**在本次绑定进行期间**读到的名册——那份文档点的正是新 handle。
+  只有真正把绑定前行**恢复**（`restored`）的回滚才释放子代理。保留体现在 journal 行的 `orphanChild` +
+  `reconcileRequired` 上；`rollback:"failed"` 是同样的「未证明」状态，同样保留。失败文案交出 `cellwork_dispatch {rebind:[{member, handle}], unfence:[member]}`——
+  `rebind` **先执行**，是**唯一**能重新指向 `executorRef` 的动词（并把 handle 镜像进 CELL 行，同时改派旧 handle 名下
+  **非终态**的看板行）；`unfence` 单独用永远不碰 handle，`reassign` 只移动看板行。**合并调用里的 `unfence` 只在每个 `rebind` 条目都答复 `rebound:true` 且 CELL 镜像确认
+  之后才执行**：否则所有点名围栏保持**关闭**、不执行任何 `unfence`、journal 记 `dispatch-unfence-withheld`，答复里的
+  `unfenceWithheld` 写明 `fence stayed closed` 并给出下一步。落地的重指若 CELL 镜像失败，仍是 `rebound:true`，但会带
+  `cellRow:"failed: …"`——**必须检查 `cellRow`**：只有它缺席才代表两份记录一致，镜像失败同样会扣住 `unfence`。恢复路径不会被再次进入：当 TEAM 行已点名一个注册表证明**活着**、且不同于 CELL 行
+  session 的 handle 时，屏障**不 spawn**，只记 `barrier-skipped`（`branch:"reseed-already-bound"`）并给出同一个
+  `rebind` 修复。R2：晋升指令是经执行器的 `send` 向**新** handle
+  **尝试投递**；投递抛错会记 `directiveDelivered:false` + `directiveError`，且不撤销绑定。R3：status /
+  supervise 报出每个座位的 `liveness`（`live`/`dead`/`unknown`），且对 `unknown` 绝不隐藏
+  `fenced[]`/`forceEligible`。R4：没有只 warn 的分支——记录重读失败与 spawn 之后抛出都各记一行，后者还会
+  dispose；读不出的记录无法接受的围栏会如实记成 `fenced:"not-persisted"`，绝不假装已围栏；强制杠杆只对**带书面
+  bound** 的座位点名，而这条分支一条都没写，因此修好记录并写下 bound 之前它不可用。R5：spawn 没给出
+  child id 时 dispose 它的激活；**原**会话的中断（interrupt）是**尝试**，不是保证——宿主拒绝或根本没有该
+  能力（`retirement:"refused"`/`"unavailable"`）都会进 journal，重种仍继续。F1：`absent`（无记录）≠
+  `unreadable`（存在但读不出，这是拒绝）。F2：绑定是对记录**完整字节**的 compare-and-set；**在比较时检测到**
+  的变化会被拒绝（`team-record-changed`），字段只用于说明什么变了——但**比较之后、rename 之前**跨进程提交的
+  写入仍可能被覆盖：这条跨进程残余是收窄，不是消除。F3：终态行（`completed`/`failed`/`cancelled`）保留原
+  owner——历史绝不重指。**`rebind` 会校验它的 handle，并记录它自己的结论（M1/N1/F1）：** handle 先 trim，必须是宿主铸造的
+  8-4-4-4-12 UUID 形态，且必须被本座位**当前的记录**点名——TEAM 行或 CELL 行；**当两条当前行都没有点名任何 handle
+  时，journal 的最新一条交接行同样可以作证**。**唯一的窄例外是被保留的子代理：** 同时带 `orphanChild` 与
+  `reconcileRequired` 的 `checkpoint-unrecoverable` 行，即使两条当前行都仍点名旧 handle 也被接受——它是「本座位
+  启动过该子代理」的唯一持久证据——但仅当它是 journal 最新一条交接、且记录不能证明写入更晚；结果标
+  `handleOrphanAdopted:true`，更晚的记录若点名别的 handle 仍然胜出（F1）。**journal 可以为「当前记录没有点名的 handle」
+  提供证据，但永远不会否决「当前记录已经点名的 handle」：** journal 的「最新一条」只在**两条当前行都没有点名任何 handle** 时才参与
+  判定，也绝不能否决任一当前行点名的 handle。因此，记录写入晚于最后一次交接、且自身没有 journal 行时，该 handle 会被接受并标记
+  `handleRecordCurrent:true` 与（能证明写入更晚时）`journalHandoverOlder:true`，而不是被判
+  `handle-superseded` 并反向建议。只有更早交接行点名的 handle 会拒绝为 `handle-superseded` 并点名后来的
+  那一行；文案只陈述两方事实，绝不替操作员选择方向（注册表只证明**存活**，从不证明**归属**，存活也不能让旧
+  handle 变回当前）。每条结果都带 `namedBy`（`team`/`cell`/`journal:<event>`）；落地的重指还会报 `tasksRebound`（改派的
+  非终态看板行数；终态行保留原 owner）与 `tasksNeedingRelease`（`claimed`/`in_progress` 的行**不被强改**，条目的
+  `release` 字段给出确切的 `agent_teams_task {action:"release", task_id:"…"}` 动词）；**渲染出来的落地行**同样带着这些事实
+  （`board: N row(s) handed over`、`M row(s) still need release: <ids> — run agent_teams_task {action:"release", task_id} first`，
+  以及被采纳时的 `handle adopted from the orphan evidence row`），所以只修了一半的修复绝不会读起来像无条件的成功；当 TEAM 行
+  完全没有点名任何 handle 时，一条看板行都不会被改派——名字持有的行仍能路由到该座位，因此只有身份变化才会移动看板行；
+  `previousSessionId`/`previousSessionIdLiveness`（`live`/`unproven`/`unknown`）**只在 TEAM 行可读时**报告，
+  TEAM 记录缺失或不可读时会**省略**（没有可报告的被替换 handle）。真正落地的重指会带上与重种绑定
+  相同的 `displacedExecutorRef`/`displacedUnproven`，每一条失败条目（包括参数拒绝，会记下请求的 `handle`）都记
+  `member-rebind-failed`；被重种**顶掉**的 handle 会以 `displacedExecutorRef`/`displacedUnproven` 记在
+  `compaction`、`seat-rebound` 与 `member-reseeded` 三行上。`docs/cellwork.md` 是权威。
 - **邮件与重种边界。** cell 邮件先落盘（持久），唤醒尽力而为。`cellwork_send` 在 cell 树里解析收件人 ——
   成员名、`captain`，或跨 cell 形式 `"<cellId>/<captain|member>"`，其中 `<cellId>` 必须是**本** cell 登记过的
   子 cell 或本 cell 的父 cell（`cell.subcellIds` / `cell.parentCellId`），其它一律以
@@ -373,8 +430,9 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
   咨询。三个咨询动词经 `mpdConsults` 服务启动，子会话的智能体深度交给名册自己的 `spawnMaxDepthOf(exec.agent)`
   规则（调用者深度 + 1，一个叶子），该路径刻意不施加名册工具侧的深度下限。这条豁免今天只有**一个**消费者：
   cellwork，其平面由 `cellwork.depthMax` 约束；第二个消费者必须先论证这次绕过。
-- **通用 team 动词就是 cell 模式消除的危险。** `agent_teams_dispatch` 会把就绪任务配给声明的 owner，但当
-  owner 忙时会**退回按名册顺序**配对；本波次中它把一条 REVIEW 任务交给了写过被审泳道的成员。队长立即释放
+- **通用 team 动词默认是仅声明 owner 的；只有它显式的名册模式才会替换。** `agent_teams_dispatch` 会把
+  就绪任务配给**声明的** owner，按位置的回退需要显式 `mode:"roster"`——正是**那个**模式把一条 REVIEW 任务
+  交给了写过被审泳道的成员。队长立即释放
   配对、把该行恢复给独立评审者，而写作者披露它只跑了 `git diff --stat`、一次标记 grep 和一次目录列表就被
   叫停——没有产生任何裁决，因此没有被污染的判断被采用。`cellwork_dispatch` 仅声明 owner、绝不替换；在 cell
   模式之外，等声明的 owner，或先释放再刻意改派。

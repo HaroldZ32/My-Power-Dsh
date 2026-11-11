@@ -1,0 +1,6 @@
+{
+  "id": "cr9",
+  "file": "packages/mpd-team-core-plugin/src/index.ts",
+  "expectedSha256": "216fa5e245f71ba114be44ca63f9b3adf01f35c400ec8ee53088ea8b68120769",
+  "hunks": [{"before":"before-1.txt","after":"after-1.txt"}]
+}

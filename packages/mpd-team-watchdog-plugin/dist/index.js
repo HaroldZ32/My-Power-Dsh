@@ -5958,7 +5958,8 @@ class WatchdogEngine {
     if (this.config.teamCacheMs > 0 && cached !== undefined && now - cached.at < this.config.teamCacheMs)
       return cached.teams;
     const teams = readTeams(this.dsh, workspace, this.mpdTeams());
-    this.teamCache.set(key, { at: now, teams });
+    if (teams.length > 0)
+      this.teamCache.set(key, { at: now, teams });
     return teams;
   }
   mpdTeams() {

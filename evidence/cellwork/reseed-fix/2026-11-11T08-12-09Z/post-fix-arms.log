@@ -1,0 +1,24 @@
+$ bun test packages/mpd-cellwork-plugin/test/reseed-binding.test.ts -t 'A28'   # fixed sources
+bun test v1.4.2 (744846f84)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+(pass) A28: a combined {rebind, unfence} call whose rebind FAILS leaves the fence CLOSED and says `fence stayed closed` [5.59ms]
+
+ 1 pass
+ 41 filtered out
+ 0 fail
+ 17 expect() calls
+Ran 1 test across 1 file. [166.00ms]
+[exit code: 0]
+$ bun test packages/mpd-cellwork-plugin/test/reseed-binding.test.ts -t 'A29'   # fixed sources
+bun test v1.4.2 (744846f84)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+(pass) A29: a refused rollback KEEPS the child even when the surviving document names ANOTHER handle (Minor-1) [7.67ms]
+
+ 1 pass
+ 41 filtered out
+ 0 fail
+ 10 expect() calls
+Ran 1 test across 1 file. [156.00ms]
+[exit code: 0]

@@ -1,0 +1,10 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-cellwork-plugin/test/elastic-seats.test.ts:
+(pass) CR #108: cellwork_dispatch unfences on the RESOLVED board, not the record's stale teamId [2.59ms]
+
+ 1 pass
+ 30 filtered out
+ 0 fail
+ 5 expect() calls
+Ran 1 test across 1 file. [157.00ms]

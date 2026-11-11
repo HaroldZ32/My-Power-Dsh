@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "recordId": "rec-20261110T170731-8cf05a",
+  "loopId": "loop-20261110T165240-5e8e42",
+  "taskId": "T10",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "writerId": "junior-engineer-2",
+  "verifierId": "f7301e14-1955-4be3-b8eb-8083bc5173ff",
+  "basis": {
+    "kind": "blind",
+    "frozenContract": {
+      "path": ".mpd/plans/cellwork-elastic-planning.md",
+      "sha256": "b5cc5cc37e9b830325f33061006c1c6eb016121fcf34d28b019850421ddcf607"
+    },
+    "docs": [
+      {
+        "path": ".mpd/plans/cellwork-elastic-planning.md",
+        "sha256": "b5cc5cc37e9b830325f33061006c1c6eb016121fcf34d28b019850421ddcf607"
+      }
+    ],
+    "probe": [
+      {
+        "path": "packages/mpd-roles-plugin/src/spawn-async.ts",
+        "bytes": 52848,
+        "sha256": "bb9a063d2a2c05c7c61a37402186e884acffe0232bb39d3b64e6fb377f8825c3",
+        "mtime": "2026-11-10T16:58:04.945Z"
+      },
+      {
+        "path": "packages/mpd-roles-plugin/test/cap-queue.test.ts",
+        "bytes": 31160,
+        "sha256": "b91d9310a0cf9853debe19445a45c3229afc211ddd2a9474c22d82aff6bf509d",
+        "mtime": "2026-11-10T16:58:30.428Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/test/consult-host-refusal.test.ts",
+        "bytes": 8509,
+        "sha256": "6506ac30232f20e5ee9a0f036f8adac385e7fa5bb7623553365249e29cef6645",
+        "mtime": "2026-11-10T16:58:30.428Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/consults.ts",
+        "bytes": 49354,
+        "sha256": "d5ca3bd2917a21154bb733f3070c5c866f2214f81da55e73c83a1db964bda475",
+        "mtime": "2026-11-10T16:57:46.805Z"
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": ".mpd/plans/cellwork-elastic-planning.md",
+      "sha256": "b5cc5cc37e9b830325f33061006c1c6eb016121fcf34d28b019850421ddcf607"
+    },
+    {
+      "path": "docs/cellwork.md",
+      "sha256": "7000ee69212a3d717d78c3cb3591babf00a5b7e23b9f6bf1d31d9efd84f7cc36"
+    },
+    {
+      "path": "docs/design.md",
+      "sha256": "e6b57f2c97b4e062662788ed8331b57891fc73adfbe42b0deffb115570a8b82c"
+    },
+    {
+      "path": "packages/mpd-roles-plugin/README.md",
+      "sha256": "5bb5f894a6456eecc2de72cda0322c449f91f90ec3ce9900b7bf12b92b0b0999"
+    }
+  ],
+  "gateEvidence": [
+    {
+      "evidenceId": "ev-20261110T170536-9eae19",
+      "cmd": "bun run typecheck",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261110T170536-9eae19.log",
+      "logSha256": "7904edfdd1adef86c59dc610b46a625b1cb3d1d923e5be526a8c1ec37860788c"
+    },
+    {
+      "evidenceId": "ev-20261110T170537-17f5dd",
+      "cmd": "bun run verify:comments",
+      "exit": 1,
+      "logPath": ".mpd/verify/evidence/ev-20261110T170537-17f5dd.log",
+      "logSha256": "6a2c7a41fd8ef83d55452b439dabdfee1d5095c316a12230286ef2b741be5dfa"
+    },
+    {
+      "evidenceId": "ev-20261110T170540-ae6c18",
+      "cmd": "bun test packages",
+      "exit": 1,
+      "logPath": ".mpd/verify/evidence/ev-20261110T170540-ae6c18.log",
+      "logSha256": "9dacf886389e368e92ee15c5134850fc8e85915777da995fe821b0796c776a33"
+    }
+  ],
+  "verdict": "PASS",
+  "findings": [],
+  "unlockedReads": [],
+  "createdAt": "2026-11-10T17:07:31.456Z",
+  "notes": [
+    "Basis: contract §6.1 (host refusal → FRONT-of-FIFO retry, 250ms doubling to 4s cap, 8 attempts, hostRetries, named setting), §6.2 (one supervisor, optional maxConcurrent, env precedence), §6.4 arms 1-5; docs/cellwork.md declared bound (maxActiveSubagents 8) + docs/design.md (MPD_DSH_CONSULT_MAX default 8, over-cap queues).",
+    "typecheck gate ev-...9eae19 exit 0.",
+    "comments gate ev-...17f5dd exit 1: 3 violations all in packages/mpd-cellwork-plugin/test/elastic-seats.test.ts (T1's in-flight file, OUTSIDE this loop's scope) — elastic-seats.test.ts:556/557/592. Not attributable to the T10 repair.",
+    "tests gate ev-...ae6c18 (bun test packages) 3968 pass / 6 skip / 7 fail: 6 cellwork reds are T1's in-flight activate/dispatch/index rework (C12/D1, two W1 §4.1, B1, A2/A3, A3 — captain-declared out of scope for this row) and 1 is the T-62 dist artifact (T4's rebuild).",
+    "Targeted runs: bun test packages/mpd-roles-plugin = 397 pass / 1 fail (only the dist artifact); test/cap-queue.test.ts = 13/13 including F1 front re-entry with a second consult, F2 cancel-mid-backoff, F4 malformed env, §6.2 single-counter arms, and the raised per-call bounds; test/consult-host-refusal.test.ts = 4/4 (consultRowOf hostRetries, hostRefusalsOf, one consult-host-refused journal row for a refused consult and none clean, consults[].hostRetries on the list answer).",
+    "§6.3 render (cellwork_status printing the effective budget + Settings advice) belongs to T1's index/protocol render per contract §6.3/§3.5 and is NOT in this row's scope; the repair covers the DATA projections the view reads.",
+    "Bound: gate runs cover the shared working tree with T1 in flight and T5 (docs+dist) pending; no live mount lane ran.",
+    "Post-verdict attack on the F1-F4 arms follows in the report (timer seam identity, FRONT vs tail with a third waiter, double-release mutation, real journal append, any second registry)."
+  ]
+}

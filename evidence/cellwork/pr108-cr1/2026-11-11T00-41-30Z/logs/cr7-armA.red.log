@@ -1,0 +1,23 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-cellwork-plugin/test/elastic-seats.test.ts:
+477 |   const onDisk = recordOnDisk(harness)
+478 |   /** The persisted member table. */
+479 |   const members = onDisk.members as Record<string, Record<string, unknown>>
+480 |   // BOTH writes are present: this pass's grown seats AND the concurrent writer's facts.
+481 |   expect(members["Deep Worker-2"]?.grown).toBe(true)
+482 |   expect(members.Reviewer?.fenced).toBe(true)
+                                         ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/elastic-seats.test.ts:482:36)
+(fail) CR #108: a concurrent barrier write inside seat growth SURVIVES the pass [4.32ms]
+
+ 0 pass
+ 30 filtered out
+ 1 fail
+ 3 expect() calls
+Ran 1 test across 1 file. [153.00ms]

@@ -629,9 +629,13 @@ function validTasks(): Array<Record<string, unknown>> {
 
 // ── B4: staging ─────────────────────────────────────────────────────────────
 
-test("cellwork_start stages TWO members and TWO tasks, with personas, roles and a blocked split task", async () => {
-  /** The harness. */
-  const harness = makeHarness()
+test("cellwork_start with analysts=0 stages TWO members and TWO tasks, with personas, roles and a blocked split task", async () => {
+  // THIS ARM PINS THE KNOWN-SHAPE BASELINE, not the shipped default: `cellwork.planning.analysts=0` is the
+  // contract's switch back to the two-seat planning phase (§5.4.2), and the fan-out DEFAULT is asserted in
+  // `planning-fanout.test.ts`. The knob is injected here so this arm keeps asserting the exact two-member,
+  // two-task shape a byte-for-byte-shape regression would change.
+  /** The harness, staged with the two-seat planning phase. */
+  const harness = makeHarness({ knobs: { "cellwork.planning.analysts": 0 } })
   /** The started cell. */
   const cellId = await startCell(harness)
   /** The record the approval built. */
@@ -814,8 +818,11 @@ test("recon: planner only, label exactly Explorer, NO forwarded maxDepth, cell c
 // ── B7: activation ─────────────────────────────────────────────────────────
 
 test("activate: contracts → members → tasks → verify loop BEFORE dispatch, owner-only, never a second activation", async () => {
+  // THE TWO-SEAT PLANNING BASELINE (`analysts=0`, contract §5.4.2): this arm counts the messages an
+  // activation delivers, and the fan-out's analysis rows are ready at activation too. The DEFAULT shape is
+  // asserted in `planning-fanout.test.ts`.
   /** The harness with a finalized, accepted cell. */
-  const harness = makeHarness()
+  const harness = makeHarness({ knobs: { "cellwork.planning.analysts": 0 } })
 /** The started cell. */
   const cellId = await startCell(harness)
   await runTool(harness, "cellwork_requirements", { action: "finalize", content: COMPLETE_REQUIREMENTS }, plannerAgent(harness))
@@ -879,6 +886,48 @@ test("activate: a STALE split is refused unless its revision is passed explicitl
 /** The explicit-revision activation. */
   const explicit = await runTool(harness, "cellwork_activate", { revision: 1 }, harness.captain)
   expect(explicit.ok).toBe(true)
+})
+
+test("CR #108: a RE-SPLIT never overwrites the staging id an earlier activation preserved", async () => {
+  /** The harness with a finalized, accepted cell. */
+  const harness = makeHarness()
+  /** The started cell's id. */
+  const cellId = await startCell(harness)
+  await runTool(harness, "cellwork_requirements", { action: "finalize", content: COMPLETE_REQUIREMENTS }, plannerAgent(harness))
+  await runTool(harness, "cellwork_split", { action: "submit", tasks: validTasks() }, splitterAgent(harness))
+  /** The FIRST activation. */
+  const first = await runTool(harness, "cellwork_activate", {}, harness.captain)
+  expect(first.ok).toBe(true)
+  /** The record after the first activation. */
+  const activated = readCell(harness.workspace, cellId)
+  expect(activated.ok).toBe(true)
+  if (!activated.ok) return
+  // THE LEGACY SHAPE the resolver must repair (§7.1 step 4): the recorded `teamId` is unreadable, the
+  // preserved staging id names the live board that carries this cell's activated rows. A RE-SPLIT's outcome
+  // then reports the id it STARTED from as `planningTeamId` — and the old merge wrote that over the
+  // preserved staging id, losing the only record of where staging happened.
+  /** The live board the first activation wrote. */
+  const executed = harness.teamRecords.get("team-1")
+  expect(executed).toBeDefined()
+  harness.teamRecords.set("team-planning", executed as Record<string, any>)
+  writeCell(harness.workspace, { ...activated.state, teamId: "team-dead", planningTeamId: "team-planning" })
+  // A NEW accepted revision, which is the re-split path.
+  await runTool(harness, "cellwork_requirements", { action: "update", content: COMPLETE_REQUIREMENTS + "\n## Extra\nmore\n" }, plannerAgent(harness))
+  /** The accepted revision-2 split. */
+  const resubmitted = await runTool(harness, "cellwork_split", { action: "submit", revision: 2, tasks: validTasks() }, splitterAgent(harness))
+  expect(resubmitted.accepted).toBe(true)
+  /** The re-split's activation. */
+  const resplit = await runTool(harness, "cellwork_activate", { revision: 2 }, harness.captain)
+  expect(resplit.ok).toBe(true)
+  /** The record the re-split persisted. */
+  const after = readCell(harness.workspace, cellId)
+  expect(after.ok).toBe(true)
+  if (!after.ok) return
+  // THE STAGING ID IS THE RECORD'S, NOT THE PASS'S STARTING POINT: "team-dead" was the stale execution id
+  // the re-split started from, and writing it here would have erased "team-planning".
+  expect(after.state.planningTeamId).toBe("team-planning")
+  // The execution board the resolver named is persisted as `teamId`.
+  expect(after.state.teamId).toBe("team-planning")
 })
 
 // ── B7: the owner-only dispatch decision ───────────────────────────────────
@@ -1207,14 +1256,16 @@ test("recon BATCH: a ONE-question batch ALSO carries the legacy pair, and `{role
   expect(legacy.personaInjected).toBe(true)
 })
 
-test("recon BATCH: >8 questions, both fields, neither field and an empty entry each refuse the WHOLE call", async () => {
+test("recon BATCH: >16 questions, both fields, neither field and an empty entry each refuse the WHOLE call", async () => {
   /** The harness with a started cell. */
   const harness = makeHarness()
   await startCell(harness)
-  /** Nine questions: one over the batch bound. */
-  const nine = Array.from({ length: 9 }, (_value, index) => "q" + String(index + 1))
+  // THE BOUND IS `cellwork.recon.maxQuestions` (default 16, raised from the old literal 8 by §3/§6.2):
+  // seventeen questions is one over it, and the refusal names the number it enforced.
+  /** Seventeen questions: one over the batch bound. */
+  const seventeen = Array.from({ length: 17 }, (_value, index) => "q" + String(index + 1))
   for (const [args, expected] of [
-    [{ role: "Explorer", questions: nine }, "more than the 8"],
+    [{ role: "Explorer", questions: seventeen }, "more than the 16"],
     [{ role: "Explorer", task: "a", questions: ["b"] }, "EXACTLY ONE"],
     [{ role: "Explorer" }, "EXACTLY ONE"],
     [{ role: "Explorer", questions: ["ok", "  "] }, "questions[1] is empty"],
@@ -1586,8 +1637,10 @@ test("D5: a parent cell with NO team yet yields a ROOT sub-team, and the directi
 // ── B8/B9: the captain-only protocol tools ─────────────────────────────────
 
 test("cellwork_dispatch and cellwork_supervise are captain-only; supervise reports the pending board", async () => {
+  // THE TWO-SEAT PLANNING BASELINE (`analysts=0`, contract §5.4.2): the arm names the exact pairing the
+  // first pass makes, so the fan-out's analysis rows are switched OFF here.
   /** The harness with a started cell. */
-  const harness = makeHarness()
+  const harness = makeHarness({ knobs: { "cellwork.planning.analysts": 0 } })
   await startCell(harness)
   // A planner cannot dispatch or supervise.
   expect((await runTool(harness, "cellwork_dispatch", {}, plannerAgent(harness))).ok).toBe(false)
@@ -1603,6 +1656,39 @@ test("cellwork_dispatch and cellwork_supervise are captain-only; supervise repor
   expect(sweep.ok).toBe(true)
   expect(Array.isArray(sweep.members)).toBe(true)
   expect(String(sweep.phase)).toBe("requirements")
+})
+
+test("§5.4.5: an abandoned analysis lane is REPORTED by the sweep and never wedges the start", async () => {
+  // THE SHIPPED FAN-OUT DEFAULT: `cellwork_start` completes without waiting for any analysis lane, and the
+  // lane's board row plus its seat are what the captain's sweep reports when one never settles.
+  /** The harness at the shipped default. */
+  const harness = makeHarness()
+  /** The started cell. */
+  await startCell(harness)
+  // The start COMPLETED (the helper throws otherwise) with the lanes still pending: no wait, no wedge.
+  /** The approved record. */
+  const record = harness.teamRecords.get("team-1")
+  /** The analysis rows the staging posted. */
+  const lanes = (record?.tasks ?? []).filter((task: Record<string, any>) => String(task.subject).startsWith("analysis-"))
+  expect(lanes.map((task: Record<string, any>) => [task.subject, task.owner, task.status])).toEqual([
+    ["analysis-1", "cell-analyst-1", "pending"],
+    ["analysis-2", "cell-analyst-2", "pending"],
+  ])
+  // ONE LANE DIES: the board marks it failed, as an abandoned lane ends. The sweep still answers and NAMES
+  // the row with its owner, which is the "reported, not wedged" half of §5.4 (no automatic timeout).
+  /** That row, marked as an abandoned lane. */
+  const dead = lanes[0]
+  if (dead === undefined) throw new Error("expected an analysis row")
+  dead.status = "failed"
+  /** The captain's sweep. */
+  const sweep = await runTool(harness, "cellwork_supervise", {}, harness.captain)
+  expect(sweep.ok).toBe(true)
+  /** The text the model reads. */
+  const rendered = renderText(harness, "cellwork_supervise", sweep)
+  expect(rendered).toContain("failed")
+  expect(rendered).toContain("cell-analyst-1")
+  // The SEAT is on the sweep's member list too, so "which lane is this" is answerable from one call.
+  expect((sweep.members as Array<Record<string, unknown>>).map((member) => String(member.name))).toContain("cell-analyst-1")
 })
 
 // ── Wave 3 (C1): the re-split path on the LIVE team record ──────────────────
@@ -2031,8 +2117,10 @@ function selfReviewTasks(): Array<Record<string, unknown>> {
 }
 
 test("Amendment 6 R1: the dispatched message names the contract file the verify loop froze, and that file EXISTS", async () => {
+  // THE TWO-SEAT PLANNING BASELINE (`analysts=0`, contract §5.4.2): the arm asserts ONE delivered message,
+  // and the fan-out's analysis rows would be delivered too.
   /** The harness at its first activation. */
-  const harness = makeHarness()
+  const harness = makeHarness({ knobs: { "cellwork.planning.analysts": 0 } })
   /** The cell and its first activation. */
   const { cellId } = await activatedCell(harness)
   // The activation delivered exactly ONE message: the READY code task, to its declared owner.
@@ -2250,8 +2338,10 @@ function createCellOnly(harness: Harness): string {
 }
 
 test("CR 4377316529: a mid-staging failure is PRESERVED on the cell record and the retry RESUMES the same plan", async () => {
-  /** The harness. */
-  const harness = makeHarness()
+  // `analysts=0` keeps this arm about the RESUME arithmetic (one plan, each member appended once); the
+  // fan-out's own resume shape is covered in `planning-fanout.test.ts`.
+  /** The harness, staged with the two-seat planning phase. */
+  const harness = makeHarness({ knobs: { "cellwork.planning.analysts": 0 } })
   // BOTH members stage, then the requirements task fails: a genuinely PARTIAL plan, not an empty slot.
   harness.failPlan("create_task")
   /** The cell the command created (the command stages nothing). */

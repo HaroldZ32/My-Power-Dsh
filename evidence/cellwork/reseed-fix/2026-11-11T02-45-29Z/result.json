@@ -1,0 +1,246 @@
+{
+  "schema": "cellwork/reseed-fix/1",
+  "contract": ".mpd/plans/cellwork-reseed-fix.md",
+  "followUpContract": "the three follow-ups of the prior PASS review rec-20261111T023312-aa34db (F1, F2, F3); R1-R5 were NOT redone",
+  "priorEvidence": "evidence/cellwork/reseed-fix/2026-11-11T02-24-27Z/ (untouched; its result.json sha256 is still cb6329e034f145df06baeaf45d8e3b598bc566c344773c166e41cb68db670a03)",
+  "branch": "fix/cellwork-reseed",
+  "baseCommit": "2e8391117e6698e58281ec6a701fdbaa69010413",
+  "producedAt": "2026-11-11T02:48:14.000Z",
+  "method": {
+    "failBefore": "for each arm: restore the three SOURCE files from `git show HEAD:<path>` (a READ; this seat runs no git write), run `<pinned bun> test <testFile> -t <arm filter>`, then copy the FIXED bytes back (sha256 verified against sha256.txt) and re-run",
+    "passAfter": "the same command on the restored fixed sources; `whole-file.post.log` is the entire file in one run",
+    "bun": ".toolchain/node_modules/.bin/bun (pinned 1.4.0 from package.json buildToolchain); the GATE test run uses the ambient bun 1.4.2 as the gate names it",
+    "testFile": "packages/mpd-cellwork-plugin/test/reseed-binding.test.ts",
+    "restoredSha256": [
+      "ad576927486db322d7c003c48c231022ee9aa48326729a49233031a0ef6b0955  packages/mpd-cellwork-plugin/src/protocol-core.ts",
+      "0ed6eef8983cfb24fd7521a13c3f0c51c397d8e5a912be83a50da05435186019  packages/mpd-cellwork-plugin/src/protocol.ts",
+      "2dee591ef86cdfe1d054fdac3ac7b828806b8f1eee3b356cc33f418217ea462e  packages/mpd-cellwork-plugin/src/index.ts",
+      "f35c6143084d54d9237291c4b62f3ed1c23fca10443c561f4ed5c3dcc4c99bd5  packages/mpd-cellwork-plugin/test/reseed-binding.test.ts",
+      "be2c1d0aa0d51bdc34d492e3b393b441c84956200d52b33dc2dbe25c29cf0bc1  docs/cellwork.md",
+      "b49fa059290aed5542c5fb5c11e803f819012cbf4b0c303f191d93f52e477493  docs/cellwork.zh-CN.md",
+      "5395da46251caec14e5153f57f4a7ff7115f569a1153678ce281424713bad78b  packages/mpd-cellwork-plugin/dist/index.js"
+    ]
+  },
+  "summary": {
+    "arms": 7,
+    "allArmsRedBefore": true,
+    "allArmsGreenAfter": true,
+    "wholeFile": {
+      "exit": 0,
+      "result": "15 pass / 0 fail / 103 expect() calls"
+    }
+  },
+  "arms": [
+    {
+      "arm": "a7-unreadable",
+      "followUp": "F1",
+      "filter": "A7: a team record that EXISTS",
+      "preFix": {
+        "exit": 1,
+        "observed": [
+          "680 |   expect(rows.some((row) => row.event === \"compaction\" && row.outcome === \"reseeded\")).toBe(false)",
+          "                                                                                             ^",
+          "error: expect(received).toBe(expected)",
+          "Expected: false",
+          "Received: true",
+          "(fail) A7: a team record that EXISTS but cannot be read NEVER reports `reseeded` — it names the surface, fences and releases [6.70ms]",
+          "1 expect() calls"
+        ]
+      },
+      "postFix": {
+        "exit": 0,
+        "observed": [
+          "(pass) A7: a team record that EXISTS but cannot be read NEVER reports `reseeded` — it names the surface, fences and releases [6.69ms]",
+          "10 expect() calls"
+        ]
+      }
+    },
+    {
+      "arm": "a7-plane-throw",
+      "followUp": "F1",
+      "filter": "A7: a plane read that THROWS",
+      "preFix": {
+        "exit": 1,
+        "observed": [
+          "705 |   expect(rows.some((row) => row.event === \"compaction\" && row.outcome === \"reseeded\")).toBe(false)",
+          "                                                                                             ^",
+          "error: expect(received).toBe(expected)",
+          "Expected: false",
+          "Received: true",
+          "(fail) A7: a plane read that THROWS while the record exists is the unreadable case, never `absent` [6.09ms]",
+          "1 expect() calls"
+        ]
+      },
+      "postFix": {
+        "exit": 0,
+        "observed": [
+          "(pass) A7: a plane read that THROWS while the record exists is the unreadable case, never `absent` [6.34ms]",
+          "7 expect() calls"
+        ]
+      }
+    },
+    {
+      "arm": "a7-absent",
+      "followUp": "F1",
+      "filter": "A7: a cell whose workspace holds NO",
+      "preFix": {
+        "exit": 1,
+        "observed": [
+          "729 |   expect(bound?.plane).toBe(\"absent\")",
+          "                             ^",
+          "error: expect(received).toBe(expected)",
+          "Expected: \"absent\"",
+          "Received: undefined",
+          "(fail) A7: a cell whose workspace holds NO team record answers `absent` and still reseeds (the control) [6.27ms]",
+          "2 expect() calls"
+        ]
+      },
+      "postFix": {
+        "exit": 0,
+        "observed": [
+          "(pass) A7: a cell whose workspace holds NO team record answers `absent` and still reseeds (the control) [7.26ms]",
+          "5 expect() calls"
+        ]
+      }
+    },
+    {
+      "arm": "a8-external",
+      "followUp": "F2",
+      "filter": "A8: a write that lands",
+      "preFix": {
+        "exit": 1,
+        "observed": [
+          "751 |   expect(rows.some((row) => row.event === \"compaction\" && row.outcome === \"reseeded\")).toBe(false)",
+          "                                                                                             ^",
+          "error: expect(received).toBe(expected)",
+          "Expected: false",
+          "Received: true",
+          "(fail) A8: a write that lands between the bind's read and its rename is REFUSED, not overwritten [6.31ms]",
+          "1 expect() calls"
+        ]
+      },
+      "postFix": {
+        "exit": 0,
+        "observed": [
+          "(pass) A8: a write that lands between the bind's read and its rename is REFUSED, not overwritten [7.45ms]",
+          "11 expect() calls"
+        ]
+      }
+    },
+    {
+      "arm": "a8-revision",
+      "followUp": "F2",
+      "filter": "A8: a record that carries a REVISION",
+      "preFix": {
+        "exit": 1,
+        "observed": [
+          "783 |   expect(rows.some((row) => row.event === \"compaction\" && row.outcome === \"reseeded\")).toBe(false)",
+          "                                                                                             ^",
+          "error: expect(received).toBe(expected)",
+          "Expected: false",
+          "Received: true",
+          "(fail) A8: a record that carries a REVISION is refused when that revision moved inside the window [6.23ms]",
+          "1 expect() calls"
+        ]
+      },
+      "postFix": {
+        "exit": 0,
+        "observed": [
+          "(pass) A8: a record that carries a REVISION is refused when that revision moved inside the window [6.67ms]",
+          "7 expect() calls"
+        ]
+      }
+    },
+    {
+      "arm": "a8-control",
+      "followUp": "F2",
+      "filter": "A8: without an external write",
+      "preFix": {
+        "exit": 1,
+        "observed": [
+          "804 |   expect(bound?.plane).toBe(\"bound\")",
+          "                             ^",
+          "error: expect(received).toBe(expected)",
+          "Expected: \"bound\"",
+          "Received: undefined",
+          "(fail) A8: without an external write the SAME harness binds normally (the control) [7.86ms]",
+          "2 expect() calls"
+        ]
+      },
+      "postFix": {
+        "exit": 0,
+        "observed": [
+          "(pass) A8: without an external write the SAME harness binds normally (the control) [6.87ms]",
+          "4 expect() calls"
+        ]
+      }
+    },
+    {
+      "arm": "a1b-terminal",
+      "followUp": "F3",
+      "filter": "A1b:",
+      "preFix": {
+        "exit": 1,
+        "observed": [
+          "477 |   expect(tasks.get(\"T1\")?.owner).toBe(NEW_HANDLE)",
+          "                                       ^",
+          "error: expect(received).toBe(expected)",
+          "Expected: \"handle-fresh-child\"",
+          "Received: \"session-old-member\"",
+          "(fail) A1b: a reseed re-points every non-terminal board row the old handle owned [6.18ms]",
+          "1 expect() calls"
+        ]
+      },
+      "postFix": {
+        "exit": 0,
+        "observed": [
+          "(pass) A1b: a reseed re-points every non-terminal board row the old handle owned [7.53ms]",
+          "11 expect() calls"
+        ]
+      }
+    }
+  ],
+  "gates": {
+    "log": "gates.log",
+    "typecheck": {
+      "command": "bun run typecheck",
+      "exit": 0
+    },
+    "comments": {
+      "command": "bun run verify:comments",
+      "exit": 0,
+      "verdict": "PASS — every declaration in the family carries a precise comment and a full signature. (633 files, 57927 declarations)"
+    },
+    "docs": {
+      "command": "bun run verify:docs",
+      "exit": 0,
+      "verdict": "pairs=59 failed=0 violations=0 links=626 dead=0 — PASS"
+    },
+    "tests": {
+      "command": "bun test packages/mpd-cellwork-plugin",
+      "exit": 0,
+      "result": "384 pass / 0 fail / 3721 expect() calls across 34 files"
+    },
+    "dist": {
+      "build": ".toolchain/node_modules/.bin/bun build packages/mpd-cellwork-plugin/src/index.ts --target node --format esm --outfile packages/mpd-cellwork-plugin/dist/index.js",
+      "verify": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "result": "34/34 targets fresh under the pinned bun 1.4.0 (cellwork dist sha 5395da46251c…); the single NOT COVERED entry is pre-existing (packages/mpd-mcp-codegraph/dist/serve.js)"
+    }
+  },
+  "requirementMap": {
+    "F1": "protocol.ts#readTeamRecordSnapshot (ENOENT -> absent; every other read/parse failure -> unreadable) + protocol.ts#bindReseededSeat (plane witness read: a THROW or a non-record answer for a file that EXISTS -> `surface:\"team-record-unreadable\"`, never `plane:\"absent\"`; the refusal flows through promoteAfterHandoff's !bind.ok branch which RELEASES the activation, through checkpointUnrecoverableEntry{surface,retry}, and through memberAfterBarrier's fence); protocol-core.ts#SeatBindResult doc + docs/cellwork*.md now say NO TEAM RECORD EXISTS",
+    "F2": "protocol.ts#TeamRecordSnapshot + #concurrentWriteOf + the compare inside #bindReseededSeat immediately before atomicWriteText: `revision` first, else `updatedAt` + sha256 of the member roster, else the raw bytes; a mismatch -> `surface:\"team-record-changed\"` with the F1 failure shape. The SYNCHRONOUS-BY-CONTRACT comment above bindReseededSeat states read -> compare -> temp+rename must be ONE synchronous block with no await, and the function is deliberately not `async`",
+    "F3": "protocol.ts#bindReseededSeat's terminal-row guard (`completed` / `failed` / `cancelled` keep their owner) + reseed-binding.test.ts A1b asserting all three terminal statuses + the EN/zh-CN docs sentence enumerating them"
+  },
+  "declaredBounds": [
+    "The three-surface bind still has NO plane verb: mpdTeamActions exposes `unfence` but nothing that re-points `executorRef`/`owner`, so the TEAM record file is patched directly (atomic temp+rename) and verified by re-reading it through `mpdTeams.get` (or from the file when no plane service exists). Declared architectural debt from the prior PASS; F2 narrows its blast radius (compare-and-set) but does not remove it.",
+    "The compare-and-set catches a writer that commits inside the synchronous window; the window contains no await, so no JS concurrency can enter it in this process, and the re-read is the last statement before the rename. A commit that lands AFTER the rename is not covered by this compare (the post-write read-back verifies the seat row only).",
+    "Today's TeamRecord carries no top-level `revision`/`updatedAt`, so the member-roster sha256 is the always-present half of the fingerprint; the `revision` and `updatedAt` halves are implemented and the revision half is exercised by the `a8-revision` arm (a seeded record carrying `revision: 1`), while no LIVE record currently carries either field.",
+    "A plane read that throws at the bind's SNAPSHOT is classified `team-record-unreadable` (F1); a throw at the post-write READ-BACK still travels through the post-spawn-throw branch (`after the child started`, A5) because the write already landed and nothing can be overwritten any more.",
+    "The A7 control (no record file) and the A8 control (no external write) are guards for the fixed code; like every arm they are red on HEAD only because the pre-fix code does not bind at all (`seat-rebound` is absent), not because the control itself encodes a defect."
+  ],
+  "findings": [
+    "packages/mpd-cellwork-plugin/README.md (+ README.zh-CN.md) still describes the barrier without R1-R5 or these follow-ups. It is outside this task's write scope (the frozen targets are docs/cellwork*.md); a follow-up doc pass is recommended."
+  ]
+}

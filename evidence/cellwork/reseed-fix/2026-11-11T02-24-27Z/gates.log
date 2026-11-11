@@ -1,0 +1,39 @@
+## gates run at 2026-11-11T02:24:36Z on branch fix/cellwork-reseed @ 2e839111
+
+### bun run typecheck
+$ tsgo --noEmit
+exit=0
+
+### bun run verify:comments
+
+scanned 633 TypeScript file(s) of 633 in the source set; inspected 57874 declaration(s); skipped 28552 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+exit=0
+
+### bun run verify:docs
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=59 failed=0 violations=0 exempt=24 derived=3 links=626 dead=0 — PASS
+exit=0
+
+### bun test packages/mpd-cellwork-plugin
+
+ 378 pass
+ 0 fail
+ 3675 expect() calls
+Ran 378 tests across 34 files. [643.00ms]
+exit=0
+
+### .toolchain/node_modules/.bin/bun build packages/mpd-cellwork-plugin/src/index.ts --target node --format esm --outfile packages/mpd-cellwork-plugin/dist/index.js
+Bundled 31 modules in 10ms
+
+  index.js  0.53 MB  (entry point)
+
+exit=0
+
+### node scripts/verify-dist-fresh.ts
+[verify-dist-fresh] build toolchain: bun 1.4.0 from the repository toolchain (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun) · recorded buildToolchain bun@1.4.0
+[verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] ok: 34/34 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 746ms
+exit=0

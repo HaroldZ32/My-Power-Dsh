@@ -1,0 +1,1111 @@
+// Cell-work STATE — the workspace-scoped cell RECORD, its append-only journal and its on-disk layout.
+//
+// WHERE A CELL LIVES (contract B3). `<ws>/.mpd/cellwork/<cellId>/` holds `state.json`, the
+// append-only `journal.jsonl`, `requirements.md`, `split/<rev>.json`, `contracts/<taskKey>.md` and
+// `handoff/<member>-<n>.md`. Nothing is written outside that directory except the team board and the
+// verify plane, so "archiving" a cell is leaving its directory in place and marking the record
+// stopped — never a deletion.
+//
+// THE ROOT IS PASSED IN, PER CALL. Callers hand this module the value `dsh.workspaceRoot(exec)`
+// returned; nothing here reads `process.cwd()` and no root is cached in a module constant, so one host
+// serving several workspaces cannot write a cell into the wrong tree.
+//
+// A CORRUPT STATE IS A REFUSAL, NOT A RESET. {@link readCell} separates `missing` (no cell with that
+// id), `corrupt` (unparsable JSON or a wrong-shaped record), `version` (a schema version this build
+// does not read) and `unreadable` (an I/O failure). Every failure names the absolute path, and nothing
+// here deletes or rewrites a record it could not read.
+//
+// WRITES ARE ATOMIC (tmp file + rename in the SAME directory, so the rename cannot cross a
+// filesystem), and the journal is opened in append mode only — a torn journal line is therefore
+// possible in principle and never trusted as state: `state.json` is the truth, the journal is history.
+import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs"
+import { dirname, join } from "node:path"
+// THE LIVE-PHASE SET IS TYPED AGAINST TEAM-CORE'S UNION (blind review N1): the type import is erased at
+// build time, so the cellwork plugin keeps reading team records structurally while a phase renamed or
+// removed upstream stops this file type-checking instead of leaving a stale literal behind.
+import type { TeamPhase } from "../../mpd-team-core-plugin/src/team-store"
+
+/** The schema version this build reads and writes; a record carrying any other value is REFUSED. */
+export const CELLWORK_STATE_VERSION = 1
+
+/** Path segments from the workspace root to the cell root, joined by {@link cellworkRoot}. */
+export const CELLWORK_ROOT_SEGMENTS: readonly string[] = [".mpd", "cellwork"]
+
+/** The record file name inside one cell directory. */
+export const CELL_STATE_FILE = "state.json"
+/** The append-only history file name inside one cell directory. */
+export const CELL_JOURNAL_FILE = "journal.jsonl"
+/** The validated requirements document handed to the splitter. */
+export const CELL_REQUIREMENTS_FILE = "requirements.md"
+/** Subdirectory holding one measured split per revision (`<rev>.json`). */
+export const CELL_SPLIT_DIR = "split"
+/** Subdirectory holding one frozen acceptance contract per code task. */
+export const CELL_CONTRACTS_DIR = "contracts"
+/** Subdirectory holding one handoff document per checkpoint. */
+export const CELL_HANDOFF_DIR = "handoff"
+
+/** The four phases of a cell; `stopped` is terminal and is what "archived" means on disk. */
+export type CellPhase = "requirements" | "split" | "executing" | "stopped"
+
+/** Every phase, so an untrusted record can be validated against the complete set. */
+export const CELL_PHASES: readonly CellPhase[] = ["requirements", "split", "executing", "stopped"]
+
+/** What the guard enforces for ONE member session; the captain is not a member and is proven by id. */
+export type CellMemberMode = "member" | "verifier" | "checkpoint" | "subcaptain"
+
+/** Every member mode, for the same validation reason as {@link CELL_PHASES}. */
+export const CELL_MEMBER_MODES: readonly CellMemberMode[] = ["member", "verifier", "checkpoint", "subcaptain"]
+
+/** One member of the cell, as the cell — not the team record — knows it. */
+export interface CellMemberRecord {
+  /** The name the captain addresses and the team board uses (`cell-planner`, …). */
+  name: string
+  /** The roster role label the member was staged with, kept for display and routing. */
+  role: string
+  /**
+   * The member's SESSION id, when it is known.
+   *
+   * Empty until something tells us: the approval answer carries the executor's own handle, and the
+   * live team record's `executorRef` is the value the guard matches a session against. A cell that
+   * never learned the id still has a working guard — it resolves the member through that record.
+   */
+  sessionId: string
+  /** The executor handle the approval answer reported, verbatim; `""` when nothing was returned. */
+  executorRef: string
+  /** What the guard enforces for this member right now. */
+  mode: CellMemberMode
+  /** Whether the member wrote its handoff and is waiting for compaction + promotion. */
+  handoffReady: boolean
+  /** How many handoffs this member has written (the ordinal of the NEXT one is this + 1). */
+  handoffs: number
+  /**
+   * Whether the compaction barrier GAVE UP on this member (contract C7).
+   *
+   * OPTIONAL AND ADDITIVE, written by the barrier path: a fenced member is reported as unavailable and
+   * its ready rows must be re-assigned instead of messaged. Absent means "not fenced", never `false` —
+   * the key is preserved only when a writer recorded it, so an older record still parses.
+   */
+  fenced?: boolean
+  /** The one-sentence reason the barrier recorded when it fenced this member. PRESERVED, never defaulted. */
+  fencedReason?: string
+  /**
+   * ISO instant this seat entered the checkpoint window (R4.3).
+   *
+   * OPTIONAL AND ADDITIVE, written at the ONE place a seat is closed without an owner (the pre-step
+   * checkpoint). It is the AGE the captain's forced `unfence` measures (`checkpointPendingMaxMs`), and
+   * it SURVIVES a reseed on purpose: a fresh child is not proof that the seat works, so the window keeps
+   * its clock until the barrier actually reopens the seat.
+   */
+  checkpointSince?: string
+  /**
+   * How many CONSECUTIVE barrier runs ended without reopening this seat (R4.3).
+   *
+   * OPTIONAL AND ADDITIVE, absent-not-zero: the key exists only while a run has failed to reopen the
+   * seat, and a reopening outcome deletes it. The barrier fences the seat when the count reaches the
+   * `compactionRetries` bound, so a seat stuck in the window cannot be retried forever.
+   */
+  barrierFailures?: number
+  /** ISO instant the member was added to the cell. */
+  joinedAt: string
+  /**
+   * True when this row was ADOPTED from the live team record after activation (contract B1).
+   *
+   * OPTIONAL AND ADDITIVE, and `true` is the only value ever written — its ABSENCE is "activation (or
+   * staging) created this row". A member added mid-run with `agent_teams_plan {action:"add_member"}`
+   * is known to the team record but has no cell row, so the seat-resolution path mirrors that row in
+   * once; the marker is what lets a reader tell the two histories apart.
+   */
+  adopted?: boolean
+  /**
+   * True when RUNTIME SEAT GROWTH created this row (`cellwork.seats.*`, wave W1 §4.1).
+   *
+   * OPTIONAL AND ADDITIVE, and `true` is the only value ever written — its ABSENCE is "the split or
+   * staging declared this member". Growth journals one `seat-grown` row per created seat and marks
+   * the row here so the operator surfaces can count grown seats without re-deriving the naming rule.
+   */
+  grown?: boolean
+}
+
+/** One injected checkpoint, recorded so a second injection for the same turn is suppressed. */
+export interface CellCheckpointRecord {
+  /** The member session the checkpoint was injected into. */
+  sessionId: string
+  /** ISO instant of the injection. */
+  at: string
+  /** The observed tokens that crossed the threshold, or null when the meter reported none. */
+  usedTokens: number | null
+  /** The window those tokens were measured against, or null when the meter reported none. */
+  contextWindow: number | null
+  /** The step ordinal the injection happened on, so re-entry can be told apart from a new turn. */
+  turn: number
+}
+
+/** The cell record: everything another invocation needs to continue this cell after a restart. */
+export interface CellState {
+  /** {@link CELLWORK_STATE_VERSION} at write time. */
+  version: number
+  /** `cell-<UTC instant>`, and the directory name inside the cell root. */
+  cellId: string
+  /** The lifecycle phase; `stopped` is terminal. */
+  phase: CellPhase
+  /** Whether the cell was archived by `cellwork_stop` (a stopped cell is archived; kept separately so
+   *  a future "stopped but re-openable" state does not have to reinterpret the phase). */
+  archived: boolean
+  /** The user's `/cellwork` argument, verbatim after trimming. */
+  objective: string
+  /** ISO instant the cell record was created. */
+  createdAt: string
+  /** ISO instant of the last accepted mutation. */
+  updatedAt: string
+  /** The session that ran `/cellwork` — the ONLY session the captain guard applies to. */
+  captainSessionId: string
+  /** Nesting level: 0 for the top cell, `parent + 1` for a sub-cell. */
+  depth: number
+  /** The cell that staged this one as its sub-team, or null for a top cell. */
+  parentCellId: string | null
+  /** The live team record this cell drives, or `""` until `cellwork_start` approved one. */
+  teamId: string
+  /**
+   * The STAGING team id, preserved when activation names a different execution board (§7.1).
+   *
+   * OPTIONAL AND ADDITIVE on disk: a record written before this field existed reads as `""`. When
+   * activation resolves the board its execution tasks actually live on and that id differs from the
+   * staging one, `teamId` becomes the execution board and the staging id lands here, so the planning
+   * team is never lost. A cell whose two ids are equal keeps this equal to `teamId`.
+   */
+  planningTeamId: string
+  /**
+   * The TEAM ID of the parent cell at the moment this cell was registered as its sub-cell, or `""`.
+   *
+   * THE CELL PLANE'S HALF OF THE NESTING (`cellwork` wave 4, contract D5). The team plane derives the
+   * sub-team's parent from its own roster — a promoted subcaptain is a MEMBER of the parent team, so
+   * approving its sub-team nests it without any argument — and this field is what makes that derivation
+   * auditable from the CELL side: it names the parent team the sub-cell belonged to, at registration,
+   * even after the parent cell's own record moves on.
+   */
+  parentTeamId: string
+  /** Sub-cells this cell registered, in registration order. */
+  subcellIds: string[]
+  /** The accepted requirements revision; 0 before the first `finalize`. */
+  requirementsRevision: number
+  /** The accepted split revision, or null while no split has been accepted. */
+  splitRevision: number | null
+  /**
+   * The BOARD ID of the split ticket this cell staged (contract C11), or `""`/absent when none is known.
+   *
+   * OPTIONAL AND ADDITIVE. Staging records it once the board answers, and every later lookup of "the
+   * split ticket" reads it FIRST, by owner second — so a ticket whose owner was lost still resolves, and
+   * a requirements update can mark the split stale and re-dispatch the SAME row (defect D2/D3). A record
+   * written before this field existed carries no key and falls back to the owner lookup.
+   */
+  splitTaskId?: string
+  /** The split revision MATERIALISED on the live team (null before the first activation). */
+  activatedRevision: number | null
+  /**
+   * The board id every split key of {@link CellState.activatedRevision} was materialised as.
+   *
+   * The re-split path reads this map to REUSE a live board row for work that survives a new revision
+   * instead of appending a duplicate, and to know which rows a later revision dropped. It is replaced
+   * on every activation (a key's board id never changes once minted).
+   */
+  activatedTasks: Record<string, string>
+  /**
+   * Split task key → verify-loop id, for every loop an ACTIVATION has opened.
+   *
+   * OPTIONAL AND ADDITIVE: a record written before this field existed reads as `{}`. The resume path
+   * reads it to open only the loops a failed pass did NOT open, and the success transition MERGES it
+   * (never replaces it), so a re-split keeps the loops its earlier revision armed.
+   */
+  activatedLoops?: Record<string, string>
+  /**
+   * The split revision whose materialisation is IN PROGRESS, or null when none is.
+   *
+   * OPTIONAL AND ADDITIVE. A partial activation records the accepted revision here, so a retry of the
+   * SAME revision resumes; {@link CellState.activatedRevision} stays null until the WHOLE
+   * materialisation succeeds, because that field is the refusal condition for a second activation.
+   */
+  activationInFlight?: number | null
+  /**
+   * The execution team a FAILED activation MINTED, or `""`/absent when no mint is in flight.
+   *
+   * WHY IT EXISTS (blind review H1): a pass that mints the execution team and then fails used to leave
+   * this id nowhere — the cell kept the ENDED planning team and the journal only wrote the mint on
+   * success. A retry then either minted a SECOND team (when no board row had landed yet) or, worse,
+   * resolved the ended planning record by its colliding `T<n>` board ids and appended to the dead board
+   * forever. The partial checkpoint records the minted id here, {@link CellState.teamId} moves with it,
+   * and every retry addresses THIS team first; a successful activation clears the marker.
+   */
+  mintedTeamId?: string
+  /**
+   * Split keys an activation CANCELLED, mapped to the board id their row still carries.
+   *
+   * Work a later revision DROPS is marked cancelled on the cell record and never deleted: the board
+   * row stays (this build has no cancel verb on the team plane), so the cell plane is where the
+   * cancellation is recorded and `cellwork_dispatch` skips these ids.
+   */
+  cancelledTasks: Record<string, string>
+  /** Set by a requirements update: the accepted split no longer matches the document. */
+  splitStale: boolean
+  /** ISO instant `cellwork_start` staged the planner team, or `""` before that. */
+  startedAt: string
+  /** Why the cell stopped; `""` while it is running. A forced stop records that here too. */
+  stopReason: string
+  /** Members by name; the guard resolves a non-captain session through this map first. */
+  members: Record<string, CellMemberRecord>
+  /** Injected checkpoints, oldest first. */
+  checkpoints: CellCheckpointRecord[]
+  /** How many journal entries were written when the record was last saved (history cursor). */
+  journalCursor: number
+}
+
+/** Why one cell could not be read; the caller reports the path and never resets the record. */
+export interface CellReadFailure {
+  /** Discriminator: every successful read carries `ok: true` instead. */
+  ok: false
+  /** `missing` is "no such cell"; the other three are refusals that must be surfaced verbatim. */
+  reason: "missing" | "corrupt" | "version" | "unreadable"
+  /** Absolute path of the record file that was read. */
+  path: string
+  /** One line naming what was wrong, for the tool result and the journal. */
+  detail: string
+}
+
+/** A successful read: the validated record plus the path it came from. */
+export interface CellReadSuccess {
+  /** Always true here; the failure shape carries `ok: false` plus the reason and the path instead. */
+  ok: true
+  /** The validated record. */
+  state: CellState
+  /** Absolute path of the record file. */
+  path: string
+}
+
+/** The result of reading one cell: a record, or the refusal that must be reported instead. */
+export type CellRead = CellReadSuccess | CellReadFailure
+
+/** A cell found by {@link readActiveCell}: the record and the directory it was read from. */
+export interface ActiveCell {
+  /** The validated record. */
+  state: CellState
+  /** Absolute path of the cell directory. */
+  dir: string
+}
+
+/** The result of scanning for the workspace's active cell: at most one cell, or a refusal. */
+export type ActiveCellRead =
+  | { ok: true; cell: ActiveCell | null }
+  | CellReadFailure
+
+/** What {@link newCellState} needs to mint a record. */
+export interface NewCellInput {
+  /** The generated cell id. */
+  cellId: string
+  /** The user's objective, already trimmed and known non-empty. */
+  objective: string
+  /** The session that ran `/cellwork`. */
+  captainSessionId: string
+  /** The instant of creation, which also stamps `createdAt`/`updatedAt`. */
+  now: Date
+  /** Nesting level; omitted means a top cell. */
+  depth?: number
+  /** The parent cell, when this one is a sub-cell. */
+  parentCellId?: string | null
+}
+
+/** The workspace's cell root: `<ws>/.mpd/cellwork`. */
+export function cellworkRoot(workspace: string): string {
+  return join(workspace, ...CELLWORK_ROOT_SEGMENTS)
+}
+
+/** The directory of one cell: `<ws>/.mpd/cellwork/<cellId>`. */
+export function cellDir(workspace: string, cellId: string): string {
+  return join(cellworkRoot(workspace), cellId)
+}
+
+/** The record path of one cell. */
+export function statePath(workspace: string, cellId: string): string {
+  return join(cellDir(workspace, cellId), CELL_STATE_FILE)
+}
+
+/** The journal path of one cell. */
+export function journalPath(workspace: string, cellId: string): string {
+  return join(cellDir(workspace, cellId), CELL_JOURNAL_FILE)
+}
+
+/** The requirements document path of one cell. */
+export function requirementsPath(workspace: string, cellId: string): string {
+  return join(cellDir(workspace, cellId), CELL_REQUIREMENTS_FILE)
+}
+
+/** One measured split's path: `split/<revision>.json`. */
+export function splitPath(workspace: string, cellId: string, revision: number): string {
+  return join(cellDir(workspace, cellId), CELL_SPLIT_DIR, String(revision) + ".json")
+}
+
+/**
+ * The path a REFUSED verdict takes: `split/<revision>.refused.json`, written on EVERY refusal.
+ *
+ * Amendment 6 R2 and contract C9: a refused same-revision resubmission must never destroy the accepted
+ * verdict on disk, and a refusal must always leave its findings behind even when no accepted file exists
+ * yet. Both hold because the refusal ALWAYS lands at this own path: the canonical `split/<revision>.json`
+ * stays the record of what was ACCEPTED, and `latestSplit` never mistakes a refusal for an acceptance.
+ *
+ * @param workspace - the workspace root the caller resolved through the adapter.
+ * @param cellId - the cell that owns the split.
+ * @param revision - the requirements revision the refused graph targeted.
+ * @returns the absolute path of the refusal document.
+ */
+export function refusedSplitPath(workspace: string, cellId: string, revision: number): string {
+  return join(cellDir(workspace, cellId), CELL_SPLIT_DIR, String(revision) + ".refused.json")
+}
+
+/** One task's frozen acceptance contract: `contracts/<taskKey>.md`. */
+export function contractPath(workspace: string, cellId: string, taskKey: string): string {
+  return join(cellDir(workspace, cellId), CELL_CONTRACTS_DIR, taskKey + ".md")
+}
+
+/** One handoff document: `handoff/<member>-<n>.md`. */
+export function handoffPath(workspace: string, cellId: string, member: string, ordinal: number): string {
+  return join(cellDir(workspace, cellId), CELL_HANDOFF_DIR, member + "-" + String(ordinal) + ".md")
+}
+
+/** A cell id for one instant: `cell-<YYYYMMDDTHHMMSSmmmZ>`. */
+export function cellIdAt(now: Date): string {
+  return "cell-" + now.toISOString().replace(/[-:.]/g, "")
+}
+
+/**
+ * A cell id that no directory in this workspace already uses.
+ *
+ * THE MILLISECOND IS NOT ENOUGH. A stop followed immediately by a new start can land inside the same
+ * millisecond, and reusing the id would OVERWRITE the archived cell's record — the one thing "archived,
+ * not deleted" must never do. So the candidate instant is advanced one millisecond at a time until the
+ * directory is free; after a thousand tries (unreachable in practice) a random suffix is appended so the
+ * function still answers an id instead of throwing inside a command handler.
+ *
+ * @param workspace - the workspace root the caller resolved through the adapter.
+ * @param now - the instant the cell is being created at.
+ * @returns an unused cell id whose prefix is still the UTC instant.
+ */
+export function freeCellId(workspace: string, now: Date): string {
+  /** The candidate instant, advanced only when its id is taken. */
+  let instant = now.getTime()
+  for (let attempt = 0; attempt < 1000; attempt++) {
+    /** The id the current instant encodes. */
+    const candidate = cellIdAt(new Date(instant))
+    if (!existsSync(cellDir(workspace, candidate))) return candidate
+    instant += 1
+  }
+  return cellIdAt(new Date(now.getTime())) + "-" + Math.random().toString(36).slice(2, 8)
+}
+
+/** A fresh record for a cell that has not started anything yet. */
+export function newCellState(input: NewCellInput): CellState {
+  /** The creation instant as the one ISO string every timestamp field starts from. */
+  const stamp = input.now.toISOString()
+  return {
+    version: CELLWORK_STATE_VERSION,
+    cellId: input.cellId,
+    phase: "requirements",
+    archived: false,
+    objective: input.objective,
+    createdAt: stamp,
+    updatedAt: stamp,
+    captainSessionId: input.captainSessionId,
+    depth: input.depth ?? 0,
+    parentCellId: input.parentCellId ?? null,
+    teamId: "",
+    // No team has been approved yet, so there is no staging team to preserve either.
+    planningTeamId: "",
+    // A cell is registered before it has its own team, and a TOP cell has no parent team at all; the
+    // sub-cell's value is stamped by `cellwork_subteam` from the parent's live team id.
+    parentTeamId: "",
+    subcellIds: [],
+    requirementsRevision: 0,
+    splitRevision: null,
+    splitTaskId: "",
+    activatedRevision: null,
+    activatedTasks: {},
+    activatedLoops: {},
+    activationInFlight: null,
+    // No mint is in flight until a failed activation records one (blind review H1).
+    mintedTeamId: "",
+    cancelledTasks: {},
+    splitStale: false,
+    startedAt: "",
+    stopReason: "",
+    members: {},
+    checkpoints: [],
+    journalCursor: 0,
+  }
+}
+
+/**
+ * The cell ids under one workspace's cell root, sorted ascending.
+ *
+ * A cell id starts with its UTC instant, so ascending order is creation order and "-1 means absent"
+ * for {@link readActiveCell}: the OLDEST still-active cell is the one the mode reports.
+ *
+ * @param workspace - the workspace root the caller resolved through the adapter.
+ * @returns the directory names that look like cells; `[]` when the root does not exist yet.
+ */
+export function listCellIds(workspace: string): string[] {
+  /** The cell root, which may not exist at all before the first `/cellwork`. */
+  const root = cellworkRoot(workspace)
+  if (!existsSync(root)) return []
+  try {
+    return readdirSync(root, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && entry.name.startsWith("cell-"))
+      .map((entry) => entry.name)
+      .sort()
+  } catch {
+    return []
+  }
+}
+
+/** Read one cell record, validating its shape and schema version. */
+export function readCell(workspace: string, cellId: string): CellRead {
+  /** The absolute record path every failure below names. */
+  const path = statePath(workspace, cellId)
+  if (!existsSync(path)) return { ok: false, reason: "missing", path, detail: "no state file at this path" }
+  /** The file's text, or the I/O failure that replaces the record. */
+  let text: string
+  try {
+    text = readFileSync(path, "utf8")
+  } catch (error) {
+    return { ok: false, reason: "unreadable", path, detail: errorText(error) }
+  }
+  /** The parsed JSON, or undefined when the file is not JSON at all. */
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(text)
+  } catch (error) {
+    return { ok: false, reason: "corrupt", path, detail: "not valid JSON: " + errorText(error) }
+  }
+  /** The record's schema version as declared, before any validation. */
+  const declaredVersion = isRecord(parsed) ? parsed.version : undefined
+  if (typeof declaredVersion === "number" && declaredVersion !== CELLWORK_STATE_VERSION) {
+    return {
+      ok: false,
+      reason: "version",
+      path,
+      detail: "state version " + String(declaredVersion) + " is not the version this build reads (" + String(CELLWORK_STATE_VERSION) + ")",
+    }
+  }
+  /** The validated record, or null when a required field is missing or the wrong TYPE. */
+  const state = normalizeCellState(parsed)
+  if (state === null) return { ok: false, reason: "corrupt", path, detail: "the record does not have the shape of a cell state" }
+  return { ok: true, state, path }
+}
+
+/**
+ * Write one cell record atomically, creating the cell directory and every subdirectory it owns.
+ *
+ * @param workspace - the workspace root the caller resolved through the adapter.
+ * @param state - the record to persist; `updatedAt` and `version` are stamped here.
+ * @returns the record as written, so a caller can report the instant the file actually carries.
+ */
+export function writeCell(workspace: string, state: CellState): CellState {
+  /** The cell directory this record lives in. */
+  const dir = cellDir(workspace, state.cellId)
+  for (const sub of ["", CELL_SPLIT_DIR, CELL_CONTRACTS_DIR, CELL_HANDOFF_DIR]) {
+    mkdirSync(sub === "" ? dir : join(dir, sub), { recursive: true })
+  }
+  /** The record with the write instant applied, so no caller has to remember to stamp it. */
+  const stamped: CellState = { ...state, version: CELLWORK_STATE_VERSION, updatedAt: new Date().toISOString() }
+  atomicWriteText(statePath(workspace, state.cellId), JSON.stringify(stamped, null, 2) + "\n")
+  return stamped
+}
+
+/**
+ * The last observed shape of ONE journal file, so an append can answer its cursor without re-reading.
+ *
+ * The size is the consistency token: a writer that finds the file UNCHANGED since its own last append
+ * knows the exact line count this process wrote, which is what makes the append O(1) at 32 concurrent
+ * agents. A foreign writer (another process, a hand edit) moves the size, and the derivation path below
+ * re-derives the count ONCE instead of guessing.
+ */
+interface JournalCursorCache {
+  /** The file size in bytes AFTER the append this cache describes. */
+  size: number
+  /** The number of NON-EMPTY lines the file held at that size. */
+  lines: number
+  /** Whether the file ended with a newline at that size; without one the next append extends the last line. */
+  endsWithNewline: boolean
+}
+
+/** The in-process cursor cache, keyed by the journal's absolute path. */
+const journalCursors = new Map<string, JournalCursorCache>()
+
+/**
+ * The size of one file in bytes, or 0 when it does not exist.
+ *
+ * Total on purpose: an absent journal is the state just before the first append, and any other I/O
+ * failure must fall through to the derivation path rather than escaping `appendJournal`.
+ *
+ * @param path - the absolute journal path.
+ * @returns the byte size, or 0 when it cannot be read.
+ */
+function journalSize(path: string): number {
+  try {
+    return statSync(path).size
+  } catch {
+    return 0
+  }
+}
+
+/**
+ * Append one journal entry to the cell's history, and answer the new line count.
+ *
+ * The entry is stamped with its own `at` instant. The journal is NOT the state: a torn last line
+ * costs one history row, never the record, which is why nothing reads it back to make decisions.
+ *
+ * THE COUNT IS O(1) IN THE COMMON CASE (wave W1 §4.3). The old body re-read the whole file after every
+ * append to count its lines, which is O(n) per row and quadratic across a 32-agent board. The cursor now
+ * comes from a per-process cache keyed by the file's observed SIZE: an append that finds the file exactly
+ * as this process left it answers `lines + 1` (or `lines` when the previous tail had no newline), and only
+ * an unknown base — the first append in this process, a foreign writer, a torn tail — re-derives the count
+ * with ONE read. The answer is semantically identical to the old one: the number of non-empty lines.
+ *
+ * @param workspace - the workspace root the caller resolved through the adapter.
+ * @param cellId - the cell whose journal is appended.
+ * @param entry - the caller's fields; `at` is added here and wins over any caller value.
+ * @param now - the instant to stamp, injected so tests are deterministic.
+ * @returns the number of journal lines after the append, or 0 when the append failed.
+ */
+export function appendJournal(workspace: string, cellId: string, entry: Record<string, unknown>, now: Date): number {
+  /** The journal path, whose directory the record write has normally created already. */
+  const path = journalPath(workspace, cellId)
+  /** The exact bytes this append adds, so the post-append size can be checked without trusting the write. */
+  const line = JSON.stringify({ at: now.toISOString(), ...entry }) + "\n"
+  try {
+    mkdirSync(dirname(path), { recursive: true })
+    /** The size the cache is compared against, taken BEFORE the write. */
+    const before = journalSize(path)
+    appendFileSync(path, line, "utf8")
+    /** The size after the write; equal to `before + lineBytes` unless a foreign writer interleaved. */
+    const after = journalSize(path)
+    /** The cache entry this process holds, when it holds one. */
+    const cached = journalCursors.get(path)
+    /** The bytes the appended line occupies in UTF-8. */
+    const lineBytes = Buffer.byteLength(line, "utf8")
+    if (cached !== undefined && cached.size === before && after === before + lineBytes) {
+      // THE KNOWN CASE: the file is exactly what this process last saw, so the previous count plus this
+      // row is exact. A tail without a newline means this row EXTENDED the last line instead of adding one.
+      /** The line count after this append. */
+      const lines = cached.lines + (cached.endsWithNewline ? 1 : 0)
+      journalCursors.set(path, { size: after, lines, endsWithNewline: true })
+      return lines
+    }
+    // THE UNKNOWN CASE (derive ONCE): read the file and count exactly as the old body did. This is what
+    // keeps every existing journal correct — a cell whose counter is absent derives it here, and a foreign
+    // writer's rows are counted rather than assumed.
+    /** The file's full text, after this append. */
+    const text = readFileSync(path, "utf8")
+    /** The number of non-empty lines, which is the cursor every caller has always received. */
+    const lines = text.split("\n").filter((row) => row.trim() !== "").length
+    journalCursors.set(path, { size: after, lines, endsWithNewline: text.endsWith("\n") })
+    return lines
+  } catch {
+    return 0
+  }
+}
+
+/**
+ * The team-service slice the board resolver reads — structururally, so `state.ts` stays free of a
+ * service import and an older composition that lacks a member degrades instead of failing a boot.
+ */
+export interface BoardTeamService {
+  /** One team record by id, or undefined for an unknown/unreadable id. */
+  get?: (workspace: string, teamId: string) => unknown
+  /** The team bound to one session by the PLANE's own resolution (the path a dispatch pass uses). */
+  active?: (workspace: string, sessionId?: string) => unknown
+  /** Every team this workspace holds, NEWEST first. */
+  list?: (workspace: string) => unknown
+}
+
+/** What {@link resolveCellTeam} needs: the workspace, the record being read and the two read seams. */
+export interface CellTeamResolutionDeps {
+  /** The workspace root the caller resolved through the adapter. */
+  workspace: string
+  /** The cell record's board-shaped fields; a `Pick` so a partial record can be resolved too. */
+  cell: Pick<CellState, "cellId" | "teamId" | "planningTeamId" | "captainSessionId" | "activatedTasks" | "mintedTeamId">
+  /** The team service, probed per call; absent means the record's own ids are the only evidence. */
+  teams?: BoardTeamService
+  /**
+   * Read one team record by id, when the row's own service view has no `get`.
+   *
+   * Total by contract: an unreadable record answers undefined and the resolution falls through rather
+   * than throwing on a render path.
+   */
+  recordFor?: (teamId: string) => Record<string, unknown> | undefined
+}
+
+/** Which evidence named the team {@link resolveCellTeam} answered with. */
+export type CellTeamResolutionSource = "minted" | "state.teamId" | "plane" | "activated-tasks" | "planningTeamId" | "none"
+
+/**
+ * The team phases a LIVE append may still target — team-core's own live set.
+ *
+ * TYPED AGAINST `TeamPhase` (blind review N1), and asserted equal to team-core's `LIVE_TEAM_PHASES` at
+ * runtime by `test/resolve-cell-team.test.ts`: a phase widened upstream reddens that arm instead of
+ * silently becoming "terminal" here.
+ */
+export const LIVE_CELL_TEAM_PHASES: readonly TeamPhase[] = ["staged", "active", "idle"]
+
+/**
+ * Whether one team record is TERMINAL and therefore never a landing target (blind review H1/M2).
+ *
+ * The clean-terminal auto-end stamps `endedAt` and the `ended` phase, but a fresh execution team numbers
+ * its board from `T1` — the SAME ids the ended planning board carries — so an id-only match cannot tell
+ * the two boards apart. Callers that hold the minted id bypass this check explicitly; every OTHER
+ * candidate is rejected here.
+ *
+ * @param record - one readable team record.
+ * @returns true when the record carries `endedAt` or a phase outside {@link LIVE_CELL_TEAM_PHASES}.
+ */
+export function isTerminalTeamRecord(record: Record<string, unknown>): boolean {
+  if ("endedAt" in record && record.endedAt !== undefined) return true
+  /** The phase the record spells, defaulting to the live spelling when it carries none (team-core's read). */
+  const phase = "phase" in record && typeof record.phase === "string" && record.phase !== "" ? record.phase : "active"
+  // The list is narrowed to `string` for the membership test: `phase` comes from an untrusted record and
+  // is NOT known to be a `TeamPhase` until this check — that is what the check is for.
+  return !(LIVE_CELL_TEAM_PHASES as readonly string[]).includes(phase)
+}
+
+/** One board resolution: the team the cell's board is CURRENTLY on, plus the evidence behind it. */
+export interface CellTeamResolution {
+  /** The resolved team id, or "" when no team resolved. */
+  teamId: string
+  /** The resolved team's live record, or undefined when it could not be read. */
+  record?: Record<string, unknown>
+  /** Which evidence won (`none` when nothing resolved). */
+  resolution: CellTeamResolutionSource
+  /** The id the CELL RECORD names (`teamId`), preserved for the disagreement report. */
+  recordedTeamId: string
+  /** The id the record preserved as the staging team, or "". */
+  planningTeamId: string
+  /** The id the PLANE resolved for the captain session, or "" when it named none. */
+  planeTeamId: string
+  /** Whether the record and the winning resolution name DIFFERENT teams. */
+  disagreement: boolean
+  /** The sentence naming both ids and the resolution that won; present whenever they disagree. */
+  note?: string
+}
+
+/**
+ * Read one team record through whichever seam the caller exposed.
+ *
+ * @param deps - the resolution's seams.
+ * @param teamId - the id to read; "" answers undefined without touching a seam.
+ * @returns the record, or undefined.
+ */
+function teamRecordOf(deps: CellTeamResolutionDeps, teamId: string): Record<string, unknown> | undefined {
+  if (teamId === "") return undefined
+  /** A record handed back by the caller's own reader, which wins over a service read. */
+  let record: unknown
+  try {
+    record = deps.recordFor?.(teamId)
+  } catch {
+    record = undefined
+  }
+  if (record === undefined) {
+    try {
+      record = deps.teams?.get?.(deps.workspace, teamId)
+    } catch {
+      record = undefined
+    }
+  }
+  return typeof record === "object" && record !== null && !Array.isArray(record) ? record as Record<string, unknown> : undefined
+}
+
+/**
+ * The task rows of one team record, read defensively.
+ *
+ * @param record - the team record.
+ * @returns the rows that are objects, in board order.
+ */
+function teamTaskRows(record: Record<string, unknown> | undefined): Array<Record<string, unknown>> {
+  if (record === undefined || !Array.isArray(record.tasks)) return []
+  return record.tasks.filter((row): row is Record<string, unknown> => typeof row === "object" && row !== null)
+}
+
+/**
+ * Whether one team record carries ANY of the board ids this cell's activation minted.
+ *
+ * With no activated ids (a cell that never materialised a split) there is nothing to contradict, so
+ * the answer is true and the record is accepted on the strength of the id.
+ *
+ * @param record - the candidate team record.
+ * @param activatedIds - every board id the cell's `activatedTasks` maps to.
+ * @returns true when the record may be presented as this cell's board.
+ */
+function holdsActivatedTask(record: Record<string, unknown>, activatedIds: ReadonlySet<string>): boolean {
+  if (activatedIds.size === 0) return true
+  return teamTaskRows(record).some((task) => typeof task.id === "string" && activatedIds.has(task.id))
+}
+
+/**
+ * The team this cell's board is CURRENTLY on — the ONE resolution every reader uses (§7.1/§7.1a).
+ *
+ * THE RESOLUTION IS EVIDENCE-FIRST, and the record's own `teamId` is only the FAST PATH:
+ *   0. `mintedTeamId`, the execution team a FAILED activation created (H1): it is the only evidence that
+ *      tells a fresh board from the ended planning board it replaced, because both number rows from `T1`.
+ *      It is returned on its own authority, even when its phase reads terminal (explicit hit).
+ *   1. `teamId`'s record, accepted when it carries one of the cell's `activatedTasks` board ids (or when
+ *      the cell has no activated ids to check) AND it is not TERMINAL. This keeps the hot path — one
+ *      `get` — cheap for a healthy cell, which is what lets the guard call it on every tool dispatch.
+ *   2. when the fast path cannot be VERIFIED (the field defect: `teamId` names the ended planning team),
+ *      the PLANE's own resolution for the cell's captain session — the exact path `cellwork_dispatch`
+ *      uses — accepted under the same activated-task check.
+ *   3. the live team whose board carries the cell's activated ids, found by scanning `list()`; this is
+ *      what makes a legacy cell show its REAL board with no migration and no state rewrite.
+ *   4. `planningTeamId` as the legacy fallback, accepted under the same check.
+ * `none` answers with no record rather than presenting a planning team the cell never worked on.
+ *
+ * DISAGREEMENT IS REPORTED, NEVER SILENT: whenever the winning id differs from the record's `teamId`,
+ * or the plane names a different team, the answer carries BOTH ids and the resolution that won.
+ *
+ * @param deps - the workspace, the record and the read seams.
+ * @returns the resolution; total, never throws.
+ */
+export function resolveCellTeam(deps: CellTeamResolutionDeps): CellTeamResolution {
+  /** The id the cell record names (the fast path). */
+  const recorded = typeof deps.cell.teamId === "string" ? deps.cell.teamId : ""
+  /** The execution team a FAILED activation MINTED, when the partial checkpoint recorded one (H1). */
+  const minted = typeof deps.cell.mintedTeamId === "string" ? deps.cell.mintedTeamId : ""
+  /** The id the record preserved as its staging team, when activation learned a different board. */
+  const planning = typeof deps.cell.planningTeamId === "string" ? deps.cell.planningTeamId : ""
+  /** Every board id the cell's activation minted, which is the evidence a candidate must satisfy. */
+  const activatedIds = new Set(Object.values(deps.cell.activatedTasks ?? {}).filter((id): id is string => typeof id === "string" && id !== ""))
+  // 0. THE MINTED TEAM IS THE FIRST CANDIDATE (blind review H1). A failed pass recorded the team it
+  // created, and that id is the ONLY evidence that distinguishes the fresh board from the ended planning
+  // board it replaced: both number their rows from `T1`, so an id-only match cannot. It is accepted on
+  // its own authority even when its phase reads terminal — the caller asked for THAT board explicitly,
+  // and its write reports what it finds there.
+  /** The minted id's record, when one is recorded. */
+  const mintedRecord = minted === "" ? undefined : teamRecordOf(deps, minted)
+  /** The fast-path record, when the recorded id is readable at all. */
+  const recordedRecord = teamRecordOf(deps, recorded)
+  /** Whether the recorded record is readable but TERMINAL, which is its own rejection reason. */
+  const recordedTerminal = recordedRecord !== undefined && isTerminalTeamRecord(recordedRecord)
+  /** The plane's binding for this cell's captain, read only when the fast path cannot be verified. */
+  let planeId = ""
+  /** The plane's record for that binding. */
+  let planeRecord: Record<string, unknown> | undefined
+  /** The resolution being built: the winner's id, record and evidence. */
+  let chosen: { id: string; record?: Record<string, unknown>; source: CellTeamResolutionSource } | undefined
+  if (minted !== "") chosen = { id: minted, record: mintedRecord, source: "minted" }
+  // 1. THE FAST PATH, VERIFIED. A record that carries this cell's own minted board ids is the board,
+  // full stop; the plane read below is then skipped, which keeps the guard's per-dispatch resolution to
+  // the same single read it always paid. A TERMINAL record is never this path (blind review H1/M2).
+  if (chosen === undefined && recordedRecord !== undefined && !recordedTerminal && holdsActivatedTask(recordedRecord, activatedIds)) {
+    chosen = { id: recorded, record: recordedRecord, source: "state.teamId" }
+  }
+  /** Whether the fast path failed the activated-task check (as opposed to being unreadable). */
+  const recordedRejected = recordedRecord !== undefined && chosen === undefined
+  // 2. THE PLANE, the path a dispatch pass uses. It is read whenever the fast path did not verify.
+  if (chosen === undefined) {
+    /** The plane's answer, read as an untrusted value. */
+    let answer: unknown
+    try {
+      answer = deps.teams?.active?.(deps.workspace, deps.cell.captainSessionId)
+    } catch {
+      answer = undefined
+    }
+    if (typeof answer === "object" && answer !== null && !Array.isArray(answer)) {
+      /** The answer as a record; it IS a team record for the real service. */
+      const plane = answer as Record<string, unknown>
+      planeId = typeof plane.teamId === "string" ? plane.teamId : ""
+      // THE ANSWER IS THE RECORD when it carries a board; a thinner answer (an older service view that
+      // names only the id) is read back through `get`, so the activated-task check sees the real board.
+      planeRecord = Array.isArray(plane.tasks) ? plane : teamRecordOf(deps, planeId)
+    }
+    if (planeId !== "" && planeRecord !== undefined && !isTerminalTeamRecord(planeRecord) && holdsActivatedTask(planeRecord, activatedIds)) {
+      chosen = { id: planeId, record: planeRecord, source: "plane" }
+    }
+  }
+  // 3. THE ACTIVATED TASK IDS, scanned across every live team — the legacy path. The scan is skipped for
+  // a cell with no minted ids (nothing to find) and for one already resolved.
+  if (chosen === undefined && activatedIds.size > 0) {
+    /** Every team the workspace holds, read defensively. */
+    let rows: unknown
+    try {
+      rows = deps.teams?.list?.(deps.workspace)
+    } catch {
+      rows = undefined
+    }
+    /** The best candidate: the record carrying the MOST of the cell's board ids. */
+    let best: { id: string; record: Record<string, unknown> } | undefined
+    /** The best candidate's match count. */
+    let bestCount = 0
+    for (const row of Array.isArray(rows) ? rows : []) {
+      if (typeof row !== "object" || row === null || Array.isArray(row)) continue
+      /** The candidate record. */
+      const record = row as Record<string, unknown>
+      /** Its id, which names it in every report. */
+      const id = typeof record.teamId === "string" ? record.teamId : ""
+      if (id === "" || id === recorded && recordedRejected) continue
+      // A TERMINAL candidate is never a landing target (blind review H1/M2): its board ids may match this
+      // cell's only because every fresh team renumbers from `T1`.
+      if (isTerminalTeamRecord(record)) continue
+      /** How many of the cell's board ids it carries. */
+      const count = teamTaskRows(record).filter((task) => typeof task.id === "string" && activatedIds.has(task.id)).length
+      if (count > bestCount) {
+        best = { id, record }
+        bestCount = count
+      }
+    }
+    if (best !== undefined) chosen = { id: best.id, record: best.record, source: "activated-tasks" }
+  }
+  // 4. THE PLANNING TEAM, as the legacy fallback: presented ONLY when it passes the same activated-task
+  // check (a planning team whose board is not this cell's work is never shown).
+  if (chosen === undefined && planning !== "" && planning !== recorded) {
+    /** The staging record, when it is readable. */
+    const planningRecord = teamRecordOf(deps, planning)
+    if (planningRecord !== undefined && !isTerminalTeamRecord(planningRecord) && holdsActivatedTask(planningRecord, activatedIds)) chosen = { id: planning, record: planningRecord, source: "planningTeamId" }
+  }
+  // 5. NOTHING RESOLVED. The record is NOT presented: nothing proves it is this cell's board.
+  /** The resolved id, or "". */
+  const resolvedId = chosen?.id ?? ""
+  /** Whether the record and the resolution name different teams. */
+  const disagreement = (resolvedId !== "" && recorded !== "" && resolvedId !== recorded) || (planeId !== "" && recorded !== "" && planeId !== recorded)
+  /** The disagreement sentence, naming both ids and the resolution that won; absent when nothing disagrees. */
+  let note: string | undefined
+  if (disagreement) {
+    note = "the cell record names team " + JSON.stringify(recorded) + " while the " + (chosen?.source ?? "none") + " resolution names " + JSON.stringify(resolvedId === "" ? planeId : resolvedId) + (resolvedId === "" ? " (no team could be verified)" : " — the " + (chosen?.source ?? "none") + " board is reported")
+    if (recordedRejected) note += recordedTerminal
+      ? "; the recorded team is TERMINAL (an `endedAt` stamp or a non-live phase), so it is never a landing target"
+      : "; the recorded team's board holds none of this cell's activated tasks (" + [...activatedIds].join(", ") + ")"
+  } else if (recordedRejected && chosen === undefined) {
+    note = "the cell record names team " + JSON.stringify(recorded) + (recordedTerminal
+      ? " which is TERMINAL (an `endedAt` stamp or a non-live phase), so it is never a landing target"
+      : " whose board holds none of this cell's activated tasks (" + [...activatedIds].join(", ") + ")") + ", and no live team could be verified — no board is reported"
+  }
+  return {
+    teamId: resolvedId,
+    ...(chosen?.record === undefined ? {} : { record: chosen.record }),
+    resolution: chosen?.source ?? "none",
+    recordedTeamId: recorded,
+    planningTeamId: planning,
+    planeTeamId: planeId,
+    disagreement,
+    ...(note === undefined ? {} : { note }),
+  }
+}
+
+/**
+ * Read the OLDEST cell that is not stopped — the cell this workspace is currently running.
+ *
+ * A cell DIRECTORY whose record cannot be read is a REFUSAL rather than "no active cell": the mode
+ * may well be running, and reporting it absent would silently reset the guard and let a second cell
+ * start on top of a record nobody can read.
+ *
+ * @param workspace - the workspace root the caller resolved through the adapter.
+ * @returns the active cell (or `null`), or the refusal naming the unreadable record's path.
+ */
+export function readActiveCell(workspace: string): ActiveCellRead {
+  for (const cellId of listCellIds(workspace)) {
+    /** That cell's record, or the refusal this scan stops on. */
+    const read = readCell(workspace, cellId)
+    if (!read.ok) {
+      // `missing` is a directory with no record — an interrupted creation. It is still a refusal:
+      // the honest answer is "this cell cannot be read", not "the workspace has no cell".
+      return read
+    }
+    if (read.state.phase !== "stopped") return { ok: true, cell: { state: read.state, dir: cellDir(workspace, cellId) } }
+  }
+  return { ok: true, cell: null }
+}
+
+/**
+ * Append one journal entry and persist the record with its updated history cursor.
+ *
+ * The append happens FIRST and the record second: a torn journal costs one history line, while a record
+ * written before its journal would claim a transition with no history behind it. Every phase change in
+ * this package goes through here, so no caller has to remember the cursor.
+ *
+ * @param workspace - the workspace root the caller resolved through the adapter.
+ * @param next - the record after the transition.
+ * @param entry - the journal fields (an `event` plus whatever the transition wants recorded).
+ * @param now - the instant to stamp.
+ * @returns the record as persisted.
+ */
+export function recordTransition(workspace: string, next: CellState, entry: Record<string, unknown>, now: Date): CellState {
+  /** The journal line count after the append, or 0 when the append failed. */
+  const lines = appendJournal(workspace, next.cellId, entry, now)
+  /** The record carrying the cursor this append established. */
+  const stamped: CellState = { ...next, journalCursor: lines > 0 ? lines : next.journalCursor }
+  return writeCell(workspace, stamped)
+}
+
+/**
+ * Write one cell to a temporary file in the SAME directory, then rename it over the target.
+ *
+ * The rename is the commit point: a reader either sees the previous record or the new one, never a
+ * half-written file. A failed rename removes the temporary file so a refused write leaves no debris.
+ *
+ * @param file - the absolute target path.
+ * @param text - the complete file body.
+ */
+export function atomicWriteText(file: string, text: string): void {
+  /** The sibling temporary path; unique per process and call so two writers cannot collide. */
+  const tmp = join(dirname(file), "." + file.split("/").pop() + ".tmp-" + String(process.pid) + "-" + String(tempCounter++))
+  mkdirSync(dirname(file), { recursive: true })
+  try {
+    writeFileSync(tmp, text, "utf8")
+    renameSync(tmp, file)
+  } catch (error) {
+    try {
+      unlinkSync(tmp)
+    } catch {
+      // Nothing to clean: the temporary file was never created, which is why the write failed.
+    }
+    throw error
+  }
+}
+
+/** Distinguishes concurrent temporary files inside this process. */
+let tempCounter = 0
+
+/** Whether a parsed JSON value is a plain object, which is the only shape a record can have. */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+/** A message from an unknown thrown value, without assuming it is an Error. */
+function errorText(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
+/** One non-empty string field, or undefined when the value is not a non-empty string. */
+function textField(value: unknown): string | undefined {
+  return typeof value === "string" && value !== "" ? value : undefined
+}
+
+/** One member record, defaulted field by field so a partially written member cannot crash the guard. */
+function normalizeMember(name: string, raw: unknown): CellMemberRecord | null {
+  if (!isRecord(raw)) return null
+  /** The mode, defaulted to the least-privileged mode the guard treats as "ordinary member". */
+  const mode = CELL_MEMBER_MODES.find((candidate) => candidate === raw.mode) ?? "member"
+  return {
+    name: textField(raw.name) ?? name,
+    role: typeof raw.role === "string" ? raw.role : "",
+    sessionId: typeof raw.sessionId === "string" ? raw.sessionId : "",
+    executorRef: typeof raw.executorRef === "string" ? raw.executorRef : "",
+    mode,
+    handoffReady: raw.handoffReady === true,
+    handoffs: typeof raw.handoffs === "number" ? raw.handoffs : 0,
+    // ADDITIVE AND PRESERVED, not defaulted: a fence written by the barrier must survive every read, and
+    // a record that never carried one must not grow `fenced: false` (its ABSENCE is the "not fenced" fact).
+    ...(raw.fenced === true ? { fenced: true } : {}),
+    ...(typeof raw.fencedReason === "string" ? { fencedReason: raw.fencedReason } : {}),
+    // ADDITIVE AND PRESERVED for the same reason as `fenced` (R4.3): the checkpoint window's clock and
+    // the barrier's failure count drive the forced-unfence predicate, so a read that dropped them would
+    // reset a stuck seat's bound on every restart. A count of ZERO is not a fact (absent means "no failed
+    // run has been recorded"), so it is dropped rather than persisted as `0`.
+    ...(textField(raw.checkpointSince) === undefined ? {} : { checkpointSince: raw.checkpointSince as string }),
+    ...(typeof raw.barrierFailures === "number" && Number.isFinite(raw.barrierFailures) && raw.barrierFailures > 0 ? { barrierFailures: Math.floor(raw.barrierFailures) } : {}),
+    joinedAt: typeof raw.joinedAt === "string" ? raw.joinedAt : "",
+    // ADDITIVE AND PRESERVED for the same reason as `fenced`: an adopted row must still read as adopted
+    // after a restart, and a row activation created must not grow `adopted: false`.
+    ...(raw.adopted === true ? { adopted: true } : {}),
+    // ADDITIVE AND PRESERVED for the same reason: a seat created by runtime growth (§4.1) must still be
+    // counted as grown after a restart, and a declared row must not grow `grown: false`.
+    ...(raw.grown === true ? { grown: true } : {}),
+  }
+}
+
+/** One string-valued map, keeping only the entries whose value is a string (a board id). */
+function stringMap(value: unknown): Record<string, string> {
+  /** The validated map. */
+  const kept: Record<string, string> = {}
+  if (!isRecord(value)) return kept
+  for (const [key, entry] of Object.entries(value)) {
+    if (typeof entry === "string") kept[key] = entry
+  }
+  return kept
+}
+
+/**
+ * Validate one parsed value as a cell record, filling every COLLECTION with its empty default.
+ *
+ * Identity fields are strict (`version`, `cellId`, `phase`, `captainSessionId`): a record that does
+ * not name its own cell or its captain cannot be trusted to decide who is guarded, so it is refused.
+ * Optional collections are defaulted instead of refused, because losing `checkpoints` must not cost
+ * the whole cell.
+ *
+ * @param raw - the parsed JSON value.
+ * @returns the record, or null when an identity field is missing or of the wrong type.
+ */
+function normalizeCellState(raw: unknown): CellState | null {
+  if (!isRecord(raw)) return null
+  /** The cell's own id, which is also its directory name. */
+  const cellId = textField(raw.cellId)
+  /** The phase, matched against the complete set rather than trusted as a string. */
+  const phase = CELL_PHASES.find((candidate) => candidate === raw.phase)
+  /** The captain session id, which is the key the guard's captain arm matches on. */
+  const captainSessionId = textField(raw.captainSessionId)
+  if (cellId === undefined || phase === undefined || captainSessionId === undefined) return null
+  if (typeof raw.version !== "number") return null
+  /** The members map, kept only for entries that normalize. */
+  const members: Record<string, CellMemberRecord> = {}
+  if (isRecord(raw.members)) {
+    for (const [name, value] of Object.entries(raw.members)) {
+      /** That member, or null when the entry is not an object at all. */
+      const member = normalizeMember(name, value)
+      if (member !== null) members[name] = member
+    }
+  }
+  /** The checkpoint history, kept only for entries that name a session and an instant. */
+  const checkpoints: CellCheckpointRecord[] = Array.isArray(raw.checkpoints)
+    ? raw.checkpoints.filter(isRecord).map((entry) => ({
+      sessionId: typeof entry.sessionId === "string" ? entry.sessionId : "",
+      at: typeof entry.at === "string" ? entry.at : "",
+      usedTokens: typeof entry.usedTokens === "number" ? entry.usedTokens : null,
+      contextWindow: typeof entry.contextWindow === "number" ? entry.contextWindow : null,
+      turn: typeof entry.turn === "number" ? entry.turn : 0,
+    }))
+    : []
+  return {
+    version: CELLWORK_STATE_VERSION,
+    cellId,
+    phase,
+    archived: raw.archived === true,
+    objective: typeof raw.objective === "string" ? raw.objective : "",
+    createdAt: typeof raw.createdAt === "string" ? raw.createdAt : "",
+    updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : "",
+    captainSessionId,
+    depth: typeof raw.depth === "number" ? raw.depth : 0,
+    parentCellId: typeof raw.parentCellId === "string" ? raw.parentCellId : null,
+    teamId: typeof raw.teamId === "string" ? raw.teamId : "",
+    // TOLERANT READ: a record written before §7.1 carries no key, and reads as "no separate staging
+    // team" — never as a reason to refuse the record.
+    planningTeamId: typeof raw.planningTeamId === "string" ? raw.planningTeamId : "",
+    // TOLERANT READ: a record written before nested teams existed carries no key, and reads as "no parent
+    // team" rather than as a broken record — the whole nesting feature is additive on both planes.
+    parentTeamId: typeof raw.parentTeamId === "string" ? raw.parentTeamId : "",
+    subcellIds: Array.isArray(raw.subcellIds) ? raw.subcellIds.map(String) : [],
+    requirementsRevision: typeof raw.requirementsRevision === "number" ? raw.requirementsRevision : 0,
+    splitRevision: typeof raw.splitRevision === "number" ? raw.splitRevision : null,
+    // TOLERANT READ: a record written before the split ticket's id was recorded carries no key, and the
+    // readers fall back to finding the ticket by its owner (contract C11) instead of refusing the record.
+    splitTaskId: typeof raw.splitTaskId === "string" ? raw.splitTaskId : "",
+    activatedRevision: typeof raw.activatedRevision === "number" ? raw.activatedRevision : null,
+    activatedTasks: stringMap(raw.activatedTasks),
+    // TOLERANT READ: old cells carry neither key, and a null/absent in-flight revision is "no
+    // activation is running" — never a reason to refuse the record.
+    activatedLoops: stringMap(raw.activatedLoops),
+    activationInFlight: typeof raw.activationInFlight === "number" ? raw.activationInFlight : null,
+    // TOLERANT READ: a record written before the mint checkpoint carries no key, and reads as "no mint in
+    // flight" — never as a reason to refuse the record.
+    mintedTeamId: typeof raw.mintedTeamId === "string" ? raw.mintedTeamId : "",
+    cancelledTasks: stringMap(raw.cancelledTasks),
+    splitStale: raw.splitStale === true,
+    startedAt: typeof raw.startedAt === "string" ? raw.startedAt : "",
+    stopReason: typeof raw.stopReason === "string" ? raw.stopReason : "",
+    members,
+    checkpoints,
+    journalCursor: typeof raw.journalCursor === "number" ? raw.journalCursor : 0,
+  }
+}

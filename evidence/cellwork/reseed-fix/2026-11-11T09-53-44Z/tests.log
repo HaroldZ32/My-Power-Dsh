@@ -1,0 +1,16 @@
+## bun test packages/mpd-cellwork-plugin
+(pass) R3.5: the reseed's depth derivation agrees with the roster's spawn rule > an agent with no session at all answers the same cap from both helpers [0.01ms]
+
+ 416 pass
+ 0 fail
+ 4145 expect() calls
+Ran 416 tests across 34 files. [800.00ms]
+[exit 0]
+## bun test packages
+
+ 4048 pass
+ 6 skip
+ 0 fail
+ 53720 expect() calls
+Ran 4054 tests across 261 files. [39.98s]
+[exit 0]

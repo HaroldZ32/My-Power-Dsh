@@ -1,0 +1,29 @@
+MUTATION A26a: accept any roster row's executorRef (global member scan)
+source sha before: f15ce3b452163248d7439cb2ddebc313044c4266435bdd3e9c82e17161caf9a7  .qa-tmp/cellwork-r7c/protocol.fixed.ts
+source sha mutated: 78040f97f3925355d864e57fa33dd9b3c42c95c9f16ab3c5b3277fdcb023123f  packages/mpd-cellwork-plugin/src/protocol.ts
+cmd: .toolchain/node_modules/.bin/bun test packages/mpd-cellwork-plugin/test/reseed-binding.test.ts -t A26a
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+1815 |   const harness = makeHarness({ team: seeded, liveSessions: [FOREIGN] })
+1816 |   /** The captain asks for the OTHER seat's child. */
+1817 |   const repaired = await harness.tools.get("cellwork_dispatch")!.execute({ rebind: [{ member: MEMBER_NAME, handle: FOREIGN }] }, { name: "cellwork_dispatch", agent: harness.captain }) as Record<string, unknown>
+1818 |   /** This seat's outcome. */
+1819 |   const outcome = (Array.isArray(repaired.rebound) ? repaired.rebound as Array<Record<string, unknown>> : []).find((entry) => entry.member === MEMBER_NAME)
+1820 |   expect(outcome?.rebound).toBe(false)
+                                  ^
+error: expect(received).toBe(expected)
+
+Expected: false
+Received: true
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:1820:28)
+(fail) A26a: a handle named by ANOTHER seat's TEAM executorRef is refused (`handle-unevidenced`); both records stay put [4.58ms]
+
+ 0 pass
+ 37 filtered out
+ 1 fail
+ 1 expect() calls
+Ran 1 test across 1 file. [206.00ms]
+[mutation B exit: 1]
+restored sha: f15ce3b452163248d7439cb2ddebc313044c4266435bdd3e9c82e17161caf9a7  packages/mpd-cellwork-plugin/src/protocol.ts

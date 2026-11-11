@@ -1,0 +1,24 @@
+# Gates — fix/cellwork-reseed working tree (uncommitted), run 2026-11-11T03:0xZ
+# ambient bun: 1.4.2 (the version `bun run <gate>` resolves on PATH) · pinned dist bun: 1.4.0 (.toolchain)
+
+cmd: bun run typecheck
+  exit 0   log gate-typecheck.log   observed: "$ tsgo --noEmit" (no diagnostics)
+
+cmd: bun run verify:comments
+  exit 0   log gate-comments.log    observed: scanned 633/633 TS files, 57947 declarations
+                                      VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+
+cmd: bun run verify:docs
+  exit 0   log gate-docs.log        observed: [verify-docs-parity] pairs=59 failed=0 violations=0 exempt=24 derived=3 links=626 dead=0 — PASS
+
+cmd: bun test packages/mpd-cellwork-plugin
+  exit 0   log gate-tests.log       observed: 388 pass / 0 fail / 3756 expect() calls / 34 files
+
+cmd: .toolchain/node_modules/.bin/bun build packages/mpd-cellwork-plugin/src/index.ts --target node --format esm --outfile packages/mpd-cellwork-plugin/dist/index.js
+  exit 0   log gate-dist-build.log  observed: Bundled 31 modules; index.js 0.53 MB; sha256 5395da46…f78b (UNCHANGED from the prior round)
+
+cmd: node scripts/verify-dist-fresh.ts
+  exit 0   log gate-dist-fresh.log  observed: build toolchain bun 1.4.0 from .toolchain; ok: 34/34 targets fresh (each rebuilt twice, byte-identical); 1 NOT COVERED listed by design (packages/mpd-mcp-codegraph/dist/serve.js)
+
+cmd: .toolchain/node_modules/.bin/bun test packages/mpd-cellwork-plugin/test/reseed-binding.test.ts
+  exit 0   log whole-file.post.log  observed: 19 pass / 0 fail / 138 expect() calls

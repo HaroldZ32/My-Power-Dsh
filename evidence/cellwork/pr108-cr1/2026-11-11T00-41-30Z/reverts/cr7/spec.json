@@ -1,0 +1,6 @@
+{
+  "id": "cr7",
+  "file": "packages/mpd-cellwork-plugin/src/protocol.ts",
+  "expectedSha256": "3c7c8554322a9b7380f795044999b40bb8c9e6ddc8a4ac20c61aaf4b1e3a8961",
+  "hunks": [{"before":"before-1.txt","after":"after-1.txt"}]
+}

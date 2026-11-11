@@ -236,7 +236,7 @@ and a reader cannot tell. Measured re-baselines are recorded in `agent-reference
 | Extension CLI | `bun scripts/mpd-ext.ts --self-test` + `bun scripts/mpd-ext.ts validate extensions/mpd-ext-example` (exit 0; a deliberately broken extension MUST exit 1 with per-item errors) | any extension-interface/manifest/CLI change |
 | Boot check (MOUNT) | a boot that really applies the rows in an isolated `DSH_HOME` + sandbox `HOME` — e.g. `bun skills/dsh-qa/scripts/bundle-lifecycle.ts` (host rows) and `node skills/dsh-qa/scripts/preset-conformance.ts` (the `mpd` preset's standing mount + every harness-owned row config; its negative control proves the assertion is falsifiable) | any patch change, any preset/row change, and REQUIRED for any tool-schema change |
 | Composition only | `node scripts/dump-config.ts --profile <p>` (repo wrapper around the raw harness flag: prints the composition-only banner itself and propagates the child's exit code) | whenever a row/preset composition question is asked |
-| **Docker real-machine (LAST step)** | `bun run verify:docker` (`node scripts/docker-e2e.ts`; flags and the 14b rules: `agent-references/verification-flow.md`). Builds a real `ubuntu:24.04` and asserts the INSTALL then the MOUNT (rows activating, tools registering, TUI, `agentPreset=mpd`). **Without a ROOTLESS Docker it SKIPS (exit 0)**: rootless runs, rootful skips unless `--allow-rootful-docker`, an absent daemon skips; `--require-docker` makes any skip exit 3, and a SKIP is never a pass. **The USER-SURFACE arm (14b) is REQUIRED in every mode**: `userSurface.*` rows; a lane that never ran them exits 3 | every release sweep, and any install/mount-path change (`files`/`dsh.*`, a patch row, `docker/**`) |
+| **Docker real-machine (LAST step)** | `bun run verify:docker` (`node scripts/docker-e2e.ts`; flags and the 14b rules: `agent-references/verification-flow.md`). Builds a real `ubuntu:24.04` and asserts the INSTALL then the MOUNT (rows activating, tools registering, TUI, `agentPreset=mpd`). **MANDATORY for EVERY version iteration — binding, user-set 2026-11-11 (§11 step 2).** **Without a ROOTLESS Docker it SKIPS (exit 0)**: rootless runs, rootful skips unless `--allow-rootful-docker`, an absent daemon skips; `--require-docker` makes any skip exit 3, and a SKIP is never a pass. **The USER-SURFACE arm (14b) is REQUIRED in every mode**: `userSurface.*` rows; a lane that never ran them exits 3 | every release sweep, and any install/mount-path change (`files`/`dsh.*`, a patch row, `docker/**`) |
 
 Long form (per-row measurements, and why the Docker lane is LAST):
 `agent-references/verification-flow.md`.
@@ -530,7 +530,7 @@ lane hold this line.
 ### Primary flow: ONE command, no extra step
 
 - **The USER-facing install is ONE command against the PUBLISHED package — no clone, no build:**
-  `dsh plugin --profile web add @mpd-dsh/mpd@0.18.1` (this release, named by explicit spec) or the
+  `dsh plugin --profile web add @mpd-dsh/mpd@0.18.2` (this release, named by explicit spec) or the
   unversioned `@mpd-dsh/mpd`, which takes whatever `latest` the registry serves;
   `dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh` is the same one
   command from the repository (and the Docker lane's proof spec, §4). pnpm packs it through the
@@ -617,13 +617,12 @@ lane hold this line.
    `node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step` re-pin when `skills/**`
    changed, and a repo-root `bun test` (unlike `bun test packages`) also scans the `evidence/**`
    fixtures and reddens on them.
-   - **LAST: the Docker real-machine lane, per §4's Docker row — BOTH runs, both stamps cited.** The
-     credentialed `node scripts/docker-e2e.ts --mode source --require-docker --live` then `--mode
-     oneclick --require-docker --live`, AND the credential-free `--mode source --require-docker
-     --no-browser` regression run — a credentialed run cannot see a path that depends on an EMPTY model
-     catalog (measured 2026-10-23, PR #62). `--no-browser` IS the credential-free spelling: a
-     browser-enabled one records `ui.replyRendered` as a DECLARED BOUND that the required-arm gate turns
-     into exit 3 by design, and `--live` with no key exits 3 before the build.
+   - **LAST: the Docker real-machine lane — THREE lanes, FROZEN as a release requirement (user-set
+     2026-11-11).** The credentialed `--mode source --live`, `--mode oneclick --live`, and the
+     credential-free `--mode source --no-browser` regression; run them IN PARALLEL in distinct work
+     dirs, cite each lane's own stamp, and record which lanes overlapped. A lane that SKIPS, exits 3 or
+     is absent is a FAILED requirement — never a green, and "CI ran Docker" is no substitute. Why the
+     three, why `--no-browser`, and the parallel rule: `agent-references/verification-flow.md`.
    - **Release-checklist line (VENDOR_LOCK pairing rule):** `VENDOR_LOCK.json` lands in the SAME commit
      as every `skills/**` change that invalidates its `treeSha`; with the single-skills-writer rule (§9)
      that is exactly ONE re-pin per wave — verify the wave's single re-pin is present and that no

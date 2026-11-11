@@ -1,0 +1,10 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+(pass) A1b: a reseed re-points every non-terminal board row the old handle owned [6.82ms]
+
+ 1 pass
+ 8 filtered out
+ 0 fail
+ 9 expect() calls
+Ran 1 test across 1 file. [172.00ms]

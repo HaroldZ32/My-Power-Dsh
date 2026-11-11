@@ -1,0 +1,29 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:
+1729 |     // THE TEAM HALF LANDED, the CELL half did not, and the answer does not pretend otherwise.
+1730 |     expect(outcome.member).toBe(MEMBER_NAME)
+1731 |     expect(outcome.rebound).toBe(true)
+1732 |     expect(String(outcome.cellRow).startsWith("failed: ")).toBe(true)
+1733 |     // THE FENCE STAYED CLOSED, and no unfence outcome exists.
+1734 |     expect(result.unfenced).toBeUndefined()
+                                   ^
+error: expect(received).toBeUndefined()
+
+Received: [
+  {
+    member: "Senior Engineer",
+    unfenced: true,
+    plane: "unfenced",
+  }
+]
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/reseed-mutation/packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:1734:29)
+(fail) A30: a rebind whose CELL mirror write FAILS answers `cellRow:"failed: …"` and withholds the unfence [5.71ms]
+
+ 0 pass
+ 44 filtered out
+ 1 fail
+ 5 expect() calls
+Ran 1 test across 1 file. [32.00ms]
+EXIT=1

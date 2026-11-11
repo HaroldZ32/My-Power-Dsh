@@ -2,7 +2,7 @@
 
 [English](./README.md) | **中文**
 
-[![版本](https://img.shields.io/badge/version-0.18.1-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
+[![版本](https://img.shields.io/badge/version-0.18.2-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
 [![npm](https://img.shields.io/badge/npm-%40mpd--dsh%2Fmpd-CB3837.svg)](https://www.npmjs.com/package/@mpd-dsh/mpd)
 [![许可证：MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE.md)
 [![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.2--rc.1-4B32C3.svg)](#致谢)
@@ -138,7 +138,8 @@ DSH-TUI 的 pin 记在 [`dsh-plugin.json`](./dsh-plugin.json) 的 `compat.hosts`
 
 | `@mpd-dsh/mpd` | DeepSeek Harness | DSH-TUI | 说明 |
 |---|---|---|---|
-| 0.18.1 | 0.2.2-rc.1 | 0.19.0 | 本次发布 |
+| 0.18.2 | 0.2.2-rc.1 | 0.19.0 | 本次发布 |
+| 0.18.1 | 0.2.2-rc.1 | 0.19.0 | 上一次发布 |
 | 0.18.0 | 0.2.2-rc.1 | 0.19.0 | 上一次发布 |
 | 0.17.5 | 0.2.1-rc.5 | 0.18.0 | 上一次发布 |
 | 0.17.4 | 0.2.1-rc.5 | 0.18.0 | 上一次发布 |
@@ -156,8 +157,12 @@ DSH-TUI 的 pin 记在 [`dsh-plugin.json`](./dsh-plugin.json) 的 `compat.hosts`
 | 0.15.0 | 0.2.1-rc.2 | 0.16.1 | `previous` |
 | 0.14.0 | 0.2.1-rc.2 | 0.16.1 | `previous`（harness 0.2.1 适配发布） |
 
-最新一行**就是**这一对：`0.18.1` 对 harness `0.2.2-rc.1` 与 DSH-TUI `0.19.0`。旧宿主继续被支持：
-`engines.dsh` 覆盖 `>=0.2.1-rc.2 <0.3.0-0`，而 `0.18.1` 沿用 `0.18.0` 的兼容行——那一版在 `0.2.1-rc.5`
+`0.18.2` 只有一项改动：压缩重播种要么把席位绑定好，要么报告一个不可恢复的检查点——被重新拉起的 cell
+席位再也不能悄悄脱离它的团队行、看板行与 cell 记录；另外新增 `cellwork_dispatch {rebind}`，用记录优先的
+证据修复席位的 handle。
+
+最新一行**就是**这一对：`0.18.2` 对 harness `0.2.2-rc.1` 与 DSH-TUI `0.19.0`。旧宿主继续被支持：
+`engines.dsh` 覆盖 `>=0.2.1-rc.2 <0.3.0-0`，而 `0.18.2` 沿用 `0.18.0` 的兼容行——那一版在 `0.2.1-rc.5`
 上实测能安装并运行。`0.19.0`
 的 peer 名单新增 `0.2.2-rc.1`，同时保留 `0.2.1-rc.4`/`0.2.1-rc.5`，而且它的准入链与 `0.18.0` 的逐字节
 相同。钉定位置是 [`package.json`](./package.json) 与 [`dsh-plugin.json`](./dsh-plugin.json) 的
@@ -271,7 +276,7 @@ DSH-TUI 的 pin 记在 [`dsh-plugin.json`](./dsh-plugin.json) 的 `compat.hosts`
 
 ## 变更日志
 
-发布说明在 [`CHANGELOG.md`](./CHANGELOG.md)，最新的在前，每个已发布版本一节（当前版本是 **v0.18.1**）。
+发布说明在 [`CHANGELOG.md`](./CHANGELOG.md)，最新的在前，每个已发布版本一节（当前版本是 **v0.18.2**）。
 带注释的 tag 列在 [Releases](https://github.com/HaroldZ32/My-Power-Dsh/releases)。
 
 ## 致谢

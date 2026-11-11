@@ -1,0 +1,13 @@
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 634 TypeScript file(s) of 634 in the source set; inspected 58560 declaration(s); skipped 28947 inline callback(s) as out of family
+
+VERDICT: FAIL — 2 violation(s) across 1 file(s).
+
+skills/dsh-qa/scripts/cellwork-activate-mint.ts (2)
+  403: comment — submitted
+  487: comment — activated
+
+error: script "verify:comments" exited with code 1
+comments_exit=1

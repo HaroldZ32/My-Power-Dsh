@@ -1,0 +1,10 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-cellwork-plugin/test/elastic-seats.test.ts:
+(pass) CR #108: a terminal skipped row is ALREADY CLOSED (activation proceeds); a live row FAILS it [2.24ms]
+
+ 1 pass
+ 30 filtered out
+ 0 fail
+ 7 expect() calls
+Ran 1 test across 1 file. [150.00ms]
