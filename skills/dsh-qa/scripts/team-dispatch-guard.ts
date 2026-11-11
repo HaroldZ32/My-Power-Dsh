@@ -411,7 +411,7 @@ export async function c74Arms(): Promise<Arm[]> {
       const none = harness(sandbox())
       /** The refusal sentence. */
       const noneFailure = await refusalOf(none.call("agent_teams_plan", { action: "create_task", task: { subject: "x", description: "d", blocked_by: [] } }, "sess-nobody"))
-      out.push({ id: "f1-neg-no-team", claim: "NEGATIVE CONTROL: no staged plan and no live team keeps the standing sentence", ok: String(noneFailure?.message) === "no team is staged in this session — call agent_teams_create first", observed: String(noneFailure?.message ?? "(no refusal)") })
+      out.push({ id: "f1-neg-no-team", claim: "NEGATIVE CONTROL: no staged plan and no live team keeps the standing sentence", ok: String(noneFailure?.message) === "no team is staged in this session — call `agent_teams_plan {action:\"create\"}` first", observed: String(noneFailure?.message ?? "(no refusal)") })
     }
 
     // ── F2 — a member closes its own row by its recorded name ──────────────────────────────────

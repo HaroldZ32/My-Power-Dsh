@@ -1,6 +1,9 @@
 // CELLWORK ACTIVATE — materialise an ACCEPTED split on the LIVE team record (contract B7).
 //
 // THE ORDER IS THE CONTRACT, and it is not cosmetic:
+//   0. when the planning board was ENDED before this pass (the bundle's normal clean-terminal path), the
+//      execution team is MINTED here through the same plan `create` + member + `approve` verbs staging
+//      uses; a board that still resolves is addressed in place and is never re-created;
 //   1. one frozen CONTRACT per code task, written before anything is dispatched, so the verifier's
 //      document exists before its subject can start;
 //   2. MEMBERS, each raised with its persona TEXT in the prompt (team members get no roster persona) and
@@ -448,6 +451,84 @@ function contractAlreadyNamesLoop(deps: Pick<ActivateDeps, "workspace" | "cell">
 }
 
 /**
+ * Whether a team record still names a board this pass may WRITE to.
+ *
+ * Read structurally, never through another package's source: a record that carries `endedAt` or a phase
+ * outside team-core's live set (`staged` | `active` | `idle`) is terminal — the clean-terminal auto-end
+ * stamps exactly those two fields. An UNREADABLE record is reported as not live here, because the caller
+ * that cannot read the board also cannot append to it; the mint below is the only write path left.
+ *
+ * @param record - the team record, or undefined when the service could not answer.
+ * @returns true only for a record a live append can still target.
+ */
+function isLiveTeamRecord(record: object | undefined): boolean {
+  if (record === undefined) return false
+  if ("endedAt" in record && record.endedAt !== undefined) return false
+  /** The phase the record spells, defaulting to the live spelling when it carries none. */
+  const phase = "phase" in record && typeof record.phase === "string" && record.phase !== "" ? record.phase : "active"
+  return phase === "staged" || phase === "active" || phase === "idle"
+}
+
+/** One `agent_teams_plan` call, as {@link materializeSplit} performs it: a value or one refusal sentence. */
+type PlanCall = (arguments_: Record<string, unknown>) => Promise<{ ok: true; value: Record<string, unknown> } | { ok: false; error: string }>
+
+/** The member a mint's plan carries, so `approve` is not refused as an EMPTY shell. */
+interface MintSeedMember {
+  /** The board name the approval raises. */
+  name: string
+  /** The roster role the seat routes by. */
+  role: string
+  /** The description the roster row carries. */
+  description: string
+  /** The persona-bearing prompt the approval spawns the seat with. */
+  prompt: string
+}
+
+/** What {@link mintExecutionTeam} stages. */
+interface MintExecutionInput {
+  /** The plan name, visible in the team record and the panels. */
+  planName: string
+  /** The plan description (the cell objective). */
+  description: string
+  /** The one member that makes the plan non-empty. */
+  member: MintSeedMember
+}
+
+/**
+ * Mint a fresh EXECUTION team through the SAME verbs staging uses: `create`, one member, `approve`.
+ *
+ * WHY A MEMBER IS STAGED: approval REFUSES an EMPTY plan, so a create+approve pair alone would leave the
+ * slot filled and no team behind it. The seed member is the split's first owner, whose row activation
+ * then REUSES from the live roster instead of raising it twice.
+ *
+ * @param call - the plan call bound to this pass's captain.
+ * @param input - the plan name, description and seed member.
+ * @returns the minted team id, or the refusal sentence naming the verb that failed.
+ */
+async function mintExecutionTeam(call: PlanCall, input: MintExecutionInput): Promise<{ ok: true; teamId: string } | { ok: false; error: string }> {
+  /** The staged plan. */
+  const created = await call({ action: "create", name: input.planName, description: input.description })
+  if (!created.ok) return { ok: false, error: "the mint plan could not be staged: " + created.error }
+  /** The one member that makes the plan approvable. */
+  const added = await call({ action: "add_member", member: { ...input.member } })
+  if (!added.ok) {
+    // LEAVE THE SLOT CLEAN: an empty plan would make the retry's own `approve` refuse (an EMPTY shell is
+    // not a team), so the failed slot is archived before the refusal is returned.
+    await call({ action: "delete" })
+    return { ok: false, error: "the mint member could not be staged: " + added.error }
+  }
+  /** The approval, which creates the record and raises the seed seat. */
+  const approved = await call({ action: "approve" })
+  if (!approved.ok) return { ok: false, error: "the mint plan could not be approved: " + approved.error }
+  /** The approved team block, when the answer carries one. */
+  const team = typeof approved.value.team === "object" && approved.value.team !== null ? approved.value.team as Record<string, unknown> : {}
+  /** The minted team id. */
+  const teamId = typeof team.teamId === "string" ? team.teamId : ""
+  if (teamId === "") return { ok: false, error: "the mint plan was approved but the answer carried no team id — inspect `agent_teams_plan {action:\"status\"}` before retrying" }
+  return { ok: true, teamId }
+}
+
+/**
  * Materialise one accepted split on the live team record.
  *
  * @param deps - the adapter, the cell, the split, the captain's agent and the progress sink.
@@ -484,7 +565,7 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
   /** The staging team id the record carried BEFORE this pass, preserved on the outcome (§7.1). */
   const planningTeamId = deps.cell.teamId
   /** The team id every write addresses; a cell with no team was never staged. */
-  const teamId = board.teamId
+  let teamId = board.teamId
   if (teamId === "") return { ok: false, error: "cellwork_activate: no team is recorded on " + deps.cell.cellId + " — run `cellwork_start` first (the planning team is the record activation appends to)" }
   /** The partial artifacts this pass produced, in the shape the caller persists. */
   const partial: ActivatePartial = { members: {}, boardIds: {}, loopIds: {}, contracts: {} }
@@ -568,6 +649,37 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
   /** The live team record as it stands, when the team service can answer. */
   let live: DispatchRecordView | undefined
   try { live = deps.recordFor(teamId) } catch { live = undefined }
+  // 0a. A CLEAN-TERMINAL PLANNING BOARD IS ENDED BEFORE ACTIVATION — the bundle's NORMAL path
+  // (docs/cellwork.md, "the execution team is minted after it"). The record is still on disk but carries
+  // `endedAt`/a terminal phase, so every live append would answer "no team is staged in this session".
+  // The execution team is MINTED here through the same create+approve verbs staging uses; a board that
+  // still resolves takes the unchanged path below and is never re-created.
+  /** The team this pass minted to replace an ended planning board, or "" on the live path. */
+  let mintedTeamId = ""
+  // A RE-SPLIT IS DELIBERATELY OUT OF THIS ARM: its kept rows are board ids from the team being replaced,
+  // and re-minting them is a different repair. Its resolution already prefers the LIVE execution board.
+  if (!resplit && !isLiveTeamRecord(live)) {
+    /** The split's FIRST task, whose member seeds the mint's non-empty plan. */
+    const seedTask = deps.split.tasks[0]
+    /** The seed member's board name. */
+    const seedMember = seedTask === undefined ? "" : resolvedMemberName(seedTask)
+    if (seedMember === "") return fail("cellwork_activate: the planning team " + JSON.stringify(teamId) + " is no longer live, and the accepted split names no member to mint the execution team from — a split with no task cannot be activated")
+    /** The tasks that seed member owns, for the persona-bearing prompt. */
+    const seedOwned = deps.split.tasks.filter((task) => roleKey(resolvedMemberName(task)) === roleKey(seedMember))
+    /** The roster role the seed member answers to. */
+    const seedRole = (seedOwned[0]?.ownerRole ?? seedMember).trim()
+    /** The mint's answer. */
+    const minted = await mintExecutionTeam(call, {
+      planName: "cell " + deps.cell.cellId + " execution",
+      description: deps.cell.objective,
+      member: { name: seedMember, role: seedRole, description: seedMember, prompt: memberPrompt(deps, seedMember, seedRole, seedOwned) },
+    })
+    if (!minted.ok) return fail("cellwork_activate could not mint the execution team after the planning team " + JSON.stringify(teamId) + " ended: " + minted.error)
+    mintedTeamId = minted.teamId
+    teamId = minted.teamId
+    // THE LIVE SEED IS THE MINTED TEAM, re-read so the seed member the approval raised is reused.
+    try { live = deps.recordFor(teamId) } catch { live = undefined }
+  }
   /** The live roster by comparison key, so a member raised before a crash stays resolvable. */
   const liveRoster = new Map<string, DispatchMemberView>()
   for (const row of live?.members ?? []) if (typeof row.name === "string" && row.name !== "") liveRoster.set(roleKey(row.name), row)
@@ -845,8 +957,19 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     // THE INITIAL PASS GROWS SEATS TOO (§4.1): a RE-SPLIT can start with every existing seat BUSY, so the
     // freshly appended rows would otherwise wait for the next captain pass. The board is resolved with the
     // ids THIS pass minted, so a fresh execution team is found by its own evidence (§7.1).
+    // A MINT IS AUTHORITATIVE AND IS NEVER RE-RESOLVED: a fresh team numbers its board from `T1`, the
+    // SAME ids the ended planning board carries, so the activated-task evidence alone cannot tell the two
+    // records apart. The id this pass created is the board it wrote to.
     /** The board after this pass's appends. */
-    const afterBoard = resolveCellTeam({ workspace: deps.workspace, cell: { ...deps.cell, activatedTasks: Object.fromEntries(boardIds) }, teams: deps.teams?.(), recordFor: deps.recordFor })
+    let afterBoard: { teamId: string; record?: Record<string, unknown> }
+    if (mintedTeamId !== "") {
+      /** The minted record as it stands after the appends. */
+      let mintedRecord: Record<string, unknown> | undefined
+      try { mintedRecord = deps.recordFor(mintedTeamId) } catch { mintedRecord = undefined }
+      afterBoard = { teamId: mintedTeamId, record: mintedRecord }
+    } else {
+      afterBoard = resolveCellTeam({ workspace: deps.workspace, cell: { ...deps.cell, activatedTasks: Object.fromEntries(boardIds) }, teams: deps.teams?.(), recordFor: deps.recordFor })
+    }
     growth = await growExecutionSeats({
       dsh: deps.dsh,
       workspace: deps.workspace,
@@ -900,8 +1023,12 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
   // THE RECORD LEARNS THE EXECUTION TEAM IT ACTUALLY WROTE TO (§7.1): after every append, the board is
   // resolved again with THIS pass's minted ids, so a fresh execution team is named by its own evidence and
   // a legacy cell whose `teamId` named the dead planning team is repaired on the record it reports.
+  // A MINT IS AUTHORITATIVE HERE TOO, for the reason stated at the growth site: its `T<n>` ids collide
+  // with the ended planning board's, so re-resolving by evidence could name the DEAD team.
   /** The board the completed pass landed on. */
-  const finalBoard = resolveCellTeam({ workspace: deps.workspace, cell: { ...deps.cell, activatedTasks: Object.fromEntries(boardIds) }, teams: deps.teams?.(), recordFor: deps.recordFor })
+  const finalBoard = mintedTeamId !== ""
+    ? { teamId: mintedTeamId }
+    : resolveCellTeam({ workspace: deps.workspace, cell: { ...deps.cell, activatedTasks: Object.fromEntries(boardIds) }, teams: deps.teams?.(), recordFor: deps.recordFor })
   /** The execution team id the outcome reports; the input's id when nothing better resolved. */
   const executionTeamId = finalBoard.teamId === "" ? teamId : finalBoard.teamId
   appendJournal(deps.workspace, deps.cell.cellId, {
@@ -911,6 +1038,9 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     ...(executionTeamId === teamId ? {} : { recordedTeamId: teamId }),
     mode,
     splitRevision: deps.split.revision,
+    // THE MINT IS A FACT A LATER READER MUST SEE (defect: activation had no minting path at all): the
+    // journal names both the execution team this pass created and the ended planning team it replaced.
+    ...(mintedTeamId === "" ? {} : { mintedTeamId, planningTeamId }),
     // THE BOARD RESOLUTION IS JOURNALED WITH THE PASS (CodeRabbit #108): an `unverified` fallback is a FACT
     // a later reader must be able to see, not a detail that lived only in this call's local variables.
     ...(unverified ? { boardResolution: "unverified", ...(boardNote === undefined ? {} : { boardNote }) } : {}),

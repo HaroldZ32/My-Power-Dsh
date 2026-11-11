@@ -1,0 +1,625 @@
+diff --git a/docs/cellwork.md b/docs/cellwork.md
+index 656494e0..1f8451f8 100644
+--- a/docs/cellwork.md
++++ b/docs/cellwork.md
+@@ -993,9 +993,11 @@ and the stale field is only the fast path.
+ different teams, the surface prints BOTH ids and which resolution won (and, for a rejected recorded id,
+ that its board holds none of the cell's activated tasks). `cellwork_stop` runs its live-task guard
+ against the RESOLVED team, so a non-forced stop is REFUSED while that board still has live tasks; and
+-the stop does NOT end the team by itself — its answer carries `teamId` (the execution team it leaves
+-running) and `endTeamCommand` (the exact retry verb
+-`agent_teams_control {action:"end", team_id:"<id>"}`), and the render prints both. An operator who
++the stop does NOT end the team by itself — a SUCCESSFUL stop's answer carries `teamId` (the execution
++team it leaves running) and `endTeamCommand` (the exact retry verb
++`agent_teams_control {action:"end", team_id:"<id>"}`), and the render prints both. A REFUSED stop
++answers only its error sentence, deliberately: while tasks are still running, suggesting "end that
++team" would contradict the guard's own reason. An operator who
+ stops a cell and wants the agents gone must call that verb.
+ 
+ ## Configuration
+diff --git a/docs/cellwork.zh-CN.md b/docs/cellwork.zh-CN.md
+index 8264e44a..cdec0cf8 100644
+--- a/docs/cellwork.zh-CN.md
++++ b/docs/cellwork.zh-CN.md
+@@ -773,8 +773,9 @@ cell id 形如 `cell-<UTC 时刻>`；子 cell 会记录 `parentCellId` 与 `dept
+ **分歧会被报告，绝不静默。** 记录的 id 与胜出的解析指向不同 team 时，界面会同时打印**两个** id 以及哪条解析
+ 胜出（若记录的 id 被否决，还会说明其看板不携带本 cell 的任何已激活任务）。`cellwork_stop` 的活任务守卫
+ 针对**解析出的** team 运行，所以那块看板还有活任务时，非强制 stop 会被**拒绝**；而 stop **不会**自己结束
+-team——它的答复携带 `teamId`（它留下继续运行的执行 team）与 `endTeamCommand`（精确的重试动词
+-`agent_teams_control {action:"end", team_id:"<id>"}`），渲染会把两者都打印出来。操作者停止 cell 后若想让
++team——**成功** stop 的答复才携带 `teamId`（它留下继续运行的执行 team）与 `endTeamCommand`（精确的重试动词
++`agent_teams_control {action:"end", team_id:"<id>"}`），渲染会把两者都打印出来。**被拒绝**的 stop 只回
++它那句 error，这是有意为之：任务还在跑时建议“结束该队”会与守卫自身的理由相反。操作者停止 cell 后若想让
+ agent 退出，必须调用该动词。
+ 
+ ## 配置
+diff --git a/packages/mpd-cellwork-plugin/dist/index.js b/packages/mpd-cellwork-plugin/dist/index.js
+index 48e53676..5d0e5e44 100644
+--- a/packages/mpd-cellwork-plugin/dist/index.js
++++ b/packages/mpd-cellwork-plugin/dist/index.js
+@@ -5520,6 +5520,32 @@ function contractAlreadyNamesLoop(deps, taskKey) {
+     return false;
+   }
+ }
++function isLiveTeamRecord(record) {
++  if (record === undefined)
++    return false;
++  if ("endedAt" in record && record.endedAt !== undefined)
++    return false;
++  const phase = "phase" in record && typeof record.phase === "string" && record.phase !== "" ? record.phase : "active";
++  return phase === "staged" || phase === "active" || phase === "idle";
++}
++async function mintExecutionTeam(call, input) {
++  const created = await call({ action: "create", name: input.planName, description: input.description });
++  if (!created.ok)
++    return { ok: false, error: "the mint plan could not be staged: " + created.error };
++  const added = await call({ action: "add_member", member: { ...input.member } });
++  if (!added.ok) {
++    await call({ action: "delete" });
++    return { ok: false, error: "the mint member could not be staged: " + added.error };
++  }
++  const approved = await call({ action: "approve" });
++  if (!approved.ok)
++    return { ok: false, error: "the mint plan could not be approved: " + approved.error };
++  const team = typeof approved.value.team === "object" && approved.value.team !== null ? approved.value.team : {};
++  const teamId = typeof team.teamId === "string" ? team.teamId : "";
++  if (teamId === "")
++    return { ok: false, error: 'the mint plan was approved but the answer carried no team id — inspect `agent_teams_plan {action:"status"}` before retrying' };
++  return { ok: true, teamId };
++}
+ async function materializeSplit(deps) {
+   const resplit = Object.values(deps.cell.activatedTasks ?? {}).some((id) => id !== "");
+   const resolved = resplit ? resolveCellTeam({ workspace: deps.workspace, cell: deps.cell, teams: deps.teams?.(), recordFor: deps.recordFor }) : undefined;
+@@ -5527,7 +5553,7 @@ async function materializeSplit(deps) {
+   const boardNote = unverified ? "the re-split resolved no live team for " + deps.cell.cellId + ", so this activation continues on the RECORDED team " + JSON.stringify(deps.cell.teamId) + " — the board resolution is UNVERIFIED" + (resolved?.note === undefined ? "" : " (" + resolved.note + ")") + "; work is appended to that record only." : undefined;
+   const board = unverified ? { teamId: deps.cell.teamId } : resolved ?? { teamId: deps.cell.teamId };
+   const planningTeamId = deps.cell.teamId;
+-  const teamId = board.teamId;
++  let teamId = board.teamId;
+   if (teamId === "")
+     return { ok: false, error: "cellwork_activate: no team is recorded on " + deps.cell.cellId + " — run `cellwork_start` first (the planning team is the record activation appends to)" };
+   const partial = { members: {}, boardIds: {}, loopIds: {}, contracts: {} };
+@@ -5585,6 +5611,29 @@ async function materializeSplit(deps) {
+   } catch {
+     live = undefined;
+   }
++  let mintedTeamId = "";
++  if (!resplit && !isLiveTeamRecord(live)) {
++    const seedTask = deps.split.tasks[0];
++    const seedMember = seedTask === undefined ? "" : resolvedMemberName(seedTask);
++    if (seedMember === "")
++      return fail("cellwork_activate: the planning team " + JSON.stringify(teamId) + " is no longer live, and the accepted split names no member to mint the execution team from — a split with no task cannot be activated");
++    const seedOwned = deps.split.tasks.filter((task) => roleKey(resolvedMemberName(task)) === roleKey(seedMember));
++    const seedRole = (seedOwned[0]?.ownerRole ?? seedMember).trim();
++    const minted = await mintExecutionTeam(call, {
++      planName: "cell " + deps.cell.cellId + " execution",
++      description: deps.cell.objective,
++      member: { name: seedMember, role: seedRole, description: seedMember, prompt: memberPrompt(deps, seedMember, seedRole, seedOwned) }
++    });
++    if (!minted.ok)
++      return fail("cellwork_activate could not mint the execution team after the planning team " + JSON.stringify(teamId) + " ended: " + minted.error);
++    mintedTeamId = minted.teamId;
++    teamId = minted.teamId;
++    try {
++      live = deps.recordFor(teamId);
++    } catch {
++      live = undefined;
++    }
++  }
+   const liveRoster = new Map;
+   for (const row of live?.members ?? [])
+     if (typeof row.name === "string" && row.name !== "")
+@@ -5779,7 +5828,18 @@ async function materializeSplit(deps) {
+   let growth = { members: {}, reassign: [], grown: [], reused: [], refused: [], warnings: [], caps: { perRole: 0, total: 0 } };
+   try {
+     record = deps.recordFor(teamId);
+-    const afterBoard = resolveCellTeam({ workspace: deps.workspace, cell: { ...deps.cell, activatedTasks: Object.fromEntries(boardIds) }, teams: deps.teams?.(), recordFor: deps.recordFor });
++    let afterBoard;
++    if (mintedTeamId !== "") {
++      let mintedRecord;
++      try {
++        mintedRecord = deps.recordFor(mintedTeamId);
++      } catch {
++        mintedRecord = undefined;
++      }
++      afterBoard = { teamId: mintedTeamId, record: mintedRecord };
++    } else {
++      afterBoard = resolveCellTeam({ workspace: deps.workspace, cell: { ...deps.cell, activatedTasks: Object.fromEntries(boardIds) }, teams: deps.teams?.(), recordFor: deps.recordFor });
++    }
+     growth = await growExecutionSeats({
+       dsh: deps.dsh,
+       workspace: deps.workspace,
+@@ -5814,7 +5874,7 @@ async function materializeSplit(deps) {
+       await deps.dsh.executeTool({ name: "agent_teams_task", arguments: { action: "complete", task_id: splitTaskId, note: "split revision " + String(deps.split.revision) + " materialised by activation" }, agent: deps.captainAgent });
+     } catch {}
+   }
+-  const finalBoard = resolveCellTeam({ workspace: deps.workspace, cell: { ...deps.cell, activatedTasks: Object.fromEntries(boardIds) }, teams: deps.teams?.(), recordFor: deps.recordFor });
++  const finalBoard = mintedTeamId !== "" ? { teamId: mintedTeamId } : resolveCellTeam({ workspace: deps.workspace, cell: { ...deps.cell, activatedTasks: Object.fromEntries(boardIds) }, teams: deps.teams?.(), recordFor: deps.recordFor });
+   const executionTeamId = finalBoard.teamId === "" ? teamId : finalBoard.teamId;
+   appendJournal(deps.workspace, deps.cell.cellId, {
+     event: "activate",
+@@ -5823,6 +5883,7 @@ async function materializeSplit(deps) {
+     ...executionTeamId === teamId ? {} : { recordedTeamId: teamId },
+     mode,
+     splitRevision: deps.split.revision,
++    ...mintedTeamId === "" ? {} : { mintedTeamId, planningTeamId },
+     ...unverified ? { boardResolution: "unverified", ...boardNote === undefined ? {} : { boardNote } } : {},
+     producer: producerIdentity(deps.cell.cellId),
+     tasks: activated.map((task) => ({ key: task.key, boardId: task.boardId, owner: task.memberName, kind: task.kind })),
+diff --git a/packages/mpd-cellwork-plugin/src/activate.ts b/packages/mpd-cellwork-plugin/src/activate.ts
+index b51dcf59..bc914127 100644
+--- a/packages/mpd-cellwork-plugin/src/activate.ts
++++ b/packages/mpd-cellwork-plugin/src/activate.ts
+@@ -1,6 +1,9 @@
+ // CELLWORK ACTIVATE — materialise an ACCEPTED split on the LIVE team record (contract B7).
+ //
+ // THE ORDER IS THE CONTRACT, and it is not cosmetic:
++//   0. when the planning board was ENDED before this pass (the bundle's normal clean-terminal path), the
++//      execution team is MINTED here through the same plan `create` + member + `approve` verbs staging
++//      uses; a board that still resolves is addressed in place and is never re-created;
+ //   1. one frozen CONTRACT per code task, written before anything is dispatched, so the verifier's
+ //      document exists before its subject can start;
+ //   2. MEMBERS, each raised with its persona TEXT in the prompt (team members get no roster persona) and
+@@ -447,6 +450,84 @@ function contractAlreadyNamesLoop(deps: Pick<ActivateDeps, "workspace" | "cell">
+   }
+ }
+ 
++/**
++ * Whether a team record still names a board this pass may WRITE to.
++ *
++ * Read structurally, never through another package's source: a record that carries `endedAt` or a phase
++ * outside team-core's live set (`staged` | `active` | `idle`) is terminal — the clean-terminal auto-end
++ * stamps exactly those two fields. An UNREADABLE record is reported as not live here, because the caller
++ * that cannot read the board also cannot append to it; the mint below is the only write path left.
++ *
++ * @param record - the team record, or undefined when the service could not answer.
++ * @returns true only for a record a live append can still target.
++ */
++function isLiveTeamRecord(record: object | undefined): boolean {
++  if (record === undefined) return false
++  if ("endedAt" in record && record.endedAt !== undefined) return false
++  /** The phase the record spells, defaulting to the live spelling when it carries none. */
++  const phase = "phase" in record && typeof record.phase === "string" && record.phase !== "" ? record.phase : "active"
++  return phase === "staged" || phase === "active" || phase === "idle"
++}
++
++/** One `agent_teams_plan` call, as {@link materializeSplit} performs it: a value or one refusal sentence. */
++type PlanCall = (arguments_: Record<string, unknown>) => Promise<{ ok: true; value: Record<string, unknown> } | { ok: false; error: string }>
++
++/** The member a mint's plan carries, so `approve` is not refused as an EMPTY shell. */
++interface MintSeedMember {
++  /** The board name the approval raises. */
++  name: string
++  /** The roster role the seat routes by. */
++  role: string
++  /** The description the roster row carries. */
++  description: string
++  /** The persona-bearing prompt the approval spawns the seat with. */
++  prompt: string
++}
++
++/** What {@link mintExecutionTeam} stages. */
++interface MintExecutionInput {
++  /** The plan name, visible in the team record and the panels. */
++  planName: string
++  /** The plan description (the cell objective). */
++  description: string
++  /** The one member that makes the plan non-empty. */
++  member: MintSeedMember
++}
++
++/**
++ * Mint a fresh EXECUTION team through the SAME verbs staging uses: `create`, one member, `approve`.
++ *
++ * WHY A MEMBER IS STAGED: approval REFUSES an EMPTY plan, so a create+approve pair alone would leave the
++ * slot filled and no team behind it. The seed member is the split's first owner, whose row activation
++ * then REUSES from the live roster instead of raising it twice.
++ *
++ * @param call - the plan call bound to this pass's captain.
++ * @param input - the plan name, description and seed member.
++ * @returns the minted team id, or the refusal sentence naming the verb that failed.
++ */
++async function mintExecutionTeam(call: PlanCall, input: MintExecutionInput): Promise<{ ok: true; teamId: string } | { ok: false; error: string }> {
++  /** The staged plan. */
++  const created = await call({ action: "create", name: input.planName, description: input.description })
++  if (!created.ok) return { ok: false, error: "the mint plan could not be staged: " + created.error }
++  /** The one member that makes the plan approvable. */
++  const added = await call({ action: "add_member", member: { ...input.member } })
++  if (!added.ok) {
++    // LEAVE THE SLOT CLEAN: an empty plan would make the retry's own `approve` refuse (an EMPTY shell is
++    // not a team), so the failed slot is archived before the refusal is returned.
++    await call({ action: "delete" })
++    return { ok: false, error: "the mint member could not be staged: " + added.error }
++  }
++  /** The approval, which creates the record and raises the seed seat. */
++  const approved = await call({ action: "approve" })
++  if (!approved.ok) return { ok: false, error: "the mint plan could not be approved: " + approved.error }
++  /** The approved team block, when the answer carries one. */
++  const team = typeof approved.value.team === "object" && approved.value.team !== null ? approved.value.team as Record<string, unknown> : {}
++  /** The minted team id. */
++  const teamId = typeof team.teamId === "string" ? team.teamId : ""
++  if (teamId === "") return { ok: false, error: "the mint plan was approved but the answer carried no team id — inspect `agent_teams_plan {action:\"status\"}` before retrying" }
++  return { ok: true, teamId }
++}
++
+ /**
+  * Materialise one accepted split on the live team record.
+  *
+@@ -484,7 +565,7 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
+   /** The staging team id the record carried BEFORE this pass, preserved on the outcome (§7.1). */
+   const planningTeamId = deps.cell.teamId
+   /** The team id every write addresses; a cell with no team was never staged. */
+-  const teamId = board.teamId
++  let teamId = board.teamId
+   if (teamId === "") return { ok: false, error: "cellwork_activate: no team is recorded on " + deps.cell.cellId + " — run `cellwork_start` first (the planning team is the record activation appends to)" }
+   /** The partial artifacts this pass produced, in the shape the caller persists. */
+   const partial: ActivatePartial = { members: {}, boardIds: {}, loopIds: {}, contracts: {} }
+@@ -568,6 +649,37 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
+   /** The live team record as it stands, when the team service can answer. */
+   let live: DispatchRecordView | undefined
+   try { live = deps.recordFor(teamId) } catch { live = undefined }
++  // 0a. A CLEAN-TERMINAL PLANNING BOARD IS ENDED BEFORE ACTIVATION — the bundle's NORMAL path
++  // (docs/cellwork.md, "the execution team is minted after it"). The record is still on disk but carries
++  // `endedAt`/a terminal phase, so every live append would answer "no team is staged in this session".
++  // The execution team is MINTED here through the same create+approve verbs staging uses; a board that
++  // still resolves takes the unchanged path below and is never re-created.
++  /** The team this pass minted to replace an ended planning board, or "" on the live path. */
++  let mintedTeamId = ""
++  // A RE-SPLIT IS DELIBERATELY OUT OF THIS ARM: its kept rows are board ids from the team being replaced,
++  // and re-minting them is a different repair. Its resolution already prefers the LIVE execution board.
++  if (!resplit && !isLiveTeamRecord(live)) {
++    /** The split's FIRST task, whose member seeds the mint's non-empty plan. */
++    const seedTask = deps.split.tasks[0]
++    /** The seed member's board name. */
++    const seedMember = seedTask === undefined ? "" : resolvedMemberName(seedTask)
++    if (seedMember === "") return fail("cellwork_activate: the planning team " + JSON.stringify(teamId) + " is no longer live, and the accepted split names no member to mint the execution team from — a split with no task cannot be activated")
++    /** The tasks that seed member owns, for the persona-bearing prompt. */
++    const seedOwned = deps.split.tasks.filter((task) => roleKey(resolvedMemberName(task)) === roleKey(seedMember))
++    /** The roster role the seed member answers to. */
++    const seedRole = (seedOwned[0]?.ownerRole ?? seedMember).trim()
++    /** The mint's answer. */
++    const minted = await mintExecutionTeam(call, {
++      planName: "cell " + deps.cell.cellId + " execution",
++      description: deps.cell.objective,
++      member: { name: seedMember, role: seedRole, description: seedMember, prompt: memberPrompt(deps, seedMember, seedRole, seedOwned) },
++    })
++    if (!minted.ok) return fail("cellwork_activate could not mint the execution team after the planning team " + JSON.stringify(teamId) + " ended: " + minted.error)
++    mintedTeamId = minted.teamId
++    teamId = minted.teamId
++    // THE LIVE SEED IS THE MINTED TEAM, re-read so the seed member the approval raised is reused.
++    try { live = deps.recordFor(teamId) } catch { live = undefined }
++  }
+   /** The live roster by comparison key, so a member raised before a crash stays resolvable. */
+   const liveRoster = new Map<string, DispatchMemberView>()
+   for (const row of live?.members ?? []) if (typeof row.name === "string" && row.name !== "") liveRoster.set(roleKey(row.name), row)
+@@ -845,8 +957,19 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
+     // THE INITIAL PASS GROWS SEATS TOO (§4.1): a RE-SPLIT can start with every existing seat BUSY, so the
+     // freshly appended rows would otherwise wait for the next captain pass. The board is resolved with the
+     // ids THIS pass minted, so a fresh execution team is found by its own evidence (§7.1).
++    // A MINT IS AUTHORITATIVE AND IS NEVER RE-RESOLVED: a fresh team numbers its board from `T1`, the
++    // SAME ids the ended planning board carries, so the activated-task evidence alone cannot tell the two
++    // records apart. The id this pass created is the board it wrote to.
+     /** The board after this pass's appends. */
+-    const afterBoard = resolveCellTeam({ workspace: deps.workspace, cell: { ...deps.cell, activatedTasks: Object.fromEntries(boardIds) }, teams: deps.teams?.(), recordFor: deps.recordFor })
++    let afterBoard: { teamId: string; record?: Record<string, unknown> }
++    if (mintedTeamId !== "") {
++      /** The minted record as it stands after the appends. */
++      let mintedRecord: Record<string, unknown> | undefined
++      try { mintedRecord = deps.recordFor(mintedTeamId) } catch { mintedRecord = undefined }
++      afterBoard = { teamId: mintedTeamId, record: mintedRecord }
++    } else {
++      afterBoard = resolveCellTeam({ workspace: deps.workspace, cell: { ...deps.cell, activatedTasks: Object.fromEntries(boardIds) }, teams: deps.teams?.(), recordFor: deps.recordFor })
++    }
+     growth = await growExecutionSeats({
+       dsh: deps.dsh,
+       workspace: deps.workspace,
+@@ -900,8 +1023,12 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
+   // THE RECORD LEARNS THE EXECUTION TEAM IT ACTUALLY WROTE TO (§7.1): after every append, the board is
+   // resolved again with THIS pass's minted ids, so a fresh execution team is named by its own evidence and
+   // a legacy cell whose `teamId` named the dead planning team is repaired on the record it reports.
++  // A MINT IS AUTHORITATIVE HERE TOO, for the reason stated at the growth site: its `T<n>` ids collide
++  // with the ended planning board's, so re-resolving by evidence could name the DEAD team.
+   /** The board the completed pass landed on. */
+-  const finalBoard = resolveCellTeam({ workspace: deps.workspace, cell: { ...deps.cell, activatedTasks: Object.fromEntries(boardIds) }, teams: deps.teams?.(), recordFor: deps.recordFor })
++  const finalBoard = mintedTeamId !== ""
++    ? { teamId: mintedTeamId }
++    : resolveCellTeam({ workspace: deps.workspace, cell: { ...deps.cell, activatedTasks: Object.fromEntries(boardIds) }, teams: deps.teams?.(), recordFor: deps.recordFor })
+   /** The execution team id the outcome reports; the input's id when nothing better resolved. */
+   const executionTeamId = finalBoard.teamId === "" ? teamId : finalBoard.teamId
+   appendJournal(deps.workspace, deps.cell.cellId, {
+@@ -911,6 +1038,9 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
+     ...(executionTeamId === teamId ? {} : { recordedTeamId: teamId }),
+     mode,
+     splitRevision: deps.split.revision,
++    // THE MINT IS A FACT A LATER READER MUST SEE (defect: activation had no minting path at all): the
++    // journal names both the execution team this pass created and the ended planning team it replaced.
++    ...(mintedTeamId === "" ? {} : { mintedTeamId, planningTeamId }),
+     // THE BOARD RESOLUTION IS JOURNALED WITH THE PASS (CodeRabbit #108): an `unverified` fallback is a FACT
+     // a later reader must be able to see, not a detail that lived only in this call's local variables.
+     ...(unverified ? { boardResolution: "unverified", ...(boardNote === undefined ? {} : { boardNote }) } : {}),
+diff --git a/packages/mpd-cellwork-plugin/test/activate-resume.test.ts b/packages/mpd-cellwork-plugin/test/activate-resume.test.ts
+index 4b4dcdc5..e250f9aa 100644
+--- a/packages/mpd-cellwork-plugin/test/activate-resume.test.ts
++++ b/packages/mpd-cellwork-plugin/test/activate-resume.test.ts
+@@ -188,6 +188,8 @@ function makeHarness(): Harness {
+           return { isError: false, value: { plan } }
+         }
+         if (record === null) throw new Error("no plan and no team")
++        // THE REAL TEAM PLANE REFUSES A LIVE APPEND TO AN ENDED TEAM (its live arms filter `endedAt`).
++        if (record.endedAt !== undefined) return { isError: true, value: { error: "no team is staged in this session — call `agent_teams_plan {action:\"create\"}` first" } }
+         memberAttempts.push(String(member.name))
+         if (injection.memberFailAt === memberAttempts.length) return { isError: true, value: { error: "the injected raise failure for " + String(member.name) } }
+         if (record.members.some((row: Record<string, any>) => row.name === member.name)) return { isError: true, value: { error: "teammate " + JSON.stringify(String(member.name)) + " is already on the roster" } }
+@@ -207,6 +209,7 @@ function makeHarness(): Harness {
+           return { isError: false, value: { plan } }
+         }
+         if (record === null) throw new Error("no plan and no team")
++        if (record.endedAt !== undefined) return { isError: true, value: { error: "no team is staged in this session — call `agent_teams_plan {action:\"create\"}` first" } }
+         taskAttempts.push(String(task.subject))
+         if (injection.taskFailAt === taskAttempts.length) return { isError: true, value: { error: "the injected append failure for " + String(task.subject) } }
+         /** The board id the append mints. */
+@@ -219,7 +222,9 @@ function makeHarness(): Harness {
+       if (action === "approve") {
+         if (plan === null) throw new Error("no plan")
+         record = {
+-          teamId: "team-1",
++          // A FRESH ID PER APPROVAL: the ended planning team keeps its own record (`team-1`), so a mint
++          // is visible as a DIFFERENT team rather than an overwrite of the dead one.
++          teamId: "team-" + String(teamRecords.size + 1),
+           members: plan.members.map((member: Record<string, any>, index: number) => {
+             /** The executor handle the approval mints for this member. */
+             const executorRef = "handle-" + String(member.name)
+@@ -228,7 +233,7 @@ function makeHarness(): Harness {
+           }),
+           tasks: plan.tasks.map((task: Record<string, any>, index: number) => ({ ...task, id: "T" + String(index + 1), status: "pending" })),
+         }
+-        teamRecords.set("team-1", record)
++        teamRecords.set(String(record.teamId), record)
+         /** The created rows the approval answer reports. */
+         const created = { members: record.members.map((member: Record<string, any>) => ({ name: member.name, id: member.executorRef })), tasks: record.tasks.map((task: Record<string, any>) => ({ subject: task.subject, id: task.id })) }
+         plan = { ...plan, approvedAt: "now" }
+@@ -278,7 +283,7 @@ function makeHarness(): Harness {
+     // `mpdTeamActions` now, so this harness answers it with the shared in-memory plane over the SAME
+     // record map `mpdTeams` answers, delivering into `sends`.
+     mpdTeamActions: createTeamActionsDouble({
+-      record: () => teamRecords.get("team-1") as unknown as Parameters<typeof createTeamActionsDouble>[0]["record"] extends () => infer R ? R : never,
++      record: () => record as unknown as Parameters<typeof createTeamActionsDouble>[0]["record"] extends () => infer R ? R : never,
+       send: (handle: string, text: string) => { sends.push({ handle, text }) },
+     }).service,
+     mpdTeams: {
+@@ -1015,3 +1020,78 @@ test("F3: the cellwork_activate schema DECLARES `reused` and the description nam
+   expect(description).toContain(["A failed pass is checkpointed", "and the SAME accepted revision resumes it"].join(" "))
+   expect(description).toContain(["a newer accepted revision", "supersedes an older in-flight one"].join(" "))
+ })
++
++// ── the AUTO-END mint (release 0.18.2 defect ①): activation must MINT, never refuse ──────────
++
++test("MINT: a planning board ended before activation is replaced by a fresh execution team", async () => {
++  /** The harness with an accepted split. */
++  const harness = makeHarness()
++  /** The cell id. */
++  const cellId = await startCell(harness)
++  await finalizeRequirements(harness)
++  await submitSplit(harness)
++  // THE MEASURED FIELD STATE: mpd-roles' clean-terminal auto-end stamps the planning record `ended`
++  // between the split's acceptance and the captain's next step. The record still EXISTS; it is not live.
++  /** The planning record the cell names. */
++  const planning = harness.teamRecords.get("team-1")
++  if (planning === undefined) throw new Error("the planning team record is missing")
++  planning.phase = "ended"
++  planning.endedAt = "2026-11-11T00:00:00.000Z"
++  /** The planning board's row count before activation, so the arm proves it was not written again. */
++  const planningTasksBefore = planning.tasks.length
++  /** The record before activation: the dead planning team is the only id the cell knows. */
++  const before = readStateJson(harness.workspace, cellId)
++  expect(before.teamId).toBe("team-1")
++  expect(before.planningTeamId).toBe("")
++  /** The activation that must mint. */
++  const activated = await runTool(harness, "cellwork_activate", {})
++  expect(activated.ok).toBe(true)
++  // THE TWO-ID STATE docs/cellwork.md promises: the execution board is a NEW team, the ended planning
++  // team survives as `planningTeamId`.
++  /** The record after activation. */
++  const after = readStateJson(harness.workspace, cellId)
++  expect(after.teamId).toBe("team-2")
++  expect(after.planningTeamId).toBe("team-1")
++  expect(after.phase).toBe("executing")
++  expect(after.activatedRevision).toBe(1)
++  expect(Object.keys(after.activatedTasks).sort()).toEqual(["auth-core", "auth-review", "cli-core", "cli-review"])
++  // THE MINTED BOARD carries every split row; the ended record was never written again.
++  /** The minted team record. */
++  const minted = harness.teamRecords.get("team-2")
++  if (minted === undefined) throw new Error("no execution team was minted")
++  expect(minted.tasks.length).toBe(4)
++  // THREE distinct owners: the seed member (Senior Engineer) plus Reviewer and Deep Worker; both review
++  // tasks name the same `Reviewer`, so the pass raises it once (contract C1).
++  expect(minted.members.length).toBe(3)
++  expect(planning.endedAt).toBe("2026-11-11T00:00:00.000Z")
++  // The ended record was never appended to: its board is byte-for-byte the staging shape it had.
++  expect(planning.tasks.length).toBe(planningTasksBefore)
++  // The journal names the mint and the replaced board, so a later reader can reconstruct the path.
++  /** The activation journal row. */
++  const row = journalEntries(harness.workspace, cellId).find((entry) => entry.event === "activate")
++  expect(row?.mintedTeamId).toBe("team-2")
++  expect(row?.planningTeamId).toBe("team-1")
++  expect(row?.teamId).toBe("team-2")
++})
++
++test("MINT NEGATIVE CONTROL: a LIVE planning board is still addressed in place (no second team)", async () => {
++  /** The harness with an accepted split on a team that is still live. */
++  const harness = makeHarness()
++  /** The cell id. */
++  const cellId = await startCell(harness)
++  await finalizeRequirements(harness)
++  await submitSplit(harness)
++  /** The `create` calls staging already spent, so the delta measures activation alone. */
++  const createsBefore = harness.calls.filter((call) => call.name === "agent_teams_plan" && call.arguments.action === "create").length
++  /** The activation on the live record. */
++  const activated = await runTool(harness, "cellwork_activate", {})
++  expect(activated.ok).toBe(true)
++  // THE NORMAL PATH IS UNCHANGED: one team exists, the record's own id is the execution board, and no
++  // `create` was spent minting a replacement.
++  expect(harness.teamRecords.size).toBe(1)
++  expect(readStateJson(harness.workspace, cellId).teamId).toBe("team-1")
++  expect(readStateJson(harness.workspace, cellId).planningTeamId).toBe("")
++  /** The `create` calls activation itself made. */
++  const creates = harness.calls.filter((call) => call.name === "agent_teams_plan" && call.arguments.action === "create").length
++  expect(creates - createsBefore).toBe(0)
++})
+diff --git a/packages/mpd-team-core-plugin/dist/index.js b/packages/mpd-team-core-plugin/dist/index.js
+index 8df24bf8..e6bacdad 100644
+--- a/packages/mpd-team-core-plugin/dist/index.js
++++ b/packages/mpd-team-core-plugin/dist/index.js
+@@ -9385,7 +9385,7 @@ WARNING: ${value.warning}` : "";
+         }
+         const resolved = resolveForWrite(workspace, sessionId, lineage, delegated, sessionTitleOf(exec));
+         if (resolved.record === undefined)
+-          throw new Error(resolved.refusal ?? "no team is staged in this session — call agent_teams_create first");
++          throw new Error(resolved.refusal ?? 'no team is staged in this session — call `agent_teams_plan {action:"create"}` first');
+         if (!recordNamesLead(resolved.record, [sessionId, ...callerIdentity(resolved.record, sessionId, sessionTitleOf(exec), lineage).ancestry])) {
+           throw new Error(`only the Lead of team ${resolved.record.teamId} may append to its live roster or board`);
+         }
+@@ -9457,7 +9457,7 @@ WARNING: ${value.warning}` : "";
+         }
+         const resolved = resolveForWrite(workspace, sessionId, lineage, delegated, sessionTitleOf(exec));
+         if (resolved.record === undefined)
+-          throw new Error(resolved.refusal ?? "no team is staged in this session — call agent_teams_create first");
++          throw new Error(resolved.refusal ?? 'no team is staged in this session — call `agent_teams_plan {action:"create"}` first');
+         if (!recordNamesLead(resolved.record, [sessionId, ...callerIdentity(resolved.record, sessionId, sessionTitleOf(exec), lineage).ancestry])) {
+           throw new Error(`only the Lead of team ${resolved.record.teamId} may append to its live roster or board`);
+         }
+diff --git a/packages/mpd-team-core-plugin/src/index.ts b/packages/mpd-team-core-plugin/src/index.ts
+index 8b2b3c8d..295551d3 100644
+--- a/packages/mpd-team-core-plugin/src/index.ts
++++ b/packages/mpd-team-core-plugin/src/index.ts
+@@ -2110,7 +2110,7 @@ export function apply(ctx: any): void {
+         // feed every panel follows fires.
+         /** The caller's live team, or the sentence saying why none unambiguous resolved. */
+         const resolved = resolveForWrite(workspace, sessionId, lineage, delegated, sessionTitleOf(exec))
+-        if (resolved.record === undefined) throw new Error(resolved.refusal ?? "no team is staged in this session — call agent_teams_create first")
++        if (resolved.record === undefined) throw new Error(resolved.refusal ?? "no team is staged in this session — call `agent_teams_plan {action:\"create\"}` first")
+         // ── LEAD AUTHORIZATION ON THE LIVE ROSTER (PR #42 review F-A, CWE-862) ──
+         // The staged-plan arm above is the caller's OWN staging file; this arm writes a LIVE team every
+         // surface already reads, so it is the Lead's to change. `agent_teams_plan` is NOT on the
+@@ -2264,7 +2264,7 @@ export function apply(ctx: any): void {
+         // record through `addTeamTask` + `writeTeam`, carrying the requirement-chain fields.
+         /** The caller's live team, or the sentence saying why none unambiguous resolved. */
+         const resolved = resolveForWrite(workspace, sessionId, lineage, delegated, sessionTitleOf(exec))
+-        if (resolved.record === undefined) throw new Error(resolved.refusal ?? "no team is staged in this session — call agent_teams_create first")
++        if (resolved.record === undefined) throw new Error(resolved.refusal ?? "no team is staged in this session — call `agent_teams_plan {action:\"create\"}` first")
+         // ── LEAD AUTHORIZATION ON THE LIVE BOARD (PR #42 review F-A, CWE-862) ──
+         // Same rule as the live roster arm: a member must not assign arbitrary ownership or
+         // `write_scopes` on a running team's board. See that arm's comment for the narrowing.
+diff --git a/packages/mpd-team-core-plugin/test/c74-midrun-and-binding.test.ts b/packages/mpd-team-core-plugin/test/c74-midrun-and-binding.test.ts
+index ffb9daab..5bd69eff 100644
+--- a/packages/mpd-team-core-plugin/test/c74-midrun-and-binding.test.ts
++++ b/packages/mpd-team-core-plugin/test/c74-midrun-and-binding.test.ts
+@@ -371,7 +371,7 @@ describe("C7-4 F1 — a mid-run append lands on the APPROVED record", () => {
+     /** The thrown refusal for a session that belongs to nothing. */
+     const failure = await h.call("agent_teams_plan", { action: "create_task", task: { subject: "x", description: "d", blocked_by: [] } }, "sess-nobody").then(() => undefined, (error: unknown) => error)
+     expect(failure).toBeInstanceOf(Error)
+-    expect(String((failure as Error).message)).toBe("no team is staged in this session — call agent_teams_create first")
++    expect(String((failure as Error).message)).toBe("no team is staged in this session — call `agent_teams_plan {action:\"create\"}` first")
+   })
+ })
+ 
+diff --git a/packages/mpd-team-watchdog-plugin/dist/index.js b/packages/mpd-team-watchdog-plugin/dist/index.js
+index ade19613..c7964d2c 100644
+--- a/packages/mpd-team-watchdog-plugin/dist/index.js
++++ b/packages/mpd-team-watchdog-plugin/dist/index.js
+@@ -5958,7 +5958,8 @@ class WatchdogEngine {
+     if (this.config.teamCacheMs > 0 && cached !== undefined && now - cached.at < this.config.teamCacheMs)
+       return cached.teams;
+     const teams = readTeams(this.dsh, workspace, this.mpdTeams());
+-    this.teamCache.set(key, { at: now, teams });
++    if (teams.length > 0)
++      this.teamCache.set(key, { at: now, teams });
+     return teams;
+   }
+   mpdTeams() {
+diff --git a/packages/mpd-team-watchdog-plugin/src/engine.ts b/packages/mpd-team-watchdog-plugin/src/engine.ts
+index 7b593b84..c5a7bd90 100644
+--- a/packages/mpd-team-watchdog-plugin/src/engine.ts
++++ b/packages/mpd-team-watchdog-plugin/src/engine.ts
+@@ -817,7 +817,12 @@ export class WatchdogEngine {
+     if (this.config.teamCacheMs > 0 && cached !== undefined && now - cached.at < this.config.teamCacheMs) return cached.teams
+     // The live readout, cached below for `teamCacheMs`.
+     const teams = readTeams(this.dsh, workspace, this.mpdTeams())
+-    this.teamCache.set(key, { at: now, teams })
++    // AN EMPTY READOUT IS NEVER CACHED (defect: the negative cache blinded a whole short lane). A lane's
++    // first heartbeat can arrive ~100 ms BEFORE its team record's `createdAt`, so an empty read is the
++    // NORMAL first observation, not a stable answer — caching it for `teamCacheMs` made every lane born
++    // inside that window (and every one of its members, the captain included) answer `member: null` for
++    // its whole life. Only a NON-EMPTY readout is worth remembering; an empty one is re-read next stamp.
++    if (teams.length > 0) this.teamCache.set(key, { at: now, teams })
+     return teams
+   }
+ 
+diff --git a/packages/mpd-team-watchdog-plugin/test/team-plane.test.ts b/packages/mpd-team-watchdog-plugin/test/team-plane.test.ts
+index ab176ba2..3adb5466 100644
+--- a/packages/mpd-team-watchdog-plugin/test/team-plane.test.ts
++++ b/packages/mpd-team-watchdog-plugin/test/team-plane.test.ts
+@@ -257,3 +257,38 @@ describe("the applied row reads the MPD plane PER CALL (T3 wiring)", () => {
+     }
+   })
+ })
++
++// ── THE NEGATIVE CACHE (release 0.18.2 defect ②): the DEFAULT window must not blind a young lane ──
++
++test("DEFAULT teamCacheMs: an empty readout is not cached, so a team created inside the window is named", () => {
++  /** The sandbox workspace, cleaned up even when an assertion fails. */
++  const box = sandbox()
++  try {
++    /** The plugin context whose adapter is the real registration surface. */
++    const ctx = pluginCtx(box.workspace)
++    // NO `teamCacheMs` HERE ON PURPOSE: the row's shipped default (2000 ms) is the subject. A lane's
++    // first heartbeat arrives ~100 ms BEFORE its team record's `createdAt`, so the first read is EMPTY
++    // and the second one is separated from it by far less than the window.
++    const report = apply(ctx, { stateDir: box.stateDir, tickIntervalMs: 3_600_000, warnSilenceMs: 7_200_000 })
++    try {
++      /** The live agent as the harness reports it; its id IS the member's executor handle. */
++      const agent = { id: "sess-m1", session: { id: "sess-m1", header: { cwd: box.workspace } } }
++      // FIRST STAMP (no team record yet): the empty answer the defect used to cache.
++      const early = report.engine?.stamp("turn-start", agent)
++      expect(early?.teamId).toBeNull()
++      expect(early?.member).toBeNull()
++      // THE TEAM IS CREATED ~100 ms LATER — inside the 2 s window — and the service mounts then too.
++      ctx.services.set("mpdTeams", mpdTeamsWith(mpdRecord()))
++      // SECOND STAMP: an empty read must never have been cached, so this one must resolve the team.
++      const later = report.engine?.stamp("turn-start", agent)
++      expect(later?.teamId).toBe(MPD_TEAM_ID)
++      expect(later?.member).toBe("Senior Engineer")
++      expect(later?.memberKey).toBe("Senior Engineer")
++    } finally {
++      report.engine?.stop()
++      ctx.__dispose()
++    }
++  } finally {
++    box.cleanup()
++  }
++})
+diff --git a/skills/dsh-qa/SKILL.md b/skills/dsh-qa/SKILL.md
+index 64b760a5..c2cbd431 100644
+--- a/skills/dsh-qa/SKILL.md
++++ b/skills/dsh-qa/SKILL.md
+@@ -133,6 +133,7 @@ corpus and its golden fixtures have been extracted out of this repository.
+ | install-dependencies | bundle install deps | the mechanical realisation of `evidence/install-deps/requirements/requirements-and-inventory.md` (AC-3/AC-5/AC-6, fatal modes F1–F4): FIVE compositions, aggregate-free FIRST. The sandbox profile is built BY HAND (link dependency + `dsh.profile.bundles` + the `node_modules/@mpd-dsh/mpd -> <repo>` checkout symlink) because `dsh plugin add` cannot run here — pnpm's store index lives outside the workspace (ERR_SQLITE_ERROR) and its registry requests time out; the harness's own module fallback then materializes the DECLARED dependency, which is the install step under test. The COMPOSITION claim is read from `scripts/dump-config.ts` and the LOAD claim from a REAL mounting boot, asserted SEPARATELY and never conflated (`--dump-config` is never load evidence): (1) bundle-only web -> exactly ONE enabled `dsh-better-sidebar` row, its `/sidebar/api` route answering (GET 405 envelope, never 404) and its `dsh-better-sidebar/client.js` composed into the served client table — the positive proof that the entry ACTIVATED; (2) the live aggregate `@linxin666/dsh-web-all` (UNGUARDED row `web-ui-better-sidebar`) installed FIRST -> still exactly one mount and a healthy boot; (3) the SAME aggregate installed AFTER the bundle — the ordering a forward-blind entry-list guard cannot see -> still exactly one mount and a healthy boot; (4) the dsh-tui plane -> the sidebar row absent/disabled (composition) and a real tmux `dsh-tui` boot carrying NONE of `did not activate` / `pending (waiting for service` / `failed to apply loader entry`; (5) the declared dependency NOT resolvable (a staged bundle copy with a REAL package.json but no node_modules anywhere on its resolution chain) -> the boot still SUCCEEDS, degraded to no sidebar. F1–F4 signatures are asserted ABSENT by a recorded scan, per-arm results carry the artifact they read, a missing prerequisite is a SKIP with its stated reason, and the arm order/composition is pinned in `result.json`; `--self-test` is fully offline (sidebar-row parsing incl. the raw `!!js` guard and decoys, the signature scanner, the two-sided route + served-client verdicts, the profile recipe, the hermetic stage, cases.json + SKILL.md wiring) | install-deps/w1 |
+ | ask-user-question-audit | ask_user_question diagnostics (D3) | a REPORTING tool, not a lane (no lane mode: without an argument it prints the usage line and exits 2). It decodes a dsh session log — a concatenated-zstd container, frame by frame through `lib/session-evidence.ts`, so a naive single decompress would see only the header frame — and enumerates every `ask_user_question` `tool/call`, classifying each as `ok`, `structurally-broken` (every broken clause NAMED: `arguments-not-object`, `questions-missing` / `-not-array` / `-empty`, `question-item-not-object`, `question-id-missing`, `question-text-missing`, `options-missing`, `options-not-array`, `options-empty`, `option-label-missing`) or `unparseable-arguments` (the harness records `data.arguments` as the RAW model string, so invalid JSON never became a shape to check), then pairs the call with the record that closed it: a `tool/result` carrying its call id (BOTH session shapes — v4 on the message, v3 on the `tool-result` block) AND/OR a continued question's `user-question-reply` user message. The rules are a LOCAL prose restatement of the D1 guard, never an import of plugin code; `tool/result` records with no readable call id are counted and reported, so "unpaired" is never silently read as "never answered". Prints a per-occurrence table + summary and exits 0 after reporting; usage error exits 2; an undecodable log exits 1. `--self-test` is fully offline: synthetic CONCATENATED-zstd frames (4 frames / 19 records / 12 occurrences), one assertion per rule of the restatement, a negative control that must NOT be enumerated, both result shapes, both answer pairings and the CLI's own exit codes | D3 |
+ | model-config-live-refresh | model config live refresh (AC6/R5) | ONE dsh process (the web platform on a loopback port, isolated DSH_HOME + sandbox HOME + sandbox workspace, checkout-linked `@mpd-dsh/mpd` profile), four phases with NO restart in between: the local DeepSeek-Messages stub answers each phase's first parent model step with ONE `mpd_role_spawn` (Junior Engineer — routed from its OWN `agentRoutes` entry, a per-phase marker in the task text); `settings/mutate(ns="mpd-config", set agentRoutes.Junior Engineer.model=deepseek-v4-pro)` over the token-cookie gateway — the SAME entry-config surface the web card (`configForms.get("mpd-config")`) and the TUI section write; a SECOND session's spawn must carry the saved route; then a HAND EDIT of the read root's `.mpd/mpd.jsonc` (the other R1 surface) is driven the same way. The proof is HARNESS-SIDE, decoded frame by frame from the session store: the PARENT log's `tool/call mpd_role_spawn` + non-error `tool/result` tied to its phase by the marker, and the CHILD log's first `request/header` `data.header.config.model` — the CONFIGURED baseline route (`deepseek-v4-flash`, declared in the sandbox's file because there is no default layer) at baseline, the SAVED model after the saves — cross-checked against the stub trace and boot-pid equality (the no-restart fact). MEASURED (2026-10-13, harness 0.1.7-rc.2): every leg GREEN (15/15) — the harness ACCEPTS and PERSISTS the entry save and fires the update event, but the descriptor's resolved VALUE keeps projecting the apply-time fiber config and its `base` stays the inherited layer BELOW the override, so ONLY `user` (the SAVED override) moves with a save; the config row composes its L4 knob layer from `describe().user`, so the saved route reaches the next spawn with no restart and a materialised default can no longer bury a lower-layer file edit (the file-edit control). The case is the wave's standing falsifier: a `value`/`base` composition reddens the after-save, provider-side and file-edit legs while the boot pid stays equal, names the broken leg and never skips. `--self-test` is offline: the agent-route model enum parsed from the SHIPPED schema (never duplicated by hand), the entry-config subscription pins on the plugin source, a synthetic concatenated-zstd store decoded by the case's own frame-by-frame reader, the stub's parent-step classifier both directions, and falsifiability pins on the case's own source (needles assembled from parts). PREREQs: `dsh` on PATH and the built `packages/mpd-config-plugin/dist` | fix/model-config-live-refresh |
++| cellwork-activate-mint | cellwork activation after auto-end (release 0.18.2 defect ①) | the release-0.18.2 field failure promoted from `evidence/release/0.18.2/*/exploratory/probe-d1-autoend-arm`: mpd-roles' clean-terminal auto-end ENDS a cell's planning team between split acceptance and `cellwork_activate`, and activation used to answer `no team is staged in this session — call agent_teams_create first` because it had no minting path. The case drives the REAL `mpd-team-core-plugin` and `mpd-cellwork-plugin` rows in-process over a stub harness seam (no `dsh` binary, no model): `/cellwork` opens the cell, `cellwork_start` stages and approves the REAL planning team, the planner finalizes the requirements, the splitter submits an accepted split, and `agent_teams_control {action:"end"}` ends the planning board through the REAL terminal verb — the same call the auto-end gate makes. THE POSITIVE ARM asserts `cellwork_activate` MINTS a second team through `agent_teams_plan {action:"create"}` + one member + `approve`, lands all four split tasks on it, and persists the TWO-ID state (`teamId` = execution board, `planningTeamId` = the ended staging board) with the `mintedTeamId`/`planningTeamId` journal row; the ended record stays `endedAt`-stamped and untouched. THE NEGATIVE CONTROL runs the same flow with a LIVE planning board: it must be addressed IN PLACE (exactly one team record, `planningTeamId` empty, ZERO `create` calls during activation), so the arm cannot pass by minting unconditionally. `--self-test` is the offline falsifier (both arms, no evidence dir); a real run writes `result.json` + `output.log`. Evidence → evidence/dsh-qa/cellwork-activate-mint/&lt;ts&gt;/ | release-0.18.2/D1 |
+ | team-dispatch-guard | team-plane dispatch/lifecycle guards (C7) | the C7 amendment's HARD GATE over the mpd-native team plane's ONE pairing seam (`planDispatch`/`pairingRefusal`) and the team-lifecycle rules, with FOUR frozen assertions and their negative control: (a) a task×member pairing across DIFFERENT teams is REFUSED, naming BOTH team ids — asserted at the SEAM, because the tool builds both sides from ONE record, so a cross-team pool is not constructible through `agent_teams_dispatch` (the honest bound); (b) through the REAL store, a task carrying `write_scopes` is never paired with a read-only specialist — the member's `readonly` flag is read from mpd-roles-plugin's OWN `mpdRoles` service, never a copied list — and the refusal is REPORTED instead of a wrong-but-free member being grabbed; (c) a record whose phase is terminal/archived (the hand-patched `archived` spelling included) or whose plan was archived WITHOUT approval is SKIPPED by `recordFor`/`resolveTeam`, falling through to the next live candidate or to none, and the consistency pass marks a reaped ghost `ended` WITH a reason; (d) THE NEGATIVE CONTROL — a valid same-team, write-capable pairing STILL SUCCEEDS. Since the C7-4 fold it ALSO drives thirteen adaptation arms through the REAL registered tools over a stub composition (in `--self-test` AND in the real lane): a mid-run `create_task` appends to the LIVE APPROVED record with its `kind`/`coverageOf`/`sourceTaskId`; a member session closes a row owned by its NAME; the mailbox summary is scoped to the resolved team; two id mints in the same millisecond differ while a colliding id is REFUSED; and a forked captain keeps its captaincy with a PERSISTED heal — each of the five fixes paired with its negative control. `--self-test` is the offline falsifier (the four assertions plus the real-store fixtures plus the C7-4 arms); it calls `planDispatch`, `pairingRefusal`, `resolveTeamRecord` and `reapReapedTeams` from the bundle's own source and needs no dsh spawn. Evidence → evidence/dsh-qa/team-dispatch-guard/&lt;ts&gt;/ | tui-015/C7 |
+ | team-idle-member-guard | team-plane idle-member guard (P2a) | the §3.1-3.3 + Amendment 1 guard on a REAL boot: the Lead's plan (TWO members, ONE task) is staged and approved through the REAL `agent_teams_plan` tool by a mounted probe row (`lib/team-idle-member-guard-probe.ts`), the team executor raises BOTH members, and the verdicts come from the HARNESS session log only — the task owner's session must record an `agent_teams_task` call WITH a non-error result, while the TASKLESS member's session must record EXACTLY ONE idle directive (the user-role message the per-agent pre-step injects) AND exactly ONE registered tool attempt whose paired `tool/result` is an ERROR carrying the guard's one-line `DENIAL_TEXT` — the member really calls `read`, so the denial itself is the proof (a quiet member would pass even with the guard removed); both members must carry an executor handle in the team record, so the denial is about a spawned member and never an absent one. The model step is a local stub: its child script (selected by a marker in the owner's spawn prompt) drives the owner's claim, while every other request issues the `read` attempt and then answers in plain text. `--self-test` is the offline falsifier — each detector against a POSITIVE and a NEGATIVE fixture (an errored result and a prose-only narration both REDDEN the owner verdict; for the idle verdict a MISSING attempt, an attempt that SUCCEEDED, a denial text that is not the guard's, a missing directive and a doubled directive each REDDEN it), plus two pins that the directive and denial literals this case asserts are the plugin's own source text. §3.4 lazy spawn is NOT claimed: the §6.1 one-turn bound stays declared. Evidence → evidence/team/idle-member-guard/live/&lt;ts&gt;/ | P2a/idle-member-guard |
+ | dshgo-standard | DSH-Go conformance (v0.18.0 wave) | the DSH-Go native-plugin HARD gate driven from the QA plane: runs `scripts/verify-dshgo-standard.ts` as a CHILD and judges its exit contract in BOTH cross-check directions — with `MPD_DSHGO_KIT` naming a pinned checkout a legal package must exit 0 and report `cross-check: PASSED`, while WITHOUT it the same package must exit 3 (NOT-PASSED), because a cross-check that did not run is never a silent green; the static lanes (manifest, views, backward compatibility, host half) must carry zero error findings; and the case proves the gate CAN FAIL by pointing it at a deliberately broken fixture (a duplicate contribution id must exit 1 naming `id-duplicate`). `--self-test` is offline: ten judge controls (a red run and a falsely-green run both redden; NOT-PASSED is accepted ONLY when the kit is absent; a TIMEOUT-shaped run carrying `exit=null` never passes, and a `null`, array or unparsable `--json` report is never `parseable`) plus the real broken-package control. Evidence → evidence/dshgo/standard/&lt;ts&gt;/ | v0.18.0/DSH-Go |
+diff --git a/skills/dsh-qa/scripts/team-dispatch-guard.ts b/skills/dsh-qa/scripts/team-dispatch-guard.ts
+index 826a5177..48edd3ec 100644
+--- a/skills/dsh-qa/scripts/team-dispatch-guard.ts
++++ b/skills/dsh-qa/scripts/team-dispatch-guard.ts
+@@ -411,7 +411,7 @@ export async function c74Arms(): Promise<Arm[]> {
+       const none = harness(sandbox())
+       /** The refusal sentence. */
+       const noneFailure = await refusalOf(none.call("agent_teams_plan", { action: "create_task", task: { subject: "x", description: "d", blocked_by: [] } }, "sess-nobody"))
+-      out.push({ id: "f1-neg-no-team", claim: "NEGATIVE CONTROL: no staged plan and no live team keeps the standing sentence", ok: String(noneFailure?.message) === "no team is staged in this session — call agent_teams_create first", observed: String(noneFailure?.message ?? "(no refusal)") })
++      out.push({ id: "f1-neg-no-team", claim: "NEGATIVE CONTROL: no staged plan and no live team keeps the standing sentence", ok: String(noneFailure?.message) === "no team is staged in this session — call `agent_teams_plan {action:\"create\"}` first", observed: String(noneFailure?.message ?? "(no refusal)") })
+     }
+ 
+     // ── F2 — a member closes its own row by its recorded name ──────────────────────────────────

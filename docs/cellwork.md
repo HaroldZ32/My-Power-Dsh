@@ -993,9 +993,11 @@ and the stale field is only the fast path.
 different teams, the surface prints BOTH ids and which resolution won (and, for a rejected recorded id,
 that its board holds none of the cell's activated tasks). `cellwork_stop` runs its live-task guard
 against the RESOLVED team, so a non-forced stop is REFUSED while that board still has live tasks; and
-the stop does NOT end the team by itself — its answer carries `teamId` (the execution team it leaves
-running) and `endTeamCommand` (the exact retry verb
-`agent_teams_control {action:"end", team_id:"<id>"}`), and the render prints both. An operator who
+the stop does NOT end the team by itself — a SUCCESSFUL stop's answer carries `teamId` (the execution
+team it leaves running) and `endTeamCommand` (the exact retry verb
+`agent_teams_control {action:"end", team_id:"<id>"}`), and the render prints both. A REFUSED stop
+answers only its error sentence, deliberately: while tasks are still running, suggesting "end that
+team" would contradict the guard's own reason. An operator who
 stops a cell and wants the agents gone must call that verb.
 
 ## Configuration

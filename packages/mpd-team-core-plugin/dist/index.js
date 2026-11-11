@@ -9385,7 +9385,7 @@ WARNING: ${value.warning}` : "";
         }
         const resolved = resolveForWrite(workspace, sessionId, lineage, delegated, sessionTitleOf(exec));
         if (resolved.record === undefined)
-          throw new Error(resolved.refusal ?? "no team is staged in this session — call agent_teams_create first");
+          throw new Error(resolved.refusal ?? 'no team is staged in this session — call `agent_teams_plan {action:"create"}` first');
         if (!recordNamesLead(resolved.record, [sessionId, ...callerIdentity(resolved.record, sessionId, sessionTitleOf(exec), lineage).ancestry])) {
           throw new Error(`only the Lead of team ${resolved.record.teamId} may append to its live roster or board`);
         }
@@ -9457,7 +9457,7 @@ WARNING: ${value.warning}` : "";
         }
         const resolved = resolveForWrite(workspace, sessionId, lineage, delegated, sessionTitleOf(exec));
         if (resolved.record === undefined)
-          throw new Error(resolved.refusal ?? "no team is staged in this session — call agent_teams_create first");
+          throw new Error(resolved.refusal ?? 'no team is staged in this session — call `agent_teams_plan {action:"create"}` first');
         if (!recordNamesLead(resolved.record, [sessionId, ...callerIdentity(resolved.record, sessionId, sessionTitleOf(exec), lineage).ancestry])) {
           throw new Error(`only the Lead of team ${resolved.record.teamId} may append to its live roster or board`);
         }

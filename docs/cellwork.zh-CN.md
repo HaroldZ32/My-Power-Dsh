@@ -773,8 +773,9 @@ cell id 形如 `cell-<UTC 时刻>`；子 cell 会记录 `parentCellId` 与 `dept
 **分歧会被报告，绝不静默。** 记录的 id 与胜出的解析指向不同 team 时，界面会同时打印**两个** id 以及哪条解析
 胜出（若记录的 id 被否决，还会说明其看板不携带本 cell 的任何已激活任务）。`cellwork_stop` 的活任务守卫
 针对**解析出的** team 运行，所以那块看板还有活任务时，非强制 stop 会被**拒绝**；而 stop **不会**自己结束
-team——它的答复携带 `teamId`（它留下继续运行的执行 team）与 `endTeamCommand`（精确的重试动词
-`agent_teams_control {action:"end", team_id:"<id>"}`），渲染会把两者都打印出来。操作者停止 cell 后若想让
+team——**成功** stop 的答复才携带 `teamId`（它留下继续运行的执行 team）与 `endTeamCommand`（精确的重试动词
+`agent_teams_control {action:"end", team_id:"<id>"}`），渲染会把两者都打印出来。**被拒绝**的 stop 只回
+它那句 error，这是有意为之：任务还在跑时建议“结束该队”会与守卫自身的理由相反。操作者停止 cell 后若想让
 agent 退出，必须调用该动词。
 
 ## 配置

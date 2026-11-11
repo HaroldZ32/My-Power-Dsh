@@ -5520,6 +5520,32 @@ function contractAlreadyNamesLoop(deps, taskKey) {
     return false;
   }
 }
+function isLiveTeamRecord(record) {
+  if (record === undefined)
+    return false;
+  if ("endedAt" in record && record.endedAt !== undefined)
+    return false;
+  const phase = "phase" in record && typeof record.phase === "string" && record.phase !== "" ? record.phase : "active";
+  return phase === "staged" || phase === "active" || phase === "idle";
+}
+async function mintExecutionTeam(call, input) {
+  const created = await call({ action: "create", name: input.planName, description: input.description });
+  if (!created.ok)
+    return { ok: false, error: "the mint plan could not be staged: " + created.error };
+  const added = await call({ action: "add_member", member: { ...input.member } });
+  if (!added.ok) {
+    await call({ action: "delete" });
+    return { ok: false, error: "the mint member could not be staged: " + added.error };
+  }
+  const approved = await call({ action: "approve" });
+  if (!approved.ok)
+    return { ok: false, error: "the mint plan could not be approved: " + approved.error };
+  const team = typeof approved.value.team === "object" && approved.value.team !== null ? approved.value.team : {};
+  const teamId = typeof team.teamId === "string" ? team.teamId : "";
+  if (teamId === "")
+    return { ok: false, error: 'the mint plan was approved but the answer carried no team id — inspect `agent_teams_plan {action:"status"}` before retrying' };
+  return { ok: true, teamId };
+}
 async function materializeSplit(deps) {
   const resplit = Object.values(deps.cell.activatedTasks ?? {}).some((id) => id !== "");
   const resolved = resplit ? resolveCellTeam({ workspace: deps.workspace, cell: deps.cell, teams: deps.teams?.(), recordFor: deps.recordFor }) : undefined;
@@ -5527,7 +5553,7 @@ async function materializeSplit(deps) {
   const boardNote = unverified ? "the re-split resolved no live team for " + deps.cell.cellId + ", so this activation continues on the RECORDED team " + JSON.stringify(deps.cell.teamId) + " — the board resolution is UNVERIFIED" + (resolved?.note === undefined ? "" : " (" + resolved.note + ")") + "; work is appended to that record only." : undefined;
   const board = unverified ? { teamId: deps.cell.teamId } : resolved ?? { teamId: deps.cell.teamId };
   const planningTeamId = deps.cell.teamId;
-  const teamId = board.teamId;
+  let teamId = board.teamId;
   if (teamId === "")
     return { ok: false, error: "cellwork_activate: no team is recorded on " + deps.cell.cellId + " — run `cellwork_start` first (the planning team is the record activation appends to)" };
   const partial = { members: {}, boardIds: {}, loopIds: {}, contracts: {} };
@@ -5584,6 +5610,29 @@ async function materializeSplit(deps) {
     live = deps.recordFor(teamId);
   } catch {
     live = undefined;
+  }
+  let mintedTeamId = "";
+  if (!resplit && !isLiveTeamRecord(live)) {
+    const seedTask = deps.split.tasks[0];
+    const seedMember = seedTask === undefined ? "" : resolvedMemberName(seedTask);
+    if (seedMember === "")
+      return fail("cellwork_activate: the planning team " + JSON.stringify(teamId) + " is no longer live, and the accepted split names no member to mint the execution team from — a split with no task cannot be activated");
+    const seedOwned = deps.split.tasks.filter((task) => roleKey(resolvedMemberName(task)) === roleKey(seedMember));
+    const seedRole = (seedOwned[0]?.ownerRole ?? seedMember).trim();
+    const minted = await mintExecutionTeam(call, {
+      planName: "cell " + deps.cell.cellId + " execution",
+      description: deps.cell.objective,
+      member: { name: seedMember, role: seedRole, description: seedMember, prompt: memberPrompt(deps, seedMember, seedRole, seedOwned) }
+    });
+    if (!minted.ok)
+      return fail("cellwork_activate could not mint the execution team after the planning team " + JSON.stringify(teamId) + " ended: " + minted.error);
+    mintedTeamId = minted.teamId;
+    teamId = minted.teamId;
+    try {
+      live = deps.recordFor(teamId);
+    } catch {
+      live = undefined;
+    }
   }
   const liveRoster = new Map;
   for (const row of live?.members ?? [])
@@ -5779,7 +5828,18 @@ async function materializeSplit(deps) {
   let growth = { members: {}, reassign: [], grown: [], reused: [], refused: [], warnings: [], caps: { perRole: 0, total: 0 } };
   try {
     record = deps.recordFor(teamId);
-    const afterBoard = resolveCellTeam({ workspace: deps.workspace, cell: { ...deps.cell, activatedTasks: Object.fromEntries(boardIds) }, teams: deps.teams?.(), recordFor: deps.recordFor });
+    let afterBoard;
+    if (mintedTeamId !== "") {
+      let mintedRecord;
+      try {
+        mintedRecord = deps.recordFor(mintedTeamId);
+      } catch {
+        mintedRecord = undefined;
+      }
+      afterBoard = { teamId: mintedTeamId, record: mintedRecord };
+    } else {
+      afterBoard = resolveCellTeam({ workspace: deps.workspace, cell: { ...deps.cell, activatedTasks: Object.fromEntries(boardIds) }, teams: deps.teams?.(), recordFor: deps.recordFor });
+    }
     growth = await growExecutionSeats({
       dsh: deps.dsh,
       workspace: deps.workspace,
@@ -5814,7 +5874,7 @@ async function materializeSplit(deps) {
       await deps.dsh.executeTool({ name: "agent_teams_task", arguments: { action: "complete", task_id: splitTaskId, note: "split revision " + String(deps.split.revision) + " materialised by activation" }, agent: deps.captainAgent });
     } catch {}
   }
-  const finalBoard = resolveCellTeam({ workspace: deps.workspace, cell: { ...deps.cell, activatedTasks: Object.fromEntries(boardIds) }, teams: deps.teams?.(), recordFor: deps.recordFor });
+  const finalBoard = mintedTeamId !== "" ? { teamId: mintedTeamId } : resolveCellTeam({ workspace: deps.workspace, cell: { ...deps.cell, activatedTasks: Object.fromEntries(boardIds) }, teams: deps.teams?.(), recordFor: deps.recordFor });
   const executionTeamId = finalBoard.teamId === "" ? teamId : finalBoard.teamId;
   appendJournal(deps.workspace, deps.cell.cellId, {
     event: "activate",
@@ -5823,6 +5883,7 @@ async function materializeSplit(deps) {
     ...executionTeamId === teamId ? {} : { recordedTeamId: teamId },
     mode,
     splitRevision: deps.split.revision,
+    ...mintedTeamId === "" ? {} : { mintedTeamId, planningTeamId },
     ...unverified ? { boardResolution: "unverified", ...boardNote === undefined ? {} : { boardNote } } : {},
     producer: producerIdentity(deps.cell.cellId),
     tasks: activated.map((task) => ({ key: task.key, boardId: task.boardId, owner: task.memberName, kind: task.kind })),

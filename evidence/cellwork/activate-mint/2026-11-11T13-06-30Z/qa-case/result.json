@@ -1,0 +1,18 @@
+{
+  "case": "cellwork-activate-mint",
+  "ok": true,
+  "arms": [
+    {
+      "id": "mint",
+      "claim": "after the clean-terminal auto-end, cellwork_activate mints a FRESH execution team and succeeds",
+      "ok": true,
+      "observed": "activate.ok=true dead=team-20261111130756361-qgcr-002(endedAt=2026-11-11T13:07:56.366Z) minted=team-20261111130756368-qgcr-004(phase=active, tasks=4) cell.teamId=team-20261111130756368-qgcr-004 cell.planningTeamId=team-20261111130756361-qgcr-002 phase=executing revision=1 deadRecordUntouched=true journal.mintedTeamId=team-20261111130756368-qgcr-004"
+    },
+    {
+      "id": "live",
+      "claim": "NEGATIVE CONTROL: a live planning board is addressed in place (no second team, no mint)",
+      "ok": true,
+      "observed": "activate.ok=true teams=1[team-20261111130756375-qgcr-006] cell.teamId=team-20261111130756375-qgcr-006 cell.planningTeamId= phase=executing boardTasks=6 createsDuringActivation=0"
+    }
+  ]
+}

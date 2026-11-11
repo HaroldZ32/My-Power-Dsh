@@ -188,6 +188,8 @@ function makeHarness(): Harness {
           return { isError: false, value: { plan } }
         }
         if (record === null) throw new Error("no plan and no team")
+        // THE REAL TEAM PLANE REFUSES A LIVE APPEND TO AN ENDED TEAM (its live arms filter `endedAt`).
+        if (record.endedAt !== undefined) return { isError: true, value: { error: "no team is staged in this session — call `agent_teams_plan {action:\"create\"}` first" } }
         memberAttempts.push(String(member.name))
         if (injection.memberFailAt === memberAttempts.length) return { isError: true, value: { error: "the injected raise failure for " + String(member.name) } }
         if (record.members.some((row: Record<string, any>) => row.name === member.name)) return { isError: true, value: { error: "teammate " + JSON.stringify(String(member.name)) + " is already on the roster" } }
@@ -207,6 +209,7 @@ function makeHarness(): Harness {
           return { isError: false, value: { plan } }
         }
         if (record === null) throw new Error("no plan and no team")
+        if (record.endedAt !== undefined) return { isError: true, value: { error: "no team is staged in this session — call `agent_teams_plan {action:\"create\"}` first" } }
         taskAttempts.push(String(task.subject))
         if (injection.taskFailAt === taskAttempts.length) return { isError: true, value: { error: "the injected append failure for " + String(task.subject) } }
         /** The board id the append mints. */
@@ -219,7 +222,9 @@ function makeHarness(): Harness {
       if (action === "approve") {
         if (plan === null) throw new Error("no plan")
         record = {
-          teamId: "team-1",
+          // A FRESH ID PER APPROVAL: the ended planning team keeps its own record (`team-1`), so a mint
+          // is visible as a DIFFERENT team rather than an overwrite of the dead one.
+          teamId: "team-" + String(teamRecords.size + 1),
           members: plan.members.map((member: Record<string, any>, index: number) => {
             /** The executor handle the approval mints for this member. */
             const executorRef = "handle-" + String(member.name)
@@ -228,7 +233,7 @@ function makeHarness(): Harness {
           }),
           tasks: plan.tasks.map((task: Record<string, any>, index: number) => ({ ...task, id: "T" + String(index + 1), status: "pending" })),
         }
-        teamRecords.set("team-1", record)
+        teamRecords.set(String(record.teamId), record)
         /** The created rows the approval answer reports. */
         const created = { members: record.members.map((member: Record<string, any>) => ({ name: member.name, id: member.executorRef })), tasks: record.tasks.map((task: Record<string, any>) => ({ subject: task.subject, id: task.id })) }
         plan = { ...plan, approvedAt: "now" }
@@ -278,7 +283,7 @@ function makeHarness(): Harness {
     // `mpdTeamActions` now, so this harness answers it with the shared in-memory plane over the SAME
     // record map `mpdTeams` answers, delivering into `sends`.
     mpdTeamActions: createTeamActionsDouble({
-      record: () => teamRecords.get("team-1") as unknown as Parameters<typeof createTeamActionsDouble>[0]["record"] extends () => infer R ? R : never,
+      record: () => record as unknown as Parameters<typeof createTeamActionsDouble>[0]["record"] extends () => infer R ? R : never,
       send: (handle: string, text: string) => { sends.push({ handle, text }) },
     }).service,
     mpdTeams: {
@@ -1014,4 +1019,79 @@ test("F3: the cellwork_activate schema DECLARES `reused` and the description nam
   expect(description).toContain(["opens a verify loop for EVERY code task", "that has none yet", "BEFORE dispatch"].join(" "))
   expect(description).toContain(["A failed pass is checkpointed", "and the SAME accepted revision resumes it"].join(" "))
   expect(description).toContain(["a newer accepted revision", "supersedes an older in-flight one"].join(" "))
+})
+
+// ── the AUTO-END mint (release 0.18.2 defect ①): activation must MINT, never refuse ──────────
+
+test("MINT: a planning board ended before activation is replaced by a fresh execution team", async () => {
+  /** The harness with an accepted split. */
+  const harness = makeHarness()
+  /** The cell id. */
+  const cellId = await startCell(harness)
+  await finalizeRequirements(harness)
+  await submitSplit(harness)
+  // THE MEASURED FIELD STATE: mpd-roles' clean-terminal auto-end stamps the planning record `ended`
+  // between the split's acceptance and the captain's next step. The record still EXISTS; it is not live.
+  /** The planning record the cell names. */
+  const planning = harness.teamRecords.get("team-1")
+  if (planning === undefined) throw new Error("the planning team record is missing")
+  planning.phase = "ended"
+  planning.endedAt = "2026-11-11T00:00:00.000Z"
+  /** The planning board's row count before activation, so the arm proves it was not written again. */
+  const planningTasksBefore = planning.tasks.length
+  /** The record before activation: the dead planning team is the only id the cell knows. */
+  const before = readStateJson(harness.workspace, cellId)
+  expect(before.teamId).toBe("team-1")
+  expect(before.planningTeamId).toBe("")
+  /** The activation that must mint. */
+  const activated = await runTool(harness, "cellwork_activate", {})
+  expect(activated.ok).toBe(true)
+  // THE TWO-ID STATE docs/cellwork.md promises: the execution board is a NEW team, the ended planning
+  // team survives as `planningTeamId`.
+  /** The record after activation. */
+  const after = readStateJson(harness.workspace, cellId)
+  expect(after.teamId).toBe("team-2")
+  expect(after.planningTeamId).toBe("team-1")
+  expect(after.phase).toBe("executing")
+  expect(after.activatedRevision).toBe(1)
+  expect(Object.keys(after.activatedTasks).sort()).toEqual(["auth-core", "auth-review", "cli-core", "cli-review"])
+  // THE MINTED BOARD carries every split row; the ended record was never written again.
+  /** The minted team record. */
+  const minted = harness.teamRecords.get("team-2")
+  if (minted === undefined) throw new Error("no execution team was minted")
+  expect(minted.tasks.length).toBe(4)
+  // THREE distinct owners: the seed member (Senior Engineer) plus Reviewer and Deep Worker; both review
+  // tasks name the same `Reviewer`, so the pass raises it once (contract C1).
+  expect(minted.members.length).toBe(3)
+  expect(planning.endedAt).toBe("2026-11-11T00:00:00.000Z")
+  // The ended record was never appended to: its board is byte-for-byte the staging shape it had.
+  expect(planning.tasks.length).toBe(planningTasksBefore)
+  // The journal names the mint and the replaced board, so a later reader can reconstruct the path.
+  /** The activation journal row. */
+  const row = journalEntries(harness.workspace, cellId).find((entry) => entry.event === "activate")
+  expect(row?.mintedTeamId).toBe("team-2")
+  expect(row?.planningTeamId).toBe("team-1")
+  expect(row?.teamId).toBe("team-2")
+})
+
+test("MINT NEGATIVE CONTROL: a LIVE planning board is still addressed in place (no second team)", async () => {
+  /** The harness with an accepted split on a team that is still live. */
+  const harness = makeHarness()
+  /** The cell id. */
+  const cellId = await startCell(harness)
+  await finalizeRequirements(harness)
+  await submitSplit(harness)
+  /** The `create` calls staging already spent, so the delta measures activation alone. */
+  const createsBefore = harness.calls.filter((call) => call.name === "agent_teams_plan" && call.arguments.action === "create").length
+  /** The activation on the live record. */
+  const activated = await runTool(harness, "cellwork_activate", {})
+  expect(activated.ok).toBe(true)
+  // THE NORMAL PATH IS UNCHANGED: one team exists, the record's own id is the execution board, and no
+  // `create` was spent minting a replacement.
+  expect(harness.teamRecords.size).toBe(1)
+  expect(readStateJson(harness.workspace, cellId).teamId).toBe("team-1")
+  expect(readStateJson(harness.workspace, cellId).planningTeamId).toBe("")
+  /** The `create` calls activation itself made. */
+  const creates = harness.calls.filter((call) => call.name === "agent_teams_plan" && call.arguments.action === "create").length
+  expect(creates - createsBefore).toBe(0)
 })

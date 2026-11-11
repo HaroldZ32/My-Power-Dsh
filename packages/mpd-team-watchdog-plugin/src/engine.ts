@@ -817,7 +817,12 @@ export class WatchdogEngine {
     if (this.config.teamCacheMs > 0 && cached !== undefined && now - cached.at < this.config.teamCacheMs) return cached.teams
     // The live readout, cached below for `teamCacheMs`.
     const teams = readTeams(this.dsh, workspace, this.mpdTeams())
-    this.teamCache.set(key, { at: now, teams })
+    // AN EMPTY READOUT IS NEVER CACHED (defect: the negative cache blinded a whole short lane). A lane's
+    // first heartbeat can arrive ~100 ms BEFORE its team record's `createdAt`, so an empty read is the
+    // NORMAL first observation, not a stable answer — caching it for `teamCacheMs` made every lane born
+    // inside that window (and every one of its members, the captain included) answer `member: null` for
+    // its whole life. Only a NON-EMPTY readout is worth remembering; an empty one is re-read next stamp.
+    if (teams.length > 0) this.teamCache.set(key, { at: now, teams })
     return teams
   }
 
