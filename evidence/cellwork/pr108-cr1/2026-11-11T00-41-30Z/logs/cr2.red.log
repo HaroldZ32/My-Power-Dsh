@@ -1,0 +1,23 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-cellwork-plugin/test/elastic-seats.test.ts:
+1012 |   // NO seam can verify the recorded team: every read answers a record carrying none of the cell's board ids.
+1013 |   /** The fixture whose resolver answers `none`. */
+1014 |   const fixture = directActivation({ workspace, cell, split, teams: { get: (): unknown => undefined }, recordFor: (teamId: string): Record<string, unknown> => ({ teamId, members: [], tasks: [] }) })
+1015 |   /** The materialisation: the old cell must still RUN. */
+1016 |   const result = await materializeSplit(fixture.deps)
+1017 |   expect(result.ok).toBe(true)
+                           ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: false
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/elastic-seats.test.ts:1017:21)
+(fail) CR #108: a re-split that resolves no team continues on the RECORDED id, marked unverified [2.83ms]
+
+ 0 pass
+ 30 filtered out
+ 1 fail
+ 1 expect() calls
+Ran 1 test across 1 file. [160.00ms]

@@ -1,0 +1,34 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-cellwork-plugin/test/elastic-seats.test.ts:
+437 |   const harness = makeHarness({ board: execution, planning, cell: (): CellState => executingCell(execution, PLAN_TEAM) })
+438 |   /** The captain's unfence of the seat the EXECUTION record carries. */
+439 |   const answer = await runTool(harness, "cellwork_dispatch", { unfence: ["Reviewer"] })
+440 |   expect(answer.ok).toBe(true)
+441 |   // THE TEAM-ONLY FENCE IS CLEARED THROUGH THE SEAM, on the roster the resolver named.
+442 |   expect(answer.unfenced).toEqual([{ member: "Reviewer", unfenced: true, cellRow: "untouched", plane: "unfenced" }])
+                                ^
+error: expect(received).toEqual(expected)
+
+  [
+    {
+-     "cellRow": "untouched",
+      "member": "Reviewer",
+-     "plane": "unfenced",
+-     "unfenced": true,
++     "reason": "not-fenced",
++     "unfenced": false,
+    },
+  ]
+
+- Expected  - 3
++ Received  + 2
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/elastic-seats.test.ts:442:27)
+(fail) CR #108: cellwork_dispatch unfences on the RESOLVED board, not the record's stale teamId [3.96ms]
+
+ 0 pass
+ 30 filtered out
+ 1 fail
+ 2 expect() calls
+Ran 1 test across 1 file. [161.00ms]

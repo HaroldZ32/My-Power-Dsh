@@ -1,0 +1,15 @@
+      // THE UNFENCE RUNS BEFORE THE PASS, so `reassign` may hand a row to a member this SAME call just
+      // reopened: the plane reads the TEAM row, and a fence cleared after the pass would have skipped it.
+      /** The record after the unfence, and one outcome per named member (nothing is written for none). */
+      const applied: UnfenceResult = unfenceTargets.length === 0 ? { cell, outcomes: [] } : await unfenceSeats(caller, cell, unfenceTargets, now)
+      /** The unfence outcomes; absent from the answer when the call named no member. */
+      const unfenced = applied.outcomes
+      /** The record the pass below reports against — the reopened one when this call cleared a fence. */
+      let current: CellState = applied.cell
+      /** The raw `reassign` argument, forwarded untouched. */
+      const rawReassign = readArgs(args)["reassign"]
+      // RUNTIME SEAT GROWTH, BEFORE THE PASS PAIRS (§4.1). The board is resolved through the ONE resolver
+      // (§7.1), so a legacy record whose `teamId` names the dead planning team grows seats on the REAL
+      // execution board; the grown seats' hand-overs ride the SAME plane call below, so the claim is real.
+      /** The board this pass addresses. */
+      const board = boardOf(caller.workspace, current)

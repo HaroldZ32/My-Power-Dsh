@@ -11,9 +11,9 @@
 // (`mpdTeams`, `mpdRoles`, `mpdConsults`) and the config service are declared STRUCTURALLY, because the
 // cross-package coupling inventory is frozen and may only shrink. No consult is raised here any more: the
 // two new tools and `cellwork_recon` go through `mpdConsults`, which is the roles row's ONE supervisor.
-import { appendJournal, listCellIds, readCell, writeCell, requirementsPath, type CellReadFailure, type CellState, type CellMemberRecord } from "./state"
+import { appendJournal, listCellIds, readCell, writeCell, requirementsPath, resolveCellTeam, type CellReadFailure, type CellState, type CellMemberRecord, type CellTeamResolution } from "./state"
 import { callerContext, type TeamActionsServiceView, sessionIdOf, type CallerContext, type TeamsServiceView } from "./caller"
-import { type CellworkConfig } from "./config"
+import { liveNumericKnob, type CellworkConfig } from "./config"
 import { readRequirements, storedRequirementsText, validateRequirementsText, writeRequirements } from "./requirements"
 import { latestSplit, readSplit, submitSplit, type SplitSubmission, type SplitTaskInput, type SplitVerdict } from "./split"
 import { resolveTaskWindow, type RouteResolutionView, type WindowReading } from "./budget"
@@ -198,6 +198,21 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
     const service = deps.ctx.get?.("mpdTeamActions", false)
     return typeof service === "object" && service !== null ? service as TeamActionsServiceView : undefined
   }
+  /**
+   * Resolve the team this cell's board is CURRENTLY on (§7.1a site 7).
+   *
+   * WHY EVERY BOARD READ GOES THROUGH THIS: the record's `teamId` is only the FAST PATH. Activation can
+   * land the execution board on a team the record never learned (the field defect), and a legacy cell
+   * carries that old shape. The resolver verifies the recorded id against the cell's `activatedTasks`
+   * and the plane, falls back to `planningTeamId`, and names BOTH ids when they disagree instead of
+   * silently preferring one.
+   *
+   * @param workspace - the caller's workspace root.
+   * @param cell - the cell record whose board is being read.
+   * @returns the resolution: the winning team id, the evidence behind it, and the optional both-ids note.
+   */
+  const boardOf = (workspace: string, cell: CellState): CellTeamResolution =>
+    resolveCellTeam({ workspace, cell, teams: teams(), recordFor: (teamId: string) => recordOf(teams(), workspace, teamId) })
   /** The roster service, probed per call. */
   const roster = (): RosterServiceView | undefined => {
     /** The service object, or undefined. */
@@ -237,6 +252,29 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
     const service = deps.ctx.get?.("mpdConfig", false)
     return typeof service === "object" && service !== null ? service as ConfigServiceView : undefined
   }
+  /**
+   * Read one dotted `mpd.jsonc` key, TOTAL: an absent or unreadable config layer answers undefined.
+   * @param dottedKey - the full key, e.g. `cellwork.consultMax`.
+   * @returns the declared value, or undefined.
+   */
+  const readConfig = (dottedKey: string): unknown => {
+    try {
+      return configService()?.get?.(dottedKey)
+    } catch {
+      // An unreadable config layer is a composition fact, never a reason to refuse a consult.
+      return undefined
+    }
+  }
+  /**
+   * The numeric knob THIS call must use (§6.2), re-read from the workspace file so an edit applies at once.
+   *
+   * The mount-time value is the fallback layer, so a row-config value still governs when the file says
+   * nothing and a malformed file value warns once instead of silently changing the budget.
+   * @param key - the resolved knob's field name.
+   * @returns the value in force for this call.
+   */
+  const knobOf = (key: "consultMax" | "delegateMaxTasks" | "reconMaxQuestions"): number =>
+    liveNumericKnob(key, config, readConfig, deps.warn)
   /** The roster role names, or [] when the roster service cannot answer. */
   const rosterNames = (): string[] => {
     try {
@@ -377,6 +415,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
           replacementSplitTaskId: { type: "string" },
           recordedSplitTaskId: { type: "string", description: "The split ticket id the cell record carries after this update — the row the NEXT update reuses." },
           closedTaskId: { type: "string" },
+          boardNote: { type: "string", description: "Present only when the record's teamId and the resolved board DISAGREE: names both ids and the resolution that won (§7.1a)." },
         },
         required: ["ok"],
       },
@@ -384,7 +423,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         /** The result as a record. */
         const result = typeof value === "object" && value !== null ? value as Record<string, unknown> : {}
         if (result.ok === false) return text("cellwork_requirements refused: " + String(result.error ?? "unknown refusal") + (Array.isArray(result.missing) && result.missing.length > 0 ? "\nmissing sections: " + result.missing.join(", ") : ""))
-        return text("requirements " + String(result.action ?? "") + ": revision " + String(result.revision ?? "?") + (result.alreadyFinalized === true ? " (already finalized)" : "") + (result.splitStale === true ? " — the accepted split is STALE and must be re-submitted" : "") + (typeof result.closedTaskId === "string" ? " · requirements task " + result.closedTaskId + " completed" : ""))
+        return text("requirements " + String(result.action ?? "") + ": revision " + String(result.revision ?? "?") + (result.alreadyFinalized === true ? " (already finalized)" : "") + (result.splitStale === true ? " — the accepted split is STALE and must be re-submitted" : "") + (typeof result.closedTaskId === "string" ? " · requirements task " + result.closedTaskId + " completed" : "") + (typeof result.boardNote === "string" ? "\nBOARD: " + result.boardNote : ""))
       },
     },
     execute: async (args: unknown, exec: DshToolExec): Promise<FlowResult> => {
@@ -443,19 +482,23 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
           return { ok: false, error: "cellwork_requirements: revision " + String(state.requirementsRevision) + " is already accepted and the document CHANGED — use {action:\"update\"} to revise it (an accepted revision is never rewritten in place)" }
         }
         writeRequirements(caller.workspace, state.cellId, text_)
+        /** The board the cell is actually working on (§7.1a). */
+        const board = boardOf(caller.workspace, state)
         /** The requirements task this finalize closes, when the board still holds it open. */
-        const closed = await completeCellTask(exec, state.teamId, (row) => String(row.kind ?? "") === "requirement" && String(row.owner ?? "") === PLANNER_MEMBER, "requirements revision 1 finalized")
+        const closed = await completeCellTask(exec, board.teamId, (row) => String(row.kind ?? "") === "requirement" && String(row.owner ?? "") === PLANNER_MEMBER, "requirements revision 1 finalized")
         /** The record after the transition. */
         const next: CellState = { ...state, requirementsRevision: 1, phase: state.phase === "requirements" ? "split" : state.phase }
-        transition(caller.workspace, next, { event: "requirements-finalize", revision: 1, sections: validation.sections.map((section) => section.key), closedTaskId: closed ?? null }, now)
-        return { ok: true, action, revision: 1, splitStale: next.splitStale, alreadyFinalized: false, sections: validation.sections, requirementsPath: path, ...(closed === undefined ? {} : { closedTaskId: closed }) }
+        transition(caller.workspace, next, { event: "requirements-finalize", revision: 1, sections: validation.sections.map((section) => section.key), closedTaskId: closed ?? null, boardTeamId: board.teamId, recordedTeamId: board.recordedTeamId, ...(board.note === undefined ? {} : { boardNote: board.note }) }, now)
+        return { ok: true, action, revision: 1, splitStale: next.splitStale, alreadyFinalized: false, sections: validation.sections, requirementsPath: path, ...(closed === undefined ? {} : { closedTaskId: closed }), ...(board.note === undefined ? {} : { boardNote: board.note }) }
       }
       // UPDATE: a new revision, any accepted split is now stale, and the SAME split task is re-dispatched.
       writeRequirements(caller.workspace, state.cellId, text_)
       /** The new revision: one past the accepted one, or the first revision. */
       const revision = Math.max(1, state.requirementsRevision) + 1
+      /** The board the cell is actually working on (§7.1a): the re-split ticket lives HERE, not on the stale id. */
+      const board = boardOf(caller.workspace, state)
       /** The live board, read to find the splitter's task. */
-      const record = recordOf(teams(), caller.workspace, state.teamId)
+      const record = recordOf(teams(), caller.workspace, board.teamId)
       // THE LOOKUP READS THE RECORDED BOARD ID FIRST (contract C11, defect D3): a staged ticket whose
       // owner was lost was invisible to the owner-only lookup, so a requirements bump neither marked the
       // split stale nor re-dispatched the SAME row. The owner match stays as the fallback.
@@ -476,7 +519,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
       // splitter needs one open row to claim, exactly as it had on the first pass.
       /** The replacement row this update appended, when the original row was terminal. */
       let replacementSplitTaskId = ""
-      if (!redispatchable && state.teamId !== "") {
+      if (!redispatchable && board.teamId !== "") {
         /** The append onto the LIVE team (spawns nobody; the splitter already exists). */
         const appended = await dsh.executeTool({
           name: "agent_teams_plan",
@@ -507,7 +550,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
       const recordedSplitTaskId = replacementSplitTaskId !== "" ? replacementSplitTaskId : (splitTaskId !== "" ? splitTaskId : (state.splitTaskId ?? ""))
       /** The record after the transition. */
       const next: CellState = { ...state, requirementsRevision: revision, splitTaskId: recordedSplitTaskId, splitStale: state.splitRevision !== null ? true : state.splitStale }
-      transition(caller.workspace, next, { event: "requirements-update", revision, previousRevision: state.requirementsRevision, splitStale: next.splitStale, splitTaskId, splitTaskStatus, redispatchable, recordedSplitTaskId, ...(replacementSplitTaskId === "" ? {} : { replacementSplitTaskId }) }, now)
+      transition(caller.workspace, next, { event: "requirements-update", revision, previousRevision: state.requirementsRevision, splitStale: next.splitStale, splitTaskId, splitTaskStatus, redispatchable, recordedSplitTaskId, boardTeamId: board.teamId, recordedTeamId: board.recordedTeamId, ...(board.note === undefined ? {} : { boardNote: board.note }), ...(replacementSplitTaskId === "" ? {} : { replacementSplitTaskId }) }, now)
       if (replacementSplitTaskId !== "") {
         appendJournal(caller.workspace, caller.cell.cellId, { event: "split-task-replaced", previousTaskId: splitTaskId, replacementTaskId: replacementSplitTaskId, revision }, now)
       }
@@ -524,6 +567,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         redispatchable,
         replacementSplitTaskId,
         recordedSplitTaskId,
+        ...(board.note === undefined ? {} : { boardNote: board.note }),
         ...(splitTaskId === "" ? { message: "no split task is on the board yet — the splitter will receive the whole graph when it is dispatched" } : redispatchable
           ? { message: "the SAME split task " + splitTaskId + " is re-dispatched with revision " + String(revision) + (next.splitStale ? " and the split marked STALE" : "") + " — dispatch it with `cellwork_dispatch`" }
           : { message: "split task " + splitTaskId + " is " + splitTaskStatus + " and this board has no reopen verb, so a replacement row " + (replacementSplitTaskId === "" ? "could NOT be appended (no live team to append to)" : replacementSplitTaskId) + " carries the re-split with revision " + String(revision) + " — dispatch it with `cellwork_dispatch`" }),
@@ -534,13 +578,13 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
   // ── cellwork_recon ───────────────────────────────────────────────────────
   disposers.push(dsh.registerTool({
     name: "cellwork_recon",
-    description: "PLANNER/SUBCAPTAIN only: raise READ-ONLY consults (label exactly `Explorer` or `Researcher`) through the `mpdConsults` service, so the roles row applies the read-only deny list to the child and places it one level below the caller as a LEAF (caller agent depth + 1 — `cellwork.depthMax` counts nested CELLS and never caps the child). ONE question (`{role, task}`, the legacy blocking form) returns its report; 1..8 questions (`{role, questions}`) run CONCURRENTLY and the call returns only when ALL of them are settled, one row per question. Every report is journaled in the cell; an absent `mpdConsults` service is refused by name, never replaced by an unsupervised spawn.",
+    description: "PLANNER/SUBCAPTAIN only: raise READ-ONLY consults (label exactly `Explorer` or `Researcher`) through the `mpdConsults` service, so the roles row applies the read-only deny list to the child and places it one level below the caller as a LEAF (caller agent depth + 1 — `cellwork.depthMax` counts nested CELLS and never caps the child). ONE question (`{role, task}`, the legacy blocking form) returns its report; 1..16 questions (`{role, questions}`, the per-call bound is `cellwork.recon.maxQuestions`) run CONCURRENTLY and the call returns only when ALL of them are settled, one row per question. Every report is journaled in the cell; an absent `mpdConsults` service is refused by name, never replaced by an unsupervised spawn.",
     parameters: {
       type: "object",
       properties: {
         role: { type: "string", enum: ["Explorer", "Researcher"], description: "The read-only roster role; the label is applied verbatim so the roles row applies the read-only deny list." },
         task: { type: "string", description: "The ONE question the consult must answer (legacy blocking form; exactly one of `task`/`questions`)." },
-        questions: { type: "array", items: { type: "string" }, description: "1..8 questions settled CONCURRENTLY; the call returns when every one is settled (exactly one of `task`/`questions`)." },
+        questions: { type: "array", items: { type: "string" }, description: "1..`cellwork.recon.maxQuestions` questions (default 16) settled CONCURRENTLY; the call returns when every one is settled (exactly one of `task`/`questions`)." },
       },
       required: ["role"],
       additionalProperties: false,
@@ -608,6 +652,9 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         caller: { member: caller.member, mode: caller.seat?.mode ?? "member" },
         personaFor,
         now: new Date(),
+        // READ PER CALL (§6.2): the bound and the budget this call asks the ONE supervisor for.
+        maxQuestions: knobOf("reconMaxQuestions"),
+        consultMax: knobOf("consultMax"),
       }, {
         role: argString(argv, "role"),
         ...(typeof argv.task === "string" ? { task: argv.task } : {}),
@@ -618,19 +665,19 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
   }))
 
   // ── cellwork_delegate ────────────────────────────────────────────────────
-  // BACKGROUND, BATCH delegation for a cell SEAT (never the captain): 1..16 consults start in ONE pass and
+  // BACKGROUND, BATCH delegation for a cell SEAT (never the captain): 1..32 consults start in ONE pass and
   // the call returns their ids immediately, so the children overlap instead of serialising behind this
   // seat. Roles may be WRITERS here, exactly as the top-level captain's `mpd_role_spawn_async` allows; the
   // board-scale route stays `cellwork_split` + `cellwork_activate` (contract §4.1).
   disposers.push(dsh.registerTool({
     name: "cellwork_delegate",
-    description: "PLANNER / SUBCAPTAIN / recorded MEMBER only (the cell captain is refused): start 1..16 BACKGROUND consults in ONE call and return their `consultId`s immediately, before any child settles. Roles are ANY roster role — writers included — and are canonicalised by the roles row (`deep worker` = `Deep-Worker` = `Deep Worker`), so the answer echoes the canonical name. ALL-OR-NOTHING: an unknown role, an empty field or more than 16 tasks refuses the whole call and starts nothing. Over-cap work QUEUES on the shared `MPD_DSH_CONSULT_MAX` cap and is never refused. Collect with `cellwork_consult`; for read-only reconnaissance prefer `cellwork_recon`.",
+    description: "PLANNER / SUBCAPTAIN / recorded MEMBER only (the cell captain is refused): start 1..32 BACKGROUND consults in ONE call and return their `consultId`s immediately, before any child settles. Roles are ANY roster role — writers included — and are canonicalised by the roles row (`deep worker` = `Deep-Worker` = `Deep Worker`), so the answer echoes the canonical name. ALL-OR-NOTHING: an unknown role, an empty field or more than `cellwork.delegate.maxTasks` (default 32) tasks refuses the whole call and starts nothing. Over-cap work QUEUES on the ONE consult supervisor's budget (`cellwork.consultMax`, default 32; an explicit `MPD_DSH_CONSULT_MAX` still wins) and is never refused. Collect with `cellwork_consult`; for read-only reconnaissance prefer `cellwork_recon`.",
     parameters: {
       type: "object",
       properties: {
         tasks: {
           type: "array",
-          description: "1..16 tasks started in ONE pass; every one must validate or the call starts nothing.",
+          description: "1..`cellwork.delegate.maxTasks` tasks (default 32) started in ONE pass; every one must validate or the call starts nothing.",
           items: {
             type: "object",
             properties: {
@@ -707,6 +754,9 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         // nothing, and the writer journals that instead of failing the call.
         teamId: cell.teamId,
         teamActions,
+        // READ PER CALL (§6.2): the per-call bound and the budget this delegation asks the ONE supervisor.
+        maxTasks: knobOf("delegateMaxTasks"),
+        consultMax: knobOf("consultMax"),
       }, argv.tasks)
       return result.ok ? { ...result } : { ok: false, error: result.error }
     },
@@ -745,6 +795,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
                 state: { type: "string" },
                 startedAt: { type: "number" },
                 elapsedMs: { type: "number" },
+                hostRetries: { type: "number", description: "How many times the HOST refused a live slot before this consult started (§6.1); absent when it was admitted first time." },
                 question: { type: "string" },
               },
             },
@@ -784,7 +835,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         if (result.action === "list") {
           return text(rows.length === 0
             ? "this cell has no consult the supervisor still knows — start work with `cellwork_delegate`"
-            : "this cell's consults (" + String(rows.length) + "):\n" + rows.map((row) => "- " + String(row.role ?? "") + " · " + String(row.consultId ?? "") + " · " + String(row.state ?? "") + " · " + String(row.elapsedMs ?? 0) + " ms · " + String(row.question ?? "")).join("\n"))
+            : "this cell's consults (" + String(rows.length) + "):\n" + rows.map((row) => "- " + String(row.role ?? "") + " · " + String(row.consultId ?? "") + " · " + String(row.state ?? "") + " · " + String(row.elapsedMs ?? 0) + " ms" + (typeof row.hostRetries === "number" ? " · hostRetries " + String(row.hostRetries) : "") + " · " + String(row.question ?? "")).join("\n"))
         }
         /** The report a `collect` released. */
         const report = typeof result.report === "object" && result.report !== null ? result.report as Record<string, unknown> : undefined
@@ -868,7 +919,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
           accepted: { type: "boolean" },
           revision: { type: "number" },
           findings: { type: "array", items: { type: "object" } },
-          warnings: { type: "array", items: { type: "object" }, description: "NON-FATAL advisories (e.g. a code task with no write scope). They never change `accepted`." },
+          warnings: { type: "array", items: { type: "object" }, description: "NON-FATAL advisories, in two classes: `write-scopes-empty` (a `work`/`repair`/`integration` task with no write scope) and `seat-width-short` (an owner role whose ready-frontier width exceeds the board member names its tasks declare). They never change `accepted`." },
           roles: { type: "array", items: { type: "object" } },
           tasks: { type: "array", items: { type: "object" } },
           totals: { type: "object" },
@@ -887,7 +938,20 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         /** The one line that makes the omissions visible; empty when there is nothing to say. */
         const warnLine = warnings.length === 0
           ? ""
-          : "\nSCOPE WARNING(S) — non-fatal, the split stays accepted: " + warnings.map((warning) => String(warning.taskKey ?? "?") + ": " + String(warning.detail ?? warning.code ?? "")).join(" | ") + "\nRemedy: declare `writeScopes` in the next revision, or ask the captain for a scope extension BEFORE the first write."
+          : ((): string => {
+            /** The advisory classes this verdict carries — each class owns its OWN remedy. */
+            const codes = new Set(warnings.map((warning) => String(warning.code ?? "")))
+            /** Whether the missing-write-scope class is the ONLY class, which keeps today's exact sentence. */
+            const onlyScopes = codes.size > 0 && [...codes].every((code) => code === "write-scopes-empty")
+            /** The heading: the scope-specific one only when no other class is present. */
+            const heading = onlyScopes ? "\nSCOPE WARNING(S)" : "\nSPLIT WARNING(S)"
+            /** One remedy per class present, so a seat-width advisory never borrows the write-scope remedy. */
+            const remedies: string[] = []
+            if (codes.has("write-scopes-empty")) remedies.push("declare `writeScopes` in the next revision, or ask the captain for a scope extension BEFORE the first write")
+            if (codes.has("seat-width-short")) remedies.push("declare more `member` names (`<role>-2`, `<role>-3`, …) in the next revision so each ready row runs on its own seat, or add dependency edges if those rows must not run together")
+            if (remedies.length === 0) remedies.push("repair each advisory above in the next revision")
+            return heading + " — non-fatal, the split stays accepted: " + warnings.map((warning) => String(warning.taskKey ?? "?") + ": " + String(warning.detail ?? warning.code ?? "")).join(" | ") + "\nRemedy: " + remedies.join("; ")
+          })()
         if (typeof result.message === "string") return text(result.message + warnLine)
         return text("split revision " + String(result.revision ?? "?") + ": " + (result.accepted === true ? "ACCEPTED" : "REFUSED") + (result.accepted === true ? "" : " — the per-task breakdown is at " + String(result.splitPath ?? "?")) + warnLine + "\n" + JSON.stringify(result.totals ?? {}, null, 2))
       },
@@ -1010,6 +1074,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
           loops: { type: "array", items: { type: "object" } },
           dispatch: { type: "object" },
           notice: { type: "string", description: "Present on a re-split: how many tasks were kept, that their frozen contracts are NOT rewritten, what a scope expansion therefore needs, that this activation dispatched owner-only, and the stage-4 rebuild exception." },
+          boardNote: { type: "string", description: "Present when a re-split ran on the RECORDED team id because no resolver evidence verified it (`unverified`): names the recorded id, says the resolution is unverified, and carries the resolver's own note. It is a warning, not a refusal — the old cell still runs; do NOT start a new cell." },
         },
         required: ["ok"],
       },
@@ -1023,7 +1088,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         const pairs = Array.isArray(dispatch.pairs) ? dispatch.pairs as Array<Record<string, unknown>> : []
         /** The tasks left out. */
         const skipped = Array.isArray(dispatch.skipped) ? dispatch.skipped as Array<Record<string, unknown>> : []
-        return text("cell activated on split revision " + String(result.revision ?? "?") + (result.mode === "resplit" ? " (re-split: " + String(Array.isArray(result.kept) ? result.kept.length : 0) + " kept, " + String(Array.isArray(result.cancelled) ? result.cancelled.length : 0) + " cancelled)" : "") + ": " + String(Array.isArray(result.tasks) ? result.tasks.length : 0) + " task(s), " + String(Array.isArray(result.loops) ? result.loops.length : 0) + " verify loop(s), " + pairs.length + " dispatched" + (skipped.length === 0 ? "" : ", " + skipped.length + " reported: " + skipped.map((row) => String(row.subject ?? row.taskId) + ": " + String(row.reason)).join("; ")) + (typeof result.notice === "string" ? "\nNOTICE: " + result.notice : ""))
+        return text("cell activated on split revision " + String(result.revision ?? "?") + (result.mode === "resplit" ? " (re-split: " + String(Array.isArray(result.kept) ? result.kept.length : 0) + " kept, " + String(Array.isArray(result.cancelled) ? result.cancelled.length : 0) + " cancelled)" : "") + ": " + String(Array.isArray(result.tasks) ? result.tasks.length : 0) + " task(s), " + String(Array.isArray(result.loops) ? result.loops.length : 0) + " verify loop(s), " + pairs.length + " dispatched" + (skipped.length === 0 ? "" : ", " + skipped.length + " reported: " + skipped.map((row) => String(row.subject ?? row.taskId) + ": " + String(row.reason)).join("; ")) + (typeof result.notice === "string" ? "\nNOTICE: " + result.notice : "") + (typeof result.boardNote === "string" ? "\nBOARD: " + result.boardNote : ""))
       },
     },
     execute: async (args: unknown, exec: DshToolExec): Promise<FlowResult> => {
@@ -1115,6 +1180,9 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         captainAgent: exec.agent,
         split: stored.verdict,
         personaFor,
+        // §7.1: the board resolution sees the captain's LIVE team, and seat growth gets canonical roles.
+        teams,
+        rosterRoles: rosterNames,
         // BOUND TO THE CALLER'S WORKSPACE, resolved from THIS dispatch's exec: `dsh.workspaceRoot()`
         // without it falls back to `DSH_WORKSPACE_ROOT`/`process.cwd()`, and a host serving a session
         // whose workspace differs from the process cwd would read another tree's board (or none at all)
@@ -1146,6 +1214,12 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
       /** The record after activation: the raised members, the live board mapping and the executing phase. */
       const next: CellState = {
         ...state,
+        // §7.1: the record takes the EXECUTION board id, preserving the staging id beside it.
+        ...(activated.outcome.teamId === undefined ? {} : { teamId: activated.outcome.teamId }),
+        // THE STAGING ID IS WRITTEN ONCE (CodeRabbit #108): a RE-SPLIT's outcome reports the id this pass
+        // STARTED from, which on a legacy cell is not necessarily the id the record preserved for staging —
+        // overwriting it would lose the original. Only a record that carries NO staging id learns one here.
+        ...(activated.outcome.planningTeamId === undefined || state.planningTeamId !== "" ? {} : { planningTeamId: activated.outcome.planningTeamId }),
         phase: "executing",
         activatedRevision: acceptedRevision,
         activationInFlight: null,
@@ -1173,6 +1247,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         loops: activated.outcome.loops,
         dispatch: activated.outcome.dispatch,
         ...(activated.outcome.notice === undefined ? {} : { notice: activated.outcome.notice }),
+        ...(activated.outcome.boardNote === undefined ? {} : { boardNote: activated.outcome.boardNote }),
       }
     },
   }))

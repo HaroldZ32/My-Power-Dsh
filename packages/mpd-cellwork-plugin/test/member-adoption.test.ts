@@ -305,7 +305,9 @@ test("B1: adoption itself leaves handoffReady false (and context/status see the 
   /** The status read, as the SAME member. */
   const status = await runTool(harness, "cellwork_status", {}, late)
   expect(status.ok).toBe(true)
-  expect(status.members).toEqual([{ name: "rev-late", role: "Reviewer", mode: "member", sessionId: "session-rev-late" }])
+  // SHAPE MOVE (W1 §4.2): the status member projection now carries `adopted:true` for a seat adopted from
+  // the live roster — the marker the operator surface uses to tell the two histories apart. Pinned here.
+  expect(status.members).toEqual([{ name: "rev-late", role: "Reviewer", mode: "member", sessionId: "session-rev-late", adopted: true }])
   expect(status.memberDivergence).toEqual({ missingFromCell: [], missingFromTeam: [], inSync: true })
   expect(status.seat).toEqual({ name: "rev-late", mode: "member" })
 })

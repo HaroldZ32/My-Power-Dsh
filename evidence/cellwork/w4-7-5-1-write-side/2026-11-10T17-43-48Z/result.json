@@ -1,0 +1,47 @@
+{
+  "domain": "cellwork",
+  "slug": "w4-7-5-1-write-side",
+  "subject": "Close reviewer-2 finding R4-01 (rec-20261110T173431-e5c3e8): prove the NEW-CELL §7.5.1 write side from the persisted state.json",
+  "contract": ".mpd/plans/cellwork-elastic-planning.md §7.1 / §7.1a / §7.5 item 1",
+  "branch": "feature/cellwork-elastic-planning",
+  "changes": {
+    "source": [],
+    "tests": [
+      "packages/mpd-cellwork-plugin/test/elastic-seats.test.ts: harness fake now answers `agent_teams_plan {action:\"create_task\"}` by minting a board row on the same execution board the plane double reads (needed to drive a REAL activation pass)",
+      "packages/mpd-cellwork-plugin/test/elastic-seats.test.ts: new arm `W4 §7.5.1: a NEW-cell activation persists the execution team as teamId and the staging team as planningTeamId`",
+      "packages/mpd-cellwork-plugin/test/elastic-seats.test.ts: new arm `W4 §7.5.1 legacy: a record with NO planningTeamId and teamId on the staging shell activates, reads back and is repaired`"
+    ]
+  },
+  "seed": {
+    "cell": "newCellState -> phase=split, teamId=team-planning (staging shell), planningTeamId=\"\", requirementsRevision=1, splitRevision=1, activatedRevision=null, activatedTasks={}",
+    "split": "submitSplit, revision 1, one accepted task (`alpha`, ownerRole Deep Worker, no writeScopes so no verify loop is needed)",
+    "execution board": "team-exec, empty; the plane's `active` binding answers it, and the live appends mint their rows there (models the field divergence: record names -008, board is -00a)"
+  },
+  "assertions": [
+    "before activation state.json: teamId === team-planning, planningTeamId === \"\"",
+    "tool result ok:true from the mounted `cellwork_activate` (flow.ts owns the write)",
+    "state.json ON DISK after: teamId === team-exec, planningTeamId === team-planning, phase === executing",
+    "the tool's minted task boardIds are rows of the execution board (`harness.board.tasks`), so the assertion names a real board",
+    "readCell() still accepts the repaired record and returns both ids",
+    "legacy arm: a raw state.json WITHOUT the planningTeamId key is readable before activation (planningTeamId reads as \"\"), activation succeeds, the rewritten file parses and readCell still accepts it"
+  ],
+  "gates": [
+    { "cmd": "bun run typecheck", "exit": 0, "observed": "$ tsgo --noEmit (no diagnostics)", "log": "typecheck.log" },
+    { "cmd": "bun run verify:comments", "exit": 0, "observed": "scanned 632 TypeScript files; inspected 57624 declarations; VERDICT: PASS", "log": "comments.log" },
+    { "cmd": "bun test packages/mpd-cellwork-plugin", "exit": 0, "observed": "361 pass / 0 fail / 3570 expect() calls across 33 files", "log": "tests.log" }
+  ],
+  "baseline": { "cmd": "bun test packages/mpd-cellwork-plugin", "observed": "359 pass / 0 fail before the two new arms" },
+  "sensitivity": {
+    "claim": "the new arms fail if the persistence spread in flow.ts (teamId + planningTeamId) is deleted",
+    "experiment": "temporarily deleted the two spread lines from flow.ts's `next: CellState`, ran `bun test ... -t \"W4 §7.5.1\"`, restored the file",
+    "observed": "exit 1; both arms fail with Expected: \"team-exec\" / Received: \"team-planning\"",
+    "restored": "yes; sha256 before == after == 0f7698606a9eb845966711682b845f3b188fb6ff5b39a13a57c4990ace6c2a98",
+    "log": "sensitivity-deleted-hunk.log"
+  },
+  "bounds": [
+    "Offline package test only: no real DSH host boot, no live `agent_teams_plan`; the team plane is the repository's shared in-memory double.",
+    "The divergence is SEEDED (the record names staging while the plane's writes land on team-exec); the production trigger that creates a fresh execution team is not reproduced, only its write-side consequence.",
+    "dist/** was NOT rebuilt (integration task's step); packages/mpd-cellwork-plugin/dist/index.js is untouched by this change.",
+    "No source file was changed by this task: activate.ts / state.ts / flow.ts are byte-identical to the wave's pre-task state (flow.ts sha256 0f7698... compared before and after the falsification experiment)."
+  ]
+}

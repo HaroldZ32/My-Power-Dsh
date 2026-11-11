@@ -46,6 +46,21 @@ export const CONSULT_WAIT_DEFAULT_MS = 30_000
 export const CONSULT_ACTIVITY_HISTORY = 5
 /** How many characters of the last assistant message the handoff may quote (a longer answer is cut, never dropped). */
 export const CONSULT_MESSAGE_EXCERPT = 1_200
+/** The host's error code for a full activation tree: it means QUEUE, never failure (§6.1). */
+export const HOST_ACTIVATION_LIMIT_CODE = "ACTIVATION_LIMIT_REACHED"
+/** The most raise attempts one consult makes while the host keeps refusing a live slot (§6.1). */
+export const CONSULT_HOST_RETRY_MAX_ATTEMPTS = 8
+/** The FIRST backoff after a host slot refusal, milliseconds; it doubles per attempt (§6.1). */
+export const CONSULT_HOST_BACKOFF_BASE_MS = 250
+/** The backoff ceiling, milliseconds: 250 → 500 → 1 000 → 2 000 → 4 000 → 4 000 … (§6.1). */
+export const CONSULT_HOST_BACKOFF_CAP_MS = 4000
+/**
+ * The ONE-TIME host setting the exhaustion sentence names.
+ *
+ * The bundle may not set it (it is the user's action in Settings), so the failure has to teach the
+ * operator instead: the host's `maxActiveSubagents` defaults to 8 and a cellwork run wants 32–64.
+ */
+export const HOST_ACTIVATION_LIMIT_HINT = "maxActiveSubagents in Settings → Subagent limits (32–64 for cellwork)"
 
 /** Prefix that keeps a LABEL-keyed bucket distinct from a child-id bucket (the no-id fallback). */
 export const CONSULT_LABEL_KEY_PREFIX = "label:"
@@ -119,6 +134,15 @@ export interface ConsultStartInput {
   task: string
   /** The caller's tool execution; used for the workspace-scoped handoff directory only. */
   exec: unknown
+  /**
+   * Optional PER-START budget for MPD's own concurrency counter (§6.2).
+   *
+   * PRECEDENCE (the ONE written rule): an explicitly declared `MPD_DSH_CONSULT_MAX` wins over this
+   * request at every value — it is the operator's hard cap — and this request applies only when the env
+   * declares none. There is no second counter and no second registry: the budget is an argument to the
+   * SAME `acquire()` the row's own tools queue behind.
+   */
+  maxConcurrent?: number
   /** Raise the child on the shared activation seam; resolves once the child STARTED. */
   raise: () => Promise<DshAsyncAgent>
   /**
@@ -180,6 +204,8 @@ export interface ConsultView {
   elapsedMs: number
   /** The handoff path, when the consult was interrupted with one. */
   handoff?: string
+  /** How many times the HOST refused a live slot before this consult started; absent/0 = first time. */
+  hostRetries?: number
 }
 
 /** The `collect` / `cancel` answer: a view, plus the released report when the consult settled. */
@@ -196,8 +222,11 @@ export interface ConsultSupervisorDeps {
   handoffDir: (exec: unknown) => string
   /** Report one line (a long-bash record, a handoff failure, a deadman error). */
   log: (line: string) => void
-  /** The cap on running consults; defaults to {@link CONSULT_MAX_DEFAULT}. */
-  maxConcurrent?: () => number
+  /**
+   * The cap on running consults as the OPERATOR DECLARED it (§6.2): `undefined` means "not declared",
+   * which is what lets a per-start request raise {@link CONSULT_MAX_DEFAULT}.
+   */
+  maxConcurrent?: () => number | undefined
   /** The deadman bound, milliseconds, read PER ARM from the live config chain (§S9). */
   forceAfterMs?: () => number
   /**
@@ -235,6 +264,15 @@ export interface ConsultSupervisor {
   cancel(consultId: string): ConsultOutcome
   /** Every consult this process knows, in creation order. */
   list(): ConsultView[]
+  /**
+   * The cap a start requesting `maxConcurrent` would actually get (§6.2 precedence: the env wins).
+   *
+   * Read-only projection of the SAME rule `acquire()` applies, so an operator surface can print what
+   * this plane will really admit without owning a second copy of the arithmetic.
+   * @param requested - the caller's per-start budget, or undefined for the row default.
+   * @returns the positive cap this start would queue behind.
+   */
+  effectiveBudgetOf(requested?: number): number
 }
 
 /** One internal record; a caller only ever holds a {@link ConsultView} or a {@link ConsultReport}. */
@@ -279,6 +317,8 @@ interface ConsultRecord {
   released: boolean
   /** Whether this record HOLDS a slot granted by `acquire()` (a queued consult holds none). */
   held: boolean
+  /** How many HOST slot refusals this consult survived; absent/0 means the host admitted it first time. */
+  hostRetries?: number
   /** Whether the ONE `consult-long-bash` incident was already recorded (one per consult, not one per re-arm). */
   longBashLogged?: boolean
   /** The `startedAt` of the open call already reported as in-flight activity, so one call yields one line. */
@@ -293,11 +333,51 @@ interface ConsultRecord {
  * @returns the positive cap in force.
  */
 export function consultMaxFromEnv(): number {
+  return consultMaxDeclaredFromEnv() ?? CONSULT_MAX_DEFAULT
+}
+
+/**
+ * Read `MPD_DSH_CONSULT_MAX` exactly as the operator DECLARED it (§6.2 precedence).
+ *
+ * WHY DECLARED AND NOT DEFAULTED: a per-start request (a plane's own budget) may only raise the cap when
+ * the operator declared none, so the supervisor has to be able to tell "unset" from "set to 8". This
+ * reader answers that distinction; {@link consultMaxFromEnv} keeps the old defaulting shape.
+ * @returns the positive declared cap, or undefined when the env declares none or an unusable one.
+ */
+export function consultMaxDeclaredFromEnv(): number | undefined {
   /** The raw env value, or undefined outside a process. */
   const raw = typeof process !== "undefined" && process.env ? process.env.MPD_DSH_CONSULT_MAX : undefined
-  /** The parsed bound; a non-positive or unparsable answer is replaced by the default. */
+  /** The parsed bound; a non-positive or unparsable answer is "not declared". */
   const parsed = typeof raw === "string" && raw.trim() !== "" ? Math.trunc(Number(raw)) : Number.NaN
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : CONSULT_MAX_DEFAULT
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined
+}
+
+/**
+ * Whether one raise failure is the HOST refusing a live child slot (§6.1).
+ *
+ * The error CODE is the contract — the host throws an Error carrying
+ * `code: "ACTIVATION_LIMIT_REACHED"` — and the MESSAGE is checked DEFENSIVELY as well, because a wrapper
+ * in between may forward only the text. Anything else is a real child failure and stays one.
+ * @param error - the value a raise rejected with.
+ * @returns true when the failure means "release, re-queue and retry", never "the child is broken".
+ */
+export function isHostActivationLimit(error: unknown): boolean {
+  if (error === null || typeof error !== "object") return false
+  /** The error as an untrusted record (the host sets `code` on it). */
+  const record = error as { code?: unknown; message?: unknown }
+  if (typeof record.code === "string" && record.code === HOST_ACTIVATION_LIMIT_CODE) return true
+  return typeof record.message === "string" && record.message.includes(HOST_ACTIVATION_LIMIT_CODE)
+}
+
+/**
+ * The backoff one host-refusal retry waits, milliseconds (§6.1).
+ * @param attempt - the 1-based number of the refusal that just happened.
+ * @returns the delay in milliseconds: 250, 500, 1 000, 2 000, then the 4 000 ms ceiling.
+ */
+export function hostBackoffMs(attempt: number): number {
+  /** The exponential candidate before the ceiling is applied. */
+  const grown = CONSULT_HOST_BACKOFF_BASE_MS * 2 ** Math.max(0, Math.trunc(attempt) - 1)
+  return Math.min(CONSULT_HOST_BACKOFF_CAP_MS, grown)
 }
 
 /**
@@ -316,8 +396,8 @@ export function createConsultSupervisor(deps: ConsultSupervisorDeps): ConsultSup
   const forceAfterMs = deps.forceAfterMs ?? ((): number => CONSULT_FORCE_AFTER_MS)
   /** The in-flight-tool bound read per expiry, so a config change applies to the NEXT expiry (§S3). */
   const toolInFlightMaxMs = deps.toolInFlightMaxMs ?? ((): number => CONSULT_TOOL_IN_FLIGHT_MAX_MS)
-  /** The concurrency cap read per start. */
-  const maxConcurrent = deps.maxConcurrent ?? ((): number => CONSULT_MAX_DEFAULT)
+  /** The operator-DECLARED concurrency cap, read per start; undefined means "no hard cap declared". */
+  const declaredMax = deps.maxConcurrent ?? ((): number | undefined => undefined)
 
   /**
    * The deadman bound one arm runs under, milliseconds.
@@ -351,16 +431,63 @@ export function createConsultSupervisor(deps: ConsultSupervisorDeps): ConsultSup
   /** The monotonic part of a consult id, so two starts in one millisecond never collide. */
   let sequence = 0
 
-  /** Take one concurrency slot: immediate when under the cap, queued otherwise (never throws). */
-  const acquire = (): Promise<void> => {
-    /** The cap in force for this start; a broken value degrades to the default. */
-    const cap = Math.max(1, Math.trunc(Number(maxConcurrent())) || CONSULT_MAX_DEFAULT)
+  /**
+   * The concurrency cap in force for one start (§6.2 precedence).
+   *
+   * A DECLARED `MPD_DSH_CONSULT_MAX` wins over the caller's request at every value; with none declared
+   * the request (a plane's own budget) applies; with neither the shipped default does.
+   * @param requested - the caller's per-start budget, or undefined.
+   * @returns the positive cap this start queues behind, never below 1.
+   */
+  const capOf = (requested: number | undefined): number => {
+    /** The declared cap, when the seam reports a usable one. */
+    const declared = Math.trunc(Number(declaredMax()))
+    if (Number.isFinite(declared) && declared > 0) return declared
+    /** The caller's requested budget, when it is a usable number. */
+    const asked = Math.trunc(Number(requested))
+    return Number.isFinite(asked) && asked > 0 ? asked : CONSULT_MAX_DEFAULT
+  }
+
+  /**
+   * Take one concurrency slot: immediate when under the cap, queued FIFO otherwise (never throws).
+   * @param requested - the caller's per-start budget, or undefined for the row default.
+   * @returns a promise resolved once this start HOLDS a slot.
+   */
+  const acquire = (requested: number | undefined): Promise<void> => {
+    /** The cap in force for this acquire. */
+    const cap = capOf(requested)
     if (active < cap) {
       active += 1
       return Promise.resolve()
     }
     return new Promise<void>((resolve) => { queue.push(() => { active += 1; resolve() }) })
   }
+
+  /**
+   * Take one concurrency slot at the FRONT of the FIFO — the host-refusal retry's re-entry (§6.1).
+   *
+   * A refused consult already spent its turn, so re-queueing it at the BACK would let a fresh start
+   * overtake a child the host has been waiting for. Immediate admission still applies: after the
+   * release a free slot is taken at once, and the front position only orders an actually-contended queue.
+   * @param requested - the caller's per-start budget, or undefined for the row default.
+   * @returns a promise resolved once this start HOLDS a slot again.
+   */
+  const acquireAtFront = (requested: number | undefined): Promise<void> => {
+    /** The cap in force for this acquire. */
+    const cap = capOf(requested)
+    if (active < cap) {
+      active += 1
+      return Promise.resolve()
+    }
+    return new Promise<void>((resolve) => { queue.unshift(() => { active += 1; resolve() }) })
+  }
+
+  /**
+   * Wait `ms` on the injected timer seam, so a test drives the backoff without really sleeping.
+   * @param ms - the delay in milliseconds.
+   * @returns a promise resolved after that delay.
+   */
+  const sleep = (ms: number): Promise<void> => new Promise<void>((resolve) => { setTimer(resolve, ms) })
 
   /** Give one slot back, waking exactly one waiter. */
   const release = (): void => {
@@ -701,6 +828,7 @@ export function createConsultSupervisor(deps: ConsultSupervisorDeps): ConsultSup
     startedAt: record.startedAt,
     elapsedMs: now() - record.startedAt,
     ...(record.handoff === undefined ? {} : { handoff: record.handoff }),
+    ...(record.hostRetries === undefined ? {} : { hostRetries: record.hostRetries }),
   })
 
   /** Resolve one consult id or throw the tool-facing error. */
@@ -711,40 +839,85 @@ export function createConsultSupervisor(deps: ConsultSupervisorDeps): ConsultSup
     return record
   }
 
+  /**
+   * The failure a consult settles with once the host's slot refusals outlast the attempt budget (§6.1).
+   *
+   * It carries the SAME error code the host raised AND the one-time setting the operator must change, so
+   * an exhausted host queue stays distinguishable from a broken child in every read surface.
+   * @param record - the consult whose attempt budget is spent.
+   * @returns the error whose message names the host setting, with `code` set for programmatic readers.
+   */
+  const hostExhaustedError = (record: ConsultRecord): Error =>
+    Object.assign(new Error("consult raise refused by the host " + String(record.hostRetries ?? 0) + " times (" + HOST_ACTIVATION_LIMIT_CODE + "): the activation tree is at its live-child limit. Raise " + HOST_ACTIVATION_LIMIT_HINT + "; the bundle cannot set it."), { code: HOST_ACTIVATION_LIMIT_CODE })
+
   /** Start one consult; returns its RUNNING view at once (queueing and spawning run behind it). */
   const start = (input: ConsultStartInput): ConsultView => {
     /** The record this call owns. */
     const record = createRecord(input)
     records.set(record.id, record)
     void (async (): Promise<void> => {
-      await acquire()
-      // The slot is GRANTED from here on, so settlement may release it; before this line a queued
-      // consult owns nothing.
-      record.held = true
-      // A cancel that landed while this consult was QUEUED never starts a child. Its waiter was just
-      // granted a slot, so THIS branch still releases that granted slot.
-      if (record.reported) {
-        if (!record.released) {
-          record.released = true
-          release()
-        }
-        return
-      }
-      try {
-        /** The started activation handle. */
-        const handle = await input.raise()
-        record.handle = handle
+      // THE FIRST attempt queues FIFO; every host-refusal retry re-enters at the FRONT (§6.1).
+      /** Whether the next acquire is the consult's first (FIFO) rather than a retry (front). */
+      let firstAttempt = true
+      for (;;) {
+        await (firstAttempt ? acquire(input.maxConcurrent) : acquireAtFront(input.maxConcurrent))
+        firstAttempt = false
+        // The slot is GRANTED from here on, so settlement may release it; before this line a queued
+        // consult owns nothing.
+        record.held = true
+        record.released = false
+        // A cancel that landed while this consult was QUEUED (or during a backoff) never starts a
+        // child. Its waiter was just granted a slot, so THIS branch still releases that granted slot.
         if (record.reported) {
-          try { handle.interrupt() } catch { /* already settled */ }
+          if (!record.released) {
+            record.released = true
+            release()
+          }
           return
         }
-        arm(record)
-        void handle.result.then(
-          (result: DshSpawnResult): void => { finish(record, reportFrom(record, result)) },
-          (error: unknown): void => { failRecord(record, error) },
-        )
-      } catch (error) {
-        failRecord(record, error)
+        try {
+          /** The started activation handle. */
+          const handle = await input.raise()
+          record.handle = handle
+          if (record.reported) {
+            try { handle.interrupt() } catch { /* already settled */ }
+            return
+          }
+          arm(record)
+          void handle.result.then(
+            (result: DshSpawnResult): void => { finish(record, reportFrom(record, result)) },
+            (error: unknown): void => { failRecord(record, error) },
+          )
+          return
+        } catch (error) {
+          // A CANCEL THAT LANDED WHILE THE RAISE WAS IN FLIGHT already settled the record and released
+          // the slot through `finish`; retrying or releasing again would double-count that one slot.
+          if (record.reported) return
+          // A HOST slot refusal is a QUEUE signal, never a broken child: give the MPD slot back, wait
+          // the bounded backoff OFF-slot (so the freed capacity is usable), then re-enter at the FRONT
+          // of the FIFO. The attempt budget counts REFUSALS, so `hostRetries` on the record is exactly
+          // how many times the host said no.
+          if (isHostActivationLimit(error)) {
+            /** The refusal count including this one. */
+            const refusals = (record.hostRetries ?? 0) + 1
+            record.hostRetries = refusals
+            if (refusals < CONSULT_HOST_RETRY_MAX_ATTEMPTS) {
+              if (record.held && !record.released) {
+                record.released = true
+                release()
+              }
+              await sleep(hostBackoffMs(refusals))
+              // A CANCEL DURING THE BACKOFF ENDS THE CHAIN HERE: the slot was already given back, and
+              // re-entering the queue would put a consult nobody waits for ahead of a live one.
+              if (record.reported) return
+              continue
+            }
+            failRecord(record, hostExhaustedError(record))
+            return
+          }
+          failRecord(record, error)
+          return
+        }
       }
     })()
     return viewOf(record)
@@ -835,5 +1008,8 @@ export function createConsultSupervisor(deps: ConsultSupervisorDeps): ConsultSup
   /** Every consult this process knows, in creation order. */
   const list = (): ConsultView[] => [...records.values()].map(viewOf)
 
-  return { start, settle, wait, collect, cancel, list }
+  /** The cap a start requesting `requested` would really get (§6.2 precedence, one rule). */
+  const effectiveBudgetOf = (requested?: number): number => capOf(requested)
+
+  return { start, settle, wait, collect, cancel, list, effectiveBudgetOf }
 }

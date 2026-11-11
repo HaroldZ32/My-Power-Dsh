@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "recordId": "rec-20261110T170759-cb2b89",
+  "loopId": "loop-20261110T165521-297d1f",
+  "taskId": "T11",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "writerId": "68cfd9d2-c83c-4069-a6c8-c03957d4b2b9",
+  "verifierId": "94b6eb1d-2afd-427e-b4ff-52f1e1301f87",
+  "basis": {
+    "kind": "blind",
+    "frozenContract": {
+      "path": ".mpd/plans/cellwork-elastic-planning.md",
+      "sha256": "b5cc5cc37e9b830325f33061006c1c6eb016121fcf34d28b019850421ddcf607"
+    },
+    "docs": [
+      {
+        "path": ".mpd/plans/cellwork-elastic-planning.md",
+        "sha256": "b5cc5cc37e9b830325f33061006c1c6eb016121fcf34d28b019850421ddcf607"
+      }
+    ],
+    "probe": [
+      {
+        "path": "packages/mpd-cellwork-plugin/src/staging.ts",
+        "bytes": 65532,
+        "sha256": "7a1b4f27f4a16fd815ac6df03a8f58bd6be4999ee3594fc62ab67948f4affe41",
+        "mtime": "2026-11-10T16:59:21.939Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/test/planning-fanout.test.ts",
+        "bytes": 33451,
+        "sha256": "798dfbef03c7d6501242faab3e3f0b31c4b220aff8357718963c63c174ecc4da",
+        "mtime": "2026-11-10T17:01:50.609Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/flow.ts",
+        "bytes": 80523,
+        "sha256": "1ae8e150a6bd63ae5c40d7eea61020292a297ae92cf9b30dfa214482ecbebad7",
+        "mtime": "2026-11-10T16:39:08.260Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/state.ts",
+        "bytes": 53358,
+        "sha256": "512328bb906fb617339c94bfc8a09ec3cb7a216c40be705733a57c4704ae7806",
+        "mtime": "2026-11-10T16:46:42.059Z"
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": ".mpd/plans/cellwork-elastic-planning.md",
+      "sha256": "b5cc5cc37e9b830325f33061006c1c6eb016121fcf34d28b019850421ddcf607"
+    },
+    {
+      "path": "docs/cellwork.md",
+      "sha256": "7000ee69212a3d717d78c3cb3591babf00a5b7e23b9f6bf1d31d9efd84f7cc36"
+    }
+  ],
+  "gateEvidence": [
+    {
+      "evidenceId": "ev-20261110T170346-7d8277",
+      "cmd": "bun run typecheck",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261110T170346-7d8277.log",
+      "logSha256": "7904edfdd1adef86c59dc610b46a625b1cb3d1d923e5be526a8c1ec37860788c"
+    },
+    {
+      "evidenceId": "ev-20261110T170347-ff5a89",
+      "cmd": "bun run verify:comments",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261110T170347-ff5a89.log",
+      "logSha256": "073831e4565995ce85046df9cbdae672bc4c4eb66948597fe739ca89175d17a6"
+    },
+    {
+      "evidenceId": "ev-20261110T170358-65f544",
+      "cmd": "bun test packages",
+      "exit": 1,
+      "logPath": ".mpd/verify/evidence/ev-20261110T170358-65f544.log",
+      "logSha256": "72570c73a592646ee90beaa3883e03a624f1b4b68481193bc684fb9af899cae6"
+    }
+  ],
+  "verdict": "PASS",
+  "findings": [],
+  "unlockedReads": [],
+  "createdAt": "2026-11-10T17:07:59.101Z",
+  "notes": [
+    "Verdict recorded BLIND: contract §5.1/§5.4 + docs/cellwork.md + my own gate evidence; the repair's product file (staging.ts) was NOT read before this record (only the delivered test arms were read, as acceptance evidence).",
+    "Gates for this loop: typecheck ev-20261110T170346-7d8277 exit 0; comments ev-20261110T170347-ff5a89 exit 0; tests (bun test packages) ev-20261110T170358-65f544 exit 1 — 3957 pass / 6 skip / 5 fail: FOUR reds are T1's in-flight edits (activate-resume.test.ts A2/A3 + A3 duplicate-roster, activate-resume-e2e.test.ts C12/D1, member-adoption.test.ts B1; captain-attributed to T1's dispatchReadThrows + index.ts:553 projection change) and the FIFTH is the F1 shipped-dist check, expected pre-T5. The planning-fanout suite is 18/18 green, including the four R2-repair arms.",
+    "ARMS: (1) arm 1 (planning-fanout.test.ts, 'a resume with a LARGER configured count') proves the 2→3 resume keeps exactly [requirements, analysis-1, analysis-2, split] and the split blockedBy = [requirements, analysis-1, analysis-2], with member set exactly planner/splitter/analyst-1/analyst-2 — no cell-analyst-3 invented; (2) arm 2 ('the recovery path appends a missing seat WITH its board task') asserts BOTH directions of set equality — laneSeats == [cell-analyst-1, cell-analyst-2] and laneRows owners == the same list after deleting one lane task and one lane seat; (3) the fresh/analysts=0 arms ('analysts=3 stages FIVE seats and FIVE tasks', 'analysts=0 stages exactly the two seats and the two tasks this module shipped before', the shipped default) are unchanged and green; the convergedAnalysisLanes unit arm pins carried-wins vs config-seeds-empty; the stale-blockers arm proves a carried split row whose blockedBy omits a carried lane is REFUSED with 'not blocked by analysis-1, analysis-2' + 'delete' and partial:true.",
+    "SCOPE: T11 writeScopes are exactly staging.ts + planning-fanout.test.ts. Pre-repair probe ev-20261110T165724-c2fda4 vs post-repair bytes: flow.ts sha 1ae8e150a6bd… and state.ts sha 512328bb906f… are BYTE-IDENTICAL (mtimes 16:39:08Z / 16:46:42Z unchanged), so the repair touched neither the three flow.ts Nits nor state.ts and added NO cell-record field. index.ts is T1's file (T2 scope) and its post-repair change is captain-attributed to T1, not the repair.",
+    "CARRY (Medium, not a blocker for the required arms): the UNPROVEN branch (a carried split row exposing neither blockedBy nor blocked_by) has no arm, so the third-host-spelling bypass the review row asks about is unproven — the writer states the same bound. Recommend one arm pinning 'neither field → not wedged' and a comment/doc bound on the recognized blocker spellings."
+  ]
+}

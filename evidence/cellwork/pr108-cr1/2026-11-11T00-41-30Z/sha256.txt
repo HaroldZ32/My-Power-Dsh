@@ -1,0 +1,8 @@
+# clean 7-source comparison (baseline vs final)
+IDENTICAL: all seven source files match their baseline sha256
+
+# the two docs deliberately changed by tasks 2 and 3
+evidence/cellwork/pr108-cr1/2026-11-11T00-41-30Z/sha256-before.txt:7ed37c836535814967eeeb39ee28dca845bad21082894e733c585ee6426a4b34  docs/cellwork.md
+evidence/cellwork/pr108-cr1/2026-11-11T00-41-30Z/sha256-before.txt:ba3e9729c312a52b8a7612ee525987cd70ec2194bb4959734224e92051f621cc  docs/cellwork.zh-CN.md
+evidence/cellwork/pr108-cr1/2026-11-11T00-41-30Z/sha256-after.txt:473c545d7c393747f1c91f9ef6fe2712b95031d42d40c0fcbc6f25189f975547  docs/cellwork.md
+evidence/cellwork/pr108-cr1/2026-11-11T00-41-30Z/sha256-after.txt:dc1d0cfc5d8fb1f6600173abdc58d163fc95d80a3d48da0223c3f8e98915f665  docs/cellwork.zh-CN.md

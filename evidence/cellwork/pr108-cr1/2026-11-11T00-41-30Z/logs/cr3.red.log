@@ -1,0 +1,23 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-cellwork-plugin/test/elastic-seats.test.ts:
+1153 |   const terminalObserved: { teamId?: string; taskIds?: string[] } = {}
+1154 |   /** The terminal fixture. */
+1155 |   const terminal = await cancelFixture(terminalWorkspace, (): Record<string, unknown> => ({ ok: true, cancelled: [], skipped: [{ taskId: "T7", status: "completed", reason: "row T7 is already completed — a terminal row is never re-cancelled" }] }), terminalObserved)
+1156 |   /** The materialisation: an already-closed row is not a failure. */
+1157 |   const closed = await materializeSplit(terminal.fixture.deps)
+1158 |   expect(closed.ok).toBe(true)
+                           ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: false
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/elastic-seats.test.ts:1158:21)
+(fail) CR #108: a terminal skipped row is ALREADY CLOSED (activation proceeds); a live row FAILS it [3.83ms]
+
+ 0 pass
+ 30 filtered out
+ 1 fail
+ 1 expect() calls
+Ran 1 test across 1 file. [152.00ms]

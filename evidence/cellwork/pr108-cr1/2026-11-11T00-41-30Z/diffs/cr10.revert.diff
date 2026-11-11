@@ -1,0 +1,11 @@
+--- a/packages/mpd-team-core-plugin/src/index.ts (fixed)
++++ b/packages/mpd-team-core-plugin/src/index.ts (reverted)
+@@ -2135,7 +2135,7 @@
+         // and one journal row.
+         /** The one warning this append owes when the caller omitted the member's role. */
+         const roleWarning = input.role === undefined || input.role.trim() === ""
+-          ? "member " + JSON.stringify(added.name) + " was added with no `role` — route resolution may not match a role route (it also matches the description head and the member name, which is not guaranteed), in which case the seat inherits the calling session's route; pass `role` with the roster label this seat answers to."
++          ? "member " + JSON.stringify(added.name) + " was added with no `role` — route resolution cannot match it by role, so the seat inherits the calling session's route; pass `role` with the roster label this seat answers to."
+           : undefined
+         // THE JOURNAL WRITE MUST NOT STRAND THE APPEND (CodeRabbit #108, finding 9): the roster row is already
+         // on disk, so a throwing journal append here used to leave a member nothing ever spawned — a ghost the

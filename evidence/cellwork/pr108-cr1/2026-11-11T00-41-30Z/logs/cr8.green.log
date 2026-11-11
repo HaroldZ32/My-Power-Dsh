@@ -1,0 +1,10 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-cellwork-plugin/test/planning-fanout.test.ts:
+(pass) CR #108: analysts=0 means the planner prompt NEVER claims analysis lanes are running, nor names one [0.44ms]
+
+ 1 pass
+ 19 filtered out
+ 0 fail
+ 4 expect() calls
+Ran 1 test across 1 file. [142.00ms]

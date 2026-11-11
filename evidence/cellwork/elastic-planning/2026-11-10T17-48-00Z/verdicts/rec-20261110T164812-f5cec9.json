@@ -1,0 +1,94 @@
+{
+  "version": 1,
+  "recordId": "rec-20261110T164812-f5cec9",
+  "loopId": "loop-20261110T162130-8b9b4f",
+  "taskId": "T4",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "writerId": "181e947e-aa29-49da-adfc-36c3f554ec5d",
+  "verifierId": "94b6eb1d-2afd-427e-b4ff-52f1e1301f87",
+  "basis": {
+    "kind": "blind",
+    "frozenContract": {
+      "path": ".mpd/plans/cellwork-elastic-planning.md",
+      "sha256": "2fc77022510bd9cfb67c8362df66b5406611ecbf6dabe36fd17d1c09ad4439cc"
+    },
+    "docs": [
+      {
+        "path": ".mpd/plans/cellwork-elastic-planning.md",
+        "sha256": "2fc77022510bd9cfb67c8362df66b5406611ecbf6dabe36fd17d1c09ad4439cc"
+      }
+    ],
+    "probe": []
+  },
+  "sources": [
+    {
+      "path": ".mpd/plans/cellwork-elastic-planning.md",
+      "sha256": "2fc77022510bd9cfb67c8362df66b5406611ecbf6dabe36fd17d1c09ad4439cc"
+    },
+    {
+      "path": "docs/cellwork.md",
+      "sha256": "7000ee69212a3d717d78c3cb3591babf00a5b7e23b9f6bf1d31d9efd84f7cc36"
+    }
+  ],
+  "gateEvidence": [
+    {
+      "evidenceId": "ev-20261110T164227-093173",
+      "cmd": "bun run typecheck",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261110T164227-093173.log",
+      "logSha256": "7904edfdd1adef86c59dc610b46a625b1cb3d1d923e5be526a8c1ec37860788c"
+    },
+    {
+      "evidenceId": "ev-20261110T164229-2692c4",
+      "cmd": "bun run verify:comments",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261110T164229-2692c4.log",
+      "logSha256": "d9f1620a191e4757253615d4a3b94013bec620a996f60d148ad2001e94f6f111"
+    },
+    {
+      "evidenceId": "ev-20261110T164350-512adb",
+      "cmd": "bun test packages",
+      "exit": 1,
+      "logPath": ".mpd/verify/evidence/ev-20261110T164350-512adb.log",
+      "logSha256": "15c0786cb0334750e258f991fa374115be445d53296d83a847496d7003e3a2cc"
+    }
+  ],
+  "verdict": "FAIL",
+  "findings": [
+    {
+      "id": "queue-front-and-slot-release-unproven",
+      "severity": "minor",
+      "symptom": "No delivered arm proves the §6.1 queue contract. The ten green cap-queue arms cover the retry count (three refusals -> hostRetries=3, settles complete), exhaustion (same code + names the host setting), message-only detection, backoff 250ms doubling to the 4s ceiling, admission (maxConcurrent 32 under the default 8; a third start waits), env precedence and the tool bounds — but none asserts that a host-refused consult re-enters at the FIFO FRONT (not the tail), or that its MPD slot is RELEASED while it backs off (two consults, a waiter admitted during the backoff). A single-consult success arm cannot distinguish FRONT from tail and cannot see a leaked slot.",
+      "expected": "Add deterministic arms: (a) two queued consults where A is host-refused, B starts during A's backoff window, and A is re-served before a consult queued after it (FRONT, not tail); (b) the MPD active counter visibly drops when A is refused and rises again on retry, with B admitted on A's released slot. If either arm reddens, fix the code per §6.1.",
+      "docSource": ".mpd/plans/cellwork-elastic-planning.md §6.1"
+    },
+    {
+      "id": "cancel-mid-backoff-unproven",
+      "severity": "minor",
+      "symptom": "The R3 row's 'a retried consult cancelled mid-backoff' arm has no observed evidence. Nothing proves a cancel during a backoff window removes the consult from the FIFO queue, releases its slot/record, and lets the next waiter settle — i.e. the queue stays drained and no record is left 'running' or unreleased. This is the exact hazard a retry loop creates (a cancelled/abandoned timer re-entering a released queue).",
+      "expected": "Add an arm cancelling a consult inside its backoff window that asserts: the consult settles cancelled, its slot is released, the next queued consult settles, and no record remains running. If the arm reddens, fix the release path.",
+      "docSource": ".mpd/plans/cellwork-elastic-planning.md §6.1"
+    },
+    {
+      "id": "operator-data-surface-unproven",
+      "severity": "minor",
+      "symptom": "§6.3 assigns T3 the DATA that T1 renders (effective consult budget plus a host-refusal count, with T1 degrading to the budget line when absent). No observed arm asserts that data is exposed: the cap-queue arms assert admission behaviour, and hostRetries is proven on the consult record only (arm 1), not on any view/surface a status renderer could read. §6.4 arm 5 therefore has no visible T3-side evidence.",
+      "expected": "Add an arm reading the exposed surface (consult view / state surface) that shows the effective budget and the host-refusal count (hostRetries) after a refusal, so T1's rendering is data-backed and the degrade branch is reachable.",
+      "docSource": ".mpd/plans/cellwork-elastic-planning.md §6.3"
+    },
+    {
+      "id": "malformed-env-precedence-uncovered",
+      "severity": "minor",
+      "symptom": "Arm 7 proves a declared MPD_DSH_CONSULT_MAX wins over the per-start request, but no arm exercises a MALFORMED env value (non-numeric/zero/negative). The contract does not specify a malformed-value fallback, so this is robustness, not a contract breach; it is named in the review row's attack list.",
+      "expected": "Either an arm pinning the fallback (default 8, or the request, whichever the code intends) or a contract note that malformed env is out of scope.",
+      "docSource": ".mpd/plans/cellwork-elastic-planning.md §6.2"
+    }
+  ],
+  "unlockedReads": [],
+  "createdAt": "2026-11-10T16:48:12.100Z",
+  "notes": [
+    "Gates reproduced with the frozen table: typecheck exit 0; comments exit 0; tests (bun test packages) exit 1 with exactly one failure — F1 shipped artifact dist freshness — which is the expected pre-integration state (§8: W4/integration owns every packages/*/dist rebuild; writers do not build dist). Observed under the ambient PATH bun 1.4.2, which the AGENTS.md toolchain note fixes as the known STALE trap; the pinned-toolchain rebuild is T4's. Not scored as a blocker.",
+    "Blind basis: the frozen contract and docs/cellwork.md only; no file in the loop's scope was read before this record.",
+    "The row text says the contract names two queue hazards (unbounded queue, records never released); those exact clauses are not in the current contract text (§6/§10) — reviewed as hazards anyway, see findings."
+  ]
+}

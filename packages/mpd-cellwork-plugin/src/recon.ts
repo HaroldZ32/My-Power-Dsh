@@ -30,8 +30,11 @@ export const RECON_ROLES: readonly string[] = ["Explorer", "Researcher"]
 /** Characters of the consult report kept in the journal; the full text is the tool result. */
 const JOURNAL_REPORT_CHARS = 2000
 
-/** The most questions ONE batch recon call may settle (contract §3.2). */
-export const RECON_MAX_QUESTIONS = 8
+/**
+ * The most questions ONE batch recon call may settle when `cellwork.recon.maxQuestions` declares
+ * nothing (contract §3.2; the knob's documented default is 16).
+ */
+export const RECON_MAX_QUESTIONS = 16
 
 /** What {@link runRecon} needs: the service, the cell, the caller's identity and the persona reader. */
 export interface ReconDeps {
@@ -49,6 +52,20 @@ export interface ReconDeps {
   personaFor: (label: string) => string | null
   /** The instant to journal with. */
   now: Date
+  /**
+   * The per-call question bound (`cellwork.recon.maxQuestions`, default 16).
+   *
+   * Absent means the row did not resolve the knob, and the shipped default applies — never an error, so
+   * an older composition keeps working.
+   */
+  maxQuestions?: number
+  /**
+   * The concurrency budget EVERY start of this call requests (`cellwork.consultMax`, default 32).
+   *
+   * Forwarded as `maxConcurrent` to the ONE supervisor; an explicitly declared `MPD_DSH_CONSULT_MAX`
+   * still wins. No second counter is involved.
+   */
+  consultMax?: number
 }
 
 /** The input one recon call carries: exactly one of `task` (legacy) or `questions` (batch). */
@@ -57,7 +74,7 @@ export interface ReconInput {
   role: string
   /** The single legacy question. */
   task?: string
-  /** The batch form: 1..8 questions, run concurrently and awaited together. */
+  /** The batch form: 1..`cellwork.recon.maxQuestions` questions, run concurrently and awaited together. */
   questions?: string[]
 }
 
@@ -131,14 +148,15 @@ export function reconContext(deps: Pick<ReconDeps, "cell">): string {
  * Read the questions one call asks, in the caller's order.
  *
  * @param input - the raw input (one `task`, or a `questions` array).
+ * @param maxQuestions - the bound this call enforces (`cellwork.recon.maxQuestions` when resolved).
  * @returns the questions, or the refusal sentence.
  */
-function questionsOf(input: ReconInput): { questions: string[] } | { error: string } {
+function questionsOf(input: ReconInput, maxQuestions: number = RECON_MAX_QUESTIONS): { questions: string[] } | { error: string } {
   /** Whether the legacy single-question field was supplied at all. */
   const hasTask = typeof input.task === "string"
   /** Whether the batch field was supplied at all. */
   const hasQuestions = Array.isArray(input.questions)
-  if (hasTask === hasQuestions) return { error: "cellwork_recon: supply EXACTLY ONE of `task` (one question) or `questions` (1.." + String(RECON_MAX_QUESTIONS) + " questions)" }
+  if (hasTask === hasQuestions) return { error: "cellwork_recon: supply EXACTLY ONE of `task` (one question) or `questions` (1.." + String(maxQuestions) + " questions)" }
   if (hasTask) {
     /** The trimmed legacy question. */
     const task = String(input.task ?? "").trim()
@@ -148,7 +166,7 @@ function questionsOf(input: ReconInput): { questions: string[] } | { error: stri
   /** The declared questions. */
   const declared = Array.isArray(input.questions) ? input.questions : []
   if (declared.length === 0) return { error: "cellwork_recon: `questions` is empty — ask at least one question" }
-  if (declared.length > RECON_MAX_QUESTIONS) return { error: "cellwork_recon: `questions` carries " + String(declared.length) + " entries, more than the " + String(RECON_MAX_QUESTIONS) + " one call settles — split it into batches" }
+  if (declared.length > maxQuestions) return { error: "cellwork_recon: `questions` carries " + String(declared.length) + " entries, more than the " + String(maxQuestions) + " one call settles — split it into batches" }
   /** The trimmed questions, in order. */
   const questions: string[] = []
   for (let index = 0; index < declared.length; index += 1) {
@@ -183,8 +201,8 @@ export async function runRecon(deps: ReconDeps, input: ReconInput): Promise<Reco
   /** The canonical label, or the refusal naming the allowed set. */
   const label = canonicalReconRole(input.role)
   if (label === undefined) return { ok: false, error: "cellwork_recon: role " + JSON.stringify(input.role) + " is not a read-only consult role — use exactly " + RECON_ROLES.join(" or ") }
-  /** The question set, or the refusal that replaced it. */
-  const asked = questionsOf(input)
+  /** The question set, or the refusal that replaced it (the configured bound when the row passed one). */
+  const asked = questionsOf(input, deps.maxQuestions ?? RECON_MAX_QUESTIONS)
   if ("error" in asked) return { ok: false, error: asked.error }
   /** The service, or the honest absence refusal (never an unsupervised spawn). */
   const service = deps.consults
@@ -203,7 +221,14 @@ export async function runRecon(deps: ReconDeps, input: ReconInput): Promise<Reco
       // instead of serialising, and an over-cap one QUEUES on the shared cap rather than failing. No
       // `maxDepth`: the roster's own caller-depth rule places the child as a leaf (see the module header).
       /** The service's answer for this question. */
-      const answer = await service.start({ role: label, task: question, context, exec: deps.exec })
+      const answer = await service.start({
+        role: label,
+        task: question,
+        context,
+        exec: deps.exec,
+        // THE PLANE'S OWN BUDGET (§6.2): an argument to the SAME supervisor, never a second counter.
+        ...(deps.consultMax === undefined ? {} : { maxConcurrent: deps.consultMax }),
+      })
       /** The minted id. */
       const view = consultRowOf(answer)
       if (view === undefined) starts.push({ question, failure: "the `mpdConsults` service answered without a consultId" })

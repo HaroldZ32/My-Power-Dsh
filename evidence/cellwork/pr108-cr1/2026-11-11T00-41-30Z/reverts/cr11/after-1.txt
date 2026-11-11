@@ -1,0 +1,1 @@
+        if (roleWarning !== undefined) appendTeamJournal(workspace, { event: "member-role-omitted", teamId: roster.teamId, at: now().toISOString(), member: added.name, reason: roleWarning })

@@ -1,0 +1,24 @@
+      // THE BOARD IS RESOLVED FIRST, AND THE SAME RESOLVED VIEW REACHES EVERY STEP BELOW (CodeRabbit #108):
+      // a legacy record whose `teamId` names the dead planning team must unfence on the REAL execution board,
+      // grow seats there and report there. Resolving after the unfence — or reading the raw record in one of
+      // the steps — gave the three different judgement bases, so a TEAM-only fence on the execution board was
+      // answered `not-fenced` and no seam was called.
+      /** The board this pass addresses (§7.1). */
+      const board = boardOf(caller.workspace, cell)
+      /** The cell as the unfence, growth and the report see it: the resolved team id — the view `cellwork_supervise` builds. */
+      const boardCell: CellState = board.teamId === "" || board.teamId === cell.teamId ? cell : { ...cell, teamId: board.teamId }
+      // THE UNFENCE RUNS BEFORE THE PASS, so `reassign` may hand a row to a member this SAME call just
+      // reopened: the plane reads the TEAM row, and a fence cleared after the pass would have skipped it.
+      /** The record after the unfence, and one outcome per named member (nothing is written for none). */
+      const applied: UnfenceResult = unfenceTargets.length === 0 ? { cell: boardCell, outcomes: [] } : await unfenceSeats(caller, boardCell, unfenceTargets, now)
+      /** The unfence outcomes; absent from the answer when the call named no member. */
+      const unfenced = applied.outcomes
+      /** The resolved board id every reader below addresses, even after a fresh record read rewrote the rest. */
+      const resolvedTeamId = board.teamId === "" ? applied.cell.teamId : board.teamId
+      /** The record the pass below reports against — the reopened one, carrying the RESOLVED team id. */
+      let current: CellState = applied.cell.teamId === resolvedTeamId ? applied.cell : { ...applied.cell, teamId: resolvedTeamId }
+      /** The raw `reassign` argument, forwarded untouched. */
+      const rawReassign = readArgs(args)["reassign"]
+      // RUNTIME SEAT GROWTH, BEFORE THE PASS PAIRS (§4.1). The board was resolved through the ONE resolver
+      // (§7.1), so a legacy record grows seats on the REAL execution board; the grown seats' hand-overs ride
+      // the SAME plane call below, so the claim is real.

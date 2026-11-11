@@ -239,6 +239,17 @@ function makeHarness(): Harness {
     tools: toolsService,
     commands: commandsService,
     agents: { list: (): FakeAgent[] => [captain] },
+    // THE TWO-SEAT PLANNING BASELINE (`analysts=0`, contract §5.4.2): these arms key on the split ticket's
+    // BOARD ID (`P2` = the second staged row), which the fan-out's analysis rows would shift. The DEFAULT
+    // fan-out shape is asserted in `planning-fanout.test.ts`.
+    mpdConfig: {
+      /**
+       * Read one declared knob.
+       * @param key - the file-layer key the config resolver asks for.
+       * @returns the pinned analyst count, else no override.
+       */
+      get: (key: string): unknown => key === "cellwork.planning.analysts" ? 0 : undefined,
+    },
     mpdTeams: {
       /**
        * Read one live team record.

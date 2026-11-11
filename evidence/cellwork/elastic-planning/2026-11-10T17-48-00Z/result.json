@@ -1,0 +1,24 @@
+{
+  "wave": "cellwork-elastic-planning",
+  "branch": "feature/cellwork-elastic-planning",
+  "contract": "contract.md (copied from .mpd/plans/cellwork-elastic-planning.md, frozen 2026-11-11)",
+  "verdicts": [
+    {"row": "R1 elastic seats + board resolution", "verdict": "PASS", "record": "rec-20261110T171622-11ab8f", "basis": "blind, 8 carries raised"},
+    {"row": "R2 parallel planning", "verdict": "PASS", "record": "rec-20261110T164626-77e192", "basis": "blind, 1 Medium raised"},
+    {"row": "R3 concurrency budget", "verdict": "FAIL", "record": "rec-20261110T164812-f5cec9", "basis": "blind; evidence gap, not behaviour"},
+    {"row": "R3 repair (T10)", "verdict": "PASS", "record": "rec-20261110T170731-8cf05a", "basis": "blind, fresh verifier"},
+    {"row": "R2 Medium repair (T11)", "verdict": "PASS", "record": "rec-20261110T170759-cb2b89", "basis": "blind"},
+    {"row": "R1 carries repair (T15)", "verdict": "PASS", "record": "rec-20261110T173628-914691", "basis": "blind, external verifier"},
+    {"row": "R3-repair nits (T13)", "verdict": "PASS", "record": "rec-20261110T173217-4f6c06", "basis": "blind, external verifier"},
+    {"row": "R4 integration", "verdict": "FAIL", "record": "rec-20261110T173431-e5c3e8", "basis": "blind PASS superseded by a post-read FAIL (R4-01 write-side arm missing)"},
+    {"row": "R4-01 repair (write side)", "verdict": "PASS", "record": "rec-20261110T175227-b10890", "basis": "blind, external verifier, 0 findings"}
+  ],
+  "gates_observed_by_verifiers": {
+    "typecheck": "exit 0",
+    "verify:comments": "PASS, 632 files",
+    "verify:docs": "PASS (T4)",
+    "verify-dist-fresh": "34/34 fresh under pinned .toolchain/node_modules/.bin/bun (rebuilt twice, byte-identical)",
+    "tests": "3991 pass / 6 skip / 0 fail (260 files); cellwork 361, roles 399, team-core 635"
+  },
+  "declared_bounds": "see contract.md §10 and the PR body's Honest bounds section"
+}

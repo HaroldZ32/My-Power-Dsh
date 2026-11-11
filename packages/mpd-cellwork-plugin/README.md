@@ -81,7 +81,8 @@ the record says `stopped`, and a later `/cellwork` mints a new cell id.
 
 The flow tools: `cellwork_requirements` (the planner's finalize/update; a section body runs to the next
 heading of the same or a higher level, so `###` stays inside its parent), `cellwork_recon` (the
-planner's READ-ONLY consult — `{role, task}` for one question, `{role, questions:[…]}` for 1..8 settled
+planner's READ-ONLY consult — `{role, task}` for one question, `{role, questions:[…]}` for
+1..`cellwork.recon.maxQuestions` (default 16) settled
 CONCURRENTLY), `cellwork_split` (the splitter's measured graph — each task may
 declare its board `member`, and a refusal persists its findings at `split/<rev>.refused.json`),
 `cellwork_activate` (the captain's materialisation; it raises ONE member per distinct `member`, names
@@ -90,12 +91,14 @@ resolved from the cell record or the live roster instead of raised, and the OTHE
 appears are staging and adoption, below).
 
 The BACKGROUND DELEGATION pair, for a cell seat (planner, subcaptain, ordinary member — never the
-captain): `cellwork_delegate` starts 1..16 consults in ONE pass and returns their `consultId`s
+captain): `cellwork_delegate` starts 1..`cellwork.delegate.maxTasks` (default 32) consults in ONE pass and returns their `consultId`s
 immediately, roles canonicalised by the roles row's OWN resolver (`DeepWorker`, `deep worker`,
 `deep-worker` and `Deep Worker` are ONE agent) and ANY roster role (writers included) allowed;
 `cellwork_consult` lists, waits for, collects (which RELEASES the record) and cancels the consults THIS
 cell started. Both go through the `mpdConsults` service the `mpd-roles` row provides over its ONE
-consult supervisor — one registry, one `MPD_DSH_CONSULT_MAX` cap (over-cap work QUEUES) and one silence
+consult supervisor — one registry, one concurrency cap (the per-start budget is `cellwork.consultMax`,
+default 32; an explicitly declared `MPD_DSH_CONSULT_MAX` WINS, and the row default is 8 without either;
+over-cap work QUEUES and the queue has NO LENGTH BOUND — the cap bounds ACTIVE children only) and one silence
 deadman — and an absent service is refused by name, never replaced by an unsupervised spawn. ALL THREE
 consult verbs go through that service, the legacy `cellwork_recon {role, task}` form included, so a
 composition that mounts cellwork WITHOUT the `mpd-roles` row loses that form too; the shipped bundle
@@ -207,6 +210,12 @@ reported on the row's log line (`<workspace>/.mpd/logs/mpd-cellwork.log`).
 `compactionHeadroomTokens` 65536 · `compactionRetries` 3 · `idleBarrierDelayMs` 200 ·
 `checkpointPendingMaxMs` 900000 · `asciiCharsPerToken` 3 · `cjkCharsPerToken` 1 · `contractGates` [] ·
 `windowOverride` null.
+
+The six SEATS AND CONCURRENCY keys are `cellwork.seats.maxPerRole` (8, `1..32`), `cellwork.seats.max`
+(32, `1..64`), `cellwork.consultMax` (32, `1..256`), `cellwork.planning.analysts` (2, `0..8`),
+`cellwork.delegate.maxTasks` (32, `1..64`) and `cellwork.recon.maxQuestions` (16, `1..64`). `seats.*` are
+NESTED keys (`cellwork.seats.maxPerRole` / `cellwork.seats.max`); an out-of-range or malformed value
+falls back to its default with ONE log line naming the real dotted path.
 
 The mail bound is the ONE knob outside this table: `mail.maxUndelivered` (default 8, `0` disables; an
 absent or unusable value falls back to 8) is a `mail.*` key because BOTH mail tools read it, and it is
@@ -471,9 +480,10 @@ No second store, no second watcher, no `.mpd/cellwork/**` read from the team pla
   bounded by `cellwork.depthMax`; a second consumer must justify the bypass.
 - The 1/4-of-window rule is a certified ESTIMATE from measured bytes and configurable ratios — not a
   measurement, and deliberately punitive for CJK.
-- **The generic team verb is the hazard cell mode removes.** `agent_teams_dispatch` pairs a ready task
-  with its declared owner but FALLS BACK TO ROSTER ORDER when that owner is busy; during this wave it
-  handed a REVIEW task to the member that had WRITTEN the reviewed lanes. The captain released the
+- **The generic team verb is owner-only by default; only its explicit roster mode substitutes.**
+  `agent_teams_dispatch` pairs a ready task with its DECLARED OWNER, and the positional fallback needs
+  the explicit `mode:"roster"` — THAT mode handed a REVIEW task to the member that had WRITTEN the
+  reviewed lanes. The captain released the
   pairing immediately, restored the row to the independent reviewer, and the writer disclosed it had
   only run `git diff --stat`, a marker grep and a directory listing before it was stopped — no verdict
   existed, so no contaminated judgement was recorded. `cellwork_dispatch` is owner-only and never

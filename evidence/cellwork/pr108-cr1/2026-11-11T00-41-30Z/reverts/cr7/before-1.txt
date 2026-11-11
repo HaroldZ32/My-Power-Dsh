@@ -1,0 +1,14 @@
+      // THE GROWN SEATS ARE PERSISTED ON THE CELL RECORD before the pass, so the guard and every later
+      // reader see the same roster the board carries. The journal rows are already written by growth.
+      // THE MERGE BASE IS A FRESH READ, NEVER THE PRE-AWAIT SNAPSHOT (CodeRabbit #108, Major): growth awaits
+      // one `add_member` per seat, and the compaction barrier (or another session) may write `fenced`,
+      // `journalCursor`, an adoption or a handoff inside those awaits. Writing the snapshot back would revert
+      // those writes, so the record is re-read AFTER every await and only the grown rows are merged into the
+      // LATEST state. An unreadable record stops the pass BEFORE the plane pairs anything — the safe failure
+      // path — because there is no record this call may safely write over.
+      if (Object.keys(growth.members).length > 0) {
+        /** The record as it stands once the growth pass's awaited appends have all settled. */
+        const settled = readCell(caller.workspace, current.cellId)
+        if (!settled.ok) return { ok: false, error: "cellwork_dispatch: could not re-read " + settled.path + " after seat growth (" + settled.detail + ") — no grown seat was written and no row was paired; retry the pass once the record is readable" }
+        current = writeCell(caller.workspace, { ...settled.state, members: { ...settled.state.members, ...growth.members } })
+      }

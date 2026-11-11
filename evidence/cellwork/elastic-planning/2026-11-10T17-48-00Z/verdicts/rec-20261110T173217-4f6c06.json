@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "recordId": "rec-20261110T173217-4f6c06",
+  "loopId": "loop-20261110T172229-515f6c",
+  "taskId": "T13",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "writerId": "181e947e-aa29-49da-adfc-36c3f554ec5d",
+  "verifierId": "b0b0d659-16a8-4714-ad4c-a27e23b591b2",
+  "basis": {
+    "kind": "blind",
+    "frozenContract": {
+      "path": ".mpd/plans/cellwork-elastic-planning.md",
+      "sha256": "992d9fb3bf7259b81c1b003be57655f98c02c526811ef9a7014e26073204027d"
+    },
+    "docs": [
+      {
+        "path": ".mpd/plans/cellwork-elastic-planning.md",
+        "sha256": "992d9fb3bf7259b81c1b003be57655f98c02c526811ef9a7014e26073204027d"
+      }
+    ],
+    "probe": [
+      {
+        "path": "packages/mpd-roles-plugin/test/cap-queue.test.ts",
+        "bytes": 35357,
+        "sha256": "f5eb0b1f03adbbed25b365a680748867156636b295e3099ef0fff82a12bca857",
+        "mtime": "2026-11-10T17:17:28.216Z"
+      },
+      {
+        "path": "packages/mpd-roles-plugin/src/spawn-async.ts",
+        "bytes": 52848,
+        "sha256": "bb9a063d2a2c05c7c61a37402186e884acffe0232bb39d3b64e6fb377f8825c3",
+        "mtime": "2026-11-10T17:16:56.464Z"
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": ".mpd/plans/cellwork-elastic-planning.md",
+      "sha256": "992d9fb3bf7259b81c1b003be57655f98c02c526811ef9a7014e26073204027d"
+    },
+    {
+      "path": "docs/cellwork.md",
+      "sha256": "63aed60b5ffdeec4eb4e1139cb2258059c1401571a7d3ffe8c32dc75f9494fa2"
+    },
+    {
+      "path": "packages/mpd-roles-plugin/README.md",
+      "sha256": "5bb5f894a6456eecc2de72cda0322c449f91f90ec3ce9900b7bf12b92b0b0999"
+    },
+    {
+      "path": "docs/design.md",
+      "sha256": "e6b57f2c97b4e062662788ed8331b57891fc73adfbe42b0deffb115570a8b82c"
+    }
+  ],
+  "gateEvidence": [
+    {
+      "evidenceId": "ev-20261110T173040-1ca570",
+      "cmd": "bun run typecheck",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261110T173040-1ca570.log",
+      "logSha256": "7904edfdd1adef86c59dc610b46a625b1cb3d1d923e5be526a8c1ec37860788c"
+    },
+    {
+      "evidenceId": "ev-20261110T173045-a0dd97",
+      "cmd": "bun run verify:comments",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261110T173045-a0dd97.log",
+      "logSha256": "b7d98d2b6b08d8917c88f941ca5123d399936d65e32160ea608196a711f93d2c"
+    },
+    {
+      "evidenceId": "ev-20261110T173048-3526ae",
+      "cmd": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261110T173048-3526ae.log",
+      "logSha256": "8280cc8792251a132cc367e69bcf1f13fe3127792dfeeb532e28eaa6836317bc"
+    },
+    {
+      "evidenceId": "ev-20261110T173055-3940c6",
+      "cmd": "bun test packages",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261110T173055-3940c6.log",
+      "logSha256": "a4da6b3b68a1316bd746cd08c0b87f9744241441d9df1fed4d82efebb1aff817"
+    }
+  ],
+  "verdict": "PASS",
+  "findings": [],
+  "unlockedReads": [],
+  "createdAt": "2026-11-10T17:32:17.284Z",
+  "notes": [
+    "Blind basis: frozen contract §6.1 (ACTIVATION_LIMIT_REACHED -> slot release + FRONT of FIFO + 250ms doubling to 4s, 8 attempts, hostRetries, named maxActiveSubagents), §6.2 (one supervisor, optional maxConcurrent, env precedence), §6.4 arms 1-5; docs/cellwork.md Background delegation (per-start cellwork.consultMax 32, env wins, queue unbounded, host refusal is a queue signal) and packages/mpd-roles-plugin/README.md (MPD_DSH_CONSULT_MAX over-cap queues); no scope source read before this record.",
+    "Gates run for THIS loop: typecheck ev-20261110T173040-1ca570 exit 0; comments ev-20261110T173045-a0dd97 exit 0 (632 files, VERDICT PASS); dist ev-20261110T173048-3526ae exit 0 (34/34 targets fresh, 1 NOT COVERED vendored file as documented); tests ev-20261110T173055-3940c6 exit 0 — 3989 pass / 6 skip / 0 fail across 260 files, 53114 expect() calls.",
+    "Arms visible in the gate log (cap-queue, 14 green): the five §6.1 queue arms (3 refusals -> hostRetries=3 complete; exhausted budget names the setting; real child error no retry; message-only detection; backoff 250ms doubling capped at 4s); the five §6.2/§6.4 arms (maxConcurrent 32 on the ONE counter; env wins; default 8; 32/33 delegate whole-call; 16/17 recon); F1 'A is refused, B is admitted DURING A's backoff, and A is re-served BEFORE C'; F2 'cancelled inside the backoff window ... queue drains to C'; the NEW N1 companion 'a consult cancelled while QUEUED ... granted slot released WITHOUT raising a child, so the queue drains B -> C -> D'; F4 malformed env. 14 arms = the prior 13 + 1, so no existing arm was dropped.",
+    "Judged as delivered from the gate log: both required test-strength closures exist as named passing arms and no assertion was visibly loosened (the N2 semantic-order arm and the new queued-cancel arm are ADDITIONS; F1/F2 survive). The writer's mutation matrix and the 'removing ONLY the post-backoff early return stays green' trace are CLAIMS not visible in gate output; the post-verdict attack will reproduce unshift->push and the guard removals in a detached copy and report separately.",
+    "BOUNDS: aggregate bun test packages (the fixed gate table has no per-package id); the two package-scoped runs are being run separately as supplementary evidence. Shared working tree with other wave/branch edits; attribution rests on the loop scope + the named suites. No live mount lane (no row/patch/manifest carrier in this row's scope).",
+    "DECLINED TO JUDGE: the host-side queue cap itself (not observable, declared bound §10.1); cellwork's consult budget plumbing (T3's other files, outside this loop's scope); the T-62 dist artifact (green here, owned by the integration task); the post-verdict mutation claims (reported after the record)."
+  ]
+}

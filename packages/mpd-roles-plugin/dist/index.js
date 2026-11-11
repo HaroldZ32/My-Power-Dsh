@@ -5447,6 +5447,11 @@ var CONSULT_WAIT_MAX_MS = 60000;
 var CONSULT_WAIT_DEFAULT_MS = 30000;
 var CONSULT_ACTIVITY_HISTORY = 5;
 var CONSULT_MESSAGE_EXCERPT = 1200;
+var HOST_ACTIVATION_LIMIT_CODE = "ACTIVATION_LIMIT_REACHED";
+var CONSULT_HOST_RETRY_MAX_ATTEMPTS = 8;
+var CONSULT_HOST_BACKOFF_BASE_MS = 250;
+var CONSULT_HOST_BACKOFF_CAP_MS = 4000;
+var HOST_ACTIVATION_LIMIT_HINT = "maxActiveSubagents in Settings → Subagent limits (32–64 for cellwork)";
 var CONSULT_LABEL_KEY_PREFIX = "label:";
 function consultActivityKeyOf(agent, labelOf) {
   if (agent === null || typeof agent !== "object")
@@ -5460,10 +5465,22 @@ function consultActivityKeyOf(agent, labelOf) {
 function consultLabelKey(role) {
   return CONSULT_LABEL_KEY_PREFIX + role;
 }
-function consultMaxFromEnv() {
+function consultMaxDeclaredFromEnv() {
   const raw = typeof process !== "undefined" && process.env ? process.env.MPD_DSH_CONSULT_MAX : undefined;
   const parsed = typeof raw === "string" && raw.trim() !== "" ? Math.trunc(Number(raw)) : Number.NaN;
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : CONSULT_MAX_DEFAULT;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+}
+function isHostActivationLimit(error) {
+  if (error === null || typeof error !== "object")
+    return false;
+  const record = error;
+  if (typeof record.code === "string" && record.code === HOST_ACTIVATION_LIMIT_CODE)
+    return true;
+  return typeof record.message === "string" && record.message.includes(HOST_ACTIVATION_LIMIT_CODE);
+}
+function hostBackoffMs(attempt) {
+  const grown = CONSULT_HOST_BACKOFF_BASE_MS * 2 ** Math.max(0, Math.trunc(attempt) - 1);
+  return Math.min(CONSULT_HOST_BACKOFF_CAP_MS, grown);
 }
 function createConsultSupervisor(deps) {
   const now = deps.now ?? (() => Date.now());
@@ -5473,7 +5490,9 @@ function createConsultSupervisor(deps) {
   });
   const forceAfterMs = deps.forceAfterMs ?? (() => CONSULT_FORCE_AFTER_MS);
   const toolInFlightMaxMs = deps.toolInFlightMaxMs ?? (() => CONSULT_TOOL_IN_FLIGHT_MAX_MS);
-  const maxConcurrent = deps.maxConcurrent ?? (() => CONSULT_MAX_DEFAULT);
+  const declaredMax = deps.maxConcurrent ?? (() => {
+    return;
+  });
   const boundOf = () => {
     const configured = Math.trunc(Number(forceAfterMs()));
     return Number.isFinite(configured) ? configured : CONSULT_FORCE_AFTER_MS;
@@ -5486,8 +5505,15 @@ function createConsultSupervisor(deps) {
   let active = 0;
   const queue = [];
   let sequence = 0;
-  const acquire = () => {
-    const cap = Math.max(1, Math.trunc(Number(maxConcurrent())) || CONSULT_MAX_DEFAULT);
+  const capOf = (requested) => {
+    const declared = Math.trunc(Number(declaredMax()));
+    if (Number.isFinite(declared) && declared > 0)
+      return declared;
+    const asked = Math.trunc(Number(requested));
+    return Number.isFinite(asked) && asked > 0 ? asked : CONSULT_MAX_DEFAULT;
+  };
+  const acquire = (requested) => {
+    const cap = capOf(requested);
     if (active < cap) {
       active += 1;
       return Promise.resolve();
@@ -5499,6 +5525,22 @@ function createConsultSupervisor(deps) {
       });
     });
   };
+  const acquireAtFront = (requested) => {
+    const cap = capOf(requested);
+    if (active < cap) {
+      active += 1;
+      return Promise.resolve();
+    }
+    return new Promise((resolve3) => {
+      queue.unshift(() => {
+        active += 1;
+        resolve3();
+      });
+    });
+  };
+  const sleep = (ms) => new Promise((resolve3) => {
+    setTimer(resolve3, ms);
+  });
   const release = () => {
     active = Math.max(0, active - 1);
     const next = queue.shift();
@@ -5727,7 +5769,8 @@ function createConsultSupervisor(deps) {
     state: record.state,
     startedAt: record.startedAt,
     elapsedMs: now() - record.startedAt,
-    ...record.handoff === undefined ? {} : { handoff: record.handoff }
+    ...record.handoff === undefined ? {} : { handoff: record.handoff },
+    ...record.hostRetries === undefined ? {} : { hostRetries: record.hostRetries }
   });
   const requireRecord = (consultId) => {
     const record = records.get(consultId);
@@ -5735,36 +5778,62 @@ function createConsultSupervisor(deps) {
       throw new Error('mpd_role_consult: unknown consultId "' + consultId + '" — use action list');
     return record;
   };
+  const hostExhaustedError = (record) => Object.assign(new Error("consult raise refused by the host " + String(record.hostRetries ?? 0) + " times (" + HOST_ACTIVATION_LIMIT_CODE + "): the activation tree is at its live-child limit. Raise " + HOST_ACTIVATION_LIMIT_HINT + "; the bundle cannot set it."), { code: HOST_ACTIVATION_LIMIT_CODE });
   const start = (input) => {
     const record = createRecord(input);
     records.set(record.id, record);
     (async () => {
-      await acquire();
-      record.held = true;
-      if (record.reported) {
-        if (!record.released) {
-          record.released = true;
-          release();
-        }
-        return;
-      }
-      try {
-        const handle = await input.raise();
-        record.handle = handle;
+      let firstAttempt = true;
+      for (;; ) {
+        await (firstAttempt ? acquire(input.maxConcurrent) : acquireAtFront(input.maxConcurrent));
+        firstAttempt = false;
+        record.held = true;
+        record.released = false;
         if (record.reported) {
-          try {
-            handle.interrupt();
-          } catch {}
+          if (!record.released) {
+            record.released = true;
+            release();
+          }
           return;
         }
-        arm(record);
-        handle.result.then((result) => {
-          finish(record, reportFrom(record, result));
-        }, (error) => {
+        try {
+          const handle = await input.raise();
+          record.handle = handle;
+          if (record.reported) {
+            try {
+              handle.interrupt();
+            } catch {}
+            return;
+          }
+          arm(record);
+          handle.result.then((result) => {
+            finish(record, reportFrom(record, result));
+          }, (error) => {
+            failRecord(record, error);
+          });
+          return;
+        } catch (error) {
+          if (record.reported)
+            return;
+          if (isHostActivationLimit(error)) {
+            const refusals = (record.hostRetries ?? 0) + 1;
+            record.hostRetries = refusals;
+            if (refusals < CONSULT_HOST_RETRY_MAX_ATTEMPTS) {
+              if (record.held && !record.released) {
+                record.released = true;
+                release();
+              }
+              await sleep(hostBackoffMs(refusals));
+              if (record.reported)
+                return;
+              continue;
+            }
+            failRecord(record, hostExhaustedError(record));
+            return;
+          }
           failRecord(record, error);
-        });
-      } catch (error) {
-        failRecord(record, error);
+          return;
+        }
       }
     })();
     return viewOf(record);
@@ -5832,7 +5901,8 @@ function createConsultSupervisor(deps) {
     return { ...viewOf(record), report };
   };
   const list = () => [...records.values()].map(viewOf);
-  return { start, settle, wait, collect, cancel, list };
+  const effectiveBudgetOf = (requested) => capOf(requested);
+  return { start, settle, wait, collect, cancel, list, effectiveBudgetOf };
 }
 
 // packages/mpd-roles-plugin/src/consults.ts
@@ -5861,6 +5931,7 @@ function createMpConsults(deps) {
         task,
         ...spec.context === undefined ? {} : { context: String(spec.context) },
         exec: spec.exec,
+        ...spec.maxConcurrent === undefined ? {} : { maxConcurrent: spec.maxConcurrent },
         raise: () => deps.raise({ ...spec, role, task }),
         ...spec.onSettled === undefined ? {} : { onSettled: spec.onSettled }
       });
@@ -5884,7 +5955,8 @@ function createMpConsults(deps) {
         return;
       }
     },
-    cancel: (consultId) => deps.supervisor.cancel(consultId)
+    cancel: (consultId) => deps.supervisor.cancel(consultId),
+    effectiveBudgetOf: (requested) => deps.supervisor.effectiveBudgetOf(requested)
   };
 }
 
@@ -6349,7 +6421,7 @@ function apply(ctx, config = {}) {
     handoffDir: (target) => join5(dsh.workspaceRoot(target), ".mpd", "handoff"),
     log: (line) => warn(line),
     activityOf: (childId, role) => childId === undefined || childId === "" ? toolActivity.get(consultLabelKey(role)) : toolActivity.get(childId),
-    maxConcurrent: () => consultMaxFromEnv(),
+    maxConcurrent: () => consultMaxDeclaredFromEnv(),
     forceAfterMs: () => consultDeadmanBound(),
     toolInFlightMaxMs: () => consultInFlightBound()
   });

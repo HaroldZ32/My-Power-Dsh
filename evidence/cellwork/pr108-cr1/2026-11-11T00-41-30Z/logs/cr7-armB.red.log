@@ -1,0 +1,23 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-cellwork-plugin/test/elastic-seats.test.ts:
+489 |   // cannot record. The corrupt file is the falsifier — the old code overwrote it and dispatched anyway.
+490 |   /** The harness whose append window corrupts the record. */
+491 |   const harness = makeHarness({ onMemberAppend: (workspace: string): void => { writeFileSync(statePath(workspace, CELL_ID), "{not json") } })
+492 |   /** The dispatch pass. */
+493 |   const answer = await runTool(harness, "cellwork_dispatch")
+494 |   expect(answer.ok).toBe(false)
+                          ^
+error: expect(received).toBe(expected)
+
+Expected: false
+Received: true
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/elastic-seats.test.ts:494:21)
+(fail) CR #108: an unreadable record after growth STOPS the pass before it pairs anything [4.29ms]
+
+ 0 pass
+ 30 filtered out
+ 1 fail
+ 1 expect() calls
+Ran 1 test across 1 file. [154.00ms]

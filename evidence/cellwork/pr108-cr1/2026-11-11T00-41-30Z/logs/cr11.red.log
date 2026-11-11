@@ -1,0 +1,26 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-team-core-plugin/test/c74-midrun-and-binding.test.ts:
+ 95 |  */
+ 96 | export function appendTeamJournal(workspace: string, entry: TeamJournalEntry): string {
+ 97 |   /** The journal file this row lands in. */
+ 98 |   const path = journalPath(workspace)
+ 99 |   mkdirSync(teamRoot(workspace), { recursive: true })
+100 |   appendFileSync(path, JSON.stringify(entry) + "\n")
+        ^
+EISDIR: illegal operation on a directory, open '/tmp/mpd-c74-LKjSq4/.mpd/team/journal.jsonl'
+    path: "/tmp/mpd-c74-LKjSq4/.mpd/team/journal.jsonl",
+ syscall: "open",
+   errno: -21,
+    code: "EISDIR"
+
+      at appendTeamJournal (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-team-core-plugin/src/team-journal.ts:100:3)
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-team-core-plugin/src/index.ts:2140:40)
+      at call (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-team-core-plugin/test/c74-midrun-and-binding.test.ts:187:19)
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-team-core-plugin/test/c74-midrun-and-binding.test.ts:333:28)
+(fail) C7-4 F1 — a mid-run append lands on the APPROVED record > CR #108: a THROWING journal append does not strand the append — the member is still raised, with no ghost [5.43ms]
+
+ 0 pass
+ 19 filtered out
+ 1 fail
+Ran 1 test across 1 file. [164.00ms]

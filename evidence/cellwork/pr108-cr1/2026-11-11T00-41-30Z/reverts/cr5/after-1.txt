@@ -1,0 +1,1 @@
+        ...(activated.outcome.planningTeamId === undefined ? {} : { planningTeamId: activated.outcome.planningTeamId }),

@@ -14,7 +14,7 @@
 // the approval answer exists.
 import type { DshAdapter, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 import type { CellworkSeat, CellSeatMode } from "./guard"
-import { appendJournal, cellDir, listCellIds, readCell, statePath, writeCell, type CellMemberMode, type CellMemberRecord, type CellReadFailure, type CellState } from "./state"
+import { appendJournal, cellDir, listCellIds, readCell, resolveCellTeam, statePath, writeCell, type CellMemberMode, type CellMemberRecord, type CellReadFailure, type CellState } from "./state"
 
 /**
  * The slice of the `mpdTeams` service this module reads, declared STRUCTURALLY.
@@ -320,8 +320,13 @@ function seatIn(cell: CellState, workspace: string, sessionId: string, deps: Cal
   // THE LIVE TEAM RECORD IS READ FIRST, because it is the AUTHORITY for a closed seat (wave W2-E): the
   // cell row's `mode` is a mirror written after a plane write, so a plane-side fence must reach the guard
   // even when the cell row has not caught up. Both loops below consult it and prefer its answer.
-  /** The live team record for this cell, when the team row is mounted and the id is known. */
-  const rawRecord = cell.teamId === "" ? undefined : deps.teams?.()?.get?.(workspace, cell.teamId)
+  // THE SEAT'S PLANE FENCE IS READ ON THE RESOLVED BOARD (§7.1a site 6): `cell.teamId` may name the dead
+  // planning team, which would hide an execution seat's plane-side `checkpoint`/fence from the guard. The
+  // resolution is the SAME one the dispatch pass uses, so the guard and the board can never disagree.
+  /** The resolved execution board and its evidence. */
+  const board = resolveCellTeam({ workspace, cell, teams: deps.teams?.() })
+  /** The live record the roster rows are read from. */
+  const rawRecord = board.record
   /** The same value read as a record, because the service's answer is typed `unknown`. */
   const record = typeof rawRecord === "object" && rawRecord !== null ? rawRecord as Record<string, unknown> : undefined
   /** The roster rows this build can read; anything else is skipped rather than trusted. */

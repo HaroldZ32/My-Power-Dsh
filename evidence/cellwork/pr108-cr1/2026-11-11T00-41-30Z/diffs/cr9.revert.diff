@@ -1,0 +1,11 @@
+--- a/packages/mpd-team-core-plugin/src/index.ts (fixed)
++++ b/packages/mpd-team-core-plugin/src/index.ts (reverted)
+@@ -84,7 +84,7 @@
+ // branches, so a tool call, the `mpdTeamActions` service and an HTTP route all drive ONE sequence.
+ import { approveTeam, cancelTasks, clearConsults, endTeam, fenceMember, forceWedgedTask, graceWedgedTask, runDispatch, TEAM_ACTIONS_SERVICE, unfenceMember, upsertConsult, writeMemberHandoff, type MpdTeamActionsService, type TeamActionCaller, type TeamActionDeps } from "./team-actions"
+ import { installIdleGuard, withIdlePreamble } from "./idle-guard"
+-import { appendTeamJournal } from "./team-journal.ts"
++import { appendTeamJournal } from "./team-journal"
+ import { GraphModels } from "./graph-model"
+ import type { GraphModel } from "../../mpd-graph-core/src/index.ts"
+ import { ChangeFeed } from "./change-feed"

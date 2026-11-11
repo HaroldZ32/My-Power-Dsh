@@ -42,7 +42,7 @@ import { roleSpawnCard, rolesListCard } from "./tool-cards.ts"
 // cap, the deadman and the handoff writer. The deadman's bound and in-flight rule are the force
 // supervisor's (contract §S9), resolved per arm through the live config layer by the closures the
 // supervisor is built with below. Kept in its own module so its tests need no boot.
-import { CONSULT_ACTIVITY_HISTORY, CONSULT_FORCE_AFTER_MS, CONSULT_TOOL_IN_FLIGHT_MAX_MS, consultActivityKeyOf, consultLabelKey, consultMaxFromEnv, createConsultSupervisor, type ConsultToolActivity } from "./spawn-async.ts"
+import { CONSULT_ACTIVITY_HISTORY, CONSULT_FORCE_AFTER_MS, CONSULT_TOOL_IN_FLIGHT_MAX_MS, consultActivityKeyOf, consultLabelKey, consultMaxDeclaredFromEnv, createConsultSupervisor, type ConsultToolActivity } from "./spawn-async.ts"
 // The SERVICE seam a bounded plane outside this package consumes (cellwork's background delegation):
 // the SAME supervisor, published as `mpdConsults`, so no consumer needs a relative import into this row.
 import { createMpConsults } from "./consults.ts"
@@ -1067,7 +1067,9 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     // The deadman asks for THIS consult's child id (F1 repair). The label is read only when the
     // child reported no id at all — never as a second chance for an id-bearing child.
     activityOf: (childId, role) => (childId === undefined || childId === "" ? toolActivity.get(consultLabelKey(role)) : toolActivity.get(childId)),
-    maxConcurrent: () => consultMaxFromEnv(),
+    // READ AS DECLARED (§6.2): `undefined` means the operator set no `MPD_DSH_CONSULT_MAX`, which is
+    // what lets a per-start request (cellwork.consultMax) raise the default WITHOUT beating the env.
+    maxConcurrent: () => consultMaxDeclaredFromEnv(),
     // THE LIVE BOUND (§S9): read per arm through the same config layer as every other knob, so a
     // `mpd.jsonc` edit applies to the NEXT arm and two consults can run under different bounds.
     forceAfterMs: () => consultDeadmanBound(),

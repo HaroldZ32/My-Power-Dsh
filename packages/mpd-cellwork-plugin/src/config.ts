@@ -65,6 +65,24 @@ export interface CellworkConfig {
   cjkCharsPerToken: number
   /** An operator-declared window for a route the catalog cannot report, or null (the honest default). */
   windowOverride: number | null
+  /** How many EXECUTION seats may share one base role (`cellwork.seats.maxPerRole`); 1 disables growth. */
+  seatsMaxPerRole: number
+  /** How many execution seats one cell may hold in total, planning seats excluded (`cellwork.seats.max`). */
+  seatsMax: number
+  /**
+   * The per-start concurrency budget this plane hands the ONE shared consult supervisor
+   * (`cellwork.consultMax`).
+   *
+   * A REQUEST, never a second cap: the supervisor keeps its single `active` counter, and an explicit
+   * `MPD_DSH_CONSULT_MAX` env value still wins over this number.
+   */
+  consultMax: number
+  /** Extra planning analyst seats (`cellwork.planning.analysts`); 0 keeps the two-seat planning phase. */
+  planningAnalysts: number
+  /** How many tasks ONE `cellwork_delegate` call may start (`cellwork.delegate.maxTasks`). */
+  delegateMaxTasks: number
+  /** How many questions ONE `cellwork_recon` call may settle (`cellwork.recon.maxQuestions`). */
+  reconMaxQuestions: number
 }
 
 /** The shipped defaults; every one is a documented ratio in the plan, not a measured model window. */
@@ -84,6 +102,12 @@ export const DEFAULT_CELLWORK_CONFIG: CellworkConfig = {
   asciiCharsPerToken: 3,
   cjkCharsPerToken: 1,
   windowOverride: null,
+  seatsMaxPerRole: 8,
+  seatsMax: 32,
+  consultMax: 32,
+  planningAnalysts: 2,
+  delegateMaxTasks: 32,
+  reconMaxQuestions: 16,
 }
 
 /** The dotted prefix every cellwork knob lives under in `mpd.jsonc`. */
@@ -113,6 +137,49 @@ const KNOB_RULES: Readonly<Record<string, KnobRule>> = {
   idleBarrierDelayMs: { integer: true, min: 0, max: 10000 },
   asciiCharsPerToken: { integer: false, min: 0.5, max: 16 },
   cjkCharsPerToken: { integer: false, min: 0.5, max: 16 },
+  seatsMaxPerRole: { integer: true, min: 1, max: 32 },
+  seatsMax: { integer: true, min: 1, max: 64 },
+  consultMax: { integer: true, min: 1, max: 256 },
+  planningAnalysts: { integer: true, min: 0, max: 8 },
+  delegateMaxTasks: { integer: true, min: 1, max: 64 },
+  reconMaxQuestions: { integer: true, min: 1, max: 64 },
+}
+
+/**
+ * The dotted `cellwork.*` path of a knob whose field name is not its path.
+ *
+ * `cellwork.seats.max` is declared under a NESTED key, while the resolved field is flat
+ * (`seatsMax`), so the resolver needs the path beside the field name. A knob absent from this map is
+ * addressed by its own field name, exactly as before.
+ */
+const KNOB_PATHS: Readonly<Record<string, string>> = {
+  seatsMaxPerRole: "seats.maxPerRole",
+  seatsMax: "seats.max",
+  planningAnalysts: "planning.analysts",
+  delegateMaxTasks: "delegate.maxTasks",
+  reconMaxQuestions: "recon.maxQuestions",
+}
+
+/**
+ * Read one dotted path out of the row config by walking nested objects.
+ *
+ * A patch row may declare a nested knob either as the nested object (`seats: { max: 32 }`) or as the
+ * flat dotted key (`"seats.max": 32`), so the caller tries both spellings; the nested one wins because
+ * it is the documented shape. A path segment that is not an object answers undefined for its child,
+ * which is the same "not declared" answer the resolver already handles.
+ *
+ * @param row - the row config object, read as an untrusted record.
+ * @param path - the dotted path inside that object, e.g. `seats.max`.
+ * @returns the declared value, or undefined when the path is absent or unusable.
+ */
+function readRowPath(row: Record<string, unknown>, path: string): unknown {
+  /** The current level while walking the path. */
+  let current: unknown = row
+  for (const segment of path.split(".")) {
+    if (typeof current !== "object" || current === null || Array.isArray(current)) return undefined
+    current = (current as Record<string, unknown>)[segment]
+  }
+  return current
 }
 
 /**
@@ -144,22 +211,50 @@ function numberKnob(
   /** The rule this knob is validated against. */
   const rule = KNOB_RULES[String(key)]
   if (rule === undefined) throw new Error("cellwork config: no rule for " + String(key))
-  /** The file's value when it declared one, else the row's value, else undefined. */
-  const declared = readFile(CELLWORK_CONFIG_PREFIX + String(key)) ?? row[String(key)]
+  /** The dotted path this knob is declared under: a nested knob's path differs from its field name. */
+  const path = KNOB_PATHS[String(key)] ?? String(key)
+  /** The file's value when it declared one, else the row's nested spelling, then its flat one, else undefined. */
+  const declared = readFile(CELLWORK_CONFIG_PREFIX + path) ?? readRowPath(row, path) ?? row[path]
   if (declared === undefined || declared === null) return fallback
   if (typeof declared !== "number" || !Number.isFinite(declared)) {
-    warn("[mpd-cellwork] " + CELLWORK_CONFIG_PREFIX + String(key) + " = " + JSON.stringify(declared) + " is not a finite number; using the default " + String(fallback))
+    warn("[mpd-cellwork] " + CELLWORK_CONFIG_PREFIX + path + " = " + JSON.stringify(declared) + " is not a finite number; using the default " + String(fallback))
     return fallback
   }
   if (rule.integer && !Number.isInteger(declared)) {
-    warn("[mpd-cellwork] " + CELLWORK_CONFIG_PREFIX + String(key) + " = " + String(declared) + " must be a whole number; using the default " + String(fallback))
+    warn("[mpd-cellwork] " + CELLWORK_CONFIG_PREFIX + path + " = " + String(declared) + " must be a whole number; using the default " + String(fallback))
     return fallback
   }
   if (declared < rule.min || declared > rule.max) {
-    warn("[mpd-cellwork] " + CELLWORK_CONFIG_PREFIX + String(key) + " = " + String(declared) + " is outside [" + String(rule.min) + ", " + String(rule.max) + "]; using the default " + String(fallback))
+    warn("[mpd-cellwork] " + CELLWORK_CONFIG_PREFIX + path + " = " + String(declared) + " is outside [" + String(rule.min) + ", " + String(rule.max) + "]; using the default " + String(fallback))
     return fallback
   }
   return declared
+}
+
+/**
+ * Re-read ONE numeric knob at the moment it is used, so a `mpd.jsonc` edit applies to the NEXT call.
+ *
+ * WHY A SECOND ENTRY POINT: the row config block is known only where the row boots, so a consumer that
+ * must read a knob PER CALL (a seat cap, a delegation bound) hands over the value the row already
+ * resolved and this reader applies the WORKSPACE-FILE layer on top — the same two layers, the same
+ * validation and the same one-warning-per-refused-value rule, read at call time instead of mount time.
+ * @param key - the knob's field name (it must have a numeric default).
+ * @param cached - the value the row resolved at mount, used when the file declares nothing.
+ * @param readFile - reads one `mpd.jsonc` value by its FULL dotted path.
+ * @param warn - the row's log sink, called once per refused value.
+ * @returns the value to use for THIS call.
+ */
+export function liveNumericKnob(
+  key: keyof CellworkConfig,
+  cached: CellworkConfig,
+  readFile: (dottedKey: string) => unknown,
+  warn: (line: string) => void,
+): number {
+  /** The knob's dotted path, so the file layer is read under the key an operator actually writes. */
+  const path = KNOB_PATHS[String(key)] ?? String(key)
+  // The mount-time value rides the ROW layer of the same reader: the file still wins, and a refused
+  // value falls back to the number this row booted with instead of to the shipped default.
+  return numberKnob(key, { [path]: cached[key] }, readFile, warn)
 }
 
 /**
@@ -263,5 +358,11 @@ export function resolveCellworkConfig(
     asciiCharsPerToken: numberKnob("asciiCharsPerToken", row, readFile, warn),
     cjkCharsPerToken: numberKnob("cjkCharsPerToken", row, readFile, warn),
     windowOverride,
+    seatsMaxPerRole: numberKnob("seatsMaxPerRole", row, readFile, warn),
+    seatsMax: numberKnob("seatsMax", row, readFile, warn),
+    consultMax: numberKnob("consultMax", row, readFile, warn),
+    planningAnalysts: numberKnob("planningAnalysts", row, readFile, warn),
+    delegateMaxTasks: numberKnob("delegateMaxTasks", row, readFile, warn),
+    reconMaxQuestions: numberKnob("reconMaxQuestions", row, readFile, warn),
   }
 }

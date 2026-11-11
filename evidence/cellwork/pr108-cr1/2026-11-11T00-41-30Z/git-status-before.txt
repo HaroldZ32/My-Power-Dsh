@@ -1,0 +1,90 @@
+ M docs/cellwork.md
+ M packages/mpd-cellwork-plugin/dist/index.js
+ M packages/mpd-cellwork-plugin/src/activate.ts
+ M packages/mpd-cellwork-plugin/src/flow.ts
+ M packages/mpd-cellwork-plugin/src/protocol.ts
+ M packages/mpd-cellwork-plugin/src/staging.ts
+ M packages/mpd-cellwork-plugin/test/elastic-seats.test.ts
+ M packages/mpd-cellwork-plugin/test/flow.test.ts
+ M packages/mpd-cellwork-plugin/test/planner-guard.test.ts
+ M packages/mpd-cellwork-plugin/test/planning-fanout.test.ts
+ M packages/mpd-team-core-plugin/dist/index.js
+ M packages/mpd-team-core-plugin/src/index.ts
+ M packages/mpd-team-core-plugin/src/team-actions.ts
+ M packages/mpd-team-core-plugin/src/team-journal.ts
+ M packages/mpd-team-core-plugin/test/c74-midrun-and-binding.test.ts
+ M packages/mpd-team-core-plugin/test/tool-output-schema.test.ts
+?? evidence/docker/client-install-oneclick/2026-11-10T11-23-01Z/
+?? evidence/docker/client-install-oneclick/2026-11-10T11-47-52Z/
+?? evidence/docker/client-install/2026-11-10T11-04-48Z/
+?? evidence/docker/client-install/2026-11-10T11-39-59Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T01-22-08.232Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T01-23-48.946Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T01-24-44.105Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T01-35-34.733Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T02-37-59.285Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T02-40-44.944Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T02-53-29.143Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T05-27-02.985Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T05-28-43.085Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T05-33-36.408Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T06-09-14.301Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T06-10-54.947Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T06-12-12.005Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T06-13-18.027Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T06-16-49.967Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T08-34-46.241Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T08-40-11.040Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T08-42-25.422Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T08-46-24.871Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T09-16-56.656Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T09-24-07.926Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T09-52-00.184Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T09-57-25.343Z/
+?? evidence/dsh-qa/llm-dual-track/deepseek/2026-11-07T12-30-27.964Z/
+?? evidence/dsh-qa/llm-dual-track/deepseek/2026-11-10T11-07-00.845Z/
+?? evidence/dsh-qa/llm-dual-track/official/2026-11-07T12-30-15.652Z/
+?? evidence/dsh-qa/llm-dual-track/official/2026-11-10T11-06-50.689Z/
+?? evidence/dsh-qa/mcp-call/2026-11-07T12-29-56.747Z/
+?? evidence/dsh-qa/mcp-call/2026-11-10T11-08-51.965Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-07T12-26-58.474Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-09T01-43-35.739Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-09T01-47-33.422Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-09T01-48-43.047Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-09T01-50-18.081Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-09T01-54-20.780Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-09T01-55-20.766Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-09T02-32-50.808Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-09T02-34-47.993Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-09T02-47-41.673Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-09T02-49-10.617Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-09T02-59-09.978Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-09T03-09-46.911Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T01-21-42.011Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T01-23-25.633Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T01-24-22.312Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T01-35-05.271Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T02-37-31.165Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T02-40-23.124Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T02-53-01.194Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T05-26-40.542Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T05-28-20.712Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T05-33-52.680Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T06-08-50.375Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T06-10-31.265Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T06-11-50.243Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T06-12-56.265Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T06-17-32.124Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T08-35-02.807Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T08-40-26.311Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T08-42-40.578Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T08-46-41.728Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T09-17-14.619Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T09-24-23.452Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T09-52-17.991Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T09-57-25.474Z/
+?? evidence/dshgo/standard/2026-11-07T12-26-58-320Z/
+?? evidence/roles/captain-scope/2026-11-09T01-55-53.580Z/
+?? evidence/roles/captain-scope/2026-11-09T02-05-34.247Z/
+?? evidence/roles/captain-scope/2026-11-09T02-49-50.747Z/
+?? evidence/roles/captain-scope/2026-11-09T02-59-34.610Z/

@@ -7113,11 +7113,11 @@ async function cancelTasks(deps, input) {
     for (const taskId of input.taskIds) {
       const row = next.tasks.find((task) => task.id === taskId);
       if (row === undefined) {
-        skipped.push({ taskId, reason: `no board row is named ${JSON.stringify(taskId)}` });
+        skipped.push({ taskId, status: "missing", reason: `no board row is named ${JSON.stringify(taskId)}` });
         continue;
       }
       if (row.status === "completed" || row.status === "failed" || row.status === "cancelled") {
-        skipped.push({ taskId, reason: `row ${taskId} is already ${row.status} — a terminal row is never re-cancelled` });
+        skipped.push({ taskId, status: row.status, reason: `row ${taskId} is already ${row.status} — a terminal row is never re-cancelled` });
         continue;
       }
       next = updateTeamTask(next, taskId, { status: "cancelled", ...input.note === undefined ? {} : { note: input.note } }, deps.now());
@@ -9397,6 +9397,14 @@ WARNING: ${value.warning}` : "";
         const roster = addTeamMember(resolved.record, input, now());
         const added = roster.members[roster.members.length - 1];
         writeTeam(workspace, withDerivedPhase(roster));
+        const roleWarning = input.role === undefined || input.role.trim() === "" ? "member " + JSON.stringify(added.name) + " was added with no `role` — route resolution may not match a role route (it also matches the description head and the member name, which is not guaranteed), in which case the seat inherits the calling session's route; pass `role` with the roster label this seat answers to." : undefined;
+        if (roleWarning !== undefined) {
+          try {
+            appendTeamJournal(workspace, { event: "member-role-omitted", teamId: roster.teamId, at: now().toISOString(), member: added.name, reason: roleWarning });
+          } catch (error) {
+            rowLogLine("mpd-team-core", "the `member-role-omitted` journal row for " + JSON.stringify(added.name) + " could not be written (" + String(error?.message ?? error) + ") — the member is still raised and the warning still rides the answer");
+          }
+        }
         try {
           const spawned = await executor().spawn(exec.agent, {
             teamId: roster.teamId,
@@ -9409,11 +9417,11 @@ WARNING: ${value.warning}` : "";
           });
           const running = updateTeamMember(readTeam(workspace, roster.teamId) ?? roster, added.id, { executorRef: spawned.handle, status: "running" });
           writeTeam(workspace, withDerivedPhase(running));
-          return { team: running, member: { ...added, executorRef: spawned.handle, status: "running" }, spawned: spawned.handle, appended: `member ${added.name} (${added.id}) appended to the live team ${running.teamId}` };
+          return { team: running, member: { ...added, executorRef: spawned.handle, status: "running" }, spawned: spawned.handle, appended: `member ${added.name} (${added.id}) appended to the live team ${running.teamId}`, ...roleWarning === undefined ? {} : { warning: roleWarning } };
         } catch (error) {
           const released = removeTeamMember(readTeam(workspace, roster.teamId) ?? roster, added.id);
           writeTeam(workspace, withDerivedPhase(released));
-          return { team: released, member: { ...added, status: "failed" }, stoppedAt: `member ${added.name}: ${String(error?.message ?? error)}`, appended: `member ${added.name} (${added.id}) was NOT added to team ${released.teamId}: the raise FAILED, and its roster row was REMOVED so no failed slot is held` };
+          return { team: released, member: { ...added, status: "failed" }, stoppedAt: `member ${added.name}: ${String(error?.message ?? error)}`, appended: `member ${added.name} (${added.id}) was NOT added to team ${released.teamId}: the raise FAILED, and its roster row was REMOVED so no failed slot is held`, ...roleWarning === undefined ? {} : { warning: roleWarning } };
         }
       }
       if (action === "create_task") {
