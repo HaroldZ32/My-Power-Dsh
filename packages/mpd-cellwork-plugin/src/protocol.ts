@@ -1159,10 +1159,12 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
    *
    * A FENCE IS NOT CLEARED HERE. `fenced`/`fencedReason` are the barrier's give-up markers and the
    * `unfence` lever owns them; this verb only re-points identity, so a caller that also needs the seat
-   * reopened names both (`rebind` AND `unfence`) in one call.
+   * reopened names both (`rebind` AND `unfence`) in one call — where the rebind runs FIRST and the unfence
+   * is withheld unless every entry lands with its CELL mirror confirmed (CodeRabbit round 2, Major-1).
    *
    * @param caller - the caller's context; its workspace and captain identity authorize the write.
-   * @param cell - the record the previous step (the unfence) left, used as the CELL merge input.
+   * @param cell - the record the caller resolved; the rebind runs BEFORE the unfence, so this is that
+   *   resolved record (not an unfence output).
    * @param teamId - the RESOLVED execution board id whose record file is re-pointed.
    * @param targets - the requested seats, already resolved (no unknown name reaches here).
    * @param now - the instant the journal rows are stamped with.
@@ -1399,7 +1401,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
   // ── cellwork_dispatch ────────────────────────────────────────────────────
   disposers.push(dsh.registerTool({
     name: "cellwork_dispatch",
-    description: "CAPTAIN only: one owner-only dispatch pass over the live board. A ready task is paired ONLY with its declared owner; a busy, absent, FENCED or failed owner is REPORTED and the task left pending — never substituted (a fenced member is never messaged). `reassign` hands named rows to another member FIRST: each row is claimed for that member through the board, journaled as `task-reassigned`, then delivered — the repair for a fenced owner. `rebind` RE-POINTS named seats to the handle their CURRENT record names (the journal only corroborates): it is the ONLY verb that re-points `executorRef` (the TEAM row) and it mirrors that handle into the CELL row; `unfence` alone never touches the handle, and `reassign` only moves board rows — a refused-rollback seat needs `rebind` (contract §3 A11). The CURRENT TEAM/CELL row is authoritative: a handle either names is accepted and no journal row can veto it; the journal's recency decides only when NEITHER current row names a handle. A handle only an OLDER hand-over row names is refused `handle-superseded` with a reconcile sentence that states the record's current handle and the journal's last hand-over but NEVER chooses a direction for the operator; a record written after the last hand-over with no journal row of its own is accepted and marked `handleRecordCurrent:true`/`journalHandoverOlder:true` (the crash window). Every outcome reports `namedBy` and the displaced handle's liveness. `unfence` clears named members' compaction GIVE-UP fences BEFORE the pass — the repair for the other deadlock: a fenced row keeps `handoffReady:true`, so `cellwork_handoff` refuses it as STILL WAITING while only another SUCCESSFUL barrier could clear it, which a fenced member cannot start. THE CELL ROW'S OWN `fenced:true` IS THE GIVE-UP FACT (the compaction barrier writes the fence on the CELL row and nowhere else): that row loses `fenced`/`fencedReason`, returns to `mode: member` with `handoffReady:false` (its `handoffs` count is unchanged), AND the TEAM seat is reopened through the plane's `unfence` seam when this composition exposes one — the plane's `mode:\"checkpoint\"` counts as a closed seat and that seam clears it too. The answer reports the plane's half honestly as `unfenced`, `absent` or `refused` and never claims the member was reopened when no seam exists. A TEAM row at `mode:\"checkpoint\"` with NO `fenced` flag is a PENDING compaction, not a give-up — UNLESS the CELL row carries the marker above, in which case the CELL marker decides; on its own that pending checkpoint answers `{member, unfenced:false, reason:\"checkpoint-pending\"}` and NEITHER record is written, because the barrier owns it. A barrier-owned checkpoint is NOT a dead end: the forced lever `unfence:[{member, force:true}]` reopens it only at a written bound (`barrierFailures` at `compactionRetries`, a `checkpointSince` older than `checkpointPendingMaxMs`, or the DEAD-RESEED shape — a reseeded `subcaptain` row whose recorded session the registry PROVES dead, `bound:\"dead-session\"`), and a plane half that ends `refused` carries `retry`, the exact `agent_teams_control {action:\"unfence\", member}` verb that re-drives it; the `unfence` parameter below spells out every bound. An explicit `fenced:true` recorded ONLY on the TEAM record is cleared through that seam while the CELL row is left untouched, and the outcome says which half was cleared. A member that is not fenced in either record answers `{member, unfenced:false, reason: not-fenced}` (never a silent success), and an unknown name refuses the whole call with the recorded members named. `unfence` and `reassign` may travel in ONE call and neither interferes with the other. Delivery goes through the team executor and is journaled.",
+    description: "CAPTAIN only: one owner-only dispatch pass over the live board. A ready task is paired ONLY with its declared owner; a busy, absent, FENCED or failed owner is REPORTED and the task left pending — never substituted (a fenced member is never messaged). `reassign` hands named rows to another member FIRST: each row is claimed for that member through the board, journaled as `task-reassigned`, then delivered — the repair for a fenced owner. `rebind` RE-POINTS named seats to the handle their CURRENT record names (the journal only corroborates): it is the ONLY verb that re-points `executorRef` (the TEAM row) and it mirrors that handle into the CELL row; `unfence` alone never touches the handle, and `reassign` only moves board rows — a refused-rollback seat needs `rebind` (contract §3 A11). ORDER IS THE CONTRACT: `rebind` runs FIRST, and a combined call's `unfence` runs ONLY after EVERY `rebind` entry answered `rebound:true` AND its CELL mirror was confirmed; a failed rebind, or a mirror the record refused, leaves the fences CLOSED, executes no unfence, journals `dispatch-unfence-withheld` and answers `unfenceWithheld` whose sentence says `fence stayed closed` with the next step. The CURRENT TEAM/CELL row is authoritative: a handle either names is accepted and no journal row can veto it; the journal's recency decides only when NEITHER current row names a handle. A handle only an OLDER hand-over row names is refused `handle-superseded` with a reconcile sentence that states the record's current handle and the journal's last hand-over but NEVER chooses a direction for the operator; a record written after the last hand-over with no journal row of its own is accepted and marked `handleRecordCurrent:true`/`journalHandoverOlder:true` (the crash window). Every outcome reports `namedBy`; the displaced handle (`previousSessionId`) and its liveness are reported when the TEAM row is readable and omitted when the TEAM record is missing or unreadable. `unfence` clears named members' compaction GIVE-UP fences AFTER `rebind` and BEFORE the pass — the repair for the other deadlock: a fenced row keeps `handoffReady:true`, so `cellwork_handoff` refuses it as STILL WAITING while only another SUCCESSFUL barrier could clear it, which a fenced member cannot start. THE CELL ROW'S OWN `fenced:true` IS THE GIVE-UP FACT (the compaction barrier writes the fence on the CELL row and nowhere else): that row loses `fenced`/`fencedReason`, returns to `mode: member` with `handoffReady:false` (its `handoffs` count is unchanged), AND the TEAM seat is reopened through the plane's `unfence` seam when this composition exposes one — the plane's `mode:\"checkpoint\"` counts as a closed seat and that seam clears it too. The answer reports the plane's half honestly as `unfenced`, `absent` or `refused` and never claims the member was reopened when no seam exists. A TEAM row at `mode:\"checkpoint\"` with NO `fenced` flag is a PENDING compaction, not a give-up — UNLESS the CELL row carries the marker above, in which case the CELL marker decides; on its own that pending checkpoint answers `{member, unfenced:false, reason:\"checkpoint-pending\"}` and NEITHER record is written, because the barrier owns it. A barrier-owned checkpoint is NOT a dead end: the forced lever `unfence:[{member, force:true}]` reopens it only at a written bound (`barrierFailures` at `compactionRetries`, a `checkpointSince` older than `checkpointPendingMaxMs`, or the DEAD-RESEED shape — a reseeded `subcaptain` row whose recorded session the registry PROVES dead, `bound:\"dead-session\"`), and a plane half that ends `refused` carries `retry`, the exact `agent_teams_control {action:\"unfence\", member}` verb that re-drives it; the `unfence` parameter below spells out every bound. An explicit `fenced:true` recorded ONLY on the TEAM record is cleared through that seam while the CELL row is left untouched, and the outcome says which half was cleared. A member that is not fenced in either record answers `{member, unfenced:false, reason: not-fenced}` (never a silent success), and an unknown name refuses the whole call with the recorded members named. `unfence` and `reassign` may travel in ONE call and neither interferes with the other. Delivery goes through the team executor and is journaled.",
     parameters: {
       type: "object",
       properties: {
@@ -1460,8 +1462,9 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
           skipped: { type: "array", items: { type: "object" } },
           reassigned: { type: "array", items: { type: "object" }, description: "One entry per readable `reassign` pair: whether the board claim landed and whether the message was delivered." },
           reassignInvalid: { type: "array", items: { type: "string" }, description: "One sentence per `reassign` entry this call refused to read." },
-          rebound: { type: "array", items: { type: "object" }, description: "One entry per distinct `rebind` seat. Success: `{member, rebound:true, previousSessionId, previousSessionIdLiveness, handle, namedBy, plane:\"bound\", liveness}` (plus `handleRecordCurrent:true` and, when the record provably postdates the journal row, `journalHandoverOlder:true`) after the TEAM row was re-pointed and the CELL row mirrored (a failed CELL mirror adds `cellRow`; a different overwritten handle adds `displacedExecutorRef`/`displacedUnproven`). `namedBy` is the surface(s) that proved the handle (`team`, `cell`, `journal:<event>`); `liveness` is the identity registry's answer for the requested handle and `previousSessionIdLiveness` the same three-state answer (`live`/`unproven`/`unknown`) for the displaced handle — neither is ever upgraded to a claim. Failure: `{member, rebound:false, reason, detail, namedBy, ...}` — `reason` is `no-team-record`, `team-record-unreadable`, `team-record`, `team-member`, `handle-unevidenced` (nothing in this seat's CURRENT trail names the requested handle), `handle-superseded` (only an OLDER hand-over row named it; `supersededBy:{event, handle, at?}` names the later row, and `detail` states both records without advising a direction), `team-record-changed` (a concurrent writer's document was refused, never overwritten), `write-failed` or `team-record-verify` (the write could not be read back). Every failure is also journaled as `member-rebind-failed`, and an argument-level refusal records the requested `handle` (bounded, with `handleTruncated` when cut)." },
+          rebound: { type: "array", items: { type: "object" }, description: "One entry per distinct `rebind` seat. Success: `{member, rebound:true, previousSessionId?, previousSessionIdLiveness?, handle, namedBy, plane:\"bound\", liveness}` (the `previousSessionId`/`previousSessionIdLiveness` pair is present only when the TEAM row was readable) (plus `handleRecordCurrent:true` and, when the record provably postdates the journal row, `journalHandoverOlder:true`) after the TEAM row was re-pointed and the CELL row mirrored (a failed CELL mirror adds `cellRow`; a different overwritten handle adds `displacedExecutorRef`/`displacedUnproven`). `namedBy` is the surface(s) that proved the handle (`team`, `cell`, `journal:<event>`); `liveness` is the identity registry's answer for the requested handle and `previousSessionIdLiveness` the same three-state answer (`live`/`unproven`/`unknown`) for the displaced handle — neither is ever upgraded to a claim. Failure: `{member, rebound:false, reason, detail, namedBy, ...}` — `reason` is `no-team-record`, `team-record-unreadable`, `team-record`, `team-member`, `handle-unevidenced` (nothing in this seat's CURRENT trail names the requested handle), `handle-superseded` (only an OLDER hand-over row named it; `supersededBy:{event, handle, at?}` names the later row, and `detail` states both records without advising a direction), `team-record-changed` (a concurrent writer's document was refused, never overwritten), `write-failed` or `team-record-verify` (the write could not be read back). Every failure is also journaled as `member-rebind-failed`, and an argument-level refusal records the requested `handle` (bounded, with `handleTruncated` when cut)." },
           unfenced: { type: "array", items: { type: "object" }, description: "One entry per distinct `unfence` member (duplicates collapse to one): `{member, unfenced:true, plane, planeReason?}` for a cleared CELL give-up fence (the CELL row's `fenced:true`, whatever the TEAM row says), `{member, unfenced:false, reason:\"not-fenced\"}` when neither record reports a marker, `{member, unfenced:false, reason:\"checkpoint-pending\", detail}` only when the CELL row carries no `fenced:true` AND the TEAM row is at `mode:\"checkpoint\"` with no `fenced` flag (the compaction barrier owns it, nothing was written), and `{member, unfenced, cellRow:\"untouched\", plane, planeReason?}` when an explicit TEAM-only fence was cleared while the CELL row was left untouched. `plane` is `unfenced` (the TEAM seat was reopened through the seam), `absent` (this composition exposes no `unfence` seam, so no reopen is claimed) or `refused` (with the plane's own sentence in `planeReason`). A FORCED clear answers `{member, unfenced:true, forced:true, alive:false, liveness:\"dead\"|\"unknown\", sessionId, bound:\"retry-budget\"|\"stale\", pendingMs?, plane, planeReason?}`, and a forced request that is refused writes nothing and answers `reason:\"live-session\"` or `reason:\"force-not-eligible\"` with a `detail` sentence. The dead-reseed seat (a reseeded `subcaptain` row whose recorded session the registry PROVES dead) is held by the SAME predicate and its forced clear names `bound:\"dead-session\"`. Any outcome whose plane half ended `refused` ALSO carries `retry`: the exact Lead-only verb (`agent_teams_control {action:\"unfence\", member}`) that re-drives the seam, echoed in the render and in the journal row." },
+          unfenceWithheld: { type: "object", description: "Present ONLY when this call named both `rebind` and `unfence` and the unfence was withheld: every `rebind` entry must answer `rebound:true` with its CELL mirror confirmed before any fence is cleared. `{reason: \"rebind-failed\"|\"cell-mirror-unconfirmed\", members, failed:[{member, reason, cellRow?}], detail, next}`; `detail` says `fence stayed closed` and `next` names the re-run. The same call journals `dispatch-unfence-withheld`, and no `unfenced` entry is produced." },
           refused: { type: "string" },
           seats: {
             type: "object",
@@ -1483,7 +1486,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       render: (_args: unknown, value: unknown): unknown => {
         /** The result as a record. */
         const result = typeof value === "object" && value !== null ? value as Record<string, unknown> : {}
-        /** The unfence outcomes, reported first because they run first. */
+        /** The unfence outcomes; rendered AFTER the rebind lines because the rebind runs first. */
         const unfenced = Array.isArray(result.unfenced) ? result.unfenced as Array<Record<string, unknown>> : []
         /**
          * The plane RETRY a refused half hands over (R5.4), or "" when the outcome names none.
@@ -1519,6 +1522,10 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
                 : "cell row cleared and the TEAM seat reopened through the plane"))
         /** The same lines, each carrying the plane retry it names (R5.4) — no silent dead end. */
         const clears = lines.map((line, index) => line + retryOf(unfenced[index]))
+        /** The `unfence` half this call withheld, when it did (CodeRabbit round 2, Major-1). */
+        const withheld = typeof result.unfenceWithheld === "object" && result.unfenceWithheld !== null ? result.unfenceWithheld as Record<string, unknown> : undefined
+        /** The one line that says the fences stayed closed and hands over the next step. */
+        const withheldLines = withheld === undefined ? [] : ["unfence WITHHELD — " + String(withheld.detail ?? "fence stayed closed") + (typeof withheld.next === "string" ? " · next: " + withheld.next : "")]
         /** The rebind outcomes, reported beside the clears because they repair identity, not fencing. */
         const reboundRows = Array.isArray(result.rebound) ? result.rebound as Array<Record<string, unknown>> : []
         /** The surfaces one outcome says evidenced the handle (`team`, `cell`, `journal:<event>`), rendered. */
@@ -1527,7 +1534,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         const rebounds = reboundRows.map((row) => row.rebound === true
           ? "rebind " + String(row.member) + ": executorRef " + JSON.stringify(String(row.previousSessionId ?? "")) + " -> " + JSON.stringify(String(row.handle)) + " (evidence: " + evidenceOf(row) + (typeof row.displacedExecutorRef === "string" ? "; displaced " + JSON.stringify(row.displacedExecutorRef) + " liveness: " + String(row.previousSessionIdLiveness ?? "unknown") : "") + "; new handle liveness: " + String(row.liveness ?? "unknown") + (row.handleRecordCurrent === true ? "; record-current" : "") + (row.journalHandoverOlder === true ? "; journal hand-over older" : "") + (row.cellRow === undefined ? "" : "; CELL row " + String(row.cellRow)) + " — the identity registry's answer, not a claim)"
           : "rebind " + String(row.member) + ": NOT re-pointed (" + String(row.reason ?? "unknown") + ") — " + String(row.detail ?? "no detail was reported") + (typeof row.supersededBy === "object" && row.supersededBy !== null ? " [the journal's last hand-over journal:" + String((row.supersededBy as Record<string, unknown>).event) + " named " + JSON.stringify(String((row.supersededBy as Record<string, unknown>).handle ?? "")) + "; reconcile before re-pointing]" : "") + " [named by: " + evidenceOf(row) + (row.previousSessionId === undefined ? "" : "; current handle " + JSON.stringify(String(row.previousSessionId)) + " liveness: " + String(row.previousSessionIdLiveness ?? "unknown")) + "]")
-        if (result.ok === false) return render(["cellwork_dispatch refused: " + String(result.error ?? "unknown refusal"), ...clears, ...rebounds].join("\n"))
+        if (result.ok === false) return render(["cellwork_dispatch refused: " + String(result.error ?? "unknown refusal"), ...rebounds, ...clears, ...withheldLines].join("\n"))
         /** The delivered pairs. */
         const pairs = Array.isArray(result.pairs) ? result.pairs as Array<Record<string, unknown>> : []
         /** The reported skips. */
@@ -1538,7 +1545,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         const invalid = Array.isArray(result.reassignInvalid) ? result.reassignInvalid.map((entry) => String(entry)) : []
         /** One line per hand-over, claiming and delivery reported as the SEPARATE facts they are. */
         const handovers = reassigned.map((row) => "reassign " + String(row.taskId) + " -> " + String(row.owner) + ": " + (row.delivered === true ? "claimed on the board and delivered" : row.claimed === true ? "CLAIMED, delivery failed: " + String(row.reason ?? "unknown") : "not claimed: " + String(row.reason ?? "unknown")))
-        if (typeof result.refused === "string") return render([...clears, ...rebounds, ...handovers, ...invalid, "cellwork_dispatch refused: " + result.refused].join("\n"))
+        if (typeof result.refused === "string") return render([...rebounds, ...clears, ...withheldLines, ...handovers, ...invalid, "cellwork_dispatch refused: " + result.refused].join("\n"))
         // THE SEATS THIS PASS GREW (§4.2): named with the role the member record actually carries, so a
         // §7.1b role loss is visible in the answer instead of surfacing later as a mis-routed seat.
         /** Every seat this pass raised or adopted. */
@@ -1547,7 +1554,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         const seatLines = grown.length === 0 ? [] : ["grew " + String(grown.length) + " seat(s): " + grown.map((row) => String(row.name) + " (" + String(row.role) + ")" + (String(row.rosterRole ?? "") === "" ? " [the member record carries NO role — §7.1b]" : "") + " for " + String(row.taskId)).join(", ")]
         /** Non-fatal seat warnings (the §7.1b role loss, a handle-less seat). */
         const seatWarnings = Array.isArray(result.seatWarnings) ? result.seatWarnings.map((row) => String(row)) : []
-        return render([...clears, ...rebounds, ...handovers, ...invalid, ...seatLines, ...seatWarnings, ...(pairs.length === 0
+        return render([...rebounds, ...clears, ...withheldLines, ...handovers, ...invalid, ...seatLines, ...seatWarnings, ...(pairs.length === 0
           ? ["nothing else dispatched" + (skipped.length === 0 ? "" : " (" + skipped.map((row) => String(row.subject) + ": " + String(row.reason)).join("; ") + ")")]
           : [...pairs.map((row) => String(row.subject) + " -> " + String(row.memberName)), ...(skipped.length === 0 ? [] : ["reported: " + skipped.length])])].join("\n"))
       },
@@ -1736,25 +1743,67 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       const board = boardOf(caller.workspace, cell)
       /** The cell as the unfence, growth and the report see it: the resolved team id — the view `cellwork_supervise` builds. */
       const boardCell: CellState = board.teamId === "" || board.teamId === cell.teamId ? cell : { ...cell, teamId: board.teamId }
-      // THE UNFENCE RUNS BEFORE THE PASS, so `reassign` may hand a row to a member this SAME call just
-      // reopened: the plane reads the TEAM row, and a fence cleared after the pass would have skipped it.
-      /** The record after the unfence, and one outcome per named member (nothing is written for none). */
-      const applied: UnfenceResult = unfenceTargets.length === 0 ? { cell: boardCell, outcomes: [] } : await unfenceSeats(caller, boardCell, unfenceTargets, now)
-      /** The unfence outcomes; absent from the answer when the call named no member. */
-      const unfenced = applied.outcomes
       /** The resolved board id every reader below addresses, even after a fresh record read rewrote the rest. */
-      const resolvedTeamId = board.teamId === "" ? applied.cell.teamId : board.teamId
-      /** The record the pass below reports against — the reopened one, carrying the RESOLVED team id. */
-      let current: CellState = applied.cell.teamId === resolvedTeamId ? applied.cell : { ...applied.cell, teamId: resolvedTeamId }
-      // THE REBIND RUNS AFTER THE UNFENCE (ORDER IS THE CONTRACT): the unfence reopens the CELL row from its
-      // own pre-await snapshot, so a rebind that ran first would have its mirrored `sessionId` replaced by
-      // that snapshot's stale one. Re-pointing identity after the fence is cleared leaves BOTH facts intact,
-      // and the pass below reads the TEAM row this step just repaired.
+      const resolvedTeamId = board.teamId === "" ? boardCell.teamId : board.teamId
+      // THE REBIND RUNS FIRST, AND THE UNFENCE IS GATED ON IT (CodeRabbit round 2, Major-1). Identity is the
+      // precondition of a reopen: clearing a fence around a handle the record does not name lets the very
+      // next dispatch hand work to a dead child. So the TEAM row is re-pointed and the CELL row mirrored
+      // BEFORE anything touches a fence, and a failed rebind (or an unconfirmed CELL mirror) withholds the
+      // unfence ENTIRELY — the fence stays the give-up fact that keeps the seat out of the pass.
       /** What the rebind did: the record after the CELL mirror, and one outcome per named seat. */
-      const rebound: RebindResult = rebindTargets.length === 0 ? { cell: current, outcomes: [] } : rebindSeats(caller, current, resolvedTeamId, rebindTargets, now)
-      current = rebound.cell
+      const rebound: RebindResult = rebindTargets.length === 0 ? { cell: boardCell, outcomes: [] } : rebindSeats(caller, boardCell, resolvedTeamId, rebindTargets, now)
       /** The rebind outcomes; absent from the answer when the call named no seat. */
       const reboundOutcomes = rebound.outcomes
+      /** The record the unfence below starts from: the rebound record, carrying the RESOLVED board id. */
+      let current: CellState = rebound.cell.teamId === resolvedTeamId ? rebound.cell : { ...rebound.cell, teamId: resolvedTeamId }
+      /** The `rebind` entries that did NOT land: each one is a reason to keep its fence closed. */
+      const rebindFailures = reboundOutcomes.filter((outcome) => outcome.rebound !== true)
+      /** The landed re-points whose CELL mirror did NOT confirm (`cellRow` names the failed write). */
+      const mirrorFailures = reboundOutcomes.filter((outcome) => outcome.rebound === true && outcome.cellRow !== undefined)
+      /**
+       * What the `unfence` half of this call must NOT do, or undefined when it may run.
+       *
+       * `undefined` means either no unfence was asked for, or EVERY `rebind` entry answered `rebound:true`
+       * with its CELL mirror confirmed. Anything else leaves the fences closed and says so in the answer and
+       * in the journal, so a half-repaired seat can never be reopened by the call that failed to re-point it.
+       */
+      const unfenceWithheld: { reason: string; members: string[]; failed: Array<Record<string, unknown>>; detail: string; next: string } | undefined = unfenceTargets.length === 0 || (rebindFailures.length === 0 && mirrorFailures.length === 0) ? undefined : {
+        reason: rebindFailures.length > 0 ? "rebind-failed" : "cell-mirror-unconfirmed",
+        members: unfenceTargets.map((target) => target.name),
+        failed: [...rebindFailures, ...mirrorFailures].map((outcome) => ({
+          member: outcome.member,
+          reason: String(outcome.reason ?? "cell-mirror-unconfirmed"),
+          ...(outcome.cellRow === undefined ? {} : { cellRow: String(outcome.cellRow) }),
+        })),
+        detail: "fence stayed closed: the `unfence` half of this call did not run because "
+          + (rebindFailures.length > 0
+            ? String(rebindFailures.length) + " `rebind` entr" + (rebindFailures.length === 1 ? "y" : "ies") + " did not re-point the seat (" + rebindFailures.map((outcome) => String(outcome.member) + ": " + String(outcome.reason ?? "unknown")).join("; ") + ")"
+            : "the CELL mirror of " + String(mirrorFailures.length) + " re-pointed seat(s) was not confirmed")
+          + ", so every fence named by this call is still closed",
+        next: "repair what the `rebind` reported, then re-run cellwork_dispatch {rebind:[…], unfence:[…]}: the unfence runs only when every entry answers rebound:true and no cellRow failure is reported",
+      }
+      if (unfenceWithheld !== undefined) {
+        // THE WITHHELD HALF IS A FACT OF ITS OWN (CodeRabbit round 2, Major-1): an operator who saw the
+        // `rebind` refusal must also see that the fence they asked to clear was NOT cleared, or the next
+        // reading of the record ("why is this seat still closed?") has no trail.
+        appendJournal(caller.workspace, cell.cellId, {
+          event: "dispatch-unfence-withheld",
+          by: "captain",
+          reason: unfenceWithheld.reason,
+          members: unfenceWithheld.members,
+          failed: unfenceWithheld.failed,
+          detail: unfenceWithheld.detail,
+          next: unfenceWithheld.next,
+        }, now)
+      }
+      // THE UNFENCE RUNS BEFORE THE PASS, so `reassign` may hand a row to a member this SAME call just
+      // reopened: the plane reads the TEAM row, and a fence cleared after the pass would have skipped it.
+      /** The record after the unfence, and one outcome per named member (nothing runs for none, or withheld). */
+      const applied: UnfenceResult = unfenceWithheld !== undefined || unfenceTargets.length === 0 ? { cell: current, outcomes: [] } : await unfenceSeats(caller, current, unfenceTargets, now)
+      /** The unfence outcomes; absent from the answer when the call named no member, or when it was withheld. */
+      const unfenced = applied.outcomes
+      /** The record the growth and the pass report against — the reopened one, carrying the RESOLVED board id. */
+      current = applied.cell.teamId === resolvedTeamId ? applied.cell : { ...applied.cell, teamId: resolvedTeamId }
       /** The raw `reassign` argument, forwarded untouched. */
       const rawReassign = readArgs(args)["reassign"]
       // RUNTIME SEAT GROWTH, BEFORE THE PASS PAIRS (§4.1). The board was resolved through the ONE resolver
@@ -1801,7 +1850,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       // A REFUSAL IS THE PLANE'S OWN SENTENCE (a malformed `reassign`, an unknown mode, no team), which is
       // what the tool's failure envelope reports — the same shape every other cellwork refusal uses. A
       // refusal AFTER an unfence still reports what the unfence changed, so the side effect is never silent.
-      if (reply?.ok === false) return { ok: false, error: String(reply.error ?? "the team plane refused the pass"), ...(unfenced.length === 0 ? {} : { unfenced }), ...(reboundOutcomes.length === 0 ? {} : { rebound: reboundOutcomes }) }
+      if (reply?.ok === false) return { ok: false, error: String(reply.error ?? "the team plane refused the pass"), ...(unfenced.length === 0 ? {} : { unfenced }), ...(reboundOutcomes.length === 0 ? {} : { rebound: reboundOutcomes }), ...(unfenceWithheld === undefined ? {} : { unfenceWithheld }) }
       /** The delivered pairings, as this tool reports them. */
       const pairs = Array.isArray(reply.pairs) ? reply.pairs as Array<Record<string, unknown>> : []
       /** The hand-overs the plane performed, reported beside the pass. */
@@ -1857,6 +1906,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         skipped: skippedWithSeats,
         ...(unfenced.length === 0 ? {} : { unfenced }),
         ...(reboundOutcomes.length === 0 ? {} : { rebound: reboundOutcomes }),
+        ...(unfenceWithheld === undefined ? {} : { unfenceWithheld }),
         ...(reassigned.length === 0 ? {} : { reassigned }),
         // THE SEAT REPORT (§4.2): the caps, what grew or was reused, and any §7.1b role warning.
         seats: {

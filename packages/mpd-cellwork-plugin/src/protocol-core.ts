@@ -1275,7 +1275,7 @@ export async function promoteAfterHandoff(deps: PromotionDeps): Promise<Promotio
       // disposes for this reason, and the reseed path owes the same.
       /** Whether the activation's own dispose seam ran. */
       const released = await releaseActivation(activation)
-      return { outcome: "refused", attempts: deps.config.compactionRetries, reason: lastReason + busyNote + "; the reseed reported no child id" + (released ? " (the activation it created was RELEASED, so no child slot is held)" : " (this composition exposes no dispose seam, so the activation could not be released)"), retirement: retirement.retirement, ...(retirement.reason === undefined ? {} : { retirementReason: retirement.reason }) }
+      return { outcome: "refused", attempts: deps.config.compactionRetries, reason: lastReason + busyNote + "; the reseed reported no child id" + (released ? " (the activation it created was RELEASED through its dispose seam, so no child slot is held)" : " (no dispose seam was exposed or the one that exists threw, so the activation could not be released)"), retirement: retirement.retirement, ...(retirement.reason === undefined ? {} : { retirementReason: retirement.reason }) }
     }
     // R1: THE THREE SURFACES ARE BOUND BEFORE ANYTHING IS CALLED A RESEED. A child nobody can address is
     // the incident this contract repairs: the seat keeps the dead handle, the board keeps the dead owner,
@@ -1285,15 +1285,26 @@ export async function promoteAfterHandoff(deps: PromotionDeps): Promise<Promotio
       ? { ok: true, plane: "absent", tasks: 0 }
       : await deps.bindSeat({ handle, previousSessionId: deps.sessionId })
     if (!bind.ok) {
-      // THE SURVIVING DOCUMENT IS THE AUTHORITY (contract §3 A11, the Major-7 hole). A `refused` rollback
-      // means another writer committed after this bind, and its document may STILL NAME the child this run
-      // started. A `failed` rollback is the same unproven state from this side: its write or its own re-read
-      // did not land, so no reader can say the record stopped naming the child. Releasing in either shape
-      // would leave a record pointing at a released seat — the exact stranded seat this contract repairs —
-      // so the release is CONDITIONAL on evidence: only a surviving document that provably names ANOTHER
-      // handle (or a rollback that restored the pre-bind row) proves the child unbindable.
-      /** Whether the surviving record may still name this run's child, so the child must be kept alive. */
-      const keepChild = bind.rollback === "failed" || (bind.rollback === "refused" && (bind.survivingExecutorRef === undefined || bind.survivingExecutorRef === handle))
+      // THE SURVIVING DOCUMENT IS THE AUTHORITY (contract §3 A11, the Major-7 hole), AND A CONCURRENT
+      // WRITER IS REASON ENOUGH TO KEEP THE CHILD (CodeRabbit round 2, Minor-1). A `refused` rollback
+      // proves another writer committed after this bind; that writer's own read-modify-write — team-core's
+      // `cancelTasks` included — may still commit a roster it read WHILE this bind was in flight, and that
+      // roster can name THIS run's fresh handle. A `failed` rollback is the same unproven state from this
+      // side: its write or its own re-read did not land, so no reader can say the record stopped naming the
+      // child. So the CHILD IS KEPT FOR BOTH SHAPES; only a rollback that actually restored the pre-bind row
+      // proves it unbindable. The absence of a pending concurrent write cannot be proven from here.
+      /**
+       * Whether the fresh child is KEPT instead of released.
+       *
+       * A `failed` rollback cannot prove the child unbindable (its own write/re-read did not land), and —
+       * CodeRabbit round 2, Minor-1 — a `refused` rollback is KEPT AS WELL, whatever the surviving document
+       * currently names. A refusal proves a concurrent writer committed after this bind, and that writer's
+       * own read-modify-write (team-core's `cancelTasks` included) may still commit the roster it read WHILE
+       * this bind was in flight — a document that names this fresh handle. Releasing on "the document I read
+       * now names another handle" would leave that later roster pointing at a released child, the dangling
+       * handle this contract removes; the absence of a pending write cannot be proven from here.
+       */
+      const keepChild = bind.rollback === "failed" || bind.rollback === "refused"
       /** Whether the surviving record PROVES it names the child this run started. */
       const namedBySurvivor = bind.survivingExecutorRef === handle
       // A READABLE DOCUMENT WITHOUT A HANDLE IS NOT AN UNREADABLE ONE (R4.2): the sentence the operator acts
@@ -1316,8 +1327,9 @@ export async function promoteAfterHandoff(deps: PromotionDeps): Promise<Promotio
                   ? "the rollback refused to overwrite a concurrent writer, and the surviving record is READABLE but carries no string executorRef for " + JSON.stringify(deps.memberName)
                   : "the rollback refused to overwrite a concurrent writer, and the surviving record could not be read")
               + ", so the child was NOT released"
+              + (bind.rollback === "refused" ? ": that writer may still commit a roster naming it (team-core's `cancelTasks` writes back the roster it read while this bind was in flight), and a released child behind such a roster is a dangling handle" : "")
               + "; repair with " + reconcileRepairOf(deps.memberName, handle)
-            : released ? "; the fresh child's activation was RELEASED" : "; the fresh child's activation could not be released (this composition exposes no dispose seam)"),
+            : released ? "; the fresh child's activation was RELEASED through its dispose seam (a best-effort attempt that resolved)" : "; the fresh child's activation could not be released: no dispose seam was exposed, or the one that exists threw"),
         failedSurface: bind.surface ?? "unknown",
         // THE ROLLBACK OUTCOME TRAVELS WITH THE REFUSAL (Major-7): the journal row that `failedSurface`
         // produces also carries whether the pre-bind TEAM row/owners were restored, refused or failed.

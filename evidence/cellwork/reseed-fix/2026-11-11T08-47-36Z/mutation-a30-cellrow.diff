@@ -1,0 +1,11 @@
+--- protocol.pristine.ts	2026-11-11 16:55:38.864350266 +0800
++++ packages/mpd-cellwork-plugin/src/protocol.ts	2026-11-11 16:55:39.124040955 +0800
+@@ -1394,7 +1394,7 @@
+     // operator knows the two records still disagree and can re-run the verb after repairing the record.
+     return {
+       cell: written,
+-      outcomes: cellRow === "mirrored" ? outcomes : outcomes.map((outcome) => outcome.rebound === true ? { ...outcome, cellRow } : outcome),
++      outcomes,
+     }
+   }
+ 

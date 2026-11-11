@@ -380,7 +380,7 @@ merely theoretical risk.
 | `cellwork_consult` | planner, subcaptain, member | `list` / `wait` / `collect` / `cancel` the consults THIS cell started through `cellwork_delegate`: `list` answers only this cell's ids the supervisor still knows, `wait` clamps to 1..60000 ms (default 30000) and answers `state:"running"` when the bound wins, `collect` returns the report and RELEASES the record, `cancel` interrupts and journals `consult-cancelled`; an id this cell did not start is refused with a teaching sentence |
 | `cellwork_split` | splitter | `submit` a graph so the plugin can measure it (each task may declare its board `member`), or `show` the last verdict; every refusal persists its findings at `split/<revision>.refused.json`; a NON-FATAL `warnings` list names every `work`/`repair`/`integration` task with no write scopes (`write-scopes-empty`) and every owner role whose ready-frontier width exceeds its declared `member` names (`seat-width-short`), by key, and never changes `accepted` |
 | `cellwork_activate` | captain | materialise an accepted split on the live team record, write contracts (owner role AND member), raise one member per distinct `member`, open verify loops, dispatch; a failed pass is checkpointed and the SAME revision resumes it, while a newer accepted revision supersedes an older in-flight one; the answer's `reused` list names the members resolved from the cell record or the live roster instead of raised, and a re-split that kept tasks also returns a `notice` (contracts not rewritten, scope expansion needs a manual re-freeze plus a new verify loop, ready rows dispatched owner-only); the OTHER ways a member row appears are staging and adoption (see "Members: staged, activated or adopted") |
-| `cellwork_dispatch` | captain | one owner-only dispatch pass over the team board; a busy, absent or fenced owner is reported and the row left pending; `reassign` hands named rows to another member FIRST (board claim → `task-reassigned` journal → delivery), and `unfence` clears named members' GIVEN-UP fences BEFORE the pass (both keys deleted, `mode: member`, `handoffReady: false`, `handoffs` kept, `member-unfenced` journaled; the TEAM row only through the plane's `unfence` seam, with `plane: "absent"` reported when the composition exposes none); a PENDING/barrier-owned window (CELL `mode: checkpoint` OR `handoffReady: true`, or the TEAM row at `mode: checkpoint`, with no `fenced` flag) — and the DEAD-RESEED seat (R5.2: `subcaptain`, not handoff-ready, recorded session proven dead) — answers `checkpoint-pending` and writes nothing unless the entry asks for the FAIL-CLOSED forced lever (`{member, force: true}`: refused for a live session, allowed only at the retry budget, past `checkpointPendingMaxMs`, or ON the dead-reseed shape's proven-dead session with a recorded stamp, `bound:"dead-session"`, journaled as `member-unfenced-forced`); a plane half that ends `refused` carries `retry` (the exact `agent_teams_control {action:"unfence", member}` verb) in the answer, the journal row and the render; `rebind: [{member, handle}]` RE-POINTS a seat's TEAM `executorRef` to the handle the seat's CURRENT record names (the journal only corroborates: its latest hand-over decides only when NEITHER current row names a handle), through the record file (same compare-and-set and plane read-back as the reseed bind: a concurrent commit answers `team-record-changed` and is never overwritten), mirrors that handle into the CELL row (`sessionId`, `executorRef`, `mode: member`, `handoffReady: false`), journals `member-rebound` and reports `rebound`; the `handle` is trimmed, must be the host-minted UUID form, and must be named by a CURRENT record — the TEAM `executorRef` or the CELL row; a record written after the last hand-over with no journal row of its own is accepted and marked `handleRecordCurrent:true`/`journalHandoverOlder:true` (never `handle-superseded`, never advised backwards). A handle only an OLDER hand-over row names is refused `handle-superseded` with the superseding row named and a reconcile sentence that never chooses a direction (the journal is append-only, so an old failure sentence still quotes a child a later reseed replaced); a handle nothing current names is `handle-unevidenced` (ownership is evidence; the registry proves liveness only); every outcome reports `namedBy` (`team`/`cell`/`journal:<event>`) plus `previousSessionId`/`previousSessionIdLiveness` (`live`/`unproven`/`unknown`), a landed re-point also carries `displacedExecutorRef`/`displacedUnproven`, and every failed entry — an argument refusal included, which records the requested `handle` — is journaled `member-rebind-failed`; it never clears a fence, and `unfence` alone never re-points the handle; `not-fenced` is honest, an unknown or ambiguous name refuses the call, and the forms may travel together |
+| `cellwork_dispatch` | captain | one owner-only dispatch pass over the team board; a busy, absent or fenced owner is reported and the row left pending; `reassign` hands named rows to another member FIRST (board claim → `task-reassigned` journal → delivery), and `unfence` clears named members' GIVEN-UP fences BEFORE the pass (both keys deleted, `mode: member`, `handoffReady: false`, `handoffs` kept, `member-unfenced` journaled; the TEAM row only through the plane's `unfence` seam, with `plane: "absent"` reported when the composition exposes none); a PENDING/barrier-owned window (CELL `mode: checkpoint` OR `handoffReady: true`, or the TEAM row at `mode: checkpoint`, with no `fenced` flag) — and the DEAD-RESEED seat (R5.2: `subcaptain`, not handoff-ready, recorded session proven dead) — answers `checkpoint-pending` and writes nothing unless the entry asks for the FAIL-CLOSED forced lever (`{member, force: true}`: refused for a live session, allowed only at the retry budget, past `checkpointPendingMaxMs`, or ON the dead-reseed shape's proven-dead session with a recorded stamp, `bound:"dead-session"`, journaled as `member-unfenced-forced`); a plane half that ends `refused` carries `retry` (the exact `agent_teams_control {action:"unfence", member}` verb) in the answer, the journal row and the render; `rebind: [{member, handle}]` RE-POINTS a seat's TEAM `executorRef` to the handle the seat's CURRENT record names (the journal only corroborates: its latest hand-over decides only when NEITHER current row names a handle), through the record file (same compare-and-set and plane read-back as the reseed bind: a concurrent commit answers `team-record-changed` and is never overwritten), mirrors that handle into the CELL row (`sessionId`, `executorRef`, `mode: member`, `handoffReady: false`), journals `member-rebound` and reports `rebound`; the `handle` is trimmed, must be the host-minted UUID form, and must be named by a CURRENT record — the TEAM `executorRef` or the CELL row; a record written after the last hand-over with no journal row of its own is accepted and marked `handleRecordCurrent:true`/`journalHandoverOlder:true` (never `handle-superseded`, never advised backwards). A handle only an OLDER hand-over row names is refused `handle-superseded` with the superseding row named and a reconcile sentence that never chooses a direction (the journal is append-only, so an old failure sentence still quotes a child a later reseed replaced); a handle that NEITHER current row nor the journal's latest hand-over names is `handle-unevidenced` (ownership is evidence; the registry proves liveness only); every outcome reports `namedBy` (`team`/`cell`/`journal:<event>`) plus `previousSessionId`/`previousSessionIdLiveness` (`live`/`unproven`/`unknown`), a landed re-point also carries `displacedExecutorRef`/`displacedUnproven`, and every failed entry — an argument refusal included, which records the requested `handle` — is journaled `member-rebind-failed`; it never clears a fence, and `unfence` alone never re-points the handle; `not-fenced` is honest, an unknown or ambiguous name refuses the call, and the forms may travel together — BUT A COMBINED CALL RUNS `rebind` FIRST: its `unfence` half runs only when EVERY `rebind` entry answered `rebound:true` with its CELL mirror confirmed, and a failed rebind (or an unconfirmed mirror) leaves the fences CLOSED, executes no unfence, journals `dispatch-unfence-withheld` and answers `unfenceWithheld` whose `detail` says `fence stayed closed` and whose `next` names the re-run; a landed re-point whose CELL mirror failed carries `cellRow:"failed: …"` and is NOT a finished repair, while the `previousSessionId` pair is omitted when the TEAM record is missing or unreadable |
 | `cellwork_supervise` | captain | read-only sweep: pending checkpoints, compactions, promotions, stale splits, unread mail, every UNDELIVERED mail row, and every CLOSED seat with the open rows it still owns — each marked `giveUp:true` (an explicit `fenced:true` on either record, repaired with `reassign` plus `unfence`) or `giveUp:false` (a held seat: a barrier-owned window, or the DEAD-RESEED shape flagged `deadReseed:true`), which also carries `barrierOwned`, `forceEligible` and `pendingMs` and names the bounded forced lever when no supervisor can reopen it; `forceEligible` is the SAME predicate `cellwork_dispatch {unfence:…, force:true}` decides with, never a second copy; a closed seat whose TEAM half is a `checkpoint` no barrier is pending for carries `retry`, the exact Lead-only verb that reopens it; a member is `suspect:true` only when a window stamp exists, the registry is PRESENT, its CAPTAIN anchor resolves, and the recorded session does not (a present registry that cannot resolve the anchor is `unknown`, which licenses nothing); an `unknown` liveness NEVER suppresses the row — a `subcaptain` that left the barrier's window with an unprovable session is listed `unverified:true` with `forceEligible:false` and its `forceRefusal`, reported as unverified instead of vanishing into health; every projection is lossless JSON, with no `undefined` own key |
 | `cellwork_context` | member | the caller's own live occupancy, the window it was measured against, and that window's provenance |
 | `cellwork_handoff` | member | write and validate the checkpoint handoff document; marks the checkpoint ready; a SECOND document is refused while the first still waits for the barrier; a member known only to the LIVE team record is adopted first (see "Members: staged, activated or adopted"), so it gets the same channel |
@@ -625,9 +625,10 @@ and hands the work to a successor. The sequence is mechanical:
    `cancelled` — records who actually did the work, so its `owner` is never rewritten. If a surface
    refuses — an unreadable roster, a roster that never carried the seat, a
    record the plane does not read back — the run is a REFUSAL: it journals `checkpoint-unrecoverable`
-   with `surface` naming the failure and `retry` naming the repair, fences the CELL row, and RELEASES the
-   fresh child's activation (a child nobody can address must not hold a slot) — UNLESS the refused rollback
-   shows a surviving document may still name it (below). `seat-rebound` is the row
+   with `surface` naming the failure and `retry` naming the repair, fences the CELL row, and ATTEMPTS to
+   release the fresh child's activation through its `dispose()` seam (a child nobody can address should not
+   hold a slot; the seam may be ABSENT or THROW, so the refusal reports the attempt's real outcome instead of
+   claiming a release that did not happen). `seat-rebound` is the row
    that reports what landed. **A READ-BACK THAT REFUSES A WRITE ALREADY LANDED IS ROLLED BACK:** the bind
    restores the pre-bind TEAM row (handle AND mode) and the pre-bind board owners, but ONLY while the file
    still carries the exact bytes it wrote. If another writer committed after it, the rollback REFUSES to
@@ -638,27 +639,39 @@ and hands the work to a successor. The sequence is mechanical:
    DECLARED BOUND: when `mpdTeamActions` grows a seat-rebind verb, that write becomes a delegation and the
    path knowledge goes away.
 
-   **A REFUSED ROLLBACK DOES NOT RELEASE A CHILD THE SURVIVING DOCUMENT MAY NAME (A11).** The other
-   writer's document is now the authority, and the ordinary concurrent shape — team-core's own
-   read-modify-write — carries THIS bind's fresh `executorRef`. Releasing that child would leave the
-   surviving record pointing at a released seat, which is the stranded seat this whole fix removes. So the
-   release is CONDITIONAL on evidence: only a surviving document that provably names ANOTHER handle (or a
-   rollback that restored the pre-bind row) releases the child. A rollback that could not be written
+   **A REFUSED ROLLBACK KEEPS THE CHILD (A11; widened in round 2).** The other writer's document is now the
+   authority, and the ordinary concurrent shape — team-core's own read-modify-write — carries THIS bind's
+   fresh `executorRef`. Releasing that child would leave the surviving record pointing at a released seat,
+   which is the stranded seat this whole fix removes. A REFUSED rollback is NOT proof the child is
+   unbindable even when the document read AT THAT MOMENT names another handle: `cancelTasks` is a
+   read-modify-write too, and the roster it read WHILE this bind was in flight can still be committed
+   afterwards, naming the fresh handle. So ANY `refused` rollback keeps the child, and only a rollback that
+   actually RESTORED the pre-bind row releases it. A rollback that could not be written
    (`rollback: "failed"`) is the same unproven state — its own write or re-read did not land, so no reader
-   can say the record stopped naming the child — and it keeps the child too. When the surviving document
-   names the fresh handle, or cannot be read at all, the child is KEPT, the run refuses with `orphanChild:
-   "<handle>"` and `reconcileRequired: true`, the sentence says `BINDING KEPT`, and the journal row's
-   `retry`/`repair` names the verb that RECONCILES the two records:
-   `cellwork_dispatch {rebind:[{member, handle}], unfence:[member]}` — `rebind` re-points the TEAM
+   can say the record stopped naming the child — and it keeps the child too. The run refuses with
+   `orphanChild: "<handle>"` and `reconcileRequired: true`, the sentence says `BINDING KEPT` and names the
+   pending-write hazard, and the journal row's `retry`/`repair` names the verb that RECONCILES the two
+   records: `cellwork_dispatch {rebind:[{member, handle}], unfence:[member]}` — `rebind` re-points the TEAM
    `executorRef` and mirrors the handle into the CELL row, while `unfence` alone NEVER touches the handle
    and `reassign` only moves board rows.
+
+   **A COMBINED CALL RUNS `rebind` FIRST AND WITHHOLDS THE `unfence` ON FAILURE (round 2, Major-1).** The
+   fence is the give-up fact that keeps a half-repaired seat out of the pass, so it may only be cleared
+   AFTER identity is proven: `unfence` in the same call runs only when EVERY `rebind` entry answered
+   `rebound:true` AND its CELL mirror was confirmed. A failed rebind (any entry) or an unconfirmed mirror
+   leaves every fence named by the call CLOSED, executes NO unfence, journals
+   `dispatch-unfence-withheld` and answers `unfenceWithheld: {reason, members, failed, detail, next}` —
+   `detail` says `fence stayed closed` and `next` names the re-run. The two halves therefore have a
+   direction: a rebind that fails keeps the seat closed, and nothing hands work to a dead handle.
 
    **THE `rebind` HANDLE IS VALIDATED, AND ITS OWN CLAIMS ARE RECORDED (R2/R3/M1/N1/F1).** `rebind` trims the
    `handle` and accepts only the host-minted session form (8-4-4-4-12 hex UUID); anything else refuses the
    WHOLE call, so no seat is half-repaired, and the argument-level `member-rebind-failed` row records the
    requested `handle` it refused (bounded, with `handleTruncated` when cut), so a typo or a truncated paste
    is reproducible from the journal. The handle must also be named by this seat's CURRENT
-   record: the TEAM row's `executorRef` or the CELL member row. **The current record wins; the journal only
+   record: the TEAM row's `executorRef` or the CELL member row — or, when NEITHER current row names any
+   handle, by the journal's LATEST hand-over row (the record is silent, so recency is the only evidence
+   left). **The current record wins; the journal only
    corroborates** — when either current row names the requested handle it is accepted, whatever the
    append-only journal says. The journal's recency decides ONLY when neither current row names a handle;
    otherwise it may explain a refusal but never overrule the record. This keeps a record write that lands
@@ -671,13 +684,27 @@ and hands the work to a successor. The sequence is mechanical:
    `reason:"handle-superseded"`, and its `supersededBy` (also in the journal row and the render) names the
    later event and handle; the refusal states what the current record names and what the journal's last
    hand-over named and NEVER chooses a direction for the operator — it asks for reconciliation. A handle
-   nothing current names is `reason:"handle-unevidenced"`. Both
+   that NEITHER current row nor the journal's latest hand-over names is `reason:"handle-unevidenced"`
+   (nothing current names it AND no hand-over row names it — the record-silent case above is the one that
+   keeps the journal's latest row as evidence). Both
    outcomes carry `namedBy` — `team`, `cell`, or `journal:<event>` — so the evidence source is never a dead
-   field. Each outcome also reports `previousSessionId`/`previousSessionIdLiveness` (`live` only when
-   `liveAgentExact` answers, `unproven` when the seam exists and answers nothing, `unknown` when the
-   composition exposes no seam), and a landed re-point that overwrote a different handle carries the SAME
+   field. Each outcome reports `previousSessionId`/`previousSessionIdLiveness` WHEN THE TEAM ROW IS READABLE
+   (`live` only when `liveAgentExact` answers, `unproven` when the seam exists and answers nothing, `unknown`
+   when the composition exposes no seam); the pair is OMITTED when the TEAM record is missing or unreadable,
+   because then there is no displaced handle to report. A landed re-point that overwrote a different handle
+   carries the SAME
    `displacedExecutorRef`/`displacedUnproven` pair as the reseed bind (N1), on the answer, the
    `member-rebound` row and the render — a live-but-replaced child stays findable and never silently lost.
+
+   **A REBIND IS NOT COMPLETE UNTIL THE CELL MIRROR IS CONFIRMED (round 2, minor).** A landed entry answers
+   `rebound:true` as soon as the TEAM row is re-pointed and read back; the CELL mirror is a SECOND write.
+   When that mirror write fails the entry still says `rebound:true` but carries `cellRow:"failed: <reason>"`:
+   the TEAM row names the fresh handle while the CELL row does not, so the two records DISAGREE and the
+   repair is NOT finished. Check `cellRow` on every landed entry — only its absence (the journal row's
+   `cellRow:"mirrored"`) means both records agree — and re-run the verb after repairing the record. A
+   `cellRow` failure also withholds the `unfence` half of the same call. The two verbs are DISTINCT:
+   `rebind` repairs identity (`executorRef` and the CELL mirror) and never clears a fence; `unfence`
+   repairs fencing and never touches the handle. Neither can stand in for the other.
    Every FAILED entry is journaled as `member-rebind-failed` (an argument-level refusal included), so an
    attempted repair is never visible only in the answer. The handle a RESEED displaces is recorded too: when
    the TEAM row already named a different non-empty `executorRef` and nothing proved that child dead (the
@@ -689,8 +716,9 @@ and hands the work to a successor. The sequence is mechanical:
    and refusing a healthy child for a plane nothing created would be the defect, not the fix. A record
    that **exists** but cannot be read — corrupt JSON, `EACCES`, a plane read that throws, or an answer
    that is not a record — is the opposite case and is a REFUSAL: `checkpoint-unrecoverable` carries
-   `surface: "team-record-unreadable"`, the seat is fenced, the fresh child is released, and the
-   unreadable bytes are left untouched. The distinction matters because a record read that answers
+   `surface: "team-record-unreadable"`, the seat is fenced, the bind ATTEMPTS to release the fresh child's
+   activation (the `dispose()` seam may be absent or throw, and the refusal reports what really happened),
+   and the unreadable bytes are left untouched. The distinction matters because a record read that answers
    "nothing" cannot tell the two cases apart, and treating an unreadable surface as an absent one is
    exactly how a reseed reported success while nothing was bound.
 
@@ -888,7 +916,7 @@ Everything lives under the workspace, in gitignored runtime state:
 | Path | Content |
 |---|---|
 | `state.json` | the cell record: phase, captain session, depth, parent cell, team id (the EXECUTION board — the staging team is preserved as `planningTeamId` when they differ), planner/splitter handles, the staged split ticket's board id (`splitTaskId`), members and their modes (with the optional `fenced`/`fencedReason`, `adopted: true` and `grown: true` markers), split revision, checkpoints, journal cursor, and the two optional in-flight activation fields: `activationInFlight` (the accepted revision whose materialisation is running) and `activatedLoops` (split key → verify-loop id) |
-| `journal.jsonl` | append-only transitions: phase, dispatch, checkpoint, compaction, promotion, refusal, and the supersession rows (`split-superseded`, `activation-in-flight-superseded`); an activation pass writes one compact `cell-activation-progress` row per artifact and a single full `cell-activation-partial` row on failure, and the repair rows are `task-reassigned`, `dispatch-reassign`, `checkpoint-unrecoverable`, `member-adopted`, `member-unfenced`, `member-rebound` (a `rebind` repair; it carries `previousSessionId`/`previousSessionIdLiveness`, `namedBy` (the evidence source: `team`/`cell`/`journal:<event>`), the F1 provenance markers `handleRecordCurrent`/`journalHandoverOlder` when the record won over an older journal row, and `displacedExecutorRef`/`displacedUnproven` when the re-point overwrote a different handle), `member-rebind-failed` (a refused `rebind` entry or argument: `reason`, the requested `handle`, `namedBy`, `previousSessionId`/`previousSessionIdLiveness`, and `supersededBy` when a later hand-over replaced it; its `detail` never chooses a direction), `seat-rebound` (the three-surface bind; it carries `displacedExecutorRef`/`displacedUnproven` when the bind overwrote a different handle), `barrier-skipped` (the `reseed-already-bound` re-entry guard), `barrier-record-unreadable` and `barrier-failed` (the two former warn-only branches) |
+| `journal.jsonl` | append-only transitions: phase, dispatch, checkpoint, compaction, promotion, refusal, and the supersession rows (`split-superseded`, `activation-in-flight-superseded`); an activation pass writes one compact `cell-activation-progress` row per artifact and a single full `cell-activation-partial` row on failure, and the repair rows are `task-reassigned`, `dispatch-reassign`, `checkpoint-unrecoverable`, `member-adopted`, `member-unfenced`, `member-rebound` (a `rebind` repair; it carries `previousSessionId`/`previousSessionIdLiveness`, `namedBy` (the evidence source: `team`/`cell`/`journal:<event>`), the F1 provenance markers `handleRecordCurrent`/`journalHandoverOlder` when the record won over an older journal row, and `displacedExecutorRef`/`displacedUnproven` when the re-point overwrote a different handle), `member-rebind-failed` (a refused `rebind` entry or argument: `reason`, the requested `handle`, `namedBy`, `previousSessionId`/`previousSessionIdLiveness`, and `supersededBy` when a later hand-over replaced it; its `detail` never chooses a direction), `seat-rebound` (the three-surface bind; it carries `displacedExecutorRef`/`displacedUnproven` when the bind overwrote a different handle), `barrier-skipped` (the `reseed-already-bound` re-entry guard), `barrier-record-unreadable` and `barrier-failed` (the two former warn-only branches), and `dispatch-unfence-withheld` (a combined `{rebind, unfence}` call whose `rebind` did not fully land: `reason` = `rebind-failed` or `cell-mirror-unconfirmed`, `members`, `failed:[{member, reason, cellRow?}]`, a `detail` saying `fence stayed closed`, and the `next` re-run) |
 | `mail.jsonl` (legacy) | a PRE-unification per-cell mail log, still READ and merged into the cell view; new mail is NOT written here: it lives in the workspace store `<workspace>/.mpd/team/mailbox.jsonl`, stamped with this cell's `teamId` and `cellId` (plus `fromCell` on a cross-cell sender), read by `cellwork_inbox`, and followed there by a separate `wake` record stating what the wake-up attempt did; an acknowledgement of one of THESE legacy rows is appended back to this file, while a unified row is acknowledged in the store |
 | `requirements.md` | the validated requirements document, revisioned; a change bumps the revision and marks the split stale |
 | `split/<rev>.json` | the splitter's proposal plus the plugin's measured estimates and accept/refuse verdict |
@@ -1055,8 +1083,9 @@ whose window cannot be read can be certified deliberately, and it is recorded as
   substitutes: outside cell mode, wait for the declared owner, or release and reassign deliberately.
   Review-by-writer is not a theoretical risk.
 - **Reseed is best-effort.** The native backend exposes no dispose for a SETTLED activation, so the old
-  child is interrupted best-effort; the fresh child's activation is released only when it cannot be
-  handed over (no child id, a surface that refused to bind, or a throw after the spawn). What this
+  child is interrupted best-effort; the fresh child's activation is released through its `dispose()` seam
+  only when it cannot be handed over (no child id, a surface that refused to bind, or a throw after the
+  spawn) — an ATTEMPT, not a guarantee: no seam or a throwing seam is reported as an unreleased child. What this
   guarantees is narrower and checkable: our side never claims `reseeded` while the seat is unbound, and a
   dead seat is visible and clearable.
 - **Checkpoints need an observed window.** No observation means no checkpoint: the ratio is never

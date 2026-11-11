@@ -384,18 +384,26 @@ whose window cannot be read can be certified deliberately, and it is recorded as
 - **The reseed contract (R1–R5, F1–F3), in brief.** R1: `reseeded` is journaled only after the fresh
   handle names the TEAM member row, every NON-TERMINAL board row the old handle owned (or the row is
   spelled with the seat's own name), and the CELL row — else the run refuses (`checkpoint-unrecoverable`
-  + `surface`), fences the seat and releases the child. THE ABSENT-PLANE EXCEPTION: a workspace with **no
+  + `surface`), fences the seat and ATTEMPTS to release the child through its `dispose()` seam (a missing or
+  throwing seam is reported, never claimed as a release). THE ABSENT-PLANE EXCEPTION: a workspace with **no
   team record at all** has no TEAM row and no board, so the reseed may succeed without them
   (`plane: "absent"`) — absence is not an unreadable record (F1). A bind whose verification read-back
   throws or answers another handle is ROLLED BACK to the pre-bind TEAM row and board owners, unless
   another writer committed first (then the rollback says it refused rather than overwrite them). A
-  REFUSED ROLLBACK DOES NOT RELEASE A CHILD THE SURVIVING DOCUMENT MAY NAME (A11): the ordinary
-  concurrent shape carries this bind's fresh `executorRef`, so the child is KEPT
-  (`orphanChild` + `reconcileRequired` on the journal row); a `rollback:"failed"` is the same unproven
-  state and keeps it too. The failure sentence hands over
-  `cellwork_dispatch {rebind:[{member, handle}], unfence:[member]}` — `rebind` is the ONLY verb that
-  re-points `executorRef` (it also mirrors the handle into the CELL row); `unfence` alone never touches
-  the handle and `reassign` only moves board rows. The recovery path is NOT re-entered: when the TEAM
+  REFUSED ROLLBACK KEEPS THE CHILD (A11, widened in round 2): the ordinary concurrent shape carries this
+  bind's fresh `executorRef`, and — even when the document read NOW names another handle — a concurrent
+  read-modify-write (team-core's `cancelTasks`) may still commit the roster it read WHILE this bind was in
+  flight, naming the fresh handle; only a rollback that RESTORED the pre-bind row releases the child. A
+  kept child is reported with `orphanChild` + `reconcileRequired` on the journal row; a
+  `rollback:"failed"` is the same unproven state and keeps it too. The failure sentence hands over
+  `cellwork_dispatch {rebind:[{member, handle}], unfence:[member]}` — `rebind` runs FIRST and is the ONLY
+  verb that re-points `executorRef` (it also mirrors the handle into the CELL row); `unfence` alone never
+  touches the handle and `reassign` only moves board rows. A combined call's `unfence` runs ONLY when
+  every `rebind` entry answered `rebound:true` with its CELL mirror confirmed: otherwise the fences stay
+  CLOSED, nothing is unfenced, the journal gets `dispatch-unfence-withheld`, and the answer's
+  `unfenceWithheld` says `fence stayed closed` with the next step. A landed re-point whose CELL mirror
+  failed still says `rebound:true` but carries `cellRow:"failed: …"` — CHECK `cellRow`: only its absence
+  means the two records agree, and a mirror failure also withholds the unfence. The recovery path is NOT re-entered: when the TEAM
   row already names a handle the registry proves LIVE and different from the CELL row's session, the
   barrier spawns nothing and journals `barrier-skipped` (`branch:"reseed-already-bound"`) with the same
   `rebind` repair. R2: the
@@ -416,15 +424,18 @@ whose window cannot be read can be certified deliberately, and it is recorded as
   closed. F3: terminal rows (`completed`/`failed`/`cancelled`) keep their owner — history is never
   re-pointed. **`rebind` validates its handle and records its own
   claims (M1/N1/F1):** the handle is trimmed, must be the host-minted 8-4-4-4-12 UUID form, and must be
-  named by the seat's CURRENT record — its TEAM row or its CELL row. **The current record wins; the journal
-  only corroborates:** the journal's latest hand-over decides only when NEITHER current row names a
-  handle, and it can never veto a handle either row names. A record written after the last hand-over with
+  named by the seat's CURRENT record — its TEAM row or its CELL row — OR, when NEITHER current row names a
+  handle, by the journal's LATEST hand-over row. **The current record wins; the journal only
+  corroborates:** that latest hand-over decides only in the record-silent case, and it can never veto a
+  handle either row names. A record written after the last hand-over with
   no journal row of its own is therefore accepted, marked `handleRecordCurrent:true` and (when its write
   provably postdates that row) `journalHandoverOlder:true`, instead of being called `handle-superseded`
   and advised backwards. A handle only an OLDER hand-over row names is refused `handle-superseded` with
   the later row named; the detail states both facts and never chooses a direction (the registry proves
-  LIVENESS, never OWNERSHIP, and liveness does not make an old handle current). Every outcome reports `namedBy` (`team`/`cell`/`journal:<event>`) and
-  `previousSessionId`/`previousSessionIdLiveness` (`live`/`unproven`/`unknown`), a landed re-point carries
+  LIVENESS, never OWNERSHIP, and liveness does not make an old handle current). Every outcome reports `namedBy` (`team`/`cell`/`journal:<event>`);
+  `previousSessionId`/`previousSessionIdLiveness` (`live`/`unproven`/`unknown`) is reported WHEN THE TEAM ROW
+  IS READABLE and is OMITTED when the TEAM record is missing or unreadable (there is no displaced handle to
+  report). A landed re-point carries
   the same `displacedExecutorRef`/`displacedUnproven` pair as the reseed bind, and every failed entry
   (argument refusals included, which record the requested `handle`) is journaled `member-rebind-failed`.
   The handle a reseed DISPLACES is journaled as `displacedExecutorRef`/`displacedUnproven` on the

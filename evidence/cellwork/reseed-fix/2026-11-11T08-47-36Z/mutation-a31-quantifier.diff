@@ -1,0 +1,11 @@
+--- protocol.pristine.ts	2026-11-11 16:55:38.864350266 +0800
++++ packages/mpd-cellwork-plugin/src/protocol.ts	2026-11-11 16:55:39.219865671 +0800
+@@ -1767,7 +1767,7 @@
+        * with its CELL mirror confirmed. Anything else leaves the fences closed and says so in the answer and
+        * in the journal, so a half-repaired seat can never be reopened by the call that failed to re-point it.
+        */
+-      const unfenceWithheld: { reason: string; members: string[]; failed: Array<Record<string, unknown>>; detail: string; next: string } | undefined = unfenceTargets.length === 0 || (rebindFailures.length === 0 && mirrorFailures.length === 0) ? undefined : {
++      const unfenceWithheld: { reason: string; members: string[]; failed: Array<Record<string, unknown>>; detail: string; next: string } | undefined = unfenceTargets.length === 0 || (rebindFailures.length === 0 && mirrorFailures.length === 0) || (rebindFailures.length > 0 && rebindFailures.length < unfenceTargets.length) ? undefined : {
+         reason: rebindFailures.length > 0 ? "rebind-failed" : "cell-mirror-unconfirmed",
+         members: unfenceTargets.map((target) => target.name),
+         failed: [...rebindFailures, ...mirrorFailures].map((outcome) => ({

@@ -39,12 +39,26 @@
 //   A27 the CURRENT record wins: a record written after the last hand-over with no journal row of its own
 //       is accepted (never `handle-superseded`, never advised backwards), and with no current handle the
 //       journal's latest row still decides while an older row stays non-evidence (F1).
+//   A28 a combined `{rebind, unfence}` call runs `rebind` FIRST and WITHHOLDS the unfence when it fails:
+//       the fence stays closed, the answer and journal say `fence stayed closed` and name EVERY declared
+//       unfence target in `members` with ONLY the failed entries in `failed`, and the paired control
+//       (a landing rebind) is the only shape that clears the fence in the same call (CodeRabbit round 2 M1);
+//   A29 a REFUSED rollback keeps the child even when the surviving document names ANOTHER handle — a
+//       pending `cancelTasks` write can still resurrect this bind's handle (CodeRabbit round 2 Minor-1);
+//   A30 a rebind whose CELL MIRROR cannot be written still answers `rebound:true` but carries
+//       `cellRow:"failed: …"`, leaves the CELL record byte-for-byte untouched and WITHHOLDS the unfence
+//       (`reason:"cell-mirror-unconfirmed"`), with no seat seam call and no cleared row (round 9's missing arm);
+//   A31 the withhold quantifies over the WHOLE CALL: two `rebind` entries, one landed and one unevidenced,
+//       list BOTH declared unfence targets in `members`, ONLY the failed entry in `failed`, and produce no
+//       `unfenced` outcome at all; the paired control clears both fences when both entries are evidenced;
+//   m6  the displaced-handle pair (`previousSessionId`/`previousSessionIdLiveness`) is OMITTED when the
+//       TEAM record is missing or unreadable — the docs said it, no arm proved it.
 //
 // Every workspace is a fresh temp dir; nothing here reads the repository's own state.
 import { test, expect } from "bun:test"
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { execFileSync, spawn } from "node:child_process"
-import { join } from "node:path"
+import { dirname, join } from "node:path"
 import { tmpdir } from "node:os"
 
 import { journalPath, newCellState, readCell, statePath, writeCell, type CellMemberRecord, type CellState } from "../src/state.ts"
@@ -182,6 +196,20 @@ interface HarnessOptions {
   /** The cell row the barrier starts from. */
   member?: CellMemberRecord
   /**
+   * The FULL member table the cell record starts from, when an arm needs more than one seat (A31).
+   *
+   * Takes precedence over `member`; the keys are the cell record's own member keys.
+   */
+  members?: Record<string, CellMemberRecord>
+  /**
+   * A hook that runs ONCE inside the plane's read-BACK of a `rebind` whose seat now names `handle` (A30).
+   *
+   * The read-back is the only point that lies AFTER the TEAM write and BEFORE the CELL mirror, so it is
+   * where an arm can break the mirror WITHOUT touching the implementation: the hook receives no argument
+   * and its effect is observed by the `cellRow:"failed: …"` the answer must carry.
+   */
+  verifyAfterHandle?: { handle: string; run: () => void }
+  /**
    * Runs immediately BEFORE the A5 read-back throw.
    *
    * A12c uses it to remove the record file: the rollback's own re-read then fails, which is the
@@ -267,7 +295,7 @@ function makeHarness(options: HarnessOptions = {}): Harness {
   /** The cell record, persisted so the barrier reads it back like a real cell. */
   const base = newCellState({ cellId: CELL_ID, objective: "ship the widget", captainSessionId: CAPTAIN_SESSION, now: new Date("2026-11-11T00:00:00.000Z") })
   /** The cell this arm starts from: executing, on the team the plane serves. */
-  const cell: CellState = { ...base, phase: "executing", teamId: TEAM_ID, members: { [MEMBER_NAME]: options.member ?? memberRow() } }
+  const cell: CellState = { ...base, phase: "executing", teamId: TEAM_ID, members: options.members ?? { [MEMBER_NAME]: options.member ?? memberRow() } }
   writeCell(workspace, cell)
   /** The team record file the plane reads (and the bind writes). */
   const recordDir = join(workspace, ".mpd", "team", "teams")
@@ -326,6 +354,8 @@ function makeHarness(options: HarnessOptions = {}): Harness {
    * operator's `rebind` repair, A12b) must be able to read the record the surviving writer left.
    */
   let verifyThrew = false
+  /** Whether A30's mirror-breaking hook has already fired (one-shot, like the read-back throw above). */
+  let verifyHookFired = false
   /** The adapter double: the shape the host exposes, narrowed to what the barrier touches. */
   const adapter: Record<string, unknown> = {
     registerTool: (definition: CapturedTool): (() => void) => { tools.set(definition.name, definition); return (): void => {} },
@@ -405,6 +435,16 @@ function makeHarness(options: HarnessOptions = {}): Harness {
               if (served !== undefined && armed && !injected && options.externalWriteAfterRead !== undefined) {
                 injected = true
                 writeFileSync(recordPath, JSON.stringify(options.externalWriteAfterRead(served), null, 2) + "\n", "utf8")
+              }
+              // A30: THE READ-BACK IS THE WINDOW. It is the only point after the TEAM write and before the
+              // CELL mirror, so the arm breaks the mirror HERE (one-shot) and the verb must answer
+              // `cellRow:"failed: …"` instead of a silent success. The handle is absent from the record
+              // before the write, so no earlier read can fire this.
+              /** The handle whose arrival in the record marks the read-back (A30). */
+              const mirroredHandle = options.verifyAfterHandle?.handle
+              if (!verifyHookFired && mirroredHandle !== undefined && served?.members.some((row) => row.executorRef === mirroredHandle) === true) {
+                verifyHookFired = true
+                options.verifyAfterHandle!.run()
               }
               return served
             },
@@ -1146,13 +1186,21 @@ test("A12: a rollback that meets a CONCURRENT WRITE refuses to overwrite it and 
   const cell = cellMember(harness)
   expect(cell.fenced).toBe(true)
   expect(cell.barrierFailures).toBe(1)
+  // THE CHILD IS KEPT EVEN THOUGH THIS DOCUMENT NAMES THE OLD HANDLE (CodeRabbit round 2, Minor-1): the
+  // concurrent writer may still commit the roster it read WHILE the bind was in flight — team-core's own
+  // `cancelTasks` does exactly that — and that later document can name THIS bind's fresh handle. Releasing
+  // on the currently-surviving old/old pair would leave such a roster pointing at a released child.
+  expect(harness.activations).toHaveLength(1)
+  expect(harness.activations[0].disposed).toBe(false)
+  expect(row?.orphanChild).toBe(NEW_HANDLE)
+  expect(row?.reconcileRequired).toBe(true)
+  expect(String(row?.reason)).toContain("BINDING KEPT")
   /** The captain's unfence call, over the SAME harness the barrier ran in. */
   const cleared = await harness.tools.get("cellwork_dispatch")!.execute({ unfence: [MEMBER_NAME] }, { name: "cellwork_dispatch", agent: harness.captain }) as Record<string, unknown>
   /** The unfence outcomes. */
   const outcomes = Array.isArray(cleared.unfenced) ? cleared.unfenced as Array<Record<string, unknown>> : []
   expect(outcomes.find((entry) => entry.member === MEMBER_NAME)?.unfenced).toBe(true)
   expect(cellMember(harness).fenced).not.toBe(true)
-  expect(harness.activations[0].disposed).toBe(true)
 })
 
 test("A12b: a refused rollback whose surviving document PRESERVES the fresh handle KEEPS the child and hands over the rebind", async () => {
@@ -1242,6 +1290,58 @@ test("A12c: a rollback that could not be WRITTEN keeps the child too — an unpr
   expect(harness.activations).toHaveLength(1)
   expect(harness.activations[0].disposed).toBe(false)
   expect(cellMember(harness).fenced).toBe(true)
+})
+
+// ── A29: a REFUSED rollback keeps the child on the pending-write hazard ──────────────────────────────
+
+test("A29: a refused rollback KEEPS the child even when the surviving document names ANOTHER handle (Minor-1)", async () => {
+  // THE SHAPE A12 COULD NOT REACH. A12's surviving document is the writer's old/old pair, so releasing that
+  // child looked safe. It is not: team-core's `cancelTasks` is a read-modify-write and can commit the roster
+  // it read WHILE this bind was in flight — a document naming the fresh handle — AFTER the rollback refused.
+  // Absence of such a pending write cannot be proven from here, so the only safe rule is to keep the child.
+  /** The marker the concurrent writer's document carries, so the arm proves it survived. */
+  const MARKER = "pending-cancel-writer"
+  /** The harness whose concurrent writer names the OLD handle, and whose fresh child the registry holds. */
+  const harness = makeHarness({
+    liveSessions: [NEW_HANDLE],
+    externalWriteAtVerify: (written) => ({
+      ...written,
+      phase: MARKER,
+      members: written.members.map((member) => (member.name === MEMBER_NAME ? { ...member, executorRef: OLD_HANDLE, mode: "checkpoint" } : member)),
+      tasks: written.tasks.map((task) => (String(task.id) === "T1" ? { ...task, owner: OLD_HANDLE } : task)),
+    }),
+  })
+  await stopListener(harness)({ agent: harness.member })
+  /** Every journal row. */
+  const rows = journalRows(harness)
+  /** The give-up row this refusal writes. */
+  const row = rows.find((entry) => entry.event === "checkpoint-unrecoverable")
+  expect(row?.rollback).toBe("refused")
+  // THE CHILD IS ALIVE AND RECORDED: the refusal names it and requires a reconcile.
+  expect(harness.activations).toHaveLength(1)
+  expect(harness.activations[0].disposed).toBe(false)
+  expect(row?.orphanChild).toBe(NEW_HANDLE)
+  expect(row?.reconcileRequired).toBe(true)
+  expect(String(row?.reason)).toContain("BINDING KEPT")
+  // THE SENTENCE NAMES THE HAZARD, so the operator knows why an old/old document did not settle it.
+  expect(String(row?.reason)).toContain("cancelTasks")
+  // THE LATE WRITE THIS RULE PROTECTS AGAINST: the pending cancellation commits the roster it read while
+  // the bind was in flight. That roster names the fresh handle — and because the child was KEPT, the handle
+  // is still a live seat, not a dangling reference to a released activation.
+  /** The roster a pending `cancelTasks` read while this bind was in flight: it names the fresh handle. */
+  const late: TeamRecordFile = {
+    ...harness.record(),
+    phase: MARKER + "-late",
+    members: harness.record().members.map((member) => (member.name === MEMBER_NAME ? { ...member, executorRef: NEW_HANDLE } : member)),
+  }
+  writeFileSync(harness.recordPath, JSON.stringify(late, null, 2) + "\n", "utf8")
+  /** The seat row that late document leaves. */
+  const lateSeat = harness.record().members.find((member) => member.name === MEMBER_NAME)
+  expect(lateSeat?.executorRef).toBe(NEW_HANDLE)
+  // THE HANDLE IN THAT ROSTER IS NOT DANGLING: the child was never released, and the registry holds it live.
+  expect(harness.registry.get(NEW_HANDLE)).toBeDefined()
+  expect(harness.activations[0].disposed).toBe(false)
+  // THE PAIRED CONTROL IS A11: a rollback that actually RESTORED the pre-bind row releases the child.
 })
 
 // ── A13: the pre-await snapshot is NEVER written back ───────────────────────────────────────────────
@@ -1500,6 +1600,307 @@ test("A18: `rebind` ALONE leaves fenced/fencedReason byte-for-byte — the fence
   expect(rows.some((entry) => entry.event === "member-rebound")).toBe(true)
   // NOT ONE ROW CLAIMS A CLEAR: the fence is still the barrier's give-up fact.
   expect(rows.some((entry) => entry.event === "member-unfenced" || entry.event === "member-unfenced-forced")).toBe(false)
+})
+
+// ── A28: the combined call runs `rebind` FIRST and WITHHOLDS the unfence on failure (Major-1) ───────
+
+test("A28: a combined {rebind, unfence} call whose rebind FAILS leaves the fence CLOSED and says `fence stayed closed`", async () => {
+  // THE ORDERING DEFECT (CodeRabbit round 2, Major-1). The old merge ran `unfence` FIRST, so a `rebind` that
+  // then failed left the seat reopened around a dead handle — the next dispatch could hand work to it. The
+  // rebind must run first and GATE the unfence: a failure keeps the fence, the give-up fact that stops the
+  // pass, and the answer/journal must say so instead of leaving the operator to infer it.
+  /** The give-up sentence the CELL row already carries; the arm compares it byte-for-byte afterwards. */
+  const FENCE_REASON = "the reseed rollback was refused; repair with cellwork_dispatch {rebind:[...], unfence:[...]}"
+  /** A handle NEITHER current record names: the rebind is guaranteed to refuse (`handle-unevidenced`). */
+  const GHOST_HANDLE = "9f4c1d2e-1111-4222-8333-444455556666"
+  /** The TEAM row: the old handle, inside the checkpoint window. */
+  const seeded = teamRecord([{ id: "M1", name: MEMBER_NAME, role: MEMBER_NAME, status: "running", executorRef: OLD_HANDLE, mode: "checkpoint" }])
+  /** The harness whose CELL row is fenced and names the OLD handle only. */
+  const harness = makeHarness({ team: seeded, member: memberRow({ sessionId: OLD_HANDLE, executorRef: OLD_HANDLE, mode: "checkpoint", fenced: true, fencedReason: FENCE_REASON, handoffReady: true }) })
+  /** The combined call: a rebind that cannot be evidenced, plus an unfence that must not run. */
+  const result = await harness.tools.get("cellwork_dispatch")!.execute({ rebind: [{ member: MEMBER_NAME, handle: GHOST_HANDLE }], unfence: [MEMBER_NAME] }, { name: "cellwork_dispatch", agent: harness.captain }) as Record<string, unknown>
+  /** The rebind outcomes. */
+  const rebounds = Array.isArray(result.rebound) ? result.rebound as Array<Record<string, unknown>> : []
+  /** This seat's failed entry. */
+  const failed = rebounds.find((entry) => entry.member === MEMBER_NAME)
+  expect(failed?.rebound).toBe(false)
+  expect(failed?.reason).toBe("handle-unevidenced")
+  // THE FENCE STAYED CLOSED, BYTE-FOR-BYTE, and no unfence outcome exists: the half that failed kept the
+  // give-up fact in place.
+  expect(result.unfenced).toBeUndefined()
+  /** The CELL row after the withheld call. */
+  const cell = cellMember(harness)
+  expect(cell.fenced).toBe(true)
+  expect(cell.fencedReason).toBe(FENCE_REASON)
+  // NO PLANE SEAM WAS CALLED: an unexecuted unfence never reopens the TEAM seat.
+  expect(harness.planeUnfences).toHaveLength(0)
+  // THE ANSWER SAYS SO, in words an operator reads.
+  /** The withheld summary the answer carries. */
+  const withheld = result.unfenceWithheld as Record<string, unknown> | undefined
+  expect(withheld?.reason).toBe("rebind-failed")
+  // THE QUANTIFIER IS PART OF THE CONTRACT: `members` names EVERY unfence target THIS call declared, and
+  // `failed` names ONLY the entries that did not land (one field per failed seat, nothing invented). These
+  // two fields used to be carried without an assertion, so a call that silently dropped a target — or
+  // reported the whole call as one failure — stayed green.
+  expect(withheld?.members).toEqual([MEMBER_NAME])
+  expect(withheld?.failed).toEqual([{ member: MEMBER_NAME, reason: "handle-unevidenced" }])
+  expect(String(withheld?.detail)).toContain("fence stayed closed")
+  expect(String(withheld?.next)).toContain("rebind")
+  /** The tool's declared render for this answer. */
+  const rendered = harness.tools.get("cellwork_dispatch")!.output!.render!({}, result) as Array<{ text: string }>
+  expect(rendered.map((block) => block.text).join("\n")).toContain("fence stayed closed")
+  // AND THE JOURNAL CARRIES THE SAME FACT, with NO cleared row anywhere.
+  /** This arm's journal rows. */
+  const rows = journalRows(harness)
+  /** The withheld row. */
+  const withheldRow = rows.find((entry) => entry.event === "dispatch-unfence-withheld")
+  expect(withheldRow?.reason).toBe("rebind-failed")
+  // THE JOURNAL CARRIES THE SAME TWO FIELDS, byte-for-byte with the answer: the row is what an operator
+  // reads later, so it may not lose the member list or the failure detail the answer had.
+  expect(withheldRow?.members).toEqual([MEMBER_NAME])
+  expect(withheldRow?.failed).toEqual([{ member: MEMBER_NAME, reason: "handle-unevidenced" }])
+  expect(String(withheldRow?.detail)).toContain("fence stayed closed")
+  expect(rows.some((entry) => entry.event === "member-unfenced" || entry.event === "member-unfenced-forced")).toBe(false)
+  // THE PAIRED CONTROL: the SAME call with a handle the CELL row names lets the unfence run, proving the
+  // withholding is the REBIND's failure and not an unconditional refusal.
+  /** The control harness: its CELL row names the handle the rebind asks for. */
+  const control = makeHarness({ team: teamRecord([{ id: "M1", name: MEMBER_NAME, role: MEMBER_NAME, status: "running", executorRef: OLD_HANDLE, mode: "checkpoint" }]), member: memberRow({ sessionId: NEW_HANDLE, executorRef: NEW_HANDLE, mode: "checkpoint", fenced: true, fencedReason: FENCE_REASON, handoffReady: true }) })
+  /** The same combined call, with evidence for its handle. */
+  const repaired = await control.tools.get("cellwork_dispatch")!.execute({ rebind: [{ member: MEMBER_NAME, handle: NEW_HANDLE }], unfence: [MEMBER_NAME] }, { name: "cellwork_dispatch", agent: control.captain }) as Record<string, unknown>
+  expect(repaired.unfenceWithheld).toBeUndefined()
+  /** The control's unfence outcomes. */
+  const cleared = Array.isArray(repaired.unfenced) ? repaired.unfenced as Array<Record<string, unknown>> : []
+  expect(cleared.find((entry) => entry.member === MEMBER_NAME)?.unfenced).toBe(true)
+  expect(cellMember(control).fenced).not.toBe(true)
+  // AND THE REBIND'S MIRROR SURVIVED THE UNFENCE — the ordering the old code dodged by clearing first: the
+  // CELL row still names the handle the rebind wrote.
+  expect(cellMember(control).sessionId).toBe(NEW_HANDLE)
+})
+
+// ── A30: a CELL mirror that cannot be written WITHHOLDS the unfence ──────────────────────────────────
+
+test("A30: a rebind whose CELL mirror write FAILS answers `cellRow:\"failed: …\"` and withholds the unfence", async () => {
+  // THE MIRROR IS A SECOND WRITE (round 2, minor). The landed entry reported success as soon as the TEAM row
+  // was read back, so an unwritable CELL record left the two surfaces disagreeing while the paired `unfence`
+  // reopened the seat around the unmirrored identity. Round 9's diagnosis says the CODE already does the
+  // right thing and only this ARM was missing — so the arm asserts the failure is visible on the entry AND
+  // that the fence stays closed, byte-for-byte.
+  /** The give-up sentence the CELL row already carries; the arm compares the record byte-for-byte after. */
+  const FENCE_REASON = "the mirror write cannot land; repair the record"
+  /** The CELL row evidences the fresh handle but still sits in the checkpoint window (a mirror would move it). */
+  const seededMember = memberRow({ sessionId: NEW_HANDLE, executorRef: NEW_HANDLE, mode: "checkpoint", handoffReady: true, fenced: true, fencedReason: FENCE_REASON })
+  /** The cell's own directory: made read-only INSIDE the rebind's read-back, so reads still succeed. */
+  let cellDir = ""
+  /** The harness: the TEAM row still names the OLD handle, the CELL row evidences the fresh one. */
+  const harness = makeHarness({
+    team: teamRecord([{ id: "M1", name: MEMBER_NAME, role: MEMBER_NAME, status: "running", executorRef: OLD_HANDLE, mode: "checkpoint" }]),
+    member: seededMember,
+    verifyAfterHandle: {
+      handle: NEW_HANDLE,
+      // BREAK THE MIRROR WITHOUT TOUCHING THE IMPLEMENTATION: the atomic write creates its temporary file in
+      // the cell directory, so a directory without the write bit lets every READ succeed and refuses the
+      // temp-file creation the mirror needs. The write is attempted for real and fails for real. The write
+      // bit is healed on the NEXT MICROTASK — i.e. at the first `await` AFTER the mirror's synchronous
+      // write — so the arm measures the DECISION (does the unfence run?) instead of the injection: an
+      // implementation that wrongly runs the unfence can clear the fence and fail on the assertions below,
+      // rather than dying on the same read-only directory.
+      run: (): void => {
+        chmodSync(cellDir, 0o555)
+        queueMicrotask((): void => { chmodSync(cellDir, 0o755) })
+      },
+    },
+  })
+  /** The directory the mirror writes its temporary file into. */
+  cellDir = dirname(statePath(harness.workspace, CELL_ID))
+  // A REAL CELL ALWAYS HAS ITS JOURNAL BY NOW, and the journal is a SECOND file the read-only directory must
+  // not take down with the record: pre-create it empty so the arm measures the STATE write's failure (the
+  // mirror) rather than an artifact of a brand-new cell whose journal would have to be created first.
+  seedJournal(harness, [])
+  /** The CELL record bytes BEFORE the call: a failed mirror may not move one byte of it. */
+  const beforeBytes = readFileSync(statePath(harness.workspace, CELL_ID), "utf8")
+  try {
+    /** The combined call: a landing rebind whose mirror cannot be written, plus the unfence it must withhold. */
+    const result = await harness.tools.get("cellwork_dispatch")!.execute({ rebind: [{ member: MEMBER_NAME, handle: NEW_HANDLE }], unfence: [MEMBER_NAME] }, { name: "cellwork_dispatch", agent: harness.captain }) as Record<string, unknown>
+    /** The rebind outcomes. */
+    const rebounds = Array.isArray(result.rebound) ? result.rebound as Array<Record<string, unknown>> : []
+    expect(rebounds).toHaveLength(1)
+    /** The landed-but-unmirrored entry. */
+    const outcome = rebounds[0] as Record<string, unknown>
+    // THE TEAM HALF LANDED, the CELL half did not, and the answer does not pretend otherwise.
+    expect(outcome.member).toBe(MEMBER_NAME)
+    expect(outcome.rebound).toBe(true)
+    expect(String(outcome.cellRow).startsWith("failed: ")).toBe(true)
+    // THE FENCE STAYED CLOSED, and no unfence outcome exists.
+    expect(result.unfenced).toBeUndefined()
+    /** The withheld summary the answer carries. */
+    const withheld = result.unfenceWithheld as Record<string, unknown> | undefined
+    expect(withheld?.reason).toBe("cell-mirror-unconfirmed")
+    expect(withheld?.members).toEqual([MEMBER_NAME])
+    expect(withheld?.failed).toEqual([{ member: MEMBER_NAME, reason: "cell-mirror-unconfirmed", cellRow: outcome.cellRow }])
+    expect(String(withheld?.detail)).toContain("fence stayed closed")
+    // THE RECORD IS LITERALLY UNTOUCHED: not one byte of the CELL state moved — the fence, the checkpoint
+    // window and the handle are all exactly what the call found.
+    expect(readFileSync(statePath(harness.workspace, CELL_ID), "utf8")).toBe(beforeBytes)
+    /** The CELL row after the withheld call. */
+    const cell = cellMember(harness)
+    expect(cell.sessionId).toBe(NEW_HANDLE)
+    expect(cell.mode).toBe("checkpoint")
+    expect(cell.handoffReady).toBe(true)
+    expect(cell.fenced).toBe(true)
+    expect(cell.fencedReason).toBe(FENCE_REASON)
+    // NEITHER HALF OF THE UNFENCE RAN: no plane seam call, no cleared row.
+    expect(harness.planeUnfences).toHaveLength(0)
+    /** This arm's journal rows. */
+    const rows = journalRows(harness)
+    /** The withheld row. */
+    const withheldRow = rows.find((entry) => entry.event === "dispatch-unfence-withheld")
+    expect(withheldRow?.reason).toBe("cell-mirror-unconfirmed")
+    expect(withheldRow?.members).toEqual([MEMBER_NAME])
+    expect(withheldRow?.failed).toEqual([{ member: MEMBER_NAME, reason: "cell-mirror-unconfirmed", cellRow: outcome.cellRow }])
+    expect(rows.some((entry) => entry.event === "member-unfenced" || entry.event === "member-unfenced-forced")).toBe(false)
+    // THE LANDED ROW ITSELF SAYS THE MIRROR FAILED — the operator sees that the two surfaces disagree.
+    expect(rows.find((entry) => entry.event === "member-rebound")?.cellRow).toBe(outcome.cellRow)
+  } finally {
+    // A 0o555 directory must not outlive the arm: the workspace is left removable for the next run. The
+    // guard covers the only path where the directory was never resolved (the harness threw before assigning).
+    if (cellDir !== "") chmodSync(cellDir, 0o755)
+  }
+})
+
+// ── A31: the withhold quantifies over the WHOLE CALL, not over the failed entry ──────────────────────
+
+test("A31: one unevidenced entry among two withholds the unfence for EVERY declared target, not only its own", async () => {
+  // THE QUANTIFIER IS THE DEFECT THIS ARM PINS. The contract is "the unfence half runs only when EVERY
+  // `rebind` entry answered `rebound:true`". A per-entry implementation would clear the fence of the seat
+  // that DID land — exactly the half-repaired reopen the ordering rule exists to prevent. So the answer must
+  // name EVERY declared unfence target in `members`, ONLY the failed entry in `failed`, and produce NO
+  // `unfenced` outcome at all; the paired control proves both fences clear when both entries are evidenced.
+  /** The seat whose entry lands. */
+  const FIRST = MEMBER_NAME
+  /** The seat whose requested handle no current record names (the GHOST). */
+  const SECOND = "Deep Worker"
+  /** The second seat's old handle, which both of its current rows name. */
+  const SECOND_OLD = "6b1f7a2c-0000-4000-8000-000000000002"
+  /** The second seat's fresh handle, used by the paired control. */
+  const SECOND_NEW = "3a97b115-2b24-4992-994a-8bb745006a5e"
+  /** A handle neither current record names: the second entry is guaranteed to refuse `handle-unevidenced`. */
+  const GHOST = "9f4c1d2e-1111-4222-8333-444455556667"
+  /** The first seat's CELL row: it evidences NEW_HANDLE, so its entry LANDS, and it is fenced. */
+  const firstRow = memberRow({ sessionId: NEW_HANDLE, executorRef: NEW_HANDLE, mode: "checkpoint", handoffReady: true, fenced: true, fencedReason: "first seat's give-up fence" })
+  /** The second seat's fenced row, naming only its old handle. */
+  const secondRow: CellMemberRecord = { name: SECOND, role: SECOND, sessionId: SECOND_OLD, executorRef: SECOND_OLD, mode: "member", handoffReady: false, handoffs: 2, joinedAt: "2026-11-11T00:00:00.000Z", fenced: true, fencedReason: "second seat's give-up fence" }
+  /** Both TEAM rows: the first at the old handle (the rebind displaces it), the second at its own. */
+  const seeded = teamRecord([
+    { id: "M1", name: FIRST, role: FIRST, status: "running", executorRef: OLD_HANDLE, mode: "checkpoint" },
+    { id: "M2", name: SECOND, role: SECOND, status: "running", executorRef: SECOND_OLD, mode: "member" },
+  ])
+  /** The harness whose cell holds BOTH fenced seats. */
+  const harness = makeHarness({ team: seeded, members: { [FIRST]: firstRow, [SECOND]: secondRow } })
+  /** The two-entry call: entry 1 lands, entry 2 cannot, and BOTH fences were asked for. */
+  const result = await harness.tools.get("cellwork_dispatch")!.execute({ rebind: [{ member: FIRST, handle: NEW_HANDLE }, { member: SECOND, handle: GHOST }], unfence: [FIRST, SECOND] }, { name: "cellwork_dispatch", agent: harness.captain }) as Record<string, unknown>
+  /** The rebind outcomes, in the call's order. */
+  const rebounds = Array.isArray(result.rebound) ? result.rebound as Array<Record<string, unknown>> : []
+  expect(rebounds.map((entry) => entry.member)).toEqual([FIRST, SECOND])
+  expect(rebounds[0]?.rebound).toBe(true)
+  expect(rebounds[1]?.rebound).toBe(false)
+  expect(rebounds[1]?.reason).toBe("handle-unevidenced")
+  // THE WHOLE CALL IS WITHHELD: every declared target is named, only the failed entry is in `failed`, and
+  // the entry that DID land produced no `unfenced` outcome.
+  expect(result.unfenced).toBeUndefined()
+  /** The withheld summary the answer carries. */
+  const withheld = result.unfenceWithheld as Record<string, unknown> | undefined
+  expect(withheld?.reason).toBe("rebind-failed")
+  expect(withheld?.members).toEqual([FIRST, SECOND])
+  expect(withheld?.failed).toEqual([{ member: SECOND, reason: "handle-unevidenced" }])
+  // THE FIRST SEAT'S IDENTITY LANDED (its CELL row is mirrored) BUT ITS FENCE STAYED CLOSED: that success is
+  // exactly why a per-entry implementation would have reopened it.
+  /** The CELL record as persisted after the call. */
+  const after = readCell(harness.workspace, CELL_ID)
+  if (!after.ok) throw new Error("the cell record must be readable: " + after.detail)
+  /** The first seat's row: identity mirrored, fence untouched. */
+  const firstCell = after.state.members[FIRST]
+  /** The second seat's row: nothing moved at all. */
+  const secondCell = after.state.members[SECOND]
+  expect(firstCell?.sessionId).toBe(NEW_HANDLE)
+  expect(firstCell?.executorRef).toBe(NEW_HANDLE)
+  expect(firstCell?.mode).toBe("member")
+  expect(firstCell?.handoffReady).toBe(false)
+  expect(firstCell?.fenced).toBe(true)
+  expect(firstCell?.fencedReason).toBe("first seat's give-up fence")
+  expect(secondCell?.sessionId).toBe(SECOND_OLD)
+  expect(secondCell?.mode).toBe("member")
+  expect(secondCell?.fenced).toBe(true)
+  expect(secondCell?.fencedReason).toBe("second seat's give-up fence")
+  // NO UNFENCE RAN FOR EITHER SEAT — not just for the failed one.
+  expect(harness.planeUnfences).toHaveLength(0)
+  /** This arm's journal rows. */
+  const rows = journalRows(harness)
+  /** The withheld row: the same whole-call quantifier. */
+  const withheldRow = rows.find((entry) => entry.event === "dispatch-unfence-withheld")
+  expect(withheldRow?.members).toEqual([FIRST, SECOND])
+  expect(withheldRow?.failed).toEqual([{ member: SECOND, reason: "handle-unevidenced" }])
+  expect(rows.some((entry) => entry.event === "member-unfenced" || entry.event === "member-unfenced-forced")).toBe(false)
+  // THE PAIRED CONTROL: the SAME two-entry call, with a CURRENT record naming entry 2's handle too, clears
+  // BOTH fences — so the withholding above is the quantifier, not an unconditional refusal.
+  /** The control's second row: its CELL row now evidences its own fresh handle. */
+  const controlSecond: CellMemberRecord = { ...secondRow, sessionId: SECOND_NEW, executorRef: SECOND_NEW, fencedReason: "second seat's give-up fence" }
+  /** The control harness: both handles are evidenced by their CELL rows. */
+  const control = makeHarness({ team: seeded, members: { [FIRST]: firstRow, [SECOND]: controlSecond } })
+  /** The same two-entry call, with evidence for both handles. */
+  const repaired = await control.tools.get("cellwork_dispatch")!.execute({ rebind: [{ member: FIRST, handle: NEW_HANDLE }, { member: SECOND, handle: SECOND_NEW }], unfence: [FIRST, SECOND] }, { name: "cellwork_dispatch", agent: control.captain }) as Record<string, unknown>
+  expect(repaired.unfenceWithheld).toBeUndefined()
+  /** The control's unfence outcomes. */
+  const cleared = Array.isArray(repaired.unfenced) ? repaired.unfenced as Array<Record<string, unknown>> : []
+  expect(cleared.map((entry) => entry.member)).toEqual([FIRST, SECOND])
+  expect(cleared.every((entry) => entry.unfenced === true)).toBe(true)
+  expect(control.planeUnfences).toHaveLength(2)
+  /** The control's CELL record after both halves ran. */
+  const controlCell = readCell(control.workspace, CELL_ID)
+  if (!controlCell.ok) throw new Error("the control's cell record must be readable: " + controlCell.detail)
+  expect(controlCell.state.members[FIRST]?.fenced).toBeUndefined()
+  expect(controlCell.state.members[SECOND]?.fenced).toBeUndefined()
+  expect(controlCell.state.members[SECOND]?.sessionId).toBe(SECOND_NEW)
+})
+
+// ── m6: the displaced-handle pair is OMITTED when the TEAM record cannot be read ─────────────────────
+
+test("m6: a rebind outcome OMITS previousSessionId/previousSessionIdLiveness when the TEAM record is missing or unreadable", async () => {
+  // THE DOCS SAID "omitted", NO ARM SAID IT. A `rebind` whose TEAM record is ABSENT or UNREADABLE has no
+  // displaced handle to report, so the pair must be absent from the outcome (and from its journal row) —
+  // not present as an empty string, which would read as "the record named no handle" instead of "there was
+  // no readable record". Both shapes are driven here because they are different branches (`no-team-record`
+  // vs `team-record-unreadable`).
+  /** The CELL row evidences the handle, so the refusal is the RECORD's, not the evidence's. */
+  const row = memberRow({ sessionId: NEW_HANDLE, executorRef: NEW_HANDLE })
+  /** The ABSENT-record harness: the cell names a team, the workspace holds no record file for it. */
+  const absent = makeHarness({ recordFile: false, member: row })
+  /** The rebind request against the missing record. */
+  const missing = await absent.tools.get("cellwork_dispatch")!.execute({ rebind: [{ member: MEMBER_NAME, handle: NEW_HANDLE }] }, { name: "cellwork_dispatch", agent: absent.captain }) as Record<string, unknown>
+  /** The missing-record outcome. */
+  const missingOutcome = (Array.isArray(missing.rebound) ? missing.rebound as Array<Record<string, unknown>> : [])[0] as Record<string, unknown>
+  expect(missingOutcome.reason).toBe("no-team-record")
+  expect(missingOutcome.namedBy).toEqual(["cell"])
+  expect("previousSessionId" in missingOutcome).toBe(false)
+  expect("previousSessionIdLiveness" in missingOutcome).toBe(false)
+  // THE JOURNAL ROW OMITS THE SAME PAIR: the record an operator reads later may not claim a displaced
+  // handle the call could not read.
+  /** The missing-record failure row. */
+  const missingRow = journalRows(absent).find((entry) => entry.event === "member-rebind-failed")
+  expect(missingRow?.reason).toBe("no-team-record")
+  expect(missingRow !== undefined && "previousSessionId" in missingRow).toBe(false)
+  // THE UNREADABLE SHAPE: the record EXISTS but cannot be parsed, which is a refusal — never `absent`.
+  /** The unreadable-record harness. */
+  const unreadable = makeHarness({ member: row })
+  writeFileSync(unreadable.recordPath, "{ this is not a team record", "utf8")
+  /** The rebind request against the unreadable record. */
+  const broken = await unreadable.tools.get("cellwork_dispatch")!.execute({ rebind: [{ member: MEMBER_NAME, handle: NEW_HANDLE }] }, { name: "cellwork_dispatch", agent: unreadable.captain }) as Record<string, unknown>
+  /** The unreadable-record outcome. */
+  const brokenOutcome = (Array.isArray(broken.rebound) ? broken.rebound as Array<Record<string, unknown>> : [])[0] as Record<string, unknown>
+  expect(brokenOutcome.reason).toBe("team-record-unreadable")
+  expect("previousSessionId" in brokenOutcome).toBe(false)
+  expect("previousSessionIdLiveness" in brokenOutcome).toBe(false)
+  // BOTH records stayed put: a refusal that could not read the record never writes over it.
+  expect(readFileSync(unreadable.recordPath, "utf8")).toBe("{ this is not a team record")
 })
 
 // ── A19: a write from another PROCESS inside rebind's window is refused ─────────────────────────────

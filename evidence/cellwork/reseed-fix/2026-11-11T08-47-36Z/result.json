@@ -1,0 +1,180 @@
+{
+  "round": "PR #109 repair round 10 — close the round-9 evidence gap: three arms + the missing field assertions + the bilingual docs contradiction + the evidence-metadata correction. NO behaviour change.",
+  "branch": "fix/cellwork-reseed",
+  "head": "84f6dd47 (working tree carries the uncommitted round-1..10 wave; this round edits no commit history and runs no git write)",
+  "diagnosis": "Round 9's blind verdict FAIL was diagnosed as 'the code is correct, the arms are missing' (a pure test gap plus a docs contradiction and one evidence-metadata mislabel). This round adds only arms, docs and evidence; no src file was edited.",
+  "contract": {
+    "path": ".mpd/plans/cellwork-reseed-fix.md",
+    "sections_read_first": [
+      "§2 R1-R5",
+      "§3 A1-A11 (incl. the A5 amendment)",
+      "§4 scope",
+      "§5 verification",
+      "§6 bounds"
+    ],
+    "baseline": "round 9 final sources — protocol.ts 5cd5521d…, protocol-core.ts eda5a476…, index.ts 855ac943…, dist/index.js d6e2d49b… (see round9-baseline.sha256.txt; sha256sum -c in round9-baseline-check.log)"
+  },
+  "changes": {
+    "A30_cell_mirror_unconfirmed": {
+      "why": "The CELL mirror is a SECOND write; round 9's diagnosis says the gate exists in code but no arm ever drove a FAILED mirror write.",
+      "seed": "TEAM row M1 executorRef=OLD_HANDLE (mode checkpoint); CELL row sessionId/executorRef=NEW_HANDLE, mode checkpoint, handoffReady true, fenced true + fencedReason; the cell journal pre-created empty; a new harness hook `verifyAfterHandle` fires inside the plane's READ-BACK (the only point after the TEAM write and before the mirror) and chmods the cell directory to 0o555, healing on the next microtask so the red runs fail on assertions, not on the read-only directory.",
+      "assertions": [
+        "rebound[0].member=MEMBER_NAME and rebound[0].rebound=true (the TEAM half landed)",
+        "rebound[0].cellRow starts with \"failed: \"",
+        "result.unfenced is undefined",
+        "unfenceWithheld.reason === \"cell-mirror-unconfirmed\"",
+        "unfenceWithheld.members === [MEMBER_NAME]",
+        "unfenceWithheld.failed === [{member: MEMBER_NAME, reason: \"cell-mirror-unconfirmed\", cellRow: <same>}]",
+        "unfenceWithheld.detail contains \"fence stayed closed\"",
+        "the CELL state file is BYTE-IDENTICAL before/after (readFileSync compare)",
+        "cellMember: sessionId NEW_HANDLE, mode checkpoint, handoffReady true, fenced true, fencedReason unchanged",
+        "harness.planeUnfences has length 0 (no unfence seam call)",
+        "journal: dispatch-unfence-withheld carries the same reason/members/failed; no member-unfenced / member-unfenced-forced row; the member-rebound row carries the same cellRow"
+      ],
+      "test_line": "packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:1682"
+    },
+    "A31_whole_call_quantifier": {
+      "why": "\"EVERY entry\" is the contract. A per-entry implementation would clear the fence of the seat that DID land — the half-repaired reopen the ordering rule exists to prevent.",
+      "seed": "Two members: Senior Engineer (TEAM row executorRef=OLD_HANDLE, CELL row evidences NEW_HANDLE, fenced + reason 1) and Deep Worker (TEAM and CELL both name SECOND_OLD, fenced + reason 2). One call: rebind [{Senior Engineer, NEW_HANDLE}, {Deep Worker, GHOST}], unfence [Senior Engineer, Deep Worker].",
+      "assertions": [
+        "outcomes in call order: Senior Engineer rebound=true, Deep Worker rebound=false reason=handle-unevidenced",
+        "result.unfenced is undefined",
+        "unfenceWithheld.reason === \"rebind-failed\"",
+        "unfenceWithheld.members === [Senior Engineer, Deep Worker] — EVERY declared unfence target, including the one whose entry landed",
+        "unfenceWithheld.failed === [{member: \"Deep Worker\", reason: \"handle-unevidenced\"}] — only the failed entry, no cellRow",
+        "CELL Senior Engineer: sessionId/executorRef NEW_HANDLE, mode member, handoffReady false (identity landed) BUT fenced=true and fencedReason preserved",
+        "CELL Deep Worker: sessionId SECOND_OLD unchanged, fenced=true, fencedReason preserved",
+        "harness.planeUnfences has length 0; no member-unfenced(-forced) row; dispatch-unfence-withheld carries members [both] and failed [{Deep Worker}]",
+        "PAIRED CONTROL: the same two-entry call with BOTH handles evidenced yields no unfenceWithheld, unfenced=[both with unfenced:true], 2 plane seam calls, and BOTH CELL fences removed"
+      ],
+      "test_line": "packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:1772"
+    },
+    "A28_field_assertions": {
+      "why": "unfenceWithheld.members and failed[] were carried by the answer and the journal but never asserted; a call that dropped a target or flattened the failure list stayed green.",
+      "added": [
+        "answer: members === [MEMBER_NAME]; failed === [{member: MEMBER_NAME, reason: \"handle-unevidenced\"}] (no cellRow on a failed rebind)",
+        "journal row dispatch-unfence-withheld: the same members and failed values"
+      ],
+      "test_line": "packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:1645 (answer) / 1660 (journal)"
+    },
+    "m6_negative_arm": {
+      "why": "The docs say the displaced-handle pair is omitted when the TEAM record cannot be read; no arm proved it.",
+      "seed": "Two harnesses — one with NO record file (absent), one whose record file is overwritten with unparsable text; the CELL row evidences the requested handle so the refusal is the record's.",
+      "assertions": [
+        "outcomes reason no-team-record / team-record-unreadable respectively",
+        "namedBy === [\"cell\"]",
+        "\"previousSessionId\" in outcome === false and \"previousSessionIdLiveness\" in outcome === false, for BOTH shapes",
+        "the journal member-rebind-failed row also omits previousSessionId",
+        "the unreadable record file is byte-identical after the refusal (nothing was written over it)"
+      ],
+      "test_line": "packages/mpd-cellwork-plugin/test/reseed-binding.test.ts:1867"
+    },
+    "docs_contradiction": {
+      "why": "docs/cellwork.md and its zh twin said both 'when NEITHER current row names a handle, the journal's LATEST hand-over row is evidence' and 'a handle nothing current names is handle-unevidenced' — the two cannot both hold.",
+      "fix": "Both places in both languages now read: evidence is the TEAM row, the CELL row, OR (when neither names a handle) the journal's latest hand-over; only a handle that NEITHER current row NOR that latest hand-over names is handle-unevidenced.",
+      "where": [
+        "docs/cellwork.md — tool table row cellwork_dispatch + the rebind validation paragraph",
+        "docs/cellwork.zh-CN.md — the same two places",
+        "package READMEs already stated the precedence correctly and were left alone"
+      ],
+      "diffs": [
+        "this-round-docs-en.diff",
+        "this-round-docs-zh.diff"
+      ]
+    },
+    "evidence_metadata": {
+      "defect": "Round 9's round8-baseline.sha256.txt hashed 06-27-13Z/round7-src/{protocol.ts,protocol-core.ts} (f15ce3b4… / 36aec4e6…) — the ROUND-7 sources — while its result.json claimed the round-8 FINAL sources (protocol.ts 573c05d6…).",
+      "fix": "This round's baseline is named round9-baseline.sha256.txt (the round it describes) and is a verbatim copy of round 9's final-sources list with a header stating the correction; round8-baseline-check.log re-measures the old bytes and the true round-8 finals side by side; metadata-correction.md records the whole finding. The OLD directory is untouched."
+    },
+    "harness_extensions": {
+      "members": "HarnessOptions.members — a full cell member table, needed by A31's two-seat call",
+      "verifyAfterHandle": "HarnessOptions.verifyAfterHandle — a one-shot hook inside the plane read-back for a given handle, the only point between the TEAM write and the CELL mirror (A30)"
+    }
+  },
+  "scope_compliance": {
+    "no_behaviour_change": "src/protocol.ts, src/protocol-core.ts and src/index.ts are byte-identical to the round-9 baseline (round9-baseline-check.log); the pinned rebuild reproduces dist/index.js byte-for-byte (dist-before = dist-after = d6e2d49b…).",
+    "edited": [
+      "packages/mpd-cellwork-plugin/test/reseed-binding.test.ts",
+      "docs/cellwork.md",
+      "docs/cellwork.zh-CN.md",
+      "evidence/cellwork/reseed-fix/2026-11-11T08-47-36Z/**"
+    ],
+    "not_touched": [
+      "packages/mpd-cellwork-plugin/src/protocol.ts",
+      "packages/mpd-cellwork-plugin/src/protocol-core.ts",
+      "packages/mpd-cellwork-plugin/src/index.ts",
+      "packages/mpd-cellwork-plugin/dist/index.js (rebuilt, byte-identical; left unchanged)",
+      "packages/mpd-cellwork-plugin/README.md and README.zh-CN.md (already consistent)",
+      "the previous evidence directories",
+      "no git write operation was run"
+    ]
+  },
+  "gates": {
+    "bun run typecheck": "exit 0 (`tsgo --noEmit`)",
+    "bun run verify:comments": "exit 0 (PASS, 633 files, 58340 declarations)",
+    "bun run verify:docs": "exit 0 (PASS, pairs=59 failed=0 violations=0 exempt=24 derived=3 links=626 dead=0)",
+    "bun test packages/mpd-cellwork-plugin/test/reseed-binding.test.ts": "exit 0 (45 pass, 0 fail, 490 expects)",
+    "bun test packages/mpd-cellwork-plugin": "exit 0 (414 pass, 0 fail, 4108 expects, 34 files)",
+    "bun test packages": "exit 0 (4046 pass, 6 skip, 0 fail, 53683 expects, 261 files)",
+    "pinned bun build": "exit 0 (.toolchain/node_modules/.bin/bun 1.4.0; dist/index.js output byte-identical to the committed file)",
+    "node scripts/verify-dist-fresh.ts": "exit 0 (34/34 targets fresh; 1 NOT COVERED file listed: packages/mpd-mcp-codegraph/dist/serve.js)"
+  },
+  "fail_before": {
+    "meaning": "Behaviour did not change, so the 'pre-fix' state is the version that LACKED the arm: the new arms are GREEN on the round-9 sources (that is the round-9 diagnosis). Falsifiability is proved by breaking each rule in a COPY under .qa-tmp/ and observing the arm go red.",
+    "mutations": [
+      "M1 drop the mirror gate from unfenceWithheld → A30 RED (unfenced received [{member, unfenced:true, plane:unfenced}]), A28/A31 green",
+      "M2 the landed entry silently drops cellRow → A30 RED (cellRow.startsWith('failed: ') === false)",
+      "M3 per-entry quantifier (withhold only when every declared target failed) → A31 RED (both members cleared), A28/A30 green"
+    ],
+    "restored": "the copy was restored after each mutation (mutation-restore-*.sha256.txt) and the whole file re-ran green (mutation-restored-green.log, 45 pass / 0 fail); the DELIVERED tree was never mutated this time (source hash 5cd5521d… verified after)"
+  },
+  "files": {
+    "evidenceDir": "evidence/cellwork/reseed-fix/2026-11-11T08-47-36Z",
+    "baseline": "round9-baseline.sha256.txt",
+    "baseline_check": "round9-baseline-check.log",
+    "final_sources": "final-sources.sha256.txt",
+    "metadata_correction": "metadata-correction.md",
+    "round8_baseline_check": "round8-baseline-check.log",
+    "fail_before": "fail-before.md",
+    "this_round_test_diff": "this-round-test.diff",
+    "this_round_docs_en_diff": "this-round-docs-en.diff",
+    "this_round_docs_zh_diff": "this-round-docs-zh.diff",
+    "mutations": [
+      "mutation-a30-gate.diff",
+      "mutation-a30-cellrow.diff",
+      "mutation-a31-quantifier.diff",
+      "mutation-a30-gate-red.log",
+      "mutation-a30-cellrow-red.log",
+      "mutation-a31-quantifier-red.log",
+      "mutation-*-control-*.log",
+      "mutation-restored-green.log",
+      "mutation-source.sha256.txt",
+      "mutation-restore-1.sha256.txt",
+      "mutation-restore-2.sha256.txt",
+      "mutation-restore-3.sha256.txt"
+    ],
+    "gates": [
+      "gate-typecheck.log",
+      "gate-comments.log",
+      "gate-docs.log",
+      "gate-tests-package.log",
+      "gate-tests-all.log",
+      "gate-dist-build.log",
+      "gate-dist-fresh.log",
+      "dist-before.sha256.txt",
+      "dist-after.sha256.txt",
+      "gates.log",
+      "post-fix-arms.log"
+    ],
+    "bounds": "bounds.md"
+  },
+  "not_proven": [
+    "A30's injection removes the cell directory's write bit and therefore needs a non-root owning process (observed uid=1000); under a root-run suite the write would succeed and A30 would fail loudly on cellRow instead of passing silently. No root run was executed.",
+    "The microtask heal (restore the write bit at the first await after the mirror's synchronous write) is ordering-dependent by design; the green and red runs exercise it but no test asserts the ordering itself.",
+    "The docs sentences are not asserted by a test; verify:docs checks the pair, switch link, heading tree and link resolution only.",
+    "m6 covers a missing record file and an unparsable one through rebind's filesystem read; a plane that throws while the file is readable is a different branch and is not driven for rebind.",
+    "The arms assert the fields they name, not the entire cellwork_dispatch answer object.",
+    "No git write was run; HEAD is still 84f6dd47 and the wave remains uncommitted.",
+    "The mutation exercise lived in .qa-tmp/reseed-mutation/ (gitignored); the delivered tree was verified unchanged by hash afterwards."
+  ]
+}

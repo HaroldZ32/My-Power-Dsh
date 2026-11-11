@@ -306,14 +306,20 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
   不是为了工作。
 - **重种契约（R1–R5、F1–F3）速览。** R1：只有新 handle 已同时写进 TEAM 成员行、旧 handle 名下所有**非终态**
   看板行（或以该座位自己的名字拼写的行）和 CELL 行，才允许记 `reseeded`；否则整轮拒绝
-  （`checkpoint-unrecoverable` + `surface`）、围栏座位并释放子代理。**无平面例外**：workspace 里**根本没有
+  （`checkpoint-unrecoverable` + `surface`）、围栏座位，并**尝试**通过 `dispose()` 接缝释放子代理（接缝缺失或抛错会
+  被如实报告，绝不冒充一次释放）。**无平面例外**：workspace 里**根本没有
   team 记录**时没有 TEAM 行、也没有看板，重种可以在**没有**它们的情况下成功（`plane: "absent"`）——不存在
   不等于不可读（F1）。绑定若在回读验证时抛错或读到的 handle 不符，会**回滚**到绑定前的 TEAM 行与看板 owner；
-  若期间已有别的写入者提交，回滚**拒绝覆盖**并如实报告。**回滚被拒时不会释放「存活文档可能仍点名」的子代理（A11）：**
-  最常见的并发形态会保留本次绑定的新 `executorRef`，因此子代理**保留**（journal 行带 `orphanChild` +
-  `reconcileRequired`）；`rollback:"failed"` 是同样的「未证明」状态，同样保留。失败文案交出 `cellwork_dispatch {rebind:[{member, handle}], unfence:[member]}`——
-  `rebind` 是**唯一**能重新指向 `executorRef` 的动词（并把 handle 镜像进 CELL 行）；`unfence` 单独用永远不碰
-  handle，`reassign` 只移动看板行。恢复路径不会被再次进入：当 TEAM 行已点名一个注册表证明**活着**、且不同于 CELL 行
+  若期间已有别的写入者提交，回滚**拒绝覆盖**并如实报告。**回滚被拒时一律保留子代理（A11；第二轮放宽）：**
+  最常见的并发形态会保留本次绑定的新 `executorRef`；而且即使**当时读到的文档点的是另一个 handle**，并发的读-改-写
+  （team-core 的 `cancelTasks`）也可能在之后才提交它**在本次绑定进行期间**读到的名册——那份文档点的正是新 handle。
+  只有真正把绑定前行**恢复**（`restored`）的回滚才释放子代理。保留体现在 journal 行的 `orphanChild` +
+  `reconcileRequired` 上；`rollback:"failed"` 是同样的「未证明」状态，同样保留。失败文案交出 `cellwork_dispatch {rebind:[{member, handle}], unfence:[member]}`——
+  `rebind` **先执行**，是**唯一**能重新指向 `executorRef` 的动词（并把 handle 镜像进 CELL 行）；`unfence` 单独用永远不碰
+  handle，`reassign` 只移动看板行。**合并调用里的 `unfence` 只在每个 `rebind` 条目都答复 `rebound:true` 且 CELL 镜像确认
+  之后才执行**：否则所有点名围栏保持**关闭**、不执行任何 `unfence`、journal 记 `dispatch-unfence-withheld`，答复里的
+  `unfenceWithheld` 写明 `fence stayed closed` 并给出下一步。落地的重指若 CELL 镜像失败，仍是 `rebound:true`，但会带
+  `cellRow:"failed: …"`——**必须检查 `cellRow`**：只有它缺席才代表两份记录一致，镜像失败同样会扣住 `unfence`。恢复路径不会被再次进入：当 TEAM 行已点名一个注册表证明**活着**、且不同于 CELL 行
   session 的 handle 时，屏障**不 spawn**，只记 `barrier-skipped`（`branch:"reseed-already-bound"`）并给出同一个
   `rebind` 修复。R2：晋升指令是经执行器的 `send` 向**新** handle
   **尝试投递**；投递抛错会记 `directiveDelivered:false` + `directiveError`，且不撤销绑定。R3：status /
@@ -327,14 +333,16 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
   的变化会被拒绝（`team-record-changed`），字段只用于说明什么变了——但**比较之后、rename 之前**跨进程提交的
   写入仍可能被覆盖：这条跨进程残余是收窄，不是消除。F3：终态行（`completed`/`failed`/`cancelled`）保留原
   owner——历史绝不重指。**`rebind` 会校验它的 handle，并记录它自己的结论（M1/N1/F1）：** handle 先 trim，必须是宿主铸造的
-  8-4-4-4-12 UUID 形态，且必须被本座位**当前的记录**点名——TEAM 行或 CELL 行。**当前记录优先，journal 只作
+  8-4-4-4-12 UUID 形态，且必须被本座位**当前的记录**点名——TEAM 行或 CELL 行；**当两条当前行都没有点名任何 handle
+  时，journal 的最新一条交接行同样可以作证**。**当前记录优先，journal 只作
   佐证：** journal 的「最新一条」只在**两条当前行都没有点名任何 handle** 时才参与判定，且绝不能否决任一当前行
   点名的 handle。因此，记录写入晚于最后一次交接、且自身没有 journal 行时，该 handle 会被接受并标记
   `handleRecordCurrent:true` 与（能证明写入更晚时）`journalHandoverOlder:true`，而不是被判
   `handle-superseded` 并反向建议。只有更早交接行点名的 handle 会拒绝为 `handle-superseded` 并点名后来的
   那一行；文案只陈述两方事实，绝不替操作员选择方向（注册表只证明**存活**，从不证明**归属**，存活也不能让旧
-  handle 变回当前）。每条结果都带 `namedBy`（`team`/`cell`/`journal:<event>`）与
-  `previousSessionId`/`previousSessionIdLiveness`（`live`/`unproven`/`unknown`），真正落地的重指会带上与重种绑定
+  handle 变回当前）。每条结果都带 `namedBy`（`team`/`cell`/`journal:<event>`）；
+  `previousSessionId`/`previousSessionIdLiveness`（`live`/`unproven`/`unknown`）**只在 TEAM 行可读时**报告，
+  TEAM 记录缺失或不可读时会**省略**（没有可报告的被替换 handle）。真正落地的重指会带上与重种绑定
   相同的 `displacedExecutorRef`/`displacedUnproven`，每一条失败条目（包括参数拒绝，会记下请求的 `handle`）都记
   `member-rebind-failed`；被重种**顶掉**的 handle 会以 `displacedExecutorRef`/`displacedUnproven` 记在
   `compaction`、`seat-rebound` 与 `member-reseeded` 三行上。`docs/cellwork.md` 是权威。
