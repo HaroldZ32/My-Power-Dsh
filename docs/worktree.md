@@ -111,6 +111,10 @@ read-only members, which are skipped by design.
   a merge.
 - A worktree outside the workspace root is read-only to members until the host adds an
   `additionalWritableRoots` entry; this bundle does not ship one.
+- A worktree repository must live at or under the workspace root: the plugin canonicalises the repo's
+  git top level and refuses a repo outside the workspace root with `repo-outside-workspace`. A
+  workspace that is itself a subdirectory of a larger git repository is therefore refused; a repo at
+  the workspace root or nested under it is supported.
 - The official executor fallback cannot set `cwd`, so such a member runs in the shared checkout.
 - Worktrees are not destroyed automatically when a team ends; `mpd_worktree_remove` is explicit.
 - Only the native in-process subagent backend is covered. External/SDK subagent providers were not

@@ -314,6 +314,15 @@ export interface PromotionDeps {
   parentSessionId?: string
   /** The cell and its team. */
   cell: CellState
+  /**
+   * The RESOLVED EXECUTION team id the worktree lookup must address (CodeRabbit round 1).
+   *
+   * A legacy cell's `teamId` may still name the ended PLANNING team while the live board — and so the
+   * worktree key — belongs to the minted execution team. The row passes the id `resolveCellTeam`
+   * answered; `deps.cell.teamId` stays the planning id for every other use. Absent or empty means the
+   * composition never resolved one, and the cell's own id is the fallback.
+   */
+  worktreeTeamId?: string
   /** The resolved knobs (`compactionRetries`, `idleBarrierDelayMs`, `depthMax`). */
   config: CellworkConfig
   /** The handoff text a reseed child is seeded with. */
@@ -1254,12 +1263,14 @@ export async function promoteAfterHandoff(deps: PromotionDeps): Promise<Promotio
   // the host inherits the PARENT's directory when no `cwd` is supplied — which would silently move a
   // promoted member back into the shared checkout. A lookup that throws, answers nothing or answers an
   // empty string is the same as no worktree: the request keeps today's shape, no `cwd` key at all.
+  /** The execution team the member's worktree is keyed by; the cell's planning id is only a fallback. */
+  const worktreeTeamId = deps.worktreeTeamId !== undefined && deps.worktreeTeamId !== "" ? deps.worktreeTeamId : deps.cell.teamId
   /** The member's worktree path for this reseed, when one is recorded. */
   const worktreeCwd = ((): string | undefined => {
     if (deps.worktreeCwd === undefined) return undefined
     try {
       /** What the row's lookup answered. */
-      const path = deps.worktreeCwd({ teamId: deps.cell.teamId, member: deps.memberName })
+      const path = deps.worktreeCwd({ teamId: worktreeTeamId, member: deps.memberName })
       return typeof path === "string" && path !== "" ? path : undefined
     } catch {
       return undefined

@@ -84,7 +84,7 @@ import { planForSession, registerTeamRoutes, TEAM_ACTION_ROUTES, TEAM_ROUTES, ty
 // branches, so a tool call, the `mpdTeamActions` service and an HTTP route all drive ONE sequence.
 import { approveTeam, cancelTasks, clearConsults, endTeam, fenceMember, forceWedgedTask, graceWedgedTask, runDispatch, TEAM_ACTIONS_SERVICE, unfenceMember, upsertConsult, writeMemberHandoff, type MpdTeamActionsService, type TeamActionCaller, type TeamActionDeps } from "./team-actions"
 import { installIdleGuard, withIdlePreamble } from "./idle-guard"
-import { memberWorktreeLookup } from "./worktree"
+import { memberWorktreeLookup, type MemberWorktreeAssignment } from "./worktree.ts"
 import { appendTeamJournal } from "./team-journal.ts"
 import { GraphModels } from "./graph-model"
 import type { GraphModel } from "../../mpd-graph-core/src/index.ts"
@@ -941,6 +941,9 @@ function callerIdentity(record: TeamRecord, sessionId: string, title: string, li
   return identity.member === undefined ? { ancestry: [] } : { ownMember: identity.member, ancestry: [] }
 }
 
+/** The Lane A tool that removes ONE member's worktree directory and its branch; named once. */
+const WORKTREE_REMOVE_TOOL = "mpd_worktree_remove"
+
 /** The tool whose WHOLE-LIST write carries a wave's checklist; probed before it is ever called. */
 const TODO_TOOL_NAME = "todo_write"
 
@@ -1644,6 +1647,17 @@ export function apply(ctx: any): void {
       try { return (ctx as { get?: (serviceId: string, required?: boolean) => unknown }).get?.(id, false) } catch { return undefined }
     },
     log: (line) => rowLogLine("mpd-team-core", line),
+    // THE REMOVAL IS LANE A'S OWN TOOL, never a private filesystem/git write: Lane A owns the index and
+    // the branch, and its refusal (a dirty checkout, a moved repo) is ONE line, never a fatal error.
+    releaseWorktree: async (agent, ref) => {
+      try {
+        /** The removal result; a marked error is downgraded to the row's log. */
+        const result = await dsh.executeTool({ name: WORKTREE_REMOVE_TOOL, arguments: { name: ref.teamId + "/" + ref.member }, ...(agent === undefined ? {} : { agent }) })
+        if (result.isError === true) rowLogLine("mpd-team-core", "the failed-spawn worktree " + ref.teamId + "/" + ref.member + " could not be released: " + String(result.error ?? "the tool returned an error result"))
+      } catch (error) {
+        rowLogLine("mpd-team-core", "the failed-spawn worktree " + ref.teamId + "/" + ref.member + " could not be released: " + String((error as Error)?.message ?? error))
+      }
+    },
     beginDispatch: (memberId) => idleGuard.beginDispatch(memberId),
     assertPlanGraph,
     assertScopesOrdered,
@@ -2151,16 +2165,26 @@ export function apply(ctx: any): void {
         // THE MEMBER IS RAISED HERE, exactly as approval raises one: a roster row nothing ever spawned
         // would be the C7-3 ghost class again. A failed raise is written on the row AND reported in the
         // answer, never left silent.
+        // THE EXECUTOR IS SELECTED BEFORE ANY WORKTREE (CodeRabbit round 1), exactly as approval does:
+        // the official backend cannot forward `cwd`, so a worktree minted for it would be an unused
+        // branch holding an active-entry slot. A cwd-capable backend keeps the per-member checkout.
+        /** The backend that raises this appended member. */
+        const backend = executor()
+        /** This member's worktree assignment, kept visible to the failure cleanup below. */
+        let assignment: MemberWorktreeAssignment | undefined
         // ONE WORKTREE PER WRITE-CAPABLE MEMBER (Lane C of `.mpd/plans/agent-worktrees.md`), resolved
         // by the SAME lookup approval uses: a read-only seat, an absent row and any degrade all leave
         // the request unchanged, and the "row absent" line is written at most once per append.
         /** Where this appended member should work, if its own worktree is available. */
-        const worktreeOf = memberWorktreeLookup(teamActionsDeps.service, teamActionsDeps.log)
+        const worktreeOf = backend.kind === "native" ? memberWorktreeLookup(teamActionsDeps.service, teamActionsDeps.log) : undefined
+        if (worktreeOf === undefined) rowLogLine("mpd-team-core", "the " + backend.kind + " executor cannot set cwd — team members spawn in the shared checkout (no per-member worktree)")
+        /** What the lookup answered for this member, when it offered a worktree at all. */
+        assignment = worktreeOf?.({ exec, teamId: roster.teamId, member: added.name, ...(added.role === undefined ? {} : { role: added.role }) })
         /** This member's worktree path, or undefined when the spawn keeps today's shared checkout. */
-        const cwd = worktreeOf({ exec, teamId: roster.teamId, member: added.name, ...(added.role === undefined ? {} : { role: added.role }) })
+        const cwd = assignment?.path
         try {
           /** The backend's answer, whose handle the record keeps beside our own member id. */
-          const spawned = await executor().spawn(exec.agent, {
+          const spawned = await backend.spawn(exec.agent, {
             teamId: roster.teamId,
             memberId: added.id,
             name: added.name,
@@ -2191,6 +2215,10 @@ export function apply(ctx: any): void {
           /** The record with the never-raised row dropped, so the roster and the capacity agree. */
           const released = removeTeamMember(readTeam(workspace, roster.teamId) ?? roster, added.id)
           writeTeam(workspace, withDerivedPhase(released))
+          // A FAILED SPAWN RELEASES ONLY WHAT IT CREATED (CodeRabbit round 1): a reused worktree may
+          // hold an earlier attempt's branch, so only `created` is removed. The removal is non-fatal
+          // and reports itself, exactly like the approve loop's.
+          if (assignment?.created === true) await teamActionsDeps.releaseWorktree?.(exec.agent, { teamId: roster.teamId, member: added.name })
           return { team: released, member: { ...added, status: "failed" }, stoppedAt: `member ${added.name}: ${String((error as Error)?.message ?? error)}`, appended: `member ${added.name} (${added.id}) was NOT added to team ${released.teamId}: the raise FAILED, and its roster row was REMOVED so no failed slot is held`, ...(roleWarning === undefined ? {} : { warning: roleWarning }) }
         }
       }

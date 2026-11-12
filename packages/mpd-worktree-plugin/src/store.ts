@@ -37,6 +37,8 @@ export interface WorktreeEntry {
   createdAt: string
   /** Where the worktree stands in its lifecycle. */
   status: WorktreeStatus
+  /** True when the directory is gone but the branch could not be deleted yet; a later remove retries it. */
+  branchPending?: boolean
 }
 
 /** The whole state file. */
@@ -75,7 +77,8 @@ function isEntry(value: unknown): value is WorktreeEntry {
     typeof record.status === "string" &&
     statuses.includes(record.status) &&
     (record.teamId === undefined || typeof record.teamId === "string") &&
-    (record.member === undefined || typeof record.member === "string")
+    (record.member === undefined || typeof record.member === "string") &&
+    (record.branchPending === undefined || typeof record.branchPending === "boolean")
   )
 }
 

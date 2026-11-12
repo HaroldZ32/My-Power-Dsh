@@ -10,11 +10,12 @@
 // and the idempotent reseed lookup.
 import { afterEach, describe, expect, test } from "bun:test"
 import { execFileSync } from "node:child_process"
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { resolveConfig, type Config, type ResolvedConfig } from "../src/config"
-import { createWorktree, createWorktreeService, cwdForMember, listWorktrees, mergeWorktree, removeWorktree, WorktreeError, worktreeStatus, type MpdWorktreeService, type WorktreeDeps } from "../src/ops"
+import { DEFAULT_MAX, effectiveConfig, resolveConfig, type Config, type ResolvedConfig } from "../src/config.ts"
+import { GIT_TIMEOUT_CODE, runGit } from "../src/git.ts"
+import { createWorktree, createWorktreeService, cwdForMember, listWorktrees, mergeWorktree, removeWorktree, WorktreeError, worktreeStatus, type MpdWorktreeService, type WorktreeDeps } from "../src/ops.ts"
 
 /** One throwaway workspace: the git repository root, its resolved config and the captured log lines. */
 interface Sandbox {
@@ -121,12 +122,72 @@ function readRawIndex(sandbox: Sandbox): unknown {
   return JSON.parse(readFileSync(join(sandbox.root, ".mpd", "worktrees", "index.json"), "utf8")) as unknown
 }
 
+/**
+ * Rewrites the first raw state-file record, for the arms that exercise a hostile or stale record.
+ * @param sandbox the sandbox whose index is rewritten.
+ * @param mutate the change applied to the first record.
+ * @returns nothing.
+ */
+function tamperIndex(sandbox: Sandbox, mutate: (entry: Record<string, unknown>) => void): void {
+  /** The parsed state file, narrowed to the shape the row itself writes. */
+  const index = readRawIndex(sandbox) as { version: number; worktrees: Array<Record<string, unknown>> }
+  mutate(index.worktrees[0] as Record<string, unknown>)
+  writeFileSync(join(sandbox.root, ".mpd", "worktrees", "index.json"), JSON.stringify(index))
+}
+
 afterEach(() => {
   while (createdRoots.length > 0) {
     /** The next root to delete; `force` keeps a half-built sandbox from reddening cleanup. */
     const root = createdRoots.pop() as string
     rmSync(root, { recursive: true, force: true })
   }
+})
+
+describe("config", () => {
+  test("a fractional cap that floors below one falls back to DEFAULT_MAX", () => {
+    /** A fractional cap whose floor is zero, which must not disable every create. */
+    const fractional = resolveConfig({ max: 0.5 })
+    expect(fractional.max).toBe(DEFAULT_MAX)
+    /** A fractional cap above one keeps its floored value. */
+    expect(resolveConfig({ max: 2.9 }).max).toBe(2)
+  })
+
+  test("effectiveConfig falls back to the row config when the mpdConfig lookup throws", () => {
+    /** A context whose strict lookup throws for the absent optional service. */
+    const ctx = {
+      get: (key: string): unknown => {
+        throw new Error("service " + key + " is absent")
+      },
+    }
+    /** The row config that must stay authoritative when the service cannot be resolved. */
+    const resolved = effectiveConfig(ctx, { max: 3, branchPrefix: "row/" })
+    expect(resolved.max).toBe(3)
+    expect(resolved.branchPrefix).toBe("row/")
+  })
+})
+
+describe("git runner", () => {
+  test("a stalled git is killed at the bound and reports a DISTINCT timeout code", () => {
+    /** A directory holding a fake `git` that outlives the configured bound. */
+    const bin = mkdtempSync(join(tmpdir(), "mpd-worktree-fakegit-"))
+    createdRoots.push(bin)
+    /** The executable script name `spawnSync` resolves through PATH. */
+    const fake = join(bin, "git")
+    writeFileSync(fake, "#!/bin/sh\nsleep 5\n")
+    chmodSync(fake, 0o755)
+    /** The PATH to restore even when the assertion fails. */
+    const realPath = process.env.PATH
+    process.env.PATH = bin + ":" + (realPath ?? "")
+    try {
+      /** The bounded run against the stalling fake, with a bound a test can afford. */
+      const result = runGit(bin, ["status"], 100)
+      expect(result.code).toBe(GIT_TIMEOUT_CODE)
+      expect(result.code).not.toBe(-1)
+      expect(result.stderr).toContain("timed out")
+    } finally {
+      process.env.PATH = realPath
+    }
+  })
 })
 
 describe("mpd_worktree_create", () => {
@@ -190,6 +251,67 @@ describe("mpd_worktree_create", () => {
     expect(error.code).toBe("outside-workspace")
     expect(error.message).toContain("D2")
     expect(existsSync(join(sandbox.root, "..", "mpd-worktree-outside", "alice"))).toBe(false)
+  })
+
+  test("refuses a repository whose canonical top level is outside the workspace", () => {
+    /** The sandbox whose workspace is the containment boundary. */
+    const sandbox = makeSandbox()
+    /** A separate repository outside the workspace. */
+    const outside = mkdtempSync(join(tmpdir(), "mpd-worktree-outrepo-"))
+    createdRoots.push(outside)
+    git(outside, ["init", "-q", "-b", "main"])
+    git(outside, ["config", "user.email", "agent@example.com"])
+    git(outside, ["config", "user.name", "Worktree Test"])
+    writeFileSync(join(outside, "x.txt"), "x\n")
+    git(outside, ["add", "."])
+    git(outside, ["commit", "-q", "-m", "init"])
+
+    /** The refusal of the outside repository. */
+    const error = refusal(() => createWorktree(sandbox.deps, { name: "alice", repo: outside }))
+    expect(error.code).toBe("repo-outside-workspace")
+    // Refused BEFORE any mutation: no branch or worktree in the outside repository, no workspace record.
+    expect(gitOk(outside, ["rev-parse", "--verify", "--quiet", "refs/heads/agent/alice"])).toBe(false)
+    expect(git(outside, ["worktree", "list", "--porcelain"])).not.toContain(sandbox.root)
+    expect(existsSync(join(sandbox.root, ".mpd", "worktrees", "alice"))).toBe(false)
+  })
+
+  test("supports a repository CONTAINED in the workspace", () => {
+    /** The sandbox whose workspace is the containment boundary. */
+    const sandbox = makeSandbox()
+    /** A nested repository under the workspace root. */
+    const nested = join(sandbox.root, "nested")
+    mkdirSync(nested)
+    git(nested, ["init", "-q", "-b", "main"])
+    git(nested, ["config", "user.email", "agent@example.com"])
+    git(nested, ["config", "user.name", "Worktree Test"])
+    writeFileSync(join(nested, "x.txt"), "x\n")
+    git(nested, ["add", "."])
+    git(nested, ["commit", "-q", "-m", "init"])
+
+    /** The worktree created in the contained repository. */
+    const created = createWorktree(sandbox.deps, { name: "nested", repo: "nested" })
+    expect(created.repo).toBe(git(nested, ["rev-parse", "--show-toplevel"]))
+    expect(existsSync(created.path)).toBe(true)
+    expect(git(nested, ["worktree", "list", "--porcelain"])).toContain(created.path)
+  })
+
+  test("removes the just-added worktree and branch when recording it fails", () => {
+    /** The sandbox whose state path is obstructed by a directory. */
+    const sandbox = makeSandbox()
+    /** A DIRECTORY where the index file must be renamed into place, so the write fails. */
+    const obstruction = join(sandbox.root, ".mpd", "worktrees", "index.json")
+    mkdirSync(obstruction, { recursive: true })
+    /** The path the failed create would have used. */
+    const target = join(sandbox.root, ".mpd", "worktrees", "alice")
+
+    expect(() => createWorktree(sandbox.deps, { name: "alice" })).toThrow()
+    // The orphan is rolled back: neither the directory nor the branch survives a failed record write.
+    expect(existsSync(target)).toBe(false)
+    expect(gitOk(sandbox.root, ["rev-parse", "--verify", "--quiet", "refs/heads/agent/alice"])).toBe(false)
+
+    // With the obstruction gone the SAME create succeeds, proving the rollback left a retryable state.
+    rmSync(obstruction, { recursive: true, force: true })
+    expect(createWorktree(sandbox.deps, { name: "alice" }).path).toBe(target)
   })
 
   test("refuses a branch that already exists and an invalid branch name", () => {
@@ -406,6 +528,80 @@ describe("mpd_worktree_remove", () => {
   })
 })
 
+describe("mpd_worktree_remove record validation", () => {
+  test("refuses a recorded path outside the worktree root", () => {
+    /** The sandbox whose worktree root is the containment boundary. */
+    const sandbox = makeSandbox()
+    /** The worktree whose record is tampered with. */
+    const created = createWorktree(sandbox.deps, { name: "alice" })
+    /** A directory OUTSIDE the worktree root but inside the workspace. */
+    const outside = join(sandbox.root, "outside-tree")
+    mkdirSync(outside)
+    writeFileSync(join(outside, "keep.txt"), "keep\n")
+    tamperIndex(sandbox, (entry) => {
+      entry.path = outside
+    })
+
+    /** The containment refusal. */
+    const error = refusal(() => removeWorktree(sandbox.deps, { name: "alice", force: true }))
+    expect(error.code).toBe("outside-workspace")
+    // Nothing was removed: neither the tampered directory nor the real worktree.
+    expect(existsSync(join(outside, "keep.txt"))).toBe(true)
+    expect(existsSync(created.path)).toBe(true)
+  })
+
+  test("refuses an existing recorded path git does not list as a worktree", () => {
+    /** The sandbox whose worktree root is the containment boundary. */
+    const sandbox = makeSandbox()
+    /** The worktree whose record is tampered with. */
+    const created = createWorktree(sandbox.deps, { name: "alice" })
+    /** A plain directory inside the worktree root that git does not manage. */
+    const ghost = join(sandbox.root, ".mpd", "worktrees", "ghost")
+    mkdirSync(ghost, { recursive: true })
+    tamperIndex(sandbox, (entry) => {
+      entry.path = ghost
+    })
+
+    /** The registration refusal. */
+    const error = refusal(() => removeWorktree(sandbox.deps, { name: "alice", force: true }))
+    expect(error.code).toBe("unregistered-worktree")
+    expect(existsSync(ghost)).toBe(true)
+    expect(existsSync(created.path)).toBe(true)
+  })
+
+  test("keeps a failed branch deletion retryable instead of a terminal tombstone", () => {
+    /** The sandbox this arm works in. */
+    const sandbox = makeSandbox()
+    /** The worktree whose branch deletion is made to fail. */
+    const created = createWorktree(sandbox.deps, { name: "alice" })
+    /** A ref lock that makes git refuse the branch deletion on the first removal. */
+    const lock = join(sandbox.root, ".git", "refs", "heads", "agent", "alice.lock")
+    writeFileSync(lock, "held\n")
+
+    /** The first removal: the directory goes, the branch deletion fails. */
+    const first = removeWorktree(sandbox.deps, { name: "alice", force: true })
+    expect(first.removed).toBe(true)
+    expect(first.branchDeleted).toBe(false)
+    expect(first.branchError).toBeDefined()
+    expect(existsSync(created.path)).toBe(false)
+    expect(gitOk(sandbox.root, ["rev-parse", "--verify", "--quiet", "refs/heads/agent/alice"])).toBe(true)
+    /** The tombstone still asks for a retry instead of reporting the cleanup as done. */
+    const pending = readRawIndex(sandbox) as { worktrees: Array<Record<string, unknown>> }
+    expect(pending.worktrees[0]?.status).toBe("removed")
+    expect(pending.worktrees[0]?.branchPending).toBe(true)
+
+    /** With the lock released, a later remove retries and completes the cleanup. */
+    rmSync(lock)
+    /** The retry's answer, which must actually delete the branch this time. */
+    const retried = removeWorktree(sandbox.deps, { name: "alice", force: true })
+    expect(retried.branchDeleted).toBe(true)
+    expect(gitOk(sandbox.root, ["rev-parse", "--verify", "--quiet", "refs/heads/agent/alice"])).toBe(false)
+    /** The retry clears the pending flag, so the tombstone is terminal again. */
+    const cleared = readRawIndex(sandbox) as { worktrees: Array<Record<string, unknown>> }
+    expect(cleared.worktrees[0]?.branchPending).toBeUndefined()
+  })
+})
+
 describe("state file", () => {
   test("a corrupt index reads as empty instead of throwing", () => {
     /** The sandbox this arm works in. */
@@ -475,6 +671,85 @@ describe("mpdWorktree service", () => {
     expect(log[0]).toContain("plan-x/alice")
     expect(log[0]).toContain("shared checkout")
     expect(service.cwdForMember(undefined, { teamId: "plan-x", member: "alice" })).toBeUndefined()
+  })
+
+  test("member lookups ignore a directory git no longer registers as a worktree", () => {
+    /** The sandbox this arm works in. */
+    const sandbox = makeSandbox()
+    /** A plain directory at the member path, present on disk but not a git worktree. */
+    const ghost = join(sandbox.root, ".mpd", "worktrees", "plan-x", "ghost")
+    mkdirSync(ghost, { recursive: true })
+    /** The stale record that names the plain directory. */
+    writeFileSync(
+      join(sandbox.root, ".mpd", "worktrees", "index.json"),
+      JSON.stringify({
+        version: 1,
+        worktrees: [
+          {
+            key: "plan-x/ghost",
+            name: "ghost",
+            repo: sandbox.root,
+            path: ghost,
+            branch: "agent/plan-x/ghost",
+            base: "main",
+            createdAt: new Date().toISOString(),
+            status: "active",
+          },
+        ],
+      }),
+    )
+    /** The service the lanes consume. */
+    const service = serviceFor(sandbox)
+
+    expect(service.cwdForMember(undefined, { teamId: "plan-x", member: "ghost" })).toBeUndefined()
+    // Recovery neither hands out nor adopts the unmanaged directory; the spawn degrades to the shared checkout.
+    expect(service.createForMember(undefined, { teamId: "plan-x", member: "ghost" })).toBeUndefined()
+    expect(sandbox.log.some((line) => line.includes("plan-x/ghost") && line.includes("shared checkout"))).toBe(true)
+  })
+
+  test("re-attaches the existing branch when a member directory vanished, preserving its commits", () => {
+    /** The sandbox this arm works in. */
+    const sandbox = makeSandbox()
+    /** The service the lanes consume. */
+    const service = serviceFor(sandbox)
+    /** The first worktree, which is about to disappear. */
+    const first = service.createForMember(undefined, { teamId: "plan-x", member: "Senior Engineer" })
+    /** The member's commit, which a reattach must never discard. */
+    const workCommit = commitFile(first?.path ?? "", "kept.txt", "kept\n", "member work")
+    rmSync(first?.path ?? "", { recursive: true, force: true })
+
+    /** The recovered worktree, reattached to the same branch. */
+    const recovered = service.createForMember(undefined, { teamId: "plan-x", member: "Senior Engineer" })
+    expect(recovered?.path).toBe(first?.path)
+    expect(recovered?.branch).toBe(first?.branch)
+    expect(git(recovered?.path ?? "", ["rev-parse", "HEAD"])).toBe(workCommit)
+    expect(git(recovered?.path ?? "", ["rev-parse", "--abbrev-ref", "HEAD"])).toBe("agent/plan-x/senior-engineer")
+    expect(readFileSync(join(recovered?.path ?? "", "kept.txt"), "utf8")).toBe("kept\n")
+  })
+
+  test("does not reattach a branch another worktree already has checked out", () => {
+    /** The sandbox this arm works in. */
+    const sandbox = makeSandbox()
+    /** The service the lanes consume. */
+    const service = serviceFor(sandbox)
+    /** The first worktree, which is about to disappear. */
+    const first = service.createForMember(undefined, { teamId: "plan-x", member: "Senior Engineer" })
+    rmSync(first?.path ?? "", { recursive: true, force: true })
+    git(sandbox.root, ["worktree", "prune"])
+    /** Another worktree that now holds the same branch, making a reattach unsafe. */
+    const holder = join(sandbox.root, ".mpd", "worktrees", "holder")
+    git(sandbox.root, ["worktree", "add", holder, first?.branch ?? ""])
+
+    // git refuses the second attach; the service degrades instead of stealing the branch.
+    expect(service.createForMember(undefined, { teamId: "plan-x", member: "Senior Engineer" })).toBeUndefined()
+    expect(sandbox.log.some((line) => line.includes("plan-x/Senior Engineer") && line.includes("shared checkout"))).toBe(true)
+
+    // Freeing the branch makes the SAME recovery retryable: the failed attempt kept the stale record.
+    git(sandbox.root, ["worktree", "remove", "--force", holder])
+    /** The retry after the branch is no longer checked out elsewhere. */
+    const recovered = service.createForMember(undefined, { teamId: "plan-x", member: "Senior Engineer" })
+    expect(recovered?.path).toBe(first?.path)
+    expect(recovered?.branch).toBe(first?.branch)
   })
 
   test("cwdForMember stays undefined for an unknown pair and for a vanished directory", () => {

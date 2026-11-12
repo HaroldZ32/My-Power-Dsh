@@ -5845,13 +5845,16 @@ var WORKTREE_SERVICE = "mpdWorktree";
 function rosterReadonlyKeys(service) {
   try {
     const roles = service("mpdRoles");
-    return readonlyMemberKeys(typeof roles?.list === "function" ? roles.list() : []);
+    if (typeof roles?.list !== "function")
+      return;
+    return readonlyMemberKeys(roles.list());
   } catch {
-    return new Set;
+    return;
   }
 }
 function memberWorktreeLookup(service, log) {
   let readonlyKeys;
+  const unclassified = new Set;
   let reported = false;
   const report = (line) => {
     if (reported)
@@ -5860,10 +5863,12 @@ function memberWorktreeLookup(service, log) {
     log(line);
   };
   return (query) => {
-    readonlyKeys ??= rosterReadonlyKeys(service);
-    if (isReadonlyMemberName(query.member, readonlyKeys))
+    if (readonlyKeys === undefined)
+      readonlyKeys = rosterReadonlyKeys(service);
+    const keys = readonlyKeys ?? unclassified;
+    if (isReadonlyMemberName(query.member, keys))
       return;
-    if (query.role !== undefined && isReadonlyMemberName(query.role, readonlyKeys))
+    if (query.role !== undefined && isReadonlyMemberName(query.role, keys))
       return;
     const worktree = service(WORKTREE_SERVICE);
     if (worktree === undefined || typeof worktree.createForMember !== "function") {
@@ -5871,8 +5876,16 @@ function memberWorktreeLookup(service, log) {
       return;
     }
     try {
+      let existed = true;
+      try {
+        existed = typeof worktree.cwdForMember === "function" && worktree.cwdForMember(query.exec, { teamId: query.teamId, member: query.member }) !== undefined;
+      } catch {
+        existed = true;
+      }
       const created = worktree.createForMember(query.exec, { teamId: query.teamId, member: query.member });
-      return typeof created?.path === "string" && created.path !== "" ? created.path : undefined;
+      if (typeof created?.path !== "string" || created.path === "")
+        return;
+      return { path: created.path, created: !existed };
     } catch (error) {
       report("[mpd-team-core] the mpdWorktree service refused for " + query.teamId + "/" + query.member + ": " + String(error?.message ?? error) + " (the member spawns in the shared checkout)");
       return;
@@ -6302,11 +6315,16 @@ async function approveTeamBody(deps, caller, input) {
     if (unresolvedBlockers.length > 0)
       created.unresolved = unresolvedBlockers;
     let stoppedAt;
-    const worktreeOf = memberWorktreeLookup(deps.service, deps.log);
+    const backend = deps.executor();
+    const worktreeOf = backend.kind === "native" ? memberWorktreeLookup(deps.service, deps.log) : undefined;
+    if (worktreeOf === undefined)
+      deps.log("[mpd-team-core] the " + backend.kind + " executor cannot set cwd — team members spawn in the shared checkout (no per-member worktree)");
     for (const member of record.members) {
+      let assignment;
       try {
-        const cwd = worktreeOf({ exec: { agent: caller.agent, signal: caller.signal }, teamId: record.teamId, member: member.name, ...member.role === undefined ? {} : { role: member.role } });
-        const spawned = await deps.executor().spawn(caller.agent, {
+        assignment = worktreeOf?.({ exec: { agent: caller.agent, signal: caller.signal }, teamId: record.teamId, member: member.name, ...member.role === undefined ? {} : { role: member.role } });
+        const cwd = assignment?.path;
+        const spawned = await backend.spawn(caller.agent, {
           teamId: record.teamId,
           memberId: member.id,
           name: member.name,
@@ -6320,6 +6338,13 @@ async function approveTeamBody(deps, caller, input) {
         record = updateTeamMember(record, member.id, { executorRef: spawned.handle, status: "running" });
       } catch (error) {
         record = removeTeamMember(record, member.id);
+        if (assignment?.created === true && deps.releaseWorktree !== undefined) {
+          try {
+            await deps.releaseWorktree(caller.agent, { teamId: record.teamId, member: member.name });
+          } catch (releaseError) {
+            deps.log("[mpd-team-core] the failed-spawn worktree " + record.teamId + "/" + member.name + " could not be released: " + String(releaseError?.message ?? releaseError));
+          }
+        }
         stoppedAt = `member ${member.name}: ${String(error?.message ?? error)}`;
         break;
       }
@@ -8839,6 +8864,7 @@ function callerIdentity(record, sessionId, title, lineage) {
     return { ancestry: lineage };
   return identity.member === undefined ? { ancestry: [] } : { ownMember: identity.member, ancestry: [] };
 }
+var WORKTREE_REMOVE_TOOL = "mpd_worktree_remove";
 var TODO_TOOL_NAME = "todo_write";
 var SEED_TIMEOUT_MS = 1e4;
 function seedSignal(upstream) {
@@ -9133,6 +9159,15 @@ function apply(ctx) {
       }
     },
     log: (line) => rowLogLine("mpd-team-core", line),
+    releaseWorktree: async (agent, ref) => {
+      try {
+        const result = await dsh.executeTool({ name: WORKTREE_REMOVE_TOOL, arguments: { name: ref.teamId + "/" + ref.member }, ...agent === undefined ? {} : { agent } });
+        if (result.isError === true)
+          rowLogLine("mpd-team-core", "the failed-spawn worktree " + ref.teamId + "/" + ref.member + " could not be released: " + String(result.error ?? "the tool returned an error result"));
+      } catch (error) {
+        rowLogLine("mpd-team-core", "the failed-spawn worktree " + ref.teamId + "/" + ref.member + " could not be released: " + String(error?.message ?? error));
+      }
+    },
     beginDispatch: (memberId) => idleGuard.beginDispatch(memberId),
     assertPlanGraph,
     assertScopesOrdered
@@ -9454,10 +9489,15 @@ WARNING: ${value.warning}` : "";
             rowLogLine("mpd-team-core", "the `member-role-omitted` journal row for " + JSON.stringify(added.name) + " could not be written (" + String(error?.message ?? error) + ") — the member is still raised and the warning still rides the answer");
           }
         }
-        const worktreeOf = memberWorktreeLookup(teamActionsDeps.service, teamActionsDeps.log);
-        const cwd = worktreeOf({ exec, teamId: roster.teamId, member: added.name, ...added.role === undefined ? {} : { role: added.role } });
+        const backend = executor();
+        let assignment;
+        const worktreeOf = backend.kind === "native" ? memberWorktreeLookup(teamActionsDeps.service, teamActionsDeps.log) : undefined;
+        if (worktreeOf === undefined)
+          rowLogLine("mpd-team-core", "the " + backend.kind + " executor cannot set cwd — team members spawn in the shared checkout (no per-member worktree)");
+        assignment = worktreeOf?.({ exec, teamId: roster.teamId, member: added.name, ...added.role === undefined ? {} : { role: added.role } });
+        const cwd = assignment?.path;
         try {
-          const spawned = await executor().spawn(exec.agent, {
+          const spawned = await backend.spawn(exec.agent, {
             teamId: roster.teamId,
             memberId: added.id,
             name: added.name,
@@ -9473,6 +9513,8 @@ WARNING: ${value.warning}` : "";
         } catch (error) {
           const released = removeTeamMember(readTeam(workspace, roster.teamId) ?? roster, added.id);
           writeTeam(workspace, withDerivedPhase(released));
+          if (assignment?.created === true)
+            await teamActionsDeps.releaseWorktree?.(exec.agent, { teamId: roster.teamId, member: added.name });
           return { team: released, member: { ...added, status: "failed" }, stoppedAt: `member ${added.name}: ${String(error?.message ?? error)}`, appended: `member ${added.name} (${added.id}) was NOT added to team ${released.teamId}: the raise FAILED, and its roster row was REMOVED so no failed slot is held`, ...roleWarning === undefined ? {} : { warning: roleWarning } };
         }
       }

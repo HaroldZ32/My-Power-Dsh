@@ -7,7 +7,7 @@
 // create all leave the spawn request unchanged (no `cwd`) with exactly ONE log line. A read-only
 // specialist is never given a worktree — it is classified by the SAME roster predicate the dispatch
 // guard uses (`readonlyMemberKeys` / `isReadonlyMemberName`), never by a second list.
-import { isReadonlyMemberName, readonlyMemberKeys, type RosterRow } from "./dispatch"
+import { isReadonlyMemberName, readonlyMemberKeys, type RosterRow } from "./dispatch.ts"
 
 /**
  * The service id Lane A publishes for per-member worktrees.
@@ -54,33 +54,44 @@ export interface MemberWorktreeQuery {
   role?: string
 }
 
+/** Where one member should work, plus whether this lookup CREATED that worktree. */
+export interface MemberWorktreeAssignment {
+  /** The member's own worktree path. */
+  path: string
+  /** True only when no active worktree existed before this lookup created one. */
+  created: boolean
+}
+
 /** The per-call worktree lookup a spawn site builds once and reuses across a roster loop. */
-export type MemberWorktreeLookup = (query: MemberWorktreeQuery) => string | undefined
+export type MemberWorktreeLookup = (query: MemberWorktreeQuery) => MemberWorktreeAssignment | undefined
 
 /**
  * Read the roster's READ-ONLY keys from the mpd-owned roster service.
  *
  * The SAME source and the SAME rule the dispatch guard uses (`mpdRoles.list()` plus
  * {@link readonlyMemberKeys}), so a member classified read-only for dispatch is also skipped here.
- * FAIL-OPEN, exactly like the guard: an absent service or an empty roster yields no keys, and the
- * worktree is then offered to every member rather than silently withheld.
+ * FAIL-OPEN, exactly like the guard: a roster that cannot be read classifies nobody, and the worktree
+ * is then offered to every member rather than silently withheld.
  * @param service - the row's optional-service lookup (`ctx.get(id, false)`), contained by the caller.
- * @returns the normalised keys of every read-only roster row.
+ * @returns the normalised read-only keys, or `undefined` when the roster could NOT be read (an absent
+ *          service or a throwing `list()`), so the caller can retry after a late-binding mount.
  */
-export function rosterReadonlyKeys(service: (id: string) => unknown): ReadonlySet<string> {
+export function rosterReadonlyKeys(service: (id: string) => unknown): ReadonlySet<string> | undefined {
   try {
     /** The mpd-owned roster service; absent in a composition that does not mount the roles row. */
     const roles = service("mpdRoles") as { list?: () => RosterRow[] } | undefined
-    return readonlyMemberKeys(typeof roles?.list === "function" ? roles.list() : [])
+    if (typeof roles?.list !== "function") return undefined
+    return readonlyMemberKeys(roles.list())
   } catch {
-    return new Set<string>()
+    return undefined
   }
 }
 
 /**
  * Build the worktree lookup one spawn site applies to every member it raises.
  *
- * The lookup answers the member's worktree path, or `undefined` in EVERY degrade case. Exactly one
+ * The lookup answers the member's worktree path and whether it was CREATED for this attempt, or
+ * `undefined` in EVERY degrade case. Exactly one
  * line is written per lookup instance when the service is absent or refuses, so an approve loop that
  * raises five members in a composition without the worktree row says so ONCE, not five times. A
  * read-only member and an already-classified degrade answer `undefined` without a second line — the
@@ -90,8 +101,10 @@ export function rosterReadonlyKeys(service: (id: string) => unknown): ReadonlySe
  * @returns the lookup a spawn site calls once per member.
  */
 export function memberWorktreeLookup(service: (id: string) => unknown, log: (line: string) => void): MemberWorktreeLookup {
-  /** The read-only keys, indexed lazily so a composition without a roster pays nothing. */
+  /** The read-only keys, cached ONLY once the roster could actually classify a member. */
   let readonlyKeys: ReadonlySet<string> | undefined
+  /** The set an unreadable roster classifies against this call, without caching it. */
+  const unclassified: ReadonlySet<string> = new Set<string>()
   /** Whether this lookup's ONE degrade line has been written. */
   let reported = false
   /** Write the lookup's one degrade line. */
@@ -100,12 +113,16 @@ export function memberWorktreeLookup(service: (id: string) => unknown, log: (lin
     reported = true
     log(line)
   }
-  return (query: MemberWorktreeQuery): string | undefined => {
-    /** The roster classification, read on first use. */
-    readonlyKeys ??= rosterReadonlyKeys(service)
+  return (query: MemberWorktreeQuery): MemberWorktreeAssignment | undefined => {
+    // THE ROSTER IS RE-READ UNTIL IT CAN CLASSIFY (CodeRabbit round 1): an mpdRoles row that mounts
+    // after this lookup was built must still protect a read-only member. Only a successful read — even
+    // an empty one — is cached; an absent/throwing roster is retried on the next member.
+    if (readonlyKeys === undefined) readonlyKeys = rosterReadonlyKeys(service)
+    /** The keys this call classifies against; an unreadable roster classifies nobody. */
+    const keys = readonlyKeys ?? unclassified
     // A read-only specialist writes nothing, so a worktree would be a checkout it can never use.
-    if (isReadonlyMemberName(query.member, readonlyKeys)) return undefined
-    if (query.role !== undefined && isReadonlyMemberName(query.role, readonlyKeys)) return undefined
+    if (isReadonlyMemberName(query.member, keys)) return undefined
+    if (query.role !== undefined && isReadonlyMemberName(query.role, keys)) return undefined
     /** The worktree service, probed PER CALL so a late-ACTIVE row is not frozen out. */
     const worktree = service(WORKTREE_SERVICE) as WorktreeServiceView | undefined
     if (worktree === undefined || typeof worktree.createForMember !== "function") {
@@ -114,11 +131,21 @@ export function memberWorktreeLookup(service: (id: string) => unknown, log: (lin
       return undefined
     }
     try {
+      /** Whether an active worktree already existed before this call; an unreadable answer counts as reused. */
+      let existed = true
+      try {
+        existed = typeof worktree.cwdForMember === "function" && worktree.cwdForMember(query.exec, { teamId: query.teamId, member: query.member }) !== undefined
+      } catch {
+        // A service that cannot answer "does it exist?" is treated as a REUSE, so a later failed spawn
+        // never deletes a checkout this row did not create.
+        existed = true
+      }
       /** What the service created or reused for this member. */
       const created = worktree.createForMember(query.exec, { teamId: query.teamId, member: query.member })
       // An undefined answer means the service already degraded AND logged its own line; adding one
       // here would break the contract's "exactly one log line total".
-      return typeof created?.path === "string" && created.path !== "" ? created.path : undefined
+      if (typeof created?.path !== "string" || created.path === "") return undefined
+      return { path: created.path, created: !existed }
     } catch (error) {
       // The service promises it never throws; a row's own code is still another row's, so the spawn
       // must survive it. This is the one line for a REFUSAL that never reported itself.

@@ -82,6 +82,8 @@ interface Harness {
    * is the FIRST channel route resolution reads.
    */
   readonly spawnRequests: Array<{ name?: string; role?: string; cwd?: string }>
+  /** Every argument the row passed to `mpd_worktree_remove`, in call order (Lane C cleanup). */
+  readonly removedWorktrees: Array<Record<string, unknown>>
   /**
    * Drive one registered tool by name as a given session.
    * @param name - the registered tool name.
@@ -93,6 +95,12 @@ interface Harness {
   call: (name: string, args: unknown, sessionId: string, opts?: HeaderOpts) => Promise<unknown>
 }
 
+/** The optional harness capability an arm turns on, so the default composition stays today's shape. */
+interface HarnessOptions {
+  /** A member whose raise rejects, as a harness refusal would. */
+  failSpawnFor?: string
+}
+
 /**
  * Build the harness: the real plugin applied against a stub composition.
  *
@@ -101,9 +109,10 @@ interface Harness {
  * `executorRef`: that handle IS the member session's own id in these arms.
  * @param services - extra services the arm mounts (the Lane C worktree/roster doubles); an id this
  *   map does not name falls through to the stub adapter.
+ * @param options - an optional failing member, so the release path can be driven.
  * @returns the harness an arm drives.
  */
-function harness(services: Record<string, unknown> = {}): Harness {
+function harness(services: Record<string, unknown> = {}, options: HarnessOptions = {}): Harness {
   /** The sandbox workspace, which is also what `workspaceRoot` answers. */
   const workspace = sandbox()
   /** The tools the plugin registered. */
@@ -112,6 +121,8 @@ function harness(services: Record<string, unknown> = {}): Harness {
   let service: MpdTeamsService | undefined
   /** Every raise request the stub backend received, in call order (§7.1b reads the REQUEST half). */
   const spawnRequests: Array<{ name?: string; role?: string; cwd?: string }> = []
+  /** Every `mpd_worktree_remove` argument the row issued, in call order. */
+  const removedWorktrees: Array<Record<string, unknown>> = []
   /** The stub backend: it raises any member and mints a handle derived from the member's name. */
   const executor = {
     kind: "native",
@@ -126,6 +137,7 @@ function harness(services: Record<string, unknown> = {}): Harness {
     spawn: async (_caller: unknown, request: { name?: string; role?: string; cwd?: string }): Promise<{ handle: string; executor: string }> => {
       // THE REQUEST HALF (§7.1b): the member's role must reach the executor, the FIRST channel routing reads.
       spawnRequests.push({ name: request?.name, ...(request?.role === undefined ? {} : { role: request.role }), ...(request?.cwd === undefined ? {} : { cwd: request.cwd }) })
+      if (request?.name === options.failSpawnFor) throw new Error("the harness refused the raise")
       return { handle: "child-" + String(request?.name ?? "").replace(/\s+/g, "-"), executor: "native" }
     },
     /** Deliver nothing; the mailbox arm only needs the record. */
@@ -148,6 +160,13 @@ function harness(services: Record<string, unknown> = {}): Harness {
     teamListMembers: (): [] => [],
     teamListTasks: (): [] => [],
     capabilities: (): Record<string, never> => ({}),
+    /** The Lane A removal seam: record the argument; a real tool call would delete the checkout. */
+    executeTool: async (input: { name?: string; arguments?: unknown }): Promise<{ isError?: boolean }> => {
+      if (input.name === "mpd_worktree_remove" && typeof input.arguments === "object" && input.arguments !== null) {
+        removedWorktrees.push(input.arguments as Record<string, unknown>)
+      }
+      return {}
+    },
   }
   /** The minimal cordis context `apply` needs; `provide` captures the service it publishes. */
   const ctx = {
@@ -165,6 +184,8 @@ function harness(services: Record<string, unknown> = {}): Harness {
     get service(): MpdTeamsService | undefined { return service },
     /** The raise requests the stub backend received, in call order. */
     spawnRequests,
+    /** The Lane A removal arguments the row issued, in call order. */
+    removedWorktrees,
     call: async (name: string, args: unknown, sessionId: string, opts?: HeaderOpts) => {
       /** The registered tool, or a thrown error naming what WAS registered. */
       const tool = tools.get(name)
@@ -578,5 +599,33 @@ describe("Lane C — a live add_member raises the member in its own worktree", (
     expect(writer.spawned).toBeDefined()
     expect(asked.filter((ref) => ref.member === "Junior Engineer")).toEqual([{ teamId, member: "Junior Engineer" }])
     expect(h.spawnRequests.filter((entry) => entry.name === "Junior Engineer").map((entry) => entry.cwd)).toEqual(["/ws/.mpd/worktrees/" + teamId + "/Junior Engineer"])
+  })
+
+  test("a FAILED mid-run raise releases ONLY the worktree it created", async () => {
+    /** Every pair the worktree double was asked about. */
+    const asked: Array<{ teamId: string; member: string }> = []
+    /** The worktree surface: no ACTIVE record before the create, so the create OWNS the checkout. */
+    const mpdWorktree = {
+      cwdForMember: (): undefined => undefined,
+      createForMember: (_exec: unknown, ref: { teamId: string; member: string }): { path: string; branch: string } => {
+        asked.push(ref)
+        return { path: "/ws/.mpd/worktrees/" + ref.teamId + "/" + ref.member, branch: "agent/" + ref.teamId + "/" + ref.member }
+      },
+    }
+    /** The roster that classifies the appended writer as write-capable. */
+    const mpdRoles = { list: () => [{ name: "Senior Engineer", readonly: false }, { name: "Reviewer", readonly: false }, { name: "Junior Engineer", readonly: false }] }
+    /** The harness whose executor refuses the appended writer. */
+    const h = harness({ mpdWorktree, mpdRoles }, { failSpawnFor: "Junior Engineer" })
+    /** The approved team whose live roster this arm appends to. */
+    const teamId = await approveTeam(h)
+    /** The append whose raise the harness refuses. */
+    const answer = await h.call("agent_teams_plan", { action: "add_member", member: { name: "Junior Engineer", description: "builds", prompt: "You build.", role: "Junior Engineer" } }, LEAD) as { stoppedAt?: string; appended?: string }
+    expect(answer.stoppedAt).toContain("Junior Engineer")
+    // The checkout was CREATED for this attempt, so the row releases exactly it, addressed by its key.
+    expect(h.removedWorktrees).toEqual([{ name: teamId + "/Junior Engineer" }])
+    // The member-row cleanup is unchanged: no failed slot is held.
+    expect(readTeam(h.workspace, teamId)?.members.some((member) => member.name === "Junior Engineer")).toBe(false)
+    // A checkout the APPROVAL created for another member is never touched by this failure.
+    expect(asked.filter((ref) => ref.member === "Senior Engineer")).toEqual([{ teamId, member: "Senior Engineer" }])
   })
 })

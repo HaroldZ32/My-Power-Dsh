@@ -21,9 +21,13 @@ const WORKTREE = "/ws/.mpd/worktrees/team-wt/worker"
 /**
  * Drive ONE reseed with the seams a live composition offers.
  * @param worktreeCwd - the lookup the row wires from `mpdWorktree.cwdForMember`, or undefined for none.
+ * @param options - the cell record and the RESOLVED execution team id under test.
  * @returns the activation request the adapter received, so the arm reads the real forwarded shape.
  */
-async function reseed(worktreeCwd?: (input: { teamId: string; member: string }) => string | undefined): Promise<Record<string, unknown>> {
+async function reseed(
+  worktreeCwd?: (input: { teamId: string; member: string }) => string | undefined,
+  options: { cell?: CellState; worktreeTeamId?: string } = {},
+): Promise<Record<string, unknown>> {
   /** Every activation spec the adapter received. */
   const captured: Array<{ request?: Record<string, unknown> }> = []
   /** The one live member session the retirement targets. */
@@ -46,12 +50,13 @@ async function reseed(worktreeCwd?: (input: { teamId: string; member: string }) 
     memberName: "worker",
     sessionId: "session-worker",
     parentSessionId: "session-captain",
-    cell: cellWithWorker(),
+    cell: options.cell ?? cellWithWorker(),
     config: { ...DEFAULT_CELLWORK_CONFIG, compactionRetries: 1, idleBarrierDelayMs: 0 },
     handoffText: "## Next step\nfinish B",
     nextStep: "finish B",
     injectDirective: () => {},
     sleep: async () => {},
+    ...(options.worktreeTeamId === undefined ? {} : { worktreeTeamId: options.worktreeTeamId }),
     ...(worktreeCwd === undefined ? {} : { worktreeCwd }),
   })
   expect(outcome.outcome).toBe("reseeded")
@@ -89,5 +94,22 @@ describe("the compaction reseed keeps the member in its worktree (D8)", () => {
     /** The activation request, whose lookup throws. */
     const request = await reseed(() => { throw new Error("no index here") })
     expect("cwd" in request).toBe(false)
+  })
+
+  test("the lookup addresses the RESOLVED EXECUTION team, never the cell's planning id", async () => {
+    /** The ended planning team the legacy cell record still names. */
+    const planning = "team-planning"
+    /** The execution team the live board resolved to, which keys the member's worktree. */
+    const execution = "team-exec"
+    /** The legacy record: `teamId` still points at the planning team. */
+    const legacyCell: CellState = { ...cellWithWorker(), teamId: planning, planningTeamId: planning }
+    /** The activation request, whose lookup asserts the id it is addressed with. */
+    const request = await reseed((input) => {
+      expect(input).toEqual({ teamId: execution, member: "worker" })
+      return WORKTREE
+    }, { cell: legacyCell, worktreeTeamId: execution })
+    // The plan/record still carries the planning id — only the worktree lookup was re-addressed.
+    expect(legacyCell.teamId).toBe(planning)
+    expect(request.cwd).toBe(WORKTREE)
   })
 })

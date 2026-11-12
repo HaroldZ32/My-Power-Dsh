@@ -312,7 +312,7 @@ Otherwise `preset-conformance` reddens under the ambient 0.2.1-rc.5 and `dshgo` 
      instance that accumulates across sessions. A small mechanical change goes to a Junior Engineer, a
      bounded independent piece to a Senior Engineer or Deep Worker, an evidence question to a Researcher
      or Explorer, a verdict to a Reviewer. The captain executes only what must not be delegated by rule —
-     committing (single git writer), contract amendments, plan/roster shaping, releasing a watchdog hold,
+     committing in the main checkout (single git writer per worktree; a member commits only in its own worktree), contract amendments, plan/roster shaping, releasing a watchdog hold,
      and the final integration. **RECONNAISSANCE IS DELEGATED, AGAIN MECHANICALLY (user ruling
      2026-10-20):** on the `mpd` preset's top-level session the captain's `read`/`grep`/`glob`,
      `mpd_hashline_read`, the MCP recon tools (`codegraph_explore`, `ast_grep_search`, the `lsp`
@@ -360,7 +360,8 @@ Otherwise `preset-conformance` reddens under the ambient 0.2.1-rc.5 and `dshgo` 
      with its DECLARED owner when that member is free, and falls back to roster order ONLY with the
      reason reported. **ONE git writer per working tree** (the binding bullet earlier in this section) is
      PROSE since 2026-10-17 and still binding: its enforcement is the dispatch contract — members edit
-     files and run gates, the captain commits — plus review. The five official Agent Teams authoring
+     files, run gates and may commit inside their own worktree; the captain alone commits in the main
+     checkout and merges — plus review. The five official Agent Teams authoring
      verbs are REFUSED at the tool boundary (2026-10-23), so the mpd RECORD is the only board any
      session can create a task on. **Long form** — the withdrawn hook's command list, how a session is
      classified as a child versus the captain, and where the closure stops (a row calling the team

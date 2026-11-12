@@ -2411,7 +2411,8 @@ function nonEmpty(value) {
   return trimmed === "" ? undefined : trimmed;
 }
 function resolveConfig(config = {}) {
-  const max = typeof config.max === "number" && Number.isFinite(config.max) && config.max > 0 ? Math.floor(config.max) : DEFAULT_MAX;
+  const floored = typeof config.max === "number" && Number.isFinite(config.max) && config.max > 0 ? Math.floor(config.max) : DEFAULT_MAX;
+  const max = floored >= 1 ? floored : DEFAULT_MAX;
   const prefix = nonEmpty(config.branchPrefix) ?? DEFAULT_BRANCH_PREFIX;
   const protectedBranches = Array.isArray(config.protectedBranches) ? config.protectedBranches.filter((branch) => typeof branch === "string" && branch.trim() !== "") : [...DEFAULT_PROTECTED_BRANCHES];
   return {
@@ -2425,7 +2426,12 @@ function resolveConfig(config = {}) {
   };
 }
 function effectiveConfig(ctx, config) {
-  const service = ctx?.get?.("mpdConfig");
+  let service;
+  try {
+    service = ctx?.get?.("mpdConfig");
+  } catch {
+    service = undefined;
+  }
   if (service === undefined || typeof service.get !== "function")
     return resolveConfig(config);
   const leaf = (key) => {
@@ -2454,9 +2460,16 @@ import { join as join3, resolve as resolve4 } from "node:path";
 
 // packages/mpd-worktree-plugin/src/git.ts
 import { spawnSync } from "node:child_process";
-function runGit(cwd, args) {
-  const result = spawnSync("git", ["-C", cwd, ...args], { encoding: "utf8" });
-  return { code: result.status ?? -1, stdout: result.stdout ?? "", stderr: result.stderr ?? "" };
+var GIT_TIMEOUT_MS = 30000;
+var GIT_TIMEOUT_CODE = -2;
+function runGit(cwd, args, timeoutMs = GIT_TIMEOUT_MS) {
+  const result = spawnSync("git", ["-C", cwd, ...args], { encoding: "utf8", timeout: timeoutMs, killSignal: "SIGKILL" });
+  const timedOut = result.error?.code === "ETIMEDOUT";
+  return {
+    code: timedOut ? GIT_TIMEOUT_CODE : result.status ?? -1,
+    stdout: result.stdout ?? "",
+    stderr: timedOut ? `git timed out after ${timeoutMs}ms` : result.stderr ?? ""
+  };
 }
 function firstLine(text) {
   for (const line of text.split(`
@@ -2540,6 +2553,10 @@ function addWorktree(repo, path, branch, base) {
   const result = runGit(repo, ["worktree", "add", path, "-b", branch, base]);
   return result.code === 0 ? undefined : firstLine(result.stderr) || firstLine(result.stdout) || "git worktree add exited " + result.code;
 }
+function attachWorktree(repo, path, branch) {
+  const result = runGit(repo, ["worktree", "add", path, branch]);
+  return result.code === 0 ? undefined : firstLine(result.stderr) || firstLine(result.stdout) || "git worktree add exited " + result.code;
+}
 function removeWorktreePath(repo, path, force) {
   const result = runGit(repo, ["worktree", "remove", ...force ? ["--force"] : [], path]);
   return result.code === 0 ? undefined : firstLine(result.stderr) || firstLine(result.stdout) || "git worktree remove exited " + result.code;
@@ -2607,7 +2624,7 @@ function isEntry(value) {
     return false;
   const record = value;
   const statuses = ["active", "merged", "removed"];
-  return typeof record.key === "string" && typeof record.name === "string" && typeof record.repo === "string" && typeof record.path === "string" && typeof record.branch === "string" && typeof record.base === "string" && typeof record.createdAt === "string" && typeof record.status === "string" && statuses.includes(record.status) && (record.teamId === undefined || typeof record.teamId === "string") && (record.member === undefined || typeof record.member === "string");
+  return typeof record.key === "string" && typeof record.name === "string" && typeof record.repo === "string" && typeof record.path === "string" && typeof record.branch === "string" && typeof record.base === "string" && typeof record.createdAt === "string" && typeof record.status === "string" && statuses.includes(record.status) && (record.teamId === undefined || typeof record.teamId === "string") && (record.member === undefined || typeof record.member === "string") && (record.branchPending === undefined || typeof record.branchPending === "boolean");
 }
 function readIndex(file) {
   try {
@@ -2657,6 +2674,11 @@ function worktreeDir(deps) {
 function indexFile(deps) {
   return join3(worktreeDir(deps), "index.json");
 }
+function assertRepoInWorkspace(deps, repo) {
+  if (!isUnderRoot(deps.root, repo)) {
+    throw new WorktreeError("repo-outside-workspace", `repository "${repo}" is outside the workspace root "${deps.root}"; select a repository contained in this workspace`);
+  }
+}
 function resolveRepo(deps, override) {
   const candidate = override ?? deps.config.repo;
   const dir = candidate === undefined ? deps.root : resolve4(deps.root, candidate);
@@ -2664,6 +2686,7 @@ function resolveRepo(deps, override) {
   if (top === undefined) {
     throw new WorktreeError("not-a-repo", `"${dir}" is not a git repository (git rev-parse --show-toplevel failed); pass repo or configure worktree.repo`);
   }
+  assertRepoInWorkspace(deps, top);
   return top;
 }
 function messageOf(error) {
@@ -2687,21 +2710,23 @@ function createEntry(deps, plan) {
   const file = indexFile(deps);
   return withLock(file, () => {
     const index = readIndex(file);
-    const clash = index.worktrees.find((candidate) => candidate.status === "active" && (candidate.name === plan.name || candidate.key === key || canonicalPath(candidate.path) === canonicalPath(plan.path)));
+    const clash = index.worktrees.find((candidate) => candidate.status === "active" && candidate.key !== plan.replaceKey && (candidate.name === plan.name || candidate.key === key || canonicalPath(candidate.path) === canonicalPath(plan.path)));
     if (clash !== undefined) {
       throw new WorktreeError("name-registered", `"${plan.name}" is already registered as ${clash.key} (status ${clash.status}, branch ${clash.branch}); ` + "remove it first or pick another name");
     }
     if (existsSync3(plan.path)) {
       throw new WorktreeError("path-exists", `"${plan.path}" already exists on disk; remove it or pick another name`);
     }
-    const active = index.worktrees.filter((candidate) => candidate.status === "active");
+    const active = index.worktrees.filter((candidate) => candidate.status === "active" && candidate.key !== plan.replaceKey);
     if (active.length >= deps.config.max) {
       throw new WorktreeError("limit-reached", `${active.length} worktrees are active and worktree.max is ${deps.config.max}; remove one first`);
     }
     if (!isValidBranch(repo, plan.branch)) {
       throw new WorktreeError("invalid-branch", `"${plan.branch}" is not a valid branch name (git check-ref-format --branch failed)`);
     }
-    if (branchExists(repo, plan.branch)) {
+    const branchPresent = branchExists(repo, plan.branch);
+    const reattach = branchPresent && plan.reattachBranch === true;
+    if (branchPresent && !reattach) {
       throw new WorktreeError("branch-exists", `branch "${plan.branch}" already exists in ${repo}; pass a different branch`);
     }
     const head = headOf(repo);
@@ -2709,10 +2734,10 @@ function createEntry(deps, plan) {
       throw new WorktreeError("git-failed", `cannot read HEAD of ${repo} (an unborn repository has no base commit)`);
     }
     const base = plan.base ?? deps.config.base ?? head.ref;
-    if (!resolvesToCommit(repo, base)) {
+    if (!reattach && !resolvesToCommit(repo, base)) {
       throw new WorktreeError("invalid-base", `"${base}" does not resolve to a commit in ${repo}`);
     }
-    const failure = addWorktree(repo, plan.path, plan.branch, base);
+    const failure = reattach ? attachWorktree(repo, plan.path, plan.branch) : addWorktree(repo, plan.path, plan.branch, base);
     if (failure !== undefined)
       throw new WorktreeError("git-failed", `git worktree add failed: ${failure}`);
     const entry = {
@@ -2728,7 +2753,21 @@ function createEntry(deps, plan) {
       status: "active"
     };
     const kept = index.worktrees.filter((candidate) => !(candidate.key === key || candidate.name === plan.name || canonicalPath(candidate.path) === canonicalPath(plan.path)));
-    writeIndex(file, { version: 1, worktrees: [...kept, entry] });
+    try {
+      writeIndex(file, { version: 1, worktrees: [...kept, entry] });
+    } catch (error) {
+      const rollbackRemoval = removeWorktreePath(repo, plan.path, true);
+      if (rollbackRemoval !== undefined) {
+        deps.log(`[mpd-worktree] rollback after an index write failure could not remove ${plan.path}: ${rollbackRemoval}`);
+      }
+      if (!reattach) {
+        const rollbackBranch = deleteBranch(repo, plan.branch, true);
+        if (rollbackBranch !== undefined) {
+          deps.log(`[mpd-worktree] rollback after an index write failure could not delete ${plan.branch}: ${rollbackBranch}`);
+        }
+      }
+      throw error;
+    }
     return { name: plan.name, path: plan.path, branch: plan.branch, base, repo };
   });
 }
@@ -2752,10 +2791,13 @@ function createWorktree(deps, args) {
     ...repo === undefined ? {} : { repo }
   });
 }
+function isGitManaged(entry) {
+  const target = canonicalPath(entry.path);
+  return worktreePaths(entry.repo).some((path) => canonicalPath(path) === target);
+}
 function recordOf(entry) {
   const exists = existsSync3(entry.path);
-  const registered = new Set(worktreePaths(entry.repo).map((path) => canonicalPath(path)));
-  const managed = registered.has(canonicalPath(entry.path));
+  const managed = isGitManaged(entry);
   const head = headOf(entry.repo);
   const counts = head === undefined ? undefined : revCount(entry.repo, entry.branch, head.ref);
   return {
@@ -2788,6 +2830,7 @@ function mergeWorktree(deps, args) {
   if (repo === undefined) {
     throw new WorktreeError("not-a-repo", `repository "${entry.repo}" is not a git checkout any more; refusing to merge`);
   }
+  assertRepoInWorkspace(deps, repo);
   const head = headOf(repo);
   if (head === undefined)
     throw new WorktreeError("git-failed", `cannot read HEAD of ${repo}`);
@@ -2827,12 +2870,17 @@ function mergeWorktree(deps, args) {
 function removeWorktree(deps, args) {
   const file = indexFile(deps);
   const entry = findEntry(file, typeof args.name === "string" ? args.name.trim() : "");
-  if (entry.status === "removed") {
+  if (entry.status === "removed" && entry.branchPending !== true) {
     return { removed: true, name: entry.name, path: entry.path, branch: entry.branch, branchDeleted: false };
   }
   const repo = repoTopLevel(entry.repo);
   if (repo === undefined) {
     throw new WorktreeError("not-a-repo", `repository "${entry.repo}" is not a git checkout any more; refusing to touch it`);
+  }
+  assertRepoInWorkspace(deps, repo);
+  const treeRoot = worktreeDir(deps);
+  if (!isUnderRoot(treeRoot, entry.path)) {
+    throw new WorktreeError("outside-workspace", `recorded path "${entry.path}" is outside the worktree root "${treeRoot}"; refusing to remove it`);
   }
   const dirty = existsSync3(entry.path) && isDirty(entry.path);
   const head = headOf(repo);
@@ -2842,6 +2890,10 @@ function removeWorktree(deps, args) {
     throw new WorktreeError(dirty ? "dirty-worktree" : "unmerged", `"${entry.name}" is ${dirty ? "dirty (uncommitted changes)" : "unmerged (commits the main checkout does not have)"}; pass force:true to discard it`);
   }
   if (existsSync3(entry.path)) {
+    const registered = worktreePaths(repo).some((path) => canonicalPath(path) === canonicalPath(entry.path));
+    if (!registered) {
+      throw new WorktreeError("unregistered-worktree", `recorded path "${entry.path}" exists but git does not list it as a worktree of ${repo}; refusing to remove it`);
+    }
     const failure = removeWorktreePath(repo, entry.path, force);
     if (failure !== undefined)
       throw new WorktreeError("git-failed", `git worktree remove failed: ${failure}`);
@@ -2856,6 +2908,10 @@ function removeWorktree(deps, args) {
     const target = index.worktrees.find((candidate) => candidate.key === entry.key);
     if (target !== undefined) {
       target.status = status;
+      if (branchFailure === undefined)
+        delete target.branchPending;
+      else
+        target.branchPending = true;
       writeIndex(file, index);
     }
   });
@@ -2874,30 +2930,35 @@ function createForMember(deps, ref) {
   const key = ref.teamId + "/" + ref.member;
   const file = indexFile(deps);
   const existing = readIndex(file).worktrees.find((candidate) => candidate.key === key && candidate.status === "active");
-  if (existing !== undefined && existsSync3(existing.path))
+  if (existing !== undefined && existsSync3(existing.path) && isGitManaged(existing)) {
     return { path: existing.path, branch: existing.branch };
+  }
+  let recoveredBase;
   if (existing !== undefined) {
-    const repo = repoTopLevel(existing.repo);
-    if (repo !== undefined)
-      pruneWorktrees(repo);
-    withLock(file, () => {
-      const index = readIndex(file);
-      writeIndex(file, { version: 1, worktrees: index.worktrees.filter((candidate) => candidate.key !== key) });
-    });
+    const recordedRepo = repoTopLevel(existing.repo);
+    if (recordedRepo !== undefined) {
+      assertRepoInWorkspace(deps, recordedRepo);
+      pruneWorktrees(recordedRepo);
+      if (resolvesToCommit(recordedRepo, existing.base))
+        recoveredBase = existing.base;
+    }
   }
   const result = createEntry(deps, {
     name: teamSlug + "/" + memberSlug,
     path: join3(worktreeDir(deps), teamSlug, memberSlug),
     branch: deps.config.branchPrefix + teamSlug + "/" + memberSlug,
     teamId: ref.teamId,
-    member: ref.member
+    member: ref.member,
+    ...recoveredBase === undefined ? {} : { base: recoveredBase },
+    reattachBranch: existing !== undefined,
+    ...existing === undefined ? {} : { replaceKey: existing.key }
   });
   return { path: result.path, branch: result.branch };
 }
 function cwdForMember(deps, ref) {
   try {
     const entry = readIndex(indexFile(deps)).worktrees.find((candidate) => candidate.key === ref.teamId + "/" + ref.member && candidate.status === "active");
-    return entry !== undefined && existsSync3(entry.path) ? entry.path : undefined;
+    return entry !== undefined && existsSync3(entry.path) && isGitManaged(entry) ? entry.path : undefined;
   } catch {
     return;
   }

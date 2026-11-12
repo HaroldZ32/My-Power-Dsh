@@ -65,8 +65,10 @@ function nonEmpty(value: unknown): string | undefined {
  * @returns the resolved config, with the workspace-relative keys left undefined when unset.
  */
 export function resolveConfig(config: Config = {}): ResolvedConfig {
-  /** The configured cap, floored to a positive integer so a corrupt value cannot disable creation. */
-  const max = typeof config.max === "number" && Number.isFinite(config.max) && config.max > 0 ? Math.floor(config.max) : DEFAULT_MAX
+  /** The configured cap, floored; a non-finite or non-positive value falls back to the documented default. */
+  const floored = typeof config.max === "number" && Number.isFinite(config.max) && config.max > 0 ? Math.floor(config.max) : DEFAULT_MAX
+  /** The applied cap: a fractional value that floors below one (0.5 → 0) would refuse every create. */
+  const max = floored >= 1 ? floored : DEFAULT_MAX
   /** The configured branch prefix, or the default when absent or blank. */
   const prefix = nonEmpty(config.branchPrefix) ?? DEFAULT_BRANCH_PREFIX
   /** The configured protected list, filtered to real strings; absent keeps the default pair. */
@@ -96,8 +98,14 @@ export function resolveConfig(config: Config = {}): ResolvedConfig {
  * @returns the effective config.
  */
 export function effectiveConfig(ctx: unknown, config: Config): ResolvedConfig {
-  /** The composed config service, present only when `mpd-config-plugin` is mounted in this composition. */
-  const service = (ctx as { get?: (key: string) => unknown } | undefined)?.get?.("mpdConfig") as { get: (key?: string) => unknown } | undefined
+  /** The composed config service, or undefined when the lookup is absent or throws for a missing optional service. */
+  let service: { get: (key?: string) => unknown } | undefined
+  try {
+    service = (ctx as { get?: (key: string) => unknown } | undefined)?.get?.("mpdConfig") as { get: (key?: string) => unknown } | undefined
+  } catch {
+    // A strict lookup for an absent optional service may throw; the row config stays authoritative.
+    service = undefined
+  }
   if (service === undefined || typeof service.get !== "function") return resolveConfig(config)
   /** One dotted `worktree.*` leaf; the service declares no value type, so the answer stays unknown. */
   const leaf = (key: string): unknown => {

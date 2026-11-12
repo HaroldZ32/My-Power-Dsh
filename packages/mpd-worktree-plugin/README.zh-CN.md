@@ -106,6 +106,9 @@
 - official-executor 回退路径无法设置子会话 cwd（契约 D7）；这样的成员运行在共享 checkout 中，日志会
   说明这一点。
 - 成员仍运行在父工作区的 sandbox 边界内；见上文 D2。
+- 工作树所用的**仓库**必须位于工作区根目录处或其之下：插件会规范化该仓库的 git 顶层目录，对落在工作区根
+  目录之外的仓库以 `repo-outside-workspace` 拒绝。因此，本身是更大 git 仓库子目录的工作区会被拒绝；仓库
+  位于工作区根目录或嵌套其下则受支持。
 - team 结束时**不会**自动销毁 worktree；`mpd_worktree_remove` 是显式操作。
 - 未追踪外部/SDK subagent provider；只声明原生进程内（native in-process）后端。
 - `.mpd/mpd.jsonc` 的 `worktree.*` 覆盖依赖已组合的 `mpdConfig` 服务；单独运行时本行只读行配置。

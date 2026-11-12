@@ -15,8 +15,8 @@
 //
 // Harness seams go through `mpd-dsh-adapter` only (AGENTS.md §6): `registerTool` and `rowLog` are the
 // two this row uses, and `ctx.provide` publishes the service without touching a harness service.
-import { DSH_SEAM_TOOLS, dshSeamInject, resolveDshAdapter, type DshAdapter, type DshToolDef } from "../../mpd-dsh-adapter-plugin/src/index"
-import { effectiveConfig, type Config } from "./config"
+import { DSH_SEAM_TOOLS, dshSeamInject, resolveDshAdapter, type DshAdapter, type DshToolDef } from "../../mpd-dsh-adapter-plugin/src/index.ts"
+import { effectiveConfig, type Config } from "./config.ts"
 import {
   createWorktree,
   createWorktreeService,
@@ -29,7 +29,7 @@ import {
   type MemberRef,
   type RemoveArgs,
   type WorktreeDeps,
-} from "./ops"
+} from "./ops.ts"
 
 /** The cordis row id this plugin registers under; the bundle patch mounts it as `mpd-worktree`. */
 export const name = "mpd-worktree"

@@ -5,9 +5,9 @@
 // the harness happens to run.
 import { spawnSync } from "node:child_process"
 
-/** One git invocation's observable result; `code` is -1 when the process could not be started at all. */
+/** One git invocation's observable result; `code` is -1 when git could not start and -2 when it timed out. */
 export interface GitResult {
-  /** Exit status; -1 when git itself did not run (missing binary, bad `-C` directory). */
+  /** Exit status; -1 when git itself did not run, -2 when {@link GIT_TIMEOUT_CODE} killed it. */
   code: number
   /** Standard output, decoded as UTF-8. */
   stdout: string
@@ -15,16 +15,29 @@ export interface GitResult {
   stderr: string
 }
 
+/** The wall-clock bound for one git invocation, so a stalled git cannot hold the host event loop. */
+export const GIT_TIMEOUT_MS = 30_000
+
+/** The result code for a git invocation killed at {@link GIT_TIMEOUT_MS}; distinct from -1 (spawn failure). */
+export const GIT_TIMEOUT_CODE = -2
+
 /**
  * Runs one git command in a directory.
  * @param cwd the directory `git -C` runs in.
  * @param args the git arguments, in argv order.
+ * @param timeoutMs the wall-clock bound for this invocation; defaults to {@link GIT_TIMEOUT_MS}.
  * @returns the exit code and both streams; never throws.
  */
-export function runGit(cwd: string, args: readonly string[]): GitResult {
-  /** The child's captured result; a spawn failure surfaces as a null status, mapped to -1. */
-  const result = spawnSync("git", ["-C", cwd, ...args], { encoding: "utf8" })
-  return { code: result.status ?? -1, stdout: result.stdout ?? "", stderr: result.stderr ?? "" }
+export function runGit(cwd: string, args: readonly string[], timeoutMs: number = GIT_TIMEOUT_MS): GitResult {
+  /** The child's captured result; spawnSync kills a run past the bound and reports `ETIMEDOUT`. */
+  const result = spawnSync("git", ["-C", cwd, ...args], { encoding: "utf8", timeout: timeoutMs, killSignal: "SIGKILL" })
+  /** Whether the bound, not git, ended the run; that answer must not be confused with a spawn failure. */
+  const timedOut = (result.error as { code?: string } | undefined)?.code === "ETIMEDOUT"
+  return {
+    code: timedOut ? GIT_TIMEOUT_CODE : result.status ?? -1,
+    stdout: result.stdout ?? "",
+    stderr: timedOut ? `git timed out after ${timeoutMs}ms` : result.stderr ?? "",
+  }
 }
 
 /**
@@ -217,6 +230,23 @@ export function worktreePaths(repo: string): string[] {
 export function addWorktree(repo: string, path: string, branch: string, base: string): string | undefined {
   /** The creation invocation, in the contract's argument order. */
   const result = runGit(repo, ["worktree", "add", path, "-b", branch, base])
+  return result.code === 0 ? undefined : firstLine(result.stderr) || firstLine(result.stdout) || "git worktree add exited " + result.code
+}
+
+/**
+ * Attaches an EXISTING local branch to a new worktree, preserving every commit it carries.
+ *
+ * Only the recovery path of `createForMember` calls this: `git worktree add <path> <branch>` checks the
+ * branch out as-is (never `-b`/`-B`, never a reset) and git itself refuses the attach when another
+ * worktree currently has that branch checked out — the unsafe-reattach safeguard.
+ * @param repo the repository directory.
+ * @param path the absolute directory to create.
+ * @param branch the existing local branch to attach.
+ * @returns git's failure text, or undefined on success.
+ */
+export function attachWorktree(repo: string, path: string, branch: string): string | undefined {
+  /** The attach invocation: no `-b`, so no branch is created and no commit is discarded. */
+  const result = runGit(repo, ["worktree", "add", path, branch])
   return result.code === 0 ? undefined : firstLine(result.stderr) || firstLine(result.stdout) || "git worktree add exited " + result.code
 }
 

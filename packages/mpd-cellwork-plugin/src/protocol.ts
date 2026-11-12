@@ -3470,6 +3470,11 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         sessionId: member.sessionId,
         parentSessionId,
         cell: caller.cell,
+        // THE WORKTREE IS KEYED BY THE EXECUTION BOARD, NOT THE PLANNING RECORD (CodeRabbit round 1):
+        // a legacy cell's `teamId` can still name the ended planning team, while the member's worktree
+        // was created under the minted execution team. `boardOf` is the resolver every other board read
+        // in this closure uses; `cell` keeps the planning id for every other purpose.
+        worktreeTeamId: boardOf(caller.workspace, cell).teamId,
         config,
         handoffText,
         nextStep: nextStepOf(handoffText),

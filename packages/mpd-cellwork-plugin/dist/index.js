@@ -8171,11 +8171,12 @@ async function promoteAfterHandoff(deps) {
   const retirement = retireOriginal(deps, parent.parent);
   const directive = promotionDirective(deps.cell.cellId, deps.memberName, deps.cell.depth + 1, deps.nextStep);
   let activation;
+  const worktreeTeamId = deps.worktreeTeamId !== undefined && deps.worktreeTeamId !== "" ? deps.worktreeTeamId : deps.cell.teamId;
   const worktreeCwd = (() => {
     if (deps.worktreeCwd === undefined)
       return;
     try {
-      const path = deps.worktreeCwd({ teamId: deps.cell.teamId, member: deps.memberName });
+      const path = deps.worktreeCwd({ teamId: worktreeTeamId, member: deps.memberName });
       return typeof path === "string" && path !== "" ? path : undefined;
     } catch {
       return;
@@ -10159,6 +10160,7 @@ acknowledgement refused for ` + String(refused.length) + " row(s), which stay un
         sessionId: member.sessionId,
         parentSessionId,
         cell: caller.cell,
+        worktreeTeamId: boardOf(caller.workspace, cell).teamId,
         config,
         handoffText,
         nextStep: nextStepOf(handoffText),

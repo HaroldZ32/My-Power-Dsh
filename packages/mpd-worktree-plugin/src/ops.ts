@@ -7,9 +7,10 @@
 // a throw. The service methods NEVER throw — they degrade to `undefined` plus ONE log line (D4).
 import { existsSync } from "node:fs"
 import { join, resolve } from "node:path"
-import type { ResolvedConfig } from "./config"
+import type { ResolvedConfig } from "./config.ts"
 import {
   addWorktree,
+  attachWorktree,
   branchExists,
   deleteBranch,
   headOf,
@@ -25,9 +26,9 @@ import {
   revCount,
   trackedDirty,
   worktreePaths,
-} from "./git"
-import { canonicalPath, isUnderRoot, isValidName, slugify } from "./paths"
-import { readIndex, withLock, writeIndex, type WorktreeEntry, type WorktreeStatus } from "./store"
+} from "./git.ts"
+import { canonicalPath, isUnderRoot, isValidName, slugify } from "./paths.ts"
+import { readIndex, withLock, writeIndex, type WorktreeEntry, type WorktreeStatus } from "./store.ts"
 
 /** Everything one operation needs: the CALLING session's workspace root, the effective config, one log sink. */
 export interface WorktreeDeps {
@@ -74,11 +75,31 @@ export function indexFile(deps: WorktreeDeps): string {
 }
 
 /**
+ * Refuses a repository whose canonical top level sits outside the calling workspace.
+ *
+ * The D2 fence is about WRITE reach: a worktree path can be under the workspace while the repository
+ * that owns it is somewhere else, which would let a worktree operation mutate a checkout the member
+ * could not otherwise touch. The check precedes every git mutation, not just the creation itself.
+ * @param deps the call dependencies.
+ * @param repo git's canonical toplevel for the selected repository.
+ * @throws WorktreeError `repo-outside-workspace` when the toplevel escapes the workspace root.
+ */
+function assertRepoInWorkspace(deps: WorktreeDeps, repo: string): void {
+  if (!isUnderRoot(deps.root, repo)) {
+    throw new WorktreeError(
+      "repo-outside-workspace",
+      `repository "${repo}" is outside the workspace root "${deps.root}"; select a repository contained in this workspace`,
+    )
+  }
+}
+
+/**
  * Resolves the repository an operation works on.
  * @param deps the call dependencies.
  * @param override an explicit `repo` argument, which outranks the row config.
  * @returns git's canonical toplevel for the chosen directory.
- * @throws WorktreeError `not-a-repo` when the directory is not inside a git work tree.
+ * @throws WorktreeError `not-a-repo` when the directory is not inside a git work tree, or
+ *   `repo-outside-workspace` when the canonical toplevel escapes the workspace.
  */
 function resolveRepo(deps: WorktreeDeps, override?: string): string {
   /** The explicit argument first, then the row config; both are directories, not toplevels. */
@@ -93,6 +114,7 @@ function resolveRepo(deps: WorktreeDeps, override?: string): string {
       `"${dir}" is not a git repository (git rev-parse --show-toplevel failed); pass repo or configure worktree.repo`,
     )
   }
+  assertRepoInWorkspace(deps, top)
   return top
 }
 
@@ -250,6 +272,10 @@ interface CreatePlan {
   repo?: string
   /** Optional base override. */
   base?: string
+  /** Whether a vanished member worktree may REATTACH its existing branch instead of failing `branch-exists`. */
+  reattachBranch?: boolean
+  /** The stale record this recovery replaces; only that record stops counting as a name/cap clash. */
+  replaceKey?: string
 }
 
 /**
@@ -307,10 +333,11 @@ function createEntry(deps: WorktreeDeps, plan: CreatePlan): CreateResult {
   return withLock(file, () => {
     /** The index read INSIDE the critical section, so the checks see the file this call will write. */
     const index = readIndex(file)
-    /** An active record that already owns this name, key or path. */
+    /** An active record that already owns this name, key or path, other than the stale record being replaced. */
     const clash = index.worktrees.find(
       (candidate) =>
         candidate.status === "active" &&
+        candidate.key !== plan.replaceKey &&
         (candidate.name === plan.name || candidate.key === key || canonicalPath(candidate.path) === canonicalPath(plan.path)),
     )
     if (clash !== undefined) {
@@ -325,8 +352,8 @@ function createEntry(deps: WorktreeDeps, plan: CreatePlan): CreateResult {
     if (existsSync(plan.path)) {
       throw new WorktreeError("path-exists", `"${plan.path}" already exists on disk; remove it or pick another name`)
     }
-    /** The records the cap counts. */
-    const active = index.worktrees.filter((candidate) => candidate.status === "active")
+    /** The records the cap counts: the stale record being replaced frees its own slot. */
+    const active = index.worktrees.filter((candidate) => candidate.status === "active" && candidate.key !== plan.replaceKey)
     if (active.length >= deps.config.max) {
       throw new WorktreeError(
         "limit-reached",
@@ -336,7 +363,11 @@ function createEntry(deps: WorktreeDeps, plan: CreatePlan): CreateResult {
     if (!isValidBranch(repo, plan.branch)) {
       throw new WorktreeError("invalid-branch", `"${plan.branch}" is not a valid branch name (git check-ref-format --branch failed)`)
     }
-    if (branchExists(repo, plan.branch)) {
+    /** Whether the branch already exists locally, the question a recovery must answer before reattaching. */
+    const branchPresent = branchExists(repo, plan.branch)
+    /** A reattach checks the EXISTING branch out as-is; only the missing-directory recovery may ask for it. */
+    const reattach = branchPresent && plan.reattachBranch === true
+    if (branchPresent && !reattach) {
       throw new WorktreeError("branch-exists", `branch "${plan.branch}" already exists in ${repo}; pass a different branch`)
     }
     /** The main checkout's current HEAD, the base fallback. */
@@ -346,11 +377,13 @@ function createEntry(deps: WorktreeDeps, plan: CreatePlan): CreateResult {
     }
     /** The base ref/SHA: argument, then row config, then the main checkout's HEAD. */
     const base = plan.base ?? deps.config.base ?? head.ref
-    if (!resolvesToCommit(repo, base)) {
+    // A creation starts from `base`; a reattach takes the branch's own history, so its old base pointer
+    // is recorded but never required to resolve.
+    if (!reattach && !resolvesToCommit(repo, base)) {
       throw new WorktreeError("invalid-base", `"${base}" does not resolve to a commit in ${repo}`)
     }
-    /** git's failure text for the creation, or undefined on success. */
-    const failure = addWorktree(repo, plan.path, plan.branch, base)
+    /** git's failure text for the creation or the safe reattach, or undefined on success. */
+    const failure = reattach ? attachWorktree(repo, plan.path, plan.branch) : addWorktree(repo, plan.path, plan.branch, base)
     if (failure !== undefined) throw new WorktreeError("git-failed", `git worktree add failed: ${failure}`)
     /** The record this call writes. */
     const entry: WorktreeEntry = {
@@ -369,7 +402,25 @@ function createEntry(deps: WorktreeDeps, plan: CreatePlan): CreateResult {
     const kept = index.worktrees.filter(
       (candidate) => !(candidate.key === key || candidate.name === plan.name || canonicalPath(candidate.path) === canonicalPath(plan.path)),
     )
-    writeIndex(file, { version: 1, worktrees: [...kept, entry] })
+    try {
+      writeIndex(file, { version: 1, worktrees: [...kept, entry] })
+    } catch (error) {
+      // An unrecorded worktree must not survive: a retry would hit `path-exists`/`branch-exists`.
+      // The branch is deleted only when THIS call created it, so a reattached branch keeps its commits.
+      /** git's failure text for the rollback removal, or undefined when it succeeded. */
+      const rollbackRemoval = removeWorktreePath(repo, plan.path, true)
+      if (rollbackRemoval !== undefined) {
+        deps.log(`[mpd-worktree] rollback after an index write failure could not remove ${plan.path}: ${rollbackRemoval}`)
+      }
+      if (!reattach) {
+        /** git's failure text for the rollback branch deletion, or undefined when it succeeded. */
+        const rollbackBranch = deleteBranch(repo, plan.branch, true)
+        if (rollbackBranch !== undefined) {
+          deps.log(`[mpd-worktree] rollback after an index write failure could not delete ${plan.branch}: ${rollbackBranch}`)
+        }
+      }
+      throw error
+    }
     return { name: plan.name, path: plan.path, branch: plan.branch, base, repo }
   })
 }
@@ -408,6 +459,20 @@ export function createWorktree(deps: WorktreeDeps, args: CreateArgs): CreateResu
 }
 
 /**
+ * Whether git still lists the recorded path as a worktree of the entry's repository.
+ *
+ * A stale directory that git unregistered must never be handed to a child as its cwd, and must not be
+ * probed with `git -C`: it would ascend to the parent repository and report the MAIN checkout's status.
+ * @param entry the recorded worktree.
+ * @returns true when `git worktree list` reports the canonical recorded path.
+ */
+function isGitManaged(entry: WorktreeEntry): boolean {
+  /** The canonical recorded path, compared against git's own canonical listing. */
+  const target = canonicalPath(entry.path)
+  return worktreePaths(entry.repo).some((path) => canonicalPath(path) === target)
+}
+
+/**
  * Enriches one record with the live git facts `list`/`status` report.
  * @param entry the recorded worktree.
  * @returns the record plus `exists`, `dirty`, `ahead`, `behind` and `merged`.
@@ -415,12 +480,8 @@ export function createWorktree(deps: WorktreeDeps, args: CreateArgs): CreateResu
 function recordOf(entry: WorktreeEntry): WorktreeRecord {
   /** Whether the recorded directory still exists on disk. */
   const exists = existsSync(entry.path)
-  /** The paths git itself reports as worktrees of the entry's repo. */
-  const registered = new Set(worktreePaths(entry.repo).map((path) => canonicalPath(path)))
-  // A path git no longer manages must NOT be probed with `git -C`: a stale directory would make git
-  // ascend to the parent repository and report the MAIN checkout's status as the worktree's.
   /** Whether git still manages this path, the guard for running git inside it. */
-  const managed = registered.has(canonicalPath(entry.path))
+  const managed = isGitManaged(entry)
   /** The main checkout's current ref, the comparison base for ahead/behind/merged. */
   const head = headOf(entry.repo)
   /** The ahead/behind pair, absent when either side does not resolve. */
@@ -482,6 +543,7 @@ export function mergeWorktree(deps: WorktreeDeps, args: MergeArgs): MergeResult 
   if (repo === undefined) {
     throw new WorktreeError("not-a-repo", `repository "${entry.repo}" is not a git checkout any more; refusing to merge`)
   }
+  assertRepoInWorkspace(deps, repo)
   /** The main checkout's current HEAD. */
   const head = headOf(repo)
   if (head === undefined) throw new WorktreeError("git-failed", `cannot read HEAD of ${repo}`)
@@ -542,13 +604,22 @@ export function removeWorktree(deps: WorktreeDeps, args: RemoveArgs): RemoveResu
   const file = indexFile(deps)
   /** The record the caller addressed. */
   const entry = findEntry(file, typeof args.name === "string" ? args.name.trim() : "")
-  if (entry.status === "removed") {
+  if (entry.status === "removed" && entry.branchPending !== true) {
     return { removed: true, name: entry.name, path: entry.path, branch: entry.branch, branchDeleted: false }
   }
   /** The repository, re-canonicalised; a moved checkout refuses instead of deleting the wrong tree. */
   const repo = repoTopLevel(entry.repo)
   if (repo === undefined) {
     throw new WorktreeError("not-a-repo", `repository "${entry.repo}" is not a git checkout any more; refusing to touch it`)
+  }
+  assertRepoInWorkspace(deps, repo)
+  /** The worktree root the recorded path must stay inside. */
+  const treeRoot = worktreeDir(deps)
+  if (!isUnderRoot(treeRoot, entry.path)) {
+    throw new WorktreeError(
+      "outside-workspace",
+      `recorded path "${entry.path}" is outside the worktree root "${treeRoot}"; refusing to remove it`,
+    )
   }
   /** Whether the worktree directory carries uncommitted changes. */
   const dirty = existsSync(entry.path) && isDirty(entry.path)
@@ -565,6 +636,14 @@ export function removeWorktree(deps: WorktreeDeps, args: RemoveArgs): RemoveResu
     )
   }
   if (existsSync(entry.path)) {
+    /** Whether git itself still lists the recorded path as a worktree of the recorded repository. */
+    const registered = worktreePaths(repo).some((path) => canonicalPath(path) === canonicalPath(entry.path))
+    if (!registered) {
+      throw new WorktreeError(
+        "unregistered-worktree",
+        `recorded path "${entry.path}" exists but git does not list it as a worktree of ${repo}; refusing to remove it`,
+      )
+    }
     /** git's failure text for the removal, or undefined. */
     const failure = removeWorktreePath(repo, entry.path, force)
     if (failure !== undefined) throw new WorktreeError("git-failed", `git worktree remove failed: ${failure}`)
@@ -585,6 +664,10 @@ export function removeWorktree(deps: WorktreeDeps, args: RemoveArgs): RemoveResu
     const target = index.worktrees.find((candidate) => candidate.key === entry.key)
     if (target !== undefined) {
       target.status = status
+      // A tombstone whose branch git refused to delete stays REPEATABLE: the flag makes a later
+      // remove retry the branch, instead of returning at the terminal-status check above.
+      if (branchFailure === undefined) delete target.branchPending
+      else target.branchPending = true
       writeIndex(file, index)
     }
   })
@@ -617,17 +700,24 @@ export function createForMember(deps: WorktreeDeps, ref: MemberRef): { path: str
   const file = indexFile(deps)
   /** An active record for this pair, when one exists. */
   const existing = readIndex(file).worktrees.find((candidate) => candidate.key === key && candidate.status === "active")
-  if (existing !== undefined && existsSync(existing.path)) return { path: existing.path, branch: existing.branch }
+  // Only a directory git STILL MANAGES may be returned: a leftover directory whose registration git
+  // dropped is not a worktree, and handing it to the child would point the member at a dead cwd.
+  if (existing !== undefined && existsSync(existing.path) && isGitManaged(existing)) {
+    return { path: existing.path, branch: existing.branch }
+  }
+  /** The old base pointer a recovery keeps, when it still resolves; reattaching itself never resets a ref. */
+  let recoveredBase: string | undefined
   if (existing !== undefined) {
-    // The recorded directory is GONE: prune git's stale registration and drop the record, so the
-    // create below is a fresh start instead of a `path-exists`/`name-registered` refusal.
-    const repo = repoTopLevel(existing.repo)
-    if (repo !== undefined) pruneWorktrees(repo)
-    withLock(file, () => {
-      /** The index re-read inside the lock before the stale record is dropped. */
-      const index = readIndex(file)
-      writeIndex(file, { version: 1, worktrees: index.worktrees.filter((candidate) => candidate.key !== key) })
-    })
+    // The recorded directory is GONE or unmanaged: prune git's stale registration. The create below
+    // REPLACES the record (outside the name/cap clash) and writes the fresh one only on success, so a
+    // failed recovery keeps the old record and stays retryable instead of wedging on `branch-exists`.
+    /** The vanished record's repository, when it still resolves; only a CONTAINED repo may be pruned. */
+    const recordedRepo = repoTopLevel(existing.repo)
+    if (recordedRepo !== undefined) {
+      assertRepoInWorkspace(deps, recordedRepo)
+      pruneWorktrees(recordedRepo)
+      if (resolvesToCommit(recordedRepo, existing.base)) recoveredBase = existing.base
+    }
   }
   /** The creation result, reduced to the two fields the service contract exposes. */
   const result = createEntry(deps, {
@@ -636,6 +726,11 @@ export function createForMember(deps: WorktreeDeps, ref: MemberRef): { path: str
     branch: deps.config.branchPrefix + teamSlug + "/" + memberSlug,
     teamId: ref.teamId,
     member: ref.member,
+    ...(recoveredBase === undefined ? {} : { base: recoveredBase }),
+    // Recovery may reattach the pair's existing branch instead of failing `branch-exists`; git keeps
+    // every commit and refuses an unsafe attach (branch checked out elsewhere).
+    reattachBranch: existing !== undefined,
+    ...(existing === undefined ? {} : { replaceKey: existing.key }),
   })
   return { path: result.path, branch: result.branch }
 }
@@ -652,7 +747,8 @@ export function cwdForMember(deps: WorktreeDeps, ref: MemberRef): string | undef
     const entry = readIndex(indexFile(deps)).worktrees.find(
       (candidate) => candidate.key === ref.teamId + "/" + ref.member && candidate.status === "active",
     )
-    return entry !== undefined && existsSync(entry.path) ? entry.path : undefined
+    // A cwd is handed out only while git still registers the directory as a worktree of its repo.
+    return entry !== undefined && existsSync(entry.path) && isGitManaged(entry) ? entry.path : undefined
   } catch {
     return undefined
   }

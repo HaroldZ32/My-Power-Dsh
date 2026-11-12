@@ -113,6 +113,10 @@ There is NO automatic merge queue and NO automatic gate run after a merge.
 - The official-executor fallback cannot set a child's cwd (contract D7); such a member runs in the
   shared checkout, and the log says so.
 - Members still run inside the parent workspace's sandbox boundary; see D2 above.
+- A worktree REPOSITORY must live at or under the workspace root: the plugin canonicalises the repo's
+  git top level and refuses a repo outside the workspace root with `repo-outside-workspace`. A
+  workspace that is itself a subdirectory of a larger git repository is therefore refused; a repo at
+  the workspace root or nested under it is supported.
 - Worktrees are NOT destroyed when a team ends; `mpd_worktree_remove` is explicit.
 - External/SDK subagent providers were not traced; only the native in-process backend is claimed.
 - The `.mpd/mpd.jsonc` `worktree.*` overlay requires the composed `mpdConfig` service; on its own the

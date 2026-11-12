@@ -97,6 +97,9 @@ D2：工作树**必须**位于父 workspace 根目录之内——默认
 - 合并是手工的、由队长驱动；没有自动合并队列，合并后也不会自动跑门禁。
 - 在宿主添加 `additionalWritableRoots` 条目之前，workspace 根目录之外的工作树对成员只读；本 bundle 不提供
   这样的条目。
+- 工作树所用的仓库必须位于 workspace 根目录处或其之下：插件会规范化该仓库的 git 顶层目录，对落在 workspace
+  根目录之外的仓库以 `repo-outside-workspace` 拒绝。因此，本身是更大 git 仓库子目录的 workspace 会被拒绝；
+  仓库位于 workspace 根目录或嵌套其下则受支持。
 - 官方执行器回退带不了 `cwd`，因此这样的成员在共享 checkout 中运行。
 - team 结束时工作树不会被自动销毁；`mpd_worktree_remove` 是显式的。
 - 只覆盖原生进程内 subagent 后端。外部/SDK 的 subagent provider 未被追踪，也不作承诺。
