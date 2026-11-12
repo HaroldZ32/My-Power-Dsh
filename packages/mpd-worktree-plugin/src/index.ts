@@ -115,7 +115,8 @@ export function apply(ctx: unknown, config: Config = {}): void {
     description:
       "Create a git worktree for an agent under <workspace>/.mpd/worktrees on a new branch (default agent/<name>). " +
       "The path MUST stay inside the workspace (D2: a member's sandbox fence is the parent workspace). " +
-      "Refuses an existing path, a registered name and a branch that already exists.",
+      "Refuses an existing path, a registered name, a branch that already exists and a protected branch name " +
+      "(worktree.protectedBranches).",
     parameters: {
       type: "object",
       properties: {

@@ -1,0 +1,2 @@
+protected=dev create=protected-branch recordPresent=false recorded=none branchExists=false dirExists=false remove(force:true)=unknown-worktree recreate=NO-REFUSAL
+protected=master create=protected-branch recordPresent=false recorded=none branchExists=false dirExists=false remove(force:true)=unknown-worktree recreate=NO-REFUSAL

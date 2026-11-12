@@ -1,0 +1,8 @@
+# F2 premise: git ADMITS the full-ref spelling and nests the ref (no product code involved)
+refs/heads/dev
+check-ref-format(refs/heads/dev) exit=0
+HEAD is now at 2cbdc15 init
+nested ref exists: 2cbdc159442a34d376dcd519b4f9b061efa49242
+worktree HEAD abbrev: heads/refs/heads/dev
+worktree HEAD symbolic: refs/heads/refs/heads/dev
+record spelling would be: refs/heads/dev

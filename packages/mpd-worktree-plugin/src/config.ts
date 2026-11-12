@@ -14,7 +14,7 @@ export type Config = {
   base?: string
   /** Prefix every default branch name carries (default `agent/`). */
   branchPrefix?: string
-  /** Branches `mpd_worktree_merge` refuses as a target unless `force: true` (default `["master","dev"]`). */
+  /** Branches creation refuses by name, and remove/merge refuse as the RECORDED branch; a merge also refuses one as a target unless forced (default `["master","dev"]`). */
   protectedBranches?: string[]
   /** Cap on simultaneously ACTIVE worktrees (default 32). */
   max?: number
@@ -32,13 +32,13 @@ export interface ResolvedConfig {
   base: string | undefined
   /** The branch prefix every default branch name carries. */
   branchPrefix: string
-  /** Branches a merge refuses as a target unless forced. */
+  /** Branches creation refuses by name, and remove/merge refuse as the recorded branch; a merge also refuses one as a target unless forced. */
   protectedBranches: string[]
   /** The cap on simultaneously active worktrees. */
   max: number
 }
 
-/** The protected branches a merge refuses by default: the repository's release and integration lines. */
+/** The protected branches creation refuses by name and remove/merge refuse by default: the repository's release and integration lines. */
 export const DEFAULT_PROTECTED_BRANCHES: readonly string[] = ["master", "dev"]
 
 /** The prefix every default branch name carries (`agent/<name>`). */

@@ -99,6 +99,33 @@ export function headOf(repo: string): HeadInfo | undefined {
 }
 
 /**
+ * The branch a checkout has checked out, WITHOUT git's ambiguous abbreviation.
+ *
+ * `git rev-parse --abbrev-ref HEAD` abbreviates through the whole ref namespace, so a branch that
+ * shares its name with another ref (a `feature` release tag beside the `feature` branch) is reported
+ * as `heads/feature`. A record stores the short name, so comparing the two refused every remove and
+ * merge on such a worktree. `git symbolic-ref --quiet HEAD` answers the full symbolic ref and nothing
+ * else, which is unambiguous once the `refs/heads/` prefix is stripped; a detached checkout keeps the
+ * literal `HEAD` spelling so a caller can still tell it apart from a branch, and a HEAD git cannot read
+ * at all answers undefined.
+ * @param dir the checkout directory.
+ * @returns the short branch name (or the literal `HEAD` when detached), or undefined when git cannot answer.
+ */
+export function checkedOutBranch(dir: string): string | undefined {
+  /** The full symbolic ref (`refs/heads/<name>`); it exits non-zero for a detached or unreadable HEAD. */
+  const symbolic = runGit(dir, ["symbolic-ref", "--quiet", "HEAD"])
+  if (symbolic.code === 0) {
+    /** The trimmed full ref name; a blank answer counts as "git cannot say". */
+    const full = symbolic.stdout.trim()
+    if (full === "") return undefined
+    return full.startsWith("refs/heads/") ? full.slice("refs/heads/".length) : full
+  }
+  /** Whether a commit is checked out at all: a detached HEAD resolves, a broken one does not. */
+  const head = runGit(dir, ["rev-parse", "--verify", "--quiet", "HEAD"])
+  return head.code === 0 ? "HEAD" : undefined
+}
+
+/**
  * Reads the commit HEAD points at — the commit a successful merge lands.
  * @param repo the repository directory.
  * @returns the SHA, or undefined when HEAD does not resolve.
@@ -121,6 +148,22 @@ export function headSha(repo: string): string | undefined {
 export function isValidBranch(repo: string, branch: string): boolean {
   if (branch.trim() === "" || branch.startsWith("-")) return false
   return runGit(repo, ["check-ref-format", "--branch", branch]).code === 0
+}
+
+/**
+ * The local branch ref a recorded short branch name addresses, for commands that take a revision.
+ *
+ * A bare name is ambiguous whenever another ref carries it too: with a tag `feature` present,
+ * `git merge feature` merges the TAG and `git merge-base --is-ancestor feature …` answers for the tag
+ * as well. A recorded branch is always a local branch, so every revision-shaped use of it addresses
+ * `refs/heads/<name>` explicitly. Commands that take a branch NAME rather than a revision keep the
+ * short spelling, because they resolve it against `refs/heads/` themselves (`git branch -d
+ * refs/heads/<name>` is refused as "branch not found").
+ * @param branch the short branch name a record carries.
+ * @returns the full local ref, `refs/heads/<branch>`.
+ */
+export function branchRef(branch: string): string {
+  return "refs/heads/" + branch
 }
 
 /**

@@ -1,0 +1,11 @@
+ docs/worktree.md                                   |  12 +-
+ docs/worktree.zh-CN.md                             |  10 +-
+ packages/mpd-worktree-plugin/README.md             |  12 +-
+ packages/mpd-worktree-plugin/README.zh-CN.md       |  10 +-
+ packages/mpd-worktree-plugin/dist/index.js         |  48 +++-
+ packages/mpd-worktree-plugin/src/config.ts         |   6 +-
+ packages/mpd-worktree-plugin/src/git.ts            |  17 ++
+ packages/mpd-worktree-plugin/src/index.ts          |   3 +-
+ packages/mpd-worktree-plugin/src/ops.ts            | 105 +++++++++
+ packages/mpd-worktree-plugin/test/worktree.test.ts | 262 ++++++++++++++++++++-
+ 10 files changed, 471 insertions(+), 14 deletions(-)

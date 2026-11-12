@@ -1,0 +1,21 @@
+=== A: vanished worktree dir + vanished branch (contract: missing path is PRUNED, not an error) ===
+remove => branch-missing | recorded status: active | createWorktree again => name-registered
+=== B: vanished worktree dir + existing branch (control: prune still works) ===
+fatal: Needed a single revision
+remove => {"removed":true,"name":"alice","path":"/tmp/n1-probe-qphTq5/.mpd/worktrees/alice","branch":"agent/alice","branchDeleted":true} | branch exists: false
+=== C: a PRESENT worktree whose branch ref was deleted (broken HEAD) ===
+remove => branch-missing | dir exists: true
+=== D: tampered invalid branch names (option-injection guard) on BOTH operations ===
+branch "-D" => remove: invalid-branch | merge: invalid-branch
+branch "bad..name" => remove: invalid-branch | merge: invalid-branch
+branch "head~1" => remove: invalid-branch | merge: invalid-branch
+branch "foo bar" => remove: invalid-branch | merge: invalid-branch
+branch "HEAD" => remove: invalid-branch | merge: invalid-branch
+=== E: tampered literal refs/heads/master branch (not the protected master) ===
+remove => branch-mismatch | real master exists: true | literal branch exists: true | path exists: true
+=== F: merge when the worktree directory vanished (branch still exists) ===
+merge => unregistered-worktree | branch exists: true | main HEAD: 3e2e9b8fe55aa003b61f5ce3e7360a41b34f406e
+=== G: tampered record pointing at the MAIN checkout itself, branch = main (dir = workspace root) ===
+remove => git-failed | main HEAD before/after: 3e2e9b8f / 3e2e9b8f | main branch exists: true | main root still a worktree: true
+merge => NO-REFUSAL | main HEAD after merge: 3e2e9b8f
+EXIT=0

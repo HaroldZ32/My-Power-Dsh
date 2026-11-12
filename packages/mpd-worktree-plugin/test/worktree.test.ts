@@ -15,7 +15,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { DEFAULT_MAX, effectiveConfig, resolveConfig, type Config, type ResolvedConfig } from "../src/config.ts"
 import { GIT_TIMEOUT_CODE, runGit } from "../src/git.ts"
-import { createWorktree, createWorktreeService, cwdForMember, listWorktrees, mergeWorktree, removeWorktree, WorktreeError, worktreeStatus, type MpdWorktreeService, type WorktreeDeps } from "../src/ops.ts"
+import { createForMember, createWorktree, createWorktreeService, cwdForMember, listWorktrees, mergeWorktree, removeWorktree, WorktreeError, worktreeStatus, type MpdWorktreeService, type WorktreeDeps } from "../src/ops.ts"
 
 /** One throwaway workspace: the git repository root, its resolved config and the captured log lines. */
 interface Sandbox {
@@ -223,6 +223,89 @@ describe("mpd_worktree_create", () => {
 
     expect(created.branch).toBe("work/bob")
     expect(git(sandbox.root, ["rev-parse", "--verify", "refs/heads/work/bob"])).toHaveLength(40)
+  })
+
+  test("refuses a configured protected branch before any git or registry mutation (F4)", () => {
+    // A repo whose default branch is `main` has no `dev`/`master` yet: that is exactly the state in
+    // which the pre-fix create succeeded and then remove/merge refused the untampered record forever.
+    for (const branch of ["dev", "master"]) {
+      /** A sandbox that protects the release/integration names while the repository lacks them. */
+      const sandbox = makeSandbox({ protectedBranches: ["master", "dev"] })
+      /** The path the refused create would have used. */
+      const target = join(sandbox.root, ".mpd", "worktrees", "alice")
+
+      /** The typed creation refusal. */
+      const error = refusal(() => createWorktree(sandbox.deps, { name: "alice", branch }))
+      expect(error.code).toBe("protected-branch")
+      expect(error.message).toContain(branch)
+      expect(error.message).toContain("protectedBranches")
+
+      // Nothing was created: no branch, no directory, no git worktree registration, no state record.
+      expect(gitOk(sandbox.root, ["rev-parse", "--verify", "--quiet", `refs/heads/${branch}`])).toBe(false)
+      expect(existsSync(target)).toBe(false)
+      expect(git(sandbox.root, ["worktree", "list", "--porcelain"])).not.toContain(target)
+      expect(existsSync(join(sandbox.root, ".mpd", "worktrees", "index.json"))).toBe(false)
+
+      // The refusal registered no name: the same name still creates on a non-protected branch.
+      /** The same name created after the refusal, which proves the name was never registered. */
+      const created = createWorktree(sandbox.deps, { name: "alice" })
+      expect(created.branch).toBe("agent/alice")
+      expect(existsSync(target)).toBe(true)
+    }
+  })
+
+  test("still creates a non-protected branch while other names are protected", () => {
+    /** A sandbox whose config protects the release/integration lines. */
+    const sandbox = makeSandbox({ protectedBranches: ["master", "dev"] })
+    /** The ordinary explicit branch create that the protection list must not block. */
+    const created = createWorktree(sandbox.deps, { name: "bob", branch: "work/bob" })
+
+    expect(created.branch).toBe("work/bob")
+    expect(gitOk(sandbox.root, ["rev-parse", "--verify", "--quiet", "refs/heads/work/bob"])).toBe(true)
+    /** The state record the successful create wrote. */
+    const index = readRawIndex(sandbox) as { worktrees: Array<Record<string, unknown>> }
+    expect(index.worktrees[0]?.branch).toBe("work/bob")
+    expect(index.worktrees[0]?.status).toBe("active")
+  })
+
+  test("refuses a refs/-rooted branch argument before any git or registry mutation (F2)", () => {
+    // `git check-ref-format --branch refs/heads/dev` exits 0 while git creates
+    // `refs/heads/refs/heads/dev`: the old guard admitted a record nothing could consume, and the
+    // protected-name check (an exact short-name comparison) never saw `dev`.
+    /** A sandbox that protects `dev`, the name the full-ref spelling tries to reach. */
+    const sandbox = makeSandbox({ protectedBranches: ["dev"] })
+    /** The existing local branch the `refs/heads/dev` spelling addresses. */
+    git(sandbox.root, ["branch", "dev"])
+    /** The path the refused creates would have used. */
+    const target = join(sandbox.root, ".mpd", "worktrees", "alice")
+
+    for (const branch of ["refs/heads/dev", "refs/heads/main", "refs/heads/never-existed"]) {
+      /** The typed creation refusal for the full-ref spelling. */
+      const error = refusal(() => createWorktree(sandbox.deps, { name: "alice", branch }))
+      expect(error.code).toBe("invalid-branch")
+      expect(error.message).toContain("short branch name")
+
+      // Nothing was created: no branch ref (git would create `refs/heads/<spelling>`), no directory,
+      // no worktree registration and no state record.
+      expect(gitOk(sandbox.root, ["rev-parse", "--verify", "--quiet", `refs/heads/${branch}`])).toBe(false)
+      expect(existsSync(target)).toBe(false)
+      expect(git(sandbox.root, ["worktree", "list", "--porcelain"])).not.toContain(target)
+      expect(existsSync(join(sandbox.root, ".mpd", "worktrees", "index.json"))).toBe(false)
+    }
+
+    // The existing branches the spellings addressed were not touched by the refusals.
+    expect(gitOk(sandbox.root, ["rev-parse", "--verify", "--quiet", "refs/heads/dev"])).toBe(true)
+    expect(gitOk(sandbox.root, ["rev-parse", "--verify", "--quiet", "refs/heads/main"])).toBe(true)
+
+    // A normal SHORT branch still creates; `dev` itself stays refused as protected (F4).
+    /** The ordinary create after the refused spellings. */
+    const created = createWorktree(sandbox.deps, { name: "alice", branch: "work/alice" })
+    expect(created.branch).toBe("work/alice")
+    expect(existsSync(target)).toBe(true)
+    /** The state record the successful create wrote. */
+    const index = readRawIndex(sandbox) as { worktrees: Array<Record<string, unknown>> }
+    expect(index.worktrees[0]?.branch).toBe("work/alice")
+    expect(index.worktrees[0]?.status).toBe("active")
   })
 
   test("refuses a second create of the same name", () => {
@@ -602,6 +685,244 @@ describe("mpd_worktree_remove record validation", () => {
   })
 })
 
+describe("recorded branch revalidation (N1)", () => {
+  test("refuses a tampered protected branch for remove AND merge, even with force", () => {
+    /** A sandbox whose config protects the release/integration lines. */
+    const sandbox = makeSandbox({ protectedBranches: ["master", "dev"] })
+    /** The worktree whose recorded branch is tampered with. */
+    const created = createWorktree(sandbox.deps, { name: "alice" })
+    /** A real local branch the tampered record points at, which a forced remove would delete. */
+    git(sandbox.root, ["branch", "master"])
+    /** The commit the main checkout is on, which a merge must not move. */
+    const mainCommit = git(sandbox.root, ["rev-parse", "HEAD"])
+    tamperIndex(sandbox, (entry) => {
+      entry.branch = "master"
+    })
+
+    expect(refusal(() => removeWorktree(sandbox.deps, { name: "alice", force: true })).code).toBe("protected-branch")
+    expect(refusal(() => mergeWorktree(sandbox.deps, { name: "alice", force: true })).code).toBe("protected-branch")
+
+    // Nothing was deleted and nothing was merged.
+    expect(gitOk(sandbox.root, ["rev-parse", "--verify", "--quiet", "refs/heads/master"])).toBe(true)
+    expect(gitOk(sandbox.root, ["rev-parse", "--verify", "--quiet", "refs/heads/agent/alice"])).toBe(true)
+    expect(existsSync(created.path)).toBe(true)
+    expect(git(sandbox.root, ["rev-parse", "HEAD"])).toBe(mainCommit)
+
+    // The protection check precedes the vanished-directory early return too: losing the directory out
+    // of band must not turn a protected record into a prune.
+    rmSync(created.path, { recursive: true, force: true })
+    git(sandbox.root, ["worktree", "prune"])
+    expect(refusal(() => removeWorktree(sandbox.deps, { name: "alice", force: true })).code).toBe("protected-branch")
+    expect(refusal(() => mergeWorktree(sandbox.deps, { name: "alice", force: true })).code).toBe("protected-branch")
+    expect(gitOk(sandbox.root, ["rev-parse", "--verify", "--quiet", "refs/heads/master"])).toBe(true)
+    expect(gitOk(sandbox.root, ["rev-parse", "--verify", "--quiet", "refs/heads/agent/alice"])).toBe(true)
+  })
+
+  test("refuses a tampered record naming another existing local branch", () => {
+    /** The sandbox this arm works in. */
+    const sandbox = makeSandbox()
+    /** The worktree whose recorded branch is tampered with. */
+    const created = createWorktree(sandbox.deps, { name: "alice" })
+    /** The unrelated local branch the tampered record names. */
+    git(sandbox.root, ["branch", "other"])
+    /** The commit the main checkout is on, which a merge must not move. */
+    const mainCommit = git(sandbox.root, ["rev-parse", "HEAD"])
+    tamperIndex(sandbox, (entry) => {
+      entry.branch = "other"
+    })
+
+    /** The remove refusal; the live HEAD, not the record, is what git reports. */
+    const removeError = refusal(() => removeWorktree(sandbox.deps, { name: "alice", force: true }))
+    expect(removeError.code).toBe("branch-mismatch")
+    expect(removeError.message).toContain("alice")
+    expect(removeError.message).toContain("other")
+    expect(removeError.message).toContain("agent/alice")
+    /** The merge refusal against the SAME tampered record. */
+    const mergeError = refusal(() => mergeWorktree(sandbox.deps, { name: "alice" }))
+    expect(mergeError.code).toBe("branch-mismatch")
+    expect(mergeError.message).toContain("other")
+    expect(mergeError.message).toContain("agent/alice")
+
+    // Both the unrelated branch and the real worktree branch survive, and no merge landed.
+    expect(gitOk(sandbox.root, ["rev-parse", "--verify", "--quiet", "refs/heads/other"])).toBe(true)
+    expect(gitOk(sandbox.root, ["rev-parse", "--verify", "--quiet", "refs/heads/agent/alice"])).toBe(true)
+    expect(existsSync(created.path)).toBe(true)
+    expect(git(sandbox.root, ["rev-parse", "HEAD"])).toBe(mainCommit)
+  })
+
+  test("refuses a tampered record naming a branch git does not have", () => {
+    /** The sandbox this arm works in. */
+    const sandbox = makeSandbox()
+    /** The worktree whose recorded branch is tampered with. */
+    const created = createWorktree(sandbox.deps, { name: "alice" })
+    /** The commit the main checkout is on, which a merge must not move. */
+    const mainCommit = git(sandbox.root, ["rev-parse", "HEAD"])
+    tamperIndex(sandbox, (entry) => {
+      entry.branch = "ghost/branch"
+    })
+
+    /** The remove refusal for a branch that no longer exists in the repository. */
+    const removeError = refusal(() => removeWorktree(sandbox.deps, { name: "alice", force: true }))
+    expect(removeError.code).toBe("branch-missing")
+    expect(removeError.message).toContain("ghost/branch")
+    /** The merge refusal for the same missing branch. */
+    const mergeError = refusal(() => mergeWorktree(sandbox.deps, { name: "alice" }))
+    expect(mergeError.code).toBe("branch-missing")
+
+    expect(gitOk(sandbox.root, ["rev-parse", "--verify", "--quiet", "refs/heads/ghost/branch"])).toBe(false)
+    expect(gitOk(sandbox.root, ["rev-parse", "--verify", "--quiet", "refs/heads/agent/alice"])).toBe(true)
+    expect(existsSync(created.path)).toBe(true)
+    expect(git(sandbox.root, ["rev-parse", "HEAD"])).toBe(mainCommit)
+  })
+
+  test("refuses option-injection branch names on remove AND merge, leaving the branch and directory intact", () => {
+    /** The sandbox this arm works in. */
+    const sandbox = makeSandbox()
+    /** The worktree whose recorded branch is tampered with. */
+    const created = createWorktree(sandbox.deps, { name: "alice" })
+    // A leading `-D` would reach `git branch -D` as an OPTION, not a name, without the guard at THIS
+    // call site; `bad..name` is the other shape `git check-ref-format --branch` must refuse.
+    /** The hostile spellings a tampered record may carry. */
+    const hostile = ["-D", "bad..name"]
+    for (const branch of hostile) {
+      tamperIndex(sandbox, (entry) => {
+        entry.branch = branch
+      })
+      /** The remove refusal at the call site that consumes the branch. */
+      const removeError = refusal(() => removeWorktree(sandbox.deps, { name: "alice", force: true }))
+      expect(removeError.code).toBe("invalid-branch")
+      expect(removeError.message).toContain(branch)
+      /** The merge refusal against the SAME tampered record. */
+      const mergeError = refusal(() => mergeWorktree(sandbox.deps, { name: "alice" }))
+      expect(mergeError.code).toBe("invalid-branch")
+      expect(mergeError.message).toContain(branch)
+    }
+
+    // Both refusals happened BEFORE git consumed the name: the real branch and its worktree survive.
+    expect(gitOk(sandbox.root, ["rev-parse", "--verify", "--quiet", "refs/heads/agent/alice"])).toBe(true)
+    expect(existsSync(created.path)).toBe(true)
+  })
+
+  test("prunes a vanished directory even when its branch is gone too, and frees the name", () => {
+    /** The sandbox this arm works in. */
+    const sandbox = makeSandbox()
+    /** The worktree whose directory AND branch vanish out of band. */
+    const created = createWorktree(sandbox.deps, { name: "alice" })
+    // Reproduces `rm -rf` + `git branch -D`, and a crash between remove's branch delete and tombstone.
+    rmSync(created.path, { recursive: true, force: true })
+    git(sandbox.root, ["worktree", "prune"])
+    git(sandbox.root, ["branch", "-D", "agent/alice"])
+
+    // Merge is unchanged: there is nothing checked out there to merge from.
+    expect(refusal(() => mergeWorktree(sandbox.deps, { name: "alice" })).code).toBe("unregistered-worktree")
+
+    // The vanished directory is the documented PRUNE case, not a `branch-missing` refusal.
+    /** The prune's answer: removed, with no branch left to delete. */
+    const removed = removeWorktree(sandbox.deps, { name: "alice", force: true })
+    expect(removed.removed).toBe(true)
+    expect(removed.branchDeleted).toBe(false)
+    /** The tombstone the prune wrote, read back from the raw state file. */
+    const index = readRawIndex(sandbox) as { worktrees: Array<{ status: string; branchPending?: boolean }> }
+    expect(index.worktrees[0]?.status).toBe("removed")
+    expect(index.worktrees[0]?.branchPending).toBeUndefined()
+
+    // The name is usable again: no stranded ACTIVE record and no branch left to clash with.
+    /** The re-created worktree under the SAME name. */
+    const recreated = createWorktree(sandbox.deps, { name: "alice" })
+    expect(recreated.branch).toBe("agent/alice")
+    expect(existsSync(recreated.path)).toBe(true)
+    expect(gitOk(sandbox.root, ["rev-parse", "--verify", "--quiet", "refs/heads/agent/alice"])).toBe(true)
+  })
+
+  test("refuses a worktree whose HEAD was detached out of band", () => {
+    /** The sandbox this arm works in. */
+    const sandbox = makeSandbox()
+    /** The worktree whose HEAD is detached directly. */
+    const created = createWorktree(sandbox.deps, { name: "alice" })
+    git(created.path, ["checkout", "-q", "--detach"])
+
+    expect(refusal(() => removeWorktree(sandbox.deps, { name: "alice", force: true })).code).toBe("branch-mismatch")
+    expect(refusal(() => mergeWorktree(sandbox.deps, { name: "alice" })).code).toBe("branch-mismatch")
+
+    // The detached worktree and its branch both survive; nothing was removed or merged.
+    expect(git(created.path, ["rev-parse", "--abbrev-ref", "HEAD"])).toBe("HEAD")
+    expect(gitOk(sandbox.root, ["rev-parse", "--verify", "--quiet", "refs/heads/agent/alice"])).toBe(true)
+    expect(existsSync(created.path)).toBe(true)
+  })
+
+  test("removes and merges a worktree whose branch name collides with a tag (F1)", () => {
+    // A tag and a branch commonly share a name. `git rev-parse --abbrev-ref HEAD` then answered
+    // `heads/feature` while the record stored `feature`, so remove/merge refused forever; a bare
+    // `git merge feature` would resolve the TAG, so the branch tip is merged by its full local ref.
+    /** The sandbox this arm works in. */
+    const sandbox = makeSandbox()
+    /** The tag whose name collides with the branch the create will make. */
+    git(sandbox.root, ["tag", "feature", "main"])
+    /** The worktree on the colliding name. */
+    const created = createWorktree(sandbox.deps, { name: "alice", branch: "feature" })
+    expect(created.branch).toBe("feature")
+    // The precondition that poisoned the old comparison: git's abbreviated answer carries the namespace.
+    expect(git(created.path, ["rev-parse", "--abbrev-ref", "HEAD"])).toBe("heads/feature")
+
+    // A commit only the BRANCH carries: a merge that resolved the tag would leave it behind.
+    /** The branch tip, asserted to become reachable from the main checkout's HEAD. */
+    const tip = commitFile(created.path, "feature.txt", "feature\n", "feature work")
+    // status reads the same recorded name through rev-list/merge-base: both must name the BRANCH.
+    /** The live record before the merge: one commit ahead of main and not merged yet. */
+    const beforeMerge = worktreeStatus(sandbox.deps, "alice")
+    expect(beforeMerge.ahead).toBe(1)
+    expect(beforeMerge.merged).toBe(false)
+    /** The merge answer; a tag-resolving merge would report "Already up to date" and lose the commit. */
+    const merged = mergeWorktree(sandbox.deps, { name: "alice" })
+    expect(merged.merged).toBe(true)
+    expect(merged.branch).toBe("feature")
+    expect(gitOk(sandbox.root, ["merge-base", "--is-ancestor", tip, "HEAD"])).toBe(true)
+    expect(existsSync(join(sandbox.root, "feature.txt"))).toBe(true)
+    /** The live record after the merge, read through the same ambiguous name. */
+    expect(worktreeStatus(sandbox.deps, "alice").merged).toBe(true)
+
+    /** The removal that used to refuse `branch-mismatch` and strand the directory and the record. */
+    const removed = removeWorktree(sandbox.deps, { name: "alice" })
+    expect(removed.removed).toBe(true)
+    expect(removed.branchDeleted).toBe(true)
+    expect(existsSync(created.path)).toBe(false)
+    expect(gitOk(sandbox.root, ["rev-parse", "--verify", "--quiet", "refs/heads/feature"])).toBe(false)
+  })
+
+  test("removes a default agent/ worktree whose branch name collides with a tag (F1)", () => {
+    /** The sandbox this arm works in. */
+    const sandbox = makeSandbox()
+    /** The tag that collides with the DEFAULT branch name `agent/alice`. */
+    git(sandbox.root, ["tag", "agent/alice", "main"])
+    /** The worktree on the default branch. */
+    const created = createWorktree(sandbox.deps, { name: "alice" })
+    expect(created.branch).toBe("agent/alice")
+    expect(git(created.path, ["rev-parse", "--abbrev-ref", "HEAD"])).toBe("heads/agent/alice")
+
+    /** The removal that used to refuse `branch-mismatch`. */
+    const removed = removeWorktree(sandbox.deps, { name: "alice" })
+    expect(removed.removed).toBe(true)
+    expect(removed.branchDeleted).toBe(true)
+    expect(existsSync(created.path)).toBe(false)
+    expect(gitOk(sandbox.root, ["rev-parse", "--verify", "--quiet", "refs/heads/agent/alice"])).toBe(false)
+  })
+
+  test("keeps a valid record mergeable and removable", () => {
+    /** The sandbox this arm works in. */
+    const sandbox = makeSandbox()
+    /** The valid worktree. */
+    const created = createWorktree(sandbox.deps, { name: "alice" })
+    commitFile(created.path, "alice.txt", "alice\n", "alice work")
+
+    expect(mergeWorktree(sandbox.deps, { name: "alice" }).merged).toBe(true)
+    /** The ordinary removal after the merge. */
+    const removed = removeWorktree(sandbox.deps, { name: "alice" })
+    expect(removed.removed).toBe(true)
+    expect(removed.branchDeleted).toBe(true)
+    expect(existsSync(created.path)).toBe(false)
+  })
+})
+
 describe("state file", () => {
   test("a corrupt index reads as empty instead of throwing", () => {
     /** The sandbox this arm works in. */
@@ -725,6 +1046,42 @@ describe("mpdWorktree service", () => {
     expect(git(recovered?.path ?? "", ["rev-parse", "HEAD"])).toBe(workCommit)
     expect(git(recovered?.path ?? "", ["rev-parse", "--abbrev-ref", "HEAD"])).toBe("agent/plan-x/senior-engineer")
     expect(readFileSync(join(recovered?.path ?? "", "kept.txt"), "utf8")).toBe("kept\n")
+  })
+
+  test("refuses the reattach recovery when the vanished directory's branch is protected (F4)", () => {
+    /** The member branch the recovery would reattach. */
+    const branch = "agent/plan-x/senior-engineer"
+    /** A sandbox that starts without protection, because the first create must legitimately succeed. */
+    const sandbox = makeSandbox()
+    /** The service the lanes consume. */
+    const service = serviceFor(sandbox)
+    /** The worktree that is about to vanish; its branch carries one member commit. */
+    const first = createForMember(sandbox.deps, { teamId: "plan-x", member: "Senior Engineer" })
+    /** The commit the refusal must leave on the branch. */
+    const workCommit = commitFile(first?.path ?? "", "kept.txt", "kept\n", "member work")
+    /** The recorded path the recovery would reattach. */
+    const target = first?.path ?? ""
+    // The deployment protects the member branch AFTER the record exists: protection is evaluated per call.
+    sandbox.config.protectedBranches.push(branch)
+    rmSync(target, { recursive: true, force: true })
+
+    /** The typed refusal of the missing-directory reattach recovery. */
+    const error = refusal(() => createForMember(sandbox.deps, { teamId: "plan-x", member: "Senior Engineer" }))
+    expect(error.code).toBe("protected-branch")
+    expect(error.message).toContain(branch)
+
+    // Nothing was reattached: the path stays gone, the branch keeps its commit, the stale record stays.
+    expect(existsSync(target)).toBe(false)
+    expect(git(sandbox.root, ["rev-parse", "--verify", `refs/heads/${branch}`])).toBe(workCommit)
+    expect(git(sandbox.root, ["worktree", "list", "--porcelain"])).not.toContain(target)
+    /** The state file the refusal left untouched. */
+    const index = readRawIndex(sandbox) as { worktrees: Array<Record<string, unknown>> }
+    expect(index.worktrees[0]?.branch).toBe(branch)
+    expect(index.worktrees[0]?.status).toBe("active")
+
+    // The lane-facing service never throws: the refusal degrades the spawn to the shared checkout.
+    expect(service.createForMember(undefined, { teamId: "plan-x", member: "Senior Engineer" })).toBeUndefined()
+    expect(sandbox.log.some((line) => line.includes("plan-x/Senior Engineer") && line.includes("protected-branch"))).toBe(true)
   })
 
   test("does not reattach a branch another worktree already has checked out", () => {
