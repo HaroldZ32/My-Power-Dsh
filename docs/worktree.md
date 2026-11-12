@@ -64,7 +64,17 @@ deployment-owned and out of scope for this bundle.
 after a merge: the captain decides the order, runs the merge and re-runs the wave gates on the merged
 tip. `mpd_worktree_merge` refuses a detached or tracked-dirty main checkout, refuses a protected
 branch (`master`, `dev`) without `force: true`, and on a conflict runs `git merge --abort`, reports the
-conflicting files and changes nothing.
+conflicting files and changes nothing. Before either operation uses the recorded branch,
+`mpd_worktree_remove` and `mpd_worktree_merge` revalidate it against the symbolic branch git reports
+for that worktree (`git symbolic-ref --quiet HEAD`, stripped of the `refs/heads/` prefix) and refuse a
+`protectedBranches` entry for BOTH operations, even with `force: true`. A vanished worktree directory
+cannot answer for HEAD: `mpd_worktree_remove` then prunes the stale record without a live comparison
+(`branchDeleted: false` when the branch is already gone), while `mpd_worktree_merge` still refuses.
+Creation applies the same list before any `git worktree add`: `mpd_worktree_create` and the
+member-service reattach recovery refuse a `protectedBranches` name with `protected-branch`, and take a
+SHORT branch name only (a `refs/...` spelling is refused with `invalid-branch` before any branch, HEAD,
+worktree or index mutation), so a worktree can never be created on a protected branch and then
+stranded by that revalidation.
 
 ## Tools
 
@@ -91,7 +101,7 @@ The knobs are row config on the `mpd-worktree` mount row in `cordis.patch.yml`:
 | `repo` | the workspace root when it is a git repository | repository a worktree is created from |
 | `base` | the main checkout's `HEAD` | base ref/branch for a new worktree |
 | `branchPrefix` | `"agent/"` | prefix of the default branch name |
-| `protectedBranches` | `["master","dev"]` | branches `mpd_worktree_merge` refuses unless `force: true` |
+| `protectedBranches` | `["master","dev"]` | creation refuses the name; recorded branches remove/merge refuse even with `force: true`; merge targets refused unless `force: true` |
 | `max` | `32` | maximum number of registered worktrees |
 
 ## The degrade rule

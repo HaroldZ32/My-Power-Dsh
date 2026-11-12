@@ -1,0 +1,22 @@
+== check-ref-format ==
+refs/heads/dev -> refs/heads/dev
+exit=0
+heads/dev -> heads/dev
+exit=0
+refs/heads/master -> refs/heads/master
+exit=0
+== worktree add -b refs/heads/dev ==
+Preparing worktree (new branch 'refs/heads/dev')
+HEAD is now at a4a92f4 init
+add_exit=0
+refs/heads/main
+refs/heads/refs/heads/dev
+== worktree list ==
+worktree /tmp/tmp.28xGm56Ltu
+HEAD a4a92f4b1d709e34ba4eb94c656faeee15be7d2b
+branch refs/heads/main
+
+worktree /tmp/tmp.28xGm56Ltu/wt
+HEAD a4a92f4b1d709e34ba4eb94c656faeee15be7d2b
+branch refs/heads/refs/heads/dev
+

@@ -54,7 +54,14 @@ D2：工作树**必须**位于父 workspace 根目录之内——默认
 **合并是手工的、由队长驱动。** 没有合并队列，合并后也不会自动跑门禁：合并顺序由队长决定，合并由队长执行，
 并在合并后的 tip 上重跑波次门禁。`mpd_worktree_merge` 会拒绝处于 detached 或有被跟踪改动的脏主 checkout，
 拒绝受保护分支（`master`、`dev`）除非 `force: true`；发生冲突时执行 `git merge --abort`，报告冲突文件并且
-不做任何改动。
+不做任何改动。在任一操作使用记录中的分支之前，`mpd_worktree_remove` 与 `mpd_worktree_merge` 都会用 git
+为该 worktree 报告的符号分支（`git symbolic-ref --quiet HEAD`，去掉 `refs/heads/` 前缀）重新校验它，
+并对两种操作都拒绝 `protectedBranches` 中的分支，即使 `force: true`。worktree 目录已消失时无法回答 HEAD：
+`mpd_worktree_remove` 会剪除陈旧记录而不做实时比较（分支已不存在时 `branchDeleted: false`），
+`mpd_worktree_merge` 仍然拒绝。创建在 `git worktree add` 之前就应用同一列表：`mpd_worktree_create` 与成员服务的
+reattach 恢复都会以 `protected-branch` 拒绝 `protectedBranches` 中的分支名，并且只接受短分支名
+（`refs/...` 写法会以 `invalid-branch` 拒绝，且发生在任何分支、HEAD、工作树或索引变更之前），因此工作树
+不可能建在受保护分支上、再被上述复检卡死。
 
 ## 工具
 
@@ -80,7 +87,7 @@ D2：工作树**必须**位于父 workspace 根目录之内——默认
 | `repo` | workspace 根目录（当它是 git 仓库时） | 创建工作树所用的仓库 |
 | `base` | 主 checkout 的 `HEAD` | 新工作树的基点 ref/分支 |
 | `branchPrefix` | `"agent/"` | 默认分支名的前缀 |
-| `protectedBranches` | `["master","dev"]` | `mpd_worktree_merge` 拒绝合并的分支，除非 `force: true` |
+| `protectedBranches` | `["master","dev"]` | 创建拒绝该分支名；删除/合并拒绝记录中的分支（即使 `force: true`）；合并目标除非 `force: true` 否则拒绝 |
 | `max` | `32` | 已登记工作树的上限 |
 
 ## 降级规则

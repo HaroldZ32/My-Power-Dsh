@@ -1,0 +1,88 @@
+{
+  "subject": "Repair the N1 verifier findings F1/F2/F3 on fix/worktree-branch-revalidation (uncommitted)",
+  "repo": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "branch": "fix/worktree-branch-revalidation",
+  "head": "b33dde83da308a3c2dc69319b3def3b6f7b6cd51",
+  "change_state": "UNCOMMITTED working tree (9 modified files); no commit made",
+  "timestamp": "2026-11-12T07-46-28Z",
+  "inputs": [
+    "evidence/worktree/n1/2026-11-12T07-30-49Z/result.json",
+    "evidence/worktree/n1/2026-11-12T07-30-49Z/probe.log",
+    "evidence/worktree/n1/2026-11-12T07-30-49Z/probe.ts",
+    ".mpd/plans/agent-worktrees.md §3 Lane A"
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "High",
+      "status": "FIXED",
+      "title": "branch-existence refusal sat before the documented vanished-path prune",
+      "change": "packages/mpd-worktree-plugin/src/ops.ts → revalidateRecordedBranch: order is now isValidBranch → protectedBranches (force-blind) → path MISSING (merge refuses unregistered-worktree; remove returns to the caller's prune path, with NO branch-existence/HEAD check) → path PRESENT: branchExists → git-managed → HEAD equality.",
+      "behavior": [
+        "removeWorktree on a vanished directory now prunes (pruneWorktrees + tombstone) and reports branchDeleted:false when the branch is already gone, instead of throwing branch-missing.",
+        "A subsequent createWorktree of the same name succeeds (the tombstoned record is not an active name clash).",
+        "mergeWorktree on a vanished directory still refuses unregistered-worktree.",
+        "The protected-branch refusal remains ahead of both: a tampered protected record is refused even when the directory is gone (new assertions in the existing protected-branch test).",
+        "A PRESENT worktree whose branch ref was deleted still refuses branch-missing (probe C), unchanged."
+      ],
+      "evidence": [
+        "probe.log section A: remove => NO-REFUSAL | recorded status: removed | createWorktree again => NO-REFUSAL (was branch-missing / active / name-registered)",
+        "probe.log section C: present dir + deleted branch => branch-missing | dir exists: true",
+        "probe.log section F: vanished dir merge => unregistered-worktree",
+        "tests.log: new arm 'prunes a vanished directory even when its branch is gone too, and frees the name' passes"
+      ]
+    },
+    {
+      "id": "F2",
+      "severity": "Nit",
+      "status": "FIXED",
+      "title": "docs overstated revalidation for a vanished worktree directory",
+      "change": "Added the one-clause bound to all four docs: docs/worktree.md, docs/worktree.zh-CN.md, packages/mpd-worktree-plugin/README.md, packages/mpd-worktree-plugin/README.zh-CN.md. The clause states that a vanished worktree directory cannot answer for HEAD, that remove prunes the stale record without a live comparison (branchDeleted:false when the branch is already gone), and that merge still refuses.",
+      "evidence": ["docs.log: links=634 checked=594 resolved=594 dead=0 — PASS (pairs=61 failed=0 violations=0)"]
+    },
+    {
+      "id": "F3",
+      "severity": "Nit",
+      "status": "FIXED",
+      "title": "invalid-branch guard had no test arm at the remove/merge call site",
+      "change": "packages/mpd-worktree-plugin/test/worktree.test.ts → new arm tampers entry.branch to \"-D\" and \"bad..name\" and asserts invalid-branch on BOTH remove(force:true) and merge, with the real branch refs/heads/agent/alice and the worktree directory surviving.",
+      "evidence": ["tests.log: 'refuses option-injection branch names on remove AND merge, leaving the branch and directory intact' passes"]
+    }
+  ],
+  "new_tests": [
+    "recorded branch revalidation (N1) > refuses option-injection branch names on remove AND merge, leaving the branch and directory intact",
+    "recorded branch revalidation (N1) > prunes a vanished directory even when its branch is gone too, and frees the name"
+  ],
+  "augmented_tests": [
+    "recorded branch revalidation (N1) > refuses a tampered protected branch for remove AND merge, even with force (now also asserts the refusal with the directory removed out of band)"
+  ],
+  "commands": [
+    { "command": "bun test packages/mpd-worktree-plugin", "exit": 0, "observed": "43 pass, 0 fail, 187 expect() calls, 1 file", "log": "tests.log" },
+    { "command": "bun run typecheck", "exit": 0, "observed": "tsgo --noEmit, no diagnostics", "log": "typecheck.log" },
+    { "command": "bun run verify:comments", "exit": 0, "observed": "VERDICT: PASS — 646 TypeScript files, 59297 declarations", "log": "comments.log" },
+    { "command": "bun run verify:docs", "exit": 0, "observed": "pairs=61 failed=0 violations=0 links=634 dead=0 — PASS", "log": "docs.log" },
+    { "command": ".toolchain/node_modules/.bin/bun build packages/mpd-worktree-plugin/src/index.ts --target node --format esm --outfile packages/mpd-worktree-plugin/dist/index.js", "exit": 0, "observed": "Bundled 9 modules in 10ms, index.js 130.22 KB", "log": "build.log" },
+    { "command": "node scripts/verify-dist-fresh.ts", "exit": 0, "observed": "35/35 targets fresh (each rebuilt twice, byte-identical), 1 NOT COVERED (vendored mpd-mcp-codegraph/dist/serve.js)", "log": "dist.log" },
+    { "command": "bun evidence/worktree/n1/2026-11-12T07-30-49Z/probe.ts", "exit": 0, "observed": "sections A/C/D/E/F as listed in findings", "log": "probe.log" }
+  ],
+  "bounds": [
+    "No commit was made; the working tree carries the change as found plus this evidence directory.",
+    "Only packages/mpd-worktree-plugin (src/ops.ts, test/worktree.test.ts, dist/index.js) and the four worktree docs were touched; no other package was edited.",
+    "I did not run the full `bun test packages`, `bun run verify:gates`, the Docker lane, or any harness boot; only the worktree package's suite and the four named gates were run.",
+    "The dist rebuild is the pinned-toolchain artifact (bun 1.4.0 from .toolchain) and verify-dist-fresh certifies it byte-identical; no live tool invocation through dist was made.",
+    "Probe section G (a tampered record pointing at the main checkout, branch=main: remove => git-failed, merge => NO-REFUSAL) is a PRE-EXISTING observation recorded by the verifier's own probe, not part of F1/F2/F3 and not repaired here; it stays an out-of-scope finding for the captain.",
+    "Falsifiability: the new vanish+branch arm fails on the pre-fix ordering because removeWorktree throws branch-missing there (probe A in the verifier's log recorded exactly that); the fix was not reverted to re-measure it."
+  ],
+  "artifacts": [
+    "evidence/worktree/n1-fix/2026-11-12T07-46-28Z/result.json",
+    "evidence/worktree/n1-fix/2026-11-12T07-46-28Z/tests.log",
+    "evidence/worktree/n1-fix/2026-11-12T07-46-28Z/typecheck.log",
+    "evidence/worktree/n1-fix/2026-11-12T07-46-28Z/comments.log",
+    "evidence/worktree/n1-fix/2026-11-12T07-46-28Z/docs.log",
+    "evidence/worktree/n1-fix/2026-11-12T07-46-28Z/build.log",
+    "evidence/worktree/n1-fix/2026-11-12T07-46-28Z/dist.log",
+    "evidence/worktree/n1-fix/2026-11-12T07-46-28Z/probe.log",
+    "evidence/worktree/n1-fix/2026-11-12T07-46-28Z/git-status.log",
+    "evidence/worktree/n1-fix/2026-11-12T07-46-28Z/diff-stat.log"
+  ]
+}

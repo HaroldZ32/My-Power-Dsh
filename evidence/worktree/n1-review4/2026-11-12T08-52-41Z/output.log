@@ -1,0 +1,152 @@
+# n1-review4 — final bounded verification of the F1/F2/F3 repair
+
+repo: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+branch: fix/worktree-branch-revalidation
+head: b33dde83da308a3c2dc69319b3def3b6f7b6cd51
+timestamp: 2026-11-12T08-52-41Z
+reviewer: Reviewer (independent read-only seat; no source edit, no commit)
+
+## Gates and exit codes (run by the reviewer against the CURRENT tree)
+TEST_EXIT=0
+TYPECHECK_EXIT=0
+COMMENTS_EXIT=0
+DOCS_EXIT=0
+DIST_EXIT=0
+GATES_EXIT=0
+DONE
+
+### tests tail
+
+ 49 pass
+ 0 fail
+ 261 expect() calls
+Ran 49 tests across 1 file. [3.83s]
+
+### docs verdict
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=61 failed=0 violations=0 exempt=24 derived=3 links=634 dead=0 — PASS
+
+### comments verdict
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+
+### dist verdict
+[verify-dist-fresh] ok: 35/35 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 797ms
+
+### verify:gates member results
+[verify-gates] member vendor: exit=0 PASS - 178ms
+[verify-gates] member dist-fresh: exit=0 PASS - 820ms
+[verify-gates] member rows-parity: exit=0 PASS - 66ms
+[verify-gates] member docs-parity: exit=0 PASS - 79ms
+[verify-gates] member preset-conformance: exit=0 PASS - 848ms
+[verify-gates] member plugin-manifest: exit=0 PASS - 2916ms
+[verify-gates] member comment-coverage: exit=0 PASS - 3620ms
+[verify-gates] member graph-model: exit=0 PASS - 456ms
+[verify-gates] member workflows: exit=0 PASS - 40ms
+[verify-gates] member tui-admission: exit=0 PASS - 117ms
+[verify-gates] member dshgo: exit=0 PASS - 117ms
+[verify-gates] PASS - 11/11 member gate(s) green
+
+## Reviewer-owned F1/F2 probe (probe-f1f2.ts)
+CHECK F1A.create PASS recorded=feature
+CHECK F1A.precondition_abbrev_is_ambiguous PASS abbrev=heads/feature
+CHECK F1A.symbolic_ref_short PASS symbolic=refs/heads/feature
+CHECK F1A.status_ahead PASS ahead=1
+CHECK F1A.status_unmerged_before PASS merged=false
+CHECK F1A.merge_ok PASS merged=true commit=d329927a6101513fa6ed2c8bb72f6bc4385916de
+CHECK F1A.branch_tip_reachable PASS tip=6810dc6624394eec5a1bdaac1528ecb7c56dbf2e
+CHECK F1A.merge_second_parent_is_branch_tip PASS HEAD^2=6810dc6624394eec5a1bdaac1528ecb7c56dbf2e tip=6810dc6624394eec5a1bdaac1528ecb7c56dbf2e
+CHECK F1A.branch_file_in_main PASS feature.txt in main
+CHECK F1A.tag_unmoved PASS tag=3ddd8dd6f8eadac25717f407807ab75ebca89c04
+CHECK F1A.status_merged_after PASS merged=true
+CHECK F1A.remove_ok PASS removed=true branchDeleted=true
+CHECK F1A.dir_gone PASS /tmp/n1-review4-H8ykrK/.mpd/worktrees/alice
+CHECK F1A.branch_ref_gone PASS refs/heads/feature gone
+CHECK F1A.tag_still_present PASS tag survives
+CHECK F1B.default_branch PASS recorded=agent/alice
+CHECK F1B.precondition_abbrev_is_ambiguous PASS abbrev=heads/agent/alice
+CHECK F1B.merge_ok PASS merged=true
+CHECK F1B.branch_tip_reachable PASS tip=b0caf45321edb5a4654705ee0b85c9a5ade6b6ac
+CHECK F1B.merge_second_parent_is_branch_tip PASS HEAD^2=b0caf45321edb5a4654705ee0b85c9a5ade6b6ac tip=b0caf45321edb5a4654705ee0b85c9a5ade6b6ac
+CHECK F1B.branch_file_in_main PASS alice.txt in main
+CHECK F1B.remove_prunes PASS branchDeleted=true
+CHECK F1B.dir_gone PASS /tmp/n1-review4-NeLhVv/.mpd/worktrees/alice
+CHECK F1B.branch_ref_gone PASS branch gone
+CHECK F1B.tag_still_present PASS tag survives
+CHECK F1C.detached_remove PASS remove refused
+CHECK F1C.detached_merge PASS merge refused
+CHECK F1C.nothing_mutated PASS dir/record/main intact
+CHECK F1D.mismatch_remove PASS remove refused
+CHECK F1D.mismatch_merge PASS merge refused
+CHECK F1D.nothing_mutated PASS dir/record/refs/main intact
+CHECK F2.refusal.refs/heads/dev PASS code=invalid-branch
+CHECK F2.no_dir.refs/heads/dev PASS /tmp/n1-review4-bTA8MA/.mpd/worktrees/alice
+CHECK F2.no_index.refs/heads/dev PASS /tmp/n1-review4-bTA8MA/.mpd/worktrees/index.json
+CHECK F2.no_new_ref.refs/heads/dev PASS ref set identical to before
+CHECK F2.no_registration.refs/heads/dev PASS worktree registration unchanged
+CHECK F2.refusal.refs/heads/main PASS code=invalid-branch
+CHECK F2.no_dir.refs/heads/main PASS /tmp/n1-review4-bTA8MA/.mpd/worktrees/alice
+CHECK F2.no_index.refs/heads/main PASS /tmp/n1-review4-bTA8MA/.mpd/worktrees/index.json
+CHECK F2.no_new_ref.refs/heads/main PASS ref set identical to before
+CHECK F2.no_registration.refs/heads/main PASS worktree registration unchanged
+CHECK F2.refusal.refs/heads/never-existed PASS code=invalid-branch
+CHECK F2.no_dir.refs/heads/never-existed PASS /tmp/n1-review4-bTA8MA/.mpd/worktrees/alice
+CHECK F2.no_index.refs/heads/never-existed PASS /tmp/n1-review4-bTA8MA/.mpd/worktrees/index.json
+CHECK F2.no_new_ref.refs/heads/never-existed PASS ref set identical to before
+CHECK F2.no_registration.refs/heads/never-existed PASS worktree registration unchanged
+CHECK F2.existing_refs_intact PASS dev+main intact
+CHECK F2.short_protected PASS short dev refused as protected-branch
+CHECK F2.no_index_after_short_protected PASS still no index
+CHECK F2.short_creates PASS branch=work/alice
+CHECK F2.recorded PASS {"key":"manual/alice","name":"alice","repo":"/tmp/n1-review4-bTA8MA","path":"/tmp/n1-review4-bTA8MA/.mpd/worktrees/alice","branch":"work/alice","base":"main","createdAt":"2026-11-12T08:56:11.561Z","status":"active"}
+
+PROBE_RESULT failed=0
+
+## Reviewer-owned supplementary probe (probe-f1-extra.ts)
+CHECK X1.precondition_tag_shadows_branch PASS abbrev=heads/feature
+CHECK X1.unmerged_refused_without_force PASS code=unmerged
+CHECK X1.nothing_lost PASS dir+ref+main intact; tip=8547f07a124359057597a3bea14ece09195e4000
+CHECK X1.force_removes PASS branchDeleted=true
+CHECK X1.tag_survives PASS tag survives
+CHECK X2.vanished_prunes PASS branchDeleted=false
+CHECK X2.tombstone PASS status=removed
+CHECK X2.name_reusable PASS branch=agent/alice
+CHECK X3.option_injection.-D PASS code=invalid-branch
+CHECK X3.option_injection.bad..name PASS code=invalid-branch
+CHECK X3.no_side_effect PASS no dir, no index
+CHECK X4.legacy_full_ref_record_consumable PASS removed=true branchDeleted=true
+
+EXTRA_RESULT failed=0
+
+## F2 pre-fix premise, plain git (probe-premise.log)
+# F2 premise: git ADMITS the full-ref spelling and nests the ref (no product code involved)
+refs/heads/dev
+check-ref-format(refs/heads/dev) exit=0
+HEAD is now at 2cbdc15 init
+nested ref exists: 2cbdc159442a34d376dcd519b4f9b061efa49242
+worktree HEAD abbrev: heads/refs/heads/dev
+worktree HEAD symbolic: refs/heads/refs/heads/dev
+record spelling would be: refs/heads/dev
+
+## Docs clauses (the four frozen files)
+--- docs/worktree.md
+75:SHORT branch name only (a `refs/...` spelling is refused with `invalid-branch` before any branch, HEAD,
+104:| `protectedBranches` | `["master","dev"]` | creation refuses the name; recorded branches remove/merge refuse even with `force: true`; merge targets refused unless `force: true` |
+--- docs/worktree.zh-CN.md
+62:reattach 恢复都会以 `protected-branch` 拒绝 `protectedBranches` 中的分支名，并且只接受短分支名
+--- packages/mpd-worktree-plugin/README.md
+55:    protectedBranches: ["master", "dev"]  # creation refuses the name; recorded branches remove/merge refuse; merge targets need force: true
+104:  a `protectedBranches` name with `protected-branch`, and take a SHORT branch name only (a `refs/...`
+--- packages/mpd-worktree-plugin/README.zh-CN.md
+97:  `protected-branch` 拒绝 `protectedBranches` 中的分支名，并且只接受短分支名（`refs/...` 写法会以
+
+## Tree scope (tracked changes only; every untracked path is evidence/)
+ M docs/worktree.md
+ M docs/worktree.zh-CN.md
+ M packages/mpd-worktree-plugin/README.md
+ M packages/mpd-worktree-plugin/README.zh-CN.md
+ M packages/mpd-worktree-plugin/dist/index.js
+ M packages/mpd-worktree-plugin/src/config.ts
+ M packages/mpd-worktree-plugin/src/git.ts
+ M packages/mpd-worktree-plugin/src/index.ts
+ M packages/mpd-worktree-plugin/src/ops.ts
+ M packages/mpd-worktree-plugin/test/worktree.test.ts
+untracked non-evidence paths: 0

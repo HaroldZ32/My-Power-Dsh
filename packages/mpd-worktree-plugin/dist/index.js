@@ -2501,6 +2501,17 @@ function headOf(repo) {
   }
   return symbolic === "" ? undefined : { ref: symbolic, detached: false };
 }
+function checkedOutBranch(dir) {
+  const symbolic = runGit(dir, ["symbolic-ref", "--quiet", "HEAD"]);
+  if (symbolic.code === 0) {
+    const full = symbolic.stdout.trim();
+    if (full === "")
+      return;
+    return full.startsWith("refs/heads/") ? full.slice("refs/heads/".length) : full;
+  }
+  const head = runGit(dir, ["rev-parse", "--verify", "--quiet", "HEAD"]);
+  return head.code === 0 ? "HEAD" : undefined;
+}
 function headSha(repo) {
   const result = runGit(repo, ["rev-parse", "HEAD"]);
   const sha = result.stdout.trim();
@@ -2510,6 +2521,9 @@ function isValidBranch(repo, branch) {
   if (branch.trim() === "" || branch.startsWith("-"))
     return false;
   return runGit(repo, ["check-ref-format", "--branch", branch]).code === 0;
+}
+function branchRef(branch) {
+  return "refs/heads/" + branch;
 }
 function branchExists(repo, branch) {
   return runGit(repo, ["rev-parse", "--verify", "--quiet", "refs/heads/" + branch]).code === 0;
@@ -2724,6 +2738,12 @@ function createEntry(deps, plan) {
     if (!isValidBranch(repo, plan.branch)) {
       throw new WorktreeError("invalid-branch", `"${plan.branch}" is not a valid branch name (git check-ref-format --branch failed)`);
     }
+    if (plan.branch.startsWith("refs/")) {
+      throw new WorktreeError("invalid-branch", `"${plan.branch}" is a full ref name; pass a short branch name such as "dev" instead of "refs/heads/dev"`);
+    }
+    if (deps.config.protectedBranches.includes(plan.branch)) {
+      throw new WorktreeError("protected-branch", `branch "${plan.branch}" is a protected branch (worktree.protectedBranches); refusing to create a worktree on it — ` + "pick another branch or remove the name from the protected list");
+    }
     const branchPresent = branchExists(repo, plan.branch);
     const reattach = branchPresent && plan.reattachBranch === true;
     if (branchPresent && !reattach) {
@@ -2795,11 +2815,45 @@ function isGitManaged(entry) {
   const target = canonicalPath(entry.path);
   return worktreePaths(entry.repo).some((path) => canonicalPath(path) === target);
 }
+function revalidateRecordedBranch(deps, entry, repo, operation) {
+  const record = `"${entry.name}" (${entry.key})`;
+  if (!isValidBranch(repo, entry.branch)) {
+    throw new WorktreeError("invalid-branch", `record ${record} names branch "${entry.branch}", which git check-ref-format --branch refuses; fix or delete the record before a ${operation}`);
+  }
+  const pathPresent = existsSync3(entry.path);
+  const managed = pathPresent && isGitManaged(entry);
+  const reported = managed ? checkedOutBranch(entry.path) : undefined;
+  const gitSays = reported === undefined ? pathPresent ? "git cannot report a branch for that path" : "the worktree directory is gone" : `git reports "${reported}"`;
+  if (deps.config.protectedBranches.includes(entry.branch)) {
+    throw new WorktreeError("protected-branch", `record ${record} names protected branch "${entry.branch}" (worktree.protectedBranches); remove and merge refuse it even with force:true (${gitSays})`);
+  }
+  if (!pathPresent) {
+    if (operation === "merge") {
+      throw new WorktreeError("unregistered-worktree", `record ${record} points at "${entry.path}", which is gone; nothing is checked out there to merge (${gitSays})`);
+    }
+    return;
+  }
+  if (!branchExists(repo, entry.branch)) {
+    throw new WorktreeError("branch-missing", `record ${record} names branch "${entry.branch}", which does not exist in ${repo}; refusing a ${operation} (${gitSays})`);
+  }
+  if (!managed) {
+    throw new WorktreeError("unregistered-worktree", `record ${record} points at "${entry.path}", which git does not list as a worktree of ${repo}; refusing a ${operation}`);
+  }
+  if (reported === undefined) {
+    throw new WorktreeError("branch-mismatch", `record ${record} names branch "${entry.branch}", but git could not report the branch of "${entry.path}" (git symbolic-ref --quiet HEAD failed); refusing a ${operation}`);
+  }
+  if (reported === "HEAD") {
+    throw new WorktreeError("branch-mismatch", `record ${record} names branch "${entry.branch}", but the worktree "${entry.path}" is detached (git reports "HEAD"); refusing a ${operation}`);
+  }
+  if (reported !== entry.branch) {
+    throw new WorktreeError("branch-mismatch", `record ${record} names branch "${entry.branch}", but git reports "${reported}" for "${entry.path}" (git symbolic-ref --quiet HEAD); refusing a ${operation}`);
+  }
+}
 function recordOf(entry) {
   const exists = existsSync3(entry.path);
   const managed = isGitManaged(entry);
   const head = headOf(entry.repo);
-  const counts = head === undefined ? undefined : revCount(entry.repo, entry.branch, head.ref);
+  const counts = head === undefined ? undefined : revCount(entry.repo, branchRef(entry.branch), head.ref);
   return {
     name: entry.name,
     path: entry.path,
@@ -2809,7 +2863,7 @@ function recordOf(entry) {
     dirty: exists && managed && isDirty(entry.path),
     ahead: counts?.ahead ?? 0,
     behind: counts?.behind ?? 0,
-    merged: head !== undefined && branchExists(entry.repo, entry.branch) && isAncestor(entry.repo, entry.branch, head.ref)
+    merged: head !== undefined && branchExists(entry.repo, entry.branch) && isAncestor(entry.repo, branchRef(entry.branch), head.ref)
   };
 }
 function listWorktrees(deps) {
@@ -2831,6 +2885,7 @@ function mergeWorktree(deps, args) {
     throw new WorktreeError("not-a-repo", `repository "${entry.repo}" is not a git checkout any more; refusing to merge`);
   }
   assertRepoInWorkspace(deps, repo);
+  revalidateRecordedBranch(deps, entry, repo, "merge");
   const head = headOf(repo);
   if (head === undefined)
     throw new WorktreeError("git-failed", `cannot read HEAD of ${repo}`);
@@ -2847,7 +2902,7 @@ function mergeWorktree(deps, args) {
   if (trackedDirty(repo)) {
     throw new WorktreeError("dirty-main", `the main checkout of ${repo} has uncommitted TRACKED changes; commit or stash them first`);
   }
-  const outcome = mergeBranch(repo, entry.branch, `merge(${entry.key}): ${entry.branch}`);
+  const outcome = mergeBranch(repo, branchRef(entry.branch), `merge(${entry.key}): ${entry.branch}`);
   if (!outcome.ok) {
     deps.log(`[mpd-worktree] merge of ${entry.branch} into ${into} refused: ` + (outcome.conflicts.length > 0 ? outcome.conflicts.join(", ") : outcome.reason ?? "unknown"));
     return {
@@ -2882,9 +2937,10 @@ function removeWorktree(deps, args) {
   if (!isUnderRoot(treeRoot, entry.path)) {
     throw new WorktreeError("outside-workspace", `recorded path "${entry.path}" is outside the worktree root "${treeRoot}"; refusing to remove it`);
   }
+  revalidateRecordedBranch(deps, entry, repo, "remove");
   const dirty = existsSync3(entry.path) && isDirty(entry.path);
   const head = headOf(repo);
-  const unmerged = head !== undefined && branchExists(repo, entry.branch) && !isAncestor(repo, entry.branch, head.ref);
+  const unmerged = head !== undefined && branchExists(repo, entry.branch) && !isAncestor(repo, branchRef(entry.branch), head.ref);
   const force = args.force === true;
   if ((dirty || unmerged) && !force) {
     throw new WorktreeError(dirty ? "dirty-worktree" : "unmerged", `"${entry.name}" is ${dirty ? "dirty (uncommitted changes)" : "unmerged (commits the main checkout does not have)"}; pass force:true to discard it`);
@@ -3028,7 +3084,7 @@ function apply(ctx, config = {}) {
   };
   register({
     name: "mpd_worktree_create",
-    description: "Create a git worktree for an agent under <workspace>/.mpd/worktrees on a new branch (default agent/<name>). " + "The path MUST stay inside the workspace (D2: a member's sandbox fence is the parent workspace). " + "Refuses an existing path, a registered name and a branch that already exists.",
+    description: "Create a git worktree for an agent under <workspace>/.mpd/worktrees on a new branch (default agent/<name>). " + "The path MUST stay inside the workspace (D2: a member's sandbox fence is the parent workspace). " + "Refuses an existing path, a registered name, a branch that already exists and a protected branch name " + "(worktree.protectedBranches).",
     parameters: {
       type: "object",
       properties: {

@@ -1,0 +1,242 @@
+# N1/F4 review3 — independent verification log
+timestamp: 2026-11-12T08-14-25Z (UTC)
+repo: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+branch: fix/worktree-branch-revalidation | HEAD: b33dde83da308a3c2dc69319b3def3b6f7b6cd51 | tree: UNCOMMITTED
+reviewer: read-only; source was not edited and nothing was committed.
+
+## VERDICT: FAIL (request changes)
+Frozen F4 checks pass; the same uncommitted N1 change introduces a High lifecycle regression (tag-collision stranding) and a Medium protected-guard bypass (full-ref spelling).
+
+## Commands and observed exits
+(Exit-code note: FALSIFY_EXIT=1 is the EXPECTED pre-fix failure of the two F4 tests against a HEAD-source copy — that is the falsifiability proof, not a gate failure. The first REFSPELL_EXIT=1 was a probe-harness path bug in the reviewer's own script; the corrected probe reruns returned 0 and printed the findings. DIST_EXIT and GATES_EXIT are 0.)
+TEST_EXIT=0
+TYPECHECK_EXIT=0
+COMMENTS_EXIT=0
+DOCS_EXIT=0
+PROBE_EXIT=0
+FALSIFY_EXIT=1
+REFSPELL_EXIT=1
+REFSPELL_EXIT=0
+REFSPELL_EXIT=0
+HEAD_REFSPELL_EXIT=0
+AMBIG_EXIT=0
+HEAD_TAG_EXIT=0
+AMBIG_RECOVERY_EXIT=0
+DIST_EXIT=0
+GATES_EXIT=0
+
+## Gate tails
+### bun test packages/mpd-worktree-plugin
+(pass) mpdWorktree service > cwdForMember stays undefined for an unknown pair and for a vanished directory [31.35ms]
+
+ 46 pass
+ 0 fail
+ 218 expect() calls
+Ran 46 tests across 1 file. [2.91s]
+### bun run typecheck
+$ tsgo --noEmit
+### bun run verify:comments
+scanned 646 TypeScript file(s) of 646 in the source set; inspected 59312 declaration(s); skipped 29316 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+### bun run verify:docs
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=61 failed=0 violations=0 exempt=24 derived=3 links=634 dead=0 — PASS
+### node scripts/verify-dist-fresh.ts
+  FRESH   packages/mpd-autoproject-plugin/dist/index.js  sha 2a4a81a8de79… 32ms  <- packages/mpd-autoproject-plugin/src/index.ts
+  FRESH   packages/mpd-better-sidebar-host/dist/index.js  sha 89fa97546819… 19ms  <- packages/mpd-better-sidebar-host/src/index.ts
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] ok: 35/35 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 804ms
+### verify:gates
+[verify-gates] member dshgo: exit=0 PASS - 129ms
+[verify-gates] PASS - 11/11 member gate(s) green
+
+## Per-requirement result
+R1 F4 create refusal ......... PASS (probe A: protected-branch for dev/master; no ref/dir/registration/index; name reusable; non-protected create works)
+R2 force cannot bypass ....... PASS (tool schema has no force; probe B: extra force:true still protected-branch with no side effects)
+R3 N1/F1/F2/F3 regression .... PASS for the listed properties (suite 46/0; probe E1-E6; falsifiability 2 fail on HEAD source)
+R4 docs/dist/tree scope ...... PASS with caveat (clause in all four docs; verify:docs PASS; dist 35/35 pinned; scope clean; absolute no-stranding claim undermined by F1/F2)
+R5 observed gates ............ PASS (all six commands exit 0; verify:gates 11/11 green)
+
+## Findings (ranked)
+F1 HIGH — tag-collision stranding. packages/mpd-worktree-plugin/src/git.ts -> checkedOutBranch uses 'git rev-parse --abbrev-ref HEAD'; a branch named like an existing tag abbreviates to 'heads/<name>' and revalidateRecordedBranch refuses branch-mismatch forever. Evidence: probe-ambiguity.log (feature tag; agent/alice tag), probe-head-tag.log (HEAD source removes fine -> regression introduced by the uncommitted change), probe-branch-plumbing.log (branch --show-current = feature vs abbrev-ref = heads/feature), probe-ambiguity-recovery.log (manual rm needed).
+F2 MEDIUM — full-ref spelling bypass. packages/mpd-worktree-plugin/src/ops.ts -> createEntry protected check is exact-string; branch 'refs/heads/dev' (with dev existing and protected) creates, then remove/merge refuse branch-mismatch; emptying protectedBranches does not help. Evidence: probe-refspelling.log. Fix at creation: reject refs/-rooted names (or canonicalise with a round-trip proof).
+F3 NIT — docs guarantee is stronger than the code for the spellings above; becomes true once F1/F2 are fixed, otherwise qualify.
+
+## Key probe outputs
+### probe-f4.log (F4 + N1 regression; RESULT PASS failures=0)
+=== A: create refuses a configured protected branch with NO git/registry side effect (F4) ===
+PASS A[dev].1 refusal :: protected-branch
+PASS A[dev].2 no branch ref :: refs/heads/dev
+PASS A[dev].3 no directory :: /tmp/n1-review3-7WKqPl/.mpd/worktrees/alice
+PASS A[dev].4 no git registration :: worktree list
+PASS A[dev].5 no index record :: /tmp/n1-review3-7WKqPl/.mpd/worktrees/index.json
+PASS A[dev].6 branch set unchanged :: main
+PASS A[dev].7 name still usable :: agent/alice /tmp/n1-review3-7WKqPl/.mpd/worktrees/alice
+PASS A[dev].8 only the successful record exists :: ["agent/alice"]
+PASS A[master].1 refusal :: protected-branch
+PASS A[master].2 no branch ref :: refs/heads/master
+PASS A[master].3 no directory :: /tmp/n1-review3-l7XjBT/.mpd/worktrees/alice
+PASS A[master].4 no git registration :: worktree list
+PASS A[master].5 no index record :: /tmp/n1-review3-l7XjBT/.mpd/worktrees/index.json
+PASS A[master].6 branch set unchanged :: main
+PASS A[master].7 name still usable :: agent/alice /tmp/n1-review3-l7XjBT/.mpd/worktrees/alice
+PASS A[master].8 only the successful record exists :: ["agent/alice"]
+=== B: the registered CREATE tool has no force argument and ignores an extra force:true (F4) ===
+PASS B.1 create tool registered :: mpd_worktree_create,mpd_worktree_list,mpd_worktree_status,mpd_worktree_merge,mpd_worktree_remove
+PASS B.2 no force property in the schema :: ["name","teamId","member","base","branch","repo"]
+PASS B.3 force:true in args still refused :: protected-branch
+PASS B.4 no side effects from the forced call :: no dir, no ref
+PASS B.5 no index written :: index absent
+=== C: protection precedes branch-exists and matches the trimmed name (F4) ===
+PASS C.1 existing dev still protected-branch :: protected-branch
+PASS C.2 padded name still protected-branch :: protected-branch
+PASS C.3 no worktree was created :: path absent
+PASS C.4 non-protected branch creates :: work/alice
+=== D: member-service reattach recovery refuses a protected branch, then recovers once unprotected (F4) ===
+PASS D.1 first member worktree created :: {"path":"/tmp/n1-review3-UtNx4V/.mpd/worktrees/plan-x/senior-engineer","branch":"agent/plan-x/senior-engineer"}
+PASS D.2 recovery refuses protected-branch :: protected-branch
+PASS D.3 path stays gone (no reattach) :: /tmp/n1-review3-UtNx4V/.mpd/worktrees/plan-x/senior-engineer
+PASS D.4 branch keeps its commit :: agent/plan-x/senior-engineer
+PASS D.5 no git worktree registration :: worktree list
+PASS D.6 stale record untouched and active :: {"key":"plan-x/Senior Engineer","name":"plan-x/senior-engineer","teamId":"plan-x","member":"Senior Engineer","repo":"/tmp/n1-review3-UtNx4V","path":"/tmp/n1-review3-UtNx4V/.mpd/worktrees/plan-x/senior-engineer","branch":"agent/plan-x/senior-engineer","base":"main","createdAt":"2026-11-12T08:17:59.836Z","status":"active"}
+PASS D.7 lane service degrades to undefined :: undefined
+PASS D.8 one log line names protected-branch :: [mpd-worktree] member worktree unavailable for plan-x/Senior Engineer: [mpd-worktree] protected-branch: branch "agent/plan-x/senior-engineer" is a protected branch (worktree.protectedBranches); refusing to create a worktree on it — pick another branch or remove the name from the protected list (the member spawns in the shared checkout)
+PASS D.9 recovers once unprotected :: {"path":"/tmp/n1-review3-UtNx4V/.mpd/worktrees/plan-x/senior-engineer","branch":"agent/plan-x/senior-engineer"}
+PASS D.10 reattach preserves the member commit :: e4c1637bff108161ceda316a7b1584b828bce5ca
+=== E: N1 properties remain intact (F1/F2/F3 regression) ===
+PASS E1.1 remove prunes without force :: {"removed":true,"name":"alice","path":"/tmp/n1-review3-kGxne9/.mpd/worktrees/alice","branch":"agent/alice","branchDeleted":false}
+PASS E1.2 branchDeleted false :: false
+PASS E1.3 tombstone has no branchPending :: {"key":"manual/alice","name":"alice","repo":"/tmp/n1-review3-kGxne9","path":"/tmp/n1-review3-kGxne9/.mpd/worktrees/alice","branch":"agent/alice","base":"main","createdAt":"2026-11-12T08:17:59.912Z","status":"removed"}
+PASS E1.4 name usable again :: agent/alice
+PASS E2.1 remove refuses protected-branch :: protected-branch
+PASS E2.2 merge refuses protected-branch :: protected-branch
+PASS E2.3 refs and directory survive :: refs + dir
+PASS E2.4 main HEAD unmoved :: HEAD
+PASS E2.5 record still active :: active
+PASS E3.1 remove branch-mismatch :: branch-mismatch
+PASS E3.2 merge branch-mismatch :: branch-mismatch
+PASS E3.3 directory, refs and HEAD survive :: intact
+PASS E4.1 remove branch-mismatch :: branch-mismatch
+PASS E4.2 merge branch-mismatch :: branch-mismatch
+PASS E4.3 detached dir and branch survive :: intact
+PASS E5[-D].1 remove invalid-branch :: invalid-branch
+PASS E5[-D].2 merge invalid-branch :: invalid-branch
+PASS E5[-D].3 real branch and directory survive :: intact
+PASS E5[bad..name].1 remove invalid-branch :: invalid-branch
+PASS E5[bad..name].2 merge invalid-branch :: invalid-branch
+PASS E5[bad..name].3 real branch and directory survive :: intact
+PASS E6.1 merge succeeds :: merged
+PASS E6.2 record marked merged :: merged
+PASS E6.3 remove succeeds and deletes the branch :: {"removed":true,"name":"alice","path":"/tmp/n1-review3-9S5Rex/.mpd/worktrees/alice","branch":"agent/alice","branchDeleted":true}
+RESULT: PASS failures=0 sandboxes=12
+
+### probe-refspelling.log (F2)
+CONTROL create branch=dev -> protected-branch
+
+=== create branch="refs/heads/dev" (local branch "dev" EXISTS) ===
+create = NO-REFUSAL; recorded branch = refs/heads/dev
+worktree HEAD abbrev = heads/refs/heads/dev
+the literal target ref exists = true
+merge(force) = branch-mismatch
+remove(force) = branch-mismatch
+directory survives = true
+record still active = true
+remove with EMPTY protected list = branch-mismatch
+
+=== create branch="refs/heads/main" (local branch "main" EXISTS) ===
+create = NO-REFUSAL; recorded branch = refs/heads/main
+worktree HEAD abbrev = heads/refs/heads/main
+the literal target ref exists = true
+merge(force) = branch-mismatch
+remove(force) = branch-mismatch
+directory survives = true
+record still active = true
+remove with EMPTY protected list = branch-mismatch
+
+=== create branch="refs/heads/never-existed" (no collision) ===
+worktree HEAD abbrev = refs/heads/never-existed
+remove(force) = NO-REFUSAL
+
+### probe-ambiguity.log (F1)
+A create branch=feature with tag feature -> NO-REFUSAL; recorded = feature
+A worktree HEAD abbrev = heads/feature
+A merge = branch-mismatch
+A remove(force) = branch-mismatch
+A dir survives = true
+A record active = true
+
+B create default branch=agent/alice with tag agent/alice -> NO-REFUSAL; recorded = agent/alice
+B worktree HEAD abbrev = heads/agent/alice
+B merge = branch-mismatch
+B remove(force) = branch-mismatch
+B dir survives = true
+
+C control create agent/alice without a colliding tag -> abbrev = agent/alice remove = NO-REFUSAL
+
+### probe-ambiguity-recovery.log (F1 recovery bound)
+tool remove while directory present = branch-mismatch
+after manual directory deletion, remove = {"removed":true,"name":"alice","path":"/tmp/n1-review3-rec-zOuz7P/.mpd/worktrees/alice","branch":"feature","branchDeleted":true}
+tombstone = removed branchDeleted = true
+
+### probe-branch-plumbing.log (F1 fix direction)
+warning: refname 'feature' is ambiguous.
+== inside the tag-colliding worktree ==
+rev-parse --abbrev-ref HEAD        = heads/feature
+rev-parse --abbrev-ref=strict HEAD = heads/feature
+rev-parse --abbrev-ref=loose HEAD  = heads/feature
+symbolic-ref --short HEAD          = heads/feature
+branch --show-current              = feature
+== no-tag control ==
+warning: refname 'feature' is ambiguous.
+rev-parse --abbrev-ref HEAD        = heads/feature
+branch --show-current              = feature
+
+### falsify-head.log (F4 tests against HEAD source; expected failure)
+      at refusal (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/worktree/n1-review3/2026-11-12T08-14-25Z/falsify-head/packages/mpd-worktree-plugin/test/worktree.test.ts:113:91)
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/worktree/n1-review3/2026-11-12T08-14-25Z/falsify-head/packages/mpd-worktree-plugin/test/worktree.test.ts:972:19)
+(fail) mpdWorktree service > refuses the reattach recovery when the vanished directory's branch is protected (F4) [53.05ms]
+
+ 0 pass
+ 44 filtered out
+ 2 fail
+Ran 2 tests across 1 file. [93.00ms]
+
+### HEAD controls
+HEAD create = NO-REFUSAL; branch = refs/heads/dev
+HEAD worktree abbrev = heads/refs/heads/dev
+HEAD remove(force) = NO-REFUSAL
+HEAD directory gone = true
+HEAD create branch=feature with tag feature -> NO-REFUSAL; abbrev = heads/feature
+HEAD remove(force) = NO-REFUSAL
+HEAD dir gone = true
+
+## Declined to judge
+- Pre-existing records already on a now-protected branch: no migration added; recovery is a config change named by the create refusal; outside the frozen creation scope.
+- A later config change adding protection deliberately freezes remove/merge; operator-owned and force-blind by design.
+- protectedBranches entries are not trimmed; pre-existing config behaviour untouched by this diff.
+- Linux-only; case-insensitive filesystems/Windows not exercised.
+- Non-tag ref ambiguity not exhaustively enumerated; the tag case is proven and the symbolic-ref fix covers the class.
+- Refusal precedence (protected vs name/path/cap) not part of the frozen ordering; all paths side-effect free.
+- Reattach refusal leaves the record active while protected; intended degrade, recovery works once unprotected (probe D9/D10).
+- Merge target force:true still bypasses target protection; unchanged and documented.
+- Pre-N1 wrong-ref merge semantics for full-ref spellings are masked here by branch-mismatch; not separately audited.
+
+## Bounds
+- No live harness boot or real mounted tool call; the tool surface was captured through a minimal adapter/ctx double and the registered execute was invoked. Dist verified byte-identical to a pinned rebuild, not executed.
+- No Docker lane, no full-repo bun test, no network.
+- Falsifiability re-proven on a git-archive HEAD copy (scratch removed), never by editing the working tree.
+- Read: worktree plugin src/test/dist surface, four docs, relevant .mpd/plans/agent-worktrees.md sections. Not read: unrelated packages, whole plan, full upstream contract.
+- The F4 creation guard itself is verified; F1/F2 are in the same uncommitted N1 change (checkedOutBranch / revalidateRecordedBranch).
+
+## Final tree scope (after review evidence; only evidence/ additions)
+ M docs/worktree.md
+ M docs/worktree.zh-CN.md
+ M packages/mpd-worktree-plugin/README.md
+ M packages/mpd-worktree-plugin/README.zh-CN.md
+ M packages/mpd-worktree-plugin/dist/index.js
+ M packages/mpd-worktree-plugin/src/config.ts
+ M packages/mpd-worktree-plugin/src/git.ts
+ M packages/mpd-worktree-plugin/src/index.ts
+ M packages/mpd-worktree-plugin/src/ops.ts
+ M packages/mpd-worktree-plugin/test/worktree.test.ts

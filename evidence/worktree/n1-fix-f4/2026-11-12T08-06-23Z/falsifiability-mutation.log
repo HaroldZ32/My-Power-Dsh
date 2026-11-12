@@ -1,0 +1,30 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-worktree-plugin/test/worktree.test.ts:
+108 |     body()
+109 |   } catch (error) {
+110 |     if (error instanceof WorktreeError) return error
+111 |     throw error
+112 |   }
+113 |   throw new Error("expected the operation to refuse with a WorktreeError, but it returned")
+                                                                                                ^
+error: expected the operation to refuse with a WorktreeError, but it returned
+      at refusal (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-worktree-plugin/test/worktree.test.ts:113:91)
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-worktree-plugin/test/worktree.test.ts:238:21)
+(fail) mpd_worktree_create > refuses a configured protected branch before any git or registry mutation (F4) [80.50ms]
+108 |     body()
+109 |   } catch (error) {
+110 |     if (error instanceof WorktreeError) return error
+111 |     throw error
+112 |   }
+113 |   throw new Error("expected the operation to refuse with a WorktreeError, but it returned")
+                                                                                                ^
+error: expected the operation to refuse with a WorktreeError, but it returned
+      at refusal (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-worktree-plugin/test/worktree.test.ts:113:91)
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-worktree-plugin/test/worktree.test.ts:972:19)
+(fail) mpdWorktree service > refuses the reattach recovery when the vanished directory's branch is protected (F4) [157.19ms]
+
+ 0 pass
+ 44 filtered out
+ 2 fail
+Ran 2 tests across 1 file. [510.00ms]

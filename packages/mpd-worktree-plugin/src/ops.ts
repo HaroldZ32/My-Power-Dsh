@@ -12,6 +12,8 @@ import {
   addWorktree,
   attachWorktree,
   branchExists,
+  branchRef,
+  checkedOutBranch,
   deleteBranch,
   headOf,
   headSha,
@@ -363,6 +365,27 @@ function createEntry(deps: WorktreeDeps, plan: CreatePlan): CreateResult {
     if (!isValidBranch(repo, plan.branch)) {
       throw new WorktreeError("invalid-branch", `"${plan.branch}" is not a valid branch name (git check-ref-format --branch failed)`)
     }
+    // `git check-ref-format --branch` ACCEPTS a full ref spelling, and git then creates
+    // `refs/heads/refs/heads/<name>`: the record keeps the spelling verbatim while every branch git
+    // reports is short, so remove/merge could never consume the record. It also walks straight past the
+    // protected-name check below, which compares short names. Refuse the spelling before any branch,
+    // HEAD, worktree or index mutation.
+    if (plan.branch.startsWith("refs/")) {
+      throw new WorktreeError(
+        "invalid-branch",
+        `"${plan.branch}" is a full ref name; pass a short branch name such as "dev" instead of "refs/heads/dev"`,
+      )
+    }
+    // Creation (including the member-service reattach recovery) is force-blind about protection, like
+    // the remove/merge revalidation: a record on a protected branch could never be removed or merged,
+    // so admitting the name here would strand the worktree, the branch and the registered name.
+    if (deps.config.protectedBranches.includes(plan.branch)) {
+      throw new WorktreeError(
+        "protected-branch",
+        `branch "${plan.branch}" is a protected branch (worktree.protectedBranches); refusing to create a worktree on it — ` +
+          "pick another branch or remove the name from the protected list",
+      )
+    }
     /** Whether the branch already exists locally, the question a recovery must answer before reattaching. */
     const branchPresent = branchExists(repo, plan.branch)
     /** A reattach checks the EXISTING branch out as-is; only the missing-directory recovery may ask for it. */
@@ -473,6 +496,98 @@ function isGitManaged(entry: WorktreeEntry): boolean {
 }
 
 /**
+ * Revalidates a record's recorded branch against git before a remove or merge consumes it.
+ *
+ * The index is attacker-writable from a member session (the member sandbox is the parent workspace),
+ * so `entry.branch` is untrusted input even though this row wrote it: the name must be legal, a branch
+ * in `protectedBranches` is refused for BOTH operations regardless of `force`, and a PRESENT worktree
+ * directory must still have its branch, be git-managed and report exactly the recorded branch as its
+ * HEAD. A missing directory is the documented prune case for remove: it cannot answer for its HEAD and
+ * has no directory to delete, so remove prunes the record even when the branch is gone too; a merge has
+ * nothing to merge from and refuses.
+ * @param deps the call dependencies (the protected list is read from its config).
+ * @param entry the recorded worktree whose `branch` is about to be used.
+ * @param repo the entry's canonical repository toplevel.
+ * @param operation the consuming operation, named in every refusal.
+ * @throws WorktreeError `invalid-branch`, `protected-branch`, `branch-missing`, `unregistered-worktree`
+ *   or `branch-mismatch`; every message names the record, the recorded branch and what git reports.
+ */
+function revalidateRecordedBranch(deps: WorktreeDeps, entry: WorktreeEntry, repo: string, operation: "remove" | "merge"): void {
+  /** The record half every refusal names: the addressable name and the stable key. */
+  const record = `"${entry.name}" (${entry.key})`
+  if (!isValidBranch(repo, entry.branch)) {
+    throw new WorktreeError(
+      "invalid-branch",
+      `record ${record} names branch "${entry.branch}", which git check-ref-format --branch refuses; fix or delete the record before a ${operation}`,
+    )
+  }
+  /** Whether the recorded worktree directory is still present on disk. */
+  const pathPresent = existsSync(entry.path)
+  /** Whether git still lists that path as a worktree of the recorded repository. */
+  const managed = pathPresent && isGitManaged(entry)
+  /** The branch git reports for the live worktree; undefined for a vanished or unmanaged path. */
+  const reported = managed ? checkedOutBranch(entry.path) : undefined
+  /** git's own answer, quoted in every refusal so the message teaches the live state. */
+  const gitSays =
+    reported === undefined
+      ? pathPresent
+        ? "git cannot report a branch for that path"
+        : "the worktree directory is gone"
+      : `git reports "${reported}"`
+  // The protected check precedes the existence/HEAD checks deliberately: a record naming master must
+  // be refused for being PROTECTED even when the live worktree is on another branch or no branch.
+  if (deps.config.protectedBranches.includes(entry.branch)) {
+    throw new WorktreeError(
+      "protected-branch",
+      `record ${record} names protected branch "${entry.branch}" (worktree.protectedBranches); remove and merge refuse it even with force:true (${gitSays})`,
+    )
+  }
+  if (!pathPresent) {
+    if (operation === "merge") {
+      throw new WorktreeError(
+        "unregistered-worktree",
+        `record ${record} points at "${entry.path}", which is gone; nothing is checked out there to merge (${gitSays})`,
+      )
+    }
+    // The contract's own rule (agent-worktrees.md §3): a missing path is PRUNED, not an error. There
+    // is no directory to answer for its HEAD and nothing left to delete, so the branch-existence gate
+    // below must NOT run: a crash between the branch delete and the index tombstone (or an out-of-band
+    // rm -rf + git branch -D) leaves exactly this state, and refusing it would wedge the name forever.
+    return
+  }
+  if (!branchExists(repo, entry.branch)) {
+    throw new WorktreeError(
+      "branch-missing",
+      `record ${record} names branch "${entry.branch}", which does not exist in ${repo}; refusing a ${operation} (${gitSays})`,
+    )
+  }
+  if (!managed) {
+    throw new WorktreeError(
+      "unregistered-worktree",
+      `record ${record} points at "${entry.path}", which git does not list as a worktree of ${repo}; refusing a ${operation}`,
+    )
+  }
+  if (reported === undefined) {
+    throw new WorktreeError(
+      "branch-mismatch",
+      `record ${record} names branch "${entry.branch}", but git could not report the branch of "${entry.path}" (git symbolic-ref --quiet HEAD failed); refusing a ${operation}`,
+    )
+  }
+  if (reported === "HEAD") {
+    throw new WorktreeError(
+      "branch-mismatch",
+      `record ${record} names branch "${entry.branch}", but the worktree "${entry.path}" is detached (git reports "HEAD"); refusing a ${operation}`,
+    )
+  }
+  if (reported !== entry.branch) {
+    throw new WorktreeError(
+      "branch-mismatch",
+      `record ${record} names branch "${entry.branch}", but git reports "${reported}" for "${entry.path}" (git symbolic-ref --quiet HEAD); refusing a ${operation}`,
+    )
+  }
+}
+
+/**
  * Enriches one record with the live git facts `list`/`status` report.
  * @param entry the recorded worktree.
  * @returns the record plus `exists`, `dirty`, `ahead`, `behind` and `merged`.
@@ -485,7 +600,7 @@ function recordOf(entry: WorktreeEntry): WorktreeRecord {
   /** The main checkout's current ref, the comparison base for ahead/behind/merged. */
   const head = headOf(entry.repo)
   /** The ahead/behind pair, absent when either side does not resolve. */
-  const counts = head === undefined ? undefined : revCount(entry.repo, entry.branch, head.ref)
+  const counts = head === undefined ? undefined : revCount(entry.repo, branchRef(entry.branch), head.ref)
   return {
     name: entry.name,
     path: entry.path,
@@ -495,7 +610,7 @@ function recordOf(entry: WorktreeEntry): WorktreeRecord {
     dirty: exists && managed && isDirty(entry.path),
     ahead: counts?.ahead ?? 0,
     behind: counts?.behind ?? 0,
-    merged: head !== undefined && branchExists(entry.repo, entry.branch) && isAncestor(entry.repo, entry.branch, head.ref),
+    merged: head !== undefined && branchExists(entry.repo, entry.branch) && isAncestor(entry.repo, branchRef(entry.branch), head.ref),
   }
 }
 
@@ -544,6 +659,7 @@ export function mergeWorktree(deps: WorktreeDeps, args: MergeArgs): MergeResult 
     throw new WorktreeError("not-a-repo", `repository "${entry.repo}" is not a git checkout any more; refusing to merge`)
   }
   assertRepoInWorkspace(deps, repo)
+  revalidateRecordedBranch(deps, entry, repo, "merge")
   /** The main checkout's current HEAD. */
   const head = headOf(repo)
   if (head === undefined) throw new WorktreeError("git-failed", `cannot read HEAD of ${repo}`)
@@ -567,8 +683,8 @@ export function mergeWorktree(deps: WorktreeDeps, args: MergeArgs): MergeResult 
   if (trackedDirty(repo)) {
     throw new WorktreeError("dirty-main", `the main checkout of ${repo} has uncommitted TRACKED changes; commit or stash them first`)
   }
-  /** The merge attempt's outcome. */
-  const outcome = mergeBranch(repo, entry.branch, `merge(${entry.key}): ${entry.branch}`)
+  /** The merge attempt's outcome; the full local ref keeps a same-named tag from being merged instead. */
+  const outcome = mergeBranch(repo, branchRef(entry.branch), `merge(${entry.key}): ${entry.branch}`)
   if (!outcome.ok) {
     deps.log(`[mpd-worktree] merge of ${entry.branch} into ${into} refused: ` + (outcome.conflicts.length > 0 ? outcome.conflicts.join(", ") : outcome.reason ?? "unknown"))
     return {
@@ -621,12 +737,13 @@ export function removeWorktree(deps: WorktreeDeps, args: RemoveArgs): RemoveResu
       `recorded path "${entry.path}" is outside the worktree root "${treeRoot}"; refusing to remove it`,
     )
   }
+  revalidateRecordedBranch(deps, entry, repo, "remove")
   /** Whether the worktree directory carries uncommitted changes. */
   const dirty = existsSync(entry.path) && isDirty(entry.path)
   /** The main checkout's current ref. */
   const head = headOf(repo)
-  /** Whether the branch holds commits the main checkout does not have. */
-  const unmerged = head !== undefined && branchExists(repo, entry.branch) && !isAncestor(repo, entry.branch, head.ref)
+  /** Whether the branch holds commits the main checkout does not have; the full ref names the BRANCH. */
+  const unmerged = head !== undefined && branchExists(repo, entry.branch) && !isAncestor(repo, branchRef(entry.branch), head.ref)
   /** Whether the caller accepted the loss of commits or uncommitted work. */
   const force = args.force === true
   if ((dirty || unmerged) && !force) {

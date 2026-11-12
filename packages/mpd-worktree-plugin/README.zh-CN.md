@@ -48,7 +48,7 @@
     repo: .                            # 仓库；默认工作区根目录（若它是 git 仓库）
     base: main                         # 新分支的起点；默认主 checkout 的 HEAD
     branchPrefix: "agent/"             # 默认值
-    protectedBranches: ["master", "dev"]  # 不带 force: true 时拒绝的合并目标
+    protectedBranches: ["master", "dev"]  # 创建拒绝该分支名；删除/合并拒绝记录中的分支；合并目标需 force: true
     max: 32                            # 同时 ACTIVE 的 worktree 上限
 ```
 
@@ -88,7 +88,15 @@
 - **D5 —— 每个 worktree 一个 git 写入者。** 成员只能在自己的 worktree（独立 HEAD）里执行 git 写入；
   主 checkout 与所有合并只归 captain。
 - **受保护分支。** `mpd_worktree_merge` 拒绝把 `protectedBranches` 中的分支当作目标，除非
-  `force: true`（默认 `["master","dev"]`），于是成员分支不会意外落到发布线上。
+  `force: true`（默认 `["master","dev"]`），于是成员分支不会意外落到发布线上。在任一操作使用记录中的
+  分支之前，`mpd_worktree_remove` 与 `mpd_worktree_merge` 都会用 git 为该 worktree 报告的符号分支
+  （`git symbolic-ref --quiet HEAD`，去掉 `refs/heads/` 前缀）重新校验它，并对两种操作都拒绝
+  `protectedBranches` 中的分支，即使 `force: true`。worktree 目录已消失时无法回答 HEAD：删除会剪除
+  陈旧记录而不做实时比较（分支已不存在时 `branchDeleted: false`），合并仍然拒绝。创建在
+  `git worktree add` 之前就应用同一列表：`mpd_worktree_create` 与成员服务的 reattach 恢复都会以
+  `protected-branch` 拒绝 `protectedBranches` 中的分支名，并且只接受短分支名（`refs/...` 写法会以
+  `invalid-branch` 拒绝，且发生在任何分支、HEAD、工作树或索引变更之前），因此工作树不可能建在
+  受保护分支上、再被上述复检卡死。
 - **冲突中止。** 冲突的合并会执行 `git merge --abort`，返回冲突路径，且不改变任何东西 —— HEAD 不动、
   没有进行中的合并、没有冲突标记。
 

@@ -52,7 +52,7 @@ Row config in `cordis.patch.yml` (the mounted row ships `config: {}`):
     repo: .                            # repository; default the workspace root if it is a git repo
     base: main                         # base ref for new branches; default the main checkout's HEAD
     branchPrefix: "agent/"             # default
-    protectedBranches: ["master", "dev"]  # merge targets refused without force: true
+    protectedBranches: ["master", "dev"]  # creation refuses the name; recorded branches remove/merge refuse; merge targets need force: true
     max: 32                            # cap on simultaneously ACTIVE worktrees
 ```
 
@@ -94,7 +94,16 @@ file reads as an EMPTY index instead of wedging every operation, and a malformed
   separate HEAD); the captain alone writes the main checkout and merges.
 - **Protected branches.** `mpd_worktree_merge` refuses a target listed in `protectedBranches` unless
   `force: true` (default `["master","dev"]`), so a member branch cannot land on a release line by
-  accident.
+  accident. Before either operation uses the recorded branch, `mpd_worktree_remove` and
+  `mpd_worktree_merge` revalidate it against the symbolic branch git reports for that worktree
+  (`git symbolic-ref --quiet HEAD`, stripped of the `refs/heads/` prefix) and refuse a
+  `protectedBranches` entry for BOTH operations, even with `force: true`. A vanished worktree directory
+  cannot answer for HEAD: remove prunes the stale record without a live comparison (`branchDeleted:
+  false` when the branch is already gone), while merge still refuses. Creation applies the same list
+  before any `git worktree add`: `mpd_worktree_create` and the member-service reattach recovery refuse
+  a `protectedBranches` name with `protected-branch`, and take a SHORT branch name only (a `refs/...`
+  spelling is refused with `invalid-branch` before any branch, HEAD, worktree or index mutation), so a
+  worktree can never be created on a protected branch and then stranded by that revalidation.
 - **Conflict abort.** A conflicting merge runs `git merge --abort`, returns the conflicted paths and
   changes nothing — HEAD unmoved, no merge in progress, no conflict markers.
 

@@ -1,0 +1,176 @@
+{
+  "subject": "Final independent verification of the F4 repair on the N1 worktree-hardening change (fix/worktree-branch-revalidation, UNCOMMITTED)",
+  "repo": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "branch": "fix/worktree-branch-revalidation",
+  "head": "b33dde83da308a3c2dc69319b3def3b6f7b6cd51",
+  "change_state": "UNCOMMITTED working tree: 10 modified files (worktree plugin src/dist/tests + four bilingual docs) plus untracked evidence/. The reviewer edited no source and made no commit.",
+  "timestamp": "2026-11-12T08-14-25Z",
+  "verdict": "FAIL",
+  "risk_level": "HIGH",
+  "verdict_scope": "All FROZEN F4 checks pass: literal create branch dev/master is refused with protected-branch before any git/registry mutation, force cannot bypass it, the reattach recovery refuses, non-protected branches create, N1/F1/F2/F3 regression checks pass, docs carry the clause, dist is byte-identical to a pinned rebuild, and all five observed gates are green. The tree is still not ready for the captain's commit/PR because the same uncommitted N1 change introduces a High lifecycle regression: a branch name that collides with an existing TAG makes a legitimately created worktree unremovable and unmergeable (branch-mismatch forever, even with force), and a full-ref spelling (refs/heads/dev) bypasses the new protected-name creation guard and produces the same stranded record. Request changes: fix checkedOutBranch/revalidation, reject full-ref branch spellings at creation, add regression tests, then re-run this lane.",
+  "requirements": [
+    {
+      "id": "R1-F4-create",
+      "requirement": "create with branch dev/master on a repo lacking them -> protected-branch, with NO branch ref, NO directory, NO git worktree registration, NO index record; the name still usable for a normal create; non-protected branch still creates.",
+      "status": "PASS",
+      "evidence": [
+        "packages/mpd-worktree-plugin/src/ops.ts -> createEntry: after isValidBranch and before branchExists/headOf/addWorktree/attachWorktree/writeIndex, deps.config.protectedBranches.includes(plan.branch) throws WorktreeError('protected-branch').",
+        "packages/mpd-worktree-plugin/test/worktree.test.ts -> 'refuses a configured protected branch before any git or registry mutation (F4)' (dev and master; no ref, no dir, no registration, no index; same name then creates agent/alice) and 'still creates a non-protected branch while other names are protected'.",
+        "Independent probe probe-f4.log A[dev]/A[master]: refusal=protected-branch, branches=main only, no dir, no registration, no index.json, same name then creates agent/alice, exactly one record.",
+        "Full suite: bun test packages/mpd-worktree-plugin -> 46 pass / 0 fail / 218 expect() calls, exit 0 (tests.log)."
+      ]
+    },
+    {
+      "id": "R2-F4-force",
+      "requirement": "force cannot bypass the creation refusal; create exposes no force argument.",
+      "status": "PASS",
+      "evidence": [
+        "packages/mpd-worktree-plugin/src/index.ts -> register(mpd_worktree_create): parameters are name/teamId/member/base/branch/repo only; no force property.",
+        "probe-f4.log B.1-B.5: the registered tool definition is captured through the plugin's own apply(); B.2 confirms no force property; B.3 an extra force:true argument still throws protected-branch; B.4/B.5 no directory, no ref, no index.",
+        "packages/mpd-worktree-plugin/src/ops.ts -> CreateArgs has no force field and createEntry has no force parameter."
+      ]
+    },
+    {
+      "id": "R3-N1-regression",
+      "requirement": "N1 properties and F1/F2/F3 remain intact: full worktree suite 46/0; tampered protected/mismatch/detached still refused; vanished dir+branch still prunes; option-injection still refused.",
+      "status": "PASS",
+      "evidence": [
+        "bun test packages/mpd-worktree-plugin -> 46 pass / 0 fail, exit 0 (tests.log).",
+        "Tests: 'refuses a tampered protected branch for remove AND merge, even with force'; 'refuses a tampered record naming another existing local branch'; 'refuses a tampered record naming a branch git does not have'; 'refuses option-injection branch names on remove AND merge...'; 'prunes a vanished directory even when its branch is gone too, and frees the name'; 'refuses a worktree whose HEAD was detached out of band'.",
+        "Independent probe probe-f4.log E1-E6: vanished dir+branch remove prunes (branchDeleted:false, tombstone, no branchPending, name reusable); tampered protected remove/merge = protected-branch with refs/dir/HEAD/record intact; mismatch and detached = branch-mismatch with nothing mutated; '-D' and 'bad..name' = invalid-branch on both call sites; ordinary create/merge/remove still works.",
+        "Falsifiability: the current F4 tests were run against a git-archive copy of HEAD source in a scratch dir (no source edit): 'bun test ... -t F4' -> 0 pass, 44 filtered, 2 fail, exit 1 (falsify-head.log), so the new tests are genuinely load-bearing."
+      ]
+    },
+    {
+      "id": "R4-docs-dist-scope",
+      "requirement": "Docs clause present and accurate in all four files; dist rebuilt from current src with the pinned bun; tree scope exactly the intended files.",
+      "status": "PASS_WITH_CAVEAT",
+      "evidence": [
+        "All four docs carry the creation-refusal clause: docs/worktree.md ('Creation applies the same list before any git worktree add...'), docs/worktree.zh-CN.md (same, 中文), packages/mpd-worktree-plugin/README.md ('Creation applies the same list before any git worktree add...'), packages/mpd-worktree-plugin/README.zh-CN.md (same, 中文); config-table rows updated in all four.",
+        "bun run verify:docs -> pairs=61 failed=0 violations=0 dead=0 PASS, exit 0 (docs.log).",
+        "node scripts/verify-dist-fresh.ts -> FRESH packages/mpd-worktree-plugin/dist/index.js sha 98afea91d5ab..., 35/35 targets fresh, each rebuilt twice byte-identical, build toolchain bun 1.4.0 from .toolchain, exit 0 (dist.log); the guard text is present in dist/index.js.",
+        "git status --porcelain: only docs/worktree.md, docs/worktree.zh-CN.md, packages/mpd-worktree-plugin/{README.md,README.zh-CN.md,dist/index.js,src/config.ts,src/git.ts,src/index.ts,src/ops.ts,test/worktree.test.ts} modified; all untracked paths are under evidence/ (git-status.log, re-checked after the review writes).",
+        "CAVEAT: the docs' absolute guarantee ('a worktree can never be created on a protected branch and then stranded by that revalidation') is contradicted by the full-ref-spelling bypass (finding F2) and the broader no-stranding claim by the tag-collision regression (finding F1); see findings below."
+      ]
+    },
+    {
+      "id": "R5-gates",
+      "requirement": "Run the observed gates: bun test packages/mpd-worktree-plugin; bun run typecheck; bun run verify:comments; bun run verify:docs; node scripts/verify-dist-fresh.ts; PATH=.qa-tmp/dsh-022/bin MPD_DSHGO_KIT=.mpd/tmp-dshgo/kit bun run verify:gates.",
+      "status": "PASS",
+      "evidence": [
+        "bun test packages/mpd-worktree-plugin -> exit 0, 46 pass / 0 fail (tests.log).",
+        "bun run typecheck -> exit 0 (typecheck.log).",
+        "bun run verify:comments -> exit 0, VERDICT: PASS, 646 files, 59312 declarations (comments.log).",
+        "bun run verify:docs -> exit 0, pairs=61 failed=0 violations=0 dead=0 PASS (docs.log).",
+        "node scripts/verify-dist-fresh.ts -> exit 0, 35/35 fresh, pinned bun 1.4.0 (dist.log).",
+        "PATH=\"$PWD/.qa-tmp/dsh-022/bin:$PATH\" MPD_DSHGO_KIT=\"$PWD/.mpd/tmp-dshgo/kit\" bun run verify:gates -> exit 0, PASS - 11/11 member gate(s) green, dshgo RESULT: LEGAL (gates.log)."
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "High",
+      "title": "A branch name that collides with an existing tag makes a legitimately created worktree permanently unremovable and unmergeable (branch-mismatch; force has no effect). This is a regression introduced by the uncommitted N1 change.",
+      "where": "packages/mpd-worktree-plugin/src/git.ts -> checkedOutBranch (uses `git rev-parse --abbrev-ref HEAD`) consumed by packages/mpd-worktree-plugin/src/ops.ts -> revalidateRecordedBranch (string equality `reported !== entry.branch`).",
+      "evidence": [
+        "probe-ambiguity.log A: with `git tag feature` present, createWorktree({name:'alice', branch:'feature'}) returns NO-REFUSAL and records branch 'feature'; the worktree's `rev-parse --abbrev-ref HEAD` is 'heads/feature'; merge and remove(force:true) both refuse 'branch-mismatch'; the directory survives and the record stays active.",
+        "probe-ambiguity.log B: the same happens to the DEFAULT branch: with `git tag agent/alice`, createWorktree({name:'alice'}) records 'agent/alice', HEAD reports 'heads/agent/alice', and both operations refuse branch-mismatch.",
+        "probe-head-tag.log: against a git-archive copy of HEAD source (no N1 revalidation yet), the identical create+remove(force) returns NO-REFUSAL and the directory is gone -> the stranding is introduced by the uncommitted change, not pre-existing.",
+        "probe-branch-plumbing.log: inside the tag-colliding worktree, `git branch --show-current` correctly answers 'feature' while `git rev-parse --abbrev-ref HEAD` answers 'heads/feature' (and strict/loose variants agree with the latter) — the fix direction.",
+        "probe-ambiguity-recovery.log: the tool still refuses 'branch-mismatch' while the directory exists; after a manual `rm -rf <worktree>` the same remove(force) prunes, deletes the branch and tombstones the record — i.e. only manual filesystem intervention recovers, not the tool."
+      ],
+      "why_it_matters": "remove and merge are the core lifecycle; a user who creates a branch named like an existing tag (tags and branch names commonly share names) gets a worktree the row can never merge or clean up. The registered name and the active-slot cap stay consumed; the docs' no-stranding guarantee is false. The fix must keep the HEAD-equality check but obtain the branch name from `git symbolic-ref --quiet HEAD` (strip refs/heads/; detached -> undefined) or `git branch --show-current`.",
+      "fix_direction": "Change checkedOutBranch to a non-abbreviating source (`git symbolic-ref --quiet HEAD`, strip the `refs/heads/` prefix, detached returns undefined; or `git branch --show-current`), keep revalidateRecordedBranch's equality rule and its detached/mismatch refusals, and add regression tests: tag 'feature' + create branch 'feature' -> remove and merge succeed; tag 'agent/alice' + default create -> remove succeeds."
+    },
+    {
+      "id": "F2",
+      "severity": "Medium",
+      "title": "A full-ref branch spelling (refs/heads/dev) bypasses the new protected-name creation refusal and produces the same unremovable/unmergeable record; the guard compares the protected list by exact string only.",
+      "where": "packages/mpd-worktree-plugin/src/ops.ts -> createEntry (deps.config.protectedBranches.includes(plan.branch)) and the recorded/consumed name in src/ops.ts -> revalidateRecordedBranch / src/git.ts -> checkedOutBranch.",
+      "evidence": [
+        "probe-refspelling.log: control create branch 'dev' with protectedBranches ['dev'] -> protected-branch. With the same config, create branch 'refs/heads/dev' -> NO-REFUSAL, recorded branch 'refs/heads/dev'; the worktree HEAD abbreviates to 'heads/refs/heads/dev'; merge and remove(force:true) both refuse branch-mismatch; the directory survives, the record stays active; removing the name from protectedBranches does not help.",
+        "probe-refspelling.log: the same with branch 'refs/heads/main' (not protected) -> NO-REFUSAL then branch-mismatch on both operations, so this is not only a protected-list issue.",
+        "probe-refspelling.log: branch 'refs/heads/never-existed' (no colliding local branch) round-trips ('refs/heads/never-existed') and removes successfully, isolating the trigger to the abbreviation collision.",
+        "Tool input validation: packages/mpd-worktree-plugin/src/git.ts -> isValidBranch accepts 'refs/heads/dev' (`git check-ref-format --branch` exits 0), so the public tool accepts the spelling.",
+        "Neither docs nor tool descriptions warn against refs/ spelling; the four docs' protected guarantee therefore does not hold for this spelling."
+      ],
+      "why_it_matters": "F4's purpose is to stop creation from admitting a record that remove/merge later refuse. A caller can still reach that stranded state through the public create tool by using a full-ref spelling; for a protected branch the new refusal is bypassed entirely. The `refs/`-rooted name also makes the downstream rev commands resolve inconsistently (branchExists prepends refs/heads/ while merge/merge-base treat it as a full rev), so simply fixing the abbreviation in F1 is not sufficient: creation-side rejection/canonicalization is required.",
+      "fix_direction": "Reject a branch argument rooted at `refs/` (and any name whose recorded form cannot round-trip) at createEntry before any mutation, with invalid-branch and a message naming the accepted short-branch form; add tests for 'refs/heads/dev' (existing protected branch) and 'refs/heads/main' asserting refusal with no ref/dir/registration/index. Alternatively canonicalize to the short name and prove remove/merge use the same ref everywhere, but rejection is the smaller change."
+    },
+    {
+      "id": "F3",
+      "severity": "Nit",
+      "title": "The four docs' absolute no-stranding guarantee is stronger than the implemented and tested behaviour.",
+      "where": "docs/worktree.md, docs/worktree.zh-CN.md, packages/mpd-worktree-plugin/README.md, packages/mpd-worktree-plugin/README.zh-CN.md ('...so a worktree can never be created on a protected branch and then stranded by that revalidation').",
+      "evidence": [
+        "F2 shows a protected branch named through its full-ref spelling is not refused at creation and is stranded by revalidation.",
+        "F1 shows a non-protected branch name colliding with a tag is created and then stranded by revalidation (the sentence's broader 'never stranded' reading)."
+      ],
+      "why_it_matters": "The docs are part of the frozen requirement (accurate clause in all four files). Once F1/F2 are fixed, the protected-name sentence becomes true; until then it overstates the guarantee.",
+      "fix_direction": "No separate doc edit is required if F1/F2 are fixed as described; otherwise qualify the sentence to the literal protectedBranches entries and disclose the manual-recovery bound. Re-run verify:docs after either change."
+    }
+  ],
+  "declined_to_judge": [
+    "Pre-existing records already on a now-protected branch: no migration is added; the create refusal names removing the name from protectedBranches as the recovery, and migrating records is outside the frozen creation scope. Set aside as a declared bound, not a failure of this repair.",
+    "Config change after creation that adds the record's branch to protectedBranches deliberately freezes remove/merge; the revalidation is force-blind by design and the operator owns protection. Set aside as intentional.",
+    "protectedBranches entries are not trimmed in resolveConfig, so a config value ' dev ' protects nothing: pre-existing config behaviour untouched by this diff.",
+    "Case-insensitive filesystems and Windows path handling were not exercised; the review is Linux-only.",
+    "Ambiguity with refs other than tags (remote-tracking refs, notes, refs/<name>) was not exhaustively enumerated; the tag case is proven and the symbolic-ref fix covers the class. Set aside as a bound.",
+    "Refusal precedence (protected-branch vs name-registered/path-exists/limit-reached) differs by pre-existing check order; all paths leave no side effect and the frozen requirement does not order them.",
+    "The reattach refusal leaves the stale record active and the name registered while protection is on; this is the intended degrade and recovery works once the name is unprotected (probe D9/D10).",
+    "Merge target force:true still bypasses target protection; unchanged and documented, not part of F4.",
+    "The pre-N1 wrong-ref merge semantics for full-ref spellings (git merge resolves the named existing branch) are blocked in the current tree by branch-mismatch; the deeper merge-semantics analysis was not separately audited beyond the evidence above.",
+    "The new tests simulate a config change by mutating the resolved config object in place; acceptable as a unit-test technique, not a production behaviour claim."
+  ],
+  "commands_observed": [
+    "bun test packages/mpd-worktree-plugin -> exit 0; 46 pass, 0 fail, 218 expect() calls",
+    "bun run typecheck -> exit 0 (tsgo --noEmit)",
+    "bun run verify:comments -> exit 0; VERDICT: PASS; 646 files, 59312 declarations",
+    "bun run verify:docs -> exit 0; pairs=61 failed=0 violations=0 dead=0 PASS",
+    "node scripts/verify-dist-fresh.ts -> exit 0; 35/35 targets fresh (rebuilt twice, byte-identical), build toolchain bun 1.4.0 from .toolchain",
+    "PATH=\"$PWD/.qa-tmp/dsh-022/bin:$PATH\" MPD_DSHGO_KIT=\"$PWD/.mpd/tmp-dshgo/kit\" bun run verify:gates -> exit 0; PASS - 11/11 member gate(s) green",
+    "bun evidence/worktree/n1-review3/2026-11-12T08-14-25Z/probe-f4.ts -> exit 0; RESULT: PASS failures=0 sandboxes=12",
+    "bun .../probe-refspelling.ts -> exit 0; exposes F2 (literal dev protected-branch; refs/heads/dev and refs/heads/main create then branch-mismatch; no-collision control removes)",
+    "bun .../probe-ambiguity.ts -> exit 0; exposes F1 (tag feature + branch feature, tag agent/alice + default branch: create succeeds, remove/merge branch-mismatch, record active)",
+    "bun .../probe-ambiguity-recovery.ts -> exit 0; removal only works after manual directory deletion",
+    "git archive HEAD packages/mpd-worktree-plugin/src | scratch + current F4 tests: bun test ... -t F4 -> exit 1; 0 pass, 44 filtered, 2 fail (expected falsifiability, no source edit)",
+    "HEAD-source controls (scratch copies): tag-collision remove(force) -> NO-REFUSAL and directory gone; refs/heads/dev remove(force) -> NO-REFUSAL (the stranding is introduced by the uncommitted N1 change)"
+  ],
+  "bounds": [
+    "No live harness boot and no real mounted tool call: the tool-surface check used a minimal adapter/ctx double (registerTool + rowLog) and invoked the registered mpd_worktree_create.execute; dist was verified byte-identical to a pinned rebuild but not executed.",
+    "No Docker lane, no full-repo `bun test` (only the worktree package; verify:gates ran its own 11 members), no network.",
+    "Linux only; case-insensitive filesystems, Windows paths and non-ASCII branch names were not exercised.",
+    "Falsifiability was re-proven against a `git archive HEAD` copy in a scratch directory under the evidence dir (removed afterwards), never by mutating the working tree.",
+    "The review read the worktree plugin sources, its tests and the four docs, and the relevant parts of .mpd/plans/agent-worktrees.md; unrelated packages, the whole plan and the full N1 upstream contract were not re-read.",
+    "The F4 repair's own freeze (create refusal) is verified; the tag-collision and full-ref findings are in the same uncommitted N1 change (checkedOutBranch/revalidateRecordedBranch), not in the protected-list block itself.",
+    "Concurrency was not exercised; the state lock is an in-process synchronous guard."
+  ],
+  "artifacts": [
+    "evidence/worktree/n1-review3/2026-11-12T08-14-25Z/result.json",
+    "evidence/worktree/n1-review3/2026-11-12T08-14-25Z/output.log",
+    "evidence/worktree/n1-review3/2026-11-12T08-14-25Z/tests.log",
+    "evidence/worktree/n1-review3/2026-11-12T08-14-25Z/typecheck.log",
+    "evidence/worktree/n1-review3/2026-11-12T08-14-25Z/comments.log",
+    "evidence/worktree/n1-review3/2026-11-12T08-14-25Z/docs.log",
+    "evidence/worktree/n1-review3/2026-11-12T08-14-25Z/dist.log",
+    "evidence/worktree/n1-review3/2026-11-12T08-14-25Z/dist.exit",
+    "evidence/worktree/n1-review3/2026-11-12T08-14-25Z/gates.log",
+    "evidence/worktree/n1-review3/2026-11-12T08-14-25Z/gates.exit",
+    "evidence/worktree/n1-review3/2026-11-12T08-14-25Z/falsify-head.log",
+    "evidence/worktree/n1-review3/2026-11-12T08-14-25Z/probe-f4.ts",
+    "evidence/worktree/n1-review3/2026-11-12T08-14-25Z/probe-f4.log",
+    "evidence/worktree/n1-review3/2026-11-12T08-14-25Z/probe-refspelling.ts",
+    "evidence/worktree/n1-review3/2026-11-12T08-14-25Z/probe-refspelling.log",
+    "evidence/worktree/n1-review3/2026-11-12T08-14-25Z/probe-ambiguity.ts",
+    "evidence/worktree/n1-review3/2026-11-12T08-14-25Z/probe-ambiguity.log",
+    "evidence/worktree/n1-review3/2026-11-12T08-14-25Z/probe-ambiguity-recovery.ts",
+    "evidence/worktree/n1-review3/2026-11-12T08-14-25Z/probe-ambiguity-recovery.log",
+    "evidence/worktree/n1-review3/2026-11-12T08-14-25Z/probe-head-refspelling.log",
+    "evidence/worktree/n1-review3/2026-11-12T08-14-25Z/probe-head-tag.log",
+    "evidence/worktree/n1-review3/2026-11-12T08-14-25Z/probe-branch-plumbing.log",
+    "evidence/worktree/n1-review3/2026-11-12T08-14-25Z/probe-edge.log",
+    "evidence/worktree/n1-review3/2026-11-12T08-14-25Z/git-status.log",
+    "evidence/worktree/n1-review3/2026-11-12T08-14-25Z/exits.log"
+  ]
+}
