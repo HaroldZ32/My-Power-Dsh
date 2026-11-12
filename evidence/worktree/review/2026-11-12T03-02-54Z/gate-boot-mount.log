@@ -1,0 +1,21 @@
+=== which dsh: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/bin/dsh ===
+=== bun skills/dsh-qa/scripts/bundle-lifecycle.ts @ 2026-11-12T03:03:11Z
+[bundle-lifecycle] ok=true -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/dsh-qa/bundle-lifecycle/2026-11-12T03-03-11.156Z
+  install: {"ok":true,"exit":0,"dependency":"link:/home/haroldzhao/MyProj/DshProj/My-Power-Dsh","bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","@mpd-dsh/mpd"],"oneCommand":"dsh plugin --profile w add <repo root>"}
+  composed: {"ok":true,"exit":0}
+  boot: {"ok":true,"checks":{"http":true,"adapterProvided":true,"adapterSeams":true,"adapterToolCall":true,"corpusFromBundle":true,"noPresetRefusal":true,"probePass":true,"presetProbeOk":true},"failed":[],"probeVerdict":"PASS","presetProbeLine":"ok","http":true,"corpu
+  noHomeCopy: {"ok":true,"skills":[],"presets":[]}
+  layerDurability: {"ok":true,"exit":0,"dependency":true,"bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app","@mpd-dsh/mpd"]}
+  uninstall: {"ok":true,"exit":0,"bundles":["@deepseek-ai/dsh-base","@deepseek-ai/dsh-web-app"],"residue":[],"mpdState":[]}
+[bundle-lifecycle] PASS
+EXIT=0
+=== node skills/dsh-qa/scripts/preset-conformance.ts @ 2026-11-12T03:03:20Z
+[preset-conformance] ok=true -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/dsh-qa/preset-conformance/2026-11-12T03-03-20.649Z
+  conformance: {"ok":true,"checked":33,"schemaFree":6,"patchFiles":["cordis.patch.yml","presets/mpd.patch.yml"],"preset":{"rowId":"preset-mpd","id":"mpd","children":28,"file":"presets/mpd.patch.yml"},"parity":{"reference":".qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-web-app/pres
+  auth: {"ok":true,"tokenSeen":true,"cookieSession":true}
+  sessionCreate: {"ok":true,"status":200,"sessionId":"session-7d931114-1776-40b1-9aa3-cacac5bfb55f","agentPreset":"mpd","raw":"{\"type\":\"server-response\",\"rpcId\":\"preset-conformance-1794452608639\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-7d931114-1776-40b1-9aa3-cacac5bfb55f\",\"agentPreset\"
+  sessionHeader: {"ok":true,"agentPreset":"mpd","log":"/tmp/mpd-preset-main-lmRFVX/home/sessions/--tmp-mpd-preset-main-lmRFVX-ws--/session-7d931114-1776-40b1-9aa3-cacac5bfb55f/session.v4.jsonl.zstd"}
+  bootLog: {"ok":true,"signatures":[]}
+  negativeControl: {"ok":true,"code":"agent-preset/invalid","message":"persona (@deepseek-ai/dsh-persona): invalid config:\n  - $.prefix missing required value (at prefix)","mutations":["preset-mpd row: persona prefix: -> text:"],"override":"id-target on preset-mpd via --patch"}
+[preset-conformance] PASS
+EXIT=0

@@ -1274,6 +1274,7 @@ function createDshAdapter(ctx, config = {}) {
           request: {
             prompt: textBlock(request.prompt),
             parent: caller,
+            ...request.cwd === undefined ? {} : { cwd: request.cwd },
             ...agentOptions === undefined ? {} : { agentOptions },
             ...request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }
           },
@@ -1325,6 +1326,9 @@ function createDshAdapter(ctx, config = {}) {
         const teams = requireService("agentTeams", `cannot raise team member "${request.name}"`);
         if (typeof teams.spawnTeammate !== "function") {
           throw new Error("mpd-dsh-adapter: the Agent Teams service exposes no spawnTeammate() — cannot raise a team member");
+        }
+        if (request.cwd !== undefined) {
+          rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: the official executor cannot set cwd — team member "${request.name}" runs in the shared checkout instead of ${request.cwd}`);
         }
         const spawned = await teams.spawnTeammate.call(teams, caller, {
           name: request.name,
@@ -1926,6 +1930,7 @@ function createDshAdapter(ctx, config = {}) {
           request: {
             prompt,
             parent: spec.parent,
+            ...spec.cwd === undefined ? {} : { cwd: spec.cwd },
             ...Object.keys(route).length === 0 ? {} : { agentOptions: route },
             ...spec.agentPreset === undefined ? {} : { agentPreset: spec.agentPreset },
             ...spec.outputSchema === undefined ? {} : { outputSchema: spec.outputSchema },
@@ -1943,6 +1948,7 @@ function createDshAdapter(ctx, config = {}) {
         prompt,
         ...spec.parent === undefined ? {} : { parent: spec.parent },
         signal,
+        ...spec.cwd === undefined ? {} : { cwd: spec.cwd },
         ...Object.keys(route).length === 0 ? {} : { agentOptions: route },
         ...spec.persona === undefined ? {} : { persona: spec.persona },
         ...spec.outputSchema === undefined ? {} : { outputSchema: spec.outputSchema },
@@ -5834,6 +5840,46 @@ function installIdleGuard(dsh) {
   };
 }
 
+// packages/mpd-team-core-plugin/src/worktree.ts
+var WORKTREE_SERVICE = "mpdWorktree";
+function rosterReadonlyKeys(service) {
+  try {
+    const roles = service("mpdRoles");
+    return readonlyMemberKeys(typeof roles?.list === "function" ? roles.list() : []);
+  } catch {
+    return new Set;
+  }
+}
+function memberWorktreeLookup(service, log) {
+  let readonlyKeys;
+  let reported = false;
+  const report = (line) => {
+    if (reported)
+      return;
+    reported = true;
+    log(line);
+  };
+  return (query) => {
+    readonlyKeys ??= rosterReadonlyKeys(service);
+    if (isReadonlyMemberName(query.member, readonlyKeys))
+      return;
+    if (query.role !== undefined && isReadonlyMemberName(query.role, readonlyKeys))
+      return;
+    const worktree = service(WORKTREE_SERVICE);
+    if (worktree === undefined || typeof worktree.createForMember !== "function") {
+      report("[mpd-team-core] the mpdWorktree service is absent — team members spawn in the shared checkout (no per-member worktree)");
+      return;
+    }
+    try {
+      const created = worktree.createForMember(query.exec, { teamId: query.teamId, member: query.member });
+      return typeof created?.path === "string" && created.path !== "" ? created.path : undefined;
+    } catch (error) {
+      report("[mpd-team-core] the mpdWorktree service refused for " + query.teamId + "/" + query.member + ": " + String(error?.message ?? error) + " (the member spawns in the shared checkout)");
+      return;
+    }
+  };
+}
+
 // packages/mpd-team-core-plugin/src/dispatch-ledger.ts
 import { mkdirSync as mkdirSync6, readFileSync as readFileSync6, renameSync as renameSync4, writeFileSync as writeFileSync3 } from "node:fs";
 import { join as join7 } from "node:path";
@@ -6256,8 +6302,10 @@ async function approveTeamBody(deps, caller, input) {
     if (unresolvedBlockers.length > 0)
       created.unresolved = unresolvedBlockers;
     let stoppedAt;
+    const worktreeOf = memberWorktreeLookup(deps.service, deps.log);
     for (const member of record.members) {
       try {
+        const cwd = worktreeOf({ exec: { agent: caller.agent, signal: caller.signal }, teamId: record.teamId, member: member.name, ...member.role === undefined ? {} : { role: member.role } });
         const spawned = await deps.executor().spawn(caller.agent, {
           teamId: record.teamId,
           memberId: member.id,
@@ -6265,6 +6313,7 @@ async function approveTeamBody(deps, caller, input) {
           description: member.description === "" ? member.name : member.description,
           prompt: withIdlePreamble(buildPlan.members.find((staged2) => staged2.name === member.name)?.prompt ?? member.description),
           ...member.role === undefined ? {} : { role: member.role },
+          ...cwd === undefined ? {} : { cwd },
           ...caller.signal === undefined ? {} : { signal: caller.signal }
         });
         created.members.push({ name: member.name, id: spawned.handle });
@@ -9405,6 +9454,8 @@ WARNING: ${value.warning}` : "";
             rowLogLine("mpd-team-core", "the `member-role-omitted` journal row for " + JSON.stringify(added.name) + " could not be written (" + String(error?.message ?? error) + ") — the member is still raised and the warning still rides the answer");
           }
         }
+        const worktreeOf = memberWorktreeLookup(teamActionsDeps.service, teamActionsDeps.log);
+        const cwd = worktreeOf({ exec, teamId: roster.teamId, member: added.name, ...added.role === undefined ? {} : { role: added.role } });
         try {
           const spawned = await executor().spawn(exec.agent, {
             teamId: roster.teamId,
@@ -9413,6 +9464,7 @@ WARNING: ${value.warning}` : "";
             description: added.description === "" ? added.name : added.description,
             prompt: withIdlePreamble(input.prompt === "" ? added.description : input.prompt),
             ...added.role === undefined ? {} : { role: added.role },
+            ...cwd === undefined ? {} : { cwd },
             ...exec.signal === undefined ? {} : { signal: exec.signal }
           });
           const running = updateTeamMember(readTeam(workspace, roster.teamId) ?? roster, added.id, { executorRef: spawned.handle, status: "running" });

@@ -1,0 +1,11 @@
+=== bun run typecheck @ 2026-11-12T03:03:03Z
+$ tsgo --noEmit
+EXIT=0
+=== bun run verify:comments @ 2026-11-12T03:03:05Z
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 646 TypeScript file(s) of 646 in the source set; inspected 59150 declaration(s); skipped 29205 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+EXIT=0

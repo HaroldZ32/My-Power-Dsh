@@ -81,7 +81,7 @@ interface Harness {
    * §7.1b needs the REQUEST half, not only the record: a member's `role` must reach the executor, which
    * is the FIRST channel route resolution reads.
    */
-  readonly spawnRequests: Array<{ name?: string; role?: string }>
+  readonly spawnRequests: Array<{ name?: string; role?: string; cwd?: string }>
   /**
    * Drive one registered tool by name as a given session.
    * @param name - the registered tool name.
@@ -99,9 +99,11 @@ interface Harness {
  * THE OFFICIAL PLANE IS ABSENT ON PURPOSE — the measured condition of every defect here. The executor is a
  * stub that mints one predictable handle per member NAME, which the record keeps as that member's
  * `executorRef`: that handle IS the member session's own id in these arms.
+ * @param services - extra services the arm mounts (the Lane C worktree/roster doubles); an id this
+ *   map does not name falls through to the stub adapter.
  * @returns the harness an arm drives.
  */
-function harness(): Harness {
+function harness(services: Record<string, unknown> = {}): Harness {
   /** The sandbox workspace, which is also what `workspaceRoot` answers. */
   const workspace = sandbox()
   /** The tools the plugin registered. */
@@ -109,7 +111,7 @@ function harness(): Harness {
   /** The service the plugin published. */
   let service: MpdTeamsService | undefined
   /** Every raise request the stub backend received, in call order (§7.1b reads the REQUEST half). */
-  const spawnRequests: Array<{ name?: string; role?: string }> = []
+  const spawnRequests: Array<{ name?: string; role?: string; cwd?: string }> = []
   /** The stub backend: it raises any member and mints a handle derived from the member's name. */
   const executor = {
     kind: "native",
@@ -118,12 +120,12 @@ function harness(): Harness {
     /**
      * Record the request and answer a predictable handle.
      * @param _caller - the Lead agent, never inspected.
-     * @param request - the raise request, read for the member's name and its role.
+     * @param request - the raise request, read for the member's name, its role and (Lane C) its cwd.
      * @returns the handle the record keeps as `executorRef`.
      */
-    spawn: async (_caller: unknown, request: { name?: string; role?: string }): Promise<{ handle: string; executor: string }> => {
+    spawn: async (_caller: unknown, request: { name?: string; role?: string; cwd?: string }): Promise<{ handle: string; executor: string }> => {
       // THE REQUEST HALF (§7.1b): the member's role must reach the executor, the FIRST channel routing reads.
-      spawnRequests.push({ name: request?.name, ...(request?.role === undefined ? {} : { role: request.role }) })
+      spawnRequests.push({ name: request?.name, ...(request?.role === undefined ? {} : { role: request.role }), ...(request?.cwd === undefined ? {} : { cwd: request.cwd }) })
       return { handle: "child-" + String(request?.name ?? "").replace(/\s+/g, "-"), executor: "native" }
     },
     /** Deliver nothing; the mailbox arm only needs the record. */
@@ -149,7 +151,7 @@ function harness(): Harness {
   }
   /** The minimal cordis context `apply` needs; `provide` captures the service it publishes. */
   const ctx = {
-    get: (id: string) => (id === "mpdDsh" ? dsh : undefined),
+    get: (id: string) => services[id] ?? (id === "mpdDsh" ? dsh : undefined),
     on: (): void => {},
     effect: (fn: () => unknown) => { try { return fn() ?? (() => {}) } catch { return () => {} } },
     provide: (id: string, value: unknown) => { if (id === TEAMS_SERVICE) service = value as MpdTeamsService },
@@ -542,5 +544,39 @@ describe("C7-4 F5 — a forked/resumed captain keeps its captaincy", () => {
     // AND NOTHING WAS HEALED: the child is not in the lead history, and the row is untouched.
     expect(readTeam(h.workspace, teamId)?.leadHistory ?? []).not.toContain("child-of-lead")
     expect(statusOnDisk(h.workspace, teamId, "T1")).toBe("pending")
+  })
+})
+
+describe("Lane C — a live add_member raises the member in its own worktree", () => {
+  test("a WRITER appended mid-run carries its worktree cwd; a READ-ONLY seat carries none", async () => {
+    /** Every pair the worktree double was asked about. */
+    const asked: Array<{ teamId: string; member: string }> = []
+    /** The worktree surface, keyed exactly as Lane A keys it. */
+    const mpdWorktree = {
+      createForMember: (_exec: unknown, ref: { teamId: string; member: string }): { path: string; branch: string } => {
+        asked.push(ref)
+        return { path: "/ws/.mpd/worktrees/" + ref.teamId + "/" + ref.member, branch: "agent/" + ref.teamId + "/" + ref.member }
+      },
+    }
+    /** The roster the read-only skip is classified against — the dispatch guard's own source. */
+    const mpdRoles = { list: () => [{ name: "Senior Engineer", readonly: false }, { name: "Reviewer", readonly: false }, { name: "Explorer", readonly: true }, { name: "Junior Engineer", readonly: false }] }
+    /** The harness with both surfaces mounted. */
+    const h = harness({ mpdWorktree, mpdRoles })
+    /** The approved team whose live roster this arm appends to. */
+    const teamId = await approveTeam(h)
+    // APPROVAL is the first site: both staged writers got their own worktree.
+    expect(h.spawnRequests.filter((entry) => entry.name === "Senior Engineer").map((entry) => entry.cwd)).toEqual(["/ws/.mpd/worktrees/" + teamId + "/Senior Engineer"])
+    // A READ-ONLY seat is never given a checkout — and the service is not even asked.
+    /** The read-only append the tool accepted. */
+    const explorer = await h.call("agent_teams_plan", { action: "add_member", member: { name: "Explorer", description: "finds", prompt: "You find things." } }, LEAD) as { spawned?: string }
+    expect(explorer.spawned).toBeDefined()
+    expect(asked.some((ref) => ref.member === "Explorer")).toBe(false)
+    expect(h.spawnRequests.filter((entry) => entry.name === "Explorer").map((entry) => entry.cwd)).toEqual([undefined])
+    // A WRITER appended mid-run gets the SAME treatment the approval gives one.
+    /** The writer append the tool accepted. */
+    const writer = await h.call("agent_teams_plan", { action: "add_member", member: { name: "Junior Engineer", description: "builds", prompt: "You build.", role: "Junior Engineer" } }, LEAD) as { spawned?: string }
+    expect(writer.spawned).toBeDefined()
+    expect(asked.filter((ref) => ref.member === "Junior Engineer")).toEqual([{ teamId, member: "Junior Engineer" }])
+    expect(h.spawnRequests.filter((entry) => entry.name === "Junior Engineer").map((entry) => entry.cwd)).toEqual(["/ws/.mpd/worktrees/" + teamId + "/Junior Engineer"])
   })
 })

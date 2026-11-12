@@ -227,6 +227,11 @@ const PLUGIN_PKGS: readonly string[] = [
   "mpd-codegraph-plugin", "mpd-hashline-plugin",
   "mpd-config-plugin", "mpd-comment-checker-plugin", "mpd-memory-plugin",
   "mpd-roles-plugin", "mpd-bootstrap-plugin", "mpd-workmate-plugin",
+  // mpd-worktree-plugin is MOUNTED by the bundle patch (row `mpd-worktree`, beside `mpd-comment-checker`):
+  // the per-member git worktrees — the five `mpd_worktree_*` tools and the `mpdWorktree` service. Listed
+  // for the reason every entry below is: a patch-mounted package missing here would be silently dropped
+  // from the packed tree while the pack still exited 0.
+  "mpd-worktree-plugin",
   // mpd-project-init-plugin is MOUNTED by the bundle patch (row `mpd-project-init`, R3):
   // the one-time AGENT.md scaffold. Listed here for the same reason as every entry below —
   // a patch-mounted package missing from this list would be silently dropped from the

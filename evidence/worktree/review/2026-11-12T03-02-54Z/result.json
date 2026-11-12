@@ -1,0 +1,172 @@
+{
+  "task": "T6 — Lane F: independent review of the agent-worktrees wave",
+  "wave": "agent-worktrees (branch feature/agent-worktrees, uncommitted working tree)",
+  "contract": ".mpd/plans/agent-worktrees.md (FROZEN 2026-11-12)",
+  "reviewer": "reviewer (T6 owner)",
+  "timestamp": "2026-11-12T03-02-54Z",
+  "treeStateAtEvidence": "HEAD = dev 13685d98; the whole wave is uncommitted (38 modified paths, of which 24 are rebuilt dist/index.js, plus untracked packages/mpd-worktree-plugin/**, docs/worktree*.md and four test files). No commit was made by this review.",
+  "verdict": "PASS",
+  "verdictSentence": "Every contract arm I could test independently is green (23/23 dist-level arms, 25 gate runs including the eleven-member aggregate and both boot-mount lanes), the tool contract matches §3 Lane A including conflict abort and protected branches, and the two Medium carries are hardening/boundary observations that do not refute any frozen acceptance criterion.",
+  "reviewBasis": {
+    "recordedBeforeImplementation": "evidence/worktree/review/2026-11-12T03-02-54Z/basis.md",
+    "documents": [
+      ".mpd/plans/agent-worktrees.md §1, §2 D1–D8, §3 Lane A–F, §4 acceptance 1–7, §5 bounds",
+      "docs/worktree.md + docs/worktree.zh-CN.md (new)",
+      "docs/cellwork.md 'Member worktrees' (§diff) + zh twin",
+      "agent-references/git-model.md §1 amendment + §5 move",
+      "AGENTS.md §4 gate table, §5 diff, §6 build discipline",
+      "packages/mpd-worktree-plugin/README.md + README.zh-CN.md",
+      "pinned harness source for the D1 premise (dsh-subagent/lib/index.js resolveDirectory + workingDirectory.set; types/child-agent.js parentHeader.cwd)"
+    ]
+  },
+  "gates": [
+    { "command": "bun test packages/mpd-worktree-plugin", "exit": 0, "observed": "24 pass / 0 fail (1 file)" },
+    { "command": "bun test packages/mpd-dsh-adapter-plugin", "exit": 0, "observed": "403 pass / 0 fail (28 files)" },
+    { "command": "bun test packages/mpd-team-core-plugin", "exit": 0, "observed": "642 pass / 0 fail (46 files)" },
+    { "command": "bun test packages/mpd-cellwork-plugin", "exit": 0, "observed": "439 pass / 0 fail (36 files)" },
+    { "command": "bun run typecheck", "exit": 0, "observed": "tsgo --noEmit, no diagnostics" },
+    { "command": "bun run verify:comments", "exit": 0, "observed": "PASS — 646 files, 59150 declarations, 29205 inline callbacks out of family" },
+    { "command": "node scripts/verify-dist-fresh.ts", "exit": 0, "observed": "35/35 targets fresh (each rebuilt twice, byte-identical); build toolchain bun 1.4.0 from .toolchain; 1 NOT COVERED (mpd-mcp-codegraph/dist/serve.js) declared by the gate" },
+    { "command": "bun run verify:rows", "exit": 0, "observed": "37 row ids match the 2-file bundle patch layer, mpd-worktree included" },
+    { "command": "bun run verify:manifest", "exit": 0, "observed": "PASS — 29 row module paths, 0 missing; 27 files patterns; 1296 packed files, 0 required path absent" },
+    { "command": "bun run verify:docs", "exit": 0, "observed": "pairs=61 failed=0 violations=0 exempt=24 derived=3 links=634 dead=0 — PASS; both new docs and the new package README pair discovered" },
+    { "command": "node scripts/verify-no-host-override.ts", "exit": 0, "observed": "PASS — 0 overrides, 37 additive inserted rows, 0 collisions with 220 host-declared ids" },
+    { "command": "node scripts/verify-manual-paths.ts (required because AGENTS.md changed)", "exit": 0, "observed": "PASS — resolved=160 over-report=72 under-report=84 declared=2" },
+    { "command": "PATH=.qa-tmp/dsh-022/bin:$PATH bun skills/dsh-qa/scripts/bundle-lifecycle.ts", "exit": 0, "observed": "PASS — install/composed/boot/noHomeCopy/layerDurability/uninstall; boot checks http, adapterProvided, adapterSeams, adapterToolCall, corpusFromBundle, noPresetRefusal, probePass, presetProbeOk" },
+    { "command": "PATH=.qa-tmp/dsh-022/bin:$PATH node skills/dsh-qa/scripts/preset-conformance.ts", "exit": 0, "observed": "PASS — 33 rows (6 schema-free), preset-mpd 28 children, session agentPreset=mpd, bootLog signatures [], negative control refused with agent-preset/invalid" },
+    { "command": "PATH=.qa-tmp/dsh-022/bin:$PATH MPD_DSHGO_KIT=.mpd/tmp-dshgo/kit bun run verify:gates", "exit": 0, "observed": "PASS 11/11 members green (vendor, dist-fresh, rows-parity, docs-parity, preset-conformance, plugin-manifest, comment-coverage, graph-model, workflows, tui-admission, dshgo RESULT: LEGAL)" },
+    { "command": "bun run test:qa (beyond the task list: a new plugin package)", "exit": 0, "observed": "all self-tests passed (every script's --self-test, incl. mpd-ext 53 checks)" },
+    { "command": "node evidence/worktree/review/2026-11-12T03-02-54Z/probe.mjs (reviewer's own dist-level probe)", "exit": 0, "observed": "PROBE arms=23 failed=0 verdict=PASS" },
+    { "command": "node probe-overlay.mjs (mpd.jsonc overlay)", "exit": 0, "observed": "P24 PASS — file wins per key (dir custom-wt, prefix member/), max=1 from the file caps the second create" },
+    { "command": "node probe-boundaries.mjs (boundary probes)", "exit": 0, "observed": "P25 + P26: both hazards confirmed (see findings F1/F2)" }
+  ],
+  "independentProbe": {
+    "artifact": "packages/mpd-worktree-plugin/dist/index.js loaded in plain node with a fake tools ctx; five registered tool definitions driven against real temporary git repos",
+    "arms": 23,
+    "failed": 0,
+    "coverage": [
+      "P1 five tool names, object-rooted schemas, mpdWorktree service with both methods",
+      "P2 create: path/branch/base/repo, dir exists, index version 1, key manual/alice, status active, branch ref exists",
+      "P3 duplicate name refused (name-registered)", "P4 existing path refused (path-exists)",
+      "P5 slug grammar refused (invalid-name)",
+      "P6 D2 outside-root refused and no directory escaped the workspace",
+      "P7 list/status fields: exists/dirty/ahead=1/behind=1/merged=false, list length",
+      "P8 unknown name refused listing the known ones",
+      "P9 merge success: --no-ff two-parent commit, subject 'merge(manual/alice): agent/alice', index status merged, commit == HEAD",
+      "P10 conflict: merged:false, conflicts ['a.txt'], HEAD unmoved, status clean, no MERGE_HEAD, index still active",
+      "P11 protected target refused without force", "P12 force bypasses protection but NOT the conflict",
+      "P13 tracked-dirty main refused", "P14 detached main refused",
+      "P15 remove: unmerged refused without force; force removes dir+branch, tombstone removed, repeat idempotent",
+      "P16 corrupt index reads as empty and status refuses",
+      "P17 service createForMember idempotent, path/branch shape agent/<team-slug>/<member-slug>, key = caller spelling, cwdForMember returns it",
+      "P18 cwdForMember answers undefined for a vanished directory",
+      "P19 non-git workspace degrades to undefined with exactly ONE row-log line naming pair + shared checkout",
+      "P20 enabled:false registers no tools, publishes no service, logs one line",
+      "P21 branch override + invalid branch refused (check-ref-format)",
+      "P22 detached base defaults to the SHA",
+      "P23 no .tmp residue after atomic index writes",
+      "P24 .mpd/mpd.jsonc worktree.* overlay wins per key over row config"
+    ]
+  },
+  "contractArms": {
+    "A.create": "probe P2/P3/P4/P5/P6/P21/P22 + contract test arms (create, duplicate, grammar, outside-root, branch/base, cap); repo precedence arg→config→root verified in ops.resolveRepo and by config repo arm",
+    "A.list": "probe P7 (ahead/behind/merged after divergence) + P16 tolerant index; joins git worktree list --porcelain per record (worktreePaths)",
+    "A.status": "probe P7/P8 + P16",
+    "A.merge": "probe P9 (--no-ff, message, status), P10 (conflict abort, nothing changed), P11/P12 (protected/force), P13 (tracked-dirty), P14 (detached); 'into must be checked out' by code + unit arm",
+    "A.remove": "probe P15 (dirty/unmerged refusal, force, tombstone, idempotent, prune path by unit arm)",
+    "A.service": "probe P17/P18/P19; ONE line total per lookup instance (approval-wide) verified by wiring arms; never throws (P19 + throwing-service arm)",
+    "A.config": "code read (defaults true / <ws>/.mpd/worktrees / agent/ / [master,dev] / 32) + probe P20/P21/P24",
+    "A.state": "probe P2/P16/P23 + store.ts (atomic tmp+rename, tolerant read, malformed record dropped, status enum)",
+    "B.adapter": "diff read: cwd on DshSpawnSpec + DshTeamSpawnRequest, forwarded only when supplied, official fallback DROPs it with ONE row-log line; 8 adapter arms assert the key is ABSENT rather than undefined",
+    "C.team-core": "both spawn sites (approveTeamBody, add_member append) build memberWorktreeLookup once and forward cwd only when defined; read-only skip uses dispatch.ts readonlyMemberKeys/isReadonlyMemberName (SAME predicate the dispatch guard uses, no second list); four wiring arms (writer cwd, read-only skipped and not asked, absent service one line, degraded no second line, throwing service survives)",
+    "C.cellwork": "protocol-core promoteAfterHandoff forwards worktreeCwd as request.cwd only when non-empty; protocol.ts wires it to ctx.get('mpdWorktree').cwdForMember({agent}, {teamId: cell.teamId, member: memberName}); only ONE startContinuableAgent call site exists in cellwork",
+    "D8.identity": "cell member key == team roster member name by construction: activate.ts add_member uses the plan member name and registers the cell row under the same name; the barrier's memberName is caller.member, and bindReseededSeat already addresses the TEAM seat by that name",
+    "D.docs": "verify:docs green (61 pairs, 0 dead links); zh twins carry real CJK and the switch links; git-model.md §1 amended to one-writer-per-worktree with the measured incident retained; AGENTS.md §5 pointers updated and verify-manual-paths green",
+    "E.integration": "24 dist targets rebuilt with the pinned bun 1.4.0 (dist-fresh 35/35, byte-identical, NOT COVERED declared); installer + pack lists carry the new row/package (rows-parity, manifest --pack); package dir would be added including dist/index.js (check-ignore says not ignored)"
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "Medium",
+      "title": "The `repo` argument lets the row execute git in a repository OUTSIDE the workspace, from the unsandboxed plugin process",
+      "where": "packages/mpd-worktree-plugin/src/ops.ts :: resolveRepo / createWorktree / mergeWorktree / removeWorktree; packages/mpd-worktree-plugin/src/git.ts :: runGit",
+      "evidence": "reviewer probe P25: with DSH_WORKSPACE_ROOT=<ws>, `mpd_worktree_create {name:'x', repo:'<other repo>'}` created branch agent/x in <other repo> while the worktree path stayed inside <ws>; git runs via spawnSync in the harness process, so no `workspace-write` fence applies",
+      "whyItMatters": "D2 protects the worktree PATH only: the plugin's own git calls are not sandboxed, so a member (or any session holding these tools) can create/delete branches and worktrees in unrelated local repositories. The contract makes `repo` an argument, so this is not a contract violation — but docs/worktree.md's Declared bounds do not mention it, and a reasonable user would expect a member's worktree operations to stay inside the workspace.",
+      "direction": "Either confine `repo`/`worktree.repo` to a path under the workspace root (or a configured allowlist) with a typed refusal, or add the bound to docs/worktree.md §Declared bounds + README, and state it in the PR body."
+    },
+    {
+      "id": "F2",
+      "severity": "Medium",
+      "title": "`cwdForMember` hands a reseed a recorded path WITHOUT the 'git still manages it' guard that `recordOf` applies — and inside such a directory git resolves to the MAIN checkout",
+      "where": "packages/mpd-worktree-plugin/src/ops.ts :: cwdForMember (exists-only check) vs the same file's recordOf (`managed = registered.has(canonicalPath(entry.path))` with the explicit stale-directory comment)",
+      "evidence": "reviewer probe P26: create a member worktree, delete its `.git` link out of band, then cwdForMember still returns the path and `git -C <path> rev-parse --show-toplevel` answers the MAIN workspace root on branch `main`",
+      "whyItMatters": "The reseed would hand that directory as the child's EFFECTIVE cwd, and the member's git commands would then operate on the main checkout's HEAD — the exact D5 violation this wave exists to prevent. Reachability is bounded: it needs out-of-band damage (a pruned registration or a removed `.git` link), not a normal API sequence; that is why it ranks Medium rather than High.",
+      "direction": "Apply recordOf's membership check inside cwdForMember (answer undefined when git no longer lists the path, so the reseed degrades to the shared checkout), or verify the worktree's `.git` link resolves under `<repo>/.git/worktrees/`."
+    },
+    {
+      "id": "F3",
+      "severity": "Medium",
+      "title": "Acceptance 1's LIVE half is not observed end-to-end: no member was actually spawned, so 'can write/commit under workspace-write in its worktree' rests on request shape plus harness source",
+      "where": "acceptance §4.1; the spawn chain team-core → adapter request.cwd → pinned harness",
+      "evidence": "the adapter arms and my wiring reads prove the request carries cwd (and omits the key when absent); the pinned harness source proves request.cwd is honoured (`resolveDirectory` line 1530, `workingDirectory.set(child, create.cwd, …)` line 1810, child header cwd copied from the parent line 111); no live spawn was executed (no model call, no QA live lane in this review)",
+      "whyItMatters": "The wave's headline claim is a behaviour of a real child process. Everything up to the host's API is proven; the sandbox-side writability and the effective directory of a real child are corroborated by source reading only. This is an evidence gap, not an observed defect.",
+      "direction": "Either accept the bound explicitly in the PR body (request-shape + harness-source evidence), or run one live member spawn in a sandboxed QA boot and record its session log (tool/call + cwd)."
+    },
+    {
+      "id": "F4",
+      "severity": "Nit",
+      "title": "Docs config table says `max` caps 'registered worktrees' while the implementation counts only ACTIVE records",
+      "where": "docs/worktree.md §Configuration (`max` row) and docs/worktree.zh-CN.md (已登记工作树的上限) vs packages/mpd-worktree-plugin/src/ops.ts :: createEntry (`filter(status === \"active\")`)",
+      "evidence": "merged and removed records never count toward the cap; packages/mpd-worktree-plugin/README.md already says 'simultaneously ACTIVE worktrees'",
+      "whyItMatters": "A user sizing `max` against the doc would expect the 33rd create to fail after 32 merged-but-not-removed records; it succeeds.",
+      "direction": "Align the two doc tables with the README wording ('simultaneously active')."
+    },
+    {
+      "id": "F5",
+      "severity": "Nit",
+      "title": "New package README state example shows a team record's `key` in slug spelling, contradicting the key rule stated directly above it",
+      "where": "packages/mpd-worktree-plugin/README.md §State",
+      "evidence": "probe P17: the service stores key `plan-x/Senior Engineer` (the caller's spelling) while the example shows `plan-abc/senior-engineer`; the normative sentence 'key is <teamId>/<member>' is correct",
+      "whyItMatters": "The key is an addressed identity (status/remove accept it). A reader constructing a key by slug would write a record cwdForMember never matches.",
+      "direction": "Fix the example's key field (and note that both the key and the slugged name are addressable)."
+    },
+    {
+      "id": "F6",
+      "severity": "Nit",
+      "title": "An index write that fails AFTER `git worktree add` leaves an orphan worktree no tool can remove",
+      "where": "packages/mpd-worktree-plugin/src/ops.ts :: createEntry (addWorktree then writeIndex inside withLock)",
+      "evidence": "code read: the branch+directory are created before the record; on a writeIndex throw the tree exists unrecorded, and a retry refuses with `path-exists` while `mpd_worktree_remove` refuses with `unknown-worktree`",
+      "whyItMatters": "A recovery then needs manual `git worktree remove`/`branch -D` — a small operational trap, never silent data loss (worktree add is a no-op if the path already exists).",
+      "direction": "Prune the just-created worktree/branch when the index write throws, or document the manual recovery line in the README bounds."
+    },
+    {
+      "id": "F7",
+      "severity": "Nit",
+      "title": "Two pre-existing test files were EDITED; one is a shape-move that must not be read as 'tests untouched'",
+      "where": "packages/mpd-team-core-plugin/test/workmate-binding.test.ts (asserted `logs.length === 1`, now one filter per seam) and packages/mpd-team-core-plugin/test/c74-midrun-and-binding.test.ts (request recorder widened with cwd + a new Lane C describe)",
+      "evidence": "git diff of both files; the workmate assertion's SUBSTANCE (exactly one workmate-binding degrade line) is preserved with a tighter filter, and the approval now legitimately writes a second line from the independent worktree seam",
+      "whyItMatters": "The added log line is the only reason the old assertion changed, and no assertion was weakened — but the wave's 'all previous tests still pass' phrasing should name this shape move rather than imply zero test edits.",
+      "direction": "State the shape move in the PR body's evidence section (no code change needed)."
+    }
+  ],
+  "declinedToJudge": [
+    "Automatic gate run after merge / merge queue — explicit non-goal (§1).",
+    "Consult spawns (mpd_role_spawn / workmates) getting no worktree — the contract's objective names team/cellwork members only; a writing consult still shares the captain's checkout, but re-scoping is the captain's decision, not a defect of this wave.",
+    "`mpd_worktree_list` omitting `removed` tombstones — the contract says 'per entry', the row and both docs say 'live record'; the reading is consistent and status still answers a tombstone.",
+    "`withLock` being a re-entrancy guard rather than a queue — every mutation is a synchronous spawnSync sequence, and cross-process races are outside the contract's 'in-process mutex'.",
+    "Merge into a protected remote branch, force semantics beyond `force:true`, and branch protection on the server side — the contract fixes exactly the local rule implemented.",
+    "zh-CN prose equivalence beyond verify:docs' structural checks — spot-checked the three claims I judged (tool table, config, max wording); not a sentence-by-sentence audit.",
+    "Docker real-machine lane, verify-pack-closure and a standalone verify-vendor — not Lane E scope, no pack happened, and vendor was covered by the 11-member aggregate."
+  ],
+  "bounds": {
+    "read": "contract + docs fully; package sources (worktree plugin, the Lane B/C diffs, the changed test files); both QA lane scripts were RUN, not audited; protocol.ts / protocol-core.ts read only around the changed hunks and call sites; elastic.ts, idle-guard, graph-model not read.",
+    "notRun": "no live member spawn (no model call), no Docker lane, no verify:pack-closure (no pack in this wave), no git commit (forbidden to the reviewer).",
+    "sharedTree": "the wave is uncommitted; my gate runs describe the working tree at 03:02–03:10Z. If another member writes after that instant, this verdict covers the tree as measured, not later edits.",
+    "skips": "none — every command above exited 0; nothing was skipped and counted as a pass."
+  },
+  "evidence": {
+    "dir": "evidence/worktree/review/2026-11-12T03-02-54Z/",
+    "files": ["result.json", "output.log", "basis.md", "probe.mjs", "probe-overlay.mjs", "probe-boundaries.mjs", "harness-d1.log", "gate-*.log", "env.log"]
+  },
+  "closure": "PASS carries F1/F2 as Medium hardening for the captain's decision before or after the merge; F3 is an evidence bound; F4–F7 are documentation/reporting nits. No Blocker, no High, no repair task is required to merge."
+}

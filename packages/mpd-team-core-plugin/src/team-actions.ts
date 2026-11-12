@@ -82,6 +82,7 @@ import {
   type RosterRow,
 } from "./dispatch"
 import { withIdlePreamble } from "./idle-guard"
+import { memberWorktreeLookup } from "./worktree"
 import { readLedger, writeLedger } from "./dispatch-ledger"
 import { appendTeamJournal } from "./team-journal"
 import { HANDOFF_SECTIONS, handoffWrittenDirective, parseHandoff, teamHandoffPath, validateHandoffText, writeHandoffDocument } from "./team-handoff"
@@ -1196,6 +1197,12 @@ async function approveTeamBody(
     if (unresolvedBlockers.length > 0) created.unresolved = unresolvedBlockers
     /** The first failure's description; set means approval stopped rather than half-build the team. */
     let stoppedAt: string | undefined
+    // ONE WORKTREE PER WRITE-CAPABLE MEMBER (Lane C of `.mpd/plans/agent-worktrees.md`). The lookup is
+    // built ONCE for this approval so its "the mpdWorktree row is absent" line is written once for the
+    // whole roster rather than once per member, and it answers `undefined` for a read-only seat (the
+    // same roster predicate the dispatch guard uses) or for any degrade.
+    /** Where each member of this approval should work, if its own worktree is available. */
+    const worktreeOf = memberWorktreeLookup(deps.service, deps.log)
     for (const member of record.members) {
       try {
         // THE EXECUTOR RAISES THE MEMBER. On the native backend the member's ROLE travels as an
@@ -1203,6 +1210,8 @@ async function approveTeamBody(
         // things the official tool row cannot forward — so a roster slot route, a persona and the
         // read-only deny list reach a teammate directly, and nothing here needs the official
         // plugin mounted.
+        /** This member's worktree path, or undefined when the spawn keeps today's shared checkout. */
+        const cwd = worktreeOf({ exec: { agent: caller.agent, signal: caller.signal }, teamId: record.teamId, member: member.name, ...(member.role === undefined ? {} : { role: member.role }) })
         /** The backend's answer, whose handle the record keeps BESIDE our own member id. */
         const spawned = await deps.executor().spawn(caller.agent, {
           teamId: record.teamId,
@@ -1218,6 +1227,9 @@ async function approveTeamBody(
           // written by NO production path (only the store's input type admits it), so this arm
           // forwards no `provider` — the route is the executor's to resolve.
           ...(member.role === undefined ? {} : { role: member.role }),
+          // The member's OWN git worktree, or no key at all: an absent path must let the host
+          // inherit the Lead's directory rather than receive a written `cwd: undefined`.
+          ...(cwd === undefined ? {} : { cwd }),
           ...(caller.signal === undefined ? {} : { signal: caller.signal }),
         })
         created.members.push({ name: member.name, id: spawned.handle })

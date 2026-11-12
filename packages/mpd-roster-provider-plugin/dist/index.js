@@ -1274,6 +1274,7 @@ function createDshAdapter(ctx, config = {}) {
           request: {
             prompt: textBlock(request.prompt),
             parent: caller,
+            ...request.cwd === undefined ? {} : { cwd: request.cwd },
             ...agentOptions === undefined ? {} : { agentOptions },
             ...request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }
           },
@@ -1325,6 +1326,9 @@ function createDshAdapter(ctx, config = {}) {
         const teams = requireService("agentTeams", `cannot raise team member "${request.name}"`);
         if (typeof teams.spawnTeammate !== "function") {
           throw new Error("mpd-dsh-adapter: the Agent Teams service exposes no spawnTeammate() — cannot raise a team member");
+        }
+        if (request.cwd !== undefined) {
+          rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: the official executor cannot set cwd — team member "${request.name}" runs in the shared checkout instead of ${request.cwd}`);
         }
         const spawned = await teams.spawnTeammate.call(teams, caller, {
           name: request.name,
@@ -1926,6 +1930,7 @@ function createDshAdapter(ctx, config = {}) {
           request: {
             prompt,
             parent: spec.parent,
+            ...spec.cwd === undefined ? {} : { cwd: spec.cwd },
             ...Object.keys(route).length === 0 ? {} : { agentOptions: route },
             ...spec.agentPreset === undefined ? {} : { agentPreset: spec.agentPreset },
             ...spec.outputSchema === undefined ? {} : { outputSchema: spec.outputSchema },
@@ -1943,6 +1948,7 @@ function createDshAdapter(ctx, config = {}) {
         prompt,
         ...spec.parent === undefined ? {} : { parent: spec.parent },
         signal,
+        ...spec.cwd === undefined ? {} : { cwd: spec.cwd },
         ...Object.keys(route).length === 0 ? {} : { agentOptions: route },
         ...spec.persona === undefined ? {} : { persona: spec.persona },
         ...spec.outputSchema === undefined ? {} : { outputSchema: spec.outputSchema },

@@ -84,6 +84,7 @@ import { planForSession, registerTeamRoutes, TEAM_ACTION_ROUTES, TEAM_ROUTES, ty
 // branches, so a tool call, the `mpdTeamActions` service and an HTTP route all drive ONE sequence.
 import { approveTeam, cancelTasks, clearConsults, endTeam, fenceMember, forceWedgedTask, graceWedgedTask, runDispatch, TEAM_ACTIONS_SERVICE, unfenceMember, upsertConsult, writeMemberHandoff, type MpdTeamActionsService, type TeamActionCaller, type TeamActionDeps } from "./team-actions"
 import { installIdleGuard, withIdlePreamble } from "./idle-guard"
+import { memberWorktreeLookup } from "./worktree"
 import { appendTeamJournal } from "./team-journal.ts"
 import { GraphModels } from "./graph-model"
 import type { GraphModel } from "../../mpd-graph-core/src/index.ts"
@@ -2150,6 +2151,13 @@ export function apply(ctx: any): void {
         // THE MEMBER IS RAISED HERE, exactly as approval raises one: a roster row nothing ever spawned
         // would be the C7-3 ghost class again. A failed raise is written on the row AND reported in the
         // answer, never left silent.
+        // ONE WORKTREE PER WRITE-CAPABLE MEMBER (Lane C of `.mpd/plans/agent-worktrees.md`), resolved
+        // by the SAME lookup approval uses: a read-only seat, an absent row and any degrade all leave
+        // the request unchanged, and the "row absent" line is written at most once per append.
+        /** Where this appended member should work, if its own worktree is available. */
+        const worktreeOf = memberWorktreeLookup(teamActionsDeps.service, teamActionsDeps.log)
+        /** This member's worktree path, or undefined when the spawn keeps today's shared checkout. */
+        const cwd = worktreeOf({ exec, teamId: roster.teamId, member: added.name, ...(added.role === undefined ? {} : { role: added.role }) })
         try {
           /** The backend's answer, whose handle the record keeps beside our own member id. */
           const spawned = await executor().spawn(exec.agent, {
@@ -2165,6 +2173,9 @@ export function apply(ctx: any): void {
             // channel, so a member appended to a LIVE roster is routed by its slot — not by the
             // staging session that happens to be running this append.
             ...(added.role === undefined ? {} : { role: added.role }),
+            // The member's OWN git worktree, or no key at all: an absent path must let the host
+            // inherit the Lead's directory rather than receive a written `cwd: undefined`.
+            ...(cwd === undefined ? {} : { cwd }),
             ...(exec.signal === undefined ? {} : { signal: exec.signal }),
           })
           /** The record re-read immediately before the handle is written, so the raise cannot clobber a concurrent write. */

@@ -276,18 +276,18 @@ Otherwise `preset-conformance` reddens under the ambient 0.2.1-rc.5 and `dshgo` 
 - Commit format: `<type>(<scope>): <summary>` (feat/fix/docs/test/chore/release).
 - Fixes cite the defect. Every defect branch is merged only after its evidence lands.
 - Never rebase published branches; merge with `--no-ff` and a descriptive message.
-- **ONE git writer per working tree — binding.** Teammates share the captain's checkout, so two writers
-  race on the single `.git/HEAD`. Measured (2026-09-14): a member's `reset HEAD~1` landed on `dev`,
-  moving the tip back one commit (the reflog held every step; recovery cost a forensics pass). A
-  teammate NEVER runs `commit`/`add`/`checkout`/`switch`/`reset`/`stash`/`merge`/`branch`/`rebase`/`tag`;
-  it edits files, runs gates and writes evidence, and the **captain alone** commits and branches — or the
-  captain serializes ONE delegated writer and freezes everyone else first. Read-only
+- **ONE git writer per working tree — binding.** Two writers in one checkout race on the single
+  `.git/HEAD` (measured 2026-09-14; incident: `agent-references/git-model.md` §1). A member with a
+  worktree is the single writer of ITS worktree (branch `agent/<team>/<member>`) and MAY run git
+  writes there; the **captain alone** writes the main checkout, commits there and merges member
+  branches. Without a worktree a teammate NEVER runs
+  `commit`/`add`/`checkout`/`switch`/`reset`/`stash`/`merge`/`branch`/`rebase`/`tag`; it edits files,
+  runs gates and writes evidence, and the **captain alone** commits and branches — or the captain
+  serializes ONE delegated writer and freezes everyone else first. Read-only
   `status`/`log`/`diff`/`show`/`grep` stay open to all. Tag `backup/<branch>-<sha>` before any
-  history-writing step.
-  **WHO THE CAPTAIN IS:** the workspace's **top-level session** (no parent session, delegation depth
-  `0`) — NOT a preset name. The predicate (`sessionIsTopLevel` in `complexity-gate.ts`) classifies a
-  session; the git-write rule itself is a CONTRACT, not a matcher. The preset-keyed variant that made the
-  captain branch unreachable here is `T-92` in `agent-references/troubleshooting.md`.
+  history-writing step. **WHO THE CAPTAIN IS:** the workspace's **top-level session** (no parent
+  session, delegation depth `0`) — NOT a preset name (`sessionIsTopLevel` in `complexity-gate.ts`;
+  history: `agent-references/git-model.md` §2).
 - **Every change lands through a BRANCH + a PULL REQUEST — binding (user-set, 2026-10-06).** Nothing is
   committed straight to `dev` or `master`: cut a `feature/<slug>` or `fix/<slug>` branch, commit the wave
   there, push it, and open a PR against `dev`. **A PR DESCRIPTION IS BILINGUAL**: an English body and a
@@ -296,18 +296,9 @@ Otherwise `preset-conformance` reddens under the ambient 0.2.1-rc.5 and `dshgo` 
   gates run WITH their observed results, and the honest bounds — never a claim the evidence does not
   carry. A single-language PR description is not ready for review.
 - **Wait for CodeRabbit before merging — binding (user-set, 2026-10-20).** A PR is not mergeable while
-  its CodeRabbit review is `in progress`: wait for COMPLETION, reconcile every inline finding as
-  FIXED / STALE / STILL-VALID with file:line evidence, and record that reconciliation in the PR. CI
-  green plus an independent verifier is NOT a substitute; a pending review is never a pass. If the bot is
-  stuck, state the pending state in the PR and wait for the user's decision.
-  - **Round cap — at most THREE rounds per pull request, binding (user-set, 2026-11-02).** Each
-    automated reviewer (CodeRabbit today, any future bot) gets at most three review rounds on ONE pull
-    request. A FOURTH round needs the USER's explicit decision, and the PR says that the cap was raised
-    and why; the wave also records how many rounds each automated reviewer took in the PR body. Inside a
-    round: a finding already fixed and verified is resolved SILENTLY (no reply needed), and a declined
-    one gets ONE sentence saying why. The cap is what stops a bot that always finds something new from
-    looping forever; it does NOT relax the wait rule above — a round still has to COMPLETE before merge,
-    and an unfinished round is still not a pass.
+  its CodeRabbit review is `in progress`: wait for COMPLETION and reconcile every inline finding as
+  FIXED / STALE / STILL-VALID with file:line evidence in the PR. A pending review is never a pass; the
+  THREE-round cap and the full policy: `agent-references/git-model.md` §5.
 - **Attribution cannot come from the author field.** A shared checkout writes every commit under ONE
   configured identity, so attribute by task ownership + content + reflog ORDER, never by `%an`.
 - **The captain's standing rules (user-set, 2026-09-16)** — instructions, not suggestions:

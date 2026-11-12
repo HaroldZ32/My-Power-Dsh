@@ -1270,6 +1270,7 @@ function createDshAdapter(ctx, config = {}) {
           request: {
             prompt: textBlock(request.prompt),
             parent: caller,
+            ...request.cwd === undefined ? {} : { cwd: request.cwd },
             ...agentOptions === undefined ? {} : { agentOptions },
             ...request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }
           },
@@ -1321,6 +1322,9 @@ function createDshAdapter(ctx, config = {}) {
         const teams = requireService("agentTeams", `cannot raise team member "${request.name}"`);
         if (typeof teams.spawnTeammate !== "function") {
           throw new Error("mpd-dsh-adapter: the Agent Teams service exposes no spawnTeammate() — cannot raise a team member");
+        }
+        if (request.cwd !== undefined) {
+          rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: the official executor cannot set cwd — team member "${request.name}" runs in the shared checkout instead of ${request.cwd}`);
         }
         const spawned = await teams.spawnTeammate.call(teams, caller, {
           name: request.name,
@@ -1922,6 +1926,7 @@ function createDshAdapter(ctx, config = {}) {
           request: {
             prompt,
             parent: spec.parent,
+            ...spec.cwd === undefined ? {} : { cwd: spec.cwd },
             ...Object.keys(route).length === 0 ? {} : { agentOptions: route },
             ...spec.agentPreset === undefined ? {} : { agentPreset: spec.agentPreset },
             ...spec.outputSchema === undefined ? {} : { outputSchema: spec.outputSchema },
@@ -1939,6 +1944,7 @@ function createDshAdapter(ctx, config = {}) {
         prompt,
         ...spec.parent === undefined ? {} : { parent: spec.parent },
         signal,
+        ...spec.cwd === undefined ? {} : { cwd: spec.cwd },
         ...Object.keys(route).length === 0 ? {} : { agentOptions: route },
         ...spec.persona === undefined ? {} : { persona: spec.persona },
         ...spec.outputSchema === undefined ? {} : { outputSchema: spec.outputSchema },
@@ -8165,6 +8171,16 @@ async function promoteAfterHandoff(deps) {
   const retirement = retireOriginal(deps, parent.parent);
   const directive = promotionDirective(deps.cell.cellId, deps.memberName, deps.cell.depth + 1, deps.nextStep);
   let activation;
+  const worktreeCwd = (() => {
+    if (deps.worktreeCwd === undefined)
+      return;
+    try {
+      const path = deps.worktreeCwd({ teamId: deps.cell.teamId, member: deps.memberName });
+      return typeof path === "string" && path !== "" ? path : undefined;
+    } catch {
+      return;
+    }
+  })();
   try {
     activation = await deps.dsh.startContinuableAgent({
       provider: "spawn",
@@ -8174,6 +8190,7 @@ async function promoteAfterHandoff(deps) {
 
 ` + directive }],
         parent: parent.parent,
+        ...worktreeCwd === undefined ? {} : { cwd: worktreeCwd },
         maxDepth: reseedMaxDepthOf(parent.parent)
       },
       signal: compactionSignal().signal
@@ -10153,6 +10170,16 @@ acknowledgement refused for ` + String(refused.length) + " row(s), which stay un
           }
         },
         sleep: (ms) => new Promise((resolve4) => setTimeout(resolve4, ms)),
+        worktreeCwd: (input) => {
+          try {
+            const service = deps.ctx.get?.("mpdWorktree", false);
+            if (typeof service?.cwdForMember !== "function")
+              return;
+            return service.cwdForMember({ agent }, input) ?? undefined;
+          } catch {
+            return;
+          }
+        },
         bindSeat: async (input) => bindReseededSeat({
           workspace: caller.workspace,
           teamId: cell.teamId,

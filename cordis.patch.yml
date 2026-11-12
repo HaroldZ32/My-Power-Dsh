@@ -494,6 +494,14 @@
       name: '@mpd-dsh/mpd/packages/mpd-comment-checker-plugin/dist/index.js'
       config:
         autoCheck: false
+    # Per-member git worktrees (frozen contract: .mpd/plans/agent-worktrees.md §3 Lane A). Registers the
+    # five mpd_worktree_* tools and publishes the `mpdWorktree` service that the team-core and cellwork
+    # lanes resolve; DEFAULT ON, and a non-git workspace, a disabled row or a failed create degrades to
+    # today's shared checkout with ONE row-log line instead of failing the spawn (D4). The row never
+    # merges by itself — the captain is the only merger into the wave branch (D5).
+    - id: mpd-worktree
+      name: '@mpd-dsh/mpd/packages/mpd-worktree-plugin/dist/index.js'
+      config: {}
     - id: mpd-codegraph
       name: '@mpd-dsh/mpd/packages/mpd-codegraph-plugin/dist/index.js'
       config:

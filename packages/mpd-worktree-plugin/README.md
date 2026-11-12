@@ -1,0 +1,135 @@
+# mpd-worktree-plugin
+
+**English** | [中文](./README.zh-CN.md)
+
+Per-member git worktrees for team and cellwork write agents. Every write-capable member can get its
+own worktree and branch, forwarded as the child session's EFFECTIVE working directory, so members
+write in parallel without sharing `.git/HEAD`. The captain merges their branches into the wave branch
+by hand.
+
+The frozen contract this package implements is `.mpd/plans/agent-worktrees.md` §3 Lane A. The
+repository-wide rules it obeys are in [AGENTS.md](../../AGENTS.md) §5 (git model) and §6 (plugin
+authoring).
+
+## Tools
+
+| Tool | What it does |
+|---|---|
+| `mpd_worktree_create { name, teamId?, member?, base?, branch?, repo? }` | Creates `<worktree dir>/<name>` on a new branch (`agent/<name>` by default) from the main checkout's HEAD, and records it. Refuses an existing path, an already-registered name and an existing branch. |
+| `mpd_worktree_list {}` | Every live record joined with `git worktree list --porcelain`: `name, path, branch, repo, exists, dirty, ahead, behind, merged`. |
+| `mpd_worktree_status { name }` | The same record for ONE worktree. An unknown name is a structured refusal listing the known names. |
+| `mpd_worktree_merge { name, into?, force? }` | `git merge --no-ff` of the branch into the main checkout's current branch. A conflict aborts and returns `{ merged: false, conflicts }`, changing nothing. |
+| `mpd_worktree_remove { name, force? }` | Removes the worktree directory and deletes its branch. Refuses a dirty or unmerged worktree without `force: true`; a missing directory is pruned, not an error. |
+
+`merged` means the branch is an ancestor of the main checkout's current branch. `ahead`/`behind`
+come from `git rev-list --left-right --count <branch>...<main>`.
+
+## Service
+
+Besides the tools, the row publishes the cordis service `mpdWorktree` — the ONLY surface the
+team-core and cellwork lanes may call:
+
+- `createForMember(exec, { teamId, member }) -> { path, branch } | undefined` — idempotent per
+  `{teamId, member}`; places the worktree at `<worktree dir>/<teamId>/<member slug>` on
+  `agent/<teamId>/<member slug>`.
+- `cwdForMember(exec, { teamId, member }) -> string | undefined` — the read-only lookup a compaction
+  reseed uses.
+
+Both methods NEVER throw. A non-repository workspace, a disabled row or a failed create returns
+`undefined` and writes exactly ONE line to the row log; the member then spawns in the shared checkout
+— today's behaviour.
+
+## Config
+
+Row config in `cordis.patch.yml` (the mounted row ships `config: {}`):
+
+```yaml
+- id: mpd-worktree
+  name: '@mpd-dsh/mpd/packages/mpd-worktree-plugin/dist/index.js'
+  config:
+    enabled: true                      # default true; false registers no tools and no service
+    dir: .mpd/worktrees                # relative to the workspace root (the default)
+    repo: .                            # repository; default the workspace root if it is a git repo
+    base: main                         # base ref for new branches; default the main checkout's HEAD
+    branchPrefix: "agent/"             # default
+    protectedBranches: ["master", "dev"]  # merge targets refused without force: true
+    max: 32                            # cap on simultaneously ACTIVE worktrees
+```
+
+When `mpd-config-plugin` is composed, the same leaves may be set in the workspace's `.mpd/mpd.jsonc`
+under a `worktree` section (`worktree.enabled`, `worktree.dir`, …); the file wins per key. Without
+that service the row is **row-config-only** — it does not read `mpd.jsonc` on its own.
+
+## State
+
+The durable state is `<workspace>/.mpd/worktrees/index.json`, version 1:
+
+```json
+{ "version": 1, "worktrees": [
+  { "key": "plan-abc/senior-engineer", "name": "plan-abc/senior-engineer",
+    "teamId": "plan-abc", "member": "Senior Engineer", "repo": "/abs/repo",
+    "path": "/abs/ws/.mpd/worktrees/plan-abc/senior-engineer",
+    "branch": "agent/plan-abc/senior-engineer", "base": "main",
+    "createdAt": "2026-11-12T00:00:00.000Z", "status": "active" }
+] }
+```
+
+`key` is `<teamId>/<member>` for a team member and `manual/<name>` otherwise. `status` is `active`,
+`merged` or `removed`. Writes are atomic (a sibling temp file plus `rename`); a corrupt or absent
+file reads as an EMPTY index instead of wedging every operation, and a malformed record is dropped.
+
+## Guarantees
+
+- **D1 — state stays shared.** A child's state root is the parent's workspace (`session.header.cwd`
+  is copied and immutable); only the EFFECTIVE directory moves. Team records, mail and verify loops
+  therefore stay under `<parent workspace>/.mpd`. This package never changes a state root.
+- **D2 — the worktree lives INSIDE the workspace.** The default is
+  `<workspace>/.mpd/worktrees/<teamId>/<member>`, and a create whose resolved path leaves the
+  workspace root is refused with the D2 reason. An outside-root worktree would be unwritable by the
+  member under `workspace-write`; opening one needs a host-level
+  `sandbox-policy.additionalWritableRoots` row, which is deployment-owned and out of scope here.
+- **D3 — one worktree per MEMBER**, branch `agent/<teamId>/<memberSlug>`, based on the main
+  checkout's current HEAD at creation time.
+- **D5 — one git writer PER WORKTREE.** A member may run git writes only inside its own worktree (a
+  separate HEAD); the captain alone writes the main checkout and merges.
+- **Protected branches.** `mpd_worktree_merge` refuses a target listed in `protectedBranches` unless
+  `force: true` (default `["master","dev"]`), so a member branch cannot land on a release line by
+  accident.
+- **Conflict abort.** A conflicting merge runs `git merge --abort`, returns the conflicted paths and
+  changes nothing — HEAD unmoved, no merge in progress, no conflict markers.
+
+## Manual merge workflow
+
+1. A member creates or receives its worktree and commits on `agent/<teamId>/<memberSlug>`.
+2. The captain checks the worktree (`mpd_worktree_status`), then merges:
+   `mpd_worktree_merge { name }` — the target is the main checkout's CURRENT branch.
+3. The captain removes the worktree when the wave lands: `mpd_worktree_remove { name }` (the record
+   is kept as a `removed` tombstone).
+
+There is NO automatic merge queue and NO automatic gate run after a merge.
+
+## Bounds (declared)
+
+- The official-executor fallback cannot set a child's cwd (contract D7); such a member runs in the
+  shared checkout, and the log says so.
+- Members still run inside the parent workspace's sandbox boundary; see D2 above.
+- Worktrees are NOT destroyed when a team ends; `mpd_worktree_remove` is explicit.
+- External/SDK subagent providers were not traced; only the native in-process backend is claimed.
+- The `.mpd/mpd.jsonc` `worktree.*` overlay requires the composed `mpdConfig` service; on its own the
+  row reads its row config only.
+
+## Build / test
+
+Build from the repository root with the PINNED toolchain (a PATH `bun` is the measured trap; see
+AGENTS.md §6):
+
+```sh
+.toolchain/node_modules/.bin/bun build packages/mpd-worktree-plugin/src/index.ts \
+  --target node --format esm --outfile packages/mpd-worktree-plugin/dist/index.js
+bun test packages/mpd-worktree-plugin
+```
+
+The suite drives a REAL temporary git repository through the same operations the tools register:
+create, list/status fields, duplicate refusal, outside-root refusal, merge success, conflict abort
+with a clean main checkout, protected branches, remove with and without `force`, index persistence
+and corrupt-read tolerance, and the never-throwing member service.
