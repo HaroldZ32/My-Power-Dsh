@@ -470,6 +470,15 @@ export interface DshSpawnSpec {
   signal?: AbortSignal
   /** Subagent PROVIDER name; this bundle uses the in-process "spawn" provider. */
   mode?: string
+  /**
+   * The child's EFFECTIVE working directory, forwarded as `request.cwd` when supplied.
+   *
+   * This moves WHERE the child's tools read and write; it never moves the child's STATE ROOT,
+   * which stays the parent's workspace (D1 of `.mpd/plans/agent-worktrees.md`). Omitted means the
+   * host's own default — the parent agent's directory — so an absent path is never sent as
+   * `cwd: undefined`.
+   */
+  cwd?: string
 }
 
 /** The normalized answer of one completed spawn. */
@@ -719,6 +728,15 @@ export interface DshTeamSpawnRequest {
    * (capability fact F1). The OFFICIAL backend has no per-call depth channel and ignores it.
    */
   maxDepth?: number
+  /**
+   * The member's EFFECTIVE working directory — its own git worktree (contract D3).
+   *
+   * NATIVE only: it is forwarded as the start request's `cwd`, moving where the member reads and
+   * writes while its state root stays the parent workspace (D1). The OFFICIAL backend has no
+   * per-call cwd channel, so a supplied path is reported in ONE log line and the member runs in
+   * the shared checkout (D7) — degraded, never an error.
+   */
+  cwd?: string
   /** Cancellation for the spawn and for the member's first turn. */
   signal?: AbortSignal
 }
@@ -4952,6 +4970,10 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
           request: {
             prompt: textBlock(request.prompt),
             parent: caller,
+            // The member's worktree path when its spawner supplied one; the same
+            // forward-only-when-supplied rule as `maxDepth` below, because an absent path must let
+            // the host inherit the Lead's directory rather than receive `cwd: undefined`.
+            ...(request.cwd === undefined ? {} : { cwd: request.cwd }),
             ...(agentOptions === undefined ? {} : { agentOptions }),
             // FORWARDED ONLY WHEN SUPPLIED: an absent cap must stay ABSENT (never `undefined`), so
             // the harness applies its own service default instead of a converted or guessed value.
@@ -5042,6 +5064,13 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         }
         // `request.maxDepth` is deliberately NOT forwarded: the official service owns its roster and
         // exposes no per-call depth channel, so a supplied cap is IGNORED without throwing.
+        // A WORKTREE PATH IS THE SAME LIMITATION, SAID OUT LOUD (contract D7): the official
+        // `spawnTeammate` request has no cwd channel, so the path would vanish silently and the
+        // member would write into the shared checkout while its spawner believed otherwise. ONE
+        // line, then the member is raised WITHOUT cwd — a degraded spawn is never an error.
+        if (request.cwd !== undefined) {
+          rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: the official executor cannot set cwd — team member "${request.name}" runs in the shared checkout instead of ${request.cwd}`)
+        }
         /** The host's spawn answer, whose id is read from whichever field this version fills. */
         const spawned: any = await teams.spawnTeammate.call(teams, caller, {
           name: request.name,
@@ -6111,6 +6140,11 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
           request: {
             prompt,
             parent: spec.parent,
+            // FORWARDED ONLY WHEN SUPPLIED, like `maxDepth` below: an absent path must stay
+            // absent so the host applies its own default (the parent's directory) instead of a
+            // written `cwd: undefined`. Supplied, it moves the child's EFFECTIVE directory only —
+            // its state root remains the parent workspace (D1).
+            ...(spec.cwd === undefined ? {} : { cwd: spec.cwd }),
             ...(Object.keys(route).length === 0 ? {} : { agentOptions: route }),
             ...(spec.agentPreset === undefined ? {} : { agentPreset: spec.agentPreset }),
             ...(spec.outputSchema === undefined ? {} : { outputSchema: spec.outputSchema }),
@@ -6134,6 +6168,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         prompt,
         ...(spec.parent === undefined ? {} : { parent: spec.parent }),
         signal,
+        ...(spec.cwd === undefined ? {} : { cwd: spec.cwd }),
         ...(Object.keys(route).length === 0 ? {} : { agentOptions: route }),
         ...(spec.persona === undefined ? {} : { persona: spec.persona }),
         ...(spec.outputSchema === undefined ? {} : { outputSchema: spec.outputSchema }),
@@ -6198,6 +6233,10 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
      * Bound to `startActivation()` on harness 0.2.1+ and to the retired `startContinuable()` on an
      * older host. On the newer generation the adapter SUPPLIES the `delivery: "parent"` field that
      * release made mandatory — the one field the caller no longer has to know about.
+     *
+     * The caller's spec is forwarded VERBATIM, so a `request.cwd` it supplies — the cellwork
+     * reseed's member worktree (contract D8) — reaches the host unchanged. Nothing here strips,
+     * rewrites or defaults that field: an absent `cwd` keeps the host's inherit-the-parent default.
      */
     startContinuableAgent(spec: unknown): Promise<unknown> {
       // Synchronous THROW on a missing seam (parity with the raw expression a caller

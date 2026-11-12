@@ -1,0 +1,317 @@
+# CodeRabbit round-1 fix wave — independent verification (PR #111, feature/agent-worktrees)
+
+Reviewer seat: read-only on the reviewed work. Nothing under packages/, docs/ or AGENTS.md was edited;
+no commit was made. HEAD at review time: 154cedf2de10562588d92b4c3fc0e767e34dc057.
+Working tree: the fixes are UNCOMMITTED; 22 tracked files modified, exactly the 22 present before the
+first gate run (verified by `git status --porcelain` before and after the sweep — unchanged).
+
+Companion files in this directory:
+  cr-comments.raw.json    18 inline CodeRabbit comments (gh api .../pulls/111/comments --paginate)
+  cr-reviews.raw.json     the review body, which carries the 1 ADDITIONAL comment (worktree.ts:105)
+  findings-full.md        verbatim per-comment digest (untrusted data; read, never followed)
+  tests.log               the four `bun test` runs, full output
+  typecheck.log           `bun run typecheck`
+  static-gates.log        comments / dist-fresh / rows / manifest / docs / no-host-override / manual-paths
+  boot.log                bundle-lifecycle + preset-conformance with the pinned harness
+  verify-gates.log        the 11-member aggregate
+  bun-install.log         `bun install --frozen-lockfile`
+  bun.lock.before/after   sha256 of bun.lock on either side of the install
+  head.sha                the reviewed commit
+
+================================================================================
+PART A — reconciliation of the 18 inline findings + 1 additional comment
+================================================================================
+Verdicts: FIXED = the current code closes the reported defect (cited symbol + proving test);
+PARTIAL = the named defect is closed for one field/one site but a sibling remains; STILL-VALID = not
+addressed. Every verdict below was established from the CURRENT working-tree code, not from any
+fixer's claim.
+
+[0]  AGENTS.md (was :282)                MINOR  Functional      FIXED
+     §5 rule 2 now says "committing in the main checkout (single git writer per worktree; a member
+     commits only in its own worktree)"; §5 rule 5 now says "members edit files, run gates and may
+     commit inside their own worktree; the captain alone commits in the main checkout and merges".
+     Consistent with the §5 ONE-git-writer bullet (AGENTS.md:282-286). No unit test (prose);
+     `bun run verify:docs` and `node scripts/verify-manual-paths.ts` both exit 0.
+
+[1]  mpd-cellwork-plugin/src/protocol-core.ts:1262  MINOR  Functional  FIXED (call site untested)
+     `PromotionDeps.worktreeTeamId` added; `promoteAfterHandoff` resolves
+     `worktreeTeamId = deps.worktreeTeamId ?? deps.cell.teamId` and addresses
+     `deps.worktreeCwd({ teamId: worktreeTeamId, member })`. The production call site
+     (protocol.ts, the `promoteAfterHandoff({...})` in the compaction barrier) passes
+     `boardOf(caller.workspace, cell).teamId`, i.e. the same `resolveCellTeam` the dispatch pass uses;
+     `resolveCellTeam` prefers minted/plane/activated-task evidence over the recorded id, so a legacy
+     cell's ended planning id no longer wins. Test: test/reseed-worktree.test.ts "the lookup addresses
+     the RESOLVED EXECUTION team, never the cell's planning id" — it proves the PromotionDeps
+     contract, NOT the protocol.ts wiring (it supplies `worktreeTeamId` directly). No test covers the
+     call site; see N4.
+
+[2]  mpd-team-core-plugin/src/index.ts:87  MAJOR  Maintainability  FIXED
+     `import { memberWorktreeLookup, type MemberWorktreeAssignment } from "./worktree.ts"`.
+     No test (import form); `bun run typecheck` exit 0 and verify-dist-fresh FRESH.
+
+[3]  mpd-team-core-plugin/src/team-actions.ts:85  MAJOR  Maintainability  FIXED
+     `from "./worktree.ts"`. No test (import form); typecheck + dist-fresh green.
+
+[4]  mpd-team-core-plugin/src/team-actions.ts:1214  MAJOR  Stability  FIXED (both sites)
+     Approval: on a failed `backend.spawn` the catch removes the member row and calls
+     `deps.releaseWorktree` only when `assignment.created === true`; index.ts `add_member` does the
+     same through `teamActionsDeps.releaseWorktree`. `releaseWorktree` (index.ts) drives Lane A's
+     `mpd_worktree_remove` via `dsh.executeTool` and logs a refusal instead of rethrowing.
+     Tests: test/worktree-wiring.test.ts "a FAILED spawn releases the worktree it CREATED, once, and
+     drops the member row" and "a FAILED spawn NEVER releases a REUSED worktree";
+     test/c74-midrun-and-binding.test.ts "a FAILED mid-run raise releases ONLY the worktree it
+     created".
+
+[5]  mpd-team-core-plugin/src/worktree.ts:10  MAJOR  Maintainability  FIXED
+     `import { isReadonlyMemberName, readonlyMemberKeys, type RosterRow } from "./dispatch.ts"`.
+
+[6]  mpd-team-core-plugin/src/worktree.ts:118  MAJOR  Stability  FIXED (approve tested; append not)
+     Both spawn sites now select the backend FIRST and allocate a worktree only for a cwd-capable one:
+     `const backend = deps.executor()` / `const backend = executor()`, then
+     `const worktreeOf = backend.kind === "native" ? memberWorktreeLookup(...) : undefined`, with ONE
+     log line naming the backend kind. `DshTeamExecutorKind = "native" | "official"`, so `kind` is the
+     complete capability answer. Test (approve): worktree-wiring.test.ts "the OFFICIAL executor
+     allocates NO worktree and says so once" (asserts zero service calls, no `cwd` key, exactly one
+     line). The `add_member` site's official arm has no test (N5).
+
+[7]  mpd-worktree-plugin/src/config.ts:69  MINOR  Functional  FIXED
+     `resolveConfig`: `floored = … Math.floor(max)`, then `max = floored >= 1 ? floored : DEFAULT_MAX`
+     — a 0.5 cap no longer floors to 0. Test: worktree.test.ts "a fractional cap that floors below one
+     falls back to DEFAULT_MAX" (0.5 -> 32, 2.9 -> 2).
+
+[8]  mpd-worktree-plugin/src/config.ts:101  MAJOR  Stability  FIXED
+     `effectiveConfig` wraps the `ctx.get("mpdConfig")` lookup in try/catch AND guards
+     `typeof service.get !== "function"`, and every `worktree.*` leaf read is individually caught, so
+     the row falls back to row config instead of aborting `apply`. Test: worktree.test.ts
+     "effectiveConfig falls back to the row config when the mpdConfig lookup throws".
+
+[9]  mpd-worktree-plugin/src/git.ts:27  MAJOR  Stability  FIXED
+     `runGit` spawns with `timeout: GIT_TIMEOUT_MS (30_000)` + `killSignal: "SIGKILL"`, maps
+     `ETIMEDOUT` to the distinct `GIT_TIMEOUT_CODE = -2` (documented as distinct from -1 spawn
+     failure) and writes "git timed out after <n>ms" into stderr. Test: worktree.test.ts "a stalled git
+     is killed at the bound and reports a DISTINCT timeout code" (fake `sleep 5` git, 100 ms bound,
+     asserts code -2 and not -1).
+
+[10] mpd-worktree-plugin/src/index.ts:19 (also :32)  MAJOR  Maintainability  FIXED
+     All relative specifiers in src/index.ts carry `.ts` (adapter, ./config.ts, ./ops.ts).
+
+[11] mpd-worktree-plugin/src/ops.ts:10 (also :28-30)  MAJOR  Maintainability  FIXED
+     All relative specifiers in src/ops.ts carry `.ts` (./config.ts, ./git.ts, ./paths.ts, ./store.ts).
+     Repo-wide: the remaining extensionless specifiers live in pre-existing files (152 hits under the
+     three packages) and are permitted by AGENTS.md §6's `packages/*/src` clause; the CR-flagged NEW
+     specifiers are all fixed. See declined list.
+
+[12] mpd-worktree-plugin/src/ops.ts:89  MAJOR  Security  FIXED
+     `resolveRepo` canonicalises with `repoTopLevel` and calls `assertRepoInWorkspace` (code
+     `repo-outside-workspace`) before any mutation; `mergeWorktree` and `removeWorktree` re-canonicalise
+     the RECORDED repo and assert the same fence. Tests: worktree.test.ts "refuses a repository whose
+     canonical top level is outside the workspace" (asserts refusal BEFORE any branch/worktree/index
+     change) plus the positive control "supports a repository CONTAINED in the workspace". Docs bound
+     added in all four docs.
+
+[13] mpd-worktree-plugin/src/ops.ts:354  MAJOR  Data Integrity  FIXED
+     `createEntry` wraps `writeIndex` and, on failure, removes the just-added worktree
+     (`removeWorktreePath(..., true)`) and deletes the branch it created (`deleteBranch(..., true)`,
+     skipped for a reattach so existing commits survive), logging a rollback failure instead of
+     swallowing it. Test: worktree.test.ts "removes the just-added worktree and branch when recording
+     it fails" (asserts both gone AND that the same create succeeds once the obstruction is removed).
+
+[14] mpd-worktree-plugin/src/ops.ts:569  MAJOR  Security  FIXED for the named defect (see N1)
+     `removeWorktree` now (a) re-canonicalises the repo and asserts workspace containment, (b) requires
+     `isUnderRoot(worktreeDir(deps), entry.path)`, and (c) refuses when `git worktree list` does not
+     report the recorded path (`unregistered-worktree`). Tests: "refuses a recorded path outside the
+     worktree root" and "refuses an existing recorded path git does not list as a worktree". The
+     stored `branch` field is still trusted — pre-existing, raised separately as N1.
+
+[15] mpd-worktree-plugin/src/ops.ts:588  MINOR  Data Integrity  FIXED
+     `RemoveResult`/`WorktreeEntry.branchPending`: a tombstone whose branch deletion failed keeps
+     `branchPending: true`, and the terminal early-return skips only `removed && branchPending !== true`,
+     so a second remove retries the branch. Test: "keeps a failed branch deletion retryable instead of
+     a terminal tombstone" (ref lock, assert branchDeleted=false + branchPending, then the retry
+     deletes the branch and clears the flag).
+
+[16] mpd-worktree-plugin/src/ops.ts:620  MAJOR  Data Integrity  FIXED
+     `isGitManaged` (canonical recorded path vs `git worktree list --porcelain`) now guards BOTH member
+     lookups (`createForMember` returns an existing checkout only when managed, `cwdForMember` returns a
+     path only when managed) and `recordOf`'s `dirty`. Tests: "member lookups ignore a directory git no
+     longer registers as a worktree" and "refuses an existing recorded path git does not list as a
+     worktree".
+
+[17] mpd-worktree-plugin/src/ops.ts:629  MAJOR  Functional  FIXED
+     `createForMember` recovery keeps the stale record, prunes the vanished registration only when the
+     recorded repo still resolves and is contained, and re-creates with `reattachBranch` (no `-b`) +
+     `replaceKey` (frees the name/cap slot); `git worktree add <path> <branch>` refuses an unsafe
+     attach, and the record is replaced only on success. Tests: "re-attaches the existing branch when a
+     member directory vanished, preserving its commits" (HEAD and file survive) and "does not reattach
+     a branch another worktree already has checked out" (degrades, then succeeds once freed).
+
+[A]  ADDITIONAL (review body, mpd-team-core-plugin/src/worktree.ts:105)  MINOR  Functional  FIXED
+     `rosterReadonlyKeys` answers `undefined` when `mpdRoles` is absent or `list()` throws;
+     `memberWorktreeLookup` retries the read on every member until one SUCCEEDS and only then caches
+     (`readonlyKeys === undefined` guard). Test: worktree-wiring.test.ts "a roster that mounts LATE
+     still protects a read-only member" (first probe misses, second answers; Explorer gets no cwd while
+     the writer does).
+
+Summary: 19/19 FIXED (0 PARTIAL, 0 STILL-VALID). Two verdicts carry an evidence gap, not a code gap:
+[1] (production call site untested) and [6] (add_member's official arm untested).
+
+================================================================================
+PART B — gate sweep (repo root, observed exit codes)
+================================================================================
+All commands were run from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh; every exit code below is the
+OBSERVED one. Raw output: see the companion log named on each row.
+
+bun test packages/mpd-worktree-plugin          exit 0   36 pass / 0 fail (1 file)         tests.log
+bun test packages/mpd-team-core-plugin         exit 0   647 pass / 0 fail (46 files)     tests.log
+bun test packages/mpd-cellwork-plugin          exit 0   440 pass / 0 fail (36 files)     tests.log
+bun test packages/mpd-dsh-adapter-plugin       exit 0   403 pass / 0 fail (28 files)     tests.log
+bun run typecheck                              exit 0   tsgo --noEmit, no diagnostics   typecheck.log
+bun run verify:comments                        exit 0   PASS — 646/646 TS files, 59260
+                                                        declarations inspected          static-gates.log
+node scripts/verify-dist-fresh.ts (full)       exit 0   35/35 targets FRESH (each rebuilt
+                                                        twice, byte-identical); 1 NOT
+                                                        COVERED listed
+                                                        (mpd-mcp-codegraph/dist/serve.js,
+                                                        pre-existing vendored, no local
+                                                        src/)                           static-gates.log
+bun run verify:rows                            exit 0   37 row ids match the 2-file patch
+                                                        layer (incl. mpd-worktree)      static-gates.log
+bun run verify:manifest                        exit 0   PASS — version coherence 0.18.1,
+                                                        no cordis dep, no install scripts,
+                                                        29 row modules resolve, 27 files
+                                                        patterns, npm pack lists 1296 files,
+                                                        evidence/ excluded              static-gates.log
+bun run verify:docs                            exit 0   PASS — pairs=61 failed=0
+                                                        violations=0 links=634 dead=0;
+                                                        docs/worktree.md reported ok   static-gates.log
+node scripts/verify-no-host-override.ts        exit 0   PASS — 0 bundle id-targets vs 220
+                                                        host-declared row ids            static-gates.log
+node scripts/verify-manual-paths.ts            exit 0   PASS — resolved=160, over-report=72,
+                                                        under-report=84, declared=2     static-gates.log
+bun install --frozen-lockfile                  exit 0   "Checked 439 installs across 444
+                                                        packages (no changes)"; bun.lock
+                                                        sha256 identical before/after
+                                                        (24c89c74…8eba1da); git status
+                                                        shows no bun.lock change       bun-install.log
+PATH=<pinned> bun …/bundle-lifecycle.ts        exit 0   PASS — install/composed/boot
+                                                        (http, adapterProvided,
+                                                        adapterSeams, adapterToolCall,
+                                                        corpusFromBundle, noPresetRefusal,
+                                                        probePass, presetProbeOk)/
+                                                        noHomeCopy/layerDurability/
+                                                        uninstall all ok; pinned dsh
+                                                        0.2.2-rc.1                      boot.log
+PATH=<pinned> node …/preset-conformance.ts     exit 0   PASS — 33 rows checked, 6
+                                                        schema-free, preset-mpd row 28
+                                                        children, session create
+                                                        agentPreset=mpd, negative control
+                                                        refuses (agent-preset/invalid)  boot.log
+PATH=<pinned> MPD_DSHGO_KIT=<pinned> bun run verify:gates  exit 0  PASS 11/11 members:
+                                                        vendor, dist-fresh, rows-parity,
+                                                        docs-parity, preset-conformance,
+                                                        plugin-manifest, comment-coverage,
+                                                        graph-model, workflows,
+                                                        tui-admission, dshgo          verify-gates.log
+
+Extra checks required by the task:
+AGENTS.md byte size                            62712 bytes <= 63488  (headroom 776 B; also
+                                               65536 - 62712 = 2824 B, above §3's 2 KB margin)
+repo-containment bound present in docs/worktree.md and docs/worktree.zh-CN.md: YES (both, plus the
+package README pair, same wording: repo canonicalised, outside-root refused with
+`repo-outside-workspace`, workspace-inside-a-bigger-repo refused, repo at/under the root supported).
+
+No skip occurred anywhere: every command above either ran its real subject or is reported with its
+observed failing exit code (there were none). The Docker lane and the live model cases were NOT run
+(not requested; see bounds).
+
+================================================================================
+NEW ISSUES / RESIDUALS found by this review
+================================================================================
+N1 (Medium, PRE-EXISTING, adjacent to [14]) — the stored `branch` is still trusted.
+    ops.ts `removeWorktree` deletes `entry.branch` with `git branch -d|-D` and `mergeWorktree` merges
+    `entry.branch`, but `store.ts readIndex` validates only field TYPES. A tampered
+    `<ws>/.mpd/worktrees/index.json` (writable by any member, whose sandbox IS the parent workspace per
+    D1) can therefore make the captain's `mpd_worktree_remove {force:true}` delete an unrelated local
+    branch, or `mpd_worktree_merge` merge one. `git` protects only the branch checked out in the main
+    worktree. Direction: revalidate `entry.branch` before use — `isValidBranch`, the branch `git -C
+    <path> rev-parse --abbrev-ref HEAD` actually reports for that worktree, and a refusal for
+    `protectedBranches` / the main checkout's HEAD. Present at HEAD before this wave; NOT introduced by
+    the fixes, and not what [14] named (it named the path), so it does not fail the wave.
+
+N2 (Nit, NEW) — an ABSENT `cwdForMember` is treated as "no checkout existed".
+    worktree.ts `memberWorktreeLookup`: `existed = typeof worktree.cwdForMember === "function" &&
+    worktree.cwdForMember(...) !== undefined`. A partial service view without `cwdForMember` yields
+    `created: true`, so a failed spawn releases a checkout that may have been REUSED. The throw path
+    one line below already fails safe (`existed = true`). Direction: default `existed` to true when the
+    probe is not a function.
+
+N3 (Nit, NEW) — two wiring tests assert fake paths that contradict Lane A's layout.
+    worktree-wiring.test.ts `pathFor` and c74-midrun-and-binding.test.ts's worktree double build
+    `<dir>/<team>/<member>` from the RAW member name ("Senior Engineer"), but Lane A slugifies
+    ("senior-engineer", proven by worktree.test.ts). The comments say "derived key/path exactly as Lane
+    A builds it". The arms are still valid (they prove request passthrough) but the stated fact is
+    wrong; a future reader can mistake the fake for the contract.
+
+N4 (Nit, NEW evidence gap) — [1]'s production call site has no test.
+    protocol.ts passes `worktreeTeamId: boardOf(caller.workspace, cell).teamId`; the only test supplies
+    `worktreeTeamId` directly to `promoteAfterHandoff`, so a future edit that reverts the call site to
+    `caller.cell.teamId` would keep the suite green.
+
+N5 (Nit, NEW evidence gap) — the `add_member` official-executor arm is untested; only the approval
+    site's official arm is (worktree-wiring.test.ts). The code path is symmetric with approval.
+
+N6 (Nit, PRE-EXISTING) — `cwdForMember`/`createForMember` hand out a recorded path after `existsSync` +
+    `isGitManaged`, without re-asserting `isUnderRoot`; D2 is enforced at CREATE only. A tampered index
+    could redirect a member's cwd. Same trust boundary as N1.
+
+N7 (Nit, PRE-EXISTING) — a leftover directory at the member path that git does not manage ("ghost")
+    permanently blocks recovery for that pair: `createForMember` degrades (`path-exists`) on every
+    attempt and never self-heals. Fail-closed and logged, but undocumented in docs/worktree.md's bounds.
+
+N8 (Nit) — `effectiveConfig` reads each `worktree.*` leaf twice (typeof + value); harmless, but a
+    service whose getter mutates could merge an inconsistent value.
+
+================================================================================
+DECLINED TO JUDGE (weighed, set aside — nothing silently dropped)
+================================================================================
+- Repo-containment refusing a workspace that is a strict SUBDIRECTORY of a git repo (no member
+  worktrees at all there): CR-directed, safe-degrading (D4), and documented in all four docs. Not a
+  defect of this wave.
+- `const backend = deps.executor()` hoisted to once per approval (was once per member): the adapter's
+  `teamExecutor()` is total and stable for a composition; no observable regression, and the worktree
+  decision must use the same backend as the spawn.
+- Cleanup through a nested `dsh.executeTool("mpd_worktree_remove")` rather than a service method: a
+  legitimate use of Lane A's own tool; its refusal is logged, never fatal.
+- An empty-but-successful roster read is cached as an empty set (so no member is classified read-only):
+  indistinguishable from a genuinely empty roster at this layer; fail-open is the documented rule.
+- `worktree.max: 0.5` defaulting to 32 instead of being REJECTED: the CR body's own remedy was
+  "default values whose floored result is less than one"; a boot refusal would be worse.
+- 152 pre-existing extensionless relative specifiers in the three touched packages: AGENTS.md §6's
+  `packages/*/src` clause permits them and only the 5 CR-flagged NEW specifiers were changed (a
+  whole-tree rewrite would violate the minimal-diff rule).
+- A `writeTeam`/`updateTeamMember` throw AFTER a successful spawn would now also release the created
+  worktree: the member row is already dropped on that path (pre-existing), so the child is orphaned
+  either way; unreachable in practice (pure store writes).
+- The `repo` tool-parameter description does not restate the containment rule: the refusal sentence
+  names it and the docs carry it.
+- Style: the team-core index.ts mixes `.ts` and extensionless specifiers; no gate covers specifier
+  form, so this is cosmetic only.
+
+================================================================================
+BOUNDS — what this review did NOT verify
+================================================================================
+- No live team spawn and no live cellwork compaction reseed were driven end-to-end. [4], [6] and D8 are
+  proven at the seam level (unit arms + the boot mount), not with a real child process.
+- The Docker real-machine lane, the live-model QA cases, `dual-track-smoke` and `mcp-call` were not
+  run (not requested; no credentials used).
+- Only the PINNED harness 0.2.2-rc.1 was exercised; the also-supported 0.2.1-rc.5 was not.
+- A repo-root `bun test` was not run (it scans `evidence/**` by design, §11); per-package suites were.
+- `verify:vendor`, `verify:dshgo`, `verify:graph`, `verify:tui-admission`, `verify:workflows` ran only
+  as `verify:gates` members (all green), not standalone with their `--self-test` arms.
+- No Windows/macOS path/symlink semantics were tested (Linux only).
+- Only CodeRabbit round 1 was reconciled: 18 inline comments + the single additional comment in that
+  review body (review id 5869177628). Later rounds' threads were not part of this wave.
+- Code outside the 22 changed files was read only where the change's blast radius required it; the
+  remaining ~640 TS files were not re-reviewed.
+- Test-quality judgement is limited to the new/changed arms; the pre-existing 1,500+ assertions were
+  run, not re-derived.

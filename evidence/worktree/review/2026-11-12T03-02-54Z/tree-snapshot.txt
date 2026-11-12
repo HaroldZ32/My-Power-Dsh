@@ -1,0 +1,23 @@
+=== review tree snapshot @ 2026-11-12T03:11:41Z ===
+1aa83b457c4167d8  2026-11-12T02:45:35Z  packages/mpd-worktree-plugin/src/config.ts
+097334d730cc7235  2026-11-12T02:49:06Z  packages/mpd-worktree-plugin/src/git.ts
+384e909734f9def6  2026-11-12T02:47:26Z  packages/mpd-worktree-plugin/src/index.ts
+4d837d66dabae2fc  2026-11-12T02:49:09Z  packages/mpd-worktree-plugin/src/ops.ts
+0ddd096c7f0469ff  2026-11-12T02:45:41Z  packages/mpd-worktree-plugin/src/paths.ts
+d6832bfbe53ed41d  2026-11-12T02:46:14Z  packages/mpd-worktree-plugin/src/store.ts
+e5dcb7cba7de302e  2026-11-12T02:50:55Z  packages/mpd-worktree-plugin/dist/index.js
+e8557f5287d613b8  2026-11-12T02:50:08Z  packages/mpd-worktree-plugin/README.md
+e1b33fc1f4b2f4d6  2026-11-12T02:41:30Z  docs/worktree.md
+d0de119385486e7a  2026-11-12T02:41:44Z  docs/worktree.zh-CN.md
+74a5e04528a82c95  2026-11-12T02:41:59Z  docs/cellwork.md
+85e2ac649125502b  2026-11-12T02:45:52Z  agent-references/git-model.md
+5d2ef023f16fd010  2026-11-12T02:46:03Z  AGENTS.md
+72747956a740f06d  2026-11-12T02:49:30Z  cordis.patch.yml
+09e495e529672b7f  2026-11-12T02:42:00Z  packages/mpd-dsh-adapter-plugin/src/index.ts
+c4228322dea29151  2026-11-12T02:53:13Z  packages/mpd-team-core-plugin/src/worktree.ts
+ac2ab635b20b6258  2026-11-12T02:53:26Z  packages/mpd-team-core-plugin/src/team-actions.ts
+42c1158463f85574  2026-11-12T02:53:38Z  packages/mpd-team-core-plugin/src/index.ts
+11412ad12cceceb0  2026-11-12T02:53:49Z  packages/mpd-cellwork-plugin/src/protocol-core.ts
+6a2870581bc1bf56  2026-11-12T02:53:55Z  packages/mpd-cellwork-plugin/src/protocol.ts
+ac5594b3b170639e  2026-11-12T02:50:45Z  scripts/install-profile.ts
+c1a283d0eb44ef0e  2026-11-12T02:49:34Z  scripts/pack-mpd.ts

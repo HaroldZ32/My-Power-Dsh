@@ -3470,6 +3470,11 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         sessionId: member.sessionId,
         parentSessionId,
         cell: caller.cell,
+        // THE WORKTREE IS KEYED BY THE EXECUTION BOARD, NOT THE PLANNING RECORD (CodeRabbit round 1):
+        // a legacy cell's `teamId` can still name the ended planning team, while the member's worktree
+        // was created under the minted execution team. `boardOf` is the resolver every other board read
+        // in this closure uses; `cell` keeps the planning id for every other purpose.
+        worktreeTeamId: boardOf(caller.workspace, cell).teamId,
         config,
         handoffText,
         nextStep: nextStepOf(handoffText),
@@ -3481,6 +3486,21 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
           }
         },
         sleep: (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms)),
+        // D8: THE RESEED KEEPS THE MEMBER IN ITS WORKTREE. This is a SERVICE READ through the row's own
+        // ctx (`mpdWorktree.cwdForMember`), never a harness seam: the member's live agent supplies the
+        // workspace root, and an absent/disabled row or any failure answers "no path" so the reseed
+        // request keeps today's shape (no `cwd` key). A worktree that cannot be read is never fatal.
+        worktreeCwd: (input): string | undefined => {
+          try {
+            /** The worktree row's published service, probed per call so a late mount is honoured. */
+            const service = deps.ctx.get?.("mpdWorktree", false) as { cwdForMember?: (exec: unknown, ref: { teamId: string; member: string }) => string | undefined } | undefined
+            if (typeof service?.cwdForMember !== "function") return undefined
+            // The live member handle is the exec: only its session workspace root is read.
+            return service.cwdForMember({ agent }, input) ?? undefined
+          } catch {
+            return undefined
+          }
+        },
         // R1: THE THREE SURFACES ARE BOUND HERE, BEFORE `promoteAfterHandoff` may answer `reseeded`.
         bindSeat: async (input): Promise<SeatBindResult> => bindReseededSeat({
           workspace: caller.workspace,

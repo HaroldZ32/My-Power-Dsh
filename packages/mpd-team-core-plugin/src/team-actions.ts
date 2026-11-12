@@ -82,6 +82,7 @@ import {
   type RosterRow,
 } from "./dispatch"
 import { withIdlePreamble } from "./idle-guard"
+import { memberWorktreeLookup, type MemberWorktreeAssignment } from "./worktree.ts"
 import { readLedger, writeLedger } from "./dispatch-ledger"
 import { appendTeamJournal } from "./team-journal"
 import { HANDOFF_SECTIONS, handoffWrittenDirective, parseHandoff, teamHandoffPath, validateHandoffText, writeHandoffDocument } from "./team-handoff"
@@ -164,6 +165,14 @@ export interface TeamActionDeps {
   readWatchdogHold: (workspace: string, sessionId: string, lineage: readonly string[]) => WatchdogHoldRead
   /** A cordis service by id, or undefined; the row's only way to reach `mpdRoles`. */
   service: (id: string) => unknown
+  /**
+   * Release one worktree that THIS attempt created, after its member spawn failed.
+   *
+   * A reused worktree is never passed here: the caller reads the lookup's `created` flag, so a failed
+   * retry cannot delete a checkout an earlier attempt already owns. Omitted by a composition that
+   * offers no removal seam — the member-row cleanup then runs alone, exactly as before.
+   */
+  releaseWorktree?: (agent: unknown, ref: { teamId: string; member: string }) => Promise<void> | void
   /** The row's diagnostic sink; the caller prefixes the row name. */
   log: (line: string) => void
   /** Open the idle guard's dispatch window for one member; the returned release must always run. */
@@ -1196,15 +1205,33 @@ async function approveTeamBody(
     if (unresolvedBlockers.length > 0) created.unresolved = unresolvedBlockers
     /** The first failure's description; set means approval stopped rather than half-build the team. */
     let stoppedAt: string | undefined
+    // THE EXECUTOR IS SELECTED BEFORE ANY WORKTREE (CodeRabbit round 1): the official backend has no
+    // per-call cwd channel, so allocating first would mint an unused branch and consume an active-entry
+    // slot. Only a cwd-capable backend gets per-member worktrees; the official fallback says so ONCE.
+    /** The backend that raises every member of this approval. */
+    const backend = deps.executor()
+    // ONE WORKTREE PER WRITE-CAPABLE MEMBER (Lane C of `.mpd/plans/agent-worktrees.md`). The lookup is
+    // built ONCE for this approval so its "the mpdWorktree row is absent" line is written once for the
+    // whole roster rather than once per member, and it answers `undefined` for a read-only seat (the
+    // same roster predicate the dispatch guard uses) or for any degrade.
+    /** Where each member of this approval should work, if its own worktree is available. */
+    const worktreeOf = backend.kind === "native" ? memberWorktreeLookup(deps.service, deps.log) : undefined
+    if (worktreeOf === undefined) deps.log("[mpd-team-core] the " + backend.kind + " executor cannot set cwd — team members spawn in the shared checkout (no per-member worktree)")
     for (const member of record.members) {
+      /** This member's worktree, and whether this attempt CREATED it (absent on any degrade). */
+      let assignment: MemberWorktreeAssignment | undefined
       try {
         // THE EXECUTOR RAISES THE MEMBER. On the native backend the member's ROLE travels as an
         // ordinary argument and the executor turns it into the child's `agentOptions` — the two
         // things the official tool row cannot forward — so a roster slot route, a persona and the
         // read-only deny list reach a teammate directly, and nothing here needs the official
         // plugin mounted.
+        /** What the lookup answered for this member, when it offered a worktree at all. */
+        assignment = worktreeOf?.({ exec: { agent: caller.agent, signal: caller.signal }, teamId: record.teamId, member: member.name, ...(member.role === undefined ? {} : { role: member.role }) })
+        /** This member's worktree path, or undefined when the spawn keeps today's shared checkout. */
+        const cwd = assignment?.path
         /** The backend's answer, whose handle the record keeps BESIDE our own member id. */
-        const spawned = await deps.executor().spawn(caller.agent, {
+        const spawned = await backend.spawn(caller.agent, {
           teamId: record.teamId,
           memberId: member.id,
           name: member.name,
@@ -1218,6 +1245,9 @@ async function approveTeamBody(
           // written by NO production path (only the store's input type admits it), so this arm
           // forwards no `provider` — the route is the executor's to resolve.
           ...(member.role === undefined ? {} : { role: member.role }),
+          // The member's OWN git worktree, or no key at all: an absent path must let the host
+          // inherit the Lead's directory rather than receive a written `cwd: undefined`.
+          ...(cwd === undefined ? {} : { cwd }),
           ...(caller.signal === undefined ? {} : { signal: caller.signal }),
         })
         created.members.push({ name: member.name, id: spawned.handle })
@@ -1228,6 +1258,16 @@ async function approveTeamBody(
         // approval would otherwise hand the roster — and the capacity — a teammate that does not
         // exist, and a repaired approval could never reuse the name.
         record = removeTeamMember(record, member.id)
+        // A FAILED SPAWN RELEASES ONLY WHAT IT CREATED (CodeRabbit round 1): a reused worktree may
+        // carry an earlier attempt's branch, so only `created` is removed. A removal that refuses is
+        // LOGGED, never allowed to hide the spawn failure or resurrect the member row.
+        if (assignment?.created === true && deps.releaseWorktree !== undefined) {
+          try {
+            await deps.releaseWorktree(caller.agent, { teamId: record.teamId, member: member.name })
+          } catch (releaseError) {
+            deps.log("[mpd-team-core] the failed-spawn worktree " + record.teamId + "/" + member.name + " could not be released: " + String((releaseError as Error)?.message ?? releaseError))
+          }
+        }
         stoppedAt = `member ${member.name}: ${String((error as Error)?.message ?? error)}`
         break
       }

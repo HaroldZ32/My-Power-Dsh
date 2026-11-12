@@ -1,0 +1,386 @@
+{
+  "review": "CodeRabbit round-1 fix wave on PR #111 / branch feature/agent-worktrees",
+  "role": "Reviewer (read-only on the reviewed work; no source edit, no commit)",
+  "timestamp": "2026-11-12T05-57-49Z",
+  "head": "154cedf2de10562588d92b4c3fc0e767e34dc057",
+  "branch": "feature/agent-worktrees",
+  "worktree": {
+    "fixesUncommitted": true,
+    "modifiedTrackedFiles": 22,
+    "modifiedList": [
+      "AGENTS.md",
+      "docs/worktree.md",
+      "docs/worktree.zh-CN.md",
+      "packages/mpd-cellwork-plugin/dist/index.js",
+      "packages/mpd-cellwork-plugin/src/protocol-core.ts",
+      "packages/mpd-cellwork-plugin/src/protocol.ts",
+      "packages/mpd-cellwork-plugin/test/reseed-worktree.test.ts",
+      "packages/mpd-team-core-plugin/dist/index.js",
+      "packages/mpd-team-core-plugin/src/index.ts",
+      "packages/mpd-team-core-plugin/src/team-actions.ts",
+      "packages/mpd-team-core-plugin/src/worktree.ts",
+      "packages/mpd-team-core-plugin/test/c74-midrun-and-binding.test.ts",
+      "packages/mpd-team-core-plugin/test/worktree-wiring.test.ts",
+      "packages/mpd-worktree-plugin/README.md",
+      "packages/mpd-worktree-plugin/README.zh-CN.md",
+      "packages/mpd-worktree-plugin/dist/index.js",
+      "packages/mpd-worktree-plugin/src/config.ts",
+      "packages/mpd-worktree-plugin/src/git.ts",
+      "packages/mpd-worktree-plugin/src/index.ts",
+      "packages/mpd-worktree-plugin/src/ops.ts",
+      "packages/mpd-worktree-plugin/src/store.ts",
+      "packages/mpd-worktree-plugin/test/worktree.test.ts"
+    ],
+    "unchangedByReview": "git status --porcelain before the first gate run and after the last one list the same 22 tracked modifications; bun.lock sha256 identical"
+  },
+  "codeRabbit": {
+    "reviewId": 5869177628,
+    "state": "COMMENTED",
+    "submittedAt": "2026-11-12T04:33:30Z",
+    "inlineFindings": 18,
+    "additionalComments": 1,
+    "additionalAnchor": "packages/mpd-team-core-plugin/src/worktree.ts:105"
+  },
+  "verdict": "PASS",
+  "counts": { "fixed": 19, "partial": 0, "stillValid": 0 },
+  "findings": [
+    {
+      "index": 0,
+      "path": "AGENTS.md",
+      "crLine": 282,
+      "severity": "Minor",
+      "category": "Functional Correctness",
+      "title": "Make the other binding Git rules agree with member commits",
+      "verdict": "FIXED",
+      "evidence": "§5 rule 2 now reserves committing for the captain 'in the main checkout (single git writer per worktree; a member commits only in its own worktree)'; §5 rule 5 now says members 'may commit inside their own worktree; the captain alone commits in the main checkout and merges'. Consistent with the §5 ONE-git-writer bullet (AGENTS.md:282-286).",
+      "test": "none (prose); bun run verify:docs exit 0, node scripts/verify-manual-paths.ts exit 0"
+    },
+    {
+      "index": 1,
+      "path": "packages/mpd-cellwork-plugin/src/protocol-core.ts",
+      "crLine": 1262,
+      "severity": "Minor",
+      "category": "Functional Correctness",
+      "title": "Resolve the execution team ID before the reseed worktree lookup",
+      "verdict": "FIXED",
+      "evidence": "PromotionDeps.worktreeTeamId added; promoteAfterHandoff computes worktreeTeamId = deps.worktreeTeamId (non-empty) ?? deps.cell.teamId and addresses deps.worktreeCwd({ teamId: worktreeTeamId, member }). Production call site in protocol.ts passes boardOf(caller.workspace, cell).teamId, i.e. resolveCellTeam, which prefers minted/plane/activated-task evidence over the recorded (planning) id.",
+      "test": "test/reseed-worktree.test.ts 'the lookup addresses the RESOLVED EXECUTION team, never the cell's planning id' — proves the PromotionDeps contract only; the protocol.ts call site is untested (N4)"
+    },
+    {
+      "index": 2,
+      "path": "packages/mpd-team-core-plugin/src/index.ts",
+      "crLine": 87,
+      "severity": "Major",
+      "category": "Maintainability & Code Quality",
+      "title": "Add the .ts extension to the new worktree import",
+      "verdict": "FIXED",
+      "evidence": "import { memberWorktreeLookup, type MemberWorktreeAssignment } from \"./worktree.ts\"",
+      "test": "none (import form); bun run typecheck exit 0, verify-dist-fresh FRESH"
+    },
+    {
+      "index": 3,
+      "path": "packages/mpd-team-core-plugin/src/team-actions.ts",
+      "crLine": 85,
+      "severity": "Major",
+      "category": "Maintainability & Code Quality",
+      "title": "Add the .ts extension to the new worktree import",
+      "verdict": "FIXED",
+      "evidence": "from \"./worktree.ts\"",
+      "test": "none (import form); typecheck + dist-fresh green"
+    },
+    {
+      "index": 4,
+      "path": "packages/mpd-team-core-plugin/src/team-actions.ts",
+      "crLine": 1214,
+      "severity": "Major",
+      "category": "Stability & Availability",
+      "title": "Release a newly created worktree when its member spawn fails",
+      "verdict": "FIXED",
+      "evidence": "approveTeamBody catch: removeTeamMember + `if (assignment?.created === true && deps.releaseWorktree) await deps.releaseWorktree(caller.agent, {teamId, member})` inside its own try/catch; index.ts add_member catches and awaits teamActionsDeps.releaseWorktree when created. releaseWorktree (index.ts) drives mpd_worktree_remove through dsh.executeTool and logs a refusal.",
+      "test": "worktree-wiring.test.ts 'a FAILED spawn releases the worktree it CREATED, once, and drops the member row' + 'a FAILED spawn NEVER releases a REUSED worktree'; c74-midrun-and-binding.test.ts 'a FAILED mid-run raise releases ONLY the worktree it created'"
+    },
+    {
+      "index": 5,
+      "path": "packages/mpd-team-core-plugin/src/worktree.ts",
+      "crLine": 10,
+      "severity": "Major",
+      "category": "Maintainability & Code Quality",
+      "title": "Add the .ts extension to the new relative import",
+      "verdict": "FIXED",
+      "evidence": "import { isReadonlyMemberName, readonlyMemberKeys, type RosterRow } from \"./dispatch.ts\"",
+      "test": "none (import form)"
+    },
+    {
+      "index": 6,
+      "path": "packages/mpd-team-core-plugin/src/worktree.ts",
+      "crLine": 118,
+      "severity": "Major",
+      "category": "Stability & Availability",
+      "title": "Do not create worktrees for an executor that cannot use cwd",
+      "verdict": "FIXED",
+      "evidence": "Both spawn sites select the backend first (const backend = deps.executor() / executor()) and compute worktreeOf = backend.kind === \"native\" ? memberWorktreeLookup(...) : undefined, writing ONE line naming the backend kind. DshTeamExecutorKind is exhaustively \"native\" | \"official\", so kind answers the cwd capability.",
+      "test": "worktree-wiring.test.ts 'the OFFICIAL executor allocates NO worktree and says so once' (zero service calls, no cwd key, exactly one line). The add_member site's official arm is untested (N5)."
+    },
+    {
+      "index": 7,
+      "path": "packages/mpd-worktree-plugin/src/config.ts",
+      "crLine": 69,
+      "severity": "Minor",
+      "category": "Functional Correctness",
+      "title": "Reject a fractional cap that floors to zero",
+      "verdict": "FIXED",
+      "evidence": "resolveConfig: floored = Math.floor(max) for finite positive input, then max = floored >= 1 ? floored : DEFAULT_MAX, so 0.5 no longer becomes a 0 cap.",
+      "test": "worktree.test.ts 'a fractional cap that floors below one falls back to DEFAULT_MAX' (0.5 -> 32, 2.9 -> 2)"
+    },
+    {
+      "index": 8,
+      "path": "packages/mpd-worktree-plugin/src/config.ts",
+      "crLine": 101,
+      "severity": "Major",
+      "category": "Stability & Availability",
+      "title": "Guard the mpdConfig lookup so an absent service cannot abort apply",
+      "verdict": "FIXED",
+      "evidence": "effectiveConfig wraps ctx.get(\"mpdConfig\") in try/catch, requires typeof service.get === \"function\", and catches every worktree.* leaf read, so apply keeps the row config instead of aborting before the five tools register.",
+      "test": "worktree.test.ts 'effectiveConfig falls back to the row config when the mpdConfig lookup throws'"
+    },
+    {
+      "index": 9,
+      "path": "packages/mpd-worktree-plugin/src/git.ts",
+      "crLine": 27,
+      "severity": "Major",
+      "category": "Stability & Availability",
+      "title": "Bound Git execution time",
+      "verdict": "FIXED",
+      "evidence": "runGit spawns with timeout: GIT_TIMEOUT_MS (30_000) and killSignal SIGKILL, maps ETIMEDOUT to the distinct GIT_TIMEOUT_CODE (-2, documented as distinct from -1 spawn failure) and writes 'git timed out after <n>ms' to stderr.",
+      "test": "worktree.test.ts 'a stalled git is killed at the bound and reports a DISTINCT timeout code' (fake sleep-5 git, 100 ms bound, asserts -2 and not -1)"
+    },
+    {
+      "index": 10,
+      "path": "packages/mpd-worktree-plugin/src/index.ts",
+      "crLine": 19,
+      "severity": "Major",
+      "category": "Maintainability & Code Quality",
+      "title": "Add .ts to relative source imports",
+      "verdict": "FIXED",
+      "evidence": "All relative specifiers in src/index.ts carry .ts (adapter, ./config.ts, ./ops.ts); the 'also applies' line 32 (./ops) is fixed too.",
+      "test": "none (import form); typecheck + build + dist-fresh prove resolvability"
+    },
+    {
+      "index": 11,
+      "path": "packages/mpd-worktree-plugin/src/ops.ts",
+      "crLine": 10,
+      "severity": "Major",
+      "category": "Maintainability & Code Quality",
+      "title": "Add .ts to relative source imports",
+      "verdict": "FIXED",
+      "evidence": "All relative specifiers in src/ops.ts carry .ts (./config.ts, ./git.ts, ./paths.ts, ./store.ts), including the lines 28-30 group.",
+      "test": "none (import form)"
+    },
+    {
+      "index": 12,
+      "path": "packages/mpd-worktree-plugin/src/ops.ts",
+      "crLine": 89,
+      "severity": "Major",
+      "category": "Security & Privacy",
+      "title": "Keep the selected repository inside the workspace",
+      "verdict": "FIXED",
+      "evidence": "resolveRepo canonicalises with repoTopLevel and calls assertRepoInWorkspace (code repo-outside-workspace) before any mutation; mergeWorktree and removeWorktree re-canonicalise the RECORDED repo and assert the same fence. Docs bound added to docs/worktree.md + zh and the package README pair.",
+      "test": "worktree.test.ts 'refuses a repository whose canonical top level is outside the workspace' (refusal before any branch/worktree/index change) and the positive control 'supports a repository CONTAINED in the workspace'"
+    },
+    {
+      "index": 13,
+      "path": "packages/mpd-worktree-plugin/src/ops.ts",
+      "crLine": 354,
+      "severity": "Major",
+      "category": "Data Integrity & Integration",
+      "title": "Recover the worktree if recording its creation fails",
+      "verdict": "FIXED",
+      "evidence": "createEntry wraps writeIndex; on failure it removes the just-added worktree (removeWorktreePath force) and deletes the branch it created (deleteBranch force; skipped on a reattach so existing commits survive), logging a rollback failure instead of swallowing it.",
+      "test": "worktree.test.ts 'removes the just-added worktree and branch when recording it fails' (both gone; the same create succeeds after the obstruction is removed)"
+    },
+    {
+      "index": 14,
+      "path": "packages/mpd-worktree-plugin/src/ops.ts",
+      "crLine": 569,
+      "severity": "Major",
+      "category": "Security & Privacy",
+      "title": "Revalidate the stored target before removal",
+      "verdict": "FIXED",
+      "evidence": "removeWorktree re-canonicalises the repo and asserts workspace containment, requires isUnderRoot(worktreeDir(deps), entry.path), and refuses when git worktree list does not report the recorded path (unregistered-worktree). The stored branch remains trusted — pre-existing, raised as N1.",
+      "test": "worktree.test.ts 'refuses a recorded path outside the worktree root' and 'refuses an existing recorded path git does not list as a worktree'"
+    },
+    {
+      "index": 15,
+      "path": "packages/mpd-worktree-plugin/src/ops.ts",
+      "crLine": 588,
+      "severity": "Minor",
+      "category": "Data Integrity & Integration",
+      "title": "Keep a failed branch deletion retryable",
+      "verdict": "FIXED",
+      "evidence": "WorktreeEntry/RemoveResult gained branchPending; the terminal early-return skips only status removed WITH the flag clear, so a second remove retries the branch and clears the flag on success.",
+      "test": "worktree.test.ts 'keeps a failed branch deletion retryable instead of a terminal tombstone' (ref lock; branchDeleted=false + branchPending=true, then the retry deletes the branch and clears the flag)"
+    },
+    {
+      "index": 16,
+      "path": "packages/mpd-worktree-plugin/src/ops.ts",
+      "crLine": 620,
+      "severity": "Major",
+      "category": "Data Integrity & Integration",
+      "title": "Confirm Git still manages a reused member directory",
+      "verdict": "FIXED",
+      "evidence": "isGitManaged (canonical recorded path vs git worktree list --porcelain) guards both member lookups (createForMember returns an existing checkout only when managed; cwdForMember returns a path only when managed) and recordOf's dirty.",
+      "test": "worktree.test.ts 'member lookups ignore a directory git no longer registers as a worktree' and 'refuses an existing recorded path git does not list as a worktree'"
+    },
+    {
+      "index": 17,
+      "path": "packages/mpd-worktree-plugin/src/ops.ts",
+      "crLine": 629,
+      "severity": "Major",
+      "category": "Functional Correctness",
+      "title": "Reattach the branch when a member directory has vanished",
+      "verdict": "FIXED",
+      "evidence": "createForMember keeps the stale record, prunes only when the recorded repo still resolves and is contained, and re-creates with reattachBranch (attachWorktree, no -b) + replaceKey; git refuses an unsafe attach and the record is replaced only on success.",
+      "test": "worktree.test.ts 're-attaches the existing branch when a member directory vanished, preserving its commits' (HEAD and file survive) and 'does not reattach a branch another worktree already has checked out' (degrades, then succeeds once freed)"
+    },
+    {
+      "index": "A",
+      "path": "packages/mpd-team-core-plugin/src/worktree.ts",
+      "crLine": 105,
+      "severity": "Minor",
+      "category": "Functional Correctness",
+      "title": "Refresh read-only classification after an unavailable roster read (additional comment in the review body)",
+      "verdict": "FIXED",
+      "evidence": "rosterReadonlyKeys answers undefined when mpdRoles is absent or list() throws; memberWorktreeLookup retries the read on every member until one succeeds and only then caches readonlyKeys.",
+      "test": "worktree-wiring.test.ts 'a roster that mounts LATE still protects a read-only member' (first probe misses, second answers; Explorer gets no cwd, the writer does)"
+    }
+  ],
+  "gates": [
+    { "command": "bun test packages/mpd-worktree-plugin", "exit": 0, "observed": "36 pass / 0 fail (1 file)", "log": "tests.log" },
+    { "command": "bun test packages/mpd-team-core-plugin", "exit": 0, "observed": "647 pass / 0 fail (46 files)", "log": "tests.log" },
+    { "command": "bun test packages/mpd-cellwork-plugin", "exit": 0, "observed": "440 pass / 0 fail (36 files)", "log": "tests.log" },
+    { "command": "bun test packages/mpd-dsh-adapter-plugin", "exit": 0, "observed": "403 pass / 0 fail (28 files)", "log": "tests.log" },
+    { "command": "bun run typecheck", "exit": 0, "observed": "tsgo --noEmit, no diagnostics", "log": "typecheck.log" },
+    { "command": "bun run verify:comments", "exit": 0, "observed": "PASS — 646/646 TS files, 59260 declarations inspected", "log": "static-gates.log" },
+    { "command": "node scripts/verify-dist-fresh.ts", "exit": 0, "observed": "35/35 targets FRESH (each rebuilt twice, byte-identical); 1 NOT COVERED listed (mpd-mcp-codegraph/dist/serve.js, pre-existing vendored, no local src/)", "log": "static-gates.log" },
+    { "command": "bun run verify:rows", "exit": 0, "observed": "37 row ids match the 2-file patch layer (includes mpd-worktree)", "log": "static-gates.log" },
+    { "command": "bun run verify:manifest", "exit": 0, "observed": "PASS — version coherence 0.18.1, no cordis dependency, no install scripts, 29 row modules resolve, 27 files patterns, npm pack lists 1296 files, evidence/ excluded", "log": "static-gates.log" },
+    { "command": "bun run verify:docs", "exit": 0, "observed": "PASS — pairs=61 failed=0 violations=0 links=634 dead=0; docs/worktree.md reported ok", "log": "static-gates.log" },
+    { "command": "node scripts/verify-no-host-override.ts", "exit": 0, "observed": "PASS — 0 bundle id-targets against 220 host-declared row ids", "log": "static-gates.log" },
+    { "command": "node scripts/verify-manual-paths.ts", "exit": 0, "observed": "PASS — resolved=160, over-report=72, under-report=84, declared=2", "log": "static-gates.log" },
+    { "command": "bun install --frozen-lockfile", "exit": 0, "observed": "'Checked 439 installs across 444 packages (no changes)'; bun.lock sha256 identical before/after (24c89c74...8eba1da); git status shows no bun.lock change", "log": "bun-install.log" },
+    { "command": "PATH=<pinned dsh 0.2.2-rc.1> bun skills/dsh-qa/scripts/bundle-lifecycle.ts", "exit": 0, "observed": "PASS — install/composed/boot(http, adapterProvided, adapterSeams, adapterToolCall, corpusFromBundle, noPresetRefusal, probePass, presetProbeOk)/noHomeCopy/layerDurability/uninstall all ok", "log": "boot.log" },
+    { "command": "PATH=<pinned> node skills/dsh-qa/scripts/preset-conformance.ts", "exit": 0, "observed": "PASS — 33 rows checked, 6 schema-free, preset-mpd row 28 children, session agentPreset=mpd, negative control refuses (agent-preset/invalid)", "log": "boot.log" },
+    { "command": "PATH=<pinned> MPD_DSHGO_KIT=<pinned> bun run verify:gates", "exit": 0, "observed": "PASS 11/11 members: vendor, dist-fresh, rows-parity, docs-parity, preset-conformance, plugin-manifest, comment-coverage, graph-model, workflows, tui-admission, dshgo", "log": "verify-gates.log" }
+  ],
+  "extraChecks": {
+    "agentsMdBytes": 62712,
+    "agentsMdLimit": 63488,
+    "agentsMdHeadroom": 776,
+    "agentsMdBudgetMargin": "65536 - 62712 = 2824 B, above the 2 KB margin AGENTS.md §3 requires",
+    "repoContainmentBound": "present in docs/worktree.md, docs/worktree.zh-CN.md and the package README pair (repo canonicalised; outside-root repo refused with repo-outside-workspace; a workspace inside a larger git repo refused; repo at/under the root supported)"
+  },
+  "newIssues": [
+    {
+      "id": "N1",
+      "severity": "Medium",
+      "introducedByThisWave": false,
+      "where": "packages/mpd-worktree-plugin/src/ops.ts removeWorktree / mergeWorktree + packages/mpd-worktree-plugin/src/store.ts readIndex",
+      "what": "The stored record's branch is still trusted: readIndex validates field types only, and removeWorktree deletes entry.branch with git branch -d|-D while mergeWorktree merges it. A tampered <ws>/.mpd/worktrees/index.json (writable by a member, whose sandbox is the parent workspace per D1) can make the captain's forced removal delete an unrelated local branch, or make a merge bring in an arbitrary branch. git protects only the branch checked out in the main worktree.",
+      "direction": "Revalidate entry.branch before use: isValidBranch, the branch git -C <path> rev-parse --abbrev-ref HEAD actually reports for that worktree, and a refusal for protectedBranches / the main checkout's HEAD.",
+      "whyNotFail": "Present at HEAD before the fix wave; CR [14] named the path, not the branch."
+    },
+    {
+      "id": "N2",
+      "severity": "Nit",
+      "introducedByThisWave": true,
+      "where": "packages/mpd-team-core-plugin/src/worktree.ts memberWorktreeLookup",
+      "what": "existed = typeof worktree.cwdForMember === 'function' && cwdForMember(...) !== undefined. A partial service view without cwdForMember yields created=true, so a failed spawn would release a possibly REUSED checkout; the adjacent throw path already fails safe (existed = true).",
+      "direction": "Default existed to true when the probe is not a function."
+    },
+    {
+      "id": "N3",
+      "severity": "Nit",
+      "introducedByThisWave": true,
+      "where": "packages/mpd-team-core-plugin/test/worktree-wiring.test.ts pathFor / c74-midrun-and-binding.test.ts worktree double",
+      "what": "Both fakes build paths from the RAW member name ('Senior Engineer') and their comments claim they are 'derived key/path exactly as Lane A builds it', but Lane A slugifies ('senior-engineer', proven by worktree.test.ts). The arms remain valid for request passthrough; the stated fact is wrong.",
+      "direction": "Either slugify in the fakes or soften the comment to 'the path the service returned'."
+    },
+    {
+      "id": "N4",
+      "severity": "Nit",
+      "introducedByThisWave": true,
+      "where": "packages/mpd-cellwork-plugin/src/protocol.ts (worktreeTeamId: boardOf(caller.workspace, cell).teamId)",
+      "what": "No test exercises the production call site: the only reseed arm passes worktreeTeamId directly to promoteAfterHandoff, so a revert to caller.cell.teamId would keep the suite green.",
+      "direction": "Drive the barrier once with a legacy cell + an execution team and assert the lookup is addressed with the resolved id."
+    },
+    {
+      "id": "N5",
+      "severity": "Nit",
+      "introducedByThisWave": true,
+      "where": "packages/mpd-team-core-plugin/src/index.ts add_member",
+      "what": "The official-executor arm of the add_member spawn site is untested; only the approval site's official arm is covered.",
+      "direction": "Add the append arm with an official-kind executor and assert no worktree call, no cwd, one line."
+    },
+    {
+      "id": "N6",
+      "severity": "Nit",
+      "introducedByThisWave": false,
+      "where": "packages/mpd-worktree-plugin/src/ops.ts createForMember / cwdForMember",
+      "what": "Recorded paths are handed out after existsSync + isGitManaged without re-asserting isUnderRoot; D2 is enforced at CREATE only, so a tampered index can redirect a member's cwd.",
+      "direction": "Re-assert the workspace containment on lookup as well."
+    },
+    {
+      "id": "N7",
+      "severity": "Nit",
+      "introducedByThisWave": false,
+      "where": "packages/mpd-worktree-plugin/src/ops.ts createForMember recovery + docs/worktree.md bounds",
+      "what": "A leftover directory at the member path that git does not manage permanently blocks recovery for that pair (path-exists every attempt, degrade each spawn). Fail-closed and logged, but not documented.",
+      "direction": "Name it in the docs bounds, or offer an explicit operator remedy."
+    },
+    {
+      "id": "N8",
+      "severity": "Nit",
+      "introducedByThisWave": true,
+      "where": "packages/mpd-worktree-plugin/src/config.ts effectiveConfig",
+      "what": "Each worktree.* leaf is read twice (typeof check then value), so a mutating getter could merge an inconsistent value.",
+      "direction": "Read each leaf once into a local."
+    }
+  ],
+  "declined": [
+    "Repo-containment refusing member worktrees when the workspace is a strict subdirectory of a git repo — CR-directed, safe-degrading (D4) and documented in all four docs; not a defect of this wave.",
+    "const backend = deps.executor() hoisted to once per approval — the adapter's teamExecutor() is total and stable per composition; no observable regression, and the worktree decision must use the same backend as the spawn.",
+    "Cleanup through a nested dsh.executeTool('mpd_worktree_remove') instead of a service method — a legitimate use of Lane A's own tool; refusal is logged, never fatal.",
+    "An empty-but-successful roster read is cached as an empty set (no member classified read-only) — indistinguishable from a genuinely empty roster here; fail-open is the documented rule.",
+    "worktree.max 0.5 defaulting to 32 rather than being rejected — the CR body's own remedy was 'default values whose floored result is less than one'; a boot refusal would be worse.",
+    "152 pre-existing extensionless relative specifiers in the three touched packages — AGENTS.md §6's packages/*/src clause permits them; only the 5 CR-flagged NEW specifiers were changed (minimal diff).",
+    "A writeTeam/updateTeamMember throw AFTER a successful spawn would now also release the created worktree — the member row is already dropped on that path (pre-existing) so the child is orphaned either way; unreachable in practice (pure store writes).",
+    "The repo tool-parameter description does not restate the containment rule — the refusal sentence names it and the docs carry it.",
+    "Mixed .ts / extensionless specifiers in team-core's index.ts — no gate covers specifier form; cosmetic only."
+  ],
+  "bounds": [
+    "No live team spawn and no live cellwork compaction reseed were driven end-to-end; [4], [6] and D8 are proven at the seam level (unit arms + boot mount), not with a real child process.",
+    "The Docker real-machine lane, the live-model QA cases, dual-track-smoke and mcp-call were not run (not requested; no credentials used).",
+    "Only the pinned harness 0.2.2-rc.1 was exercised; the also-supported 0.2.1-rc.5 was not.",
+    "A repo-root bun test was not run (it scans evidence/** by design, AGENTS.md §11); per-package suites were.",
+    "verify:vendor, verify:dshgo, verify:graph, verify:tui-admission and the workflows gate ran only as verify:gates members (all green), not standalone with their --self-test arms.",
+    "No Windows/macOS path or symlink semantics were tested (Linux only).",
+    "Only CodeRabbit round 1 was reconciled: 18 inline comments + the single additional comment in review 5869177628. Later rounds are outside this wave.",
+    "Code outside the 22 changed files was read only where the change's blast radius required it; the remaining ~640 TS files were not re-reviewed.",
+    "Test-quality judgement is limited to the new/changed arms; the pre-existing 1,500+ assertions were run, not re-derived.",
+    "No source file was edited and no commit was made by this review; the reviewed tree's 22 modified files are byte-identical to what the fixers left (git status checked before and after)."
+  ],
+  "artifacts": {
+    "output.log": "human-readable digest (findings, gates, new issues, declined list, bounds)",
+    "cr-comments.raw.json": "gh api .../pulls/111/comments --paginate (18 inline)",
+    "cr-reviews.raw.json": "gh api .../pulls/111/reviews (review body, 1 additional comment)",
+    "findings-full.md": "verbatim per-comment digest (untrusted data)",
+    "tests.log": "four bun test runs",
+    "typecheck.log": "bun run typecheck",
+    "static-gates.log": "comments / dist-fresh / rows / manifest / docs / no-host-override / manual-paths",
+    "boot.log": "bundle-lifecycle + preset-conformance",
+    "verify-gates.log": "11-member aggregate",
+    "bun-install.log": "bun install --frozen-lockfile",
+    "bun.lock.before / bun.lock.after": "sha256 of bun.lock around the install",
+    "head.sha": "reviewed commit"
+  }
+}

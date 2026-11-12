@@ -374,6 +374,12 @@ function buildPlan(o: PlanInputs): Plan {
       config: { autoCheck: false }
     },
     {
+      // Per-member git worktrees: the five mpd_worktree_* tools and the mpdWorktree service. The row
+      // id must match cordis.patch.yml's — verify:rows-parity refuses an installer that drifts.
+      id: "mpd-worktree", name: p("packages/mpd-worktree-plugin/dist/index.js"),
+      config: {}
+    },
+    {
       id: "mpd-memory", name: p("packages/mpd-memory-plugin/dist/index.js"),
       config: { vcs: "git" }
     },

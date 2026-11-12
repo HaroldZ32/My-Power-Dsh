@@ -314,6 +314,15 @@ export interface PromotionDeps {
   parentSessionId?: string
   /** The cell and its team. */
   cell: CellState
+  /**
+   * The RESOLVED EXECUTION team id the worktree lookup must address (CodeRabbit round 1).
+   *
+   * A legacy cell's `teamId` may still name the ended PLANNING team while the live board — and so the
+   * worktree key — belongs to the minted execution team. The row passes the id `resolveCellTeam`
+   * answered; `deps.cell.teamId` stays the planning id for every other use. Absent or empty means the
+   * composition never resolved one, and the cell's own id is the fallback.
+   */
+  worktreeTeamId?: string
   /** The resolved knobs (`compactionRetries`, `idleBarrierDelayMs`, `depthMax`). */
   config: CellworkConfig
   /** The handoff text a reseed child is seeded with. */
@@ -340,6 +349,18 @@ export interface PromotionDeps {
   deliverDirective?: (authority: unknown, handle: string, text: string) => Promise<void>
   /** The barrier's retry wait; injected so tests do not sleep. */
   sleep: (ms: number) => Promise<void>
+  /**
+   * The member's recorded worktree path, when the composition offers one (Lane C of
+   * `.mpd/plans/agent-worktrees.md`, decision D8).
+   *
+   * The reseed is a FRESH child raised beside the old one, so without this the promoted member would
+   * silently move back to the shared checkout. The lookup is supplied by the row (which probes the
+   * `mpdWorktree` service) and must never throw: absent, disabled or non-git all answer `undefined`,
+   * and the request then keeps today's shape — no `cwd` key at all.
+   * @param input - the owning team and the member's display name.
+   * @returns the worktree path, or undefined when no worktree is recorded.
+   */
+  worktreeCwd?: (input: { teamId: string; member: string }) => string | undefined
   /** The event's cancellation, when it carried one. */
   signal?: AbortSignal
 }
@@ -1238,6 +1259,23 @@ export async function promoteAfterHandoff(deps: PromotionDeps): Promise<Promotio
   const directive = promotionDirective(deps.cell.cellId, deps.memberName, deps.cell.depth + 1, deps.nextStep)
   /** The activation the reseed creates, kept so a failure AFTER the spawn can release it (R4/R5). */
   let activation: unknown
+  // THE RESEED KEEPS THE MEMBER IN ITS WORKTREE (D8): the fresh child is raised beside the old one, and
+  // the host inherits the PARENT's directory when no `cwd` is supplied — which would silently move a
+  // promoted member back into the shared checkout. A lookup that throws, answers nothing or answers an
+  // empty string is the same as no worktree: the request keeps today's shape, no `cwd` key at all.
+  /** The execution team the member's worktree is keyed by; the cell's planning id is only a fallback. */
+  const worktreeTeamId = deps.worktreeTeamId !== undefined && deps.worktreeTeamId !== "" ? deps.worktreeTeamId : deps.cell.teamId
+  /** The member's worktree path for this reseed, when one is recorded. */
+  const worktreeCwd = ((): string | undefined => {
+    if (deps.worktreeCwd === undefined) return undefined
+    try {
+      /** What the row's lookup answered. */
+      const path = deps.worktreeCwd({ teamId: worktreeTeamId, member: deps.memberName })
+      return typeof path === "string" && path !== "" ? path : undefined
+    } catch {
+      return undefined
+    }
+  })()
   try {
     activation = await deps.dsh.startContinuableAgent({
       provider: "spawn",
@@ -1254,6 +1292,8 @@ export async function promoteAfterHandoff(deps: PromotionDeps): Promise<Promotio
         // THE LIVE PARENT, never `deps.agent` (C2): the member's own handle is detached, and the host
         // refuses a parent it no longer holds.
         parent: parent.parent,
+        // THE MEMBER'S WORKTREE, never the parent's directory, when the composition records one.
+        ...(worktreeCwd === undefined ? {} : { cwd: worktreeCwd }),
         // THE LIVE PARENT'S OWN DEPTH + 1 (R2.1): the child lands exactly one level below the session it
         // is raised under, so `cellwork.depthMax` — the nested-CELL bound, a different scale — must never
         // name this cap. Explicit, never omitted: the host's hidden default is what this cap replaces.
