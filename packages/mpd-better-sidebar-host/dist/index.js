@@ -241,6 +241,7 @@ function rowLogLine(name, line) {
     entry.sink.write(line);
   } catch {}
 }
+var reportedTeamCapabilities = new Set;
 var REPORTED_RETIRED_SPAWN_FIELDS = new Set;
 
 // packages/mpd-better-sidebar-host/src/index.ts

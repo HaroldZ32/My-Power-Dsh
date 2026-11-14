@@ -1,0 +1,9 @@
+node .qa-tmp/t1/unit-probe.mjs .qa-tmp/t1/unit-probe-result.json
+node .qa-tmp/t1/make-overlay.mjs --out=.qa-tmp/t1/overlay.yml
+node .qa-tmp/t1/mount.mjs --label=rc1 --harness=.qa-tmp/dsh-022 --port=3211
+node .qa-tmp/t1/mount.mjs --label=rc2 --harness=.qa-tmp/dsh-022rc2 --port=3212
+node .qa-tmp/t1/candidate-probe.mjs
+node .qa-tmp/t1/checkout-arm.mjs --label=chk-rc1 --harness=.qa-tmp/dsh-022 --port=3221
+# NOT RUN (boots stopped): node .qa-tmp/t1/tui-arm.mjs --only=main
+# NOT RUN: node .qa-tmp/t1/checkout-arm.mjs --label=chk-rc2 --harness=.qa-tmp/dsh-022rc2 --port=3222
+# NOT RUN: node .qa-tmp/t1/checkout-arm.mjs --label=chk-rc1-forcenew --harness=.qa-tmp/dsh-022 --port=3223 --force-env=MPD_DSH_TEAM_ROWS=new

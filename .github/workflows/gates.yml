@@ -78,13 +78,22 @@ jobs:
       - name: "Install the toolchain (dev dependencies: tsgo and the AST checker's typescript)"
         run: bun install --frozen-lockfile
 
-      # The harness the gates validate AGAINST. Its version is READ, never restated: the pin in
-      # package.json is the same declaration the profile mechanism installs, so a bump cannot leave
-      # this job validating against the previous release.
+      # The harness the gates validate AGAINST. Its version is READ from the ONE carrier that names
+      # the harness release this bundle distributes: the `host-base` component's npm coordinate in
+      # `dsh-distribution.json`. `@deepseek-ai/dsh-base` ships in LOCKSTEP with the dsh CLI (measured
+      # on both supported harnesses: dsh 0.2.2-rc.1 == dsh-base 0.2.2-rc.1, dsh 0.2.2-rc.2 ==
+      # dsh-base 0.2.2-rc.2), so that coordinate IS the pin. Why not package.json: since wave A3/T8
+      # this bundle declares NO team package at all — a declared team package can only refuse one
+      # host generation at INSTALL time, and the rc.1 official team plane is supplied by the host's
+      # own package tree (T8 measured both hosts installing exit 0 with nothing declared).
       - name: Install the harness the row-config gate validates against
         run: |
-          HARNESS_VERSION="$(node -p "require('./package.json').dependencies['@deepseek-ai/dsh-experimental-agent-team']")"
-          echo "installing @deepseek-ai/dsh@${HARNESS_VERSION} (the pin this bundle declares)"
+          HARNESS_VERSION="$(node -p "JSON.stringify(require('./dsh-distribution.json')).match(/@deepseek-ai\\/dsh-base@([0-9][0-9A-Za-z.-]*)/)?.[1] ?? ''")"
+          if [ -z "${HARNESS_VERSION}" ]; then
+            echo "::error::no @deepseek-ai/dsh-base@<version> coordinate found in dsh-distribution.json"
+            exit 1
+          fi
+          echo "installing @deepseek-ai/dsh@${HARNESS_VERSION} (the harness release this bundle distributes)"
           npm i -g "@deepseek-ai/dsh@${HARNESS_VERSION}"
           dsh --version
 

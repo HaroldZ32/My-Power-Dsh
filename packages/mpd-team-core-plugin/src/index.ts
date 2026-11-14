@@ -899,6 +899,41 @@ function sessionTitleOf(exec: DshToolExec | undefined): string {
   return String((exec?.agent as any)?.session?.header?.title ?? "")
 }
 
+/** Whether the "identity resolves from the RECORD" line has been written (ONE per process). */
+let recordIdentityReported = false
+
+/**
+ * The caller's OFFICIAL team identity, or undefined — plus the ONE line that documents the
+ * RECORD-DERIVED path on a generation whose roster API is gone (A1 item 2).
+ *
+ * 0.2.2-rc.2 removed `tryMembership`, so release/depend/complete/fail and the dispatch lead gate
+ * keep their name/role from the mpd team RECORD (`callerIdentity` + `recordNamesLead`) instead of
+ * the official plane. That is the DOCUMENTED path on a task-board-only host, and it is logged once
+ * per process the first time the plane cannot answer — never per call, and never a silent change.
+ * @param dsh the adapter (membership read plus the roster pre-flight).
+ * @param exec the tool exec whose agent is the caller.
+ * @returns the official membership, or undefined when the plane cannot answer (callers then use their
+ *   own record-derived spellings).
+ */
+function officialTeamMembership(dsh: DshAdapter, exec: DshToolExec): { role?: string; name?: string } | undefined {
+  try {
+    /** The official plane's answer for this caller. */
+    const membership = dsh.teamMembership(exec.agent) as { role?: string; name?: string } | undefined
+    // The plane answered: nothing to document.
+    if (membership !== undefined) return membership
+    // The roster API is GONE on this generation, so the record-derived path is what runs. ONE line,
+    // ONCE per process, and only when the capability says the plane is absent.
+    if (dsh.capabilities().teamRoster === false && !recordIdentityReported) {
+      recordIdentityReported = true
+      rowLogLine("mpd-team-core", "[mpd-team-core] team identity: the official roster plane is unavailable on this host generation (0.2.2-rc.2 removed tryMembership) — release/depend/complete/fail and the dispatch lead gate resolve the caller from the mpd team RECORD (its session id, its own roster row, the recorded lead id); this is the documented path, not a guess")
+    }
+    return membership
+  } catch {
+    // A team call must never fail because a capability probe did: the record path still runs.
+    return undefined
+  }
+}
+
 /** Who a caller's own identity says it is on one team record — see {@link callerIdentity}. */
 interface CallerIdentity {
   /** The roster row this caller IS, or undefined when the durable roster does not name it. */
@@ -2537,9 +2572,7 @@ export function apply(ctx: any): void {
         // ancestry `callerIdentity` narrows (a spawned member borrows none). `claimant` is never read
         // here — accepting a name the caller TYPES would let any agent release any row by naming it.
         /** The caller's team identity from the OFFICIAL plane, when that service is mounted at all. */
-        const membership = ((): { role?: string; name?: string } | undefined => {
-          try { return dsh.teamMembership(exec.agent) as { role?: string; name?: string } | undefined } catch { return undefined }
-        })()
+        const membership = officialTeamMembership(dsh, exec)
         /** The session header title the harness gives this caller (the persona prompt prefix). */
         const title = sessionTitleOf(exec)
         /** The caller's team identity: its member row, and the ancestry it may present. */
@@ -2575,9 +2608,7 @@ export function apply(ctx: any): void {
         // TITLE, the official membership name when there is one, its OWN roster row, and the ancestry
         // `callerIdentity` narrows. A name the caller TYPES is never read.
         /** The caller's team identity from the OFFICIAL plane, when that service is mounted at all. */
-        const membership = ((): { role?: string; name?: string } | undefined => {
-          try { return dsh.teamMembership(exec.agent) as { role?: string; name?: string } | undefined } catch { return undefined }
-        })()
+        const membership = officialTeamMembership(dsh, exec)
         /** The session header title the harness gives this caller (the persona prompt prefix). */
         const title = sessionTitleOf(exec)
         /** The caller's team identity: its member row, and the ancestry it may present. */
@@ -2742,9 +2773,7 @@ export function apply(ctx: any): void {
         /** The raw calling agent, read for the title the harness gives it. */
         const self = exec.agent as any
         /** The caller's team identity, when the official plane knows one. */
-        const membership = ((): { role?: string; name?: string } | undefined => {
-          try { return dsh.teamMembership(exec.agent) as { role?: string; name?: string } | undefined } catch { return undefined }
-        })()
+        const membership = officialTeamMembership(dsh, exec)
         /** The session header title the harness gives this caller (the persona prompt prefix). */
         const title = String(self?.session?.header?.title ?? "")
         // ── C7-4 F2: THE MEMBER'S OWN NAME ────────────────────────────────────
@@ -2889,9 +2918,7 @@ export function apply(ctx: any): void {
         // title, the official membership name and the narrowed ancestry. A member resolves its team
         // through the roster arm, so without this gate every teammate could unbook a stranger's pairing.
         /** The caller's team identity from the OFFICIAL plane, when that service is mounted at all. */
-        const membership = ((): { role?: string; name?: string } | undefined => {
-          try { return dsh.teamMembership(exec.agent) as { role?: string; name?: string } | undefined } catch { return undefined }
-        })()
+        const membership = officialTeamMembership(dsh, exec)
         /** The session header title the harness gives this caller (the persona prompt prefix). */
         const title = sessionTitleOf(exec)
         /** The caller's team identity: its member row, and the ancestry it may present. */
@@ -2938,9 +2965,7 @@ export function apply(ctx: any): void {
         // TITLE, the official membership name, the caller's OWN roster row and the NARROWED ancestry — a
         // member that merely carries the Lead as its parent may not borrow the Lead's identity here either.
         /** The caller's team identity from the OFFICIAL plane, when that service is mounted at all. */
-        const membership = ((): { role?: string; name?: string } | undefined => {
-          try { return dsh.teamMembership(exec.agent) as { role?: string; name?: string } | undefined } catch { return undefined }
-        })()
+        const membership = officialTeamMembership(dsh, exec)
         /** The session header title the harness gives this caller. */
         const title = sessionTitleOf(exec)
         /** The caller's team identity: its member row, and the ancestry it may present. */

@@ -1,0 +1,14 @@
+dsh: initialized profile t16 at /home/haroldzhao/.t16-verify/runs/rc2-work/dsh-home/profiles/t16
+[WARN] The package @mpd-dsh/mpd, which you have just pnpm linked, has the following peerDependencies specified in its package.json:
+
+  - dsh-better-sidebar@>=0.28.0 <0.29.0
+
+The linked in dependency will not resolve the peer dependencies from the target node_modules.
+This might cause issues in your project. To resolve this, you may use the "file:" protocol to reference the local dependency.
+Already up to date
+
+dependencies:
++ @mpd-dsh/mpd <- ../../../../../../MyProj/DshProj/My-Power-Dsh
+
+Done in 24ms using pnpm v12.16.1
+INSTALL_EXIT=0

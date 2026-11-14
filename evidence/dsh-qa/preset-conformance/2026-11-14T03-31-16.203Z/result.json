@@ -1,0 +1,69 @@
+{
+  "ok": true,
+  "harnessRoot": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh",
+  "note": "session/create mounts the mpd preset row and refuses on any inactive row, so its ok answer is the mount proof; the negative control boots the same sandbox with a --patch id-target rewriting the preset-mpd row's persona back to the retired `text:` form and must fail.",
+  "steps": {
+    "conformance": {
+      "ok": true,
+      "checked": 33,
+      "schemaFree": 6,
+      "patchFiles": [
+        "cordis.patch.yml",
+        "presets/mpd.patch.yml"
+      ],
+      "preset": {
+        "rowId": "preset-mpd",
+        "id": "mpd",
+        "children": 29,
+        "file": "presets/mpd.patch.yml"
+      },
+      "parity": {
+        "reference": ".qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-web-app/presets/standard.patch.yml",
+        "referenceDeclared": 28,
+        "referenceActive": 27,
+        "oursDeclared": 29,
+        "oursActive": 28,
+        "missing": [],
+        "extra": [
+          "tool-office"
+        ],
+        "disabledByReference": [],
+        "enabledHereDisabledThere": []
+      },
+      "notes": [
+        "the mpd preset declares GUARDED host-optional row(s) the installed standard preset does not ship: tool-office — each carries a `!!js` mount guard, so the capability is decided at LOAD (on this host generation it is expected to resolve disabled); an UNGUARDED extra row still fails"
+      ],
+      "problems": []
+    },
+    "auth": {
+      "ok": true,
+      "tokenSeen": true,
+      "cookieSession": true
+    },
+    "sessionCreate": {
+      "ok": true,
+      "status": 200,
+      "sessionId": "session-1c9f8f9e-da0b-4c2d-9c96-100282d55c63",
+      "agentPreset": "mpd",
+      "raw": "{\"type\":\"server-response\",\"rpcId\":\"preset-conformance-1794627084531\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-1c9f8f9e-da0b-4c2d-9c96-100282d55c63\",\"agentPreset\":\"mpd\"}}}"
+    },
+    "sessionHeader": {
+      "ok": true,
+      "agentPreset": "mpd",
+      "log": "/tmp/mpd-preset-main-La2bXf/home/sessions/--tmp-mpd-preset-main-La2bXf-ws--/session-1c9f8f9e-da0b-4c2d-9c96-100282d55c63/session.v4.jsonl.zstd"
+    },
+    "bootLog": {
+      "ok": true,
+      "signatures": []
+    },
+    "negativeControl": {
+      "ok": true,
+      "code": "agent-preset/invalid",
+      "message": "persona (@deepseek-ai/dsh-persona): invalid config:\n  - $.prefix missing required value (at prefix)",
+      "mutations": [
+        "preset-mpd row: persona prefix: -> text:"
+      ],
+      "override": "id-target on preset-mpd via --patch"
+    }
+  }
+}

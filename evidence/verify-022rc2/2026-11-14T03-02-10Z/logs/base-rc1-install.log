@@ -1,0 +1,14 @@
+dsh: initialized profile b at /tmp/t5base/run/dsh-home/profiles/b
+[WARN] The package @mpd-dsh/mpd, which you have just pnpm linked, has the following peerDependencies specified in its package.json:
+
+  - dsh-better-sidebar@>=0.28.0 <0.29.0
+
+The linked in dependency will not resolve the peer dependencies from the target node_modules.
+This might cause issues in your project. To resolve this, you may use the "file:" protocol to reference the local dependency.
+[WARN] The store at /home/haroldzhao/.local/share/pnpm/store/v11 is not used because packages cannot be hard linked from it into this project. Using the store at /tmp/.pnpm-store/v11 instead. Set storeDir to choose the store.
+Already up to date
+
+dependencies:
++ @mpd-dsh/mpd <- ../../../../repo
+
+Done in 15ms using pnpm v12.16.1

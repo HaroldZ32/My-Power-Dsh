@@ -563,6 +563,14 @@ function teamTaskStatusOf(raw) {
 function teamStrings(raw) {
   return Array.isArray(raw) ? raw.filter((entry) => typeof entry === "string") : [];
 }
+function projectMembership(membership) {
+  if (membership === undefined || membership === null)
+    return;
+  const role = membership.role;
+  if (role !== "lead" && role !== "teammate")
+    return;
+  return { teamId: String(membership.id ?? membership.teamId ?? ""), role, name: String(membership.name ?? "") };
+}
 function teamMemberView(raw) {
   const row = raw ?? {};
   const context = teamContextOf(row.context);
@@ -594,11 +602,8 @@ function teamTaskView(raw) {
   };
 }
 function teamRows(teams, method, agent, project) {
-  const reader = teams?.[method];
-  if (typeof reader !== "function")
-    return [];
   try {
-    const rows = reader.call(teams, agent);
+    const rows = teams[method].call(teams, agent);
     return Array.isArray(rows) ? rows.map(project) : [];
   } catch {
     return [];
@@ -699,11 +704,98 @@ var CONTINUABLE_START_MEMBERS = ["startActivation", "startContinuable"];
 function hasOneShotSpawn(subagents) {
   return typeof subagents?.startActivation === "function" || typeof subagents?.start === "function";
 }
+function hasSubagentSendMessage(subagents) {
+  return typeof subagents?.sendMessage === "function";
+}
 function continuableStartMember(subagents) {
   for (const member of CONTINUABLE_START_MEMBERS)
     if (typeof subagents?.[member] === "function")
       return member;
   return;
+}
+function teamServiceSurfaceOf(service) {
+  const bag = service ?? undefined;
+  const has = (method) => {
+    try {
+      return bag !== undefined && bag !== null && typeof bag[method] === "function";
+    } catch {
+      return false;
+    }
+  };
+  const send = has("sendMessage");
+  const wait = has("waitForChange");
+  const present = bag !== undefined && bag !== null;
+  return {
+    present,
+    identity: has("tryMembership"),
+    roster: has("listMembers"),
+    taskBoard: TEAM_TASK_METHODS.every((method) => has(method)),
+    createTask: has("createTask"),
+    getTask: has("getTask"),
+    listTasks: has("listTasks"),
+    updateTask: has("updateTask"),
+    send,
+    wait,
+    spawn: has("spawnTeammate"),
+    interrupt: has("interrupt"),
+    enableSwitch: has("isEnabled") && has("setEnabled"),
+    messaging: send && wait
+  };
+}
+function missingOfficialExecutorMethods(surface) {
+  const missing = [];
+  if (!surface.spawn)
+    missing.push("spawnTeammate");
+  if (!surface.send)
+    missing.push("sendMessage");
+  if (!surface.interrupt)
+    missing.push("interrupt");
+  if (!surface.wait)
+    missing.push("waitForChange");
+  return missing;
+}
+function officialTeamExecutable(surface) {
+  return missingOfficialExecutorMethods(surface).length === 0;
+}
+function teamGenerationOf(surface) {
+  if (!surface.present)
+    return "absent";
+  if (surface.taskBoard && !surface.identity && !surface.roster && !surface.send && !surface.wait && !surface.spawn && !surface.interrupt)
+    return "task-board-only";
+  return "partial";
+}
+var TEAM_UNSUPPORTED_GUIDANCE = {
+  identity: "teamMembership() answers from the NATIVE executor's handle map, or undefined when that backend does not know the agent; gate on capabilities().teamRoster",
+  roster: "roster reads answer [] with an `unsupported` marker; gate on capabilities().teamRoster, or use the NATIVE team executor (mpd's default) for member identity",
+  "task-board": "board reads answer an empty result with an `unsupported` marker; gate on capabilities().teamTasks",
+  send: "teamSendMessage() answers status `unsupported` and nothing is queued; gate on capabilities().teamMessaging",
+  wait: "teamWaitForChange() answers `timedOut: true` immediately; gate on capabilities().teamWait",
+  spawn: "teamSpawnTeammate() answers an empty member row; gate on capabilities().teamSpawn or use teamExecutor()",
+  interrupt: "teamInterrupt() answers `inactive`; gate on capabilities().teamInterrupt or use teamExecutor()",
+  "enable-switch": "teamEnabled() answers undefined (UNKNOWN) and setTeamEnabled() is a no-op returning undefined; gate on capabilities().teamEnableSwitch"
+};
+var reportedTeamCapabilities = new Set;
+function unsupportedTeamAnswer(capability, surface) {
+  const generation = teamGenerationOf(surface);
+  const where = generation === "task-board-only" ? "0.2.2-rc.2 removed the roster/mailbox/spawn API (the service is task-board only)" : generation === "absent" ? "no agentTeams service is mounted in this composition" : "this host exposes only part of the official team surface";
+  const reason = "the " + capability + " part of the official team surface is unavailable: " + where + " — " + TEAM_UNSUPPORTED_GUIDANCE[capability];
+  if (!reportedTeamCapabilities.has(capability)) {
+    reportedTeamCapabilities.add(capability);
+    rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: " + reason);
+  }
+  return { unsupported: true, capability, generation, reason };
+}
+function markedTeamRows(capability, surface) {
+  const rows = [];
+  Object.defineProperty(rows, "unsupported", { value: unsupportedTeamAnswer(capability, surface), enumerable: false, configurable: false, writable: false });
+  return rows;
+}
+var officialExecutorFallbackReported = false;
+function reportOfficialExecutorFallback(missing) {
+  if (officialExecutorFallbackReported)
+    return;
+  officialExecutorFallbackReported = true;
+  rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: the mounted agentTeams service cannot execute the team roster (missing " + missing.join(", ") + ") — teamExecutor() falls through to the NATIVE backend. 0.2.2-rc.2's service is TASK-BOARD ONLY: the roster/mailbox API was removed, so presence is not servability");
 }
 async function startContinuableChild(subagents, spec, action) {
   const member = continuableStartMember(subagents);
@@ -1242,11 +1334,12 @@ function createDshAdapter(ctx, config = {}) {
       kind: "native",
       reason,
       providers: () => {
+        const subagents = subagentsOf();
+        const list = subagents?.list;
+        if (typeof list !== "function")
+          return [];
         try {
-          const list = subagentsOf()?.providers;
-          if (typeof list !== "function")
-            return [];
-          const names = list.call(subagentsOf());
+          const names = list.call(subagents);
           return Array.isArray(names) ? names.filter((entry) => typeof entry === "string") : [];
         } catch {
           return [];
@@ -1292,7 +1385,7 @@ function createDshAdapter(ctx, config = {}) {
         if (!ready)
           throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`);
         const subagents = requireService("subagents", `cannot deliver a message to team member "${handle}"`);
-        if (typeof subagents.sendMessage !== "function") {
+        if (!hasSubagentSendMessage(subagents)) {
           throw new Error("mpd-dsh-adapter: the harness subagents service exposes no sendMessage() — cannot deliver to a team member");
         }
         await subagents.sendMessage.call(subagents, caller, handle, textBlock(content), { signal: signal ?? neverAborted() });
@@ -1485,6 +1578,7 @@ function createDshAdapter(ctx, config = {}) {
       const llmService = service("llm");
       const systemPrompt = service("systemPrompt");
       const agentTeams = service("agentTeams");
+      const teamSurface = teamServiceSurfaceOf(agentTeams);
       const goalService = service("goals");
       const questionService = service("userQuestions");
       const dshGoBridge = dshGoService();
@@ -1521,6 +1615,7 @@ function createDshAdapter(ctx, config = {}) {
         subagentsProvider: typeof subagents?.getProvider === "function" && typeof subagents?.list === "function",
         subagentsContinuable: continuableStartMember(subagents) !== undefined,
         teamExecutorNative: continuableStartMember(subagents) !== undefined,
+        teamExecutorOfficial: officialTeamExecutable(teamSurface),
         subagentsInterrupt: typeof subagents?.interrupt === "function",
         llmListModels: typeof llmService?.listModels === "function",
         llmResolveCallConfig: typeof llmService?.resolveCallConfig === "function",
@@ -1533,10 +1628,18 @@ function createDshAdapter(ctx, config = {}) {
         agentPromptSection: liveAgents().some((candidate) => agentSystemPromptOf(candidate) !== undefined),
         agentPreStep: typeof ctx?.on === "function",
         agentPreStepScope: liveAgents().some((candidate) => typeof scopeContextOf(candidate)?.on === "function"),
-        team: typeof agentTeams?.tryMembership === "function" && typeof agentTeams?.listMembers === "function",
-        teamTasks: TEAM_TASK_METHODS.every((method) => typeof agentTeams?.[method] === "function"),
-        teamMessages: typeof agentTeams?.sendMessage === "function" && typeof agentTeams?.waitForChange === "function",
+        team: teamSurface.identity && teamSurface.roster,
+        teamServiceMounted: teamSurface.present,
+        teamRoster: teamSurface.identity && teamSurface.roster,
+        teamTasks: teamSurface.taskBoard,
+        teamMessages: teamSurface.messaging,
+        teamMessaging: teamSurface.send,
+        teamSpawn: teamSurface.spawn,
+        teamWait: teamSurface.wait,
+        teamInterrupt: teamSurface.interrupt,
+        teamEnableSwitch: teamSurface.enableSwitch,
         subagentsProviderRegister: typeof subagents?.registerProvider === "function",
+        subagentsSendMessage: hasSubagentSendMessage(subagents),
         goals: typeof goalService?.get === "function",
         goalTools: GOAL_TOOL_NAMES.every((goalToolName) => toolReachable(goalToolName)),
         askUser: questionService !== undefined && questionService !== null,
@@ -2008,11 +2111,16 @@ function createDshAdapter(ctx, config = {}) {
       })();
       const nativeMember = continuableStartMember(service("subagents"));
       const nativeReady = nativeMember !== undefined;
-      const officialReady = service("agentTeams") !== undefined;
+      const officialService = service("agentTeams");
+      const officialSurface = teamServiceSurfaceOf(officialService);
+      const officialMissing = missingOfficialExecutorMethods(officialSurface);
+      const officialReady = officialMissing.length === 0;
+      if (officialService !== undefined && !officialReady)
+        reportOfficialExecutorFallback(officialMissing);
       const chosen = override === "official" && officialReady ? "official" : override === "native" && nativeReady ? "native" : nativeReady ? "native" : officialReady ? "official" : "native";
       if (chosen === "official")
         return officialTeamExecutor();
-      return nativeTeamExecutor(nativeReady ? override === undefined ? `native: the default backend — bound ${String(nativeMember)}() on the harness subagent seam, and it needs nothing from the official plugin` : `native: chosen by MPD_DSH_TEAM_EXECUTOR=native, bound ${String(nativeMember)}() on the harness subagent seam` : "native UNAVAILABLE: the harness subagents service exposes neither startActivation() nor startContinuable(), and no team service is mounted either — every team call will refuse", nativeReady);
+      return nativeTeamExecutor(nativeReady ? override === undefined ? `native: the default backend — bound ${String(nativeMember)}() on the harness subagent seam, and it needs nothing from the official plugin` : `native: chosen by MPD_DSH_TEAM_EXECUTOR=native, bound ${String(nativeMember)}() on the harness subagent seam` : "native UNAVAILABLE: the harness subagents service exposes neither startActivation() nor startContinuable(), and no EXECUTABLE team service is mounted either (a task-board-only service does not count) — every team call will refuse", nativeReady);
     },
     teamService() {
       const teams = service("agentTeams");
@@ -2020,58 +2128,69 @@ function createDshAdapter(ctx, config = {}) {
     },
     teamMembership(agent) {
       const teams = service("agentTeams");
-      const tryMembership = teams?.tryMembership;
-      if (typeof tryMembership !== "function")
-        return;
-      let membership;
-      try {
-        membership = tryMembership.call(teams, agent);
-      } catch {
-        return;
+      const surface = teamServiceSurfaceOf(teams);
+      if (surface.identity) {
+        let membership;
+        try {
+          membership = teams.tryMembership.call(teams, agent);
+        } catch {
+          return;
+        }
+        return projectMembership(membership);
       }
-      if (membership === undefined || membership === null)
-        return;
-      const role = membership.role;
-      if (role !== "lead" && role !== "teammate")
-        return;
-      return { teamId: String(membership.id ?? ""), role, name: String(membership.name ?? "") };
+      if (surface.present)
+        unsupportedTeamAnswer("identity", surface);
+      try {
+        const viaExecutor = adapter.teamExecutor().membership(agent);
+        if (viaExecutor !== undefined)
+          return viaExecutor;
+      } catch {}
+      return;
     },
     teamListMembers(agent) {
       const teams = requireService("agentTeams", "cannot list the team roster of an agent");
-      if (typeof teams.listMembers !== "function")
-        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no listMembers()");
+      const surface = teamServiceSurfaceOf(teams);
+      if (!surface.roster)
+        return markedTeamRows("roster", surface);
       const rows = teams.listMembers.call(teams, agent);
       return Array.isArray(rows) ? rows.map(teamMemberView) : [];
     },
     teamListTasks(agent) {
       const teams = requireService("agentTeams", "cannot list the shared task board of an agent");
-      if (typeof teams.listTasks !== "function")
+      const surface = teamServiceSurfaceOf(teams);
+      if (!surface.listTasks)
         throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no listTasks()");
       const rows = teams.listTasks.call(teams, agent);
       return Array.isArray(rows) ? rows.map(teamTaskView) : [];
     },
-    async teamCreateTask(caller, request) {
+    async teamCreateTask(caller, request, signal = undefined) {
       const teams = requireService("agentTeams", 'cannot create team task "' + String(request?.subject) + '"');
-      if (typeof teams.createTask !== "function")
+      const surface = teamServiceSurfaceOf(teams);
+      if (!surface.createTask)
         throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no createTask()");
-      return teamTaskView(await teams.createTask.call(teams, caller, request));
+      const created = signal === undefined ? await teams.createTask.call(teams, caller, request) : await teams.createTask.call(teams, caller, request, signal);
+      return teamTaskView(created);
     },
     teamGetTask(caller, id) {
       const teams = requireService("agentTeams", 'cannot read team task "' + String(id) + '"');
-      if (typeof teams.getTask !== "function")
+      const surface = teamServiceSurfaceOf(teams);
+      if (!surface.getTask)
         throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no getTask()");
       return teamTaskView(teams.getTask.call(teams, caller, id));
     },
-    async teamUpdateTask(caller, request) {
+    async teamUpdateTask(caller, request, signal = undefined) {
       const teams = requireService("agentTeams", 'cannot update team task "' + String(request?.taskId) + '"');
-      if (typeof teams.updateTask !== "function")
+      const surface = teamServiceSurfaceOf(teams);
+      if (!surface.updateTask)
         throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no updateTask()");
-      return teamTaskView(await teams.updateTask.call(teams, caller, request));
+      const updated = signal === undefined ? await teams.updateTask.call(teams, caller, request) : await teams.updateTask.call(teams, caller, request, signal);
+      return teamTaskView(updated);
     },
     async teamSendMessage(caller, request) {
       const teams = requireService("agentTeams", 'cannot send a team message to "' + String(request?.target) + '"');
-      if (typeof teams.sendMessage !== "function")
-        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no sendMessage()");
+      const surface = teamServiceSurfaceOf(teams);
+      if (!surface.send)
+        return { messageId: "", status: "unsupported", unsupported: unsupportedTeamAnswer("send", surface) };
       const result = await teams.sendMessage.call(teams, caller, request);
       return {
         messageId: String(result?.messageId ?? ""),
@@ -2080,29 +2199,61 @@ function createDshAdapter(ctx, config = {}) {
     },
     async teamSpawnTeammate(caller, request) {
       const teams = requireService("agentTeams", 'cannot spawn team member "' + String(request?.name) + '"');
-      if (typeof teams.spawnTeammate !== "function")
-        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no spawnTeammate()");
+      const surface = teamServiceSurfaceOf(teams);
+      if (!surface.spawn) {
+        return {
+          member: { id: "", name: String(request?.name ?? ""), role: "teammate", status: "inactive", diagnostics: [] },
+          unsupported: unsupportedTeamAnswer("spawn", surface)
+        };
+      }
       const result = await teams.spawnTeammate.call(teams, caller, request);
       return { member: teamMemberView(result?.member) };
     },
     teamInterrupt(caller, targetName) {
       const teams = requireService("agentTeams", 'cannot interrupt team member "' + String(targetName) + '"');
-      if (typeof teams.interrupt !== "function")
-        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no interrupt()");
+      const surface = teamServiceSurfaceOf(teams);
+      if (!surface.interrupt)
+        return { previousStatus: "inactive", unsupported: unsupportedTeamAnswer("interrupt", surface) };
       const result = teams.interrupt.call(teams, caller, targetName);
       return { previousStatus: result?.previousStatus === "running" ? "running" : "inactive" };
     },
     async teamWaitForChange(caller, timeoutMs, signal) {
       const teams = requireService("agentTeams", "cannot wait for team activity");
-      if (typeof teams.waitForChange !== "function")
-        throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no waitForChange()");
+      const surface = teamServiceSurfaceOf(teams);
+      if (!surface.wait)
+        return { timedOut: true, unsupported: unsupportedTeamAnswer("wait", surface) };
       const result = await teams.waitForChange.call(teams, caller, timeoutMs, signal);
       return { timedOut: result?.timedOut === true };
     },
+    teamEnabled(agent) {
+      const teams = service("agentTeams");
+      const surface = teamServiceSurfaceOf(teams);
+      if (!surface.enableSwitch) {
+        unsupportedTeamAnswer("enable-switch", surface);
+        return;
+      }
+      return teams.isEnabled.call(teams, agent) === true;
+    },
+    async setTeamEnabled(agent, enabled, signal = undefined) {
+      const teams = service("agentTeams");
+      const surface = teamServiceSurfaceOf(teams);
+      if (!surface.enableSwitch) {
+        unsupportedTeamAnswer("enable-switch", surface);
+        return;
+      }
+      const setEnabled = teams.setEnabled;
+      await (signal === undefined ? setEnabled.call(teams, agent, enabled) : setEnabled.call(teams, agent, enabled, signal));
+      return teams.isEnabled.call(teams, agent) === true;
+    },
     teamLiveTeams() {
       const teams = service("agentTeams");
-      if (teams === undefined || teams === null || typeof teams.tryMembership !== "function")
+      const surface = teamServiceSurfaceOf(teams);
+      if (!surface.present)
         return [];
+      if (!surface.identity || !surface.roster) {
+        unsupportedTeamAnswer("roster", surface);
+        return [];
+      }
       if (typeof service("agents")?.list !== "function")
         return [];
       const views = [];
@@ -2120,7 +2271,7 @@ function createDshAdapter(ctx, config = {}) {
           leadName: String(membership.name ?? ""),
           leadSessionId: String(agent?.id ?? ""),
           members: teamRows(teams, "listMembers", agent, teamMemberView),
-          tasks: teamRows(teams, "listTasks", agent, teamTaskView)
+          tasks: surface.listTasks ? teamRows(teams, "listTasks", agent, teamTaskView) : markedTeamRows("task-board", surface)
         });
       }
       return views;

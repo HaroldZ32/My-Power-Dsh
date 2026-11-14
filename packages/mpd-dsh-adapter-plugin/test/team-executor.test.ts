@@ -45,6 +45,8 @@ interface DoubleOptions {
   config?: { agentRouteResolutionOf?: (member: string) => unknown }
   /** How many times the activation double's `dispose()` was called — the slot-release witness. */
   disposals?: { count: number }
+  /** Which OFFICIAL executor seams exist; the default is the full quartet. The task board always does. */
+  officialExecutorSeams?: readonly string[]
 }
 
 /** The doubles one arm drives, plus the executor the adapter hands back. */
@@ -76,7 +78,9 @@ function harness(options: DoubleOptions = {}): Harness {
   const record = (seam: string, receiver: unknown, args: unknown[]): void => { calls.push({ seam, receiver, args }) }
   /** The native double: only the three seams the executor uses. */
   const subagents: Record<string, unknown> = {
-    providers: () => ["spawn", "fork", "mpd-roster"],
+    // A1 item 4: the harness declares provider names on `list()` (the adapter's own
+    // `subagentProviders()` reads the same member); the old `.providers` probe was dead code.
+    list: () => ["spawn", "fork", "mpd-roster"],
     /** Record the raise and answer with a durable child id plus the activation's teardown seam. */
     startContinuable(spec: unknown): Promise<unknown> {
       record("startContinuable", this, [spec])
@@ -127,6 +131,39 @@ function harness(options: DoubleOptions = {}): Harness {
       const id = (agent as { session?: { id?: string } } | undefined)?.session?.id
       return id === "child-1" ? { id: "team-official", role: "teammate", name: "researcher" } : undefined
     },
+    /** Record the official wait with all three arguments and answer the timeout result. */
+    waitForChange(this: unknown, caller: unknown, timeoutMs: unknown, signal: unknown): Promise<{ timedOut: boolean }> {
+      record("waitForChange", this, [caller, timeoutMs, signal])
+      return Promise.resolve({ timedOut: true })
+    },
+    // ── the shared task board 0.2.2-rc.2 KEEPS (the executor quartet above is what it REMOVED) ──
+    /** Record the board write and answer a task row. */
+    createTask(this: unknown, caller: unknown, request: unknown): Promise<{ id: string }> {
+      record("createTask", this, [caller, request])
+      return Promise.resolve({ id: "task-1" })
+    },
+    /** Record the board read and answer the same row. */
+    getTask(this: unknown, caller: unknown, taskId: unknown): Promise<{ id: string }> {
+      record("getTask", this, [caller, taskId])
+      return Promise.resolve({ id: "task-1" })
+    },
+    /** Record the board list and answer an empty board. */
+    listTasks(this: unknown, caller: unknown, filter: unknown): Promise<unknown[]> {
+      record("listTasks", this, [caller, filter])
+      return Promise.resolve([])
+    },
+    /** Record the board update and answer the same row. */
+    updateTask(this: unknown, caller: unknown, taskId: unknown, patch: unknown): Promise<{ id: string }> {
+      record("updateTask", this, [caller, taskId, patch])
+      return Promise.resolve({ id: "task-1" })
+    },
+  }
+  // A `task-only` / half-present service: the executor seams an arm does not list are REMOVED, while
+  // the task board stays — the exact shape 0.2.2-rc.2 ships, where presence is not servability.
+  if (options.officialExecutorSeams !== undefined) {
+    for (const seam of ["spawnTeammate", "sendMessage", "interrupt", "waitForChange"]) {
+      if (!options.officialExecutorSeams.includes(seam)) delete agentTeams[seam]
+    }
   }
   /** The service lookup the adapter uses, over exactly the doubles this arm staged. */
   const ctx = {
@@ -225,8 +262,53 @@ describe("which backend is chosen", () => {
     const h = harness()
     expect(h.executor.kind).toBe("native")
     expect(h.executor.reason).toContain("default")
-    // The pre-flight flag agrees with the backend actually handed back.
+    // The pre-flight flags agree with the backend actually handed back: the native path can serve,
+    // and the mounted FULL official service can serve too — native is simply the default.
     expect(h.capabilities.teamExecutorNative).toBe(true)
+    expect(h.capabilities.teamExecutorOfficial).toBe(true)
+  })
+
+  test("a TASK-BOARD-ONLY official service is not servable: NATIVE is chosen and ONE line says why", () => {
+    /** A fresh workspace root, so the row log starts empty for this arm. */
+    const root = freshLogRoot()
+    process.env.DSH_WORKSPACE_ROOT = root
+    try {
+      // D6's defect, exactly: 0.2.2-rc.2 mounts the task board and nothing else. A presence test
+      // would hand the official backend back here, and its first spawn/send/interrupt would throw.
+      /** The harness whose mounted team service keeps the board but carries NONE of the quartet. */
+      const h = harness({ officialExecutorSeams: [] })
+      expect(h.capabilities.teamExecutorOfficial).toBe(false)
+      // The board itself is still readable: the flag faces the EXECUTOR, not the task methods.
+      expect(h.capabilities.teamTasks).toBe(true)
+      expect(h.executor.kind).toBe("native")
+      // ONE line, naming the missing seams and the fallback — never one line per call.
+      /** The adapter row's log lines matching the fallback report. */
+      const fallbackLines = logLinesOf(root).filter((line) => line.includes("cannot execute the team roster"))
+      expect(fallbackLines.length).toBe(1)
+      expect(fallbackLines[0]).toContain("spawnTeammate")
+      expect(fallbackLines[0]).toContain("waitForChange")
+      expect(fallbackLines[0]).toContain("TASK-BOARD ONLY")
+    } finally {
+      // The env is restored whatever the assertions do, so the next arm starts clean.
+      delete process.env.DSH_WORKSPACE_ROOT
+    }
+  })
+
+  test("ONE missing executor seam is enough to make the official backend unservable", () => {
+    /** A service with every executor seam EXCEPT the wait — a half-present host, not rc.2's shape. */
+    const h = harness({ officialExecutorSeams: ["spawnTeammate", "sendMessage", "interrupt"] })
+    expect(h.capabilities.teamExecutorOfficial).toBe(false)
+    expect(h.executor.kind).toBe("native")
+  })
+
+  test("a TASK-BOARD-ONLY service cannot serve when the native seams are ALSO absent", async () => {
+    /** The harness whose only team surface is rc.2's task board. */
+    const h = harness({ native: false, officialExecutorSeams: [] })
+    // NOT the official backend: handing it back would produce a TypeError-shaped failure at the
+    // first team call instead of this sentence.
+    expect(h.executor.kind).toBe("native")
+    expect(h.executor.reason).toContain("UNAVAILABLE")
+    await expect(h.executor.spawn(h.lead, { ...REQUEST })).rejects.toThrow(/no team executor is available/)
   })
 
   test("OFFICIAL is chosen only when the native seams are absent", () => {
@@ -235,6 +317,8 @@ describe("which backend is chosen", () => {
     expect(h.executor.kind).toBe("official")
     expect(h.executor.reason).toContain("native seams are unavailable")
     expect(h.capabilities.teamExecutorNative).toBe(false)
+    // The official backend is servable here because the mounted service carries all four seams.
+    expect(h.capabilities.teamExecutorOfficial).toBe(true)
   })
 
   test("with NEITHER backend every call REFUSES with a sentence, never a TypeError", async () => {
@@ -261,6 +345,9 @@ describe("which backend is chosen", () => {
     // rather than to a backend whose every call would refuse.
     process.env[OVERRIDE] = "official"
     expect(harness({ official: false }).executor.kind).toBe("native")
+    // ...and the same fall-through applies when the service is MOUNTED but cannot execute the
+    // roster (0.2.2-rc.2's task-board-only shape): an override never hands back a broken backend.
+    expect(harness({ officialExecutorSeams: [] }).executor.kind).toBe("native")
     // A value that names neither backend is ignored, not treated as a third choice.
     process.env[OVERRIDE] = "something-else"
     expect(harness().executor.kind).toBe("native")

@@ -1,0 +1,8 @@
+[?2026l[?1049l[?1006l[?1003l[?1002l[?1000l[>4m[<u[?9001l[?1004l[?2004l[?25h]9;4;0;
+
+dsh-tui startup failed: dsh-tui requires an interactive terminal (stdout must be a TTY).
+[dsh-tui] dsh profile 已退出（退出码 1）。可直接运行以下命令查看诊断：
+  dsh --profile dsh-tui
+[dsh-tui] 异常退出（码 1）。可运行 dsh-tui safe 进入安全模式
+[dsh-tui] dsh profile 已退出（退出码 1）。可直接运行以下命令查看诊断：
+  dsh --profile dsh-tui

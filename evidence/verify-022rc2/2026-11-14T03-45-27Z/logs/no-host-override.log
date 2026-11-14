@@ -1,0 +1,2 @@
+[verify-no-host-override] FAIL: cannot resolve js-yaml from any anchor (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh) - install the harness (`npm install -g @deepseek-ai/dsh`)
+EXIT=1

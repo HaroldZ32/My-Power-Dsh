@@ -1,0 +1,12 @@
+✓ Lockfile passes supply-chain policies (verified 188ms ago)
+Packages: -26
+--------------------------
+Progress: resolved 78, reused 78, downloaded 0, added 0, done
+[WARN] Issues with peer dependencies found. Run "pnpm peers check" to list them.
+
+dependencies:
++ t1-probe <- ../../../../../../MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/probe
+
+Done in 77ms using pnpm v12.16.1
+dsh: warning: t1-probe declares no dsh.bundle — installed as a plain dependency, not a profile layer
+PROBE_INSTALL_EXIT=0

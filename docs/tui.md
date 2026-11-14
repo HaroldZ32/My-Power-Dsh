@@ -4,11 +4,11 @@
 
 This page describes the **DSH-TUI edition** of the my-power-dsh bundle: what it ships, how to
 install it, what the per-package compatibility measurement found, and what it explicitly does
-**not** claim. It targets `@deepseek-harness-tui/dsh-tui` **0.19.0** and its built-in admission
-profile. 0.19.0's declared `@deepseek-ai/dsh-*` peer bands ADD DeepSeek Harness **`0.2.2-rc.1`**
-while keeping `0.2.1-rc.4` and `0.2.1-rc.5`, and the admission guide plus the admission chain are
-byte-identical at 0.18.0 and 0.19.0. **§11.13 is this wave's amendment**: it records the move and the
-carriers it touched. **The pin before it was 0.18.0, and that statement stays readable as history**:
+**not** claim. It targets `@deepseek-harness-tui/dsh-tui` **0.20.0** and its built-in admission
+profile. 0.20.0 is ADDITIVE over 0.19.0 (wave contract §3 F1) and its declared `@deepseek-ai/dsh-*`
+peer bands top out at DeepSeek Harness **`0.2.2-rc.2`** while still admitting `0.2.2-rc.1` and
+`0.2.1-rc.5`. **§11.15 is this wave's amendment**: it records the move and the carriers it touched.
+**§11.13 stays readable as history**: it recorded the 0.2.2-rc.1 / DSH-TUI 0.19.0 move. **The pin before it was 0.18.0, and that statement stays readable as history**:
 0.18.0's `dsh-*` bands ran through `0.2.1-rc.4` and `0.2.1-rc.5` (all 36 of them), while 0.17.0's stop
 at `0.2.1-rc.3` (read from the published tarballs), and §11.11 is that wave's amendment. **The pin
 before that was 0.17.0, and that statement stays readable as
@@ -1886,7 +1886,7 @@ they record earlier waves, not this one.
 | Subject | Before | After |
 |---|---|---|
 | This page's target host (§ preamble) | **0.18.0** | **0.19.0** — its declared `@deepseek-ai/dsh-*` peer bands ADD harness `0.2.2-rc.1` while KEEPING `0.2.1-rc.4` and `0.2.1-rc.5`, so one host serves both harness waves |
-| Harness pin (`package.json`, the three `@deepseek-ai/dsh-experimental-*`) | `0.2.1-rc.5` | **`0.2.2-rc.1`**; `engines.node` is now `>=24.9.0` (the CLI declares that floor at this release) and `engines.dsh` spans BOTH bands (`>=0.2.1-rc.2 <0.3.0-0`) |
+| Harness pin (`package.json`, the three `@deepseek-ai/dsh-experimental-*`) | `0.2.1-rc.5` | **`0.2.2-rc.1`**; `engines.node` is now `>=24.9.0` (the CLI declares that floor at this release) and `engines.dsh` spans BOTH bands (`>=0.2.1-rc.5 <0.3.0-0`) |
 | §3.3 / §7 — the pin carriers | `0.18.0` carriers, harness `0.2.1-rc.5` | **`0.19.0` and `0.2.2-rc.1`**: both Docker lanes (`MPD_E2E_TUI_VERSION`, `MPD_E2E_DSH_VERSION`), the UI stack (`MPD_UI_TUI_VERSION`, `MPD_UI_DSH_VERSION`), `dsh-distribution.json`'s `host-tui` ref (`…@0.19.0`), `dsh-plugin.json`'s `compat.hosts` (which now lists `0.18.0` AND `0.19.0`), the QA host spec in `skills/dsh-qa/scripts/tui-mount.ts` and every `npm i -g @deepseek-harness-tui/dsh-tui@…` PREREQ remedy |
 | The admission chain | 0.18.0 only | **byte-identical at both tags** — the guide's blob is `6b9dfd3…` (99,723 B), the `permissions-0.1.json` registry is `f36cb6e…`, and all eleven admission-decision source files are unchanged. 0.19.0 changed only its DSH peer line, `/update` orchestration, a subagent-channel notice and one first-party feed re-pin, so there was no admission rework |
 | The adapter's version gates | `PANEL_CSV_HOST_OWNED_SINCE`, `PANEL_CSV_SELF_HEAL_SINCE`, the `hostVersion` fixtures | **unchanged** — they encode WHEN the host changed behaviour, never which host is current |
@@ -1928,3 +1928,25 @@ and the capture's title format matches no surface in this tree and shows no fram
 tied to a build — what is proved here is the wrap mechanism it is consistent with, not that exact frame.
 And the subagents scene still has NO vertical rail — it has no viewport-height window to describe, so its
 uncapped vertical tail remains the one PARKED scroll site.
+
+### 11.15 Amendment after the harness 0.2.2-rc.2 / DSH-TUI 0.20.0 adaptation wave (2026-11-14)
+
+This wave moves the pin pair again and changes no TUI plugin source. §11.1–§11.14 stay as written: they
+record earlier waves, not this one.
+
+| Subject | Before | After |
+|---|---|---|
+| This page's target host (§ preamble) | **0.19.0** | **0.20.0** — ADDITIVE over 0.19.0 (wave contract §3 F1): 52 patch rows identical in id, name and config, the same fifteen `tui*` services declared, `lib/types/ui.js` identical with 27 exports and `useStdin` still exported. The only row change is a widened `dsh-tui-webserver` guard that also accepts `@deepseek-ai/dsh-deepseek-account` |
+| Harness pin (`package.json`) | `0.2.2-rc.1` | **`0.2.2-rc.2`**, and this release declares **NO** team package: on the new generation the HOST owns the team plane, and on the old one the legacy package resolves from the host installation itself. `engines.dsh` stays `>=0.2.1-rc.5 <0.3.0-0` and `engines.node` stays `>=24.9.0` |
+| `compat.hosts` (both manifests) and `specs/tui-hosts.json` | `0.18.0`, `0.19.0` | **`0.18.0`, `0.19.0`, `0.20.0`** — identical sorted sets in all three places, and `dsh-distribution.json`'s `host-tui` ref moves to `0.20.0` |
+| The team mount (harness plane, not TUI source) | three rows, one generation | **three legacy rows, host-owned plane on the new generation** — 0.20.0's sibling harness `0.2.2-rc.2` mounts `agent-team` / `tool-agent-team` / `ui-agent-team` itself, so the bundle mounts NO team row there and declares no team package; the three rows carry the old generation only. Guard = `(shipped dsh-tui clause, byte-identical to HEAD) || (generation + resolvability)`. See [`compatibility.md`](./compatibility.md) §2.1 |
+| The Ctrl+A host contact | version-gated on the `tuiPanels` seam | **unchanged** — 0.20.0 still declares `tuiPanels`, so the contact stays inert and Ctrl+A keeps its host meaning; the merged view opens through `alt+a` / `/mpd panel` |
+| The admission band's peer ceiling | 0.19.0's peers named harness `0.2.2-rc.1` | **0.20.0's peers top out at `0.2.2-rc.2`**, and its README names `0.2.2-rc.2` as the primary compatibility target |
+
+**Measured here.** This wave's own install of `@deepseek-harness-tui/dsh-tui@0.20.0` resolved from the
+registry, and its `package.json` was read directly: `version` `0.20.0`, the peer lists above, and the
+same fifteen seam services. **Measured, and bounded.** The wave's own `verify:gates` run negotiated `0.20.0`:
+`tui-admission` exit 0, `49 arms passed, 1 allowed deviation(s), 5 bound(s)`, both manifests `compatible`
+(`evidence/verify-022rc2/2026-11-14T03-02-10Z/logs/verify-gates.log`). No **live TTY capture** of
+`0.20.0` is claimed in this section — that belongs to the wave's mount lane, and a claim no lane
+exercised is not made here.

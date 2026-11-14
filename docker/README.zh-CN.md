@@ -31,9 +31,10 @@ node、没有 bun、没有 pnpm、也没有 dsh），运行 `mpd-client` compose
 4. 安装 `pnpm`（`npm i -g pnpm@…`）。这不是装饰：`dsh plugin <args>` 会在 profile 目录里转发给
    `pnpm`，缺少它时 harness 会打印 `pnpm was not found; install pnpm and make it available on PATH`。
    没有 pnpm 的机器根本无法安装 bundle。
-5. `npm i -g @deepseek-ai/dsh@0.2.2-rc.1`（默认 pin；可用 `MPD_E2E_DSH_VERSION=<版本>` 覆盖 ——
+5. `npm i -g @deepseek-ai/dsh@0.2.2-rc.2`（默认 pin；可用 `MPD_E2E_DSH_VERSION=<版本>` 覆盖 ——
    `docker/docker-compose.yml` 负责透传，`docker/entrypoint.sh` 负责读取），然后断言 `dsh --version`
-   打印的字符串**完全等于**该版本号。`0.2.1-rc.5` 仍被支持，由单独的向后兼容启动步骤安装。
+   打印的字符串**完全等于**该版本号。`0.2.2-rc.1` 与 `0.2.1-rc.5` 仍被支持，由单独的向后兼容启动步骤
+   安装 `0.2.2-rc.1`。
 6. 把检出复制到 `/opt/mpd`，执行 `bun install`，并按 `AGENTS.md` §6 的规范仓库根命令**从源码重建每一个**
    `packages/*/dist` 条目（`bun build packages/<pkg>/src/<entry>.ts --target node --format esm --outfile
    packages/<pkg>/dist/<entry>.js`）。
@@ -81,10 +82,10 @@ node、没有 bun、没有 pnpm、也没有 dsh），运行 `mpd-client` compose
     让任何 token 形状残留其中（`evidenceScrubbed`；一旦泄漏即判定为红，并用定向清洗重写两个文件）。
 14. 把 `boot.llmTurn` 记为 **`null` 并附原因**——见下。
 15. **跑一遍 DSH-TUI 版本**（`docker/tui-lane.sh`）——这是开发机唯一无法演练的 profile：TUI 宿主必须从 npm
-    装进一个可写的全局前缀，并在真正的 PTY 上启动。该步安装 `@deepseek-harness-tui/dsh-tui@0.19.0`
-    —— 即本 bundle 现在对标的 dsh-tui 版本。它声明的 `@deepseek-ai/dsh-*` peer 范围同时接受 harness
-    `0.2.2-rc.1` 与 `0.2.1-rc.4`/`rc.5`（其 39 个 peer 中有 36 个同时追加了这两段），因此一个 pin 同时服务
-    当前基线与旧宿主臂；`0.18.0` 只接受 `0.2.1` 这一波，`0.17.0` 只排到 `0.2.1-rc.3`，`0.16.1` 的范围只到
+    装进一个可写的全局前缀，并在真正的 PTY 上启动。该步安装 `@deepseek-harness-tui/dsh-tui@0.20.0`
+    —— 即本 bundle 现在对标的 dsh-tui 版本。它的 `@deepseek-ai/dsh-*` peer（39 个 peer 中的 36 个）都
+    同时追加了 harness `0.2.2-rc.2`、`0.2.2-rc.1` 与 `0.2.1-rc.4`/`rc.5`，因此一个 pin 同时服务
+    当前基线与旧宿主臂；`0.19.0` 与 `0.18.0` 仍为已准入宿主（`0.18.0` 只接受 `0.2.1` 这一波），`0.17.0` 只排到 `0.2.1-rc.3`，`0.16.1` 的范围只到
     `0.2.1-rc.2`，`0.15.0` 只覆盖到 `0.2.0-rc.2`，`0.11.2` 只到 `0.2.0-rc.1`，那时
     `dsh plugin --profile dsh-tui add` 会因 peer 范围被拒——此时 lane 在该步直接判红，并由
     `tui-logs/add-host.log` 捕获引用宿主自己的拒绝原文，而不是用一句歉意换绿。此前的 `0.16.1`、

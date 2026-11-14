@@ -412,3 +412,16 @@ surface: `src/index.ts` stays the ONE contact surface AGENTS.md §6 requires.
 |---|---|---|
 | `defaultTimeoutMs` | number | `120000` (internal `executeTool` timeout when the caller passes none) |
 | `quiet` | boolean | `false` (suppresses the one-line boot log) |
+
+## Presence is not servability (0.19.0, harness `0.2.2-rc.2`)
+
+`0.2.2-rc.2` keeps `ctx.agentTeams` but reduces it to a TASK-BOARD-ONLY service: `isEnabled`,
+`setEnabled`, `createTask`, `getTask`, `listTasks`, `updateTask`. `membership`, `tryMembership`,
+`listMembers`, `spawnTeammate`, `sendMessage`, `interrupt` and `waitForChange` are GONE, and the tool
+plugin registers four tools, not nine.
+
+The adapter therefore decides the official executor by EXECUTABILITY, not presence:
+`spawnTeammate` AND `sendMessage` AND `interrupt` AND `waitForChange` must all be functions. A mounted
+but non-executable official service falls through to the native executor with ONE log line, and
+`capabilities()` reports `teamExecutorOfficial` beside `teamExecutorNative`. `TEAM_TASK_METHODS` and the
+task-board paths are unchanged, because a task board is exactly what the reduced service still provides.

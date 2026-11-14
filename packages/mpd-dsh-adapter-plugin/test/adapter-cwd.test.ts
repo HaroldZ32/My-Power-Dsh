@@ -87,6 +87,11 @@ function harness(options: DoubleOptions = {}): Harness {
       record("interrupt", [caller, target])
       return Promise.resolve({ previousStatus: "running" })
     },
+    /** Record the official wait; present because the executor quartet (D6) makes the service servable. */
+    waitForChange(caller: unknown, timeoutMs: unknown, signal: unknown): Promise<unknown> {
+      record("waitForChange", [caller, timeoutMs, signal])
+      return Promise.resolve({ timedOut: true })
+    },
   }
   /** The service lookup the adapter uses, over exactly the doubles this arm staged. */
   const ctx = {

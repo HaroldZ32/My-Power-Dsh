@@ -1,0 +1,10 @@
+cwd=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+dsh=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/bin/dsh
+dsh-version=0.2.2-rc.2
+node=v24.21.0
+bun=1.4.2
+MPD_DSHGO_KIT=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp-dshgo/kit
+MPD_DSH_TUI_HOST=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/tui-020/lib/node_modules/@deepseek-harness-tui/dsh-tui
+git-head=7c1680af851d3c68fd85e404116ff3a56db4b1d8
+git-status-sha=5af4c9d3ffee5fa8816f6d0423d327b16388d93d65f9da5a993964c4c79ad865
+git-status-sha-after=5af4c9d3ffee5fa8816f6d0423d327b16388d93d65f9da5a993964c4c79ad865

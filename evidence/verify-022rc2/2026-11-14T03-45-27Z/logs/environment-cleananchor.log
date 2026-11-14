@@ -1,0 +1,2 @@
+dsh=/home/haroldzhao/.t16-verify/host-rc2/bin/dsh version=0.2.2-rc.2
+npm=11.19.0 layout=/home/haroldzhao/.t16-verify/host-rc2/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-persona
