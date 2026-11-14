@@ -1,0 +1,14 @@
+### cordis.patch.yml
+  mpd-agent-team disabled=true (expr chars=8639)
+  mpd-tool-agent-team disabled=true (expr chars=8488)
+  mpd-ui-agent-team disabled=true (expr chars=6789)
+  mpd-agent-team-rc2 disabled=true (expr chars=8655)
+  mpd-tool-agent-team-rc2 disabled=true (expr chars=8665)
+  mpd-ui-agent-team-rc2 disabled=true (expr chars=6789)
+### .qa-tmp/t1/overlay.yml
+  mpd-agent-team disabled=true (expr chars=13380)
+  mpd-tool-agent-team disabled=true (expr chars=13380)
+  mpd-ui-agent-team disabled=true (expr chars=4839)
+  mpd-agent-team-rc2 disabled=true (expr chars=13380)
+  mpd-tool-agent-team-rc2 disabled=true (expr chars=13380)
+  mpd-ui-agent-team-rc2 disabled=true (expr chars=4839)

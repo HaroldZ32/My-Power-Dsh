@@ -6,10 +6,11 @@
 //   2) $DSH_HOME/cordis.patch.yml (plugin rows with local absolute paths: llm dual track / skills / MCP / mpd-codegraph)
 //   3) $DSH_HOME/.agent-presets/mpd-* (presets -> auto-scanned from the user root)
 //   4) .toolchain (network install of ast-grep + codegraph when missing)
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
-import { homedir } from "node:os"
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
+import { createHash } from "node:crypto"
+import { homedir, tmpdir } from "node:os"
 import { dirname, join, sep } from "node:path"
-import { fileURLToPath } from "node:url"
+import { fileURLToPath, pathToFileURL } from "node:url"
 import { spawnSync } from "node:child_process"
 import { readJson, repoRootFrom } from "./lib/repo.ts"
 
@@ -124,6 +125,79 @@ function sidebarGuardFromPatch(): string {
 }
 /** The extracted guard, resolved ONCE at load time and reused by the plan and the self-test. */
 const SIDEBAR_GUARD: string = sidebarGuardFromPatch()
+
+/** The THREE old-generation official team rows whose guards this installer mirrors (D4 + A3, wave dsh-022rc2-tui-020). */
+const TEAM_ROW_IDS: readonly string[] = [
+  "mpd-agent-team",
+  "mpd-tool-agent-team",
+  "mpd-ui-agent-team",
+]
+
+/**
+ * One official team row's `!!js` host-generation guard, extracted VERBATIM from the bundle patch.
+ *
+ * D4 gives the six rows ONE shared generation predicate INLINED into each `disabled` scalar (patch
+ * rows cannot share code), so this installer must ship byte-identical guards: the legacy flow renders
+ * its OWN patch instead of reading the bundle's, and a hand-copied predicate is exactly the drift
+ * class the sidebar guard's extraction closed (measured 2026-09-27). A missing row, a missing guard
+ * or a scalar that is not a single `!!js "…"` line is a hard error at LOAD: a silent fallback would
+ * install the wrong generation's rows, which then throw at activation instead of at install time.
+ * @param rowId the bundle-patch row id whose generation guard is wanted.
+ * @returns the guard's YAML value, `!!js "…"` included, byte-identical to the bundle patch.
+ */
+function teamRowGuardFromPatch(rowId: string): string {
+  /** The bundle patch: the single source of truth for every team-row generation guard. */
+  const text: string = readFileSync(join(repoRoot, "cordis.patch.yml"), "utf8")
+  /** The row's block, extracted verbatim (its `- id:` line through the next sibling). */
+  const block: RawRow = extractRowBlock(text, rowId)
+  /** The row's `disabled: !!js …` line, or undefined when the row carries no guard at all. */
+  const line: string | undefined = block.lines.find((l: string): boolean => /^\s*disabled:\s*!!js\s/.test(l))
+  if (line === undefined) throw new Error("the bundle patch's " + rowId + " row has no `disabled: !!js` generation guard")
+  /** The guard scalar alone, with the `disabled:` key and its indentation stripped. */
+  const match: RegExpExecArray | null = /^\s*disabled:\s*(!!js\s.*)$/.exec(line)
+  if (match === null) throw new Error("the bundle patch's " + rowId + " generation guard is not a single `!!js` scalar")
+  /** The guard as it will be re-emitted; trimmed because `.` does not absorb trailing spaces. */
+  const guard: string = match[1].trim()
+  // The shape assertion: the extracted scalar must be the shared generation predicate, not some
+  // other guard a future row edit could have left in the slot (the cache key is the predicate's own).
+  if (!guard.includes("__mpdTeamRowsGeneration") || !guard.includes("MPD_DSH_TEAM_ROWS")) throw new Error("the extracted guard for " + rowId + " is not the shared generation predicate: " + guard.slice(0, 80))
+  return guard
+}
+
+/** The six guards, each resolved ONCE at load time and reused by the plan and the self-test. */
+const TEAM_ROW_GUARDS: Readonly<Record<string, string>> = Object.fromEntries(
+  TEAM_ROW_IDS.map((id: string): [string, string] => [id, teamRowGuardFromPatch(id)]),
+)
+/** The sha256 of the SHIPPED 0.2.2-rc.1 TUI clause of `mpd-agent-team` (1,844 B; HEAD 7c1680af, the wave cut). */
+const OLD_ROW_TUI_SHA256 = "6f60ed8f63193fea5acff52f4af0015a5c3585cf765f5839c4876e2fc9c45991"
+/** The sha256 of the SHIPPED 0.2.2-rc.1 TUI clause of `mpd-tool-agent-team` (1,693 B; HEAD 7c1680af). */
+const OLD_ROW_TOOL_TUI_SHA256 = "90bd854710cb5299e59b131140225caf242877c23c1e73f9f694b81bfdfeddd5"
+/** The OLD rows whose TUI term must be the shipped expression VERBATIM (contract §2b / §4 D4). */
+const OLD_ROWS_WITH_TUI: Readonly<Record<string, string>> = {
+  "mpd-agent-team": OLD_ROW_TUI_SHA256,
+  "mpd-tool-agent-team": OLD_ROW_TOOL_TUI_SHA256,
+}
+
+/**
+ * The TUI term of one composed team-row guard: `!!js "(<tui>) || (<generation>)"` answers the
+ * first term, byte for byte, so its digest can be compared with the shipped expression.
+ * @param guard the row's extracted `disabled` scalar.
+ * @returns the TUI-plane expression (without the composing parentheses).
+ */
+function tuiTermOf(guard: string): string {
+  /** The scalar's quoted YAML form. */
+  const quoted: string = guard.startsWith("!!js ") ? guard.slice(5).trim() : guard
+  if (!quoted.startsWith('"') || !quoted.endsWith('"')) throw new Error("composed guard is not one double-quoted YAML scalar: " + quoted.slice(0, 40))
+  /** The expression the loader evals. */
+  const expression: string = quoted.slice(1, -1)
+  /** The composition separator between the TUI term and the generation term. */
+  const separator: string = ") || ("
+  /** Where the generation term starts; exactly one separator must exist. */
+  const at: number = expression.indexOf(separator)
+  if (at < 0 || expression.indexOf(separator, at + 1) >= 0) throw new Error("composed guard does not carry exactly one TUI || generation separator")
+  if (!expression.startsWith("(") || !expression.endsWith(")")) throw new Error("composed guard is not two parenthesised terms")
+  return expression.slice(1, at)
+}
 
 /**
  * A row config value as this installer renders it: a JSON scalar, a list of scalars (one YAML
@@ -472,18 +546,29 @@ function buildPlan(o: PlanInputs): Plan {
     // bundle mounts the OFFICIAL rows under mpd-owned entry ids with entry NAMES equal
     // to the official package names. Mirrored verbatim from cordis.patch.yml, order
     // included.
+    // D4 + A3 (wave dsh-022rc2-tui-020): the OLD-generation rows below gain the bundle patch's own
+    // host-generation + resolvability `disabled` guard. The NEW generation has NO bundle row at all:
+    // rc.2's own `dsh-base`/`dsh-web-app` layers mount the official team plane, so a bundle row
+    // there would be a duplicate mount (T10 measured the "already registered" boot errors). The
+    // guards are EXTRACTED from the bundle patch (TEAM_ROW_GUARDS), never copied.
     {
       id: "mpd-agent-team", name: "@deepseek-ai/dsh-experimental-agent-team",
+      disabledYaml: TEAM_ROW_GUARDS["mpd-agent-team"],
       config: { maxMembers: 16, maxTasks: 256, maxMessageBytes: 32768, disposalTimeoutMs: 5000 }
     },
     {
       id: "mpd-tool-agent-team", name: "@deepseek-ai/dsh-experimental-tool-agent-team",
+      disabledYaml: TEAM_ROW_GUARDS["mpd-tool-agent-team"],
       config: { freshProvider: "spawn", forkProvider: "fork" }
     },
     {
       id: "mpd-ui-agent-team", name: "@deepseek-ai/dsh-experimental-client-ui-agent-team",
+      disabledYaml: TEAM_ROW_GUARDS["mpd-ui-agent-team"],
       config: {}
     },
+    // A3: NO new-generation rows. The rc.2 host's own `dsh-base`/`dsh-web-app` layers mount
+    // agent-team / tool-agent-team / ui-agent-team, so the bundle mounts the OLD generation only;
+    // the generation guard disables those three rows on a new-generation host.
     // B9: every row mirrors the bundle patch verbatim (same id, entry and empty
     // config) and in the same order (cordis.patch.yml plus the
     // preset patch presets/mpd.patch.yml). Row-id parity with the patch layer is
@@ -604,6 +689,333 @@ function columnZeroIdTargets(patchText: string): string[] {
  */
 const HOST_OWNED_ROW_SHAPE = /-preset-registry$/
 
+/** The generation a guard-matrix arm expects the shared predicate to conclude. */
+type TeamRowGeneration = "old" | "new" | "ambiguous"
+
+/** One decision-matrix arm: the fixture world a guard sees and the generation it must conclude. */
+interface TeamRowsArm {
+  /** What the arm proves, printed only when it fails. */
+  readonly name: string
+  /** The generation the probe must conclude from this fixture world. */
+  readonly generation: TeamRowGeneration
+  /** Whether a dsh-tui host row is composed; `null` makes the loader probe throw. */
+  readonly tui?: boolean | null
+  /** `process.argv[1]`, relative to the fixture root; absent means a path inside no harness package. */
+  readonly argv1?: string
+  /** The fixture directory passed as `baseUrl`; absent means the empty profile, `null` means undefined. */
+  readonly baseUrl?: string | null
+  /** The `MPD_DSH_TEAM_ROWS` value; absent leaves the variable unset. */
+  readonly override?: string
+  /**
+   * True when the arm's harness does NOT ship the old-generation team packages, so the
+   * RESOLVABILITY clause must disable the (generation-old) rows instead of letting the loader fail
+   * to import them.
+   */
+  readonly unresolvable?: boolean
+}
+
+/**
+ * Evaluate one extracted team-row guard the way the loader does: the `!!js` scalar's expression,
+ * compiled and called with the two names a patch guard resolves (`ctx` and the bare `baseUrl` the
+ * loader exposes through `with (ctx)` — passed here by name for the same resolution).
+ * @param guard the row's `disabled` scalar, `!!js "…"` included, as extracted from the bundle patch.
+ * @param ctx the context a guard receives; only its `loader.entries()` seam is read.
+ * @param baseUrl the profile directory URL, or undefined when the loader exposes none.
+ * @returns the guard's decision: true means the row is DISABLED.
+ */
+function evaluateTeamRowGuard(guard: string, ctx: unknown, baseUrl: string | undefined): boolean {
+  /** The tag prefix every team-row guard carries. */
+  const prefix: string = "!!js "
+  if (!guard.startsWith(prefix)) throw new Error("guard is not a `!!js` scalar: " + guard.slice(0, 40))
+  /** The scalar's quoted form; the patch dialect writes every guard as ONE double-quoted YAML string. */
+  const quoted: string = guard.slice(prefix.length).trim()
+  if (!quoted.startsWith('"') || !quoted.endsWith('"')) throw new Error("guard is not one double-quoted YAML scalar: " + quoted.slice(0, 40))
+  /** The expression text the loader would eval; the two characters below would mean the replay is not faithful. */
+  const expression: string = quoted.slice(1, -1)
+  if (expression.includes('"') || expression.includes("\\")) throw new Error("guard carries a quote or escape this replay cannot certify")
+  /** The compiled expression, called with the two names a patch guard resolves. */
+  const compiled = new Function("ctx", "baseUrl", "return (" + expression + ")") as (context: unknown, base: string | undefined) => unknown
+  /** What the guard answered. */
+  const answer: unknown = compiled(ctx, baseUrl)
+  if (typeof answer !== "boolean") throw new Error("guard answered " + typeof answer + ", not a boolean")
+  return answer
+}
+
+/**
+ * The D4 guard matrix: the six official team rows, their byte-identical guards, and the decision
+ * each row takes over fixture harnesses of BOTH generations.
+ *
+ * WHY THIS EXISTS. The generation predicate is the ONLY thing deciding which row set mounts, and on
+ * a real boot a wrong decision is an activation THROW (0.2.2-rc.2 rejects the old rows' config keys),
+ * not a cosmetic warning. Every probe branch, the ambiguity path, the override and the TUI clause are
+ * replayed here, against the guards EXTRACTED from the shipped patch, so a drifted predicate reddens
+ * `--self-test` instead of a user's boot. Fixtures live under the gitignored `.qa-reloc/` root and are
+ * removed on the way out; only POSIX stages the symlinked-CLI arm (win32 cannot create it unprivileged).
+ * @param plan the dry-run plan whose rows carry the guards under test.
+ * @param bundlePatchText the bundle patch's bytes, so each guard is compared with its own source.
+ */
+function teamRowsSelfTest(plan: Plan, bundlePatchText: string): void {
+  // ── 1. the six rows: ids, order, entry names and generation-legal configs ──────────────────
+  /** The six-row subsequence of the plan, in plan order. */
+  const teamRows: readonly Row[] = plan.rows.filter((r: Row): boolean => TEAM_ROW_IDS.includes(r.id))
+  if (teamRows.length !== TEAM_ROW_IDS.length || teamRows.map((r: Row): string => r.id).join(",") !== TEAM_ROW_IDS.join(",")) {
+    console.error("[install-profile self-test] FAIL: the six official team rows are missing or out of order: " + teamRows.map((r: Row): string => r.id).join(",")); process.exit(1)
+  }
+  /** The entry name each row must mount — the old experimental packages only (A3). */
+  const wantNames: Readonly<Record<string, string>> = {
+    "mpd-agent-team": "@deepseek-ai/dsh-experimental-agent-team",
+    "mpd-tool-agent-team": "@deepseek-ai/dsh-experimental-tool-agent-team",
+    "mpd-ui-agent-team": "@deepseek-ai/dsh-experimental-client-ui-agent-team",
+  }
+  for (const row of teamRows) {
+    if (row.name !== wantNames[row.id]) { console.error("[install-profile self-test] FAIL: " + row.id + " mounts " + String(row.name) + ", want " + wantNames[row.id]); process.exit(1) }
+    // Byte identity against the patch's own scalars: the legacy render must carry the SHIPPED guard.
+    if (row.disabledYaml !== TEAM_ROW_GUARDS[row.id]) { console.error("[install-profile self-test] FAIL: " + row.id + " guard is not the extracted patch guard"); process.exit(1) }
+    if (!bundlePatchText.includes("disabled: " + TEAM_ROW_GUARDS[row.id])) { console.error("[install-profile self-test] FAIL: " + row.id + " guard is not byte-identical to the bundle patch's `disabled:` scalar"); process.exit(1) }
+  }
+  // A3: the NEW generation has NO bundle row. The rc.2 host's own layers own the team plane, so a
+  // `-rc2` row here would be a duplicate mount (and no `maxTasks` may be re-added anywhere).
+  for (const id of ["mpd-agent-team-rc2", "mpd-tool-agent-team-rc2", "mpd-ui-agent-team-rc2"]) {
+    if (plan.rows.some((r: Row): boolean => r.id === id)) { console.error("[install-profile self-test] FAIL: " + id + " must NOT exist (the rc.2 host owns the team plane)"); process.exit(1) }
+  }
+  // The rendered home patch must carry each guard verbatim, so the render path cannot mangle one.
+  /** The installer's own render, against a home patch that declares no row. */
+  const rendered: string = renderPatch(plan.rows, new Set())
+  for (const id of TEAM_ROW_IDS) {
+    if (!rendered.includes("disabled: " + TEAM_ROW_GUARDS[id])) { console.error("[install-profile self-test] FAIL: the rendered home patch lost the generation guard of " + id); process.exit(1) }
+  }
+  // REPAIR A (T1): the OLD rows' TUI term is the SHIPPED 0.2.2-rc.1 expression, byte for byte. A
+  // shortened or reworded clause is a CONTRACT violation (§2b / §4 D4), so it is pinned by digest
+  // rather than by a substring a rewrite could keep.
+  for (const [id, digest] of Object.entries(OLD_ROWS_WITH_TUI)) {
+    /** The row's TUI term, extracted through the composition separator. */
+    const term: string = tuiTermOf(TEAM_ROW_GUARDS[id])
+    /** The digest of what this repository actually ships. */
+    const actual: string = createHash("sha256").update(term).digest("hex")
+    if (actual !== digest) { console.error("[install-profile self-test] FAIL: " + id + " TUI clause drifted from the shipped 0.2.2-rc.1 expression (sha256 " + actual + ", want " + digest + ", bytes " + term.length + ")"); process.exit(1) }
+  }
+  // The UI row never carried a TUI clause: its whole scalar is the generation predicate.
+  if (TEAM_ROW_GUARDS["mpd-ui-agent-team"].includes(") || (")) { console.error("[install-profile self-test] FAIL: mpd-ui-agent-team must not carry a TUI term"); process.exit(1) }
+
+  // ── 2. the fixture world both generations are replayed against ────────────────────────────
+  // The matrix's scratch root lives OUTSIDE the repository on purpose: the guard's RESOLVABILITY
+  // clause mirrors the loader's resolution, which climbs ancestor `node_modules` trees — and a fixture
+  // under the repo would let the repo's own installed packages masquerade as the host's (the exact
+  // contamination that made an earlier measurement call a real rc.1 host unresolvable).
+  /** The matrix's scratch root, a fresh system temp dir per run. */
+  const root: string = mkdtempSync(join(tmpdir(), "mpd-team-rows-"))
+  rmSync(root, { recursive: true, force: true })
+  mkdirSync(root, { recursive: true })
+  /** The saved `process.argv`, restored in the `finally` so the rest of the self-test is unaffected. */
+  const savedArgv: string[] = process.argv
+  /** The saved log root, restored in the `finally`. */
+  const savedLogRoot: string | undefined = process.env.MPD_MCP_LOG_DIR
+  /** The saved row-set override, restored in the `finally`. */
+  const savedOverride: string | undefined = process.env.MPD_DSH_TEAM_ROWS
+  /** Write one fixture manifest (or a plain file when no manifest is given), creating parents. */
+  const writeFixture = (rel: string, manifest?: Record<string, string>): void => {
+    /** The fixture file's absolute path. */
+    const file: string = join(root, rel)
+    mkdirSync(dirname(file), { recursive: true })
+    writeFileSync(file, manifest === undefined ? "" : JSON.stringify(manifest))
+  }
+  /** The harness layout `npm i -g` produces: the CLI is a symlink into the package's `lib/`. */
+  const stageHarness = (generation: "rc1" | "rc2", version: string): void => {
+    writeFixture(generation + "/lib/node_modules/@deepseek-ai/dsh/package.json", { name: "@deepseek-ai/dsh", version })
+    writeFixture(generation + "/lib/node_modules/@deepseek-ai/dsh/lib/bin.js")
+    mkdirSync(join(root, generation, "bin"), { recursive: true })
+    if (process.platform !== "win32") symlinkSync(join(root, generation, "lib/node_modules/@deepseek-ai/dsh/lib/bin.js"), join(root, generation, "bin/dsh"))
+  }
+  try {
+    stageHarness("rc1", "0.2.2-rc.1")
+    stageHarness("rc2", "0.2.2-rc.2")
+    writeFixture("rc2/lib/node_modules/@deepseek-ai/dsh/bin/dsh.js")
+    writeFixture("emptyprofile/package.json", { name: "dsh-profile-web", private: "true" })
+    writeFixture("harnessprofile/node_modules/@deepseek-ai/dsh/package.json", { name: "@deepseek-ai/dsh", version: "0.2.2-rc.2" })
+    writeFixture("harnessprofile-rc1/node_modules/@deepseek-ai/dsh/package.json", { name: "@deepseek-ai/dsh", version: "0.2.2-rc.1" })
+    // A real old-generation profile also carries the three old team packages (declared by 0.18.x), so
+    // the stage-2 arm keeps the rows enabled instead of tripping the resolvability clause.
+    for (const pkg of ["@deepseek-ai/dsh-experimental-agent-team", "@deepseek-ai/dsh-experimental-tool-agent-team", "@deepseek-ai/dsh-experimental-client-ui-agent-team"]) {
+      writeFixture("harnessprofile-rc1/node_modules/" + pkg + "/package.json", { name: pkg, version: "0.2.2-rc.1" })
+    }
+    writeFixture("oldpresence/node_modules/@deepseek-ai/dsh-experimental-agent-team/package.json", { name: "@deepseek-ai/dsh-experimental-agent-team", version: "0.2.2-rc.1" })
+    // The presence arm must not trip the RESOLVABILITY clause: an old-generation profile carries all
+    // three old packages, so all three rows stay enabled there.
+    writeFixture("oldpresence/node_modules/@deepseek-ai/dsh-experimental-tool-agent-team/package.json", { name: "@deepseek-ai/dsh-experimental-tool-agent-team", version: "0.2.2-rc.1" })
+    writeFixture("oldpresence/node_modules/@deepseek-ai/dsh-experimental-client-ui-agent-team/package.json", { name: "@deepseek-ai/dsh-experimental-client-ui-agent-team", version: "0.2.2-rc.1" })
+    writeFixture("newpresence/node_modules/@deepseek-ai/dsh-agent-team/package.json", { name: "@deepseek-ai/dsh-agent-team", version: "0.2.2-rc.2" })
+    writeFixture("bothpresence/node_modules/@deepseek-ai/dsh-agent-team/package.json", { name: "@deepseek-ai/dsh-agent-team", version: "0.2.2-rc.2" })
+    writeFixture("bothpresence/node_modules/@deepseek-ai/dsh-experimental-agent-team/package.json", { name: "@deepseek-ai/dsh-experimental-agent-team", version: "0.2.2-rc.1" })
+    writeFixture("badprofile/node_modules/@deepseek-ai/dsh/package.json", { name: "@deepseek-ai/dsh", version: "not-a-version" })
+    // The rc.1 harness SHIPS its own generation's team packages (nested under @deepseek-ai/dsh):
+    // that is the host-supplied plane the loader falls back to, and the resolvability clause reads it.
+    for (const pkg of ["@deepseek-ai/dsh-experimental-agent-team", "@deepseek-ai/dsh-experimental-tool-agent-team", "@deepseek-ai/dsh-experimental-client-ui-agent-team"]) {
+      writeFixture("rc1/lib/node_modules/@deepseek-ai/dsh/node_modules/" + pkg + "/package.json", { name: pkg, version: "0.2.2-rc.1" })
+    }
+    // A bare rc.1 harness: the generation is readable but NO team package exists anywhere.
+    writeFixture("rc1bare/lib/node_modules/@deepseek-ai/dsh/package.json", { name: "@deepseek-ai/dsh", version: "0.2.2-rc.1" })
+    writeFixture("rc1bare/lib/node_modules/@deepseek-ai/dsh/lib/bin.js")
+    mkdirSync(join(root, "rc1bare", "bin"), { recursive: true })
+    if (process.platform !== "win32") symlinkSync(join(root, "rc1bare", "lib/node_modules/@deepseek-ai/dsh/lib/bin.js"), join(root, "rc1bare", "bin/dsh"))
+    /** The log root every arm writes under, so nothing lands in the repository's own `.mpd/logs`. */
+    const logRoot: string = join(root, "logs")
+    mkdirSync(logRoot, { recursive: true })
+    /** The arms: two real host generations, every probe branch, the ambiguity paths and the override. */
+    const arms: readonly TeamRowsArm[] = [
+      { name: "rc.1 via the symlinked CLI", generation: "old", argv1: "rc1/bin/dsh" },
+      { name: "rc.2 via the symlinked CLI", generation: "new", argv1: "rc2/bin/dsh" },
+      { name: "rc.2 via a plain CLI entry", generation: "new", argv1: "rc2/lib/node_modules/@deepseek-ai/dsh/bin/dsh.js" },
+      { name: "harness resolved from baseUrl", generation: "new", baseUrl: "harnessprofile" },
+      { name: "package presence: only the old team package", generation: "old", baseUrl: "oldpresence" },
+      { name: "package presence: only the new team package", generation: "new", baseUrl: "newpresence" },
+      { name: "package presence: BOTH resolve -> ambiguous", generation: "ambiguous", baseUrl: "bothpresence" },
+      { name: "unreadable harness version -> ambiguous", generation: "ambiguous", baseUrl: "badprofile" },
+      { name: "no probe at all -> ambiguous", generation: "ambiguous" },
+      // The override forces the GENERATION, and the RESOLVABILITY clause still applies: an rc.2 host
+      // ships no old-generation package, so the forced-old rows stay disabled (conservative, logged).
+      { name: "override old on an rc.2 host (unresolvable => disabled)", generation: "old", argv1: "rc2/bin/dsh", override: "old", unresolvable: true },
+      { name: "override new on an rc.1 host", generation: "new", argv1: "rc1/bin/dsh", override: "new" },
+      { name: "override off -> both sets disabled", generation: "ambiguous", override: "off" },
+      { name: "unrecognized override -> both sets disabled", generation: "ambiguous", override: "rc9" },
+      { name: "dsh-tui composed on an rc.1 host", generation: "old", tui: true, argv1: "rc1/bin/dsh" },
+      { name: "a throwing loader probe never throws", generation: "old", tui: null, argv1: "rc1/bin/dsh" },
+      { name: "no baseUrl exposed", generation: "ambiguous", baseUrl: null },
+      // PRECEDENCE (T1's measured defect): an earlier readable stage is AUTHORITATIVE, and the
+      // later stages never veto it — even when their own evidence points the other way.
+      { name: "PRECEDENCE: rc.2 CLI beats OLD-only presence", generation: "new", argv1: "rc2/bin/dsh", baseUrl: "oldpresence" },
+      { name: "PRECEDENCE: rc.1 CLI beats NEW-only presence", generation: "old", argv1: "rc1/bin/dsh", baseUrl: "newpresence" },
+      { name: "PRECEDENCE: rc.2 CLI beats a baseUrl harness resolving rc.1", generation: "new", argv1: "rc2/bin/dsh", baseUrl: "harnessprofile-rc1" },
+      { name: "stage 2 alone: baseUrl resolves rc.1", generation: "old", baseUrl: "harnessprofile-rc1" },
+      // A THROWING stage (a profile directory that does not exist) is a miss, never an outage and
+      // never an enable: no stage readable => both sets disabled + ONE line.
+      { name: "a THROWING stage -> both sets disabled", generation: "ambiguous", baseUrl: "missing-profile" },
+      // RESOLVABILITY (T8/A3): the generation is READABLE and old, but the harness ships none of the
+      // team packages — an enabled row would fail to import, so the clause disables it instead.
+      { name: "generation old but NO team package resolves -> rows disabled", generation: "old", argv1: "rc1bare/bin/dsh", unresolvable: true },
+    ]
+    for (const arm of arms) {
+      // The predicate caches on globalThis for ONE boot; an arm is a fresh boot.
+      delete (globalThis as Record<string, unknown>).__mpdTeamRowsGeneration
+      delete (globalThis as Record<string, unknown>).__mpdTeamRowsGuardSeen
+      delete (globalThis as Record<string, unknown>).__mpdTeamRowsResolvable
+      delete (globalThis as Record<string, unknown>).__mpdTeamRowsUnresolvable
+      delete (globalThis as Record<string, unknown>).__mpdTuiPlaneGuard
+      process.argv = ["node", arm.argv1 === undefined ? join(root, "missing", "bin", "x") : join(root, arm.argv1)]
+      process.env.MPD_MCP_LOG_DIR = logRoot
+      if (arm.override === undefined) delete process.env.MPD_DSH_TEAM_ROWS
+      else process.env.MPD_DSH_TEAM_ROWS = arm.override
+      /** The fake loader: no row, a fake dsh-tui host row, or a seam that throws. */
+      const entries = (): unknown[] => {
+        if (arm.tui === null) throw new Error("loader.entries is unavailable")
+        return arm.tui === true ? [{ options: { name: "@deepseek-harness-tui/dsh-tui" } }] : []
+      }
+      /** The `ctx` a patch guard receives: only the loader seam every team-row guard reads. */
+      const ctx: { loader: { entries: () => unknown[] } } = { loader: { entries } }
+      /** The `baseUrl` a guard resolves against; `null` models a loader that exposes none. */
+      const baseUrl: string | undefined = arm.baseUrl === null ? undefined : pathToFileURL(join(root, arm.baseUrl ?? "emptyprofile")).href
+      /** The decision every one of the three rows must take, from the generation + TUI + resolvability arms. */
+      const want: Readonly<Record<string, boolean>> = {
+        "mpd-agent-team": arm.tui === true || arm.generation !== "old" || arm.unresolvable === true,
+        "mpd-tool-agent-team": arm.tui === true || arm.generation !== "old" || arm.unresolvable === true,
+        "mpd-ui-agent-team": arm.generation !== "old" || arm.unresolvable === true,
+      }
+      for (const id of TEAM_ROW_IDS) {
+        /** What this row's guard actually answered for the arm. */
+        const got: boolean = evaluateTeamRowGuard(TEAM_ROW_GUARDS[id], ctx, baseUrl)
+        if (got !== want[id]) { console.error("[install-profile self-test] FAIL: team-row guard arm '" + arm.name + "': " + id + " answered disabled=" + got + ", want " + want[id]); process.exit(1) }
+      }
+    }
+    // The ambiguity path writes exactly ONE line, however many rows resolve it: a boot with six
+    // guards must not spool six identical diagnostics.
+    /** A fresh log root, so an earlier arm's line cannot count for this assertion. */
+    const ambiguityLogRoot: string = join(root, "ambiguity-logs")
+    mkdirSync(ambiguityLogRoot, { recursive: true })
+    delete (globalThis as Record<string, unknown>).__mpdTeamRowsGeneration
+    delete (globalThis as Record<string, unknown>).__mpdTeamRowsGuardSeen
+    process.argv = ["node", join(root, "missing", "bin", "x")]
+    process.env.MPD_MCP_LOG_DIR = ambiguityLogRoot
+    delete process.env.MPD_DSH_TEAM_ROWS
+    /** The context/`baseUrl` of a boot where NO probe can identify the generation. */
+    const blindCtx = { loader: { entries: (): unknown[] => [] } }
+    /** The `baseUrl` of the empty profile, which resolves no harness and no team package. */
+    const blindBaseUrl: string = pathToFileURL(join(root, "emptyprofile")).href
+    for (const id of TEAM_ROW_IDS) evaluateTeamRowGuard(TEAM_ROW_GUARDS[id], blindCtx, blindBaseUrl)
+    /** The one log file the patch guards share. */
+    const guardLog: string = join(ambiguityLogRoot, ".mpd", "logs", "mpd-patch-guards.log")
+    /** The lines the ambiguity boot wrote. */
+    const guardLines: readonly string[] = existsSync(guardLog) ? readFileSync(guardLog, "utf8").split("\n").filter((l: string): boolean => l !== "") : []
+    // ONE structured decision line (T1's field shape), and its oldRows/newRows say both are off.
+    for (const field of ["generation=ambiguous", "source=", "argv1=", "harness=", "baseUrl=", "baseUrlHarness=", "presence=", "oldRows=disabled", "newRows=disabled", "override=-"]) {
+      if (guardLines.length !== 1 || !guardLines[0].includes(field)) { console.error("[install-profile self-test] FAIL: the ambiguous-generation path must write exactly ONE structured line containing " + field + ", got " + guardLines.length + ": " + JSON.stringify(guardLines)); process.exit(1) }
+    }
+
+    /** Evaluate all six guards in a fresh boot, answering the lines they wrote. */
+    const bootLines = (logRoot: string, argv1: string | undefined, baseUrlDir: string, override: string | undefined): readonly string[] => {
+      delete (globalThis as Record<string, unknown>).__mpdTeamRowsGeneration
+      delete (globalThis as Record<string, unknown>).__mpdTeamRowsGuardSeen
+      delete (globalThis as Record<string, unknown>).__mpdTeamRowsResolvable
+      delete (globalThis as Record<string, unknown>).__mpdTeamRowsUnresolvable
+      delete (globalThis as Record<string, unknown>).__mpdTuiPlaneGuard
+      process.argv = ["node", argv1 === undefined ? join(root, "missing", "bin", "x") : join(root, argv1)]
+      process.env.MPD_MCP_LOG_DIR = logRoot
+      if (override === undefined) delete process.env.MPD_DSH_TEAM_ROWS
+      else process.env.MPD_DSH_TEAM_ROWS = override
+      /** The loader with no TUI row. */
+      const bootCtx = { loader: { entries: (): unknown[] => [] } }
+      /** The profile URL the boot exposes. */
+      const bootBaseUrl: string = pathToFileURL(join(root, baseUrlDir)).href
+      for (const id of TEAM_ROW_IDS) evaluateTeamRowGuard(TEAM_ROW_GUARDS[id], bootCtx, bootBaseUrl)
+      /** The one log file the guards share. */
+      const file: string = join(logRoot, ".mpd", "logs", "mpd-patch-guards.log")
+      return existsSync(file) ? readFileSync(file, "utf8").split("\n").filter((l: string): boolean => l !== "") : []
+    }
+
+    // RESOLVABILITY's ONE line: a readable old generation whose package resolves NOWHERE disables the
+    // rows with one diagnostic naming the package and the fact, never a silent no-op.
+    /** A fresh log root for the bare-harness boot. */
+    const bareLogRoot: string = join(root, "bare-logs")
+    mkdirSync(bareLogRoot, { recursive: true })
+    /** The lines the bare rc.1 boot wrote. */
+    const bareLines: readonly string[] = bootLines(bareLogRoot, "rc1bare/bin/dsh", "emptyprofile", undefined)
+    /** The RESOLVABILITY diagnostics: ONE per ROW (each names its own package), never one per call. */
+    const bareHits: readonly string[] = bareLines.filter((line: string): boolean => line.includes("RESOLVABILITY"))
+    if (bareHits.length !== 3 || !bareHits.every((line: string): boolean => line.includes("DISABLED") && line.includes("resolves from neither"))) {
+      console.error("[install-profile self-test] FAIL: a readable old generation with no resolvable team package must write ONE resolvability line PER ROW (3), got " + bareHits.length + ": " + JSON.stringify(bareLines)); process.exit(1)
+    }
+    for (const pkg of ["@deepseek-ai/dsh-experimental-agent-team", "@deepseek-ai/dsh-experimental-tool-agent-team", "@deepseek-ai/dsh-experimental-client-ui-agent-team"]) {
+      if (!bareHits.some((line: string): boolean => line.includes(pkg))) { console.error("[install-profile self-test] FAIL: the resolvability lines must name " + pkg + "; got " + JSON.stringify(bareHits)); process.exit(1) }
+    }
+
+    // REPAIR B: `off` is a DOCUMENTED value and takes the documented path — both sets disabled, ONE
+    // line, and never the "unrecognized" wording.
+    /** A fresh log root for the off boot. */
+    const offLogRoot: string = join(root, "off-logs")
+    mkdirSync(offLogRoot, { recursive: true })
+    /** The lines the off boot wrote. */
+    const offLines: readonly string[] = bootLines(offLogRoot, undefined, "emptyprofile", "off")
+    if (offLines.length !== 1 || !offLines[0].includes("override=off") || !offLines[0].includes("source=override:off") || !offLines[0].includes("oldRows=disabled") || !offLines[0].includes("newRows=disabled") || offLines[0].includes("unrecognized")) {
+      console.error("[install-profile self-test] FAIL: MPD_DSH_TEAM_ROWS=off must take the documented both-off path with ONE line, got " + offLines.length + ": " + JSON.stringify(offLines)); process.exit(1)
+    }
+
+    // The HAPPY path writes exactly ONE decision line too (T1's field shape), never six.
+    /** A fresh log root for the healthy boot. */
+    const happyLogRoot: string = join(root, "happy-logs")
+    mkdirSync(happyLogRoot, { recursive: true })
+    /** The lines a healthy rc.2 boot wrote. */
+    const happyLines: readonly string[] = bootLines(happyLogRoot, "rc2/bin/dsh", "newpresence", undefined)
+    for (const field of ["generation=new", "source=argv1", "harness=0.2.2-rc.2@", "presence=old:false,new:true", "oldRows=disabled", "newRows=enabled", "override=-"]) {
+      if (happyLines.length !== 1 || !happyLines[0].includes(field)) { console.error("[install-profile self-test] FAIL: a healthy boot must write exactly ONE decision line containing " + field + ", got " + happyLines.length + ": " + JSON.stringify(happyLines)); process.exit(1) }
+    }
+  } finally {
+    process.argv = savedArgv
+    if (savedLogRoot === undefined) delete process.env.MPD_MCP_LOG_DIR
+    else process.env.MPD_MCP_LOG_DIR = savedLogRoot
+    if (savedOverride === undefined) delete process.env.MPD_DSH_TEAM_ROWS
+    else process.env.MPD_DSH_TEAM_ROWS = savedOverride
+    try { rmSync(root, { recursive: true, force: true }) } catch { /* best-effort cleanup */ }
+  }
+}
+
 /** The offline self-test: pins the plan's path model, row set and render rules; writes only under `.qa-reloc/`. */
 function selfTest(): void {
   /** The plan for the mpd profile against a home that never exists on disk. */
@@ -650,6 +1062,11 @@ function selfTest(): void {
   /** The `mpd-tool-agent-team` row's config, whose two providers are pinned next. */
   const toolTeamPlane = plan.rows.find((r: Row): boolean => r.id === "mpd-tool-agent-team")!.config!
   if (toolTeamPlane.freshProvider !== "spawn" || toolTeamPlane.forkProvider !== "fork") { console.error("[install-profile self-test] FAIL: mpd-tool-agent-team providers"); process.exit(1) }
+  // ── D4: the two-generation team rows and the ONE shared guard predicate ───────────────────
+  // The six rows, the guard byte identity against the bundle patch, the render path and the whole
+  // decision matrix (fixture harnesses) live in their own arm set — the predicate is the only thing
+  // deciding which generation mounts, so it gets a replay instead of an assertion about itself.
+  teamRowsSelfTest(plan, bundlePatchText)
   // ── the agent preset plane (0.1.7-rc.2 row model) ─────────────────────────
   // STRICT ZERO-OVERRIDE (user decision 2026-10-02): the installer carries NO
   // registry row. Its subject is host-owned (dsh-web-app declares
@@ -739,7 +1156,7 @@ function selfTest(): void {
   } finally {
     try { rmSync(tmp, { recursive: true, force: true }) } catch { /* best-effort cleanup */ }
   }
-  console.log("[install-profile self-test] ok: path model + row set + official agent-team rows + preset row (verbatim) + zero-override row policy (negative control reddens on a seeded id-target) + web-compat entry + id-target render verified")
+  console.log("[install-profile self-test] ok: path model + row set + official agent-team rows (three old-generation rows; the rc.2 host owns the plane; generation+resolvability matrix over fixture hosts) + preset row (verbatim) + zero-override row policy (negative control reddens on a seeded id-target) + web-compat entry + id-target render verified")
 }
 
 /** The entry point: parse the flags, print the plan, and write it only under `--yes`. */

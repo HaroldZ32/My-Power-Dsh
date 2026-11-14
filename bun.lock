@@ -5,9 +5,6 @@
     "": {
       "name": "@mpd-dsh/mpd",
       "dependencies": {
-        "@deepseek-ai/dsh-experimental-agent-team": "0.2.2-rc.1",
-        "@deepseek-ai/dsh-experimental-client-ui-agent-team": "0.2.2-rc.1",
-        "@deepseek-ai/dsh-experimental-tool-agent-team": "0.2.2-rc.1",
         "@dsh-std/sdk": "0.1.1-rc.2",
       },
       "devDependencies": {
@@ -239,7 +236,7 @@
 
     "@deepseek-ai/dsh-attachment": ["@deepseek-ai/dsh-attachment@0.1.5-rc.2", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/dsh-attachment/-/dsh-attachment-0.1.5-rc.2.tgz", { "peerDependencies": { "@deepseek-ai/cordis": "^4.0.2", "@deepseek-ai/dsh-brand": "^0.1.5-rc.2" } }, "sha512-S6b8/WjqzGw+dMDLRXnq+tbijDGkQh38yE+zpQytX2/w/mPR3VzGj5r6McS01WwD76vXR8WFoheSCLyCAro8WQ=="],
 
-    "@deepseek-ai/dsh-brand": ["@deepseek-ai/dsh-brand@0.2.2-rc.1", "", { "peerDependencies": { "@deepseek-ai/cordis": "~4.1.0" } }, "sha512-ShGNEmNuEQA+bfkspWC2kGrdbrM4dFNhqlrNHIWsHO+PgVH1KoTKTLSraT1pt0A8YYk/moKE0gL2gY9dNBU+rw=="],
+    "@deepseek-ai/dsh-brand": ["@deepseek-ai/dsh-brand@0.1.7-rc.2", "", { "peerDependencies": { "@deepseek-ai/cordis": "~4.0.4" } }, "sha512-cvcvlNRuiFqZNNqyxdu7wcpiBjd9xa/0MpuhRvee43zBp9uED2p5JolZr5/2EKJf57gYx9k9bedb+Zbyiqnpkw=="],
 
     "@deepseek-ai/dsh-chunked-list": ["@deepseek-ai/dsh-chunked-list@0.1.5-rc.2", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/dsh-chunked-list/-/dsh-chunked-list-0.1.5-rc.2.tgz", { "dependencies": { "zod": "^4.4.3" }, "peerDependencies": { "@deepseek-ai/cordis": "^4.0.2" } }, "sha512-XPr311bleMyOh9SzhTMmc1mC6qx2Tty8315MNYYyzIOLAns0h27PReFa9axy8I0soBaE7gfp6eQI1ZriVkI68g=="],
 
@@ -255,12 +252,6 @@
 
     "@deepseek-ai/dsh-code-runtime": ["@deepseek-ai/dsh-code-runtime@0.1.5-rc.2", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/dsh-code-runtime/-/dsh-code-runtime-0.1.5-rc.2.tgz", { "peerDependencies": { "@deepseek-ai/cordis": "^4.0.2" } }, "sha512-qex3bvQNBkv1eapi8iTyNq+c52q1kxfdv5+8Nkswv4/kwrkvcDa4n4iiCbEgKS+K5U4DiVIprnyIv8Nx7il7Nw=="],
 
-    "@deepseek-ai/dsh-experimental-agent-team": ["@deepseek-ai/dsh-experimental-agent-team@0.2.2-rc.1", "", { "dependencies": { "@deepseek-ai/dsh-brand": "0.2.2-rc.1", "@deepseek-ai/schemastery": "~3.19.0", "zod": "4.4.3" }, "peerDependencies": { "@deepseek-ai/cordis": "~4.1.0", "@deepseek-ai/dsh-agent": "0.2.2-rc.1", "@deepseek-ai/dsh-llm": "0.2.2-rc.1", "@deepseek-ai/dsh-session": "0.2.2-rc.1", "@deepseek-ai/dsh-session-persistence": "0.2.2-rc.1", "@deepseek-ai/dsh-session-projection": "0.2.2-rc.1", "@deepseek-ai/dsh-subagent": "0.2.2-rc.1" } }, "sha512-CQ3AntAEnrUEgnDZRs1lfp9B6xycL6gnK0SRkgPePw8iKt9C/6bzX8M2cbPUbTltLuBI1GQxkAaQBGE4ZzvCmA=="],
-
-    "@deepseek-ai/dsh-experimental-client-ui-agent-team": ["@deepseek-ai/dsh-experimental-client-ui-agent-team@0.2.2-rc.1", "", { "peerDependencies": { "@deepseek-ai/cordis": "~4.1.0" } }, "sha512-SRCMDumUmdazJwu28/BiELlLU2YwXE1svMMqmCUMMjPqdOOeyHjzOk+9igJB7tHdzgCNrEp+tiR3oQ6TaHzYqg=="],
-
-    "@deepseek-ai/dsh-experimental-tool-agent-team": ["@deepseek-ai/dsh-experimental-tool-agent-team@0.2.2-rc.1", "", { "dependencies": { "@deepseek-ai/schemastery": "~3.19.0" }, "peerDependencies": { "@deepseek-ai/cordis": "~4.1.0", "@deepseek-ai/dsh-agent": "0.2.2-rc.1", "@deepseek-ai/dsh-experimental-agent-team": "0.2.2-rc.1", "@deepseek-ai/dsh-session": "0.2.2-rc.1", "@deepseek-ai/dsh-system-prompt": "0.2.2-rc.1", "@deepseek-ai/dsh-tools": "0.2.2-rc.1" } }, "sha512-DCQkIJ5IYy2mOupY8pphQ5jsBKEkpFf1YgWF/Z7s9TmKqJ+tSbj3TVy4v0R4f12bXKftd59Rpp2czotqLY2KDA=="],
-
     "@deepseek-ai/dsh-host-webserver": ["@deepseek-ai/dsh-host-webserver@0.1.5-rc.2", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/dsh-host-webserver/-/dsh-host-webserver-0.1.5-rc.2.tgz", { "dependencies": { "@deepseek-ai/schemastery": "^3.18.2", "compression": "^1.8.1", "negotiator": "^1.0.0" }, "peerDependencies": { "@deepseek-ai/cordis": "^4.0.2" } }, "sha512-lFgGm9wDrHiTBANzsdoWzdfPSjWYuDFwCoNQ4Uko57Fo5XASL2unfRHGm1xZ828rwEYuGwRvJHMOuoP/17VmlA=="],
 
     "@deepseek-ai/dsh-invariants": ["@deepseek-ai/dsh-invariants@0.1.5-rc.2", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/dsh-invariants/-/dsh-invariants-0.1.5-rc.2.tgz", { "dependencies": { "@deepseek-ai/schemastery": "^3.18.2" }, "peerDependencies": { "@deepseek-ai/cordis": "^4.0.2" } }, "sha512-oUxttB2yjAgkk47AiXOCxk9GwnfGvIEGsQfnMD7fukwIdD3KLJObU7+nz63tbFN80rjwMI8rg+p9QBQ10KU5+g=="],
@@ -270,8 +261,6 @@
     "@deepseek-ai/dsh-scope": ["@deepseek-ai/dsh-scope@0.1.5-rc.2", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/dsh-scope/-/dsh-scope-0.1.5-rc.2.tgz", { "peerDependencies": { "@deepseek-ai/cordis": "^4.0.2", "@deepseek-ai/dsh-invariants": "^0.1.5-rc.2" } }, "sha512-JwItISje52iVIjlGMNayRVMZrvZU/0i3Gr0s+coND5nBp5lS+pOj9Zf1RQzA5cWjHYCWKmDuQc+m6zGlwmtAeQ=="],
 
     "@deepseek-ai/dsh-session": ["@deepseek-ai/dsh-session@0.1.5-rc.2", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/dsh-session/-/dsh-session-0.1.5-rc.2.tgz", { "dependencies": { "@deepseek-ai/dsh-brand": "^0.1.5-rc.2", "@deepseek-ai/dsh-llm": "^0.1.5-rc.2", "@deepseek-ai/dsh-util-values": "^0.1.5-rc.2" }, "peerDependencies": { "@deepseek-ai/cordis": "^4.0.2", "@deepseek-ai/dsh-scope": "^0.1.5-rc.2" } }, "sha512-y+klWiGAWR4m4cc4ylurA0cW63673B4N8cr2ANMimweDZAfxL4XVBC7WiD/5DT2DtIhYmVZhz/niyS/WbniUTA=="],
-
-    "@deepseek-ai/dsh-session-persistence": ["@deepseek-ai/dsh-session-persistence@0.1.7-rc.2", "", { "dependencies": { "@deepseek-ai/dsh-util-values": "0.1.7-rc.2" }, "peerDependencies": { "@deepseek-ai/cordis": "~4.0.4", "@deepseek-ai/dsh-brand": "0.1.7-rc.2", "@deepseek-ai/dsh-session": "0.1.7-rc.2", "@deepseek-ai/dsh-timeout": "0.1.7-rc.2" } }, "sha512-xZXMo8hYMnh96UyxpkmDqvfxpmVNWbTlXqSuJray7S2kW8AkugKDc+FMy2+/znoBHhZsi+2/uKJRPj6dwDBIsg=="],
 
     "@deepseek-ai/dsh-session-projection": ["@deepseek-ai/dsh-session-projection@0.1.5-rc.2", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/dsh-session-projection/-/dsh-session-projection-0.1.5-rc.2.tgz", { "dependencies": { "zod": "^4.4.3" }, "peerDependencies": { "@deepseek-ai/cordis": "^4.0.2", "@deepseek-ai/dsh-session": "^0.1.5-rc.2" } }, "sha512-WMXGBdbxD1FO1Eu7Qs2FKDXq/kl+z+5b7zGLHdra66eEnShSnQmdF9bXSFQu1sJwba2yF7ueMcBJpWy76gtgQQ=="],
 
@@ -987,7 +976,7 @@
 
     "yoctocolors-cjs": ["yoctocolors-cjs@2.1.3", "", {}, "sha512-U/PBtDf35ff0D8X8D0jfdzHYEPFxAI7jJlxZXwCSez5M3190m+QobIfh+sWDWSHMCWWJN2AWamkegn6vr6YBTw=="],
 
-    "zod": ["zod@4.4.3", "", {}, "sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ=="],
+    "zod": ["zod@4.6.5", "https://repo.huaweicloud.com/repository/npm/zod/-/zod-4.6.5.tgz", {}, "sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q=="],
 
     "zod-to-json-schema": ["zod-to-json-schema@3.25.2", "", { "peerDependencies": { "zod": "^3.25.28 || ^4" } }, "sha512-O/PgfnpT1xKSDeQYSCfRI5Gy3hPf91mKVDuYLUHZJMiDFptvP41MSnWofm8dnCm0256ZNfZIM7DSzuSMAFnjHA=="],
 
@@ -997,21 +986,13 @@
 
     "@deepseek-ai/dsh-attachment/@deepseek-ai/dsh-brand": ["@deepseek-ai/dsh-brand@0.1.5-rc.2", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/dsh-brand/-/dsh-brand-0.1.5-rc.2.tgz", { "peerDependencies": { "@deepseek-ai/cordis": "^4.0.2" } }, "sha512-/+3TzQRYT4M8NINZ9OrsL5VWNyQSXof8mFLx3txiosWA7Bt0H6UcxUdKGXVwj6gCXhsQ74mzEHm2ucsflG0mYA=="],
 
-    "@deepseek-ai/dsh-chunked-list/zod": ["zod@4.6.5", "https://repo.huaweicloud.com/repository/npm/zod/-/zod-4.6.5.tgz", {}, "sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q=="],
-
     "@deepseek-ai/dsh-client-locale/@deepseek-ai/schemastery": ["@deepseek-ai/schemastery@3.18.2", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/schemastery/-/schemastery-3.18.2.tgz", { "dependencies": { "@deepseek-ai/cosmokit": "^1.8.3", "@standard-schema/spec": "^1.1.0" } }, "sha512-njDtZsznjYxok7KLLlHOPyuv2efdWVbSflAHgztSfbMsg+CVraEoRe2DjOCgClYv3ZCSm7WXoaUkbB/+RY7tWQ=="],
 
     "@deepseek-ai/dsh-client-ui-conversation/@deepseek-ai/schemastery": ["@deepseek-ai/schemastery@3.18.2", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/schemastery/-/schemastery-3.18.2.tgz", { "dependencies": { "@deepseek-ai/cosmokit": "^1.8.3", "@standard-schema/spec": "^1.1.0" } }, "sha512-njDtZsznjYxok7KLLlHOPyuv2efdWVbSflAHgztSfbMsg+CVraEoRe2DjOCgClYv3ZCSm7WXoaUkbB/+RY7tWQ=="],
 
-    "@deepseek-ai/dsh-experimental-agent-team/@deepseek-ai/schemastery": ["@deepseek-ai/schemastery@3.19.0", "", { "dependencies": { "@deepseek-ai/cosmokit": "~1.9.0", "@standard-schema/spec": "^1.1.0" } }, "sha512-bDXoYQa7ghAhmdYD5VPlzKxEzJV/aKkz5l4V5h1u06z8GAPN1ROewSjvR9WiXhpa52E9fng8lpH5QdCRIQgnyQ=="],
-
-    "@deepseek-ai/dsh-experimental-tool-agent-team/@deepseek-ai/schemastery": ["@deepseek-ai/schemastery@3.19.0", "", { "dependencies": { "@deepseek-ai/cosmokit": "~1.9.0", "@standard-schema/spec": "^1.1.0" } }, "sha512-bDXoYQa7ghAhmdYD5VPlzKxEzJV/aKkz5l4V5h1u06z8GAPN1ROewSjvR9WiXhpa52E9fng8lpH5QdCRIQgnyQ=="],
-
     "@deepseek-ai/dsh-host-webserver/@deepseek-ai/schemastery": ["@deepseek-ai/schemastery@3.18.2", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/schemastery/-/schemastery-3.18.2.tgz", { "dependencies": { "@deepseek-ai/cosmokit": "^1.8.3", "@standard-schema/spec": "^1.1.0" } }, "sha512-njDtZsznjYxok7KLLlHOPyuv2efdWVbSflAHgztSfbMsg+CVraEoRe2DjOCgClYv3ZCSm7WXoaUkbB/+RY7tWQ=="],
 
     "@deepseek-ai/dsh-invariants/@deepseek-ai/schemastery": ["@deepseek-ai/schemastery@3.18.2", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/schemastery/-/schemastery-3.18.2.tgz", { "dependencies": { "@deepseek-ai/cosmokit": "^1.8.3", "@standard-schema/spec": "^1.1.0" } }, "sha512-njDtZsznjYxok7KLLlHOPyuv2efdWVbSflAHgztSfbMsg+CVraEoRe2DjOCgClYv3ZCSm7WXoaUkbB/+RY7tWQ=="],
-
-    "@deepseek-ai/dsh-llm/@deepseek-ai/dsh-brand": ["@deepseek-ai/dsh-brand@0.1.7-rc.2", "", { "peerDependencies": { "@deepseek-ai/cordis": "~4.0.4" } }, "sha512-cvcvlNRuiFqZNNqyxdu7wcpiBjd9xa/0MpuhRvee43zBp9uED2p5JolZr5/2EKJf57gYx9k9bedb+Zbyiqnpkw=="],
 
     "@deepseek-ai/dsh-llm/@deepseek-ai/dsh-typert-protocol": ["@deepseek-ai/dsh-typert-protocol@0.1.7-rc.2", "", { "dependencies": { "@deepseek-ai/dsh-brand": "0.1.7-rc.2" }, "peerDependencies": { "@deepseek-ai/cordis": "~4.0.4" } }, "sha512-oJm03zqMQlvt16Ejw7VWy3/gqlJGrBCZj3Z4KL8ydLJeeTToKIR49WVCxMbJTlH0F9QFljruLtHguA5B99AeUQ=="],
 
@@ -1019,25 +1000,15 @@
 
     "@deepseek-ai/dsh-llm/@deepseek-ai/schemastery": ["@deepseek-ai/schemastery@3.18.4", "", { "dependencies": { "@deepseek-ai/cosmokit": "~1.8.5", "@standard-schema/spec": "^1.1.0" } }, "sha512-SSXO6tYuyrIqKVbmOnIq0s+riUywYzouFMcnBluHF9n4KMo2G8HvEzhCYj6pj2617/glOjbJuVInJ9hfONsjkg=="],
 
-    "@deepseek-ai/dsh-llm/zod": ["zod@4.6.5", "https://repo.huaweicloud.com/repository/npm/zod/-/zod-4.6.5.tgz", {}, "sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q=="],
-
     "@deepseek-ai/dsh-session/@deepseek-ai/dsh-brand": ["@deepseek-ai/dsh-brand@0.1.5-rc.2", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/dsh-brand/-/dsh-brand-0.1.5-rc.2.tgz", { "peerDependencies": { "@deepseek-ai/cordis": "^4.0.2" } }, "sha512-/+3TzQRYT4M8NINZ9OrsL5VWNyQSXof8mFLx3txiosWA7Bt0H6UcxUdKGXVwj6gCXhsQ74mzEHm2ucsflG0mYA=="],
 
     "@deepseek-ai/dsh-session/@deepseek-ai/dsh-llm": ["@deepseek-ai/dsh-llm@0.1.5-rc.2", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/dsh-llm/-/dsh-llm-0.1.5-rc.2.tgz", { "dependencies": { "@deepseek-ai/dsh-brand": "^0.1.5-rc.2", "@deepseek-ai/dsh-timeout": "^0.1.5-rc.2", "@deepseek-ai/dsh-typert-protocol": "^0.1.5-rc.2", "@deepseek-ai/dsh-util-crypto": "^0.1.5-rc.2", "@deepseek-ai/dsh-util-values": "^0.1.5-rc.2", "@deepseek-ai/schemastery": "^3.18.2", "zod": "^4.4.3" }, "peerDependencies": { "@deepseek-ai/cordis": "^4.0.2" } }, "sha512-Z7BVsBkK24SE4EItQeow8PHms/9GP0DSTi337vTAa/RY7tNg2Snz3INcXUj6CPZfvntQr1in9op9wLI+rfNsqA=="],
-
-    "@deepseek-ai/dsh-session-persistence/@deepseek-ai/dsh-brand": ["@deepseek-ai/dsh-brand@0.1.7-rc.2", "", { "peerDependencies": { "@deepseek-ai/cordis": "~4.0.4" } }, "sha512-cvcvlNRuiFqZNNqyxdu7wcpiBjd9xa/0MpuhRvee43zBp9uED2p5JolZr5/2EKJf57gYx9k9bedb+Zbyiqnpkw=="],
-
-    "@deepseek-ai/dsh-session-persistence/@deepseek-ai/dsh-util-values": ["@deepseek-ai/dsh-util-values@0.1.7-rc.2", "", { "peerDependencies": { "@deepseek-ai/cordis": "~4.0.4" } }, "sha512-UX8nh5SbtZcPVVEvjd+9PCPcbybA6OpVzJGgFxYn59ao/7QQGyYbByS8KXr+THU5JtqmDDVb9xGUSJaF2IYmeQ=="],
-
-    "@deepseek-ai/dsh-session-projection/zod": ["zod@4.6.5", "https://repo.huaweicloud.com/repository/npm/zod/-/zod-4.6.5.tgz", {}, "sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q=="],
 
     "@deepseek-ai/dsh-settings/@deepseek-ai/dsh-brand": ["@deepseek-ai/dsh-brand@0.1.5-rc.2", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/dsh-brand/-/dsh-brand-0.1.5-rc.2.tgz", { "peerDependencies": { "@deepseek-ai/cordis": "^4.0.2" } }, "sha512-/+3TzQRYT4M8NINZ9OrsL5VWNyQSXof8mFLx3txiosWA7Bt0H6UcxUdKGXVwj6gCXhsQ74mzEHm2ucsflG0mYA=="],
 
     "@deepseek-ai/dsh-subagent/@deepseek-ai/dsh-brand": ["@deepseek-ai/dsh-brand@0.1.5-rc.2", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/dsh-brand/-/dsh-brand-0.1.5-rc.2.tgz", { "peerDependencies": { "@deepseek-ai/cordis": "^4.0.2" } }, "sha512-/+3TzQRYT4M8NINZ9OrsL5VWNyQSXof8mFLx3txiosWA7Bt0H6UcxUdKGXVwj6gCXhsQ74mzEHm2ucsflG0mYA=="],
 
     "@deepseek-ai/dsh-subagent/@deepseek-ai/dsh-llm": ["@deepseek-ai/dsh-llm@0.1.5-rc.2", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/dsh-llm/-/dsh-llm-0.1.5-rc.2.tgz", { "dependencies": { "@deepseek-ai/dsh-brand": "^0.1.5-rc.2", "@deepseek-ai/dsh-timeout": "^0.1.5-rc.2", "@deepseek-ai/dsh-typert-protocol": "^0.1.5-rc.2", "@deepseek-ai/dsh-util-crypto": "^0.1.5-rc.2", "@deepseek-ai/dsh-util-values": "^0.1.5-rc.2", "@deepseek-ai/schemastery": "^3.18.2", "zod": "^4.4.3" }, "peerDependencies": { "@deepseek-ai/cordis": "^4.0.2" } }, "sha512-Z7BVsBkK24SE4EItQeow8PHms/9GP0DSTi337vTAa/RY7tNg2Snz3INcXUj6CPZfvntQr1in9op9wLI+rfNsqA=="],
-
-    "@deepseek-ai/dsh-subagent/zod": ["zod@4.6.5", "https://repo.huaweicloud.com/repository/npm/zod/-/zod-4.6.5.tgz", {}, "sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q=="],
 
     "@deepseek-ai/dsh-system-prompt/@deepseek-ai/dsh-llm": ["@deepseek-ai/dsh-llm@0.1.5-rc.2", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/dsh-llm/-/dsh-llm-0.1.5-rc.2.tgz", { "dependencies": { "@deepseek-ai/dsh-brand": "^0.1.5-rc.2", "@deepseek-ai/dsh-timeout": "^0.1.5-rc.2", "@deepseek-ai/dsh-typert-protocol": "^0.1.5-rc.2", "@deepseek-ai/dsh-util-crypto": "^0.1.5-rc.2", "@deepseek-ai/dsh-util-values": "^0.1.5-rc.2", "@deepseek-ai/schemastery": "^3.18.2", "zod": "^4.4.3" }, "peerDependencies": { "@deepseek-ai/cordis": "^4.0.2" } }, "sha512-Z7BVsBkK24SE4EItQeow8PHms/9GP0DSTi337vTAa/RY7tNg2Snz3INcXUj6CPZfvntQr1in9op9wLI+rfNsqA=="],
 
@@ -1054,8 +1025,6 @@
     "@deepseek-ai/dsh-user-approval/@deepseek-ai/dsh-llm": ["@deepseek-ai/dsh-llm@0.1.5-rc.2", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/dsh-llm/-/dsh-llm-0.1.5-rc.2.tgz", { "dependencies": { "@deepseek-ai/dsh-brand": "^0.1.5-rc.2", "@deepseek-ai/dsh-timeout": "^0.1.5-rc.2", "@deepseek-ai/dsh-typert-protocol": "^0.1.5-rc.2", "@deepseek-ai/dsh-util-crypto": "^0.1.5-rc.2", "@deepseek-ai/dsh-util-values": "^0.1.5-rc.2", "@deepseek-ai/schemastery": "^3.18.2", "zod": "^4.4.3" }, "peerDependencies": { "@deepseek-ai/cordis": "^4.0.2" } }, "sha512-Z7BVsBkK24SE4EItQeow8PHms/9GP0DSTi337vTAa/RY7tNg2Snz3INcXUj6CPZfvntQr1in9op9wLI+rfNsqA=="],
 
     "@deepseek-ai/dsh-user-approval/@deepseek-ai/schemastery": ["@deepseek-ai/schemastery@3.18.2", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/schemastery/-/schemastery-3.18.2.tgz", { "dependencies": { "@deepseek-ai/cosmokit": "^1.8.3", "@standard-schema/spec": "^1.1.0" } }, "sha512-njDtZsznjYxok7KLLlHOPyuv2efdWVbSflAHgztSfbMsg+CVraEoRe2DjOCgClYv3ZCSm7WXoaUkbB/+RY7tWQ=="],
-
-    "@modelcontextprotocol/sdk/zod": ["zod@4.6.5", "https://repo.huaweicloud.com/repository/npm/zod/-/zod-4.6.5.tgz", {}, "sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q=="],
 
     "body-parser/content-type": ["content-type@2.1.0", "https://repo.huaweicloud.com/repository/npm/content-type/-/content-type-2.1.0.tgz", {}, "sha512-mj7UPXE0jaqaOsukNZRUEfEi2AcL7C/vwmwcHV0O97eO1E1pxBZuyjlZrx5seTaNBg1U6+o35wpa35Qfcc+7ag=="],
 
@@ -1103,15 +1072,9 @@
 
     "@deepseek-ai/dsh-agent/@deepseek-ai/dsh-llm/@deepseek-ai/schemastery": ["@deepseek-ai/schemastery@3.18.2", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/schemastery/-/schemastery-3.18.2.tgz", { "dependencies": { "@deepseek-ai/cosmokit": "^1.8.3", "@standard-schema/spec": "^1.1.0" } }, "sha512-njDtZsznjYxok7KLLlHOPyuv2efdWVbSflAHgztSfbMsg+CVraEoRe2DjOCgClYv3ZCSm7WXoaUkbB/+RY7tWQ=="],
 
-    "@deepseek-ai/dsh-agent/@deepseek-ai/dsh-llm/zod": ["zod@4.6.5", "https://repo.huaweicloud.com/repository/npm/zod/-/zod-4.6.5.tgz", {}, "sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q=="],
-
     "@deepseek-ai/dsh-client-locale/@deepseek-ai/schemastery/@deepseek-ai/cosmokit": ["@deepseek-ai/cosmokit@1.8.3", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/cosmokit/-/cosmokit-1.8.3.tgz", {}, "sha512-qBo+ronVM6Eu2WNVJXi8JcMiqZ19T9BRIpV+5qJUFPXjGH/Z0QKcQMC/IZJ7L394YTOtJgcovbk9qP0w2GsBXQ=="],
 
     "@deepseek-ai/dsh-client-ui-conversation/@deepseek-ai/schemastery/@deepseek-ai/cosmokit": ["@deepseek-ai/cosmokit@1.8.3", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/cosmokit/-/cosmokit-1.8.3.tgz", {}, "sha512-qBo+ronVM6Eu2WNVJXi8JcMiqZ19T9BRIpV+5qJUFPXjGH/Z0QKcQMC/IZJ7L394YTOtJgcovbk9qP0w2GsBXQ=="],
-
-    "@deepseek-ai/dsh-experimental-agent-team/@deepseek-ai/schemastery/@deepseek-ai/cosmokit": ["@deepseek-ai/cosmokit@1.9.0", "", {}, "sha512-5O1S53mZiJyZYcvxxD0Qv1EY7qFPSxbGyD8CbVK6gw7W9FvcXZj2YIX1ZkOqyQQ3Xt2rFkZDHJv0+V3Zmmp8CA=="],
-
-    "@deepseek-ai/dsh-experimental-tool-agent-team/@deepseek-ai/schemastery/@deepseek-ai/cosmokit": ["@deepseek-ai/cosmokit@1.9.0", "", {}, "sha512-5O1S53mZiJyZYcvxxD0Qv1EY7qFPSxbGyD8CbVK6gw7W9FvcXZj2YIX1ZkOqyQQ3Xt2rFkZDHJv0+V3Zmmp8CA=="],
 
     "@deepseek-ai/dsh-host-webserver/@deepseek-ai/schemastery/@deepseek-ai/cosmokit": ["@deepseek-ai/cosmokit@1.8.3", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/cosmokit/-/cosmokit-1.8.3.tgz", {}, "sha512-qBo+ronVM6Eu2WNVJXi8JcMiqZ19T9BRIpV+5qJUFPXjGH/Z0QKcQMC/IZJ7L394YTOtJgcovbk9qP0w2GsBXQ=="],
 
@@ -1125,8 +1088,6 @@
 
     "@deepseek-ai/dsh-session/@deepseek-ai/dsh-llm/@deepseek-ai/schemastery": ["@deepseek-ai/schemastery@3.18.2", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/schemastery/-/schemastery-3.18.2.tgz", { "dependencies": { "@deepseek-ai/cosmokit": "^1.8.3", "@standard-schema/spec": "^1.1.0" } }, "sha512-njDtZsznjYxok7KLLlHOPyuv2efdWVbSflAHgztSfbMsg+CVraEoRe2DjOCgClYv3ZCSm7WXoaUkbB/+RY7tWQ=="],
 
-    "@deepseek-ai/dsh-session/@deepseek-ai/dsh-llm/zod": ["zod@4.6.5", "https://repo.huaweicloud.com/repository/npm/zod/-/zod-4.6.5.tgz", {}, "sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q=="],
-
     "@deepseek-ai/dsh-subagent/@deepseek-ai/dsh-llm/@deepseek-ai/dsh-timeout": ["@deepseek-ai/dsh-timeout@0.1.5-rc.2", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/dsh-timeout/-/dsh-timeout-0.1.5-rc.2.tgz", { "peerDependencies": { "@deepseek-ai/cordis": "^4.0.2" } }, "sha512-FgfaAw8Zt5X4Y6Ljh833B8Hy7h96FeR+yjNKI3iSyZSqREqOBgvDGXFfQlSu6V3Buvw/cbI/CJUQJvfRBKXOiA=="],
 
     "@deepseek-ai/dsh-subagent/@deepseek-ai/dsh-llm/@deepseek-ai/dsh-util-crypto": ["@deepseek-ai/dsh-util-crypto@0.1.5-rc.2", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/dsh-util-crypto/-/dsh-util-crypto-0.1.5-rc.2.tgz", { "peerDependencies": { "@deepseek-ai/cordis": "^4.0.2" } }, "sha512-JR0aJEUL35RE8FVT89wMZMbPwMrbkjNcy+gE9pq70d/m2Zxw3a0iNer+BAxPAKYPbmy0xDDXReTwXiecKVy4sQ=="],
@@ -1139,23 +1100,17 @@
 
     "@deepseek-ai/dsh-system-prompt/@deepseek-ai/dsh-llm/@deepseek-ai/dsh-util-crypto": ["@deepseek-ai/dsh-util-crypto@0.1.5-rc.2", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/dsh-util-crypto/-/dsh-util-crypto-0.1.5-rc.2.tgz", { "peerDependencies": { "@deepseek-ai/cordis": "^4.0.2" } }, "sha512-JR0aJEUL35RE8FVT89wMZMbPwMrbkjNcy+gE9pq70d/m2Zxw3a0iNer+BAxPAKYPbmy0xDDXReTwXiecKVy4sQ=="],
 
-    "@deepseek-ai/dsh-system-prompt/@deepseek-ai/dsh-llm/zod": ["zod@4.6.5", "https://repo.huaweicloud.com/repository/npm/zod/-/zod-4.6.5.tgz", {}, "sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q=="],
-
     "@deepseek-ai/dsh-system-prompt/@deepseek-ai/schemastery/@deepseek-ai/cosmokit": ["@deepseek-ai/cosmokit@1.8.3", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/cosmokit/-/cosmokit-1.8.3.tgz", {}, "sha512-qBo+ronVM6Eu2WNVJXi8JcMiqZ19T9BRIpV+5qJUFPXjGH/Z0QKcQMC/IZJ7L394YTOtJgcovbk9qP0w2GsBXQ=="],
 
     "@deepseek-ai/dsh-tools/@deepseek-ai/dsh-llm/@deepseek-ai/dsh-timeout": ["@deepseek-ai/dsh-timeout@0.1.5-rc.2", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/dsh-timeout/-/dsh-timeout-0.1.5-rc.2.tgz", { "peerDependencies": { "@deepseek-ai/cordis": "^4.0.2" } }, "sha512-FgfaAw8Zt5X4Y6Ljh833B8Hy7h96FeR+yjNKI3iSyZSqREqOBgvDGXFfQlSu6V3Buvw/cbI/CJUQJvfRBKXOiA=="],
 
     "@deepseek-ai/dsh-tools/@deepseek-ai/dsh-llm/@deepseek-ai/dsh-util-crypto": ["@deepseek-ai/dsh-util-crypto@0.1.5-rc.2", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/dsh-util-crypto/-/dsh-util-crypto-0.1.5-rc.2.tgz", { "peerDependencies": { "@deepseek-ai/cordis": "^4.0.2" } }, "sha512-JR0aJEUL35RE8FVT89wMZMbPwMrbkjNcy+gE9pq70d/m2Zxw3a0iNer+BAxPAKYPbmy0xDDXReTwXiecKVy4sQ=="],
 
-    "@deepseek-ai/dsh-tools/@deepseek-ai/dsh-llm/zod": ["zod@4.6.5", "https://repo.huaweicloud.com/repository/npm/zod/-/zod-4.6.5.tgz", {}, "sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q=="],
-
     "@deepseek-ai/dsh-tools/@deepseek-ai/schemastery/@deepseek-ai/cosmokit": ["@deepseek-ai/cosmokit@1.8.3", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/cosmokit/-/cosmokit-1.8.3.tgz", {}, "sha512-qBo+ronVM6Eu2WNVJXi8JcMiqZ19T9BRIpV+5qJUFPXjGH/Z0QKcQMC/IZJ7L394YTOtJgcovbk9qP0w2GsBXQ=="],
 
     "@deepseek-ai/dsh-user-approval/@deepseek-ai/dsh-llm/@deepseek-ai/dsh-timeout": ["@deepseek-ai/dsh-timeout@0.1.5-rc.2", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/dsh-timeout/-/dsh-timeout-0.1.5-rc.2.tgz", { "peerDependencies": { "@deepseek-ai/cordis": "^4.0.2" } }, "sha512-FgfaAw8Zt5X4Y6Ljh833B8Hy7h96FeR+yjNKI3iSyZSqREqOBgvDGXFfQlSu6V3Buvw/cbI/CJUQJvfRBKXOiA=="],
 
     "@deepseek-ai/dsh-user-approval/@deepseek-ai/dsh-llm/@deepseek-ai/dsh-util-crypto": ["@deepseek-ai/dsh-util-crypto@0.1.5-rc.2", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/dsh-util-crypto/-/dsh-util-crypto-0.1.5-rc.2.tgz", { "peerDependencies": { "@deepseek-ai/cordis": "^4.0.2" } }, "sha512-JR0aJEUL35RE8FVT89wMZMbPwMrbkjNcy+gE9pq70d/m2Zxw3a0iNer+BAxPAKYPbmy0xDDXReTwXiecKVy4sQ=="],
-
-    "@deepseek-ai/dsh-user-approval/@deepseek-ai/dsh-llm/zod": ["zod@4.6.5", "https://repo.huaweicloud.com/repository/npm/zod/-/zod-4.6.5.tgz", {}, "sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q=="],
 
     "@deepseek-ai/dsh-user-approval/@deepseek-ai/schemastery/@deepseek-ai/cosmokit": ["@deepseek-ai/cosmokit@1.8.3", "https://repo.huaweicloud.com/repository/npm/@deepseek-ai/cosmokit/-/cosmokit-1.8.3.tgz", {}, "sha512-qBo+ronVM6Eu2WNVJXi8JcMiqZ19T9BRIpV+5qJUFPXjGH/Z0QKcQMC/IZJ7L394YTOtJgcovbk9qP0w2GsBXQ=="],
 

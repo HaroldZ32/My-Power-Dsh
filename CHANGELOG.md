@@ -14,6 +14,63 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
+## 0.19.0 — three-plane adaptation: DSH 0.2.2-rc.2, DSH-TUI 0.20.0, a host-owned team plane and a conservative generation guard
+
+**Changed — the team mount moved to the host on the new generation, and its guard became a
+composition.** `0.2.2-rc.2` renamed the three Agent Teams packages, made their plugins THROW at
+activation on the config keys the rc.1 rows ship, and changed who owns the plane: its `dsh-base`
+declares `agent-team` (`@deepseek-ai/dsh-agent-team`, config `{maxTasks: 256}`) and `tool-agent-team`,
+and its `dsh-web-app` declares `ui-agent-team`. A bundle row beside them is a DUPLICATE registration —
+measured: `service "agentTeams" has been registered at <TeamService>` and `prompt section "team:policy"
+is already registered`, two entries failing to activate. The three `-rc2` rows were therefore deleted,
+and the bundle ships the three legacy rows only (`mpd-agent-team`, `mpd-tool-agent-team`,
+`mpd-ui-agent-team`, shipped configs unchanged), enabled on `0.2.2-rc.1` where the host declares none.
+Their package is not declared either: it resolves from the host installation's own nested copy. The
+guard is `(<the shipped dsh-tui clause, byte-identical to HEAD>) || (<generation + resolvability
+clause>)`: the generation half reads the nearest `@deepseek-ai/dsh/package.json` above
+`process.argv[1]` (realpath), consults `baseUrl` only when that is unreadable, then asks whether the
+package resolves from the profile's `node_modules` or from this dsh installation. Unreadable or
+ambiguous disables the rows and writes one line to `<root>/.mpd/logs/mpd-patch-guards.log`, honouring
+`MPD_DSH_TEAM_ROWS=old|new|off`; a throw is the conservative disable, and a host that stops shipping
+the package yields a disabled row PLUS a log line rather than a silently dropped plane.
+`scripts/install-profile.ts` mirrors the same three rows and pins the shipped TUI clause by sha256.
+
+**Added — `teamExecutorOfficial`.** The adapter now decides the official executor by EXECUTABILITY
+(`spawnTeammate`, `sendMessage`, `interrupt`, `waitForChange` all functions) instead of presence, and
+falls through to the native executor with one log line when the mounted official service cannot execute.
+`capabilities()` reports `teamExecutorOfficial` beside `teamExecutorNative`; `TEAM_TASK_METHODS` and the
+task-board paths are unchanged.
+
+**Changed — the pin pair moved on all three planes.** `@deepseek-ai/dsh` `0.2.2-rc.1 → 0.2.2-rc.2`, and
+this release declares **no** team package: on `0.2.2-rc.2` the host's own `dsh-base`/`dsh-web-app` layers
+own the team plane, and on `0.2.2-rc.1` the legacy package resolves from the host installation itself. `@deepseek-harness-tui/dsh-tui`
+`0.19.0 → 0.20.0`, which is additive over 0.19.0 (same 52 rows, same fifteen `tui*` services, identical
+`lib/types/ui.js` with `useStdin` still exported). `compat.hosts` in both manifests and
+`specs/tui-hosts.json` now carry `0.18.0`, `0.19.0` and `0.20.0` as one identical sorted set, and
+`dsh-distribution.json`'s `host-tui` ref moves to `0.20.0`. **`engines.dsh` stays
+`>=0.2.1-rc.5 <0.3.0-0`** (0.2.2-rc.1 and 0.2.1-rc.5 keep working) and `engines.node` stays
+`>=24.9.0`. CI and every Docker lane pin rc.2; the rc.1 regression arm is preserved as a separate
+pinned install under `.qa-tmp/`.
+
+**Fixed — `0.2.2-rc.2` boot failures are structurally impossible on the legacy rows.** The renamed
+plugins reject `maxMembers` / `maxMessageBytes` / `disposalTimeoutMs` and `interrupt` / `freshProvider` /
+`forkProvider`; the generation guard keeps those keys on the disabled generation, so neither set is ever
+activated on the host that cannot accept it. Four stale `engines.dsh` claims (`README.md`,
+`README.zh-CN.md`, and the two `docs/tui.md` §11.13 rows) now state the shipped
+`>=0.2.1-rc.5 <0.3.0-0`, and the `mpd-better-sidebar-host` pin statements name `0.2.2-rc.2`.
+
+**Removed — nothing from this bundle.** The rc.2 generation drops the roster/mailbox/spawn half of
+upstream's `ctx.agentTeams`; the mpd team keeps running on the NATIVE executor and needs nothing from
+those rows, so no bundle capability is withdrawn.
+
+**Declared bounds.** The wave's own gate run DID negotiate a 0.20.0 host (`tui-admission` exit 0:
+49 arms passed, 1 allowed deviation, 5 bounds, both manifests `compatible`), but that arm is static
+admission plus the host's own negotiation only — no live TTY capture of 0.20.0 is claimed here. The
+generation guard is behavioural: its decisions are logged, and which generation a future host reports is
+never provable by a static gate. The "installation rejected on both hosts" shape seen in earlier staging
+was QA-ANCHOR contamination (a sandbox inside the checkout resolving both generations through
+`createRequire`), not a bundle defect; with a clean anchor both hosts install exit 0.
+
 ## 0.18.1 — consults become DAG nodes, and the compaction reseed gets its root cause
 
 **Added — a cell seat can dispatch consults.** `cellwork_delegate` lets a planner, a subcaptain or a

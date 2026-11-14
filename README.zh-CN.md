@@ -2,7 +2,7 @@
 
 [English](./README.md) | **中文**
 
-[![版本](https://img.shields.io/badge/version-0.18.1-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
+[![版本](https://img.shields.io/badge/version-0.19.0-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
 [![npm](https://img.shields.io/badge/npm-%40mpd--dsh%2Fmpd-CB3837.svg)](https://www.npmjs.com/package/@mpd-dsh/mpd)
 [![许可证：MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE.md)
 [![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.2--rc.1-4B32C3.svg)](#致谢)
@@ -138,7 +138,8 @@ DSH-TUI 的 pin 记在 [`dsh-plugin.json`](./dsh-plugin.json) 的 `compat.hosts`
 
 | `@mpd-dsh/mpd` | DeepSeek Harness | DSH-TUI | 说明 |
 |---|---|---|---|
-| 0.18.1 | 0.2.2-rc.1 | 0.19.0 | 本次发布 |
+| 0.19.0 | 0.2.2-rc.2 | 0.20.0 | 本次发布 |
+| 0.18.1 | 0.2.2-rc.1 | 0.19.0 | 上一次发布 |
 | 0.18.0 | 0.2.2-rc.1 | 0.19.0 | 上一次发布 |
 | 0.17.5 | 0.2.1-rc.5 | 0.18.0 | 上一次发布 |
 | 0.17.4 | 0.2.1-rc.5 | 0.18.0 | 上一次发布 |
@@ -156,12 +157,11 @@ DSH-TUI 的 pin 记在 [`dsh-plugin.json`](./dsh-plugin.json) 的 `compat.hosts`
 | 0.15.0 | 0.2.1-rc.2 | 0.16.1 | `previous` |
 | 0.14.0 | 0.2.1-rc.2 | 0.16.1 | `previous`（harness 0.2.1 适配发布） |
 
-最新一行**就是**这一对：`0.18.1` 对 harness `0.2.2-rc.1` 与 DSH-TUI `0.19.0`。旧宿主继续被支持：
-`engines.dsh` 覆盖 `>=0.2.1-rc.2 <0.3.0-0`，而 `0.18.1` 沿用 `0.18.0` 的兼容行——那一版在 `0.2.1-rc.5`
-上实测能安装并运行。`0.19.0`
-的 peer 名单新增 `0.2.2-rc.1`，同时保留 `0.2.1-rc.4`/`0.2.1-rc.5`，而且它的准入链与 `0.18.0` 的逐字节
-相同。钉定位置是 [`package.json`](./package.json) 与 [`dsh-plugin.json`](./dsh-plugin.json) 的
-`compat.hosts`（同时列出两个 TUI 宿主）；其下各行保留为历史，记录更早版本实际钉定的组合。完整矩阵见
+最新一行**就是**这一对：`0.19.0` 对 harness `0.2.2-rc.2` 与 DSH-TUI `0.20.0`。旧宿主继续被支持：
+`engines.dsh` 覆盖 `>=0.2.1-rc.5 <0.3.0-0`，harness `0.2.2-rc.1` 与 `0.2.1-rc.5` 仍可安装并运行，
+`compat.hosts` 波段在新宿主 `0.20.0` 之外保留 DSH-TUI `0.18.0` 与 `0.19.0`。钉定位置是
+[`package.json`](./package.json) 与 [`dsh-plugin.json`](./dsh-plugin.json) 的
+`compat.hosts`（同时列出三个 TUI 宿主）；其下各行保留为历史，记录更早版本实际钉定的组合。完整矩阵见
 [`docs/compatibility.zh-CN.md`](./docs/compatibility.zh-CN.md)。
 
 ## 快速上手

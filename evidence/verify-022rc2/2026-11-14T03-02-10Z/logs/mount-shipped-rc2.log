@@ -1,0 +1,13 @@
+== dsh --version ==
+0.2.2-rc.2
+== plugin add (link install of the checkout) ==
+INSTALL_EXIT=1
+== dump-config ==
+DUMP_EXIT=0
+99
+== web boot (25s) ==
+BOOT_EXIT=124
+== boot.log (first 6 lines, token masked) ==
+== guard log ==
+(no guard log)
+SCRIPT_EXIT=0

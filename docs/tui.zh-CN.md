@@ -3,10 +3,11 @@
 [English](./tui.md) | **中文**
 
 本页说明 my-power-dsh 的 **DSH-TUI 版本**：它提供什么、如何安装、逐包兼容性测量的结果，以及它
-**明确不声明**什么。目标宿主为 `@deepseek-harness-tui/dsh-tui` **0.19.0** 及其内置的准入
-（admission）配置文件。0.19.0 声明的 `@deepseek-ai/dsh-*` peer 范围**新增** DeepSeek Harness
-**`0.2.2-rc.1`**，同时**保留** `0.2.1-rc.4` 与 `0.2.1-rc.5`；而且准入指南与准入链在 0.18.0 与 0.19.0
-两个 tag 上逐字节相同。**§11.13 是本波次的修订**：其中记录了这次移动与被触及的载体。**此前的钉定版本是
+**明确不声明**什么。目标宿主为 `@deepseek-harness-tui/dsh-tui` **0.20.0** 及其内置的准入
+（admission）配置文件。0.20.0 相对 0.19.0 是**纯增量**（波次契约 §3 F1），其声明的
+`@deepseek-ai/dsh-*` peer 范围上限为 DeepSeek Harness **`0.2.2-rc.2`**，同时仍接纳 `0.2.2-rc.1` 与
+`0.2.1-rc.5`。**§11.15 是本波次的修订**：其中记录了这次移动与被触及的载体。**§11.13 作为历史保持可读**：
+它记录的是 0.2.2-rc.1 / DSH-TUI 0.19.0 那次移动。**此前的钉定版本是
 0.18.0，那段表述作为历史保持可读**：0.18.0 的 `dsh-*` 范围覆盖 `0.2.1-rc.4` 与 `0.2.1-rc.5`（36 条
 全部如此），而 0.17.0 的名单止于 `0.2.1-rc.3`（读取自已发布的 tarball），§11.11 是那一波次的修订。
 **再此前是 0.17.0，那段表述作为历史保持可读**：0.17.0 是第一个在声明的 peer 范围里接受
@@ -1530,7 +1531,7 @@ PTY 证据。`evidence/docker/client-install/2026-10-25T16-02-51Z/result.json` �
 | 主题 | 之前 | 之后 |
 |---|---|---|
 | 本页的对标宿主（§ 前言） | **0.18.0** | **0.19.0** —— 它声明的 `@deepseek-ai/dsh-*` peer 范围**新增** harness `0.2.2-rc.1`，同时**保留** `0.2.1-rc.4` 与 `0.2.1-rc.5`，因此一个宿主同时服务两个 harness 波次 |
-| harness 钉定（`package.json` 里三个 `@deepseek-ai/dsh-experimental-*`） | `0.2.1-rc.5` | **`0.2.2-rc.1`**；`engines.node` 现在是 `>=24.9.0`（CLI 在该版本声明此下限），且 `engines.dsh` 同时覆盖两个波段（`>=0.2.1-rc.2 <0.3.0-0`） |
+| harness 钉定（`package.json` 里三个 `@deepseek-ai/dsh-experimental-*`） | `0.2.1-rc.5` | **`0.2.2-rc.1`**；`engines.node` 现在是 `>=24.9.0`（CLI 在该版本声明此下限），且 `engines.dsh` 同时覆盖两个波段（`>=0.2.1-rc.5 <0.3.0-0`） |
 | §3.3 / §7 —— 版本钉住载体 | `0.18.0` 载体、harness `0.2.1-rc.5` | **`0.19.0` 与 `0.2.2-rc.1`**：两条 Docker 车道（`MPD_E2E_TUI_VERSION`、`MPD_E2E_DSH_VERSION`）、UI 那套 stack（`MPD_UI_TUI_VERSION`、`MPD_UI_DSH_VERSION`）、`dsh-distribution.json` 的 `host-tui` 引用（`…@0.19.0`）、`dsh-plugin.json` 的 `compat.hosts`（现在同时列出 `0.18.0` 与 `0.19.0`）、`skills/dsh-qa/scripts/tui-mount.ts` 的宿主规格，以及每一处 `npm i -g @deepseek-harness-tui/dsh-tui@…` 的 PREREQ 补救串 |
 | 准入链 | 仅 0.18.0 | **两个 tag 上逐字节相同**——指南 blob 为 `6b9dfd3…`（99,723 B），`permissions-0.1.json` 注册表为 `f36cb6e…`，十一个准入决策源文件全部未变。0.19.0 只改了 DSH peer 范围、`/update` 编排、一条 subagent 通道通知与一次第一方 feed 重钉，因此没有准入返工 |
 | 适配器的版本闸 | `PANEL_CSV_HOST_OWNED_SINCE`、`PANEL_CSV_SELF_HEAL_SINCE`、`hostVersion` 夹具 | **不变**——它们编码的是宿主**何时**改变了行为，而不是当前宿主是哪个 |
@@ -1566,3 +1567,23 @@ PTY 证据。`evidence/docker/client-install/2026-10-25T16-02-51Z/result.json` �
 与本次树中任何界面都不匹配、也看不到画框边框，因此无法绑定到某个构建——本波次证明的是它所属的那类折行机制，
 不是那一帧本身。并且 subagents 场景**仍然没有**纵轴——它没有视口高度窗口可描述，因此它未封顶的纵向尾部仍是
 唯一**搁置**的滚动点。
+
+### 11.15 harness 0.2.2-rc.2 / DSH-TUI 0.20.0 适配波次后的修订（2026-11-14）
+
+本波次再次移动钉定组合，且不改动任何 TUI 插件源码。§11.1–§11.14 按原样保留：它们记录的是更早的波次，
+不是这一次。
+
+| 主题 | 之前 | 之后 |
+|---|---|---|
+| 本页的目标宿主（§ 前言） | **0.19.0** | **0.20.0**——相对 0.19.0 是**纯增量**（波次契约 §3 F1）：52 个 patch 行在 id、name 与 config 上完全一致，同样声明 15 个 `tui*` 服务，`lib/types/ui.js` 完全一致、共 27 个导出且仍导出 `useStdin`。唯一变化是 `dsh-tui-webserver` 行的守卫放宽，同时接受 `@deepseek-ai/dsh-deepseek-account` |
+| harness 钉定（`package.json`） | `0.2.2-rc.1` | **`0.2.2-rc.2`**，且本次发布**不声明**任何团队包：新代的团队平面由**宿主**拥有，旧代的包则由宿主安装自身解析。`engines.dsh` 仍为 `>=0.2.1-rc.5 <0.3.0-0`，`engines.node` 仍为 `>=24.9.0` |
+| `compat.hosts`（两个清单）与 `specs/tui-hosts.json` | `0.18.0`、`0.19.0` | **`0.18.0`、`0.19.0`、`0.20.0`**——三处集合完全相同且有序，`dsh-distribution.json` 的 `host-tui` 引用移到 `0.20.0` |
+| 团队挂载（harness 平面，非 TUI 源码） | 三行、单一代际 | **三个旧代行 + 新代由宿主拥有平面**——0.20.0 对应的 harness `0.2.2-rc.2` 自己挂载 `agent-team` / `tool-agent-team` / `ui-agent-team`，因此本 bundle 在那一代上**不挂任何团队行**、也不声明团队包；三行只承载旧代。守卫 = `（已发布的 dsh-tui 条款，与 HEAD 逐字节相同） || （代际 + 可解析性）`。见 [`compatibility.zh-CN.md`](./compatibility.zh-CN.md) §2.1 |
+| Ctrl+A 宿主接触点 | 以 `tuiPanels` 接缝做版本门控 | **不变**——0.20.0 仍声明 `tuiPanels`，因此接触点保持惰性、Ctrl+A 保留宿主含义；合并视图通过 `alt+a` / `/mpd panel` 打开 |
+| 准入波段的 peer 上限 | 0.19.0 的 peer 写到 harness `0.2.2-rc.1` | **0.20.0 的 peer 上限是 `0.2.2-rc.2`**，其 README 也把 `0.2.2-rc.2` 列为首要兼容目标 |
+
+**本页实测。** 本波次自己安装的 `@deepseek-harness-tui/dsh-tui@0.20.0` 从 registry 解析，并直接读取了
+其 `package.json`：`version` 为 `0.20.0`、上面的 peer 列表、以及同样那 15 个接缝服务。**已实测，也有边界。** 本波自己的 `verify:gates` 已对 `0.20.0` 完成协商：`tui-admission` 退出 0，
+`49 arms passed, 1 allowed deviation(s), 5 bound(s)`，两个清单均为 `compatible`
+（`evidence/verify-022rc2/2026-11-14T03-02-10Z/logs/verify-gates.log`）。本**节**不声称对 `0.20.0`
+做过**真机 TTY 抓取**——那属本波的挂载车道，没有车道演练过的结论不在这里声称。

@@ -569,7 +569,7 @@ const result: RunResult = {
     "the bundle installs with ONE command from a copy of the checkout (dsh plugin --profile web add .)",
     "every packages/*/dist entry rebuilds from source with the canonical repo-root bun build",
     "a MOUNTING boot in an isolated HOME/DSH_HOME applies the plugin tree and registers the mpd tools",
-    "the official TeamService (@deepseek-ai/dsh-experimental-agent-team) is mounted in that process",
+    "the official TeamService for THIS host generation is mounted in that process (the boot facts record which lineage answered: 0.2.2-rc.1 via @deepseek-ai/dsh-experimental-agent-team, 0.2.2-rc.2 via @deepseek-ai/dsh-agent-team — never a hard-coded name)",
     "the mpd session gate LISTENER is registered for a real mpd session (liveness, not composition) — read from the row's own file log, <workspace>/.mpd/logs/mpd-roles.log (R5)",
     "the mpd preset really mounts: POST /api/session/create answers ok with agentPreset=mpd",
     "the TUI session resolves `mpd` through the DOCUMENTED USER-level preference (dsh-tui's own <HOME>/.dsh-tui/agent-preset.json), while the host preset-registry row stays untouched by the bundle",

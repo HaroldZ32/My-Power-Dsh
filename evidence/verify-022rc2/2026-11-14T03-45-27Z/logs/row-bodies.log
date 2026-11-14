@@ -1,0 +1,40 @@
+{
+  "ids": {
+    "mpd-agent-team": {
+      "headBytes": 1844,
+      "worktreeBytes": 10545,
+      "headSha256": "6f60ed8f63193fea5acff52f4af0015a5c3585cf765f5839c4876e2fc9c45991",
+      "headShaMatchesInstallerPin": true,
+      "headClauseAppearsAt": 1,
+      "worktreeStartsWithParenthesisedHead": true,
+      "headPrefix40": "(() => { const logGuard = (text) => { tr",
+      "worktreePrefix40": "((() => { const logGuard = (text) => { t",
+      "trailerAfterHead": ") || ((() => { const logGuard = (text) => { try { const gfs ",
+      "trailerSha256": "93d321cb578bcc98bfe3a387296a6a5844e929f5176be13178b755bc63140870"
+    },
+    "mpd-tool-agent-team": {
+      "headBytes": 1693,
+      "worktreeBytes": 10399,
+      "headSha256": "90bd854710cb5299e59b131140225caf242877c23c1e73f9f694b81bfdfeddd5",
+      "headShaMatchesInstallerPin": true,
+      "headClauseAppearsAt": 1,
+      "worktreeStartsWithParenthesisedHead": true,
+      "headPrefix40": "(() => { const logGuard = (text) => { tr",
+      "worktreePrefix40": "((() => { const logGuard = (text) => { t",
+      "trailerAfterHead": ") || ((() => { const logGuard = (text) => { try { const gfs ",
+      "trailerSha256": "b55d4255ccd26f0500f2b4b9edd9ef6b346dc564bf9cf5f57e634601c1162c93"
+    },
+    "mpd-ui-agent-team": {
+      "present": {
+        "head": false,
+        "worktree": true
+      }
+    }
+  },
+  "verdict": {
+    "mpd-agent-team": "head-clause-verbatim-inside-worktree-scalar",
+    "mpd-tool-agent-team": "head-clause-verbatim-inside-worktree-scalar"
+  },
+  "headRowCount": 2,
+  "worktreeRowCount": 3
+}

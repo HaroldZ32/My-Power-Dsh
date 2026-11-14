@@ -1,0 +1,323 @@
+{
+  "loopId": "loop-20261114T025059-3f5ed1",
+  "task": "T23",
+  "head": "7c1680af",
+  "branch": "feature/dsh-022rc2-tui-020",
+  "modes": {
+    "source": {
+      "stamp": "evidence/docker/client-install/2026-11-14T05-48-13Z",
+      "startedAt": "2026-11-14T05:48:13.909Z",
+      "finishedAt": "2026-11-14T05:55:17.461Z",
+      "summary": {
+        "total": 244,
+        "passed": 163,
+        "failed": 0,
+        "null": 81,
+        "failedNames": [],
+        "nullNames": [
+          "qa.mcpCall",
+          "oneclick.scratchRepo",
+          "oneclick.requiredPaths",
+          "oneclick.filesAllowlist",
+          "oneclick.distByteIdentical",
+          "live.credentialStaged",
+          "live.credentialScoped",
+          "live.credentialRemoved",
+          "live.web.turnStarted",
+          "live.web.turnCompleted",
+          "live.web.noErrorTurns",
+          "live.web.noPromptVariableError",
+          "live.web.noMalformedToolJson",
+          "live.web.toolCallsParsed",
+          "live.web.mpdToolCalled",
+          "live.web.assistantReplied",
+          "live.tui.turnStarted",
+          "live.tui.turnCompleted",
+          "live.tui.noErrorTurns",
+          "live.tui.noPromptVariableError",
+          "live.tui.noMalformedToolJson",
+          "live.tui.toolCallsParsed",
+          "live.tui.mpdToolCalled",
+          "live.tui.assistantReplied",
+          "live.headless.turnStarted",
+          "live.headless.turnCompleted",
+          "live.headless.noErrorTurns",
+          "live.headless.noPromptVariableError",
+          "live.headless.noMalformedToolJson",
+          "live.headless.toolCallsParsed",
+          "live.headless.mpdToolCalled",
+          "live.headless.assistantReplied",
+          "live.teamRecord",
+          "live.nativeExecutor",
+          "live.headlessPresetRow",
+          "boot.llmTurn",
+          "ui.loads",
+          "ui.workspaceSelected",
+          "ui.composerPresent",
+          "ui.promptSent",
+          "ui.replyRendered",
+          "ui.mpdSettingsSection",
+          "ui.teamPanel",
+          "ui.noConsoleErrors",
+          "ui.mpdSettingsSectionNegativeControl",
+          "ui.teamBoard",
+          "userSurface.row.mpd-better-sidebar",
+          "userSurface.row.mpd-agent-team",
+          "userSurface.row.mpd-tool-agent-team",
+          "userSurface.row.mpd-ui-agent-team",
+          "userSurface.row.persona",
+          "userSurface.row.agent-instructions",
+          "userSurface.row.time-context",
+          "userSurface.row.tool-bash",
+          "userSurface.row.tool-pwsh",
+          "userSurface.row.tool-fs",
+          "userSurface.row.tool-fs-search",
+          "userSurface.row.tool-jobs",
+          "userSurface.row.tool-schedule",
+          "userSurface.row.skill-filesystem",
+          "userSurface.row.tool-skill",
+          "userSurface.row.command-goal",
+          "userSurface.row.tool-goal",
+          "userSurface.row.planning",
+          "userSurface.row.plan-mode",
+          "userSurface.row.compaction",
+          "userSurface.row.compaction-basic",
+          "userSurface.row.command-compact",
+          "userSurface.row.tool-result-pruner",
+          "userSurface.row.delegation",
+          "userSurface.row.tool-subagent-control",
+          "userSurface.row.tool-subagent",
+          "userSurface.row.tool-subagent-fork",
+          "userSurface.row.tool-workflow",
+          "userSurface.row.tool-ask-user",
+          "userSurface.row.tool-todo",
+          "userSurface.row.tool-web",
+          "userSurface.row.present",
+          "userSurface.row.tool-office",
+          "userSurface.row.tool-plugin-manager",
+          "userSurface.row.tool-plugin-market"
+        ]
+      },
+      "picked": {
+        "pack.present": {
+          "ok": true,
+          "raw": "artifact=/src/dist/mpd-package"
+        },
+        "pack.staticCoherence": {
+          "ok": true,
+          "raw": "drifted=none untwinned=none"
+        },
+        "pack.distFreshRebuild": {
+          "ok": true,
+          "raw": "drifted=none uncovered=none rebuildBun=/opt/toolchain/bun-pinned/bin/bun rebuildBunVersion=1.4.0 declaredBuildToolchain=bun@1.4.0 declaredVersion=1.4.0 exactMatch=true witness=/work/rebuild.json"
+        },
+        "pack.rebuildToolchain": {
+          "ok": true,
+          "raw": " rebuildBun=/opt/toolchain/bun-pinned/bin/bun rebuildBunVersion=1.4.0 declaredBuildToolchain=bun@1.4.0 declaredVersion=1.4.0 exactMatch=true witness=/work/rebuild.json"
+        },
+        "pack.distFreshRebuildControl": {
+          "ok": true,
+          "raw": "mutated=packages/mpd-autoproject-plugin/dist/index.js controlVerdict=false artifactCopy=/work/pack-mutated"
+        },
+        "pack.licenceCoherence": {
+          "ok": true,
+          "raw": "carried=LICENSE.md,LICENSE-NOTICES.md artifactLicense=MIT sourceLicense=MIT"
+        },
+        "pack.declarationCoherence": {
+          "ok": true,
+          "raw": "rowPathsChecked=29 files=687"
+        },
+        "install.exit": {
+          "ok": true,
+          "raw": "exit=0 spec=."
+        },
+        "oneclick.scratchRepo": {
+          "ok": null,
+          "raw": "mode=source"
+        },
+        "oneclick.filesAllowlist": {
+          "ok": null,
+          "raw": "mode=source"
+        },
+        "oneclick.distByteIdentical": {
+          "ok": null,
+          "raw": "mode=source"
+        },
+        "oneclick.requiredPaths": {
+          "ok": null,
+          "raw": "mode=source"
+        },
+        "boot.teamRowGenerationLive": {
+          "ok": true,
+          "raw": "generation guard: generation=new source=argv1 argv1=/usr/local/bin/dsh harness=0.2.2-rc.2@/usr/local/lib/node_modules/@deepseek-ai/dsh baseUrl=/root/sandbox-dsh/profiles/web/ baseUrlHarness=- presence=old:false,new:false oldRows=disabled newRows=enabled | [docker-probe] AGENT_TEAMS=MOUNTED serviceName=TeamService | probeGeneration=task-board-only (file=/work/.mpd/logs/mpd-patch-guards.log)"
+        },
+        "compose.agentTeamRows": {
+          "ok": true,
+          "raw": "ids=mpd-agent-team,mpd-tool-agent-team,mpd-ui-agent-team predicateHits=6"
+        },
+        "qa.mcpCall": {
+          "ok": null,
+          "raw": "exit=1 marker=[mcp-call] missing credentials tail=[mcp-call] missing credentials"
+        }
+      }
+    },
+    "oneclick": {
+      "stamp": "evidence/docker/client-install-oneclick/2026-11-14T05-55-32Z",
+      "startedAt": "2026-11-14T05:55:32.978Z",
+      "finishedAt": "2026-11-14T06:03:44.037Z",
+      "summary": {
+        "total": 244,
+        "passed": 162,
+        "failed": 0,
+        "null": 82,
+        "failedNames": [],
+        "nullNames": [
+          "build.bunInstall",
+          "build.dists",
+          "pack.distFreshRebuild",
+          "pack.rebuildToolchain",
+          "pack.distFreshRebuildControl",
+          "qa.mcpCall",
+          "live.credentialStaged",
+          "live.credentialScoped",
+          "live.credentialRemoved",
+          "live.web.turnStarted",
+          "live.web.turnCompleted",
+          "live.web.noErrorTurns",
+          "live.web.noPromptVariableError",
+          "live.web.noMalformedToolJson",
+          "live.web.toolCallsParsed",
+          "live.web.mpdToolCalled",
+          "live.web.assistantReplied",
+          "live.tui.turnStarted",
+          "live.tui.turnCompleted",
+          "live.tui.noErrorTurns",
+          "live.tui.noPromptVariableError",
+          "live.tui.noMalformedToolJson",
+          "live.tui.toolCallsParsed",
+          "live.tui.mpdToolCalled",
+          "live.tui.assistantReplied",
+          "live.headless.turnStarted",
+          "live.headless.turnCompleted",
+          "live.headless.noErrorTurns",
+          "live.headless.noPromptVariableError",
+          "live.headless.noMalformedToolJson",
+          "live.headless.toolCallsParsed",
+          "live.headless.mpdToolCalled",
+          "live.headless.assistantReplied",
+          "live.teamRecord",
+          "live.nativeExecutor",
+          "live.headlessPresetRow",
+          "boot.llmTurn",
+          "ui.loads",
+          "ui.workspaceSelected",
+          "ui.composerPresent",
+          "ui.promptSent",
+          "ui.replyRendered",
+          "ui.mpdSettingsSection",
+          "ui.teamPanel",
+          "ui.noConsoleErrors",
+          "ui.mpdSettingsSectionNegativeControl",
+          "ui.teamBoard",
+          "userSurface.row.mpd-better-sidebar",
+          "userSurface.row.mpd-agent-team",
+          "userSurface.row.mpd-tool-agent-team",
+          "userSurface.row.mpd-ui-agent-team",
+          "userSurface.row.persona",
+          "userSurface.row.agent-instructions",
+          "userSurface.row.time-context",
+          "userSurface.row.tool-bash",
+          "userSurface.row.tool-pwsh",
+          "userSurface.row.tool-fs",
+          "userSurface.row.tool-fs-search",
+          "userSurface.row.tool-jobs",
+          "userSurface.row.tool-schedule",
+          "userSurface.row.skill-filesystem",
+          "userSurface.row.tool-skill",
+          "userSurface.row.command-goal",
+          "userSurface.row.tool-goal",
+          "userSurface.row.planning",
+          "userSurface.row.plan-mode",
+          "userSurface.row.compaction",
+          "userSurface.row.compaction-basic",
+          "userSurface.row.command-compact",
+          "userSurface.row.tool-result-pruner",
+          "userSurface.row.delegation",
+          "userSurface.row.tool-subagent-control",
+          "userSurface.row.tool-subagent",
+          "userSurface.row.tool-subagent-fork",
+          "userSurface.row.tool-workflow",
+          "userSurface.row.tool-ask-user",
+          "userSurface.row.tool-todo",
+          "userSurface.row.tool-web",
+          "userSurface.row.present",
+          "userSurface.row.tool-office",
+          "userSurface.row.tool-plugin-manager",
+          "userSurface.row.tool-plugin-market"
+        ]
+      },
+      "picked": {
+        "pack.present": {
+          "ok": true,
+          "raw": "artifact=/src/dist/mpd-package"
+        },
+        "pack.staticCoherence": {
+          "ok": true,
+          "raw": "drifted=none untwinned=none"
+        },
+        "pack.distFreshRebuild": {
+          "ok": null,
+          "raw": "rebuild=<none passed>"
+        },
+        "pack.rebuildToolchain": {
+          "ok": null,
+          "raw": "rebuild=<none passed>"
+        },
+        "pack.distFreshRebuildControl": {
+          "ok": null,
+          "raw": "mode=oneclick"
+        },
+        "pack.licenceCoherence": {
+          "ok": true,
+          "raw": "carried=LICENSE.md,LICENSE-NOTICES.md artifactLicense=MIT sourceLicense=MIT"
+        },
+        "pack.declarationCoherence": {
+          "ok": true,
+          "raw": "rowPathsChecked=29 files=687"
+        },
+        "install.exit": {
+          "ok": true,
+          "raw": "exit=0 spec=git+file:///opt/oneclick.git"
+        },
+        "oneclick.scratchRepo": {
+          "ok": true,
+          "raw": "commit=5181ed90308137726ea054a5f0f68b5f16c1898b repo=/opt/oneclick.git"
+        },
+        "oneclick.filesAllowlist": {
+          "ok": true,
+          "raw": "absent: evidence/ .git/ docker/ .qa-tmp/"
+        },
+        "oneclick.distByteIdentical": {
+          "ok": true,
+          "raw": "cmp -s on each entry"
+        },
+        "oneclick.requiredPaths": {
+          "ok": true,
+          "raw": "checked: patch files, MCP launchers, web client, icon, locale, skills corpus"
+        },
+        "boot.teamRowGenerationLive": {
+          "ok": true,
+          "raw": "generation guard: generation=new source=argv1 argv1=/usr/local/bin/dsh harness=0.2.2-rc.2@/usr/local/lib/node_modules/@deepseek-ai/dsh baseUrl=/root/sandbox-dsh/profiles/web/ baseUrlHarness=- presence=old:false,new:false oldRows=disabled newRows=enabled | [docker-probe] AGENT_TEAMS=MOUNTED serviceName=TeamService | probeGeneration=task-board-only (file=/work/.mpd/logs/mpd-patch-guards.log)"
+        },
+        "compose.agentTeamRows": {
+          "ok": true,
+          "raw": "ids=mpd-agent-team,mpd-tool-agent-team,mpd-ui-agent-team predicateHits=6"
+        },
+        "qa.mcpCall": {
+          "ok": null,
+          "raw": "exit=1 marker=[mcp-call] missing credentials tail=[mcp-call] missing credentials"
+        }
+      }
+    }
+  }
+}

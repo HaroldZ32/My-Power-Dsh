@@ -519,6 +519,81 @@ export interface DshAsyncAgent {
 // depend on the host's module layout. Field names mirror the host exactly, so a
 // consumer never has to guess and a projection below never invents a key.
 
+/**
+ * One part of the official `agentTeams` surface this adapter probes (D6b/A1).
+ *
+ * 0.2.2-rc.2 kept the shared task board and REMOVED the roster/mailbox/spawn API; 0.2.2-rc.1 has
+ * both halves. ONE predicate ({@link DshTeamServiceSurface}) reports every part, so no team method
+ * tests the raw service itself.
+ */
+export type DshTeamSurfaceName = "identity" | "roster" | "task-board" | "send" | "wait" | "spawn" | "interrupt" | "enable-switch"
+
+/**
+ * The STRUCTURED answer a team operation gives when this host generation does not expose the part
+ * of the official surface it needs.
+ *
+ * 0.2.2-rc.2 turned `ctx.agentTeams` into a task-board-only service. A caller must never receive a
+ * raw service throw for that (D6b): roster/board reads answer an empty result carrying this marker,
+ * and command-shaped answers carry it as an optional field. `capabilities()` publishes the same
+ * facts, so a caller can gate BEFORE acting; the marker serves a caller that did not.
+ */
+export interface DshTeamUnsupported {
+  /** Stable discriminator: a caller branches on this instead of parsing prose. */
+  readonly unsupported: true
+  /** Which part of the official surface is missing. */
+  readonly capability: DshTeamSurfaceName
+  /** The host generation, as this adapter observed it. */
+  readonly generation: "task-board-only" | "partial" | "absent"
+  /** ONE actionable sentence: the missing part, the generation, and the supported path. */
+  readonly reason: string
+}
+
+/**
+ * A team row array that may also carry the degraded marker (see {@link DshTeamUnsupported}).
+ *
+ * It IS a plain array — `map`/`filter`/iteration behave exactly as before — and the marker is a
+ * non-enumerable property, so a consumer serializing the rows cannot leak it into a record.
+ */
+export type DshTeamMarkedArray<T> = T[] & { readonly unsupported?: DshTeamUnsupported }
+
+/**
+ * The `agentTeams` surface as ONE capability predicate reports it (D6b).
+ *
+ * Every team adapter method derives its behavior from this shape instead of testing the raw
+ * service, so the "present is not servable" and "board is not roster" distinctions are decided in
+ * exactly one place. `present` names the raw row; the rest name the seam family a method needs.
+ */
+export interface DshTeamServiceSurface {
+  /** The service is mounted at all (`ctx.get("agentTeams")` answered a value). */
+  present: boolean
+  /** The identity read (`tryMembership`) — what `teamMembership` consults FIRST. */
+  identity: boolean
+  /** The roster read (`listMembers`) — what `teamListMembers` needs. */
+  roster: boolean
+  /** The shared task board: ALL FOUR task methods, i.e. the board is fully usable. */
+  taskBoard: boolean
+  /** The single board seams, so a PARTIAL board keeps today's per-method throw exactly. */
+  createTask: boolean
+  /** The task-read seam; see {@link DshTeamServiceSurface.createTask}. */
+  getTask: boolean
+  /** The board-list seam; see {@link DshTeamServiceSurface.createTask}. */
+  listTasks: boolean
+  /** The board-write seam; see {@link DshTeamServiceSurface.createTask}. */
+  updateTask: boolean
+  /** Queueing a peer message (`sendMessage`) — what `teamSendMessage` needs. */
+  send: boolean
+  /** Waiting for a change (`waitForChange`) — what `teamWaitForChange` needs. */
+  wait: boolean
+  /** Raising a teammate (`spawnTeammate`) — what `teamSpawnTeammate` needs. */
+  spawn: boolean
+  /** Interrupting a teammate (`interrupt`) — what `teamInterrupt` needs. */
+  interrupt: boolean
+  /** The 0.2.2-rc.2 Team enable switch (`isEnabled` AND `setEnabled`). */
+  enableSwitch: boolean
+  /** The mailbox as a whole: `send` AND `wait` (the existing `teamMessages` flag). */
+  messaging: boolean
+}
+
 /** One Agent's Team identity, as `tryMembership(agent)` resolves it (`TeamMembership`). */
 export interface DshTeamMembership {
   /** The implicit team's identity (the Lead Session id, branded `TeamId` on the host). */
@@ -626,10 +701,15 @@ export interface DshTeamSendMessageRequest {
 
 /** Result after a peer message enters the durable mailbox (`SendTeamMessageResult`). */
 export interface DshTeamSendMessageResult {
-  /** Identity of the queued mailbox entry. */
+  /** Identity of the queued mailbox entry; the empty string on a degraded answer (nothing was queued). */
   messageId: string
-  /** Whether delivery happened immediately or the entry waits in the mailbox. */
-  status: "accepted" | "queued"
+  /**
+   * Whether delivery happened immediately, the entry waits in the mailbox, or this host generation
+   * cannot send at all. `unsupported` means NOTHING was sent: gate on `capabilities().teamMessaging`.
+   */
+  status: "accepted" | "queued" | "unsupported"
+  /** Set ONLY on a degraded answer (this host generation exposes no messaging API). */
+  unsupported?: DshTeamUnsupported
 }
 
 /** Input for one durable teammate (`SpawnTeammateRequest`). */
@@ -650,8 +730,10 @@ export interface DshTeamSpawnTeammateRequest {
 
 /** Result after one teammate reaches a durable active or failed edge. */
 export interface DshTeamSpawnTeammateResult {
-  /** The roster row the host produced for the new teammate. */
+  /** The roster row the host produced for the new teammate; empty on a degraded answer. */
   member: DshTeamMemberView
+  /** Set ONLY on a degraded answer (this host generation exposes no spawn API). */
+  unsupported?: DshTeamUnsupported
 }
 
 // ── THE TEAM EXECUTOR: mpd's team system behind ONE seam ─────────────────────
@@ -811,14 +893,18 @@ export interface DshTeamExecutor {
 
 /** The target status sampled before a teammate interrupt. */
 export interface DshTeamInterruptResult {
-  /** The member's status sampled immediately BEFORE cancellation. */
+  /** The member's status sampled immediately BEFORE cancellation; `inactive` on a degraded answer. */
   previousStatus: "running" | "inactive"
+  /** Set ONLY on a degraded answer (this host generation exposes no interrupt API). */
+  unsupported?: DshTeamUnsupported
 }
 
 /** Result of waiting for Team activity (`TeamWaitResult`). */
 export interface DshTeamWaitResult {
-  /** Whether the wait expired instead of observing a change. */
+  /** Whether the wait expired instead of observing a change; `true` on a degraded answer. */
   timedOut: boolean
+  /** Set ONLY on a degraded answer (this host generation exposes no wait API). */
+  unsupported?: DshTeamUnsupported
 }
 
 /**
@@ -1050,6 +1136,16 @@ export interface DshCapabilities {
    * sentence, including the case where NEITHER backend can serve and every call will refuse.
    */
   teamExecutorNative: boolean
+  /**
+   * The OFFICIAL team executor is SERVABLE for `teamExecutor()`: the mounted `agentTeams` service
+   * carries ALL FOUR executor seams (`spawnTeammate`, `sendMessage`, `interrupt`, `waitForChange`),
+   * not merely the task board.
+   *
+   * D6: presence is not servability. 0.2.2-rc.2's service is task-board only, so it reports FALSE
+   * here while `teamTasks` is TRUE, and the executor falls through to the native backend. Native
+   * remains the default when both can serve.
+   */
+  teamExecutorOfficial: boolean
   /** `ctx.subagents.interrupt` — the parked-child interrupt seam. */
   subagentsInterrupt: boolean
   /** `ctx.llm.listModels` — the per-provider model list (the catalog seam needs its own trio). */
@@ -1119,25 +1215,61 @@ export interface DshCapabilities {
   agentPreStepScope: boolean
   /**
    * The official Agent Teams service (`ctx.get("agentTeams")`) exposes the IDENTITY +
-   * ROSTER read surface (`tryMembership` and `listMembers`), i.e.
-   * {@link DshAdapter.teamMembership} and {@link DshAdapter.teamListMembers} can run.
+   * ROSTER read surface (`tryMembership` and `listMembers`).
    *
-   * This is the service-level flag of the team plane: `teamSpawnTeammate`,
-   * `teamInterrupt` and `teamWaitForChange` are gated by it too, while the two finer
-   * families report their own flags below.
+   * PER GENERATION: `true` on 0.2.2-rc.1; **FALSE on 0.2.2-rc.2**, whose service is task-board
+   * only (the roster/mailbox/spawn API was removed). This is NOT the pre-flight for board work —
+   * gate board callers on {@link DshCapabilities.teamTasks}. It also does not gate the two finer
+   * families, which report their own flags below.
    */
   team: boolean
+  /**
+   * The raw `agentTeams` service is MOUNTED, whatever it can do (A1 item 3).
+   *
+   * `true` on BOTH generations (and on a task-board-only host it is the flag that says "a service
+   * is there"), so a consumer can tell "this host removed the roster API" apart from "this
+   * composition mounts no team row at all". {@link DshAdapter.teamService} hands the raw value out
+   * only when this is true.
+   */
+  teamServiceMounted: boolean
+  /**
+   * The roster read is usable: `tryMembership` AND `listMembers` (the fine-grained twin of
+   * {@link DshCapabilities.team}, added by A1/D6b; `team` is kept for existing consumers).
+   */
+  teamRoster: boolean
   /**
    * The shared task board is usable: `createTask`, `getTask`, `listTasks` and
    * `updateTask` are ALL callable, so {@link DshAdapter.teamCreateTask} /
    * `teamGetTask` / `teamUpdateTask` / `teamListTasks` can run.
+   *
+   * THE board pre-flight: `true` on both generations (rc.2 kept the board).
    */
   teamTasks: boolean
   /**
    * The peer-mailbox surface is usable: `sendMessage` AND `waitForChange` are callable,
    * so {@link DshAdapter.teamSendMessage} and {@link DshAdapter.teamWaitForChange} can run.
+   * FALSE on 0.2.2-rc.2 (the mailbox was removed).
    */
   teamMessages: boolean
+  /** The SEND half alone (`sendMessage`) — the pre-flight for {@link DshAdapter.teamSendMessage}. */
+  teamMessaging: boolean
+  /** Raising a teammate (`spawnTeammate`) — the pre-flight for {@link DshAdapter.teamSpawnTeammate}. */
+  teamSpawn: boolean
+  /** Waiting for a change (`waitForChange`) — the pre-flight for {@link DshAdapter.teamWaitForChange}. */
+  teamWait: boolean
+  /** Interrupting a teammate (`interrupt`) — the pre-flight for {@link DshAdapter.teamInterrupt}. */
+  teamInterrupt: boolean
+  /**
+   * The Team enable switch (`isEnabled` AND `setEnabled`) is callable, i.e.
+   * {@link DshAdapter.teamEnabled} / {@link DshAdapter.setTeamEnabled} can answer.
+   * FALSE on 0.2.2-rc.1 (the switch did not exist there: those two methods answer `undefined`).
+   */
+  teamEnableSwitch: boolean
+  /**
+   * `ctx.subagents.sendMessage` — the delivery seam the NATIVE team executor's `send` needs
+   * (A1 item 4: it was probed inline with no flag; flag and call path now read one helper).
+   */
+  subagentsSendMessage: boolean
   /**
    * `ctx.subagents.registerProvider` — the seam
    * {@link DshAdapter.registerSubagentProvider} needs (the existing
@@ -2536,6 +2668,10 @@ export interface DshAdapter {
    * is expected to prefer the typed methods — and, for a TEAM, `teamExecutor()` — and to read this
    * one only as an escape hatch. It is contained: a `ctx` that cannot answer is `undefined`, never
    * a throw.
+   *
+   * PRE-FLIGHT (A1 item 3): `capabilities().teamServiceMounted` names PRESENCE; `capabilities()
+   * .teamTasks` is the pre-flight for BOARD work. `capabilities().team` is NOT — it is false on
+   * 0.2.2-rc.2 (roster removed) while this service and its board are perfectly usable.
    */
   teamService(): unknown | undefined
   /**
@@ -2547,63 +2683,69 @@ export interface DshAdapter {
    * of the two declared values all answer `undefined`. This is the FILTER method — a
    * caller decides "is this agent on a team?" with it, so an exception would turn a
    * normal negative answer into a failure.
+   *
+   * IDENTITY LADDER (A2): the host roster answers first. On a task-board-only host (0.2.2-rc.2)
+   * the ACTIVE team executor's own handle map supplies the identity the host removed, so a member
+   * THIS bundle raised keeps its name and role. Both silent => `undefined`, and the roster
+   * read-only guard DEFAULTS TO DENY rather than silently widening a read-only member's tools.
    */
   teamMembership(agent: unknown): DshTeamMembership | undefined
   /**
    * The runtime-enriched roster visible to one Team member
    * (`agentTeams.listMembers(agent)`), each row projected onto {@link DshTeamMemberView}.
    *
-   * Degrade: THROWS when the service (or its `listMembers`) is absent — `[]` would
-   * conflate "this team has no members" with "no team service is mounted", which is
-   * exactly the kind of silent lie this adapter exists to prevent. A caller degrades on
-   * `capabilities().team`. A non-array host answer is `[]`.
+   * Degrade (D6b): an ABSENT service THROWS — `[]` would conflate "this team has no members"
+   * with "no team service is mounted". A MOUNTED service WITHOUT `listMembers` (0.2.2-rc.2's
+   * task-board-only shape) answers `[]` carrying an `unsupported` marker instead of a raw throw.
+   * A caller gates on `capabilities().teamRoster`. A non-array host answer is `[]`.
    */
-  teamListMembers(agent: unknown): DshTeamMemberView[]
+  teamListMembers(agent: unknown): DshTeamMarkedArray<DshTeamMemberView>
   /**
    * The current non-deleted board visible to one Team member
    * (`agentTeams.listTasks(agent)`), each row projected onto {@link DshTeamTaskView}.
    *
-   * Degrade: THROWS when the service (or its `listTasks`) is absent, for the reason
-   * {@link DshAdapter.teamListMembers} names. Reported by `capabilities().teamTasks`.
+   * A1 item 5 (the BOARD half is NOT degraded): THROWS when the service or `listTasks` is absent,
+   * exactly as before — `[]` would conflate "no tasks" with "no board". The board works on BOTH
+   * generations. Gate on `capabilities().teamTasks`.
    */
   teamListTasks(agent: unknown): DshTeamTaskView[]
   /**
    * Create one unowned pending task on the caller's board
-   * (`agentTeams.createTask(caller, request)`).
+   * (`agentTeams.createTask(caller, request, signal?)`).
    *
    * `caller` is the exact live Agent used as the authority credential and `request` is
    * forwarded **by identity** (no copy, no key rewrite), so a host field this adapter
    * does not model still reaches the service. The promise is forwarded untouched —
    * the host's own rejections stay rejections — and only a FULFILLED answer is
-   * projected onto {@link DshTeamTaskView}.
+   * projected onto {@link DshTeamTaskView}. The optional `signal` is the 0.2.2-rc.2 addition
+   * (D6b): forwarded only when supplied, so an rc.1 host receives the exact call it always did.
    *
-   * Degrade: THROWS when the service or `createTask` is absent. Reported by
-   * `capabilities().teamTasks`.
+   * Degrade: THROWS when the service or `createTask` is absent (the board half is untouched).
    */
-  teamCreateTask(caller: unknown, request: DshTeamCreateTaskRequest): Promise<DshTeamTaskView>
+  teamCreateTask(caller: unknown, request: DshTeamCreateTaskRequest, signal?: AbortSignal): Promise<DshTeamTaskView>
   /**
    * One task by id, including a deleted tombstone (`agentTeams.getTask(caller, id)`).
    *
-   * Degrade: THROWS when the service or `getTask` is absent, and the host's OWN throw
-   * for an unknown id propagates verbatim (this adapter never invents a task view).
-   * Reported by `capabilities().teamTasks`.
+   * Degrade: an ABSENT service THROWS and the host's OWN throw for an unknown id propagates
+   * verbatim (this adapter never invents a task view); a mounted service without the board
+   * throws when `getTask` is absent. Gate on `capabilities().teamTasks`.
    */
   teamGetTask(caller: unknown, id: string): DshTeamTaskView
   /**
-   * One compare-and-set task transition (`agentTeams.updateTask(caller, request)`);
+   * One compare-and-set task transition (`agentTeams.updateTask(caller, request, signal?)`);
    * `caller` and `request` are forwarded by identity and the promise untouched, exactly
-   * like {@link DshAdapter.teamCreateTask}.
+   * like {@link DshAdapter.teamCreateTask} — including the optional rc.2 `signal`.
    *
-   * Degrade: THROWS when the service or `updateTask` is absent. Reported by
-   * `capabilities().teamTasks`.
+   * Degrade: THROWS when the service or `updateTask` is absent (the board half is untouched).
    */
-  teamUpdateTask(caller: unknown, request: DshTeamUpdateTaskRequest): Promise<DshTeamTaskView>
+  teamUpdateTask(caller: unknown, request: DshTeamUpdateTaskRequest, signal?: AbortSignal): Promise<DshTeamTaskView>
   /**
    * Queue one durable peer message (`agentTeams.sendMessage(caller, request)`), the
    * request forwarded by identity and the promise untouched.
    *
-   * Degrade: THROWS when the service or `sendMessage` is absent. Reported by
-   * `capabilities().teamMessages`.
+   * Degrade (D6b): an ABSENT service THROWS; a mounted service WITHOUT the mailbox (0.2.2-rc.2)
+   * answers `{ messageId: "", status: "unsupported" }` plus the marker — NOTHING was queued, and
+   * the answer says so. Gate on `capabilities().teamMessaging`.
    */
   teamSendMessage(caller: unknown, request: DshTeamSendMessageRequest): Promise<DshTeamSendMessageResult>
   /**
@@ -2618,8 +2760,8 @@ export interface DshAdapter {
    * a roster agent's own `agentRoutes` entry only when the teammate DESCRIPTION names that
    * member; prompt text cannot change a route.
    *
-   * Degrade: THROWS when the service or `spawnTeammate` is absent (reported by the
-   * service-level `capabilities().team`).
+   * Degrade (D6b): an ABSENT service THROWS; a mounted service WITHOUT the spawn API answers an
+   * empty member row plus the marker. Gate on `capabilities().teamSpawn` or use `teamExecutor()`.
    */
   teamSpawnTeammate(caller: unknown, request: DshTeamSpawnTeammateRequest): Promise<DshTeamSpawnTeammateResult>
   /**
@@ -2627,8 +2769,8 @@ export interface DshAdapter {
    * (`agentTeams.interrupt(caller, targetName)`), answering the status sampled BEFORE
    * cancellation.
    *
-   * Degrade: THROWS when the service or `interrupt` is absent (reported by
-   * `capabilities().team`).
+   * Degrade (D6b): an ABSENT service THROWS; a mounted service WITHOUT the interrupt seam answers
+   * `previousStatus: "inactive"` plus the marker. Gate on `capabilities().teamInterrupt`.
    */
   teamInterrupt(caller: unknown, targetName: string): DshTeamInterruptResult
   /**
@@ -2636,20 +2778,41 @@ export interface DshAdapter {
    * (`agentTeams.waitForChange(caller, timeoutMs, signal)`), both arguments forwarded
    * verbatim (`signal` is the caller's cancellation for the WAIT only).
    *
-   * Degrade: THROWS when the service or `waitForChange` is absent. Reported by
-   * `capabilities().teamMessages`.
+   * Degrade (D6b): an ABSENT service THROWS; a mounted service WITHOUT `waitForChange` answers
+   * `timedOut: true` immediately (no change was observed because none could be) plus the marker.
+   * Gate on `capabilities().teamWait`.
    */
   teamWaitForChange(caller: unknown, timeoutMs: number, signal?: AbortSignal): Promise<DshTeamWaitResult>
+  /**
+   * The Team enable switch — ADDED by 0.2.2-rc.2 and exposed through THIS adapter only (A1/D6b).
+   *
+   * Answers the host's own `isEnabled(agent)`. On 0.2.2-rc.1 the switch does not exist there:
+   * `undefined` ("unknown") is returned, with ONE log line, and this NEVER throws for the absence.
+   * A host that throws (a stale identity) is a real rejection and propagates. Gate on
+   * `capabilities().teamEnableSwitch`.
+   */
+  teamEnabled(agent: unknown): boolean | undefined
+  /**
+   * Set one root session's Team selection and read the resulting state back.
+   *
+   * `undefined` on 0.2.2-rc.1 (no switch there), never a throw for that absence; the 0.2.2-rc.2
+   * host's own rejections (`TEAM_LEAD_REQUIRED` for a descendant, a persistence failure)
+   * propagate. The optional `signal` is checked by the host BEFORE the change.
+   */
+  setTeamEnabled(agent: unknown, enabled: boolean, signal?: AbortSignal): Promise<boolean | undefined>
   /**
    * Every LIVE Team in this process, folded over {@link DshAdapter.liveAgents}: for each
    * live Agent whose `tryMembership` answers `role: "lead"`, its roster and board.
    *
-   * `[]` when the team service is absent, when the agent registry is absent, and when
-   * NO live agent is a Lead — the three cases are indistinguishable here on purpose,
-   * because each of them means "there is nothing to report" to a web route or a TUI
-   * scene. Per-agent reads are CONTAINED: a service that lacks `listMembers`/
-   * `listTasks`, or a call that throws, yields `[]` for that entry instead of taking
-   * either the fold or the caller down (this is a readout, not a command path).
+   * `[]` when the team service is absent, when the agent registry is absent, when NO live agent
+   * is a Lead, AND on a task-board-only host (0.2.2-rc.2 has no roster to fold; the loss is
+   * reported ONCE by the roster capability, D6b) — each of those means "there is nothing to
+   * report" to a web route or a TUI scene. Per-agent reads are CONTAINED: a call that throws
+   * yields `[]` for that entry instead of taking either the fold or the caller down (this is a
+   * readout, not a command path). The board half is READ whenever `listTasks` is callable: the
+   * gate is the READ method ALONE, so a board that can be listed but not written still yields its
+   * tasks; without `listTasks` the entry's tasks are `[]` carrying the `task-board`
+   * `unsupported` marker ({@link DshTeamMarkedArray}).
    */
   teamLiveTeams(): DshTeamView[]
   /**
@@ -3608,6 +3771,27 @@ function teamStrings(raw: unknown): string[] {
   return Array.isArray(raw) ? raw.filter((entry): entry is string => typeof entry === "string") : []
 }
 
+/**
+ * Project one raw `tryMembership` answer onto {@link DshTeamMembership}, or undefined.
+ *
+ * ONE projection for BOTH identity sources (the host roster and the native executor's handle map),
+ * so the two can never disagree about what a complete, declared membership looks like.
+ * @param membership the raw `tryMembership`/`membership` value; any shape is accepted.
+ * @returns the declared membership, or undefined for anything incomplete or undeclared.
+ */
+function projectMembership(membership: any): DshTeamMembership | undefined {
+  if (membership === undefined || membership === null) return undefined
+  /** The host's role, accepted only when it is one of the two declared values. */
+  const role = membership.role
+  // Anything that is not one of the two declared roles is a MISS: the frozen return
+  // type has no third value to report, and inventing `teammate` would lie.
+  if (role !== "lead" && role !== "teammate") return undefined
+  // `root` (the Lead Agent the host carries on the membership) is deliberately NOT
+  // projected: a consumer resolves the Lead through `liveAgent`/`liveAgents`, which
+  // is the registry of record — never a handle captured in a stale row.
+  return { teamId: String(membership.id ?? membership.teamId ?? ""), role, name: String(membership.name ?? "") }
+}
+
 /** One roster row projected onto {@link DshTeamMemberView} (see the section header). */
 function teamMemberView(raw: unknown): DshTeamMemberView {
   /** The host's member row viewed as a plain record, so every read is guarded. */
@@ -3646,17 +3830,15 @@ function teamTaskView(raw: unknown): DshTeamTaskView {
 }
 
 /**
- * One CONTAINED roster/board read for {@link DshAdapter.teamLiveTeams}: a service without
- * the method, a throwing call or a non-array answer all degrade to `[]`, because a fold
- * over live teams must never be taken down by one member's failing read.
+ * One CONTAINED roster/board read for {@link DshAdapter.teamLiveTeams}: a throwing call or a
+ * non-array answer degrades to `[]`, because a fold over live teams must never be taken down by one
+ * member's failing read. The CALLER gates on the ONE team-surface predicate — this helper is never
+ * reached for a seam the surface reported absent, so it carries no `typeof` of its own.
  */
 function teamRows<T>(teams: any, method: string, agent: unknown, project: (raw: unknown) => T): T[] {
-  /** The service's read method, absent on a host that does not model this family. */
-  const reader = teams?.[method]
-  if (typeof reader !== "function") return []
   try {
     /** The raw host answer, accepted only when it is an array. */
-    const rows = reader.call(teams, agent)
+    const rows = teams[method].call(teams, agent)
     return Array.isArray(rows) ? rows.map(project) : []
   } catch {
     return []
@@ -3882,6 +4064,19 @@ function hasOneShotSpawn(subagents: any): boolean {
 }
 
 /**
+ * Whether this `ctx.subagents` service can deliver a message to a durable child.
+ *
+ * The ONE-TRUE predicate behind BOTH the native executor's `send` and
+ * `capabilities().subagentsSendMessage` (A1 item 4): the seam used to be probed inline at the call
+ * site with no flag, so a pre-flight could not see the capability the delivery needs.
+ * @param subagents - the subagent service, or `undefined` when the composition has none.
+ * @returns true when `sendMessage` is callable.
+ */
+function hasSubagentSendMessage(subagents: any): boolean {
+  return typeof subagents?.sendMessage === "function"
+}
+
+/**
  * Which durable-child member this `ctx.subagents` service exposes.
  *
  * Probed newest-first, so a 0.2.1 host never reports the retired member and the answer is also
@@ -3892,6 +4087,154 @@ function hasOneShotSpawn(subagents: any): boolean {
 function continuableStartMember(subagents: any): (typeof CONTINUABLE_START_MEMBERS)[number] | undefined {
   for (const member of CONTINUABLE_START_MEMBERS) if (typeof subagents?.[member] === "function") return member
   return undefined
+}
+
+/**
+ * The official Agent Teams surface, probed ONCE and shared by every team method (D6b).
+ *
+ * 0.2.2-rc.2 kept the shared task board and REMOVED the roster/mailbox/spawn API; 0.2.2-rc.1 has
+ * both halves and no enable switch. The probe is total and never throws: a non-object, a partial
+ * stub or a missing service all answer the field-level truth, so a caller gates on
+ * `capabilities()` BEFORE a call instead of discovering a `typeof` at the call site.
+ * @param service the raw `ctx.get("agentTeams")` value; any value is accepted.
+ * @returns one boolean per part of the surface.
+ */
+function teamServiceSurfaceOf(service: unknown): DshTeamServiceSurface {
+  /** The service as a method bag; a non-object carries none of the seams. */
+  const bag = (service ?? undefined) as Record<string, unknown> | undefined
+  /** Whether one method name is callable on that bag; a throwing getter is a MISS, never a throw. */
+  const has = (method: string): boolean => {
+    try {
+      return bag !== undefined && bag !== null && typeof bag[method] === "function"
+    } catch {
+      return false
+    }
+  }
+  /** The mailbox halves, kept apart so a half-present service reports honestly. */
+  const send = has("sendMessage")
+  /** The wait half. */
+  const wait = has("waitForChange")
+  /** Whether the service answered at all. */
+  const present = bag !== undefined && bag !== null
+  return {
+    present,
+    identity: has("tryMembership"),
+    roster: has("listMembers"),
+    taskBoard: TEAM_TASK_METHODS.every((method: string): boolean => has(method)),
+    createTask: has("createTask"),
+    getTask: has("getTask"),
+    listTasks: has("listTasks"),
+    updateTask: has("updateTask"),
+    send,
+    wait,
+    spawn: has("spawnTeammate"),
+    interrupt: has("interrupt"),
+    enableSwitch: has("isEnabled") && has("setEnabled"),
+    messaging: send && wait,
+  }
+}
+
+/**
+ * The official executor seams a mounted team service is MISSING; empty means it can execute the roster.
+ * D6's quartet, derived from the SAME predicate every other team method reads.
+ * @param surface the probed surface.
+ * @returns the missing method names, in the frozen probe order.
+ */
+function missingOfficialExecutorMethods(surface: DshTeamServiceSurface): string[] {
+  /** The missing names, in the order the executor needs them. */
+  const missing: string[] = []
+  if (!surface.spawn) missing.push("spawnTeammate")
+  if (!surface.send) missing.push("sendMessage")
+  if (!surface.interrupt) missing.push("interrupt")
+  if (!surface.wait) missing.push("waitForChange")
+  return missing
+}
+
+/**
+ * Whether the mounted service can EXECUTE the team roster (D6's four seams), not merely exist.
+ * @param surface the probed surface.
+ * @returns true only when every executor seam is callable.
+ */
+function officialTeamExecutable(surface: DshTeamServiceSurface): boolean {
+  return missingOfficialExecutorMethods(surface).length === 0
+}
+
+/** The host-generation token one degraded answer carries, derived from the surface alone. */
+function teamGenerationOf(surface: DshTeamServiceSurface): DshTeamUnsupported["generation"] {
+  if (!surface.present) return "absent"
+  // rc.2's exact shape: the board and the enable switch, none of the executor/roster halves.
+  if (surface.taskBoard && !surface.identity && !surface.roster && !surface.send && !surface.wait && !surface.spawn && !surface.interrupt) return "task-board-only"
+  return "partial"
+}
+
+/** The ONE actionable sentence per missing capability: the supported path, not just the loss. */
+const TEAM_UNSUPPORTED_GUIDANCE: Readonly<Record<DshTeamSurfaceName, string>> = {
+  identity: "teamMembership() answers from the NATIVE executor's handle map, or undefined when that backend does not know the agent; gate on capabilities().teamRoster",
+  roster: "roster reads answer [] with an `unsupported` marker; gate on capabilities().teamRoster, or use the NATIVE team executor (mpd's default) for member identity",
+  "task-board": "board reads answer an empty result with an `unsupported` marker; gate on capabilities().teamTasks",
+  send: "teamSendMessage() answers status `unsupported` and nothing is queued; gate on capabilities().teamMessaging",
+  wait: "teamWaitForChange() answers `timedOut: true` immediately; gate on capabilities().teamWait",
+  spawn: "teamSpawnTeammate() answers an empty member row; gate on capabilities().teamSpawn or use teamExecutor()",
+  interrupt: "teamInterrupt() answers `inactive`; gate on capabilities().teamInterrupt or use teamExecutor()",
+  "enable-switch": "teamEnabled() answers undefined (UNKNOWN) and setTeamEnabled() is a no-op returning undefined; gate on capabilities().teamEnableSwitch",
+}
+
+/** Capabilities whose degradation has already been reported (ONE line per process, per capability). */
+const reportedTeamCapabilities = new Set<string>()
+
+/**
+ * The STRUCTURED answer for one missing capability, plus its ONE-per-process log line.
+ * @param capability the missing surface part.
+ * @param surface the probed surface.
+ * @returns the marker a degraded answer carries.
+ */
+function unsupportedTeamAnswer(capability: DshTeamSurfaceName, surface: DshTeamServiceSurface): DshTeamUnsupported {
+  /** The host generation this decision was made on. */
+  const generation = teamGenerationOf(surface)
+  /** The generation spoken in the sentence, so the reason reads without the enum. */
+  const where = generation === "task-board-only"
+    ? "0.2.2-rc.2 removed the roster/mailbox/spawn API (the service is task-board only)"
+    : generation === "absent"
+      ? "no agentTeams service is mounted in this composition"
+      : "this host exposes only part of the official team surface"
+  /** The marker's one-sentence reason: missing part, generation, supported path. */
+  const reason = "the " + capability + " part of the official team surface is unavailable: " + where + " — " + TEAM_UNSUPPORTED_GUIDANCE[capability]
+  if (!reportedTeamCapabilities.has(capability)) {
+    reportedTeamCapabilities.add(capability)
+    rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: " + reason)
+  }
+  return { unsupported: true, capability, generation, reason }
+}
+
+/**
+ * An empty team-row array carrying the degraded marker on a non-enumerable property.
+ * @param capability the missing surface part.
+ * @param surface the probed surface.
+ * @returns `[]` a consumer can iterate exactly as before, whose `unsupported` names the loss.
+ */
+function markedTeamRows<T>(capability: DshTeamSurfaceName, surface: DshTeamServiceSurface): DshTeamMarkedArray<T> {
+  /** The empty rows, carrying the marker beside their indices. */
+  const rows: T[] = []
+  Object.defineProperty(rows, "unsupported", { value: unsupportedTeamAnswer(capability, surface), enumerable: false, configurable: false, writable: false })
+  return rows as DshTeamMarkedArray<T>
+}
+
+
+/** Whether the mounted-but-not-executable official service has already been reported (ONE line per process). */
+let officialExecutorFallbackReported = false
+
+/**
+ * Report — ONCE per process — that the mounted official service cannot execute the roster.
+ *
+ * The line names the missing seams AND the fallback, because the operator-visible symptom otherwise
+ * reads as "the official override did nothing": `MPD_DSH_TEAM_EXECUTOR=official` on 0.2.2-rc.2 is
+ * honoured only when the mounted service can serve, and this is the record of why it could not.
+ * @param missing the executor seams the mounted service lacks, in probe order.
+ */
+function reportOfficialExecutorFallback(missing: readonly string[]): void {
+  if (officialExecutorFallbackReported) return
+  officialExecutorFallbackReported = true
+  rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: the mounted agentTeams service cannot execute the team roster (missing " + missing.join(", ") + ") — teamExecutor() falls through to the NATIVE backend. 0.2.2-rc.2's service is TASK-BOARD ONLY: the roster/mailbox API was removed, so presence is not servability")
 }
 
 /**
@@ -4921,13 +5264,17 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       kind: "native",
       reason,
       providers: () => {
-        /** The provider names the harness itself reports, which is what a caller may name. */
+        // The SAME read `subagentProviders()` performs (A1 item 4): the host declares provider
+        // names on `list()`, and the old `.providers` probe here was dead code that answered `[]`
+        // on every generation — a silent contradiction between the executor and the adapter.
+        /** The subagent service, resolved per call so a late-ACTIVE service is not frozen out. */
+        const subagents = subagentsOf()
+        /** The catalogue read, probed before it is called with the service as receiver. */
+        const list = (subagents as { list?: unknown } | undefined)?.list
+        if (typeof list !== "function") return []
         try {
-          /** The service's own list, or undefined when it exposes none. */
-          const list = subagentsOf()?.providers
-          if (typeof list !== "function") return []
-          /** Its answer, filtered to strings so the declared `string[]` cannot leak a stub value. */
-          const names = list.call(subagentsOf())
+          /** The host's answer, filtered to strings so the declared `string[]` cannot leak a stub value. */
+          const names: unknown = (list as () => unknown).call(subagents)
           return Array.isArray(names) ? names.filter((entry: unknown): entry is string => typeof entry === "string") : []
         } catch { return [] }
       },
@@ -5007,7 +5354,9 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         if (!ready) throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`)
         /** The subagents service, or a throw naming the action that could not happen. */
         const subagents = requireService("subagents", `cannot deliver a message to team member "${handle}"`)
-        if (typeof subagents.sendMessage !== "function") {
+        // The SAME predicate `capabilities().subagentsSendMessage` reports (A1 item 4), so a
+        // pre-flight and this call path can never disagree about the delivery seam.
+        if (!hasSubagentSendMessage(subagents)) {
           throw new Error("mpd-dsh-adapter: the harness subagents service exposes no sendMessage() — cannot deliver to a team member")
         }
         // `sendMessage` cold-resumes an absent direct child, which is why the native path does
@@ -5398,6 +5747,8 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       const systemPrompt = service("systemPrompt")
       /** The official Agent Teams service snapshot. */
       const agentTeams = service("agentTeams")
+      /** The ONE team-surface predicate every `team*` flag below derives from (D6b). */
+      const teamSurface = teamServiceSurfaceOf(agentTeams)
       /** The host-plane goal service snapshot, read for the durable goal read. */
       const goalService = service("goals")
       /** The harness user-questions service snapshot: the seam `askUserQuestion` drives. */
@@ -5453,6 +5804,9 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         // The same predicate `teamExecutor()` uses, so a caller that pre-flights cannot disagree
         // with the backend it is about to get.
         teamExecutorNative: continuableStartMember(subagents) !== undefined,
+        // D6: the OFFICIAL backend is servable only when the mounted service can EXECUTE the roster
+        // (all four seams), never merely because it is present — rc.2 mounts a task board only.
+        teamExecutorOfficial: officialTeamExecutable(teamSurface),
         subagentsInterrupt: typeof subagents?.interrupt === "function",
         llmListModels: typeof llmService?.listModels === "function",
         llmResolveCallConfig: typeof llmService?.resolveCallConfig === "function",
@@ -5472,16 +5826,28 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         // is the one a caller must branch on for delivery (see registerAgentPreStep).
         agentPreStep: typeof ctx?.on === "function",
         agentPreStepScope: liveAgents().some((candidate) => typeof scopeContextOf(candidate)?.on === "function"),
-        // ── the official Agent Teams plane (D6: reachable ONLY through here) ─────
-        // Each flag faces a method FAMILY, because the families degrade differently:
-        // `team` is the service-level identity + roster read (`teamMembership`,
-        // `teamListMembers`, and the gate for `teamSpawnTeammate`/`teamInterrupt`),
-        // `teamTasks` the shared board (all FOUR task methods, so a half-present
-        // service reads false), `teamMessages` the peer mailbox plus the wait seam.
-        team: typeof agentTeams?.tryMembership === "function" && typeof agentTeams?.listMembers === "function",
-        teamTasks: TEAM_TASK_METHODS.every((method) => typeof (agentTeams as any)?.[method] === "function"),
-        teamMessages: typeof agentTeams?.sendMessage === "function" && typeof agentTeams?.waitForChange === "function",
+        // ── the official Agent Teams plane (D6/A1/A2: reachable ONLY through here) ──
+        // ONE predicate (`teamSurface`, computed above) reports the whole surface; each flag below
+        // names ONE method family, because the families degrade differently PER GENERATION:
+        //   0.2.2-rc.1  : identity+roster, task board, send+wait, spawn, interrupt; NO enable switch
+        //   0.2.2-rc.2  : task board ONLY; NO roster/mailbox/spawn/interrupt; enable switch ADDED
+        // `teamTasks` is the ONLY pre-flight for BOARD work — `team` is NOT (it is false on rc.2
+        // while the board works; A1 item 3). The `team*` methods answer a structured
+        // `unsupported` marker instead of a raw throw on a task-board-only host (D6b).
+        team: teamSurface.identity && teamSurface.roster,
+        teamServiceMounted: teamSurface.present,
+        teamRoster: teamSurface.identity && teamSurface.roster,
+        teamTasks: teamSurface.taskBoard,
+        teamMessages: teamSurface.messaging,
+        teamMessaging: teamSurface.send,
+        teamSpawn: teamSurface.spawn,
+        teamWait: teamSurface.wait,
+        teamInterrupt: teamSurface.interrupt,
+        teamEnableSwitch: teamSurface.enableSwitch,
         subagentsProviderRegister: typeof subagents?.registerProvider === "function",
+        // A1 item 4: the native executor's `send` probes this seam inline; the flag and the call
+        // path now read the SAME helper, so a pre-flight cannot contradict the delivery.
+        subagentsSendMessage: hasSubagentSendMessage(subagents),
         // ── the goal plane (one flag per HALF, because a composition can carry the
         // durable service without the preset-plane tools, and the read and the write
         // then degrade differently) ──────────────────────────────────────────────
@@ -6197,6 +6563,11 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       // `prompt`/`followup`/`[HOST_PROMPT_QUEUE]`/`sendMessage` off THIS object and the
       // ladder's own policy stays in the plugin (contract D6). `service()` is contained,
       // so a missing service is `undefined`, never a throw.
+      //
+      // DECLARED BOUND (A2): this hands the service out UNPROBED on purpose — probing it would
+      // wrap or replace the identity a consumer's own ladder must read. A consumer therefore
+      // probes the member it needs itself and degrades on absence; ZERO consumers exist in this
+      // tree today, so the bound costs nothing and is recorded here instead of silently widening.
       return service("subagents")
     },
 
@@ -6302,8 +6673,19 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       const nativeMember = continuableStartMember(service("subagents"))
       /** Whether the native path can raise a durable child at all. */
       const nativeReady = nativeMember !== undefined
-      /** Whether the official service is mounted. */
-      const officialReady = service("agentTeams") !== undefined
+      /** The raw official Agent Teams service this composition mounts, when it mounts one. */
+      const officialService = service("agentTeams")
+      /** The ONE team-surface predicate; executor readiness is a view of it, never a second probe. */
+      const officialSurface = teamServiceSurfaceOf(officialService)
+      /** The official executor seams that service is missing; empty means it can serve the executor. */
+      const officialMissing = missingOfficialExecutorMethods(officialSurface)
+      /** Whether the official service can EXECUTE the roster, not merely whether it is mounted (D6). */
+      const officialReady = officialMissing.length === 0
+      // D6: PRESENCE IS NOT SERVABILITY. 0.2.2-rc.2 mounts a TASK-BOARD-ONLY service, so selecting it
+      // as the executor would fail on the first spawn/send/interrupt; it falls through to the native
+      // backend and ONE line records why. A service that is absent entirely is the older, expected
+      // shape and stays quiet — every capability consumer already degrades on that.
+      if (officialService !== undefined && !officialReady) reportOfficialExecutorFallback(officialMissing)
       /** The chosen backend, honouring a valid override and falling through when it cannot serve. */
       const chosen: DshTeamExecutorKind = override === "official" && officialReady ? "official"
         : override === "native" && nativeReady ? "native"
@@ -6316,102 +6698,157 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
           ? (override === undefined
             ? `native: the default backend — bound ${String(nativeMember)}() on the harness subagent seam, and it needs nothing from the official plugin`
             : `native: chosen by MPD_DSH_TEAM_EXECUTOR=native, bound ${String(nativeMember)}() on the harness subagent seam`)
-          : "native UNAVAILABLE: the harness subagents service exposes neither startActivation() nor startContinuable(), and no team service is mounted either — every team call will refuse",
+          : "native UNAVAILABLE: the harness subagents service exposes neither startActivation() nor startContinuable(), and no EXECUTABLE team service is mounted either (a task-board-only service does not count) — every team call will refuse",
         nativeReady,
       )
     },
 
-    /** Hand out the raw Agent Teams service; the contained probe never throws. */
+    /**
+     * Hand out the raw Agent Teams service; the contained probe never throws.
+     *
+     * `undefined` means NO team row is mounted. For "a service is mounted but this generation
+     * cannot do X", read `capabilities()`: `teamServiceMounted` names presence, `teamTasks` is the
+     * BOARD pre-flight, and the per-family flags name the rest (A1 item 3 — `capabilities().team`
+     * is NOT the board pre-flight: it is false on 0.2.2-rc.2 while the board works).
+     */
     teamService(): unknown | undefined {
-      // The contained probe (never a throw): `undefined` is the whole degrade contract,
-      // and `capabilities().team` is the pre-flight check a consumer reads.
+      // The contained probe (never a throw): `undefined` is the whole degrade contract.
       const teams = service("agentTeams")
       return teams === undefined || teams === null ? undefined : teams
     },
 
-    /** One Agent's team identity, or undefined; this method NEVER throws. */
+    /**
+     * One Agent's team identity, or undefined; this method NEVER throws.
+     *
+     * IDENTITY LADDER (A2). The host roster answers FIRST and, on 0.2.2-rc.1, is the only source —
+     * byte-identical to before. On a TASK-BOARD-ONLY host (0.2.2-rc.2) the roster read is gone, so
+     * the ACTIVE team executor's own handle map answers instead: it is the identity THIS bundle
+     * raised, which is why the read-only guard and the board's authority checks keep a name and a
+     * role on rc.2. When the host cannot answer and the executor does not know the agent, the
+     * answer is undefined and the roster guard DEFAULTS TO DENY (never a silent widening).
+     */
     teamMembership(agent: unknown): DshTeamMembership | undefined {
       /** The team service, or undefined when this composition has no team row. */
       const teams = service("agentTeams")
-      /** The identity read, probed before it is called with the service as receiver. */
-      const tryMembership = teams?.tryMembership
-      // NEVER throws (the frozen contract of this method): a missing seam is a miss.
-      if (typeof tryMembership !== "function") return undefined
-      /** The host's raw membership answer, validated field by field below. */
-      let membership: any
-      try {
-        membership = tryMembership.call(teams, agent)
-      } catch {
-        // A stale identity, a non-Team subagent or a host that rejects the handle is a
-        // normal negative answer here — this method is used as a FILTER, so an exception
-        // would turn "not on a team" into a failure.
-        return undefined
+      /** The ONE capability predicate: it decides WHICH identity source can answer. */
+      const surface = teamServiceSurfaceOf(teams)
+      if (surface.identity) {
+        /** The host's raw membership answer, validated field by field below. */
+        let membership: any
+        try {
+          membership = (teams as { tryMembership: (agent: unknown) => unknown }).tryMembership.call(teams, agent)
+        } catch {
+          // A stale identity, a non-Team subagent or a host that rejects the handle is a
+          // normal negative answer here — this method is used as a FILTER, so an exception
+          // would turn "not on a team" into a failure.
+          return undefined
+        }
+        return projectMembership(membership)
       }
-      if (membership === undefined || membership === null) return undefined
-      /** The host's role, accepted only when it is one of the two declared values. */
-      const role = membership.role
-      // Anything that is not one of the two declared roles is a MISS: the frozen return
-      // type has no third value to report, and inventing `teammate` would lie.
-      if (role !== "lead" && role !== "teammate") return undefined
-      // `root` (the Lead Agent the host carries on the membership) is deliberately NOT
-      // projected: a consumer resolves the Lead through `liveAgent`/`liveAgents`, which
-      // is the registry of record — never a handle captured in a stale row.
-      return { teamId: String(membership.id ?? ""), role, name: String(membership.name ?? "") }
+      // D6b/A2: no host identity read on this generation. Ask the ACTIVE executor, whose NATIVE
+      // backend maps exactly the durable child session ids this adapter raised; the official
+      // backend answers from the host it wraps. Both silent => undefined (the guard denies).
+      if (surface.present) unsupportedTeamAnswer("identity", surface)
+      try {
+        /** The identity the ACTIVE backend knows for this agent, when it knows one. */
+        const viaExecutor = adapter.teamExecutor().membership(agent)
+        if (viaExecutor !== undefined) return viaExecutor
+      } catch {
+        // A backend that cannot answer is a miss, exactly like a missing seam.
+      }
+      return undefined
     },
 
-    /** The roster visible to one member; THROWS when the service or `listMembers` is absent. */
-    teamListMembers(agent: unknown): DshTeamMemberView[] {
+    /**
+     * The runtime-enriched roster visible to one member; never throws on a task-only host.
+     *
+     * DEGRADE (D6b): a MOUNTED service without `listMembers` is 0.2.2-rc.2's shape, not a bad
+     * mount — the answer is `[]` carrying an `unsupported` marker (non-enumerable, see
+     * {@link DshTeamMarkedArray}) instead of a raw throw. An ABSENT service still THROWS, as it
+     * always has: `[]` there would conflate "no members" with "no team plane".
+     */
+    teamListMembers(agent: unknown): DshTeamMarkedArray<DshTeamMemberView> {
       /** The team service, or a THROW naming the roster that could not be listed. */
       const teams = requireService("agentTeams", "cannot list the team roster of an agent")
-      if (typeof teams.listMembers !== "function") throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no listMembers()")
+      /** The ONE capability predicate. */
+      const surface = teamServiceSurfaceOf(teams)
+      if (!surface.roster) return markedTeamRows<DshTeamMemberView>("roster", surface)
       /** The host's raw roster, accepted only when it is an array. */
-      const rows = teams.listMembers.call(teams, agent)
+      const rows = (teams as { listMembers: (agent: unknown) => unknown }).listMembers.call(teams, agent)
       return Array.isArray(rows) ? rows.map(teamMemberView) : []
     },
 
-    /** The board visible to one member; THROWS when the service or `listTasks` is absent. */
+    /**
+     * The board visible to one member; never throws on a service that kept the board.
+     *
+     * DEGRADE (D6b): a mounted service without the board answers `[]` carrying an `unsupported`
+     * marker; an ABSENT service throws, for the reason {@link DshAdapter.teamListMembers} names.
+     */
     teamListTasks(agent: unknown): DshTeamTaskView[] {
       /** The team service, or a THROW naming the board that could not be listed. */
       const teams = requireService("agentTeams", "cannot list the shared task board of an agent")
-      if (typeof teams.listTasks !== "function") throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no listTasks()")
+      /** The ONE capability predicate. */
+      const surface = teamServiceSurfaceOf(teams)
+      // A1 item 5: the BOARD half is untouched — a missing board seam still THROWS naming it, so
+      // "[]" can never be confused with "this team has no tasks".
+      if (!surface.listTasks) throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no listTasks()")
       /** The host's raw board, accepted only when it is an array. */
-      const rows = teams.listTasks.call(teams, agent)
+      const rows = (teams as { listTasks: (agent: unknown) => unknown }).listTasks.call(teams, agent)
       return Array.isArray(rows) ? rows.map(teamTaskView) : []
     },
 
     /** Create one pending task, forwarding the caller and the request by identity. */
-    async teamCreateTask(caller: unknown, request: DshTeamCreateTaskRequest): Promise<DshTeamTaskView> {
+    async teamCreateTask(caller: unknown, request: DshTeamCreateTaskRequest, signal: AbortSignal | undefined = undefined): Promise<DshTeamTaskView> {
       /** The team service, or a THROW naming the task that could not be created. */
       const teams = requireService("agentTeams", "cannot create team task \"" + String(request?.subject) + "\"")
-      if (typeof teams.createTask !== "function") throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no createTask()")
-      return teamTaskView(await teams.createTask.call(teams, caller, request))
+      /** The ONE capability predicate. */
+      const surface = teamServiceSurfaceOf(teams)
+      if (!surface.createTask) throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no createTask()")
+      // `signal` is the 0.2.2-rc.2 ADDITION (D6b): forwarded only when the caller supplied one, so
+      // an rc.1 host keeps the exact two-argument call it always received.
+      const created: unknown = signal === undefined
+        ? await (teams as { createTask: (caller: unknown, request: unknown) => Promise<unknown> }).createTask.call(teams, caller, request)
+        : await (teams as { createTask: (caller: unknown, request: unknown, signal: AbortSignal) => Promise<unknown> }).createTask.call(teams, caller, request, signal)
+      return teamTaskView(created)
     },
 
     /** Read one task by id, tombstone included; the host's own throw propagates verbatim. */
     teamGetTask(caller: unknown, id: string): DshTeamTaskView {
       /** The team service, or a THROW naming the task that could not be read. */
       const teams = requireService("agentTeams", "cannot read team task \"" + String(id) + "\"")
-      if (typeof teams.getTask !== "function") throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no getTask()")
+      /** The ONE capability predicate. */
+      const surface = teamServiceSurfaceOf(teams)
+      if (!surface.getTask) throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no getTask()")
       // A host throw (an unknown id, a revoked authority) propagates VERBATIM: this
       // adapter never invents a task view and never masks a real rejection.
-      return teamTaskView(teams.getTask.call(teams, caller, id))
+      return teamTaskView((teams as { getTask: (caller: unknown, id: string) => unknown }).getTask.call(teams, caller, id))
     },
 
     /** Apply one compare-and-set transition, forwarding the caller and the request by identity. */
-    async teamUpdateTask(caller: unknown, request: DshTeamUpdateTaskRequest): Promise<DshTeamTaskView> {
+    async teamUpdateTask(caller: unknown, request: DshTeamUpdateTaskRequest, signal: AbortSignal | undefined = undefined): Promise<DshTeamTaskView> {
       /** The team service, or a THROW naming the task that could not be updated. */
       const teams = requireService("agentTeams", "cannot update team task \"" + String(request?.taskId) + "\"")
-      if (typeof teams.updateTask !== "function") throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no updateTask()")
-      return teamTaskView(await teams.updateTask.call(teams, caller, request))
+      /** The ONE capability predicate. */
+      const surface = teamServiceSurfaceOf(teams)
+      if (!surface.updateTask) throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no updateTask()")
+      // Same `signal` discipline as `teamCreateTask`: the rc.2 addition rides only when supplied.
+      const updated: unknown = signal === undefined
+        ? await (teams as { updateTask: (caller: unknown, request: unknown) => Promise<unknown> }).updateTask.call(teams, caller, request)
+        : await (teams as { updateTask: (caller: unknown, request: unknown, signal: AbortSignal) => Promise<unknown> }).updateTask.call(teams, caller, request, signal)
+      return teamTaskView(updated)
     },
 
-    /** Queue one durable peer message; THROWS when the mailbox seam is absent. */
+    /** Queue one durable peer message; a task-board-only host answers the structured marker. */
     async teamSendMessage(caller: unknown, request: DshTeamSendMessageRequest): Promise<DshTeamSendMessageResult> {
       /** The team service, or a THROW naming the message target. */
       const teams = requireService("agentTeams", "cannot send a team message to \"" + String(request?.target) + "\"")
-      if (typeof teams.sendMessage !== "function") throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no sendMessage()")
+      /** The ONE capability predicate. */
+      const surface = teamServiceSurfaceOf(teams)
+      // D6b: 0.2.2-rc.2 removed the mailbox. NOTHING was queued, and the answer says so instead of
+      // pretending an `accepted` delivery that never happened.
+      if (!surface.send) return { messageId: "", status: "unsupported", unsupported: unsupportedTeamAnswer("send", surface) }
       /** The host's raw send answer, projected onto the two declared fields. */
-      const result: any = await teams.sendMessage.call(teams, caller, request)
+      const result: any = await (teams as { sendMessage: (caller: unknown, request: unknown) => Promise<unknown> }).sendMessage.call(teams, caller, request)
       return {
         messageId: String(result?.messageId ?? ""),
         // The host declares exactly these two; anything else is read as the conservative
@@ -6425,9 +6862,18 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     async teamSpawnTeammate(caller: unknown, request: DshTeamSpawnTeammateRequest): Promise<DshTeamSpawnTeammateResult> {
       /** The team service, or a THROW naming the member that could not be spawned. */
       const teams = requireService("agentTeams", "cannot spawn team member \"" + String(request?.name) + "\"")
-      if (typeof teams.spawnTeammate !== "function") throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no spawnTeammate()")
+      /** The ONE capability predicate. */
+      const surface = teamServiceSurfaceOf(teams)
+      // D6b: no spawn API on a task-board-only host. The answer is a stable EMPTY member row plus
+      // the marker, so a caller that ignored capabilities() sees the loss instead of a TypeError.
+      if (!surface.spawn) {
+        return {
+          member: { id: "", name: String(request?.name ?? ""), role: "teammate", status: "inactive", diagnostics: [] },
+          unsupported: unsupportedTeamAnswer("spawn", surface),
+        }
+      }
       /** The host's raw spawn answer, whose member row is projected below. */
-      const result: any = await teams.spawnTeammate.call(teams, caller, request)
+      const result: any = await (teams as { spawnTeammate: (caller: unknown, request: unknown) => Promise<unknown> }).spawnTeammate.call(teams, caller, request)
       return { member: teamMemberView(result?.member) }
     },
 
@@ -6435,9 +6881,13 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     teamInterrupt(caller: unknown, targetName: string): DshTeamInterruptResult {
       /** The team service, or a THROW naming the member that could not be interrupted. */
       const teams = requireService("agentTeams", "cannot interrupt team member \"" + String(targetName) + "\"")
-      if (typeof teams.interrupt !== "function") throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no interrupt()")
+      /** The ONE capability predicate. */
+      const surface = teamServiceSurfaceOf(teams)
+      // D6b: `inactive` is the conservative reading already documented for an undeclared status,
+      // and the marker makes the loss explicit instead of a raw throw on rc.2.
+      if (!surface.interrupt) return { previousStatus: "inactive", unsupported: unsupportedTeamAnswer("interrupt", surface) }
       /** The host's raw interrupt answer, carrying the pre-cancellation status. */
-      const result: any = teams.interrupt.call(teams, caller, targetName)
+      const result: any = (teams as { interrupt: (caller: unknown, targetName: string) => unknown }).interrupt.call(teams, caller, targetName)
       // The host answers the status sampled BEFORE cancellation; `inactive` is the
       // conservative reading of anything it does not declare.
       return { previousStatus: result?.previousStatus === "running" ? "running" : "inactive" }
@@ -6447,20 +6897,68 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     async teamWaitForChange(caller: unknown, timeoutMs: number, signal?: AbortSignal): Promise<DshTeamWaitResult> {
       /** The team service, or a THROW explaining that no wait could be started. */
       const teams = requireService("agentTeams", "cannot wait for team activity")
-      if (typeof teams.waitForChange !== "function") throw new Error("mpd-dsh-adapter: the harness agentTeams service exposes no waitForChange()")
+      /** The ONE capability predicate. */
+      const surface = teamServiceSurfaceOf(teams)
+      // D6b: no wait seam on a task-board-only host. `timedOut: true` is the honest reading — no
+      // change was observed because none COULD be — and the marker says why.
+      if (!surface.wait) return { timedOut: true, unsupported: unsupportedTeamAnswer("wait", surface) }
       // Both arguments verbatim (the host validates its own 10s..1h bound and rejects
       // outside it); the promise is forwarded untouched.
-      const result: any = await teams.waitForChange.call(teams, caller, timeoutMs, signal)
+      const result: any = await (teams as { waitForChange: (caller: unknown, timeoutMs: number, signal?: AbortSignal) => Promise<unknown> }).waitForChange.call(teams, caller, timeoutMs, signal)
       return { timedOut: result?.timedOut === true }
+    },
+
+    /**
+     * The Team enable switch, ADDED by 0.2.2-rc.2 and exposed ONLY here (A1/D6b).
+     *
+     * The host answers `isEnabled(caller)` for a live root or descendant. On 0.2.2-rc.1 the switch
+     * does not exist: this answers `undefined` ("unknown"), logs the degrade once, and NEVER throws
+     * — a caller must not have to probe a generation it cannot see.
+     */
+    teamEnabled(agent: unknown): boolean | undefined {
+      /** The team service, or undefined when this composition has no team row. */
+      const teams = service("agentTeams")
+      /** The ONE capability predicate. */
+      const surface = teamServiceSurfaceOf(teams)
+      if (!surface.enableSwitch) { unsupportedTeamAnswer("enable-switch", surface); return undefined }
+      // A host throw (a stale identity, a descendant that is not the root) is a REAL rejection and
+      // propagates: the switch is a command, not a filter.
+      return (teams as { isEnabled: (agent: unknown) => unknown }).isEnabled.call(teams, agent) === true
+    },
+
+    /**
+     * Set one root session's Team selection, then read it BACK (A1/D6b).
+     *
+     * The host's `setEnabled(agent, enabled, signal?)` is awaited and the effective state is read
+     * again, so a caller receives a value instead of a bare `void`. `undefined` on 0.2.2-rc.1 (the
+     * switch does not exist there) and a host throw propagates: persistence failures and a
+     * descendant caller are real rejections.
+     */
+    async setTeamEnabled(agent: unknown, enabled: boolean, signal: AbortSignal | undefined = undefined): Promise<boolean | undefined> {
+      /** The team service, or undefined when this composition has no team row. */
+      const teams = service("agentTeams")
+      /** The ONE capability predicate. */
+      const surface = teamServiceSurfaceOf(teams)
+      if (!surface.enableSwitch) { unsupportedTeamAnswer("enable-switch", surface); return undefined }
+      /** The switch, as the host declares it. */
+      const setEnabled = (teams as { setEnabled: (agent: unknown, enabled: boolean, signal?: AbortSignal) => Promise<unknown> }).setEnabled
+      // The signal rides only when the caller supplied one: the host checks it BEFORE the change.
+      await (signal === undefined ? setEnabled.call(teams, agent, enabled) : setEnabled.call(teams, agent, enabled, signal))
+      return (teams as { isEnabled: (agent: unknown) => unknown }).isEnabled.call(teams, agent) === true
     },
 
     /** Fold the live registry into one entry per Lead team; never throws, empty when nothing is reportable. */
     teamLiveTeams(): DshTeamView[] {
       /** The team service, or undefined when this composition has no team row. */
       const teams = service("agentTeams")
+      /** The ONE capability predicate. */
+      const surface = teamServiceSurfaceOf(teams)
       // [] when the team service or the agent registry is absent: a readout has nothing
       // to report, and a route must not be taken down by a missing optional seam.
-      if (teams === undefined || teams === null || typeof teams.tryMembership !== "function") return []
+      if (!surface.present) return []
+      // D6b: a task-board-only host has no roster to fold. Nothing is reported, and the loss is
+      // named ONCE (the same roster capability every other read reports).
+      if (!surface.identity || !surface.roster) { unsupportedTeamAnswer("roster", surface); return [] }
       if (typeof service("agents")?.list !== "function") return []
       /** One entry per live Lead, in registry order. */
       const views: DshTeamView[] = []
@@ -6468,7 +6966,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         /** The Agent's raw membership answer, filtered to Lead rows below. */
         let membership: any
         try {
-          membership = teams.tryMembership.call(teams, agent)
+          membership = (teams as { tryMembership: (agent: unknown) => unknown }).tryMembership.call(teams, agent)
         } catch {
           // One unreadable identity never hides the other teams.
           continue
@@ -6479,7 +6977,10 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
           leadName: String(membership.name ?? ""),
           leadSessionId: String((agent as { id?: unknown })?.id ?? ""),
           members: teamRows(teams, "listMembers", agent, teamMemberView),
-          tasks: teamRows(teams, "listTasks", agent, teamTaskView),
+          // The READ gate is `listTasks` ALONE (the same predicate `teamListTasks` uses), never the
+          // four-method write set: a read-only board must still yield its tasks, and a board that
+          // cannot be listed reports the loss as the marked empty array instead of a silent [].
+          tasks: surface.listTasks ? teamRows(teams, "listTasks", agent, teamTaskView) : markedTeamRows<DshTeamTaskView>("task-board", surface),
         })
       }
       return views

@@ -2,6 +2,7 @@
   "$comment": "THE PUBLISHED HOST CLAIM of @mpd-dsh/mpd: the dsh-TUI hosts this bundle declares support for. This is WRITTEN DATA, never a discovered fact and never prose: scripts/verify-tui-admission.ts reads this file and asserts that EVERY coordinate below lies inside EACH shipped manifest's compat.hosts band. That is what makes a dropped host visible in CI, where only the newer host is installed, so no discovered-host comparison can see the loss. Update this file and BOTH manifests (dsh-plugin.json and packages/mpd-tui-plugin/dsh-plugin.json) in the SAME change; dropping support for a host means removing its coordinate here and from both bands together, and the gate reddens until the three agree.",
   "hosts": [
     "@deepseek-harness-tui/dsh-tui@0.18.0",
-    "@deepseek-harness-tui/dsh-tui@0.19.0"
+    "@deepseek-harness-tui/dsh-tui@0.19.0",
+    "@deepseek-harness-tui/dsh-tui@0.20.0"
   ]
 }

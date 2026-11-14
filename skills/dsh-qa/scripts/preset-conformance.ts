@@ -476,6 +476,8 @@ interface DocumentCheck {
   readonly schemaFree: number
   /** Its rows whose owning package could not be resolved, so they escaped the audit. */
   readonly unchecked: string[]
+  /** Its rows that carry a `!!js` mount guard AND whose package is absent: host-optional, decided at load. */
+  readonly hostOptional: string[]
   /** Its blocking findings. */
   readonly problems: string[]
 }
@@ -496,6 +498,9 @@ async function checkDocument(root: string, absPath: string, yamlLoad: YamlLoad, 
   const problems: string[] = []
   // The rows whose owning package could not be resolved.
   const unchecked: string[] = []
+  // The rows whose package is absent BUT which carry a `!!js` mount guard: the absence is the
+  // load-time decision the guard exists to make (the row DISABLES itself), not an audit hole.
+  const hostOptional: string[] = []
   // How many rows were validated against an installed schema.
   let checked = 0
   // How many rows declare no schema at all.
@@ -507,7 +512,14 @@ async function checkDocument(root: string, absPath: string, yamlLoad: YamlLoad, 
     const packageName = packageOf(row.name)
     // What the audit knows about that package's schema.
     const state = await loadSchema(root, packageName, cache)
-    if (state.kind === "unresolved") { unchecked.push(`${row.id ?? row.name} (${packageName})`); continue }
+    if (state.kind === "unresolved") {
+      // A GUARDED row's package absence is the LOAD-TIME decision its guard exists to make: the row
+      // disables itself where the package does not resolve, so the missing schema is NOT a hole in
+      // this audit. An UNGUARDED row keeps escaping the audit exactly as before.
+      if (isGuardedRow(row)) hostOptional.push(`${row.id ?? row.name} (${packageName})`)
+      else unchecked.push(`${row.id ?? row.name} (${packageName})`)
+      continue
+    }
     if (state.kind === "schema-free") { schemaFree += 1; continue }
     // The installed schema this row's config must satisfy.
     const schema = state.schema
@@ -530,7 +542,7 @@ async function checkDocument(root: string, absPath: string, yamlLoad: YamlLoad, 
       problems.push(`${row.id ?? row.name} (${row.name}): unknown config key(s) ${unknown.join(", ")} — schemastery keeps them and the row silently loses the setting`)
     }
   }
-  return { checked, schemaFree, unchecked, problems }
+  return { checked, schemaFree, unchecked, hostOptional, problems }
 }
 
 /** A row is ACTIVE unless it carries the literal `disabled: true`. A `!!js` guard stays active. */
@@ -538,6 +550,16 @@ const isActive = (row: PatchRow): boolean => row.disabled !== true
 
 /** Rows that declare an `id` (the loader may assign one when a row omits it). */
 const idOf = (row: PatchRow): string | null => (typeof row.id === "string" ? row.id : null)
+
+/**
+ * Whether a row's `disabled` is a `!!js` MOUNT GUARD rather than a literal boolean: the loader's
+ * YAML tag rebuilds that scalar as the `__jsExpr` marker this audit reads statically, so a guarded
+ * row's value is only known at LOAD. The parity rule below uses exactly this shape to tell a
+ * host-optional capability apart from an unconditional declaration.
+ */
+const isGuardedRow = (row: PatchRow | undefined): boolean =>
+  row !== undefined && row.disabled !== null && typeof row.disabled === "object"
+  && (row.disabled as { __jsExpr?: unknown }).__jsExpr !== undefined
 
 /** The persona-row contract the audit pins on the mpd preset. */
 interface PersonaSummary {
@@ -662,6 +684,8 @@ async function conformance(opts: ConformanceOptions = {}): Promise<ConformanceRe
     checked += result.checked
     schemaFree += result.schemaFree
     unchecked.push(...result.unchecked.map((entry) => `${label(file)}: ${entry}`))
+    // Host-optional guarded rows whose package this host does not ship: reported, never a hole.
+    if (result.hostOptional.length > 0) notes.push(`host-optional row(s) not schema-audited on this host (each carries a \`!!js\` mount guard, so an unresolvable package DISABLES the row at load): ${result.hostOptional.map((entry) => `${label(file)}: ${entry}`).join(", ")}`)
     problems.push(...result.problems.map((entry) => `${label(file)} :: ${entry}`))
   }
   // Preset declaration: the mpd composition is an inline child list now, so its
@@ -735,7 +759,19 @@ async function conformance(opts: ConformanceOptions = {}): Promise<ConformanceRe
       missing, extra, disabledByReference, enabledHereDisabledThere,
     }
     if (missing.length > 0) problems.push(`the ${PRESET_ID} preset does not mount active row(s) the installed ${REFERENCE_PRESET} preset mounts: ${missing.join(", ")}`)
-    if (extra.length > 0) problems.push(`the ${PRESET_ID} preset declares row(s) the installed ${REFERENCE_PRESET} preset does not declare at all: ${extra.join(", ")}`)
+    // DIRECTIONALLY SYMMETRIC WITH THE `!!js` SENTENCE ABOVE. An id the reference does not declare is
+    // a REAL extra only when the declaration is unconditional: a row carrying an EVALUABLE mount
+    // guard is a host-optional capability whose presence is decided at LOAD, so on a host generation
+    // whose reference does not ship it the declaration is a NOTE, never a failure. An UNGUARDED extra
+    // row keeps failing exactly as before (the `workflow-worker-thread` shape). There is no id list —
+    // the guard IS the evidence.
+    const guardedOf = (id: string | null): boolean => isGuardedRow(ourRows.find((row) => idOf(row) === id))
+    // Extra ids whose declaration is unconditional: the shape this rule must keep catching.
+    const unguardedExtra = extra.filter((id) => !guardedOf(id))
+    // Extra ids declared only through a `!!js` mount guard: host-optional, decided at load time.
+    const guardedExtra = extra.filter((id) => guardedOf(id))
+    if (unguardedExtra.length > 0) problems.push(`the ${PRESET_ID} preset declares row(s) the installed ${REFERENCE_PRESET} preset does not declare at all: ${unguardedExtra.join(", ")}`)
+    if (guardedExtra.length > 0) notes.push(`the ${PRESET_ID} preset declares GUARDED host-optional row(s) the installed ${REFERENCE_PRESET} preset does not ship: ${guardedExtra.join(", ")} — each carries a \`!!js\` mount guard, so the capability is decided at LOAD (on this host generation it is expected to resolve disabled); an UNGUARDED extra row still fails`)
     if (disabledByReference.length > 0) notes.push(`the installed ${REFERENCE_PRESET} preset declares (disabled) ${disabledByReference.join(", ")} — not required, a disabled row grants no capability either way`)
     if (enabledHereDisabledThere.length > 0) notes.push(`the ${PRESET_ID} preset ENABLES row(s) the installed ${REFERENCE_PRESET} preset ships disabled: ${enabledHereDisabledThere.join(", ")} — deliberate preset policy, listed so a reader can see it`)
   }
@@ -910,9 +946,40 @@ async function selfTest(): Promise<void> {
     // (iii) a renamed row also loses its SCHEMA audit, so the arm cannot pass on parity alone
     arm("(iii) the renamed copy really changed the document it audits", liveText !== readFileSync(renamedCopy, "utf8"), "bytes differ")
 
-    // (iv) hermeticity: temp fixtures only; the LIVE patch's bytes + mtime are unchanged
+    // (iv) a GUARDED host-optional extra row is a NOTE, never a parity problem — the directionally
+    // symmetric half of the `!!js` rule. The row is seeded into a COPY (hermetic, like the arms
+    // above), carries an id no shipped reference can declare, and takes the exact shape `tool-office`
+    // ships in: a declaration whose presence is decided by a `!!js` mount guard at load time.
+    // The anchor both extra-row arms insert after: the `present` row, which every host ships.
+    const extraAnchor = "          - id: present\n            name: '@deepseek-ai/dsh-tool-present'\n"
+    if (!liveText.includes(extraAnchor)) fail("self-test: the preset's `present` row is not in its expected shape — the extra-row arms cannot be seeded")
+    // The copy carrying a GUARDED host-optional row.
+    const guardedExtraCopy = join(scratch, "guarded-extra.patch.yml")
+    writeFileSync(guardedExtraCopy, liveText.replace(extraAnchor, extraAnchor + "\n          - id: self-test-guarded-extra\n            name: 'mpd-self-test-guarded'\n            disabled: !!js \"true\"\n"))
+    // The verdict over the guarded copy: no problem, and a NOTE that names the row.
+    const guardedExtraRun = await conformance({ patchFiles: [guardedExtraCopy], auditFiles: [guardedExtraCopy] })
     arm(
-      "(iv) hermetic: temp fixtures only; the live preset patch bytes + mtime are unchanged",
+      "(iv) GUARDED host-optional extra row -> no parity problem, and a NOTE names it",
+      guardedExtraRun.problems.length === 0 && guardedExtraRun.notes.some((note) => note.includes("self-test-guarded-extra")),
+      "problems=" + (guardedExtraRun.problems.join(" | ") || "none") + "; notes=" + guardedExtraRun.notes.join(" | "),
+    )
+
+    // (v) the SAME row WITHOUT the guard must still FAIL — the `workflow-worker-thread` shape, which
+    // is what keeps this rule from becoming a blanket "unknown rows are fine".
+    // The copy carrying an UNGUARDED extra row.
+    const unguardedExtraCopy = join(scratch, "unguarded-extra.patch.yml")
+    writeFileSync(unguardedExtraCopy, liveText.replace(extraAnchor, extraAnchor + "\n          - id: self-test-unguarded-extra\n            name: 'mpd-self-test-unguarded'\n"))
+    // The verdict over the unguarded copy: a parity problem that names the row.
+    const unguardedExtraRun = await conformance({ patchFiles: [unguardedExtraCopy], auditFiles: [unguardedExtraCopy] })
+    arm(
+      "(v) UNGUARDED extra row still FAILS and the problem names it",
+      unguardedExtraRun.problems.some((problem) => problem.includes("self-test-unguarded-extra")),
+      "problems=" + (unguardedExtraRun.problems.join(" | ") || "none"),
+    )
+
+    // (vi) hermeticity: temp fixtures only; the LIVE patch's bytes + mtime are unchanged
+    arm(
+      "(vi) hermetic: temp fixtures only; the live preset patch bytes + mtime are unchanged",
       scratch.startsWith(tmpdir()) && readFileSync(livePath, "utf8") === liveText && statSync(livePath).mtimeMs === liveMtime,
       "fixture root " + scratch + " (temp); live mtime " + liveMtime + " -> " + statSync(livePath).mtimeMs,
     )

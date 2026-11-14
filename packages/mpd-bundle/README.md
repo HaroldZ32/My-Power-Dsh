@@ -141,3 +141,26 @@ dsh-tui plane `cordis.patch.yml` documents (0.12.0, its row id / `default: stand
 so a session resolving it composes with the documented `agent-preset/not-found` warning — the exact gap
 `docs/preset-default.md` exists to close. The `mpd` preset itself is declared by the second patch file
 (`presets/mpd.patch.yml`, row `preset-mpd`), which no composition has to opt into separately.
+
+## The team rows: three legacy rows, and a host-owned plane on the new generation (0.19.0)
+
+`0.2.2-rc.2` renamed the three Agent Teams packages and made their plugins THROW on the config keys the
+`0.2.2-rc.1` rows carry. It also changed who OWNS the plane: that generation's `dsh-base` declares
+`agent-team` (`@deepseek-ai/dsh-agent-team`, config `{maxTasks: 256}`) and `tool-agent-team`
+(`@deepseek-ai/dsh-tool-agent-team`), and its `dsh-web-app` declares `ui-agent-team`. A bundle row beside
+them is a duplicate registration — measured: `service "agentTeams" has been registered at <TeamService>`
+and `prompt section "team:policy" is already registered`, with two entries failing to activate.
+
+So the bundle ships **three** team rows (`mpd-agent-team`, `mpd-tool-agent-team`, `mpd-ui-agent-team`,
+the legacy ids and their shipped configs) and mounts them on `0.2.2-rc.1` ONLY; on `0.2.2-rc.2` it
+mounts none. `package.json` declares no team package: on rc.1 the package resolves from the HOST
+INSTALLATION's own nested copy.
+
+ONE guard decides, as a composition:
+`(<the shipped dsh-tui clause, byte-identical to HEAD>) || (<generation + resolvability clause>)`. The
+generation half reads the nearest `@deepseek-ai/dsh/package.json` above `process.argv[1]` (realpath),
+falls back to `baseUrl` resolution only when unreadable, and finally checks whether the row's package
+resolves from the profile's `node_modules` or from this dsh installation. Unreadable or ambiguous
+disables the rows and writes ONE line to `<root>/.mpd/logs/mpd-patch-guards.log`, honouring
+`MPD_DSH_TEAM_ROWS=old|new|off`; a throw is the conservative disable, and a future host that stops
+shipping the package gets a disabled row PLUS a log line rather than a silently dropped plane.

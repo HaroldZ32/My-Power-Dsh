@@ -1,0 +1,27 @@
+[rc1] harness --version
+[rc1] ok   harness binary is the requested one - 0.2.2-rc.1
+[rc1] profile create (--from-default-profile web --dump-config)
+[rc1] ok   profile created from the web template - exit=0
+[rc1] (a) install the SAME-generation family as top-level targets
+[rc1] ok   (a) same-generation family installs as a top-level target - exit=0
+[rc1] (b) install the OTHER generation as top-level targets
+[rc1] (c) install a carrier that DECLARES both generations (D2 shape)
+[rc1] install the T1 probe package
+[rc1] ok   T1 probe installed - exit=0
+[rc1] ok   renderGuard(old) and renderGuard(new) differ
+[rc1] boot reached the probe row
+[rc1] boot terminated
+[rc1] ok   probe report written (a row activated) - /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc1/probe.json
+[rc1] ok   boot did not exit on its own with an error - {"code":0,"signal":null}
+[rc1] ok   settled report landed - /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc1/probe.settled.json
+[rc1] FAIL row mpd-agent-team enabled+activated - {"id":"mpd-agent-team","name":"@deepseek-ai/dsh-experimental-agent-team","disabled":false,"active":false,"config":{"maxMembers":16,"maxTasks":256,"maxMessageBytes":32768,"disposalTimeoutMs":5000}}
+[rc1] FAIL row mpd-tool-agent-team enabled+activated - {"id":"mpd-tool-agent-team","name":"@deepseek-ai/dsh-experimental-tool-agent-team","disabled":false,"active":false,"config":{"freshProvider":"mpd-roster","forkProvider":"fork"}}
+[rc1] ok   row mpd-ui-agent-team enabled+activated - {"id":"mpd-ui-agent-team","name":"@deepseek-ai/dsh-experimental-client-ui-agent-team","disabled":false,"active":true,"config":null}
+[rc1] ok   row mpd-agent-team-rc2 disabled - {"id":"mpd-agent-team-rc2","name":"@deepseek-ai/dsh-agent-team","disabled":true,"active":false,"config":{"maxTasks":256}}
+[rc1] ok   row mpd-tool-agent-team-rc2 disabled - {"id":"mpd-tool-agent-team-rc2","name":"@deepseek-ai/dsh-tool-agent-team","disabled":true,"active":false,"config":null}
+[rc1] ok   row mpd-ui-agent-team-rc2 disabled - {"id":"mpd-ui-agent-team-rc2","name":"@deepseek-ai/dsh-client-ui-agent-team","disabled":true,"active":false,"config":null}
+[rc1] ok   all six team rows are present in the loader - present=6/6
+[rc1] ok   exactly ONE generation line in mpd-patch-guards.log - ["[mpd-team-rows] generation=old source=argv1 argv1=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh/lib/bin.js harness=0.2.2-rc.1 baseUrl=file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc1/dsh-home/profiles/t1/ baseUrlHarness=<unresolved> presence=<not-read> oldRows=enabled newRows=disabled override=<unset>"]
+[rc1] guard log
+[rc1] FAIL 14/16 assertions; evidence /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc1
+RC1_EXIT=1

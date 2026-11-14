@@ -65,7 +65,7 @@
 // string (`0.15`) is the dsh-ecosystem-spec number, UNRELATED to the dsh-tui 0.15.0
 // release this lane's carriers pin — it is recorded verbatim and never "adapted".
 //
-// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.19.0"
+// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.20.0"
 // PREREQ: absent-runtime tmux "install tmux; the TUI requires a real TTY"
 // PREREQ: absent-fixture tui profile in the sandbox root "bun skills/dsh-qa/scripts/tui-mount.ts --sandbox-root <root> --install"
 // (Those three are the codes `tuiPrereqs` in `lib/tui-lane.ts` actually gates: `absent-dsh-binary` probes the
