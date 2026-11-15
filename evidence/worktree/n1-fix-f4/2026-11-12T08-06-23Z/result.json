@@ -1,0 +1,73 @@
+{
+  "subject": "F4 repair (N1 uncommitted change) — creation refuses config.protectedBranches before git worktree add",
+  "repo": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "branch": "fix/worktree-branch-revalidation",
+  "head": "b33dde83da308a3c2dc69319b3def3b6f7b6cd51",
+  "change_state": "UNCOMMITTED working tree; this repair edited packages/mpd-worktree-plugin/src/{ops,index,config}.ts, test/worktree.test.ts, the four bilingual docs, and rebuilt packages/mpd-worktree-plugin/dist/index.js. No commit was made.",
+  "timestamp": "2026-11-12T08-06-23Z",
+  "finding": {
+    "id": "F4",
+    "severity": "Medium",
+    "source": "evidence/worktree/n1-review2/2026-11-12T07-51-14Z/result.json + probe-edge.log",
+    "reproduction_read": "protected=dev create=NO-REFUSAL recorded=dev branchExists=true remove(force:true)=protected-branch merge(force:true)=protected-branch recordStatus=active dirExists=true (same for master)",
+    "repair": "createEntry refuses plan.branch in deps.config.protectedBranches with WorktreeError code 'protected-branch' after isValidBranch and before branchExists/headOf/addWorktree/attachWorktree/writeIndex. The existing force-blind revalidateRecordedBranch refusal is unchanged.",
+    "refusal_code": "protected-branch",
+    "force_bound": "CreateArgs and the mpd_worktree_create tool schema expose no force parameter; the check is unconditional, so no force argument can bypass it."
+  },
+  "tests_added": [
+    "packages/mpd-worktree-plugin/test/worktree.test.ts -> mpd_worktree_create -> 'refuses a configured protected branch before any git or registry mutation (F4)': branch 'dev' and 'master' on a repo without those branches are refused; asserts no branch ref, no directory, no git worktree registration, no index.json, and that the same name still creates on the default non-protected branch.",
+    "packages/mpd-worktree-plugin/test/worktree.test.ts -> mpd_worktree_create -> 'still creates a non-protected branch while other names are protected': explicit branch work/bob succeeds and is recorded active while master/dev are protected.",
+    "packages/mpd-worktree-plugin/test/worktree.test.ts -> mpdWorktree service -> 'refuses the reattach recovery when the vanished directory's branch is protected (F4)': a live member worktree is removed from disk, the row config then protects its branch, createForMember refuses 'protected-branch', the path stays gone, the branch commit survives, the stale record stays active, and the service degrades to undefined with a protected-branch log line."
+  ],
+  "commands_observed": [
+    "bun test packages/mpd-worktree-plugin -> EXIT 0; 46 pass, 0 fail, 218 expect() calls",
+    "bun run typecheck -> EXIT 0 (tsgo --noEmit)",
+    "bun run verify:comments -> EXIT 0; VERDICT: PASS; 646 files, 59312 declarations",
+    "bun run verify:docs -> EXIT 0; pairs=61 failed=0 violations=0 dead=0 PASS",
+    "node scripts/verify-dist-fresh.ts -> EXIT 0; 35/35 targets fresh (each rebuilt twice, byte-identical), 1 NOT COVERED prebuilt file listed; build toolchain bun 1.4.0 from .toolchain",
+    ".toolchain/node_modules/.bin/bun build packages/mpd-worktree-plugin/src/index.ts --target node --format esm --outfile packages/mpd-worktree-plugin/dist/index.js -> EXIT 0; 9 modules, dist/index.js 130.58 KB"
+  ],
+  "falsifiability": {
+    "method": "Temporarily removed the inserted creation-refusal block from src/ops.ts, ran the two F4-named tests, then restored the file from a backup.",
+    "observed": "MUTATED_TEST_EXIT:1; 0 pass, 44 filtered out, 2 fail; RESTORED_SHA_MATCH:yes; SHA b8649914127d7374179ae00124b47b710a7dfb12181c4513b35f83e31eb6449c; the full suite then passed 46/46.",
+    "log": "evidence/worktree/n1-fix-f4/2026-11-12T08-06-23Z/falsifiability-mutation.log"
+  },
+  "post_fix_probe": {
+    "script": "evidence/worktree/n1-fix-f4/2026-11-12T08-06-23Z/probe-f4.ts",
+    "observed": [
+      "protected=dev create=protected-branch recordPresent=false recorded=none branchExists=false dirExists=false remove(force:true)=unknown-worktree recreate=NO-REFUSAL",
+      "protected=master create=protected-branch recordPresent=false recorded=none branchExists=false dirExists=false remove(force:true)=unknown-worktree recreate=NO-REFUSAL"
+    ]
+  },
+  "docs_changed": [
+    "docs/worktree.md + docs/worktree.zh-CN.md: creation applies protectedBranches before any git worktree add (including the member-service reattach recovery) with protected-branch, so a worktree cannot be created on a protected branch and then stranded; config table row updated.",
+    "packages/mpd-worktree-plugin/README.md + README.zh-CN.md: the same clause in the Protected branches guarantee; YAML config comment updated.",
+    "packages/mpd-worktree-plugin/src/index.ts: mpd_worktree_create description now lists the protected-branch refusal.",
+    "packages/mpd-worktree-plugin/src/config.ts: comment wording covers creation refusal."
+  ],
+  "bounds": [
+    "Ran only the worktree package suite plus the requested static gates; no full-repo bun test, no live harness boot, no real mpd_worktree_create tool call through a mounted row, no Docker lane.",
+    "Tests and probes drive packages/mpd-worktree-plugin/src via bun; dist equivalence rests on verify-dist-fresh 35/35 byte-identical rebuilds and a grep of the new refusal in dist/index.js, not on invoking dist.",
+    "The reattach-refusal test reaches the protected state by protecting the member branch AFTER the record exists (the new creation refusal would otherwise prevent the setup); this models a config change, not a tampered index.",
+    "Linux-only: case-insensitive filesystems and Windows paths were not exercised; protected matching remains exact-string, consistent with the existing remove/merge check.",
+    "No source outside packages/mpd-worktree-plugin, its four docs and the evidence directory was modified; nothing was committed."
+  ],
+  "artifacts": [
+    "evidence/worktree/n1-fix-f4/2026-11-12T08-06-23Z/result.json",
+    "evidence/worktree/n1-fix-f4/2026-11-12T08-06-23Z/exits.log",
+    "evidence/worktree/n1-fix-f4/2026-11-12T08-06-23Z/tests.log",
+    "evidence/worktree/n1-fix-f4/2026-11-12T08-06-23Z/tests-path-bun.log",
+    "evidence/worktree/n1-fix-f4/2026-11-12T08-06-23Z/tests-after-mutation.log",
+    "evidence/worktree/n1-fix-f4/2026-11-12T08-06-23Z/typecheck.log",
+    "evidence/worktree/n1-fix-f4/2026-11-12T08-06-23Z/comments.log",
+    "evidence/worktree/n1-fix-f4/2026-11-12T08-06-23Z/docs.log",
+    "evidence/worktree/n1-fix-f4/2026-11-12T08-06-23Z/build.log",
+    "evidence/worktree/n1-fix-f4/2026-11-12T08-06-23Z/dist-fresh.log",
+    "evidence/worktree/n1-fix-f4/2026-11-12T08-06-23Z/falsifiability.log",
+    "evidence/worktree/n1-fix-f4/2026-11-12T08-06-23Z/falsifiability-mutation.log",
+    "evidence/worktree/n1-fix-f4/2026-11-12T08-06-23Z/probe-f4.ts",
+    "evidence/worktree/n1-fix-f4/2026-11-12T08-06-23Z/probe-f4.log",
+    "evidence/worktree/n1-fix-f4/2026-11-12T08-06-23Z/git-status.log",
+    "evidence/worktree/n1-fix-f4/2026-11-12T08-06-23Z/diff-stat.log"
+  ]
+}

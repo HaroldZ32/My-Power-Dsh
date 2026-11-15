@@ -1,0 +1,3 @@
+HEAD create branch=feature with tag feature -> NO-REFUSAL; abbrev = heads/feature
+HEAD remove(force) = NO-REFUSAL
+HEAD dir gone = true

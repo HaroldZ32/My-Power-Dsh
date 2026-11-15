@@ -1,0 +1,62 @@
+=== F4 repair — evidence summary 2026-11-12T08:10:39Z ===
+
+--- commands and exits ---
+tests EXIT 0
+typecheck EXIT 0
+comments EXIT 0
+docs EXIT 0
+dist-fresh EXIT 0
+build EXIT 0
+dist-fresh EXIT 0
+
+--- tests ---
+
+ 46 pass
+ 0 fail
+ 218 expect() calls
+Ran 46 tests across 1 file. [5.96s]
+
+--- typecheck ---
+$ tsgo --noEmit
+
+--- comments ---
+scanned 646 TypeScript file(s) of 646 in the source set; inspected 59312 declaration(s); skipped 29316 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+
+--- docs ---
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=61 failed=0 violations=0 exempt=24 derived=3 links=634 dead=0 — PASS
+
+--- build ---
+Bundled 9 modules in 8ms
+
+  index.js  130.58 KB  (entry point)
+
+--- dist freshness ---
+[verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] ok: 35/35 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 814ms
+
+--- falsifiability ---
+MUTATED_TEST_EXIT:1
+RESTORED_SHA_MATCH:yes
+SHA:b8649914127d7374179ae00124b47b710a7dfb12181c4513b35f83e31eb6449c
+(fail) mpd_worktree_create > refuses a configured protected branch before any git or registry mutation (F4) [80.50ms]
+(fail) mpdWorktree service > refuses the reattach recovery when the vanished directory's branch is protected (F4) [157.19ms]
+
+--- post-fix probe ---
+protected=dev create=protected-branch recordPresent=false recorded=none branchExists=false dirExists=false remove(force:true)=unknown-worktree recreate=NO-REFUSAL
+protected=master create=protected-branch recordPresent=false recorded=none branchExists=false dirExists=false remove(force:true)=unknown-worktree recreate=NO-REFUSAL
+
+--- git status (worktree package + docs) ---
+ M docs/worktree.md
+ M docs/worktree.zh-CN.md
+ M packages/mpd-worktree-plugin/README.md
+ M packages/mpd-worktree-plugin/README.zh-CN.md
+ M packages/mpd-worktree-plugin/dist/index.js
+ M packages/mpd-worktree-plugin/src/config.ts
+ M packages/mpd-worktree-plugin/src/git.ts
+ M packages/mpd-worktree-plugin/src/index.ts
+ M packages/mpd-worktree-plugin/src/ops.ts
+ M packages/mpd-worktree-plugin/test/worktree.test.ts

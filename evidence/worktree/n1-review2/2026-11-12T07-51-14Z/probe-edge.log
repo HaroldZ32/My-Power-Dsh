@@ -1,0 +1,2 @@
+protected=dev create=NO-REFUSAL recorded=dev branchExists=true remove(force:true)=protected-branch merge(force:true)=protected-branch recordStatus=active dirExists=true
+protected=master create=NO-REFUSAL recorded=master branchExists=true remove(force:true)=protected-branch merge(force:true)=protected-branch recordStatus=active dirExists=true

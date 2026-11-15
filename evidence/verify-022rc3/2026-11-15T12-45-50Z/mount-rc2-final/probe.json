@@ -1,0 +1,48 @@
+{
+  "at": "2026-11-15T13:04:26.571Z",
+  "argv1": "/home/haroldzhao/qa-anchors/rc3-t3-20261115T124238Z/host-rc2/bin/dsh",
+  "entries": [
+    {
+      "id": "agent-team",
+      "name": "@deepseek-ai/dsh-agent-team",
+      "disabled": null,
+      "active": true
+    },
+    {
+      "id": "tool-agent-team",
+      "name": "@deepseek-ai/dsh-tool-agent-team",
+      "disabled": null,
+      "active": true
+    },
+    {
+      "id": "mpd-agent-team",
+      "name": "@deepseek-ai/dsh-experimental-agent-team",
+      "disabled": true,
+      "active": false
+    },
+    {
+      "id": "mpd-tool-agent-team",
+      "name": "@deepseek-ai/dsh-experimental-tool-agent-team",
+      "disabled": true,
+      "active": false
+    },
+    {
+      "id": "mpd-ui-agent-team",
+      "name": "@deepseek-ai/dsh-experimental-client-ui-agent-team",
+      "disabled": true,
+      "active": false
+    }
+  ],
+  "agentTeams": {
+    "present": true,
+    "methods": [
+      "isEnabled",
+      "setEnabled",
+      "createTask",
+      "getTask",
+      "listTasks",
+      "updateTask"
+    ]
+  },
+  "loaderError": null
+}

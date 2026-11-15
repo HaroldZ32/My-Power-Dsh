@@ -1,0 +1,7 @@
+tests EXIT 0
+typecheck EXIT 0
+comments EXIT 0
+docs EXIT 0
+dist-fresh EXIT 0
+build EXIT 0
+dist-fresh EXIT 0

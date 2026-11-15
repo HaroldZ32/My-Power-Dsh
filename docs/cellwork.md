@@ -263,6 +263,23 @@ the cell-record write is repaired by the next pass adopting the live roster row.
 match a role route — resolution also reads the description head and the member name, and neither is
 guaranteed — in which case it inherits the calling session's route; passing `role` is still recommended.
 
+## Member worktrees
+
+A write-capable seat can run in its own git worktree instead of sharing the captain's checkout: at
+spawn (and on a reseed) the member's EFFECTIVE working directory is switched to
+`<workspace>/.mpd/worktrees/<teamId>/<memberSlug>` on branch `agent/<teamId>/<memberSlug>`, so seats
+edit and commit in parallel without racing on one `.git/HEAD`. The member owns that checkout and
+branch and may run git writes there; the captain merges the branch into the wave branch and removes
+the worktree when the wave lands.
+
+What does NOT change: the state root stays the parent workspace — the cell/team record, mail, verify
+loops and journal under `<workspace>/.mpd` are shared, never copied into the worktree — and read-only
+seats (Explorer, Researcher, the analyst lanes) still get no worktree.
+
+A non-git workspace, `enabled: false`, the official-executor fallback or a failed create spawns the
+member in the shared checkout with ONE log line; the seat is never the error. The full tool table,
+configuration and declared bounds are in [Agent worktrees](./worktree.md).
+
 ## Fenced members, reassignment and the unfence lever
 
 A member can reach a state where it must not be woken: its recorded `mode` is `checkpoint`, or it wrote

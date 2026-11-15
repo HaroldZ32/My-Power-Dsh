@@ -1,0 +1,168 @@
+{
+  "subject": "N1 re-verification (review2) — repair of verifier findings F1/F2/F3 on fix/worktree-branch-revalidation (uncommitted)",
+  "repo": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "branch": "fix/worktree-branch-revalidation",
+  "head": "b33dde83da308a3c2dc69319b3def3b6f7b6cd51",
+  "change_state": "UNCOMMITTED working tree: 9 modified files + untracked evidence/ only. The reviewer edited no source and made no commit.",
+  "timestamp": "2026-11-12T07-51-14Z",
+  "verdict": "PASS",
+  "verdict_scope": "F1 (High), F2 (Nit) and F3 (Nit) are genuinely repaired, and N1's recorded-branch security properties are intact. The verdict certifies THIS repair and the listed regression checks; one Medium residual exists in the same N1 change (create accepts a protected branch override, after which the untampered record can never be removed or merged) and is reported as a remaining issue, not as a failure of the repair.",
+  "recommendation": "APPROVE the F1/F2/F3 repair. Before merge, repair the Medium residual separately: refuse a configured protected branch at create time (or document the bound plus a sanctioned recovery). Do not weaken the force-blind recorded-branch refusal.",
+  "requirements": [
+    {
+      "id": "R1-F1",
+      "requirement": "revalidateRecordedBranch order is isValidBranch -> protectedBranches (force-blind) -> path MISSING (merge refuses unregistered-worktree; remove returns to the prune path with no branch-existence/HEAD check) -> path PRESENT: branchExists -> git-managed -> HEAD equality; a vanished dir AND branch must prune with branchDeleted:false and free the name.",
+      "status": "PASS",
+      "evidence": [
+        "packages/mpd-worktree-plugin/src/ops.ts -> revalidateRecordedBranch: first check `if (!isValidBranch(repo, entry.branch))`; then `if (deps.config.protectedBranches.includes(entry.branch))` (the function has no `force` parameter at all); then `if (!pathPresent)`: merge throws `unregistered-worktree`, remove executes a bare `return` with the comment that the branch-existence gate below must NOT run; only after that `if (!branchExists(...))` -> `branch-missing`, `if (!managed)` -> `unregistered-worktree`, then `reported === undefined`/`reported === \"HEAD\"`/`reported !== entry.branch` -> `branch-mismatch`.",
+        "packages/mpd-worktree-plugin/src/ops.ts -> removeWorktree: after the early return the vanished path takes `pruneWorktrees(repo)`, `branchPresent` is false, the index entry is tombstoned to `status: \"removed\"`, and the result is `branchDeleted: branchPresent && branchFailure === undefined` (false).",
+        "Independent probe evidence/worktree/n1-review2/2026-11-12T07-51-14Z/probe.log section A: remove does not throw, removed:true, branchDeleted:false, tombstone `removed`, no `branchPending`, create of the same name = NO-REFUSAL, branch recreated. Section A2: merge of the vanished record = unregistered-worktree, main HEAD unmoved, record still active.",
+        "Independent probe evidence/worktree/n1-review2/2026-11-12T07-51-14Z/probe-noforce.log: the same prune works WITHOUT force (removeWithoutForce=NO-REFUSAL, removed:true, branchDeleted:false, status=removed, recreate=NO-REFUSAL) — the crash-retry call a user would actually make.",
+        "Test: packages/mpd-worktree-plugin/test/worktree.test.ts -> describe(\"recorded branch revalidation (N1)\") -> \"prunes a vanished directory even when its branch is gone too, and frees the name\" (asserts unregistered-worktree for merge, removed:true, branchDeleted:false, tombstone, no branchPending, recreate succeeds).",
+        "Control: probe.log section B — vanished dir with the branch still present prunes AND reports branchDeleted:true.",
+        "Present dir + deleted branch ref: probe.log section C — remove and merge both refuse `branch-missing`, directory and active record survive; test \"refuses a tampered record naming a branch git does not have\" covers the same shape.",
+        "Protected record with directory GONE: probe.log section E — remove(force:true) and merge(force:true) both refuse `protected-branch`, master and the real branch survive, main HEAD unmoved; the augmented test \"refuses a tampered protected branch for remove AND merge, even with force\" now asserts the gone-directory case."
+      ]
+    },
+    {
+      "id": "R2-F2",
+      "requirement": "The vanished-directory bound clause is present and accurate in docs/worktree.md, docs/worktree.zh-CN.md, packages/mpd-worktree-plugin/README.md and packages/mpd-worktree-plugin/README.zh-CN.md.",
+      "status": "PASS",
+      "evidence": [
+        "docs/worktree.md: \"A vanished worktree directory cannot answer for HEAD: mpd_worktree_remove then prunes the stale record without a live comparison (branchDeleted: false when the branch is already gone), while mpd_worktree_merge still refuses.\"",
+        "docs/worktree.zh-CN.md: \"worktree 目录已消失时无法回答 HEAD：mpd_worktree_remove 会剪除陈旧记录而不做实时比较（分支已不存在时 branchDeleted: false），mpd_worktree_merge 仍然拒绝。\"",
+        "packages/mpd-worktree-plugin/README.md and README.zh-CN.md carry the same bound (English and 简体中文 respectively).",
+        "The clause matches the verified behaviour exactly: prune without a HEAD comparison, branchDeleted:false when the branch is gone (probe section A), and merge refusing (probe section A2).",
+        "bun run verify:docs -> EXIT 0, pairs=61 failed=0 violations=0 links=634 dead=0."
+      ]
+    },
+    {
+      "id": "R3-F3",
+      "requirement": "A test arm tampers entry.branch to \"-D\" and/or \"bad..name\" and asserts invalid-branch on BOTH remove(force:true) and merge, with the real branch and directory intact.",
+      "status": "PASS",
+      "evidence": [
+        "packages/mpd-worktree-plugin/test/worktree.test.ts -> \"refuses option-injection branch names on remove AND merge, leaving the branch and directory intact\": loops over [\"-D\", \"bad..name\"], tampers the index, asserts `invalid-branch` and the branch name in the message for removeWorktree(force:true) and mergeWorktree, then asserts refs/heads/agent/alice and the worktree directory survive.",
+        "Test run: bun test packages/mpd-worktree-plugin -> EXIT 0, 43 pass / 0 fail / 187 expect(); the arm is in the pass list.",
+        "Independent probe.log section D repeats both hostile values against both operations: invalid-branch, real branch survives, directory survives, main HEAD unmoved."
+      ]
+    },
+    {
+      "id": "R4-N1-SECURITY",
+      "requirement": "No regression to N1's security property: a tampered record naming master/dev is refused for remove and merge even with force; a mismatch/detached HEAD is refused; valid records still remove and merge.",
+      "status": "PASS",
+      "evidence": [
+        "Tampered protected record, force:true, both operations: probe.log section E (present and gone directory) -> protected-branch; refs/heads/master, refs/heads/agent/alice and main HEAD unchanged; record still active.",
+        "Mismatch: probe.log section F1-F6 -> branch-mismatch on both operations; unrelated branch, real branch, directory and main HEAD survive.",
+        "Detached HEAD: probe.log section F7-F10 -> branch-mismatch on both; directory and real branch survive; git reports literal HEAD.",
+        "Valid record: probe.log section G -> merge succeeds and marks `merged`; remove succeeds with branchDeleted:true and the directory gone; test \"keeps a valid record mergeable and removable\" passes.",
+        "Full worktree suite: 43 pass, 0 fail (includes all prior N1 arms and the pre-existing remove/merge/create/state arms)."
+      ]
+    },
+    {
+      "id": "R5-SCOPE",
+      "requirement": "git status --porcelain shows only the intended files (9 modified + evidence/ untracked); no source outside packages/mpd-worktree-plugin and the four docs.",
+      "status": "PASS",
+      "evidence": [
+        "git status --porcelain: exactly 9 ` M` entries — docs/worktree.md, docs/worktree.zh-CN.md, packages/mpd-worktree-plugin/README.md, packages/mpd-worktree-plugin/README.zh-CN.md, packages/mpd-worktree-plugin/dist/index.js, src/config.ts, src/git.ts, src/ops.ts, test/worktree.test.ts.",
+        "Untracked paths outside evidence/: none (checked with `git status --porcelain | awk '$1==\"??\"{print $2}' | grep -v '^evidence/'`).",
+        "HEAD is still b33dde83; no commit was made by this review; this reviewer wrote only under evidence/worktree/n1-review2/2026-11-12T07-51-14Z/."
+      ]
+    }
+  ],
+  "commands": [
+    { "command": "bun test packages/mpd-worktree-plugin", "exit": 0, "observed": "43 pass, 0 fail, 187 expect() calls, 1 file (4.21s)", "log": "tests.log" },
+    { "command": "bun run typecheck", "exit": 0, "observed": "tsgo --noEmit, no diagnostics", "log": "typecheck.log" },
+    { "command": "bun run verify:comments", "exit": 0, "observed": "646 files, 59297 declarations, VERDICT: PASS", "log": "comments.log" },
+    { "command": "bun run verify:docs", "exit": 0, "observed": "pairs=61 failed=0 violations=0 links=634 dead=0 — PASS", "log": "docs.log" },
+    { "command": "node scripts/verify-dist-fresh.ts", "exit": 0, "observed": "35/35 targets FRESH (rebuilt twice, byte-identical) with bun 1.4.0 from .toolchain; 1 NOT COVERED (vendored codegraph) listed", "log": "dist.log" },
+    { "command": "PATH=\"$PWD/.qa-tmp/dsh-022/bin:$PATH\" MPD_DSHGO_KIT=\"$PWD/.mpd/tmp-dshgo/kit\" bun run verify:gates", "exit": 0, "observed": "11/11 member gates green (vendor, dist-fresh, rows-parity, docs-parity, preset-conformance, plugin-manifest, comment-coverage, graph-model, workflows, tui-admission, dshgo)", "log": "gate-aggregate.log" },
+    { "command": "bun evidence/worktree/n1-review2/2026-11-12T07-51-14Z/probe.ts", "exit": 0, "observed": "50 behavioural checks PASS, 0 FAIL, 10 sandboxes", "log": "probe.log" },
+    { "command": "bun evidence/worktree/n1-review2/2026-11-12T07-51-14Z/probe-noforce.ts", "exit": 0, "observed": "vanished dir + branch, no force: NO-REFUSAL, removed:true, branchDeleted:false, status removed, recreate NO-REFUSAL", "log": "probe-noforce.log" },
+    { "command": "bun evidence/worktree/n1-review2/2026-11-12T07-51-14Z/probe-edge.ts", "exit": 0, "observed": "residual observation: create with branch dev/master succeeds; remove(force:true) and merge(force:true) then refuse protected-branch, record stays active, directory remains", "log": "probe-edge.log" }
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "High",
+      "status": "FIXED",
+      "title": "The branch-existence gate no longer defeats the vanished-directory prune.",
+      "where": "packages/mpd-worktree-plugin/src/ops.ts -> revalidateRecordedBranch / removeWorktree.",
+      "evidence": [
+        "Code order now matches the repair direction: isValidBranch -> protectedBranches -> missing path (merge refuses unregistered-worktree, remove returns) -> present path: branchExists -> git-managed -> HEAD equality.",
+        "Observed end-to-end (probe A): rm -rf worktree + git branch -D -> remove prunes, removed:true, branchDeleted:false, tombstone removed, create of the same name succeeds; merge refuses unregistered-worktree.",
+        "Observed without force as well (probe-noforce).",
+        "Control (probe B) still deletes and reports branchDeleted:true when the branch survives.",
+        "Present dir with a deleted branch still refuses branch-missing (probe C).",
+        "Protected record with the directory gone still refuses protected-branch on both operations (probe E)."
+      ]
+    },
+    {
+      "id": "F2",
+      "severity": "Nit",
+      "status": "FIXED",
+      "title": "The four docs now state the vanished-directory bound.",
+      "where": "docs/worktree.md, docs/worktree.zh-CN.md, packages/mpd-worktree-plugin/README.md, packages/mpd-worktree-plugin/README.zh-CN.md.",
+      "evidence": ["All four carry the same bound (no HEAD answer, remove prunes without a live comparison, branchDeleted:false when the branch is gone, merge still refuses); verify:docs PASS."]
+    },
+    {
+      "id": "F3",
+      "severity": "Nit",
+      "status": "FIXED",
+      "title": "The invalid-branch guard now has call-site coverage.",
+      "where": "packages/mpd-worktree-plugin/test/worktree.test.ts -> \"refuses option-injection branch names on remove AND merge, leaving the branch and directory intact\".",
+      "evidence": ["Both \"-D\" and \"bad..name\" are asserted on remove(force:true) and merge; the real branch and directory survive; the suite passes."]
+    },
+    {
+      "id": "F4",
+      "severity": "Medium",
+      "status": "OPEN (residual, introduced by the N1 base rule, not by the F1/F2/F3 repair)",
+      "title": "create accepts a configured protected branch name, after which the untampered record can never be removed or merged.",
+      "where": "packages/mpd-worktree-plugin/src/ops.ts -> createEntry (validates isValidBranch and branchExists only; never config.protectedBranches) vs revalidateRecordedBranch (force-blind protected refusal).",
+      "why_it_matters": [
+        "The public create tool documents `branch` as an override validated by `git check-ref-format --branch`; a repo whose default is `main` has no `dev`/`master` yet, so `createWorktree({name, branch: \"dev\"})` succeeds and writes a record naming `dev`.",
+        "Afterwards revalidateRecordedBranch refuses that record for BOTH remove(force:true) and merge(force:true) with `protected-branch`, so the worktree, its branch and its registered name are stranded: the tool cannot clean it up, and only hand-editing .mpd/worktrees/index.json or changing the config recovers. The branch's commits are not lost, but the workspace cannot be returned to a clean state through the tool.",
+        "Probe evidence/worktree/n1-review2/2026-11-12T07-51-14Z/probe-edge.log: `protected=dev create=NO-REFUSAL recorded=dev ... remove(force:true)=protected-branch merge(force:true)=protected-branch recordStatus=active dirExists=true` and the same for master.",
+        "This is a legitimate (untampered) create path, so it is distinct from the required tampered-record refusal; the prior N1 pass tested only the default `agent/` branch, so it did not see this state."
+      ],
+      "direction": "Refuse `plan.branch` in `config.protectedBranches` inside createEntry (and the reattach recovery) with a typed refusal, matching the existing force-blind revalidation; alternatively document the bound and provide a sanctioned recovery. Do NOT weaken the recorded-branch refusal."
+    }
+  ],
+  "declinedToJudge": [
+    "Merge-TARGET protection remains force-bypassable — pre-existing and frozen in .mpd/plans/agent-worktrees.md §3 Lane A; unchanged by this diff.",
+    "A vanished-directory remove still deletes an existing UNPROTECTED branch named by the record (no HEAD to interrogate); this is the previous verifier's accepted bound, force-gated and unchanged by the repair.",
+    "A consistent path+branch tamper could point a record at another registered worktree of the same repo; N1 names the branch field, path trust is the pre-existing N6 residual.",
+    "Validation is check-then-act (TOCTOU); destructive operations consume only the validated branch NAME, so a protected branch cannot be redirected into deletion/merge.",
+    "`isValidBranch` uses `git check-ref-format --branch` for its exit code only (it can expand names like `@{-1}`); any expansion still fails branchExists/HEAD equality, so the path is fail-closed.",
+    "Case-folding of protected branch names (e.g. MASTER) on case-insensitive filesystems was not exercised on this Linux host.",
+    "`createForMember`/`cwdForMember` still return an existing record's branch without revalidation; N1 names remove/merge only and cwd is separately gated by existsSync + isGitManaged.",
+    "`merge` of a vanished directory now refuses unregistered-worktree (before N1 it would merge the branch); the task explicitly requires this refusal and all four docs state it, so it is not counted as a regression.",
+    "The docs phrase \"without a live comparison\" is read as \"no HEAD comparison\": remove still checks branch existence later (and may delete the branch). The same sentence's \"cannot answer for HEAD\" makes the bound accurate; not counted.",
+    "The probe.log line `fatal: Needed a single revision` in section B is git's expected answer to `rev-parse --verify` on the deliberately deleted branch; the check PASSes.",
+    "I did not revert the patch to measure the new tests failing on the pre-fix ordering (the reviewer must not edit source); falsifiability is reasoned from the prior verifier's recorded pre-fix `branch-missing` result and the current code order."
+  ],
+  "bounds": [
+    "Read: packages/mpd-worktree-plugin/src/ops.ts symbols named by the task (createEntry, revalidateRecordedBranch, mergeWorktree, removeWorktree, the service entry) plus config.ts/git.ts diffs, the N1 test block, the four docs and the prior result.json files. I did not line-read every list/status/index helper in ops.ts.",
+    "Ran only the worktree package suite, not the full repo test suite; no Docker lane, no live harness boot, no real tool call through the mounted row, no provider/network path.",
+    "Probes drive packages/mpd-worktree-plugin/src via bun, not the built dist; dist equivalence rests on verify-dist-fresh 35/35 byte-identical rebuilds, not on a live invocation of dist.",
+    "No source was edited and no commit was made; evidence was written only under evidence/worktree/n1-review2/2026-11-12T07-51-14Z/ (the working tree already carried prior untracked evidence directories under evidence/).",
+    "Linux-only probe: Windows paths, case-insensitive filesystems and concurrent multi-process mutation were not exercised."
+  ],
+  "artifacts": [
+    "evidence/worktree/n1-review2/2026-11-12T07-51-14Z/result.json",
+    "evidence/worktree/n1-review2/2026-11-12T07-51-14Z/output.log",
+    "evidence/worktree/n1-review2/2026-11-12T07-51-14Z/probe.ts",
+    "evidence/worktree/n1-review2/2026-11-12T07-51-14Z/probe.log",
+    "evidence/worktree/n1-review2/2026-11-12T07-51-14Z/probe-noforce.ts",
+    "evidence/worktree/n1-review2/2026-11-12T07-51-14Z/probe-noforce.log",
+    "evidence/worktree/n1-review2/2026-11-12T07-51-14Z/probe-edge.ts",
+    "evidence/worktree/n1-review2/2026-11-12T07-51-14Z/probe-edge.log",
+    "evidence/worktree/n1-review2/2026-11-12T07-51-14Z/tests.log",
+    "evidence/worktree/n1-review2/2026-11-12T07-51-14Z/typecheck.log",
+    "evidence/worktree/n1-review2/2026-11-12T07-51-14Z/comments.log",
+    "evidence/worktree/n1-review2/2026-11-12T07-51-14Z/docs.log",
+    "evidence/worktree/n1-review2/2026-11-12T07-51-14Z/dist.log",
+    "evidence/worktree/n1-review2/2026-11-12T07-51-14Z/gate-aggregate.log",
+    "evidence/worktree/n1-review2/2026-11-12T07-51-14Z/git-status.log",
+    "evidence/worktree/n1-review2/2026-11-12T07-51-14Z/diff-stat.log"
+  ]
+}

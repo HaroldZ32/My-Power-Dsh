@@ -1,0 +1,155 @@
+{
+  "subject": "Bounded repair of the final-verifier FAIL (F1/F2/F3) on the uncommitted N1 worktree-branch change",
+  "repo": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "branch": "fix/worktree-branch-revalidation",
+  "head": "b33dde83da308a3c2dc69319b3def3b6f7b6cd51",
+  "change_state": "UNCOMMITTED working tree: the same 10 modified tracked files as before this repair (worktree plugin src/dist/tests + four bilingual docs) plus untracked evidence/. No commit was made; nothing outside packages/mpd-worktree-plugin, its four docs and this evidence directory was touched.",
+  "timestamp": "2026-11-12T08:46:03Z",
+  "writer": "Senior Engineer (delegated repair agent)",
+  "status": "REPAIR COMPLETE - READY FOR INDEPENDENT VERIFICATION. This file is the writer's report, not a verifier verdict.",
+  "input_findings": [
+    "evidence/worktree/n1-review3/2026-11-12T08-14-25Z/result.json F1 F2 F3",
+    "evidence/worktree/n1-review3/2026-11-12T08-14-25Z/probe-ambiguity.log",
+    "evidence/worktree/n1-review3/2026-11-12T08-14-25Z/probe-refspelling.log"
+  ],
+  "repairs": [
+    {
+      "id": "F1",
+      "severity": "High",
+      "status": "FIXED",
+      "changes": [
+        "packages/mpd-worktree-plugin/src/git.ts -> checkedOutBranch: now reads `git symbolic-ref --quiet HEAD` and strips the `refs/heads/` prefix, so a `feature` branch beside a `feature` tag reports `feature`, not git's abbreviated `heads/feature`. A detached HEAD keeps the literal `HEAD` spelling (via a `rev-parse --verify --quiet HEAD` fallback) so revalidateRecordedBranch's dedicated detached refusal stays reachable at its current position; an unreadable HEAD answers undefined.",
+        "packages/mpd-worktree-plugin/src/git.ts -> new exported `branchRef(branch)` returning `refs/heads/<branch>`.",
+        "packages/mpd-worktree-plugin/src/ops.ts -> mergeWorktree passes branchRef(entry.branch) to git merge; recordOf's revCount and merged fact, and removeWorktree's unmerged check, address branchRef(entry.branch). This is required for a real merge: probed with a colliding tag, `git merge --no-ff feature` resolves the TAG ('Already up to date') and `git merge-base --is-ancestor feature main` answers for the tag, so fixing only the reported-name comparison would mark a merge that never landed the branch tip and the following `git branch -d` would refuse 'not fully merged'.",
+        "packages/mpd-worktree-plugin/src/ops.ts -> the two branch-mismatch messages now name `git symbolic-ref --quiet HEAD` instead of the removed abbrev-ref command. Refusal codes and order are unchanged: invalid-branch, protected-branch (before the vanished-directory early return), branch-missing, unregistered-worktree, unreadable HEAD, detached, mismatch."
+      ],
+      "tests": [
+        "recorded branch revalidation (N1) > removes and merges a worktree whose branch name collides with a tag (F1)",
+        "recorded branch revalidation (N1) > removes a default agent/ worktree whose branch name collides with a tag (F1)"
+      ],
+      "acceptance_evidence": [
+        "The first test reproduces the poisoned precondition (`rev-parse --abbrev-ref HEAD` answers `heads/feature`), commits a branch-only file, asserts merge.merged true AND the branch tip reachable from main, asserts status merged true, then remove returns removed true with branchDeleted true, the directory is gone and the branch ref is gone.",
+        "The second test creates the DEFAULT `agent/alice` branch with a tag `agent/alice` present and asserts remove prunes it (branchDeleted true, directory and ref gone).",
+        "Falsifiability: against a scratch copy of the current src reverted to the pre-repair behaviour, both F1 tests FAIL (0 pass, 2 fail, exit 1) - falsify.log."
+      ]
+    },
+    {
+      "id": "F2",
+      "severity": "Medium",
+      "status": "FIXED",
+      "changes": [
+        "packages/mpd-worktree-plugin/src/ops.ts -> createEntry: immediately after isValidBranch, any branch argument starting with `refs/` is refused with WorktreeError('invalid-branch') whose message names the accepted short form. The check runs before the protected-name comparison, branchExists, headOf, addWorktree/attachWorktree and writeIndex; withLock is an in-memory re-entrancy guard only (store.ts), so no branch, HEAD, worktree or index mutation happens first."
+      ],
+      "test": "mpd_worktree_create > refuses a refs/-rooted branch argument before any git or registry mutation (F2)",
+      "acceptance_evidence": [
+        "The test uses protectedBranches ['dev'] with a real local `dev`, then loops refs/heads/dev, refs/heads/main and refs/heads/never-existed: each refusal is invalid-branch and names a short branch name, no `refs/heads/<spelling>` ref exists, no worktree directory exists, `git worktree list --porcelain` does not contain the target and index.json does not exist. The pre-existing dev/main refs are asserted intact; a normal short branch `work/alice` then creates with exactly one active record.",
+        "Probe C confirms the same on independent sandboxes (C1-C10) and that the short protected name `dev` is STILL refused as protected-branch.",
+        "Falsifiability: against the reverted scratch copy the F2 test FAILS (0 pass, 1 fail, exit 1) - falsify.log."
+      ]
+    },
+    {
+      "id": "F3",
+      "severity": "Nit",
+      "status": "FIXED",
+      "changes": [
+        "docs/worktree.md and packages/mpd-worktree-plugin/README.md: the revalidation paragraph now says the branch is read from `git symbolic-ref --quiet HEAD` (stripped of `refs/heads/`), and adds the clause that creation takes a SHORT branch name only (`refs/...` is refused with invalid-branch before any branch, HEAD, worktree or index mutation) while protected names are refused at creation with protected-branch.",
+        "docs/worktree.zh-CN.md and packages/mpd-worktree-plugin/README.zh-CN.md: the same two points in 简体中文, so every pair stays consistent.",
+        "The config-table/comment rows for protectedBranches in all four files were already updated by the earlier N1/F4 repair and still read accurately."
+      ],
+      "acceptance_evidence": [
+        "bun run verify:docs -> pairs=61 failed=0 violations=0 exempt=24 derived=3 links=634 dead=0 PASS, exit 0 (docs.log)."
+      ]
+    }
+  ],
+  "new_tests": [
+    "mpd_worktree_create > refuses a refs/-rooted branch argument before any git or registry mutation (F2)",
+    "recorded branch revalidation (N1) > removes and merges a worktree whose branch name collides with a tag (F1)",
+    "recorded branch revalidation (N1) > removes a default agent/ worktree whose branch name collides with a tag (F1)"
+  ],
+  "commands_observed": [
+    {
+      "command": "bun test packages/mpd-worktree-plugin",
+      "exit": 0,
+      "observed": "49 pass / 0 fail / 261 expect() calls; ran 49 tests across 1 file",
+      "log": "tests.log"
+    },
+    {
+      "command": "bun run typecheck",
+      "exit": 0,
+      "observed": "tsgo --noEmit; no diagnostics",
+      "log": "typecheck.log"
+    },
+    {
+      "command": "bun run verify:comments",
+      "exit": 0,
+      "observed": "VERDICT: PASS; scanned 646 files, inspected 59327 declarations",
+      "log": "comments.log"
+    },
+    {
+      "command": "bun run verify:docs",
+      "exit": 0,
+      "observed": "pairs=61 failed=0 violations=0 exempt=24 derived=3 links=634 dead=0 PASS",
+      "log": "docs.log"
+    },
+    {
+      "command": ".toolchain/node_modules/.bin/bun build packages/mpd-worktree-plugin/src/index.ts --target node --format esm --outfile packages/mpd-worktree-plugin/dist/index.js",
+      "exit": 0,
+      "observed": "Bundled 9 modules; index.js 131.1 KB; pinned bun 1.4.0 from .toolchain, run from the repo root",
+      "log": "build.log"
+    },
+    {
+      "command": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "observed": "35/35 targets fresh (each rebuilt twice, byte-identical); packages/mpd-worktree-plugin/dist/index.js sha 73e4a6495226...; build toolchain bun 1.4.0 from .toolchain; 1 declared NOT COVERED prebuilt (packages/mpd-mcp-codegraph/dist/serve.js)",
+      "log": "dist.log"
+    },
+    {
+      "command": "PATH=\"$PWD/.qa-tmp/dsh-022/bin:$PATH\" MPD_DSHGO_KIT=\"$PWD/.mpd/tmp-dshgo/kit\" bun run verify:gates",
+      "exit": 0,
+      "observed": "11/11 member gate(s) green: vendor, dist-fresh, rows-parity, docs-parity, preset-conformance, plugin-manifest, comment-coverage, graph-model, workflows, tui-admission, dshgo (RESULT: LEGAL)",
+      "log": "gates.log"
+    },
+    {
+      "command": "bun evidence/worktree/n1-repair-f1f2/2026-11-12T08-41-21Z/probe-f1f2.ts",
+      "exit": 0,
+      "observed": "RESULT: PASS checks=26. A) tag feature + branch feature: abbrev-ref heads/feature, merge landed the BRANCH tip (merge-base ancestor true, file in main), remove pruned (branchDeleted true, dir/ref gone, tombstone status removed). B) tag agent/alice + default create: remove pruned (branchDeleted true, dir/ref gone). C) refs/heads/dev and refs/heads/main refused invalid-branch with no new ref/dir/registration/index; pre-existing dev/main untouched; short protected dev still protected-branch; work/alice creates exactly one active record.",
+      "log": "probe-f1f2.log"
+    },
+    {
+      "command": "scratch copy of current src reverted to pre-repair behaviour (no repo edit) + bun test -t F1 / -t F2",
+      "exit": "1 / 1 (expected red)",
+      "observed": "F1: 0 pass, 2 fail; F2: 0 pass, 1 fail",
+      "log": "falsify.log"
+    }
+  ],
+  "artifacts": [
+    "evidence/worktree/n1-repair-f1f2/2026-11-12T08-41-21Z/result.json",
+    "evidence/worktree/n1-repair-f1f2/2026-11-12T08-41-21Z/tests.log",
+    "evidence/worktree/n1-repair-f1f2/2026-11-12T08-41-21Z/typecheck.log",
+    "evidence/worktree/n1-repair-f1f2/2026-11-12T08-41-21Z/comments.log",
+    "evidence/worktree/n1-repair-f1f2/2026-11-12T08-41-21Z/docs.log",
+    "evidence/worktree/n1-repair-f1f2/2026-11-12T08-41-21Z/build.log",
+    "evidence/worktree/n1-repair-f1f2/2026-11-12T08-41-21Z/dist.log",
+    "evidence/worktree/n1-repair-f1f2/2026-11-12T08-41-21Z/gates.log",
+    "evidence/worktree/n1-repair-f1f2/2026-11-12T08-41-21Z/probe-f1f2.ts",
+    "evidence/worktree/n1-repair-f1f2/2026-11-12T08-41-21Z/probe-f1f2.log",
+    "evidence/worktree/n1-repair-f1f2/2026-11-12T08-41-21Z/falsify.log",
+    "evidence/worktree/n1-repair-f1f2/2026-11-12T08-41-21Z/git-status.log",
+    "evidence/worktree/n1-repair-f1f2/2026-11-12T08-41-21Z/exits.log"
+  ],
+  "bounds": [
+    "No live harness boot and no mounted tool call: the probe drives the same operation functions the tools register; dist was rebuilt byte-identically with the pinned toolchain but never executed.",
+    "No Docker lane, no full-repo bun test (only packages/mpd-worktree-plugin plus verify:gates' own members), no network.",
+    "Linux only; case-insensitive filesystems, Windows paths and non-ASCII branch names were not exercised.",
+    "Concurrency was not exercised; the state lock is an in-process synchronous re-entrancy guard.",
+    "The detached HEAD is deliberately still reported by checkedOutBranch as the literal `HEAD` rather than undefined: the frozen requirement also says to keep the dedicated detached refusal and its order, and an undefined answer would collapse it into the generic 'git could not report' refusal. The detached test still passes and the refusal is still reachable.",
+    "`headOf` (the MAIN checkout) still uses `git rev-parse --abbrev-ref HEAD`; unchanged and outside F1-F3. A probe with a tag named `main` confirmed that its `heads/main` answer still resolves for base, merge and ancestry. However, the merge-TARGET protection check compares `head.ref` to protectedBranches exactly, so a tag named `master`/`dev` on the main checkout would make `into` `heads/master` and bypass the merge-target force requirement. Pre-existing, reported as an out-of-scope finding, not fixed here.",
+    "ahead/behind and merged enrichment were also pinned to branchRef as the same ambiguity class; the existing list/status test and the new F1 test (ahead 1 before merge, merged true after) cover it.",
+    "The docs' no-stranding guarantee is now accurate for the tested create/remove/merge paths and the short-name rule; a manually TAMPERED index record on another branch is still refused by the N1 revalidation (existing tests)."
+  ],
+  "out_of_scope_finding": {
+    "what": "packages/mpd-worktree-plugin/src/git.ts -> headOf still reads the main checkout's branch with `rev-parse --abbrev-ref HEAD`. If a tag shares the main branch's name, head.ref becomes `heads/<name>`; that spelling resolves for base/merge/ancestry, but the merge-target protected check compares it exactly, so a tag named `master`/`dev` would bypass the `force:true` requirement for merging into that protected target.",
+    "evidence": "Probed manually in a throwaway repo: with `git tag main`, `rev-parse --abbrev-ref HEAD` answers `heads/main` while `symbolic-ref --quiet HEAD` answers `refs/heads/main`; create/merge/ancestry with `heads/main` still succeed (no fatal). The protected-list comparison is `deps.config.protectedBranches.includes(into)` in ops.ts -> mergeWorktree.",
+    "disposition": "Not fixed: outside the frozen F1/F2/F3 repair, pre-existing, and the reviewer's F1 scope is checkedOutBranch (the worktree), not headOf (the main checkout). Reported for the reviewer/captain to schedule."
+  }
+}

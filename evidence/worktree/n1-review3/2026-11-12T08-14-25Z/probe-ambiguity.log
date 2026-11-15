@@ -1,0 +1,14 @@
+A create branch=feature with tag feature -> NO-REFUSAL; recorded = feature
+A worktree HEAD abbrev = heads/feature
+A merge = branch-mismatch
+A remove(force) = branch-mismatch
+A dir survives = true
+A record active = true
+
+B create default branch=agent/alice with tag agent/alice -> NO-REFUSAL; recorded = agent/alice
+B worktree HEAD abbrev = heads/agent/alice
+B merge = branch-mismatch
+B remove(force) = branch-mismatch
+B dir survives = true
+
+C control create agent/alice without a colliding tag -> abbrev = agent/alice remove = NO-REFUSAL

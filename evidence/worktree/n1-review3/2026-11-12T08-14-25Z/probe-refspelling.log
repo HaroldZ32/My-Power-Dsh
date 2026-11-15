@@ -1,0 +1,25 @@
+CONTROL create branch=dev -> protected-branch
+
+=== create branch="refs/heads/dev" (local branch "dev" EXISTS) ===
+create = NO-REFUSAL; recorded branch = refs/heads/dev
+worktree HEAD abbrev = heads/refs/heads/dev
+the literal target ref exists = true
+merge(force) = branch-mismatch
+remove(force) = branch-mismatch
+directory survives = true
+record still active = true
+remove with EMPTY protected list = branch-mismatch
+
+=== create branch="refs/heads/main" (local branch "main" EXISTS) ===
+create = NO-REFUSAL; recorded branch = refs/heads/main
+worktree HEAD abbrev = heads/refs/heads/main
+the literal target ref exists = true
+merge(force) = branch-mismatch
+remove(force) = branch-mismatch
+directory survives = true
+record still active = true
+remove with EMPTY protected list = branch-mismatch
+
+=== create branch="refs/heads/never-existed" (no collision) ===
+worktree HEAD abbrev = refs/heads/never-existed
+remove(force) = NO-REFUSAL

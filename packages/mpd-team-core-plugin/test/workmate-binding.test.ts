@@ -339,7 +339,11 @@ describe("approveTeam — deterministic workmate binding (W3-C)", () => {
     const result = await approveTeam(seamless, callerOf(observed.workspace))
     expect(result.ok).toBe(true)
     expect((result as { bindings?: unknown }).bindings).toEqual([{ member: "impl", mode: "none", reason: "no-seam" }])
-    expect(observed.logs.length).toBe(1)
+    // TWO degrade lines, one per independent seam: the workmate binding (this wave) and the worktree
+    // lookup (Lane C of `.mpd/plans/agent-worktrees.md`), whose absent service is reported ONCE for
+    // the whole approval. Neither is a throw and neither changes the spawn.
+    expect(observed.logs.filter((line) => line.includes("workmate binding")).length).toBe(1)
+    expect(observed.logs.filter((line) => line.includes("mpdWorktree")).length).toBe(1)
     expect(observed.spawns).toEqual(["impl"])
   })
 })

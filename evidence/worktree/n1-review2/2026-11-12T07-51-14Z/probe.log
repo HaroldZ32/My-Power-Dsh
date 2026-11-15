@@ -1,0 +1,60 @@
+=== A: F1 — vanished directory AND vanished branch (contract: missing path is PRUNED) ===
+PASS A1 remove does not refuse :: no throw
+PASS A2 removed true :: {"removed":true,"name":"alice","path":"/tmp/n1-review2-TDlG6t/.mpd/worktrees/alice","branch":"agent/alice","branchDeleted":false}
+PASS A3 branchDeleted false :: {"removed":true,"name":"alice","path":"/tmp/n1-review2-TDlG6t/.mpd/worktrees/alice","branch":"agent/alice","branchDeleted":false}
+PASS A4 tombstone removed :: removed
+PASS A5 no branchPending :: undefined
+PASS A6 name is usable again :: NO-REFUSAL
+PASS A7 branch recreated :: refs/heads/agent/alice
+=== A2: F1 — merge of a vanished record still refuses ===
+PASS A2.1 merge refuses unregistered-worktree :: unregistered-worktree
+PASS A2.2 main HEAD unmoved :: HEAD
+PASS A2.3 record still active :: active
+=== B: control — vanished directory with the branch still present (prune deletes it) ===
+PASS B1 branchDeleted true :: {"removed":true,"name":"alice","path":"/tmp/n1-review2-r5tJfw/.mpd/worktrees/alice","branch":"agent/alice","branchDeleted":true}
+fatal: Needed a single revision
+PASS B2 branch gone :: refs/heads/agent/alice
+PASS B3 tombstone removed :: removed
+=== C: PRESENT directory whose branch ref was deleted out of band ===
+PASS C1 remove refuses branch-missing :: branch-missing
+PASS C2 merge refuses branch-missing :: branch-missing
+PASS C3 directory survives :: /tmp/n1-review2-TerP2N/.mpd/worktrees/alice
+PASS C4 record still active :: active
+=== D: F3 — invalid recorded branch names refused at BOTH call sites ===
+PASS D[-D] remove invalid-branch :: invalid-branch
+PASS D[-D] merge invalid-branch :: invalid-branch
+PASS D[-D] real branch survives :: refs/heads/agent/alice
+PASS D[-D] directory survives :: /tmp/n1-review2-KZlIzD/.mpd/worktrees/alice
+PASS D[-D] main HEAD unmoved :: HEAD
+PASS D[bad..name] remove invalid-branch :: invalid-branch
+PASS D[bad..name] merge invalid-branch :: invalid-branch
+PASS D[bad..name] real branch survives :: refs/heads/agent/alice
+PASS D[bad..name] directory survives :: /tmp/n1-review2-R8wCQZ/.mpd/worktrees/alice
+PASS D[bad..name] main HEAD unmoved :: HEAD
+=== E: tampered protected record, directory PRESENT and GONE, force:true on both ops ===
+PASS E1 present remove protected-branch :: protected-branch
+PASS E2 present merge protected-branch :: protected-branch
+PASS E3 gone remove protected-branch :: protected-branch
+PASS E4 gone merge protected-branch :: protected-branch
+PASS E5 master survives :: refs/heads/master
+PASS E6 real branch survives :: refs/heads/agent/alice
+PASS E7 main HEAD unmoved :: HEAD
+PASS E8 record still active :: active
+=== F: mismatch and detached HEAD still refuse on BOTH operations ===
+PASS F1 remove branch-mismatch :: branch-mismatch
+PASS F2 merge branch-mismatch :: branch-mismatch
+PASS F3 unrelated branch survives :: refs/heads/other
+PASS F4 real branch survives :: refs/heads/agent/alice
+PASS F5 directory survives :: /tmp/n1-review2-pyng0F/.mpd/worktrees/alice
+PASS F6 main HEAD unmoved :: HEAD
+PASS F7 detached remove branch-mismatch :: branch-mismatch
+PASS F8 detached merge branch-mismatch :: branch-mismatch
+PASS F9 detached dir survives :: /tmp/n1-review2-xVQoZJ/.mpd/worktrees/alice
+PASS F10 detached branch survives :: refs/heads/agent/alice
+=== G: valid record still merges and removes ===
+PASS G1 merge succeeds :: NO-REFUSAL
+PASS G2 record merged :: merged
+PASS G3 remove succeeds :: {"removed":true,"name":"alice","path":"/tmp/n1-review2-ipKSVL/.mpd/worktrees/alice","branch":"agent/alice","branchDeleted":true}
+PASS G4 branch deleted :: {"removed":true,"name":"alice","path":"/tmp/n1-review2-ipKSVL/.mpd/worktrees/alice","branch":"agent/alice","branchDeleted":true}
+PASS G5 directory gone :: /tmp/n1-review2-ipKSVL/.mpd/worktrees/alice
+RESULT: PASS failures=0 sandboxes=10

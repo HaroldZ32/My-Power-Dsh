@@ -1,0 +1,14 @@
+CHECK X1.precondition_tag_shadows_branch PASS abbrev=heads/feature
+CHECK X1.unmerged_refused_without_force PASS code=unmerged
+CHECK X1.nothing_lost PASS dir+ref+main intact; tip=8547f07a124359057597a3bea14ece09195e4000
+CHECK X1.force_removes PASS branchDeleted=true
+CHECK X1.tag_survives PASS tag survives
+CHECK X2.vanished_prunes PASS branchDeleted=false
+CHECK X2.tombstone PASS status=removed
+CHECK X2.name_reusable PASS branch=agent/alice
+CHECK X3.option_injection.-D PASS code=invalid-branch
+CHECK X3.option_injection.bad..name PASS code=invalid-branch
+CHECK X3.no_side_effect PASS no dir, no index
+CHECK X4.legacy_full_ref_record_consumable PASS removed=true branchDeleted=true
+
+EXTRA_RESULT failed=0

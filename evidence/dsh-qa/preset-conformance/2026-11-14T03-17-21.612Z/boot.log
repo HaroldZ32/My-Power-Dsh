@@ -1,0 +1,28 @@
+dsh: disabling profile plugin row "mpd-agent-team": Plugin @deepseek-ai/dsh-experimental-agent-team@0.2.2-rc.1 is incompatible with dsh 0.2.2-rc.2: requirements {"@deepseek-ai/dsh-agent":"0.2.2-rc.1","@deepseek-ai/dsh-llm":"0.2.2-rc.1","@deepseek-ai/dsh-session":"0.2.2-rc.1","@deepseek-ai/dsh-session-persistence":"0.2.2-rc.1","@deepseek-ai/dsh-session-projection":"0.2.2-rc.1","@deepseek-ai/dsh-subagent":"0.2.2-rc.1"}. Running it may cause crashes or data loss. Update the plugin or install a plugin version compatible with this dsh runtime. To accept this risk explicitly, grant the exact-version exemption for @deepseek-ai/dsh-experimental-agent-team@0.2.2-rc.1 on dsh 0.2.2-rc.2 with `dsh plugin allow-version` or the plugin manager, then retry the installation or restart dsh. Exact-version exemption: not active.
+dsh: disabling profile plugin row "mpd-tool-agent-team": Plugin @deepseek-ai/dsh-experimental-tool-agent-team@0.2.2-rc.1 is incompatible with dsh 0.2.2-rc.2: requirements {"@deepseek-ai/dsh-agent":"0.2.2-rc.1","@deepseek-ai/dsh-session":"0.2.2-rc.1","@deepseek-ai/dsh-system-prompt":"0.2.2-rc.1","@deepseek-ai/dsh-experimental-agent-team":"0.2.2-rc.1","@deepseek-ai/dsh-tools":"0.2.2-rc.1"}. Running it may cause crashes or data loss. Update the plugin or install a plugin version compatible with this dsh runtime. To accept this risk explicitly, grant the exact-version exemption for @deepseek-ai/dsh-experimental-tool-agent-team@0.2.2-rc.1 on dsh 0.2.2-rc.2 with `dsh plugin allow-version` or the plugin manager, then retry the installation or restart dsh. Exact-version exemption: not active.
+dsh: warning: 2 entries did not activate
+mpd-agent-team-rc2 (@deepseek-ai/dsh-agent-team): Error: service "agentTeams" has been registered at <TeamService>
+    at Fiber.<anonymous> (file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/cordis/lib/index.js:1400:31)
+    at file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/cordis/lib/index.js:436:34
+    at Proxy.provide (file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/cordis/lib/index.js:1385:25)
+    at new Service (file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/cordis/lib/index.js:1854:20)
+    at new TypertRemoteService (file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/dsh-typert-protocol/lib/index.js:349:3)
+    at new TeamService (file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/dsh-agent-team/lib/index.js:752:4)
+    at Fiber.execute (file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/cordis/lib/index.js:362:24)
+    at file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/cordis/lib/index.js:436:34
+    at file:///tmp/mpd-preset-main-LZODUz/home/profiles/w/#mpd-agent-team-rc2
+    at file:///tmp/mpd-preset-main-LZODUz/home/profiles/w/#include
+mpd-tool-agent-team-rc2 (@deepseek-ai/dsh-tool-agent-team): Error: prompt section "team:policy" is already registered (for a per-agent override, register through that agent's `agent.ctx` instead)
+    at NamedEntries.duplicateError (file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/dsh-system-prompt/lib/index.js:205:62)
+    at NamedEntries.insert (file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/dsh-scope/lib/index.js:29:34)
+    at layers.effect.label (file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/dsh-system-prompt/lib/index.js:257:65)
+    at ScopedLayers.<anonymous> (file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/dsh-scope/lib/index.js:206:12)
+    at ScopedLayers.effect (file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/dsh-scope/lib/index.js:192:14)
+    at Proxy.section (file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/dsh-system-prompt/lib/index.js:257:22)
+    at Object.apply (file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/cordis/lib/index.js:122:36)
+    at new apply (file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/dsh-tool-agent-team/lib/index.js:139:19)
+    at Fiber.execute (file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/cordis/lib/index.js:362:24)
+    at file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/cordis/lib/index.js:436:34
+    at file:///tmp/mpd-preset-main-LZODUz/home/profiles/w/#mpd-tool-agent-team-rc2
+    at file:///tmp/mpd-preset-main-LZODUz/home/profiles/w/#include
+dsh web: http://127.0.0.1:3231/?token=<redacted>

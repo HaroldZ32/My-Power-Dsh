@@ -1,0 +1,11 @@
+warning: refname 'feature' is ambiguous.
+== inside the tag-colliding worktree ==
+rev-parse --abbrev-ref HEAD        = heads/feature
+rev-parse --abbrev-ref=strict HEAD = heads/feature
+rev-parse --abbrev-ref=loose HEAD  = heads/feature
+symbolic-ref --short HEAD          = heads/feature
+branch --show-current              = feature
+== no-tag control ==
+warning: refname 'feature' is ambiguous.
+rev-parse --abbrev-ref HEAD        = heads/feature
+branch --show-current              = feature

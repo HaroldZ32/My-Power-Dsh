@@ -1,0 +1,6 @@
+=== pinned harness D1 corroboration (read by the reviewer, not the contract) ===
+$ grep -n 'cwd' .qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-subagent/lib/index.js | grep -i 'request|spec|workingDirector'
+1530:		const cwd = request.cwd !== void 0 && isAbsolute(request.cwd) ? request.cwd : resolve(await this.ctx.workingDirectory.ensure(request.parent, signal), request.cwd ?? ".");
+1810:					await workingDirectory.set(child, create.cwd, inputs.signal);
+--- child session header copies the PARENT cwd (state root stays the parent's) ---
+111:        ...parentHeader.cwd !== undefined ? { cwd: parentHeader.cwd } : {},

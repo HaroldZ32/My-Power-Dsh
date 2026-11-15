@@ -1,0 +1,53 @@
+CHECK F1A.create PASS recorded=feature
+CHECK F1A.precondition_abbrev_is_ambiguous PASS abbrev=heads/feature
+CHECK F1A.symbolic_ref_short PASS symbolic=refs/heads/feature
+CHECK F1A.status_ahead PASS ahead=1
+CHECK F1A.status_unmerged_before PASS merged=false
+CHECK F1A.merge_ok PASS merged=true commit=d329927a6101513fa6ed2c8bb72f6bc4385916de
+CHECK F1A.branch_tip_reachable PASS tip=6810dc6624394eec5a1bdaac1528ecb7c56dbf2e
+CHECK F1A.merge_second_parent_is_branch_tip PASS HEAD^2=6810dc6624394eec5a1bdaac1528ecb7c56dbf2e tip=6810dc6624394eec5a1bdaac1528ecb7c56dbf2e
+CHECK F1A.branch_file_in_main PASS feature.txt in main
+CHECK F1A.tag_unmoved PASS tag=3ddd8dd6f8eadac25717f407807ab75ebca89c04
+CHECK F1A.status_merged_after PASS merged=true
+CHECK F1A.remove_ok PASS removed=true branchDeleted=true
+CHECK F1A.dir_gone PASS /tmp/n1-review4-H8ykrK/.mpd/worktrees/alice
+CHECK F1A.branch_ref_gone PASS refs/heads/feature gone
+CHECK F1A.tag_still_present PASS tag survives
+CHECK F1B.default_branch PASS recorded=agent/alice
+CHECK F1B.precondition_abbrev_is_ambiguous PASS abbrev=heads/agent/alice
+CHECK F1B.merge_ok PASS merged=true
+CHECK F1B.branch_tip_reachable PASS tip=b0caf45321edb5a4654705ee0b85c9a5ade6b6ac
+CHECK F1B.merge_second_parent_is_branch_tip PASS HEAD^2=b0caf45321edb5a4654705ee0b85c9a5ade6b6ac tip=b0caf45321edb5a4654705ee0b85c9a5ade6b6ac
+CHECK F1B.branch_file_in_main PASS alice.txt in main
+CHECK F1B.remove_prunes PASS branchDeleted=true
+CHECK F1B.dir_gone PASS /tmp/n1-review4-NeLhVv/.mpd/worktrees/alice
+CHECK F1B.branch_ref_gone PASS branch gone
+CHECK F1B.tag_still_present PASS tag survives
+CHECK F1C.detached_remove PASS remove refused
+CHECK F1C.detached_merge PASS merge refused
+CHECK F1C.nothing_mutated PASS dir/record/main intact
+CHECK F1D.mismatch_remove PASS remove refused
+CHECK F1D.mismatch_merge PASS merge refused
+CHECK F1D.nothing_mutated PASS dir/record/refs/main intact
+CHECK F2.refusal.refs/heads/dev PASS code=invalid-branch
+CHECK F2.no_dir.refs/heads/dev PASS /tmp/n1-review4-bTA8MA/.mpd/worktrees/alice
+CHECK F2.no_index.refs/heads/dev PASS /tmp/n1-review4-bTA8MA/.mpd/worktrees/index.json
+CHECK F2.no_new_ref.refs/heads/dev PASS ref set identical to before
+CHECK F2.no_registration.refs/heads/dev PASS worktree registration unchanged
+CHECK F2.refusal.refs/heads/main PASS code=invalid-branch
+CHECK F2.no_dir.refs/heads/main PASS /tmp/n1-review4-bTA8MA/.mpd/worktrees/alice
+CHECK F2.no_index.refs/heads/main PASS /tmp/n1-review4-bTA8MA/.mpd/worktrees/index.json
+CHECK F2.no_new_ref.refs/heads/main PASS ref set identical to before
+CHECK F2.no_registration.refs/heads/main PASS worktree registration unchanged
+CHECK F2.refusal.refs/heads/never-existed PASS code=invalid-branch
+CHECK F2.no_dir.refs/heads/never-existed PASS /tmp/n1-review4-bTA8MA/.mpd/worktrees/alice
+CHECK F2.no_index.refs/heads/never-existed PASS /tmp/n1-review4-bTA8MA/.mpd/worktrees/index.json
+CHECK F2.no_new_ref.refs/heads/never-existed PASS ref set identical to before
+CHECK F2.no_registration.refs/heads/never-existed PASS worktree registration unchanged
+CHECK F2.existing_refs_intact PASS dev+main intact
+CHECK F2.short_protected PASS short dev refused as protected-branch
+CHECK F2.no_index_after_short_protected PASS still no index
+CHECK F2.short_creates PASS branch=work/alice
+CHECK F2.recorded PASS {"key":"manual/alice","name":"alice","repo":"/tmp/n1-review4-bTA8MA","path":"/tmp/n1-review4-bTA8MA/.mpd/worktrees/alice","branch":"work/alice","base":"main","createdAt":"2026-11-12T08:56:11.561Z","status":"active"}
+
+PROBE_RESULT failed=0

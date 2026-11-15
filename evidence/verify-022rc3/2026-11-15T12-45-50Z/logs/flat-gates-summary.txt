@@ -1,0 +1,16 @@
+== tests
+tests exit=0
+== typecheck
+typecheck exit=0
+== no-host-override
+exit=0
+== manual-paths
+exit=0
+== dshgo
+exit=0
+== dist-fresh
+exit=0
+== vendor
+exit=0
+== repin-check
+exit=0

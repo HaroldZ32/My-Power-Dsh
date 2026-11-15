@@ -24,7 +24,7 @@
 import { existsSync, readFileSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { ROLES, ROLE_BY_ID, type MpdRoleSpec } from "./roles.data.ts"
-import { installReadonlyGuard } from "./team-guard.ts"
+import { installReadonlyGuard, teamRecordMemberOf } from "./team-guard.ts"
 import { INVESTIGATION_CONFIG_KEY, installCaptainInvestigationGuard } from "./captain-investigation.ts"
 import { CAPTAIN_SHELL_CONFIG_KEY, CAPTAIN_SHELL_DENY_PATTERNS, installCaptainShellGuard } from "./captain-shell.ts"
 import { installAskUserQuestionGuard } from "./ask-user-guard.ts"
@@ -1427,6 +1427,10 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     const guard = installReadonlyGuard(dsh, {
       deny: READONLY_DENY,
       members: teamMembers(),
+      // A1 item 1 / A2: the record identity source is DEFENCE IN DEPTH behind the adapter's
+      // native-handlemap fallback, so a task-board-only host (0.2.2-rc.2) or a restart that lost
+      // the in-memory map still cannot widen a read-only teammate's write tools.
+      recordMemberOf: teamRecordMemberOf(ctx, dsh),
       warn: (line) => warnOnce("team-guard:" + line, line),
     })
     guardOutcome.push(guard.installed

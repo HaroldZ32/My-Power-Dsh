@@ -1,0 +1,30 @@
+######## rc2 ########
+### cordis.patch.yml  argv1=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/dsh/lib/bin.js  baseUrl=file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc2/dsh-home/profiles/t1/
+  mpd-agent-team disabled=true
+  mpd-tool-agent-team disabled=true
+  mpd-ui-agent-team disabled=true
+  mpd-agent-team-rc2 disabled=false
+  mpd-tool-agent-team-rc2 disabled=false
+  mpd-ui-agent-team-rc2 disabled=false
+### .qa-tmp/t1/overlay.yml  argv1=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/dsh/lib/bin.js  baseUrl=file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc2/dsh-home/profiles/t1/
+  mpd-agent-team disabled=true
+  mpd-tool-agent-team disabled=true
+  mpd-ui-agent-team disabled=true
+  mpd-agent-team-rc2 disabled=true
+  mpd-tool-agent-team-rc2 disabled=true
+  mpd-ui-agent-team-rc2 disabled=false
+######## rc1 ########
+### cordis.patch.yml  argv1=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh/lib/bin.js  baseUrl=file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc1/dsh-home/profiles/t1/
+  mpd-agent-team disabled=false
+  mpd-tool-agent-team disabled=false
+  mpd-ui-agent-team disabled=false
+  mpd-agent-team-rc2 disabled=true
+  mpd-tool-agent-team-rc2 disabled=true
+  mpd-ui-agent-team-rc2 disabled=true
+### .qa-tmp/t1/overlay.yml  argv1=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh/lib/bin.js  baseUrl=file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc1/dsh-home/profiles/t1/
+  mpd-agent-team disabled=false
+  mpd-tool-agent-team disabled=false
+  mpd-ui-agent-team disabled=false
+  mpd-agent-team-rc2 disabled=true
+  mpd-tool-agent-team-rc2 disabled=true
+  mpd-ui-agent-team-rc2 disabled=true

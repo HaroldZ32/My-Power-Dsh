@@ -1,0 +1,27 @@
+# Falsifiability: the three new tests run against a scratch copy whose source was REVERTED to the
+# pre-repair behaviour (checkedOutBranch back to rev-parse --abbrev-ref, the refs/ guard removed, and
+# merge/isAncestor/revCount back to the bare branch name). The repository tree was not touched.
+
+=== F1 tests against the reverted source (expected: 2 fail) ===
+      at revalidateRecordedBranch (/tmp/n1-falsify-w6JxZR/pkg/src/ops.ts:580:5)
+      at removeWorktree (/tmp/n1-falsify-w6JxZR/pkg/src/ops.ts:734:3)
+      at <anonymous> (/tmp/n1-falsify-w6JxZR/pkg/test/worktree.test.ts:903:21)
+(fail) recorded branch revalidation (N1) > removes a default agent/ worktree whose branch name collides with a tag (F1) [42.94ms]
+
+ 0 pass
+ 47 filtered out
+ 2 fail
+ 5 expect() calls
+Ran 2 tests across 1 file. [107.00ms]
+FALSIFY_F1_EXIT=1
+
+=== F2 test against the reverted source (expected: 1 fail) ===
+      at refusal (/tmp/n1-falsify-w6JxZR/pkg/test/worktree.test.ts:113:91)
+      at <anonymous> (/tmp/n1-falsify-w6JxZR/pkg/test/worktree.test.ts:284:21)
+(fail) mpd_worktree_create > refuses a refs/-rooted branch argument before any git or registry mutation (F2) [35.30ms]
+
+ 0 pass
+ 48 filtered out
+ 1 fail
+Ran 1 test across 1 file. [44.00ms]
+FALSIFY_F2_EXIT=1

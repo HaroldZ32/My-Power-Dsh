@@ -1,0 +1,11 @@
+627:- id: mpd-agent-team
+628-  name: '@deepseek-ai/dsh-experimental-agent-team'
+629-  disabled: !!js >-
+--
+792:- id: mpd-tool-agent-team
+793-  name: '@deepseek-ai/dsh-experimental-tool-agent-team'
+794-  disabled: !!js >-
+--
+949:- id: mpd-ui-agent-team
+950-  name: '@deepseek-ai/dsh-experimental-client-ui-agent-team'
+951-  disabled: !!js >-

@@ -1,0 +1,4 @@
+HEAD create = NO-REFUSAL; branch = refs/heads/dev
+HEAD worktree abbrev = heads/refs/heads/dev
+HEAD remove(force) = NO-REFUSAL
+HEAD directory gone = true

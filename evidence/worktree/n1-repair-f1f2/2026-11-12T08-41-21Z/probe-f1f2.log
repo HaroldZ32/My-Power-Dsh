@@ -1,0 +1,43 @@
+
+=== A) tag feature + create branch feature ===
+recorded branch = feature | worktree abbrev = heads/feature
+ok  A1 the old comparison's poisoned input is reproduced
+merge = {"merged":true,"branch":"feature","into":"main","commit":"7d0cbf8266659d04ff99fa26de04346283413807"}
+ok  A2 merge landed the BRANCH tip, not the tag
+ok  A3 the branch's file is in the main checkout
+remove = {"removed":true,"name":"alice","path":"/tmp/n1-repair-probe-PDJBAG/.mpd/worktrees/alice","branch":"feature","branchDeleted":true}
+ok  A4 remove succeeded and deleted the branch
+ok  A5 the worktree directory is gone
+ok  A6 the branch ref is gone
+ok  A7 the record is a removed tombstone, not an active stranding
+
+=== B) tag agent/alice + default create ===
+recorded branch = agent/alice | worktree abbrev = heads/agent/alice
+ok  B1 the collision is reproduced on the DEFAULT name
+remove = {"removed":true,"name":"alice","path":"/tmp/n1-repair-probe-h6UAkO/.mpd/worktrees/alice","branch":"agent/alice","branchDeleted":true}
+ok  B2 remove succeeded and deleted the default branch
+ok  B3 the worktree directory is gone
+ok  B4 the branch ref is gone
+
+=== C) full-ref branch spellings ===
+control short branch dev = protected-branch
+ok  C1 the short protected name is still refused
+create branch="refs/heads/dev" = invalid-branch
+ok  C2 [refs/heads/dev] refused as invalid-branch
+ok  C3 [refs/heads/dev] no new branch ref was created
+ok  C4 [refs/heads/dev] no directory exists
+ok  C5 [refs/heads/dev] no git worktree registration exists
+ok  C6 [refs/heads/dev] no index record exists
+create branch="refs/heads/main" = invalid-branch
+ok  C2 [refs/heads/main] refused as invalid-branch
+ok  C3 [refs/heads/main] no new branch ref was created
+ok  C4 [refs/heads/main] no directory exists
+ok  C5 [refs/heads/main] no git worktree registration exists
+ok  C6 [refs/heads/main] no index record exists
+ok  C7 the pre-existing dev branch is untouched
+ok  C8 the pre-existing main branch is untouched
+control create work/alice = work/alice | dir exists = true
+ok  C9 a normal short branch still creates
+ok  C10 exactly one active record, for the short name
+
+RESULT: PASS checks=26

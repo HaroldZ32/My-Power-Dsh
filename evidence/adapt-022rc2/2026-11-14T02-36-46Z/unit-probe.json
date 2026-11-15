@@ -1,0 +1,361 @@
+{
+  "fixtures": "/tmp/t1-fixtures-w9zFzT",
+  "loaders": [
+    {
+      "loader": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js",
+      "body": "\n  with (ctx) {\n    return eval(expr)\n  }\n"
+    },
+    {
+      "loader": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js",
+      "body": "\n  with (ctx) {\n    return eval(expr)\n  }\n"
+    }
+  ],
+  "bodiesIdentical": true,
+  "arms": [
+    {
+      "arm": "rc1-standard-install",
+      "expected": {
+        "argv1": "rc1n/bin/dsh",
+        "baseUrl": null,
+        "env": {},
+        "old": false,
+        "new": true,
+        "source": "argv1",
+        "generation": "old"
+      },
+      "actual": {
+        "old": false,
+        "new": true,
+        "oldAgain": false,
+        "logLines": [
+          "[mpd-team-rows] generation=old source=argv1 argv1=/tmp/t1-fixtures-w9zFzT/rc1n/bin/dsh harness=0.2.2-rc.1 baseUrl=<unset> baseUrlHarness=<unresolved> presence=<not-read> oldRows=enabled newRows=disabled override=<unset>"
+        ]
+      },
+      "pass": true
+    },
+    {
+      "arm": "rc1-adjacent-manifest",
+      "expected": {
+        "argv1": "rc1a/bin/dsh",
+        "baseUrl": null,
+        "env": {},
+        "old": false,
+        "new": true,
+        "source": "argv1",
+        "generation": "old"
+      },
+      "actual": {
+        "old": false,
+        "new": true,
+        "oldAgain": false,
+        "logLines": [
+          "[mpd-team-rows] generation=old source=argv1 argv1=/tmp/t1-fixtures-w9zFzT/rc1a/bin/dsh harness=0.2.1-rc.5 baseUrl=<unset> baseUrlHarness=<unresolved> presence=<not-read> oldRows=enabled newRows=disabled override=<unset>"
+        ]
+      },
+      "pass": true
+    },
+    {
+      "arm": "rc2-symlinked-launcher-realpath",
+      "expected": {
+        "argv1": "rc2l/bin/dsh",
+        "baseUrl": null,
+        "env": {},
+        "old": true,
+        "new": false,
+        "source": "argv1",
+        "generation": "new"
+      },
+      "actual": {
+        "old": true,
+        "new": false,
+        "oldAgain": true,
+        "logLines": [
+          "[mpd-team-rows] generation=new source=argv1 argv1=/tmp/t1-fixtures-w9zFzT/rc2l/bin/dsh harness=0.2.2-rc.2 baseUrl=<unset> baseUrlHarness=<unresolved> presence=<not-read> oldRows=disabled newRows=enabled override=<unset>"
+        ]
+      },
+      "pass": true
+    },
+    {
+      "arm": "rc1-0.2.1-rc.5",
+      "expected": {
+        "argv1": "rc215/bin/dsh",
+        "baseUrl": null,
+        "env": {},
+        "old": false,
+        "new": true,
+        "source": "argv1",
+        "generation": "old"
+      },
+      "actual": {
+        "old": false,
+        "new": true,
+        "oldAgain": false,
+        "logLines": [
+          "[mpd-team-rows] generation=old source=argv1 argv1=/tmp/t1-fixtures-w9zFzT/rc215/bin/dsh harness=0.2.1-rc.5 baseUrl=<unset> baseUrlHarness=<unresolved> presence=<not-read> oldRows=enabled newRows=disabled override=<unset>"
+        ]
+      },
+      "pass": true
+    },
+    {
+      "arm": "rc2-0.2.2-rc.10-numeric",
+      "expected": {
+        "argv1": "rc210/bin/dsh",
+        "baseUrl": null,
+        "env": {},
+        "old": true,
+        "new": false,
+        "source": "argv1",
+        "generation": "new"
+      },
+      "actual": {
+        "old": true,
+        "new": false,
+        "oldAgain": true,
+        "logLines": [
+          "[mpd-team-rows] generation=new source=argv1 argv1=/tmp/t1-fixtures-w9zFzT/rc210/bin/dsh harness=0.2.2-rc.10 baseUrl=<unset> baseUrlHarness=<unresolved> presence=<not-read> oldRows=disabled newRows=enabled override=<unset>"
+        ]
+      },
+      "pass": true
+    },
+    {
+      "arm": "baseUrl-only",
+      "expected": {
+        "argv1": "none/bin/dsh",
+        "baseUrl": "base",
+        "env": {},
+        "old": true,
+        "new": false,
+        "source": "baseUrl",
+        "generation": "new"
+      },
+      "actual": {
+        "old": true,
+        "new": false,
+        "oldAgain": true,
+        "logLines": [
+          "[mpd-team-rows] generation=new source=baseUrl argv1=/tmp/t1-fixtures-w9zFzT/none/bin/dsh harness=<unreadable> baseUrl=file:///tmp/t1-fixtures-w9zFzT/base/profile/cordis.patch.yml baseUrlHarness=0.2.2-rc.2 presence=<not-read> oldRows=disabled newRows=enabled override=<unset>"
+        ]
+      },
+      "pass": true
+    },
+    {
+      "arm": "presence-only-new",
+      "expected": {
+        "argv1": "none/bin/dsh",
+        "baseUrl": "pres",
+        "env": {},
+        "old": true,
+        "new": false,
+        "source": "presence",
+        "generation": "new"
+      },
+      "actual": {
+        "old": true,
+        "new": false,
+        "oldAgain": true,
+        "logLines": [
+          "[mpd-team-rows] generation=new source=presence argv1=/tmp/t1-fixtures-w9zFzT/none/bin/dsh harness=<unreadable> baseUrl=file:///tmp/t1-fixtures-w9zFzT/pres/profile/cordis.patch.yml baseUrlHarness=<unresolved> presence=new oldRows=disabled newRows=enabled override=<unset>"
+        ]
+      },
+      "pass": true
+    },
+    {
+      "arm": "presence-both-ambiguous",
+      "expected": {
+        "argv1": "none/bin/dsh",
+        "baseUrl": "pboth",
+        "env": {},
+        "old": true,
+        "new": true,
+        "source": "none",
+        "generation": "ambiguous"
+      },
+      "actual": {
+        "old": true,
+        "new": true,
+        "oldAgain": true,
+        "logLines": [
+          "[mpd-team-rows] generation=ambiguous source=none argv1=/tmp/t1-fixtures-w9zFzT/none/bin/dsh harness=<unreadable> baseUrl=file:///tmp/t1-fixtures-w9zFzT/pboth/profile/cordis.patch.yml baseUrlHarness=<unresolved> presence=both oldRows=disabled newRows=disabled override=<unset>"
+        ]
+      },
+      "pass": true
+    },
+    {
+      "arm": "presence-ancestor-leak-ambiguous",
+      "expected": {
+        "argv1": "leak/bin/dsh",
+        "baseUrl": "leak",
+        "env": {},
+        "old": true,
+        "new": true,
+        "source": "none",
+        "generation": "ambiguous"
+      },
+      "actual": {
+        "old": true,
+        "new": true,
+        "oldAgain": true,
+        "logLines": [
+          "[mpd-team-rows] generation=ambiguous source=none argv1=/tmp/t1-fixtures-w9zFzT/leak/bin/dsh harness=<unreadable> baseUrl=file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/leak/profile/cordis.patch.yml baseUrlHarness=<unresolved> presence=both oldRows=disabled newRows=disabled override=<unset>"
+        ]
+      },
+      "pass": true
+    },
+    {
+      "arm": "malformed-manifest-ambiguous",
+      "expected": {
+        "argv1": "bad/bin/dsh",
+        "baseUrl": null,
+        "env": {},
+        "old": true,
+        "new": true,
+        "source": "none",
+        "generation": "ambiguous"
+      },
+      "actual": {
+        "old": true,
+        "new": true,
+        "oldAgain": true,
+        "logLines": [
+          "[mpd-team-rows] generation=ambiguous source=none argv1=/tmp/t1-fixtures-w9zFzT/bad/bin/dsh harness=<unreadable> baseUrl=<unset> baseUrlHarness=<unresolved> presence=<not-read> oldRows=disabled newRows=disabled override=<unset>"
+        ]
+      },
+      "pass": true
+    },
+    {
+      "arm": "no-signal-ambiguous",
+      "expected": {
+        "argv1": "none/bin/dsh",
+        "baseUrl": null,
+        "env": {},
+        "old": true,
+        "new": true,
+        "source": "none",
+        "generation": "ambiguous"
+      },
+      "actual": {
+        "old": true,
+        "new": true,
+        "oldAgain": true,
+        "logLines": [
+          "[mpd-team-rows] generation=ambiguous source=none argv1=/tmp/t1-fixtures-w9zFzT/none/bin/dsh harness=<unreadable> baseUrl=<unset> baseUrlHarness=<unresolved> presence=<not-read> oldRows=disabled newRows=disabled override=<unset>"
+        ]
+      },
+      "pass": true
+    },
+    {
+      "arm": "override-old-on-rc2",
+      "expected": {
+        "argv1": "rc2l/bin/dsh",
+        "baseUrl": null,
+        "env": {
+          "MPD_DSH_TEAM_ROWS": "old"
+        },
+        "old": false,
+        "new": true,
+        "source": "override",
+        "generation": "old"
+      },
+      "actual": {
+        "old": false,
+        "new": true,
+        "oldAgain": false,
+        "logLines": [
+          "[mpd-team-rows] generation=old source=override argv1=/tmp/t1-fixtures-w9zFzT/rc2l/bin/dsh harness=0.2.2-rc.2 baseUrl=<unset> baseUrlHarness=<unresolved> presence=<not-read> oldRows=enabled newRows=disabled override=old"
+        ]
+      },
+      "pass": true
+    },
+    {
+      "arm": "override-new-on-rc1",
+      "expected": {
+        "argv1": "rc1n/bin/dsh",
+        "baseUrl": null,
+        "env": {
+          "MPD_DSH_TEAM_ROWS": "new"
+        },
+        "old": true,
+        "new": false,
+        "source": "override",
+        "generation": "new"
+      },
+      "actual": {
+        "old": true,
+        "new": false,
+        "oldAgain": true,
+        "logLines": [
+          "[mpd-team-rows] generation=new source=override argv1=/tmp/t1-fixtures-w9zFzT/rc1n/bin/dsh harness=0.2.2-rc.1 baseUrl=<unset> baseUrlHarness=<unresolved> presence=<not-read> oldRows=disabled newRows=enabled override=new"
+        ]
+      },
+      "pass": true
+    },
+    {
+      "arm": "override-off-on-rc2",
+      "expected": {
+        "argv1": "rc2l/bin/dsh",
+        "baseUrl": null,
+        "env": {
+          "MPD_DSH_TEAM_ROWS": "off"
+        },
+        "old": true,
+        "new": true,
+        "source": "override",
+        "generation": "ambiguous"
+      },
+      "actual": {
+        "old": true,
+        "new": true,
+        "oldAgain": true,
+        "logLines": [
+          "[mpd-team-rows] generation=ambiguous source=override argv1=/tmp/t1-fixtures-w9zFzT/rc2l/bin/dsh harness=0.2.2-rc.2 baseUrl=<unset> baseUrlHarness=<unresolved> presence=<not-read> oldRows=disabled newRows=disabled override=off"
+        ]
+      },
+      "pass": true
+    },
+    {
+      "arm": "throwing-ctx-baseUrl-thunk",
+      "expected": {
+        "argv1": "rc2l/bin/dsh",
+        "baseUrl": "THROW",
+        "env": {},
+        "old": true,
+        "new": true,
+        "source": "threw",
+        "generation": "threw"
+      },
+      "actual": {
+        "old": true,
+        "new": true,
+        "oldAgain": true,
+        "logLines": []
+      },
+      "pass": true
+    }
+  ],
+  "rendered": {
+    "oldBytes": 4839,
+    "newBytes": 4839,
+    "oldHazard": "",
+    "newHazard": "",
+    "composed": {
+      "oldAgent": {
+        "bytes": 13380,
+        "hazard": ""
+      },
+      "oldTool": {
+        "bytes": 13380,
+        "hazard": ""
+      },
+      "newAgent": {
+        "bytes": 13380,
+        "hazard": ""
+      },
+      "newTool": {
+        "bytes": 13380,
+        "hazard": ""
+      }
+    }
+  },
+  "passed": 15,
+  "total": 15
+}

@@ -56,3 +56,24 @@ trigger = explicit flag OR (matchedSignals >= 1)
 - **dsh-tui** → `/preset mpd`，把 `{ "preset": "mpd" }` 持久化到 `~/.dsh-tui/agent-preset.json`；或在用户**自己**的 profile patch 里设 `DSH_TUI_PRESET=mpd`（它**优先于**已持久化的偏好）；或一条命令 `node scripts/set-default-preset.ts --yes`（默认 dry-run），按 dsh-tui 自己的字节形状写同一个文件。
 
 没有这个用户动作，profile 就保持 HOST 默认的 `standard`，所以这里 `mpd` 是 **OPT-IN** 的；在 `cordis.patch.yml` 记录的 dsh-tui 平面（0.12.0；其 row id / `default: standard` 配置 / `presets/liangshen/` 已对照 0.13.0 复核）上，该版本根本没有声明 `standard` preset 行，因此要解析它的会话会带着已记录的 `agent-preset/not-found` 警告组合 —— 这正是 `docs/preset-default.md` 要填上的缺口。`mpd` preset 本身由第二个 patch 文件声明（`presets/mpd.patch.yml`，行 `preset-mpd`），任何组合都不需要再单独选择它。
+
+## 团队行：三个旧代行，新代平面由宿主拥有（0.19.0）
+
+`0.2.2-rc.2` 改写了三个 Agent Teams 包的包名，并让其插件在激活时对 `0.2.2-rc.1` 行携带的配置键**抛错**。
+它还改变了**谁拥有**这个平面：那一代的 `dsh-base` 自己声明 `agent-team`
+（`@deepseek-ai/dsh-agent-team`，配置 `{maxTasks: 256}`）与 `tool-agent-team`
+（`@deepseek-ai/dsh-tool-agent-team`），其 `dsh-web-app` 声明 `ui-agent-team`。此时再挂一行 bundle 行
+就是重复注册——实测报 `service "agentTeams" has been registered at <TeamService>` 与
+`prompt section "team:policy" is already registered`，并有两个条目未激活。
+
+因此本 bundle 只携带**三行**（`mpd-agent-team`、`mpd-tool-agent-team`、`mpd-ui-agent-team`，沿用旧 id
+与已发布配置），且**仅在 `0.2.2-rc.1` 上挂载**；在 `0.2.2-rc.2` 上一行都不挂。`package.json` 不声明任何
+团队包：在 rc.1 上该包由**宿主安装自身的嵌套副本**解析。
+
+判定由一个 guard 完成，且是组合：
+`（已发布的 dsh-tui 条款，与 HEAD 逐字节相同） || （代际 + 可解析性条款）`。代际那一半读取
+`process.argv[1]` 之上最近的 `@deepseek-ai/dsh/package.json`（取 realpath），仅当不可读时才回落到
+`baseUrl` 解析，最后检查该行的包能否从 profile 的 `node_modules` 或本次 dsh 安装解析到。不可读或有歧义
+时禁用这些行并向 `<root>/.mpd/logs/mpd-patch-guards.log` 写**一行**，同时尊重
+`MPD_DSH_TEAM_ROWS=old|new|off`；抛错即保守禁用；将来某台宿主不再携带该包时，得到的是**被禁用的行 +
+一行日志**，而不是静默丢掉的平面。

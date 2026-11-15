@@ -1,0 +1,78 @@
+{
+  "task": "T5 — Lane E: integration build + gate sweep",
+  "wave": "agent-worktrees (feature/agent-worktrees)",
+  "contract": ".mpd/plans/agent-worktrees.md §3 Lane E",
+  "timestamp": "2026-11-12T03-00-45Z",
+  "owner": "engineer-worktree",
+  "branch": "feature/agent-worktrees",
+  "committed": false,
+  "committedNote": "The captain is the only git writer; this lane rebuilt artifacts and ran gates only.",
+  "treeStateAtEvidence": "All lanes' changes present and uncommitted: adapter src (Lane B), team-core + cellwork src/tests (Lane C), docs pair + agent-references (Lane D), the new package + patch row + installer/pack lists (Lane A). AGENTS.md modified by the captain.",
+  "distRebuild": {
+    "toolchain": "bun 1.4.0 from .toolchain/node_modules/.bin/bun (pinned), invoked from the repository root",
+    "before": "node scripts/verify-dist-fresh.ts -> exit 1, 24 of 35 targets STALE",
+    "targets": [
+      "mpd-autoproject-plugin", "mpd-bootstrap-plugin", "mpd-bundle-plugin", "mpd-cellwork-plugin",
+      "mpd-codegraph-plugin", "mpd-comment-checker-plugin", "mpd-config-plugin", "mpd-dsh-adapter-plugin",
+      "mpd-ext-plugin", "mpd-goal-plugin", "mpd-hashline-plugin", "mpd-memory-plugin",
+      "mpd-modelchain-plugin", "mpd-project-init-plugin", "mpd-qa-roles-probe", "mpd-roles-plugin",
+      "mpd-roster-provider-plugin", "mpd-team-compact-plugin", "mpd-team-core-plugin",
+      "mpd-team-watchdog-plugin", "mpd-tools-plugin", "mpd-tui-plugin", "mpd-verify-plugin",
+      "mpd-workmate-plugin"
+    ],
+    "after": "node scripts/verify-dist-fresh.ts -> exit 0, 35/35 targets fresh (each rebuilt twice, byte-identical); 1 NOT COVERED file (packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt with no local src, declared by the gate itself)",
+    "why24": "The adapter edit is INLINED into every dependent bundle (AGENTS.md §6 'an ADAPTER edit fans out'), so Lane B's change alone invalidates every package that imports it."
+  },
+  "commands": [
+    { "command": ".toolchain/node_modules/.bin/bun build packages/<pkg>/src/index.ts --target node --format esm --outfile packages/<pkg>/dist/index.js  (24 targets, repo root)", "exit": 0, "observed": "24/24 bundles built, 0 failures" },
+    { "command": "node scripts/verify-dist-fresh.ts (before)", "exit": 1, "observed": "24 of 35 targets STALE" },
+    { "command": "node scripts/verify-dist-fresh.ts (after)", "exit": 0, "observed": "35/35 targets fresh, each rebuilt twice byte-identical; 1 NOT COVERED declared file" },
+    { "command": "bun test packages/mpd-worktree-plugin", "exit": 0, "observed": "24 pass / 0 fail" },
+    { "command": "bun test packages/mpd-dsh-adapter-plugin", "exit": 0, "observed": "403 pass / 0 fail" },
+    { "command": "bun test packages/mpd-team-core-plugin", "exit": 0, "observed": "642 pass / 0 fail" },
+    { "command": "bun test packages/mpd-cellwork-plugin", "exit": 0, "observed": "439 pass / 0 fail" },
+    { "command": "bun run typecheck", "exit": 0, "observed": "tsgo --noEmit: no diagnostics" },
+    { "command": "bun run verify:comments", "exit": 0, "observed": "PASS — 646 TypeScript files, 59150 declarations, 29205 inline callbacks out of family" },
+    { "command": "bun run verify:rows", "exit": 0, "observed": "ok: 37 row ids match the 2-file bundle patch layer (mpd-worktree included)" },
+    { "command": "bun run verify:manifest", "exit": 0, "observed": "PASS — 29 row module paths, 0 missing; packed content carries every required path" },
+    { "command": "bun run verify:docs", "exit": 0, "observed": "pairs=61 failed=0 violations=0 links=634 dead=0 — PASS" },
+    { "command": "node scripts/verify-no-host-override.ts", "exit": 0, "observed": "PASS — 0 overrides, 37 additive inserted rows, 0 collisions with 220 host-declared ids" },
+    {
+      "command": "PATH=\"$PWD/.qa-tmp/dsh-022/bin:$PATH\" bun skills/dsh-qa/scripts/bundle-lifecycle.ts",
+      "exit": 0,
+      "observed": "PASS — install/composed/boot/noHomeCopy/layerDurability/uninstall all ok; boot checks http, adapterProvided, adapterSeams, adapterToolCall, corpusFromBundle, noPresetRefusal, probePass, presetProbeOk; probe log: ADAPTER_TOOL_CALL=ok, TOOL_PARAM_SCHEMAS=60/60, PRESET_MPD=ok"
+    },
+    {
+      "command": "PATH=\"$PWD/.qa-tmp/dsh-022/bin:$PATH\" node skills/dsh-qa/scripts/preset-conformance.ts",
+      "exit": 0,
+      "observed": "PASS — 33 rows checked (6 schema-free), preset-mpd 28 children, session created with agentPreset=mpd, bootLog signatures [], negative control refused the mutated preset with agent-preset/invalid (falsifiable)"
+    },
+    {
+      "command": "PATH=\"$PWD/.qa-tmp/dsh-022/bin:$PATH\" MPD_DSHGO_KIT=\"$PWD/.mpd/tmp-dshgo/kit\" bun run verify:gates",
+      "exit": 0,
+      "observed": "PASS — 11/11 members green: vendor, dist-fresh, rows-parity, docs-parity, preset-conformance, plugin-manifest, comment-coverage, graph-model, workflows, tui-admission, dshgo (RESULT: LEGAL)"
+    },
+    {
+      "command": "node .qa-tmp/worktree-t5/dist-smoke.mjs (built dist through the adapter seam, cwd = temp git repo)",
+      "exit": 0,
+      "observed": "SMOKE=PASS — ROW_NAME=mpd-worktree, INJECT=[\"tools\"], the five tool names registered with object-rooted schemas, service mpdWorktree published with both methods, cwdForMember(unknown)=undefined (no throw), mpd_worktree_list executed through the definition and returned []"
+    }
+  ],
+  "evidence": {
+    "integration": "evidence/worktree/integration/2026-11-12T03-00-45Z/output.log",
+    "bootCases": [
+      "evidence/dsh-qa/bundle-lifecycle/2026-11-12T02-58-32.513Z/{result.json,output.log,boot.log}",
+      "evidence/dsh-qa/preset-conformance/2026-11-12T02-58-52.802Z/{result.json,output.log}"
+    ],
+    "laneA": "evidence/worktree/lane-a/2026-11-12T10-56-00Z/{output.log,result.json}",
+    "scratchLogs": ".qa-tmp/worktree-t5/ (private, not evidence)"
+  },
+  "bounds": [
+    "The two boot-mount cases are the contract's named mount evidence and both PASS on the pinned harness, but NEITHER log names mpd_worktree_* individually. The built-artifact smoke proves load + registration + a live list call through the adapter seam, and the package suite proves behaviour; a live tool call through a real harness session was NOT made (needs a credentialed headless turn). Lane F re-runs the mount independently.",
+    "verify:gates ran against an uncommitted wave tree. The vendor member is green because skills/** is untouched; the captain's post-commit sweep is the clean-tree confirmation.",
+    "The Docker real-machine lane was not run: Lane E's frozen list does not include it (it belongs to a release sweep).",
+    "dist/ is derived surface: it is fresh for THIS tree state and becomes stale the moment any src under a dependent package changes again.",
+    "No commit was made; package.json versions were not bumped (not part of this wave's contract)."
+  ],
+  "verificationLaw": "This lane builds and runs gates; a DIFFERENT agent (Lane F reviewer) records the verdict from the frozen contract. No self-certification."
+}

@@ -1,0 +1,583 @@
+{
+  "task": "T1 / M0 host-generation measurement",
+  "wave": "dsh-022rc2-tui-020",
+  "contract": ".mpd/plans/adapt-dsh-022rc2-tui-020.md §3/§4 D4",
+  "at": "2026-11-14T02:37:57.146Z",
+  "subject": "reference predicate measured on real hosts; candidate-v1 (working tree) measured for its semantics",
+  "hosts": {
+    "rc1": {
+      "install": ".qa-tmp/dsh-022",
+      "version": "0.2.2-rc.1"
+    },
+    "rc2": {
+      "install": ".qa-tmp/dsh-022rc2",
+      "version": "0.2.2-rc.2"
+    },
+    "tui": {
+      "install": ".qa-tmp/tui-020",
+      "version": "0.20.0",
+      "booted": false
+    }
+  },
+  "fiveObservations": {
+    "rc1": {
+      "argv1": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh/lib/bin.js",
+      "argv1Realpath": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh/lib/bin.js",
+      "nearestHarness": {
+        "dir": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh",
+        "version": "0.2.2-rc.1"
+      },
+      "baseUrl": "file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc1/dsh-home/profiles/t1/",
+      "profileDir": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc1/dsh-home/profiles/t1",
+      "profileHarness": {
+        "resolved": null,
+        "version": null,
+        "insideProfile": false,
+        "error": "Cannot find module '@deepseek-ai/dsh/package.json'\nRequire stack:\n- /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc1/dsh-home/profiles/t1/package.json"
+      },
+      "presence": {
+        "@deepseek-ai/dsh-experimental-agent-team": true,
+        "@deepseek-ai/dsh-agent-team": false
+      }
+    },
+    "rc2": {
+      "argv1": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/dsh/lib/bin.js",
+      "argv1Realpath": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/dsh/lib/bin.js",
+      "nearestHarness": {
+        "dir": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/dsh",
+        "version": "0.2.2-rc.2"
+      },
+      "baseUrl": "file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc2/dsh-home/profiles/t1/",
+      "profileDir": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc2/dsh-home/profiles/t1",
+      "profileHarness": {
+        "resolved": null,
+        "version": null,
+        "insideProfile": false,
+        "error": "Cannot find module '@deepseek-ai/dsh/package.json'\nRequire stack:\n- /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc2/dsh-home/profiles/t1/package.json"
+      },
+      "presence": {
+        "@deepseek-ai/dsh-experimental-agent-team": false,
+        "@deepseek-ai/dsh-agent-team": true
+      }
+    }
+  },
+  "overlayArms": {
+    "rc1": {
+      "ok": false,
+      "assertions": [
+        {
+          "name": "harness binary is the requested one",
+          "pass": true,
+          "detail": "0.2.2-rc.1"
+        },
+        {
+          "name": "profile created from the web template",
+          "pass": true,
+          "detail": "exit=0"
+        },
+        {
+          "name": "(a) same-generation family installs as a top-level target",
+          "pass": true,
+          "detail": "exit=0"
+        },
+        {
+          "name": "T1 probe installed",
+          "pass": true,
+          "detail": "exit=0"
+        },
+        {
+          "name": "renderGuard(old) and renderGuard(new) differ",
+          "pass": true
+        },
+        {
+          "name": "probe report written (a row activated)",
+          "pass": true,
+          "detail": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc1/probe.json"
+        },
+        {
+          "name": "boot did not exit on its own with an error",
+          "pass": true,
+          "detail": "{\"code\":0,\"signal\":null}"
+        },
+        {
+          "name": "settled report landed",
+          "pass": true,
+          "detail": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc1/probe.settled.json"
+        },
+        {
+          "name": "row mpd-agent-team enabled+activated",
+          "pass": false,
+          "detail": "{\"id\":\"mpd-agent-team\",\"name\":\"@deepseek-ai/dsh-experimental-agent-team\",\"disabled\":false,\"active\":false,\"config\":{\"maxMembers\":16,\"maxTasks\":256,\"maxMessageBytes\":32768,\"disposalTimeoutMs\":5000}}"
+        },
+        {
+          "name": "row mpd-tool-agent-team enabled+activated",
+          "pass": false,
+          "detail": "{\"id\":\"mpd-tool-agent-team\",\"name\":\"@deepseek-ai/dsh-experimental-tool-agent-team\",\"disabled\":false,\"active\":false,\"config\":{\"freshProvider\":\"mpd-roster\",\"forkProvider\":\"fork\"}}"
+        },
+        {
+          "name": "row mpd-ui-agent-team enabled+activated",
+          "pass": true,
+          "detail": "{\"id\":\"mpd-ui-agent-team\",\"name\":\"@deepseek-ai/dsh-experimental-client-ui-agent-team\",\"disabled\":false,\"active\":true,\"config\":null}"
+        },
+        {
+          "name": "row mpd-agent-team-rc2 disabled",
+          "pass": true,
+          "detail": "{\"id\":\"mpd-agent-team-rc2\",\"name\":\"@deepseek-ai/dsh-agent-team\",\"disabled\":true,\"active\":false,\"config\":{\"maxTasks\":256}}"
+        },
+        {
+          "name": "row mpd-tool-agent-team-rc2 disabled",
+          "pass": true,
+          "detail": "{\"id\":\"mpd-tool-agent-team-rc2\",\"name\":\"@deepseek-ai/dsh-tool-agent-team\",\"disabled\":true,\"active\":false,\"config\":null}"
+        },
+        {
+          "name": "row mpd-ui-agent-team-rc2 disabled",
+          "pass": true,
+          "detail": "{\"id\":\"mpd-ui-agent-team-rc2\",\"name\":\"@deepseek-ai/dsh-client-ui-agent-team\",\"disabled\":true,\"active\":false,\"config\":null}"
+        },
+        {
+          "name": "all six team rows are present in the loader",
+          "pass": true,
+          "detail": "present=6/6"
+        },
+        {
+          "name": "exactly ONE generation line in mpd-patch-guards.log",
+          "pass": true,
+          "detail": "[\"[mpd-team-rows] generation=old source=argv1 argv1=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh/lib/bin.js harness=0.2.2-rc.1 baseUrl=file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc1/dsh-home/profiles/t1/ baseUrlHarness=<unresolved> presence=<not-read> oldRows=enabled newRows=disabled override=<unset>\"]"
+        }
+      ],
+      "rows": {
+        "mpd-agent-team": {
+          "disabled": false,
+          "active": false
+        },
+        "mpd-tool-agent-team": {
+          "disabled": false,
+          "active": false
+        },
+        "mpd-ui-agent-team": {
+          "disabled": false,
+          "active": true
+        },
+        "mpd-agent-team-rc2": {
+          "disabled": true,
+          "active": false
+        },
+        "mpd-tool-agent-team-rc2": {
+          "disabled": true,
+          "active": false
+        },
+        "mpd-ui-agent-team-rc2": {
+          "disabled": true,
+          "active": false
+        }
+      },
+      "guardLines": [
+        "[mpd-team-rows] generation=old source=argv1 argv1=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh/lib/bin.js harness=0.2.2-rc.1 baseUrl=file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc1/dsh-home/profiles/t1/ baseUrlHarness=<unresolved> presence=<not-read> oldRows=enabled newRows=disabled override=<unset>"
+      ],
+      "installProbes": {
+        "sameGenerationTargets": {
+          "exit": 0,
+          "tail": "dsh: warning: @deepseek-ai/dsh-experimental-client-ui-agent-team declares no dsh.bundle — installed as a plain dependency, not a profile layer | dsh: warning: @deepseek-ai/dsh-experimental-tool-agent-team declares no dsh.bundle — installed as a plain dependency, not a profile layer"
+        },
+        "otherGenerationTargets": {
+          "exit": 1,
+          "tail": "dsh: to accept the risk, run: dsh plugin --profile t1 allow-version @deepseek-ai/dsh-agent-team@0.2.2-rc.2 --dsh-version 0.2.2-rc.1 --accept-risk | dsh: to accept the risk, run: dsh plugin --profile t1 allow-version @deepseek-ai/dsh-tool-agent-team@0.2.2-rc.2 --dsh-version 0.2.2-rc.1 --accept-risk | dsh: plugin command failed; diagnostics: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc1/dsh-home/profiles/t1/.plugin-manager/logs/operation-T0KCp6/pnpm.log",
+          "stdout": ""
+        },
+        "carrierDeclaringBoth": {
+          "exit": 0,
+          "tail": "dsh: warning: t1-carrier declares no dsh.bundle — installed as a plain dependency, not a profile layer",
+          "stdout": "✓ Lockfile passes supply-chain policies (verified 3s ago)\nAlready up to date\nProgress: resolved 8, reused 8, downloaded 0, added 0, done\n[WARN] Issues with peer dependencies found. Run \"pnpm peers check\" to list them.\n\ndependencies:\n+ t1-carrier <- ../../../../../carrier\n\nDone in 33ms using pnpm v12.16.1"
+        }
+      }
+    },
+    "rc2": {
+      "ok": false,
+      "assertions": [
+        {
+          "name": "harness binary is the requested one",
+          "pass": true,
+          "detail": "0.2.2-rc.2"
+        },
+        {
+          "name": "profile created from the web template",
+          "pass": true,
+          "detail": "exit=0"
+        },
+        {
+          "name": "(a) same-generation family installs as a top-level target",
+          "pass": true,
+          "detail": "exit=0"
+        },
+        {
+          "name": "T1 probe installed",
+          "pass": true,
+          "detail": "exit=0"
+        },
+        {
+          "name": "renderGuard(old) and renderGuard(new) differ",
+          "pass": true
+        },
+        {
+          "name": "probe report written (a row activated)",
+          "pass": true,
+          "detail": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc2/probe.json"
+        },
+        {
+          "name": "boot did not exit on its own with an error",
+          "pass": true,
+          "detail": "{\"code\":0,\"signal\":null}"
+        },
+        {
+          "name": "settled report landed",
+          "pass": true,
+          "detail": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc2/probe.settled.json"
+        },
+        {
+          "name": "row mpd-agent-team-rc2 enabled+activated",
+          "pass": false,
+          "detail": "{\"id\":\"mpd-agent-team-rc2\",\"name\":\"@deepseek-ai/dsh-agent-team\",\"disabled\":true,\"active\":false,\"config\":{\"maxTasks\":256}}"
+        },
+        {
+          "name": "row mpd-tool-agent-team-rc2 enabled+activated",
+          "pass": false,
+          "detail": "{\"id\":\"mpd-tool-agent-team-rc2\",\"name\":\"@deepseek-ai/dsh-tool-agent-team\",\"disabled\":true,\"active\":false,\"config\":null}"
+        },
+        {
+          "name": "row mpd-ui-agent-team-rc2 enabled+activated",
+          "pass": true,
+          "detail": "{\"id\":\"mpd-ui-agent-team-rc2\",\"name\":\"@deepseek-ai/dsh-client-ui-agent-team\",\"disabled\":false,\"active\":true,\"config\":null}"
+        },
+        {
+          "name": "row mpd-agent-team disabled",
+          "pass": true,
+          "detail": "{\"id\":\"mpd-agent-team\",\"name\":\"@deepseek-ai/dsh-experimental-agent-team\",\"disabled\":true,\"active\":false,\"config\":{\"maxMembers\":16,\"maxTasks\":256,\"maxMessageBytes\":32768,\"disposalTimeoutMs\":5000}}"
+        },
+        {
+          "name": "row mpd-tool-agent-team disabled",
+          "pass": true,
+          "detail": "{\"id\":\"mpd-tool-agent-team\",\"name\":\"@deepseek-ai/dsh-experimental-tool-agent-team\",\"disabled\":true,\"active\":false,\"config\":{\"freshProvider\":\"mpd-roster\",\"forkProvider\":\"fork\"}}"
+        },
+        {
+          "name": "row mpd-ui-agent-team disabled",
+          "pass": true,
+          "detail": "{\"id\":\"mpd-ui-agent-team\",\"name\":\"@deepseek-ai/dsh-experimental-client-ui-agent-team\",\"disabled\":true,\"active\":false,\"config\":null}"
+        },
+        {
+          "name": "all six team rows are present in the loader",
+          "pass": true,
+          "detail": "present=6/6"
+        },
+        {
+          "name": "exactly ONE generation line in mpd-patch-guards.log",
+          "pass": true,
+          "detail": "[\"[mpd-team-rows] generation=new source=argv1 argv1=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/dsh/lib/bin.js harness=0.2.2-rc.2 baseUrl=file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc2/dsh-home/profiles/t1/ baseUrlHarness=<unresolved> presence=<not-read> oldRows=disabled newRows=enabled override=<unset>\"]"
+        }
+      ],
+      "rows": {
+        "mpd-agent-team": {
+          "disabled": true,
+          "active": false
+        },
+        "mpd-tool-agent-team": {
+          "disabled": true,
+          "active": false
+        },
+        "mpd-ui-agent-team": {
+          "disabled": true,
+          "active": false
+        },
+        "mpd-agent-team-rc2": {
+          "disabled": true,
+          "active": false
+        },
+        "mpd-tool-agent-team-rc2": {
+          "disabled": true,
+          "active": false
+        },
+        "mpd-ui-agent-team-rc2": {
+          "disabled": false,
+          "active": true
+        }
+      },
+      "guardLines": [
+        "[mpd-team-rows] generation=new source=argv1 argv1=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/dsh/lib/bin.js harness=0.2.2-rc.2 baseUrl=file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc2/dsh-home/profiles/t1/ baseUrlHarness=<unresolved> presence=<not-read> oldRows=disabled newRows=enabled override=<unset>"
+      ],
+      "installProbes": {
+        "sameGenerationTargets": {
+          "exit": 0,
+          "tail": "dsh: warning: @deepseek-ai/dsh-client-ui-agent-team declares no dsh.bundle — installed as a plain dependency, not a profile layer | dsh: warning: @deepseek-ai/dsh-tool-agent-team declares no dsh.bundle — installed as a plain dependency, not a profile layer"
+        },
+        "otherGenerationTargets": {
+          "exit": 1,
+          "tail": "dsh: to accept the risk, run: dsh plugin --profile t1 allow-version @deepseek-ai/dsh-experimental-agent-team@0.2.2-rc.1 --dsh-version 0.2.2-rc.2 --accept-risk | dsh: to accept the risk, run: dsh plugin --profile t1 allow-version @deepseek-ai/dsh-experimental-tool-agent-team@0.2.2-rc.1 --dsh-version 0.2.2-rc.2 --accept-risk | dsh: plugin command failed; diagnostics: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc2/dsh-home/profiles/t1/.plugin-manager/logs/operation-QDjDd7/pnpm.log",
+          "stdout": ""
+        },
+        "carrierDeclaringBoth": {
+          "exit": 0,
+          "tail": "dsh: warning: t1-carrier declares no dsh.bundle — installed as a plain dependency, not a profile layer",
+          "stdout": "✓ Lockfile passes supply-chain policies (verified 3s ago)\nAlready up to date\nProgress: resolved 8, reused 8, downloaded 0, added 0, done\n[WARN] Issues with peer dependencies found. Run \"pnpm peers check\" to list them.\n\ndependencies:\n+ t1-carrier <- ../../../../../carrier\n\nDone in 51ms using pnpm v12.16.1"
+        }
+      }
+    },
+    "knowndefect": "rows-1-2 new-side guards are mis-composed in my overlay (extracted a mutated TUI clause); see REPORT §5"
+  },
+  "unitProbe": {
+    "passed": 15,
+    "total": 15,
+    "bodiesIdentical": true,
+    "rendered": {
+      "oldBytes": 4839,
+      "newBytes": 4839,
+      "oldHazard": "",
+      "newHazard": "",
+      "composed": {
+        "oldAgent": {
+          "bytes": 13380,
+          "hazard": ""
+        },
+        "oldTool": {
+          "bytes": 13380,
+          "hazard": ""
+        },
+        "newAgent": {
+          "bytes": 13380,
+          "hazard": ""
+        },
+        "newTool": {
+          "bytes": 13380,
+          "hazard": ""
+        }
+      }
+    }
+  },
+  "candidateV1": {
+    "verdict": "CONFIRMED DEFECT — probes-must-agree violates stage-1 authority",
+    "guardBytes": {
+      "mpd-agent-team": 8472,
+      "mpd-tool-agent-team": 8472,
+      "mpd-ui-agent-team": 7410,
+      "mpd-agent-team-rc2": 8488,
+      "mpd-tool-agent-team-rc2": 8498,
+      "mpd-ui-agent-team-rc2": 7410
+    },
+    "matrix": [
+      {
+        "label": "rc1-host + rc1-profile",
+        "nearestHarness": "0.2.2-rc.1",
+        "profileHarness": null,
+        "profileHarnessInsideProfile": false,
+        "presenceOld": true,
+        "presenceNew": false,
+        "candidate": {
+          "oldEnabled": true,
+          "newEnabled": false
+        },
+        "reference": {
+          "oldEnabled": true,
+          "newEnabled": false
+        },
+        "logLines": 1
+      },
+      {
+        "label": "rc2-host + rc2-profile",
+        "nearestHarness": "0.2.2-rc.2",
+        "profileHarness": null,
+        "profileHarnessInsideProfile": false,
+        "presenceOld": false,
+        "presenceNew": true,
+        "candidate": {
+          "oldEnabled": false,
+          "newEnabled": true
+        },
+        "reference": {
+          "oldEnabled": false,
+          "newEnabled": true
+        },
+        "logLines": 1
+      },
+      {
+        "label": "rc1-host + rc2-profile (MIXED)",
+        "nearestHarness": "0.2.2-rc.1",
+        "profileHarness": null,
+        "profileHarnessInsideProfile": false,
+        "presenceOld": false,
+        "presenceNew": true,
+        "candidate": {
+          "oldEnabled": false,
+          "newEnabled": false
+        },
+        "reference": {
+          "oldEnabled": true,
+          "newEnabled": false
+        },
+        "logLines": 2
+      },
+      {
+        "label": "rc2-host + rc1-profile (MIXED)",
+        "nearestHarness": "0.2.2-rc.2",
+        "profileHarness": null,
+        "profileHarnessInsideProfile": false,
+        "presenceOld": true,
+        "presenceNew": false,
+        "candidate": {
+          "oldEnabled": false,
+          "newEnabled": false
+        },
+        "reference": {
+          "oldEnabled": false,
+          "newEnabled": true
+        },
+        "logLines": 2
+      },
+      {
+        "label": "rc1-host + rc2-profile, MPD_DSH_TEAM_ROWS=new",
+        "nearestHarness": "0.2.2-rc.1",
+        "profileHarness": null,
+        "profileHarnessInsideProfile": false,
+        "presenceOld": false,
+        "presenceNew": true,
+        "candidate": {
+          "oldEnabled": false,
+          "newEnabled": true
+        },
+        "reference": {
+          "oldEnabled": false,
+          "newEnabled": true
+        },
+        "logLines": 2
+      },
+      {
+        "label": "rc1-host + rc2-profile, MPD_DSH_TEAM_ROWS=old",
+        "nearestHarness": "0.2.2-rc.1",
+        "profileHarness": null,
+        "profileHarnessInsideProfile": false,
+        "presenceOld": false,
+        "presenceNew": true,
+        "candidate": {
+          "oldEnabled": true,
+          "newEnabled": false
+        },
+        "reference": {
+          "oldEnabled": true,
+          "newEnabled": false
+        },
+        "logLines": 2
+      },
+      {
+        "label": "rc1-host + rc2-profile, MPD_DSH_TEAM_ROWS=off",
+        "nearestHarness": "0.2.2-rc.1",
+        "profileHarness": null,
+        "profileHarnessInsideProfile": false,
+        "presenceOld": false,
+        "presenceNew": true,
+        "candidate": {
+          "oldEnabled": false,
+          "newEnabled": false
+        },
+        "reference": {
+          "oldEnabled": false,
+          "newEnabled": false
+        },
+        "logLines": 2
+      },
+      {
+        "label": "rc2-host + rc1-profile, MPD_DSH_TEAM_ROWS=nonsense",
+        "nearestHarness": "0.2.2-rc.2",
+        "profileHarness": null,
+        "profileHarnessInsideProfile": false,
+        "presenceOld": true,
+        "presenceNew": false,
+        "candidate": {
+          "oldEnabled": false,
+          "newEnabled": false
+        },
+        "reference": {
+          "oldEnabled": false,
+          "newEnabled": true
+        },
+        "logLines": 2
+      },
+      {
+        "label": "no argv1, no baseUrl (unreadable)",
+        "nearestHarness": null,
+        "profileHarness": null,
+        "profileHarnessInsideProfile": null,
+        "presenceOld": false,
+        "presenceNew": false,
+        "candidate": {
+          "oldEnabled": false,
+          "newEnabled": false
+        },
+        "reference": {
+          "oldEnabled": false,
+          "newEnabled": false
+        },
+        "logLines": 2
+      },
+      {
+        "label": "rc1-host + profile-local rc.2 harness (stage 2 disagrees)",
+        "nearestHarness": "0.2.2-rc.1",
+        "profileHarness": "0.2.2-rc.2",
+        "profileHarnessInsideProfile": true,
+        "presenceOld": false,
+        "presenceNew": false,
+        "candidate": {
+          "oldEnabled": false,
+          "newEnabled": false
+        },
+        "reference": {
+          "oldEnabled": true,
+          "newEnabled": false
+        },
+        "logLines": 2
+      }
+    ],
+    "mixedCaseLogLine": "[mpd-team-rows] generation guard: BOTH row sets DISABLED - the host generation is unreadable or ambiguous (the probes disagree (running harness 0.2.2-rc.1 at /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh => old; team package presence under /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc2/dsh-home/profiles/t1/node_modules: only @deepseek-ai/dsh-agent-team is present => new)); set MPD_DSH_TEAM_ROWS=old|new to override, or =off to keep this conservative path",
+    "silentOnHappyPath": true,
+    "offReportedAsUnrecognized": true,
+    "tuiClause": "semantics preserved, not byte-identical to HEAD (1844 B -> ~1.06 KB of an 8472 B guard)"
+  },
+  "checkoutArmPartial": {
+    "label": "candidate-v1, informational only",
+    "rc1": {
+      "argv1": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh/lib/bin.js",
+      "baseUrl": "file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/chk-rc1/dsh-home/profiles/t1/",
+      "settled": false,
+      "rows": {
+        "mpd-agent-team": {
+          "disabled": false,
+          "active": false
+        },
+        "mpd-tool-agent-team": {
+          "disabled": false,
+          "active": false
+        },
+        "mpd-ui-agent-team": {
+          "disabled": false,
+          "active": true
+        },
+        "mpd-agent-team-rc2": {
+          "disabled": true,
+          "active": false
+        },
+        "mpd-tool-agent-team-rc2": {
+          "disabled": true,
+          "active": false
+        },
+        "mpd-ui-agent-team-rc2": {
+          "disabled": true,
+          "active": false
+        }
+      }
+    },
+    "rc2": "not run (boots stopped by the lead)",
+    "f9ForcedEnvArm": "not run"
+  },
+  "gaps": [
+    "deliverable 5 (TUI 0.20.0 seam spot-check + Ctrl+A inert) NOT RUN — runner ready: node .qa-tmp/t1/tui-arm.mjs --only=main",
+    "rc.2 checkout arm and the F9 forced-env arm NOT RUN",
+    "service rows 1-2 stay pending in a session-less boot; activation needs T5 full mount arm",
+    "D2 transitive-closure install not proven: dsh plugin add is link:, pnpm does not install a linked package deps"
+  ]
+}

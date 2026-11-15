@@ -1,0 +1,234 @@
+# N1 re-verification (review2) — evidence transcript
+timestamp: 2026-11-12T07-51-14Z (UTC)
+repo: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+branch: fix/worktree-branch-revalidation
+head: b33dde83da308a3c2dc69319b3def3b6f7b6cd51 Merge pull request #111 from HaroldZ32/feature/agent-worktrees
+change state: UNCOMMITTED working tree; no source edited by this reviewer; no commit made
+
+## Commands and observed exit codes
+1. bun test packages/mpd-worktree-plugin -> EXIT 0; 43 pass, 0 fail, 187 expect(), 43 tests / 1 file
+2. bun run typecheck -> EXIT 0 (tsgo --noEmit)
+3. bun run verify:comments -> EXIT 0 (646 files, 59297 declarations, VERDICT PASS)
+4. bun run verify:docs -> EXIT 0 (pairs=61 failed=0 violations=0 links=634 dead=0)
+5. node scripts/verify-dist-fresh.ts -> EXIT 0 (35/35 FRESH, pinned bun 1.4.0, 1 NOT COVERED listed)
+6. PATH=$PWD/.qa-tmp/dsh-022/bin:$PATH MPD_DSHGO_KIT=$PWD/.mpd/tmp-dshgo/kit bun run verify:gates -> EXIT 0 (11/11 members green)
+7. bun evidence/.../probe.ts -> EXIT 0 (50 PASS checks, 0 FAIL, 10 sandboxes)
+8. bun evidence/.../probe-noforce.ts -> EXIT 0
+9. bun evidence/.../probe-edge.ts -> EXIT 0 (residual observation)
+
+## Gate members (from gate-aggregate.log)
+[verify-gates] member vendor: exit=0 PASS - 195ms
+[verify-gates] member dist-fresh: exit=0 PASS - 836ms
+[verify-gates] member rows-parity: exit=0 PASS - 61ms
+[verify-gates] member docs-parity: exit=0 PASS - 105ms
+[verify-gates] member preset-conformance: exit=0 PASS - 891ms
+[verify-gates] member plugin-manifest: exit=0 PASS - 3100ms
+[verify-gates] member comment-coverage: exit=0 PASS - 3780ms
+[verify-gates] member graph-model: exit=0 PASS - 490ms
+[verify-gates] member workflows: exit=0 PASS - 43ms
+[verify-gates] member tui-admission: exit=0 PASS - 121ms
+[verify-gates] member dshgo: exit=0 PASS - 122ms
+[verify-gates] PASS - 11/11 member gate(s) green
+
+## Working-tree scope (git status --porcelain)
+ M docs/worktree.md
+ M docs/worktree.zh-CN.md
+ M packages/mpd-worktree-plugin/README.md
+ M packages/mpd-worktree-plugin/README.zh-CN.md
+ M packages/mpd-worktree-plugin/dist/index.js
+ M packages/mpd-worktree-plugin/src/config.ts
+ M packages/mpd-worktree-plugin/src/git.ts
+ M packages/mpd-worktree-plugin/src/ops.ts
+ M packages/mpd-worktree-plugin/test/worktree.test.ts
+?? evidence/docker/client-install-oneclick/2026-11-10T11-23-01Z/
+?? evidence/docker/client-install-oneclick/2026-11-10T11-47-52Z/
+?? evidence/docker/client-install/2026-11-10T11-04-48Z/
+?? evidence/docker/client-install/2026-11-10T11-39-59Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T01-22-08.232Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T01-23-48.946Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T01-24-44.105Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T01-35-34.733Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T02-37-59.285Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T02-40-44.944Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T02-53-29.143Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T05-27-02.985Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T05-28-43.085Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T05-33-36.408Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T06-09-14.301Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T06-10-54.947Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T06-12-12.005Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T06-13-18.027Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T06-16-49.967Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T08-34-46.241Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T08-40-11.040Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T08-42-25.422Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T08-46-24.871Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T09-16-56.656Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T09-24-07.926Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T09-52-00.184Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-10T09-57-25.343Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-11T11-05-03.398Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-12T06-00-31.442Z/
+?? evidence/dsh-qa/llm-dual-track/deepseek/2026-11-07T12-30-27.964Z/
+?? evidence/dsh-qa/llm-dual-track/deepseek/2026-11-10T11-07-00.845Z/
+?? evidence/dsh-qa/llm-dual-track/official/2026-11-07T12-30-15.652Z/
+?? evidence/dsh-qa/llm-dual-track/official/2026-11-10T11-06-50.689Z/
+?? evidence/dsh-qa/mcp-call/2026-11-07T12-29-56.747Z/
+?? evidence/dsh-qa/mcp-call/2026-11-10T11-08-51.965Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-07T12-26-58.474Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-09T01-43-35.739Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-09T01-47-33.422Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-09T01-48-43.047Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-09T01-50-18.081Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-09T01-54-20.780Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-09T01-55-20.766Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-09T02-32-50.808Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-09T02-34-47.993Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-09T02-47-41.673Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-09T02-49-10.617Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-09T02-59-09.978Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-09T03-09-46.911Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T01-21-42.011Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T01-23-25.633Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T01-24-22.312Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T01-35-05.271Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T02-37-31.165Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T02-40-23.124Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T02-53-01.194Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T05-26-40.542Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T05-28-20.712Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T05-33-52.680Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T06-08-50.375Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T06-10-31.265Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T06-11-50.243Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T06-12-56.265Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T06-17-32.124Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T08-35-02.807Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T08-40-26.311Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T08-42-40.578Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T08-46-41.728Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T09-17-14.619Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T09-24-23.452Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T09-52-17.991Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-10T09-57-25.474Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-11T11-04-08.145Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-12T06-00-40.389Z/
+?? evidence/dshgo/standard/2026-11-07T12-26-58-320Z/
+?? evidence/release/0.18.2/
+?? evidence/roles/captain-scope/2026-11-09T01-55-53.580Z/
+?? evidence/roles/captain-scope/2026-11-09T02-05-34.247Z/
+?? evidence/roles/captain-scope/2026-11-09T02-49-50.747Z/
+?? evidence/roles/captain-scope/2026-11-09T02-59-34.610Z/
+?? evidence/worktree/n1-fix/
+?? evidence/worktree/n1-review2/
+?? evidence/worktree/n1/
+b33dde83da308a3c2dc69319b3def3b6f7b6cd51 Merge pull request #111 from HaroldZ32/feature/agent-worktrees
+
+## tests.log tail
+(pass) mpdWorktree service > cwdForMember stays undefined for an unknown pair and for a vanished directory [38.96ms]
+
+ 43 pass
+ 0 fail
+ 187 expect() calls
+Ran 43 tests across 1 file. [4.21s]
+
+## docs bound clause (four files)
+--- docs/worktree.md
+conflicting files and changes nothing. Before either operation uses the recorded branch,
+`mpd_worktree_remove` and `mpd_worktree_merge` revalidate it against the branch git reports for that
+worktree (`git rev-parse --abbrev-ref HEAD`) and refuse a `protectedBranches` entry for BOTH
+operations, even with `force: true`. A vanished worktree directory cannot answer for HEAD:
+`mpd_worktree_remove` then prunes the stale record without a live comparison (`branchDeleted: false`
+when the branch is already gone), while `mpd_worktree_merge` still refuses.
+
+--- docs/worktree.zh-CN.md
+拒绝受保护分支（`master`、`dev`）除非 `force: true`；发生冲突时执行 `git merge --abort`，报告冲突文件并且
+不做任何改动。在任一操作使用记录中的分支之前，`mpd_worktree_remove` 与 `mpd_worktree_merge` 都会用 git
+为该 worktree 报告的分支（`git rev-parse --abbrev-ref HEAD`）重新校验它，并对两种操作都拒绝
+`protectedBranches` 中的分支，即使 `force: true`。worktree 目录已消失时无法回答 HEAD：
+`mpd_worktree_remove` 会剪除陈旧记录而不做实时比较（分支已不存在时 `branchDeleted: false`），
+`mpd_worktree_merge` 仍然拒绝。
+
+--- packages/mpd-worktree-plugin/README.md
+  accident. Before either operation uses the recorded branch, `mpd_worktree_remove` and
+  `mpd_worktree_merge` revalidate it against the branch git reports for that worktree
+  (`git rev-parse --abbrev-ref HEAD`) and refuse a `protectedBranches` entry for BOTH operations, even
+  with `force: true`. A vanished worktree directory cannot answer for HEAD: remove prunes the stale
+  record without a live comparison (`branchDeleted: false` when the branch is already gone), while
+  merge still refuses.
+--- packages/mpd-worktree-plugin/README.zh-CN.md
+  `force: true`（默认 `["master","dev"]`），于是成员分支不会意外落到发布线上。在任一操作使用记录中的
+  分支之前，`mpd_worktree_remove` 与 `mpd_worktree_merge` 都会用 git 为该 worktree 报告的分支
+  （`git rev-parse --abbrev-ref HEAD`）重新校验它，并对两种操作都拒绝 `protectedBranches` 中的分支，
+  即使 `force: true`。worktree 目录已消失时无法回答 HEAD：删除会剪除陈旧记录而不做实时比较
+  （分支已不存在时 `branchDeleted: false`），合并仍然拒绝。
+- **冲突中止。** 冲突的合并会执行 `git merge --abort`，返回冲突路径，且不改变任何东西 —— HEAD 不动、
+
+## probe.log (independent behavioural probe)
+=== A: F1 — vanished directory AND vanished branch (contract: missing path is PRUNED) ===
+PASS A1 remove does not refuse :: no throw
+PASS A2 removed true :: {"removed":true,"name":"alice","path":"/tmp/n1-review2-TDlG6t/.mpd/worktrees/alice","branch":"agent/alice","branchDeleted":false}
+PASS A3 branchDeleted false :: {"removed":true,"name":"alice","path":"/tmp/n1-review2-TDlG6t/.mpd/worktrees/alice","branch":"agent/alice","branchDeleted":false}
+PASS A4 tombstone removed :: removed
+PASS A5 no branchPending :: undefined
+PASS A6 name is usable again :: NO-REFUSAL
+PASS A7 branch recreated :: refs/heads/agent/alice
+=== A2: F1 — merge of a vanished record still refuses ===
+PASS A2.1 merge refuses unregistered-worktree :: unregistered-worktree
+PASS A2.2 main HEAD unmoved :: HEAD
+PASS A2.3 record still active :: active
+=== B: control — vanished directory with the branch still present (prune deletes it) ===
+PASS B1 branchDeleted true :: {"removed":true,"name":"alice","path":"/tmp/n1-review2-r5tJfw/.mpd/worktrees/alice","branch":"agent/alice","branchDeleted":true}
+fatal: Needed a single revision
+PASS B2 branch gone :: refs/heads/agent/alice
+PASS B3 tombstone removed :: removed
+=== C: PRESENT directory whose branch ref was deleted out of band ===
+PASS C1 remove refuses branch-missing :: branch-missing
+PASS C2 merge refuses branch-missing :: branch-missing
+PASS C3 directory survives :: /tmp/n1-review2-TerP2N/.mpd/worktrees/alice
+PASS C4 record still active :: active
+=== D: F3 — invalid recorded branch names refused at BOTH call sites ===
+PASS D[-D] remove invalid-branch :: invalid-branch
+PASS D[-D] merge invalid-branch :: invalid-branch
+PASS D[-D] real branch survives :: refs/heads/agent/alice
+PASS D[-D] directory survives :: /tmp/n1-review2-KZlIzD/.mpd/worktrees/alice
+PASS D[-D] main HEAD unmoved :: HEAD
+PASS D[bad..name] remove invalid-branch :: invalid-branch
+PASS D[bad..name] merge invalid-branch :: invalid-branch
+PASS D[bad..name] real branch survives :: refs/heads/agent/alice
+PASS D[bad..name] directory survives :: /tmp/n1-review2-R8wCQZ/.mpd/worktrees/alice
+PASS D[bad..name] main HEAD unmoved :: HEAD
+=== E: tampered protected record, directory PRESENT and GONE, force:true on both ops ===
+PASS E1 present remove protected-branch :: protected-branch
+PASS E2 present merge protected-branch :: protected-branch
+PASS E3 gone remove protected-branch :: protected-branch
+PASS E4 gone merge protected-branch :: protected-branch
+PASS E5 master survives :: refs/heads/master
+PASS E6 real branch survives :: refs/heads/agent/alice
+PASS E7 main HEAD unmoved :: HEAD
+PASS E8 record still active :: active
+=== F: mismatch and detached HEAD still refuse on BOTH operations ===
+PASS F1 remove branch-mismatch :: branch-mismatch
+PASS F2 merge branch-mismatch :: branch-mismatch
+PASS F3 unrelated branch survives :: refs/heads/other
+PASS F4 real branch survives :: refs/heads/agent/alice
+PASS F5 directory survives :: /tmp/n1-review2-pyng0F/.mpd/worktrees/alice
+PASS F6 main HEAD unmoved :: HEAD
+PASS F7 detached remove branch-mismatch :: branch-mismatch
+PASS F8 detached merge branch-mismatch :: branch-mismatch
+PASS F9 detached dir survives :: /tmp/n1-review2-xVQoZJ/.mpd/worktrees/alice
+PASS F10 detached branch survives :: refs/heads/agent/alice
+=== G: valid record still merges and removes ===
+PASS G1 merge succeeds :: NO-REFUSAL
+PASS G2 record merged :: merged
+PASS G3 remove succeeds :: {"removed":true,"name":"alice","path":"/tmp/n1-review2-ipKSVL/.mpd/worktrees/alice","branch":"agent/alice","branchDeleted":true}
+PASS G4 branch deleted :: {"removed":true,"name":"alice","path":"/tmp/n1-review2-ipKSVL/.mpd/worktrees/alice","branch":"agent/alice","branchDeleted":true}
+PASS G5 directory gone :: /tmp/n1-review2-ipKSVL/.mpd/worktrees/alice
+RESULT: PASS failures=0 sandboxes=10
+
+## probe-noforce.log
+{"removeWithoutForce":"NO-REFUSAL","removed":true,"branchDeleted":false,"status":"removed","recreate":"NO-REFUSAL"}
+
+## probe-edge.log (create with a protected branch override — residual)
+protected=dev create=NO-REFUSAL recorded=dev branchExists=true remove(force:true)=protected-branch merge(force:true)=protected-branch recordStatus=active dirExists=true
+protected=master create=NO-REFUSAL recorded=master branchExists=true remove(force:true)=protected-branch merge(force:true)=protected-branch recordStatus=active dirExists=true

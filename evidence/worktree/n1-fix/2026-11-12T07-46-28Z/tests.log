@@ -1,0 +1,53 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-worktree-plugin/test/worktree.test.ts:
+(pass) config > a fractional cap that floors below one falls back to DEFAULT_MAX [4.95ms]
+(pass) config > effectiveConfig falls back to the row config when the mpdConfig lookup throws [8.12ms]
+(pass) git runner > a stalled git is killed at the bound and reports a DISTINCT timeout code [161.58ms]
+(pass) mpd_worktree_create > creates the directory and branch under <ws>/.mpd/worktrees and records them [67.39ms]
+(pass) mpd_worktree_create > honours an explicit branch and base [42.90ms]
+(pass) mpd_worktree_create > refuses a second create of the same name [42.81ms]
+(pass) mpd_worktree_create > refuses a name outside the tool grammar [18.03ms]
+(pass) mpd_worktree_create > refuses a path outside the workspace root (D2) [25.12ms]
+(pass) mpd_worktree_create > refuses a repository whose canonical top level is outside the workspace [44.12ms]
+(pass) mpd_worktree_create > supports a repository CONTAINED in the workspace [64.80ms]
+(pass) mpd_worktree_create > removes the just-added worktree and branch when recording it fails [70.81ms]
+(pass) mpd_worktree_create > refuses a branch that already exists and an invalid branch name [27.53ms]
+(pass) mpd_worktree_create > refuses once the active-worktree cap is reached [41.24ms]
+(pass) mpd_worktree_create > refuses a workspace that is not a git repository [2.35ms]
+(pass) mpd_worktree_list and status > reports the live fields, including ahead/behind and merged [115.56ms]
+(pass) mpd_worktree_list and status > an unknown name is a structured refusal naming the known ones [39.50ms]
+(pass) mpd_worktree_list and status > status also accepts the record key [54.29ms]
+(pass) mpd_worktree_merge > merges a fast-forward-able branch with a merge commit and marks the record merged [108.46ms]
+(pass) mpd_worktree_merge > refuses a detached main checkout [73.08ms]
+(pass) mpd_worktree_merge > refuses a target branch that is not checked out, and a tracked-dirty main checkout [85.58ms]
+(pass) mpd_worktree_merge > refuses a protected branch without force, then merges with force [107.17ms]
+(pass) mpd_worktree_merge > a CONFLICT aborts, reports the paths and leaves the main checkout clean [122.78ms]
+(pass) mpd_worktree_remove > refuses a dirty worktree without force and removes it with force [96.12ms]
+(pass) mpd_worktree_remove > refuses an unmerged worktree without force, then removes it with force [104.61ms]
+(pass) mpd_worktree_remove > removes a merged worktree without force, is idempotent, and prunes a vanished directory [157.08ms]
+(pass) mpd_worktree_remove record validation > refuses a recorded path outside the worktree root [37.12ms]
+(pass) mpd_worktree_remove record validation > refuses an existing recorded path git does not list as a worktree [50.41ms]
+(pass) mpd_worktree_remove record validation > keeps a failed branch deletion retryable instead of a terminal tombstone [257.94ms]
+(pass) recorded branch revalidation (N1) > refuses a tampered protected branch for remove AND merge, even with force [77.35ms]
+(pass) recorded branch revalidation (N1) > refuses a tampered record naming another existing local branch [63.31ms]
+(pass) recorded branch revalidation (N1) > refuses a tampered record naming a branch git does not have [72.31ms]
+(pass) recorded branch revalidation (N1) > refuses option-injection branch names on remove AND merge, leaving the branch and directory intact [63.36ms]
+(pass) recorded branch revalidation (N1) > prunes a vanished directory even when its branch is gone too, and frees the name [89.54ms]
+(pass) recorded branch revalidation (N1) > refuses a worktree whose HEAD was detached out of band [71.60ms]
+(pass) recorded branch revalidation (N1) > keeps a valid record mergeable and removable [123.03ms]
+(pass) state file > a corrupt index reads as empty instead of throwing [37.51ms]
+(pass) state file > a record with a malformed field is dropped, not trusted [33.77ms]
+(pass) mpdWorktree service > createForMember places the worktree at <dir>/<team>/<member> and is idempotent [46.86ms]
+(pass) mpdWorktree service > a non-git workspace degrades to undefined with exactly ONE log line [2.44ms]
+(pass) mpdWorktree service > member lookups ignore a directory git no longer registers as a worktree [35.30ms]
+(pass) mpdWorktree service > re-attaches the existing branch when a member directory vanished, preserving its commits [66.86ms]
+Preparing worktree (checking out 'agent/plan-x/senior-engineer')
+(pass) mpdWorktree service > does not reattach a branch another worktree already has checked out [99.11ms]
+(pass) mpdWorktree service > cwdForMember stays undefined for an unknown pair and for a vanished directory [37.34ms]
+
+ 43 pass
+ 0 fail
+ 187 expect() calls
+Ran 43 tests across 1 file. [4.56s]
+EXIT=0

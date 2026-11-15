@@ -202,6 +202,20 @@ cell 的 `state.json` 维护一张 `members` 表：每个座位一行，携带 r
 运行中的 `add_member` **不带 `role`** 是合法的，但答复会**警告**（一句话）：该座位**可能**匹配不到角色路由
 （路由解析还会读描述头与成员名，而两者都不保证匹配）——**届时**才继承调用会话的路由；仍建议传 `role`。
 
+## 成员工作树
+
+有写权限的座位可以拥有自己的 git 工作树，不再和队长共用同一份 checkout：拉起成员时（以及 reseed 时），它的
+**有效**工作目录会切到 `<workspace>/.mpd/worktrees/<teamId>/<memberSlug>`，分支
+`agent/<teamId>/<memberSlug>`，于是各座位并行编辑、并行提交，不会争抢同一个 `.git/HEAD`。成员拥有这份
+checkout 与分支，可以在其中执行 git 写操作；队长负责把分支合并进波次分支，并在波次落地后移除工作树。
+
+**不**变的是：状态根仍是父 workspace——`<workspace>/.mpd` 下的 cell/team 记录、邮件、验证循环与 journal
+都是共享的，绝不会复制进工作树——只读座位（Explorer、Researcher 以及分析席）依然没有工作树。
+
+非 git workspace、`enabled: false`、官方执行器回退，或创建失败时，成员仍在共享 checkout 中拉起，并记
+**一行**日志；座位本身绝不会因此报错。完整工具表、配置与声明边界见
+[Agent 工作树](./worktree.zh-CN.md)。
+
 ## 被围栏的成员、改派与解围杠杆
 
 成员可能进入一种「绝不能被唤醒」的状态：它记录里的 `mode` 是 `checkpoint`，或它写下的交接仍在等待压缩屏障，

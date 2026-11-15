@@ -1,0 +1,79 @@
+{
+  "task": "T1 — Lane A: new mpd-worktree plugin + mount row",
+  "wave": "agent-worktrees (feature/agent-worktrees)",
+  "contract": ".mpd/plans/agent-worktrees.md §3 Lane A",
+  "timestamp": "2026-11-12T10:56:00Z",
+  "owner": "engineer-worktree",
+  "treeStateAtEvidence": "Lane B (adapter cwd) and Lane D (docs) changes were already present in the shared working tree; this lane wrote only its own scope plus the two row lists the patch row requires (scripts/install-profile.ts, scripts/pack-mpd.ts) and the package dist.",
+  "files": {
+    "new": [
+      "packages/mpd-worktree-plugin/package.json",
+      "packages/mpd-worktree-plugin/src/index.ts",
+      "packages/mpd-worktree-plugin/src/config.ts",
+      "packages/mpd-worktree-plugin/src/paths.ts",
+      "packages/mpd-worktree-plugin/src/git.ts",
+      "packages/mpd-worktree-plugin/src/store.ts",
+      "packages/mpd-worktree-plugin/src/ops.ts",
+      "packages/mpd-worktree-plugin/test/worktree.test.ts",
+      "packages/mpd-worktree-plugin/README.md",
+      "packages/mpd-worktree-plugin/README.zh-CN.md",
+      "packages/mpd-worktree-plugin/dist/index.js (built with the pinned toolchain bun 1.4.0)"
+    ],
+    "modified": [
+      "cordis.patch.yml — ONE additive row `- id: mpd-worktree` in the insert block beside mpd-comment-checker",
+      "scripts/install-profile.ts — the installer's parallel row list (verify:rows-parity requires it)",
+      "scripts/pack-mpd.ts — PLUGIN_PKGS entry so the packed tree cannot silently drop the mounted package"
+    ]
+  },
+  "commands": [
+    {
+      "command": "bun test packages/mpd-worktree-plugin",
+      "exit": 0,
+      "observed": "24 pass / 0 fail, 86 expect() calls, 1 file"
+    },
+    {
+      "command": "bun run typecheck",
+      "exit": 0,
+      "observed": "tsgo --noEmit: no diagnostics"
+    },
+    {
+      "command": "bun run verify:comments",
+      "exit": 0,
+      "observed": "VERDICT: PASS — 643 files scanned, 59068 declarations, 29108 inline callbacks out of family"
+    },
+    {
+      "command": "bun run verify:docs",
+      "exit": 0,
+      "observed": "pairs=61 failed=0 violations=0 links=634 dead=0 — PASS (the new README pair is discovered)"
+    },
+    {
+      "command": "bun run verify:rows",
+      "exit": 0,
+      "observed": "ok: 37 row ids match the 2-file bundle patch layer (mpd-worktree included)"
+    },
+    {
+      "command": "bun run verify:manifest",
+      "exit": 0,
+      "observed": "VERDICT: PASS — 29 row module paths, 0 missing; packed content carries packages/mpd-worktree-plugin/dist/index.js"
+    },
+    {
+      "command": "node scripts/verify-no-host-override.ts",
+      "exit": 0,
+      "observed": "PASS: every id-target is bundle-owned (0 collide with 220 host-declared row ids); 37 additive inserted rows"
+    },
+    {
+      "command": "node scripts/verify-dist-fresh.ts",
+      "exit": 1,
+      "observed": "FRESH packages/mpd-worktree-plugin/dist/index.js (sha e5dcb7cba7de…); 24 of 35 OTHER targets STALE — pre-existing in this shared tree: Lane B's adapter src edit is inlined into every dependent bundle (+431 B each) and no rebuild has landed yet. Lane E (T5) owns those rebuilds."
+    }
+  ],
+  "evidencePath": "evidence/worktree/lane-a/2026-11-12T10-56-00Z/output.log",
+  "bounds": [
+    "No boot/mount proof for the new row inside this task: verify:manifest resolves the module path and the dist is fresh, but no isolated-DSH_HOME boot has confirmed tool registration yet. T5 (Lane E) runs bundle-lifecycle + preset-conformance.",
+    "The 24 STALE dist targets are NOT this lane's: they are the adapter fan-out (Lane B) plus untouched packages in a shared tree; T5 rebuilds them with the pinned toolchain.",
+    "The `.mpd/mpd.jsonc` `worktree.*` overlay is implemented through the composed `mpdConfig` service pattern; it is NOT declared in mpd-config-plugin's schema (that file is outside this lane), so the keys are not visible in the settings form. Row-config-only remains the documented fallback.",
+    "The official-executor fallback cannot carry a cwd (contract D7) — declared, not this lane's wiring.",
+    "Shell evidence logs live under evidence/ (not committed by this lane; the captain commits)."
+  ],
+  "verificationLaw": "A different agent (Lane F reviewer) verifies from the frozen contract; this lane edits and reports, and does not self-certify."
+}

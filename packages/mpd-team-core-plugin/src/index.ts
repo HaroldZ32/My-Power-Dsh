@@ -84,6 +84,7 @@ import { planForSession, registerTeamRoutes, TEAM_ACTION_ROUTES, TEAM_ROUTES, ty
 // branches, so a tool call, the `mpdTeamActions` service and an HTTP route all drive ONE sequence.
 import { approveTeam, cancelTasks, clearConsults, endTeam, fenceMember, forceWedgedTask, graceWedgedTask, runDispatch, TEAM_ACTIONS_SERVICE, unfenceMember, upsertConsult, writeMemberHandoff, type MpdTeamActionsService, type TeamActionCaller, type TeamActionDeps } from "./team-actions"
 import { installIdleGuard, withIdlePreamble } from "./idle-guard"
+import { memberWorktreeLookup, type MemberWorktreeAssignment } from "./worktree.ts"
 import { appendTeamJournal } from "./team-journal.ts"
 import { GraphModels } from "./graph-model"
 import type { GraphModel } from "../../mpd-graph-core/src/index.ts"
@@ -898,6 +899,41 @@ function sessionTitleOf(exec: DshToolExec | undefined): string {
   return String((exec?.agent as any)?.session?.header?.title ?? "")
 }
 
+/** Whether the "identity resolves from the RECORD" line has been written (ONE per process). */
+let recordIdentityReported = false
+
+/**
+ * The caller's OFFICIAL team identity, or undefined — plus the ONE line that documents the
+ * RECORD-DERIVED path on a generation whose roster API is gone (A1 item 2).
+ *
+ * 0.2.2-rc.2 removed `tryMembership`, so release/depend/complete/fail and the dispatch lead gate
+ * keep their name/role from the mpd team RECORD (`callerIdentity` + `recordNamesLead`) instead of
+ * the official plane. That is the DOCUMENTED path on a task-board-only host, and it is logged once
+ * per process the first time the plane cannot answer — never per call, and never a silent change.
+ * @param dsh the adapter (membership read plus the roster pre-flight).
+ * @param exec the tool exec whose agent is the caller.
+ * @returns the official membership, or undefined when the plane cannot answer (callers then use their
+ *   own record-derived spellings).
+ */
+function officialTeamMembership(dsh: DshAdapter, exec: DshToolExec): { role?: string; name?: string } | undefined {
+  try {
+    /** The official plane's answer for this caller. */
+    const membership = dsh.teamMembership(exec.agent) as { role?: string; name?: string } | undefined
+    // The plane answered: nothing to document.
+    if (membership !== undefined) return membership
+    // The roster API is GONE on this generation, so the record-derived path is what runs. ONE line,
+    // ONCE per process, and only when the capability says the plane is absent.
+    if (dsh.capabilities().teamRoster === false && !recordIdentityReported) {
+      recordIdentityReported = true
+      rowLogLine("mpd-team-core", "[mpd-team-core] team identity: the official roster plane is unavailable on this host generation (0.2.2-rc.2 removed tryMembership) — release/depend/complete/fail and the dispatch lead gate resolve the caller from the mpd team RECORD (its session id, its own roster row, the recorded lead id); this is the documented path, not a guess")
+    }
+    return membership
+  } catch {
+    // A team call must never fail because a capability probe did: the record path still runs.
+    return undefined
+  }
+}
+
 /** Who a caller's own identity says it is on one team record — see {@link callerIdentity}. */
 interface CallerIdentity {
   /** The roster row this caller IS, or undefined when the durable roster does not name it. */
@@ -939,6 +975,9 @@ function callerIdentity(record: TeamRecord, sessionId: string, title: string, li
   if (!identity.named) return { ancestry: lineage }
   return identity.member === undefined ? { ancestry: [] } : { ownMember: identity.member, ancestry: [] }
 }
+
+/** The Lane A tool that removes ONE member's worktree directory and its branch; named once. */
+const WORKTREE_REMOVE_TOOL = "mpd_worktree_remove"
 
 /** The tool whose WHOLE-LIST write carries a wave's checklist; probed before it is ever called. */
 const TODO_TOOL_NAME = "todo_write"
@@ -1643,6 +1682,17 @@ export function apply(ctx: any): void {
       try { return (ctx as { get?: (serviceId: string, required?: boolean) => unknown }).get?.(id, false) } catch { return undefined }
     },
     log: (line) => rowLogLine("mpd-team-core", line),
+    // THE REMOVAL IS LANE A'S OWN TOOL, never a private filesystem/git write: Lane A owns the index and
+    // the branch, and its refusal (a dirty checkout, a moved repo) is ONE line, never a fatal error.
+    releaseWorktree: async (agent, ref) => {
+      try {
+        /** The removal result; a marked error is downgraded to the row's log. */
+        const result = await dsh.executeTool({ name: WORKTREE_REMOVE_TOOL, arguments: { name: ref.teamId + "/" + ref.member }, ...(agent === undefined ? {} : { agent }) })
+        if (result.isError === true) rowLogLine("mpd-team-core", "the failed-spawn worktree " + ref.teamId + "/" + ref.member + " could not be released: " + String(result.error ?? "the tool returned an error result"))
+      } catch (error) {
+        rowLogLine("mpd-team-core", "the failed-spawn worktree " + ref.teamId + "/" + ref.member + " could not be released: " + String((error as Error)?.message ?? error))
+      }
+    },
     beginDispatch: (memberId) => idleGuard.beginDispatch(memberId),
     assertPlanGraph,
     assertScopesOrdered,
@@ -2150,9 +2200,26 @@ export function apply(ctx: any): void {
         // THE MEMBER IS RAISED HERE, exactly as approval raises one: a roster row nothing ever spawned
         // would be the C7-3 ghost class again. A failed raise is written on the row AND reported in the
         // answer, never left silent.
+        // THE EXECUTOR IS SELECTED BEFORE ANY WORKTREE (CodeRabbit round 1), exactly as approval does:
+        // the official backend cannot forward `cwd`, so a worktree minted for it would be an unused
+        // branch holding an active-entry slot. A cwd-capable backend keeps the per-member checkout.
+        /** The backend that raises this appended member. */
+        const backend = executor()
+        /** This member's worktree assignment, kept visible to the failure cleanup below. */
+        let assignment: MemberWorktreeAssignment | undefined
+        // ONE WORKTREE PER WRITE-CAPABLE MEMBER (Lane C of `.mpd/plans/agent-worktrees.md`), resolved
+        // by the SAME lookup approval uses: a read-only seat, an absent row and any degrade all leave
+        // the request unchanged, and the "row absent" line is written at most once per append.
+        /** Where this appended member should work, if its own worktree is available. */
+        const worktreeOf = backend.kind === "native" ? memberWorktreeLookup(teamActionsDeps.service, teamActionsDeps.log) : undefined
+        if (worktreeOf === undefined) rowLogLine("mpd-team-core", "the " + backend.kind + " executor cannot set cwd — team members spawn in the shared checkout (no per-member worktree)")
+        /** What the lookup answered for this member, when it offered a worktree at all. */
+        assignment = worktreeOf?.({ exec, teamId: roster.teamId, member: added.name, ...(added.role === undefined ? {} : { role: added.role }) })
+        /** This member's worktree path, or undefined when the spawn keeps today's shared checkout. */
+        const cwd = assignment?.path
         try {
           /** The backend's answer, whose handle the record keeps beside our own member id. */
-          const spawned = await executor().spawn(exec.agent, {
+          const spawned = await backend.spawn(exec.agent, {
             teamId: roster.teamId,
             memberId: added.id,
             name: added.name,
@@ -2165,6 +2232,9 @@ export function apply(ctx: any): void {
             // channel, so a member appended to a LIVE roster is routed by its slot — not by the
             // staging session that happens to be running this append.
             ...(added.role === undefined ? {} : { role: added.role }),
+            // The member's OWN git worktree, or no key at all: an absent path must let the host
+            // inherit the Lead's directory rather than receive a written `cwd: undefined`.
+            ...(cwd === undefined ? {} : { cwd }),
             ...(exec.signal === undefined ? {} : { signal: exec.signal }),
           })
           /** The record re-read immediately before the handle is written, so the raise cannot clobber a concurrent write. */
@@ -2180,6 +2250,10 @@ export function apply(ctx: any): void {
           /** The record with the never-raised row dropped, so the roster and the capacity agree. */
           const released = removeTeamMember(readTeam(workspace, roster.teamId) ?? roster, added.id)
           writeTeam(workspace, withDerivedPhase(released))
+          // A FAILED SPAWN RELEASES ONLY WHAT IT CREATED (CodeRabbit round 1): a reused worktree may
+          // hold an earlier attempt's branch, so only `created` is removed. The removal is non-fatal
+          // and reports itself, exactly like the approve loop's.
+          if (assignment?.created === true) await teamActionsDeps.releaseWorktree?.(exec.agent, { teamId: roster.teamId, member: added.name })
           return { team: released, member: { ...added, status: "failed" }, stoppedAt: `member ${added.name}: ${String((error as Error)?.message ?? error)}`, appended: `member ${added.name} (${added.id}) was NOT added to team ${released.teamId}: the raise FAILED, and its roster row was REMOVED so no failed slot is held`, ...(roleWarning === undefined ? {} : { warning: roleWarning }) }
         }
       }
@@ -2498,9 +2572,7 @@ export function apply(ctx: any): void {
         // ancestry `callerIdentity` narrows (a spawned member borrows none). `claimant` is never read
         // here — accepting a name the caller TYPES would let any agent release any row by naming it.
         /** The caller's team identity from the OFFICIAL plane, when that service is mounted at all. */
-        const membership = ((): { role?: string; name?: string } | undefined => {
-          try { return dsh.teamMembership(exec.agent) as { role?: string; name?: string } | undefined } catch { return undefined }
-        })()
+        const membership = officialTeamMembership(dsh, exec)
         /** The session header title the harness gives this caller (the persona prompt prefix). */
         const title = sessionTitleOf(exec)
         /** The caller's team identity: its member row, and the ancestry it may present. */
@@ -2536,9 +2608,7 @@ export function apply(ctx: any): void {
         // TITLE, the official membership name when there is one, its OWN roster row, and the ancestry
         // `callerIdentity` narrows. A name the caller TYPES is never read.
         /** The caller's team identity from the OFFICIAL plane, when that service is mounted at all. */
-        const membership = ((): { role?: string; name?: string } | undefined => {
-          try { return dsh.teamMembership(exec.agent) as { role?: string; name?: string } | undefined } catch { return undefined }
-        })()
+        const membership = officialTeamMembership(dsh, exec)
         /** The session header title the harness gives this caller (the persona prompt prefix). */
         const title = sessionTitleOf(exec)
         /** The caller's team identity: its member row, and the ancestry it may present. */
@@ -2703,9 +2773,7 @@ export function apply(ctx: any): void {
         /** The raw calling agent, read for the title the harness gives it. */
         const self = exec.agent as any
         /** The caller's team identity, when the official plane knows one. */
-        const membership = ((): { role?: string; name?: string } | undefined => {
-          try { return dsh.teamMembership(exec.agent) as { role?: string; name?: string } | undefined } catch { return undefined }
-        })()
+        const membership = officialTeamMembership(dsh, exec)
         /** The session header title the harness gives this caller (the persona prompt prefix). */
         const title = String(self?.session?.header?.title ?? "")
         // ── C7-4 F2: THE MEMBER'S OWN NAME ────────────────────────────────────
@@ -2850,9 +2918,7 @@ export function apply(ctx: any): void {
         // title, the official membership name and the narrowed ancestry. A member resolves its team
         // through the roster arm, so without this gate every teammate could unbook a stranger's pairing.
         /** The caller's team identity from the OFFICIAL plane, when that service is mounted at all. */
-        const membership = ((): { role?: string; name?: string } | undefined => {
-          try { return dsh.teamMembership(exec.agent) as { role?: string; name?: string } | undefined } catch { return undefined }
-        })()
+        const membership = officialTeamMembership(dsh, exec)
         /** The session header title the harness gives this caller (the persona prompt prefix). */
         const title = sessionTitleOf(exec)
         /** The caller's team identity: its member row, and the ancestry it may present. */
@@ -2899,9 +2965,7 @@ export function apply(ctx: any): void {
         // TITLE, the official membership name, the caller's OWN roster row and the NARROWED ancestry — a
         // member that merely carries the Lead as its parent may not borrow the Lead's identity here either.
         /** The caller's team identity from the OFFICIAL plane, when that service is mounted at all. */
-        const membership = ((): { role?: string; name?: string } | undefined => {
-          try { return dsh.teamMembership(exec.agent) as { role?: string; name?: string } | undefined } catch { return undefined }
-        })()
+        const membership = officialTeamMembership(dsh, exec)
         /** The session header title the harness gives this caller. */
         const title = sessionTitleOf(exec)
         /** The caller's team identity: its member row, and the ancestry it may present. */

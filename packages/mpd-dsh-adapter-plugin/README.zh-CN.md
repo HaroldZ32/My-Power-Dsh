@@ -351,3 +351,15 @@ export function apply(ctx) {
 |---|---|---|
 | `defaultTimeoutMs` | number | `120000`（内部 `executeTool` 在调用方未传超时时的缺省值） |
 | `quiet` | boolean | `false`（关闭启动时那一行日志） |
+
+## 存在不等于可服务（0.19.0，harness `0.2.2-rc.2`）
+
+`0.2.2-rc.2` 保留了 `ctx.agentTeams`，但把它缩减为**只含任务看板**的服务：`isEnabled`、`setEnabled`、
+`createTask`、`getTask`、`listTasks`、`updateTask`。`membership`、`tryMembership`、`listMembers`、
+`spawnTeammate`、`sendMessage`、`interrupt` 与 `waitForChange` 都已移除，工具插件只注册四个工具而不是
+九个。
+
+因此适配器按**可执行性**而不是存在性来决定是否使用官方执行器：`spawnTeammate`、`sendMessage`、
+`interrupt`、`waitForChange` 必须都是函数。已挂载但不可执行的官方服务会记一行日志并回落到 native
+执行器，`capabilities()` 在 `teamExecutorNative` 旁报告 `teamExecutorOfficial`。
+`TEAM_TASK_METHODS` 与任务看板路径保持不变，因为缩减后的服务仍恰好提供任务看板。

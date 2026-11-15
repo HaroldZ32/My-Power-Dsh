@@ -1,0 +1,12 @@
+{
+  "name": "@mpd-dsh/worktree",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Per-member git worktrees for team/cellwork write agents: the five mpd_worktree_* tools, the .mpd/worktrees/index.json state file and the mpdWorktree service (createForMember/cwdForMember) that degrades instead of failing",
+  "scripts": {
+    "build": "cd \"$(git rev-parse --show-toplevel)\" && .toolchain/node_modules/.bin/bun build packages/mpd-worktree-plugin/src/index.ts --target node --format esm --outfile packages/mpd-worktree-plugin/dist/index.js",
+    "test": "bun test"
+  },
+  "license": "MIT"
+}

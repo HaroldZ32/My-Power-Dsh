@@ -236,7 +236,7 @@ and a reader cannot tell. Measured re-baselines are recorded in `agent-reference
 | Extension CLI | `bun scripts/mpd-ext.ts --self-test` + `bun scripts/mpd-ext.ts validate extensions/mpd-ext-example` (exit 0; a deliberately broken extension MUST exit 1 with per-item errors) | any extension-interface/manifest/CLI change |
 | Boot check (MOUNT) | a boot that really applies the rows in an isolated `DSH_HOME` + sandbox `HOME` — e.g. `bun skills/dsh-qa/scripts/bundle-lifecycle.ts` (host rows) and `node skills/dsh-qa/scripts/preset-conformance.ts` (the `mpd` preset's standing mount + every harness-owned row config; its negative control proves the assertion is falsifiable) | any patch change, any preset/row change, and REQUIRED for any tool-schema change |
 | Composition only | `node scripts/dump-config.ts --profile <p>` (repo wrapper around the raw harness flag: prints the composition-only banner itself and propagates the child's exit code) | whenever a row/preset composition question is asked |
-| **Docker real-machine (LAST step)** | `bun run verify:docker` (`node scripts/docker-e2e.ts`; flags and the 14b rules: `agent-references/verification-flow.md`). Builds a real `ubuntu:24.04` and asserts the INSTALL then the MOUNT (rows activating, tools registering, TUI, `agentPreset=mpd`). **MANDATORY for EVERY version iteration — binding, user-set 2026-11-11 (§11 step 2).** **Without a ROOTLESS Docker it SKIPS (exit 0)**: rootless runs, rootful skips unless `--allow-rootful-docker`, an absent daemon skips; `--require-docker` makes any skip exit 3, and a SKIP is never a pass. **The USER-SURFACE arm (14b) is REQUIRED in every mode**: `userSurface.*` rows; a lane that never ran them exits 3 | every release sweep, and any install/mount-path change (`files`/`dsh.*`, a patch row, `docker/**`) |
+| **Docker real-machine (LAST step)** | `bun run verify:docker` (`node scripts/docker-e2e.ts`; flags and the 14b rules: `agent-references/verification-flow.md`). Builds a real `ubuntu:24.04` and asserts the INSTALL then the MOUNT (rows activating, tools registering, TUI, `agentPreset=mpd`). **Without a ROOTLESS Docker it SKIPS (exit 0)**: rootless runs, rootful skips unless `--allow-rootful-docker`, an absent daemon skips; `--require-docker` makes any skip exit 3, and a SKIP is never a pass. **The USER-SURFACE arm (14b) is REQUIRED in every mode**: `userSurface.*` rows; a lane that never ran them exits 3 | every release sweep, and any install/mount-path change (`files`/`dsh.*`, a patch row, `docker/**`) |
 
 Long form (per-row measurements, and why the Docker lane is LAST):
 `agent-references/verification-flow.md`.
@@ -276,18 +276,18 @@ Otherwise `preset-conformance` reddens under the ambient 0.2.1-rc.5 and `dshgo` 
 - Commit format: `<type>(<scope>): <summary>` (feat/fix/docs/test/chore/release).
 - Fixes cite the defect. Every defect branch is merged only after its evidence lands.
 - Never rebase published branches; merge with `--no-ff` and a descriptive message.
-- **ONE git writer per working tree — binding.** Teammates share the captain's checkout, so two writers
-  race on the single `.git/HEAD`. Measured (2026-09-14): a member's `reset HEAD~1` landed on `dev`,
-  moving the tip back one commit (the reflog held every step; recovery cost a forensics pass). A
-  teammate NEVER runs `commit`/`add`/`checkout`/`switch`/`reset`/`stash`/`merge`/`branch`/`rebase`/`tag`;
-  it edits files, runs gates and writes evidence, and the **captain alone** commits and branches — or the
-  captain serializes ONE delegated writer and freezes everyone else first. Read-only
+- **ONE git writer per working tree — binding.** Two writers in one checkout race on the single
+  `.git/HEAD` (measured 2026-09-14; incident: `agent-references/git-model.md` §1). A member with a
+  worktree is the single writer of ITS worktree (branch `agent/<team>/<member>`) and MAY run git
+  writes there; the **captain alone** writes the main checkout, commits there and merges member
+  branches. Without a worktree a teammate NEVER runs
+  `commit`/`add`/`checkout`/`switch`/`reset`/`stash`/`merge`/`branch`/`rebase`/`tag`; it edits files,
+  runs gates and writes evidence, and the **captain alone** commits and branches — or the captain
+  serializes ONE delegated writer and freezes everyone else first. Read-only
   `status`/`log`/`diff`/`show`/`grep` stay open to all. Tag `backup/<branch>-<sha>` before any
-  history-writing step.
-  **WHO THE CAPTAIN IS:** the workspace's **top-level session** (no parent session, delegation depth
-  `0`) — NOT a preset name. The predicate (`sessionIsTopLevel` in `complexity-gate.ts`) classifies a
-  session; the git-write rule itself is a CONTRACT, not a matcher. The preset-keyed variant that made the
-  captain branch unreachable here is `T-92` in `agent-references/troubleshooting.md`.
+  history-writing step. **WHO THE CAPTAIN IS:** the workspace's **top-level session** (no parent
+  session, delegation depth `0`) — NOT a preset name (`sessionIsTopLevel` in `complexity-gate.ts`;
+  history: `agent-references/git-model.md` §2).
 - **Every change lands through a BRANCH + a PULL REQUEST — binding (user-set, 2026-10-06).** Nothing is
   committed straight to `dev` or `master`: cut a `feature/<slug>` or `fix/<slug>` branch, commit the wave
   there, push it, and open a PR against `dev`. **A PR DESCRIPTION IS BILINGUAL**: an English body and a
@@ -296,18 +296,9 @@ Otherwise `preset-conformance` reddens under the ambient 0.2.1-rc.5 and `dshgo` 
   gates run WITH their observed results, and the honest bounds — never a claim the evidence does not
   carry. A single-language PR description is not ready for review.
 - **Wait for CodeRabbit before merging — binding (user-set, 2026-10-20).** A PR is not mergeable while
-  its CodeRabbit review is `in progress`: wait for COMPLETION, reconcile every inline finding as
-  FIXED / STALE / STILL-VALID with file:line evidence, and record that reconciliation in the PR. CI
-  green plus an independent verifier is NOT a substitute; a pending review is never a pass. If the bot is
-  stuck, state the pending state in the PR and wait for the user's decision.
-  - **Round cap — at most THREE rounds per pull request, binding (user-set, 2026-11-02).** Each
-    automated reviewer (CodeRabbit today, any future bot) gets at most three review rounds on ONE pull
-    request. A FOURTH round needs the USER's explicit decision, and the PR says that the cap was raised
-    and why; the wave also records how many rounds each automated reviewer took in the PR body. Inside a
-    round: a finding already fixed and verified is resolved SILENTLY (no reply needed), and a declined
-    one gets ONE sentence saying why. The cap is what stops a bot that always finds something new from
-    looping forever; it does NOT relax the wait rule above — a round still has to COMPLETE before merge,
-    and an unfinished round is still not a pass.
+  its CodeRabbit review is `in progress`: wait for COMPLETION and reconcile every inline finding as
+  FIXED / STALE / STILL-VALID with file:line evidence in the PR. A pending review is never a pass; the
+  THREE-round cap and the full policy: `agent-references/git-model.md` §5.
 - **Attribution cannot come from the author field.** A shared checkout writes every commit under ONE
   configured identity, so attribute by task ownership + content + reflog ORDER, never by `%an`.
 - **The captain's standing rules (user-set, 2026-09-16)** — instructions, not suggestions:
@@ -321,7 +312,7 @@ Otherwise `preset-conformance` reddens under the ambient 0.2.1-rc.5 and `dshgo` 
      instance that accumulates across sessions. A small mechanical change goes to a Junior Engineer, a
      bounded independent piece to a Senior Engineer or Deep Worker, an evidence question to a Researcher
      or Explorer, a verdict to a Reviewer. The captain executes only what must not be delegated by rule —
-     committing (single git writer), contract amendments, plan/roster shaping, releasing a watchdog hold,
+     committing in the main checkout (single git writer per worktree; a member commits only in its own worktree), contract amendments, plan/roster shaping, releasing a watchdog hold,
      and the final integration. **RECONNAISSANCE IS DELEGATED, AGAIN MECHANICALLY (user ruling
      2026-10-20):** on the `mpd` preset's top-level session the captain's `read`/`grep`/`glob`,
      `mpd_hashline_read`, the MCP recon tools (`codegraph_explore`, `ast_grep_search`, the `lsp`
@@ -369,7 +360,8 @@ Otherwise `preset-conformance` reddens under the ambient 0.2.1-rc.5 and `dshgo` 
      with its DECLARED owner when that member is free, and falls back to roster order ONLY with the
      reason reported. **ONE git writer per working tree** (the binding bullet earlier in this section) is
      PROSE since 2026-10-17 and still binding: its enforcement is the dispatch contract — members edit
-     files and run gates, the captain commits — plus review. The five official Agent Teams authoring
+     files, run gates and may commit inside their own worktree; the captain alone commits in the main
+     checkout and merges — plus review. The five official Agent Teams authoring
      verbs are REFUSED at the tool boundary (2026-10-23), so the mpd RECORD is the only board any
      session can create a task on. **Long form** — the withdrawn hook's command list, how a session is
      classified as a child versus the captain, and where the closure stops (a row calling the team
@@ -530,7 +522,7 @@ lane hold this line.
 ### Primary flow: ONE command, no extra step
 
 - **The USER-facing install is ONE command against the PUBLISHED package — no clone, no build:**
-  `dsh plugin --profile web add @mpd-dsh/mpd@0.18.2` (this release, named by explicit spec) or the
+  `dsh plugin --profile web add @mpd-dsh/mpd@0.20.0` (this release, named by explicit spec) or the
   unversioned `@mpd-dsh/mpd`, which takes whatever `latest` the registry serves;
   `dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh` is the same one
   command from the repository (and the Docker lane's proof spec, §4). pnpm packs it through the
@@ -552,7 +544,7 @@ lane hold this line.
   (the transitive `node-pty` postinstall that OLDER releases pulled is the historical reason; it has been
   gone since 0.24.1, measured 2026-10-02, and 0.28.0 ships no install script either, measured 2026-10-21
   — its row's mount guard disables it when absent). 0.28.0 requires harness 0.2.1-rc.1+ (this repo pins
-  0.2.2-rc.1 and still supports 0.2.1-rc.5), injects `["webServer","sessions","connection","tools"]`, and contributes each mpd sidebar
+  0.2.2-rc.3 and still supports 0.2.2-rc.2, 0.2.2-rc.1 and 0.2.1-rc.5), injects `["webServer","sessions","connection","tools"]`, and contributes each mpd sidebar
   page twice — the primary tab plus a `bottomOnly` bottom-workbench twin (`<id>:bottom`) — with the
   official right sidebar as the fallback when the package is absent. `@ast-grep/cli` +
   `@code-yeongyu/comment-checker` left `optionalDependencies`.
@@ -617,12 +609,13 @@ lane hold this line.
    `node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step` re-pin when `skills/**`
    changed, and a repo-root `bun test` (unlike `bun test packages`) also scans the `evidence/**`
    fixtures and reddens on them.
-   - **LAST: the Docker real-machine lane — THREE lanes, FROZEN as a release requirement (user-set
-     2026-11-11).** The credentialed `--mode source --live`, `--mode oneclick --live`, and the
-     credential-free `--mode source --no-browser` regression; run them IN PARALLEL in distinct work
-     dirs, cite each lane's own stamp, and record which lanes overlapped. A lane that SKIPS, exits 3 or
-     is absent is a FAILED requirement — never a green, and "CI ran Docker" is no substitute. Why the
-     three, why `--no-browser`, and the parallel rule: `agent-references/verification-flow.md`.
+   - **LAST: the Docker real-machine lane, per §4's Docker row — BOTH runs, both stamps cited.** The
+     credentialed `node scripts/docker-e2e.ts --mode source --require-docker --live` then `--mode
+     oneclick --require-docker --live`, AND the credential-free `--mode source --require-docker
+     --no-browser` regression run — a credentialed run cannot see a path that depends on an EMPTY model
+     catalog (measured 2026-10-23, PR #62). `--no-browser` IS the credential-free spelling: a
+     browser-enabled one records `ui.replyRendered` as a DECLARED BOUND that the required-arm gate turns
+     into exit 3 by design, and `--live` with no key exits 3 before the build.
    - **Release-checklist line (VENDOR_LOCK pairing rule):** `VENDOR_LOCK.json` lands in the SAME commit
      as every `skills/**` change that invalidates its `treeSha`; with the single-skills-writer rule (§9)
      that is exactly ONE re-pin per wave — verify the wave's single re-pin is present and that no

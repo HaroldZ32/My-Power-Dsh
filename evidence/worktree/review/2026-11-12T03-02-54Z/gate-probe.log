@@ -1,0 +1,29 @@
+ARM P1-registration PASS tools=[mpd_worktree_create,mpd_worktree_list,mpd_worktree_merge,mpd_worktree_remove,mpd_worktree_status] objectSchemas=true service=function/function name=mpd-worktree
+ARM P2-create PASS {"name":"alice","path":"/tmp/t6-wt-WkYN12/.mpd/worktrees/alice","branch":"agent/alice","base":"main","repo":"/tmp/t6-wt-WkYN12","rec":{"key":"manual/alice","status":"active"},"indexVersion":1}
+ARM P3-create-duplicate PASS [mpd-worktree] name-registered: "alice" is already registered as manual/alice (status active, branch agent/alice); remove it first or pick another name
+ARM P4-create-path-exists PASS [mpd-worktree] path-exists: "/tmp/t6-wt-WkYN12/.mpd/worktrees/occupied" already exists on disk; remove it or pick another name
+ARM P5-create-invalid-name PASS [mpd-worktree] invalid-name: "Bad Name" must match [a-z0-9][a-z0-9._-]{0,79}
+ARM P6-D2-outside-root PASS [mpd-worktree] outside-workspace: worktree path "/tmp/t6-outside-3/bob" is outside the workspace root "/tmp/t6-wt-WkYN12" (D2: a member's sandbox fence is the parent workspace, so an outside-root work escapedDir=false
+ARM P7-list-status PASS {"exists":true,"dirty":false,"ahead":1,"behind":1,"merged":false,"listed":1}
+ARM P8-status-unknown PASS [mpd-worktree] unknown-worktree: no worktree named "nobody"; known: alice
+ARM P9-merge-success PASS {"merged":true,"into":"main","parents":3,"subject":"merge(manual/alice): agent/alice","indexStatus":"merged"}
+ARM P10-merge-conflict PASS {"merged":false,"conflicts":["a.txt"],"mainClean":true,"headUnmoved":true}
+ARM P11-protected-refused PASS [mpd-worktree] protected-branch: "main" is a protected branch (worktree.protectedBranches); pass force:true to merge into it deliberately
+ARM P12-force-bypasses-protection-only PASS {"merged":false,"conflicts":["a.txt"]}
+ARM P13-merge-dirty-main PASS [mpd-worktree] dirty-main: the main checkout of /tmp/t6-wt-bGtVx7 has uncommitted TRACKED changes; commit or stash them first
+ARM P14-merge-detached-main PASS [mpd-worktree] detached-main: the main checkout of /tmp/t6-wt-bGtVx7 is detached at abb0a968d87c4e8e00f46706f386688c04a7e5a8; check out a br
+ARM P15-remove-unmerged-and-idempotent PASS {"unmergedRefused":true,"removed":true,"branchDeleted":true,"tombstone":"removed","repeat":true} [mpd-worktree] unmerged: "bob" is unmerged (commits the main checkout does not have); pass force:true to discard it
+ARM P16-corrupt-index-tolerant PASS list=[] statusRefused=true
+ARM P17-service-create-idempotent PASS {"path":"/tmp/t6-wt-sUQKjz/.mpd/worktrees/plan-x/senior-engineer","branch":"agent/plan-x/senior-engineer","key":"plan-x/Senior Engineer","cwdIsPath":true}
+ARM P18-service-cwd-vanished PASS vanished directory answers undefined
+ARM P19-degrade-non-git PASS answer=undefined lines=["[2026-11-12T03:07:14.599Z] [mpd-worktree] member worktree unavailable for plan-y/alice: [mpd-worktree] not-a-repo: \"/tmp/t6-wt-norepo-BFeH9e\" is not a git repository (git rev-parse --show-toplevel failed); pass repo or configure worktree.repo (the member spawns in the shared checkout)"]
+ARM P20-disabled-row PASS tools=0 service=undefined lines=["[2026-11-12T03:07:14.771Z] [mpd-worktree] disabled by config (worktree.enabled=false): no tools and no mpdWorktree service"]
+ARM P21-branch-override-and-validation PASS branch=work/erin invalidRefused=true [mpd-worktree] invalid-branch: "-dash" is not a valid branch name (git check-ref-format --branch failed)
+ARM P22-detached-base-sha PASS base=abb0a968d87c4e8e00f46706f386688c04a7e5a8 headSha=abb0a968d87c4e8e00f46706f386688c04a7e5a8
+ARM P23-index-atomic-no-temp PASS entries=["alice","index.json","occupied"]
+PROBE arms=23 failed=0 verdict=PASS
+EXIT=0
+ARM P24-mpdjsonc-overlay PASS path=/tmp/t6-overlay-C9xZ4s/custom-wt/alice branch=member/alice maxFromFile=true
+ARM P25-repo-arg-reaches-outside PASS path=/tmp/t6-bound-JILnfK/.mpd/worktrees/x branchInOutsideRepo=true repo=/tmp/t6-bound-I6tBFw workspace=/tmp/t6-bound-JILnfK
+ARM P26-cwdForMember-unmanaged-dir PASS handed=/tmp/t6-bound-gC0KjK/.mpd/worktrees/plan-z/senior-engineer gitToplevelInside=/tmp/t6-bound-gC0KjK branchSeen=main (expected: main checkout /tmp/t6-bound-gC0KjK)
+BOUNDARY arms=2 observed=hazards-confirmed 

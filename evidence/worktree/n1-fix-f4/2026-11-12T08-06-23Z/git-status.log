@@ -1,0 +1,10 @@
+ M docs/worktree.md
+ M docs/worktree.zh-CN.md
+ M packages/mpd-worktree-plugin/README.md
+ M packages/mpd-worktree-plugin/README.zh-CN.md
+ M packages/mpd-worktree-plugin/dist/index.js
+ M packages/mpd-worktree-plugin/src/config.ts
+ M packages/mpd-worktree-plugin/src/git.ts
+ M packages/mpd-worktree-plugin/src/index.ts
+ M packages/mpd-worktree-plugin/src/ops.ts
+ M packages/mpd-worktree-plugin/test/worktree.test.ts

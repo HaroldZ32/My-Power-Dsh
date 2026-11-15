@@ -1,0 +1,65 @@
+=== A: create refuses a configured protected branch with NO git/registry side effect (F4) ===
+PASS A[dev].1 refusal :: protected-branch
+PASS A[dev].2 no branch ref :: refs/heads/dev
+PASS A[dev].3 no directory :: /tmp/n1-review3-7WKqPl/.mpd/worktrees/alice
+PASS A[dev].4 no git registration :: worktree list
+PASS A[dev].5 no index record :: /tmp/n1-review3-7WKqPl/.mpd/worktrees/index.json
+PASS A[dev].6 branch set unchanged :: main
+PASS A[dev].7 name still usable :: agent/alice /tmp/n1-review3-7WKqPl/.mpd/worktrees/alice
+PASS A[dev].8 only the successful record exists :: ["agent/alice"]
+PASS A[master].1 refusal :: protected-branch
+PASS A[master].2 no branch ref :: refs/heads/master
+PASS A[master].3 no directory :: /tmp/n1-review3-l7XjBT/.mpd/worktrees/alice
+PASS A[master].4 no git registration :: worktree list
+PASS A[master].5 no index record :: /tmp/n1-review3-l7XjBT/.mpd/worktrees/index.json
+PASS A[master].6 branch set unchanged :: main
+PASS A[master].7 name still usable :: agent/alice /tmp/n1-review3-l7XjBT/.mpd/worktrees/alice
+PASS A[master].8 only the successful record exists :: ["agent/alice"]
+=== B: the registered CREATE tool has no force argument and ignores an extra force:true (F4) ===
+PASS B.1 create tool registered :: mpd_worktree_create,mpd_worktree_list,mpd_worktree_status,mpd_worktree_merge,mpd_worktree_remove
+PASS B.2 no force property in the schema :: ["name","teamId","member","base","branch","repo"]
+PASS B.3 force:true in args still refused :: protected-branch
+PASS B.4 no side effects from the forced call :: no dir, no ref
+PASS B.5 no index written :: index absent
+=== C: protection precedes branch-exists and matches the trimmed name (F4) ===
+PASS C.1 existing dev still protected-branch :: protected-branch
+PASS C.2 padded name still protected-branch :: protected-branch
+PASS C.3 no worktree was created :: path absent
+PASS C.4 non-protected branch creates :: work/alice
+=== D: member-service reattach recovery refuses a protected branch, then recovers once unprotected (F4) ===
+PASS D.1 first member worktree created :: {"path":"/tmp/n1-review3-UtNx4V/.mpd/worktrees/plan-x/senior-engineer","branch":"agent/plan-x/senior-engineer"}
+PASS D.2 recovery refuses protected-branch :: protected-branch
+PASS D.3 path stays gone (no reattach) :: /tmp/n1-review3-UtNx4V/.mpd/worktrees/plan-x/senior-engineer
+PASS D.4 branch keeps its commit :: agent/plan-x/senior-engineer
+PASS D.5 no git worktree registration :: worktree list
+PASS D.6 stale record untouched and active :: {"key":"plan-x/Senior Engineer","name":"plan-x/senior-engineer","teamId":"plan-x","member":"Senior Engineer","repo":"/tmp/n1-review3-UtNx4V","path":"/tmp/n1-review3-UtNx4V/.mpd/worktrees/plan-x/senior-engineer","branch":"agent/plan-x/senior-engineer","base":"main","createdAt":"2026-11-12T08:17:59.836Z","status":"active"}
+PASS D.7 lane service degrades to undefined :: undefined
+PASS D.8 one log line names protected-branch :: [mpd-worktree] member worktree unavailable for plan-x/Senior Engineer: [mpd-worktree] protected-branch: branch "agent/plan-x/senior-engineer" is a protected branch (worktree.protectedBranches); refusing to create a worktree on it — pick another branch or remove the name from the protected list (the member spawns in the shared checkout)
+PASS D.9 recovers once unprotected :: {"path":"/tmp/n1-review3-UtNx4V/.mpd/worktrees/plan-x/senior-engineer","branch":"agent/plan-x/senior-engineer"}
+PASS D.10 reattach preserves the member commit :: e4c1637bff108161ceda316a7b1584b828bce5ca
+=== E: N1 properties remain intact (F1/F2/F3 regression) ===
+PASS E1.1 remove prunes without force :: {"removed":true,"name":"alice","path":"/tmp/n1-review3-kGxne9/.mpd/worktrees/alice","branch":"agent/alice","branchDeleted":false}
+PASS E1.2 branchDeleted false :: false
+PASS E1.3 tombstone has no branchPending :: {"key":"manual/alice","name":"alice","repo":"/tmp/n1-review3-kGxne9","path":"/tmp/n1-review3-kGxne9/.mpd/worktrees/alice","branch":"agent/alice","base":"main","createdAt":"2026-11-12T08:17:59.912Z","status":"removed"}
+PASS E1.4 name usable again :: agent/alice
+PASS E2.1 remove refuses protected-branch :: protected-branch
+PASS E2.2 merge refuses protected-branch :: protected-branch
+PASS E2.3 refs and directory survive :: refs + dir
+PASS E2.4 main HEAD unmoved :: HEAD
+PASS E2.5 record still active :: active
+PASS E3.1 remove branch-mismatch :: branch-mismatch
+PASS E3.2 merge branch-mismatch :: branch-mismatch
+PASS E3.3 directory, refs and HEAD survive :: intact
+PASS E4.1 remove branch-mismatch :: branch-mismatch
+PASS E4.2 merge branch-mismatch :: branch-mismatch
+PASS E4.3 detached dir and branch survive :: intact
+PASS E5[-D].1 remove invalid-branch :: invalid-branch
+PASS E5[-D].2 merge invalid-branch :: invalid-branch
+PASS E5[-D].3 real branch and directory survive :: intact
+PASS E5[bad..name].1 remove invalid-branch :: invalid-branch
+PASS E5[bad..name].2 merge invalid-branch :: invalid-branch
+PASS E5[bad..name].3 real branch and directory survive :: intact
+PASS E6.1 merge succeeds :: merged
+PASS E6.2 record marked merged :: merged
+PASS E6.3 remove succeeds and deletes the branch :: {"removed":true,"name":"alice","path":"/tmp/n1-review3-9S5Rex/.mpd/worktrees/alice","branch":"agent/alice","branchDeleted":true}
+RESULT: PASS failures=0 sandboxes=12
