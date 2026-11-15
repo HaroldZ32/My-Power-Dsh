@@ -1,0 +1,19 @@
+[harness 0.2.2-rc.1] 5aad8aadee1879f1… /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-subagent/lib/index.js
+  RESOLVED adapter.teamExecutor.spawn
+           spec keys: provider,label,signal,prompt,parent,agentOptions,request,delivery · flatParent=live-parent · mirrorParent=live-parent · delivery=parent
+  RESOLVED adapter.spawnAgent
+           spec keys: provider,label,signal,delivery,prompt,parent,request · flatParent=live-parent · mirrorParent=live-parent · delivery=parent
+  RESOLVED adapter.startContinuableAgent(cellwork reseed shape)
+           spec keys: provider,label,prompt,parent,maxDepth,request,signal,delivery · flatParent=live-parent · mirrorParent=live-parent · delivery=parent
+  RESOLVED control.nested-only(rc.1 shape)
+  THREW    control.flat-only(rc.2+ shape) — undefined is not an object (evaluating 'spec.request.maxDepth')
+[harness 0.2.2-rc.3] 47837c0cd3cd8259… /home/haroldzhao/qa-anchors/rc3-t3-20261115T124238Z/host-rc3/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-subagent/lib/index.js
+  RESOLVED adapter.teamExecutor.spawn
+           spec keys: provider,label,signal,prompt,parent,agentOptions,request,delivery · flatParent=live-parent · mirrorParent=live-parent · delivery=parent
+  RESOLVED adapter.spawnAgent
+           spec keys: provider,label,signal,delivery,prompt,parent,request · flatParent=live-parent · mirrorParent=live-parent · delivery=parent
+  RESOLVED adapter.startContinuableAgent(cellwork reseed shape)
+           spec keys: provider,label,prompt,parent,maxDepth,request,signal,delivery · flatParent=live-parent · mirrorParent=live-parent · delivery=parent
+  THREW    control.nested-only(rc.1 shape) — undefined is not an object (evaluating 'spec.parent.id')
+  RESOLVED control.flat-only(rc.2+ shape)
+PROBE PASS — the dual-shape spec resolves on BOTH installed generations, and each one-generation control still fails on the other.

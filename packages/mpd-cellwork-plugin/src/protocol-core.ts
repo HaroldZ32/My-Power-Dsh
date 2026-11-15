@@ -1277,28 +1277,39 @@ export async function promoteAfterHandoff(deps: PromotionDeps): Promise<Promotio
     }
   })()
   try {
+    /**
+     * The reseed's start request, carried in the DUAL shape BOTH `startActivation` generations read.
+     *
+     * 0.2.2-rc.1 takes it under `spec.request` (and fails with `reading 'maxDepth'` when it is
+     * absent); 0.2.2-rc.2+ take the same fields FLAT on the spec itself (and fail with
+     * `reading 'id'` on `spec.parent` when only the mirror is present). The adapter forwards a
+     * caller's spec VERBATIM, so the caller owns this shape; sending both spellings is the
+     * compatibility fix (measured: `.qa-tmp/rel-diag/probe-dual-spec.log`).
+     */
+    const activationRequest: Record<string, unknown> = {
+      // CONTENT BLOCKS, NEVER A STRING (R4.0, the primary root cause). `SubagentStartRequest.prompt` is
+      // `ContentBlock[]`, and the host appends its return guidance with `[...prompt, block]` — so a
+      // STRING prompt is spread into one single-character block per character (`dsh-subagent/lib/
+      // index.js#withContinuableReturnGuidance`). The DeepSeek serializer then rejects the first bare
+      // string block ("cannot represent user/tool-result content undefined", code UNSUPPORTED_CONTENT),
+      // the child dies before its first turn, and because the poisoned message is permanent history
+      // every later delivery re-fails identically. Measured on the VEdit incident's four reseeds.
+      prompt: [{ type: "text", text: deps.handoffText + "\n\n" + directive }],
+      // THE LIVE PARENT, never `deps.agent` (C2): the member's own handle is detached, and the host
+      // refuses a parent it no longer holds.
+      parent: parent.parent,
+      // THE MEMBER'S WORKTREE, never the parent's directory, when the composition records one.
+      ...(worktreeCwd === undefined ? {} : { cwd: worktreeCwd }),
+      // THE LIVE PARENT'S OWN DEPTH + 1 (R2.1): the child lands exactly one level below the session it
+      // is raised under, so `cellwork.depthMax` — the nested-CELL bound, a different scale — must never
+      // name this cap. Explicit, never omitted: the host's hidden default is what this cap replaces.
+      maxDepth: reseedMaxDepthOf(parent.parent),
+    }
     activation = await deps.dsh.startContinuableAgent({
       provider: "spawn",
       label: deps.memberName + " · " + deps.cell.teamId,
-      request: {
-        // CONTENT BLOCKS, NEVER A STRING (R4.0, the primary root cause). `SubagentStartRequest.prompt` is
-        // `ContentBlock[]`, and the host appends its return guidance with `[...prompt, block]` — so a
-        // STRING prompt is spread into one single-character block per character (`dsh-subagent/lib/
-        // index.js#withContinuableReturnGuidance`). The DeepSeek serializer then rejects the first bare
-        // string block ("cannot represent user/tool-result content undefined", code UNSUPPORTED_CONTENT),
-        // the child dies before its first turn, and because the poisoned message is permanent history
-        // every later delivery re-fails identically. Measured on the VEdit incident's four reseeds.
-        prompt: [{ type: "text", text: deps.handoffText + "\n\n" + directive }],
-        // THE LIVE PARENT, never `deps.agent` (C2): the member's own handle is detached, and the host
-        // refuses a parent it no longer holds.
-        parent: parent.parent,
-        // THE MEMBER'S WORKTREE, never the parent's directory, when the composition records one.
-        ...(worktreeCwd === undefined ? {} : { cwd: worktreeCwd }),
-        // THE LIVE PARENT'S OWN DEPTH + 1 (R2.1): the child lands exactly one level below the session it
-        // is raised under, so `cellwork.depthMax` — the nested-CELL bound, a different scale — must never
-        // name this cap. Explicit, never omitted: the host's hidden default is what this cap replaces.
-        maxDepth: reseedMaxDepthOf(parent.parent),
-      },
+      ...activationRequest,
+      request: activationRequest,
       signal: compactionSignal().signal,
     })
   } catch (error) {

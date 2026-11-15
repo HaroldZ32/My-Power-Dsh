@@ -1261,6 +1261,12 @@ function runReal(): Promise<void> {
     const positiveBaseOk: boolean = positiveRun.exit === 0
       && !positiveRun.restrictError
       && positiveRun.spawnDriven
+      // A RECORDED TOOL CALL IS NOT A RAISED CHILD (2026-11-15, the rc.2/rc.3 activation-spec defect):
+      // the START-SPEC carrier fallback below accepts `childRequests === 0`, so a lane whose
+      // `mpd_role_spawn` FAILED (the adapter's TypeError recorded as the tool result's error) still
+      // satisfied every other clause and reported the authority "PROVEN" on a child that never existed.
+      // The spawn must therefore have SUCCEEDED, not merely been attempted.
+      && !positiveRun.spawnErrored
       && !positiveRun.missingCredential
       && !positiveRun.pruneRecord.seen
     steps.positiveOk = {
@@ -1289,6 +1295,7 @@ function runReal(): Promise<void> {
         + ", childScopeApplied=" + positiveRun.childScope.applied
         + ", childScopeSource=" + positiveRun.childScope.appliedSource
         + ", spawnDriven=" + positiveRun.spawnDriven
+        + ", spawnErrored=" + positiveRun.spawnErrored
         + ", restrictError=" + positiveRun.restrictError
         + ", missingCredential=" + positiveRun.missingCredential
         + ", pruneRecordSeen=" + positiveRun.pruneRecord.seen

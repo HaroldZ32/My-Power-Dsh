@@ -50,6 +50,16 @@ interface DoubleOptions {
    * arm stays tested.
    */
   dispose?: "resolve" | "reject" | "throw" | "absent"
+  /**
+   * Which `SubagentActivationSpec` spelling the activation double VALIDATES.
+   *
+   * `"blind"` (the default) records and resolves any shape, as the original double did. `"flat"`
+   * models harness 0.2.2-rc.2+ (it reads `spec.parent`) and `"nested"` models 0.2.1/0.2.2-rc.1
+   * (it reads `spec.request.parent`): each REFUSES the other generation's spelling with that
+   * generation's own TypeError, so a spec that stops carrying both shapes reddens here instead
+   * of only in a live container run.
+   */
+  specShape?: "blind" | "flat" | "nested"
 }
 
 /** The doubles one arm drives, plus the adapter under test. */
@@ -129,6 +139,18 @@ function harness(options: DoubleOptions = {}): Harness {
     /** The 0.2.1 member: `startActivation(spec)` → activation with a durable `childId`. */
     subagents.startActivation = function (this: unknown, spec: unknown): Promise<unknown> {
       record("startActivation", this, [spec])
+      /** The spec spelling this double models; blind when the arm does not care. */
+      const specShape = options.specShape ?? "blind"
+      if (specShape === "flat" && (spec as { parent?: unknown }).parent === undefined) {
+        // The exact rc.2/rc.3 failure: `SubagentRuntime.startActivation` reads `spec.parent.id`
+        // before any provider dispatch, so a nested-only spec dies here.
+        return Promise.reject(new TypeError("Cannot read properties of undefined (reading 'id')"))
+      }
+      if (specShape === "nested" && (spec as { request?: { parent?: unknown } }).request?.parent === undefined) {
+        // The exact rc.1 failure a flat-only spec produces: `startLocal` reads
+        // `request.maxDepth` through `spec.request`, so an absent mirror dies here.
+        return Promise.reject(new TypeError("Cannot read properties of undefined (reading 'maxDepth')"))
+      }
       return Promise.resolve(activation)
     }
   }
@@ -439,5 +461,57 @@ describe("startContinuableAgent is the same seam, and keeps its SYNCHRONOUS thro
     // `expect(fn).toThrow()` — not `rejects` — is the contract this surface promises.
     expect(() => h.dsh.startContinuableAgent({ label: "member" }))
       .toThrow(/exposes neither startActivation\(\) nor startContinuable\(\)/)
+  })
+})
+
+// THE 0.2.2-rc.2 HOST BREAK, LOCKED FROM BOTH SIDES. rc.2 (and rc.3, byte-identical there) made
+// `SubagentActivationSpec` FLAT and reads `spec.parent`; rc.1 reads the nested `spec.request.parent`.
+// A shape-blind double cannot see this class — it resolves either spelling — which is exactly why the
+// rc.2/rc.3 pin hop shipped with team raises broken. These arms drive the adapter against a double
+// that models ONE generation's read, so the spec must carry BOTH spellings to pass.
+describe("the activation spec resolves on BOTH startActivation generations", () => {
+  /** The two strict readings: rc.2+ flat, rc.1 nested. */
+  const SHAPES = ["flat", "nested"] as const
+  for (const specShape of SHAPES) {
+    test(`the TEAM raise resolves on the ${specShape}-shaped generation`, async () => {
+      /** A double that refuses a spec missing THIS generation's spelling. */
+      const h = harness({ generation: "activation", specShape, childId: "child-dual" })
+      /** The raise; a one-generation spec would reject with that generation's TypeError. */
+      const spawned = await h.dsh.teamExecutor().spawn(h.lead, { ...REQUEST })
+      expect(spawned).toEqual({ handle: "child-dual", executor: "native" })
+      /** The activation spec the adapter built. */
+      const spec = h.calls[0]?.args[0] as Record<string, unknown>
+      // The SAME request is readable BOTH ways: rc.2+ reads the flat half, rc.1 the mirror.
+      expect(spec.parent).toBe(h.lead)
+      expect((spec.request as Record<string, unknown>).parent).toBe(h.lead)
+      expect(spec.prompt).toEqual((spec.request as Record<string, unknown>).prompt)
+    })
+
+    test(`the ONE-SHOT spawn resolves on the ${specShape}-shaped generation`, async () => {
+      /** A double that refuses a spec missing THIS generation's spelling. */
+      const h = harness({ generation: "activation", specShape })
+      /** The normalized report; a one-generation spec would reject before the child exists. */
+      const answer: DshSpawnResult = await h.dsh.spawnAgent({ label: "look", prompt: "go", parent: h.lead })
+      expect(answer).toEqual({ output: "researched", structured: undefined, stopReason: "completed" })
+      /** The activation spec the adapter built. */
+      const spec = h.calls[0]?.args[0] as Record<string, unknown>
+      expect(spec.parent).toBe(h.lead)
+      expect((spec.request as Record<string, unknown>).parent).toBe(h.lead)
+    })
+  }
+
+  test("NEGATIVE CONTROL: each strict double refuses the OTHER generation's spelling", async () => {
+    /** The rc.2+ reading, handed the rc.1-only (nested) spec. */
+    const flat = harness({ generation: "activation", specShape: "flat" })
+    // A strict double that never threw would make the arms above vacuous, so the failure this
+    // class produces is pinned here: the host's own TypeError, not a made-up assertion.
+    await expect((flat.subagents.startActivation as (spec: unknown) => Promise<unknown>)({
+      provider: "spawn", label: "nested-only", request: { prompt: [], parent: flat.lead },
+    })).rejects.toThrow(/Cannot read properties of undefined \(reading 'id'\)/)
+    /** The rc.1 reading, handed the rc.2+-only (flat) spec. */
+    const nested = harness({ generation: "activation", specShape: "nested" })
+    await expect((nested.subagents.startActivation as (spec: unknown) => Promise<unknown>)({
+      provider: "spawn", label: "flat-only", prompt: [], parent: nested.lead,
+    })).rejects.toThrow(/Cannot read properties of undefined \(reading 'maxDepth'\)/)
   })
 })
