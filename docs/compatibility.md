@@ -2,7 +2,7 @@
 
 **English** | [中文](./compatibility.zh-CN.md)
 
-This page is the **three-plane compatibility matrix** of the `0.18.1` release: what each upstream plane
+This page is the **three-plane compatibility matrix** of the `0.19.0` release: what each upstream plane
 guarantees, what degrades on an older host, and what is **not available** there. Every line is traceable to
 a gate run, a mounted boot in an isolated `DSH_HOME`, or a source of the upstream package named beside it —
 never to a device, because this repository contains no Flutter host and no phone.
@@ -13,8 +13,8 @@ Three planes move independently, and the bundle adapts to each on its own terms:
 
 | Plane | Minimum supported | Current target | Where the claim is asserted |
 |---|---|---|---|
-| DSH core (`@deepseek-ai/dsh`) | `0.2.1-rc.5` | `0.2.2-rc.1` | `package.json` `engines.dsh`, the isolated mount boot, `preset-conformance` |
-| DSH-TUI (`@deepseek-harness-tui/dsh-tui`) | `0.18.0` | `0.19.0` | `dsh-plugin.json` `compat.hosts`, `verify:tui-admission`, the host's own negotiation |
+| DSH core (`@deepseek-ai/dsh`) | `0.2.1-rc.5` | `0.2.2-rc.2` | `package.json` `engines.dsh`, the isolated mount boot, `preset-conformance` |
+| DSH-TUI (`@deepseek-harness-tui/dsh-tui`) | `0.18.0` | `0.20.0` | `dsh-plugin.json` `compat.hosts`, `verify:tui-admission`, the host's own negotiation |
 | DSH-Go (`dsh-Go`, protocol v1) | view v1, always | view v2 where the app takes it | `dshGo` manifest, `verify:dshgo` |
 
 Three words are used with one meaning each. **Guaranteed** means a check in this repository exercises it.
@@ -25,16 +25,26 @@ The `engines.dsh` declaration spans both bands on purpose: `"dsh": ">=0.2.1-rc.5
 locked to the newer band would refuse the older host at install time, which is exactly what this wave's
 backward-compatibility rule forbids.
 
-## 2. DSH core: `0.2.1-rc.5` and `0.2.2-rc.1`
+## 2. DSH core: `0.2.1-rc.5`, `0.2.2-rc.1` and `0.2.2-rc.2`
 
 | | `0.2.1-rc.5` | `0.2.2-rc.1` |
 |---|---|---|
 | Install | guaranteed — `dsh plugin --profile w add <repo root>`, exit 0 | guaranteed — same command, exit 0 |
 | Mount and boot | guaranteed — `bundle-lifecycle` PASS, every boot check true, no home copy, clean uninstall | guaranteed — `bundle-lifecycle` PASS, same checks |
-| `mpd` preset creation | guaranteed | guaranteed — row parity 27/27 against the shipped `standard` preset, both negative controls red as expected |
+| `mpd` preset creation | guaranteed | guaranteed — row parity, measured on the current tree: on `0.2.2-rc.1` the `mpd` preset mounts **28 active rows of 29 declared** against the shipped `standard` preset's **27 of 28**, with `tool-office` reported as a GUARDED NOTE and `problems: []`; on `0.2.2-rc.2` it is an exact **28/29 vs 28/29** with no missing, extra or problem row; the self-test's **six** negative controls all redden as expected. The guarded-extra NOTE rule is a DECLARED GATE-SEMANTICS CHANGE under independent review, not a fact this page certifies. |
 | Model routing (`agentOptions`) | works | works — see below |
 | Tool calls through the adapter | works | works **after** the batch-API repair described below |
 | `list_agents` | **not available** — declared capability delta | available — the root plugin registers it |
+
+**What the install guarantee rests on.** Both rows above are a MEASURED exit 0 on both hosts
+(`0.2.2-rc.2` and `0.2.2-rc.1`), taken with the harness install and the profile **outside this
+checkout**. The precondition matters: a QA sandbox that sits INSIDE the repository resolves packages
+through `createRequire` by walking up into the checkout's own `node_modules`, where both team
+generations are present, so the harness's plugin-compatibility gate refuses the bundle and reports
+"installation rejected" on either host. That rejection is a property of the ANCHOR, not of the bundle —
+measured and recorded as a bound. Measured installs: rc.1 exit 0, rc.2 exit 0 (T8's clean-anchor run,
+transcripts `.qa-tmp/r3/t11/install-dsh-022.log` and `install-dsh-022rc2.log`); the contaminated-anchor
+rejection is the verifier's `evidence/verify-022rc2/2026-11-14T03-02-10Z/logs/`.
 
 **What changed upstream.** `0.2.2-rc.1` moved cordis to `~4.1.0`, the loader/include packages to `~1.1.0`,
 timer to `~1.2.0`, schemastery to `~3.19.0` and cosmokit to `~1.9.0`, and it added `engines.node >= 24.9.0`
@@ -62,7 +72,7 @@ run, not a code read.
 subpath export from `@deepseek-ai/dsh-tool-subagent-control` (the root plugin now registers `list_agents`
 itself, and the shipped `standard` preset dropped the row). A row whose module path no longer resolves cannot
 be kept, so `presets/mpd.patch.yml` **deleted** its `tool-subagent-list-agents` row. The consequence, measured:
-on `0.2.2-rc.1` the `mpd` preset now mirrors `standard` (row parity 27/27, negative controls 4/4 reddened);
+on `0.2.2-rc.1` the `mpd` preset mounts 28 active rows of 29 declared against `standard`'s 27 of 28, with `tool-office` reported as a GUARDED NOTE (`problems: []`), and the self-test's six negative controls all redden as expected;
 on `0.2.1-rc.5` the same comparison reports *"the mpd preset does not mount active row(s) the installed
 standard preset mounts: tool-subagent-list-agents"*.
 
@@ -78,13 +88,68 @@ more row guard from the shipped preset: `tool-plugin-manager`'s `disabled` becam
 `!ctx.get('profileContext')`, which on `0.2.2-rc.1` is active and on `0.2.1-rc.5` evaluates to disabled
 because that harness has no `profileContext` service — the older host keeps its previous behaviour.
 
-## 3. dsh-TUI: `0.18.0` and `0.19.0` are both admitted
+### 2.1 `0.2.2-rc.2`: the host owns the team plane, and the legacy rows carry the old generation (0.19.0)
+
+`0.2.2-rc.2` renamed the three Agent Teams packages to `@deepseek-ai/dsh-agent-team`,
+`@deepseek-ai/dsh-tool-agent-team` and `@deepseek-ai/dsh-client-ui-agent-team`, and it THROWS at
+activation on the config keys the rc.1 rows ship (`maxMembers` / `maxMessageBytes` /
+`disposalTimeoutMs` on the service row, `interrupt` / `freshProvider` / `forkProvider` on the tool row).
+
+**On `0.2.2-rc.2` the bundle mounts NO team row at all.** That generation's own host layers already
+declare the plane: `dsh-base/cordis.patch.yml` carries `- id: agent-team`
+(`@deepseek-ai/dsh-agent-team`, config `{maxTasks: 256}`) and `- id: tool-agent-team`
+(`@deepseek-ai/dsh-tool-agent-team`), and `dsh-web-app` carries `- id: ui-agent-team`
+(`@deepseek-ai/dsh-client-ui-agent-team`); none of the three is disabled. A bundle row beside them is a
+DUPLICATE registration — measured: the boot errored `service "agentTeams" has been registered at
+<TeamService>` and `prompt section "team:policy" is already registered`, and two entries did not
+activate. The three `-rc2` rows were therefore DELETED, not disabled, and `package.json` declares no
+team package at all.
+
+**On `0.2.2-rc.1` the bundle's three rows ARE the plane** (`mpd-agent-team`, `mpd-tool-agent-team`,
+`mpd-ui-agent-team`, with their shipped configs unchanged), because that host's `dsh-base` declares no
+team row. Their package is supplied by the HOST INSTALLATION's own nested copy: an empty profile against
+an rc.1 host imports `@deepseek-ai/dsh-experimental-agent-team` fine, while the same empty profile
+against an rc.2 host answers `Cannot find package '@deepseek-ai/dsh-experimental-agent-team'`. The
+bundle therefore does not vendor it.
+
+ONE guard decides, and it is a COMPOSITION rather than a rewrite:
+`(<the shipped dsh-tui clause, byte-identical to HEAD>) || (<generation + resolvability clause>)`. The
+TUI half keeps its shipped posture (rows 1-2 only, a throw there leaving the row enabled); the second
+half resolves the generation from the nearest `@deepseek-ai/dsh/package.json` above `process.argv[1]`
+(through its realpath), consults `baseUrl` through `createRequire` only when that is unreadable, and
+finally asks whether the row's package resolves from the profile `node_modules` or from this dsh
+installation. Unreadable or ambiguous disables the rows and writes ONE line to
+`<root>/.mpd/logs/mpd-patch-guards.log`, honouring `MPD_DSH_TEAM_ROWS=old|new|off`; a throw is the
+conservative disable. **The legacy body is not rewritten**: the installer self-test pins the shipped TUI
+clause by sha256, and the guard disables AND logs when a future host stops shipping the package, instead
+of silently dropping the plane.
+
+**One preset row moved with it.** rc.2's `standard` preset mounts `tool-office`
+(`@deepseek-ai/dsh-tool-office`, from the rc.2 office kit); rc.1's does not, and the package does not
+exist there. The `mpd` preset declares `tool-office` with a MOUNT GUARD, so the row is ENABLED on rc.2
+and DISABLED on rc.1. The gate now classifies a GUARDED extra row as a NOTE and an UNGUARDED one as a
+FAIL; that is a declared gate-semantics change under independent review, not a fact this page certifies.
+
+**The adapter's rule changed with it — presence is not servability.** `0.2.2-rc.2` keeps
+`ctx.agentTeams` as a TASK-BOARD-ONLY service (`isEnabled`, `setEnabled`, `createTask`, `getTask`,
+`listTasks`, `updateTask`); `membership`, `tryMembership`, `listMembers`, `spawnTeammate`,
+`sendMessage`, `interrupt` and `waitForChange` are GONE, and the tool plugin registers four tools, not
+nine. The adapter therefore tests EXECUTABILITY — `spawnTeammate` AND `sendMessage` AND `interrupt` AND
+`waitForChange` all functions — instead of presence, falls through to the native executor with ONE log
+line when the official service cannot execute, and reports the new `teamExecutorOfficial` capability
+flag beside `teamExecutorNative`. `TEAM_TASK_METHODS` and the task-board paths are unchanged.
+
+**Bound.** What is recorded above is what the patch, the preset and the adapter DO. The duplicate
+registration is a MEASURED boot failure; a per-row activation measurement inside a full mount belongs to
+the wave's own mount lane under `evidence/`, not to this page.
+
+## 3. dsh-TUI: `0.18.0`, `0.19.0` and `0.20.0` are all admitted
 
 `dsh-plugin.json` and `packages/mpd-tui-plugin/dsh-plugin.json` both declare
-`compat.hosts: ["@deepseek-harness-tui/dsh-tui@0.18.0", "@deepseek-harness-tui/dsh-tui@0.19.0"]`, and
-`dsh-distribution.json`'s `host-tui` ref names `0.19.0`. `verify:tui-admission` asserts that published
+`compat.hosts: ["@deepseek-harness-tui/dsh-tui@0.18.0", "@deepseek-harness-tui/dsh-tui@0.19.0",
+"@deepseek-harness-tui/dsh-tui@0.20.0"]`, and `dsh-distribution.json`'s `host-tui` ref names `0.20.0`. `verify:tui-admission` asserts that published
 band instead of trusting the field. The set of hosts this bundle CLAIMS is written data, not a
-discovered fact: `specs/tui-hosts.json` names both hosts, and the gate's COMPAT lane carries five arms —
+discovered fact: `specs/tui-hosts.json` names all three hosts, and the gate's COMPAT lane carries five arms —
 four that run host-free in every static pass, plus one that can only run when a host is discoverable:
 
 - `COMPAT.band:<label>` — each manifest's `compat.hosts` is a non-empty array of `@scope/name@x.y.z`
@@ -183,7 +248,7 @@ bound is that the *page* is a markdown file the host renders, and its content is
 
 ## 7. Where the detail lives
 
-The release narrative is in [`../CHANGELOG.md`](../CHANGELOG.md) `## 0.18.0`. The two upstream adaptation
+The release narrative is in [`../CHANGELOG.md`](../CHANGELOG.md) `## 0.19.0`. The two upstream adaptation
 sources this page rests on are the measured evidence bundle under
 `evidence/upstream/0.2.2/2026-11-07T05-45Z/` (mount, routing, row parity, the `0.19.0` negotiation probe and
 the batch-API finding) and the gate transcripts beside it. The DSH-Go standard is

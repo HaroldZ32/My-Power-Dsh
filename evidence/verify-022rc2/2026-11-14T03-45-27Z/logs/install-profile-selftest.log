@@ -1,0 +1,2 @@
+[install-profile self-test] ok: path model + row set + official agent-team rows (three old-generation rows; the rc.2 host owns the plane; generation+resolvability matrix over fixture hosts) + preset row (verbatim) + zero-override row policy (negative control reddens on a seeded id-target) + web-compat entry + id-target render verified
+EXIT=0

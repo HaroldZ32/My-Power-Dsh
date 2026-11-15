@@ -1,0 +1,54 @@
+{
+  "probeFile": "/home/haroldzhao/.t16-verify/tui-020-arm/run/probe.settled.json",
+  "settled": true,
+  "totalEntries": 158,
+  "boundSeamCount": 0,
+  "boundSeams": [],
+  "panelSeamBound": false,
+  "tuiStatusOutcome": {
+    "id": "tuiStatus",
+    "state": "absent",
+    "detail": "not composed in this profile"
+  },
+  "watched": [
+    {
+      "id": "mpd-agent-team",
+      "present": true,
+      "name": "@deepseek-ai/dsh-experimental-agent-team",
+      "disabled": true,
+      "active": false
+    },
+    {
+      "id": "mpd-tool-agent-team",
+      "present": true,
+      "name": "@deepseek-ai/dsh-experimental-tool-agent-team",
+      "disabled": true,
+      "active": false
+    },
+    {
+      "id": "mpd-ui-agent-team",
+      "present": true,
+      "name": "@deepseek-ai/dsh-experimental-client-ui-agent-team",
+      "disabled": true,
+      "active": false
+    },
+    {
+      "id": "agent-team",
+      "present": true,
+      "name": "@deepseek-ai/dsh-agent-team",
+      "disabled": false,
+      "active": false
+    },
+    {
+      "id": "tool-agent-team",
+      "present": true,
+      "name": "@deepseek-ai/dsh-tool-agent-team",
+      "disabled": false,
+      "active": false
+    },
+    {
+      "id": "ui-agent-team",
+      "present": false
+    }
+  ]
+}

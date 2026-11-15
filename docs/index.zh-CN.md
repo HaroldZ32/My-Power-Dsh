@@ -61,12 +61,12 @@ my-power-dsh（DeepSeek Harness，DSH 的插件 bundle）的文档中心。如�
 | [`../EXTENSIONS-FOR-AGENTS.md`](../EXTENSIONS-FOR-AGENTS.md) | 编写扩展的智能体 | 机器契约（仅有英文）：逐类型要求、每次文档检查都会校验的清单骨架、平面合法性、错误特征、拒绝清单与 v1 硬性边界。 |
 | [`extension-adaptation-report.zh-CN.md`](extension-adaptation-report.zh-CN.md) | 技术决策者 | 外部插件适配的现状报告：两条路径及各自适合谁、扩展接口清单、运行时与隔离姿态、本棵代码树上真实验证过的内容、风险与缺口，以及按 P0/P1/P2 排序的建议。 |
 | [`tui.zh-CN.md`](tui.zh-CN.md) | TUI 会话使用者 | DSH-TUI 版本：安装命令、TUI 原生界面、准入与分发产物、逐包兼容性台账，以及明确的 NOT-CLAIMED 清单。 |
-| [`tui-admission.zh-CN.md`](tui-admission.zh-CN.md) | TUI 界面的维护者与评审者 | 准入一致性页：生态的三个层以及它们的结论为什么不能互相顶替、针对 dsh-TUI 0.19.0（以及 0.18.0）的实测协商、每个 PARTIAL 都保持 PARTIAL 的 A–G 检查清单、带 R5 偏差及其理由的 R1–R7 红线，以及诚实的边界。 |
+| [`tui-admission.zh-CN.md`](tui-admission.zh-CN.md) | TUI 界面的维护者与评审者 | 准入一致性页：生态的三个层以及它们的结论为什么不能互相顶替、针对 dsh-TUI 0.19.0（以及 0.18.0）的实测协商、0.20.0 的波段主张及其已声明边界、每个 PARTIAL 都保持 PARTIAL 的 A–G 检查清单、带 R5 偏差及其理由的 R1–R7 红线，以及诚实的边界。 |
 | [`tui-parity.zh-CN.md`](tui-parity.zh-CN.md) | 在两个端之间做选择的用户 | 界面对齐台账：每个 Web 界面一行，列出它的 TUI 对应物、支撑该结论的证据等级，以及仍然开放的偏差。 |
 | [`design.zh-CN.md`](design.zh-CN.md) | 工程师、好奇的使用者 | bundle 如何组装与挂载：补丁层、启动链、插件清单、交互流程、状态布局、web 客户端接线、TUI 版本接线。 |
 | [`drive-surface.zh-CN.md`](drive-surface.zh-CN.md) | 集成方、客户端作者 | 非模型客户端可驱动的三组接缝：免 exec 的团队动作及其两条 POST 路由、带挂载门的提问中继，以及 DSH Go 原生界面（两个面板、一条 composer strip、菜单动作与工具卡片）：含守卫次序与诚实边界。 |
 | [`dsh-go-standard.zh-CN.md`](dsh-go-standard.zh-CN.md) | 集成方、插件作者 | 本 bundle 实现的 DSH-Go 原生插件标准：七个插槽及其上限、按语言的文本上限、视图预算、经适配器完成的 `ctx.inject(['dshGo'], …)` 绑定、五车道门禁以及诚实的边界。 |
-| [`compatibility.zh-CN.md`](compatibility.zh-CN.md) | 所有人 | 三平面兼容矩阵：DSH 核心（`0.2.1-rc.5` 与 `0.2.2-rc.1`）、dsh-TUI（`0.18.0` 与 `0.19.0` 都被接纳）与 DSH-Go（视图 v1 永远在，v2 按需选用）：什么被保证、什么会降级、旧宿主上什么不可用，以及插件展示元数据契约。 |
+| [`compatibility.zh-CN.md`](compatibility.zh-CN.md) | 所有人 | 三平面兼容矩阵：DSH 核心（`0.2.1-rc.5`、`0.2.2-rc.1` 与 `0.2.2-rc.2`）、dsh-TUI（`0.18.0`、`0.19.0` 与 `0.20.0` 都被接纳）与 DSH-Go（视图 v1 永远在，v2 按需选用）：什么被保证、什么会降级、旧宿主上什么不可用，以及插件展示元数据契约。 |
 | [`market-listing.zh-CN.md`](market-listing.zh-CN.md) | 维护者、打包者 | bundle 如何提交到三个插件目录：dshfind 索引的 `dsh-plugin` 话题、DSH Go 市场按 PR 收录的版本化目录、仍待提交的 dsh-TUI 生态条目及其五个收录检查，以及随每次发布同步的提交文件。 |
 | [`development.zh-CN.md`](development.zh-CN.md) | 开发者 | 仓库布局、构建/测试命令、QA 用例目录、关卡、打包/安装、vendor、git 模型、常见坑。 |
 | [`../CONTRIBUTING.zh-CN.md`](../CONTRIBUTING.zh-CN.md) | 贡献者 | 如何贡献：开发环境、关卡、git 模型、文档规则、证据、pull request。 |

@@ -2,7 +2,7 @@
 
 [English](./compatibility.md) | **中文**
 
-本页是 `0.18.1` 版本的**三平面兼容矩阵**：每个上游平面保证什么、在旧宿主上什么会降级、以及在旧宿主上
+本页是 `0.19.0` 版本的**三平面兼容矩阵**：每个上游平面保证什么、在旧宿主上什么会降级、以及在旧宿主上
 什么**不可用**。每一行都能追溯到一次门禁运行、一次在隔离 `DSH_HOME` 里的挂载启动，或旁边点名的上游包
 源码——绝不能追溯到真机，因为本仓库里没有 Flutter 宿主，也没有手机。
 
@@ -12,8 +12,8 @@
 
 | 平面 | 最低支持 | 当前目标 | 该声明在哪里被断言 |
 |---|---|---|---|
-| DSH 核心（`@deepseek-ai/dsh`） | `0.2.1-rc.5` | `0.2.2-rc.1` | `package.json` 的 `engines.dsh`、隔离挂载启动、`preset-conformance` |
-| DSH-TUI（`@deepseek-harness-tui/dsh-tui`） | `0.18.0` | `0.19.0` | `dsh-plugin.json` 的 `compat.hosts`、`verify:tui-admission`、宿主自己的协商 |
+| DSH 核心（`@deepseek-ai/dsh`） | `0.2.1-rc.5` | `0.2.2-rc.2` | `package.json` 的 `engines.dsh`、隔离挂载启动、`preset-conformance` |
+| DSH-TUI（`@deepseek-harness-tui/dsh-tui`） | `0.18.0` | `0.20.0` | `dsh-plugin.json` 的 `compat.hosts`、`verify:tui-admission`、宿主自己的协商 |
 | DSH-Go（`dsh-Go`，协议 v1） | 视图 v1，永远 | 在应用能接受的范围内用视图 v2 | `dshGo` 清单、`verify:dshgo` |
 
 三个词各只有一个含义。**保证**意味着本仓库里有检查真正演练过它。**降级**意味着在缺少该能力的宿主上，
@@ -22,16 +22,24 @@
 `engines.dsh` 刻意同时覆盖两个波段：`"dsh": ">=0.2.1-rc.5 <0.3.0-0"`。把发布锁死在新波段，会在安装阶段
 就拒绝旧宿主，而这正是本波的向后兼容规则所禁止的。
 
-## 2. DSH 核心：`0.2.1-rc.5` 与 `0.2.2-rc.1`
+## 2. DSH 核心：`0.2.1-rc.5`、`0.2.2-rc.1` 与 `0.2.2-rc.2`
 
 | | `0.2.1-rc.5` | `0.2.2-rc.1` |
 |---|---|---|
 | 安装 | 保证——`dsh plugin --profile w add <repo root>`，退出 0 | 保证——同一条命令，退出 0 |
 | 挂载与启动 | 保证——`bundle-lifecycle` PASS，所有启动检查为真，无 home 副本，卸载干净 | 保证——`bundle-lifecycle` PASS，同样的检查 |
-| `mpd` preset 创建 | 保证 | 保证——对已发布的 `standard` preset 行对齐 27/27，两条负向对照都按预期变红 |
+| `mpd` preset 创建 | 保证 | 保证——在当前树上实测的行对齐：`0.2.2-rc.1` 上 `mpd` preset 挂载 **29 个声明中的 28 个活跃行**，已发布的 `standard` preset 为 **28 中的 27**，`tool-office` 记为**守卫式 NOTE** 且 `problems: []`；`0.2.2-rc.2` 上是精确的 **28/29 对 28/29**，没有缺失、多余或有问题的行；自测的**六条**负向对照全部按预期变红。守卫式多余行归为 NOTE 的规则是**已声明的门禁语义变更**、正接受独立评审，不是本页背书的既成事实。 |
 | 模型路由（`agentOptions`） | 有效 | 有效——见下文 |
 | 经适配器的工具调用 | 有效 | 在下面的批量 API 修复**之后**有效 |
 | `list_agents` | **不可用**——已声明的能力减值 | 可用——根插件自己注册它 |
+
+**这条安装保证依托什么。** 上面两行都是两台宿主（`0.2.2-rc.2` 与 `0.2.2-rc.1`）上**实测的退出 0**，
+前提是 harness 安装与 profile 都位于**本 checkout 之外**。这个前提很要紧：如果 QA 沙箱落在仓库**内部**，
+`createRequire` 会沿着目录向上走进 checkout 自己的 `node_modules`，而那里同时存在两代团队包，于是
+harness 的插件兼容门禁会拒绝本 bundle，在任何一台宿主上都报 "installation rejected"。那次拒绝是
+**锚点**的性质，不是 bundle 的——已作为边界测量并记录。实测安装：rc.1 退出 0、rc.2 退出 0（T8 的
+干净锚点运行，记录为 `.qa-tmp/r3/t11/install-dsh-022.log` 与 `install-dsh-022rc2.log`）；污染锚点的拒绝
+记录见验证者的 `evidence/verify-022rc2/2026-11-14T03-02-10Z/logs/`。
 
 **上游改了什么。** `0.2.2-rc.1` 把 cordis 移到 `~4.1.0`、loader/include 移到 `~1.1.0`、timer 移到
 `~1.2.0`、schemastery 移到 `~3.19.0`、cosmokit 移到 `~1.9.0`，并给 CLI 增加了
@@ -56,7 +64,7 @@ arguments: <raw JSON string> }], … }`，返回 `ToolBatchResult`。我们的�
 `@deepseek-ai/dsh-tool-subagent-control` 移除了 `./list-agents` 子路径导出（根插件现在自己注册
 `list_agents`，已发布的 `standard` preset 也删掉了那一行）。模块路径已无法解析的行不可能保留，因此
 `presets/mpd.patch.yml` **删除**了它的 `tool-subagent-list-agents` 行。实测后果：在 `0.2.2-rc.1` 上
-`mpd` preset 现在与 `standard` 一致（行对齐 27/27，负向对照 4/4 变红）；在 `0.2.1-rc.5` 上同一个比较会
+`mpd` preset 挂载 29 个声明中的 28 个活跃行，而 `standard` 为 28 中的 27，`tool-office` 记为**守卫式 NOTE**（`problems: []`），自测的六条负向对照全部按预期变红；在 `0.2.1-rc.5` 上同一个比较会
 报告*“the mpd preset does not mount active row(s) the installed standard preset mounts:
 tool-subagent-list-agents”*。
 
@@ -70,13 +78,60 @@ harness 上不再由本 bundle 的 preset 提供。这就是本次发布的已�
 `!ctx.get('profileContext')`——在 `0.2.2-rc.1` 上它是激活的，而在 `0.2.1-rc.5` 上因为那台 harness 没有
 `profileContext` 服务，表达式求值为 disabled，旧宿主保持原来的行为。
 
-## 3. dsh-TUI：`0.18.0` 与 `0.19.0` 都被接纳
+### 2.1 `0.2.2-rc.2`：团队平面归宿主所有，旧代由三行承载（0.19.0）
+
+`0.2.2-rc.2` 把三个团队包改名为 `@deepseek-ai/dsh-agent-team`、`@deepseek-ai/dsh-tool-agent-team` 与
+`@deepseek-ai/dsh-client-ui-agent-team`，并且会在激活时对 rc.1 行携带的配置键**抛错**（服务行上的
+`maxMembers` / `maxMessageBytes` / `disposalTimeoutMs`，工具行上的 `interrupt` / `freshProvider` /
+`forkProvider`）。
+
+**在 `0.2.2-rc.2` 上，本 bundle 一行团队行都不挂。** 那一代宿主自己的层已经声明了这个平面：
+`dsh-base/cordis.patch.yml` 携带 `- id: agent-team`（`@deepseek-ai/dsh-agent-team`，配置
+`{maxTasks: 256}`）与 `- id: tool-agent-team`（`@deepseek-ai/dsh-tool-agent-team`），`dsh-web-app`
+携带 `- id: ui-agent-team`（`@deepseek-ai/dsh-client-ui-agent-team`），三者都未禁用。此时再挂一行
+bundle 行就是**重复注册**——实测启动报 `service "agentTeams" has been registered at <TeamService>` 与
+`prompt section "team:policy" is already registered`，且有两个条目未激活。因此三个 `-rc2` 行是**删除**
+而不是禁用，`package.json` 也不再声明任何团队包。
+
+**在 `0.2.2-rc.1` 上，本 bundle 的三行就是那个平面**（`mpd-agent-team`、`mpd-tool-agent-team`、
+`mpd-ui-agent-team`，配置与已发布版本一致），因为该宿主的 `dsh-base` 不声明任何团队行。它们的包由
+**宿主安装自身的嵌套副本**提供：空 profile 配 rc.1 宿主能正常 import
+`@deepseek-ai/dsh-experimental-agent-team`，而同一个空 profile 配 rc.2 宿主则报
+`Cannot find package '@deepseek-ai/dsh-experimental-agent-team'`。因此本 bundle 不内置该包。
+
+判定由一个 guard 完成，而且它是**组合**而非重写：
+`（已发布的 dsh-tui 条款，与 HEAD 逐字节相同） || （代际 + 可解析性条款）`。TUI 那一半保持原有姿态
+（只作用于第 1-2 行，那里抛错即保持启用）；另一半从 `process.argv[1]` 之上最近的
+`@deepseek-ai/dsh/package.json`（取 realpath）判定代际，仅当它不可读时才用 `createRequire` 查
+`baseUrl`，最后问该行的包能否从 profile 的 `node_modules` 或本次 dsh 安装解析到。不可读或有歧义时
+禁用这些行并向 `<root>/.mpd/logs/mpd-patch-guards.log` 写**一行**，同时尊重
+`MPD_DSH_TEAM_ROWS=old|new|off`；抛错即保守禁用。**旧有正文没有被重写**：安装器自测用 sha256 钉住
+已发布的 TUI 条款；若将来某台宿主不再携带该包，guard 会**禁用并记日志**，而不是静默丢掉这个平面。
+
+**预设里也随之移动了一行。** rc.2 的 `standard` preset 挂载 `tool-office`
+（`@deepseek-ai/dsh-tool-office`，来自 rc.2 的 office kit）；rc.1 的既不声明该行、也不存在该包。
+`mpd` preset 以**挂载守卫**声明 `tool-office`，因此该行在 rc.2 上**启用**、在 rc.1 上**禁用**。门禁现在
+把**带守卫**的多余行归为 NOTE，把无守卫的多余行仍判 FAIL；那是已声明的门禁语义变更、正接受独立评审，
+不是本页背书的既成事实。
+
+**适配器的规则也随之改变——存在不等于可服务。** `0.2.2-rc.2` 保留的 `ctx.agentTeams` 是**只含任务看板**
+的服务（`isEnabled`、`setEnabled`、`createTask`、`getTask`、`listTasks`、`updateTask`）；
+`membership`、`tryMembership`、`listMembers`、`spawnTeammate`、`sendMessage`、`interrupt` 与
+`waitForChange` 都已移除，工具插件只注册四个工具而不是九个。因此适配器改为探测**可执行性**——
+`spawnTeammate`、`sendMessage`、`interrupt`、`waitForChange` 必须都是函数——而不是存在性；官方服务
+无法执行时，它记一行日志并回落到 native 执行器，同时在 `teamExecutorNative` 旁报告新的
+`teamExecutorOfficial` 能力标志。`TEAM_TASK_METHODS` 与任务看板路径保持不变。
+
+**边界。** 以上记录的是 patch、preset 与适配器**实际做什么**；重复注册是**实测的启动失败**，而完整
+挂载中的逐行激活测量属于本波自己的挂载车道（`evidence/` 下），不在本页。
+
+## 3. dsh-TUI：`0.18.0`、`0.19.0` 与 `0.20.0` 都被接纳
 
 `dsh-plugin.json` 与 `packages/mpd-tui-plugin/dsh-plugin.json` 都声明
-`compat.hosts: ["@deepseek-harness-tui/dsh-tui@0.18.0", "@deepseek-harness-tui/dsh-tui@0.19.0"]`，而
-`dsh-distribution.json` 的 `host-tui` 引用写的是 `0.19.0`。`verify:tui-admission` 断言这份已发布的
+`compat.hosts: ["@deepseek-harness-tui/dsh-tui@0.18.0", "@deepseek-harness-tui/dsh-tui@0.19.0",
+"@deepseek-harness-tui/dsh-tui@0.20.0"]`，而 `dsh-distribution.json` 的 `host-tui` 引用写的是 `0.20.0`。`verify:tui-admission` 断言这份已发布的
 波段，而不再只是相信字段。本 bundle **声明**支持的宿主集合是**写死的数据**，不是被发现的事实：
-`specs/tui-hosts.json` 点名这两台宿主，门禁的 COMPAT 车道有五条臂——四条在每次静态运行中都无需宿主即可
+`specs/tui-hosts.json` 点名这三台宿主，门禁的 COMPAT 车道有五条臂——四条在每次静态运行中都无需宿主即可
 跑，另有一条只有在能发现宿主时才跑：
 
 - `COMPAT.band:<label>`——每份清单的 `compat.hosts` 都是非空的 `@scope/name@x.y.z` 坐标数组（每份清单一条臂）。
@@ -158,7 +213,7 @@ resolution.”* 这段措辞在 `0.2.1-rc.5` 与 `0.2.2-rc.1` 上完全相同，
 
 ## 7. 细节在哪里
 
-发布叙事见 [`../CHANGELOG.md`](../CHANGELOG.md) 的 `## 0.18.0`。本页所依托的两份上游适配来源，是
+发布叙事见 [`../CHANGELOG.md`](../CHANGELOG.md) 的 `## 0.19.0`。本页所依托的两份上游适配来源，是
 `evidence/upstream/0.2.2/2026-11-07T05-45Z/` 下的实测证据包（挂载、路由、行对齐、`0.19.0` 协商探针与
 批量 API 发现）以及旁边的门禁记录。DSH-Go 标准见
 [`dsh-go-standard.zh-CN.md`](dsh-go-standard.zh-CN.md)；TUI 车道见 [`tui.zh-CN.md`](tui.zh-CN.md) 与

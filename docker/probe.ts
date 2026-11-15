@@ -16,9 +16,12 @@
 //   [docker-probe] APPLIED=ok
 //   [docker-probe] CORE_TOOLS=<present>/<total>
 //   [docker-probe] CORE_TOOLS_MISSING=<csv|empty>
-//   [docker-probe] TEAM_TOOLS_ROOT=<present>/<total>          (observation: root plane is correctly empty)
+//   [docker-probe] TEAM_TOOLS_ROOT=<present>/<total>|absent generation=<generation>  (observation: the
+//                                                  root plane is correctly empty for the graded set)
 //   [docker-probe] AGENTS_AT_APPLY=<n>
-//   [docker-probe] AGENT_TEAM_TOOLS=<present>/<total> agent=<label> [MISSING=<csv>]
+//   [docker-probe] AGENT_TEAM_TOOLS=<present>/<total>|absent agent=<label> [MISSING=<csv>] generation=<generation>
+//                                                  (graded set follows `TEAM_GENERATION`: 9 roster/mailbox
+//                                                  tools on roster-capable, 4 team_task_* on task-board-only)
 //   [docker-probe] RETIRED_TOOLS_PRESENT=<csv|empty>
 //   [docker-probe] ADAPTER_SERVICE=present|absent
 //   [docker-probe] ADAPTER_CAPS=<csv>
@@ -146,22 +149,37 @@ const LIVE_SEARCH_LANGUAGE: string = "typescript"
 // The env key the entrypoint fills with the directory to search; absent, the boot's cwd is used.
 const LIVE_SEARCH_DIR_ENV: string = "MPD_E2E_PROBE_SEARCH_DIR"
 
-// The OFFICIAL agent-team tool surface (docs/plan-0.1.7-adaptation.md §2.2), mounted by the
-// `mpd-tool-agent-team` row (§4 D3).
+// The OFFICIAL agent-team tool surface (docs/plan-0.1.7-adaptation.md §2.2), mounted by the official
+// team-tools row for the host generation (`mpd-tool-agent-team` on harness 0.2.2-rc.1,
+// `mpd-tool-agent-team-rc2` on 0.2.2-rc.2 — §4 D3/D4).
 //
 // MEASURED PLANE (2026-09-27, first Docker run): these names are registered in ONE EXACT AGENT
-// SCOPE — `@deepseek-ai/dsh-experimental-tool-agent-team` calls `scoped.tools.register(...)` on
-// `agent.ctx` inside `install(agent, ctx, config)`, which the plugin runs per agent (`ctx.agents.list()`
+// SCOPE — the official team-tools plugin calls `scoped.tools.register(...)` on `agent.ctx` inside
+// `install(agent, ctx, config)`, which the plugin runs per agent (`ctx.agents.list()`
 // plus the `agent/created` event). A ROOT-level `ctx.tools.get("spawn_teammate")` therefore answers
 // undefined BY DESIGN, and asserting them there would report a passing tree as broken. The probe
 // measures them where they live — in the agent scope — and reports the root read separately so the
 // distinction is visible in the evidence instead of being silently dropped.
+//
+// THE 0.2.2-rc.1 (ROSTER-CAPABLE) SET — graded only when the mounted service still exposes the
+// roster/mailbox methods. `TEAM_TASK_BOARD_TOOLS` below is the 0.2.2-rc.2 set, and `readTeamSurface`
+// decides which of the two is expected; neither list is ever used as a claim about the OTHER host.
 const TEAM_TOOLS: readonly string[] = [
   "spawn_teammate",
   "send_message",
   "list_agents",
   "wait_agent",
   "interrupt_agent",
+  "team_task_create",
+  "team_task_list",
+  "team_task_get",
+  "team_task_update",
+]
+
+// THE 0.2.2-rc.2 (TASK-BOARD-ONLY) SET. The roster API was removed from `ctx.agentTeams`, so the
+// renamed tool plugin ships ONLY these four names — a host that registers the roster tools on this
+// generation, or loses one of these, fails the same grading.
+const TEAM_TASK_BOARD_TOOLS: readonly string[] = [
   "team_task_create",
   "team_task_list",
   "team_task_get",
@@ -389,6 +407,72 @@ async function settle(has: (n: string) => ToolAnswer, names: readonly string[], 
 }
 
 /**
+ * What the OFFICIAL team service looks like from inside the booted process: the members that decide
+ * which host generation is running. Read ONCE per probe, so every consumer of the generation — the
+ * tool-set grading, the per-agent lines and the `TEAM_GENERATION=` line — reports the same answer.
+ */
+interface TeamSurface {
+  /** Whether `ctx.get("agentTeams")` answered a non-null value at all. */
+  mounted: boolean
+  /** The service's own class name (`TeamService` for the real one), "" when nothing mounted. */
+  serviceName: string
+  /** The probed method names that answered as functions, in probe order. */
+  methods: readonly string[]
+  /** The lineage the method surface implies: roster API present, task board only, or nothing at all. */
+  generation: "roster-capable" | "task-board-only" | "absent"
+}
+
+/** The roster/mailbox methods harness 0.2.2-rc.2 REMOVED; one present means the 0.2.2-rc.1 lineage. */
+const ROSTER_METHODS: readonly string[] = ["listMembers", "spawnTeammate", "sendMessage", "waitForChange", "interrupt", "tryMembership"]
+
+/** Every team-service member this probe tests for, listed once so no two lines can disagree. */
+const TEAM_SERVICE_METHODS: readonly string[] = ["listMembers", "spawnTeammate", "sendMessage", "createTask", "getTask", "listTasks", "updateTask", "waitForChange", "interrupt", "tryMembership"]
+
+/**
+ * Read the official team service and derive the generation from its OWN method surface, never from a
+ * package name: a name would be an assumption about the composition, the surface is the observation.
+ *
+ * @param ctx - The booted profile's scoped ctx, used only for `ctx.get("agentTeams")`.
+ * @returns The mounted flag, class name, answered methods and the generation they imply.
+ */
+function readTeamSurface(ctx: ProbeContext): TeamSurface {
+  /** The raw service value, kept untyped so a non-object still reads as MOUNTED. */
+  const agentTeams: unknown = typeof ctx.get === "function" ? ctx.get("agentTeams") : undefined
+  /** Mountedness is decided on the RAW value, so a non-object service still reads as MOUNTED. */
+  const mounted = agentTeams !== undefined && agentTeams !== null
+  /** The service viewed as a bag, so the dynamically probed methods can be read at all. */
+  const bag = asRecord(agentTeams)
+  /** The members that really answered as functions. */
+  const methods: readonly string[] = mounted ? TEAM_SERVICE_METHODS.filter((method) => typeof bag?.[method] === "function") : []
+  /** The generation: any roster method -> the rc.1 lineage; task board only -> the rc.2 lineage. */
+  const generation: TeamSurface["generation"] = !mounted
+    ? "absent"
+    : ROSTER_METHODS.some((method) => methods.includes(method)) ? "roster-capable" : "task-board-only"
+  return { mounted, serviceName: mounted ? String(bag?.constructor?.name ?? typeof agentTeams) : "", methods, generation }
+}
+
+/**
+ * Wait for the official team service to appear, then read its surface ONCE. Rows apply concurrently,
+ * so a single immediate read would report a healthy tree as `absent`; the wait is the same discipline
+ * `settle` applies to the tool registry.
+ *
+ * @param ctx - The booted profile's scoped ctx.
+ * @param budgetMs - How long to poll before accepting an `absent` answer.
+ * @returns The first surface whose generation is not `absent`, else the last read (never throws).
+ */
+async function observeTeamSurface(ctx: ProbeContext, budgetMs: number): Promise<TeamSurface> {
+  /** The instant the poll gives up: ONE shared deadline, so the wall-clock cost stays the budget. */
+  const deadline = Date.now() + budgetMs
+  /** The most recent read; `absent` until a row provides the service. */
+  let surface = readTeamSurface(ctx)
+  while (Date.now() < deadline && surface.generation === "absent") {
+    await new Promise((resolve) => setTimeout(resolve, 250))
+    surface = readTeamSurface(ctx)
+  }
+  return surface
+}
+
+/**
  * The plugin entry point: read the live tool registry, the adapter service and the official
  * agent-teams service from inside the booted process, and print one line per fact.
  *
@@ -421,10 +505,19 @@ export async function apply(ctx: ProbeContext): Promise<void> {
     console.log("[docker-probe] MCP_REGISTERED=" + registered.join(","))
     console.log("[docker-probe] MCP_SERVER_COUNTS=" + mcpServerCounts(registered))
 
-    // The ROOT-plane read of the team tools, reported as an OBSERVATION: the official plugin
-    // registers them per agent, so 0/9 here is the documented shape, not a failure.
-    const teamRoot = await settle(has, TEAM_TOOLS, 5000)
-    console.log("[docker-probe] TEAM_TOOLS_ROOT=" + teamRoot.present + "/" + teamRoot.total)
+    // WHICH TEAM GENERATION THIS HOST RUNS — read ONCE here, and every line below is derived from THIS
+    // object: the expected tool set, the counts, the per-agent lines and the final `TEAM_GENERATION=`
+    // line. A per-agent line therefore cannot grade one set while the generation line claims the other.
+    const teamSurface = await observeTeamSurface(ctx, 5000)
+    // The tool names the official plugin must register on THIS generation; EMPTY means `absent`, which
+    // is reported as absent and never as a vacuous 0/0.
+    const expectedTeamTools: readonly string[] = teamSurface.generation === "roster-capable"
+      ? TEAM_TOOLS
+      : teamSurface.generation === "task-board-only" ? TEAM_TASK_BOARD_TOOLS : []
+    // The ROOT-plane read of those tools, reported as an OBSERVATION: the official plugin registers
+    // them per agent, so a 0/N root read is the documented shape, not a failure.
+    const teamRoot = await settle(has, expectedTeamTools, expectedTeamTools.length === 0 ? 0 : 5000)
+    console.log("[docker-probe] TEAM_TOOLS_ROOT=" + (expectedTeamTools.length === 0 ? "absent" : teamRoot.present + "/" + teamRoot.total) + " generation=" + teamSurface.generation)
 
     // The AGENT-plane read: where those tools actually appear. ONE line per agent (label + count),
     // emitted for every agent that already exists and for every one created afterwards — the
@@ -445,14 +538,20 @@ export async function apply(ctx: ProbeContext): Promise<void> {
         console.log(`[docker-probe] AGENT_TEAM_TOOLS=unreadable agent=${label}`)
         return
       }
+      // `absent` IS NOT A PASS: with no official team service there is no generation whose tool set
+      // could be graded, so the line SAYS so instead of printing a 0/0 a reader could read as a match.
+      if (expectedTeamTools.length === 0) {
+        console.log(`[docker-probe] AGENT_TEAM_TOOLS=absent agent=${label} generation=absent`)
+        return
+      }
       // The graded read: the harness's own scope-keyed lookup (`get(name, agent)`).
       const viaScope = (name: string): boolean => { try { return rootTools?.get?.(name, agent) !== undefined } catch { return false } }
       // The contrast read: the agent's OWN scoped ctx, whose global view is known to miss these names.
       const viaScopedCtx = (name: string): boolean => { try { return agent.ctx?.tools?.get?.(name) !== undefined } catch { return false } }
-      // Team tools the scope-keyed lookup could not see.
-      const missing = TEAM_TOOLS.filter((name) => !viaScope(name))
-      // Team tools the scope-less lookup could not see (printed to make the plane difference explicit).
-      const scopelessMissing = TEAM_TOOLS.filter((name) => !viaScopedCtx(name))
+      // Team tools of THIS generation's expected set that the scope-keyed lookup could not see.
+      const missing = expectedTeamTools.filter((name) => !viaScope(name))
+      // …and the ones the scope-less lookup could not see (printed to make the plane difference explicit).
+      const scopelessMissing = expectedTeamTools.filter((name) => !viaScopedCtx(name))
       // `schemas(scope)` length, or -1 when the list accessor itself is unavailable.
       let visible = -1
       try {
@@ -460,7 +559,7 @@ export async function apply(ctx: ProbeContext): Promise<void> {
         const schemas = rootTools?.schemas?.(agent)
         visible = schemas === undefined ? -1 : schemas.length
       } catch { visible = -1 }
-      console.log(`[docker-probe] AGENT_TEAM_TOOLS=${TEAM_TOOLS.length - missing.length}/${TEAM_TOOLS.length} agent=${label}${missing.length > 0 ? " MISSING=" + missing.join(",") : ""} scopelessRead=${TEAM_TOOLS.length - scopelessMissing.length}/${TEAM_TOOLS.length}`)
+      console.log(`[docker-probe] AGENT_TEAM_TOOLS=${expectedTeamTools.length - missing.length}/${expectedTeamTools.length} agent=${label}${missing.length > 0 ? " MISSING=" + missing.join(",") : ""} generation=${teamSurface.generation} scopelessRead=${expectedTeamTools.length - scopelessMissing.length}/${expectedTeamTools.length}`)
       console.log(`[docker-probe] AGENT_VISIBLE_TOOLS=${visible} agent=${label}`)
     }
     // The label printed beside every per-agent line: id, then label, then name, then `?`, capped at 40.
@@ -555,23 +654,17 @@ export async function apply(ctx: ProbeContext): Promise<void> {
       console.log("[docker-probe] MCP_LIVE_SEARCH_SHAPE=adapter-service-absent")
     }
 
-    // THE OFFICIAL AGENT-TEAMS SERVICE. `mpd-agent-team` mounts
-    // @deepseek-ai/dsh-experimental-agent-team, whose plugin provides `ctx.agentTeams` (class
-    // TeamService). A COMPOSED row proves nothing about a load — this read is taken inside the
-    // running process, and the class name is the witness that the official service (not some stub)
-    // is what answered.
-    const agentTeams: unknown = typeof ctx.get === "function" ? ctx.get("agentTeams") : undefined
-    // Mountedness is decided on the RAW value, so a non-object service still reads as MOUNTED.
-    const mounted = agentTeams !== undefined && agentTeams !== null
-    // The service viewed as a bag, so the dynamically probed methods below can be read at all.
-    const agentTeamsRecord = asRecord(agentTeams)
-    /** The mounted team service's class name, which is how a reader tells the REAL service from a look-alike. */
-    const serviceName = mounted ? String(agentTeamsRecord?.constructor?.name ?? typeof agentTeams) : ""
-    console.log("[docker-probe] AGENT_TEAMS=" + (mounted ? "MOUNTED" : "ABSENT") + " serviceName=" + (serviceName || "unknown"))
-    console.log("[docker-probe] AGENT_TEAMS_METHODS=" + (mounted
-      ? ["listMembers", "spawnTeammate", "sendMessage", "createTask", "getTask", "listTasks", "updateTask", "waitForChange", "interrupt", "tryMembership"]
-        .filter((method) => typeof agentTeamsRecord?.[method] === "function").join(",")
-      : ""))
+    // THE OFFICIAL AGENT-TEAMS SERVICE, WHICHEVER GENERATION THIS HOST RUNS, printed from the ONE
+    // observation taken before the tool grading (`teamSurface`). The ENABLED row mounts the team plugin
+    // for the host generation (`@deepseek-ai/dsh-agent-team` on 0.2.2-rc.2, the earlier spelling
+    // `@deepseek-ai/dsh-experimental-agent-team` on 0.2.2-rc.1), and both provide `ctx.agentTeams` as
+    // `TeamService`. A COMPOSED row proves nothing about a load — this read is taken inside the running
+    // process, and the class name plus the method set are the witness that the official service (not
+    // some stub) answered. Reusing the stored surface is what makes these three lines and the per-agent
+    // tool lines physically unable to disagree.
+    console.log("[docker-probe] AGENT_TEAMS=" + (teamSurface.mounted ? "MOUNTED" : "ABSENT") + " serviceName=" + (teamSurface.serviceName || "unknown"))
+    console.log("[docker-probe] AGENT_TEAMS_METHODS=" + teamSurface.methods.join(","))
+    console.log("[docker-probe] TEAM_GENERATION=" + teamSurface.generation)
     console.log("[docker-probe] DONE=1")
   } catch (error) {
     // Never take the boot down: a probe that throws would turn an instrumentation failure into a

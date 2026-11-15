@@ -1,0 +1,1 @@
+[mpd-team-rows] generation=new source=argv1 argv1=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/dsh/lib/bin.js harness=0.2.2-rc.2 baseUrl=file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc2/dsh-home/profiles/t1/ baseUrlHarness=<unresolved> presence=<not-read> oldRows=disabled newRows=enabled override=<unset>

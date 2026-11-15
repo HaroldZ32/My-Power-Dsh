@@ -20,7 +20,7 @@
 //     fails.
 import { describe, expect, test } from "bun:test"
 
-import { createDshAdapter, type DshTeamMemberView, type DshTeamTaskView } from "../src/index"
+import { createDshAdapter, type DshTeamMarkedArray, type DshTeamMemberView, type DshTeamTaskView } from "../src/index"
 
 /**
  * The frozen team surface and its declared parameter counts.
@@ -43,13 +43,17 @@ const FROZEN_TEAM_SURFACE: ReadonlyArray<readonly [string, number]> = [
   ["teamSpawnTeammate", 2],
   ["teamInterrupt", 2],
   ["teamWaitForChange", 3],
+  // D6b/A1: the 0.2.2-rc.2 enable switch, exposed through this adapter only. The declared
+  // arity of `setTeamEnabled` is 2 (the optional signal is a DEFAULT-valued parameter).
+  ["teamEnabled", 1],
+  ["setTeamEnabled", 2],
   ["teamLiveTeams", 0],
   ["registerSubagentProvider", 1],
   ["subagentProvider", 1],
 ]
 
 /** One capability flag per new seam of the team plane. */
-const FROZEN_TEAM_FLAGS = ["team", "teamTasks", "teamMessages", "subagentsProviderRegister", "teamExecutorNative"] as const
+const FROZEN_TEAM_FLAGS = ["team", "teamServiceMounted", "teamRoster", "teamTasks", "teamMessages", "teamMessaging", "teamSpawn", "teamWait", "teamInterrupt", "teamEnableSwitch", "subagentsProviderRegister", "teamExecutorNative", "teamExecutorOfficial"] as const
 
 /** One recorded call: the seam name, the receiver it was called on, and the forwarded arguments. */
 type Call = { seam: string; receiver: unknown; args: unknown[] }
@@ -193,6 +197,15 @@ function teamHarness(options: { membership?: unknown; liveAgents?: unknown[] } =
     waitForChange(this: unknown, caller: unknown, timeoutMs: unknown, signal: unknown): Promise<{ timedOut: boolean }> {
       record("waitForChange", this, caller, timeoutMs, signal)
       return Promise.resolve(waitResult)
+    },
+    /** Read the enable switch, which a FULL harness (the union of both generations) carries. */
+    isEnabled(this: unknown, agent: unknown): boolean {
+      record("isEnabled", this, agent)
+      return true
+    },
+    /** Set the enable switch; the double records the call and answers nothing, like the host. */
+    async setEnabled(this: unknown, agent: unknown, enabled: unknown, signal: unknown): Promise<void> {
+      record("setEnabled", this, agent, enabled, signal)
     },
   }
 
@@ -695,6 +708,50 @@ describe("teamLiveTeams: the contained fold over the live registry", () => {
     const teamOnly = { get: (name: string) => (name === "agentTeams" ? { tryMembership: () => ({ id: "t", role: "lead" }) } : undefined) }
     expect(createDshAdapter(teamOnly).teamLiveTeams()).toEqual([])
   })
+
+  // THE READ GATE IS `listTasks` ALONE. The regression these two arms pin: gating the READ on the
+  // four-method write set silently emptied the board for every read-only fixture (a surface that can
+  // be listed but not written), and a downstream taskId read then saw null with no warning.
+  test("a READ-ONLY board (listTasks present, no create/get/update) still yields its tasks", () => {
+    /** Identity + roster + `listTasks`, and NONE of the write seams. */
+    const readOnly = {
+      get: (name: string) => (name === "agentTeams"
+        ? {
+          tryMembership: () => ({ id: "team-1", role: "lead", name: "lead" }),
+          listMembers: () => [{ id: "member-1", name: "researcher", role: "teammate", status: "running" }],
+          listTasks: () => [{ id: "task-1", revision: 1, subject: "s", description: "d", status: "pending", blockedBy: [], writeScopes: [], ready: true, writeScopeWarnings: [] }],
+        }
+        : name === "agents"
+          ? { list: () => [{ id: "session-lead" }] }
+          : undefined),
+    }
+    /** The single folded team. */
+    const [team] = createDshAdapter(readOnly).teamLiveTeams()
+    // The board is READ even though createTask / getTask / updateTask are all absent.
+    expect(team.tasks.map((row) => row.id)).toEqual(["task-1"])
+    // Nothing was degraded, so the rows carry NO unsupported marker.
+    expect((team.tasks as DshTeamMarkedArray<DshTeamTaskView>).unsupported).toBeUndefined()
+    expect(createDshAdapter(readOnly).capabilities().teamTasks).toBe(false)
+  })
+
+  test("without listTasks the entry's board is empty CARRYING the task-board marker", () => {
+    /** Identity + roster and NO board seam at all. */
+    const noBoard = {
+      get: (name: string) => (name === "agentTeams"
+        ? { tryMembership: () => ({ id: "team-1", role: "lead", name: "lead" }), listMembers: () => [] }
+        : name === "agents"
+          ? { list: () => [{ id: "session-lead" }] }
+          : undefined),
+    }
+    /** The single folded team. */
+    const [team] = createDshAdapter(noBoard).teamLiveTeams()
+    /** The board rows, typed so the degraded marker can be read. */
+    const tasks = team.tasks as DshTeamMarkedArray<DshTeamTaskView>
+    // Empty, but NEVER a silent []: the marker names the missing capability.
+    expect(tasks).toHaveLength(0)
+    expect(tasks.unsupported?.unsupported).toBe(true)
+    expect(tasks.unsupported?.capability).toBe("task-board")
+  })
 })
 
 describe("the degrade table: an absent team service NEVER crashes and always says why", () => {
@@ -753,18 +810,41 @@ describe("the degrade table: an absent team service NEVER crashes and always say
     }
   })
 
-  test("a service that is present but lacks ONE method names that method, not the service", async () => {
-    /** A service carrying only the identity read. */
+  test("a MOUNTED partial service: the roster half answers the structured marker, the board half keeps its throw", async () => {
+    /** A service carrying only the identity read: a half-present host, not rc.2's exact shape. */
     const partial = { get: (name: string) => (name === "agentTeams" ? { tryMembership: () => undefined } : undefined) }
     /** The adapter under test. */
     const adapter = createDshAdapter(partial)
-    expect(() => adapter.teamListMembers({ id: "a" })).toThrow(/the harness agentTeams service exposes no listMembers\(\)/)
+    // D6b: on a task-only host the ROSTER/MAILBOX/SPAWN/WAIT half NEVER lets a raw service error
+    // escape — each answers its own empty result carrying the `unsupported` marker.
+    /** The roster answer: [] plus the marker (an array is still iterable exactly as before). */
+    const members = adapter.teamListMembers({ id: "a" })
+    expect(members).toEqual([])
+    expect(members.unsupported?.capability).toBe("roster")
+    expect(members.unsupported?.generation).toBe("partial")
+    expect(members.unsupported?.reason).toContain("teamRoster")
+    /** The send answer: NOTHING was queued, and the status says so. */
+    const sent = await adapter.teamSendMessage({ id: "a" }, { target: "t", content: [] })
+    expect(sent.status).toBe("unsupported")
+    expect(sent.messageId).toBe("")
+    expect(sent.unsupported?.capability).toBe("send")
+    /** The spawn answer: an empty member row plus the marker, never a rejection. */
+    const spawned = await adapter.teamSpawnTeammate({ id: "a" }, { name: "n", description: "d", prompt: [] })
+    expect(spawned.member.id).toBe("")
+    expect(spawned.unsupported?.capability).toBe("spawn")
+    /** The wait answer: no change was observed because none could be. */
+    const waited = await adapter.teamWaitForChange({ id: "a" }, 1_000)
+    expect(waited.timedOut).toBe(true)
+    expect(waited.unsupported?.capability).toBe("wait")
+    /** The interrupt answer: the conservative pre-cancellation status plus the marker. */
+    expect(adapter.teamInterrupt({ id: "a" }, "n")).toEqual({ previousStatus: "inactive", unsupported: expect.objectContaining({ capability: "interrupt" }) })
+    // The 0.2.2-rc.2 enable switch degrades to UNKNOWN on a host without it: never a throw.
+    expect(adapter.teamEnabled({ id: "a" })).toBeUndefined()
+    await expect(adapter.setTeamEnabled({ id: "a" }, true)).resolves.toBeUndefined()
+    // A1 item 5: the BOARD half is untouched — a missing board seam still throws NAMING IT, which is
+    // what keeps "no tasks" and "no board" distinguishable.
     expect(() => adapter.teamListTasks({ id: "a" })).toThrow(/the harness agentTeams service exposes no listTasks\(\)/)
     await expect(adapter.teamCreateTask({ id: "a" }, { subject: "s" })).rejects.toThrow(/exposes no createTask\(\)/)
-    await expect(adapter.teamSendMessage({ id: "a" }, { target: "t", content: [] })).rejects.toThrow(/exposes no sendMessage\(\)/)
-    await expect(adapter.teamSpawnTeammate({ id: "a" }, { name: "n", description: "d", prompt: [] })).rejects.toThrow(/exposes no spawnTeammate\(\)/)
-    await expect(adapter.teamWaitForChange({ id: "a" }, 1_000)).rejects.toThrow(/exposes no waitForChange\(\)/)
-    expect(() => adapter.teamInterrupt({ id: "a" }, "n")).toThrow(/exposes no interrupt\(\)/)
     expect(() => adapter.teamGetTask({ id: "a" }, "task-1")).toThrow(/exposes no getTask\(\)/)
     await expect(adapter.teamUpdateTask({ id: "a" }, { taskId: "t", expectedRevision: 1, action: "claim" })).rejects.toThrow(/exposes no updateTask\(\)/)
   })

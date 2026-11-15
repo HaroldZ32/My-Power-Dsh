@@ -1,0 +1,1 @@
+[preset-conformance] FAIL: self-test: row(s) could not be checked against the installed harness: cordis.patch.yml: mpd-agent-team-rc2 (@deepseek-ai/dsh-agent-team), cordis.patch.yml: mpd-tool-agent-team-rc2 (@deepseek-ai/dsh-tool-agent-team), cordis.patch.yml: mpd-ui-agent-team-rc2 (@deepseek-ai/dsh-client-ui-agent-team)

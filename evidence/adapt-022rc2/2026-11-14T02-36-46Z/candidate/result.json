@@ -1,0 +1,657 @@
+{
+  "at": "2026-11-14T02:15:02.407Z",
+  "candidatePatch": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/cordis.patch.yml",
+  "candidateGuardBytes": {
+    "mpd-agent-team": 8472,
+    "mpd-tool-agent-team": 8472,
+    "mpd-ui-agent-team": 7410,
+    "mpd-agent-team-rc2": 8488,
+    "mpd-tool-agent-team-rc2": 8498,
+    "mpd-ui-agent-team-rc2": 7410
+  },
+  "loadersIdentical": true,
+  "loaderFile": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis-plugin-loader/lib/index.js",
+  "arms": [
+    {
+      "label": "rc1-host + rc1-profile",
+      "override": null,
+      "observed": {
+        "argv1": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh/lib/bin.js",
+        "argv1Realpath": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh/lib/bin.js",
+        "nearestHarness": {
+          "dir": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh",
+          "version": "0.2.2-rc.1"
+        },
+        "baseUrl": "file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc1/dsh-home/profiles/t1/",
+        "profileDir": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc1/dsh-home/profiles/t1",
+        "profileHarness": {
+          "resolved": null,
+          "version": null,
+          "insideProfile": false,
+          "error": "Cannot find module '@deepseek-ai/dsh/package.json'\nRequire stack:\n- /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc1/dsh-home/profiles/t1/package.json"
+        },
+        "presence": {
+          "@deepseek-ai/dsh-experimental-agent-team": true,
+          "@deepseek-ai/dsh-agent-team": false
+        }
+      },
+      "candidate": {
+        "mpd-agent-team": false,
+        "mpd-tool-agent-team": false,
+        "mpd-ui-agent-team": false,
+        "mpd-agent-team-rc2": true,
+        "mpd-tool-agent-team-rc2": true,
+        "mpd-ui-agent-team-rc2": true
+      },
+      "reference": {
+        "oldDisabled": false,
+        "newDisabled": true
+      },
+      "logs": {
+        "candidate": [
+          "[mpd-team-rows] generation=old source=argv1 argv1=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh/lib/bin.js harness=0.2.2-rc.1 baseUrl=file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc1/dsh-home/profiles/t1/ baseUrlHarness=<unresolved> presence=<not-read> oldRows=enabled newRows=disabled override=<unset>"
+        ]
+      },
+      "verdict": {
+        "candidateOldEnabled": true,
+        "candidateNewEnabled": false,
+        "referenceOldEnabled": true,
+        "referenceNewEnabled": false
+      }
+    },
+    {
+      "label": "rc2-host + rc2-profile",
+      "override": null,
+      "observed": {
+        "argv1": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/dsh/lib/bin.js",
+        "argv1Realpath": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/dsh/lib/bin.js",
+        "nearestHarness": {
+          "dir": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/dsh",
+          "version": "0.2.2-rc.2"
+        },
+        "baseUrl": "file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc2/dsh-home/profiles/t1/",
+        "profileDir": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc2/dsh-home/profiles/t1",
+        "profileHarness": {
+          "resolved": null,
+          "version": null,
+          "insideProfile": false,
+          "error": "Cannot find module '@deepseek-ai/dsh/package.json'\nRequire stack:\n- /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc2/dsh-home/profiles/t1/package.json"
+        },
+        "presence": {
+          "@deepseek-ai/dsh-experimental-agent-team": false,
+          "@deepseek-ai/dsh-agent-team": true
+        }
+      },
+      "candidate": {
+        "mpd-agent-team": true,
+        "mpd-tool-agent-team": true,
+        "mpd-ui-agent-team": true,
+        "mpd-agent-team-rc2": false,
+        "mpd-tool-agent-team-rc2": false,
+        "mpd-ui-agent-team-rc2": false
+      },
+      "reference": {
+        "oldDisabled": true,
+        "newDisabled": false
+      },
+      "logs": {
+        "candidate": [
+          "[mpd-team-rows] generation=new source=argv1 argv1=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/dsh/lib/bin.js harness=0.2.2-rc.2 baseUrl=file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc2/dsh-home/profiles/t1/ baseUrlHarness=<unresolved> presence=<not-read> oldRows=disabled newRows=enabled override=<unset>"
+        ]
+      },
+      "verdict": {
+        "candidateOldEnabled": false,
+        "candidateNewEnabled": true,
+        "referenceOldEnabled": false,
+        "referenceNewEnabled": true
+      }
+    },
+    {
+      "label": "rc1-host + rc2-profile (MIXED)",
+      "override": null,
+      "observed": {
+        "argv1": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh/lib/bin.js",
+        "argv1Realpath": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh/lib/bin.js",
+        "nearestHarness": {
+          "dir": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh",
+          "version": "0.2.2-rc.1"
+        },
+        "baseUrl": "file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc2/dsh-home/profiles/t1/",
+        "profileDir": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc2/dsh-home/profiles/t1",
+        "profileHarness": {
+          "resolved": null,
+          "version": null,
+          "insideProfile": false,
+          "error": "Cannot find module '@deepseek-ai/dsh/package.json'\nRequire stack:\n- /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc2/dsh-home/profiles/t1/package.json"
+        },
+        "presence": {
+          "@deepseek-ai/dsh-experimental-agent-team": false,
+          "@deepseek-ai/dsh-agent-team": true
+        }
+      },
+      "candidate": {
+        "mpd-agent-team": true,
+        "mpd-tool-agent-team": true,
+        "mpd-ui-agent-team": true,
+        "mpd-agent-team-rc2": true,
+        "mpd-tool-agent-team-rc2": true,
+        "mpd-ui-agent-team-rc2": true
+      },
+      "reference": {
+        "oldDisabled": false,
+        "newDisabled": true
+      },
+      "logs": {
+        "candidate": [
+          "[mpd-team-rows] generation guard: BOTH row sets DISABLED - the host generation is unreadable or ambiguous (the probes disagree (running harness 0.2.2-rc.1 at /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh => old; team package presence under /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc2/dsh-home/profiles/t1/node_modules: only @deepseek-ai/dsh-agent-team is present => new)); set MPD_DSH_TEAM_ROWS=old|new to override, or =off to keep this conservative path",
+          "[mpd-team-rows] generation=old source=argv1 argv1=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh/lib/bin.js harness=0.2.2-rc.1 baseUrl=file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc2/dsh-home/profiles/t1/ baseUrlHarness=<unresolved> presence=<not-read> oldRows=enabled newRows=disabled override=<unset>"
+        ]
+      },
+      "verdict": {
+        "candidateOldEnabled": false,
+        "candidateNewEnabled": false,
+        "referenceOldEnabled": true,
+        "referenceNewEnabled": false
+      }
+    },
+    {
+      "label": "rc2-host + rc1-profile (MIXED)",
+      "override": null,
+      "observed": {
+        "argv1": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/dsh/lib/bin.js",
+        "argv1Realpath": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/dsh/lib/bin.js",
+        "nearestHarness": {
+          "dir": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/dsh",
+          "version": "0.2.2-rc.2"
+        },
+        "baseUrl": "file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc1/dsh-home/profiles/t1/",
+        "profileDir": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc1/dsh-home/profiles/t1",
+        "profileHarness": {
+          "resolved": null,
+          "version": null,
+          "insideProfile": false,
+          "error": "Cannot find module '@deepseek-ai/dsh/package.json'\nRequire stack:\n- /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc1/dsh-home/profiles/t1/package.json"
+        },
+        "presence": {
+          "@deepseek-ai/dsh-experimental-agent-team": true,
+          "@deepseek-ai/dsh-agent-team": false
+        }
+      },
+      "candidate": {
+        "mpd-agent-team": true,
+        "mpd-tool-agent-team": true,
+        "mpd-ui-agent-team": true,
+        "mpd-agent-team-rc2": true,
+        "mpd-tool-agent-team-rc2": true,
+        "mpd-ui-agent-team-rc2": true
+      },
+      "reference": {
+        "oldDisabled": true,
+        "newDisabled": false
+      },
+      "logs": {
+        "candidate": [
+          "[mpd-team-rows] generation guard: BOTH row sets DISABLED - the host generation is unreadable or ambiguous (the probes disagree (running harness 0.2.2-rc.2 at /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/dsh => new; team package presence under /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc1/dsh-home/profiles/t1/node_modules: only @deepseek-ai/dsh-experimental-agent-team is present => old)); set MPD_DSH_TEAM_ROWS=old|new to override, or =off to keep this conservative path",
+          "[mpd-team-rows] generation=new source=argv1 argv1=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/dsh/lib/bin.js harness=0.2.2-rc.2 baseUrl=file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc1/dsh-home/profiles/t1/ baseUrlHarness=<unresolved> presence=<not-read> oldRows=disabled newRows=enabled override=<unset>"
+        ]
+      },
+      "verdict": {
+        "candidateOldEnabled": false,
+        "candidateNewEnabled": false,
+        "referenceOldEnabled": false,
+        "referenceNewEnabled": true
+      }
+    },
+    {
+      "label": "rc1-host + rc2-profile, MPD_DSH_TEAM_ROWS=new",
+      "override": "new",
+      "observed": {
+        "argv1": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh/lib/bin.js",
+        "argv1Realpath": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh/lib/bin.js",
+        "nearestHarness": {
+          "dir": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh",
+          "version": "0.2.2-rc.1"
+        },
+        "baseUrl": "file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc2/dsh-home/profiles/t1/",
+        "profileDir": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc2/dsh-home/profiles/t1",
+        "profileHarness": {
+          "resolved": null,
+          "version": null,
+          "insideProfile": false,
+          "error": "Cannot find module '@deepseek-ai/dsh/package.json'\nRequire stack:\n- /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc2/dsh-home/profiles/t1/package.json"
+        },
+        "presence": {
+          "@deepseek-ai/dsh-experimental-agent-team": false,
+          "@deepseek-ai/dsh-agent-team": true
+        }
+      },
+      "candidate": {
+        "mpd-agent-team": true,
+        "mpd-tool-agent-team": true,
+        "mpd-ui-agent-team": true,
+        "mpd-agent-team-rc2": false,
+        "mpd-tool-agent-team-rc2": false,
+        "mpd-ui-agent-team-rc2": false
+      },
+      "reference": {
+        "oldDisabled": true,
+        "newDisabled": false
+      },
+      "logs": {
+        "candidate": [
+          "[mpd-team-rows] generation guard: MPD_DSH_TEAM_ROWS=new selects the NEW row set and disables the other one",
+          "[mpd-team-rows] generation=new source=override argv1=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh/lib/bin.js harness=0.2.2-rc.1 baseUrl=file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc2/dsh-home/profiles/t1/ baseUrlHarness=<unresolved> presence=<not-read> oldRows=disabled newRows=enabled override=new"
+        ]
+      },
+      "verdict": {
+        "candidateOldEnabled": false,
+        "candidateNewEnabled": true,
+        "referenceOldEnabled": false,
+        "referenceNewEnabled": true
+      }
+    },
+    {
+      "label": "rc1-host + rc2-profile, MPD_DSH_TEAM_ROWS=old",
+      "override": "old",
+      "observed": {
+        "argv1": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh/lib/bin.js",
+        "argv1Realpath": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh/lib/bin.js",
+        "nearestHarness": {
+          "dir": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh",
+          "version": "0.2.2-rc.1"
+        },
+        "baseUrl": "file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc2/dsh-home/profiles/t1/",
+        "profileDir": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc2/dsh-home/profiles/t1",
+        "profileHarness": {
+          "resolved": null,
+          "version": null,
+          "insideProfile": false,
+          "error": "Cannot find module '@deepseek-ai/dsh/package.json'\nRequire stack:\n- /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc2/dsh-home/profiles/t1/package.json"
+        },
+        "presence": {
+          "@deepseek-ai/dsh-experimental-agent-team": false,
+          "@deepseek-ai/dsh-agent-team": true
+        }
+      },
+      "candidate": {
+        "mpd-agent-team": false,
+        "mpd-tool-agent-team": false,
+        "mpd-ui-agent-team": false,
+        "mpd-agent-team-rc2": true,
+        "mpd-tool-agent-team-rc2": true,
+        "mpd-ui-agent-team-rc2": true
+      },
+      "reference": {
+        "oldDisabled": false,
+        "newDisabled": true
+      },
+      "logs": {
+        "candidate": [
+          "[mpd-team-rows] generation guard: MPD_DSH_TEAM_ROWS=old selects the OLD row set and disables the other one",
+          "[mpd-team-rows] generation=old source=override argv1=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh/lib/bin.js harness=0.2.2-rc.1 baseUrl=file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc2/dsh-home/profiles/t1/ baseUrlHarness=<unresolved> presence=<not-read> oldRows=enabled newRows=disabled override=old"
+        ]
+      },
+      "verdict": {
+        "candidateOldEnabled": true,
+        "candidateNewEnabled": false,
+        "referenceOldEnabled": true,
+        "referenceNewEnabled": false
+      }
+    },
+    {
+      "label": "rc1-host + rc2-profile, MPD_DSH_TEAM_ROWS=off",
+      "override": "off",
+      "observed": {
+        "argv1": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh/lib/bin.js",
+        "argv1Realpath": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh/lib/bin.js",
+        "nearestHarness": {
+          "dir": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh",
+          "version": "0.2.2-rc.1"
+        },
+        "baseUrl": "file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc2/dsh-home/profiles/t1/",
+        "profileDir": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc2/dsh-home/profiles/t1",
+        "profileHarness": {
+          "resolved": null,
+          "version": null,
+          "insideProfile": false,
+          "error": "Cannot find module '@deepseek-ai/dsh/package.json'\nRequire stack:\n- /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc2/dsh-home/profiles/t1/package.json"
+        },
+        "presence": {
+          "@deepseek-ai/dsh-experimental-agent-team": false,
+          "@deepseek-ai/dsh-agent-team": true
+        }
+      },
+      "candidate": {
+        "mpd-agent-team": true,
+        "mpd-tool-agent-team": true,
+        "mpd-ui-agent-team": true,
+        "mpd-agent-team-rc2": true,
+        "mpd-tool-agent-team-rc2": true,
+        "mpd-ui-agent-team-rc2": true
+      },
+      "reference": {
+        "oldDisabled": true,
+        "newDisabled": true
+      },
+      "logs": {
+        "candidate": [
+          "[mpd-team-rows] generation guard: unrecognized MPD_DSH_TEAM_ROWS=off - BOTH row sets are DISABLED (use old, new or off)",
+          "[mpd-team-rows] generation=ambiguous source=override argv1=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh/lib/bin.js harness=0.2.2-rc.1 baseUrl=file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc2/dsh-home/profiles/t1/ baseUrlHarness=<unresolved> presence=<not-read> oldRows=disabled newRows=disabled override=off"
+        ]
+      },
+      "verdict": {
+        "candidateOldEnabled": false,
+        "candidateNewEnabled": false,
+        "referenceOldEnabled": false,
+        "referenceNewEnabled": false
+      }
+    },
+    {
+      "label": "rc2-host + rc1-profile, MPD_DSH_TEAM_ROWS=nonsense",
+      "override": "nonsense",
+      "observed": {
+        "argv1": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/dsh/lib/bin.js",
+        "argv1Realpath": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/dsh/lib/bin.js",
+        "nearestHarness": {
+          "dir": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/dsh",
+          "version": "0.2.2-rc.2"
+        },
+        "baseUrl": "file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc1/dsh-home/profiles/t1/",
+        "profileDir": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc1/dsh-home/profiles/t1",
+        "profileHarness": {
+          "resolved": null,
+          "version": null,
+          "insideProfile": false,
+          "error": "Cannot find module '@deepseek-ai/dsh/package.json'\nRequire stack:\n- /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc1/dsh-home/profiles/t1/package.json"
+        },
+        "presence": {
+          "@deepseek-ai/dsh-experimental-agent-team": true,
+          "@deepseek-ai/dsh-agent-team": false
+        }
+      },
+      "candidate": {
+        "mpd-agent-team": true,
+        "mpd-tool-agent-team": true,
+        "mpd-ui-agent-team": true,
+        "mpd-agent-team-rc2": true,
+        "mpd-tool-agent-team-rc2": true,
+        "mpd-ui-agent-team-rc2": true
+      },
+      "reference": {
+        "oldDisabled": true,
+        "newDisabled": false
+      },
+      "logs": {
+        "candidate": [
+          "[mpd-team-rows] generation guard: unrecognized MPD_DSH_TEAM_ROWS=nonsense - BOTH row sets are DISABLED (use old, new or off)",
+          "[mpd-team-rows] generation=new source=argv1 argv1=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022rc2/lib/node_modules/@deepseek-ai/dsh/lib/bin.js harness=0.2.2-rc.2 baseUrl=file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/t1/run/rc1/dsh-home/profiles/t1/ baseUrlHarness=<unresolved> presence=<not-read> oldRows=disabled newRows=enabled override=nonsense"
+        ]
+      },
+      "verdict": {
+        "candidateOldEnabled": false,
+        "candidateNewEnabled": false,
+        "referenceOldEnabled": false,
+        "referenceNewEnabled": true
+      }
+    },
+    {
+      "label": "no argv1, no baseUrl (unreadable)",
+      "override": null,
+      "observed": {
+        "argv1": "/tmp/t1-absent-bin.js",
+        "argv1Realpath": null,
+        "nearestHarness": null,
+        "baseUrl": "",
+        "profileDir": "",
+        "profileHarness": null,
+        "presence": {
+          "@deepseek-ai/dsh-experimental-agent-team": false,
+          "@deepseek-ai/dsh-agent-team": false
+        }
+      },
+      "candidate": {
+        "mpd-agent-team": true,
+        "mpd-tool-agent-team": true,
+        "mpd-ui-agent-team": true,
+        "mpd-agent-team-rc2": true,
+        "mpd-tool-agent-team-rc2": true,
+        "mpd-ui-agent-team-rc2": true
+      },
+      "reference": {
+        "oldDisabled": true,
+        "newDisabled": true
+      },
+      "logs": {
+        "candidate": [
+          "[mpd-team-rows] generation guard: BOTH row sets DISABLED - the host generation is unreadable or ambiguous (no probe identified the host generation); set MPD_DSH_TEAM_ROWS=old|new to override, or =off to keep this conservative path",
+          "[mpd-team-rows] generation=ambiguous source=none argv1=/tmp/t1-absent-bin.js harness=<unreadable> baseUrl=<unset> baseUrlHarness=<unresolved> presence=<not-read> oldRows=disabled newRows=disabled override=<unset>"
+        ]
+      },
+      "verdict": {
+        "candidateOldEnabled": false,
+        "candidateNewEnabled": false,
+        "referenceOldEnabled": false,
+        "referenceNewEnabled": false
+      }
+    },
+    {
+      "label": "rc1-host + profile-local rc.2 harness (stage 2 disagrees)",
+      "override": null,
+      "observed": {
+        "argv1": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh/lib/bin.js",
+        "argv1Realpath": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh/lib/bin.js",
+        "nearestHarness": {
+          "dir": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh",
+          "version": "0.2.2-rc.1"
+        },
+        "baseUrl": "file:///tmp/t1-profile-harness-ETkg6B/",
+        "profileDir": "/tmp/t1-profile-harness-ETkg6B",
+        "profileHarness": {
+          "resolved": "/tmp/t1-profile-harness-ETkg6B/node_modules/@deepseek-ai/dsh/package.json",
+          "version": "0.2.2-rc.2",
+          "insideProfile": true
+        },
+        "presence": {
+          "@deepseek-ai/dsh-experimental-agent-team": false,
+          "@deepseek-ai/dsh-agent-team": false
+        }
+      },
+      "candidate": {
+        "mpd-agent-team": true,
+        "mpd-tool-agent-team": true,
+        "mpd-ui-agent-team": true,
+        "mpd-agent-team-rc2": true,
+        "mpd-tool-agent-team-rc2": true,
+        "mpd-ui-agent-team-rc2": true
+      },
+      "reference": {
+        "oldDisabled": false,
+        "newDisabled": true
+      },
+      "logs": {
+        "candidate": [
+          "[mpd-team-rows] generation guard: BOTH row sets DISABLED - the host generation is unreadable or ambiguous (the probes disagree (running harness 0.2.2-rc.1 at /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh => old; resolved harness 0.2.2-rc.2 inside /tmp/t1-profile-harness-ETkg6B/ => new)); set MPD_DSH_TEAM_ROWS=old|new to override, or =off to keep this conservative path",
+          "[mpd-team-rows] generation=old source=argv1 argv1=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh/lib/bin.js harness=0.2.2-rc.1 baseUrl=file:///tmp/t1-profile-harness-ETkg6B/ baseUrlHarness=<unresolved> presence=<not-read> oldRows=enabled newRows=disabled override=<unset>"
+        ]
+      },
+      "verdict": {
+        "candidateOldEnabled": false,
+        "candidateNewEnabled": false,
+        "referenceOldEnabled": true,
+        "referenceNewEnabled": false
+      }
+    }
+  ],
+  "summary": [
+    {
+      "label": "rc1-host + rc1-profile",
+      "nearestHarness": "0.2.2-rc.1",
+      "profileHarness": null,
+      "profileHarnessInsideProfile": false,
+      "presenceOld": true,
+      "presenceNew": false,
+      "candidate": {
+        "oldEnabled": true,
+        "newEnabled": false
+      },
+      "reference": {
+        "oldEnabled": true,
+        "newEnabled": false
+      },
+      "logLines": 1
+    },
+    {
+      "label": "rc2-host + rc2-profile",
+      "nearestHarness": "0.2.2-rc.2",
+      "profileHarness": null,
+      "profileHarnessInsideProfile": false,
+      "presenceOld": false,
+      "presenceNew": true,
+      "candidate": {
+        "oldEnabled": false,
+        "newEnabled": true
+      },
+      "reference": {
+        "oldEnabled": false,
+        "newEnabled": true
+      },
+      "logLines": 1
+    },
+    {
+      "label": "rc1-host + rc2-profile (MIXED)",
+      "nearestHarness": "0.2.2-rc.1",
+      "profileHarness": null,
+      "profileHarnessInsideProfile": false,
+      "presenceOld": false,
+      "presenceNew": true,
+      "candidate": {
+        "oldEnabled": false,
+        "newEnabled": false
+      },
+      "reference": {
+        "oldEnabled": true,
+        "newEnabled": false
+      },
+      "logLines": 2
+    },
+    {
+      "label": "rc2-host + rc1-profile (MIXED)",
+      "nearestHarness": "0.2.2-rc.2",
+      "profileHarness": null,
+      "profileHarnessInsideProfile": false,
+      "presenceOld": true,
+      "presenceNew": false,
+      "candidate": {
+        "oldEnabled": false,
+        "newEnabled": false
+      },
+      "reference": {
+        "oldEnabled": false,
+        "newEnabled": true
+      },
+      "logLines": 2
+    },
+    {
+      "label": "rc1-host + rc2-profile, MPD_DSH_TEAM_ROWS=new",
+      "nearestHarness": "0.2.2-rc.1",
+      "profileHarness": null,
+      "profileHarnessInsideProfile": false,
+      "presenceOld": false,
+      "presenceNew": true,
+      "candidate": {
+        "oldEnabled": false,
+        "newEnabled": true
+      },
+      "reference": {
+        "oldEnabled": false,
+        "newEnabled": true
+      },
+      "logLines": 2
+    },
+    {
+      "label": "rc1-host + rc2-profile, MPD_DSH_TEAM_ROWS=old",
+      "nearestHarness": "0.2.2-rc.1",
+      "profileHarness": null,
+      "profileHarnessInsideProfile": false,
+      "presenceOld": false,
+      "presenceNew": true,
+      "candidate": {
+        "oldEnabled": true,
+        "newEnabled": false
+      },
+      "reference": {
+        "oldEnabled": true,
+        "newEnabled": false
+      },
+      "logLines": 2
+    },
+    {
+      "label": "rc1-host + rc2-profile, MPD_DSH_TEAM_ROWS=off",
+      "nearestHarness": "0.2.2-rc.1",
+      "profileHarness": null,
+      "profileHarnessInsideProfile": false,
+      "presenceOld": false,
+      "presenceNew": true,
+      "candidate": {
+        "oldEnabled": false,
+        "newEnabled": false
+      },
+      "reference": {
+        "oldEnabled": false,
+        "newEnabled": false
+      },
+      "logLines": 2
+    },
+    {
+      "label": "rc2-host + rc1-profile, MPD_DSH_TEAM_ROWS=nonsense",
+      "nearestHarness": "0.2.2-rc.2",
+      "profileHarness": null,
+      "profileHarnessInsideProfile": false,
+      "presenceOld": true,
+      "presenceNew": false,
+      "candidate": {
+        "oldEnabled": false,
+        "newEnabled": false
+      },
+      "reference": {
+        "oldEnabled": false,
+        "newEnabled": true
+      },
+      "logLines": 2
+    },
+    {
+      "label": "no argv1, no baseUrl (unreadable)",
+      "nearestHarness": null,
+      "profileHarness": null,
+      "profileHarnessInsideProfile": null,
+      "presenceOld": false,
+      "presenceNew": false,
+      "candidate": {
+        "oldEnabled": false,
+        "newEnabled": false
+      },
+      "reference": {
+        "oldEnabled": false,
+        "newEnabled": false
+      },
+      "logLines": 2
+    },
+    {
+      "label": "rc1-host + profile-local rc.2 harness (stage 2 disagrees)",
+      "nearestHarness": "0.2.2-rc.1",
+      "profileHarness": "0.2.2-rc.2",
+      "profileHarnessInsideProfile": true,
+      "presenceOld": false,
+      "presenceNew": false,
+      "candidate": {
+        "oldEnabled": false,
+        "newEnabled": false
+      },
+      "reference": {
+        "oldEnabled": true,
+        "newEnabled": false
+      },
+      "logLines": 2
+    }
+  ]
+}

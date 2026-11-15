@@ -129,6 +129,9 @@ function fakeHarness(overrides: Record<string, unknown> = {}): {
     // exposes it, so the shared fixture carries it too (behaviour is covered by
     // test/adapter-team-surface.test.ts and test/no-direct-team-access.test.ts).
     registerProvider: (provider: any) => { provided.subagentProvider = provider; return () => { delete provided.subagentProvider } },
+    // A1 item 4: the native executor's delivery seam. A full harness exposes it, and
+    // `capabilities().subagentsSendMessage` must report it on this fixture.
+    sendMessage: async () => undefined,
   }
   // additive (0.1.7/adaptation D6): the OFFICIAL Agent Teams service
   // (`@deepseek-ai/dsh-experimental-agent-team`). A full harness mounts it, so
@@ -145,6 +148,10 @@ function fakeHarness(overrides: Record<string, unknown> = {}): {
     spawnTeammate: async (_caller: any, request: any) => ({ member: { id: "member-1", name: request?.name ?? "member", role: "teammate", status: "running", diagnostics: [] } }),
     interrupt: () => ({ previousStatus: "running" }),
     waitForChange: async () => ({ timedOut: false }),
+    // D6b/A1: the 0.2.2-rc.2 Team enable switch. A "full harness" fixture carries the UNION of
+    // the two generations, so the flag/false arms below are truthful statements about it.
+    isEnabled: () => true,
+    setEnabled: async (_agent: any, _enabled: boolean) => undefined,
   }
   /** The recording skills service: provider registration, catalogue and body load. */
   const skills = {

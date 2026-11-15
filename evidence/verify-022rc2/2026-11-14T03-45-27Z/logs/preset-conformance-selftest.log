@@ -1,0 +1,2 @@
+[preset-conformance] FAIL: self-test: the installed @deepseek-ai/dsh-persona exposes no config schema (unresolved)
+EXIT=1

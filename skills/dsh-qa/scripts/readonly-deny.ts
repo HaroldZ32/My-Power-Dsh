@@ -153,6 +153,83 @@ const CHILD_SCOPE_FAILURE: string = "read-only child: the deny could NOT be appl
 /** Report one failed case assertion and end the run with exit 1; never returns. */
 function fail(msg: string): never { console.error("[" + SLUG + "] FAIL: " + msg); process.exit(1) }
 
+/** Every measurement the enforcement verdict reads, passed in one object so the split is testable alone. */
+interface EnforcementEvidence {
+  /** How many traced requests were the CHILD carrying a toolset; `0` means the child plane proves nothing. */
+  readonly childRequests: number
+  /** The write-capable names those child requests still exposed — the LEAK signal. */
+  readonly childLeaks: readonly string[]
+  /** Whether the POSITIVE lane's parent header showed all eight deny names (the non-vacuity baseline). */
+  readonly parentSeesAllDenyNames: boolean
+  /** Whether the CONTROL lane's parent still showed all eight, so ITS baseline is real too. */
+  readonly controlParentSeesAllDenyNames: boolean
+  /** Whether the injected names provably reached the ACTIVE mechanism (the mutation really loaded). */
+  readonly carrierMutationLoaded: boolean
+  /** Whether the START-SPEC carrier left its own prune/warn record naming the denied names. */
+  readonly carrierRecordSeen: boolean
+  /** Whether the harness logger probe was MOUNTED in either lane (`false` = the observer never ran). */
+  readonly loggerProbeMounted: boolean
+  /** How many harness log records the probe mirrored (`0` = the sink was dead or silent). */
+  readonly loggerProbeRecords: number
+}
+
+/** What the enforcement arm concluded, and WHICH evidence proved it. */
+interface EnforcementVerdict {
+  /** True only for PROVEN read-only authority; an unprovable run is false, never a vacuous pass. */
+  readonly ok: boolean
+  /** The evidence that proved it: the child's own header, the START-SPEC carrier, or nothing. */
+  readonly provenBy: "child-header" | "start-spec-carrier" | "none"
+  /** One decisive sentence: what was proven, by which carrier, or why the run is UNPROVEN. */
+  readonly note: string
+}
+
+/**
+ * Decide the enforcement arm: the CHILD's own request header when this run shape produces one, and
+ * otherwise the START-SPEC carrier's own evidence — never an empty `childSpy`.
+ *
+ * WHY THIS IS A SPLIT (T18/T20): on some host pins the child plane emits NO request at all
+ * (`childRequests=0`, measured on 0.2.2-rc.2). `[].every(...)` is vacuously TRUE, so the old single
+ * clause either passed on emptiness or reddened with no cause, and `childLeaksWriteCapable: []` proves
+ * nothing either. UNPROVEN therefore gets its OWN verdict: it is RED, and the note says UNPROVEN
+ * instead of calling it a leak. `provenBy: "start-spec-carrier"` requires the WHOLE carrier evidence
+ * set — its own record, the mutation provably loaded, BOTH parents showing all eight, and a LIVE
+ * logger probe — so it can never fire on a dead apparatus, and a real child-plane leak always wins.
+ *
+ * @param e - What the positive and control lanes measured.
+ * @returns Whether read-only authority is PROVEN, which evidence proved it, and the decisive sentence.
+ */
+function decideEnforcement(e: EnforcementEvidence): EnforcementVerdict {
+  // THE CHILD PLANE FIRST: it is the strongest witness, and a leak here always reddens.
+  if (e.childRequests > 0) {
+    if (e.childLeaks.length > 0) {
+      return { ok: false, provenBy: "none", note: "LEAKED write-capable name(s) into the child's own request header: " + JSON.stringify(e.childLeaks) + " over " + e.childRequests + " child request(s)" }
+    }
+    if (!e.parentSeesAllDenyNames) {
+      return { ok: false, provenBy: "none", note: "the child's header lacked the eight, but the PARENT's header did not show all of them either, so the comparison is vacuous" }
+    }
+    return { ok: true, provenBy: "child-header", note: "read-only authority is PROVEN by the child's own request header: none of the eight write-capable names is visible over " + e.childRequests + " child request(s), while the parent sees all of them" }
+  }
+  // NO CHILD REQUEST AT ALL: the spy is empty and proves NOTHING. Only the carrier's whole evidence set
+  // may carry the verdict; each missing part is named, so a red is diagnosable instead of bare.
+  /** The carrier evidence parts that are missing, by their own description. */
+  const missingCarrierParts: string[] = []
+  if (!e.carrierRecordSeen) missingCarrierParts.push("the START-SPEC carrier's own prune/warn record naming the denied names")
+  if (!e.carrierMutationLoaded) missingCarrierParts.push("the injected names provably reaching the ACTIVE mechanism")
+  if (!e.controlParentSeesAllDenyNames) missingCarrierParts.push("the CONTROL lane's parent showing all eight deny names")
+  if (!e.parentSeesAllDenyNames) missingCarrierParts.push("the POSITIVE lane's parent showing all eight deny names")
+  if (!e.loggerProbeMounted) missingCarrierParts.push("the logger probe being MOUNTED (so the observer really ran)")
+  if (e.loggerProbeRecords <= 0) missingCarrierParts.push("the logger probe mirroring at least one record")
+  // The carrier carries the verdict only as a COMPLETE set.
+  const carrierProven = missingCarrierParts.length === 0
+  return {
+    ok: carrierProven,
+    provenBy: carrierProven ? "start-spec-carrier" : "none",
+    note: carrierProven
+      ? "read-only authority is PROVEN by the START-SPEC carrier: this run shape produced NO child request (childRequests=0), so an empty child spy proves nothing on its own — the carrier's own prune/warn record names the denied names, the mutation provably loaded there, BOTH parents show all eight, and the logger probe was live (" + e.loggerProbeRecords + " record(s))"
+      : "UNPROVEN — NOT a leak: childRequests=0 means the child spy is empty and proves nothing, and the START-SPEC carrier's evidence is INCOMPLETE (" + missingCarrierParts.join("; ") + ")",
+  }
+}
+
 /** One request the local stub served, with the tool-set signature the assertions read. */
 interface StubTraceEntry {
   /** 1-based position of this request in the stub's call order. */
@@ -736,6 +813,23 @@ function selfTest(): void {
   checks.push(["roles suite keeps the dead-name guard", rolesTest.includes("DEAD_TOOL_NAMES") && rolesTest.includes("not.toContain")])
   checks.push(["roles suite keeps the roles/workmate parity guard", rolesTest.includes("drift guard")])
 
+  // THE UNPROVEN-vs-LEAKED CONTROLS (T20). They call the SAME decision function the live verdict uses,
+  // so a regression in the split reddens HERE instead of on the next in-container run.
+  /** The fixtures' shared baseline: both parents see the eight, and the logger probe is alive. */
+  const enforcementBaseline = { parentSeesAllDenyNames: true, controlParentSeesAllDenyNames: true, loggerProbeMounted: true, loggerProbeRecords: 4 }
+  /** (i) no child request at all, and NO carrier evidence: RED, and it must say UNPROVEN — never LEAKED. */
+  const noChildNoCarrier = decideEnforcement({ ...enforcementBaseline, childRequests: 0, childLeaks: [], carrierMutationLoaded: false, carrierRecordSeen: false })
+  checks.push(["(T20 i) childRequests=0 with NO carrier evidence is RED and says UNPROVEN, never LEAKED", noChildNoCarrier.ok === false && noChildNoCarrier.provenBy === "none" && noChildNoCarrier.note.includes("UNPROVEN") && !noChildNoCarrier.note.includes("LEAKED")])
+  /** (ii) no child request, but the whole START-SPEC carrier evidence set: GREEN, naming that carrier. */
+  const noChildCarrier = decideEnforcement({ ...enforcementBaseline, childRequests: 0, childLeaks: [], carrierMutationLoaded: true, carrierRecordSeen: true })
+  checks.push(["(T20 ii) childRequests=0 WITH carrier evidence is GREEN and NAMES the START-SPEC carrier", noChildCarrier.ok === true && noChildCarrier.provenBy === "start-spec-carrier" && noChildCarrier.note.includes("START-SPEC")])
+  /** (iii) a real child request that leaked a write-capable name: RED even with carrier evidence present. */
+  const childLeaked = decideEnforcement({ ...enforcementBaseline, childRequests: 2, childLeaks: ["write"], carrierMutationLoaded: true, carrierRecordSeen: true })
+  checks.push(["(T20 iii) childRequests>0 WITH a leak is RED even when the carrier evidence is present", childLeaked.ok === false && childLeaked.provenBy === "none" && childLeaked.note.includes("LEAKED")])
+  /** (iv) a real child plane that leaked nothing: GREEN on the child's own header, carrier irrelevant. */
+  const childClean = decideEnforcement({ childRequests: 2, childLeaks: [], parentSeesAllDenyNames: true, controlParentSeesAllDenyNames: false, carrierMutationLoaded: false, carrierRecordSeen: false, loggerProbeMounted: false, loggerProbeRecords: 0 })
+  checks.push(["(T20 iv) childRequests>0 with no leak is GREEN on the child's own header", childClean.ok === true && childClean.provenBy === "child-header"])
+
   // The labels that failed, printed together so one run reports every break.
   const bad = checks.filter(([, ok]) => !ok).map(([n]) => n)
   if (bad.length) fail("self-test: " + bad.join(" | "))
@@ -1161,6 +1255,14 @@ function runReal(): Promise<void> {
       note: "read-only authority is ENFORCED: the child's own requests cannot see any of the eight write-capable tools, while the parent's sees all of them",
     }
 
+    // The positive lane's OWN preconditions, independent of WHICH evidence proves the child's authority:
+    // the enforcement half is decided after the control lane runs (the UNPROVEN/LEAKED split below), so
+    // these clauses are stated once here and ANDed in there.
+    const positiveBaseOk: boolean = positiveRun.exit === 0
+      && !positiveRun.restrictError
+      && positiveRun.spawnDriven
+      && !positiveRun.missingCredential
+      && !positiveRun.pruneRecord.seen
     steps.positiveOk = {
       // RE-POINTED 2026-10-17. The old clause (`filterSent.deny === EXPECTED_DENY`) asserted the deny list
       // the START SPEC carried — an instrumentation the product removed, which measured red on a lane
@@ -1176,12 +1278,10 @@ function runReal(): Promise<void> {
       // logger probe (9 records, mount-check mirrored), zero leaks, parent sees all eight, and the
       // start-spec path provably active in the control lane — so requiring the child-scope line
       // unconditionally would call that host RED for running the mechanism it has.
-      ok: positiveRun.exit === 0
-        && !positiveRun.restrictError
-        && positiveRun.spawnDriven
-        && !positiveRun.missingCredential
-        && !positiveRun.pruneRecord.seen
-        && childDiscriminating,
+      // PROVISIONAL: the final value is `positiveBaseOk && decideEnforcement(...).ok`, set after the
+      // control lane supplies the carrier evidence. Kept as `childDiscriminating` here so a reader of
+      // this entry alone still sees the child-header clause the case has always keyed on.
+      ok: positiveBaseOk && childDiscriminating,
       // A FUNCTION of the measurements above, never a fixed sentence: the previous static wording
       // ("the child was created and answered") read as a measurement in the wave's own review while the
       // run that produced it had `childRequests: 0` — a note that cannot be falsified by its own fields.
@@ -1313,6 +1413,37 @@ function runReal(): Promise<void> {
         : (diagPrune.seen
           ? "this host still honours the START-SPEC filter (measured on dsh 0.2.0-rc.2): the child leaked nothing and the mutated list produced the prune record " + JSON.stringify(diagPrune.line) + ", while the child-scope line was ABSENT with the logger probe alive (" + positiveRun.childScope.probedRecords + " records) — so the absence is a fact about this host, not a silent un-guard"
           : "NEITHER mechanism left a trace: the child's header held, but this case cannot say WHAT enforced it — that is not a pass"),
+    }
+    // THE UNPROVEN-vs-LEAKED SPLIT (T18/T20), decided HERE because the carrier's evidence only exists
+    // after the control lane ran. It REPLACES the two verdict fields that keyed on the child spy alone:
+    // with `childRequests=0` an empty spy is vacuous, so the case must say UNPROVEN (RED) or name the
+    // START-SPEC carrier that really proved the authority — never pass on emptiness, never call it a leak.
+    /** The enforcement verdict, from every measurement the two lanes produced. */
+    const enforcementVerdict: EnforcementVerdict = decideEnforcement({
+      childRequests: childReqs.length,
+      childLeaks: childSpy.flatMap((c) => c.writeCapableVisible),
+      parentSeesAllDenyNames: parentShowsAllDenied,
+      controlParentSeesAllDenyNames: diagParentSeesAll,
+      carrierMutationLoaded: mutationLoaded,
+      carrierRecordSeen: diagPrune.seen,
+      loggerProbeMounted: positiveRun.childScope.probeMountCheck === true || diagPrune.probeMountCheck === true,
+      loggerProbeRecords: Math.max(positiveRun.childScope.probedRecords, diagPrune.probedRecords),
+    })
+    // The two entries are REPLACED (their recorded fields kept) with the decided verdict, so the ledger
+    // and the evidence JSON carry the provenance of the verdict rather than a second opinion.
+    steps.enforcement = {
+      ...(steps.enforcement as StepVerdict),
+      ok: enforcementVerdict.ok,
+      provenBy: enforcementVerdict.provenBy,
+      childPlaneObservable: childReqs.length > 0,
+      childSpyProvesNothing: childReqs.length === 0,
+      note: enforcementVerdict.note,
+    }
+    steps.positiveOk = {
+      ...(steps.positiveOk as StepVerdict),
+      ok: positiveBaseOk && enforcementVerdict.ok,
+      enforcementProvenBy: enforcementVerdict.provenBy,
+      enforcementNote: enforcementVerdict.note,
     }
     steps.reinjectionNote = ((): string => {
       // The control lane's own result, which the note explains in one line.

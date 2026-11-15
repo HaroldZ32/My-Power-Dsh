@@ -394,6 +394,22 @@
           - id: present
             name: '@deepseek-ai/dsh-tool-present'
 
+          # THE OFFICE TOOL PACK, HOST-OPTIONAL AND DECIDED AT LOAD. Harness 0.2.2-rc.2's shipped
+          # `standard` preset mounts `tool-office` (`@deepseek-ai/dsh-tool-office`, from the rc.2
+          # dsh-sdk-app/office-kit); 0.2.2-rc.1 ships neither the row nor the package. A static
+          # declaration therefore cannot be right on both hosts, so this row is declared with a
+          # MOUNT GUARD in the same idiom `cordis.patch.yml` uses: resolve the package from the
+          # profile's own `baseUrl` through `createRequire`, and DISABLE the row when it does not
+          # resolve (rc.1, or any composition without the office kit). The guard NEVER throws — a
+          # failed resolution, a missing `baseUrl` and an exception all leave the row DISABLED — and
+          # it writes ONE line to `<root>/.mpd/logs/mpd-patch-guards.log` so the decision is
+          # inspectable. `preset-conformance.ts` treats a `!!js` guard as ACTIVE, and since the same
+          # wave made an UNGUARDED extra row still fail, this declaration is parity-clean on both
+          # hosts: satisfied on rc.2, a NOTE on rc.1.
+          - id: tool-office
+            name: '@deepseek-ai/dsh-tool-office'
+            disabled: !!js "(() => { const path = process.getBuiltinModule('node:path'); const log = (t) => { try { const fs = process.getBuiltinModule('node:fs'); const roots = [process.env.MPD_MCP_LOG_DIR, process.env.DSH_WORKSPACE_ROOT, process.cwd(), process.getBuiltinModule('node:os').tmpdir()]; for (const r of roots) { if (typeof r !== 'string' || r.trim() === '') continue; try { const d = path.join(r, '.mpd', 'logs'); fs.mkdirSync(d, { recursive: true }); fs.appendFileSync(path.join(d, 'mpd-patch-guards.log'), t + String.fromCharCode(10)); return } catch (e) {} } } catch (e) {} }; try { let dir = ''; try { if (typeof baseUrl === 'string' && baseUrl !== '') dir = path.normalize(process.getBuiltinModule('node:url').fileURLToPath(baseUrl)) } catch (e) {} if (dir === '') { log('[tool-office] DISABLED: no profile baseUrl, so @deepseek-ai/dsh-tool-office cannot be resolved'); return true } try { process.getBuiltinModule('node:module').createRequire(path.join(dir, 'package.json')).resolve('@deepseek-ai/dsh-tool-office/package.json'); return false } catch (e) { log('[tool-office] DISABLED: @deepseek-ai/dsh-tool-office does not resolve from ' + dir + ' - it ships only with the 0.2.2-rc.2 office kit; the rest of the preset is unaffected'); return true } } catch (e) { try { log('[tool-office] mount guard threw (' + String(e && e.message ? e.message : e) + ') - the row stays DISABLED') } catch (e2) {} return true } })()"
+
           # Profile plugin/bundle management and the plugin market. `tool-plugin-manager` mirrors the
           # 0.2.2-rc.1 `standard` row VERBATIM, `!!js` guard included: it is enabled only where a
           # `profileContext` service exists (Creator mode), and on 0.2.1-rc.5 — where `standard` ships

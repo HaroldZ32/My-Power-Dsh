@@ -65,18 +65,20 @@ ONE_CLICK_SRC="${MPD_E2E_ONECLICK_SRC:-/opt/oneclick-src}"
 ONE_CLICK_REPO="${MPD_E2E_ONECLICK_REPO:-/opt/oneclick.git}"
 
 NODE_VERSION="${MPD_E2E_NODE_VERSION:-24.19.0}"
-# The harness pin. 0.2.2-rc.1 is the bundle's baseline; 0.2.1-rc.5 stays supported and is what the
-# separate backward-compatibility boot installs. The `mpd` preset declares rows that exist only in
-# harness 0.2.1, so a 0.2.0 harness cannot mount it — keep this in step with the compose default.
-DSH_VERSION="${MPD_E2E_DSH_VERSION:-0.2.2-rc.1}"
+# The harness pin. 0.2.2-rc.2 is the bundle's baseline; 0.2.2-rc.1 and 0.2.1-rc.5 stay supported, and
+# the separate backward-compatibility boot installs 0.2.2-rc.1 to exercise the older team-row
+# generation. The `mpd` preset declares rows that exist only in harness 0.2.1, so a 0.2.0 harness cannot
+# mount it — keep this in step with the compose default.
+DSH_VERSION="${MPD_E2E_DSH_VERSION:-0.2.2-rc.2}"
 PNPM_VERSION="${MPD_E2E_PNPM_VERSION:-11.23.0}"
-# The DSH-TUI host. 0.19.0 is the dsh-tui release this bundle targets: 36 of its 39 `@deepseek-ai/dsh-*`
-# peers append every band up to 0.2.2-rc.1 while keeping 0.2.1-rc.4/rc.5, so one pin serves BOTH the
-# current baseline and the older-host arm. 0.18.0's bands stop at 0.2.1-rc.5, and a
+# The DSH-TUI host. 0.20.0 is the dsh-tui release this bundle targets: 36 of its 39 peers are
+# `@deepseek-ai/dsh-*` and every one of those 36 appends 0.2.2-rc.2 while keeping 0.2.1-rc.4/rc.5, so one
+# pin serves BOTH the current baseline and the older-host arm. 0.19.0 and 0.18.0 stay ADMITTED hosts
+# (specs/tui-hosts.json); 0.18.0's bands stop at 0.2.1-rc.5, and a
 # `dsh plugin --profile dsh-tui add` whose peer range excludes the harness pin is REFUSED on peer ranges,
 # the same failure mode measured 2026-09-29 on the 0.11.1/0.2.0-rc.1 pair (which aborted this lane,
 # evidence/docker/client-install/2026-09-29T07-07-01Z) and again 2026-10-17 on 0.15.0/0.2.1-rc.2.
-TUI_VERSION="${MPD_E2E_TUI_VERSION:-0.19.0}"
+TUI_VERSION="${MPD_E2E_TUI_VERSION:-0.20.0}"
 export TUI_VERSION
 # ── THE LIVE TEAM PROJECT: one small engineering task, built by a REAL team, on each UI plane ──
 # WHY THIS KNOB EXISTS. Every live arm above its own block proves ONE tool call. That answers "is the
@@ -1180,19 +1182,28 @@ else
   record compose.presetRow false "no '- id: preset-mpd' row in the composed tree (the 0.1.7 preset model, §4 D1)" "- id: preset-mpd absent"
 fi
 
+# THE OFFICIAL TEAM PLANE, THREE ROWS (the T8 shape). The bundle ships the THREE legacy team rows and
+# nothing else: on a 0.2.2-rc.1-lineage host they ARE the team plane, and on 0.2.2-rc.2 the harness's
+# own `dsh-base` declares the renamed rows, so ours disable themselves through the ONE generation
+# predicate — asserted after the boot (`boot.teamRowGenerationLive` below). Here the subject is the
+# COMPOSITION: the three mpd-owned ids, their three package names, and the ONE predicate carried by
+# every one of them rather than replaced by a hard-coded switch.
+TEAM_ROWS_OLD="mpd-agent-team mpd-tool-agent-team mpd-ui-agent-team"
 TEAM_MISSING=""
-for row in mpd-agent-team mpd-tool-agent-team mpd-ui-agent-team; do
+for row in $TEAM_ROWS_OLD; do
   has_row "$row" || TEAM_MISSING="$TEAM_MISSING$row,"
 done
 TEAM_NAMES_MISSING=""
 for name in "@deepseek-ai/dsh-experimental-agent-team" "@deepseek-ai/dsh-experimental-tool-agent-team" "@deepseek-ai/dsh-experimental-client-ui-agent-team"; do
   has_name "$name" || TEAM_NAMES_MISSING="$TEAM_NAMES_MISSING$name,"
 done
+TEAM_PREDICATE_HITS="$(grep -c 'MPD_DSH_TEAM_ROWS' "$DUMP_TXT" 2>/dev/null || true)"
 fact obs.dumpAgentTeamRows "$(grep -oE "^[[:space:]]*- id: mpd-(agent|tool-agent|ui-agent)-team[[:space:]]*\$" "$DUMP_TXT" 2>/dev/null | sed 's/^[[:space:]]*- id: //' | tr '\n' ',' || true)"
-if [ -z "$TEAM_MISSING" ] && [ -z "$TEAM_NAMES_MISSING" ]; then
-  record compose.agentTeamRows true "the official agent-team rows compose under the mpd-owned ids (§4 D3)" "ids=mpd-agent-team,mpd-tool-agent-team,mpd-ui-agent-team"
+fact obs.dumpTeamGenerationPredicate "${TEAM_PREDICATE_HITS:-0} occurrence(s) of the ONE MPD_DSH_TEAM_ROWS predicate in the composed tree (all 3 team rows carry it)"
+if [ -z "$TEAM_MISSING" ] && [ -z "$TEAM_NAMES_MISSING" ] && [ "${TEAM_PREDICATE_HITS:-0}" -ge 3 ]; then
+  record compose.agentTeamRows true "the THREE mpd-owned team rows compose with their package-name family, and the ONE generation predicate is carried by each of them; whether they are ENABLED is asserted post-boot against THIS host's generation" "ids=mpd-agent-team,mpd-tool-agent-team,mpd-ui-agent-team predicateHits=$TEAM_PREDICATE_HITS"
 else
-  record compose.agentTeamRows false "agent-team rows missing: ${TEAM_MISSING:-none}; official package names missing: ${TEAM_NAMES_MISSING:-none}" "$(witness "$DUMP_TXT" '(preset-mpd|agent-team)' 6)"
+  record compose.agentTeamRows false "team-row composition incomplete: row ids missing=${TEAM_MISSING:-none}; package names missing=${TEAM_NAMES_MISSING:-none}; generation-predicate hits=${TEAM_PREDICATE_HITS:-0} (need >=3, one per team row)" "$(witness "$DUMP_TXT" '(preset-mpd|agent-team)' 6)"
 fi
 
 # ── 9b. the LIVE credential, staged BEFORE the boot ───────────────────────────
@@ -1358,7 +1369,26 @@ fact obs.retiredToolsPresent "${PROBE_RETIRED:-<probe did not report>}"
 # The official team tools are AGENT-scoped (see docker/probe.ts), so the root-plane read is an
 # OBSERVATION that the plane is what we think it is — the graded read happens after a real agent
 # exists, further down.
-fact obs.teamToolPlane "root-plane read=$PROBE_TEAM_ROOT (0/9 is the documented shape: @deepseek-ai/dsh-experimental-tool-agent-team registers scoped.tools on agent.ctx per agent); the graded read is AGENT_TEAM_TOOLS below"
+fact obs.teamToolPlane "root-plane read=$PROBE_TEAM_ROOT (a 0/N read is the documented shape: the official team-tools plugin for THIS host generation registers scoped.tools on agent.ctx per agent — 9 tools on 0.2.2-rc.1, 4 on 0.2.2-rc.2); the graded read is AGENT_TEAM_TOOLS below"
+
+# WHICH TEAM-ROW GENERATION IS LIVE — asserted where it is OBSERVABLE (§4 D4). Composition cannot
+# answer this: the dump carries the predicate SOURCE, never its result. The guard writes its decision
+# once per process to `<root>/.mpd/logs/mpd-patch-guards.log`, trying MPD_MCP_LOG_DIR ->
+# DSH_WORKSPACE_ROOT -> cwd -> tmpdir in THAT order, so the same four roots are tried here (cwd is the
+# boot's own $WORK_DIR). A line absent from every root records FALSE — never a silent skip.
+TEAM_GUARD_LINE=""
+TEAM_GUARD_FILE=""
+for guard_root in "${MPD_MCP_LOG_DIR:-}" "${DSH_WORKSPACE_ROOT:-}" "$WORK_DIR" "$WORK_DIR/ws" /tmp; do
+  [ -n "$guard_root" ] || continue
+  guard_file="$guard_root/.mpd/logs/mpd-patch-guards.log"
+  [ -f "$guard_file" ] || continue
+  guard_line="$(grep -m1 -oE 'generation guard: generation=[a-z]+.*newRows=(enabled|disabled)' "$guard_file" 2>/dev/null || true)"
+  if [ -n "$guard_line" ]; then TEAM_GUARD_LINE="$guard_line"; TEAM_GUARD_FILE="$guard_file"; break; fi
+done
+TEAM_GENERATION="$(printf '%s' "$TEAM_GUARD_LINE" | grep -m1 -oE 'generation=[a-z]+' | cut -d= -f2 || true)"
+TEAM_OLD_LIVE=0
+case "$TEAM_GUARD_LINE" in *"oldRows=enabled"*) TEAM_OLD_LIVE=1;; esac
+fact boot.teamRowGeneration "${TEAM_GENERATION:-<not reported>} (bundleRowsEnabled=$TEAM_OLD_LIVE; the same line prints newRows=…, which now names the HOST-side generation only — the bundle ships no new-family rows since T8)"
 
 if [ -n "$BOOT_APPLIED" ] && [ -n "$BOOT_DONE" ]; then
   record boot.probeApplied true "the probe plugin's apply() ran inside the booted harness — a real MOUNT, not a composition" "[docker-probe] APPLIED=ok"
@@ -1403,12 +1433,34 @@ fi
 run_step 11b-mcp-surface node "$LIB_DIR/owed-mcp.ts" \
   --boot-log "$BOOT_LOG" --state "$STATE_FILE" --search-dir "$MPD_E2E_PROBE_SEARCH_DIR"
 
-# The SERVICE half of the same row set: `mpd-agent-team` mounts @deepseek-ai/dsh-experimental-agent-team,
-# whose plugin provides `ctx.agentTeams` (class TeamService). Composition proves nothing here, so the
-# probe reads the mounted service from inside the running process and reports its class.
+# The SERVICE half of the same row set, GENERATION-NEUTRAL: the ENABLED row mounts the official team
+# plugin for this host generation — `@deepseek-ai/dsh-agent-team` on 0.2.2-rc.2, the earlier spelling
+# `@deepseek-ai/dsh-experimental-agent-team` on 0.2.2-rc.1 — and BOTH provide `ctx.agentTeams` (class
+# `TeamService`; measured in both packages, so the class-name witness below holds on either host).
+# Composition proves nothing here, so the probe reads the mounted service from inside the running
+# process and reports its class AND the method surface that identifies the generation it came from.
 PROBE_TEAM_SVC="$(grep -m1 -oE '\[docker-probe\] AGENT_TEAMS=[A-Z]+ serviceName=[A-Za-z0-9_]+' "$BOOT_LOG" 2>/dev/null || true)"
 PROBE_TEAM_METHODS="$(grep -m1 -oE '\[docker-probe\] AGENT_TEAMS_METHODS=.*' "$BOOT_LOG" 2>/dev/null | cut -d= -f2- || true)"
+PROBE_TEAM_GENERATION="$(grep -m1 -oE '\[docker-probe\] TEAM_GENERATION=[a-z-]+' "$BOOT_LOG" 2>/dev/null | cut -d= -f2 || true)"
 fact bootAgentTeamsMethods "$PROBE_TEAM_METHODS"
+fact bootTeamServiceGeneration "${PROBE_TEAM_GENERATION:-<probe did not report>} (read from the service's OWN method surface: roster-capable = the 0.2.2-rc.1 lineage, task-board-only = the 0.2.2-rc.2 lineage)"
+
+# THE TEAM PLANE OF THIS HOST, ASSERTED FROM THE TWO OBSERVATIONS ABOVE (the T8 shape). The bundle ships
+# THREE team rows under ONE generation predicate: on the 0.2.2-rc.1 lineage they ENABLE and ARE the
+# plane (that host's own dsh-base declares none); on 0.2.2-rc.2 they DISABLE — the BUNDLE mounts ZERO
+# team rows — and the harness's own dsh-base supplies the task-board-only official service. Both halves
+# come from evidence, never an assumption: the row decision from the guard's own log, the live service
+# from the probe reading the mounted value inside the process.
+#   generation=old -> the bundle rows MUST be enabled
+#   generation=new -> ALL THREE bundle rows disabled, AND the mounted service is the task-board-only one
+#   anything else  -> FAIL: an ambiguous, unreadable or absent decision is NEVER a pass
+if [ "$TEAM_GENERATION" = "old" ] && [ "$TEAM_OLD_LIVE" -eq 1 ]; then
+  record boot.teamRowGenerationLive true "the 0.2.2-rc.1-lineage host ENABLES the bundle's three team rows, which ARE this host's team plane (the harness's own dsh-base declares no team row on that generation)" "$TEAM_GUARD_LINE (file=$TEAM_GUARD_FILE)"
+elif [ "$TEAM_GENERATION" = "new" ] && [ "$TEAM_OLD_LIVE" -eq 0 ] && printf '%s' "$PROBE_TEAM_SVC" | grep -q 'AGENT_TEAMS=MOUNTED' && [ "$PROBE_TEAM_GENERATION" = "task-board-only" ]; then
+  record boot.teamRowGenerationLive true "the 0.2.2-rc.2 host DISABLES all three bundle team rows (the BUNDLE mounts ZERO team rows) while the HOST plane is live: the probe read a MOUNTED service whose own surface is task-board-only, which is rc.2's dsh-base row" "$TEAM_GUARD_LINE | $PROBE_TEAM_SVC | probeGeneration=$PROBE_TEAM_GENERATION (file=$TEAM_GUARD_FILE)"
+else
+  record boot.teamRowGenerationLive false "the team plane of this host is NOT the expected one: generation=${TEAM_GENERATION:-<none>} bundleRowsEnabled=$TEAM_OLD_LIVE probeService=${PROBE_TEAM_SVC:-<none>} probeGeneration=${PROBE_TEAM_GENERATION:-<none>} — rc.1 expects the bundle rows ENABLED, rc.2 expects ALL THREE DISABLED with a MOUNTED task-board-only host service; an ambiguous, unreadable or absent decision is NEVER a pass" "${TEAM_GUARD_LINE:-<no [mpd-team-rows] generation guard line>} (file=${TEAM_GUARD_FILE:-none})"
+fi
 if printf '%s' "$PROBE_TEAM_SVC" | grep -q 'AGENT_TEAMS=MOUNTED serviceName=TeamService'; then
   record boot.agentTeamService true "the official TeamService is mounted in the booted process (its class name is the witness)" "$PROBE_TEAM_SVC methods=$PROBE_TEAM_METHODS"
 else
@@ -1423,9 +1475,14 @@ fi
 # the observation must not read like one.
 UI_PKG=""
 UI_PLACE=""
-for candidate in "$PROFILE_DIR/node_modules/@deepseek-ai/dsh-experimental-client-ui-agent-team/package.json" \
-                 "$APP_DIR/node_modules/@deepseek-ai/dsh-experimental-client-ui-agent-team/package.json"; do
-  if [ -f "$candidate" ]; then UI_PKG="$candidate"; break; fi
+# BOTH generations, because the ENABLED row decides which package is there: the renamed
+# `@deepseek-ai/dsh-client-ui-agent-team` is what harness 0.2.2-rc.2 mounts, the earlier spelling what
+# 0.2.2-rc.1 mounts. Neither may be assumed, and an unresolvable one stays an OBSERVATION below.
+for ui_team_pkg in "@deepseek-ai/dsh-client-ui-agent-team" "@deepseek-ai/dsh-experimental-client-ui-agent-team"; do
+  for candidate in "$PROFILE_DIR/node_modules/$ui_team_pkg/package.json" "$APP_DIR/node_modules/$ui_team_pkg/package.json"; do
+    if [ -f "$candidate" ]; then UI_PKG="$candidate"; break; fi
+  done
+  if [ -n "$UI_PKG" ]; then break; fi
 done
 if [ -n "$UI_PKG" ]; then
   case "$UI_PKG" in
@@ -1533,22 +1590,33 @@ else
   record boot.presetMount false "the mpd preset did not mount: session creation did not answer ok+agentPreset=mpd (http=$SESSION_CODE; cookieJarLines=${COOKIES_MINTED:-0} cookieHttp=$COOKIE_CODE)" "$SESSION_RAW"
 fi
 
-# THE AGENT-SCOPED TEAM TOOLS. `mpd-tool-agent-team` registers spawn_teammate / send_message /
-# list_agents / wait_agent / interrupt_agent / team_task_* into ONE EXACT AGENT SCOPE, so this is the
-# plane where they exist — the probe prints one line per agent it sees (existing and created).
+# THE AGENT-SCOPED TEAM TOOLS, GRADED PER GENERATION. The official tool plugin registers its names into
+# ONE EXACT AGENT SCOPE, and WHICH names depends on the host generation: the 0.2.2-rc.1 lineage ships
+# spawn_teammate / send_message / list_agents / wait_agent / interrupt_agent / team_task_*, the
+# 0.2.2-rc.2 lineage ONLY the four team_task_*. The probe prints one line per agent it sees (existing
+# and created) and that line carries the `generation=` it graded against, so this row grades the tool
+# plane of THIS host — never a set hard-coded from the other one, and never `absent` as a pass.
 AGENT_TOOL_LINE=""
 AGENT_TOOL_DEADLINE=$(( $(date +%s) + 45 ))
 while [ "$(date +%s)" -lt "$AGENT_TOOL_DEADLINE" ]; do
-  AGENT_TOOL_LINE="$(grep -m1 -oE '\[docker-probe\] AGENT_TEAM_TOOLS=[0-9]+/[0-9]+ agent=[^ ]*' "$BOOT_LOG" 2>/dev/null || true)"
+  # The WAIT accepts any READABLE line (a numeric count or `absent`) and skips `unreadable`/`fail:`
+  # ones, which a later agent's line may well repair. The grading below is what decides pass/fail.
+  AGENT_TOOL_LINE="$(grep -m1 -oE '\[docker-probe\] AGENT_TEAM_TOOLS=([0-9]+/[0-9]+|absent) agent=[^ ]+' "$BOOT_LOG" 2>/dev/null || true)"
   [ -n "$AGENT_TOOL_LINE" ] && break
   sleep 2
 done
-AGENT_TOOL_MISSING="$(grep -m1 -oE '\[docker-probe\] AGENT_TEAM_TOOLS=[0-9]+/[0-9]+ agent=[^ ]*( MISSING=.*)?' "$BOOT_LOG" 2>/dev/null || true)"
-fact bootAgentTeamToolsScoped "${AGENT_TOOL_LINE:-<no agent-scoped line>}"
-if [ -n "$AGENT_TOOL_LINE" ] && ! printf '%s' "$AGENT_TOOL_MISSING" | grep -q 'MISSING='; then
-  record boot.agentTeamTools true "every official agent-team tool answered from an EXACT AGENT SCOPE after session creation (the plane the official plugin registers them in)" "$AGENT_TOOL_LINE"
+AGENT_TOOL_RAW="$(grep -m1 -oE '\[docker-probe\] AGENT_TEAM_TOOLS=([0-9]+/[0-9]+|absent) agent=[^ ]+.*' "$BOOT_LOG" 2>/dev/null || true)"
+AGENT_TOOL_GENERATION="$(printf '%s' "$AGENT_TOOL_RAW" | grep -m1 -oE 'generation=[a-z-]+' | cut -d= -f2 || true)"
+AGENT_TOOL_COUNTS="$(printf '%s' "$AGENT_TOOL_RAW" | grep -m1 -oE 'AGENT_TEAM_TOOLS=[0-9]+/[0-9]+' | cut -d= -f2 || true)"
+AGENT_TOOL_PRESENT="${AGENT_TOOL_COUNTS%%/*}"
+AGENT_TOOL_TOTAL="${AGENT_TOOL_COUNTS##*/}"
+fact bootAgentTeamToolsScoped "${AGENT_TOOL_RAW:-<no agent-scoped line>}"
+if [ -n "$AGENT_TOOL_COUNTS" ] && [ "$AGENT_TOOL_PRESENT" = "$AGENT_TOOL_TOTAL" ] \
+  && { [ "$AGENT_TOOL_GENERATION" = "roster-capable" ] || [ "$AGENT_TOOL_GENERATION" = "task-board-only" ]; } \
+  && ! printf '%s' "$AGENT_TOOL_RAW" | grep -q 'MISSING='; then
+  record boot.agentTeamTools true "every official agent-team tool for THIS host generation answered from an EXACT AGENT SCOPE after session creation — graded set: $( [ "$AGENT_TOOL_GENERATION" = "roster-capable" ] && printf '9 roster/mailbox tools (0.2.2-rc.1 lineage)' || printf '4 team_task_* tools (0.2.2-rc.2 lineage)' )" "$AGENT_TOOL_RAW"
 else
-  record boot.agentTeamTools false "the official agent-team tools were not visible in an agent scope" "${AGENT_TOOL_MISSING:-[docker-probe] AGENT_TEAM_TOOLS=<no line>} root-plane=$(grep -m1 -oE 'TEAM_TOOLS_ROOT=[0-9]+/[0-9]+' "$BOOT_LOG" 2>/dev/null || echo 'n/a')"
+  record boot.agentTeamTools false "the official agent-team tools were not visible in an agent scope for a KNOWN generation (graded=${AGENT_TOOL_COUNTS:-<none>} generation=${AGENT_TOOL_GENERATION:-<none>}; an 'absent' line is NOT a pass)" "${AGENT_TOOL_RAW:-[docker-probe] AGENT_TEAM_TOOLS=<no line>} root-plane=$(grep -m1 -oE 'TEAM_TOOLS_ROOT=([0-9]+/[0-9]+|absent)' "$BOOT_LOG" 2>/dev/null || echo 'n/a')"
 fi
 
 # THE SESSION-GATE LIVENESS PROOF. `mpd-roles-plugin` mounts the session-start complexity gate per

@@ -1,0 +1,8 @@
+### bun run typecheck
+EXIT=0
+### verify-no-host-override
+EXIT=0
+### verify-manual-paths
+EXIT=0
+### verify-vendor
+EXIT=0

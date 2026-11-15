@@ -9,7 +9,7 @@
 // default `todo,jobs,agents` while the user layer is unset, so the appended ids are dropped and the
 // sidebar paints the host's three builtins only — the reported symptom 「只有任务/待办/代理」.
 //
-// THE RELEASE THIS BUNDLE NOW TARGETS IS 0.15.0, where the host SELF-HEALS the sidebar CSV: a
+// THE RELEASE THIS BUNDLE NOW TARGETS IS 0.20.0, and since 0.15.0 the host SELF-HEALS the sidebar CSV: a
 // successful registration unions its panel id back into `dsh-tui.sidePanel.panels`, and the only CSV
 // writer left is the `/settings` apply hop (measured,
 // `evidence/tui/dsh-tui-015/host-diff/FACTS.md`), so the remedy below is the LEGACY-HOST path.
