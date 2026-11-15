@@ -4,11 +4,14 @@
 
 This page describes the **DSH-TUI edition** of the my-power-dsh bundle: what it ships, how to
 install it, what the per-package compatibility measurement found, and what it explicitly does
-**not** claim. It targets `@deepseek-harness-tui/dsh-tui` **0.20.0** and its built-in admission
-profile. 0.20.0 is ADDITIVE over 0.19.0 (wave contract §3 F1) and its declared `@deepseek-ai/dsh-*`
-peer bands top out at DeepSeek Harness **`0.2.2-rc.2`** while still admitting `0.2.2-rc.1` and
-`0.2.1-rc.5`. **§11.15 is this wave's amendment**: it records the move and the carriers it touched.
-**§11.13 stays readable as history**: it recorded the 0.2.2-rc.1 / DSH-TUI 0.19.0 move. **The pin before it was 0.18.0, and that statement stays readable as history**:
+**not** claim. It targets `@deepseek-harness-tui/dsh-tui` **0.20.1** and its built-in admission
+profile. 0.20.1 is a COORDINATE-ONLY move over 0.20.0 (wave contract §3 F7/F8/F10: every
+`@deepseek-ai/dsh-*` peer range appends harness `0.2.2-rc.3` with the FLOOR unchanged, the patch file
+is delta-free and all fifteen `tui*` seams the bundle uses sit at identical file:line) and its declared
+peer bands top out at DeepSeek Harness **`0.2.2-rc.3`** while still admitting `0.2.2-rc.2`,
+`0.2.2-rc.1` and `0.2.1-rc.5`. **§11.16 is this wave's amendment**: it records the move, the carriers
+it touched and the two declared bounds. **§11.15 stays readable as history**: it recorded the move to
+DSH-TUI 0.20.0. **§11.13 stays readable as history**: it recorded the 0.2.2-rc.1 / DSH-TUI 0.19.0 move. **The pin before it was 0.18.0, and that statement stays readable as history**:
 0.18.0's `dsh-*` bands ran through `0.2.1-rc.4` and `0.2.1-rc.5` (all 36 of them), while 0.17.0's stop
 at `0.2.1-rc.3` (read from the published tarballs), and §11.11 is that wave's amendment. **The pin
 before that was 0.17.0, and that statement stays readable as
@@ -1950,3 +1953,42 @@ same fifteen seam services. **Measured, and bounded.** The wave's own `verify:ga
 (`evidence/verify-022rc2/2026-11-14T03-02-10Z/logs/verify-gates.log`). No **live TTY capture** of
 `0.20.0` is claimed in this section — that belongs to the wave's mount lane, and a claim no lane
 exercised is not made here.
+
+### 11.16 Amendment after the harness 0.2.2-rc.3 / DSH-TUI 0.20.1 adaptation wave (2026-11-15)
+
+This wave moves the pin pair again and changes no TUI plugin source, no patch row and no adapter.
+§11.1–§11.15 stay as written: they record earlier waves, not this one.
+
+| Subject | Before | After |
+|---|---|---|
+| This page's target host (§ preamble) | **0.20.0** | **0.20.1** — a COORDINATE-ONLY move (wave contract §3 F7/F8/F10): every `@deepseek-ai/dsh-*` peer range appends harness `0.2.2-rc.3` with the FLOOR unchanged, so the new host still admits `0.2.2-rc.2`, `0.2.2-rc.1` and `0.2.1-rc.5`; `cordis.patch.yml` is delta-free (28 rows at identical lines); all fifteen `tui*` seams the bundle uses are at identical file:line; `lib/types/ui.js` and its `useStdin` export are unchanged; the `presets/` and `tui-profile/` file sets are identical, and the one content change is the launcher feed version `0.20.0` → `0.20.1` |
+| Harness pin (`dsh-distribution.json` `host-base`; `docker/entrypoint.sh` `DSH_VERSION`; the Docker and QA defaults) | `0.2.2-rc.2` | **`0.2.2-rc.3`** (wave contract §D1/§D3). `engines.dsh` stays `>=0.2.1-rc.5 <0.3.0-0` and already admits the new host; the release declares **NO** team package, and the rc.2 host posture below is unchanged |
+| `compat.hosts` (both manifests) and `specs/tui-hosts.json` | `0.18.0`, `0.19.0`, `0.20.0` | **`0.18.0`, `0.19.0`, `0.20.0`, `0.20.1`** — identical sorted sets in all three places, and `dsh-distribution.json`'s `host-tui` ref moves to `0.20.1` |
+| The team mount (harness plane, not TUI source) | three legacy rows, host-owned plane on the new generation | **unchanged** — rc.3's host layers still declare `agent-team` / `tool-agent-team` (`dsh-base/cordis.patch.yml:366-372`) and `ui-agent-team` (`dsh-web-app/cordis.patch.yml:412-413`), none disabled, and `ctx.agentTeams` is still the six-member task-board-only service with the four `team_task_*` tools, so the bundle mounts NO team row on this generation (wave contract §3 F1/F2). The rc.2 statement in [`compatibility.md`](./compatibility.md) §2.1 still describes it |
+| The `tool-office` guarded preset row | ACTIVE on rc.2, a GUARDED NOTE on the older hosts | **ACTIVE on `0.2.2-rc.3`** — the host still mounts `tool-office` as an active `standard` row and resolves `@deepseek-ai/dsh-tool-office@0.2.2-rc.3`, so the guarded row enables; it stays a GUARDED NOTE on `0.2.2-rc.1` and `0.2.1-rc.5`. The two statements are HOST-SPECIFIC and are not conflated (wave contract §3 F3, §6) |
+| The Ctrl+A host contact | version-gated on the `tuiPanels` seam | **unchanged** — 0.20.1 declares the same fifteen `tui*` services and an unchanged `lib/types/ui.js`, so the contact stays inert while the seam is present and Ctrl+A keeps its host meaning; the merged view opens through `alt+a` / `/mpd panel` |
+
+**Two declared bounds — they are part of the claim, not a footnote.**
+
+- **`tuiMentions` is NOT adopted.** 0.20.1 adds ONE host service, `tuiMentions`
+  (`lib/types/dsh-adapter/mention-providers.d.ts:75`). A new host capability is OPTIONAL (AGENTS.md §2
+  rule 7), so the bundle's seam set stays at the fifteen it binds (plus the phantom), degrades as
+  before on a host without it, and no mention support is claimed anywhere in this edition.
+- **rc.3's plugin sources were not on disk when this hop was measured** (wave contract §3 F6), so the
+  packaging lane packed them from the registry and compared them against the rc.2 copies:
+  `@deepseek-ai/dsh-agent-team@0.2.2-rc.3` and `@deepseek-ai/dsh-tool-agent-team@0.2.2-rc.3` both
+  answer `0.2.2-rc.3`, and their `src/` trees are **IDENTICAL** to the rc.2 copies (ten files in the
+  service package, one in the tool package, an empty `diff -rq`). The surface is therefore unchanged —
+  the same six task-board members (`isEnabled`, `setEnabled`, `createTask`, `getTask`, `listTasks`,
+  `updateTask`) and the four `team_task_*` tools — so no adapter absorption is needed. The packed
+  tarballs and the file-by-file comparison are carried by the wave's record under
+  `evidence/verify-022rc3/`.
+
+**Measured here.** The coordinates above were read from the installed `0.20.1` host's own
+`package.json`, `cordis.patch.yml`, `lib/types/ui.js` and the two file sets (wave contract §3
+F7/F8/F10). **Measured, and bounded.** This wave's `verify:gates` negotiated the new host: `tui-admission`
+exited 0 with `REPORT: PASS — 49 arms passed, 1 allowed deviation(s), 5 bound(s)` on a discovered
+`dsh-tui 0.20.1` (`arm H.host PASS`, `arm COMPAT.host-version PASS`), both manifests `compatible`
+(`evidence/verify-022rc3/2026-11-15T12-45-50Z/logs/verify-gates-rc3.log`). No **live TTY capture** of `0.20.1` is
+claimed in this section: that belongs to the wave's mount lane, and a claim no lane exercised is not
+made here.

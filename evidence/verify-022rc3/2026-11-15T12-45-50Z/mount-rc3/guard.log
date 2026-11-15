@@ -1,0 +1,2 @@
+[mpd-better-sidebar] mount guard: DISABLED - no enabled @deepseek-ai/dsh-host-webserver entry in this composition
+[mpd-team-rows] generation guard: generation=new source=argv1 argv1=/home/haroldzhao/qa-anchors/rc3-t3-20261115T124238Z/host-rc3/bin/dsh harness=0.2.2-rc.3@/home/haroldzhao/qa-anchors/rc3-t3-20261115T124238Z/host-rc3/lib/node_modules/@deepseek-ai/dsh baseUrl=/home/haroldzhao/qa-anchors/rc3-t3-20261115T124238Z/runs/mount-rc3/dshhome/profiles/t3/ baseUrlHarness=- presence=old:false,new:false oldRows=disabled newRows=enabled override=-

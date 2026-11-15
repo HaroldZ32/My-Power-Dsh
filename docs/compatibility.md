@@ -2,7 +2,7 @@
 
 **English** | [中文](./compatibility.zh-CN.md)
 
-This page is the **three-plane compatibility matrix** of the `0.19.0` release: what each upstream plane
+This page is the **three-plane compatibility matrix** of the `0.20.0` release: what each upstream plane
 guarantees, what degrades on an older host, and what is **not available** there. Every line is traceable to
 a gate run, a mounted boot in an isolated `DSH_HOME`, or a source of the upstream package named beside it —
 never to a device, because this repository contains no Flutter host and no phone.
@@ -13,8 +13,8 @@ Three planes move independently, and the bundle adapts to each on its own terms:
 
 | Plane | Minimum supported | Current target | Where the claim is asserted |
 |---|---|---|---|
-| DSH core (`@deepseek-ai/dsh`) | `0.2.1-rc.5` | `0.2.2-rc.2` | `package.json` `engines.dsh`, the isolated mount boot, `preset-conformance` |
-| DSH-TUI (`@deepseek-harness-tui/dsh-tui`) | `0.18.0` | `0.20.0` | `dsh-plugin.json` `compat.hosts`, `verify:tui-admission`, the host's own negotiation |
+| DSH core (`@deepseek-ai/dsh`) | `0.2.1-rc.5` | `0.2.2-rc.3` | `package.json` `engines.dsh`, `dsh-distribution.json` `host-base`, the isolated mount boot, `preset-conformance` |
+| DSH-TUI (`@deepseek-harness-tui/dsh-tui`) | `0.18.0` | `0.20.1` | both manifests' `compat.hosts`, `dsh-distribution.json` `host-tui`, `verify:tui-admission`, the host's own negotiation |
 | DSH-Go (`dsh-Go`, protocol v1) | view v1, always | view v2 where the app takes it | `dshGo` manifest, `verify:dshgo` |
 
 Three words are used with one meaning each. **Guaranteed** means a check in this repository exercises it.
@@ -25,7 +25,18 @@ The `engines.dsh` declaration spans both bands on purpose: `"dsh": ">=0.2.1-rc.5
 locked to the newer band would refuse the older host at install time, which is exactly what this wave's
 backward-compatibility rule forbids.
 
-## 2. DSH core: `0.2.1-rc.5`, `0.2.2-rc.1` and `0.2.2-rc.2`
+## 2. DSH core: `0.2.1-rc.5`, `0.2.2-rc.1`, `0.2.2-rc.2` and `0.2.2-rc.3`
+
+**Four hosts are admitted on this plane.** `0.2.2-rc.3` is the current target; `0.2.2-rc.2`,
+`0.2.2-rc.1` and `0.2.1-rc.5` stay admitted. The rc.2 → rc.3 hop is PACKAGING ONLY (wave contract §3
+F1–F5): the host's own layers still declare `agent-team` / `tool-agent-team` / `ui-agent-team` at the
+same lines, `ctx.agentTeams` is still the six-member task-board service, the `standard` preset is
+row-for-row identical, no probed seam changed, and the rc.3 team packages' `src/` trees compare
+identical to their rc.2 copies; the only new package is `@deepseek-ai/dsh-deepseek-chat-import` (no
+tools, no team plane), and `engines.dsh` already admits the new host. The table below stays two-columned because it is the OLD-HOST comparison; rc.3's gate arm is
+measured by this wave (contract §D6) and its transcript is recorded under
+`evidence/verify-022rc3/`, while a per-row activation measurement inside a full mount belongs to the
+wave's mount lane, not to this page.
 
 | | `0.2.1-rc.5` | `0.2.2-rc.1` |
 |---|---|---|
@@ -130,6 +141,14 @@ exist there. The `mpd` preset declares `tool-office` with a MOUNT GUARD, so the 
 and DISABLED on rc.1. The gate now classifies a GUARDED extra row as a NOTE and an UNGUARDED one as a
 FAIL; that is a declared gate-semantics change under independent review, not a fact this page certifies.
 
+**`tool-office` is HOST-SPECIFIC — the two statements must not be conflated.** On `0.2.2-rc.3` the
+guarded row is ACTIVE: that host's `dsh-web-app` still declares
+`@deepseek-ai/dsh-tool-office@0.2.2-rc.3`, the `standard` preset still mounts it, and the package
+resolves, so the row enables. On `0.2.2-rc.1` — and on `0.2.1-rc.5` — it stays a GUARDED NOTE: the
+package does not exist there and the row disables. `0.2.2-rc.3` also keeps the rc.2 team-plane posture
+unchanged: the host declares all three team rows itself, so the bundle declares none (wave contract §3
+F1/F2).
+
 **The adapter's rule changed with it — presence is not servability.** `0.2.2-rc.2` keeps
 `ctx.agentTeams` as a TASK-BOARD-ONLY service (`isEnabled`, `setEnabled`, `createTask`, `getTask`,
 `listTasks`, `updateTask`); `membership`, `tryMembership`, `listMembers`, `spawnTeammate`,
@@ -143,13 +162,17 @@ flag beside `teamExecutorNative`. `TEAM_TASK_METHODS` and the task-board paths a
 registration is a MEASURED boot failure; a per-row activation measurement inside a full mount belongs to
 the wave's own mount lane under `evidence/`, not to this page.
 
-## 3. dsh-TUI: `0.18.0`, `0.19.0` and `0.20.0` are all admitted
+## 3. dsh-TUI: `0.18.0`, `0.19.0`, `0.20.0` and `0.20.1` are all admitted
 
 `dsh-plugin.json` and `packages/mpd-tui-plugin/dsh-plugin.json` both declare
 `compat.hosts: ["@deepseek-harness-tui/dsh-tui@0.18.0", "@deepseek-harness-tui/dsh-tui@0.19.0",
-"@deepseek-harness-tui/dsh-tui@0.20.0"]`, and `dsh-distribution.json`'s `host-tui` ref names `0.20.0`. `verify:tui-admission` asserts that published
-band instead of trusting the field. The set of hosts this bundle CLAIMS is written data, not a
-discovered fact: `specs/tui-hosts.json` names all three hosts, and the gate's COMPAT lane carries five arms —
+"@deepseek-harness-tui/dsh-tui@0.20.0", "@deepseek-harness-tui/dsh-tui@0.20.1"]`, and
+`dsh-distribution.json`'s `host-tui` ref names `0.20.1`. `verify:tui-admission` asserts that published
+band instead of trusting the field. **`0.20.1` is a COORDINATE-ONLY move over `0.20.0`** (wave contract
+§3 F7/F8/F10): every `@deepseek-ai/dsh-*` peer range appends harness `0.2.2-rc.3` with the FLOOR
+unchanged, the patch file is delta-free, all fifteen `tui*` seams the bundle uses sit at identical
+file:line, and the only content change is the launcher feed version `0.20.0` → `0.20.1`. The set of hosts this bundle CLAIMS is written data, not a
+discovered fact: `specs/tui-hosts.json` names all four hosts, and the gate's COMPAT lane carries five arms —
 four that run host-free in every static pass, plus one that can only run when a host is discoverable:
 
 - `COMPAT.band:<label>` — each manifest's `compat.hosts` is a non-empty array of `@scope/name@x.y.z`
@@ -248,7 +271,7 @@ bound is that the *page* is a markdown file the host renders, and its content is
 
 ## 7. Where the detail lives
 
-The release narrative is in [`../CHANGELOG.md`](../CHANGELOG.md) `## 0.19.0`. The two upstream adaptation
+The release narrative is in [`../CHANGELOG.md`](../CHANGELOG.md) `## 0.20.0`. The two upstream adaptation
 sources this page rests on are the measured evidence bundle under
 `evidence/upstream/0.2.2/2026-11-07T05-45Z/` (mount, routing, row parity, the `0.19.0` negotiation probe and
 the batch-API finding) and the gate transcripts beside it. The DSH-Go standard is

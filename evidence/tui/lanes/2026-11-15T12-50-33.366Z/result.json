@@ -1,0 +1,118 @@
+{
+  "slug": "tui-mount",
+  "ok": true,
+  "steps": {
+    "face": {
+      "ok": true,
+      "layering": {
+        "ok": true,
+        "missing": [],
+        "ordered": true,
+        "bundles": [
+          "@deepseek-ai/dsh-base",
+          "@deepseek-harness-tui/dsh-tui",
+          "@mpd-dsh/mpd"
+        ],
+        "reason": "triple layer in order"
+      },
+      "crashSignatures": [],
+      "statusLine": true,
+      "counters": true,
+      "rendered": true,
+      "presetWitness": "not-materialized",
+      "rowComposed": true,
+      "homeFixture": {
+        "onboarding": {
+          "completed": true,
+          "version": 1
+        },
+        "preset": "mpd",
+        "evidence": [
+          "/home/haroldzhao/qa-anchors/rc3-t3-20261115T124238Z/runs/tui-arm-rc3/home/.dsh-tui/onboarding.json",
+          "/home/haroldzhao/qa-anchors/rc3-t3-20261115T124238Z/runs/tui-arm-rc3/home/.dsh-tui/agent-preset.json"
+        ]
+      },
+      "launchpadGate": {
+        "key": "DSH_TUI_NO_LAUNCHPAD",
+        "value": "1"
+      },
+      "isolationOffenders": [],
+      "sessionKeysCreated": [],
+      "sessionKeysInherited": [],
+      "expectedProjectKey": "--home-haroldzhao-qa-anchors-rc3-t3-20261115T124238Z-runs-tui-arm-rc3-ws--",
+      "sandboxSessions": 0,
+      "freshSandboxSessions": 0,
+      "sandboxRoot": "/home/haroldzhao/qa-anchors/rc3-t3-20261115T124238Z/runs/tui-arm-rc3",
+      "layeringEvidence": "dump-config.txt",
+      "paneEvidence": "boot.pane.txt + tui-pane.log",
+      "presetEvidence": "preset.pane.txt + preset.session.json + evidence/tui/lanes/2026-11-15T12-50-33.366Z/preset.session.json"
+    },
+    "rowComposed": true,
+    "isolation": [],
+    "installAttempt": {
+      "hostExit": 0,
+      "bundleExit": 0,
+      "log": "evidence/tui/lanes/2026-11-15T12-50-33.366Z/install.log",
+      "root": "/home/haroldzhao/qa-anchors/rc3-t3-20261115T124238Z/runs/tui-arm-rc3"
+    }
+  },
+  "face": {
+    "ok": true,
+    "layering": {
+      "ok": true,
+      "missing": [],
+      "ordered": true,
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-harness-tui/dsh-tui",
+        "@mpd-dsh/mpd"
+      ],
+      "reason": "triple layer in order"
+    },
+    "crashSignatures": [],
+    "statusLine": true,
+    "counters": true,
+    "rendered": true,
+    "presetWitness": "not-materialized",
+    "rowComposed": true,
+    "homeFixture": {
+      "onboarding": {
+        "completed": true,
+        "version": 1
+      },
+      "preset": "mpd",
+      "evidence": [
+        "/home/haroldzhao/qa-anchors/rc3-t3-20261115T124238Z/runs/tui-arm-rc3/home/.dsh-tui/onboarding.json",
+        "/home/haroldzhao/qa-anchors/rc3-t3-20261115T124238Z/runs/tui-arm-rc3/home/.dsh-tui/agent-preset.json"
+      ]
+    },
+    "launchpadGate": {
+      "key": "DSH_TUI_NO_LAUNCHPAD",
+      "value": "1"
+    },
+    "isolationOffenders": [],
+    "sessionKeysCreated": [],
+    "sessionKeysInherited": [],
+    "expectedProjectKey": "--home-haroldzhao-qa-anchors-rc3-t3-20261115T124238Z-runs-tui-arm-rc3-ws--",
+    "sandboxSessions": 0,
+    "freshSandboxSessions": 0,
+    "sandboxRoot": "/home/haroldzhao/qa-anchors/rc3-t3-20261115T124238Z/runs/tui-arm-rc3",
+    "layeringEvidence": "dump-config.txt",
+    "paneEvidence": "boot.pane.txt + tui-pane.log",
+    "presetEvidence": "preset.pane.txt + preset.session.json + evidence/tui/lanes/2026-11-15T12-50-33.366Z/preset.session.json"
+  },
+  "revision": {
+    "path": "packages/mpd-tui-plugin/dist/index.js",
+    "sha256": "4043b559d69258248a54ad9c6bdb73714fcee8ca3a10a1951dca435a083253db",
+    "bytes": 544379,
+    "mtimeLocal": "2026-11-15T12:29:25.150Z",
+    "mtimeUtc": "2026-11-15T12:29:25.150Z"
+  },
+  "revisionDelta": {
+    "changed": false,
+    "before": "4043b559d69258248a54ad9c6bdb73714fcee8ca3a10a1951dca435a083253db",
+    "after": "4043b559d69258248a54ad9c6bdb73714fcee8ca3a10a1951dca435a083253db",
+    "reason": "unchanged across the run"
+  },
+  "manifestDigest": "2f74f50c866dae372db132764a4ce1a75492be06a12e06b12c3f8d5db57c62bf"
+}

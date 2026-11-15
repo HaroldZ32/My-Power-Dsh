@@ -1,0 +1,21 @@
+{
+  "version": 3,
+  "panelIds": [
+    "session:act1:team",
+    "session:act1:workmate",
+    "session:act1:watchdog"
+  ],
+  "slugs": [
+    "act1:team",
+    "act1:workmate",
+    "act1:watchdog"
+  ],
+  "updatedAt": "2026-11-15T13:04:58.830Z",
+  "provenance": {
+    "hostRoot": "/home/haroldzhao/qa-anchors/rc3-t3-20261115T124238Z/runs/tui-arm-rc3/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui",
+    "hostVersion": "0.20.1",
+    "readBack": "tuiPanels.list",
+    "activation": "session"
+  },
+  "history": []
+}

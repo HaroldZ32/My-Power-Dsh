@@ -1,0 +1,1 @@
+[2026-11-15T13:12:02.502Z] [mpd-worktree] ready: mpd_worktree_create, mpd_worktree_list, mpd_worktree_status, mpd_worktree_merge, mpd_worktree_remove; state <workspace>/.mpd/worktrees/index.json

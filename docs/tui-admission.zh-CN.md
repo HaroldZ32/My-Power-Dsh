@@ -71,19 +71,26 @@
 tag 上**逐字节相同**（指南 blob 为 `6b9dfd3…`，99,723 B；`permissions-0.1.json` 为 `f36cb6e…`），因此
 0.19.0 这次移动不需要任何准入返工。
 
-**本次发布把波段移到 `0.20.0`，而且本波自己的门禁运行已经对它完成协商。** `0.20.0` 相对 `0.19.0` 是
-纯增量（波次契约 §3 F1：同样的 52 个行、同样的 15 个 `tui*` 服务、完全一致的 `lib/types/ui.js` 且仍导出
-`useStdin`），两个清单的 `compat.hosts` 与 `specs/tui-hosts.json` 现在都以同一份有序集合携带 `0.18.0`、
-`0.19.0`、`0.20.0`，`dsh-distribution.json` 的 `host-tui` 引用为 `0.20.0`。
+**本次发布把波段移到四台宿主，目标为 `0.20.1`。** `0.20.1` 相对 `0.20.0` 是**仅坐标的移动**
+（波次契约 §3 F7/F8/F10：每一条 `@deepseek-ai/dsh-*` peer 范围都追加 harness `0.2.2-rc.3` 而**下限不变**，
+patch 文件零增量，15 个 `tui*` 接缝都在相同的 file:line，`lib/types/ui.js` 未变），两个清单的
+`compat.hosts` 与 `specs/tui-hosts.json` 现在都以同一份有序集合携带 `0.18.0`、`0.19.0`、`0.20.0` 与
+`0.20.1`，`dsh-distribution.json` 的 `host-tui` 引用为 `0.20.1`。
 
-**实测（钉定宿主上的 `verify:gates`）：** `tui-admission` 退出 0，
+**在 `0.20.0` 代际上实测（2026-11-14），于钉定宿主上的 `verify:gates`）：** `tui-admission` 退出 0，
 `REPORT: PASS — 49 arms passed, 1 allowed deviation(s), 5 bound(s)`，且宿主自己的链把**两个**清单都协商为
 `compatible`（`arm H.chain:bundle PASS`、`arm H.chain:package PASS`）。记录见
 `evidence/verify-022rc2/2026-11-14T03-02-10Z/logs/verify-gates.log`。
 
+**本波的 `verify:gates` 已协商 `0.20.1`（2026-11-15）：** `tui-admission` 退出 0，
+`REPORT: PASS — 49 arms passed, 1 allowed deviation(s), 5 bound(s)`；发现的宿主为
+`@deepseek-harness-tui/dsh-tui 0.20.1`（`arm H.host PASS`、`arm COMPAT.host-version PASS`），宿主自己的
+链把**两个**清单都协商为 `compatible`（`arm H.chain:bundle PASS`、`arm H.chain:package PASS`）。记录文本：
+`evidence/verify-022rc3/2026-11-15T12-45-50Z/logs/verify-gates-rc3.log`。
+
 **边界不变。** 该臂只是静态准入加上宿主自己的协商——门禁自己会打印
 `BOUND: … NOT a live TTY mount, and NOT a Verified claim (no artifact digest exists)`。**本页不声称对
-`0.20.0` 做过真机 TTY 抓取**；面板级车道归 `evidence/` 下的运行，没有车道演练过的结论不在本页声称。
+`0.20.1` 做过真机 TTY 抓取**；面板级车道归 `evidence/` 下的运行，没有车道演练过的结论不在本页声称。
 
 | 清单 | SHA-256（截断） | `validatePlugin` | 协商 |
 |---|---|---|---|

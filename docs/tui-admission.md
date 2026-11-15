@@ -80,20 +80,29 @@ contract and permission registries and all eleven admission-decision source file
 the two tags** (the guide's blob is `6b9dfd3…`, 99,723 B; `permissions-0.1.json` is `f36cb6e…`), so the
 0.19.0 move required no admission rework.
 
-**This release moves the band to `0.20.0`, and the wave's own gate run negotiated it.** `0.20.0` is
-additive over `0.19.0` (wave contract §3 F1: the same 52 rows, the same fifteen `tui*` services, an
-identical `lib/types/ui.js` with `useStdin` still exported), and `compat.hosts` in both manifests plus
-`specs/tui-hosts.json` now carry `0.18.0`, `0.19.0` and `0.20.0` as one identical sorted set, with
-`dsh-distribution.json`'s `host-tui` ref at `0.20.0`.
+**This release moves the band to four hosts, with `0.20.1` as the target.** `0.20.1` is a
+COORDINATE-ONLY move over `0.20.0` (wave contract §3 F7/F8/F10: every `@deepseek-ai/dsh-*` peer range
+appends harness `0.2.2-rc.3` with the floor unchanged, the patch file is delta-free, all fifteen `tui*`
+seams sit at identical file:line, `lib/types/ui.js` is unchanged), and `compat.hosts` in both manifests
+plus `specs/tui-hosts.json` now carry `0.18.0`, `0.19.0`, `0.20.0` and `0.20.1` as one identical sorted
+set, with `dsh-distribution.json`'s `host-tui` ref at `0.20.1`.
 
-**Measured, in `verify:gates` on the pinned host:** `tui-admission` exited 0 with
+**Measured on the `0.20.0` generation (2026-11-14), in `verify:gates` on the pinned host:**
+`tui-admission` exited 0 with
 `REPORT: PASS — 49 arms passed, 1 allowed deviation(s), 5 bound(s)`, and the host's own chain negotiated
 **both** manifests to `compatible` (`arm H.chain:bundle PASS`, `arm H.chain:package PASS`). Transcript:
 `evidence/verify-022rc2/2026-11-14T03-02-10Z/logs/verify-gates.log`.
 
+**This wave's `verify:gates` negotiated `0.20.1` (2026-11-15):** `tui-admission` exited 0 with
+`REPORT: PASS — 49 arms passed, 1 allowed deviation(s), 5 bound(s)`; the host was discovered as
+`@deepseek-harness-tui/dsh-tui 0.20.1` (`arm H.host PASS`, `arm COMPAT.host-version PASS`), and the
+host's own chain negotiated **both** manifests to `compatible` (`arm H.chain:bundle PASS`,
+`arm H.chain:package PASS`). Transcript:
+`evidence/verify-022rc3/2026-11-15T12-45-50Z/logs/verify-gates-rc3.log`.
+
 **Bound, unchanged.** That arm is static admission plus the host's own negotiation only — the gate prints
 its own `BOUND: … NOT a live TTY mount, and NOT a Verified claim (no artifact digest exists)`. **No live
-TTY capture of `0.20.0` is claimed here**; the pane-level lane under `evidence/` owns that, and a claim no
+TTY capture of `0.20.1` is claimed here**; the pane-level lane under `evidence/` owns that, and a claim no
 lane exercised is not made on this page.
 
 | Manifest | SHA-256 (truncated) | `validatePlugin` | Negotiation |
