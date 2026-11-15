@@ -1,0 +1,13 @@
+dsh: initialized profile t3 at /home/haroldzhao/qa-anchors/rc3-t3-20261115T124238Z/runs/mount-rc2f/dshhome/profiles/t3
+[WARN] The package @mpd-dsh/mpd, which you have just pnpm linked, has the following peerDependencies specified in its package.json:
+
+  - dsh-better-sidebar@>=0.28.0 <0.29.0
+
+The linked in dependency will not resolve the peer dependencies from the target node_modules.
+This might cause issues in your project. To resolve this, you may use the "file:" protocol to reference the local dependency.
+Already up to date
+
+dependencies:
++ @mpd-dsh/mpd <- ../../../../../../../MyProj/DshProj/My-Power-Dsh
+
+Done in 41ms using pnpm v12.16.1

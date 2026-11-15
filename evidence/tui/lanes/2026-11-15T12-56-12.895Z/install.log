@@ -1,0 +1,42 @@
+Update available! 12.16.1 → 12.21.0.
+Changelog: https://pnpm.io/v/12.21.0
+To update, run: pnpm self-update
+Downloading @deepseek-harness-tui/dsh-tui@0.20.1: 0.00 B/18.88 MB
+Downloading @img/sharp-libvips-linux-x64@1.3.4: 0.00 B/8.21 MB
+Downloading @deepseek-harness-tui/dsh-tui@0.20.1: 3.82 MB/18.88 MB
+Downloading @deepseek-harness-tui/dsh-tui@0.20.1: 10.03 MB/18.88 MB
+Added 1 entry to minimumReleaseAgeExclude in pnpm-workspace.yaml (set minimumReleaseAgeStrict to true to gate these updates with a prompt):
+  @deepseek-harness-tui/dsh-tui@0.20.1
+Downloading @img/sharp-libvips-linux-x64@1.3.4: 4.18 MB/8.21 MB
+Downloading @img/sharp-libvips-linux-x64@1.3.4: 5.71 MB/8.21 MB
+Downloading @img/sharp-libvips-linux-x64@1.3.4: 7.94 MB/8.21 MB
+Packages are hard linked from the content-addressable store to the virtual store.
+  Content-addressable store is at: /home/haroldzhao/qa-anchors/rc3-t1-20261115T125612Z/runs/tui-arm-rc3/pnpm-home/store/v11
+  Virtual store is at:             node_modules/.pnpm
+Packages: +79
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 78, reused 0, downloaded 81, added 79, done
+[WARN] Issues with peer dependencies found. Run "pnpm peers check" to list them.
+
+dependencies:
++ @deepseek-harness-tui/dsh-tui 0.20.1
+
+Done in 9.5s using pnpm v12.16.1
+dsh: initialized profile dsh-tui at /home/haroldzhao/qa-anchors/rc3-t1-20261115T125612Z/runs/tui-arm-rc3/dshhome/profiles/dsh-tui
+[WARN] The package @mpd-dsh/mpd, which you have just pnpm linked, has the following peerDependencies specified in its package.json:
+
+  - dsh-better-sidebar@>=0.28.0 <0.29.0
+
+The linked in dependency will not resolve the peer dependencies from the target node_modules.
+This might cause issues in your project. To resolve this, you may use the "file:" protocol to reference the local dependency.
+? Verifying lockfile against supply-chain policies (104 entries)...
+✓ Lockfile passes supply-chain policies (104 entries in 1.5s)
+Packages: -26
+--------------------------
+Progress: resolved 78, reused 78, downloaded 0, added 0, done
+[WARN] Issues with peer dependencies found. Run "pnpm peers check" to list them.
+
+dependencies:
++ @mpd-dsh/mpd <- ../../../../../../../MyProj/DshProj/My-Power-Dsh
+
+Done in 1.5s using pnpm v12.16.1

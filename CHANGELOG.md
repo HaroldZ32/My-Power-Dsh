@@ -14,6 +14,58 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
+## 0.20.0 — packaging-only hop: DSH 0.2.2-rc.3 and DSH-TUI 0.20.1 join the admitted band, with no plugin, patch-row or adapter change
+
+**Added — two newly supported hosts, on the same admission terms as the hosts already there.** DeepSeek
+Harness `0.2.2-rc.3` and DSH-TUI `0.20.1` are now the release's target pair. The harness hop is
+packaging-only: `dsh-base/cordis.patch.yml:366-372` still declares `agent-team`
+(`@deepseek-ai/dsh-agent-team`, `config.maxTasks: 256`) and `tool-agent-team`,
+`dsh-web-app/cordis.patch.yml:412-413` still declares `ui-agent-team`, none of the three disabled;
+`ctx.agentTeams` is still the six-member task-board service and `tool-agent-team` still contributes the
+four `team_task_*` tools; the `standard` preset is row-for-row identical to rc.2; no probed seam
+changed; and the only new host package is `@deepseek-ai/dsh-deepseek-chat-import` (no tools, no team
+plane). The TUI hop is coordinate-only: every `@deepseek-ai/dsh-*` peer range appends harness
+`0.2.2-rc.3` with the FLOOR unchanged, `cordis.patch.yml` is delta-free (28 rows at identical lines),
+all fifteen `tui*` seams the bundle uses sit at identical file:line, `lib/types/ui.js` and its
+`useStdin` export are unchanged, and the only content change is the launcher feed version
+`0.20.0` → `0.20.1`.
+
+**Changed — the pin pair and the admitted band.** `dsh-distribution.json`'s `host-base` component moves
+to `@deepseek-ai/dsh-base@0.2.2-rc.3` (with `docker/entrypoint.sh`'s `DSH_VERSION` default and the
+Docker/QA defaults behind it), and its `host-tui` ref moves to
+`@deepseek-harness-tui/dsh-tui@0.20.1`. `compat.hosts` in both manifests and `specs/tui-hosts.json`
+now carry `0.18.0`, `0.19.0`, `0.20.0` and `0.20.1` as one identical sorted set. `engines.dsh` stays
+`>=0.2.1-rc.5 <0.3.0-0` — unchanged because it already admitted rc.3 — and `engines.node` stays
+`>=24.9.0`. The admitted harness band is now `0.2.2-rc.3`, `0.2.2-rc.2`, `0.2.2-rc.1` and
+`0.2.1-rc.5`; the bundle still declares **no** team package.
+
+**Changed — the docs state the four-host band in both languages, and keep `tool-office` host-specific.**
+`docs/compatibility.md`, `docs/tui.md` (a new §11.16 amendment), `docs/tui-admission.md`,
+`docs/index.md`, `docs/user-guide.md`, the two `docker/README` files, both root READMEs and `AGENTS.md`
+§8 move their pin statements in the same change, each with its 简体中文 twin. The `tool-office`
+statement is kept HOST-SPECIFIC: the guarded row is ACTIVE on `0.2.2-rc.3` (the host still mounts it as
+a `standard` row and resolves `@deepseek-ai/dsh-tool-office@0.2.2-rc.3`), and it remains a GUARDED NOTE
+on `0.2.2-rc.1` and `0.2.1-rc.5`. The two statements are not conflated anywhere.
+
+**Fixed — nothing.** No defect is repaired by this release: the hop is packaging-level, and no adapter,
+preset or patch row changed.
+
+**Removed — nothing.**
+
+**Declared bounds.** (1) `tuiMentions`, the ONE new host service in `0.20.1`
+(`lib/types/dsh-adapter/mention-providers.d.ts:75`), is NOT adopted — a new host capability is
+OPTIONAL, so the bundle's seam set stays at the fifteen it binds plus the phantom and no mention
+support is claimed. (2) rc.3's plugin sources were not on disk when the hop was measured; the
+packaging lane packed `@deepseek-ai/dsh-agent-team@0.2.2-rc.3` and
+`@deepseek-ai/dsh-tool-agent-team@0.2.2-rc.3` from the registry and compared their `src/` trees with
+the rc.2 copies — IDENTICAL (ten files in the service package, one in the tool package, an empty
+`diff -rq`), the same six task-board members and the four `team_task_*` tools, so no adapter
+absorption is needed. The wave's own `verify:gates` did negotiate `0.20.1` (`tui-admission` exit 0 —
+49 arms passed, 1 allowed deviation, 5 bounds, both manifests `compatible`, the host discovered as
+`dsh-tui 0.20.1`), but that arm is static admission plus
+the host's own negotiation only, so a live TTY capture of `0.20.1` is NOT claimed: a lane that did not
+run is never a pass.
+
 ## 0.19.0 — three-plane adaptation: DSH 0.2.2-rc.2, DSH-TUI 0.20.0, a host-owned team plane and a conservative generation guard
 
 **Changed — the team mount moved to the host on the new generation, and its guard became a

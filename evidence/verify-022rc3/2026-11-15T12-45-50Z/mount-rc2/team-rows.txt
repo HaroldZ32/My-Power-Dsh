@@ -1,0 +1,21 @@
+agent-team present_at_line=264
+- id: agent-team
+  name: '@deepseek-ai/dsh-agent-team'
+  config:
+tool-agent-team present_at_line=268
+- id: tool-agent-team
+  name: '@deepseek-ai/dsh-tool-agent-team'
+- id: subagent-spawn-in-process
+ui-agent-team ABSENT
+mpd-agent-team present_at_line=627
+- id: mpd-agent-team
+  name: '@deepseek-ai/dsh-experimental-agent-team'
+  disabled: !!js >-
+mpd-tool-agent-team present_at_line=792
+- id: mpd-tool-agent-team
+  name: '@deepseek-ai/dsh-experimental-tool-agent-team'
+  disabled: !!js >-
+mpd-ui-agent-team present_at_line=949
+- id: mpd-ui-agent-team
+  name: '@deepseek-ai/dsh-experimental-client-ui-agent-team'
+  disabled: !!js >-

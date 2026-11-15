@@ -2,7 +2,7 @@
 
 [English](./compatibility.md) | **中文**
 
-本页是 `0.19.0` 版本的**三平面兼容矩阵**：每个上游平面保证什么、在旧宿主上什么会降级、以及在旧宿主上
+本页是 `0.20.0` 版本的**三平面兼容矩阵**：每个上游平面保证什么、在旧宿主上什么会降级、以及在旧宿主上
 什么**不可用**。每一行都能追溯到一次门禁运行、一次在隔离 `DSH_HOME` 里的挂载启动，或旁边点名的上游包
 源码——绝不能追溯到真机，因为本仓库里没有 Flutter 宿主，也没有手机。
 
@@ -12,8 +12,8 @@
 
 | 平面 | 最低支持 | 当前目标 | 该声明在哪里被断言 |
 |---|---|---|---|
-| DSH 核心（`@deepseek-ai/dsh`） | `0.2.1-rc.5` | `0.2.2-rc.2` | `package.json` 的 `engines.dsh`、隔离挂载启动、`preset-conformance` |
-| DSH-TUI（`@deepseek-harness-tui/dsh-tui`） | `0.18.0` | `0.20.0` | `dsh-plugin.json` 的 `compat.hosts`、`verify:tui-admission`、宿主自己的协商 |
+| DSH 核心（`@deepseek-ai/dsh`） | `0.2.1-rc.5` | `0.2.2-rc.3` | `package.json` 的 `engines.dsh`、`dsh-distribution.json` 的 `host-base`、隔离挂载启动、`preset-conformance` |
+| DSH-TUI（`@deepseek-harness-tui/dsh-tui`） | `0.18.0` | `0.20.1` | 两个清单的 `compat.hosts`、`dsh-distribution.json` 的 `host-tui`、`verify:tui-admission`、宿主自己的协商 |
 | DSH-Go（`dsh-Go`，协议 v1） | 视图 v1，永远 | 在应用能接受的范围内用视图 v2 | `dshGo` 清单、`verify:dshgo` |
 
 三个词各只有一个含义。**保证**意味着本仓库里有检查真正演练过它。**降级**意味着在缺少该能力的宿主上，
@@ -22,7 +22,16 @@
 `engines.dsh` 刻意同时覆盖两个波段：`"dsh": ">=0.2.1-rc.5 <0.3.0-0"`。把发布锁死在新波段，会在安装阶段
 就拒绝旧宿主，而这正是本波的向后兼容规则所禁止的。
 
-## 2. DSH 核心：`0.2.1-rc.5`、`0.2.2-rc.1` 与 `0.2.2-rc.2`
+## 2. DSH 核心：`0.2.1-rc.5`、`0.2.2-rc.1`、`0.2.2-rc.2` 与 `0.2.2-rc.3`
+
+**这个平面接纳四台宿主。** `0.2.2-rc.3` 是当前目标；`0.2.2-rc.2`、`0.2.2-rc.1` 与 `0.2.1-rc.5`
+继续保持接纳。rc.2 → rc.3 这一跳是**纯打包**（波次契约 §3 F1–F5）：宿主自己的层仍在相同行号声明
+`agent-team` / `tool-agent-team` / `ui-agent-team`，`ctx.agentTeams` 仍是那六个成员的任务看板服务，
+`standard` preset 逐行完全一致，被探针检查的接缝无一变化，rc.3 团队包的 `src/` 树与 rc.2 副本对比也完全
+相同；唯一的新包是 `@deepseek-ai/dsh-deepseek-chat-import`（没有工具、不碰团队平面），而 `engines.dsh`
+本来就接纳它。
+下表仍是两列，因为它比较的是**旧宿主**；rc.3 的门禁臂由本波测量（契约 §D6），记录文本存放在
+`evidence/verify-022rc3/`，而完整挂载中的逐行激活测量属于本波的挂载车道，不在本页。
 
 | | `0.2.1-rc.5` | `0.2.2-rc.1` |
 |---|---|---|
@@ -114,6 +123,12 @@ bundle 行就是**重复注册**——实测启动报 `service "agentTeams" has 
 把**带守卫**的多余行归为 NOTE，把无守卫的多余行仍判 FAIL；那是已声明的门禁语义变更、正接受独立评审，
 不是本页背书的既成事实。
 
+**`tool-office` 因宿主而异——两种表述不得混为一谈。** 在 `0.2.2-rc.3` 上这条守卫行是 **ACTIVE**：该宿主的
+`dsh-web-app` 仍然声明 `@deepseek-ai/dsh-tool-office@0.2.2-rc.3`，`standard` preset 仍然挂载它，包也能解析，
+因此该行启用。在 `0.2.2-rc.1`——以及 `0.2.1-rc.5`——上它仍是**守卫式 NOTE**：那里没有这个包，该行禁用。
+`0.2.2-rc.3` 也保持 rc.2 的团队平面姿态不变：宿主自己声明全部三个团队行，因此本 bundle 一个都不声明
+（波次契约 §3 F1/F2）。
+
 **适配器的规则也随之改变——存在不等于可服务。** `0.2.2-rc.2` 保留的 `ctx.agentTeams` 是**只含任务看板**
 的服务（`isEnabled`、`setEnabled`、`createTask`、`getTask`、`listTasks`、`updateTask`）；
 `membership`、`tryMembership`、`listMembers`、`spawnTeammate`、`sendMessage`、`interrupt` 与
@@ -125,13 +140,17 @@ bundle 行就是**重复注册**——实测启动报 `service "agentTeams" has 
 **边界。** 以上记录的是 patch、preset 与适配器**实际做什么**；重复注册是**实测的启动失败**，而完整
 挂载中的逐行激活测量属于本波自己的挂载车道（`evidence/` 下），不在本页。
 
-## 3. dsh-TUI：`0.18.0`、`0.19.0` 与 `0.20.0` 都被接纳
+## 3. dsh-TUI：`0.18.0`、`0.19.0`、`0.20.0` 与 `0.20.1` 都被接纳
 
 `dsh-plugin.json` 与 `packages/mpd-tui-plugin/dsh-plugin.json` 都声明
 `compat.hosts: ["@deepseek-harness-tui/dsh-tui@0.18.0", "@deepseek-harness-tui/dsh-tui@0.19.0",
-"@deepseek-harness-tui/dsh-tui@0.20.0"]`，而 `dsh-distribution.json` 的 `host-tui` 引用写的是 `0.20.0`。`verify:tui-admission` 断言这份已发布的
-波段，而不再只是相信字段。本 bundle **声明**支持的宿主集合是**写死的数据**，不是被发现的事实：
-`specs/tui-hosts.json` 点名这三台宿主，门禁的 COMPAT 车道有五条臂——四条在每次静态运行中都无需宿主即可
+"@deepseek-harness-tui/dsh-tui@0.20.0", "@deepseek-harness-tui/dsh-tui@0.20.1"]`，而
+`dsh-distribution.json` 的 `host-tui` 引用写的是 `0.20.1`。`verify:tui-admission` 断言这份已发布的
+波段，而不再只是相信字段。**`0.20.1` 相对 `0.20.0` 是仅坐标的移动**（波次契约 §3 F7/F8/F10：每一条
+`@deepseek-ai/dsh-*` peer 范围都追加 harness `0.2.2-rc.3` 而**下限不变**，patch 文件零增量，本 bundle
+用到的 15 个 `tui*` 接缝都在相同的 file:line，唯一的内容变化是启动器 feed 版本 `0.20.0` → `0.20.1`）。
+本 bundle **声明**支持的宿主集合是**写死的数据**，不是被发现的事实：
+`specs/tui-hosts.json` 点名这四台宿主，门禁的 COMPAT 车道有五条臂——四条在每次静态运行中都无需宿主即可
 跑，另有一条只有在能发现宿主时才跑：
 
 - `COMPAT.band:<label>`——每份清单的 `compat.hosts` 都是非空的 `@scope/name@x.y.z` 坐标数组（每份清单一条臂）。
@@ -213,7 +232,7 @@ resolution.”* 这段措辞在 `0.2.1-rc.5` 与 `0.2.2-rc.1` 上完全相同，
 
 ## 7. 细节在哪里
 
-发布叙事见 [`../CHANGELOG.md`](../CHANGELOG.md) 的 `## 0.19.0`。本页所依托的两份上游适配来源，是
+发布叙事见 [`../CHANGELOG.md`](../CHANGELOG.md) 的 `## 0.20.0`。本页所依托的两份上游适配来源，是
 `evidence/upstream/0.2.2/2026-11-07T05-45Z/` 下的实测证据包（挂载、路由、行对齐、`0.19.0` 协商探针与
 批量 API 发现）以及旁边的门禁记录。DSH-Go 标准见
 [`dsh-go-standard.zh-CN.md`](dsh-go-standard.zh-CN.md)；TUI 车道见 [`tui.zh-CN.md`](tui.zh-CN.md) 与

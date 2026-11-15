@@ -3,11 +3,13 @@
 [English](./tui.md) | **中文**
 
 本页说明 my-power-dsh 的 **DSH-TUI 版本**：它提供什么、如何安装、逐包兼容性测量的结果，以及它
-**明确不声明**什么。目标宿主为 `@deepseek-harness-tui/dsh-tui` **0.20.0** 及其内置的准入
-（admission）配置文件。0.20.0 相对 0.19.0 是**纯增量**（波次契约 §3 F1），其声明的
-`@deepseek-ai/dsh-*` peer 范围上限为 DeepSeek Harness **`0.2.2-rc.2`**，同时仍接纳 `0.2.2-rc.1` 与
-`0.2.1-rc.5`。**§11.15 是本波次的修订**：其中记录了这次移动与被触及的载体。**§11.13 作为历史保持可读**：
-它记录的是 0.2.2-rc.1 / DSH-TUI 0.19.0 那次移动。**此前的钉定版本是
+**明确不声明**什么。目标宿主为 `@deepseek-harness-tui/dsh-tui` **0.20.1** 及其内置的准入
+（admission）配置文件。0.20.1 相对 0.20.0 是**仅坐标的移动**（波次契约 §3 F7/F8/F10：每一条
+`@deepseek-ai/dsh-*` peer 范围都追加 harness `0.2.2-rc.3` 而**下限不变**，patch 文件零增量，本 bundle
+用到的 15 个 `tui*` 接缝都在相同的 file:line），其声明的 peer 范围上限为 DeepSeek Harness
+**`0.2.2-rc.3`**，同时仍接纳 `0.2.2-rc.2`、`0.2.2-rc.1` 与 `0.2.1-rc.5`。**§11.16 是本波次的修订**：
+其中记录了这次移动、被触及的载体与两条已声明边界。**§11.15 作为历史保持可读**：它记录的是
+DSH-TUI 0.20.0 那次移动。**§11.13 作为历史保持可读**：它记录的是 0.2.2-rc.1 / DSH-TUI 0.19.0 那次移动。**此前的钉定版本是
 0.18.0，那段表述作为历史保持可读**：0.18.0 的 `dsh-*` 范围覆盖 `0.2.1-rc.4` 与 `0.2.1-rc.5`（36 条
 全部如此），而 0.17.0 的名单止于 `0.2.1-rc.3`（读取自已发布的 tarball），§11.11 是那一波次的修订。
 **再此前是 0.17.0，那段表述作为历史保持可读**：0.17.0 是第一个在声明的 peer 范围里接受
@@ -1587,3 +1589,39 @@ PTY 证据。`evidence/docker/client-install/2026-10-25T16-02-51Z/result.json` �
 `49 arms passed, 1 allowed deviation(s), 5 bound(s)`，两个清单均为 `compatible`
 （`evidence/verify-022rc2/2026-11-14T03-02-10Z/logs/verify-gates.log`）。本**节**不声称对 `0.20.0`
 做过**真机 TTY 抓取**——那属本波的挂载车道，没有车道演练过的结论不在这里声称。
+
+### 11.16 harness 0.2.2-rc.3 / DSH-TUI 0.20.1 适配波次后的修订（2026-11-15）
+
+本波次再次移动钉定组合，且不改动任何 TUI 插件源码、任何 patch 行或适配器。§11.1–§11.15 按原样保留：
+它们记录的是更早的波次，不是这一次。
+
+| 主题 | 之前 | 之后 |
+|---|---|---|
+| 本页的目标宿主（§ 前言） | **0.20.0** | **0.20.1**——**仅坐标的移动**（波次契约 §3 F7/F8/F10）：每一条 `@deepseek-ai/dsh-*` peer 范围都追加 harness `0.2.2-rc.3` 而**下限不变**，因此新宿主仍接纳 `0.2.2-rc.2`、`0.2.2-rc.1` 与 `0.2.1-rc.5`；`cordis.patch.yml` 零增量（28 行仍在相同行号）；本 bundle 用到的 15 个 `tui*` 接缝都在相同的 file:line；`lib/types/ui.js` 及其 `useStdin` 导出未变；`presets/` 与 `tui-profile/` 的文件集合完全相同，唯一的内容变化是启动器 feed 版本 `0.20.0` → `0.20.1` |
+| harness 钉定（`dsh-distribution.json` 的 `host-base`；`docker/entrypoint.sh` 的 `DSH_VERSION`；Docker 与 QA 的默认值） | `0.2.2-rc.2` | **`0.2.2-rc.3`**（波次契约 §D1/§D3）。`engines.dsh` 仍为 `>=0.2.1-rc.5 <0.3.0-0`，本来就接纳新宿主；本次发布**不声明**任何团队包，下面的 rc.2 宿主姿态保持不变 |
+| `compat.hosts`（两个清单）与 `specs/tui-hosts.json` | `0.18.0`、`0.19.0`、`0.20.0` | **`0.18.0`、`0.19.0`、`0.20.0`、`0.20.1`**——三处集合完全相同且有序，`dsh-distribution.json` 的 `host-tui` 引用移到 `0.20.1` |
+| 团队挂载（harness 平面，非 TUI 源码） | 三行、单一代际 | **不变**——rc.3 的宿主层仍然自己声明 `agent-team` / `tool-agent-team`（`dsh-base/cordis.patch.yml:366-372`）与 `ui-agent-team`（`dsh-web-app/cordis.patch.yml:412-413`），三者都未禁用，`ctx.agentTeams` 仍是只含六个成员的任务看板服务、工具插件仍注册四个 `team_task_*` 工具，因此本 bundle 在那一代上**不挂任何团队行**（波次契约 §3 F1/F2）。[`compatibility.zh-CN.md`](./compatibility.zh-CN.md) §2.1 的 rc.2 表述仍然描述它 |
+| `tool-office` 守卫式 preset 行 | rc.2 上 ACTIVE，旧宿主上是守卫式 NOTE | **在 `0.2.2-rc.3` 上是 ACTIVE**——该宿主仍把 `tool-office` 作为活跃的 `standard` 行挂载并解析 `@deepseek-ai/dsh-tool-office@0.2.2-rc.3`，因此守卫行启用；在 `0.2.2-rc.1` 与 `0.2.1-rc.5` 上仍是守卫式 NOTE。这两种表述**因宿主而异**，不得混为一谈（波次契约 §3 F3、§6） |
+| Ctrl+A 宿主接触点 | 以 `tuiPanels` 接缝做版本门控 | **不变**——0.20.1 声明同样的 15 个 `tui*` 服务、`lib/types/ui.js` 也未变，因此接缝存在时接触点保持惰性、Ctrl+A 保留宿主含义；合并视图通过 `alt+a` / `/mpd panel` 打开 |
+
+**两条已声明边界——它们是主张的一部分，不是脚注。**
+
+- **不采用 `tuiMentions`。** 0.20.1 新增了**一个**宿主服务 `tuiMentions`
+  （`lib/types/dsh-adapter/mention-providers.d.ts:75`）。新的宿主能力是**可选**的（AGENTS.md §2 规则 7），
+  因此本 bundle 的接缝集合仍是它绑定的那 15 个（外加 phantom），在缺少该能力的宿主上照旧降级，本版本
+  也不在任何地方声明 mention 支持。
+- **测量这次跳跃时，rc.3 的插件源码不在磁盘上**（波次契约 §3 F6），因此打包车道从 registry 打包了它们，
+  并与 rc.2 副本对比：`@deepseek-ai/dsh-agent-team@0.2.2-rc.3` 与
+  `@deepseek-ai/dsh-tool-agent-team@0.2.2-rc.3` 的版本都是 `0.2.2-rc.3`，它们的 `src/` 树与 rc.2 副本
+  **逐字节完全相同**（服务包十个文件、工具包一个文件，`diff -rq` 为空）。因此表面未变——仍是那六个任务看板
+  成员（`isEnabled`、`setEnabled`、`createTask`、`getTask`、`listTasks`、`updateTask`）与四个
+  `team_task_*` 工具——不需要任何适配器吸收。打包出的 tarball 与逐文件对比由本波记录承载，
+  见 `evidence/verify-022rc3/`。
+
+**本页实测。** 上面的坐标读自已安装的 `0.20.1` 宿主自身的 `package.json`、`cordis.patch.yml`、
+`lib/types/ui.js` 与那两个文件集合（波次契约 §3 F7/F8/F10）。**已实测，也有边界。** 本波的
+`verify:gates` 已协商新宿主：`tui-admission` 退出 0，输出
+`REPORT: PASS — 49 arms passed, 1 allowed deviation(s), 5 bound(s)`，发现的宿主为
+`dsh-tui 0.20.1`（`arm H.host PASS`、`arm COMPAT.host-version PASS`），两个清单均为 `compatible`
+（`evidence/verify-022rc3/2026-11-15T12-45-50Z/logs/verify-gates-rc3.log`）。本**节**不声称对 `0.20.1` 做过**真机 TTY 抓取**：那属
+本波的挂载车道，没有车道演练过的结论不在这里声称。

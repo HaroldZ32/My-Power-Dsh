@@ -1,0 +1,10 @@
+PASS specs.hosts == dsh-plugin compat.hosts :: spec=['@deepseek-harness-tui/dsh-tui@0.18.0', '@deepseek-harness-tui/dsh-tui@0.19.0', '@deepseek-harness-tui/dsh-tui@0.20.0', '@deepseek-harness-tui/dsh-tui@0.20.1']
+PASS specs.hosts == mpd-tui-plugin compat.hosts :: manifest2=['@deepseek-harness-tui/dsh-tui@0.18.0', '@deepseek-harness-tui/dsh-tui@0.19.0', '@deepseek-harness-tui/dsh-tui@0.20.0', '@deepseek-harness-tui/dsh-tui@0.20.1']
+PASS both manifests identical sorted sets :: identical
+PASS specs sorted :: sorted
+PASS host-tui ref coordinate is in the admitted set :: ref=pkg:npm/@deepseek-harness-tui/dsh-tui@0.20.1 coord=@deepseek-harness-tui/dsh-tui@0.20.1
+PASS host-tui ref names 0.20.1 :: pkg:npm/@deepseek-harness-tui/dsh-tui@0.20.1
+PASS host-base ref names rc.3 :: pkg:npm/@deepseek-ai/dsh-base@0.2.2-rc.3
+PASS engines.dsh admits rc.3 :: >=0.2.1-rc.5 <0.3.0-0
+PASS distribution version == package version 0.20.0 :: 0.20.0
+RESULT PASS

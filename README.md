@@ -2,10 +2,10 @@
 
 **English** | [中文](./README.zh-CN.md)
 
-[![Version](https://img.shields.io/badge/version-0.19.0-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
+[![Version](https://img.shields.io/badge/version-0.20.0-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
 [![npm](https://img.shields.io/badge/npm-%40mpd--dsh%2Fmpd-CB3837.svg)](https://www.npmjs.com/package/@mpd-dsh/mpd)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE.md)
-[![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.2--rc.1-4B32C3.svg)](#acknowledgements)
+[![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.2--rc.3-4B32C3.svg)](#acknowledgements)
 [![Platforms](https://img.shields.io/badge/platforms-Web%20GUI%20%7C%20DSH--TUI-informational.svg)](#one-plugin-two-surfaces)
 [![Runtime](https://img.shields.io/badge/runtime-Bun%201.4.0-black.svg)](https://bun.sh)
 [![Gates](https://github.com/HaroldZ32/My-Power-Dsh/actions/workflows/gates.yml/badge.svg)](https://github.com/HaroldZ32/My-Power-Dsh/actions/workflows/gates.yml)
@@ -147,17 +147,18 @@ the dependency closure and what the install mounts.
 ## Version compatibility
 
 Each row is the host pair a release was **built and verified against**: the Docker real-machine lanes
-run the install and the mount on exactly that pair. The harness pin lives in
-[`package.json`](./package.json) (the three `@deepseek-ai/dsh-experimental-*` dependencies) and the
-DSH-TUI pin in [`dsh-plugin.json`](./dsh-plugin.json) `compat.hosts` plus the `host-tui` ref in
-[`dsh-distribution.json`](./dsh-distribution.json). A newer host is not claimed until a release row
-names it; pin both.
+run the install and the mount on exactly that pair. The harness pin is the `host-base` ref in
+[`dsh-distribution.json`](./dsh-distribution.json) plus the `engines.dsh` span in
+[`package.json`](./package.json), and the DSH-TUI pin is both manifests' `compat.hosts` plus the
+`host-tui` ref in [`dsh-distribution.json`](./dsh-distribution.json). A newer host is not claimed
+until a release row names it; pin both.
 
 **The newest row is the version this package publishes; the rows below it are the pins of earlier releases, kept as history.**
 
 | `@mpd-dsh/mpd` | DeepSeek Harness | DSH-TUI | Notes |
 |---|---|---|---|
-| 0.19.0 | 0.2.2-rc.2 | 0.20.0 | the current release |
+| 0.20.0 | 0.2.2-rc.3 | 0.20.1 | the current release |
+| 0.19.0 | 0.2.2-rc.2 | 0.20.0 | previous |
 | 0.18.1 | 0.2.2-rc.1 | 0.19.0 | previous |
 | 0.18.0 | 0.2.2-rc.1 | 0.19.0 | previous |
 | 0.17.5 | 0.2.1-rc.5 | 0.18.0 | previous |
@@ -176,12 +177,13 @@ names it; pin both.
 | 0.15.0 | 0.2.1-rc.2 | 0.16.1 | previous |
 | 0.14.0 | 0.2.1-rc.2 | 0.16.1 | previous (the harness-0.2.1 adaptation release) |
 
-The newest row **is** that pair: `0.19.0` ships against harness `0.2.2-rc.2` and DSH-TUI `0.20.0`. The
-older hosts stay supported: `engines.dsh` spans `>=0.2.1-rc.5 <0.3.0-0`, harness `0.2.2-rc.1` and
-`0.2.1-rc.5` keep mounting and running, and the `compat.hosts` band keeps DSH-TUI `0.18.0` and `0.19.0`
-beside the new `0.20.0`. The harness pin lives in
-[`package.json`](./package.json) and [`dsh-plugin.json`](./dsh-plugin.json) `compat.hosts` (which lists all three
-TUI hosts); the rows below it record what earlier releases actually pinned. The full matrix is
+The newest row **is** that pair: `0.20.0` ships against harness `0.2.2-rc.3` and DSH-TUI `0.20.1`. The
+older hosts stay supported: `engines.dsh` spans `>=0.2.1-rc.5 <0.3.0-0`, harness `0.2.2-rc.2`,
+`0.2.2-rc.1` and `0.2.1-rc.5` keep mounting and running, and the `compat.hosts` band keeps DSH-TUI
+`0.18.0`, `0.19.0` and `0.20.0` beside the new `0.20.1`. The harness pin lives in
+[`dsh-distribution.json`](./dsh-distribution.json)'s `host-base` ref and [`package.json`](./package.json)
+`engines.dsh`; both manifests' `compat.hosts` list all four TUI hosts. The rows below it record what
+earlier releases actually pinned. The full matrix is
 [`docs/compatibility.md`](./docs/compatibility.md).
 
 ## Quick start
@@ -303,7 +305,7 @@ bilingual (English and 简体中文).
 ## Changelog
 
 Release notes live in [`CHANGELOG.md`](./CHANGELOG.md), newest first, one section per released
-version (the current release is **v0.19.0**). Annotated tags are listed under
+version (the current release is **v0.20.0**). Annotated tags are listed under
 [Releases](https://github.com/HaroldZ32/My-Power-Dsh/releases).
 
 ## Acknowledgements

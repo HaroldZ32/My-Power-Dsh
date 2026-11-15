@@ -1,0 +1,30 @@
+{
+  "measuredBy": "Lead (t26)",
+  "artifact": {
+    "path": "packages/mpd-tui-plugin/dist/index.js",
+    "sha256": "4043b559d69258248a54ad9c6bdb73714fcee8ca3a10a1951dca435a083253db",
+    "bytes": 544379,
+    "mtimeLocal": "2026-11-15T12:29:25.150Z",
+    "mtimeUtc": "2026-11-15T12:29:25.150Z"
+  },
+  "proofThisIsWhatTheLaneRan": [
+    "the recorded mtime precedes this run's evidence timestamp",
+    "the digest was re-measured at evidence-write time and matches the start-of-run measurement"
+  ],
+  "composition": {
+    "sandboxRoot": "/home/haroldzhao/qa-anchors/rc3-t1-20261115T125612Z/runs/tui-arm-rc3",
+    "profile": "dsh-tui",
+    "bundles": [
+      "@deepseek-ai/dsh-base",
+      "@deepseek-harness-tui/dsh-tui",
+      "@mpd-dsh/mpd"
+    ],
+    "workspaceTarget": "/home/haroldzhao/qa-anchors/rc3-t1-20261115T125612Z/runs/tui-arm-rc3/ws"
+  },
+  "delta": {
+    "changed": false,
+    "before": "4043b559d69258248a54ad9c6bdb73714fcee8ca3a10a1951dca435a083253db",
+    "after": "4043b559d69258248a54ad9c6bdb73714fcee8ca3a10a1951dca435a083253db",
+    "reason": "unchanged across the run"
+  }
+}
