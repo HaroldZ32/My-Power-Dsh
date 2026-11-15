@@ -4238,6 +4238,26 @@ function reportOfficialExecutorFallback(missing: readonly string[]): void {
 }
 
 /**
+ * Build ONE activation spec that BOTH harness generations of `startActivation` accept.
+ *
+ * 0.2.2-rc.1 declares `SubagentActivationSpec` NESTED — `{ provider, label, request:
+ * SubagentStartRequest, signal, delivery }` — and reads `spec.request.parent`; 0.2.2-rc.2
+ * (and rc.3, byte-identical there) declares it FLAT — `extends Omit<SubagentStartRequest,
+ * "label" | "signal">` — and reads `spec.parent`, so an rc.1-only spec throws
+ * `Cannot read properties of undefined (reading 'id')` on rc.2+. Carrying BOTH spellings is the
+ * compatibility fix, measured against the real runtimes (`.qa-tmp/rel-diag/probe-dual-spec.log`):
+ * rc.1 resolves through the `request` mirror, rc.2+ resolve through the flat fields, and rc.3's
+ * `SubagentManager.startLocal` selects named fields only, so the extra `request` key never
+ * reaches the provider.
+ * @param head - the spec fields outside the start request: provider, label, signal, delivery.
+ * @param request - the `SubagentStartRequest` fields, mirrored under `request` for 0.2.2-rc.1.
+ * @returns the head fields, the flat request fields and their `request` mirror.
+ */
+function dualShapeActivationSpec(head: Record<string, unknown>, request: Record<string, unknown>): Record<string, unknown> {
+  return { ...head, ...request, request }
+}
+
+/**
  * Raise one durable child on whichever generation this host exposes.
  *
  * `startActivation` receives `delivery: "parent"` because 0.2.1 requires the field and this is
@@ -5310,24 +5330,28 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
             rowLogLine("mpd-dsh-adapter", line)
           }
         }
-        /** The continuable-start spec: the member's prompt, its parent, and its ROUTE. */
-        const spec: Record<string, unknown> = {
-          provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
-          label: `${request.name} · ${request.teamId}`,
-          request: {
-            prompt: textBlock(request.prompt),
-            parent: caller,
-            // The member's worktree path when its spawner supplied one; the same
-            // forward-only-when-supplied rule as `maxDepth` below, because an absent path must let
-            // the host inherit the Lead's directory rather than receive `cwd: undefined`.
-            ...(request.cwd === undefined ? {} : { cwd: request.cwd }),
-            ...(agentOptions === undefined ? {} : { agentOptions }),
-            // FORWARDED ONLY WHEN SUPPLIED: an absent cap must stay ABSENT (never `undefined`), so
-            // the harness applies its own service default instead of a converted or guessed value.
-            ...(request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }),
-          },
-          signal: request.signal ?? neverAborted(),
+        /** The member's start request: its prompt, its live parent and its ROUTE. */
+        const activationRequest: Record<string, unknown> = {
+          prompt: textBlock(request.prompt),
+          parent: caller,
+          // The member's worktree path when its spawner supplied one; the same
+          // forward-only-when-supplied rule as `maxDepth` below, because an absent path must let
+          // the host inherit the Lead's directory rather than receive `cwd: undefined`.
+          ...(request.cwd === undefined ? {} : { cwd: request.cwd }),
+          ...(agentOptions === undefined ? {} : { agentOptions }),
+          // FORWARDED ONLY WHEN SUPPLIED: an absent cap must stay ABSENT (never `undefined`), so
+          // the harness applies its own service default instead of a converted or guessed value.
+          ...(request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }),
         }
+        /** The continuable-start spec in the DUAL shape 0.2.2-rc.1 and rc.2+ each read. */
+        const spec: Record<string, unknown> = dualShapeActivationSpec(
+          {
+            provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
+            label: `${request.name} · ${request.teamId}`,
+            signal: request.signal ?? neverAborted(),
+          },
+          activationRequest,
+        )
         /** The manager's answer, whose `childId` is the durable handle a caller records. */
         const started: any = await startContinuableChild(subagents, spec, `cannot raise team member "${request.name}"`)
         /** The durable child id, or the empty string when the manager reported none. */
@@ -6499,28 +6523,29 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         // The retired fields are not part of this release's request, so say so instead of dropping
         // them in silence. This runs before the start so the notice precedes the child's own logs.
         warnRetiredSpawnFields(spec)
-        /** The activation spec: backend, label, request, cancellation and the delivery policy. */
-        const activation: any = await subagents.startActivation.call(subagents, {
+        /** The child's start request: its task, its live parent and its ROUTE. */
+        const activationRequest: Record<string, unknown> = {
+          prompt,
+          parent: spec.parent,
+          // FORWARDED ONLY WHEN SUPPLIED, like `maxDepth` below: an absent path must stay
+          // absent so the host applies its own default (the parent's directory) instead of a
+          // written `cwd: undefined`. Supplied, it moves the child's EFFECTIVE directory only —
+          // its state root remains the parent workspace (D1).
+          ...(spec.cwd === undefined ? {} : { cwd: spec.cwd }),
+          ...(Object.keys(route).length === 0 ? {} : { agentOptions: route }),
+          ...(spec.agentPreset === undefined ? {} : { agentPreset: spec.agentPreset }),
+          ...(spec.outputSchema === undefined ? {} : { outputSchema: spec.outputSchema }),
+          ...(spec.maxDepth === undefined ? {} : { maxDepth: spec.maxDepth }),
+        }
+        /** The activation spec in the DUAL shape 0.2.2-rc.1 and rc.2+ each read. */
+        const activation: any = await subagents.startActivation.call(subagents, dualShapeActivationSpec({
           provider,
           label: spec.label,
-          request: {
-            prompt,
-            parent: spec.parent,
-            // FORWARDED ONLY WHEN SUPPLIED, like `maxDepth` below: an absent path must stay
-            // absent so the host applies its own default (the parent's directory) instead of a
-            // written `cwd: undefined`. Supplied, it moves the child's EFFECTIVE directory only —
-            // its state root remains the parent workspace (D1).
-            ...(spec.cwd === undefined ? {} : { cwd: spec.cwd }),
-            ...(Object.keys(route).length === 0 ? {} : { agentOptions: route }),
-            ...(spec.agentPreset === undefined ? {} : { agentPreset: spec.agentPreset }),
-            ...(spec.outputSchema === undefined ? {} : { outputSchema: spec.outputSchema }),
-            ...(spec.maxDepth === undefined ? {} : { maxDepth: spec.maxDepth }),
-          },
           signal,
           // The host's own subagent caller (`dsh-tool-subagent`) delivers to the parent, so this
           // is the spelling this seam is given rather than one invented here.
           delivery: "parent",
-        })
+        }, activationRequest))
         // NOT awaited here: the caller owns the child's lifetime now, and `result` normalizes and
         // releases the activation when it settles, whichever way it settles.
         return activationHandleOf(activation, subagents, spec.parent)

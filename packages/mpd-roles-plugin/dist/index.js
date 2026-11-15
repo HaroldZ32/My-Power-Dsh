@@ -3041,6 +3041,9 @@ function reportOfficialExecutorFallback(missing) {
   officialExecutorFallbackReported = true;
   rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: the mounted agentTeams service cannot execute the team roster (missing " + missing.join(", ") + ") — teamExecutor() falls through to the NATIVE backend. 0.2.2-rc.2's service is TASK-BOARD ONLY: the roster/mailbox API was removed, so presence is not servability");
 }
+function dualShapeActivationSpec(head, request) {
+  return { ...head, ...request, request };
+}
 async function startContinuableChild(subagents, spec, action) {
   const member = continuableStartMember(subagents);
   if (member === undefined) {
@@ -3604,18 +3607,18 @@ function createDshAdapter(ctx, config = {}) {
             rowLogLine("mpd-dsh-adapter", line);
           }
         }
-        const spec = {
+        const activationRequest = {
+          prompt: textBlock(request.prompt),
+          parent: caller,
+          ...request.cwd === undefined ? {} : { cwd: request.cwd },
+          ...agentOptions === undefined ? {} : { agentOptions },
+          ...request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }
+        };
+        const spec = dualShapeActivationSpec({
           provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
           label: `${request.name} · ${request.teamId}`,
-          request: {
-            prompt: textBlock(request.prompt),
-            parent: caller,
-            ...request.cwd === undefined ? {} : { cwd: request.cwd },
-            ...agentOptions === undefined ? {} : { agentOptions },
-            ...request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }
-          },
           signal: request.signal ?? neverAborted()
-        };
+        }, activationRequest);
         const started = await startContinuableChild(subagents, spec, `cannot raise team member "${request.name}"`);
         const handle = String(started?.childId ?? started?.id ?? "");
         if (handle === "") {
@@ -4270,21 +4273,21 @@ function createDshAdapter(ctx, config = {}) {
       const signal = spec.signal ?? neverAborted();
       if (typeof subagents.startActivation === "function") {
         warnRetiredSpawnFields(spec);
-        const activation = await subagents.startActivation.call(subagents, {
+        const activationRequest = {
+          prompt,
+          parent: spec.parent,
+          ...spec.cwd === undefined ? {} : { cwd: spec.cwd },
+          ...Object.keys(route).length === 0 ? {} : { agentOptions: route },
+          ...spec.agentPreset === undefined ? {} : { agentPreset: spec.agentPreset },
+          ...spec.outputSchema === undefined ? {} : { outputSchema: spec.outputSchema },
+          ...spec.maxDepth === undefined ? {} : { maxDepth: spec.maxDepth }
+        };
+        const activation = await subagents.startActivation.call(subagents, dualShapeActivationSpec({
           provider,
           label: spec.label,
-          request: {
-            prompt,
-            parent: spec.parent,
-            ...spec.cwd === undefined ? {} : { cwd: spec.cwd },
-            ...Object.keys(route).length === 0 ? {} : { agentOptions: route },
-            ...spec.agentPreset === undefined ? {} : { agentPreset: spec.agentPreset },
-            ...spec.outputSchema === undefined ? {} : { outputSchema: spec.outputSchema },
-            ...spec.maxDepth === undefined ? {} : { maxDepth: spec.maxDepth }
-          },
           signal,
           delivery: "parent"
-        });
+        }, activationRequest));
         return activationHandleOf(activation, subagents, spec.parent);
       }
       if (typeof subagents.start !== "function")

@@ -22,14 +22,15 @@ const WORKTREE = "/ws/.mpd/worktrees/team-wt/worker"
  * Drive ONE reseed with the seams a live composition offers.
  * @param worktreeCwd - the lookup the row wires from `mpdWorktree.cwdForMember`, or undefined for none.
  * @param options - the cell record and the RESOLVED execution team id under test.
- * @returns the activation request the adapter received, so the arm reads the real forwarded shape.
+ * @returns the whole activation spec the adapter received, so an arm can read BOTH spellings of the
+ *   request (the 0.2.2-rc.2+ flat fields and the 0.2.2-rc.1 `request` mirror).
  */
 async function reseed(
   worktreeCwd?: (input: { teamId: string; member: string }) => string | undefined,
   options: { cell?: CellState; worktreeTeamId?: string } = {},
 ): Promise<Record<string, unknown>> {
-  /** Every activation spec the adapter received. */
-  const captured: Array<{ request?: Record<string, unknown> }> = []
+  /** Every activation spec the adapter received, in full. */
+  const captured: Array<Record<string, unknown>> = []
   /** The one live member session the retirement targets. */
   const liveMember = { id: "session-worker" }
   /** The captain, the only live ancestor the reseed may be raised under. */
@@ -41,7 +42,7 @@ async function reseed(
       compactionEngineForLiveAgent: () => undefined,
       liveAgentExact: (id: string) => (id === "session-captain" ? liveCaptain : id === "session-worker" ? liveMember : undefined),
       startContinuableAgent: async (spec: unknown) => {
-        captured.push(spec as { request?: Record<string, unknown> })
+        captured.push(spec as Record<string, unknown>)
         return { childId: "handle-fresh" }
       },
       interruptAgent: () => {},
@@ -62,17 +63,19 @@ async function reseed(
   expect(outcome.outcome).toBe("reseeded")
   // A reseed that never reached the adapter would satisfy a weaker assertion by telling us nothing.
   expect(captured.length).toBe(1)
-  return captured[0].request as Record<string, unknown>
+  return captured[0]
 }
 
 describe("the compaction reseed keeps the member in its worktree (D8)", () => {
   test("a recorded worktree path rides the reseed request as cwd", async () => {
-    /** The activation request, built by the REAL reseed path. */
-    const request = await reseed((input) => {
+    /** The activation spec, built by the REAL reseed path. */
+    const spec = await reseed((input) => {
       // The lookup is addressed with the cell's team and the member's own name — never a member id.
       expect(input).toEqual({ teamId: "team-wt", member: "worker" })
       return WORKTREE
     })
+    /** The rc.1 mirror half of the same request. */
+    const request = spec.request as Record<string, unknown>
     expect(request.cwd).toBe(WORKTREE)
     // The rest of the request is untouched: prompt blocks, the live parent and the depth cap.
     expect(request.parent).toEqual({ id: "session-captain" })
@@ -82,18 +85,25 @@ describe("the compaction reseed keeps the member in its worktree (D8)", () => {
   })
 
   test("no recorded worktree leaves the request without a cwd KEY", async () => {
-    /** The activation request with a lookup that answers nothing. */
-    const request = await reseed(() => undefined)
+    /** The activation spec with a lookup that answers nothing. */
+    const spec = await reseed(() => undefined)
+    /** The rc.1 mirror half of the same request. */
+    const request = spec.request as Record<string, unknown>
     // Absence is the contract: the host inherits the parent's directory, and a written
     // `cwd: undefined` would be indistinguishable from a caller-supplied path to some serializers.
     expect("cwd" in request).toBe(false)
     expect(Object.hasOwn(request, "cwd")).toBe(false)
+    // The FLAT half (0.2.2-rc.2+) omits the key too, so neither generation receives a written undefined.
+    expect("cwd" in spec).toBe(false)
   })
 
   test("a lookup that THROWS is the same as no worktree, never a failed reseed", async () => {
-    /** The activation request, whose lookup throws. */
-    const request = await reseed(() => { throw new Error("no index here") })
+    /** The activation spec, whose lookup throws. */
+    const spec = await reseed(() => { throw new Error("no index here") })
+    /** The rc.1 mirror half of the same request. */
+    const request = spec.request as Record<string, unknown>
     expect("cwd" in request).toBe(false)
+    expect("cwd" in spec).toBe(false)
   })
 
   test("the lookup addresses the RESOLVED EXECUTION team, never the cell's planning id", async () => {
@@ -103,13 +113,31 @@ describe("the compaction reseed keeps the member in its worktree (D8)", () => {
     const execution = "team-exec"
     /** The legacy record: `teamId` still points at the planning team. */
     const legacyCell: CellState = { ...cellWithWorker(), teamId: planning, planningTeamId: planning }
-    /** The activation request, whose lookup asserts the id it is addressed with. */
-    const request = await reseed((input) => {
+    /** The activation spec, whose lookup asserts the id it is addressed with. */
+    const spec = await reseed((input) => {
       expect(input).toEqual({ teamId: execution, member: "worker" })
       return WORKTREE
     }, { cell: legacyCell, worktreeTeamId: execution })
+    /** The rc.1 mirror half of the same request. */
+    const request = spec.request as Record<string, unknown>
     // The plan/record still carries the planning id — only the worktree lookup was re-addressed.
     expect(legacyCell.teamId).toBe(planning)
     expect(request.cwd).toBe(WORKTREE)
+  })
+
+  test("the SAME request rides FLAT as well, because 0.2.2-rc.2+ reads spec.parent", async () => {
+    /** The activation spec, driven by the real reseed path with every request field supplied. */
+    const spec = await reseed(() => WORKTREE)
+    /** The rc.1 mirror the arms above read. */
+    const request = spec.request as Record<string, unknown>
+    // One request, two spellings: rc.2+ read the top level, rc.1 reads the mirror. A spec carrying
+    // only one of them throws `reading 'id'` / `reading 'maxDepth'` on the other generation.
+    for (const key of ["prompt", "parent", "maxDepth", "cwd"] as const) {
+      expect(Object.hasOwn(spec, key)).toBe(true)
+      expect(spec[key]).toEqual(request[key])
+    }
+    // The head of the spec is unchanged: the provider and the label the adapter has always sent.
+    expect(spec.provider).toBe("spawn")
+    expect(spec.label).toBe("worker · team-wt")
   })
 })

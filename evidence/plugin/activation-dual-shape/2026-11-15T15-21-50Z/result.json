@@ -1,0 +1,279 @@
+{
+  "probe": "adapter-dual-activation-spec",
+  "generatedAt": "2026-11-15T15:22:43.824Z",
+  "ok": true,
+  "failures": [],
+  "results": [
+    {
+      "label": "0.2.2-rc.1",
+      "version": "0.2.2-rc.1",
+      "modulePath": "/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-subagent/lib/index.js",
+      "moduleSha256": "5aad8aadee1879f1e8a878431630f885adbe6f9ee9cb1832838abbc56bc1fbea",
+      "records": [
+        {
+          "arm": "adapter.teamExecutor.spawn",
+          "outcome": "RESOLVED",
+          "managerCalls": [
+            [
+              "startLocal",
+              [
+                "provider",
+                "label",
+                "signal",
+                "prompt",
+                "parent",
+                "agentOptions",
+                "request",
+                "delivery"
+              ]
+            ]
+          ],
+          "spec": {
+            "arm": "adapter.teamExecutor.spawn",
+            "keys": [
+              "provider",
+              "label",
+              "signal",
+              "prompt",
+              "parent",
+              "agentOptions",
+              "request",
+              "delivery"
+            ],
+            "flatParent": "live-parent",
+            "mirrorParent": "live-parent",
+            "delivery": "parent"
+          }
+        },
+        {
+          "arm": "adapter.spawnAgent",
+          "outcome": "RESOLVED",
+          "managerCalls": [
+            [
+              "startLocal",
+              [
+                "provider",
+                "label",
+                "signal",
+                "delivery",
+                "prompt",
+                "parent",
+                "request"
+              ]
+            ]
+          ],
+          "spec": {
+            "arm": "adapter.spawnAgent",
+            "keys": [
+              "provider",
+              "label",
+              "signal",
+              "delivery",
+              "prompt",
+              "parent",
+              "request"
+            ],
+            "flatParent": "live-parent",
+            "mirrorParent": "live-parent",
+            "delivery": "parent"
+          }
+        },
+        {
+          "arm": "adapter.startContinuableAgent(cellwork reseed shape)",
+          "outcome": "RESOLVED",
+          "managerCalls": [
+            [
+              "startLocal",
+              [
+                "provider",
+                "label",
+                "prompt",
+                "parent",
+                "maxDepth",
+                "request",
+                "signal",
+                "delivery"
+              ]
+            ]
+          ],
+          "spec": {
+            "arm": "adapter.startContinuableAgent(cellwork reseed shape)",
+            "keys": [
+              "provider",
+              "label",
+              "prompt",
+              "parent",
+              "maxDepth",
+              "request",
+              "signal",
+              "delivery"
+            ],
+            "flatParent": "live-parent",
+            "mirrorParent": "live-parent",
+            "delivery": "parent"
+          }
+        },
+        {
+          "arm": "control.nested-only(rc.1 shape)",
+          "outcome": "RESOLVED",
+          "managerCalls": [
+            [
+              "startLocal",
+              [
+                "provider",
+                "label",
+                "request",
+                "signal",
+                "delivery"
+              ]
+            ]
+          ]
+        },
+        {
+          "arm": "control.flat-only(rc.2+ shape)",
+          "outcome": "THREW",
+          "errorName": "TypeError",
+          "message": "undefined is not an object (evaluating 'spec.request.maxDepth')",
+          "managerCalls": []
+        }
+      ]
+    },
+    {
+      "label": "0.2.2-rc.3",
+      "version": "0.2.2-rc.3",
+      "modulePath": "/home/haroldzhao/qa-anchors/rc3-t3-20261115T124238Z/host-rc3/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-subagent/lib/index.js",
+      "moduleSha256": "47837c0cd3cd8259fbdd14b7a477f3df3f928946c5b9e261f35a883411ba3697",
+      "records": [
+        {
+          "arm": "adapter.teamExecutor.spawn",
+          "outcome": "RESOLVED",
+          "managerCalls": [
+            [
+              "startLocal",
+              [
+                "provider",
+                "label",
+                "signal",
+                "prompt",
+                "parent",
+                "agentOptions",
+                "request",
+                "delivery"
+              ]
+            ]
+          ],
+          "spec": {
+            "arm": "adapter.teamExecutor.spawn",
+            "keys": [
+              "provider",
+              "label",
+              "signal",
+              "prompt",
+              "parent",
+              "agentOptions",
+              "request",
+              "delivery"
+            ],
+            "flatParent": "live-parent",
+            "mirrorParent": "live-parent",
+            "delivery": "parent"
+          }
+        },
+        {
+          "arm": "adapter.spawnAgent",
+          "outcome": "RESOLVED",
+          "managerCalls": [
+            [
+              "startLocal",
+              [
+                "provider",
+                "label",
+                "signal",
+                "delivery",
+                "prompt",
+                "parent",
+                "request"
+              ]
+            ]
+          ],
+          "spec": {
+            "arm": "adapter.spawnAgent",
+            "keys": [
+              "provider",
+              "label",
+              "signal",
+              "delivery",
+              "prompt",
+              "parent",
+              "request"
+            ],
+            "flatParent": "live-parent",
+            "mirrorParent": "live-parent",
+            "delivery": "parent"
+          }
+        },
+        {
+          "arm": "adapter.startContinuableAgent(cellwork reseed shape)",
+          "outcome": "RESOLVED",
+          "managerCalls": [
+            [
+              "startLocal",
+              [
+                "provider",
+                "label",
+                "prompt",
+                "parent",
+                "maxDepth",
+                "request",
+                "signal",
+                "delivery"
+              ]
+            ]
+          ],
+          "spec": {
+            "arm": "adapter.startContinuableAgent(cellwork reseed shape)",
+            "keys": [
+              "provider",
+              "label",
+              "prompt",
+              "parent",
+              "maxDepth",
+              "request",
+              "signal",
+              "delivery"
+            ],
+            "flatParent": "live-parent",
+            "mirrorParent": "live-parent",
+            "delivery": "parent"
+          }
+        },
+        {
+          "arm": "control.nested-only(rc.1 shape)",
+          "outcome": "THREW",
+          "errorName": "TypeError",
+          "message": "undefined is not an object (evaluating 'spec.parent.id')",
+          "managerCalls": []
+        },
+        {
+          "arm": "control.flat-only(rc.2+ shape)",
+          "outcome": "RESOLVED",
+          "managerCalls": [
+            [
+              "startLocal",
+              [
+                "provider",
+                "label",
+                "prompt",
+                "parent",
+                "agentOptions",
+                "maxDepth",
+                "signal",
+                "delivery"
+              ]
+            ]
+          ]
+        }
+      ]
+    }
+  ]
+}
