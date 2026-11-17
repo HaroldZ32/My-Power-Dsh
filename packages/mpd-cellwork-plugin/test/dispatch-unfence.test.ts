@@ -20,9 +20,12 @@ import { tmpdir } from "node:os"
 
 import { journalPath, newCellState, readCell, statePath, writeCell, type CellMemberRecord, type CellState } from "../src/state.ts"
 import { installCellworkProtocol } from "../src/protocol.ts"
-import { DEFAULT_CELLWORK_CONFIG } from "../src/config.ts"
+import { checkpointSinceOf, seatForceReadingOf } from "../src/protocol-core.ts"
+import { DEFAULT_CELLWORK_CONFIG, type CellworkConfig } from "../src/config.ts"
 import { createTeamActionsDouble, type DoubleMember, type DoubleTask, type DoubleTeamRecord, type TeamActionsDouble } from "./lib/team-actions-double.ts"
 import type { DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.ts"
+import { writeMemberHandoff, type TeamActionCaller, type TeamActionDeps } from "../../mpd-team-core-plugin/src/team-actions.ts"
+import { addTeamMember, createTeam, readTeam, updateTeamMember, writeTeam } from "../../mpd-team-core-plugin/src/team-store.ts"
 
 /** The cell id every arm works in. */
 const CELL_ID = "cell-20261104T120000000Z"
@@ -149,7 +152,7 @@ function rawMembers(workspace: string): Record<string, Record<string, unknown>> 
  * @param options - `unfenceSeam: false` hides the plane's optional `unfence` half (an older team-core).
  * @returns the harness.
  */
-function makeHarness(cell: CellState, members: DoubleMember[], tasks: DoubleTask[], options: { unfenceSeam?: boolean; liveSessions?: readonly string[]; agentsRegistry?: boolean } = {}): Harness {
+function makeHarness(cell: CellState, members: DoubleMember[], tasks: DoubleTask[], options: { unfenceSeam?: boolean; liveSessions?: readonly string[]; agentsRegistry?: boolean; config?: Partial<CellworkConfig> } = {}): Harness {
   /** The fresh temp workspace. */
   const workspace = mkdtempSync(join(tmpdir(), "mpd-cellwork-unfence-"))
   writeCell(workspace, cell)
@@ -188,7 +191,7 @@ function makeHarness(cell: CellState, members: DoubleMember[], tasks: DoubleTask
         ? planeService
         : name === "mpdTeams" ? { get: (): unknown => record } : undefined,
     },
-    config: DEFAULT_CELLWORK_CONFIG,
+    config: { ...DEFAULT_CELLWORK_CONFIG, ...(options.config ?? {}) },
     warn: (): void => {},
   })
   return harness
@@ -1115,3 +1118,129 @@ test("R5.4: a TEAM `checkpoint` no barrier is pending for is REPORTED with its r
   expect("retry" in (explicitRow ?? {})).toBe(false)
 })
 
+
+// ── F2 (fix/cellwork-seat-growth-and-checkpoint): the handoff records WHEN the window opened ─────
+
+/**
+ * The member's own fake agent: the session BOTH records name for the seat.
+ *
+ * @param workspace - the harness workspace the root resolves from.
+ * @param sessionId - the member's session id.
+ * @returns the agent.
+ */
+function memberAgent(workspace: string, sessionId: string): FakeAgent {
+  return { id: sessionId, session: { id: sessionId, header: { cwd: workspace } } }
+}
+
+test("F2 A5: cellwork_handoff writes `checkpointSince` once and never rewrites an existing stamp", async () => {
+  // THE DEFECT: the handoff wrote `handoffReady`/`handoffs` and the TEAM `checkpoint`, but never WHEN the
+  // window opened — so the forced lever had no `pendingMs` and a barrier-owned seat was unforceable.
+  /** The member's session id, named by both records. */
+  const SESSION = "session-senior"
+  /** The CELL row with NO stamp yet. */
+  const fresh = makeHarness(cellWith({ "Senior Engineer": memberRow("Senior Engineer", { sessionId: SESSION, executorRef: SESSION }) }), [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: SESSION }], [])
+  /** The handoff that opens the window. */
+  const written = await runTool(fresh, "cellwork_handoff", { content: HANDOFF_TEXT }, memberAgent(fresh.workspace, SESSION))
+  expect(written.ok).toBe(true)
+  /** The persisted row. */
+  const row = rawMembers(fresh.workspace)["Senior Engineer"]
+  expect(typeof row.checkpointSince).toBe("string")
+  expect(Number.isFinite(Date.parse(String(row.checkpointSince)))).toBe(true)
+  // `handoffReady`/`handoffs` keep TODAY'S semantics: the stamp is additive, never a replacement.
+  expect(row.handoffReady).toBe(true)
+  expect(row.handoffs).toBe(1)
+  // AN EXISTING STAMP IS NEVER REWRITTEN: the window's start belongs to the handoff that opened it.
+  /** The instant an earlier window recorded. */
+  const PRIOR = "2026-11-01T00:00:00.000Z"
+  /** The CELL row that already carries a stamp. */
+  const seeded = makeHarness(cellWith({ "Senior Engineer": memberRow("Senior Engineer", { sessionId: SESSION, executorRef: SESSION, checkpointSince: PRIOR }) }), [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: SESSION }], [])
+  /** The handoff over the existing stamp. */
+  const again = await runTool(seeded, "cellwork_handoff", { content: HANDOFF_TEXT }, memberAgent(seeded.workspace, SESSION))
+  expect(again.ok).toBe(true)
+  expect(rawMembers(seeded.workspace)["Senior Engineer"].checkpointSince).toBe(PRIOR)
+})
+
+test("F2 A5: the TEAM handoff record carries `at` from the SAME clock, and a record without it still parses", async () => {
+  /** The fixed instant the row's clock answers. */
+  const NOW = new Date("2026-11-17T01:02:03.000Z")
+  /** The fresh workspace this arm owns. */
+  const workspace = mkdtempSync(join(tmpdir(), "mpd-team-handoff-at-"))
+  /** The team record, minted through the REAL store. */
+  const created = createTeam(workspace, { name: "handoff-at", description: "F2 A5", leadSessionId: "lead" }, NOW)
+  /** The same record with one member whose handle is the caller's session. */
+  const seeded = updateTeamMember(addTeamMember(created, { name: "Senior Engineer", description: "SE" }, NOW), "Senior Engineer", { executorRef: "session-senior", status: "running" })
+  writeTeam(workspace, seeded)
+  /** The two seams this action reads: its clock and its record resolution. */
+  const deps = {
+    now: (): Date => NOW,
+    resolveTeam: (): { record: ReturnType<typeof readTeam> } => ({ record: readTeam(workspace, created.teamId) }),
+  } as unknown as TeamActionDeps
+  /** The member's own caller. */
+  const caller: TeamActionCaller = { workspace, sessionId: "session-senior", lineage: [] }
+  /** The write through the REAL action, not the plane double. */
+  const written = await writeMemberHandoff(deps, caller, { content: HANDOFF_TEXT })
+  expect(written.ok).toBe(true)
+  /** The record as the store reads it back. */
+  const stored = readTeam(workspace, created.teamId)
+  expect(stored?.members[0]?.handoff).toMatchObject({ ordinal: 1, at: NOW.toISOString() })
+  expect(stored?.members[0]?.mode).toBe("checkpoint")
+  // AN OLD RECORD WITHOUT `at` STILL PARSES: the field is OPTIONAL by declaration, never migrated.
+  /** The same record carrying a pre-F2 handoff row. */
+  const old = { ...stored!, members: stored!.members.map((member) => ({ ...member, handoff: { path: ".mpd/team/handoff/old/1.md", ordinal: 1 } })) }
+  writeTeam(workspace, old)
+  expect(readTeam(workspace, created.teamId)?.members[0]?.handoff).toEqual({ path: ".mpd/team/handoff/old/1.md", ordinal: 1 })
+})
+
+test("F2 A6: with a FIXED clock, a handoff-created window older than the stale bound is force-eligible", async () => {
+  /** The member's session id, named by both records. */
+  const SESSION = "session-senior"
+  /** The harness whose staleness bound is the DEFAULT 15 minutes. */
+  const harness = makeHarness(cellWith({ "Senior Engineer": memberRow("Senior Engineer", { sessionId: SESSION, executorRef: SESSION }) }), [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: SESSION }], [])
+  /** The handoff that opens the window. */
+  const written = await runTool(harness, "cellwork_handoff", { content: HANDOFF_TEXT }, memberAgent(harness.workspace, SESSION))
+  expect(written.ok).toBe(true)
+  /** The record as the handoff left it. */
+  const cell = readCell(harness.workspace, CELL_ID)
+  if (!cell.ok) throw new Error("the fixture cannot read its own record")
+  /** The row the handoff wrote. */
+  const row = cell.state.members["Senior Engineer"]
+  if (row === undefined) throw new Error("the handoff must leave the member row in place")
+  /** The stamp the handoff recorded. */
+  const since = checkpointSinceOf(cell.state, row)
+  if (since === undefined) throw new Error("the handoff must record the window's start")
+  /** The FIXED instant the window is measured at: one millisecond past the stale bound. */
+  const now = new Date(Date.parse(since) + DEFAULT_CELLWORK_CONFIG.checkpointPendingMaxMs + 1)
+  /** The SAME predicate `cellwork_status`, `cellwork_supervise` and the force lever decide with. */
+  const reading = seatForceReadingOf({ member: row, seat: {}, checkpointSince: since, liveness: "unknown", now, retryBound: DEFAULT_CELLWORK_CONFIG.compactionRetries, staleMs: DEFAULT_CELLWORK_CONFIG.checkpointPendingMaxMs })
+  expect(reading.closed).toBe(true)
+  expect(reading.barrierOwned).toBe(true)
+  expect(reading.forceEligible).toBe(true)
+  expect(reading.bound).toBe("stale")
+  expect(reading.pendingMs).toBe(DEFAULT_CELLWORK_CONFIG.checkpointPendingMaxMs + 1)
+})
+
+test("F2 A6: the FORCED unfence lever is reachable on a handoff-created window (bound `stale`)", async () => {
+  // A ZERO stale bound makes a JUST-WRITTEN window stale immediately, so this arm needs no sleep: the
+  // licence is the STAMP's existence, which is exactly what F2 adds. Before it the lever answered
+  // `force-not-eligible` forever, because no timestamp meant no `pendingMs` and no bound.
+  /** The member's session id, named by both records. */
+  const SESSION = "session-senior"
+  /** The harness whose staleness bound is zero. */
+  const harness = makeHarness(cellWith({ "Senior Engineer": memberRow("Senior Engineer", { sessionId: SESSION, executorRef: SESSION }) }), [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: SESSION }], [], { config: { checkpointPendingMaxMs: 0 } })
+  /** The handoff that opens the window. */
+  const written = await runTool(harness, "cellwork_handoff", { content: HANDOFF_TEXT }, memberAgent(harness.workspace, SESSION))
+  expect(written.ok).toBe(true)
+  /** The captain's forced clear. */
+  const answer = await runTool(harness, "cellwork_dispatch", { unfence: [{ member: "Senior Engineer", force: true }] })
+  expect(answer.ok).toBe(true)
+  /** The one outcome. */
+  const outcome = (answer.unfenced as Array<Record<string, unknown>>)[0]
+  expect(outcome.unfenced).toBe(true)
+  expect(outcome.forced).toBe(true)
+  expect(outcome.bound).toBe("stale")
+  // The CELL row left the window: the window keys are DELETED, never zeroed.
+  /** The persisted row. */
+  const cleared = rawMembers(harness.workspace)["Senior Engineer"]
+  expect("checkpointSince" in cleared).toBe(false)
+  expect(cleared.handoffReady).toBe(false)
+})

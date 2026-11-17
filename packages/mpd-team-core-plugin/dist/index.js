@@ -6874,8 +6874,9 @@ async function writeMemberHandoff(deps, caller, input) {
     while (existsSync6(teamHandoffPath(caller.workspace, resolved.record.teamId, member.name, ordinal)))
       ordinal += 1;
     const path = writeHandoffDocument(caller.workspace, resolved.record.teamId, member.name, ordinal, input.content);
-    writeTeam(caller.workspace, updateTeamMember(resolved.record, member.name, { handoff: { path, ordinal }, mode: "checkpoint" }));
-    appendTeamJournal(caller.workspace, { event: "handoff-written", teamId: resolved.record.teamId, at: deps.now().toISOString(), member: member.name, path });
+    const at = deps.now().toISOString();
+    writeTeam(caller.workspace, updateTeamMember(resolved.record, member.name, { handoff: { path, ordinal, at }, mode: "checkpoint" }));
+    appendTeamJournal(caller.workspace, { event: "handoff-written", teamId: resolved.record.teamId, at, member: member.name, path });
     return { ok: true, teamId: resolved.record.teamId, member: member.name, path, ordinal, mode: "checkpoint", directive: handoffWrittenDirective(path) };
   } catch (error) {
     return unexpectedRefusalOf(error);

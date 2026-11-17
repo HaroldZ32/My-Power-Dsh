@@ -242,21 +242,28 @@ and the activation's initial pass — a READY task whose declared owner names a 
 idle (BUSY, or holding another claim) may GROW a seat instead of waiting:
 
 - the owner's BASE is its name with a trailing `-<n>` (`n >= 2`) removed, and its ROLE is the roster
-  role whose spelling matches that base (case/space/hyphen-insensitive); a base that names no roster
-  role REFUSES growth for that task with the reason `owner base "<base>" is not a roster role`;
-- an EXISTING idle seat named `<base>-<n>` (smallest n) owned by the same role is REUSED before a new
-  one is created;
-- otherwise ONE seat `<base>-<n>` is appended to the live roster through
-  `agent_teams_plan {action:"add_member"}` WITH its `role`, recorded on the cell record (`grown: true`),
-  journaled as ONE `seat-grown` row (task, name, role, reason), and PAIRED in the SAME pass through
+  role whose spelling matches that base (case/space/hyphen-insensitive). When the base names no roster
+  role, growth falls back to the role the OWNER's rows RECORD — the live roster row's `role` first, then
+  the `cell.members` row's — normalised the same way; only when that also names no roster role does the
+  task REFUSE with the reason `owner base "<base>" is not a roster role`. A split may therefore declare
+  `ownerRole: "Senior Engineer"` with `member: "SE-2"`: the name base (`SE`) resolves through the
+  recorded role, and the seat grows and reuses normally;
+- an EXISTING idle member of the resolved ROLE is REUSED before a new seat is created: the first such
+  member in live-roster order, never the declared owner, and never a closed (`checkpoint`/fenced),
+  verifier-only or planning seat — so a seat whose NAME is spelled differently from its role is eligible;
+- otherwise ONE seat `<canonicalRole>-<n>` (the smallest free n >= 2, compared by name key AND role key)
+  is appended to the live roster through `agent_teams_plan {action:"add_member"}` WITH its `role`,
+  recorded on the cell record (`grown: true`), journaled as ONE `seat-grown` row (task, name, role, and
+  a reason stating the base came from the seat's recorded role), and PAIRED in the SAME pass through
   `agent_teams_dispatch {action:"run", reassign:[…]}` — so the pair is real, not a claim no seat can
   ever receive.
 
-The caps: `cellwork.seats.maxPerRole` (default 8) seats per base and `cellwork.seats.max` (default 32)
-execution seats per cell. A capped task keeps the BUSY skip, and the reason MUST name the cap and its
-value. Growth NEVER happens for a planning seat (`cell-planner`, `cell-splitter`, `cell-analyst-*`), a
-verifier-only seat, a seat in `checkpoint` mode or fenced, a blocked task, a task already claimed, or a
-row claimed by the captain. Growth is idempotent: two passes over the same board create no second seat
+The caps: `cellwork.seats.maxPerRole` (default 8) counts seats OF the resolved role (not seats whose
+name starts with the base) and `cellwork.seats.max` (default 32) bounds the cell's execution seats. A
+capped task keeps the BUSY skip, and the reason MUST name the cap and its value. Growth NEVER happens
+for a planning seat (`cell-planner`, `cell-splitter`, `cell-analyst-*`), a verifier-only seat, a seat
+in `checkpoint` mode or fenced, a blocked task, a task already claimed, or a row claimed by the captain.
+Growth is idempotent: two passes over the same board create no second seat
 while an idle one exists, a name is never duplicated on the roster, and a crash between the append and
 the cell-record write is repaired by the next pass adopting the live roster row. A mid-run
 `add_member` that carries NO `role` is legal but the answer WARNS (one sentence) that the seat may not
@@ -1078,7 +1085,7 @@ The six SEATS AND CONCURRENCY keys (the elastic-planning wave) are:
 
 | Key | Default | Bounds | Meaning |
 |---|---|---|---|
-| `cellwork.seats.maxPerRole` | `8` | `1..32` | seats sharing one base role (`Senior Engineer`, `Senior Engineer-2`, …); `1` disables growth |
+| `cellwork.seats.maxPerRole` | `8` | `1..32` | seats OF one resolved role (counted by role, not by name: `Senior Engineer` and `Senior Engineer-2` share it, and so does a seat named `SE-2` whose recorded role is `Senior Engineer`); `1` disables growth |
 | `cellwork.seats.max` | `32` | `1..64` | total EXECUTION seats in one cell (planning seats excluded) |
 | `cellwork.consultMax` | `32` | `1..256` | the per-start budget this plane hands the ONE shared consult supervisor; an explicitly declared `MPD_DSH_CONSULT_MAX` still wins |
 | `cellwork.planning.analysts` | `2` | `0..8` | extra planning lanes (`cell-analyst-1 … K`); `0` keeps the two-seat planning phase |

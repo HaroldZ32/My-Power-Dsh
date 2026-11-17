@@ -186,16 +186,21 @@ cell 的 `state.json` 维护一张 `members` 表：每个座位一行，携带 r
 声明的所有者若是**不空闲**的活跃成员（BUSY，或已被另一个 claim 占着），可以不等待，而是**增长**一个座位：
 
 - 所有者的 **base** 是它的名字去掉结尾的 `-<n>`（`n >= 2`），**role** 是拼写与 base 相等的名册角色
-  （大小写/空格/连字符不敏感）；base 不匹配任何名册角色时，该任务的增长被**拒绝**，理由为
-  `owner base "<base>" is not a roster role`；
-- 已存在同名册角色拥有的、名为 `<base>-<n>`（n 最小）的空闲座位时，**复用**它，不新建；
-- 否则通过 `agent_teams_plan {action:"add_member"}` **带着 `role`** 向活跃名册追加一个 `<base>-<n>` 座位，
-  写进 cell 记录（`grown: true`），记**一条** `seat-grown` journal 行（task、name、role、reason），并在
+  （大小写/空格/连字符不敏感）。base 不匹配任何名册角色时，增长回退到**所有者记录行上的 role**——先读
+  活跃名册行的 `role`，再读 `cell.members` 行的——用同样的方式归一化；只有两者都点不出名册角色时才**拒绝**
+  该任务，理由为 `owner base "<base>" is not a roster role`。因此声明 `ownerRole: "Senior Engineer"`、
+  `member: "SE-2"` 的拆分也能正常增长与复用：名字 base（`SE`）经由记录的角色解析；
+- 已存在**解析出的角色**的空闲成员时，**复用**它，不新建：取活跃名册顺序中的第一个，绝不是声明的所有者，
+  也绝不是已关闭（`checkpoint`/被围栏）、纯验证者或规划座位——所以名字拼写与角色不一致的座位同样可用；
+- 否则通过 `agent_teams_plan {action:"add_member"}` **带着 `role`** 向活跃名册追加一个 `<canonicalRole>-<n>`
+  座位（n >= 2 中最小的、按 name key **与** role key 比较均未被占用的），写进 cell 记录（`grown: true`），
+  记**一条** `seat-grown` journal 行（task、name、role，以及说明 base 来自该座位所记录角色的 reason），并在
   **同一趟**里通过 `agent_teams_dispatch {action:"run", reassign:[…]}` 完成配对——配对是真的，而不是一个
   永远收不到座位的 claim。
 
-上限：每个 base `cellwork.seats.maxPerRole`（默认 8）个座位，每个 cell `cellwork.seats.max`（默认 32）个
-执行座位。触顶的任务保持 BUSY 跳过，且理由**必须**点名上限及其数值。**绝不**为以下情形增长：规划座位
+上限：`cellwork.seats.maxPerRole`（默认 8）按**解析出的角色**计座位数（不是按名字以 base 开头的座位），
+`cellwork.seats.max`（默认 32）是每个 cell 的执行座位上限。触顶的任务保持 BUSY 跳过，且理由**必须**点名上限
+及其数值。**绝不**为以下情形增长：规划座位
 （`cell-planner`、`cell-splitter`、`cell-analyst-*`）、纯验证者座位、处于 `checkpoint` 模式或被围栏的
 座位、被阻塞的任务、已被 claim 的任务，以及由队长 claim 的行。增长是幂等的：同一看板跑两趟，只要还有空闲
 座位就不会建第二个，名册上的名字绝不重复，追加与 cell 记录写入之间崩溃由下一趟采纳活跃名册行来修复。
@@ -839,7 +844,7 @@ agent 退出，必须调用该动词。
 
 | 键 | 默认 | 边界 | 含义 |
 |---|---|---|---|
-| `cellwork.seats.maxPerRole` | `8` | `1..32` | 共用一个 base role（`Senior Engineer`、`Senior Engineer-2`、…）的座位数；`1` 关闭增长 |
+| `cellwork.seats.maxPerRole` | `8` | `1..32` | **同一解析角色**的座位数（按角色而非按名字计数：`Senior Engineer` 与 `Senior Engineer-2` 共用，名为 `SE-2` 但记录角色是 `Senior Engineer` 的座位也算）；`1` 关闭增长 |
 | `cellwork.seats.max` | `32` | `1..64` | 一个 cell 的**执行**座位总数（不含规划座位） |
 | `cellwork.consultMax` | `32` | `1..256` | 本平面交给**唯一**共享咨询监督器的每次启动预算；显式声明的 `MPD_DSH_CONSULT_MAX` 仍然优先 |
 | `cellwork.planning.analysts` | `2` | `0..8` | 额外的规划泳道（`cell-analyst-1 … K`）；`0` 保留两座规划阶段 |
