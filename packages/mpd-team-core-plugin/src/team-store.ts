@@ -80,6 +80,13 @@ export interface TeamHandoffRecord {
   path: string
   /** 1-based ordinal: the Nth handoff this member has written. */
   ordinal: number
+  /**
+   * ISO instant the handoff was written (F2 §4.2), stamped from the row's own clock.
+   *
+   * OPTIONAL BY DECLARATION: a record written before this field existed carries no `at` and must stay
+   * readable — the two required fields are what identify the document, never the timestamp.
+   */
+  at?: string
 }
 
 /**

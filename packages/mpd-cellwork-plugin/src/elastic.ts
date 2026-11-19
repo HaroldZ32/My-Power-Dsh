@@ -5,9 +5,13 @@
 // and a split that repeats one name per role therefore materialises a board a single seat can only drain
 // one row at a time. The dispatch pass pairs a row with its DECLARED owner or nobody (owner-only, D4), so
 // a BUSY owner used to be a hard throughput ceiling. This module removes the ceiling WITHOUT weakening
-// that rule: a ready row whose declared owner is busy is handed to a seat of the SAME base role —
-// an idle `<base>-<n>` when one exists, otherwise a newly raised one — and the hand-over goes through the
-// plane's own `reassign` repair, so the board records a real claim for a real seat.
+// that rule: a ready row whose declared owner is busy is handed to a seat of the SAME ROLE — an idle
+// existing seat when one exists, otherwise a newly raised `<canonicalRole>-<n>` — and the hand-over goes
+// through the plane's own `reassign` repair, so the board records a real claim for a real seat.
+//
+// THE ROLE IS THE OWNER'S, NOT THE NAME'S SPELLING (F1). A split may declare `ownerRole: "Senior
+// Engineer"` with `member: "SE-2"`, so the name base (`SE`) is not a roster role; growth must fall back
+// to the role the owner's own rows RECORD before it refuses the pass.
 //
 // THE TRIGGER IS "BUSY", NEVER "MERE RUNNING". A member that owns no `claimed`/`in_progress` row is IDLE
 // for the plane (`team-store.ts#idleMembers`), so growth checks the board's in-flight owners, not the
@@ -17,8 +21,8 @@
 // seat, a seat the compaction barrier holds (`checkpoint`/`fenced`), a blocked task, a row already
 // claimed, or a row the captain's own session owns. Each of those is a leave-it-alone arm, not a refusal.
 //
-// CAPS ARE NAMED, NOT SILENT. `cellwork.seats.maxPerRole` (default 8) bounds the seats sharing one base
-// role and `cellwork.seats.max` (default 32) bounds the cell's execution seats; a capped row keeps the
+// CAPS ARE NAMED, NOT SILENT. `cellwork.seats.maxPerRole` (default 8) bounds the seats OF one role and
+// `cellwork.seats.max` (default 32) bounds the cell's execution seats; a capped row keeps the
 // existing BUSY skip but its reason must name the cap AND its value, and the same sentence is journaled
 // (`seat-growth-refused`) so `cellwork_supervise` can repeat it without re-deriving the decision.
 import { readFileSync } from "node:fs"
@@ -374,6 +378,28 @@ function rowName(row: GrowthMemberRow): string {
 }
 
 /**
+ * Add one board name's BOTH comparison keys to the set that keeps a new seat name unique (F1 §3.5).
+ *
+ * @param set - the taken-key set.
+ * @param name - a board name.
+ */
+function addSeatNameKeys(set: Set<string>, name: string): void {
+  set.add(roleKey(name))
+  set.add(nameKey(name))
+}
+
+/**
+ * Whether a candidate seat name is already carried, under EITHER comparison key (F1 §3.5).
+ *
+ * @param set - the taken-key set, seeded by {@link addSeatNameKeys}.
+ * @param name - the candidate board name.
+ * @returns true when the name is already a member name.
+ */
+function seatNameTaken(set: Set<string>, name: string): boolean {
+  return set.has(roleKey(name)) || set.has(nameKey(name))
+}
+
+/**
  * The ids of every in-flight row on one board, by owner spelling AND by handle.
  *
  * The plane marks a member busy when an `in_progress`/`claimed` row names it by NAME or by its
@@ -475,14 +501,14 @@ export async function growExecutionSeats(deps: SeatGrowthDeps): Promise<SeatGrow
   const roster = growthMemberRows(deps.record.members)
   /** The in-flight owner spellings. */
   const busy = busyOwnerKeys(tasks)
-  /** Every name already on the roster or in the cell record, comparison-keyed, so a name is never duplicated. */
-  const usedNames = new Set<string>([...roster.map((row) => roleKey(rowName(row))), ...Object.keys(deps.cell.members).map((name) => roleKey(name))])
+  /** Every name already on the roster or in the cell record, under BOTH comparison keys, so a name is never duplicated. */
+  const usedNames = new Set<string>()
+  for (const row of roster) addSeatNameKeys(usedNames, rowName(row))
+  for (const name of Object.keys(deps.cell.members)) addSeatNameKeys(usedNames, name)
   /** The seats this pass has already allocated to a row (one task per seat). */
   const allocated = new Set<string>()
   /** Task ids the caller already hands over itself. */
   const excluded = new Set(deps.excludeTaskIds ?? [])
-  /** Every execution seat currently on the roster, by base-role key. */
-  const seatsOfBase = (baseKey: string): GrowthMemberRow[] => roster.filter((row) => !isPlanningSeatName(rowName(row)) && roleKey(baseSeatName(rowName(row))) === baseKey)
   /** The roles recorded on the cell and team rows, the fallback for the roster-list read. */
   const recordedRoles = [...new Set([
     ...Object.values(deps.cell.members).map((member) => member.role),
@@ -495,6 +521,35 @@ export async function growExecutionSeats(deps: SeatGrowthDeps): Promise<SeatGrow
    * @returns the row, or undefined.
    */
   const cellRowOf = (name: string): CellMemberRecord | undefined => deps.cell.members[name]
+
+  /**
+   * The canonical roster role one live seat belongs to, or undefined when nothing records it.
+   *
+   * The live row's `role` wins, then the CELL row's role, then the seat's name base — that last arm is
+   * what keeps a `<role>-<n>` seat attributable on an older record whose roster rows carry no role.
+   * @param row - the live roster row.
+   * @returns the canonical role, or undefined.
+   */
+  const memberRoleOf = (row: GrowthMemberRow): string | undefined => {
+    /** The name the row is filed under. */
+    const name = rowName(row)
+    /** The role spellings this seat may have been recorded with, most authoritative first. */
+    const spellings = [typeof row.role === "string" ? row.role : "", cellRowOf(name)?.role ?? "", baseSeatName(name)]
+    for (const spelling of spellings) {
+      if (spelling.trim() === "") continue
+      /** The canonical role under the SAME normalisation growth resolves the owner with. */
+      const canonical = rosterRoleFor(spelling, deps.rosterRoles, recordedRoles, deps.personaFor)
+      if (canonical !== undefined) return canonical
+    }
+    return undefined
+  }
+
+  /**
+   * Whether one seat is VERIFIER-ONLY on the cell record, which growth never reuses (F1 §3.4).
+   * @param row - the live roster row.
+   * @returns true when the CELL row holds the verifier mode.
+   */
+  const seatVerifierOnly = (row: GrowthMemberRow): boolean => cellRowOf(rowName(row))?.mode === "verifier"
 
   /**
    * Journal one refusal row and mirror it into the pass result.
@@ -566,18 +621,33 @@ export async function growExecutionSeats(deps: SeatGrowthDeps): Promise<SeatGrow
     const base = baseSeatName(owner)
     if (isPlanningSeatName(base)) continue
     /** The canonical roster role for that base, or undefined when the base is not a roster role. */
-    const role = rosterRoleFor(base, deps.rosterRoles, recordedRoles, deps.personaFor)
+    let role = rosterRoleFor(base, deps.rosterRoles, recordedRoles, deps.personaFor)
+    if (role === undefined) {
+      // ROLE FALLBACK (F1 §3.3): the OWNER's RECORDED role, normalised by the SAME function. A split may
+      // declare one role and mint its members under spellings of it (`SE-2`), so the name base alone must
+      // never refuse a pass the record itself can answer.
+      // EVERY SPELLING IS TRIED (CodeRabbit #116 F1): a live row whose role is NON-EMPTY but UNRESOLVABLE
+      // (`Legacy Engineer`) must not stop the CELL row's role from answering.
+      /** The role spellings the owner's rows record, most authoritative first. */
+      const spellings = [typeof ownerRow.role === "string" ? ownerRow.role : "", ownerCellRow?.role ?? ""]
+      for (const spelling of spellings) {
+        if (spelling.trim() === "") continue
+        role = rosterRoleFor(spelling, deps.rosterRoles, recordedRoles, deps.personaFor)
+        if (role !== undefined) break
+      }
+    }
     if (role === undefined) {
       refuse(taskId, task.subject ?? "", "owner base " + JSON.stringify(base) + " is not a roster role")
       continue
     }
-    /** The base's comparison key. */
-    const baseKey = roleKey(base)
-    // 2. REUSE THE SMALLEST IDLE SEAT OF THE SAME ROLE.
-    /** The idle seats of this base role, smallest ordinal first. */
-    const idleSeats = seatsOfBase(baseKey).filter((row) => seatIdle(row)).sort((left, right) => seatOrdinal(rowName(left)) - seatOrdinal(rowName(right)))
-    /** The first reusable seat, when one exists. */
-    const reuse = idleSeats[0]
+    /** The resolved role's comparison key: seats are attributed AND counted by this, never by the name. */
+    const roleK = roleKey(role)
+    // 2. REUSE THE FIRST IDLE SEAT OF THE SAME ROLE, in live-roster order (F1 §3.4).
+    // A CANDIDATE MUST CARRY A HANDLE (CodeRabbit #116 F2): the plane's reassign refuses a target it cannot
+    // deliver to (see the grown-seat guard at the bottom of this file), so a handle-less seat is skipped and
+    // the search continues to a later same-role seat that can actually receive the row.
+    /** The first idle seat of this role that is not the owner and carries a handle, when one exists. */
+    const reuse = roster.find((row) => !isPlanningSeatName(rowName(row)) && roleKey(rowName(row)) !== roleKey(owner) && typeof row.executorRef === "string" && row.executorRef !== "" && roleKey(memberRoleOf(row) ?? "") === roleK && !seatVerifierOnly(row) && seatIdle(row))
     if (reuse !== undefined) {
       /** The seat's canonical board spelling. */
       const name = rowName(reuse)
@@ -588,8 +658,8 @@ export async function growExecutionSeats(deps: SeatGrowthDeps): Promise<SeatGrow
     }
     // 3. THE CAPS, named in the sentence every surface repeats. Seats grown LATER in this same pass
     // count against both caps, or four ready rows could each pass a one-seat check and overshoot.
-    /** The seats already sharing this base role, including the ones this pass grew. */
-    const perRoleCount = seatsOfBase(baseKey).length + result.grown.filter((seat) => roleKey(baseSeatName(seat.name)) === baseKey).length
+    /** The seats already carrying this role, including the ones this pass grew (F1 §3.6). */
+    const perRoleCount = roster.filter((row) => !isPlanningSeatName(rowName(row)) && roleKey(memberRoleOf(row) ?? "") === roleK).length + result.grown.filter((seat) => roleKey(seat.role) === roleK).length
     if (perRoleCount >= caps.perRole) {
       refuse(taskId, task.subject ?? "", seatCapReason(owner, "perRole", caps.perRole))
       continue
@@ -600,21 +670,21 @@ export async function growExecutionSeats(deps: SeatGrowthDeps): Promise<SeatGrow
       refuse(taskId, task.subject ?? "", seatCapReason(owner, "total", caps.total))
       continue
     }
-    // 4. CREATE `<base>-<n>` — the smallest n >= 2 whose name nothing carries.
+    // 4. CREATE `<canonicalRole>-<n>` — the smallest n >= 2 whose name nothing carries (F1 §3.5).
     /** The new seat's name. */
     let name = ""
     for (let ordinal = 2; ordinal <= 64; ordinal++) {
-      /** The candidate spelling. */
-      const candidate = base + "-" + String(ordinal)
-      if (usedNames.has(roleKey(candidate))) continue
+      /** The candidate spelling, built from the CANONICAL role so the seat is attributable by role. */
+      const candidate = role + "-" + String(ordinal)
+      if (seatNameTaken(usedNames, candidate)) continue
       name = candidate
       break
     }
     if (name === "") {
-      refuse(taskId, task.subject ?? "", "no free seat name is left for base " + JSON.stringify(base) + " (names <base>-2 … <base>-64 are all taken)")
+      refuse(taskId, task.subject ?? "", "no free seat name is left for role " + JSON.stringify(role) + " (names <role>-2 … <role>-64 are all taken)")
       continue
     }
-    usedNames.add(roleKey(name))
+    addSeatNameKeys(usedNames, name)
     /** The append's answer. */
     let added: { handle: string; error?: string }
     try {
@@ -691,6 +761,12 @@ function appendSeatJournal(deps: SeatGrowthDeps, entry: Record<string, unknown>)
 }
 
 /**
+ * The `seat-grown` journal reason (F1 §3.5): growth derives the seat's name base from the CANONICAL role,
+ * so the row says where that base came from. The RESULT's own `reason` keeps the `owner-busy` trigger.
+ */
+const SEAT_GROWN_REASON = "seat base came from the seat's recorded role"
+
+/**
  * Record one seat this pass RAISED (or adopted): the member row, the journal row, the §7.1b warning and
  * the hand-over the caller passes into the plane's dispatch.
  *
@@ -725,7 +801,7 @@ function recordGrownSeat(deps: SeatGrowthDeps, result: SeatGrowthResult, live: G
   // §7.1b: REPORT WHAT LANDED. A mid-run member with no `role` mis-routes, so the gap is named in the
   // answer and in the journal row instead of being assumed away.
   if (rosterRole === "") result.warnings.push("the mid-run `add_member` arm recorded no `role` for " + JSON.stringify(liveName) + " (§7.1b) — routing falls back until the plan store persists it")
-  appendSeatJournal(deps, { event: "seat-grown", task: taskId, name: liveName, role, rosterRole, reason: "owner-busy" })
+  appendSeatJournal(deps, { event: "seat-grown", task: taskId, name: liveName, role, rosterRole, reason: SEAT_GROWN_REASON })
   result.grown.push({ name: liveName, role, taskId, rosterRole, reason: "owner-busy" })
   // A HANDLE-LESS SEAT CANNOT BE HANDED A ROW: the plane's reassign refuses a target it cannot deliver
   // to, so the row stays pending and the seat waits for the next pass instead of faking a claim.
