@@ -948,10 +948,12 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       if (cellFenced) {
         /** How the plane's half ended. */
         const half = await reopenPlaneSeat(caller.sessionId, target.name)
-        /** The reopened CELL row: the fence keys are REMOVED and the barrier's checkpoint window is reset. */
+        /** The reopened CELL row: ALL FOUR window keys are REMOVED — the fence marker and the barrier's checkpoint window — exactly as the FORCED arm below does. */
         const reopened: CellMemberRecord = { ...row, mode: "member", handoffReady: false }
         delete reopened.fenced
         delete reopened.fencedReason
+        delete reopened.barrierFailures
+        delete reopened.checkpointSince
         clearedRows.set(target.key, reopened)
         outcomes.push({ member: target.name, unfenced: true, plane: half.plane, ...(half.planeReason === undefined ? {} : { planeReason: half.planeReason }), ...(half.plane === "refused" ? { retry: planeRetryOf(target.name) } : {}) })
         cleared.push({ name: target.name, plane: half.plane })

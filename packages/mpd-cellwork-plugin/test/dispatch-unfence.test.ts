@@ -269,6 +269,35 @@ test("B2: unfence removes both fence keys, restores `mode: member` and `handoffR
   expect(rows[0].plane).toBe("unfenced")
 })
 
+test("F3 regression (#116): a NON-FORCED unfence removes the barrier's whole window, exactly like the FORCED arm", async () => {
+  // THE DEFECT: the CELL-fenced branch deleted only `fenced`/`fencedReason` while its comment claimed the
+  // window was reset, so `checkpointSince`/`barrierFailures` survived a reopen and the seat still read as
+  // mid-barrier. The FORCED arm (`R4.4 ... STALE`) asserts all four keys absent; this arm pins the same.
+  /** The give-up row carrying the barrier's checkpoint window. */
+  const cell = cellWith({ "Senior Engineer": fencedRow("Senior Engineer", { checkpointSince: "2026-11-04T11:40:00.000Z", barrierFailures: 2 }) })
+  /** The harness whose TEAM row is the checkpoint window the handoff left behind. */
+  const harness = makeHarness(cell, [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "checkpoint" }], [])
+  /** The captain's UNFORCED unfence. */
+  const answer = await runTool(harness, "cellwork_dispatch", { unfence: ["Senior Engineer"] })
+  expect(answer.ok).toBe(true)
+  expect((answer.unfenced as Array<Record<string, unknown>>)[0].unfenced).toBe(true)
+  /** The raw persisted row, before the reader normalizes it. */
+  const row = rawMembers(harness.workspace)["Senior Engineer"]
+  // ALL FOUR WINDOW KEYS ARE ABSENT, never written as false/zero.
+  expect("fenced" in row).toBe(false)
+  expect("fencedReason" in row).toBe(false)
+  expect("barrierFailures" in row).toBe(false)
+  expect("checkpointSince" in row).toBe(false)
+  expect(row.mode).toBe("member")
+  expect(row.handoffReady).toBe(false)
+  expect(row.handoffs).toBe(2)
+  // THE JOURNAL ROW KEEPS THE UNFORCED MEANING: no `forced` field, matching its `member-unfenced` event.
+  /** The unfence journal rows. */
+  const rows = journalRows(harness.workspace, CELL_ID).filter((entry) => entry.event === "member-unfenced")
+  expect(rows).toHaveLength(1)
+  expect("forced" in rows[0]).toBe(false)
+})
+
 test("round 3: the PRODUCTION give-up shape — CELL `fenced:true`, TEAM `checkpoint` with NO `fenced` — is fully recovered", async () => {
   // WHAT THE BARRIER REALLY WRITES: `memberAfterBarrier` fences the CELL row (mode `checkpoint`,
   // `handoffReady:true`, `fenced:true`) and `writeMemberHandoff` leaves the TEAM row at

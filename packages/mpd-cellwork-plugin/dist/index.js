@@ -5503,16 +5503,21 @@ async function growExecutionSeats(deps) {
       continue;
     let role = rosterRoleFor(base, deps.rosterRoles, recordedRoles, deps.personaFor);
     if (role === undefined) {
-      const recordedRole = typeof ownerRow.role === "string" && ownerRow.role.trim() !== "" ? ownerRow.role : ownerCellRow?.role ?? "";
-      if (recordedRole.trim() !== "")
-        role = rosterRoleFor(recordedRole, deps.rosterRoles, recordedRoles, deps.personaFor);
+      const spellings = [typeof ownerRow.role === "string" ? ownerRow.role : "", ownerCellRow?.role ?? ""];
+      for (const spelling of spellings) {
+        if (spelling.trim() === "")
+          continue;
+        role = rosterRoleFor(spelling, deps.rosterRoles, recordedRoles, deps.personaFor);
+        if (role !== undefined)
+          break;
+      }
     }
     if (role === undefined) {
       refuse(taskId, task.subject ?? "", "owner base " + JSON.stringify(base) + " is not a roster role");
       continue;
     }
     const roleK = roleKey(role);
-    const reuse = roster.find((row) => !isPlanningSeatName(rowName(row)) && roleKey(rowName(row)) !== roleKey(owner) && roleKey(memberRoleOf(row) ?? "") === roleK && !seatVerifierOnly(row) && seatIdle(row));
+    const reuse = roster.find((row) => !isPlanningSeatName(rowName(row)) && roleKey(rowName(row)) !== roleKey(owner) && typeof row.executorRef === "string" && row.executorRef !== "" && roleKey(memberRoleOf(row) ?? "") === roleK && !seatVerifierOnly(row) && seatIdle(row));
     if (reuse !== undefined) {
       const name2 = rowName(reuse);
       allocated.add(roleKey(name2));
@@ -8752,6 +8757,8 @@ function installCellworkProtocol(deps) {
         const reopened = { ...row, mode: "member", handoffReady: false };
         delete reopened.fenced;
         delete reopened.fencedReason;
+        delete reopened.barrierFailures;
+        delete reopened.checkpointSince;
         clearedRows.set(target.key, reopened);
         outcomes.push({ member: target.name, unfenced: true, plane: half.plane, ...half.planeReason === undefined ? {} : { planeReason: half.planeReason }, ...half.plane === "refused" ? { retry: planeRetryOf(target.name) } : {} });
         cleared.push({ name: target.name, plane: half.plane });

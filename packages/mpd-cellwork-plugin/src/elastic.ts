@@ -626,9 +626,15 @@ export async function growExecutionSeats(deps: SeatGrowthDeps): Promise<SeatGrow
       // ROLE FALLBACK (F1 §3.3): the OWNER's RECORDED role, normalised by the SAME function. A split may
       // declare one role and mint its members under spellings of it (`SE-2`), so the name base alone must
       // never refuse a pass the record itself can answer.
-      /** The role the owner's rows record: the live roster row first, then the CELL row. */
-      const recordedRole = typeof ownerRow.role === "string" && ownerRow.role.trim() !== "" ? ownerRow.role : ownerCellRow?.role ?? ""
-      if (recordedRole.trim() !== "") role = rosterRoleFor(recordedRole, deps.rosterRoles, recordedRoles, deps.personaFor)
+      // EVERY SPELLING IS TRIED (CodeRabbit #116 F1): a live row whose role is NON-EMPTY but UNRESOLVABLE
+      // (`Legacy Engineer`) must not stop the CELL row's role from answering.
+      /** The role spellings the owner's rows record, most authoritative first. */
+      const spellings = [typeof ownerRow.role === "string" ? ownerRow.role : "", ownerCellRow?.role ?? ""]
+      for (const spelling of spellings) {
+        if (spelling.trim() === "") continue
+        role = rosterRoleFor(spelling, deps.rosterRoles, recordedRoles, deps.personaFor)
+        if (role !== undefined) break
+      }
     }
     if (role === undefined) {
       refuse(taskId, task.subject ?? "", "owner base " + JSON.stringify(base) + " is not a roster role")
@@ -637,8 +643,11 @@ export async function growExecutionSeats(deps: SeatGrowthDeps): Promise<SeatGrow
     /** The resolved role's comparison key: seats are attributed AND counted by this, never by the name. */
     const roleK = roleKey(role)
     // 2. REUSE THE FIRST IDLE SEAT OF THE SAME ROLE, in live-roster order (F1 §3.4).
-    /** The first idle seat of this role that is not the owner, when one exists. */
-    const reuse = roster.find((row) => !isPlanningSeatName(rowName(row)) && roleKey(rowName(row)) !== roleKey(owner) && roleKey(memberRoleOf(row) ?? "") === roleK && !seatVerifierOnly(row) && seatIdle(row))
+    // A CANDIDATE MUST CARRY A HANDLE (CodeRabbit #116 F2): the plane's reassign refuses a target it cannot
+    // deliver to (see the grown-seat guard at the bottom of this file), so a handle-less seat is skipped and
+    // the search continues to a later same-role seat that can actually receive the row.
+    /** The first idle seat of this role that is not the owner and carries a handle, when one exists. */
+    const reuse = roster.find((row) => !isPlanningSeatName(rowName(row)) && roleKey(rowName(row)) !== roleKey(owner) && typeof row.executorRef === "string" && row.executorRef !== "" && roleKey(memberRoleOf(row) ?? "") === roleK && !seatVerifierOnly(row) && seatIdle(row))
     if (reuse !== undefined) {
       /** The seat's canonical board spelling. */
       const name = rowName(reuse)
