@@ -1,0 +1,11 @@
+# environment facts (this run)
+
+utc=2026-11-22T10:28:34Z
+node=v24.21.0
+dockerClient=29.9.2
+dockerServer=29.8.2
+dockerSecurityOptions=[name=seccomp,profile=builtin name=rootless name=cgroupns]
+XDG_RUNTIME_DIR_used_by_the_arm=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/xdg
+XDG_RUNTIME_DIR_note=exported in the invoking shell; a later probe shell shows the ambient /run/user/1000 because each shell is fresh
+DEEPSEEK_API_KEY=absent
+credentialSourceFile=/home/haroldzhao/.dsh/.credentials.yaml (named only; never read, never printed)

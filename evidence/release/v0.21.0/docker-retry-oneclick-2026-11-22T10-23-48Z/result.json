@@ -1,0 +1,95 @@
+{
+  "case": "docker-retry-oneclick",
+  "title": "TARGETED RE-RUN (exactly once) of the one-click live arm — recorded as NOT RUN",
+  "ok": false,
+  "complete": false,
+  "outcome": "not-run",
+  "exitCode": 3,
+  "exitCodeMeaning": "the driver refused BEFORE the build: --live was passed and DEEPSEEK_API_KEY is absent from this process environment",
+  "dockerMode": "not-probed",
+  "dockerModeNote": "the refusal precedes the docker probe, so this run printed no ROOTLESS/rootful line. The host itself reports rootless: [name=seccomp,profile=builtin name=rootless name=cgroupns]",
+  "skipPrinted": false,
+  "skipNote": "no SKIP line was printed; the driver printed one refusal line and returned",
+  "refusal": {
+    "site": "scripts/docker-e2e.ts",
+    "guard": "liveRequested && !keyPresent -> process.exitCode = 3; return",
+    "message": "[driver] --live was passed but DEEPSEEK_API_KEY is not set in this environment; refusing to run a lane that would report the credential-free NULL. Export the key, or drop --live.",
+    "credentialSourceOnThisHost": "$HOME/.dsh/.credentials.yaml :: refs.DEEPSEEK_API_KEY (named only; value never read, never printed, never copied)",
+    "keyNamePresentInThisProcess": false
+  },
+  "invocations": 1,
+  "retried": false,
+  "retryPolicy": "the mandate forbade a second invocation whatever the outcome; none was made",
+  "anchors": {
+    "utc": "2026-11-22T10:23:48Z",
+    "head": "3abf3e0a",
+    "headFull": "3abf3e0adbd1f66e8d4a81a664c75e0ce0603682",
+    "branch": "feature/dsh-022rc5-tui-0202",
+    "diffSha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "trackedChangedCount": 0,
+    "untrackedCount": 117,
+    "headDiffersFromTaskStatement": "the task statement named 2cfa9430; actual HEAD is 3abf3e0a, whose only delta is evidence/release/v0.21.0/docker-2026-11-22T09-23-53Z/** (git diff --name-only 2cfa9430 3abf3e0a lists nothing else)",
+    "sourceIdentity": "package.json `files` excludes evidence/, so the re-cut pack is source-identical between 2cfa9430 and 3abf3e0a"
+  },
+  "pack": {
+    "command": "node scripts/pack-mpd.ts",
+    "exitCode": 0,
+    "log": "step-3-pack.log",
+    "summary": "staged 2 patch file(s); 4 launcher dependencies resolve 5 npm package(s); 687 files normalized (644: 671, 755: 16); staged package -> dist/mpd-package",
+    "version": "0.21.0"
+  },
+  "measuredThisRun": {
+    "tui.teamFixtureBound": "NOT MEASURED",
+    "tui.mergedPanelOpens": "NOT MEASURED",
+    "tui.mergedPanelOrder": "NOT MEASURED",
+    "tui.teamSceneOpened": "NOT MEASURED",
+    "tui.teamGraphDrawn": "NOT MEASURED",
+    "tui.teamGraphContent": "NOT MEASURED",
+    "tui.laneExit": "NOT MEASURED",
+    "harnessVersion": "NOT MEASURED",
+    "tuiVersion": "NOT MEASURED",
+    "passFailNullCounts": "NOT MEASURED (no result.json was produced by this run)"
+  },
+  "priorRunBaseline": {
+    "source": "evidence/release/v0.21.0/docker-2026-11-22T09-23-53Z (already committed; HEAD 2cfa9430 at the time)",
+    "oneclickExitCode": 1,
+    "dockerMode": "ROOTLESS",
+    "harnessVersion": "0.2.2-rc.5",
+    "harnessVersionExpected": "0.2.2-rc.5",
+    "tuiVersion": "0.20.2",
+    "summary": { "total": 244, "passed": 196, "failed": 6, "null": 42 },
+    "tuiTeamFixtureBound": {
+      "ok": null,
+      "raw": "session=none materialized=false attempts=4 source=none projectKey=--work-ws-- no-bind-attempted resolve=store=/root/sandbox-dsh/sessions;before=3;after=3;created="
+    },
+    "sixRows": {
+      "tui.mergedPanelOpens": false,
+      "tui.mergedPanelOrder": false,
+      "tui.teamSceneOpened": false,
+      "tui.teamGraphDrawn": false,
+      "tui.teamGraphContent": false,
+      "tui.laneExit": false
+    },
+    "falseGreenInTheSameArm": {
+      "row": "tui.teamGraphEdges",
+      "ok": true,
+      "raw": "junctions=46",
+      "why": "the row passes on any ┬/┴/│ anywhere in the pane, so the empty-state frame satisfies it although the graph was not drawn"
+    },
+    "sourceArms": {
+      "run-1-source-live": { "exitCode": 0, "bound": true, "attempts": 2, "store": "before=3;after=4", "session": "4986cc67-c485-46bc-bc2a-28ab7fac2457" },
+      "run-3-source-nobrowser": { "exitCode": 0, "bound": true, "attempts": 2, "store": "before=1;after=2", "session": "7df5c697-0513-4004-9f74-37b8a0786d55" }
+    },
+    "installRows": { "install.exit": true, "install.profileDep": true, "install.installedTree": true, "install.buildScripts": true },
+    "bootPresetMount": "true; raw carries agentPreset=mpd for session-6b92dc0c-c56c-4130-b19c-9e8f04bf6b4a",
+    "userSurface": "held: 120 rows, 85 true, 0 false, 35 null (declared bounds; rowNullUnexcused=[])"
+  },
+  "answerToTheNarrowQuestion": "UNANSWERED by this run. No sample was produced, so neither 'timing race' nor 'deterministic one-click-layout defect' is supported by this execution. The prior run's single unbound sample (attempts=4) is consistent with both readings.",
+  "bounds": [
+    "the one-click arm never executed: no container, no build, no TUI capture",
+    "no source-mode arm was run (excluded by the mandate)",
+    "container-internal panes (pane-boardOpened.txt, pane-team.txt) are not in the committed prior evidence and the container is gone",
+    "the empty-state claim was checked against the committed record only, never against a live pane"
+  ],
+  "evidenceScrubbed": true
+}

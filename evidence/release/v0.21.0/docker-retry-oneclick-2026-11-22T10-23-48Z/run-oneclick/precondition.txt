@@ -1,0 +1,11 @@
+The single invocation of
+  node scripts/docker-e2e.ts --mode oneclick --require-docker --live
+returned exit 3 before any build/container step.
+
+Driver refusal (verbatim):
+  [driver] --live was passed but DEEPSEEK_API_KEY is not set in this environment; refusing to run a lane that would report the credential-free NULL. Export the key, or drop --live.
+
+Guard: scripts/docker-e2e.ts -> liveRequested && !keyPresent -> process.exitCode = 3; return
+
+No SKIP line was printed. No evidence directory was created by the driver. No result.json exists for this run.
+Per the mandate, the command was NOT invoked a second time.

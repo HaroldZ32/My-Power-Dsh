@@ -1,0 +1,7 @@
+utc=2026-11-22T10:23:48Z
+head=3abf3e0a
+headFull=3abf3e0adbd1f66e8d4a81a664c75e0ce0603682
+branch=feature/dsh-022rc5-tui-0202
+diffSha=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+trackedChangedCount=0
+untrackedCount=117

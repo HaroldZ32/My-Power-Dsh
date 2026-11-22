@@ -1,0 +1,7 @@
+invocation=node scripts/docker-e2e.ts --mode oneclick --require-docker --live
+xdg_runtime_dir=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/xdg
+key_present=yes
+key_len=<masked>
+started_utc=2026-11-22T10:36:27Z
+head=3abf3e0a
+tracked_diff_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
