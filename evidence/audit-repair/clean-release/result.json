@@ -1,0 +1,102 @@
+{
+  "verdict": "pass",
+  "commit": "b261da2ae5dff4c46fdd97c826a6441b303c6037",
+  "startedAtUtc": "2026-11-22T17:31:08Z",
+  "finishedAtUtc": "2026-11-22T17:32:08Z",
+  "baseline": {
+    "commit": "90d52e530282bccf3c4b54a27be6737bcb02f969",
+    "archivePaths": 1272,
+    "npmInventoryDifferences": 0,
+    "untrackedPaths": 0,
+    "committedBlobDifferences": 0,
+    "privateRuntimePaths": 0,
+    "bytes": 12460478,
+    "sha256": "29abc7cf568fc98c84e9430551bcf7b5c9b49a3cc06f481bff04077f25f39697",
+    "integrity": "sha512-U2/QdKwqSlFzWFdMdaZML6r/NFggyif5OgpsXlfff+VjRQJ43l9UMMgPteS4SO2Kxe4UmlMG230GsuQKqeiJAQ=="
+  },
+  "inputSha256": {
+    "package.json": "4901fad047d8fd2c1c740bc3d14860a2936a3cbb7b75531a823f51d0d5066787",
+    "VENDOR_LOCK.json": "76703fca6600333e84ec91824f76a75c5bd78720700d85166dc196d535db1ccc",
+    "packages/mpd-team-core-plugin/dist/index.js": "42082155f6d629e6be2542232318d33224b77eac3d5e8e8f76f9266b2752bb7f"
+  },
+  "baselineInputSha256": {
+    "package.json": "31021c6161806c880f5d39421c215950f9ff173837121c73e1534f6b8f2ebc16",
+    "VENDOR_LOCK.json": "4eadfc6dbef664def007d74e2cdcdc7d72ac8c96c51f589d316a9893f325b675"
+  },
+  "toolchain": {
+    "node": "24.21.0",
+    "npm": "11.19.0",
+    "bun": "1.4.0",
+    "pnpm": "11.23.0",
+    "dsh": "0.2.2-rc.5",
+    "dsh-tui": "0.20.2"
+  },
+  "gates": {
+    "vendor": {
+      "command": "node scripts/verify-vendor.ts",
+      "exit": 0
+    },
+    "vendor-lock": {
+      "command": "node scripts/repin-vendor.ts --check",
+      "exit": 0
+    },
+    "docs": {
+      "command": "bun run verify:docs",
+      "exit": 0
+    },
+    "dist": {
+      "command": "node scripts/verify-dist-fresh.ts",
+      "exit": 0
+    },
+    "manifest": {
+      "command": "node scripts/verify-plugin-manifest.ts --pack",
+      "exit": 0
+    },
+    "exact-tarball": {
+      "command": "bash docker/verify-release-tarball.sh <tarball> <fresh-output-dir>",
+      "exit": 0
+    }
+  },
+  "packCommand": "npm pack --json --ignore-scripts --offline --pack-destination <scratch-output-dir>",
+  "artifact": {
+    "path": ".mpd/artifacts/team-and-audit-recovery/tracked/mpd-dsh-mpd-0.21.0.tgz",
+    "commit": "b261da2ae5dff4c46fdd97c826a6441b303c6037",
+    "archivePaths": 1272,
+    "npmInventoryDifferences": 0,
+    "untrackedPaths": 0,
+    "committedBlobDifferences": 0,
+    "privateRuntimePaths": 0,
+    "bytes": 12464507,
+    "sha256": "b04e85c0ea7cf4bdd6f6c27bfc878299063eda3961c17d89008e706a49383f03",
+    "integrity": "sha512-vGHhF8tx2TmfKRo1GEuVOEdz/fnrdBS0LBDbLoMSnwD/7pnsBMjHHVJkaIkiVzB2lJRR5FiPqebPNlSqSrvXdg==",
+    "cleanBaselinePathDifferences": 0
+  },
+  "isolatedSmoke": {
+    "web": {
+      "positive": 1,
+      "negative": 0,
+      "launcherBytesMatchArchive": true
+    },
+    "dsh-tui": {
+      "positive": 1,
+      "negative": 0,
+      "launcherBytesMatchArchive": true
+    }
+  },
+  "excludedLocalReferences": [
+    "skills/frontend/references/design/ambience-skill.md",
+    "skills/frontend/references/design/component-catalogs.md"
+  ],
+  "bounds": [
+    "Clean checkout vendor and docs gates did not depend on the two local references. The tracked frontend procedures now cover their absence. Only the two path names were inspected locally.",
+    "The smoke executed the installed AST tool via the bundle in fresh Web and real PTY TUI profiles. No registry publication or change to the live GUI was performed."
+  ],
+  "sameVersionWebProfileUpdate": {
+    "command": "dsh plugin --profile web add <tarball>",
+    "baselineInstallExit": 0,
+    "candidateInstallExit": 0,
+    "version": "0.21.0",
+    "baselineTeamDistSha256": "89eae476e47e55cbdb4f5eedc88c007b716a4211c5a69e1c1444aeb938297832",
+    "candidateTeamDistSha256": "42082155f6d629e6be2542232318d33224b77eac3d5e8e8f76f9266b2752bb7f"
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "contract": ".mpd/plans/repair-team-audit-124d4591.md",
+  "independentVerifier": "agent-22",
+  "verificationLoop": "loop-20261122T155822-f2c76c",
+  "host": "0.2.2-rc.5",
+  "chromium": "149.0.7827.55",
+  "packageManager": "pnpm 11.23.0",
+  "baseline": {
+    "clientSha256": "10715397155f0c1333b3716cf487c3d80fa64ca72fd1bb15d9f0fa5c9c071956",
+    "noSelectedSession": true,
+    "hostname": "127.0.0.1",
+    "falseLoopbackWarning": true,
+    "submitted": 21091,
+    "displayedAfterSave": 20000,
+    "displayedAfterReload": 20000,
+    "profileStored": 21091,
+    "secondRunMutation": { "httpStatus": 200, "ok": true, "revision": 1, "base": 20000, "value": 21091, "user": 21092 }
+  },
+  "binding": {
+    "slot": "settings.section (root)",
+    "profileForm": "configForms.get(\"mpd-config\")",
+    "profileAuthorization": "Host settings access and the form's writable flag",
+    "profileValue": "user override, then inherited base, with value as a fallback on forms without base",
+    "mountedValue": "value from the active host entry",
+    "workspaceMutation": "POST /plugins/mpd/model-config?sessionId=… with a selected live session"
+  },
+  "frozen": {
+    "sourceFirstReadUtc": "2026-11-22T16:55:11Z",
+    "sourceAndBuildReadUtc": "2026-11-22T16:58:19Z",
+    "sha256": {
+      "packages/mpd-bundle-plugin/src/settings-card.ts": "ba662f2816aa961f921faa18d75c70151d2de8f9e3822f8539a77fe55824a9d0",
+      "packages/mpd-bundle-plugin/test/settings-card.test.ts": "18f67aa2c057e7fdd93128b00d13b0dc99eb34f408cbf1f6c824621860b31027",
+      "packages/mpd-bundle-plugin/test/client-harness.ts": "fe1a1f86fa6cb87e2b11d1ea4a8eaf3f9c5ac4fb1216ec4a1ac94b29e23ee169",
+      "packages/mpd-bundle-plugin/README.md": "1d9ce7db6f876feb1c768ccb330d6094a7b37c063ca56753aa0e044d9c275be7",
+      "packages/mpd-bundle-plugin/README.zh-CN.md": "20e8c28147ca24165ce09df866f49cb96ac29de8f4e543e2224c53d608874cac",
+      "packages/mpd-bundle-plugin/client.js": "c5be0607ff2dc360b52c5357fe0af3e3c473cf0c6c77d343481b1c0e220000cb",
+      "dist/mpd-package/packages/mpd-bundle-plugin/client.js": "c5be0607ff2dc360b52c5357fe0af3e3c473cf0c6c77d343481b1c0e220000cb"
+    },
+    "rebuild": "node scripts/build-mpd-client.ts"
+  },
+  "writerBrowser": {
+    "exit": 0,
+    "checkoutTarballSha256": "9196adf49a7e1dd1c5efb0799fc10b67da3e31bbb956548d6367c4c8edeff75c",
+    "browserResponseSha256": "5bf5b60fdc432bd39243dab18d0b825e2d15d0380b4f9f70b53ffc0080e560c4",
+    "browserResponseBytes": 3020596,
+    "browserResponseContainsExactInstalledClient": true,
+    "hostname": "127.0.0.1",
+    "noSelectedSession": true,
+    "noSessionStore": true,
+    "before": 20000,
+    "submitted": 21091,
+    "immediate": 21091,
+    "afterReload": 21091,
+    "profileStored": 21091,
+    "mountedValueShown": 20000,
+    "mountedValueShownAfterReload": true,
+    "loopbackWarning": false,
+    "pageErrors": 0,
+    "mutation": { "httpStatus": 200, "ok": true, "revision": 1, "base": 20000, "value": 20000, "user": 21091 }
+  },
+  "stagedArchiveBrowser": {
+    "checkedUtc": "2026-11-22T17:06:06Z",
+    "archiveSha256": "5f45f20d1f424360ec2cf8b6f58f99aef8760116c02324aa82b7e33c5409a84f",
+    "installedClientSha256": "c5be0607ff2dc360b52c5357fe0af3e3c473cf0c6c77d343481b1c0e220000cb",
+    "browserResponseSha256": "3c59100db2e8191bdf141345b1b74d8ef379c23a5d1fbe2c660fd69b0423c30c",
+    "browserResponseContainsExactInstalledClient": true,
+    "exit": 0,
+    "noSessionStore": true,
+    "before": 20000,
+    "submitted": 21091,
+    "immediate": 21091,
+    "afterReload": 21091,
+    "profileStored": 21091,
+    "mountedValueShownAfterSaveAndReload": 20000,
+    "loopbackWarning": false,
+    "pageErrors": 0,
+    "mutation": { "httpStatus": 200, "ok": true, "revision": 1, "base": 20000, "value": 20000, "user": 21091 }
+  },
+  "independentBrowser": {
+    "loopback": { "hostname": "127.0.0.1", "exit": 0, "before": 20000, "immediate": 21091, "afterReload": 21091, "mountedValueShown": 20000, "pageErrors": 0 },
+    "trustedAuthority": { "hostname": "mpd-review.invalid", "exit": 0, "authorizedMutationHttpStatus": 200, "afterReload": 21091, "mountedValueShown": 20000, "unauthenticatedMutationHttpStatus": 401, "profileBytesUnchangedByUnauthenticatedRequest": true },
+    "redactedScratchReferences": [".qa-audit-reviewer2-0JaPyH/browser-corrected/output.log", ".qa-audit-reviewer2-0JaPyH/browser-alias-corrected/output.log", ".qa-audit-reviewer2-0JaPyH/browser-alias-corrected/transport.json"]
+  },
+  "checks": {
+    "focusedBaseline": { "exit": 0, "passed": 73, "failed": 0 },
+    "regressionBefore": { "exit": 1, "passed": 0, "failed": 2 },
+    "regressionAfter": { "exit": 0, "passed": 2, "failed": 0 },
+    "focusedAfter": { "exit": 0, "passed": 75, "failed": 0 },
+    "bundleTests": { "exit": 0, "passed": 339, "failed": 0 },
+    "typecheck": { "exit": 0 },
+    "declarationComments": { "exit": 0 },
+    "docParity": { "exit": 0, "pairs": 61, "failures": 0 },
+    "webClientAdaptSelfTest": { "exit": 0, "checks": 14 },
+    "qaSelfTests": { "exit": 0, "passed": 56, "skipped": 2, "failed": 0 },
+    "distFreshness": { "exit": 0, "freshTargets": 35 },
+    "browserSyntax": { "exit": 0 },
+    "diffWhitespace": { "exit": 0 }
+  }
+}

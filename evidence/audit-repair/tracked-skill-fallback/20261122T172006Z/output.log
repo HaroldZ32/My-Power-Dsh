@@ -1,0 +1,26 @@
+Baseline 90d52e530282bccf3c4b54a27be6737bcb02f969, Node v24.21.0, npm 11.19.0, pinned Bun 1.4.0.
+
+Tracked routing
+  git grep on skills/frontend returned 13 references in the baseline and 7 after repair. All seven remaining mentions specify availability and a shipped route. Ambience uses the existing interaction catalog and design Step 10 checklist. Catalog research uses the existing Lazyweb instructions and retains licence/terms checks.
+  git diff --check on scoped sources: exit 0.
+
+Path inventory
+  git archive of baseline in an ignored scratch directory, with the nine frozen tracked edits overlaid for the candidate. The sentinel case added two inert fixtures at the exact operator reference paths. Each staged artifact was built with node scripts/pack-mpd.ts --out <scratch-stage>, then inspected with npm pack <path> --dry-run --ignore-scripts --json.
+  Baseline clean root: 1272 paths, 0 operator matches.
+  Baseline with inert fixtures: root 1274 paths with both matches, relocatable 683 paths with both matches, both fixtures physically copied.
+  Candidate clean and with inert fixtures: root 1272 paths, relocatable 681 paths, both fallbacks present, full public path sets equal to baseline after filtering only the two private names. Both private names physically absent in both stages. Each command exited 0.
+  Inert fixtures inserted after staging: npm reported the same 681 paths. verify-pack-closure.ts exited 1 with exactly two PACK-PRIVATE-STATE findings, one for each exact path.
+  Current workspace: git check-ignore and path existence confirmed both private paths. The npm CLI's npm-packlist API reported 1272 root paths, both fallback paths present, both private names absent. The copy predicate rejected both actual private paths by name and admitted both tracked fallbacks. Basenames outside the designated directory and names with an added suffix passed four exactness controls.
+
+Repository gates
+  node scripts/verify-plugin-manifest.ts --pack in both candidate inventories: exit 0, 1272 file(s), 0 required paths absent, 0 runtime state paths leaked.
+  node scripts/verify-pack-closure.ts --packed <scratch-stage> --require-packed for both candidates: exit 0, 672 identical files, 0 drift, 0 unexpected missing counterparts. One existing declared exemption exercised.
+  node scripts/verify-plugin-manifest.ts --self-test: exit 0. Old allowlist leaked all 25 probes. Current fixture packlists: 2 files, 0 required paths absent, 0 private paths leaked.
+  node scripts/verify-pack-closure.ts --self-test: exit 0, 43/43 arms.
+  Pinned Bun run typecheck on the isolated candidate: exit 0, tsgo --noEmit.
+  Pinned Bun run verify:comments on the isolated candidate: exit 0, 657 TypeScript files and 60,558 declarations inspected.
+  node scripts/verify-docs-parity.ts: initial archive exited 1 because Git export-ignore omitted six tracked link targets. Restoring just those targets from the baseline objects yielded exit 0, 61 pairs, 608 checked links, 0 dead.
+  Shared workspace typecheck and comments exited 1 during concurrent team-core edits. Diagnostics were entirely in packages/mpd-team-core-plugin/test/team-record.test.ts: TS2353 at line 471, TS2769 at line 481, and seven missing comments.
+
+Scope
+  Current private files were checked by pathname, without reading, copying, or hashing their bytes. The frozen evidence covers tracked guidance and package products. The isolated candidate retained the baseline vendor lock for the separate one-time refresh and did not stage a live install.

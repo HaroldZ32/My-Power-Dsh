@@ -8,4 +8,52 @@ $ .toolchain/node_modules/.bin/bun test ./packages/mpd-team-core-plugin/test/tea
 Ran 89 tests across 4 files.
 exit 0
 
-The regression test will create temporary team workspaces through the existing test harness and dispose of the persistence failpoint in a finally block. The two approval hypotheses are that a committed board is rebuilt after interruption, or that a pre-commit failure leaves previously minted ids on the board. The public release hypothesis is that the ledger changes even though the board CAS refuses.
+Final source freeze 2026-11-22T17:29:30Z
+
+RED against the frozen Team source in an isolated copy, using the final regression test.
+$ .toolchain/node_modules/.bin/bun test ./packages/mpd-team-core-plugin/test/team-record.test.ts -t 'interrupted (before|after) board rename|public release CAS refuses a stale revision'
+The pre-rename control passed. The post-rename retry moved nextTaskNumber from 4 to 6, added T4 and T5, and dropped T2's T3 blocker while advancing T2's revision from 4 to 5. The stale release preserved the board and dropped the pairing, leaving {} in the ledger.
+1 pass, 2 fail, 32 filtered out, 22 expect() calls. Exit 1.
+
+RED against the initial fix at 4ff9cde05e566559cd98be3948d48fad0c0e9e26.
+$ .toolchain/node_modules/.bin/bun test ./packages/mpd-team-core-plugin/test/team-record.test.ts -t 'public release CAS reports pending pairing recovery'
+Both tools rendered 'refused: task T1 is "pending" and holds no dispatch to release' after clearing the pairing.
+0 pass, 2 fail, 33 filtered out, 14 expect() calls. Exit 1.
+
+GREEN on the final source.
+$ .toolchain/node_modules/.bin/bun test ./packages/mpd-team-core-plugin/test/team-record.test.ts -t 'approval board commit|public release CAS|quota refusal|persisted zero-start'
+10 pass, 0 fail, 25 filtered out, 111 expect() calls. Exit 0.
+The approval tests interrupt the real Team board rename before and after publication, simulate the legacy board shape, and interrupt after the archive rename. Retrying preserves both member handles and task receipts T1 and T2, with the intervening T1 completion, T2 claim and T2 -> T3 edge intact.
+After a failed ledger rename, the task tool renders 'T1 -> pending (pairing freed)' and the dispatch tool renders 'released'. Both results report released=true and the same pending revision. Stale revisions preserve the pairing. An empty repeat refuses.
+
+$ .toolchain/node_modules/.bin/bun test ./packages/mpd-team-core-plugin ./packages/mpd-dsh-adapter-plugin ./packages/mpd-team-watchdog-plugin --only-failures
+1269 pass, 0 fail, 5904 expect() calls across 92 files. Exit 0.
+
+$ .toolchain/node_modules/.bin/bun test --only-failures
+4288 pass, 6 skip, 0 fail, 55154 expect() calls across 280 files. Exit 0.
+
+$ .toolchain/node_modules/.bin/bun run typecheck
+$ tsgo --noEmit
+Exit 0.
+
+$ .toolchain/node_modules/.bin/bun run verify:comments
+Scanned 657 TypeScript files, 60610 declarations. VERDICT: PASS. Exit 0.
+
+$ .toolchain/node_modules/.bin/bun build packages/mpd-team-core-plugin/src/index.ts --target node --format esm --outfile packages/mpd-team-core-plugin/dist/index.js
+Bundled 34 modules. Exit 0.
+SHA-256 42082155f6d629e6be2542232318d33224b77eac3d5e8e8f76f9266b2752bb7f
+
+$ node scripts/verify-dist-fresh.ts
+35/35 targets fresh (each rebuilt twice, byte-identical). One prebuilt vendored artifact outside this gate. Exit 0.
+
+Final mounted normal Team workflow. An inline fixture called the pinned 'dsh --profile headless --patch <overlay> FINAL_CAPTAIN' with the checkout dist paths, temporary DSH_HOME, HOME and workspace, and a loopback DeepSeek Messages stub. SHA-256 matched above before and after both boots. From the decoded harness session logs:
+  0.2.2-rc.5, host exit 0, isolation asserted, one team, one member M1, one task T1. qa_5 approved, qa_6 dispatched, qa_7 claimed, qa_8 completed. T1 -> completed (by owner, attempt 1). Owner matches executor ref cd0e8ee6-00ac-4302-bd4b-9f7ec1bd73e8.
+  0.2.2-rc.2, host exit 0, isolation asserted, one team, one member M1, one task T1. qa_5 approved, qa_6 dispatched, qa_7 claimed, qa_8 completed. T1 -> completed (by owner, attempt 1). Owner matches executor ref 13bd3e3e-c38a-41f8-996b-ed52d3d19292.
+
+$ PATH="$PWD/.qa-tmp/dsh-022/bin:$PWD/.toolchain/node_modules/.bin:$PATH" .toolchain/node_modules/.bin/bun run test:qa
+COMPLETE WITH SKIPS - 56 passed, 2 skipped, 0 failed (58 total). Exit 0. TUI distribution and TUI spec conformance skipped because the dsh-ecosystem-spec fixture was absent.
+
+$ .toolchain/node_modules/.bin/bun ./skills/dsh-qa/scripts/team-dispatch-guard.ts --out <isolated-output>/witness
+21 passing arms. Exit 0.
+
+Independent verifier agent-22 reran the exact GREEN command against final test hash 86be117c and dist hash 42082155. Its output recorded 10 pass, 0 fail, 111 expect() calls, with separate successful task and dispatch receipt cases. Agent-22 reported both normal mounted host fixtures passed on the corrected dist. Source and dist hashes were re-read unchanged at 2026-11-22T17:32:48Z on b261da2ae5dff4c46fdd97c826a6441b303c6037.
