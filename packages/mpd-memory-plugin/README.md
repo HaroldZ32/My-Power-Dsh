@@ -33,9 +33,10 @@ The engine serves TWO stores with ONE data shape:
 defaulting to `workspace`, so no existing call changes meaning. `mpd_memory_reflect` and
 `mpd_memory_reflect_complete` stay workspace-scoped — a reflection is a per-agent act, not a global one —
 so a GLOBAL write never advances the reflection counter (it reports the claim the caller already had).
-Both stores share the same VCS semantics (`memory.vcs`: `git` default, `svn`, `both`) through the same
-`ensureVcs`/`commitAll` pair, and a global write reports `committedTo`/`errors` exactly like a workspace
-write. A READ never creates a store: `mpd_memory_read`/`mpd_memory_status` with `scope:"global"` answer an
+Both stores report the same VCS results (`memory.vcs` defaults to `git` and also accepts `svn` and
+`both`). `committedTo` lists the backends that saved the entry in history. `errors` and the text
+receipt show backend failures. If a backend fails, the markdown remains readable at the reported
+path in the working copy. A READ never creates a store: `mpd_memory_read`/`mpd_memory_status` with `scope:"global"` answer an
 empty/zero reading while `<HOME>/.mpd/memory` does not exist, because creating it would be a HOME
 mutation the guard deliberately does not cover.
 
@@ -111,7 +112,11 @@ counter `steps` alone.
   page's offset, or `null` at the end. Entries come back in **ascending entry-file-name order**, a stable
   order that never depends on directory enumeration, so walking `next_offset` reaches every match
   exactly once; a `scope` filter paginates over that store's filtered set.
-- `mpd_memory_reflect` / `mpd_memory_reflect_complete` — the reflection state machine (workspace only).
+- `mpd_memory_reflect` / `mpd_memory_reflect_complete` — inspect and settle the workspace reflection
+  claim. Completion settles the claim after every configured backend succeeds. If a backend fails,
+  resolve the reported error and submit the same title and content. The retry uses the original
+  file and resumes the unfinished backends. Replaying a settled submission while no reflection is
+  due returns its existing receipt.
 - `mpd_memory_status({scope?})` — vcs mode, store root, entry counts, reflection counters.
 
 ## Build / test

@@ -1,0 +1,19 @@
+band: packages/mpd-*/src/**/*.ts
+scanned: 33 package(s), 227 .ts file(s)
+frozen inventory: 61 entr(y|ies); couplings in the band: 61, sanctioned adapter imports: 113
+band: packages/mpd-*/src/**/*.ts
+scanned: 33 package(s), 227 .ts file(s)
+frozen inventory: 61 entr(y|ies); couplings in the band: 61, sanctioned adapter imports: 113
+(pass) the cross-package coupling inventory is exactly the frozen set (independence gate) [157.24ms]
+(pass) the gate reddens on a seeded violation (negative control) [1.22ms]
+band: 36 package root(s), 231 TypeScript file(s) read; 24 non-TypeScript file(s) NOT COVERED
+VERDICT: PASS — every terminal write in the band is exempt, inventoried, or absent.
+band: 36 package root(s), 231 TypeScript file(s) read; 24 non-TypeScript file(s) NOT COVERED
+VERDICT: PASS — every terminal write in the band is exempt, inventoried, or absent.
+(pass) no new terminal writes in an MPD runtime path (R5) [131.16ms]
+[ok] with an EMPTY inventory a previously-frozen path is UNFROZEN again, and nothing is stale
+VERDICT: PASS (10/10 checks)
+(pass) the gate reddens on a seeded violation (negative control) [1.18ms]
+ 4 pass
+ 0 fail
+Ran 4 tests across 2 files. [599.00ms]

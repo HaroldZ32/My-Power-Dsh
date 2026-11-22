@@ -2060,7 +2060,7 @@ function createDshAdapter(ctx, config = {}) {
     } catch {}
   };
   bindDshGoBridge();
-  const configAgentRouteResolver = () => {
+  const configAgentRouteResolver = (workspace) => {
     const config2 = service("mpdConfig");
     if (config2 === undefined || config2 === null)
       return;
@@ -2068,7 +2068,7 @@ function createDshAdapter(ctx, config = {}) {
       return;
     return (member) => {
       try {
-        const answer = config2.agentRouteResolutionOf.call(config2, member);
+        const answer = config2.agentRouteResolutionOf.call(config2, member, workspace);
         return answer !== null && typeof answer === "object" && typeof answer.ok === "boolean" ? answer : undefined;
       } catch {
         return;
@@ -2422,7 +2422,7 @@ function createDshAdapter(ctx, config = {}) {
         const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
         let agentOptions = request.agentOptions;
         if (agentOptions === undefined) {
-          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver());
+          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver(workspaceRootOfAgent(caller)));
           if (outcome.status === "routed") {
             const resolved = await resolveRunRoute({ llmCatalog }, outcome.route, outcome.fallbacks);
             agentOptions = resolved.route;
@@ -2438,8 +2438,13 @@ function createDshAdapter(ctx, config = {}) {
           ...agentOptions === undefined ? {} : { agentOptions },
           ...request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }
         };
+        const provider = typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn";
+        const childId = request.onOpening !== undefined && provider === "spawn" && typeof subagents.startActivation === "function" && typeof subagents.prompt === "function" ? randomUUID() : undefined;
+        if (childId !== undefined)
+          request.onOpening?.(childId);
         const spec = dualShapeActivationSpec({
-          provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
+          provider,
+          ...childId === undefined ? {} : { childId },
           label: `${request.name} · ${request.teamId}`,
           signal: request.signal ?? neverAborted()
         }, activationRequest);
@@ -4381,6 +4386,7 @@ function createTuiAdapter(ctx, options = {}) {
   let hostContact = options.hostInput;
   let hostState = options.hostInput !== undefined ? { state: "bound", kit: "probed", detail: "injected by the caller" } : options.probeHostContact === true ? { state: "pending" } : { state: "absent", detail: "this adapter did not probe for the host contact" };
   const hostWaiters = [];
+  const hostUpdates = new Set;
   let panelHostProvenance;
   let panelIdReadBack = "";
   const panelKeeperOptions = {
@@ -4413,7 +4419,9 @@ function createTuiAdapter(ctx, options = {}) {
   let rememberedHook;
   const currentHostInput = () => rememberedHook === undefined ? hostContact : { useStdin: () => rememberedHook?.() };
   const wakeHostWaiters = () => {
-    const waiting = hostWaiters.splice(0);
+    const waiting = [...hostWaiters.splice(0), ...hostUpdates];
+    if (rememberedHook !== undefined)
+      hostUpdates.clear();
     const input = currentHostInput();
     for (const listener of waiting) {
       try {
@@ -4422,6 +4430,8 @@ function createTuiAdapter(ctx, options = {}) {
     }
   };
   const settleHostContact = (result) => {
+    if (rememberedHook !== undefined)
+      return;
     hostContact = result.input;
     hostState = result.input === undefined ? { state: "absent", ...result.root === undefined ? {} : { root: result.root }, detail: result.detail ?? "the installed DSH-TUI was not reachable" } : { state: "bound", kit: "probed", ...result.root === undefined ? {} : { root: result.root }, detail: "the host's own useStdin was loaded by file URL" };
     wakeHostWaiters();
@@ -4493,23 +4503,26 @@ function createTuiAdapter(ctx, options = {}) {
       const first = rememberedHook === undefined;
       rememberedHook = hook;
       hostState = { state: "bound", kit: "remembered", detail: "the host's own ui kit (handed to a scene render) carries useStdin" };
-      Promise.resolve().then(wakeHostWaiters);
       if (!first)
         return true;
+      Promise.resolve().then(wakeHostWaiters);
       try {
         (options.hostInputLog ?? defaultHostInputLog)(`[mpd-tui-adapter] host contact bound: remembered kit (a scene render handed us the host ui kit)`);
       } catch {}
       return true;
     },
-    whenHostInput(listener) {
+    whenHostInput(listener, options2) {
+      if (options2?.updates === true && rememberedHook === undefined)
+        hostUpdates.add(listener);
       if (hostState.state !== "pending") {
         try {
           listener(currentHostInput());
         } catch {}
-        return () => {};
+      } else if (options2?.updates !== true) {
+        hostWaiters.push(listener);
       }
-      hostWaiters.push(listener);
       return () => {
+        hostUpdates.delete(listener);
         const at = hostWaiters.indexOf(listener);
         if (at >= 0)
           hostWaiters.splice(at, 1);
@@ -5172,6 +5185,11 @@ var MAX_PROBLEMS = 5;
 var GROUP_VISUAL = "group";
 var NO_SESSION_TEAM_MARKER = "no team in this session";
 var WORKSPACE_SCOPE_MARKER = "workspace-level";
+function workspaceCwdOf(carrier) {
+  if (typeof carrier !== "object" || carrier === null || !("cwd" in carrier))
+    return;
+  return typeof carrier.cwd === "string" && carrier.cwd !== "" ? carrier.cwd : undefined;
+}
 function asString(value) {
   return typeof value === "string" && value.length > 0 ? value : undefined;
 }
@@ -6264,9 +6282,6 @@ function panelSnapshot(host) {
     return;
   }
 }
-function panelSessionId(host) {
-  return sessionIdOf(panelSnapshot(host));
-}
 function panelText(value, maxCells = PANEL_ROW_MAX_CELLS) {
   try {
     return clampCells(stripControl(value), maxCells);
@@ -6753,7 +6768,7 @@ function usePanelTick(kit, intervalMs, enabled = true) {
     }
   }, [enabled, intervalMs]);
 }
-function useTeamFeed(React, feed, onNotify) {
+function useTeamFeed(React, feed, onNotify, sessionId, cwd) {
   const tick = React.useState(0);
   const set2 = tick[1];
   const latest = typeof React.useRef === "function" ? React.useRef(onNotify) : undefined;
@@ -6761,7 +6776,7 @@ function useTeamFeed(React, feed, onNotify) {
     latest.current = onNotify;
   let subscribe;
   try {
-    subscribe = feed === undefined ? undefined : feed();
+    subscribe = feed?.(sessionId, cwd);
   } catch {
     subscribe = undefined;
   }
@@ -8468,13 +8483,13 @@ function createSubagentSceneComponent(readWorkflow, onHostKit, takePendingDetail
     const refresh = () => {
       let next;
       try {
-        next = readWorkflow(sessionIdOf(channel));
+        next = readWorkflow(sessionIdOf(channel), workspaceCwdOf(channel));
       } catch {
         next = undefined;
       }
       setWorkflow(next);
     };
-    useTeamFeed(React, subscribeTeams, refresh);
+    useTeamFeed(React, subscribeTeams, refresh, sessionIdOf(channel), workspaceCwdOf(channel));
     React.useEffect(() => {
       refresh();
       let timer;
@@ -8490,7 +8505,7 @@ function createSubagentSceneComponent(readWorkflow, onHostKit, takePendingDetail
           } catch {}
         }
       };
-    }, []);
+    }, [sessionIdOf(channel), workspaceCwdOf(channel)]);
     const subscribe = typeof channel?.subscribe === "function" ? (listener) => channel.subscribe(listener) : noopSubscribe;
     const getSnapshot = typeof channel?.version === "number" ? () => channel.version : () => 0;
     if (typeof React.useSyncExternalStore === "function") {
@@ -9860,10 +9875,12 @@ function createDagPanelComponent(readWorkflow, options) {
     const measured = usePanelSize(kit.ui, panelFloorColumns("dag"));
     const previousSizes = kit.React.useRef(undefined);
     const contentCols = Math.max(1, panelContentWidth(measured.cols) - 1);
-    const sessionId = panelSessionId(props?.host);
+    const snapshot = panelSnapshot(props?.host);
+    const sessionId = sessionIdOf(snapshot);
+    const cwd = workspaceCwdOf(snapshot);
     let workflow;
     try {
-      workflow = readWorkflow(sessionId);
+      workflow = readWorkflow(sessionId, cwd);
     } catch {
       workflow = undefined;
     }
@@ -9873,7 +9890,7 @@ function createDagPanelComponent(readWorkflow, options) {
     } catch {
       page = undefined;
     }
-    useTeamFeed(kit.React, options?.subscribeTeams);
+    useTeamFeed(kit.React, options?.subscribeTeams, undefined, sessionId, cwd);
     const keysArmed = panelKeysArmed(props?.focused, props?.visible, props?.host);
     const focused = kit.React.useState(undefined);
     const cursor = kit.React.useState(undefined);
@@ -9946,7 +9963,7 @@ function createDagPanelComponent(readWorkflow, options) {
     let section = [];
     try {
       const now = Date.now();
-      section = subagentSectionRows(panelSnapshot(props?.host), subagentRowFilter(workflow, sessionId, now));
+      section = subagentSectionRows(snapshot, subagentRowFilter(workflow, sessionId, now));
     } catch {
       section = [];
     }
@@ -10361,23 +10378,26 @@ function interceptDashboardKey(event, deps) {
   deps.log.debug(`Ctrl+A takeover: ${opened ? "opened" : "FAILED to open"} ${SUBAGENT_SCENE_ID} (${workflow.tasks.length} task(s))`);
   return true;
 }
-function readDashboardWorkflow(workspaceRoot, holds, teamViews, teamRecords, teams, sessionId) {
+function readDashboardWorkflow(workspaceRoot, holds, teamViews, teamRecords, teams, sessionId, cwd) {
   try {
+    const workspace = workspaceRoot(sessionId, cwd);
+    if (workspace === "")
+      return;
     let holdIds = [];
     try {
-      holdIds = holds() ?? [];
+      holdIds = holds(workspace) ?? [];
     } catch {
       holdIds = [];
     }
     let records = [];
     try {
-      records = teamRecords?.() ?? [];
+      records = teamRecords?.(workspace) ?? [];
     } catch {
       records = [];
     }
     let views = [];
     try {
-      views = teamViews?.() ?? [];
+      views = teamViews?.(workspace) ?? [];
     } catch {
       views = [];
     }
@@ -10388,7 +10408,7 @@ function readDashboardWorkflow(workspaceRoot, holds, teamViews, teamRecords, tea
       service = undefined;
     }
     return readScopedWorkflow({
-      workspace: workspaceRoot(),
+      workspace,
       ...sessionId === undefined || sessionId === "" ? {} : { sessionId },
       holds: holdIds,
       ...service === undefined ? {} : { teams: service },
@@ -10408,7 +10428,7 @@ function createDashboardKeyComponent(tui, deps) {
     const ui = props?.ui;
     const armed = React.useState(0);
     const setArmed = armed[1];
-    React.useEffect(() => tui.whenHostInput(() => setArmed((previous) => previous + 1)), []);
+    React.useEffect(() => tui.whenHostInput(() => setArmed((previous) => previous + 1), { updates: true }), []);
     const bus = readHostInputBus(tui);
     const emitter = bus.emitter;
     const unavailable = bus.detail;
@@ -10911,17 +10931,22 @@ function createWatchdogPanelComponent(deps, options) {
     const setFlash = flash[1];
     const refresh = kit.React.useState(0);
     const setRefresh = refresh[1];
-    const lastAck = kit.React.useRef(0);
+    const snapshot = panelSnapshot(props?.host);
+    const sessionId = sessionIdOf(snapshot);
+    const cwd = workspaceCwdOf(snapshot);
+    const lastAck = kit.React.useRef({ sessionId, cwd, watermark: 0 });
+    if (lastAck.current.sessionId !== sessionId || lastAck.current.cwd !== cwd)
+      lastAck.current = { sessionId, cwd, watermark: 0 };
     let view;
     let available = false;
     try {
       available = deps.available();
-      view = available ? deps.read() : { holds: [], unread: [] };
+      view = available ? deps.read(sessionId, cwd) : { holds: [], unread: [] };
     } catch {
       available = false;
       view = { holds: [], unread: [] };
     }
-    const teams = watchdogTeamRows(view, deps.readTeam);
+    const teams = watchdogTeamRows(view, () => deps.readTeam?.(sessionId, cwd));
     const keysArmed = panelKeysArmed(props?.focused, props?.visible, props?.host);
     usePanelTick(kit, WATCHDOG_PANEL_REFRESH_MS, true);
     const windowRows = Math.max(1, (measured.rows ?? WATCHDOG_FALLBACK_ROWS) - PANEL_FRAME_BORDER_ROWS - PANEL_TITLE_ROW_ROWS - WATCHDOG_FOOTER_ROWS);
@@ -10930,8 +10955,8 @@ function createWatchdogPanelComponent(deps, options) {
     const acknowledgeShown = () => {
       if (!available)
         return;
-      const outcome = watchdogAckPress({ unread: view.unread, lastAck: lastAck.current, acknowledge: (upTo) => deps.acknowledge(upTo) });
-      lastAck.current = outcome.lastAck;
+      const outcome = watchdogAckPress({ unread: view.unread, lastAck: lastAck.current.watermark, acknowledge: (upTo) => deps.acknowledge(upTo, sessionId, cwd) });
+      lastAck.current.watermark = outcome.lastAck;
       setFlash(outcome.flash);
     };
     usePanelKeys(kit, props?.host, keysArmed, (event) => {
@@ -11031,17 +11056,17 @@ function registerWatchdogPanel(tui, deps) {
 var WATCHDOG_SCENE_ID = "mpd-tui-watchdog";
 var WATCHDOG_SCENE_EMPTY_VIEW = { holds: [], unread: [] };
 var WATCHDOG_SCENE_CHROME_ROWS = 5;
-function watchdogSceneRead(deps) {
+function watchdogSceneRead(deps, sessionId, cwd) {
   try {
     const available = deps.available();
-    const view = available ? deps.read() : WATCHDOG_SCENE_EMPTY_VIEW;
+    const view = available ? deps.read(sessionId, cwd) : WATCHDOG_SCENE_EMPTY_VIEW;
     let team;
     try {
-      team = deps.readTeam?.();
+      team = deps.readTeam?.(sessionId, cwd);
     } catch {
       team = undefined;
     }
-    return { view, available, ...team === undefined ? {} : { team } };
+    return { view, available, sessionId, cwd, ...team === undefined ? {} : { team } };
   } catch {
     return { view: WATCHDOG_SCENE_EMPTY_VIEW, available: false };
   }
@@ -11057,20 +11082,25 @@ function createWatchdogSceneComponent(deps) {
     }
     const surface = { React, ui };
     const readState = React.useState({ view: WATCHDOG_SCENE_EMPTY_VIEW, available: false });
-    const read = readState[0];
+    const sessionId = sessionIdOf(props?.channel);
+    const cwd = workspaceCwdOf(props?.channel);
+    const stored = readState[0];
+    const read = stored.sessionId === sessionId && stored.cwd === cwd ? stored : { view: WATCHDOG_SCENE_EMPTY_VIEW, available: false };
     const setRead = readState[1];
     const flashState = React.useState(undefined);
     const flashText = typeof flashState[0] === "string" ? flashState[0] : undefined;
     const setFlash = flashState[1];
-    const lastAck = React.useRef(0);
+    const lastAck = React.useRef({ sessionId, cwd, watermark: 0 });
+    if (lastAck.current.sessionId !== sessionId || lastAck.current.cwd !== cwd)
+      lastAck.current = { sessionId, cwd, watermark: 0 };
     const refreshState = React.useState(0);
     const refreshToken = typeof refreshState[0] === "number" ? refreshState[0] : 0;
     const setRefresh = refreshState[1];
     React.useEffect(() => {
-      setRead(watchdogSceneRead(deps));
+      setRead(watchdogSceneRead(deps, sessionId, cwd));
       let timer;
       try {
-        timer = setInterval(() => setRead(watchdogSceneRead(deps)), WATCHDOG_PANEL_REFRESH_MS);
+        timer = setInterval(() => setRead(watchdogSceneRead(deps, sessionId, cwd)), WATCHDOG_PANEL_REFRESH_MS);
       } catch {
         timer = undefined;
       }
@@ -11078,7 +11108,7 @@ function createWatchdogSceneComponent(deps) {
         if (timer !== undefined)
           clearInterval(timer);
       };
-    }, refreshToken);
+    }, [refreshToken, sessionId, cwd]);
     const measured = typeof ui.useTerminalSize === "function" ? ui.useTerminalSize() : { columns: 80, rows: 24 };
     const contentCols = panelSurfaceWidth(measured.columns);
     surface.maxCells = contentCols;
@@ -11099,8 +11129,8 @@ function createWatchdogSceneComponent(deps) {
     const acknowledgeShown = () => {
       if (!read.available)
         return;
-      const outcome = watchdogAckPress({ unread: read.view.unread, lastAck: lastAck.current, acknowledge: (upTo) => deps.acknowledge(upTo) });
-      lastAck.current = outcome.lastAck;
+      const outcome = watchdogAckPress({ unread: read.view.unread, lastAck: lastAck.current.watermark, acknowledge: (upTo) => deps.acknowledge(upTo, sessionId, cwd) });
+      lastAck.current.watermark = outcome.lastAck;
       setFlash(outcome.flash);
     };
     if (typeof ui.useInput === "function") {
@@ -11228,23 +11258,26 @@ function scopedRecordsFor(teamDeps, workspace, sessionId, records) {
   const mine = sessionRecord(service, workspace, sessionId, records);
   return mine === undefined ? [] : [mine];
 }
-function readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teams, sessionId) {
+function readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teams, sessionId, cwd) {
   try {
+    const workspace = workspaceRoot(sessionId, cwd);
+    if (workspace === "")
+      return;
     let holdIds = [];
     try {
-      holdIds = holds() ?? [];
+      holdIds = holds(workspace) ?? [];
     } catch {
       holdIds = [];
     }
     let views = [];
     try {
-      views = teamViews?.() ?? [];
+      views = teamViews?.(workspace) ?? [];
     } catch {
       views = [];
     }
     let records = [];
     try {
-      records = teamRecords?.() ?? [];
+      records = teamRecords?.(workspace) ?? [];
     } catch {
       records = [];
     }
@@ -11255,7 +11288,7 @@ function readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teams, sessi
       service = undefined;
     }
     return readScopedWorkflow({
-      workspace: workspaceRoot(),
+      workspace,
       ...sessionId === undefined || sessionId === "" ? {} : { sessionId },
       holds: holdIds,
       ...service === undefined ? {} : { teams: service },
@@ -11334,10 +11367,14 @@ function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamVi
     const read = () => {
       try {
         const sessionId = channelSessionOf(props);
-        const scopedRecords = sessionId === undefined ? teamRecords?.() ?? [] : scopedRecordsFor(teamDeps, workspaceRoot(), sessionId, teamRecords?.() ?? []);
-        const scopedViews = teamViews?.() ?? [];
-        const state2 = readBoardState(workspaceRoot(), home(), sessionId === undefined ? scopedViews : sessionViewsOf(scopedViews, sessionId), scopedRecords);
-        return { rows: boardLines(state2, holds()), state: state2 };
+        const workspace = workspaceRoot(sessionId, workspaceCwdOf(props?.channel));
+        if (workspace === "")
+          return { rows: ["workspace unavailable for this session"] };
+        const records = teamRecords?.(workspace) ?? [];
+        const scopedRecords = sessionId === undefined ? records : scopedRecordsFor(teamDeps, workspace, sessionId, records);
+        const scopedViews = teamViews?.(workspace) ?? [];
+        const state2 = readBoardState(workspace, home(), sessionId === undefined ? scopedViews : sessionViewsOf(scopedViews, sessionId), scopedRecords);
+        return { rows: boardLines(state2, holds(workspace)), state: state2 };
       } catch {
         return { rows: ["board state unreadable"] };
       }
@@ -11346,7 +11383,7 @@ function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamVi
     const board = state[0];
     const rows = board.rows;
     const setBoard = state[1];
-    useTeamFeed(React, teamDeps?.subscribeTeams, () => setBoard(read()));
+    useTeamFeed(React, teamDeps?.subscribeTeams, () => setBoard(read()), channelSessionOf(props), workspaceCwdOf(props?.channel));
     React.useEffect(() => {
       setBoard(read());
       let timer;
@@ -11362,7 +11399,7 @@ function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamVi
           } catch {}
         }
       };
-    }, []);
+    }, [channelSessionOf(props), workspaceCwdOf(props?.channel)]);
     const clock = useSurfaceClock(ui);
     const phase = animPhase(clock.time);
     const measured = measureTerminal2(ui);
@@ -11470,7 +11507,7 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
     const refresh = () => {
       let next;
       try {
-        next = readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSessionOf(props));
+        next = readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSessionOf(props), workspaceCwdOf(props?.channel));
       } catch {
         next = undefined;
       }
@@ -11479,7 +11516,7 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
         latestRef.current = { staged: next?.team?.staged === true, ...next?.team?.id === undefined ? {} : { teamId: next.team.id } };
       }
     };
-    useTeamFeed(React, teamDeps?.subscribeTeams, refresh);
+    useTeamFeed(React, teamDeps?.subscribeTeams, refresh, channelSessionOf(props), workspaceCwdOf(props?.channel));
     React.useEffect(() => {
       refresh();
       let timer;
@@ -11495,7 +11532,7 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
           } catch {}
         }
       };
-    }, []);
+    }, [channelSessionOf(props), workspaceCwdOf(props?.channel)]);
     const graphTasks = workflow === undefined ? [] : modelRows(workflow);
     const focus = hover ?? pinned;
     const measured = measureTerminal2(ui);
@@ -11778,18 +11815,18 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, plan
     const armedAt = armedState[0];
     const setArmedAt = armedState[1];
     const refresh = () => {
-      setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession()));
+      setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession(), workspaceCwdOf(props?.channel)));
       setEcho("");
       setArmedAt(0);
       viewport.scrollTo(0);
     };
-    useTeamFeed(React, teamDeps?.subscribeTeams, () => setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession())));
+    useTeamFeed(React, teamDeps?.subscribeTeams, () => setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession(), workspaceCwdOf(props?.channel))), channelSession(), workspaceCwdOf(props?.channel));
     React.useEffect(() => {
       refresh();
       let timer;
       try {
         timer = setInterval(() => {
-          setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession()));
+          setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession(), workspaceCwdOf(props?.channel)));
         }, BOARD_REFRESH_MS);
       } catch {
         timer = undefined;
@@ -11801,7 +11838,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, plan
           } catch {}
         }
       };
-    }, []);
+    }, [channelSessionOf(props), workspaceCwdOf(props?.channel)]);
     React.useEffect(() => {
       if (armedAt === 0)
         return;
@@ -11820,7 +11857,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, plan
       };
     }, [armedAt]);
     const team = view?.team;
-    const rawPlan = planFor === undefined ? undefined : planFor(channelSession() ?? "");
+    const rawPlan = planFor === undefined ? undefined : planFor(channelSession() ?? "", workspaceCwdOf(props?.channel));
     const stagedPlan = rawPlan ?? undefined;
     const phrase = stagedPlan === undefined ? team === undefined ? "" : approvalPhrase(team.id) : stagedPlan.phrase;
     const usable = view !== undefined && team !== undefined && team.staged || stagedPlan !== undefined && stagedPlan !== null && stagedPlan.approved !== true;
@@ -11869,7 +11906,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, plan
         setMessage(`approve failed: ${String(error?.message ?? error)}`);
       } finally {
         setBusy(false);
-        setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession()));
+        setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession(), workspaceCwdOf(props?.channel)));
       }
     };
     const runDiscard = async () => {
@@ -11898,7 +11935,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, plan
         setMessage(`discard failed: ${String(error?.message ?? error)}`);
       } finally {
         setBusy(false);
-        setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession()));
+        setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession(), workspaceCwdOf(props?.channel)));
       }
     };
     if (typeof ui.useInput === "function") {
@@ -12021,7 +12058,7 @@ function registerScene(ctx, tui, log, workspaceRoot, home, holds = () => [], pla
       tui.registerScene({
         id: SUBAGENT_SCENE_ID,
         title: t("scene.subagents"),
-        component: createSubagentSceneComponent((sessionId) => readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, sessionId), onHostKit, undefined, teamDeps?.subscribeTeams)
+        component: createSubagentSceneComponent((sessionId, cwd) => readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, sessionId, cwd), onHostKit, undefined, teamDeps?.subscribeTeams)
       }, ctx);
       handle.record({ state: "requested", detail: `${BOARD_SCENE_ID}, ${TEAM_SCENE_ID}, ${PLAN_SCENE_ID}, ${SUBAGENT_SCENE_ID} requested (no host read-back)` });
     } catch (error) {
@@ -12245,20 +12282,24 @@ function attachWatchdogFrontDoor(ctx, tui, log, options) {
   let warnedAbsent = false;
   let replayed = false;
   const available = () => service !== undefined && service !== null;
-  const read = () => {
+  const read = (workspace = options.workspaceRoot()) => {
+    if (workspace === "")
+      return EMPTY_WATCHDOG_VIEW;
     try {
-      return readWatchdogView(service, WATCHDOG_READER, options.workspaceRoot());
+      return readWatchdogView(service, WATCHDOG_READER, workspace);
     } catch (error) {
       log.debug(`watchdog read failed: ${String(error?.message ?? error)}`);
       return EMPTY_WATCHDOG_VIEW;
     }
   };
-  const acknowledge = (upTo) => {
+  const acknowledge = (upTo, workspace = options.workspaceRoot()) => {
+    if (workspace === "")
+      return { ok: false, watermark: 0, error: "The workspace for this session is unavailable" };
     if (!available() || typeof service?.acknowledge !== "function") {
       return { ok: false, watermark: 0, error: `the ${WATCHDOG_SERVICE} service is not mounted — the watchdog store was not written` };
     }
     try {
-      const result = service.acknowledge(WATCHDOG_READER, upTo, options.workspaceRoot());
+      const result = service.acknowledge(WATCHDOG_READER, upTo, workspace);
       if (result !== undefined && result !== null && result.ok === true)
         options.onAcknowledged?.();
       return result ?? { ok: false, watermark: 0, error: "the acknowledge returned nothing" };
@@ -12274,7 +12315,8 @@ function attachWatchdogFrontDoor(ctx, tui, log, options) {
       }
       return;
     }
-    const view = read();
+    const workspace = options.workspaceRoot();
+    const view = read(workspace);
     if (view.unread.length === 0)
       return;
     if (!options.dialogs.available())
@@ -12283,7 +12325,7 @@ function attachWatchdogFrontDoor(ctx, tui, log, options) {
     const choice = await options.dialogs.select(request.title, request.options);
     if (choice === ACKNOWLEDGE_OPTION) {
       const upTo = view.unread.reduce((max, record) => Math.max(max, record.at), 0);
-      acknowledge(upTo);
+      acknowledge(upTo, workspace);
     }
     return choice;
   };
@@ -12981,24 +13023,20 @@ function resolveAdapter(ctx) {
   return createDshAdapter(ctx);
 }
 function workspaceResolver(ctx, adapter) {
-  let resolved = adapter;
-  if (resolved === undefined) {
+  const resolved = adapter ?? resolveAdapter(ctx);
+  return (sessionId, cwd) => {
+    if (cwd !== undefined && cwd !== "")
+      return cwd;
     try {
-      resolved = resolveAdapter(ctx);
+      const sessionRoot = sessionId === undefined ? undefined : resolved.workspaceRootForSession?.(sessionId);
+      if (sessionRoot !== undefined)
+        return sessionRoot;
+      const roots = resolved.workspaceRootsAll() ?? [];
+      if (sessionId && roots.length > 1)
+        return "";
+      return roots.length === 1 ? roots[0] ?? resolved.workspaceRoot() : resolved.workspaceRoot();
     } catch {
-      resolved = undefined;
-    }
-  }
-  return () => {
-    try {
-      const roots = resolved?.workspaceRootsAll() ?? [];
-      if (roots.length > 0)
-        return roots[0];
-    } catch {}
-    try {
-      return resolved?.workspaceRoot() ?? process.cwd();
-    } catch {
-      return process.cwd();
+      return createDshAdapter(ctx).workspaceRoot();
     }
   };
 }
@@ -13071,7 +13109,7 @@ function apply(ctx, config = {}) {
   const workspaceRoot = workspaceResolver(ctx, adapter);
   const log = createLog(ctx?.logger, resolved.logPrefix, process.env, () => tui.diagnosticSink({ root: workspaceRoot }));
   const home = () => homeDir();
-  const teamViews = () => liveTeamViews(adapter, workspaceRoot());
+  const teamViews = (workspace = workspaceRoot()) => liveTeamViews(adapter, workspace);
   let teamsService;
   let panelAttention;
   const autoOpenLatch = { spent: false };
@@ -13081,34 +13119,35 @@ function apply(ctx, config = {}) {
       panelAttention?.resubscribe();
     } catch {}
   });
-  const teamRecords = () => mpdTeamRecords(teamsService, workspaceRoot());
-  let feedClosure;
-  let feedClosureFor;
-  const teamFeed = () => {
-    const bound = teamsService !== undefined && typeof teamsService.subscribe === "function";
-    if (!bound) {
-      feedClosure = undefined;
-      feedClosureFor = undefined;
+  const teamRecords = (workspace = workspaceRoot()) => mpdTeamRecords(teamsService, workspace);
+  const feeds = new Map;
+  let feedService;
+  const teamFeed = (sessionId, cwd) => {
+    const service = teamsService;
+    if (feedService !== service) {
+      feeds.clear();
+      feedService = service;
+    }
+    if (typeof service?.subscribe !== "function")
       return;
-    }
-    if (feedClosure === undefined || feedClosureFor !== teamsService) {
-      const service = teamsService;
-      feedClosure = (listener) => {
-        try {
-          return service.subscribe(workspaceRoot(), listener) ?? (() => {});
-        } catch {
-          return () => {};
-        }
-      };
-      feedClosureFor = teamsService;
-    }
-    return feedClosure;
+    const workspace = workspaceRoot(sessionId, cwd);
+    if (workspace === "")
+      return;
+    const existing = feeds.get(workspace);
+    if (existing !== undefined)
+      return existing;
+    const subscribe = (listener) => service.subscribe?.(workspace, listener) ?? (() => {});
+    feeds.set(workspace, subscribe);
+    return subscribe;
   };
   const sceneTeamDeps = {
     teams: () => teamsService,
     subscribeTeams: teamFeed
   };
-  const planReader = (sessionId) => readPlanView(teamsService, workspaceRoot(), sessionId);
+  const planReader = (sessionId, cwd) => {
+    const workspace = workspaceRoot(sessionId, cwd);
+    return workspace === "" ? undefined : readPlanView(teamsService, workspace, sessionId);
+  };
   const sessionEventTypeKnown = resolved.sessionEvents ? registerLogOnlyEventType(BOARD_OPENED_EVENT, log) : false;
   const outcomes = [];
   const record = (handle) => {
@@ -13151,7 +13190,7 @@ function apply(ctx, config = {}) {
   });
   const noticeRead = () => composeNotices(bridgeRead(), watchdogFrontDoor.notice());
   status = resolved.statusLine ? registerStatus(ctx, tui, log, workspaceRoot, home, resolved.statusIntervalMs, noticeRead, teamViews, teamRecords) : { ...skipped("status", "disabled by config"), refresh: () => {} };
-  const scene = resolved.scene ? registerScene(ctx, tui, log, workspaceRoot, home, () => watchdogFrontDoor.view().holds, createPlanActions(adapter, log), planReader, teamViews, teamRecords, (ui) => tui.rememberHostKit(ui), sceneTeamDeps) : {
+  const scene = resolved.scene ? registerScene(ctx, tui, log, workspaceRoot, home, (workspace) => watchdogFrontDoor.view(workspace).holds, createPlanActions(adapter, log), planReader, teamViews, teamRecords, (ui) => tui.rememberHostKit(ui), sceneTeamDeps) : {
     ...skipped("scenes", "disabled by config"),
     open: () => false,
     openScene: () => false,
@@ -13161,7 +13200,7 @@ function apply(ctx, config = {}) {
   };
   const panel = registerPanelSurface(tui, {
     enabled: resolved.panel,
-    readWorkflow: (sessionId) => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords, () => teamsService, sessionId),
+    readWorkflow: (sessionId, cwd) => readDashboardWorkflow(workspaceRoot, (workspace) => watchdogFrontDoor.view(workspace).holds, teamViews, teamRecords, () => teamsService, sessionId, cwd),
     subscribeTeams: teamFeed,
     openMergedScene: () => scene.openSubagents(),
     openFullscreenScene: () => scene.openTeam(),
@@ -13182,23 +13221,23 @@ function apply(ctx, config = {}) {
     openScene: () => scene.open(),
     log
   });
-  const watchdogTeamHead = () => {
-    const workflow = readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords, () => teamsService);
+  const watchdogTeamHead = (sessionId, cwd) => {
+    const workflow = readDashboardWorkflow(workspaceRoot, () => [], teamViews, teamRecords, () => teamsService, sessionId, cwd);
     return workflow?.team === undefined ? undefined : { id: workflow.team.id, phase: workflow.team.phase };
   };
   const watchdogScene = registerWatchdogScene(tui, ctx, {
     enabled: resolved.scene,
     available: () => watchdogFrontDoor.available(),
-    read: () => watchdogFrontDoor.view(),
-    acknowledge: (upTo) => watchdogFrontDoor.acknowledge(upTo),
+    read: (sessionId, cwd) => watchdogFrontDoor.view(workspaceRoot(sessionId, cwd)),
+    acknowledge: (upTo, sessionId, cwd) => watchdogFrontDoor.acknowledge(upTo, workspaceRoot(sessionId, cwd)),
     readTeam: watchdogTeamHead,
     log
   });
   const watchdogPanel = registerWatchdogPanel(tui, {
     enabled: resolved.watchdog,
     available: () => watchdogFrontDoor.available(),
-    read: () => watchdogFrontDoor.view(),
-    acknowledge: (upTo) => watchdogFrontDoor.acknowledge(upTo),
+    read: (sessionId, cwd) => watchdogFrontDoor.view(workspaceRoot(sessionId, cwd)),
+    acknowledge: (upTo, sessionId, cwd) => watchdogFrontDoor.acknowledge(upTo, workspaceRoot(sessionId, cwd)),
     readTeam: watchdogTeamHead,
     ...resolved.scene ? { openFullscreen: () => watchdogScene.open() } : {},
     log
@@ -13227,7 +13266,7 @@ function apply(ctx, config = {}) {
             return false;
           }
         },
-        readWorkflow: () => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords, () => teamsService),
+        readWorkflow: () => readDashboardWorkflow(workspaceRoot, (workspace) => watchdogFrontDoor.view(workspace).holds, teamViews, teamRecords, () => teamsService),
         watchdogPanelId: () => watchdogPanel.id(),
         readWatchdog: () => watchdogFrontDoor.view(),
         feed: teamFeed,
@@ -13252,7 +13291,7 @@ function apply(ctx, config = {}) {
   const dashboardKey = !tui.panelSeamBound() ? resolved.dashboardKey ? registerDashboardKey(ctx, tui, {
     enabled: dashboardKeyEnabled,
     mergedSceneAvailable: () => resolved.scene && tui.scenes() !== undefined,
-    readWorkflow: () => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords),
+    readWorkflow: () => readDashboardWorkflow(workspaceRoot, (workspace) => watchdogFrontDoor.view(workspace).holds, teamViews, teamRecords),
     openMergedScene: () => scene.openSubagents(),
     log
   }) : tui.skipped("status", "the Ctrl+A takeover is disabled by the mpd-tui row config (dashboardKey: false)") : tui.skipped("status", "the host exposes the sidebar panel seam (dsh-tui 0.13.0+), so the legacy Ctrl+A host-input contact stays inert: Ctrl+A keeps its host dashboard meaning and the merged view opens through alt+a and /mpd panel");

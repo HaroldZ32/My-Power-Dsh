@@ -280,7 +280,7 @@ const CONFIG_SERVICE = "mpdConfig"
 /** The config service slice this row reads (structural: the config module is a SERVICE, never an import). */
 interface ConfigServiceLike {
   /** The TOTAL typed agent-route resolution the per-agent routes wave exposes. */
-  agentRouteResolutionOf?: (member: string) => unknown
+  agentRouteResolutionOf?: (member: string, workspace?: string) => unknown
 }
 
 /** One route as this row sends it to the provider. */
@@ -735,10 +735,11 @@ export function apply(ctx: Ctx, config: Config = {}): void {
    * must be able to render the state it returns.
    *
    * @param member - the roster agent's functional name.
+   * @param workspace - the resolved caller's workspace, when known.
    * @returns the typed resolution: a usable route (with the agent's own fallback chain), or why it is
    *   unusable, or `unrouted` (an extension role, or no config service mounted).
    */
-  const agentRouteResolution = (member: string): LiveAgentRouteResolution => {
+  const agentRouteResolution = (member: string, workspace?: string): LiveAgentRouteResolution => {
     /** The live config service, absent until the `mpd-config` row has applied. */
     const live = ((): ConfigServiceLike | undefined => {
       try {
@@ -750,7 +751,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     })()
     if (typeof live?.agentRouteResolutionOf === "function") {
       /** The service's TOTAL answer, trusted when it has the union's shape. */
-      const value = live.agentRouteResolutionOf(member) as LiveAgentRouteResolution | undefined
+      const value = live.agentRouteResolutionOf(member, workspace) as LiveAgentRouteResolution | undefined
       if (value !== undefined && value !== null && typeof value === "object" && typeof value.ok === "boolean") return value
     }
     // A BASE roster agent with no readable route has NO route source left: the static
@@ -787,13 +788,15 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   }
 
   /** The roster as THIS call sees it. Resolved per call (never an apply-time cache). */
-  const roleSurface = (exec?: unknown): RoleSurface => {
+  const roleSurface = (exec?: DshToolExec): RoleSurface => {
+    /** The root from the calling session, with agentless service reads retaining their old form. */
+    const workspace = exec === undefined ? undefined : dsh.workspaceRoot(exec)
     /** The base roster projected for THIS call, each persona already read. */
     const base: ResolvedRole[] = ROLES.map((r) => {
       /** The static chain for this role, copied so no caller can mutate the roster table. */
       const chain: Array<{ provider: string; model: string }> = r.chain.map((c) => ({ ...c }))
       /** The TOTAL agent-route resolution the config service reports for this member, read PER CALL. */
-      const resolution = agentRouteResolution(r.name)
+      const resolution = agentRouteResolution(r.name, workspace)
       // THE AGENT'S OWN ROUTE IS AUTHORITATIVE for a roster member (contract §2/§4): a usable entry
       // makes the chain that ONE route, so `mpd_roles_list`, a workmate initialized from this base
       // AND `mpd_modelchain_resolve` (which prefers `spec.chain`) all report what the user saved.
@@ -967,10 +970,12 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   ctx.provide("mpdRoles", {
     /** Which adapter branch THIS read reaches — read at surface time, never cached at apply (T-50). */
     adapterIdentity: dshAdapterIdentity(ctx),
-    list: () => roleSurface(undefined).roles.map((r) => ({ id: r.id, name: r.name, description: r.description, readonly: r.readonly, chain: r.chain.map((c) => ({ ...c })), personaFile: r.personaFile, persona: r.persona, extension: r.extension })),
-    get: (key: string) => {
+    /** The roster visible to an optional invoking session. */
+    list: (exec?: DshToolExec) => roleSurface(exec).roles.map((r) => ({ id: r.id, name: r.name, description: r.description, readonly: r.readonly, chain: r.chain.map((c) => ({ ...c })), personaFile: r.personaFile, persona: r.persona, extension: r.extension })),
+    /** Resolve a role in the invoking session's workspace when supplied. */
+    get: (key: string, exec?: DshToolExec) => {
       /** The resolved role, or null when the key names nothing on this surface. */
-      const spec = roleOf(roleSurface(undefined), key)
+      const spec = roleOf(roleSurface(exec), key)
       return spec === null ? null : { id: spec.id, name: spec.name, description: spec.description, readonly: spec.readonly, chain: spec.chain.map((c) => ({ ...c })), persona: spec.persona, extension: spec.extension }
     }
   })
@@ -1093,7 +1098,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     // the supervisor records and the name the handoff document prints are all the ONE canonical spelling.
     canonicalRole: (role, exec) => {
       /** The roster as this call sees it: base specialists plus extension roles. */
-      const surface = roleSurface(exec)
+      const surface = roleSurface(exec as DshToolExec | undefined)
       /** The resolved role, or null when the spelling names nothing on that surface. */
       const spec = roleOfToolInput(surface, String(role ?? ""))
       return spec === null ? null : spec.name
@@ -1138,7 +1143,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       /** The role's persona text, sent both inside the prompt and as the subagent's persona. */
       const persona = spec.persona
       /** The TOTAL agent-route resolution for this member — the ONE route source a roster agent has. */
-      const resolution = agentRouteResolution(spec.name)
+      const resolution = agentRouteResolution(spec.name, dsh.workspaceRoot(exec))
       // AN UNUSABLE ROUTE REFUSES THE SPAWN (contract §3): ONE structured AGENT_UNCONFIGURED failure
       // naming the agent, the missing leaves and both recovery paths — and NOTHING is written and no
       // child is started, because the spawn below is never reached.
@@ -1232,7 +1237,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     const task = String(args?.task ?? "").trim()
     if (!task) throw new Error("mpd_role_spawn_async: task required")
     /** The TOTAL agent-route resolution for this member — the ONE route source a roster agent has. */
-    const resolution = agentRouteResolution(spec.name)
+    const resolution = agentRouteResolution(spec.name, dsh.workspaceRoot(exec))
     // An unusable route refuses the spawn with the SAME structured AGENT_UNCONFIGURED failure the
     // blocking path uses; nothing is written and no child is started.
     if (!resolution.ok && resolution.reason !== "unrouted") throwAgentUnconfigured(resolution)

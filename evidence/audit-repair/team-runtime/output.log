@@ -1,0 +1,80 @@
+The isolated headless harness mounted source-built TEAM and adapter rows. All three dsh processes exited 0.
+Both comparisons used a loopback Messages provider and maxActiveSubagents=1. The provider held the first child turn through the second start attempt.
+The log pairs each tool/call with its own tool/result from the harness, then compares task ownership with the durable board.
+
+red DSH 0.2.2-rc.5 team=team-20261122161317407-9xxh-002 isolated=true
+partial seats=1 tasks=1 sameTeam=true sameFirstChild=true
+status agent_teams_plan status call=call_team_1 session=session-5a70cf86-4512-46b5-84cb-11b2b8deeb9c isError=true
+Error: tool "agent_teams_plan" returned invalid output: value is not lossless JSON
+refusal agent_teams_plan approve call=call_team_7 session=session-5a70cf86-4512-46b5-84cb-11b2b8deeb9c isError=false
+approved plan-20261122161317312-9xxh-001: 1 member(s), 0 task(s) — STOPPED at member qa-idler: subagent limit reached (active child limit: 1); wait for an existing child to finish or complete this work with the current agents
+  qa-worker — none (no-library)
+  qa-idler — none (no-library)
+retry agent_teams_plan approve call=call_team_11 session=session-5a70cf86-4512-46b5-84cb-11b2b8deeb9c isError=true
+Error: plan plan-20261122161317312-9xxh-001 is already approved
+opening agent_teams_task context call=call_team_9 session=6bd1aec4-128c-48c3-ab2a-e067b103c18d isError=false
+qa-worker used 18 / 1048576 (observed) = 0%
+dispatch agent_teams_dispatch run call=call_team_12 session=session-5a70cf86-4512-46b5-84cb-11b2b8deeb9c isError=false
+QA_WORK_MARKER -> qa-worker
+claimed agent_teams_task claim call=call_team_14 session=6bd1aec4-128c-48c3-ab2a-e067b103c18d isError=false
+attempt 1 of T1 by 6bd1aec4-128c-48c3-ab2a-e067b103c18d
+completed agent_teams_task complete call=call_team_15 session=6bd1aec4-128c-48c3-ab2a-e067b103c18d isError=false
+T1 -> completed (by owner, attempt 1)
+final tasks=[{"id":"T1","owner":"6bd1aec4-128c-48c3-ab2a-e067b103c18d","status":"completed"}] seats=M1=6bd1aec4-128c-48c3-ab2a-e067b103c18d
+
+green DSH 0.2.2-rc.5 team=team-20261122161320205-ualp-002 isolated=true
+partial seats=1 tasks=0 sameTeam=true sameFirstChild=true
+status agent_teams_plan status call=call_team_1 session=session-646841d8-525e-4eaf-b744-f4995fefb157 isError=false
+plan (none) · members 0 · tasks 0 · hold none
+the roster part of the official team surface is unavailable: 0.2.2-rc.2 removed the roster/mailbox/spawn API (the service is task-board only) — roster reads answer [] with an `unsupported` marker; gate on capabilities().teamRoster, or use the NATIVE team executor (mpd's default) for member identity
+refusal agent_teams_plan approve call=call_team_7 session=session-646841d8-525e-4eaf-b744-f4995fefb157 isError=false
+activation paused for plan-20261122161320112-ualp-001: 1 member(s), 0 task(s) — member qa-idler: subagent limit reached (active child limit: 1); wait for an existing child to finish or complete this work with the current agents. Once the cause clears, retry agent_teams_plan {action:"approve"} to continue this plan.
+  qa-worker — none (no-library)
+  qa-idler — none (no-library)
+retry agent_teams_plan approve call=call_team_11 session=session-646841d8-525e-4eaf-b744-f4995fefb157 isError=false
+approved plan-20261122161320112-ualp-001: 2 member(s), 1 task(s)
+  qa-worker — none (no-library)
+  qa-idler — none (no-library)
+opening agent_teams_task context call=call_team_9 session=6c7f2555-75e9-43b5-829d-3d0f5cfd54cd isError=true
+Error: [mpd-team] no board task is assigned to you; end your turn and wait for a dispatch
+idleDenial agent_teams_task context call=call_team_9 session=6c7f2555-75e9-43b5-829d-3d0f5cfd54cd isError=true
+Error: [mpd-team] no board task is assigned to you; end your turn and wait for a dispatch
+dispatch agent_teams_dispatch run call=call_team_14 session=session-646841d8-525e-4eaf-b744-f4995fefb157 isError=false
+QA_WORK_MARKER -> qa-worker
+claimed agent_teams_task claim call=call_team_16 session=6c7f2555-75e9-43b5-829d-3d0f5cfd54cd isError=false
+attempt 1 of T1 by 6c7f2555-75e9-43b5-829d-3d0f5cfd54cd
+completed agent_teams_task complete call=call_team_17 session=6c7f2555-75e9-43b5-829d-3d0f5cfd54cd isError=false
+T1 -> completed (by owner, attempt 1)
+final tasks=[{"id":"T1","owner":"6c7f2555-75e9-43b5-829d-3d0f5cfd54cd","status":"completed"}] seats=M1=6c7f2555-75e9-43b5-829d-3d0f5cfd54cd M2=49fc2493-b342-48bf-add7-f7bee92017c8
+
+older DSH 0.2.2-rc.2 team=team-20261122161323536-8yrr-002 isolated=true
+status agent_teams_plan status call=call_team_1 session=session-02f4b434-b47f-4216-b955-631a822a4aeb isError=false
+plan (none) · members 0 · tasks 0 · hold none
+the roster part of the official team surface is unavailable: 0.2.2-rc.2 removed the roster/mailbox/spawn API (the service is task-board only) — roster reads answer [] with an `unsupported` marker; gate on capabilities().teamRoster, or use the NATIVE team executor (mpd's default) for member identity
+retry agent_teams_plan approve call=call_team_7 session=session-02f4b434-b47f-4216-b955-631a822a4aeb isError=false
+approved plan-20261122161323443-8yrr-001: 2 member(s), 1 task(s)
+  qa-worker — none (no-library)
+  qa-idler — none (no-library)
+opening agent_teams_task context call=call_team_9 session=3b945fcd-66d6-4e13-a714-de6e2441f8ca isError=false
+qa-worker used 18 / 1048576 (observed) = 0%
+idleDenial agent_teams_task context call=call_team_11 session=c6141160-d269-4953-ad5a-cee89ee99f54 isError=true
+Error: [mpd-team] no board task is assigned to you; end your turn and wait for a dispatch
+dispatch agent_teams_dispatch run call=call_team_8 session=session-02f4b434-b47f-4216-b955-631a822a4aeb isError=false
+QA_WORK_MARKER -> qa-worker
+claimed agent_teams_task claim call=call_team_13 session=3b945fcd-66d6-4e13-a714-de6e2441f8ca isError=false
+attempt 1 of T1 by 3b945fcd-66d6-4e13-a714-de6e2441f8ca
+completed agent_teams_task complete call=call_team_14 session=3b945fcd-66d6-4e13-a714-de6e2441f8ca isError=false
+T1 -> completed (by owner, attempt 1)
+final tasks=[{"id":"T1","owner":"3b945fcd-66d6-4e13-a714-de6e2441f8ca","status":"completed"}] seats=M1=3b945fcd-66d6-4e13-a714-de6e2441f8ca M2=c6141160-d269-4953-ad5a-cee89ee99f54
+
+Verification gates
+.toolchain/node_modules/.bin/bun test ./packages/mpd-team-core-plugin ./packages/mpd-dsh-adapter-plugin ./packages/mpd-team-watchdog-plugin --only-failures exit=0
+bun run typecheck exit=0 $ tsgo --noEmit
+bun run verify:comments exit=0 VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+PATH="$PWD/.qa-tmp/dsh-022/bin:$PATH" bun run test:qa exit=0
+.toolchain/node_modules/.bin/bun skills/dsh-qa/scripts/team-dispatch-guard.ts --out <scratch> exit=0
+Package tests: 1262 pass, 0 fail across 92 files.
+QA self-tests: 56 passed, 2 skipped, 0 failed. Both skips report absent TUI spec fixtures.
+Dispatch guard: 21/21 arms passed.
+Pinned root tests exited 1 with 4250 pass, 6 skip, 9 fail across 279 files. The failures were in shared Web settings and disclosure tests.
+Independent final-dist team-idle-member-guard exited 0 with stable team-core SHA-256 89eae476e47e55cbdb4f5eedc88c007b716a4211c5a69e1c1444aeb938297832. See ../skill-tests/team-final.log.

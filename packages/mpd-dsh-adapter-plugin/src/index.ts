@@ -819,7 +819,9 @@ export interface DshTeamSpawnRequest {
    * the shared checkout (D7) — degraded, never an error.
    */
   cwd?: string
-  /** Cancellation for the spawn and for the member's first turn. */
+  /** Publish a reserved native child id before its first turn. Older and official backends omit this callback. */
+  onOpening?: (handle: string) => void
+  /** Cancellation until the initial message is accepted. */
   signal?: AbortSignal
 }
 
@@ -4693,9 +4695,10 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
    * THE READ IS TOTAL AND TYPED (contract §2): `agentRouteResolutionOf` is the ONE method, and an
    * answer without the union's `ok` marker is treated as NO answer — never as a route — so a foreign
    * or half-present service degrades to inheritance instead of moving a teammate onto a guess.
+   * @param workspace - the approving agent's workspace, independent of the child's working directory.
    * @returns the total agent-route read the spawn passes to {@link resolveTeamMemberRoute}, or undefined.
    */
-  const configAgentRouteResolver = (): ((member: string) => unknown) | undefined => {
+  const configAgentRouteResolver = (workspace: string): ((member: string) => unknown) | undefined => {
     /** The live config service, read per call so a late-mounted row is still seen. */
     const config = service("mpdConfig") as { agentRouteResolutionOf?: unknown } | undefined
     if (config === undefined || config === null) return undefined
@@ -4703,7 +4706,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     return (member: string): unknown => {
       try {
         /** The service's total answer, trusted only when it carries the union's `ok` marker. */
-        const answer = (config.agentRouteResolutionOf as (m: string) => unknown).call(config, member)
+        const answer = (config.agentRouteResolutionOf as (m: string, root: string) => unknown).call(config, member, workspace)
         return answer !== null && typeof answer === "object" && typeof (answer as { ok?: unknown }).ok === "boolean" ? answer : undefined
       } catch {
         // A service that throws on the typed read answers NOTHING; the spawn inherits, never fails.
@@ -5311,7 +5314,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
           /** What this member's identity resolved to; the config read is per spawn, never cached. */
           const outcome = resolveTeamMemberRoute(
             { role: request.role, description: request.description, name: request.name },
-            configAgentRouteResolver(),
+            configAgentRouteResolver(workspaceRootOfAgent(caller)),
           )
           if (outcome.status === "routed") {
             /** The agent's fallback chain consumed ONCE, then the winner's effort adapted. */
@@ -5343,10 +5346,18 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
           // the harness applies its own service default instead of a converted or guessed value.
           ...(request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }),
         }
+        /** The host's local backend unless the caller explicitly selected a provider. */
+        const provider = typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn"
+        // The 0.2.2-rc.2+ local prompt seam shares the reserved-id contract. Retired hosts and
+        // arbitrary providers keep the old receipt-only path. Register before submitting input.
+        /** The child's identity the local host will reserve, or absent on the compatibility path. */
+        const childId = request.onOpening !== undefined && provider === "spawn" && typeof subagents.startActivation === "function" && typeof subagents.prompt === "function" ? randomUUID() : undefined
+        if (childId !== undefined) request.onOpening?.(childId)
         /** The continuable-start spec in the DUAL shape 0.2.2-rc.1 and rc.2+ each read. */
         const spec: Record<string, unknown> = dualShapeActivationSpec(
           {
-            provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
+            provider,
+            ...(childId === undefined ? {} : { childId }),
             label: `${request.name} · ${request.teamId}`,
             signal: request.signal ?? neverAborted(),
           },

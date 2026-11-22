@@ -277,11 +277,12 @@ whose window cannot be read can be certified deliberately, and it is recorded as
   reconciled (kept ids reused, dropped work cancelled) — while a LOWER revision, an already-materialised
   revision and a stale split are refused with the existing teaching errors. The answer's `reused` list
   names the members resolved from the cell record or the live roster instead of raised.
-  **The crash bound:** a process that DIES mid-pass leaves NO partial at all. Members still reconcile
-  by name against the live roster, but board tasks and verify loops are known only through the recorded
-  maps, so a task or loop created by the dead pass is created AGAIN by the retry — detectable, not
-  deletable (the team plane has no cancel verb). A returned failure's residual window is one
-  board/verify call plus one cell-record write; a crash's window is the whole pass.
+  **Task recovery after an interrupted append.** Before appending tasks, activation records the target
+  board for the revision. New rows carry the cell ID, revision and split key in their descriptions.
+  Retrying the same revision adopts the matching row and uses its original ID for dependencies and
+  verification. A retry stops if the board cannot be read or the matching rows are ambiguous.
+  A first re-split can still use the recorded board with an unverified warning. Verify loop creation
+  retains its separate crash window if the loop ID was never recorded.
 - **A re-split states what it kept.** When a revision keeps tasks, `cellwork_activate` returns a
   `notice`: how many kept tasks reuse their live board rows, that their frozen contracts are NOT
   rewritten (the bytes a verifier may already be reading stay as first frozen), that a scope expansion
@@ -583,11 +584,11 @@ The seam rule for this package is the repository's: every harness touch goes thr
 ## The team plane it shares, and `cellwork_open` (wave W2)
 
 **`cellwork_open {objective, mandate?}`** is the programmatic entry the autoproject escalation uses. It
-REFUSES a caller that is not the captain, an already-active cell, and a `mandate` whose
-`<workspace>/.mpd/autoproject/<runId>/escalation.json` is not on disk. `/cellwork` is a thin handler
-over the SAME open path, so the command and the tool cannot diverge. A tool has no
-`invocation.submit`, so the tool path RETURNS the activation directive instead of submitting it — a
-stated bound, not a hidden one.
+requires the captain and a persisted `<workspace>/.mpd/autoproject/<runId>/escalation.json` when a
+string `mandate` is supplied. Retrying the same mandate, objective and captain returns the existing
+active cell. A different active cell or a mandate already used by an archived cell causes a refusal.
+The tool returns the activation directive for relay if the host cannot inject it. `/cellwork` uses the
+same open path with its command turn surface.
 
 **The TEAM-level logic is the team plane's**, reached as services (no cross-package import):
 `cellwork_context` reads `mpdTeams.memberContext`, `cellwork_subteam` reads `mpdTeams.depthBudget` (the
@@ -596,7 +597,7 @@ absent), and `cellwork_dispatch` plus the handoff path read or write the team re
 `mpdTeams` / `mpdTeamActions`. The cell-MODE engines (requirements, split, activate, recon, budget) stay
 in this package: they are the workflow layer that WRITES the board.
 
-**State on disk is unchanged and read-compatible:** `.mpd/cellwork/**` stays version 1 (no migration),
+**State on disk is read-compatible.** `.mpd/cellwork/**` stays version 1 (no migration),
 with the per-cell journal and mail. The FROZEN CONTRACT of a wave lives in the board task description,
 so the row an owner claims carries the acceptance text it is judged against.
 

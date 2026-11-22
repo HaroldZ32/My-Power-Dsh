@@ -10,10 +10,10 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { apply, TEAMS_SERVICE, type MpdTeamsService } from "../src/index"
+import { apply, readPlan, TEAMS_SERVICE, writePlan, type MpdTeamsService } from "../src/index"
 import { IDLE_PREAMBLE_TEXT } from "../src/idle-guard"
 import { createDshAdapter, type DshTeamSpawnRequest } from "../../mpd-dsh-adapter-plugin/src/index"
-import { listTeams, readTeam, taskDepths, teamRoot, updateTeamTask, writeTeam } from "../src/team-store"
+import { addTeamTask, createTeam, listTeams, readTeam, taskDepths, teamRoot, updateTeamTask, writeTeam, type TeamRecord } from "../src/team-store"
 import { ledgerKey, type DispatchLedger } from "../src/dispatch"
 
 /** One captured tool registration, with `execute` kept so an arm can actually drive it. */
@@ -60,6 +60,8 @@ interface StubOptions {
   watchdogUnreadable?: boolean
   /** The member whose spawn throws, by name, when an arm needs a half-built team. */
   failMember?: string
+  /** A transient host capacity refusal, for the next launch matching this seat name. */
+  fullOnce?: string
   /**
    * Run a mutation on the REAL store WHILE a dispatch pass is awaiting its `send` — the only way to
    * reproduce a claim that lands mid-pass (T2). It receives the sandbox workspace.
@@ -97,6 +99,10 @@ function harness(options: StubOptions = {}): Harness {
       calls.push({ method: "startContinuable", args: spec })
       /** The member name the executor put on the label, which is how a failure is aimed. */
       const label = String(spec?.label ?? "")
+      if (options.fullOnce !== undefined && label.startsWith(options.fullOnce)) {
+        delete options.fullOnce
+        throw new Error("subagent limit reached (active child limit: 8)")
+      }
       if (options.failMember !== undefined && label.startsWith(options.failMember)) {
         throw new Error("the executor refused " + options.failMember)
       }
@@ -400,6 +406,51 @@ describe("approval builds an mpd-owned team record", () => {
     expect(record.tasks.every((task) => task.executorRef === undefined)).toBe(true)
   })
 
+  test.each(["Senior Engineer", "Reviewer"])("approval retries %s after quota refusal, preserving started seats and planned IDs", async (limitedSeat) => {
+    /** The executor refuses exactly once, either before the first child or after it has started. */
+    const h = harness({ fullOnce: limitedSeat })
+    sandboxes.push(h.workspace)
+    await staged(h)
+    /** The partial attempt reports the host reason and has no dispatchable tasks. */
+    const stopped = await h.call("agent_teams_plan", { action: "approve" }) as { stoppedAt?: string; team: TeamRecord }
+    expect(stopped.stoppedAt).toContain("active child limit")
+    expect(stopped.stoppedAt).toContain('action:"approve"')
+    expect(stopped.team.tasks).toEqual([])
+    if (limitedSeat === "Senior Engineer") expect(stopped.team.approvedAt).toBeUndefined()
+    /** A second approval resumes the same roster and publishes the board. */
+    const resumed = await h.call("agent_teams_plan", { action: "approve" }) as { stoppedAt?: string; team: TeamRecord }
+    expect(resumed.stoppedAt).toBeUndefined()
+    expect(resumed.team.teamId).toBe(stopped.team.teamId)
+    expect(resumed.team.tasks.map((task) => task.owner)).toEqual(["Senior Engineer", "Reviewer"])
+    expect(resumed.team.members.map((member) => member.id)).toEqual(["M1", "M2"])
+    expect(h.spawnRequests.map((request) => [request.name, request.memberId])).toEqual(limitedSeat === "Reviewer"
+      ? [["Senior Engineer", "M1"], ["Reviewer", "M2"], ["Reviewer", "M2"]]
+      : [["Senior Engineer", "M1"], ["Senior Engineer", "M1"], ["Reviewer", "M2"]])
+    expect(listTeams(h.workspace)).toHaveLength(1)
+  })
+
+  test("an already persisted zero-start approval can recover without a second team", async () => {
+    /** The pre-upgrade state has an approved plan but every child start was refused. */
+    const h = harness()
+    sandboxes.push(h.workspace)
+    await staged(h)
+    /** The old build's plan and unstarted board. */
+    const plan = readPlan(h.workspace, "sess-1")
+    if (plan === undefined) throw new Error("the fixture did not stage its plan")
+    /** Match the persisted legacy timestamps without inventing an activation checkpoint. */
+    const stamp = new Date()
+    writePlan(h.workspace, { ...plan, approvedAt: stamp.toISOString(), created: { members: [], tasks: [] } })
+    /** The old build did publish the full board even though it reported zero tasks. */
+    let legacy = createTeam(h.workspace, { name: plan.name, description: plan.description, planId: plan.planId, leadSessionId: "sess-1" }, stamp)
+    for (const task of plan.tasks) legacy = addTeamTask(legacy, { ...task, owner: "unstarted" }, stamp)
+    writeTeam(h.workspace, { ...legacy, approvedAt: stamp.toISOString(), phase: "idle" })
+    /** A new approval recovers that exact team and publishes its real owners once. */
+    const result = await h.call("agent_teams_plan", { action: "approve" }) as { team: TeamRecord }
+    expect(result.team.teamId).toBe(legacy.teamId)
+    expect(result.team.tasks.map((task) => [task.id, task.owner])).toEqual([["T1", "Senior Engineer"], ["T2", "Reviewer"]])
+    expect(listTeams(h.workspace)).toHaveLength(1)
+  })
+
   test("an approval with a dry run records NOTHING", async () => {
     /** The harness under test. */
     const h = harness()
@@ -674,6 +725,25 @@ describe("a claim that lands while a dispatch pass is in flight is never reverte
     expect(claimed?.status).toBe("in_progress")
     expect(claimed?.attempt).toBe(1)
     expect(claimed?.revision).toBe(2)
+  })
+
+  test("dispatch records delivery when its recipient claims the row before the send settles", async () => {
+    /** The actual recipient advances the board as soon as its first task message arrives. */
+    const h = harness({ duringSend: (workspace) => {
+      /** The board at message acceptance. */
+      const current = listTeams(workspace)[0]
+      writeTeam(workspace, updateTeamTask(current, "T1", { owner: "child-Senior-Engineer", status: "in_progress", attempt: 1 }, new Date()))
+    } })
+    sandboxes.push(h.workspace)
+    await staged(h)
+    await h.call("agent_teams_plan", { action: "approve" })
+    /** The dispatch response must agree with the work the recipient has already claimed. */
+    const result = await h.call("agent_teams_dispatch", { action: "run" }) as { pairs: Array<{ taskId: string }> }
+    expect(result.pairs.map((pair) => pair.taskId)).toEqual(["T1"])
+    /** The first claim survives as one attempt under the recipient's handle. */
+    const record = listTeams(h.workspace)[0]
+    expect(record.tasks[0]).toMatchObject({ owner: "child-Senior-Engineer", status: "in_progress", attempt: 1 })
+    expect(Object.values(ledgerOnDisk(h.workspace))).toMatchObject([{ taskId: "T1", memberId: "child-Senior-Engineer" }])
   })
 
   test("the falsifier: with NO concurrent claim the pass still records its own pairing", async () => {

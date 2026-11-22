@@ -7,6 +7,9 @@ import { randomUUID } from "node:crypto";
 import { resolve as resolve2, sep as sep2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
 }
@@ -993,7 +996,7 @@ function createDshAdapter(ctx, config = {}) {
     } catch {}
   };
   bindDshGoBridge();
-  const configAgentRouteResolver = () => {
+  const configAgentRouteResolver = (workspace) => {
     const config2 = service("mpdConfig");
     if (config2 === undefined || config2 === null)
       return;
@@ -1001,7 +1004,7 @@ function createDshAdapter(ctx, config = {}) {
       return;
     return (member) => {
       try {
-        const answer = config2.agentRouteResolutionOf.call(config2, member);
+        const answer = config2.agentRouteResolutionOf.call(config2, member, workspace);
         return answer !== null && typeof answer === "object" && typeof answer.ok === "boolean" ? answer : undefined;
       } catch {
         return;
@@ -1355,7 +1358,7 @@ function createDshAdapter(ctx, config = {}) {
         const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
         let agentOptions = request.agentOptions;
         if (agentOptions === undefined) {
-          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver());
+          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver(workspaceRootOfAgent(caller)));
           if (outcome.status === "routed") {
             const resolved = await resolveRunRoute({ llmCatalog }, outcome.route, outcome.fallbacks);
             agentOptions = resolved.route;
@@ -1371,8 +1374,13 @@ function createDshAdapter(ctx, config = {}) {
           ...agentOptions === undefined ? {} : { agentOptions },
           ...request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }
         };
+        const provider = typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn";
+        const childId = request.onOpening !== undefined && provider === "spawn" && typeof subagents.startActivation === "function" && typeof subagents.prompt === "function" ? randomUUID() : undefined;
+        if (childId !== undefined)
+          request.onOpening?.(childId);
         const spec = dualShapeActivationSpec({
-          provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
+          provider,
+          ...childId === undefined ? {} : { childId },
           label: `${request.name} · ${request.teamId}`,
           signal: request.signal ?? neverAborted()
         }, activationRequest);
@@ -5411,14 +5419,17 @@ function buildTeamPlan(plan, workspace, sessionId) {
       approval: plan.approval,
       stagedAt: plan.stagedAt,
       phrase: approvalPhraseFor(plan.planId),
-      approved: plan.approvedAt !== undefined,
+      approved: plan.approvedAt !== undefined && plan.activation === undefined,
       discarded: plan.discardedAt !== undefined,
-      members: plan.members.map((member) => ({
-        name: member.name,
-        description: member.description,
-        ...member.role === undefined ? {} : { role: member.role },
-        ...memberIds.has(member.name) ? { id: memberIds.get(member.name) } : {}
-      })),
+      members: plan.members.map((member, index) => {
+        const id = memberIds.get(plan.activation?.bindings[index]?.member ?? member.name);
+        return {
+          name: member.name,
+          description: member.description,
+          ...member.role === undefined ? {} : { role: member.role },
+          ...id === undefined ? {} : { id }
+        };
+      }),
       tasks: plan.tasks.map((task) => ({
         subject: task.subject,
         description: task.description,
@@ -5712,7 +5723,8 @@ data: ${JSON.stringify({ rev: revisionNow() })}
         memberCount: payload.team?.members.length ?? 0,
         taskCount: payload.team?.tasks.length ?? 0
       },
-      created: [...payload.created.members.map((member) => member.id), ...payload.created.tasks.map((task) => task.id)]
+      created: [...payload.created.members.map((member) => member.id), ...payload.created.tasks.map((task) => task.id)],
+      ...payload.stoppedAt === undefined ? {} : { activationPending: true, retry: "After the startup issue clears, approve the same plan again to start the remaining members." }
     })) && all;
     all = mountAction(TEAM_DISPATCH_PATH, parseDispatchInput, (sessionId, body) => actions.dispatch(sessionId, body), (payload) => ({
       pairs: payload.pairs.map((pair) => ({ taskId: pair.taskId, memberId: pair.memberId, memberName: pair.memberName })),
@@ -5818,7 +5830,7 @@ function memberForSession(record, sessionId) {
 }
 function memberHasOpenTask(record, sessionId) {
   const member = memberForSession(record, sessionId);
-  if (member === undefined)
+  if (member === undefined || member.status === "provisioning")
     return false;
   return record.tasks.some((task) => OPEN_TASK_STATUSES.includes(task.status) && (task.owner === member.name || member.executorRef !== undefined && task.owner === member.executorRef));
 }
@@ -6282,7 +6294,6 @@ function workmateHeadOf(deps, key) {
 async function bindStagedWorkmates(deps, plan, agent, workspace) {
   const plain = (reason) => ({
     members: plan.members.map((member) => ({ ...member })),
-    tasks: plan.tasks,
     bindings: plan.members.map((member) => ({ member: member.name, mode: "none", reason }))
   });
   const config = workmateBindingConfigOf(deps);
@@ -6307,10 +6318,10 @@ async function bindStagedWorkmates(deps, plan, agent, workspace) {
       const explicit = explicitWorkmateOf(member);
       if (explicit !== undefined) {
         if (!listing.rows.some((row) => row.name === explicit)) {
-          return { error: `staged member "${original}" explicitly names workmate "${explicit}", which does not exist in the library — the approval is refused rather than downgrading the seat to a plain member; initialize it with mpd_workmate_init or remove the workmate: line`, members, tasks: plan.tasks, bindings };
+          return { error: `staged member "${original}" explicitly names workmate "${explicit}", which does not exist in the library — the approval is refused rather than downgrading the seat to a plain member; initialize it with mpd_workmate_init or remove the workmate: line`, members, bindings };
         }
         if (takenByOthers.has(explicit)) {
-          return { error: `staged member "${original}" explicitly names workmate "${explicit}", which another member of this team already takes — a member NAME is seat identity, so two seats may not share one workmate`, members, tasks: plan.tasks, bindings };
+          return { error: `staged member "${original}" explicitly names workmate "${explicit}", which another member of this team already takes — a member NAME is seat identity, so two seats may not share one workmate`, members, bindings };
         }
         members[index] = { ...member, name: explicit, prompt: joinWorkmatePrompt(workmateHeadOf(deps, explicit), member.prompt) };
         taken.delete(original);
@@ -6361,17 +6372,21 @@ async function bindStagedWorkmates(deps, plan, agent, workspace) {
       taken.add(name);
       bindings.push({ member: name, mode: "init", workmate: name });
     }
-    const renames = new Map;
-    plan.members.forEach((member, index) => {
-      if (members[index].name !== member.name)
-        renames.set(member.name, members[index].name);
-    });
-    const tasks = renames.size === 0 ? plan.tasks : plan.tasks.map((task) => task.owner !== undefined && renames.has(task.owner) ? { ...task, owner: renames.get(task.owner) } : task);
-    return { members, tasks, bindings };
+    return { members, bindings };
   } catch (error) {
     deps.log("workmate binding failed (" + String(error?.message ?? error) + ") — every seat stays plain");
     return plain("binding-failed");
   }
+}
+function boundTaskOwners(plan, members) {
+  return plan.tasks.map((task) => {
+    if (task.owner === undefined)
+      return task;
+    const matches = plan.members.flatMap((member, index) => dispatchNameKey(member.name) === dispatchNameKey(task.owner ?? "") ? [index] : []);
+    const exact = plan.members.findIndex((member) => member.name === task.owner);
+    const owner = members[exact >= 0 ? exact : matches.length === 1 ? matches[0] : -1]?.name;
+    return owner === undefined || owner === task.owner ? task : { ...task, owner };
+  });
 }
 function joinWorkmatePrompt(head, prompt) {
   return head === "" ? prompt : head + `
@@ -6397,8 +6412,15 @@ async function approveTeamBody(deps, caller, input) {
     const plan = readPlan(workspace, sessionId);
     if (plan === undefined)
       return { ok: false, error: 'no team is staged in this session — use action:"create" first' };
-    if (plan.approvedAt !== undefined)
+    const legacyRefusal = plan.approvedAt !== undefined && plan.activation === undefined && plan.members.length > 0 && plan.created?.members.length === 0 && plan.created.tasks.length === 0;
+    const previousId = plan.activation?.teamId ?? (legacyRefusal ? activeTeamId(workspace, sessionId) : undefined);
+    const previous = previousId === undefined ? undefined : readTeam(workspace, previousId);
+    const legacy = legacyRefusal && previous?.planId === plan.planId && previous.leadSessionId === sessionId && previous.endedAt === undefined && previous.members.length === 0 && previous.tasks.length === plan.tasks.length && previous.tasks.every((task, index) => task.id === `T${index + 1}` && task.status === "pending" && (task.attempt ?? 0) === 0 && task.startedAt === undefined && task.note === undefined && task.subject === plan.tasks[index]?.subject.trim());
+    if (plan.approvedAt !== undefined && plan.activation === undefined && !legacy)
       return { ok: false, error: `plan ${plan.planId} is already approved` };
+    if (plan.activation !== undefined && (previous?.planId !== plan.planId || previous.leadSessionId !== sessionId || previous.endedAt !== undefined)) {
+      return { ok: false, error: `activation record for plan ${plan.planId} is missing or ended; stage a new plan to continue` };
+    }
     const staged = plan.members.length + plan.tasks.length;
     if (staged === 0) {
       return { ok: false, error: `plan ${plan.planId} is EMPTY — it has 0 members and 0 tasks, and approving it would create a team with nothing in it; add a member with agent_teams_plan {action:"add_member", member:{name, prompt}} and/or a task with {action:"create_task", task:{subject, description}} first — a task added there must also declare its dependency answer with blocked_by: [...] (possibly []) or independent: true` };
@@ -6413,27 +6435,125 @@ async function approveTeamBody(deps, caller, input) {
     if (input.dryRun === true) {
       return { ok: true, plan, created: { members: plan.members.map((m) => ({ name: m.name, id: "" })), tasks: plan.tasks.map((t) => ({ subject: t.subject, id: "" })) } };
     }
-    const bound = await bindStagedWorkmates(deps, plan, caller.agent, workspace);
+    const frozenBindings = plan.activation?.bindings;
+    const bound = frozenBindings === undefined ? await bindStagedWorkmates(deps, plan, caller.agent, workspace) : {
+      bindings: frozenBindings,
+      members: plan.members.map((member, index) => {
+        const binding = frozenBindings[index];
+        return binding?.workmate === undefined ? member : {
+          ...member,
+          name: binding.member,
+          prompt: joinWorkmatePrompt(workmateHeadOf(deps, binding.workmate), member.prompt)
+        };
+      })
+    };
     if (bound.error !== undefined)
       return { ok: false, error: bound.error };
-    const buildPlan = { ...plan, members: bound.members, tasks: bound.tasks };
-    let record = createTeam(workspace, {
+    if (JSON.stringify(readPlan(workspace, sessionId)) !== JSON.stringify(plan)) {
+      return { ok: false, error: `plan ${plan.planId} changed during activation; read the current plan and retry approve` };
+    }
+    const buildPlan = { members: bound.members, tasks: boundTaskOwners(plan, bound.members) };
+    let record = previous ?? createTeam(workspace, {
       name: plan.name,
       description: plan.description,
       leadSessionId: sessionId,
       planId: plan.planId,
       ...parent === undefined ? {} : { parentTeamId: parent.teamId }
     }, deps.now());
-    for (const member of buildPlan.members) {
-      record = addTeamMember(record, { name: member.name, description: member.description, ...member.role === undefined ? {} : { role: member.role } }, deps.now());
+    if (legacy) {
+      const { approvedAt: _approvedAt, ...unapproved } = record;
+      record = withDerivedPhase({ ...unapproved, tasks: [], nextTaskNumber: 1, nextMemberNumber: 1 });
+      writeTeam(workspace, record);
     }
-    for (const binding of bound.bindings) {
-      record = updateTeamMember(record, binding.member, {
-        workmateMode: binding.mode,
-        ...binding.workmate === undefined ? {} : { workmate: binding.workmate },
-        ...binding.reason === undefined ? {} : { workmateReason: binding.reason }
-      });
+    const activation = { teamId: record.teamId, bindings: bound.bindings };
+    const currentPlan = () => readPlan(workspace, sessionId)?.planId === plan.planId;
+    writePlan(workspace, { ...plan, activation });
+    const created = { members: [], tasks: [] };
+    let stoppedAt;
+    const backend = deps.executor();
+    const worktreeOf = backend.kind === "native" ? memberWorktreeLookup(deps.service, deps.log) : undefined;
+    if (worktreeOf === undefined)
+      deps.log("[mpd-team-core] the " + backend.kind + " executor cannot set cwd — team members spawn in the shared checkout (no per-member worktree)");
+    for (const [index, staged2] of buildPlan.members.entries()) {
+      if (!currentPlan())
+        return { ok: false, error: `plan ${plan.planId} was replaced or discarded during activation` };
+      const priorSeat = record.members.find((member2) => member2.name === staged2.name);
+      if (priorSeat?.executorRef !== undefined && priorSeat.status !== "provisioning") {
+        created.members.push({ name: priorSeat.name, id: priorSeat.executorRef });
+        continue;
+      }
+      if (priorSeat?.executorRef !== undefined) {
+        stoppedAt = `member ${priorSeat.name} has an unconfirmed activation ${priorSeat.executorRef}; end this team before starting a replacement`;
+        break;
+      }
+      const nextMemberNumber = record.nextMemberNumber;
+      if (priorSeat === undefined)
+        record = addTeamMember(record, staged2, deps.now());
+      const member = record.members.find((candidate) => candidate.name === staged2.name);
+      if (member === undefined)
+        continue;
+      const binding = bound.bindings[index];
+      if (binding !== undefined)
+        record = updateTeamMember(record, member.id, {
+          workmateMode: binding.mode,
+          ...binding.workmate === undefined ? {} : { workmate: binding.workmate },
+          ...binding.reason === undefined ? {} : { workmateReason: binding.reason }
+        });
+      writeTeam(workspace, withDerivedPhase(record));
+      let assignment;
+      try {
+        assignment = worktreeOf?.({ exec: { agent: caller.agent, signal: caller.signal }, teamId: record.teamId, member: member.name, ...member.role === undefined ? {} : { role: member.role } });
+        const cwd = assignment?.path;
+        const spawned = await backend.spawn(caller.agent, {
+          teamId: record.teamId,
+          memberId: member.id,
+          name: member.name,
+          description: member.description === "" ? member.name : member.description,
+          prompt: withIdlePreamble(staged2.prompt),
+          ...member.role === undefined ? {} : { role: member.role },
+          ...cwd === undefined ? {} : { cwd },
+          onOpening: (handle) => {
+            const fresh2 = readTeam(workspace, activation.teamId);
+            if (fresh2 === undefined || fresh2.endedAt !== undefined)
+              throw new Error(`team ${activation.teamId} is no longer available`);
+            writeTeam(workspace, updateTeamMember(fresh2, member.id, { executorRef: handle }));
+          },
+          ...caller.signal === undefined ? {} : { signal: caller.signal }
+        });
+        const fresh = readTeam(workspace, record.teamId);
+        if (fresh === undefined || fresh.endedAt !== undefined) {
+          await backend.interrupt(caller.agent, spawned.handle);
+          return { ok: false, error: `team ${record.teamId} is no longer available for activation` };
+        }
+        created.members.push({ name: member.name, id: spawned.handle });
+        record = withDerivedPhase(updateTeamMember({ ...fresh, approvedAt: fresh.approvedAt ?? deps.now().toISOString() }, member.id, { executorRef: spawned.handle, status: "running" }));
+        writeTeam(workspace, record);
+      } catch (error) {
+        const fresh = readTeam(workspace, record.teamId) ?? record;
+        record = withDerivedPhase({ ...removeTeamMember(fresh, member.id), nextMemberNumber });
+        writeTeam(workspace, record);
+        if (assignment?.created === true && deps.releaseWorktree !== undefined) {
+          try {
+            await deps.releaseWorktree(caller.agent, { teamId: record.teamId, member: member.name });
+          } catch (releaseError) {
+            deps.log("[mpd-team-core] the failed-spawn worktree " + record.teamId + "/" + member.name + " could not be released: " + String(releaseError?.message ?? releaseError));
+          }
+        }
+        stoppedAt = `member ${member.name}: ${refusalOf(error)}. Once the cause clears, retry agent_teams_plan {action:"approve"} to continue this plan.`;
+        break;
+      }
     }
+    if (!currentPlan())
+      return { ok: false, error: `plan ${plan.planId} was replaced or discarded during activation` };
+    if (stoppedAt !== undefined) {
+      const { approvedAt: _previousApproval, ...staging } = plan;
+      const paused = { ...staging, ...record.approvedAt === undefined ? {} : { approvedAt: record.approvedAt }, activation: { ...activation, stoppedAt }, created };
+      writePlan(workspace, paused);
+      return { ok: true, plan: paused, team: record, created, bindings: bound.bindings, stoppedAt };
+    }
+    record = readTeam(workspace, record.teamId) ?? record;
+    if (record.endedAt !== undefined)
+      return { ok: false, error: `team ${record.teamId} ended during activation` };
     for (const task of buildPlan.tasks) {
       record = addTeamTask(record, {
         subject: task.subject,
@@ -6464,57 +6584,19 @@ async function approveTeamBody(deps, caller, input) {
         continue;
       record = updateTeamTask(record, minted.id, { blockedBy: mapped }, deps.now());
     }
-    const created = { members: [], tasks: [] };
     const unresolvedBlockers = record.tasks.filter((task) => (task.unresolvedBlockers ?? []).length > 0).map((task) => ({ taskId: task.id, references: [...task.unresolvedBlockers ?? []] }));
     if (unresolvedBlockers.length > 0)
       created.unresolved = unresolvedBlockers;
-    let stoppedAt;
-    const backend = deps.executor();
-    const worktreeOf = backend.kind === "native" ? memberWorktreeLookup(deps.service, deps.log) : undefined;
-    if (worktreeOf === undefined)
-      deps.log("[mpd-team-core] the " + backend.kind + " executor cannot set cwd — team members spawn in the shared checkout (no per-member worktree)");
-    for (const member of record.members) {
-      let assignment;
-      try {
-        assignment = worktreeOf?.({ exec: { agent: caller.agent, signal: caller.signal }, teamId: record.teamId, member: member.name, ...member.role === undefined ? {} : { role: member.role } });
-        const cwd = assignment?.path;
-        const spawned = await backend.spawn(caller.agent, {
-          teamId: record.teamId,
-          memberId: member.id,
-          name: member.name,
-          description: member.description === "" ? member.name : member.description,
-          prompt: withIdlePreamble(buildPlan.members.find((staged2) => staged2.name === member.name)?.prompt ?? member.description),
-          ...member.role === undefined ? {} : { role: member.role },
-          ...cwd === undefined ? {} : { cwd },
-          ...caller.signal === undefined ? {} : { signal: caller.signal }
-        });
-        created.members.push({ name: member.name, id: spawned.handle });
-        record = updateTeamMember(record, member.id, { executorRef: spawned.handle, status: "running" });
-      } catch (error) {
-        record = removeTeamMember(record, member.id);
-        if (assignment?.created === true && deps.releaseWorktree !== undefined) {
-          try {
-            await deps.releaseWorktree(caller.agent, { teamId: record.teamId, member: member.name });
-          } catch (releaseError) {
-            deps.log("[mpd-team-core] the failed-spawn worktree " + record.teamId + "/" + member.name + " could not be released: " + String(releaseError?.message ?? releaseError));
-          }
-        }
-        stoppedAt = `member ${member.name}: ${String(error?.message ?? error)}`;
-        break;
-      }
-    }
-    if (stoppedAt === undefined)
-      for (const task of record.tasks) {
-        created.tasks.push({ subject: task.subject, id: task.id });
-      }
-    const approvedRecord = withDerivedPhase({ ...record, approvedAt: deps.now().toISOString() });
+    for (const task of record.tasks)
+      created.tasks.push({ subject: task.subject, id: task.id });
+    const approvedRecord = withDerivedPhase({ ...record, approvedAt: record.approvedAt ?? deps.now().toISOString() });
     writeTeam(workspace, approvedRecord);
-    const approved = { ...plan, approvedAt: deps.now().toISOString(), created };
+    const { activation: _activation, ...completedPlan } = plan;
+    const approved = { ...completedPlan, approvedAt: approvedRecord.approvedAt, created };
     writePlan(workspace, approved);
-    if (stoppedAt === undefined)
-      archivePlan(workspace, { ...approved });
+    archivePlan(workspace, { ...approved });
     await deps.bundleApprovalEffects(plan, caller);
-    return { ok: true, plan: approved, team: approvedRecord, created, bindings: bound.bindings, ...stoppedAt === undefined ? {} : { stoppedAt } };
+    return { ok: true, plan: approved, team: approvedRecord, created, bindings: bound.bindings };
   } catch (error) {
     return unexpectedRefusalOf(error);
   }
@@ -6650,7 +6732,21 @@ async function runDispatchBody(deps, caller, input) {
           }
           const claimed = casClaimTask(onDisk, pair.taskId, pair.memberName, expected, deps.now());
           if (!claimed.applied) {
-            skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `the board refused the claim: ${claimed.reason}` });
+            const current = onDisk.tasks.find((candidate) => candidate.id === pair.taskId);
+            if (current !== undefined && (current.owner === pair.memberId || current.owner === pair.memberName)) {
+              if (current.status === "claimed" || current.status === "in_progress") {
+                record = onDisk;
+                ledger = assign(ledger, { teamId: opened.teamId, taskId: pair.taskId, memberId: pair.memberId, memberName: pair.memberName }, deps.now());
+                sent.push(pair);
+                continue;
+              }
+              if (current.status === "completed" || current.status === "failed") {
+                record = onDisk;
+                sent.push(pair);
+                continue;
+              }
+            }
+            skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `the message was delivered but the board refused the claim: ${claimed.reason}` });
             continue;
           }
           record = claimed.record;
@@ -6665,10 +6761,15 @@ async function runDispatchBody(deps, caller, input) {
         endDispatchWindow();
       }
     }
-    const fresh = reconcile(readLedger(workspace), opened.teamId, tasks);
+    const latest = readTeam(workspace, opened.teamId) ?? record;
+    const fresh = reconcile(readLedger(workspace), opened.teamId, latest.tasks);
     const merged = { ...fresh.ledger };
-    for (const pair of sent)
-      merged[ledgerKey(opened.teamId, pair.taskId)] = ledger[ledgerKey(opened.teamId, pair.taskId)];
+    for (const pair of sent) {
+      const key = ledgerKey(opened.teamId, pair.taskId);
+      const task = latest.tasks.find((candidate) => candidate.id === pair.taskId);
+      if (task !== undefined && (task.status === "claimed" || task.status === "in_progress") && (task.owner === pair.memberId || task.owner === pair.memberName) && ledger[key] !== undefined)
+        merged[key] = ledger[key];
+    }
     writeLedger(workspace, merged);
     return { ok: true, pairs: sent, skipped, forgotten, ...holdNote === undefined ? {} : { holdRead: holdNote }, ...reaped.length === 0 ? {} : { reaped }, ...reassigned.length === 0 ? {} : { reassigned } };
   } catch (error) {
@@ -7267,7 +7368,10 @@ async function forceWedgedTask(deps, caller, input) {
       next = addTeamTask(next, { subject, description: `${continuation} The original row declared no split-able write scope, so NARROW THE SCOPE FIRST (name the files this row touches) before editing anything.`, writeScopes: [], owner: member.name, blockedBy: [], sourceTaskId: task.id, ...task.coverageOf === undefined ? {} : { coverageOf: task.coverageOf } }, now);
       split.push(next.tasks[next.tasks.length - 1]?.id ?? "");
     }
-    writeTeam(caller.workspace, next);
+    writeTeam(caller.workspace, withDerivedPhase(settleMember(next, handle, now)));
+    const freed = release(readLedger(caller.workspace), record.teamId, task.id);
+    if (freed.released)
+      writeLedger(caller.workspace, freed.ledger);
     if (handoffSource === "supervisor")
       appendContinuationRows(handoff, task.id, attempt, split);
     let mail;
@@ -8791,7 +8895,7 @@ var text2 = (value) => [{ type: "text", text: typeof value === "string" ? value 
 function describePlan(plan) {
   if (plan === undefined)
     return "no staged plan";
-  const state = plan.approvedAt !== undefined ? "approved" : plan.discardedAt !== undefined ? "discarded" : "staged";
+  const state = plan.activation !== undefined ? "activation pending" : plan.approvedAt !== undefined ? "approved" : plan.discardedAt !== undefined ? "discarded" : "staged";
   return `${plan.planId} (${state}): ${plan.members.length} member(s), ${plan.tasks.length} task(s)`;
 }
 function fieldText(value) {
@@ -8813,6 +8917,10 @@ function describeStatus(value) {
   const planId = typeof plan.planId === "string" && plan.planId !== "" ? plan.planId : "(none)";
   const summary = `plan ${planId} · members ${members.length} · tasks ${tasks.length} · hold ${board.hold === null || board.hold === undefined ? "none" : "held"}`;
   const lines = [summary];
+  if (isRecord(board.rosterUnsupported) && typeof board.rosterUnsupported.reason === "string")
+    lines.push(board.rosterUnsupported.reason);
+  if (isRecord(plan.activation) && typeof plan.activation.stoppedAt === "string")
+    lines.push(plan.activation.stoppedAt);
   for (const member of members) {
     const row = member ?? {};
     lines.push(`member id=${fieldText(row.id)} name=${fieldText(row.name)} status=${fieldText(row.status)}`);
@@ -9192,6 +9300,8 @@ function apply(ctx) {
   });
   const stagedPlan = (workspace, sessionId) => {
     const plan = readPlan(workspace, sessionId);
+    if (plan?.activation !== undefined)
+      throw new Error(`plan ${plan.planId} has begun activation; retry approve before changing the team`);
     if (plan !== undefined && plan.approvedAt !== undefined)
       throw new Error(`plan ${plan.planId} is already approved; stage a new one to change the team`);
     return plan;
@@ -9567,6 +9677,7 @@ function apply(ctx) {
           team: { oneOf: [{ type: "object" }, { type: "null" }] },
           summary: { oneOf: [{ type: "object" }, { type: "null" }] },
           members: { type: "array", items: { type: "object" } },
+          rosterUnsupported: { type: "object" },
           tasks: { type: "array", items: { type: "object" } },
           contracts: { type: "array", items: { type: "object" } },
           created: { type: "object" },
@@ -9581,7 +9692,7 @@ function apply(ctx) {
         }
       },
       render: (_args, value) => {
-        const painted = value?.archivedTo !== undefined ? `archived to ${value.archivedTo}` : value?.created !== undefined ? `approved ${value.plan?.planId ?? ""}: ${value.created.members?.length ?? 0} member(s), ${value.created.tasks?.length ?? 0} task(s)` + (value.stoppedAt === undefined ? "" : ` — STOPPED at ${value.stoppedAt}`) + (Array.isArray(value.bindings) && value.bindings.length > 0 ? `
+        const painted = value?.archivedTo !== undefined ? `archived to ${value.archivedTo}` : value?.created !== undefined ? `${value.stoppedAt === undefined ? "approved" : "activation paused for"} ${value.plan?.planId ?? ""}: ${value.created.members?.length ?? 0} member(s), ${value.created.tasks?.length ?? 0} task(s)` + (value.stoppedAt === undefined ? "" : ` — ${value.stoppedAt}`) + (Array.isArray(value.bindings) && value.bindings.length > 0 ? `
 ` + value.bindings.map((binding) => "  " + String(binding.member ?? "?") + " — " + String(binding.mode ?? "?") + (binding.workmate === undefined ? "" : ": " + binding.workmate) + (binding.reason === undefined ? "" : " (" + binding.reason + ")")).join(`
 `) : "") + (Array.isArray(value.created.unresolved) && value.created.unresolved.length > 0 ? ` — WARNING: ${value.created.unresolved.length} task(s) carry blockers that name no task (${value.created.unresolved.map((entry) => `${entry.taskId ?? "?"}:[${(entry.references ?? []).join(",")}]`).join(" ")}); they draw no edge` : "") : value?.members !== undefined ? describeStatus(value) : typeof value?.appended === "string" ? value.appended : Array.isArray(value?.blockers) && value.blockers.length > 0 ? `task "${value.plan?.tasks?.at?.(-1)?.subject ?? ""}" staged${blockerSentence(value.blockers)}` : describeStagedPlan(value?.plan);
         const warning = typeof value?.warning === "string" && value.warning !== "" ? `
@@ -9602,11 +9713,14 @@ WARNING: ${value.warning}` : "";
           }
         };
         const record = recordFor(workspace, sessionId);
+        const officialMembers = record === undefined ? read(() => dsh.teamListMembers(exec.agent), []) : undefined;
+        const rosterUnsupported = officialMembers?.unsupported;
         return {
           plan: readPlan(workspace, sessionId) ?? null,
           hold: readHold(workspace) ?? null,
           team: record ?? null,
-          members: record === undefined ? read(() => dsh.teamListMembers(exec.agent), []) : record.members.filter((member) => member.status !== "failed"),
+          members: record === undefined ? [...officialMembers ?? []] : record.members.filter((member) => member.status !== "failed"),
+          ...rosterUnsupported === undefined ? {} : { rosterUnsupported },
           tasks: record === undefined ? read(() => dsh.teamListTasks(exec.agent), []) : record.tasks,
           summary: record === undefined ? null : losslessSummary(summariseTeam(record)),
           contracts: read(() => listContracts(workspace), [])
@@ -9614,6 +9728,8 @@ WARNING: ${value.warning}` : "";
       }
       if (action === "create") {
         const existing = readPlan(workspace, sessionId);
+        if (existing?.activation !== undefined && args?.replace !== true)
+          throw new Error(`plan ${existing.planId} has begun activation; retry approve or pass replace:true`);
         if (existing?.approvedAt !== undefined && args?.replace !== true) {
           throw new Error(`plan ${existing.planId} is already approved; pass replace:true to stage a different team`);
         }
@@ -9675,6 +9791,12 @@ WARNING: ${value.warning}` : "";
             prompt: withIdlePreamble(input.prompt === "" ? added.description : input.prompt),
             ...added.role === undefined ? {} : { role: added.role },
             ...cwd === undefined ? {} : { cwd },
+            onOpening: (handle) => {
+              const fresh = readTeam(workspace, roster.teamId);
+              if (fresh === undefined || fresh.endedAt !== undefined)
+                throw new Error(`team ${roster.teamId} is no longer available`);
+              writeTeam(workspace, updateTeamMember(fresh, added.id, { executorRef: handle }));
+            },
             ...exec.signal === undefined ? {} : { signal: exec.signal }
           });
           const running = updateTeamMember(readTeam(workspace, roster.teamId) ?? roster, added.id, { executorRef: spawned.handle, status: "running" });
@@ -9756,6 +9878,8 @@ WARNING: ${value.warning}` : "";
           throw new Error('no team is staged in this session — use action:"create" first');
         if (args?.members === undefined && args?.tasks === undefined && args?.description === undefined)
           return { plan };
+        if (plan.activation !== undefined)
+          throw new Error(`plan ${plan.planId} has begun activation; retry approve before changing the team`);
         if (plan.approvedAt !== undefined)
           throw new Error(`plan ${plan.planId} is already approved and cannot be edited`);
         const next = {

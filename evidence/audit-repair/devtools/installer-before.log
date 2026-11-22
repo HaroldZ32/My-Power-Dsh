@@ -1,0 +1,6 @@
+{
+  "installerExit": 0,
+  "pin": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/sg",
+  "versionExit": 1,
+  "versionError": "========================================================================\nWARNING: `sg` is deprecated. Use `ast-grep` instead.\n========================================================================\nError: Os { code: 2, kind: NotFound, message: \"No such file or directory\" }"
+}

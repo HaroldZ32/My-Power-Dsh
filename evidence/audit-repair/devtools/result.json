@@ -1,0 +1,32 @@
+{
+  "scope": "LSP and CodeGraph launchers, CodeGraph initialization test, MCP bootstrap, and project extension discovery and skill catalog",
+  "runtime": { "node": "24.21.0", "bun": "1.4.0", "harnessSkillRegistry": "0.2.2-rc.5", "cclsp": "0.7.0", "typescriptLanguageServer": "4.4.1", "codegraph": "1.5.0" },
+  "before": {
+    "lspLogSteering": { "exit": 1, "observation": "With independent workspace and log cclsp.json files, startup selected the log directory's configuration.", "log": "lsp-before.log" },
+    "lspStaleDiagnostics": { "exit": 1, "observation": "The same open document still reported its original type error after an ordinary disk edit cleared it.", "log": "lsp-stale-before.log" },
+    "codegraphAlias": { "exit": 0, "observation": "A real codegraph_explore without projectPath returned the session index under the alias-only configuration.", "log": "codegraph-wire.log" },
+    "bootstrap": { "installerExit": 0, "publishedBinaryExit": 1, "observation": "The installer published the deprecated sg wrapper instead of the installed ast-grep engine.", "log": "installer-before.log" },
+    "extension": { "exit": 1, "observation": "A missing manifest suppressed a good user skill and a newly created project extension did not advance the cached catalog's revision.", "log": "extensions-before.log" }
+  },
+  "after": {
+    "focused": { "exit": 0, "passed": 144, "failed": 0, "log": "focused.log" },
+    "lsp": { "exit": 0, "passed": 36, "observation": "One MCP session observed a TypeScript error, clean file, and a different TypeScript error. A deterministic push peer checks the stale cache transition and the unchanged twelve-tool MCP list.", "log": "lsp-after.log" },
+    "codegraph": { "exit": 0, "passed": 25, "observation": "Actual default MCP queries used the alias index, and the canonical override still won. The cwd fallback test completed without invoking real indexing.", "log": "codegraph-wire.log" },
+    "extension": { "exit": 0, "passed": 79, "observation": "The real pinned Harness SkillRegistry observed cached user skill, added same-id project skill, then the restored user skill after manifest corruption in one live registry.", "log": "extension-catalog-wire.log" },
+    "bootstrap": { "positiveExit": 0, "negativeExit": 1, "observation": "Fresh npm install completed. An npm-success fixture with a broken platform engine emitted no pin and wrote no activation file.", "log": "installer-after.log" },
+    "commentsAndDocs": { "exit": 0, "logs": ["comments.log", "comments-scoped.log", "docs.log"] },
+    "extensionCli": { "exit": 0, "checks": 53, "log": "extension-cli.log" },
+    "inventories": { "exit": 0, "passed": 4, "failed": 0, "log": "inventories.log" },
+    "qaSelfTests": { "exit": 0, "log": "qa-self-tests.log" },
+    "installerProfileDryRun": { "exit": 0, "log": "install-profile.log" },
+    "rootTypecheck": { "exit": 0, "log": "typecheck.log" },
+    "installerSelfTest": { "exit": 0, "log": "installer-self-test.log" },
+    "derivedDist": { "exit": 0, "fresh": 5, "observation": "All scoped canonical outputs were fresh after the integration seat rebuilt them. The SHA-pinned adopted CodeGraph prebuilt compared unchanged against HEAD.", "log": "dist.log" }
+  },
+  "bounds": [
+    "Behavior was exercised on Linux. Windows/macOS and non-TypeScript production language servers were not exercised.",
+    "LSP adaptation is specific to the verified cclsp 0.7.0 source shape. Other releases or altered layouts launch without the adaptation. Versionless late diagnostic notifications cannot be matched to a document version.",
+    "Extension catalog refresh depends on filesystem watch events and the registration control supported by the host. The router was exercised directly with the real SkillRegistry without a model turn.",
+    "Writer evidence is separate from the independent release verdict. No Git writes were made by this lane."
+  ]
+}

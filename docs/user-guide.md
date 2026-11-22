@@ -273,12 +273,13 @@ spawn (or clear those legacy records), then repeat the mutation. The same gate c
 
 ## 6. Team mode
 
-**The team plane is the mpd RECORD**, not the official plugin: the roster, the board and every task
-live in `.mpd/team/teams/<id>.json`, served as `mpdTeams`. This bundle's rows `mpd-agent-team` /
-`mpd-tool-agent-team` / `mpd-ui-agent-team` provide the teammate **execution** and **UI** surface:
-the official service with its nine model-facing tools, and the Web roster/board panel, and the two
-execution rows are **disabled** in a TUI composition, where the dsh-tui host refuses the team
-service's root-bound projection (see [`design.md`](design.md) for the row inventory). The five
+The **mpd team record** stores the roster, board and tasks in `.mpd/team/teams/<id>.json` and serves
+it through `mpdTeams`. MPD uses its native executor by default. DSH supplies the official team
+service, tools and Web roster/board panel. Starting with 0.2.2-rc.2, the host mounts its own rows.
+On older supported hosts the bundle's guarded `mpd-agent-team`, `mpd-tool-agent-team` and
+`mpd-ui-agent-team` rows resolve experimental packages from the host installation. The guards
+also disable the two legacy execution rows in TUI compositions, where the host refuses the
+service's root-bound projection. See [compatibility §2.1](./compatibility.md). The five
 official authoring verbs: `spawn_teammate`, `team_task_create`, `team_task_list`, `team_task_get`,
 `team_task_update`: are **REFUSED at the tool boundary**, so the plan below is the only door. The
 closure stops at the TOOL boundary: a ROW that calls the team SERVICE directly (the official-executor
@@ -477,17 +478,18 @@ transcript line is claimed. The full list is §10 NOT-CLAIMED of [`tui.md`](tui.
 
 ### 7.2 The `/settings` screen and the `mpd.jsonc` bridge
 
-`/settings` edits the real `mpd.jsonc` knobs: the original 13, one three-leaf row per roster agent
-(the thirty-three `agentRoutes.<Agent>.{provider,model,reasoningEffort}` leaves; each leaf is a
-selection-only field whose options come from the live model catalog, with the declared lists as
-fallback) and the TUI surface's own knob: among them `hashline.maxDiffChars`,
-`commentChecker.autoCheck`, `autoproject.maxRounds`, `memory.vcs`, `team.stateDir` and `boulder.dir`: through
-the harness's OWN form for this row's config entry (`configForms.get("mpd-config")`; the Web GUI card
-uses the same entry). **On the harness this bundle pins, an entry save is persisted by the HOST and
-performs NO `<workspace>/.mpd/mpd.jsonc` write**: the saved override is the top config layer and takes
-effect in-process, and projecting the form's materialised defaults into your file would pollute it. The
-file write-back is the retired settings-NAMESPACE path: `packages/mpd-config-plugin` still implements
-it, but `settingsRegister` is refused on this harness and that path is **dormant**.
+The TUI `/settings` form saves to the host's `mpd-config` entry document. These settings apply across
+all workspaces as top-layer overrides. This includes the TUI model route fields and the routes saved by
+`/mpd-model`. The Web card uses the same entry document for general settings such as `team.stateDir`
+and `boulder.dir`.
+
+To edit a workspace's model routes in **Settings → MPD** on the Web, select one of its live sessions
+first. The card reads the workspace's effective models and saves changes to the agent's provider, model,
+and reasoning effort in `<workspace>/.mpd/mpd.jsonc`. Clearing a field restores its inherited value.
+An unknown session produces a visible error, and an unscoped read on a host with multiple live roots
+asks you to select a session. An active profile-wide override still takes precedence, and a conflicting
+workspace edit reports the overridden field. The older settings namespace write-back is dormant on the
+pinned host.
 
 Two things to know before you rely on it:
 
@@ -528,8 +530,8 @@ strings, the state scopes and the explicit NOT-CLAIMED list, read [`tui.md`](tui
   renders the same record (§7.1). It registers in whichever sidebar host the composition provides
   (below).
 - **Agent Teams** (a different, read-only surface: the harness's own, not the team surface): the
-  official client plugin `@deepseek-ai/dsh-experimental-client-ui-agent-team`, mounted by this
-  bundle's `mpd-ui-agent-team` row, adds an **Agent Teams** action to the conversation header. It
+  official client plugin adds an **Agent Teams** action to the conversation header. The host mounts
+  `ui-agent-team` from DSH 0.2.2-rc.2. The guarded bundle row `mpd-ui-agent-team` handles older hosts. It
   reads the Lead session's `agentTeam` projection from the shared session store: the OFFICIAL
   service's projection, not the mpd record, so updates appear while the panel stays open.
   It lists the roster (durable names and phases: `running`, `inactive`, `provisioning`, `failed`) and
@@ -539,9 +541,8 @@ strings, the state scopes and the explicit NOT-CLAIMED list, read [`tui.md`](tui
   conversation. It is **read-only**: the panel cannot
   spawn, rename, delete or interrupt a teammate and offers no task-mutation control: those belong to
   the tools in §6. Peer messages are not shown; the panel shows roster and tasks only. If the plugin
-  was enabled in an already-open conversation, reload the page once to receive the projection. In a
-  TUI composition the official service rows (`mpd-agent-team`, `mpd-tool-agent-team`) are disabled,
-  so this panel has no TUI counterpart.
+  was enabled in an already-open conversation, reload the page once to receive the projection. The
+  official panel is a Web surface.
 - **Workmates sidebar tab**: the workmate library is contributed as a tab to **DSH-better-sidebar**
   (the community sidebar bundle, an optional peer mounted when it is present), so it lives where that
   sidebar's own pages do: tab strip, `+` menu, and the sidebar's own enable/disable switch. The page
@@ -776,10 +777,9 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # start from a working skele
   `dsh-better-sidebar` is older than `0.28.0` is **outside** the supported peer range
   (`>=0.28.0 <0.29.0`): the row restates 0.28's `["webServer","sessions","connection","tools"]` inject
   list, and the bottom-workbench twins need 0.28's `bottomOnly` descriptor field.
-- The Agent Teams panel is missing from the conversation header → its row is
-  `mpd-ui-agent-team` (`@deepseek-ai/dsh-experimental-client-ui-agent-team`, a declared dependency);
-  reinstall the bundle and reload the page once. It appears only when the session really has a Team
-  projection to show.
+- If the Agent Teams panel is missing from the conversation header, check the host's `ui-agent-team`
+  row (`mpd-ui-agent-team` on older hosts) and reload the page. It needs an official Agent Teams
+  session projection to show.
 - Client surface missing entirely in the GUI → the `mpd-web-compat` self-row must exist and the
   bundle must be reinstalled (`dsh plugin --profile <p> add <repo-or-package>`).
 - `MISSING_CREDENTIAL` → the provider route needs a key in your DSH credentials; keys are never
@@ -1119,7 +1119,7 @@ other people's. The authoritative record, with the full licence texts, is
 
 | What you use | Where it comes from | Licence / version | Recorded in |
 |---|---|---|---|
-| Team mode: the teammate execution plane, `send_message`, `list_agents`, `wait_agent`, `interrupt_agent` and the Web panel | the **official** `@deepseek-ai/dsh-experimental-agent-team` / `-tool-agent-team` / `-client-ui-agent-team` packages, mounted by this bundle's `mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` rows | MIT (harness package set); declared in `package.json` `dependencies` | `cordis.patch.yml`; `README.md` (*What the install mounts*) |
+| The official team service, `send_message`, `list_agents`, `wait_agent`, `interrupt_agent` and Web panel | DSH supplies the packages. Its host layers mount them from 0.2.2-rc.2. The bundle's guarded legacy rows mount the experimental generation on older hosts. | MIT (harness package set) | [Compatibility §2.1](./compatibility.md) |
 | The relocated `schemastery` validator, its `cosmokit` dependency and the DSH framework modules the test suite drives | upstream `schemastery` / `cosmokit` / `cordis` by Shigma, and the `@deepseek-ai/dsh-*` modules from the DeepSeek Harness | MIT: `Copyright (c) 2021-present Shigma` and `Copyright (c) 2026 DeepSeek`, reproduced in full in `packages/mpd-schemastery/LICENSE` | `LICENSE-NOTICES.md` §*schemastery* |
 | The AgentTeams sidebar client bundle | the built browser client of **dsh-agent-teams** (<https://github.com/NanmiCoder/dsh-agent-teams>), embedded verbatim into the shipped `client.js` | MIT; the upstream build carries no copyright line | `LICENSE-NOTICES.md` §*adopted* |
 | The eleven roster persona texts | permissively licensed public agent prompts (one Apache-2.0, the rest MIT); Vision Analyst and Junior Engineer are written here | MIT: this repository's own work | `LICENSE-NOTICES.md` §*Roster persona texts*; `packages/mpd-roles-plugin/personas/ATTRIBUTION.md` |
@@ -1131,7 +1131,7 @@ other people's. The authoritative record, with the full licence texts, is
 | `mpd_comment_check` | **comment-checker** by code-yeongyu (`@code-yeongyu/comment-checker`) | MIT; **not** redistributed: installed on demand into `.toolchain` (`--with-comment-checker`) | `LICENSE-NOTICES.md`; `MPD_DSH_COMMENT_CHECKER_BIN` |
 | The DSH-STD protocol family: `@dsh-std/sdk`, the one DSH-STD **dependency** of this bundle (the adapter is an optional self-install, below) | **dsh-std** (https://github.com/T-Auto/dsh-std): a declared npm dependency, never a vendored body | MIT: `Copyright (c) 2026 DSH Standard contributors`; resolved at install time, not redistributed | `package.json` `dependencies`; `LICENSE-NOTICES.md` |
 | The plugin system, the tool / skill / preset / agent seams, the model providers, the Web shell | DeepSeek Harness: the **`@deepseek-ai/*`** packages | MIT; `Copyright (c) 2026 DeepSeek`; referenced as dependencies only | `LICENSE-NOTICES.md` |
-| The Agent Teams Web panel | the official `@deepseek-ai/dsh-experimental-client-ui-agent-team` client plugin | MIT (harness package set) | §8 above; patch row `mpd-ui-agent-team` |
+| The Agent Teams Web panel | the host's `@deepseek-ai/dsh-client-ui-agent-team` client plugin, named `@deepseek-ai/dsh-experimental-client-ui-agent-team` on older hosts | MIT (harness package set) | §8 above |
 | The Workmates sidebar tab | hosted by the community bundle **`dsh-better-sidebar`**, an **optional peer** of this bundle (+ a `devDependency`): the bundle never installs it, and the guarded `mpd-better-sidebar` row mounts it when it is resolvable | MIT; `Copyright (c) 2026 dsh-external` | §8 above; `package.json` `peerDependencies` / `peerDependenciesMeta`; patch row `mpd-better-sidebar` |
 | The DSH plumbing (adapter, runtime plugins, `mpd` preset, combined web client), the TUI edition, the QA suite, the documentation, the extension interface | written here | MIT | `README.md` (Acknowledgements); `LICENSE.md` |
 

@@ -251,9 +251,9 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
   放弃，其已记录的行被核对（保留的 id 复用、被去掉的工作标记 `cancelled`）——而**更低**的修订号、激活已物化的
   修订号与激活过期切分，仍按既有教学式错误拒绝。返回的 `reused` 列出从 cell 记录或活跃名册解析、而不是新拉起的
   成员名。
-  **崩溃边界：** 进程在激活中途**死亡**时完全没有部分状态。成员仍按名字与活跃名册对账，但看板任务与验证循环
-  只通过已记录的表获知，因此死亡那一趟创建的任务或循环会在重试时**再创建一次**——可检出、不可删除（团队平面
-  没有取消动词）。一次返回失败的残余窗口是一次看板/验证调用加一次 cell 记录写入；一次崩溃的窗口则是整趟激活。
+  **追加中断后的任务恢复。** 激活会在追加任务前记录该修订号的目标看板。新行的描述带有 cell ID、修订号和切分键。
+  重试同一修订号时，会复用匹配的行，并用原始 ID 建立依赖和验证。若重试时看板无法读取或匹配不明确，激活会停止。
+  首次重切分仍可带着未验证警告使用已记录的看板。若验证循环的 ID 尚未记录，循环创建仍有独立的崩溃窗口。
 - **重切分会说明它保留了什么。** 一次修订保留了任务时，`cellwork_activate` 返回 `notice`：多少保留任务复用其看板
   行、它们的冻结合约**不会**被重写（验证者可能正在读的字节保持首次冻结的样子）、扩展作用域需要**手工重新冻结**加
   一个新的验证循环且应落在一个**新的**切分修订里，以及本次激活以**仅声明所有者**的方式派发了多少就绪行。**第 4
@@ -455,10 +455,10 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
 
 ## 它共享的团队平面与 `cellwork_open`（波次 W2）
 
-**`cellwork_open {objective, mandate?}`** 是 autoproject 升级流程使用的程序化入口。它**拒绝**非 captain 的
-调用者、已存在的活动 cell，以及 `mandate` 指向的 `<workspace>/.mpd/autoproject/<runId>/escalation.json`
-不在磁盘上的情况。`/cellwork` 是**同一条**开启路径上的薄处理器，因此命令与工具不可能分叉。工具没有
-`invocation.submit`，所以工具路径**返回**激活指令而不是提交它 —— 这是明确写出的边界，不是隐藏的。
+**`cellwork_open {objective, mandate?}`** 是 autoproject 升级流程使用的程序化入口。必须由 captain 调用。
+传入字符串 `mandate` 时，磁盘上必须有 `<workspace>/.mpd/autoproject/<runId>/escalation.json`。
+同一 captain 用相同目标和 `mandate` 重试时，会得到已有的活动 cell。若另有活动 cell，或该 `mandate` 已被归档的
+cell 使用，调用会被拒绝。宿主无法注入指令时，工具会返回指令供调用者转达。`/cellwork` 通过命令的 turn 接口走同一条开启路径。
 
 **团队级逻辑属于团队平面**，以服务方式访问（无跨包 import）：`cellwork_context` 读
 `mpdTeams.memberContext`；`cellwork_subteam` 读 `mpdTeams.depthBudget`（同一个 `cellwork.depthMax` 上界；
@@ -466,7 +466,7 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
 `mpdTeams` / `mpdTeamActions` 读写团队记录。cell **模式**的引擎（requirements、split、activate、recon、
 budget）留在本包：它们是**写**看板的工作流层。
 
-**磁盘状态不变且向后可读：** `.mpd/cellwork/**` 仍是 version 1（无迁移），保留每 cell 的 journal 与邮件。
+**磁盘状态向后可读。** `.mpd/cellwork/**` 仍是 version 1（无迁移），保留每 cell 的 journal 与邮件。
 一个波次的**冻结契约**存放在看板任务描述里，因此 owner claim 的那一行就带着它被评判的验收文本。
 
 ## consult 工具、强制目标与 CELL 记录（2026-11-05）

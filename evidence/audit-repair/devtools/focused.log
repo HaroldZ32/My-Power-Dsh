@@ -1,0 +1,13 @@
+(pass) an independent log directory cannot select the workspace cclsp configuration [113.48ms]
+(pass) the pinned cclsp diagnostics refresh after ordinary edits without restarting the MCP session [1072.31ms]
+(pass) the bundled TypeScript peer publishes fresh errors after normal file edits [5410.70ms]
+(pass) the adopted CodeGraph server uses the project alias, with the canonical override winning [153.15ms]
+(pass) O-1 apply-time project root > no session and no override falls back to process.cwd() [1.41ms]
+(pass) F1 shipped artifact > the committed dists are the byte-identical products of a canonical build (T-62) [110.43ms]
+(pass) a missing or rejected project manifest cannot shadow a valid user extension [2.05ms]
+(pass) project skill changes invalidate completed catalogs without re-registering providers [23.07ms]
+(pass) the cross-package coupling inventory is exactly the frozen set (independence gate) [129.11ms]
+(pass) no new terminal writes in an MPD runtime path (R5) [124.75ms]
+ 144 pass
+ 0 fail
+Ran 144 tests across 12 files. [9.24s]

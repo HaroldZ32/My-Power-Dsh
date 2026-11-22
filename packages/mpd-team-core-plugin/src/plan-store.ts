@@ -14,6 +14,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { sanitizeId, nextIdSuffix, type TaskKind } from "./team-store"
+import type { TeamWorkmateBinding } from "./team-actions"
 
 /** One member the plan wants. The prompt is what the team executor hands the teammate on approval. */
 export interface StagedMember {
@@ -150,6 +151,15 @@ export interface StagedPlan {
   stagedAt: string
   /** ISO instant approval happened; absent means the plan is still awaiting one. */
   approvedAt?: string
+  /** Frozen seat bindings for an approval that has begun but has not opened its board. */
+  activation?: {
+    /** The team record that owns every child already started by this plan. */
+    teamId: string
+    /** The original binding choices, in staged seat order. */
+    bindings: TeamWorkmateBinding[]
+    /** The last startup refusal and the way to retry it. */
+    stoppedAt?: string
+  }
   /** ISO instant the plan was discarded instead of approved. */
   discardedAt?: string
   /** What approval actually created, so a reader can reconcile plan with reality. */

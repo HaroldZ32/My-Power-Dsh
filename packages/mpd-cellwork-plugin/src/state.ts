@@ -153,6 +153,8 @@ export interface CellState {
   archived: boolean
   /** The user's `/cellwork` argument, verbatim after trimming. */
   objective: string
+  /** The autoproject run that opened this cell, retained on archive for safe retries. */
+  mandateRunId?: string
   /** ISO instant the cell record was created. */
   createdAt: string
   /** ISO instant of the last accepted mutation. */
@@ -1099,6 +1101,7 @@ function normalizeCellState(raw: unknown): CellState | null {
     phase,
     archived: raw.archived === true,
     objective: typeof raw.objective === "string" ? raw.objective : "",
+    ...(typeof raw.mandateRunId === "string" && raw.mandateRunId !== "" ? { mandateRunId: raw.mandateRunId } : {}),
     createdAt: typeof raw.createdAt === "string" ? raw.createdAt : "",
     updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : "",
     captainSessionId,

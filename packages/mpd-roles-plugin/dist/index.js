@@ -3236,7 +3236,7 @@ function createDshAdapter(ctx, config = {}) {
     } catch {}
   };
   bindDshGoBridge();
-  const configAgentRouteResolver = () => {
+  const configAgentRouteResolver = (workspace) => {
     const config2 = service("mpdConfig");
     if (config2 === undefined || config2 === null)
       return;
@@ -3244,7 +3244,7 @@ function createDshAdapter(ctx, config = {}) {
       return;
     return (member) => {
       try {
-        const answer = config2.agentRouteResolutionOf.call(config2, member);
+        const answer = config2.agentRouteResolutionOf.call(config2, member, workspace);
         return answer !== null && typeof answer === "object" && typeof answer.ok === "boolean" ? answer : undefined;
       } catch {
         return;
@@ -3598,7 +3598,7 @@ function createDshAdapter(ctx, config = {}) {
         const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
         let agentOptions = request.agentOptions;
         if (agentOptions === undefined) {
-          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver());
+          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver(workspaceRootOfAgent(caller)));
           if (outcome.status === "routed") {
             const resolved = await resolveRunRoute({ llmCatalog }, outcome.route, outcome.fallbacks);
             agentOptions = resolved.route;
@@ -3614,8 +3614,13 @@ function createDshAdapter(ctx, config = {}) {
           ...agentOptions === undefined ? {} : { agentOptions },
           ...request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }
         };
+        const provider = typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn";
+        const childId = request.onOpening !== undefined && provider === "spawn" && typeof subagents.startActivation === "function" && typeof subagents.prompt === "function" ? randomUUID2() : undefined;
+        if (childId !== undefined)
+          request.onOpening?.(childId);
         const spec = dualShapeActivationSpec({
-          provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
+          provider,
+          ...childId === undefined ? {} : { childId },
           label: `${request.name} · ${request.teamId}`,
           signal: request.signal ?? neverAborted()
         }, activationRequest);
@@ -6438,7 +6443,7 @@ function apply(ctx, config = {}) {
     }
     return [...outcome.applied];
   };
-  const agentRouteResolution = (member) => {
+  const agentRouteResolution = (member, workspace) => {
     const live = (() => {
       try {
         return ctx.get?.(CONFIG_SERVICE, false);
@@ -6447,7 +6452,7 @@ function apply(ctx, config = {}) {
       }
     })();
     if (typeof live?.agentRouteResolutionOf === "function") {
-      const value = live.agentRouteResolutionOf(member);
+      const value = live.agentRouteResolutionOf(member, workspace);
       if (value !== undefined && value !== null && typeof value === "object" && typeof value.ok === "boolean")
         return value;
     }
@@ -6466,9 +6471,10 @@ function apply(ctx, config = {}) {
     throw agentUnconfiguredRefusal(resolution.agent, detail);
   };
   const roleSurface = (exec) => {
+    const workspace = exec === undefined ? undefined : dsh.workspaceRoot(exec);
     const base = ROLES.map((r) => {
       const chain = r.chain.map((c) => ({ ...c }));
-      const resolution = agentRouteResolution(r.name);
+      const resolution = agentRouteResolution(r.name, workspace);
       if (resolution.ok)
         chain.splice(0, chain.length, { provider: resolution.route.provider, model: resolution.route.model });
       else if (resolution.reason !== "unrouted")
@@ -6552,9 +6558,9 @@ function apply(ctx, config = {}) {
   }
   ctx.provide("mpdRoles", {
     adapterIdentity: dshAdapterIdentity(ctx),
-    list: () => roleSurface(undefined).roles.map((r) => ({ id: r.id, name: r.name, description: r.description, readonly: r.readonly, chain: r.chain.map((c) => ({ ...c })), personaFile: r.personaFile, persona: r.persona, extension: r.extension })),
-    get: (key) => {
-      const spec = roleOf(roleSurface(undefined), key);
+    list: (exec) => roleSurface(exec).roles.map((r) => ({ id: r.id, name: r.name, description: r.description, readonly: r.readonly, chain: r.chain.map((c) => ({ ...c })), personaFile: r.personaFile, persona: r.persona, extension: r.extension })),
+    get: (key, exec) => {
+      const spec = roleOf(roleSurface(exec), key);
       return spec === null ? null : { id: spec.id, name: spec.name, description: spec.description, readonly: spec.readonly, chain: spec.chain.map((c) => ({ ...c })), persona: spec.persona, extension: spec.extension };
     }
   });
@@ -6677,7 +6683,7 @@ last activity: ` + v.lastActivity : "")) },
       if (!task)
         throw new Error("mpd_role_spawn: task required");
       const persona = spec.persona;
-      const resolution = agentRouteResolution(spec.name);
+      const resolution = agentRouteResolution(spec.name, dsh.workspaceRoot(exec));
       if (!resolution.ok && resolution.reason !== "unrouted")
         throwAgentUnconfigured(resolution);
       const primary = resolution.ok ? resolution.route : spec.chain[0] === undefined ? undefined : { provider: spec.chain[0].provider, model: spec.chain[0].model };
@@ -6730,7 +6736,7 @@ Work with the tools your role requires (read-only roles must never modify anythi
     const task = String(args?.task ?? "").trim();
     if (!task)
       throw new Error("mpd_role_spawn_async: task required");
-    const resolution = agentRouteResolution(spec.name);
+    const resolution = agentRouteResolution(spec.name, dsh.workspaceRoot(exec));
     if (!resolution.ok && resolution.reason !== "unrouted")
       throwAgentUnconfigured(resolution);
     const primary = resolution.ok ? resolution.route : spec.chain[0] === undefined ? undefined : { provider: spec.chain[0].provider, model: spec.chain[0].model };

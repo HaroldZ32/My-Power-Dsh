@@ -55,7 +55,7 @@ export interface WatchdogIncident {
   /** The team the incident was raised for. */
   teamId: string
   /** How loud the incident is: a WARN, or the ESCALATE that follows one. */
-  kind: "warn" | "escalate"
+  kind: string
   /** Epoch milliseconds the incident was recorded; the reader's watermark is compared against it. */
   at: number
   /** The stall cause and the duration it was measured over. */
@@ -103,7 +103,7 @@ export interface WatchdogActivity {
   /** The team the record belongs to. */
   teamId: string
   /** The record's kind: an incident's warn/escalate, or a bare hold. */
-  kind: "warn" | "escalate" | "hold"
+  kind: string
   /** Epoch milliseconds of the originating event. */
   at: number
   /** The verb the panel renders ("warned" / "escalated"). */
@@ -145,15 +145,17 @@ export interface WatchdogStatePayload {
   /** Whether the watchdog reports anything a reader must act on. */
   stuck: boolean
   /** Every hold sidecar found across the searched roots. */
-  held: WatchdogHold[]
+  held: Array<WatchdogHold & { workspace: string }>
   /** The single banner the panel renders, or null when nothing is unread. */
   banner: WatchdogBanner | null
   /** The newest unread incidents, capped at {@link MAX_ACTIVITY_RECORDS}. */
   activity: WatchdogActivity[]
   /** Ids of every unread incident, newest first. */
   unread: string[]
-  /** The per-reader watermark map, merged across the searched roots. */
+  /** The primary workspace’s per-reader watermarks, for older clients. */
   watermarks: Record<string, number>
+  /** Watermarks by originating workspace and reader. */
+  watermarksByWorkspace: Record<string, Record<string, number>>
   /** Whether this payload is a replay, i.e. whether it carries unread incidents at all. */
   replay: boolean
   /** Per-root read failures, so a panel can say why a workspace is missing. */
@@ -180,6 +182,11 @@ function readJson<T>(path: string): T | undefined {
   }
 }
 
+/** A missing sidecar has no state. Any other filesystem failure needs a diagnostic. */
+function missingSidecar(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT"
+}
+
 /** The watchdog store directory inside one workspace. */
 function watchdogDir(workspace: string, stateDir: string): string {
   return join(workspace, stateDir, "watchdog")
@@ -193,7 +200,8 @@ export function readHolds(workspace: string, stateDir: string): WatchdogHold[] {
   let names: string[]
   try {
     names = readdirSync(dir)
-  } catch {
+  } catch (error) {
+    if (!missingSidecar(error)) throw error
     return []
   }
   /** The sidecars that parsed and carried the two ids the panel keys on. */
@@ -213,7 +221,8 @@ export function readIncidents(workspace: string, stateDir: string): WatchdogInci
   let text: string
   try {
     text = readFileSync(join(watchdogDir(workspace, stateDir), "incidents.jsonl"), "utf8")
-  } catch {
+  } catch (error) {
+    if (!missingSidecar(error)) throw error
     return []
   }
   /** The incidents that parsed, in the log's own append order. */
@@ -276,38 +285,36 @@ export function buildWatchdogState(options: {
   const { roots, stateDir, reader } = options
   /** Per-root read failures, collected so one bad root cannot hide the others. */
   const errors: string[] = []
-  /** The holds merged across every root that carried state. */
-  let held: WatchdogHold[] = []
-  /** The incidents merged across those roots. */
-  let incidents: WatchdogIncident[] = []
-  /** The watermark map merged across those roots; on a key clash the earlier root wins. */
-  let watermarks: Record<string, number> = {}
+  /** Holds tagged with their own root for the banner and any scoped readers. */
+  const held: WatchdogStatePayload["held"] = []
+  /** Unread incidents filtered within their own root before the global ordering. */
+  const unreadIncidents: Array<WatchdogIncident & { workspace: string }> = []
+  /** A watermark only applies inside the workspace that recorded it. */
+  const watermarksByWorkspace: WatchdogStatePayload["watermarksByWorkspace"] = Object.create(null)
   /** The first root that carried any state, or null while none has. */
   let home: string | null = null
 
-  for (const root of roots) {
+  for (const root of new Set(roots)) {
     try {
       /** This root's hold sidecars. */
       const rootHolds = readHolds(root, stateDir)
       /** This root's incidents. */
       const rootIncidents = readIncidents(root, stateDir)
-      /** This root's watermark map. */
+      /** This root's per-reader watermark map. */
       const rootWatermarks = readWatermarks(root, stateDir)
-      if (rootHolds.length > 0 || rootIncidents.length > 0) {
-        held = held.concat(rootHolds)
-        incidents = incidents.concat(rootIncidents)
-        watermarks = { ...rootWatermarks, ...watermarks }
-        if (home === null) home = root
+      watermarksByWorkspace[root] = rootWatermarks
+      if (home === null && (rootHolds.length > 0 || rootIncidents.length > 0)) home = root
+      held.push(...rootHolds.map((hold) => ({ ...hold, workspace: root })))
+      for (const incident of rootIncidents) {
+        if (incident.at > (rootWatermarks[reader] ?? 0)) unreadIncidents.push({ ...incident, workspace: root })
       }
     } catch (error) {
       errors.push(`${root}: ${message(error)}`)
     }
   }
-
-  /** This reader's own watermark; an absent or non-numeric entry reads as 0, i.e. everything is unread. */
-  const watermark = typeof watermarks[reader] === "number" ? watermarks[reader] : 0
-  /** Every incident newer than that watermark, newest first. */
-  const unreadIncidents = incidents.filter((incident) => incident.at > watermark).sort((a, b) => b.at - a.at)
+  unreadIncidents.sort((a, b) => b.at - a.at)
+  /** The primary root retained for clients that display one workspace. */
+  const workspace = home ?? roots[0] ?? null
 
   /** The newest unread incidents, mapped to the panel's record shape and capped at the payload limit. */
   const activity: WatchdogActivity[] = unreadIncidents.slice(0, MAX_ACTIVITY_RECORDS).map((incident) => ({
@@ -315,7 +322,7 @@ export function buildWatchdogState(options: {
     teamId: incident.teamId,
     kind: incident.kind,
     at: incident.at,
-    label: incident.kind === "escalate" ? "escalated" : "warned",
+    label: incident.kind === "escalate" ? "escalated" : incident.kind === "warn" ? "warned" : incident.kind,
     cause: describeCause(incident),
     ms: incident.cause !== null && typeof incident.cause === "object" && typeof incident.cause.ms === "number" ? incident.cause.ms : null,
     taskId: incident.taskId,
@@ -324,27 +331,31 @@ export function buildWatchdogState(options: {
     hold: incident.hold,
     acknowledgedBy: Array.isArray(incident.acknowledgedBy) ? incident.acknowledgedBy : [],
     ackRequired: true,
-    workspace: home ?? roots[0] ?? "",
+    workspace: incident.workspace,
   }))
 
-  /** The most recent hold, used to attach a hold id to an escalation banner. */
-  const newestHold = [...held].sort((a, b) => b.since - a.since)[0]
+  /** Hold sidecars in precedence order for banner selection. */
+  const sortedHolds = [...held].sort((a, b) => b.since - a.since)
+  /** The newest durable hold, displayed when there is no unread incident. */
+  const newestHold = sortedHolds[0]
   /** The newest unread incident, which outranks a hold when both exist. */
   const newestIncident = unreadIncidents[0]
   /** The banner the panel renders, or null when nothing is unread and no hold stands. */
   let banner: WatchdogBanner | null = null
   if (newestIncident !== undefined) {
+    /** A matching hold must come from this incident's own workspace. */
+    const matchingHold = sortedHolds.find((hold) => hold.teamId === newestIncident.teamId && hold.workspace === newestIncident.workspace)
     banner = {
-      kind: newestIncident.kind === "escalate" ? "held" : "warned",
+      kind: newestIncident.kind === "escalate" ? (matchingHold === undefined ? "escalated" : "held") : "warned",
       teamId: newestIncident.teamId,
-      holdId: newestHold !== undefined && newestHold.teamId === newestIncident.teamId ? newestHold.id : null,
+      holdId: matchingHold?.id ?? null,
       incidentId: newestIncident.id,
       cause: describeCause(newestIncident),
       since: newestIncident.at,
       taskId: newestIncident.taskId,
       attemptId: newestIncident.attemptId,
       scene: newestIncident.scene,
-      workspace: home ?? roots[0] ?? "",
+      workspace: newestIncident.workspace,
     }
   } else if (newestHold !== undefined) {
     banner = {
@@ -356,8 +367,8 @@ export function buildWatchdogState(options: {
       since: newestHold.since,
       taskId: newestHold.taskId,
       attemptId: newestHold.attemptId,
-      scene: readScenePointer(home ?? roots[0] ?? "", stateDir, newestHold.teamId),
-      workspace: home ?? roots[0] ?? "",
+      scene: readScenePointer(newestHold.workspace, stateDir, newestHold.teamId),
+      workspace: newestHold.workspace,
     }
   }
 
@@ -367,13 +378,14 @@ export function buildWatchdogState(options: {
     generatedAt: new Date(options.now === undefined ? Date.now() : options.now()).toISOString(),
     stateDir,
     workspaces: [...roots],
-    workspace: home ?? roots[0] ?? null,
+    workspace,
     stuck: held.length > 0 || unreadIncidents.length > 0,
     held,
     banner,
     activity,
     unread: unreadIncidents.map((incident) => incident.id),
-    watermarks,
+    watermarks: workspace === null ? {} : watermarksByWorkspace[workspace] ?? {},
+    watermarksByWorkspace,
     replay: unreadIncidents.length > 0,
     errors,
   }
@@ -421,6 +433,7 @@ export function registerWatchdogRoutes(
   webServer: { register: (route: { kind: string; path: string; handler: (req: unknown, res: unknown) => unknown }) => unknown },
   deps: {
     roots: () => string[]
+    workspaceForSession?: (sessionId: string) => string | undefined
     stateDir: () => string
     effect: (fn: () => unknown, label: string) => unknown
   },
@@ -452,19 +465,16 @@ export function registerWatchdogRoutes(
       return {}
     }
   }
-  /** The reader named by the request's `reader` query parameter, or the caller's fallback. */
-  const readerOf = (req: unknown, fallback: string): string => {
-    /** The request URL, or "" when the request carries none. */
+  /** The route query; the server has already matched the path. */
+  const queryOf = (req: unknown): URLSearchParams => {
+    /** The request URL, or an empty string for simple hosts. */
     const url = String((req as { url?: unknown }).url ?? "")
     /** Offset of the query string, or -1 when the request has none. */
     const at = url.indexOf("?")
-    if (at < 0) return fallback
-    /** The parsed query string, which is where the explicit reader override lives. */
-    const query = new URLSearchParams(url.slice(at + 1))
-    /** The raw `reader` value, or null when the parameter is absent. */
-    const value = query.get("reader")
-    return value !== null && value.trim() !== "" ? value.trim() : fallback
+    return new URLSearchParams(at < 0 ? "" : url.slice(at + 1))
   }
+  /** Reader key from the query, defaulting to this front door. */
+  const readerOf = (req: unknown): string => queryOf(req).get("reader")?.trim() || WATCHDOG_WEB_READER
 
   /** Whether the read-only state route was registered. */
   let state = false
@@ -476,12 +486,24 @@ export function registerWatchdogRoutes(
       path: WATCHDOG_STATE_PATH,
       handler: (req: unknown, res: unknown) => {
         try {
+          /** The workbench requests one conversation; the sidebar requests all live roots. */
+          const sessionId = queryOf(req).get("sessionId")?.trim()
+          /** The workspace this session actually owns, if the registry knows it. */
+          const sessionRoot = sessionId ? deps.workspaceForSession?.(sessionId) : undefined
+          if (sessionId && sessionRoot === undefined) {
+            json(res, 404, { ok: false, error: "The watchdog workspace for this session is unavailable" })
+            return
+          }
           /** The payload for the reader this request names, over the roots resolved right now. */
           const payload = buildWatchdogState({
-            roots: deps.roots(),
+            roots: sessionRoot === undefined ? deps.roots() : [sessionRoot],
             stateDir: deps.stateDir(),
-            reader: readerOf(req, WATCHDOG_WEB_READER),
+            reader: readerOf(req),
           })
+          if (payload.errors.length > 0 && payload.errors.length === payload.workspaces.length) {
+            json(res, 500, { ok: false, error: "The watchdog store could not be read", errors: payload.errors })
+            return
+          }
           json(res, 200, payload)
         } catch (error) {
           json(res, 500, { ok: false, error: `mpd-team-watchdog: internal error (${message(error)})` })
@@ -494,20 +516,34 @@ export function registerWatchdogRoutes(
       path: WATCHDOG_ACK_PATH,
       handler: async (req: unknown, res: unknown) => {
         try {
+          /** Real HTTP requests must select the mutation verb explicitly. */
+          const method = (req as { method?: unknown }).method
+          if (method !== undefined && method !== "POST") {
+            json(res, 405, { ok: false, error: "Acknowledging a watchdog incident requires POST" })
+            return
+          }
           /** The POST body, when the caller sent one. */
           const body = await readBody(req)
           /** The reader to advance: the body's own field first, then the query parameter, then the web key. */
-          const reader = typeof body.reader === "string" && body.reader.trim() !== "" ? body.reader.trim() : readerOf(req, WATCHDOG_WEB_READER)
+          const reader = typeof body.reader === "string" && body.reader.trim() !== "" ? body.reader.trim() : readerOf(req)
           /** The roots to look for incidents under, resolved per request. */
           const roots = deps.roots()
           /** The state directory those roots are read with, resolved per request. */
           const stateDir = deps.stateDir()
-          /** The explicit incident timestamp the caller acknowledged, when it sent one. */
-          const requested = typeof body.incidentTs === "number" ? body.incidentTs : undefined
-          /** The watermark to store: the explicit timestamp, else the newest incident found anywhere. */
-          const upTo = requested ?? Math.max(0, ...roots.flatMap((root) => readIncidents(root, stateDir).map((incident) => incident.at)))
-          /** The workspace whose watermark file is rewritten: the body's own field, else the first root. */
-          const target = typeof body.workspace === "string" && body.workspace !== "" ? String(body.workspace) : roots[0] ?? ""
+          /** A workspace must be a live root. Only a single-root host can infer an omitted workspace. */
+          const target = body.workspace === undefined && roots.length === 1 ? roots[0] : body.workspace
+          if (typeof target !== "string" || target === "" || !roots.includes(target)) {
+            json(res, 400, { ok: false, error: "Select a watchdog incident in a known workspace" })
+            return
+          }
+          /** The old client used `upTo`; accept it for unambiguous, older callers. */
+          const requested = body.incidentTs ?? body.upTo
+          if (requested !== undefined && (typeof requested !== "number" || !Number.isSafeInteger(requested) || requested < 0)) {
+            json(res, 400, { ok: false, error: "The incident timestamp is invalid" })
+            return
+          }
+          /** An omitted timestamp acknowledges this workspace's current log only. */
+          const upTo = requested ?? readIncidents(target, stateDir).reduce((latest, incident) => Math.max(latest, incident.at), 0)
           /** What the merge did, echoed back so a client can show the before/after pair. */
           const result = acknowledge({ workspace: target, stateDir, reader, upTo })
           json(res, result.ok ? 200 : 500, result)

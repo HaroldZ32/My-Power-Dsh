@@ -20,7 +20,8 @@
 //   bun skills/dsh-qa/scripts/team-watchdog-notify.ts --self-test
 //   bun skills/dsh-qa/scripts/team-watchdog-notify.ts --surface web|tui|both [--out <dir>]
 // Evidence -> evidence/team-watchdog/lanes/<timestamp>-notify-<surface>/{result.json,output.log,raw/}
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { mkdirSync, writeFileSync } from "node:fs"
+import { Readable } from "node:stream"
 import { join } from "node:path"
 import { pathToFileURL } from "node:url"
 import {
@@ -28,6 +29,10 @@ import {
 } from "./lib/watchdog-lane.ts"
 import type { LaneCheck, LaneResult, LaneVerdict, MountedWatchdog, StdoutCapture } from "./lib/watchdog-lane.ts"
 import { exitOnRefusal, refuseOverwrite } from "./lib/immutable-output.ts"
+import type { ElementNode, TreeNode } from "../../../packages/mpd-bundle-plugin/test/client-harness.ts"
+import { createTuiAdapter, TUI_SEAMS } from "../../../packages/mpd-tui-adapter-plugin/src/index.ts"
+import type { PluginContextLike, TuiDialogsLike } from "../../../packages/mpd-tui-adapter-plugin/src/index.ts"
+import { createDialogs } from "../../../packages/mpd-tui-plugin/src/dialogs.ts"
 
 /** The lane slug, which prefixes every printed line and names the evidence directory. */
 const SLUG = "team-watchdog-notify"
@@ -37,11 +42,21 @@ const TEAM = "notify-probe"
 const T1 = 1_789_400_000_000
 /** A second timestamp one minute later, used for the incidents appended mid-run. */
 const T2 = T1 + 60_000
+/** A fresh incident after both readers clear their displayed streams. */
+const T3 = T2 + 60_000
+/** The sibling's Web watermark hides its seed, while any cross-root TUI write moves its lower watermark. */
+const NEIGHBOR_WATERMARK = { "web-panel": T2, "mpd-tui": 17 } as const
+/** The actual Web client polls the state path with the route's default reader. */
+const WEB_STATE = "/plugins/mpd-team-watchdog/state"
+/** The acknowledgement POST registered by the watchdog bundle. */
+const WEB_ACK = "/plugins/mpd-team-watchdog/ack"
 
 /** The banner half of the web payload (mirrors `WatchdogBanner`; only the incident id is asserted). */
 interface WebBanner {
   /** The incident the banner names, `null` when the banner reports a bare hold. */
   incidentId: string | null
+  /** The banner marker the shipped view prints immediately after its intro. */
+  kind: string
 }
 
 /** One activity record of the web payload (mirrors `WatchdogActivity`). */
@@ -50,6 +65,8 @@ interface WebActivity {
   id: string
   /** Whether this reader still owes an acknowledge for it. */
   ackRequired: boolean
+  /** The incident’s root as served over the aggregate route. */
+  workspace: string
 }
 
 /** The web state payload the REAL route returns; every field is optional because the lane only reads what it asserts. */
@@ -74,11 +91,9 @@ interface WebArmObservation {
   incidentId: string
   /** How many of the panel's own fetches hit the state route with no user action. */
   fetchedWithoutUserAction: number
-  /** The top banner's stuck marker as the RENDERED panel carries it. */
-  renderedStuck: unknown
-  /** The top child's `data-watchdog-banner` attribute value. */
+  /** The rendered `data-watchdog-banner` immediately after the panel introduction. */
   topChildAttr: unknown
-  /** Whether the panel's FIRST rendered child is the banner. */
+  /** Whether the real banner is above the activity list. */
   topChildIsBanner: boolean
   /** How many activity records the rendered body carries. */
   recordCount: number
@@ -94,8 +109,14 @@ interface WebArmObservation {
   recordsAfterAck: number
   /** Whether the replay really stopped after the acknowledge. */
   replayStoppedAfterAck: boolean
-  /** Whether a SECOND unacknowledged incident replays again on the next start. */
+  /** Whether a fresh incident returns to the rendered replay. */
   newIncidentReplays: boolean
+  /** Workspace and stamp carried by the selected Web row, compared with the mounted route. */
+  selectedWorkspaceAndTime: boolean
+  /** Both reader keys in the other workspace, unchanged by the Web acknowledgement. */
+  neighborWatermark: Record<string, number>
+  /** The incident ids still rendered after the user acknowledges the previously displayed row. */
+  replayAfterOldAck: unknown[]
 }
 
 /** The TUI arm's observed facts. */
@@ -130,6 +151,10 @@ interface TuiArmObservation {
   newIncidentNotice: string | undefined
   /** Whether the built TUI bytes carry the notice prefix, the reader key and the acknowledge option. */
   builtBytesWired: boolean
+  /** The sibling’s reader keys after switching workspace while the replay dialog was open. */
+  neighborWatermark: Record<string, number>
+  /** The incident timestamps the target still had unread after the older selection. */
+  remainingAfterOldAck: number[]
 }
 
 /** The lane's whole observation: both front doors' facts plus the store's own fingerprints. */
@@ -153,253 +178,12 @@ interface NotifyObservation {
 /** One route handler, as the REAL bundle module registers it. */
 type RouteHandler = (req: unknown, res: unknown) => unknown
 
-/** The route module's consumed surface (`packages/mpd-bundle-plugin/src/watchdog-web.ts`). */
-interface WebRouteModule {
-  /**
-   * @param options The roots, the state dir and the reader the payload is built for.
-   * @returns The state payload the panel consumes.
-   */
-  buildWatchdogState(options: { roots: string[]; stateDir: string; reader: string }): WebPayload
-  /**
-   * @param webServer The host's route registrar.
-   * @param deps The roots, state-dir and effect seams the routes are registered through.
-   * @returns Which of the two routes registered.
-   */
-  registerWatchdogRoutes(
-    webServer: { register: (route: { kind: string; path: string; handler: RouteHandler }) => unknown },
-    deps: { roots: () => string[]; stateDir: () => string; effect: (fn: () => unknown) => unknown },
-  ): { state: boolean; ack: boolean }
-}
-
-/** The minimal HTTP response double the REAL route handlers write into. */
-interface FakeResponse {
-  /** The status the handler wrote, 0 until it writes one. */
-  status: number
-  /** The body the handler wrote, "" until it writes one. */
-  body: string
-  /** @param status The HTTP status code the handler passes. */
-  writeHead(status: number): void
-  /** @param text The body text the handler passes. */
-  end(text: string): void
-}
-
-/** The minimal HTTP request double: a URL plus the async-iterable body the route reads. */
-interface FakeRequest {
-  /** The request URL the handler parses its reader key from. */
-  readonly url: string
-  /** The request body as the async iterable the route's `for await` consumes. */
-  [Symbol.asyncIterator](): AsyncGenerator<string>
-}
-
-/** One registered sidebar tab, as the harness records it. */
-interface TabDescriptor {
-  /** The tab's registration id, which the panel is looked up by. */
-  readonly id: string
-  /**
-   * @param props The props the host hands the panel component.
-   * @returns The rendered element record.
-   */
-  component(props: PanelProps): RenderedNode
-}
-
-/** The props the host hands the team page component. */
-interface PanelProps {
-  /** The harness context the page's effects resolve their services from. */
-  ctx: unknown
-  /** The session scope the tab was registered for. */
-  scope: { sessionId: string }
-  /** The tab descriptor the host handed the component. */
-  tab: Record<string, unknown>
-  /** Whether the panel is currently visible. */
-  visible: boolean
-}
-
-/** One element record the hook runtime renders (only `type` and `props` are read here). */
-interface RenderedNode {
-  /** The component the element record points at. */
-  type: (props: PanelProps) => RenderedNode
-  /** The element's props, which every assertion reads through. */
-  props: Record<string, unknown>
-}
-
-/** Everything the harness records about the client's own calls. */
-interface HarnessCalls {
-  /** Every sidebar tab the client registered, in order. */
-  readonly registerTab: TabDescriptor[]
-  /** Every fetch the client made through the harness. */
-  readonly fetched: { readonly url: string; readonly method: string }[]
-}
-
-/** The offline harness over the built client, as this lane drives it. */
-interface BundleHarness {
-  /** The minimal cordis-like context the client factory is applied to. */
-  readonly ctx: unknown
-  /**
-   * @param name The module name the client requires.
-   * @returns The module the harness resolved for it.
-   */
-  require(name: string): unknown
-  /** The canned fetch the drive installs over the global for the client's lifetime. */
-  readonly fetchImpl: typeof globalThis.fetch
-  /** Everything the client did through the harness. */
-  readonly calls: HarnessCalls
-  /** The hook runtime the panel component is rendered with. */
-  readonly hooks: {
-    /**
-     * @param Component The component to render.
-     * @param props The props it is rendered with.
-     * @returns The settled element tree.
-     */
-    render(Component: (props: PanelProps) => RenderedNode, props: PanelProps): Promise<RenderedNode>
-  }
-  /**
-   * Publish the sidebar service the way its own fiber does, after apply.
-   * @returns Whether the service was published.
-   */
-  provideSidebar(): boolean
-}
-
-/** The offline hook harness module (`packages/mpd-bundle-plugin/test/client-harness.ts`). */
-interface WebHarnessModule {
-  /**
-   * @param options The bundle-client factories and the canned fetch responses.
-   * @returns The harness over that client.
-   */
-  createHarness(options: { factories: unknown; requestResponses: Record<string, unknown> }): BundleHarness
-  /**
-   * @returns The built client's registration factories.
-   */
-  loadBundleClient(): { factories: unknown }
-}
-
-/** The bundle-client module the harness requires for the sidebar plugin itself. */
-interface MpdClientModule {
-  /**
-   * @param ctx The context the client plugin is applied to.
-   */
-  apply(ctx: unknown): void
-}
-
-/** The bundle-client module the harness requires for the team page. */
+/** The minimal Web page test seam that permits an explicit read and real effect cleanup. */
 interface TeamPageModule {
-  /** Re-poll the watchdog state the way the page's own poll does. */
-  __watchdogPoll(): Promise<void>
-  /** Reset the page's module-level state, so the next render starts clean. */
+  /** Re-poll the watchdog state through the browser's fetch path. */
+  __watchdogPoll(): Promise<WebPayload | null>
+  /** Reset polling and listeners when the test exits. */
   __resetTeamPageForTests(): void
-}
-
-/** One incident record of the TUI view (only the timestamp is read here). */
-interface TuiIncidentRecord {
-  /** The incident's timestamp (epoch ms), which the acknowledge advances the watermark to. */
-  readonly at: number
-}
-
-/** The durable state one TUI read observes. */
-interface TuiWatchdogView {
-  /** Team ids currently held by the watchdog. */
-  readonly holds: readonly string[]
-  /** Incidents this reader has not acknowledged yet. */
-  readonly unread: readonly TuiIncidentRecord[]
-}
-
-/** The replay dialog request the TUI module builds. */
-interface TuiWatchdogDialog {
-  /** The dialog's title, carrying the notice text. */
-  readonly title: string
-  /** The choices the dialog offers. */
-  readonly options: readonly { readonly id: string; readonly label: string }[]
-}
-
-/** The front-door facade the TUI module returns. */
-interface TuiWatchdogFrontDoor {
-  /**
-   * @param upTo The incident timestamp to advance this reader's watermark to.
-   * @returns Whether the acknowledge landed, and the watermark it reached.
-   */
-  acknowledge(upTo: number): { ok: boolean; watermark: number; error?: string }
-}
-
-/** The ctx slice the REAL front door reads (the stub context supplies exactly these five members). */
-interface TuiFrontDoorContext {
-  /** Soft service probe. */
-  get: (name: string, strict?: boolean) => unknown
-  /** Fiber-owned cleanup registration. */
-  effect: (fn: () => unknown) => unknown
-  /** Event subscription (unused by the front door, carried for shape fidelity). */
-  on: (event: string, handler: (...args: unknown[]) => unknown) => unknown
-  /** Deferred service resolution — the seam the front door's own `onService` drives. */
-  inject: (dependencies: readonly string[], callback: (scoped: unknown) => void) => unknown
-  /** The host logger. */
-  logger: { warn(message: string): void; info(message: string): void; error(message: string): void; debug(message: string): void }
-}
-
-/** The diagnostics sink the front door writes through. */
-interface TuiLog {
-  /** Record a warning. */
-  warn(message: string): void
-  /** Record an informational line. */
-  info(message: string): void
-  /** Record a failure. */
-  error(message: string): void
-  /** Record a wiring detail. */
-  debug(message: string): void
-}
-
-/** The dialog stand-in this lane hands the front door (the automatic replay is off, so it is unreached). */
-interface TuiDialogStandIn {
-  /** The choice the real dialog seam would return. */
-  open: () => Promise<string>
-}
-
-/** The options this lane hands the REAL front door. */
-interface TuiFrontDoorOptions {
-  /** The workspace the front door reads its store from. */
-  workspaceRoot: () => string
-  /** The dialog stand-in. */
-  dialogs: TuiDialogStandIn
-  /** Keep the once-only automatic replay OFF for this drive. */
-  replayOnAttach: boolean
-  /** Counts the acknowledges the REAL service reported as landed. */
-  onAcknowledged: () => void
-}
-
-/** The TUI module's consumed surface (`packages/mpd-tui-plugin/src/watchdog.ts`). */
-interface TuiWatchdogModule {
-  /** The reader key this front door owns. */
-  readonly WATCHDOG_READER: string
-  /** The prefix every notice starts with (asserted against the built bytes). */
-  readonly WATCHDOG_NOTICE_PREFIX: string
-  /** The dialog option id that acknowledges (asserted against the built bytes). */
-  readonly ACKNOWLEDGE_OPTION: string
-  /**
-   * @param service The `mpdWatchdog` service, or `undefined` when the row is absent.
-   * @param reader The reader key whose watermark decides "unread".
-   * @param workspace The workspace to read.
-   * @returns The durable view, all-empty when the service is absent or failing.
-   */
-  readWatchdogView(service: unknown, reader: string, workspace: string): TuiWatchdogView
-  /**
-   * @param view The view to describe.
-   * @returns The status-line notice, or `undefined` when there is nothing to say.
-   */
-  watchdogNotice(view: TuiWatchdogView): string | undefined
-  /**
-   * @param view The view the dialog is built for.
-   * @returns The replay dialog request.
-   */
-  watchdogDialog(view: TuiWatchdogView): TuiWatchdogDialog
-  /**
-   * @param notices The notice providers the status line composes, in call order.
-   * @returns The composed status line, or `undefined` when none has anything to say.
-   */
-  composeNotices(...notices: readonly (string | undefined)[]): string | undefined
-  /**
-   * @param ctx The plugin context the front door resolves its seams from.
-   * @param log The diagnostics sink.
-   * @param options The workspace resolver, the dialog stand-in and the post-ack hook.
-   * @returns The front-door facade.
-   */
-  attachWatchdogFrontDoor(ctx: TuiFrontDoorContext, log: TuiLog, options: TuiFrontDoorOptions): TuiWatchdogFrontDoor
 }
 
 /** The notify lane's result document, as `writeEvidence` and `finish` consume it. */
@@ -441,13 +225,17 @@ export function evaluate(observed: NotifyObservation): LaneVerdict {
     add("W2", Array.isArray(web.payload?.activity) && web.payload.activity.length === 1 && web.payload.activity[0].ackRequired === true,
       "ONE activity record rides the payload the panel consumes (" + JSON.stringify(web.payload?.activity?.length) + ")")
     add("W3", web.fetchedWithoutUserAction >= 1, "the panel's FIRST poll fetches the route with no user action (" + String(web.fetchedWithoutUserAction) + " fetch(es))")
-    add("W4", web.topChildIsBanner === true, "the RENDERED panel's first child is the banner (stuck=" + JSON.stringify(web.renderedStuck) + ", topChild=" + JSON.stringify(web.topChildAttr) + ")")
+    add("W4", web.topChildIsBanner === true, "the rendered banner follows the panel introduction and precedes activity (banner=" + JSON.stringify(web.topChildAttr) + ")")
     add("W5", web.recordCount === 1 && web.recordId === web.incidentId, "the rendered body carries exactly one record for that incident (" + JSON.stringify(web.recordCount) + ")")
     add("W6", web.ackAdvanced === true && web.watermarkAfter?.["web-panel"] === T1 && web.watermarkAfter?.["mpd-tui"] === 0,
       "the web acknowledge advanced ONLY its own reader key (web-panel → " + JSON.stringify(web.watermarkAfter?.["web-panel"]) + ", the TUI reader untouched at " + JSON.stringify(web.watermarkAfter?.["mpd-tui"]) + ")")
     add("W7", web.replayStoppedAfterAck === true && web.recordsAfterAck === 0,
       "after the acknowledge the web replay stops (replay=" + JSON.stringify(web.replayAfterAck) + ", records=" + JSON.stringify(web.recordsAfterAck) + ")")
-    add("W8", web.newIncidentReplays === true, "a SECOND unacknowledged incident replays on the next start (permanent re-display by design)")
+    add("W8", web.newIncidentReplays === true, "a fresh incident reappears in the rendered replay")
+    add("W9", web.selectedWorkspaceAndTime && web.neighborWatermark["web-panel"] === NEIGHBOR_WATERMARK["web-panel"] && web.neighborWatermark["mpd-tui"] === NEIGHBOR_WATERMARK["mpd-tui"],
+      "the rendered acknowledge targets its incident workspace and timestamp; the sibling watermark is unchanged (" + JSON.stringify(web.neighborWatermark) + ")")
+    add("W10", web.replayAfterOldAck.length === 1 && web.replayAfterOldAck[0] === "inc-2",
+      "a newer incident remains on screen after acknowledging the older selection (" + JSON.stringify(web.replayAfterOldAck) + ")")
   }
 
   if (observed.tui !== undefined) {
@@ -461,11 +249,15 @@ export function evaluate(observed: NotifyObservation): LaneVerdict {
     add("T4", tui.dialogOptionIds?.includes("acknowledge") === true, "the replay dialog offers the acknowledge action (" + JSON.stringify(tui.dialogOptionIds) + ")")
     add("T5", tui.ackAdvanced === true && tui.watermarkAfter?.[tui.readerKey] === tui.ackUpTo && tui.watermarkAfter?.["web-panel"] === 0,
       "the TUI acknowledge advanced the mpd-tui watermark through the REAL service up to " + JSON.stringify(tui.ackUpTo) + ", leaving the web reader's key untouched (" + JSON.stringify(tui.watermarkAfter) + ")")
-    add("T6", tui.unreadAfter === 0 && (tui.noticeAfter === undefined || !String(tui.noticeAfter).includes("unread")),
+    add("T6", tui.unreadAfter === 0 && tui.noticeAfter !== undefined && tui.noticeAfter.includes(TEAM) && !tui.noticeAfter.includes("unread"),
       "after acknowledging the whole replay the TUI reads NOTHING unread and its notice no longer replays incidents — it still shows the DURABLE hold, which is current state, not a replay (unread=" + JSON.stringify(tui.unreadAfter) + ", notice=" + JSON.stringify(tui.noticeAfter) + ")")
     add("T7", tui.builtBytesWired === true, "the BUILT TUI bytes carry the notice prefix, the reader key and the acknowledge option")
     add("T8", tui.newIncidentNotice !== undefined && String(tui.newIncidentNotice).includes("unread"),
-      "a SECOND unacknowledged incident shows again on the next start (permanent re-display by design): " + JSON.stringify(tui.newIncidentNotice))
+      "a fresh incident reaches the TUI notice: " + JSON.stringify(tui.newIncidentNotice))
+    add("T9", tui.neighborWatermark["mpd-tui"] === NEIGHBOR_WATERMARK["mpd-tui"] && tui.neighborWatermark["web-panel"] === NEIGHBOR_WATERMARK["web-panel"],
+      "switching the active workspace while the dialog is open leaves the sibling watermark unchanged (" + JSON.stringify(tui.neighborWatermark) + ")")
+    add("T10", tui.remainingAfterOldAck.length === 1 && tui.remainingAfterOldAck[0] === T2,
+      "a late incident stays unread after the earlier replay is acknowledged (" + JSON.stringify(tui.remainingAfterOldAck) + ")")
   }
 
   add("N1", (observed.watermarkBeforeSha !== observed.watermarkAfterSha) === true, "the watermark file's BYTES changed across the acknowledges (" + String(observed.watermarkBeforeSha).slice(0, 12) + " → " + String(observed.watermarkAfterSha).slice(0, 12) + ")")
@@ -500,207 +292,214 @@ function appendIncident(ws: string, record: Record<string, unknown>): void {
   writeFileSync(storePaths(ws).incidents, JSON.stringify(record) + "\n", { flag: "a" })
 }
 
-// ─────────────────────────────── web arm ───────────────────────────────
-/**
- * Drive the REAL route handlers and the REAL built client over the seeded store.
- * @param ws Absolute path of the sandbox workspace.
- * @param dir The lane's evidence directory (unused by this arm, kept for call symmetry).
- * @returns The web arm's observed facts.
- */
-async function runWebArm(ws: string, dir: string): Promise<WebArmObservation> {
-  // The REAL route module, loaded by absolute path (a runtime path TS cannot resolve), so the
-  // cast below names the two entries this arm consumes.
-  // `PATHS.*` are BARE PATHS (`join(REPO, …)` in `./lib/watchdog-lane.ts`), so each one is handed to
-  // the loader as a FILE URL (win32 defect, MEASURED 2026-10-12): node's ESM loader parses an absolute
-  // Windows path's drive letter as a URL scheme and throws
-  // `ERR_UNSUPPORTED_ESM_URL_SCHEME … Received protocol 'c:'`, which made this lane unable to run there.
-  const { buildWatchdogState, registerWatchdogRoutes } = await import(pathToFileURL(PATHS.webRoute).href) as WebRouteModule
-  // The route table the registrar fills: path -> handler.
+/** Read the exact persisted reader keys after an action returns. */
+function readWatermark(workspace: string): Record<string, number> {
+  return JSON.parse(read(storePaths(workspace).watermark)) as Record<string, number>
+}
+
+/** Append a warning without changing the hold or the reader watermark. */
+function appendWarning(workspace: string, id: string, at: number): void {
+  appendIncident(workspace, { id, teamId: TEAM, kind: "warn", at, cause: { kind: "silence", ms: 90000 }, taskId: "t10", attemptId: "att-2", scene: null, hold: "not-requested", acknowledgedBy: [] })
+}
+
+/** Walk real client elements and return the rows matching a stable rendered marker. */
+function elementsWith(tree: TreeNode, attr: string): ElementNode[] {
+  if (Array.isArray(tree)) return tree.flatMap((child) => elementsWith(child, attr))
+  if (typeof tree !== "object" || tree === null) return []
+  return [...(tree.props[attr] === undefined ? [] : [tree]), ...elementsWith(tree.props.children, attr)]
+}
+
+/** Run the preserved Web bundle and its real route registrations against two sandbox stores. */
+async function runWebArm(ws: string, neighbor: string): Promise<WebArmObservation> {
+  /** The source routes the host bundles, loaded via a file URL for Windows. */
+  const { registerWatchdogRoutes } = await import(pathToFileURL(PATHS.webRoute).href) as typeof import("../../../packages/mpd-bundle-plugin/src/watchdog-web.ts")
+  /** The route table filled by the plugin's actual registration. */
   const routes = new Map<string, RouteHandler>()
-  // Which of the two routes registered (kept for the record; both are exercised below).
+  /** The sibling is first so a first-root fallback would land in the wrong store. */
   const registered = registerWatchdogRoutes(
     { register: (route) => { routes.set(route.path, route.handler); return () => {} } },
-    { roots: () => [ws], stateDir: () => join(".mpd", "team"), effect: (fn) => fn() },
+    { roots: () => [neighbor, ws], stateDir: () => join(".mpd", "team"), effect: (fn) => fn() },
   )
-  // The minimal HTTP response double the REAL handlers write into.
-  const fakeRes = (): FakeResponse => ({
-    status: 0,
-    body: "",
-    /** @param status The HTTP status code the handler passes. */
-    writeHead(status: number): void { this.status = status },
-    /** @param text The body text the handler passes. */
-    end(text: string): void { this.body = text },
-  })
-  // The minimal HTTP request double: the body is the async iterable the acknowledge reads.
-  const fakeReq = (url: string, body?: unknown): FakeRequest => ({
-    url,
-    /** Yields the JSON body once when the caller passed one, which is all the routes' for-await reads. */
-    async *[Symbol.asyncIterator](): AsyncGenerator<string> { if (body !== undefined) yield JSON.stringify(body) },
-  })
-  // The state route's URL, carrying this arm's reader key.
-  const stateUrl = "/plugins/mpd-team-watchdog/state?reader=web-panel"
-  // The acknowledge route's URL.
-  const ackUrl = "/plugins/mpd-team-watchdog/ack"
-  // The response the state handler writes into.
-  const stateRes = fakeRes()
-  // The state handler was registered above, so the lookup cannot come back empty.
-  routes.get("/plugins/mpd-team-watchdog/state")!(fakeReq(stateUrl), stateRes)
-  // The payload the REAL route produced for the panel's first poll: its own JSON body, which only
-  // a cast can name (the handler answers with text).
-  const payload = JSON.parse(stateRes.body) as WebPayload
-  say(SLUG, "web: state route status=" + stateRes.status + " banner=" + JSON.stringify(payload.banner?.incidentId) + " replay=" + JSON.stringify(payload.replay))
-
-  // The REAL built client, served by the payload the route just produced.
-  // The offline hook harness module, loaded like the route; the cast names its two entries.
-  const { createHarness, loadBundleClient } = await import(pathToFileURL(PATHS.webHarness).href) as WebHarnessModule
-  // The built client's registration factories.
-  const { factories } = loadBundleClient()
-  // The canned responses the harness serves: the state route answers with the payload just produced.
-  const responses: Record<string, unknown> = { [stateUrl]: payload }
-  // The offline harness over the built client, with the canned fetch above.
-  const harness = createHarness({ factories, requestResponses: responses })
-  // The platform fetch the drive replaces for the client's lifetime.
-  const savedFetch = globalThis.fetch
-  globalThis.fetch = harness.fetchImpl
-  harness.provideSidebar()
-  // The client's own plugin surface: the harness resolves required modules as `unknown`, so the
-  // cast names the one method this arm calls.
-  const mpd = harness.require("@mpd-dsh/mpd") as MpdClientModule
-  // The page module, resolved the same way, whose test hooks re-poll the state and reset the panel.
-  const page = harness.require("@mpd-dsh/team-page") as TeamPageModule
-  mpd.apply(harness.ctx)
-  // The tab the client registered for the team panel; `apply` above registers it, so it is present.
-  const tab = harness.calls.registerTab.find((descriptor) => descriptor.id === "mpd-agent-teams")!
-  // The props the host hands the panel component.
-  const props: PanelProps = { ctx: harness.ctx, scope: { sessionId: "s1" }, tab: {}, visible: true }
-  // The panel element the tab's component returns for those props.
-  const element = tab.component(props)
-  // The panel's first settled render, which must carry the banner and one record.
-  const first = await harness.hooks.render(element.type, props)
-  // The children of one rendered node, nullish entries dropped; the cast states that the hook
-  // runtime builds every child as an element record, which is all this arm reads.
-  const children = (tree: RenderedNode): RenderedNode[] => (Array.isArray(tree.props.children) ? tree.props.children.filter((child) => child !== null && child !== undefined) : [tree.props.children]) as RenderedNode[]
-  /**
-   * @param node The node to inspect.
-   * @param attr The attribute name to match.
-   * @param out The accumulator the matches are pushed into.
-   * @returns Every node carrying that attribute, in traversal order.
-   */
-  const findByAttr = (node: RenderedNode, attr: string, out: RenderedNode[] = []): RenderedNode[] => {
-    if (node === null || typeof node !== "object") return out
-    if (node.props && node.props[attr] !== undefined) out.push(node)
-    for (const child of children(node)) findByAttr(child, attr, out)
-    return out
+  if (!registered.state || !registered.ack) throw new Error("The watchdog Web routes did not mount")
+  /** Client fetches and exact acknowledgement JSON, captured before dispatch to the real handlers. */
+  const requests: string[] = []
+  /** Each click's posted address and the route receipt's resulting timestamp. */
+  const receipts: Array<{ workspace: unknown; incidentTs: unknown; after: unknown; status: number }> = []
+  /** Replace the browser's transport only, passing its actual body and HTTP method to the routes. */
+  const request = async (url: string, init?: RequestInit): Promise<Response> => {
+    requests.push(url)
+    /** The registered handler, identified by the request path. */
+    const handler = routes.get(url.split("?")[0] ?? "")
+    if (handler === undefined) return new Response(null, { status: 404 })
+    /** The browser's actual POST payload, or an empty body for state reads. */
+    const raw = typeof init?.body === "string" ? init.body : ""
+    /** A Node request stream, like the installed route server provides. */
+    const req = Object.assign(Readable.from(raw === "" ? [] : [raw]), { method: init?.method ?? "GET", url })
+    /** HTTP code from the route. */
+    let status = 0
+    /** Response bytes produced by the route. */
+    let body = ""
+    await handler(req, { writeHead: (value: number): void => { status = value }, end: (value: string): void => { body = value } })
+    if (url === WEB_ACK && raw !== "") {
+      /** Read back the body that actually reached the server and the receipt the server produced. */
+      const sent = JSON.parse(raw) as Record<string, unknown>
+      /** The acknowledgement route's JSON receipt. */
+      const result = JSON.parse(body) as Record<string, unknown>
+      receipts.push({ workspace: sent.workspace, incidentTs: sent.incidentTs, after: result.after, status })
+    }
+    return new Response(body, { status })
   }
-  // The panel's first rendered child, which must be the banner.
-  const topChild = children(first)[0]
-  // Every rendered activity record.
-  const records = findByAttr(first, "data-watchdog-activity")
-  // How many of the panel's own fetches hit the state route with no user action.
-  const fetchedWithoutUserAction = harness.calls.fetched.filter((entry) => entry.url === stateUrl).length
-
-  // The watermark file as it stood before the acknowledge.
-  const wmBefore = read(storePaths(ws).watermark)
-  // The response the acknowledge handler writes into.
-  const ackRes = fakeRes()
-  // The acknowledge handler was registered above, so the lookup cannot come back empty.
-  await routes.get(ackUrl)!(fakeReq(ackUrl, { reader: "web-panel", incidentTs: T1, workspace: ws }), ackRes)
-  // The watermark document right after the web acknowledge: a JSON file, which only a cast can type.
-  const wmAfterWeb = JSON.parse(read(storePaths(ws).watermark)) as Record<string, number>
-  // The payload the state route produces once the acknowledge landed (again its JSON body).
-  const afterAck = JSON.parse((() => {
-    // The response the second state read writes into; the handler was registered above.
-    const res = fakeRes(); routes.get("/plugins/mpd-team-watchdog/state")!(fakeReq(stateUrl), res); return res.body
-  })()) as WebPayload
-  responses[stateUrl] = afterAck
-  await page.__watchdogPoll()
-  // The panel's tree after the re-poll, whose record count must be zero.
-  const second = await harness.hooks.render(element.type, props)
-  // How many activity records the re-polled panel renders.
-  const recordsAfterAck = findByAttr(second, "data-watchdog-activity").length
-  appendIncident(ws, { id: "inc-2", teamId: TEAM, kind: "warn", at: T2, cause: { kind: "silence", ms: 90000 }, taskId: "t10", attemptId: "att-2", scene: null, hold: "not-requested", acknowledgedBy: [] })
-  // The payload built straight from the store for the SECOND incident; the REAL payload always
-  // carries `unread`, which is the single field the non-null assertion below relies on.
-  const newPayload = buildWatchdogState({ roots: [ws], stateDir: join(".mpd", "team"), reader: "web-panel" })
-  globalThis.fetch = savedFetch
-  page.__resetTeamPageForTests()
-  return {
-    payload, incidentId: "inc-1", fetchedWithoutUserAction,
-    renderedStuck: first.props["data-watchdog-stuck"], topChildAttr: topChild.props["data-watchdog-banner"],
-    topChildIsBanner: topChild.props["data-watchdog-banner"] === "incident",
-    recordCount: records.length, recordId: records[0]?.props["data-watchdog-activity"],
-    ackAdvanced: ackRes.status === 200 && JSON.parse(ackRes.body).after === T1,
-    watermarkAfter: wmAfterWeb, replayAfterAck: afterAck.replay, recordsAfterAck,
-    replayStoppedAfterAck: afterAck.replay === false && recordsAfterAck === 0,
-    newIncidentReplays: newPayload.unread!.length === 1 && newPayload.banner?.incidentId === "inc-2",
+  /** The bundle client loader executes the committed factory for this proof. */
+  const { loadMpdClient } = await import(pathToFileURL(PATHS.webHarness).href) as typeof import("../../../packages/mpd-bundle-plugin/test/client-harness.ts")
+  /** The loaded client with the real watchdog module factory. */
+  const client = loadMpdClient()
+  /** The page's lifecycle seam for refresh and cleanup in the offline host. */
+  const page = client.require("@mpd-dsh/team-page") as TeamPageModule
+  globalThis.fetch = ((url, init) => request(String(url), init)) as typeof fetch
+  try {
+    client.exports.apply(client.ctx)
+    client.provideSidebar()
+    /** The public descriptor accepted by the host's tab registration. */
+    const tab = client.calls.registerTab.find((candidate) => candidate.id === "mpd-agent-teams")
+    if (tab === undefined) throw new Error("The watchdog sidebar tab did not mount")
+    /** The mounted entry's component and its registered props. */
+    const element = tab.component({})
+    /** The first frame comes from the client's automatic poll, before any manual read or click. */
+    const first = await client.hooks.render(element.type as Function, element.props)
+    /** Initial page-originated polls to the state route. */
+    const fetchedWithoutUserAction = requests.filter((url) => url === WEB_STATE).length
+    /** Record the actual mounted route payload after the first automatic read. */
+    const payload = await (await request(WEB_STATE)).json() as WebPayload
+    /** The rendered banner and initial incident rows. */
+    const topChildAttr = Array.isArray(first.props.children) ? elementsWith(first.props.children[1], "data-watchdog-banner")[0]?.props["data-watchdog-banner"] : undefined
+    /** The initial frame must contain exactly the incident selected below. */
+    const records = elementsWith(first, "data-watchdog-activity")
+    /** The action the registered client rendered for a matching incident. */
+    const ack = async (frame: ElementNode, id: string): Promise<ElementNode> => {
+      /** Find the actual on-click handler wired by the deployed factory. */
+      const click = elementsWith(frame, "data-watchdog-ack").find((row) => row.props["data-watchdog-ack"] === id)?.props.onClick
+      if (typeof click !== "function") throw new Error("The rendered acknowledge control is missing for " + id)
+      click()
+      // The hook harness returns the frame drawn before its awaited effects settle.
+      await client.hooks.act(element.type as Function, element.props)
+      return client.hooks.render(element.type as Function, element.props)
+    }
+    // The first click is from a stale frame. The other, newer incident is already on disk.
+    appendWarning(ws, "inc-2", T2)
+    /** The post-click frame after acknowledging the older row. */
+    const afterOld = await ack(first, "inc-1")
+    /** The on-disk result must be T1 even though T2 was available. */
+    const watermarkAfter = readWatermark(ws)
+    /** Inspect the second root before the later acknowledgement. */
+    const neighborWatermark = readWatermark(neighbor)
+    /** The remaining visible activity from the newly read route state. */
+    const replayAfterOldAck = elementsWith(afterOld, "data-watchdog-activity").map((row) => row.props["data-watchdog-activity"])
+    /** The specific traffic the click produced, with the route's own acknowledgement receipt. */
+    const oldReceipt = receipts[0]
+    /** The second explicit acknowledgement should clear the remainder of the replay. */
+    const afterAll = await ack(afterOld, "inc-2")
+    /** Fresh read of the route after both acknowledgements. */
+    const afterAck = await (await request(WEB_STATE)).json() as WebPayload
+    /** The actual frame after the last replay entry was acknowledged. */
+    const recordsAfterAck = elementsWith(afterAll, "data-watchdog-activity").length
+    appendWarning(ws, "inc-3", T3)
+    /** Explicit re-read following the same transport as the background poll. */
+    const latest = await page.__watchdogPoll()
+    /** The new incident must appear in the client as well as the payload. */
+    const third = await client.hooks.act(element.type as Function, element.props)
+    say(SLUG, "web: rendered and clicked first incident; watermark=" + String(watermarkAfter["web-panel"]) + " remaining=" + JSON.stringify(replayAfterOldAck))
+    return {
+      payload, incidentId: "inc-1", fetchedWithoutUserAction, topChildAttr,
+      topChildIsBanner: topChildAttr !== undefined && topChildAttr === payload.banner?.kind,
+      recordCount: records.length, recordId: records[0]?.props["data-watchdog-activity"],
+      ackAdvanced: oldReceipt?.status === 200 && oldReceipt.after === T1,
+      watermarkAfter, replayAfterAck: afterAck.replay, recordsAfterAck,
+      replayStoppedAfterAck: afterAck.replay === false && recordsAfterAck === 0 && receipts[1]?.after === T2,
+      newIncidentReplays: latest?.unread?.length === 1 && latest.banner?.incidentId === "inc-3" && elementsWith(third, "data-watchdog-activity")[0]?.props["data-watchdog-activity"] === "inc-3",
+      selectedWorkspaceAndTime: oldReceipt?.workspace === ws && oldReceipt.incidentTs === T1 && payload.activity?.[0]?.workspace === ws,
+      neighborWatermark, replayAfterOldAck,
+    }
+  } finally {
+    page.__resetTeamPageForTests()
+    client.hooks.runCleanups()
+    client.restore()
   }
 }
 
-// ─────────────────────────────── TUI arm ───────────────────────────────
-/**
- * Drive the REAL TUI module over the mounted `mpdWatchdog` service.
- * @param ws Absolute path of the sandbox workspace.
- * @param dir The lane's evidence directory (unused by this arm, kept for call symmetry).
- * @param mounted The mounted watchdog harness whose service this arm reads.
- * @returns The TUI arm's observed facts.
- */
-async function runTuiArm(ws: string, dir: string, mounted: MountedWatchdog): Promise<TuiArmObservation> {
-  // The REAL TUI module, loaded by absolute path (a runtime path TS cannot resolve), so the
-  // cast below names the consumed surface.
-  const tui = await import(pathToFileURL(PATHS.tuiWatchdog).href) as TuiWatchdogModule
-  // The `mpdWatchdog` service the mounted row published.
-  const service = mounted.services.get("mpdWatchdog")
-  // The reader key this front door owns.
+/** Drive the TUI's real adapter, dialog facade and mounted watchdog service across two roots. */
+async function runTuiArm(ws: string, neighbor: string, mounted: MountedWatchdog): Promise<TuiArmObservation> {
+  /** Load the current watchdog front door rather than a clone of its rendering rules. */
+  const tui = await import(pathToFileURL(PATHS.tuiWatchdog).href) as typeof import("../../../packages/mpd-tui-plugin/src/watchdog.ts")
+  /** The store service supplied by the watchdog mount. */
+  const service = mounted.services.get("mpdWatchdog") as Parameters<typeof tui.readWatchdogView>[0]
+  /** The reader whose watermark these actions can change. */
   const reader = tui.WATCHDOG_READER
-  // The durable view before the acknowledge.
-  const viewBefore = tui.readWatchdogView(service, reader, ws)
-  // The status-line notice composed before the acknowledge.
-  const noticeBefore = tui.watchdogNotice(viewBefore)
-  // The replay dialog the front door would offer before the acknowledge.
-  const dialogBefore = tui.watchdogDialog(viewBefore)
-  // The bridge's own notice, which the README's status line composes beside the watchdog's.
+  /** Before opening the dialog, only the seed incident is visible. */
+  const before = tui.readWatchdogView(service, reader, ws)
+  /** The rendered notice and the status line containing it. */
+  const noticeBefore = tui.watchdogNotice(before)
+  /** The bridge message already on the status line. */
   const bridgeNotice = "saved to settings"
-  // The status line the TUI renders, with both notices composed.
+  /** The status line holding both notices. */
   const composedLine = tui.composeNotices(bridgeNotice, noticeBefore)
-  say(SLUG, "tui: reader=" + reader + " unread=" + viewBefore.unread.length + " notice=" + JSON.stringify(noticeBefore))
-
-  // How many times the post-acknowledge hook ran.
-  let acknowledged = 0
-  // The REAL front door, attached over the stub context, the stub logger and a dialog stand-in.
-  const frontDoor = tui.attachWatchdogFrontDoor(
-    { get: mounted.ctx.get, effect: mounted.ctx.effect, on: mounted.ctx.on, inject: mounted.ctx.inject, logger: mounted.ctx.logger },
-    { warn: () => {}, info: () => {}, error: () => {}, debug: () => {} },
-    { workspaceRoot: () => ws, dialogs: { open: async () => "acknowledge" }, replayOnAttach: false, onAcknowledged: () => { acknowledged += 1 } },
-  )
-  // The newest unread incident timestamp, i.e. the watermark the acknowledge advances to.
-  const ackUpTo = viewBefore.unread.reduce((max, record) => Math.max(max, record.at ?? 0), 0)
-  // What the REAL service reported for that acknowledge.
-  const ackResult = frontDoor.acknowledge(ackUpTo)
-  // The watermark document read back after the acknowledge: a JSON file, which only a cast can type.
-  const wmAfter = JSON.parse(read(storePaths(ws).watermark)) as Record<string, number>
-  // The durable view after the acknowledge: nothing should be unread any more.
-  const viewAfter = tui.readWatchdogView(service, reader, ws)
-  appendIncident(ws, { id: "inc-3", teamId: TEAM, kind: "warn", at: T2 + 1000, cause: { kind: "silence", ms: 90000 }, taskId: "t11", attemptId: "att-3", scene: null, hold: "not-requested", acknowledgedBy: [] })
-  // The durable view once a SECOND unacknowledged incident exists.
-  const viewNext = tui.readWatchdogView(service, reader, ws)
-  // The built TUI dist's bytes, which the wiring assertion reads.
+  /** Select a different active workspace while the dialog is waiting for the user. */
+  let active = ws
+  /** The option ids presented in the real dialog invocation. */
+  let dialogOptionIds: string[] = []
+  /** Only the selected dialog has the late append and workspace switch. */
+  const dialog: TuiDialogsLike = {
+    select: async (request) => {
+      dialogOptionIds = request.options.map((option) => option.id)
+      appendWarning(ws, "inc-2", T2)
+      active = neighbor
+      return tui.ACKNOWLEDGE_OPTION
+    },
+    confirm: async (): Promise<undefined> => undefined,
+    input: async (): Promise<undefined> => undefined,
+  }
+  mounted.ctx.provide(TUI_SEAMS.dialogs, dialog)
+  /** Bind the real adapter and watchdog row to the same host fixture. */
+  const ctx: PluginContextLike = {
+    ...mounted.ctx,
+    inject: (deps: readonly string[], bind: (scoped: PluginContextLike) => void): (() => void) => mounted.ctx.inject(deps, () => { bind(ctx) }),
+  }
+  /** The adapter used by both real TUI front-door components. */
+  const adapter = createTuiAdapter(ctx)
+  /** The facade that opens the real dialog seam and records if the post-ack hook ran. */
+  let acknowledgedHook = 0
+  /** Automatic replay is disabled so the test opens exactly one dialog. */
+  const frontDoor = tui.attachWatchdogFrontDoor(ctx, adapter, mounted.ctx.logger, {
+    workspaceRoot: () => active,
+    dialogs: createDialogs(adapter, mounted.ctx.logger),
+    replayOnAttach: false,
+    onAcknowledged: () => { acknowledgedHook += 1 },
+  })
+  /** The real UI offered its choices and the host selected Acknowledge. */
+  const selected = await frontDoor.offer()
+  /** Capture both stores before the second acknowledgement. */
+  const watermarkAfter = readWatermark(ws)
+  /** The workspace selected only after the original dialog was shown. */
+  const neighborWatermark = readWatermark(neighbor)
+  /** Only the newly appended incident should still be unread at the original root. */
+  const remainingAfterOldAck = frontDoor.view(ws).unread.map((incident) => incident.at)
+  /** Acknowledge the newer incident explicitly in the same workspace. */
+  const settled = frontDoor.acknowledge(T2, ws)
+  /** The final read confirms replay cleared while the hold remains. */
+  const after = frontDoor.view(ws)
+  appendWarning(ws, "inc-3", T3)
+  /** The new notice after a third arrival. */
+  const newIncidentNotice = tui.watchdogNotice(frontDoor.view(ws))
+  /** Keep the existing built-artifact check in addition to the mount and behavior assertions. */
   const dist = read(PATHS.tuiDist)
+  say(SLUG, "tui: replay dialog selected " + String(selected) + "; watermark=" + String(watermarkAfter[reader]) + " remaining=" + JSON.stringify(remainingAfterOldAck))
   return {
-    readerKey: reader,
-    unreadBefore: viewBefore.unread.length,
-    noticeBefore,
-    dialogOptionIds: (dialogBefore.options ?? []).map((option) => option.id),
-    composedLine,
-    bridgeNotice,
-    ackUpTo,
-    ackAdvanced: ackResult?.ok === true && ackResult.watermark === ackUpTo,
-    acknowledgedHook: acknowledged,
-    watermarkAfter: wmAfter,
-    unreadAfter: viewAfter.unread.length,
-    noticeAfter: tui.watchdogNotice(viewAfter),
-    dialogAfter: viewAfter.unread.length > 0 ? tui.watchdogDialog(viewAfter) : undefined,
-    newIncidentNotice: tui.watchdogNotice(viewNext),
+    readerKey: reader, unreadBefore: before.unread.length, noticeBefore, dialogOptionIds, composedLine, bridgeNotice,
+    ackUpTo: T1, ackAdvanced: selected === tui.ACKNOWLEDGE_OPTION && acknowledgedHook === 2 && settled.ok && settled.watermark === T2,
+    acknowledgedHook, watermarkAfter, unreadAfter: after.unread.length, noticeAfter: tui.watchdogNotice(after),
+    dialogAfter: after.unread.length > 0 ? tui.watchdogDialog(after) : undefined,
+    newIncidentNotice,
     builtBytesWired: dist.includes(tui.WATCHDOG_NOTICE_PREFIX) && dist.includes(reader) && dist.includes(tui.ACKNOWLEDGE_OPTION),
+    neighborWatermark, remainingAfterOldAck,
   }
 }
 
@@ -725,7 +524,11 @@ async function run(argv: readonly string[]): Promise<NotifyResult> {
   }
   // The sandbox workspace under that directory (DSH_HOME alone does not isolate workspace state).
   const ws = sandboxWorkspace(dir, "notify")
+  /** The first registered workspace has unrelated reader state. */
+  const neighbor = sandboxWorkspace(dir, "neighbor")
   seedStore(ws)
+  seedStore(neighbor)
+  writeFileSync(storePaths(neighbor).watermark, JSON.stringify(NEIGHBOR_WATERMARK) + "\n")
   // The lane's shared plumbing, imported lazily like the harness modules.
   const { mountRealWatchdog } = await import("./lib/watchdog-lane.ts")
   // The REAL watchdog dist mounted over the stub context, with the row's own thresholds.
@@ -740,11 +543,20 @@ async function run(argv: readonly string[]): Promise<NotifyResult> {
   const observed: NotifyObservation = { fallbackStated: "Without an acknowledge the replay is PERMANENT RE-DISPLAY BY DESIGN (the payload's `replay` flag and the on-screen line say so).", watermarkBeforeSha: sha256(watermarkBeforeText) }
   if (surface === "web" || surface === "both") {
     seedStore(ws) // each arm starts from the SAME seeded store (both readers present, neither acked)
-    observed.web = await runWebArm(ws, dir)
+    observed.web = await runWebArm(ws, neighbor)
   }
   if (surface === "tui" || surface === "both") {
     seedStore(ws)
-    observed.tui = await runTuiArm(ws, dir, mounted)
+    // Pin the language of the notice assertions without writing a host preference file.
+    /** The previously chosen TUI locale for this process. */
+    const previous = process.env.DSH_TUI_LANG
+    process.env.DSH_TUI_LANG = "en"
+    try {
+      observed.tui = await runTuiArm(ws, neighbor, mounted)
+    } finally {
+      if (previous === undefined) delete process.env.DSH_TUI_LANG
+      else process.env.DSH_TUI_LANG = previous
+    }
   }
   observed.watermarkAfterSha = sha256(read(storePaths(ws).watermark))
   observed.watermarkBeforeText = watermarkBeforeText
@@ -782,32 +594,38 @@ if (argv.includes("--self-test")) {
     watermarkBeforeSha: "aaa", watermarkAfterSha: "bbb",
     fallbackStated: "Without an acknowledge the replay is PERMANENT RE-DISPLAY BY DESIGN (stated).",
     web: {
-      payload: { banner: { incidentId: "inc-1" }, stuck: true, replay: true, activity: [{ id: "inc-1", ackRequired: true }] },
-      incidentId: "inc-1", fetchedWithoutUserAction: 1, renderedStuck: "1", topChildAttr: "incident", topChildIsBanner: true,
+      payload: { banner: { incidentId: "inc-1", kind: "held" }, stuck: true, replay: true, activity: [{ id: "inc-1", ackRequired: true, workspace: "/fixture" }] },
+      incidentId: "inc-1", fetchedWithoutUserAction: 1, topChildAttr: "held", topChildIsBanner: true,
       recordCount: 1, recordId: "inc-1", ackAdvanced: true, watermarkAfter: { "web-panel": T1, "mpd-tui": 0 }, replayAfterAck: false, recordsAfterAck: 0,
       replayStoppedAfterAck: true, newIncidentReplays: true,
+      selectedWorkspaceAndTime: true, neighborWatermark: { ...NEIGHBOR_WATERMARK }, replayAfterOldAck: ["inc-2"],
     },
     tui: {
       readerKey: "mpd-tui", unreadBefore: 1, noticeBefore: "watchdog: team notify-probe is held",
       dialogOptionIds: ["acknowledge", "dismiss"], composedLine: "saved to settings · watchdog: team notify-probe is held",
       bridgeNotice: "saved to settings", ackAdvanced: true, ackUpTo: T1, watermarkAfter: { "mpd-tui": T1, "web-panel": 0 }, unreadAfter: 0, noticeAfter: "watchdog: held notify-probe",
       dialogAfter: undefined, builtBytesWired: true, newIncidentNotice: "watchdog: held notify-probe · 1 unread incident",
+      neighborWatermark: { ...NEIGHBOR_WATERMARK }, remainingAfterOldAck: [T2],
     },
   }
   // Every negative control mutates the HEALTHY fixture, which carries BOTH arms, so the non-null
   // assertions below cannot fire: they only spell that invariant for the checker.
   selfTest(SLUG, evaluate, healthy, [
     ["web-record-missing", (copy: NotifyObservation): void => { copy.web!.payload.activity = [] }, "a payload with no activity record"],
-    ["web-not-top", (copy: NotifyObservation): void => { copy.web!.topChildIsBanner = false }, "a banner that is not the panel's first child"],
+    ["web-not-top", (copy: NotifyObservation): void => { copy.web!.topChildIsBanner = false }, "a banner outside its expected rendered position"],
     ["web-no-first-poll", (copy: NotifyObservation): void => { copy.web!.fetchedWithoutUserAction = 0 }, "a replay that needed a user action"],
     ["web-ack-other-reader", (copy: NotifyObservation): void => { copy.web!.watermarkAfter["mpd-tui"] = T1 }, "an acknowledge that clobbered the OTHER reader's key"],
     ["web-replay-continues", (copy: NotifyObservation): void => { copy.web!.replayAfterAck = true; copy.web!.recordsAfterAck = 1 }, "a replay that survived the acknowledge"],
+    ["web-wrong-workspace", (copy: NotifyObservation): void => { copy.web!.selectedWorkspaceAndTime = false }, "an acknowledgement with the wrong workspace or selected timestamp"],
+    ["web-late-lost", (copy: NotifyObservation): void => { copy.web!.replayAfterOldAck = [] }, "a late incident hidden by an older Web acknowledgement"],
     ["tui-reader", (copy: NotifyObservation): void => { copy.tui!.readerKey = "web-panel" }, "a TUI front door using the web reader key"],
     ["tui-dialog", (copy: NotifyObservation): void => { copy.tui!.dialogOptionIds = ["dismiss"] }, "a dialog with no acknowledge action"],
     ["tui-compose", (copy: NotifyObservation): void => { copy.tui!.composedLine = "" }, "a notice that never reaches the status line"],
     ["tui-ack", (copy: NotifyObservation): void => { copy.tui!.watermarkAfter["mpd-tui"] = 0 }, "a TUI acknowledge that did not advance its watermark"],
     ["tui-ack-other", (copy: NotifyObservation): void => { copy.tui!.watermarkAfter["web-panel"] = copy.tui!.ackUpTo }, "a TUI acknowledge that clobbered the web reader's key"],
     ["tui-replay-continues", (copy: NotifyObservation): void => { copy.tui!.unreadAfter = 1 }, "a TUI replay that survived the acknowledge"],
+    ["tui-wrong-workspace", (copy: NotifyObservation): void => { copy.tui!.neighborWatermark["mpd-tui"] = T3 }, "a dialog that wrote into the workspace selected after it opened"],
+    ["tui-late-lost", (copy: NotifyObservation): void => { copy.tui!.remainingAfterOldAck = [] }, "a late incident hidden by an older TUI acknowledgement"],
     ["bytes", (copy: NotifyObservation): void => { copy.tui!.builtBytesWired = false }, "built TUI bytes with no notice/dialog wiring"],
     ["bytes-unchanged", (copy: NotifyObservation): void => { copy.watermarkAfterSha = copy.watermarkBeforeSha }, "a watermark file whose bytes never changed"],
     ["fallback-hidden", (copy: NotifyObservation): void => { copy.fallbackStated = "the replay stops" }, "a lane that hides the permanent-redisplay fallback"],

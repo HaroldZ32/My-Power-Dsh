@@ -58,6 +58,14 @@ import { applyDaemonPolicy } from "../daemon-policy.ts"
 // wrapper).
 installTerminalSilence("mpd-mcp-codegraph")
 
+// The adopted server resolves the canonical key against the child cwd. Promote the alias only
+// when that key is blank so initialization and queries have the same override precedence.
+if (!process.env.MPD_CODEGRAPH_PROJECT_CWD?.trim()) {
+  /** The documented fallback spelling used by the initialization plugin. */
+  const projectAlias = process.env.MPD_DSH_CODEGRAPH_PROJECT_CWD?.trim()
+  if (projectAlias) process.env.MPD_CODEGRAPH_PROJECT_CWD = projectAlias
+}
+
 /** The narrow surface this launcher uses from the adopted server module. */
 interface ServeModule {
   /** Run the stdio MCP server for this process; resolves with the exit code to set. */

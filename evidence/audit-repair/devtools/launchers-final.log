@@ -1,0 +1,8 @@
+(pass) an independent log directory cannot select the workspace cclsp configuration [108.51ms]
+(pass) the pinned cclsp diagnostics refresh after ordinary edits without restarting the MCP session [1080.97ms]
+(pass) the bundled TypeScript peer publishes fresh errors after normal file edits [5455.49ms]
+(pass) O-1 apply-time project root > no session and no override falls back to process.cwd() [1.18ms]
+(pass) the adopted CodeGraph server uses the project alias, with the canonical override winning [126.31ms]
+ 61 pass
+ 0 fail
+Ran 61 tests across 7 files. [6.82s]

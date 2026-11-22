@@ -126,7 +126,13 @@ export type TeamFeedSubscribeMember = (workspace: string, listener: () => void) 
  * stable while the feed is bound: a surface uses it as an effect dependency, and a closure rebuilt
  * per render would re-subscribe on every frame.
  */
-export type TeamFeedAccessor = () => TeamFeedSubscribe | undefined
+export type TeamFeedAccessor = (sessionId?: string, cwd?: string) => TeamFeedSubscribe | undefined
+
+/** Read the project cwd that the host's scene channel or panel snapshot exposes. */
+export function workspaceCwdOf(carrier: unknown): string | undefined {
+  if (typeof carrier !== "object" || carrier === null || !("cwd" in carrier)) return undefined
+  return typeof carrier.cwd === "string" && carrier.cwd !== "" ? carrier.cwd : undefined
+}
 
 /**
  * The session-scoped team reads a SCENE needs, on top of the two source closures it already takes.

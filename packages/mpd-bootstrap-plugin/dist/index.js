@@ -1,5 +1,5 @@
 // packages/mpd-bootstrap-plugin/src/index.ts
-import { existsSync, readFileSync, readdirSync, rmSync as rmSync2 } from "node:fs";
+import { existsSync, lstatSync, mkdtempSync, readFileSync, readdirSync, renameSync as renameSync2, unlinkSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname as dirname2, join as join2 } from "node:path";
@@ -999,7 +999,7 @@ function createDshAdapter(ctx, config = {}) {
     } catch {}
   };
   bindDshGoBridge();
-  const configAgentRouteResolver = () => {
+  const configAgentRouteResolver = (workspace) => {
     const config2 = service("mpdConfig");
     if (config2 === undefined || config2 === null)
       return;
@@ -1007,7 +1007,7 @@ function createDshAdapter(ctx, config = {}) {
       return;
     return (member) => {
       try {
-        const answer = config2.agentRouteResolutionOf.call(config2, member);
+        const answer = config2.agentRouteResolutionOf.call(config2, member, workspace);
         return answer !== null && typeof answer === "object" && typeof answer.ok === "boolean" ? answer : undefined;
       } catch {
         return;
@@ -1361,7 +1361,7 @@ function createDshAdapter(ctx, config = {}) {
         const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
         let agentOptions = request.agentOptions;
         if (agentOptions === undefined) {
-          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver());
+          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver(workspaceRootOfAgent(caller)));
           if (outcome.status === "routed") {
             const resolved = await resolveRunRoute({ llmCatalog }, outcome.route, outcome.fallbacks);
             agentOptions = resolved.route;
@@ -1377,8 +1377,13 @@ function createDshAdapter(ctx, config = {}) {
           ...agentOptions === undefined ? {} : { agentOptions },
           ...request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }
         };
+        const provider = typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn";
+        const childId = request.onOpening !== undefined && provider === "spawn" && typeof subagents.startActivation === "function" && typeof subagents.prompt === "function" ? randomUUID() : undefined;
+        if (childId !== undefined)
+          request.onOpening?.(childId);
         const spec = dualShapeActivationSpec({
-          provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
+          provider,
+          ...childId === undefined ? {} : { childId },
           label: `${request.name} · ${request.teamId}`,
           signal: request.signal ?? neverAborted()
         }, activationRequest);
@@ -2888,59 +2893,42 @@ function createProvider(root, ctx, dsh, invalidate) {
   }
   return provider;
 }
-function removeIfPresent(target) {
-  if (!existsSync(target))
-    return false;
-  rmSync2(target, { recursive: true, force: true });
-  return true;
+function archiveLegacyGroup(ctx, home, group, stampName, names) {
+  const active = join2(home, group);
+  if (!lstatSync(active, { throwIfNoEntry: false })?.isDirectory())
+    return;
+  const stamp = join2(active, stampName);
+  if (!lstatSync(stamp, { throwIfNoEntry: false })?.isFile())
+    return;
+  let backup;
+  for (const entry of names()) {
+    const source = join2(active, entry);
+    if (!lstatSync(source, { throwIfNoEntry: false }))
+      continue;
+    backup ??= mkdtempSync(join2(home, `.mpd-legacy-backup-${group.replace(/^\./, "")}-`));
+    const destination = join2(backup, entry);
+    renameSync2(source, destination);
+    warn(ctx, `legacy copy archived: ${source} -> ${destination}`);
+  }
+  unlinkSync(stamp);
 }
-function cleanLegacyCopies(ctx, corpus, presets, config) {
-  const removed = [];
-  const skillsStamp = join2(harnessHome(), "skills", ".mpd-skills-version");
-  if (existsSync(skillsStamp)) {
-    for (const name2 of listCorpusSync(corpus)) {
-      const target = join2(harnessHome(), "skills", name2);
-      if (removeIfPresent(target))
-        removed.push(target);
-    }
-    removeIfPresent(skillsStamp);
-  }
-  if (config.skipPresets !== true) {
-    const presetsStamp = join2(harnessHome(), ".agent-presets", ".mpd-presets-version");
-    if (existsSync(presetsStamp)) {
-      let ids = [];
-      try {
-        ids = readdirSync(presets).map((entry) => entry.endsWith(".patch.yml") ? entry.slice(0, -".patch.yml".length) : entry).filter((id) => id === "mpd" || id.startsWith("mpd-"));
-      } catch (error) {
-        warn(ctx, `legacy preset cleanup: could not list ${presets}: ${String(error?.message ?? error)}`);
-        ids = [];
-      }
-      for (const id of ids) {
-        const target = join2(harnessHome(), ".agent-presets", id);
-        if (removeIfPresent(target))
-          removed.push(target);
-      }
-      removeIfPresent(presetsStamp);
-    }
-  }
-  for (const path of removed)
-    warn(ctx, "legacy copy removed: " + path);
-  return removed;
+function cleanLegacyCopies(ctx, root, config) {
+  const home = harnessHome();
+  archiveLegacyGroup(ctx, home, "skills", ".mpd-skills-version", () => listCorpusSync(join2(root, "skills")));
+  if (config.skipPresets === true)
+    return;
+  archiveLegacyGroup(ctx, home, ".agent-presets", ".mpd-presets-version", () => {
+    const presets = presetsSource(root);
+    return [...new Set(readdirSync(presets).map((entry) => entry.endsWith(".patch.yml") ? entry.slice(0, -".patch.yml".length) : entry).filter((id) => id === "mpd" || id.startsWith("mpd-")))];
+  });
 }
 function listCorpusSync(root) {
-  try {
-    return readdirSync(root, { withFileTypes: true, encoding: "utf8" }).filter((entry) => entry.name !== ".system" && (entry.isDirectory() || entry.isFile() && entry.name.endsWith(".md"))).map((entry) => entry.name);
-  } catch (error) {
-    if (isAbsent(error))
-      return [];
-    throw error;
-  }
+  return readdirSync(root, { withFileTypes: true, encoding: "utf8" }).filter((entry) => entry.name !== ".system" && (entry.isDirectory() || entry.isFile() && entry.name.endsWith(".md"))).map((entry) => entry.name);
 }
 function apply(ctx, config = {}) {
   const dsh = resolveDshAdapter(ctx);
   const root = bundleRoot();
   const corpus = config.skillsDir ? config.skillsDir : join2(root, "skills");
-  const presets = presetsSource(root);
   let version = "unknown";
   try {
     version = JSON.parse(readFileSync(join2(root, "package.json"), "utf8")).version ?? "unknown";
@@ -2956,7 +2944,7 @@ function apply(ctx, config = {}) {
     return;
   }
   try {
-    cleanLegacyCopies(ctx, corpus, presets, config);
+    cleanLegacyCopies(ctx, root, config);
   } catch (error) {
     warn(ctx, "legacy cleanup failed: " + String(error?.message ?? error));
   }

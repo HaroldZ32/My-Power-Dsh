@@ -246,7 +246,7 @@ export interface PanelPageOptions {
  *   passes one, so the control the user sees is always wired.
  * @returns a component matching the host's panel props contract.
  */
-export function createPanelComponent(readWorkflow: (sessionId?: string) => TeamWorkflow | undefined, options?: PanelPageOptions): unknown {
+export function createPanelComponent(readWorkflow: (sessionId?: string, cwd?: string) => TeamWorkflow | undefined, options?: PanelPageOptions): unknown {
   // THE MERGED PAGE IS THE DAG PAGE, and this is the whole of the merge (frozen clause C3): the user's
   // clause is 「DAG页作为MPD面板」 — the DAG page SERVES AS the MPD panel — so the surviving slot renders
   // `panel-dag.ts`'s rich page (frame, header + progress, legend, key-hint footer, click-to-pin detail
@@ -273,7 +273,7 @@ export interface PanelDeps {
   /** Whether the row config contributes this surface at all (the `panel` knob, default true). */
   enabled: boolean
   /** Reads the MPD team projection for the calling session's workspace and session, per call. */
-  readWorkflow(sessionId?: string): TeamWorkflow | undefined
+  readWorkflow(sessionId?: string, cwd?: string): TeamWorkflow | undefined
   /** Opens the existing full-screen merged scene; the fallback this wave must never lose. */
   openMergedScene(): boolean
   /**

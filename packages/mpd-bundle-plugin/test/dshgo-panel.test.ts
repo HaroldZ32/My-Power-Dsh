@@ -110,7 +110,7 @@ interface FakeParked {
   /** The parking instant. */
   createdAt: number
   /** The question items, whose ids the answer batch must carry. */
-  questions: Array<{ id: string; question: string; options?: Array<{ label: string }> }>
+  questions: Array<{ id: string; question: string; options?: Array<{ label: string }>; multiSelect?: boolean }>
 }
 
 /** One answer batch the relay double recorded. */
@@ -185,7 +185,7 @@ function fakeState(): FakeState {
       tasks: [
         { id: "T1", subject: "Wire the panel", status: "in_progress", blockedBy: [], kind: "work", owner: "Worker" },
         { id: "T2", subject: "Prove the panel", status: "pending", blockedBy: ["T1"], kind: "work" },
-        { id: "T3", subject: "Ship the panel", status: "pending", blockedBy: ["T0"], kind: "work" },
+        { id: "T3", subject: "Ship the panel", status: "pending", blockedBy: [], kind: "work" },
       ],
     },
     plan: null,
@@ -678,13 +678,20 @@ describe("the emitted snapshot is narrow, bounded and change-driven", () => {
     live.cancel()
   })
 
-  test("T2 is not ready (T1 runs) and T3 is ready (its blocker names nothing)", () => {
-    /** A live panel over the default board. */
-    const live = livePanel()
-    /** The seeded snapshot's ready rows. */
-    const rows = (live.emitter.snapshots[0] as PanelSnapshot).readyTasks
-    expect(rows.map((row) => row.title)).toEqual(["Ship the panel"])
-    expect(rows).toHaveLength(1)
+  test("unfinished and missing blockers keep a row off the ready list; failures release it", () => {
+    /** One board with a missing blocker, a running blocker and a failed blocker. */
+    const state = fakeState()
+    state.team?.tasks.push(
+      { id: "T4", subject: "Wait on missing row", status: "pending", blockedBy: ["T0"], kind: "work" },
+      { id: "T5", subject: "Failed dependency", status: "failed", blockedBy: [], kind: "work" },
+      { id: "T6", subject: "Proceed after failure", status: "pending", blockedBy: ["T5"], kind: "work" },
+    )
+    /** A live panel over that board. */
+    const live = livePanel(state)
+    /** Both the visible list and the summary read the same readiness rule. */
+    const snapshot = live.emitter.snapshots[0] as PanelSnapshot
+    expect(snapshot.readyTasks.map((row) => row.title)).toEqual(["Ship the panel", "Proceed after failure"])
+    expect(snapshot.counts.ready).toBe(2)
     live.cancel()
   })
 
@@ -1118,6 +1125,30 @@ describe("the first view is a live read, not the unseeded push cache", () => {
     expect(snapshot.question?.question).toBe("Pick one")
     for (const path of bindingPathsOf(view)) expect(resolveBinding(path, snapshot)).not.toBeUndefined()
   })
+})
+
+test("Go routes batches and multiple selections to Web without submitting a partial answer", async () => {
+  for (const questions of [
+    [{ id: "first", question: "Pick one", options: [{ label: "A" }] }, { id: "second", question: "And one more" }],
+    [{ id: "first", question: "Pick several", multiSelect: true, options: [{ label: "A" }, { label: "B" }] }],
+  ]) {
+    /** The relay serves an entry Go cannot satisfy with one answer. */
+    const state = fakeState()
+    state.parked = [{ id: "q-batch", sessionId: "s1", createdAt: 1, questions }]
+    /** The bridge renders its normal workbench and owns all of its action registrations. */
+    const live = livePanel(state)
+    try {
+      /** The view shows a supported place to answer and omits both local submission controls. */
+      const view = viewOf(live.spec)({ sessionId: "s1" })
+      expect(JSON.stringify(view)).toContain("Open this conversation in the Web client")
+      expect(JSON.stringify(view)).not.toContain("answer-custom")
+      expect(actionButtonsOf(view).some((item) => item.action.startsWith("answer:"))).toBe(false)
+      expect(await actionsOf(live.spec)["answer:0"]?.({ sessionId: "s1" }, { action: "answer:0" })).toEqual({ toast: "Answer this question in another client" })
+      expect(state.answerCalls).toEqual([])
+    } finally {
+      live.cancel()
+    }
+  }
 })
 
 describe("a tap acts on the question its view rendered", () => {

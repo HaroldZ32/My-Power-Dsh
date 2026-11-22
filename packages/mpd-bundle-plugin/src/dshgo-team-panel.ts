@@ -15,8 +15,8 @@
 // instead of being guessed at here.
 import { rowLogLine } from "../../mpd-dsh-adapter-plugin/src/index"
 import type { DshGoCaps, DshGoView } from "../../mpd-dsh-adapter-plugin/src/dshgo-view.ts"
-import { DSHGO_POLL_MS, type PanelBridge, type PanelEffect, type PanelReply, type PanelServices } from "./dshgo-panel"
-import { buildTeamView, type TeamPanelMember, type TeamPanelSnapshot, type TeamPanelTask, type TeamWatchdogSnapshot } from "./dshgo-views"
+import { boardStatuses, DSHGO_POLL_MS, panelAgentOf, pendingBlockerCount, type PanelBridge, type PanelReply, type PanelServices } from "./dshgo-panel"
+import { buildTeamView, TEAM_PANEL_MAX_MEMBERS, TEAM_PANEL_MAX_INCIDENTS, type TeamPanelMember, type TeamPanelSnapshot, type TeamPanelTask, type TeamWatchdogSnapshot } from "./dshgo-views"
 
 /** The panel id the manifest declares for the team board; the live registration MUST use the same id. */
 export const DSHGO_TEAM_PANEL_ID = "mpd-team"
@@ -42,11 +42,8 @@ interface WatchdogFace {
   isHeld?: (teamId: string, workspace?: string) => unknown
 }
 
-/** The structural face of the tool runtime, used ONLY to drive the two documented tool families. */
-interface ToolFace {
-  /** Call one registered tool in-process. */
-  executeTool?: (input: { name: string; arguments?: unknown }) => Promise<unknown>
-}
+/** The adapter seams the read-only watchdog call uses. */
+type ToolFace = Pick<PanelBridge, "executeTool" | "liveAgent" | "liveAgents">
 
 /** The read-only watchdog diagnostic whose value carries the predicate, the holds and the incidents. */
 const STATUS_TOOL = "session-watchdog-status"
@@ -127,19 +124,18 @@ function probe<T>(read: () => T, fallback: T): T {
 
 /**
  * Project one board row onto the panel's task shape.
- * @param value - the record's task row, read structurally.
+ * @param task - a task row from the durable board.
+ * @param statuses - the statuses of all board rows.
  * @returns the narrowed task the board and detail tabs render.
  */
-function taskOf(value: unknown): TeamPanelTask {
-  /** The row as a record, or an empty one when the record is malformed. */
-  const task = recordOf(value) ?? {}
+function taskOf(task: Record<string, unknown>, statuses: ReadonlyMap<string, string>): TeamPanelTask {
   return {
     id: stringOf(task.id),
     subject: clip(stringOf(task.subject), 120),
     owner: clip(stringOf(task.owner), 60),
     status: clip(stringOf(task.status), 40),
     kind: clip(stringOf(task.kind), 40),
-    blockedBy: arrayOf(task.blockedBy).length,
+    blockedBy: pendingBlockerCount(task, statuses),
     description: clip(stringOf(task.description) || stringOf(task.acceptance), MAX_DESCRIPTION_CHARS),
     dependencies: arrayOf(task.blockedBy).map((id) => stringOf(id)).filter((id) => id !== "").join(", "),
     verdict: clip(stringOf(recordOf(task.verdict)?.verdict) || stringOf(task.verdict), 40),
@@ -167,11 +163,11 @@ function memberOf(value: unknown): TeamPanelMember {
  * @returns the five derived counters with `completion` as a whole percentage.
  */
 function countsOf(tasks: readonly TeamPanelTask[]): TeamPanelSnapshot["counts"] {
-  /** Rows in a terminal status. */
-  const done = tasks.filter((task) => task.status === "completed" || task.status === "cancelled" || task.status === "failed").length
+  /** Rows completed successfully, matching the board progress elsewhere. */
+  const done = tasks.filter((task) => task.status === "completed").length
   /** Rows in flight. */
-  const active = tasks.filter((task) => task.status === "in_progress").length
-  /** Rows that name at least one blocker. */
+  const active = tasks.filter((task) => task.status === "in_progress" || task.status === "claimed").length
+  /** Pending rows with at least one unsatisfied dependency. */
   const blocked = tasks.filter((task) => task.blockedBy > 0).length
   return { total: tasks.length, done, active, blocked, completion: tasks.length === 0 ? 0 : Math.round((done / tasks.length) * 100) }
 }
@@ -185,7 +181,7 @@ function countsOf(tasks: readonly TeamPanelTask[]): TeamPanelSnapshot["counts"] 
  */
 export function readTeamSnapshot(services: PanelServices, workspace: string | undefined, sessionId: string): TeamPanelSnapshot {
   /** The snapshot a conversation-less or team-less panel renders. */
-  const empty: TeamPanelSnapshot = { team: null, tasks: [], counts: { total: 0, done: 0, active: 0, blocked: 0, completion: 0 }, members: [], selected: null, watchdog: { predicate: "unknown", held: false, reason: "", taskId: "", incidents: [] } }
+  const empty: TeamPanelSnapshot = { team: null, tasks: [], counts: { total: 0, done: 0, active: 0, blocked: 0, completion: 0 }, members: [], selected: null, watchdog: { predicate: "unknown", held: null, reason: "", taskId: "", incidents: [] } }
   if (workspace === undefined || workspace === "" || sessionId === "") return empty
   /** The team service, resolved per read so a late mount is honoured. */
   const face = probe(() => services.get?.("mpdTeams", false), undefined) as TeamFace | undefined
@@ -193,13 +189,26 @@ export function readTeamSnapshot(services: PanelServices, workspace: string | un
   /** The conversation's team record. */
   const record = recordOf(probe(() => face.active?.(workspace, sessionId), undefined))
   if (record === undefined) return empty
-  /** Every board row, projected once and reused by the counters and the board tab. */
-  const tasks = arrayOf(record.tasks).map(taskOf).slice(0, TEAM_MAX_ROWS)
+  /** Every task in the durable board, before the display cap. */
+  const rawTasks = arrayOf(record.tasks).map(recordOf).filter((row) => row !== undefined)
+  /** Dependency resolution includes rows beyond the displayed fifty. */
+  const statuses = boardStatuses(rawTasks)
+  /** Projected rows for the board and its whole-board counters. */
+  const tasks = rawTasks.map((row) => taskOf(row, statuses))
+  /** Count owners by their durable name or executor handle, including tasks outside the preview. */
+  const taskCounts = new Map<unknown, number>()
+  for (const task of rawTasks) taskCounts.set(task.owner, (taskCounts.get(task.owner) ?? 0) + 1)
+  /** The roster preview carries whole-board ownership totals for the chart. */
+  const members = arrayOf(record.members).slice(0, TEAM_PANEL_MAX_MEMBERS).map((value) => {
+    /** The untruncated spellings the record can store as owner. */
+    const member = recordOf(value)
+    return { ...memberOf(value), taskCount: (taskCounts.get(member?.name) ?? 0) + (typeof member?.executorRef === "string" && member.executorRef !== member.name ? taskCounts.get(member.executorRef) ?? 0 : 0) }
+  })
   return {
     team: { id: stringOf(record.id) || stringOf(record.teamId), name: clip(stringOf(record.name) || "team", 60), status: clip(stringOf(record.status), 40), phase: clip(stringOf(record.phase), 40) },
-    tasks,
+    tasks: tasks.slice(0, TEAM_MAX_ROWS),
     counts: countsOf(tasks),
-    members: arrayOf(record.members).map(memberOf).slice(0, 6),
+    members,
     selected: null,
     watchdog: empty.watchdog,
   }
@@ -214,37 +223,45 @@ export function readTeamSnapshot(services: PanelServices, workspace: string | un
  * @param tools - the tool runtime, when the composition exposed one.
  * @param teamId - the team the tab is about.
  * @param workspace - the absolute workspace root.
+ * @param sessionId - the conversation that owns the read.
  * @returns the watchdog half of the snapshot, never a throw.
  */
-async function readWatchdog(services: PanelServices, tools: ToolFace | undefined, teamId: string, workspace: string): Promise<TeamWatchdogSnapshot> {
-  /** The hold registry, when this composition mounts the watchdog row. */
+async function readWatchdog(services: PanelServices, tools: ToolFace | undefined, teamId: string, workspace: string, sessionId: string): Promise<TeamWatchdogSnapshot> {
+  /** The workspace-specific hold registry, available even without the diagnostics tool. */
   const registry = probe(() => services.get?.("mpdWatchdog", false), undefined) as WatchdogFace | undefined
-  /** The registry's answer for this team, read structurally. */
-  const hold = recordOf(probe(() => registry?.isHeld?.(teamId, workspace), undefined))
-  // THE TOOL RESULT IS AN ENVELOPE: `{ ok?, value?, error? }`. Reading `teams`/`predicate`/`incidents`
-  // off the envelope itself silently produced the "channel" default and no incidents at all.
-  /** The normalized tool result, or undefined when the runtime is absent or the call failed. */
-  const call = tools?.executeTool === undefined
+  /** The live gate’s answer is the fallback when diagnostics cannot be read. */
+  const current = recordOf(probe(() => registry?.isHeld?.(teamId, workspace), undefined))
+  /** A real agent gives the tool its workspace and permission scope. */
+  const agent = tools === undefined ? undefined : panelAgentOf(tools, sessionId)
+  /** The adapter’s normalized envelope, if a scoped tool call was possible. */
+  const call = agent === undefined || tools?.executeTool === undefined
     ? undefined
-    : recordOf(await Promise.resolve().then(() => tools?.executeTool?.({ name: STATUS_TOOL, arguments: {} })).then((value) => value, () => undefined))
-  /** The status value itself, ignored when the runtime reported a failure. */
-  const status = call?.ok === false ? undefined : call?.value
-  /** The status value as a record. */
-  const record = recordOf(status)
-  /** The status row for THIS team, when the store knows it. */
-  const row = record === undefined ? undefined : arrayOf(record.teams).map((entry) => recordOf(entry)).find((entry) => entry !== undefined && (stringOf(entry.teamId) === teamId || entry.teamId === undefined))
-  /** The predicate the engine published, or the documented default when it published none. */
-  const predicate = clip(stringOf(recordOf(record?.predicate)?.source) || "channel", 20)
-  /** The incidents, newest first, clipped to the tab's five rows. */
-  const incidents = arrayOf(record?.incidents)
-    .map((entry) => recordOf(entry))
-    .filter((entry): entry is Record<string, unknown> => entry !== undefined)
-    .slice(0, 5)
-    .map((entry) => ({ at: clip(stringOf(entry.ts) || stringOf(entry.at), 24), kind: clip(stringOf(entry.kind) || "incident", 30), detail: clip(stringOf(entry.detail) || stringOf(entry.reason), 80) }))
+    : recordOf(await Promise.resolve().then(() => tools.executeTool?.({ name: STATUS_TOOL, arguments: { team_id: teamId }, agent })).catch(() => undefined))
+  /** Ignore failures and mismatched workspaces instead of rendering another team's status. */
+  const status = call?.ok === true ? recordOf(call.value) : undefined
+  /** The matching row supplies both the durable hold and the incident log. */
+  const row = status?.workspace !== workspace ? undefined : arrayOf(status?.teams).map(recordOf).find((entry) => entry?.teamId === teamId)
+  /** The nested hold in the status result, or the live registry's diagnostics. */
+  const hold = recordOf(row?.hold) ?? (row === undefined ? current : undefined)
+  /** A missing tool or team status cannot establish the active predicate. */
+  const predicate = row === undefined ? "unknown" : clip(stringOf(recordOf(status?.predicate)?.source) || "unknown", 20)
+  /** Normalize real epoch timestamps and sort oldest-appended logs newest first. */
+  const incidents = arrayOf(row?.incidents).map(recordOf).filter((entry) => entry !== undefined)
+    .map((entry) => {
+      /** The persisted timestamp and its ISO projection. */
+      const instant = new Date(typeof entry.at === "number" ? entry.at : Number.NaN)
+      /** Older records may already carry an ISO timestamp. */
+      const at = Number.isFinite(instant.getTime()) ? instant.toISOString() : stringOf(entry.ts)
+      /** The real incident's structured reason and observed duration. */
+      const cause = recordOf(entry.cause)
+      /** The diagnostic string is the cause, with its duration when supplied. */
+      const detail = typeof cause?.ms === "number" ? `${stringOf(cause.kind)} · ${cause.ms} ms` : stringOf(cause?.kind) || stringOf(entry.detail) || stringOf(entry.reason)
+      return { at: clip(at, 24), kind: clip(stringOf(entry.kind) || "incident", 30), detail: clip(detail, 80) }
+    }).sort((a, b) => b.at.localeCompare(a.at)).slice(0, TEAM_PANEL_MAX_INCIDENTS)
   return {
     predicate,
-    held: hold?.held === true || row?.held === true,
-    reason: clip(stringOf(hold?.reason) || stringOf(hold?.cause), 60),
+    held: typeof row?.held === "boolean" ? row.held : typeof current?.held === "boolean" ? current.held : null,
+    reason: clip(stringOf(hold?.cause) || stringOf(hold?.reason), 60),
     taskId: clip(stringOf(hold?.taskId), 20),
     incidents,
   }
@@ -270,9 +287,9 @@ export async function buildTeamPanelFor(services: PanelServices, tools: ToolFace
   /** The selected row: the recorded id, or the board's first in-flight row as the default. */
   const selectedId = selection.get(scope)
   /** The task the detail tab shows. */
-  const selected = snapshot.tasks.find((task) => task.id === selectedId) ?? snapshot.tasks.find((task) => task.status === "in_progress") ?? snapshot.tasks[0] ?? null
+  const selected = snapshot.tasks.find((task) => task.id === selectedId) ?? snapshot.tasks.find((task) => task.status === "in_progress" || task.status === "claimed") ?? snapshot.tasks[0] ?? null
   /** The watchdog half, read from the tool when it answered and the registry otherwise. */
-  const watchdog = snapshot.team === null ? snapshot.watchdog : await readWatchdog(services, tools, snapshot.team.id, workspace ?? "")
+  const watchdog = snapshot.team === null ? snapshot.watchdog : await readWatchdog(services, tools, snapshot.team.id, workspace ?? "", sessionId)
   return buildTeamView({ ...snapshot, selected, watchdog }, caps)
 }
 
@@ -340,10 +357,6 @@ export function registerDshGoTeamPanel(options: TeamPanelOptions): { registered:
   }
   /** Every interval this registration owns, so the release can clear all of them. */
   const timers = new Set<ReturnType<typeof setInterval>>()
-  /** The serialized snapshot last emitted per scope, so an unchanged tick emits nothing. */
-  const emitted = new Map<string, string>()
-  /** The board signature last seen per scope, so only a REAL change refreshes the view. */
-  const signatures = new Map<string, string>()
   /** Resolve the workspace one scope reads, from the bridge when it can and the injected seam otherwise. */
   const workspaceOf = (sessionId: string): string | undefined => {
     /** What the bridge's own lookup answered, when the seam is present. */
@@ -359,45 +372,65 @@ export function registerDshGoTeamPanel(options: TeamPanelOptions): { registered:
     const team = readTeamSnapshot(options.ctx, sessionId === "" ? undefined : workspaceOf(sessionId), sessionId)
     return { team: team.team, counts: team.counts, members: team.members, tasks: team.tasks }
   }
-  /** The board `signature` a scope currently shows: ids and statuses, never the detail text. */
-  // THE BOARD AND THE ROSTER ARE LITERAL VIEW CONTENT, so the signature has to carry them: a row moving
-  // `pending -> in_progress`, a subject changing or a member joining must rebuild the tree, and a
-  // done/total pair cannot see any of that.
-  const signatureOf = (snapshot: TeamPushModel): string => (snapshot.team === null ? "" : [snapshot.team.id, snapshot.team.status, snapshot.team.phase, snapshot.tasks.map((task) => task.id + ":" + task.status).join(","), snapshot.members.map((member) => member.name + "/" + member.mode).join(",")].join("|"))
-  /** Push one snapshot when it differs from the last emitted one, and refresh the view on a board change. */
-  const publishInto = (key: string, snapshot: TeamPushModel, send: ((value: TeamPushModel) => void) | undefined, seed: boolean): void => {
-    /** The snapshot's serialized form, which is what "unchanged" is measured on. */
-    const serialized = JSON.stringify(snapshot)
-    if (seed || emitted.get(key) !== serialized) {
-      emitted.set(key, serialized)
-      probe(() => send?.(snapshot), undefined)
-    }
-    /** The board signature this tick shows. */
-    const signature = signatureOf(snapshot)
-    /** Whether this is a real change rather than the subscription's first reading. */
-    const changed = !seed && signatures.has(key) && signatures.get(key) !== signature
-    signatures.set(key, signature)
-    if (changed) probe(() => options.dsh.dshGoRefresh(DSHGO_TEAM_PANEL_ID), undefined)
-  }
-  /** The `data` function: seed, poll, emit on change, refresh on a board change, cancel cleanly. */
+  /** Seed and poll each active subscription, refreshing on a literal board change. */
   const data = (scope: unknown, emit: unknown): (() => void) => {
     /** The app's emit callback, when the bridge handed one. */
     const send = typeof emit === "function" ? (emit as (value: TeamPushModel) => void) : undefined
-    /** The scope's state key. */
+    /** The session for this active subscription. */
     const key = scopeKeyOf(scope)
-    publishInto(key, snapshotOf(scope), send, true)
+    /** The seed and subsequent updates compare every field the literal board renders. */
+    let boardSignature: string | undefined
+    /** Publish the bound data and refresh when a literal differs after the seed. */
+    const publish = (snapshot: TeamPushModel): void => {
+      /** The board signature, which also identifies duplicate emissions. */
+      const signature = JSON.stringify(snapshot)
+      if (signature === boardSignature) return
+      /** The initial subscription follows the app's first fetch and does not need a refresh. */
+      const changed = boardSignature !== undefined
+      boardSignature = signature
+      probe(() => send?.(snapshot), undefined)
+      if (changed) probe(() => options.dsh.dshGoRefresh(DSHGO_TEAM_PANEL_ID), undefined)
+    }
+    /** The initial read also identifies the target for the first watchdog poll. */
+    const initial = snapshotOf(scope)
+    publish(initial)
+    /** The last watchdog projection compared by this live subscription. */
+    let watchdogSignature: string | undefined
+    /** Whether a status request is underway. */
+    let readingWatchdog = false
+    /** Refresh literal watchdog rows when their scoped tool result changes. */
+    const observeWatchdog = async (team: TeamPushModel["team"]): Promise<void> => {
+      if (team === null || readingWatchdog) return
+      /** The current scope must still resolve to a project before the tool call. */
+      const workspace = workspaceOf(key)
+      if (workspace === undefined) return
+      readingWatchdog = true
+      try {
+        /** The newest status for this subscription's board. */
+        const signature = JSON.stringify(await readWatchdog(options.ctx, options.dsh, team.id, workspace, key))
+        if (!timers.has(timer)) return
+        if (watchdogSignature !== undefined && signature !== watchdogSignature) probe(() => options.dsh.dshGoRefresh(DSHGO_TEAM_PANEL_ID), undefined)
+        watchdogSignature = signature
+      } finally {
+        readingWatchdog = false
+      }
+    }
     /** The interval this subscription owns. */
-    const timer = setInterval(() => { publishInto(key, snapshotOf(scope), send, false) }, pollMs)
+    const timer = setInterval(() => {
+      /** One board read serves the push and identifies the diagnostics target. */
+      const snapshot = snapshotOf(scope)
+      publish(snapshot)
+      void observeWatchdog(snapshot.team)
+    }, pollMs)
     timers.add(timer)
+    void observeWatchdog(initial.team)
     return (): void => {
       clearInterval(timer)
       timers.delete(timer)
-      emitted.delete(key)
-      signatures.delete(key)
     }
   }
   /** The view function: a live read per render, including the watchdog half. */
-  const view = async (scope: unknown, caps: DshGoCaps): Promise<DshGoView> => buildTeamPanelFor(options.ctx, options.dsh as unknown as ToolFace, workspaceOf, selection, scope, caps)
+  const view = async (scope: unknown, caps: DshGoCaps): Promise<DshGoView> => buildTeamPanelFor(options.ctx, options.dsh, workspaceOf, selection, scope, caps)
   /** The panel definition the bridge receives. */
   const spec = { view, data, actions: createTeamPanelActions(options, selection) }
   /** Try to publish the panel; stay silent and wait for a bind when this host has no bridge. */
@@ -432,8 +465,6 @@ export function registerDshGoTeamPanel(options: TeamPanelOptions): { registered:
     dispose: (): void => {
       for (const timer of timers) clearInterval(timer)
       timers.clear()
-      emitted.clear()
-      signatures.clear()
       selections.clear()
       probe(() => offBound?.(), undefined)
       offBound = undefined

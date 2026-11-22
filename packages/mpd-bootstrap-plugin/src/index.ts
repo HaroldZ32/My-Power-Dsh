@@ -10,13 +10,10 @@
 //   2) mpd preset: served from <bundle>/presets by the agent-presets root the
 //      bundle patch configures (cordis.patch.yml) — no
 //      $DSH_HOME/.agent-presets copy.
-//   3) Legacy migration: the version-stamped copies written by bundle <= 0.2.6
-//      into $DSH_HOME/skills and $DSH_HOME/.agent-presets are removed on the
-//      first boot of this version. Only entries this bundle stamped are touched;
-//      user-authored skills/presets with other names are never removed.
-//
-// This row never writes to the harness home.
-import { existsSync, readFileSync, readdirSync, rmSync } from "node:fs"
+//   3) Legacy migration: version stamps identify old install directories. Matching
+//      copies are moved out of the active roots into recoverable backups because the
+//      stamps cannot prove the contents still match the old bundle.
+import { existsSync, lstatSync, mkdtempSync, readFileSync, readdirSync, renameSync, unlinkSync } from "node:fs"
 import { readdir, readFile } from "node:fs/promises"
 import { homedir } from "node:os"
 import { dirname, join } from "node:path"
@@ -61,7 +58,7 @@ const SKILL_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 // corpus is <pkg-root>/skills and the presets are <pkg-root>/presets in BOTH layouts.
 const bundleRoot = (): string => bundleRootOf(import.meta.url)
 
-/** Absolute harness home the legacy migration READS: `$DSH_HOME` when set, else `~/.dsh`. Nothing is ever created under it. */
+/** Harness home containing the legacy installer markers and any recovery directories. */
 function harnessHome(): string {
   return process.env.DSH_HOME || join(homedir(), ".dsh")
 }
@@ -294,83 +291,53 @@ function createProvider(root: string, ctx: Ctx, dsh: DshAdapter, invalidate: () 
 // ── legacy (<= 0.2.6) home-copy migration ───────────────────────────────────
 
 /**
- * Recursively delete ONE path under the harness home when it exists, and report whether it did.
- * It is only ever reached from inside a stamp check, so an UNSTAMPED home keeps every file —
- * no stamp, no ownership, no removal (AGENTS.md §7 isolation).
+ * Move one stamped group out of its active scan root and consume its stamp only after every move.
+ * Each same-filesystem rename preserves the whole tree or leaves its source in place, and a retry
+ * skips already-absent sources. A fresh private directory avoids overwriting any past backup.
  */
-function removeIfPresent(target: string): boolean {
-  if (!existsSync(target)) return false
-  rmSync(target, { recursive: true, force: true })
-  return true
+function archiveLegacyGroup(ctx: Ctx, home: string, group: string, stampName: string, names: () => string[]): void {
+  /** Active provider directory, which must be a directory in this home and not a symlink. */
+  const active = join(home, group)
+  if (!lstatSync(active, { throwIfNoEntry: false })?.isDirectory()) return
+  /** Legacy marker beside the old copies, consumed independently for each group. */
+  const stamp = join(active, stampName)
+  if (!lstatSync(stamp, { throwIfNoEntry: false })?.isFile()) return
+  /** A backup outside both scan roots, created only when there is something to move. */
+  let backup: string | undefined
+  for (const entry of names()) {
+    /** Existing active entry; lstat also sees dangling symlinks, which rename preserves as links. */
+    const source = join(active, entry)
+    if (!lstatSync(source, { throwIfNoEntry: false })) continue
+    backup ??= mkdtempSync(join(home, `.mpd-legacy-backup-${group.replace(/^\./, "")}-`))
+    /** Recoverable location for this entry, with its original basename. */
+    const destination = join(backup, entry)
+    renameSync(source, destination)
+    warn(ctx, `legacy copy archived: ${source} -> ${destination}`)
+  }
+  unlinkSync(stamp)
 }
 
-/**
- * Remove the version-stamped copies bundle <= 0.2.6 wrote into the harness home.
- * The stamp file is the ownership proof: without it this function does nothing,
- * so a legacy install that never stamped (scripts/install-profile.ts copies)
- * and user-authored content are both left untouched. Synchronous on purpose:
- * the migration must complete during apply, before any boot failure downstream
- * could abort the process mid-cleanup.
- */
-function cleanLegacyCopies(ctx: Ctx, corpus: string, presets: string, config: Config): string[] {
-  // Absolute home paths removed by THIS run, returned so the caller reports exactly what was taken.
-  const removed: string[] = []
-  // Ownership stamp bundle <= 0.2.6 wrote beside the copied skills; its presence is the only licence to delete under <home>/skills.
-  const skillsStamp = join(harnessHome(), "skills", ".mpd-skills-version")
-  if (existsSync(skillsStamp)) {
-    for (const name of listCorpusSync(corpus)) {
-      // One stamped home copy, matched by corpus entry NAME (directory bundle or flat markdown file alike).
-      const target = join(harnessHome(), "skills", name)
-      if (removeIfPresent(target)) removed.push(target)
-    }
-    removeIfPresent(skillsStamp)
-  }
-  if (config.skipPresets !== true) {
-    // Same ownership proof for the copied presets; absent means the preset half of the migration does nothing.
-    const presetsStamp = join(harnessHome(), ".agent-presets", ".mpd-presets-version")
-    if (existsSync(presetsStamp)) {
-      // Preset IDs this bundle ships, in BOTH shipped shapes. Harness 0.1.7-rc.2 replaced the
-      // directory model (`presets/<id>/preset.yml` + `agent.cordis.yml`) with ONE PATCH FILE per
-      // preset (`presets/<id>.patch.yml`), so a raw `readdirSync` now yields `mpd.patch.yml` and
-      // matched nothing — measured 2026-09-27: the legacy `$DSH_HOME/.agent-presets/mpd` copy
-      // survived a boot that was supposed to remove it, and
-      // `legacy home-copy migration > removes only stamped bundle copies and leaves user content
-      // alone` went red. Both spellings are recognised here because the copies being migrated were
-      // written under the OLD one and a later release could ship either.
-      let ids: string[] = []
-      try {
-        ids = readdirSync(presets)
-          .map((entry) => (entry.endsWith(".patch.yml") ? entry.slice(0, -".patch.yml".length) : entry))
-          .filter((id) => id === "mpd" || id.startsWith("mpd-"))
-      } catch (error) {
-        // Non-fatal by design: the migration then finds no shipped preset ID to remove. But a boot log
-        // must be able to explain WHY no legacy preset copy was taken, so the directory and the error
-        // are both named instead of the failure disappearing.
-        warn(ctx, `legacy preset cleanup: could not list ${presets}: ${String((error as Error)?.message ?? error)}`)
-        ids = []
-      }
-      for (const id of ids) {
-        // One stamped home preset copy: the ID SET comes from the bundle's own presets dir, never from the home, so a user dir named like a shipped preset is matched too.
-        const target = join(harnessHome(), ".agent-presets", id)
-        if (removeIfPresent(target)) removed.push(target)
-      }
-      removeIfPresent(presetsStamp)
-    }
-  }
-  for (const path of removed) warn(ctx, "legacy copy removed: " + path)
-  return removed
+/** Archive stamped copies matching shipped skills and either shipped preset spelling. */
+function cleanLegacyCopies(ctx: Ctx, root: string, config: Config): void {
+  /** The home selected once for both halves of the migration. */
+  const home = harnessHome()
+  archiveLegacyGroup(ctx, home, "skills", ".mpd-skills-version", () => listCorpusSync(join(root, "skills")))
+  if (config.skipPresets === true) return
+  archiveLegacyGroup(ctx, home, ".agent-presets", ".mpd-presets-version", () => {
+    /** Shipped preset location, using the older checkout layout when needed. */
+    const presets = presetsSource(root)
+    // The current patch-file layout and the older directory layout both name the same preset IDs.
+    return [...new Set(readdirSync(presets)
+      .map((entry) => (entry.endsWith(".patch.yml") ? entry.slice(0, -".patch.yml".length) : entry))
+      .filter((id) => id === "mpd" || id.startsWith("mpd-")))]
+  })
 }
 
-/** Corpus entry names (directory bundles + flat markdown), synchronous twin of listCorpus. */
+/** List shipped corpus entry names, never using a configured user corpus as migration evidence. */
 function listCorpusSync(root: string): string[] {
-  try {
-    return readdirSync(root, { withFileTypes: true, encoding: "utf8" })
-      .filter((entry) => entry.name !== ".system" && (entry.isDirectory() || (entry.isFile() && entry.name.endsWith(".md"))))
-      .map((entry) => entry.name)
-  } catch (error) {
-    if (isAbsent(error)) return []
-    throw error
-  }
+  return readdirSync(root, { withFileTypes: true, encoding: "utf8" })
+    .filter((entry) => entry.name !== ".system" && (entry.isDirectory() || (entry.isFile() && entry.name.endsWith(".md"))))
+    .map((entry) => entry.name)
 }
 
 // ── plugin entry ────────────────────────────────────────────────────────────
@@ -378,11 +345,8 @@ function listCorpusSync(root: string): string[] {
 /**
  * Cordis entry point: serve the corpus BY REFERENCE first, then migrate the legacy home copies.
  *
- * Read/write DIRECTION, stated once for the whole row: the home is READ to find the
- * `.mpd-*-version` stamps, and the only home-side MODIFICATION is the REMOVAL of the copies those
- * stamps claim — nothing is ever written or overwritten there. No stamp means no ownership, so an
- * unstamped home is left exactly as found (AGENTS.md §7). Registration runs first so that a
- * cleanup failure, or `skipLegacyCleanup`, can never cost a session its corpus.
+ * Migration moves stamped names into private backups outside the search roots. Registration runs
+ * first so a migration failure cannot cost a session its bundled corpus.
  */
 export function apply(ctx: Ctx, config: Config = {}): void {
   // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
@@ -391,8 +355,6 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   const root = bundleRoot()
   // Corpus actually SERVED: the config override when given, else the bundle's own `skills/`.
   const corpus = config.skillsDir ? config.skillsDir : join(root, "skills")
-  // Directory the migration READS to learn which preset ids this bundle ships (it is never written to).
-  const presets = presetsSource(root)
   // Bundle version for the boot log line only; an unreadable package.json must not fail the apply.
   let version = "unknown"
   try { version = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version ?? "unknown" } catch { /* keep */ }
@@ -411,7 +373,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     return
   }
   try {
-    cleanLegacyCopies(ctx, corpus, presets, config)
+    cleanLegacyCopies(ctx, root, config)
   } catch (error) {
     warn(ctx, "legacy cleanup failed: " + String((error as Error)?.message ?? error))
   }

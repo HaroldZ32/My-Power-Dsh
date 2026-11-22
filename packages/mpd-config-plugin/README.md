@@ -97,30 +97,32 @@ writes every member's own entry and stores nothing of its own.
 
 ## Service / tools
 
-- Provides the `mpdConfig` service for other mpd plugins (`inject: ["mpdConfig"]`):
-  `get(key?)`, `reload()`, `states()`, `agentRouteResolutionOf(member)`, `agentRouteOf(member)`.
-- `agentRouteResolutionOf(member)` / `agentRouteOf(member)` are the reads that make a **saved**
-  `agentRoutes` entry take effect. The first returns the typed, never-throwing union
-  (`ok` / `unconfigured` / `invalid` / `unrouted`) that display surfaces render; the second returns
-  `{ provider, model, reasoningEffort?, fallbacks? }` when `ok` and `undefined` otherwise. The roster's
-  one-shot paths (`mpd_role_spawn`, `mpd_roles_list`, the workmate library and `mpd_modelchain_resolve`)
-  read them through this service, so a saved route reaches them without a second cross-package import.
-  The removed names `slotResolutionOf` / `teamModelRouteOf` must not come back.
-- `mpd_config_get` / `mpd_config_reload` tools.
+- Other MPD plugins can call `get(key?, workspace?)`, `states(workspace?)`,
+  `agentRouteResolutionOf(member, workspace?)`, and `agentRouteOf(member, workspace?)` on `mpdConfig`.
+  Pass the absolute workspace root when the caller has a session. Each root has its own live snapshot.
+  Calls without a workspace use the sole live root when there is one and otherwise use the adapter's
+  process-level default. That default is independent of the most recent call or reload.
+- `agentRouteResolutionOf` returns `ok`, `unconfigured`, `invalid`, or `unrouted`. `agentRouteOf`
+  returns `{ provider, model, reasoningEffort?, fallbacks? }` for a usable route. Direct consults,
+  workmates, and the model-chain tool use the calling session's workspace. Team members use the staging
+  session's workspace even when the member runs in a separate worktree.
+- `mpd_config_get` and `mpd_config_reload` reread the calling session's own project layers. The
+  `reload(exec?)` service has the same behavior.
 
 ## The `/settings` bridge
 
-This package owns the config side of the harness settings bridge. **The live save path is the ENTRY
-document; the `mpd.jsonc` write-back is the RETIRED legacy path.** The TUI `/settings` section and the
-Web GUI card both save the row's `mpd-config` ENTRY document (`ENTRY_CONFIG_ID`,
-`configForms.get("mpd-config")`), and the HOST owns that store: this row's
-`onSettingsDocumentUpdated(ENTRY_CONFIG_ID, …)` listener re-loads `state` from it and deliberately
-writes NO workspace file. A `<workspace>/.mpd/mpd.jsonc` write exists only for the LEGACY `mpd`
-namespace (`SETTINGS_NS`), whose registration the pinned harness REFUSES — `settingsModelRetired`, one
-boot warning: "the legacy file write-back and override clearing are dormant" — so on the pinned host
-that path never runs. A hand edit of `<workspace>/.mpd/mpd.jsonc` IS still read: the file layers are
-re-read on every resolution and a mount-time `watchRoot` watcher picks the edit up through the same
-150 ms debounce.
+The Web settings card reads and saves model route fields for the selected live session. The route
+updates `<workspace>/.mpd/mpd.jsonc` while preserving unrelated JSONC content. Clearing a field removes
+its project value so the remaining layers can supply it. Profile-wide overrides still take precedence.
+If a profile-wide value blocks an edit, the card reports which field is overridden. A `projectFile` row
+override shares a file across workspaces and is edited separately. A request that names an unknown session,
+or an unscoped read on a host with multiple live roots, receives a visible error.
+
+The TUI `/settings` section and the Web card's other fields use the host's `mpd-config` entry
+document. A save there refreshes the settings layer for every workspace. On older hosts that serve the
+legacy `mpd` namespace, the bridge can also write its values back when exactly one workspace is live.
+The pinned host has retired that namespace. Manual project file edits refresh the corresponding
+snapshot after the 150 ms watcher debounce.
 
 **The READ-BACK is live; the EFFECT is per knob.** `mpd_config_get` / `mpd_config_reload` re-read the
 layers on every call and report the new value at once, but a consumer that captured its configuration
@@ -157,9 +159,8 @@ is dormant; it stays documented because the code still ships it and a legacy hos
   root ⇒ **no file base is invented** (`base: undefined`, reason
   `ambiguous-multi-root`, every candidate warned and surfaced by `states()`), and a
   save in that state is refused. The base is **fixed for the process lifetime**
-  (the host exposes no disposal handle for a live registration); the **resolved value** plus the
-  config layer's **per-call file reads** are what consumers use, so each session still resolves its
-  own file.
+  because the host exposes no disposal handle for a live registration. Session-scoped consumers read
+  their own workspace's resolved snapshot.
 - **Read-in precedence (LEGACY namespace layer):** L0 schema defaults < L1 `$DSH_HOME/mpd.jsonc` < L2
   `<workspace>/.mpd/mpd.jsonc` < **L3 the settings user section**, which is
   authoritative at runtime; a later file edit **unsets** the overlapping settings

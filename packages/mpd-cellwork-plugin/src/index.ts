@@ -869,7 +869,7 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
   // the activation directive as TEXT because a tool call has no turn surface of its own.
   disposers.push(dsh.registerTool({
     name: "cellwork_open",
-    description: "The PROGRAMMATIC cell entry: create one cell for an objective and return its activation directive. CAPTAIN-ONLY (a member or a delegated child may not open a second front); refuses when a cell is already active in this workspace; a `mandate` is accepted only when `.mpd/autoproject/<runId>/escalation.json` exists. `/cellwork` is the same path with a live turn to submit into.",
+    description: "The PROGRAMMATIC cell entry: create one cell for an objective and return its activation directive. CAPTAIN-ONLY (a member or a delegated child may not open a second front); reuses an active cell only for a matching mandate, captain and objective; a `mandate` is accepted only when `.mpd/autoproject/<runId>/escalation.json` exists. `/cellwork` is the same path with a live turn to submit into.",
     parameters: {
       type: "object",
       properties: {
@@ -907,12 +907,15 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
       /** Why this caller may not open a cell, when it may not. */
       const refusal = nonCaptainCallerReason(exec.agent)
       if (refusal !== undefined) return { ok: false, error: "cellwork_open is CAPTAIN-ONLY: " + refusal }
+      /** The declared tool arguments, read once for direct and registry calls. */
+      const argv = readArgs(args)
+      if (argv.mandate !== undefined && typeof argv.mandate !== "string") return { ok: false, error: "cellwork_open: mandate must be a string run id" }
       /** The shared open outcome. */
       const outcome = openCell({
         workspace,
-        objective: String(readArgs(args)["objective"] ?? ""),
+        objective: String(argv.objective ?? ""),
         captainSessionId: sessionId,
-        ...(typeof readArgs(args)["mandate"] === "string" ? { mandate: String(readArgs(args)["mandate"]) } : {}),
+        ...(argv.mandate === undefined ? {} : { mandate: argv.mandate }),
         now: new Date(),
       })
       if (!outcome.ok) return { ok: false, error: outcome.error, ...(outcome.path === undefined ? {} : { path: outcome.path }) }
@@ -920,11 +923,13 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
       // from it) still lets the caller relay the text instead of losing the only way into the mode.
       /** Whether the directive reached the caller's own turn surface. */
       let injected = false
-      try {
-        dsh.injectAgentMessage(exec.agent, dsh.userMessage({ text: outcome.directive, source: { kind: "mpd-cellwork", reason: "activation-directive" } }))
-        injected = true
-      } catch {
-        injected = false
+      if (outcome.needsDirective) {
+        try {
+          dsh.injectAgentMessage(exec.agent, dsh.userMessage({ text: outcome.directive, source: { kind: "mpd-cellwork", reason: "activation-directive" } }))
+          injected = true
+        } catch {
+          injected = false
+        }
       }
       return { ok: true, cellId: outcome.cellId, phase: outcome.phase, statePath: outcome.statePath, directive: outcome.directive, injected }
     },

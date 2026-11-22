@@ -19,6 +19,7 @@ import { fileURLToPath } from "node:url"
 import { MPD_EXT_CONTRACT, type MpdExtensionPlane } from "./sdk"
 import {
   buildExtension,
+  validateDescriptor,
   DEFAULT_EXTENSION_CONFIG,
   type DiscoveryResult,
   type ExtensionConfig,
@@ -163,9 +164,8 @@ export function discoverPlane(options: DiscoverPlaneOptions): DiscoveryResult {
 }
 
 /**
- * Ids declared by the per-call project plane. Used to honour precedence from the
- * apply-time providers too: an apply-time extension shadowed by a project
- * extension with the same id must stop emitting candidates (first wins).
+ * Accepted descriptor ids in the per-call project plane. Apply-time providers share the
+ * discovery validator so a directory or rejected manifest never suppresses a usable extension.
  */
 export function projectExtensionIds(workspaceRoot: string): Set<string> {
   // Ids the project plane claims; an unreadable plane yields the empty set (no suppression).
@@ -185,11 +185,12 @@ export function projectExtensionIds(workspaceRoot: string): Set<string> {
     // The manifest this project directory must carry to declare an id.
     const manifestPath = join(dir, name, MPD_EXT_CONTRACT.manifestFile)
     try {
-      // The parsed manifest, narrowed only far enough to read `id`.
-      const parsed = JSON.parse(readFileSync(manifestPath, "utf8")) as { id?: unknown } | null
-      ids.add(typeof parsed?.id === "string" && parsed.id.length > 0 ? parsed.id : name)
+      /** Match discovery's descriptor acceptance without enumerating each extension's assets. */
+      const { descriptor, rejected } = validateDescriptor(JSON.parse(readFileSync(manifestPath, "utf8")))
+      if (!rejected && descriptor !== undefined) ids.add(descriptor.id)
     } catch {
-      ids.add(name)
+      // Discovery reports malformed or unreadable manifests separately. Suppress no provider here.
+      continue
     }
   }
   return ids

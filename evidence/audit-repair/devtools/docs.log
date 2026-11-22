@@ -1,0 +1,6 @@
+ok   packages/mpd-codegraph-plugin/README.md
+ok   packages/mpd-ext-plugin/README.md
+ok   packages/mpd-mcp-codegraph/README.md
+ok   packages/mpd-mcp-lsp/README.md
+[verify-docs-parity] links=646 checked=606 resolved=606 dead=0 exemptProvenance=0 absentSite=0 ignoredExternal=34 ignoredAnchorOnly=6 files=143
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=61 failed=0 violations=0 exempt=24 derived=3 links=646 dead=0 — PASS

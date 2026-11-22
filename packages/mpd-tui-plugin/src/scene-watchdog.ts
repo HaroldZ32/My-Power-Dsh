@@ -42,6 +42,7 @@ import {
   type WatchdogTeamHead,
 } from "./panel-watchdog.ts"
 import type { WatchdogView } from "./watchdog.ts"
+import { sessionIdOf, workspaceCwdOf } from "./team-state.ts"
 
 /** The scene id the host opens by, and the id every `openScene` call names. */
 export const WATCHDOG_SCENE_ID = "mpd-tui-watchdog"
@@ -65,6 +66,10 @@ interface WatchdogSceneRead {
   readonly view: WatchdogView
   /** Whether the service answered at all. */
   readonly available: boolean
+  /** The session that owned this read, when exposed by the channel. */
+  readonly sessionId?: string
+  /** The cwd the channel reported when this read ran. */
+  readonly cwd?: string
   /** The team head the phase half needs, read in the SAME deferred read as the view. */
   readonly team?: WatchdogTeamHead
 }
@@ -98,20 +103,20 @@ interface SceneUi {
  * @param deps - the page deps the scene was built with.
  * @returns the read the render draws.
  */
-function watchdogSceneRead(deps: WatchdogPanelDeps): WatchdogSceneRead {
+function watchdogSceneRead(deps: WatchdogPanelDeps, sessionId?: string, cwd?: string): WatchdogSceneRead {
   try {
     /** Whether the service answered this read. */
     const available = deps.available()
     /** The durable view, or the explicit empty one while the service is absent. */
-    const view = available ? deps.read() : WATCHDOG_SCENE_EMPTY_VIEW
+    const view = available ? deps.read(sessionId, cwd) : WATCHDOG_SCENE_EMPTY_VIEW
     /** The team head, contained separately: a phase failure must not cost the incidents. */
     let team: WatchdogTeamHead | undefined
     try {
-      team = deps.readTeam?.()
+      team = deps.readTeam?.(sessionId, cwd)
     } catch {
       team = undefined
     }
-    return { view, available, ...(team === undefined ? {} : { team }) }
+    return { view, available, sessionId, cwd, ...(team === undefined ? {} : { team }) }
   } catch {
     return { view: WATCHDOG_SCENE_EMPTY_VIEW, available: false }
   }
@@ -153,8 +158,14 @@ export function createWatchdogSceneComponent(deps: WatchdogPanelDeps): unknown {
 
     /** The last deferred read; the render draws THIS, never a fresh service call. */
     const readState = React.useState({ view: WATCHDOG_SCENE_EMPTY_VIEW, available: false } as WatchdogSceneRead)
-    /** The current read. */
-    const read = readState[0] as WatchdogSceneRead
+    /** The live scene channel names the project and session currently on screen. */
+    const sessionId = sessionIdOf(props?.channel)
+    /** The cwd the channel supplies on this host. */
+    const cwd = workspaceCwdOf(props?.channel)
+    /** The deferred read may belong to the previous channel until the new effect runs. */
+    const stored = readState[0] as WatchdogSceneRead
+    /** Use an empty frame while a newly selected workspace is loading. */
+    const read = stored.sessionId === sessionId && stored.cwd === cwd ? stored : { view: WATCHDOG_SCENE_EMPTY_VIEW, available: false }
     /** Replaces the read. */
     const setRead = readState[1] as (next: unknown) => void
     /** The acknowledgement's outcome line, re-set on every press. */
@@ -167,7 +178,8 @@ export function createWatchdogSceneComponent(deps: WatchdogPanelDeps): unknown {
     // its terminal (frozen criterion I5): the keys, the wheel and the rail all drive ONE number, so the
     // scrollbar can never describe a different position than the rows beside it.
     /** The newest incident stamp this scene has already acknowledged. */
-    const lastAck = React.useRef(0)
+    const lastAck = React.useRef({ sessionId, cwd, watermark: 0 }) as { current: { sessionId?: string; cwd?: string; watermark: number } }
+    if (lastAck.current.sessionId !== sessionId || lastAck.current.cwd !== cwd) lastAck.current = { sessionId, cwd, watermark: 0 }
     /** The explicit refresh trigger (`r`): its UPDATE re-runs the read effect. */
     const refreshState = React.useState(0)
     /** The current refresh token. */
@@ -178,18 +190,18 @@ export function createWatchdogSceneComponent(deps: WatchdogPanelDeps): unknown {
     // THE READ LIVES IN AN EFFECT: a scene is mounted for as long as it is open, and a service read on the
     // render path would run on every repaint (the scene red line). `refreshToken` re-arms it on `r`.
     React.useEffect(() => {
-      setRead(watchdogSceneRead(deps))
+      setRead(watchdogSceneRead(deps, sessionId, cwd))
       /** The 2 s reload, absent when the host refused to schedule timers. */
       let timer: ReturnType<typeof setInterval> | undefined
       try {
-        timer = setInterval(() => setRead(watchdogSceneRead(deps)), WATCHDOG_PANEL_REFRESH_MS)
+        timer = setInterval(() => setRead(watchdogSceneRead(deps, sessionId, cwd)), WATCHDOG_PANEL_REFRESH_MS)
       } catch {
         timer = undefined
       }
       return (): void => {
         if (timer !== undefined) clearInterval(timer)
       }
-    }, refreshToken)
+    }, [refreshToken, sessionId, cwd])
 
     /** The measured terminal; a kit that cannot measure gets the scene's own conservative floor. */
     const measured = typeof ui.useTerminalSize === "function" ? ui.useTerminalSize() : { columns: 80, rows: 24 }
@@ -227,8 +239,8 @@ export function createWatchdogSceneComponent(deps: WatchdogPanelDeps): unknown {
     const acknowledgeShown = (): void => {
       if (!read.available) return
       /** What the shared press produced. */
-      const outcome = watchdogAckPress({ unread: read.view.unread, lastAck: lastAck.current as number, acknowledge: (upTo: number) => deps.acknowledge(upTo) })
-      lastAck.current = outcome.lastAck
+      const outcome = watchdogAckPress({ unread: read.view.unread, lastAck: lastAck.current.watermark, acknowledge: (upTo: number) => deps.acknowledge(upTo, sessionId, cwd) })
+      lastAck.current.watermark = outcome.lastAck
       setFlash(outcome.flash)
     }
 

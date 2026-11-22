@@ -1,0 +1,13 @@
+  FRESH   packages/mpd-mcp-lsp/dist/launch.js  sha 319ded540bae… 15ms  <- packages/mpd-mcp-lsp/src/launch.ts
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] ok: 1/1 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 30ms
+  FRESH   packages/mpd-mcp-codegraph/dist/launch.js  sha 7ac7e1d970c8… 11ms  <- packages/mpd-mcp-codegraph/src/launch.ts
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] ok: 1/1 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 26ms
+  FRESH   packages/mpd-codegraph-plugin/dist/index.js  sha 9ce0d370993a… 21ms  <- packages/mpd-codegraph-plugin/src/index.ts
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] ok: 1/1 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 37ms
+  FRESH   packages/mpd-ext-plugin/dist/index.js  sha c0b67bac31d3… 23ms  <- packages/mpd-ext-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/sdk.js  sha 7c68358d2560… 14ms  <- packages/mpd-ext-plugin/src/sdk.ts
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] ok: 2/2 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 52ms

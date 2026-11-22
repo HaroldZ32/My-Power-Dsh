@@ -2,7 +2,7 @@
 // the legacy home-copy migration. Real corpus where it matters, temp fixtures
 // for the frontmatter subset and the cleanup ownership rules.
 import { afterEach, describe, expect, test } from "bun:test"
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -194,6 +194,77 @@ describe("legacy home-copy migration", () => {
       expect(existsSync(join(home, ".agent-presets", "mpd"))).toBe(false)
       expect(existsSync(join(home, ".agent-presets", "mine", "preset.yml"))).toBe(true)
       expect(existsSync(join(home, ".agent-presets", ".mpd-presets-version"))).toBe(false)
+    } finally {
+      if (previous === undefined) delete process.env.DSH_HOME
+      else process.env.DSH_HOME = previous
+    }
+  })
+
+  test("archives edited and added files from stamped skills and presets, including on retry", () => {
+    /** The only home whose legacy provider directories this test can mutate. */
+    const home = sandboxHome()
+    /** The previous harness home, restored even if an assertion fails. */
+    const previous = process.env.DSH_HOME
+    process.env.DSH_HOME = home
+    try {
+      /** The old active skill directory with edited and extra content. */
+      const skill = join(home, "skills", "dsh-qa")
+      /** The old active preset directory with edited and extra content. */
+      const preset = join(home, ".agent-presets", "mpd")
+      mkdirSync(join(skill, "references"), { recursive: true })
+      mkdirSync(preset, { recursive: true })
+      writeFileSync(join(skill, "SKILL.md"), "LOCAL SKILL EDIT")
+      writeFileSync(join(skill, "references", "added.md"), "ADDED SKILL FILE")
+      writeFileSync(join(preset, "preset.yml"), "LOCAL PRESET EDIT")
+      writeFileSync(join(preset, "extra.yml"), "ADDED PRESET FILE")
+      /** The two markers from the obsolete installer. */
+      const skillsStamp = join(home, "skills", ".mpd-skills-version")
+      /** Preset migration has its own marker. */
+      const presetsStamp = join(home, ".agent-presets", ".mpd-presets-version")
+      writeFileSync(skillsStamp, "0.2.6")
+      writeFileSync(presetsStamp, "0.2.6")
+      /** The migration's user-facing boot messages should name the recovery paths. */
+      const { warnings } = harness({ skipLegacyCleanup: false })
+      expect(existsSync(skill)).toBe(false)
+      expect(existsSync(preset)).toBe(false)
+      /** Unique backup directories outside either provider's active scan root. */
+      const backups = readdirSync(home).filter((entry) => entry.startsWith(".mpd-legacy-backup-"))
+      /** The migrated skill retains the entire directory tree. */
+      const savedSkill = backups.map((entry) => join(home, entry, "dsh-qa")).find(existsSync)
+      /** The migrated preset retains every file under its original basename. */
+      const savedPreset = backups.map((entry) => join(home, entry, "mpd")).find(existsSync)
+      if (savedSkill === undefined || savedPreset === undefined) throw new Error("stamped migration left no recoverable backup")
+      expect(readFileSync(join(savedSkill, "SKILL.md"), "utf8")).toBe("LOCAL SKILL EDIT")
+      expect(readFileSync(join(savedSkill, "references", "added.md"), "utf8")).toBe("ADDED SKILL FILE")
+      expect(readFileSync(join(savedPreset, "preset.yml"), "utf8")).toBe("LOCAL PRESET EDIT")
+      expect(readFileSync(join(savedPreset, "extra.yml"), "utf8")).toBe("ADDED PRESET FILE")
+      expect(warnings.join("\n")).toContain(savedSkill)
+      expect(warnings.join("\n")).toContain(savedPreset)
+
+      // An interrupted migration can leave a marker after moving entries. A retry keeps the backups.
+      writeFileSync(skillsStamp, "0.2.6")
+      writeFileSync(presetsStamp, "0.2.6")
+      harness({ skipLegacyCleanup: false })
+      expect(readdirSync(home).filter((entry) => entry.startsWith(".mpd-legacy-backup-")).sort()).toEqual(backups.sort())
+      expect(readFileSync(join(savedSkill, "SKILL.md"), "utf8")).toBe("LOCAL SKILL EDIT")
+      expect(readFileSync(join(savedPreset, "preset.yml"), "utf8")).toBe("LOCAL PRESET EDIT")
+      expect(existsSync(skillsStamp)).toBe(false)
+      expect(existsSync(presetsStamp)).toBe(false)
+    } finally {
+      if (previous === undefined) delete process.env.DSH_HOME
+      else process.env.DSH_HOME = previous
+    }
+  })
+
+  test("creates no backup or legacy copy on a clean install", () => {
+    /** A fresh harness home with neither scan root nor ownership marker. */
+    const home = sandboxHome()
+    /** Restore the harness environment after applying the public plugin. */
+    const previous = process.env.DSH_HOME
+    process.env.DSH_HOME = home
+    try {
+      harness({ skipLegacyCleanup: false })
+      expect(readdirSync(home)).toEqual([])
     } finally {
       if (previous === undefined) delete process.env.DSH_HOME
       else process.env.DSH_HOME = previous

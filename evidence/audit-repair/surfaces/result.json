@@ -1,0 +1,36 @@
+{
+  "branch": "fix/team-and-audit-recovery",
+  "observedAtUtc": "2026-11-22T16:33:51Z",
+  "scope": {
+    "terminal": "The mounted panel reads and subscribes in the active snapshot's project. A switch releases the watcher and resolves the next project through the live registry when the host publishes only its session ID. An unresolved session in a multi-root host reads no other board. The late-kit test waits for probe settlement and observes one upgrade.",
+    "web": "The registered watchdog tab acknowledges the selected incident in its own workspace. The route computes unread records independently in each root. Watchdog and Workbench regressions deliver older reads after newer results and confirm the current result stays visible. Unreadable routes and a successful empty response have distinct outcomes.",
+    "go": "The registered Save Memory handler forwards the live agent for the selected root and refuses unknown sessions. The panel offers a Web fallback for batches or multiple selections and sends no partial answer. Board and member counts use the full task list, while the board shows fifty rows. Missing dependencies block and failed dependencies release. The scoped watchdog read consumes the nested teams, hold and incident envelope.",
+    "watchdogQa": "The driver attaches the real built Web client to registered routes and uses the real TUI adapter and dialog facade against the mounted watchdog. The Web click sends the old row's workspace and timestamp. The TUI dialog changes the active workspace before returning. Both acknowledgements leave a newer incident unread and the other root's watermarks intact. Both replays clear after the second acknowledge and show a subsequent incident."
+  },
+  "qaMeasurements": {
+    "watchdogChecksPassed": 22,
+    "watchdogChecksFailed": 0,
+    "watchdogSelfTestChecks": 19,
+    "watchdogSelfTestNegativeControls": 18,
+    "selectedStampMs": 1789400000000,
+    "laterUnreadStampMs": 1789400060000,
+    "webLaterUnreadId": "inc-2",
+    "neighborWatermarkInBothArms": { "web-panel": 1789400060000, "mpd-tui": 17 },
+    "surfaceTestsPassed": 995,
+    "surfaceTestsSkipped": 1,
+    "surfaceTestsFailed": 0,
+    "surfaceTestFiles": 43,
+    "dshGoStandard": "LEGAL",
+    "dshGoConformanceSelfTestArms": 46,
+    "docsPairsPassed": 61,
+    "repositoryQaSelfTests": { "passed": 56, "skipped": 2, "failed": 0 },
+    "sharedRootTests": { "passed": 4268, "skipped": 6, "failed": 10, "failingGroups": ["append supersession", "boulder finalization"] }
+  },
+  "bounds": [
+    "The TUI package test mounts the registered surface with the installed Ink renderer. The watchdog QA driver mounts the real adapter over a simulated terminal dialogue.",
+    "The Web driver executes the rebuilt client factory and registered routes using an offline hook runtime. Live browser and mobile device rendering remain unverified by this lane.",
+    "Agentless TUI status and legacy keyboard surfaces have no session snapshot and retain documented workspace-level fallback.",
+    "The older notify driver initially failed on an obsolete TUI attachment signature and stale Web fixture assumptions. The replacement invokes the actual rendered Web control and TUI dialog before accepting a result.",
+    "Central integration owns generated artifacts and vendor fingerprints. This record documents writer checks. The independent verifier owns the verdict."
+  ]
+}

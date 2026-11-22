@@ -694,10 +694,10 @@ export function forgetTeam(ledger: DispatchLedger, teamId: string): { ledger: Di
  *     pass, with no script to run.
  * @param ledger - the whole ledger as read from disk.
  * @param teamId - the team whose own rows are pruned.
- * @param tasks - that team's board, as the dispatch engine sees it.
+ * @param tasks - the ids and statuses on that team's board.
  * @returns the pruned ledger and the task ids it forgot.
  */
-export function reconcile(ledger: DispatchLedger, teamId: string, tasks: readonly DispatchTask[]): { ledger: DispatchLedger; forgotten: string[] } {
+export function reconcile(ledger: DispatchLedger, teamId: string, tasks: readonly Pick<DispatchTask, "id" | "status">[]): { ledger: DispatchLedger; forgotten: string[] } {
   /** The board indexed by task id, so the prune costs one lookup per ledger entry. */
   const byId = new Map(tasks.map((task) => [task.id, task]))
   /** The pruned ledger; live rows of every team survive. */

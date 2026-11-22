@@ -164,7 +164,7 @@ interface Fixture {
  * @param roles - the roster rows the `mpdRoles` service publishes (the C7-2 source); empty by default.
  * @returns the fixture.
  */
-function fixture(roles: Array<{ name: string; readonly?: boolean }> = []): Fixture {
+function fixture(roles: Array<{ name: string; readonly?: boolean }> = [], officialMembers: object[] = []): Fixture {
   /** The sandbox workspace, which is what `workspaceRoot` answers. */
   const workspace = mkdtempSync(join(tmpdir(), "mpd-output-"))
   /** The tools the plugin registered. */
@@ -194,7 +194,7 @@ function fixture(roles: Array<{ name: string; readonly?: boolean }> = []): Fixtu
       // THE METER SEAM answers the adapter's OWN empty reading, which is what it returns for a session it
       // cannot resolve: a null window keeps the context verb's reply lossless JSON (no `undefined`).
       if (prop === "contextPressure") return () => ({ usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" })
-      if (prop === "teamListMembers") return () => []
+      if (prop === "teamListMembers") return () => officialMembers
       if (prop === "teamListTasks") return () => []
       if (prop === "capabilities") return () => ({})
       return noop
@@ -324,6 +324,23 @@ describe("an EMPTY plan cannot be approved (D4a)", () => {
 })
 
 describe("every action's value satisfies its declared output contract", () => {
+  test("status keeps official fallback rows and their diagnostic across the lossless JSON boundary", async () => {
+    /** The capability marker that the adapter attaches to an empty official roster. */
+    const unsupported = { unsupported: true, capability: "roster", generation: "task-board-only", reason: "the official roster is unavailable" }
+    /** The array kept backward compatible for adapter callers that iterate over rows. */
+    const rows = Object.defineProperty([], "unsupported", { value: unsupported })
+    /** The host composition with a mounted, board-only official service. */
+    const f = fixture([], rows)
+    try {
+      /** The status payload after the same lossless check the harness runs before rendering. */
+      const status = await f.call("agent_teams_plan", { action: "status" })
+      expect(status.members).toEqual([])
+      expect(status.rosterUnsupported).toEqual(unsupported)
+      expect(Reflect.ownKeys(status.members)).toEqual(["length"])
+    } finally {
+      rmSync(f.workspace, { recursive: true, force: true })
+    }
+  })
   test("status answers null plan/hold, the record and a LOSSLESS summary — and the harness accepts it", async () => {
     /** The harness under test. */
     const f = fixture()

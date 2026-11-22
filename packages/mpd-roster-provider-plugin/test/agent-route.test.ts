@@ -4,7 +4,7 @@
 // label naming no member inherits — the identity pass-through this row must never lose.
 import { expect, test } from "bun:test"
 import { apply, PROVIDER_NAME } from "../src/index"
-import type { DshLlmCatalog } from "../../mpd-dsh-adapter-plugin/src/index"
+import { workspaceRootOf, type DshLlmCatalog } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The catalog the mount answers; every model declares the efforts the routes state. */
 const CATALOG: DshLlmCatalog = {
@@ -27,10 +27,11 @@ type Resolution =
 
 /**
  * Mount the row with a config-service double and a composition provider that records what it got.
- * @param resolutionOf - the TOTAL resolution the service answers per member.
+ * @param resolutionOf - the TOTAL resolution the service answers per member and workspace.
+ * @param roots - the live workspaces registered by the fake host.
  * @returns the registered provider and the requests the delegated-to provider received.
  */
-function mounted(resolutionOf: (member: string) => Resolution): { provider: { name: string; start: (request: unknown) => unknown }; started: AnyRecord[] } {
+function mounted(resolutionOf: (member: string, workspace?: string) => Resolution, roots: readonly string[] = []): { provider: { name: string; start: (request: unknown) => unknown }; started: AnyRecord[] } {
   /** Requests the composition's own provider was handed, one per delegation. */
   const started: AnyRecord[] = []
   /** The provider the row registered; assigned by the fake registration seam during `apply`. */
@@ -48,6 +49,8 @@ function mounted(resolutionOf: (member: string) => Resolution): { provider: { na
   /** The fake adapter mount: exactly the reads this row makes. */
   const dsh = {
     llmCatalog: async () => CATALOG,
+    workspaceRoot: workspaceRootOf,
+    workspaceRootsAll: () => roots,
     subagentProvider: (name: string) => (name === "spawn" ? base : undefined),
     registerSubagentProvider: (registered: unknown) => { provider = registered as { name: string; start: (request: unknown) => unknown } },
   }
@@ -75,6 +78,20 @@ test("a labelled teammate runs on its OWN agentRoutes entry, re-read per spawn",
   live = { ok: true, agent: "Deep Worker", route: { provider: "backup", model: "spare", reasoningEffort: "low" } }
   await provider.start({ agentOptions: {}, descriptor: { label: "Deep Worker — implement the parser" } })
   expect(started[1].agentOptions).toMatchObject({ provider: "backup", model: "spare", reasoningEffort: "low" })
+})
+
+test("legacy teammate routing takes the parent's project even when the child cwd differs", async () => {
+  /** Different projects on one host. */
+  const roots = ["/work/a", "/work/b"]
+  /** One target per root, with B as the default to detect accidental fallback. */
+  const { provider, started } = mounted((agent, workspace) => ({
+    ok: true, agent, route: workspace === roots[0] ? { provider: "gateway", model: "smart" } : { provider: "backup", model: "spare" },
+  }), roots)
+  /** Same roster identity for requests from two different sessions. */
+  const request = { cwd: "/child-worktree", descriptor: { label: "Deep Worker — implement" } }
+  for (const cwd of roots) await provider.start({ ...request, parent: { session: { header: { cwd } } } })
+  await expect(provider.start(request)).rejects.toThrow(/no spawning session identifies a workspace/)
+  expect(started.map((entry) => entry.agentOptions?.model)).toEqual(["smart", "spare"])
 })
 
 test("TWO members with DIFFERENT routes run independently — no cross-talk (§9)", async () => {

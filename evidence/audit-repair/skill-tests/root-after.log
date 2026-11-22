@@ -1,0 +1,27 @@
+bun test v1.4.0 (34cbb9a40)
+(fail) no new terminal writes in an MPD runtime path (R5) [142.12ms]
+(fail) the cross-package coupling inventory is exactly the frozen set (independence gate) [129.70ms]
+skills/programming/scripts/typescript/check-no-excuse-rules.test.ts:
+(pass) #given the no-excuse script is executed from an installed ~/.codex-style skill cache > #when the caller provides the native preview #then the CLI resolves it and exits 0 [98.32ms]
+(pass) #given the no-excuse script is executed from an installed ~/.codex-style skill cache > #when a checked file violates the rules #then violations are still reported with exit 1 [82.49ms]
+(pass) #given the no-excuse script is executed from an installed ~/.codex-style skill cache > #when the caller has no TypeScript 7 API #then it explains how to fix resolution and exits 2 [10.12ms]
+
+6 tests skipped:
+(skip) svn backend REAL svn CLI: repo create, checkout, commit, log (svn/svnadmin not installed; the real-CLI arms need the Subversion toolchain)
+(skip) both vcs: commits to git and svn (svn/svnadmin not installed; the real-CLI arms need the Subversion toolchain)
+(skip) team-workflow projection (read-only, from the OFFICIAL live readout) > the REAL record of this session's own team projects without a hand-built object
+(skip) binary resolves from toolchain (skipped: detector binary absent — run the installer with --with-comment-checker or set MPD_DSH_COMMENT_CHECKER_BIN)
+(skip) comment file triggers detection (exit 2) (skipped: detector binary absent — run the installer with --with-comment-checker or set MPD_DSH_COMMENT_CHECKER_BIN)
+(skip) clean file passes (exit 0) (skipped: detector binary absent — run the installer with --with-comment-checker or set MPD_DSH_COMMENT_CHECKER_BIN)
+
+
+2 tests failed:
+(fail) no new terminal writes in an MPD runtime path (R5) [142.12ms]
+(fail) the cross-package coupling inventory is exactly the frozen set (independence gate) [129.70ms]
+
+ 4250 pass
+ 6 skip
+ 2 fail
+ 54789 expect() calls
+Ran 4258 tests across 278 files. [51.06s]
+suite exit=1

@@ -1,0 +1,22 @@
+$ node scripts/run-qa-selftests.ts
+PASS  kit present + a TIMED-OUT run is refused (a timeout is never a pass) — judged violation; named gate.timeout=failed
+PASS  kit absent + a TIMED-OUT run is refused (a timeout is never a pass) — judged violation; named gate.timeout=failed
+PASS  kit present + a JSON null report is refused (parseable requires an object) — judged violation; named gate.report.parseable=failed
+PASS  kit present + a JSON array report is refused (parseable requires an object) — judged violation; named gate.report.parseable=failed
+PASS  kit present + an unparsable report is refused — judged violation; named gate.report.parseable=failed
+[test:qa] model-config-live-refresh.ts
+[model-config-live-refresh self-test] ok: 37 checks (naive zstd read on this runtime decoded 4/4 — informational, the T-25 trap is runtime-bound)
+[test:qa] team-idle-member-guard.ts
+[team-idle-member-guard] self-test PASS — 17 arms incl. negative controls
+[self-test] ok   C13: a `failed to apply loader entry` line REDDENS B8
+[self-test] PASS — team-watchdog-boot (17 checks, 0 failed)
+[self-test] PASS — team-watchdog-config (8 checks, 0 failed)
+[self-test] PASS — team-watchdog-heartbeat (13 checks, 0 failed)
+[self-test] PASS — team-watchdog-notify (15 checks, 0 failed)
+[mpd-qa] SKIP case=tui-distribution lane=real reason=absent-fixture prereq=vendor/meta-protocols/dsh-distribution in a mounted dsh-ecosystem-spec checkout remedy="check out the host repo with its submodules initialised, or set MPD_TUI_SPEC_ROOT"
+[mpd-qa] SKIP case=tui-spec-conformance lane=real reason=absent-fixture prereq=dsh-ecosystem-spec with conformance/requirements-v0.15.json remedy="check out the host repo with its submodules initialised, or set MPD_TUI_SPEC_ROOT"
+[user-surface self-test] ok  expectRed.paletteFailureIsInconclusive — a SUCCESSFUL boot whose palette capture failed is INCONCLUSIVE, not a detected anchor: the run reddened, but NOT for a named expected cause: bundleResolution needs source=install-anchor, version=0.15.5, sameCopyDigests=false, and profileRowListWins must name mpd-cellwork — a red anywhere else (boot crash, palette capture, structural failure) is NOT evidence that the stale install anchor was detected
+[user-surface self-test] arms=68 failed=0
+[self-test] PASS — watchdog-redesign (15 checks, 0 failed)
+[test:qa] COMPLETE WITH SKIPS - 56 passed, 2 skipped, 0 failed (58 total)
+QA self-test gate exit=0

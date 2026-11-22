@@ -193,6 +193,17 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
   const config = deps.config
   /** Every registration's disposer. */
   const disposers: Array<() => void> = []
+  /** Workspaces with an active pass, covering the board append and final cell checkpoint. */
+  const activating = new Set<string>()
+  /** Refuse overlapping passes through this row so a second call cannot race recovery. */
+  const serializeActivation = (execute: (args: unknown, exec: DshToolExec) => Promise<FlowResult>): typeof execute => async (args: unknown, exec: DshToolExec): Promise<FlowResult> => {
+    /** One workspace runs one active cell. */
+    const workspace = dsh.workspaceRoot(exec)
+    if (activating.has(workspace)) return { ok: false, error: "cellwork_activate: an activation is already running in this workspace; retry after it settles" }
+    activating.add(workspace)
+    try { return await execute(args, exec) } finally { activating.delete(workspace) }
+  }
+
   /** The team service, probed per call (the team row may activate after this one). */
   const teams = (): TeamsServiceView | undefined => {
     /** The service object, or undefined. */
@@ -1103,7 +1114,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         return text("cell activated on split revision " + String(result.revision ?? "?") + (result.mode === "resplit" ? " (re-split: " + String(Array.isArray(result.kept) ? result.kept.length : 0) + " kept, " + String(Array.isArray(result.cancelled) ? result.cancelled.length : 0) + " cancelled)" : "") + ": " + String(Array.isArray(result.tasks) ? result.tasks.length : 0) + " task(s), " + String(Array.isArray(result.loops) ? result.loops.length : 0) + " verify loop(s), " + pairs.length + " dispatched" + (skipped.length === 0 ? "" : ", " + skipped.length + " reported: " + skipped.map((row) => String(row.subject ?? row.taskId) + ": " + String(row.reason)).join("; ")) + (typeof result.notice === "string" ? "\nNOTICE: " + result.notice : "") + (typeof result.boardNote === "string" ? "\nBOARD: " + result.boardNote : ""))
       },
     },
-    execute: async (args: unknown, exec: DshToolExec): Promise<FlowResult> => {
+    execute: serializeActivation(async (args: unknown, exec: DshToolExec): Promise<FlowResult> => {
       /** The argument record. */
       const argv = readArgs(args)
       /** The caller's context. */
@@ -1185,13 +1196,23 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
             teamId: partial.mintedTeamId,
             planningTeamId: state.planningTeamId === "" ? state.teamId : state.planningTeamId,
           }
+        /** The old task and loop mappings must stop authorising work once its board row is retired. */
+        const taskTable = { ...state.activatedTasks }
+        /** Loops already opened for this pass are added below after the old mappings are invalidated. */
+        const loopTable = { ...(state.activatedLoops ?? {}) }
+        for (const [key, id] of Object.entries(partial.retired ?? {})) {
+          if (taskTable[key] !== id) continue
+          delete taskTable[key]
+          delete loopTable[key]
+        }
         /** The record after the partial checkpoint. */
         const next: CellState = {
           ...state,
           activationInFlight: acceptedRevision,
           members: { ...state.members, ...partial.members },
-          activatedTasks: { ...state.activatedTasks, ...partial.boardIds },
-          activatedLoops: { ...(state.activatedLoops ?? {}), ...partial.loopIds },
+          activatedTasks: { ...taskTable, ...partial.boardIds },
+          activatedLoops: { ...loopTable, ...partial.loopIds },
+          cancelledTasks: { ...state.cancelledTasks, ...partial.retired },
           ...mintRecord,
         }
         transition(caller.workspace, next, {
@@ -1243,10 +1264,9 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
       /** The cancellations this activation recorded, keyed by split key for the cell record. */
       const cancelledNow: Record<string, string> = {}
       for (const entry of activated.outcome.cancelled) cancelledNow[entry.key] = entry.boardId
-      // THE LOOP TABLE IS MERGED, NEVER REPLACED: a re-split keeps the loops an earlier revision armed,
-      // while this pass's (and a resumed pass's) ids are recorded by split key.
-      /** The verify-loop ids the cell records after this activation. */
-      const loopTable: Record<string, string> = { ...(state.activatedLoops ?? {}) }
+      /** Keep previous verify loops only while the same task id serves this key. */
+      const loopTable = Object.fromEntries(Object.entries(state.activatedLoops ?? {}).filter(([key]) =>
+        state.activatedTasks[key] !== undefined && state.activatedTasks[key] === activated.outcome.boardIds[key]))
       for (const loop of activated.outcome.loops) loopTable[loop.taskKey] = loop.loopId
       /** The record after activation: the raised members, the live board mapping and the executing phase. */
       const next: CellState = {
@@ -1292,7 +1312,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         // from an append to a live board without reading the journal.
         ...(activated.outcome.mintedTeamId === undefined ? {} : { mintedTeamId: activated.outcome.mintedTeamId, ...(activated.outcome.mintTrigger === undefined ? {} : { mintTrigger: activated.outcome.mintTrigger }) }),
       }
-    },
+    }),
   }))
 
   return disposers

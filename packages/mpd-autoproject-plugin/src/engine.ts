@@ -22,8 +22,8 @@
 //
 // Every harness seam goes through the adapter interface below, which the row passes in; the engine never
 // imports another package's source (the cross-package coupling inventory may only shrink).
-import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs"
-import { join, relative } from "node:path"
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs"
+import { dirname, join, relative, resolve } from "node:path"
 import { randomUUID } from "node:crypto"
 import { ADVERSARIAL_CATEGORIES, DIRECTIVE } from "./directive.ts"
 import {
@@ -160,7 +160,7 @@ export interface AutoprojectArgs {
 
 /** The `mpd_autoproject` result, matching the row's DECLARED output schema. */
 export interface AutoprojectRunResult {
-  /** The final outcome: `complete`, `blocked`, `max-rounds` or `escalated`. */
+  /** The outcome, including `boulder-pending` when the verified work's ledger could not be closed. */
   status: string
   /** How many rounds actually ran. */
   rounds: number
@@ -229,9 +229,9 @@ interface GoalBridge {
   /** Whether long runs anchor a goal by themselves (`goal.autoAnchor` in mpd.jsonc). */
   autoAnchor(): boolean
   /** Put a durable goal in place, keeping any unfinished goal already current. */
-  anchor(exec: unknown, input: { objective: string; source: string; maxRounds?: number }): Promise<{ ok: boolean; created: boolean; goal?: { id?: string } | null; error?: string; note?: string }>
-  /** Finish a goal this row anchored; a goal it did not anchor is left to the model and the user. */
-  finish(exec: unknown, input: { outcome: "complete" | "blocked"; source: string; reason?: string }): Promise<{ ok: boolean; outcome: string; error?: string }>
+  anchor(exec: unknown, input: { objective: string; source: string; runId: string }): Promise<{ ok: boolean; created: boolean; goal?: { id?: string } | null; error?: string; note?: string }>
+  /** Finish only the goal created by the identified run. */
+  finish(exec: unknown, input: { outcome: "complete" | "blocked"; source: string; runId: string; goalId: string; reason?: string }): Promise<{ ok: boolean; outcome: string; error?: string }>
 }
 
 /** ONE child the engine's backstop bound or the supervisor's deadman killed, as `state.json` records it. */
@@ -339,6 +339,24 @@ function writeJson(path: string, value: unknown): void {
   writeFileSync(path, JSON.stringify(value, null, 2))
 }
 
+/** Publish a complete authorization artifact so a retry cannot see partially written JSON. */
+function writeEscalation(path: string, value: unknown): void {
+  mkdirSync(dirname(path), { recursive: true })
+  /** The scratch file shares the destination's filesystem for atomic replacement. */
+  const scratch = path + "." + randomUUID() + ".tmp"
+  try {
+    writeJson(scratch, value)
+    renameSync(scratch, path)
+  } catch (error) {
+    try { unlinkSync(scratch) } catch (cleanup) {
+      if (!(cleanup instanceof Error && "code" in cleanup && cleanup.code === "ENOENT")) {
+        throw new AggregateError([error, cleanup], "could not write or clean up the escalation artifact at " + path)
+      }
+    }
+    throw error
+  }
+}
+
 /**
  * A thrown or returned failure reduced to printable one-line text.
  *
@@ -410,16 +428,17 @@ function goalBridgeOf(ctx: EngineCtx): GoalBridge | undefined {
  * @param deps - the adapter, context and config.
  * @param exec - the tool exec carrying the calling agent.
  * @param objective - the run's objective.
- * @returns the goal id when a goal is in place, else null; a refusal is logged, never thrown.
+ * @param runId - the run that will own any newly created goal.
+ * @returns the newly created goal id, or null when this run owns no goal.
  */
-async function anchorGoal(deps: EngineDeps, exec: unknown, objective: string): Promise<string | null> {
+async function anchorGoal(deps: EngineDeps, exec: unknown, objective: string, runId: string): Promise<string | null> {
   try {
     /** The goal bridge, absent in a composition without the goal row. */
     const bridge = goalBridgeOf(deps.ctx)
     if (bridge === undefined || bridge.autoAnchor?.() !== true) return null
     /** The anchor outcome; an unfinished goal already current is KEPT by the service. */
-    const outcome = await bridge.anchor(exec, { objective, source: "autoproject" })
-    if (outcome?.goal != null && typeof outcome.goal.id === "string") return outcome.goal.id
+    const outcome = await bridge.anchor(exec, { objective, source: "autoproject", runId })
+    if (outcome?.ok === true && outcome.created === true && typeof outcome.goal?.id === "string" && outcome.goal.id !== "") return outcome.goal.id
     if (outcome?.ok === false) deps.dsh.rowLog?.(ROW_LOG, "goal anchor refused: " + String(outcome.error ?? "unknown"))
     return null
   } catch (error) {
@@ -438,17 +457,18 @@ async function anchorGoal(deps: EngineDeps, exec: unknown, objective: string): P
  *
  * @param deps - the adapter, context and config.
  * @param exec - the tool exec carrying the calling agent.
+ * @param run - the persisted identity of the run and the goal it created.
  * @param status - the run's final status.
  * @param reason - the blocker text, for a blocked attempt.
  */
-async function finishGoal(deps: EngineDeps, exec: unknown, status: string, reason: string): Promise<void> {
-  if (status !== "complete" && status !== "blocked") return
+async function finishGoal(deps: EngineDeps, exec: unknown, run: Pick<RunState, "id" | "goalId">, status: string, reason: string): Promise<void> {
+  if (run.goalId === undefined || (status !== "complete" && status !== "blocked")) return
   /** The goal bridge, absent in a composition without the goal row. */
   const bridge = goalBridgeOf(deps.ctx)
   if (bridge === undefined) return
   try {
     /** The finish outcome, reported in the row log when the harness refused the transition. */
-    const outcome = await bridge.finish(exec, { outcome: status === "blocked" ? "blocked" : "complete", source: "autoproject", ...(status === "blocked" ? { reason } : {}) })
+    const outcome = await bridge.finish(exec, { outcome: status, source: "autoproject", runId: run.id, goalId: run.goalId, ...(status === "blocked" ? { reason } : {}) })
     if (outcome?.ok === false) deps.dsh.rowLog?.(ROW_LOG, "goal finish (" + status + ") refused: " + String(outcome.error ?? "unknown"))
   } catch (error) {
     deps.dsh.rowLog?.(ROW_LOG, "goal finish failed: " + errorTextOf(error))
@@ -500,12 +520,24 @@ async function boulderTimer(dsh: AutoprojectEngineAdapter, exec: unknown, workId
  *
  * @param dsh - the adapter slice.
  * @param exec - the tool exec the call is attributed to.
- * @param workId - the work to complete.
+ * @param workId - the exact work whose terminal state must be confirmed.
+ * @returns null after acknowledgement, or the refusal or transport error.
  */
-async function boulderComplete(dsh: AutoprojectEngineAdapter, exec: unknown, workId: string): Promise<void> {
-  /** The tool result, normalized by the adapter. */
-  const result = await dsh.executeTool({ name: BOULDER_COMPLETE_TOOL, arguments: { workId }, agent: (exec as { agent?: unknown } | undefined)?.agent })
-  if (result?.ok !== true || result.isError === true) dsh.rowLog?.(ROW_LOG, "boulder complete degraded: " + errorTextOf(result?.error ?? "the call did not report ok"))
+async function boulderComplete(dsh: AutoprojectEngineAdapter, exec: unknown, workId: string): Promise<string | null> {
+  try {
+    /** The tool transport can succeed while the nested tool refuses the transition. */
+    const result = await dsh.executeTool({ name: BOULDER_COMPLETE_TOOL, arguments: { workId }, agent: (exec as { agent?: unknown } | undefined)?.agent })
+    if (result?.ok !== true || result.isError === true) return errorTextOf(result?.error ?? "the completion call failed")
+    /** The Boulder tool must acknowledge the requested work as terminal in its value. */
+    const value = result.value
+    if (typeof value === "object" && value !== null) {
+      if ("ok" in value && value.ok === false) return errorTextOf("error" in value ? value.error ?? "the Boulder tool refused completion" : "the Boulder tool refused completion")
+      if ("workId" in value && value.workId === workId && "status" in value && value.status === "completed") return null
+    }
+    return "the Boulder tool did not acknowledge this work as completed"
+  } catch (error) {
+    return errorTextOf(error)
+  }
 }
 
 /**
@@ -960,7 +992,7 @@ export async function runAutoproject(args: AutoprojectArgs, exec: any, deps: Eng
    * Evaluate the frozen predicate at ONE boundary and, when it fires, take the one decision this engine
    * owns.
    *
-   * The artifact is written at most once. `mode:"off"` records the firing in the journal and takes NO
+   * Each run makes at most one escalation decision. `mode:"off"` records the firing and takes NO
    * consequence: the mode decides what happens NEXT, never whether a signal fired. `mode:"ask"` and
    * `mode:"auto"` both end the run `escalated` and LEAVE THE ANCHORED GOAL ARMED; `auto` additionally
    * calls `cellwork_open` when that tool is registered, and otherwise returns the `/cellwork` instruction.
@@ -997,14 +1029,14 @@ export async function runAutoproject(args: AutoprojectArgs, exec: any, deps: Eng
     stamp("escalation", escalation.mode === "off" ? "suppressed" : "fired", fired.map((signal) => signal.id + "=" + signal.value + "/" + signal.threshold).join(",") + " mode=" + escalation.mode)
     if (escalation.mode === "off") return false
     escalated = true
-    /** The hand-off path this run took, recorded in the journal AND in the artifact. */
-    let handoff = "instruction"
-    if (escalation.mode === "auto" && dsh.hasTool(CELLWORK_OPEN_TOOL, exec?.agent)) {
-      /** The programmatic hand-off into cellwork. */
-      const opened = await dsh.executeTool({ name: CELLWORK_OPEN_TOOL, arguments: { objective, mandate: { source: "autoproject", runId: id, planFile }, planFile, scope }, agent: exec?.agent })
-      if (opened?.ok === true && opened.isError !== true) handoff = CELLWORK_OPEN_TOOL
-      else dsh.rowLog?.(ROW_LOG, "cellwork hand-off degraded: " + errorTextOf(opened?.error ?? "the call did not report ok"))
-    }
+    /** Registered arguments retained for an operator to replay after a failed or lost reply. */
+    const openArgs = { objective, mandate: id }
+    /** The authorization lives at the receiver's workspace path even with a custom state directory. */
+    const mandateFile = join(workspace, ".mpd", "autoproject", id, "escalation.json")
+    /** Whether the local and receiver paths require separate writes. */
+    const mirror = resolve(mandateFile) !== resolve(escalationFile)
+    /** The conservative outcome recorded before crossing the tool boundary. */
+    const instruction = { path: "instruction", arguments: openArgs }
     /** The escalation artifact: the deterministic decision, its evidence and the hand-off, on disk. */
     const artifact = {
       version: 1,
@@ -1024,13 +1056,56 @@ export async function runAutoproject(args: AutoprojectArgs, exec: any, deps: Eng
       writer: { id: roundRole + " · " + id, role: roundRole, runId: id, bound: "label-not-agent-key" },
       roundsUsed: used,
       mandate: { source: "autoproject", runId: id, planFile },
-      handoff: { path: handoff },
+      handoff: instruction,
     }
+    writeEscalation(escalationFile, artifact)
     state.status = "escalated"
     writeJson(stateFile, state)
-    writeJson(escalationFile, artifact)
-    stamp("handoff", handoff, handoff === CELLWORK_OPEN_TOOL ? "cellwork opened" : "run `/cellwork " + objective + "`")
-    finalReport += (finalReport === "" ? "" : "\n") + "escalated [" + fired.map((signal) => signal.id).join("/") + "] mode=" + escalation.mode + ": " + (handoff === CELLWORK_OPEN_TOOL ? "handed off to cellwork" : "run `/cellwork " + objective + "` to continue the project there")
+    /** Whether the receiving tool's authorization file was published. */
+    let authorized = !mirror
+    /** The refusal or transport error, when automatic hand-off could not be confirmed. */
+    let error: string | undefined
+    /** The cell id and optional relay text returned by the receiver. */
+    let opened: { cellId: string; directive?: string } | undefined
+    /** Whether a caller can replay the registered tool in this composition. */
+    const mounted = dsh.hasTool(CELLWORK_OPEN_TOOL, exec?.agent)
+    try {
+      if (mirror) { writeEscalation(mandateFile, artifact); authorized = true }
+      if (escalation.mode === "auto" && mounted) {
+        /** The transport envelope is distinct from the registered tool's business result. */
+        const reply = await dsh.executeTool({ name: CELLWORK_OPEN_TOOL, arguments: openArgs, agent: exec?.agent })
+        /** The receiver's registered result shape, checked before using any field. */
+        const value = reply?.value as { ok?: unknown; cellId?: unknown; error?: unknown; directive?: unknown; injected?: unknown } | undefined
+        if (reply?.ok === true && reply.isError !== true && value?.ok === true && typeof value.cellId === "string" && value.cellId.trim() !== "") {
+          opened = { cellId: value.cellId, ...(value.injected !== true && typeof value.directive === "string" ? { directive: value.directive } : {}) }
+        } else {
+          error = errorTextOf(reply?.error ?? value?.error ?? "cellwork_open did not confirm a cell id")
+        }
+      }
+    } catch (failure) {
+      error = failure instanceof Error ? failure.message : errorTextOf(failure)
+    }
+    if (error !== undefined) dsh.rowLog?.(ROW_LOG, "cellwork hand-off degraded: " + error)
+    /** The same replay instruction handles refusals and a host that lost the tool reply. */
+    const retry = mounted
+      ? "call `cellwork_open " + JSON.stringify(openArgs) + "` to continue" + (authorized ? "" : " after restoring " + mandateFile)
+      : "run `/cellwork " + objective + "` to continue the project there"
+    /** The confirmed hand-off replaces the conservative outcome only after the tool acknowledges it. */
+    const handoff = opened === undefined ? { ...instruction, ...(error === undefined ? {} : { error }) } : { ...instruction, path: CELLWORK_OPEN_TOOL, cellId: opened.cellId }
+    if (opened !== undefined || error !== undefined) {
+      try {
+        writeEscalation(escalationFile, { ...artifact, handoff })
+        if (mirror && authorized) writeEscalation(mandateFile, { ...artifact, handoff })
+      } catch (failure) {
+        /** The durable instruction survives a failure to update the receipt. */
+        const detail = failure instanceof Error ? failure.message : errorTextOf(failure)
+        stamp("handoff-receipt", "degraded", detail)
+        dsh.rowLog?.(ROW_LOG, "cellwork hand-off receipt could not be persisted: " + detail)
+      }
+    }
+    stamp("handoff", handoff.path, opened === undefined ? retry : "cellwork opened " + opened.cellId)
+    finalReport += (finalReport === "" ? "" : "\n") + "escalated [" + fired.map((signal) => signal.id).join("/") + "] mode=" + escalation.mode + ": "
+      + (opened === undefined ? (error === undefined ? "" : error + "; ") + retry : "handed off to cellwork " + opened.cellId + (opened.directive === undefined ? "" : "\n" + opened.directive))
     return true
   }
 
@@ -1039,7 +1114,7 @@ export async function runAutoproject(args: AutoprojectArgs, exec: any, deps: Eng
   // not this tool call — is the basis of continuous execution.
   if (plan) {
     /** The goal this run anchored, when one is in place. */
-    const goalId = await anchorGoal(deps, exec, objective)
+    const goalId = await anchorGoal(deps, exec, objective, id)
     if (goalId !== null) { state.goalId = goalId; writeJson(stateFile, state) }
   }
 
@@ -1287,8 +1362,6 @@ export async function runAutoproject(args: AutoprojectArgs, exec: any, deps: Eng
   }
 
   // ── PHASE 6: close the durable ledger and the goal ─────────────────────────
-  // Only a COMPLETED run closes its boulder work: an escalated or blocked run's work is still open work.
-  if (boulderWorkId !== null && status === "complete") await boulderComplete(dsh, exec, boulderWorkId)
   // A KILLED CHILD IS A BLOCKED RUN: the run may never report `complete` — or leave a reader thinking
   // something is still running — when a child was cut off at its bound. An ESCALATED run keeps its
   // hand-off word (a hand-off is not a claim that the work finished) and the artifact still carries the
@@ -1297,13 +1370,23 @@ export async function runAutoproject(args: AutoprojectArgs, exec: any, deps: Eng
     finalReport += "\nslots: " + String(killed.length) + " child(ren) killed at the " + String(slotBoundMs) + " ms bound (" + killed.map((kill) => kill.role + "@" + String(kill.elapsedMs) + "ms round " + String(kill.round)).join(", ") + ")"
     if (status !== "escalated") status = "blocked"
   }
+  if (boulderWorkId !== null && status === "complete") {
+    /** A verified result can only become terminal after the ledger acknowledges the same work. */
+    const completionError = await boulderComplete(dsh, exec, boulderWorkId)
+    if (completionError !== null) {
+      status = "boulder-pending"
+      stamp("boulder-completion", "pending", completionError)
+      finalReport += "\nBoulder completion for " + boulderWorkId + " could not be confirmed. " + completionError
+        + " Resolve the error and retry the ledger with `mpd_boulder_complete {workId:" + JSON.stringify(boulderWorkId) + "}`."
+    }
+  }
   state.status = status
   state.verdict = verdict
   state.criteria = [...criteria.values()]
   writeJson(stateFile, state)
   if (finalReport === "") finalReport = status
-  // The goal's fate follows the run's: `max-rounds` and `escalated` deliberately leave it ARMED.
-  await finishGoal(deps, exec, status, finalReport.trim().slice(-400))
+  // A pending Boulder transition, max-rounds and escalation keep the run's goal armed.
+  await finishGoal(deps, exec, state, status, finalReport.trim().slice(-400))
   return { status, rounds: used, ...(planFile === null ? {} : { planFile }), verdict, ledger: gateLedger, finalReport, stateFile }
 }
 

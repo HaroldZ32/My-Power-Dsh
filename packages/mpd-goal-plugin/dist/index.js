@@ -992,7 +992,7 @@ function createDshAdapter(ctx, config = {}) {
     } catch {}
   };
   bindDshGoBridge();
-  const configAgentRouteResolver = () => {
+  const configAgentRouteResolver = (workspace) => {
     const config2 = service("mpdConfig");
     if (config2 === undefined || config2 === null)
       return;
@@ -1000,7 +1000,7 @@ function createDshAdapter(ctx, config = {}) {
       return;
     return (member) => {
       try {
-        const answer = config2.agentRouteResolutionOf.call(config2, member);
+        const answer = config2.agentRouteResolutionOf.call(config2, member, workspace);
         return answer !== null && typeof answer === "object" && typeof answer.ok === "boolean" ? answer : undefined;
       } catch {
         return;
@@ -1354,7 +1354,7 @@ function createDshAdapter(ctx, config = {}) {
         const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
         let agentOptions = request.agentOptions;
         if (agentOptions === undefined) {
-          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver());
+          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver(workspaceRootOfAgent(caller)));
           if (outcome.status === "routed") {
             const resolved = await resolveRunRoute({ llmCatalog }, outcome.route, outcome.fallbacks);
             agentOptions = resolved.route;
@@ -1370,8 +1370,13 @@ function createDshAdapter(ctx, config = {}) {
           ...agentOptions === undefined ? {} : { agentOptions },
           ...request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }
         };
+        const provider = typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn";
+        const childId = request.onOpening !== undefined && provider === "spawn" && typeof subagents.startActivation === "function" && typeof subagents.prompt === "function" ? randomUUID() : undefined;
+        if (childId !== undefined)
+          request.onOpening?.(childId);
         const spec = dualShapeActivationSpec({
-          provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
+          provider,
+          ...childId === undefined ? {} : { childId },
           label: `${request.name} · ${request.teamId}`,
           signal: request.signal ?? neverAborted()
         }, activationRequest);
@@ -2601,6 +2606,7 @@ function readAnchors(file) {
         revision: typeof record.revision === "number" ? record.revision : 0,
         objective: typeof record.objective === "string" ? record.objective : "",
         source: typeof record.source === "string" ? record.source : "unknown",
+        ...typeof record.runId === "string" && record.runId !== "" ? { runId: record.runId } : {},
         at: typeof record.at === "string" ? record.at : ""
       };
     }
@@ -2621,9 +2627,10 @@ function writeAnchors(file, anchors) {
     return false;
   }
 }
-function dropAnchor(file, sessionKey) {
+function dropAnchor(file, sessionKey, goalId) {
   const anchors = readAnchors(file);
-  if (!(sessionKey in anchors))
+  const record = anchors[sessionKey];
+  if (record === undefined || goalId !== undefined && record.goalId !== goalId)
     return anchors;
   delete anchors[sessionKey];
   writeAnchors(file, anchors);
@@ -2678,7 +2685,7 @@ function apply(ctx, config = {}) {
     if (goal !== null) {
       const file = anchorsPath(rootOf(exec));
       const anchors = readAnchors(file);
-      anchors[sessionKeyOf(exec)] = { goalId: goal.id, revision: goal.revision, objective: goal.objective, source: String(input?.source ?? "unknown"), at: new Date().toISOString() };
+      anchors[sessionKeyOf(exec)] = { goalId: goal.id, revision: goal.revision, objective: goal.objective, source: String(input?.source ?? "unknown"), ...input.runId === undefined ? {} : { runId: input.runId }, at: new Date().toISOString() };
       if (!writeAnchors(file, anchors)) {
         ownershipProblem = "the ownership record could not be written to " + file;
       }
@@ -2706,6 +2713,14 @@ function apply(ctx, config = {}) {
     if (input?.explicit !== true && record !== undefined && record.source !== input.source) {
       return { ok: false, outcome, error: 'the current goal is anchored by "' + record.source + '", not "' + String(input.source) + '"; leaving it to its owner' };
     }
+    if (input.explicit !== true) {
+      const legacyMatch = record?.runId === undefined && input.legacyObjective !== undefined && input.legacyObjective === record?.objective && input.goalId === current.id;
+      if (!legacyMatch && (input.runId !== record?.runId || record?.runId !== undefined && input.goalId !== current.id)) {
+        return { ok: false, outcome, error: "the run and goal IDs do not match the current anchor; leaving it to its owner" };
+      }
+      if (input.goalId !== undefined && input.goalId !== current.id)
+        return { ok: false, outcome, error: "the goal ID does not match the current anchor" };
+    }
     const done = await dsh.goalControl({
       agent,
       action: outcome,
@@ -2716,7 +2731,7 @@ function apply(ctx, config = {}) {
     });
     if (!done.ok)
       return { ok: false, outcome, error: String(done.error ?? "the goal could not be finished") };
-    dropAnchor(file, sessionKeyOf(exec));
+    dropAnchor(file, sessionKeyOf(exec), current.id);
     return { ok: true, outcome, goal: done.goal ?? null };
   }
   ctx.provide?.("mpdGoal", {

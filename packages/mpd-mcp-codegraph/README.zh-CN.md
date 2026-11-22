@@ -12,7 +12,8 @@
   `<bundle>/.toolchain/node_modules/.bin/codegraph`（checkout `link:` 安装）。仅当调用方
   未设置 `MPD_CODEGRAPH_BIN` 时才写入它，随后调用 `dist/serve.js`（在打包时从 vendored 的
   预构建 codegraph dist 构建；见 `packages/mpd-mcp-codegraph/LICENSE` + `NOTICE`）的
-  `runCodegraphServe()`。
+  `runCodegraphServe()`。`MPD_CODEGRAPH_PROJECT_CWD` 和它的别名 `MPD_DSH_CODEGRAPH_PROJECT_CWD`
+  将默认查询指向初始化所用的项目，按上述顺序使用第一个非空值。
 - 为什么使用 launcher 而不是 row env：上游解析器对**错误**的 `MPD_CODEGRAPH_BIN` 即使在
   文件不存在时也会直接返回，从而硬性阻断其 bundled → provisioned → PATH → download 链路。
 - **候选必须真的能服务（D-3，2026-10-28 实测）**：上游把 `codegraph` 发布为一个薄壳

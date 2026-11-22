@@ -1,0 +1,31 @@
+{
+  "case": "per-workspace model routing and workmate memory retention",
+  "branch": "fix/team-and-audit-recovery",
+  "ok": true,
+  "baseline": { "testsPassed": 995, "testsFailed": 0, "exit": 0 },
+  "reproductions": [
+    { "case": "reload B then resolve A", "expected": "route-a", "observedBefore": "route-b", "exitBefore": 1, "observedAfter": "route-a", "exitAfter": 0 },
+    { "case": "merge a dated newer survivor entry with an older source at the cap", "expected": "2026-11-22T12:00:00.000Z", "observedBefore": "2026-11-21T12:00:00.000Z", "exitBefore": 1, "observedAfter": "2026-11-22T12:00:00.000Z", "exitAfter": 0 }
+  ],
+  "checks": {
+    "routingPackages": { "bun": "1.4.0", "passed": 1046, "failed": 0, "files": 63, "assertions": 22744, "exit": 0, "log": "final-routing-tests.log" },
+    "typescript": { "exit": 0, "log": "output.log" },
+    "declarationComments": { "exit": 0, "verdict": "PASS", "scannedFiles": 656, "declarations": 60463, "log": "output.log" },
+    "documentation": { "pairs": 61, "violations": 0, "links": 648, "deadLinks": 0, "exit": 0, "log": "docs-final.log" },
+    "distFreshness": { "fresh": 35, "total": 35, "existingUncoveredPrebuilt": 1, "exit": 0, "log": "dist-fresh.log" },
+    "nativeTeamStagingWorkspace": { "passed": 1, "failed": 0, "exit": 0, "test": "packages/mpd-dsh-adapter-plugin/test/team-executor.test.ts" },
+    "pinnedDshLiveRefresh": { "exit": 0, "childBefore": "deepseek-v4-flash", "childAfter": "deepseek-v4-pro", "evidence": "../../skill-tests/model-config-live.json" },
+    "qaSelfTests": { "passed": 56, "skipped": 2, "failed": 0, "modelConfigChecks": 37, "evidence": "../../skill-tests/qa-selftests.log" },
+    "scopeAndBytes": { "configSourceSha256": "1b9d6e5c221aa0ec228e4667421a9aee802384d17ab6a697b6aee5912d90fc41", "aliasTestPassed": true, "conflictingProfileOverrideLeavesFileUntouched": true }
+  },
+  "behavior": {
+    "scopedReads": "One live merged snapshot per absolute workspace. Reload, file diagnostics, role tools, the model-chain tool, and workmate routes are resolved for the calling session. The team executor and legacy roster provider supply the staging workspace.",
+    "web": "Named GET and POST requests use the host authentication fence and live session registry. Unknown sessions and unscoped reads on a host with multiple roots are refused. The workspace route writer preserves unrelated JSONC bytes. Profile-wide overrides keep their existing precedence, with a visible refusal for a conflicting workspace save.",
+    "memory": "Deduplicated dated reflection entries are sorted before the memory cap is applied. Legacy entries without timestamps retain their relative order."
+  },
+  "bounds": [
+    "The two-workspace tests exercise production entry points with harness doubles. The independent mounted DSH case uses one workspace.",
+    "The settings card was verified from the rebuilt artifact with a client harness. This lane has no rendered browser capture.",
+    "The captain and primary team writer own native adapter source and generated artifacts."
+  ]
+}

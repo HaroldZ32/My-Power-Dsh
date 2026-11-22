@@ -1,0 +1,2 @@
+[model-config-live-refresh] FAIL: self-test: the service exposes the per-call TOTAL agentRouteResolutionOf (typed AgentRouteResolution) | the service exposes the TOTAL agentRouteOf read (route or undefined)
+self-test exit=1

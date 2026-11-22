@@ -10,7 +10,8 @@
 // Precedence (decision record t1 §3.2, implemented exactly):
 //   0. an env pin already set by the caller -> the launcher does nothing (checked by the launcher)
 //   1. $MPD_AST_GREP_BIN_DIR/{ast-grep,sg}                                  (ast-grep only, upstream env contract)
-//   2. createRequire(<launcher>).resolve(<pkg>/package.json) -> package bin (packed, any node linker)
+//   2. createRequire(<launcher>).resolve(<pkg>/package.json) -> package bin (native ast-grep first,
+//      then the legacy wrapper, or the CodeGraph package)
 //   3. <bundle>/.toolchain/node_modules/.bin/{ast-grep,sg} | .../codegraph  (checkout `link:` install)
 //   4. <bundle>/node_modules/.bin/{ast-grep,sg} | .../codegraph                 (bundle-root install)
 //   5. null -> the launcher leaves the env UNSET and the adopted code runs its own chain untouched
@@ -54,6 +55,8 @@ export interface ResolverOptions {
   env?: ResolverEnv
   /** Platform whose executable spellings are offered (defaults to `process.platform`). */
   platform?: string
+  /** Architecture of the native ast-grep package (defaults to `process.arch`). */
+  arch?: string
   /** Existence probe (defaults to `fs.existsSync`). */
   exists?: (path: string) => boolean
   /** ast-grep acceptance probe (defaults to the `--version` probe); null/absent means the default. */
@@ -260,10 +263,15 @@ export function resolveAstGrepBinary(launcherUrl: string, opts: ResolverOptions 
       for (const n of AST_GREP_NAMES) for (const s of spellings(n)) candidates.push({ path: join(binDir, s), source: "bin-dir" })
     }
 
-    /** The installed package's package.json, as the launcher's own linker resolves it. */
-    const pkgJson = packageJsonFor(launcherUrl, "@ast-grep/cli/package.json", opts)
-    if (pkgJson) {
-      /** The installed package's directory, where its own `ast-grep` binary sits. */
+    /** Upstream names its Linux package for glibc and its Windows package for MSVC. */
+    const platformSuffix = platform === "linux" ? "-gnu" : platform === "win32" ? "-msvc" : ""
+    /** The platform package ships the binary directly. The wrapper remains a fallback for older installs. */
+    const packages = [`@ast-grep/cli-${platform}-${opts.arch ?? process.arch}${platformSuffix}`, "@ast-grep/cli"]
+    for (const name of packages) {
+      /** Resolve from the launcher so pnpm's isolated linker can find the declared dependency. */
+      const pkgJson = packageJsonFor(launcherUrl, `${name}/package.json`, opts)
+      if (!pkgJson) continue
+      /** Both upstream layouts put the executable next to the manifest. */
       const pkgDir = dirname(pkgJson)
       for (const n of AST_GREP_NAMES) for (const s of spellings(n)) candidates.push({ path: join(pkgDir, s), source: "require" })
     }

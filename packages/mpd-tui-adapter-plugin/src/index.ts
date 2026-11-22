@@ -3050,12 +3050,12 @@ export interface TuiAdapter {
   /**
    * Subscribe to the host contact's settlement.
    *
-   * The callback runs EXACTLY ONCE: immediately when the contact is already settled (bound or
-   * absent), otherwise at the settle. This is what lets a consumer component attach its listener on
-   * a later render instead of racing the probe. The returned disposer cancels a still-waiting
-   * subscription and is a no-op afterwards.
+   * By default the callback runs once, immediately for an already settled contact or when discovery
+   * settles. This lets a consumer component attach its listener on
+   * a later render instead of racing the probe. With `updates`, it also runs when a scene provides
+   * the preferred kit after the probe settles. The disposer cancels any future notifications.
    */
-  whenHostInput(listener: (input: TuiHostInput | undefined) => void): Disposer
+  whenHostInput(listener: (input: TuiHostInput | undefined) => void, options?: { updates?: boolean }): Disposer
   /** Registers one rich status view (the rich companion of {@link TuiAdapter.setStatus}). */
   registerStatusComponent(view: TuiStatusComponentView): SeamBindingHandle
   /** Registers one full-screen scene. */
@@ -3209,6 +3209,8 @@ export function createTuiAdapter(ctx: PluginContextLike, options: TuiAdapterOpti
       : { state: "absent", detail: "this adapter did not probe for the host contact" }
   /** Listeners waiting for the contact; each runs once and is then dropped. */
   const hostWaiters: ((input: TuiHostInput | undefined) => void)[] = []
+  /** Subscribers that also need to hear when a scene replaces a probed or absent contact. */
+  const hostUpdates = new Set<(input: TuiHostInput | undefined) => void>()
 
   // ── the sidebar enable-list keeper: the SECOND host-internals contact, armed by a registration ──
   //
@@ -3280,10 +3282,11 @@ export function createTuiAdapter(ctx: PluginContextLike, options: TuiAdapterOpti
   /** The host contact in force right now: the remembered kit first, the probed module second. */
   const currentHostInput = (): TuiHostInput | undefined =>
     rememberedHook === undefined ? hostContact : { useStdin: (): unknown => rememberedHook?.() }
-  /** Wake every waiter once, handing it the contact in force at that moment. */
+  /** Publish the current contact to one-shot waiters and observers awaiting the preferred kit. */
   const wakeHostWaiters = (): void => {
-    /** The waiters present right now; a listener added later is served immediately instead. */
-    const waiting = hostWaiters.splice(0)
+    /** Take the one-shot queue and snapshot the observers before invoking callbacks. */
+    const waiting = [...hostWaiters.splice(0), ...hostUpdates]
+    if (rememberedHook !== undefined) hostUpdates.clear()
     /** The contact this wake hands out, sampled once so every listener sees the same one. */
     const input = currentHostInput()
     for (const listener of waiting) {
@@ -3296,6 +3299,8 @@ export function createTuiAdapter(ctx: PluginContextLike, options: TuiAdapterOpti
   }
   /** Publish the probe's answer: record it, wake every waiter, and report the outcome once. */
   const settleHostContact = (result: HostInputProbeResult): void => {
+    // A scene may have rendered during discovery. Its kit still owns the deferred notification.
+    if (rememberedHook !== undefined) return
     hostContact = result.input
     hostState = result.input === undefined
       ? { state: "absent", ...(result.root === undefined ? {} : { root: result.root }), detail: result.detail ?? "the installed DSH-TUI was not reachable" }
@@ -3415,11 +3420,11 @@ export function createTuiAdapter(ctx: PluginContextLike, options: TuiAdapterOpti
       const first = rememberedHook === undefined
       rememberedHook = hook as () => unknown
       hostState = { state: "bound", kit: "remembered", detail: "the host's own ui kit (handed to a scene render) carries useStdin" }
+      if (!first) return true
       // THE WAKE IS DEFERRED BY ONE MICROTASK. `rememberHostKit` runs INSIDE a scene's React render,
       // and waking a status view synchronously would call another component's setState from that
       // render — exactly what React forbids. A microtask lands after the render's commit.
       void Promise.resolve().then(wakeHostWaiters)
-      if (!first) return true
       try {
         ;(options.hostInputLog ?? defaultHostInputLog)(`[mpd-tui-adapter] host contact bound: remembered kit (a scene render handed us the host ui kit)`)
       } catch {
@@ -3429,7 +3434,8 @@ export function createTuiAdapter(ctx: PluginContextLike, options: TuiAdapterOpti
     },
 
     /** Wakes `listener` once, now when the contact is already settled, else at the settle. */
-    whenHostInput(listener: (input: TuiHostInput | undefined) => void): Disposer {
+    whenHostInput(listener: (input: TuiHostInput | undefined) => void, options?: { updates?: boolean }): Disposer {
+      if (options?.updates === true && rememberedHook === undefined) hostUpdates.add(listener)
       // A listener that throws is contained on BOTH paths: it must never break the probe dispatch
       // (which runs inside the adapter's promise chain) nor the caller's render.
       if (hostState.state !== "pending") {
@@ -3438,10 +3444,11 @@ export function createTuiAdapter(ctx: PluginContextLike, options: TuiAdapterOpti
         } catch {
           // The listener's own failure is not the adapter's to propagate.
         }
-        return () => {}
+      } else if (options?.updates !== true) {
+        hostWaiters.push(listener)
       }
-      hostWaiters.push(listener)
       return () => {
+        hostUpdates.delete(listener)
         /** The index of the still-waiting listener; -1 when it already ran. */
         const at = hostWaiters.indexOf(listener)
         if (at >= 0) hostWaiters.splice(at, 1)
