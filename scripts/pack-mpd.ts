@@ -10,6 +10,7 @@ import { spawnSync } from "node:child_process"
 import { chmodSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { dirname, join, relative, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
+import { isPrivatePackPath, PACK_PRIVATE_EXCLUDES } from "./lib/pack-private-state.ts"
 import { readJson, repoRootFrom } from "./lib/repo.ts"
 
 /** The root `package.json` fields this packer reads; the rest of that document is never consulted. */
@@ -26,12 +27,16 @@ interface RootManifest {
       readonly patch?: string | string[]
     }
   }
-  /**
-   * The dependency closure shipped rows resolve their npm packages from. COPIED into the packed
-   * manifest verbatim; the packer only ever ADDS to it (see PACK_ONLY_OPTIONAL_DEPENDENCIES), so a
-   * package declared here can never be dropped from the artifact again.
-   */
+  /** Host and Node compatibility ranges for the artifact installer. */
+  readonly engines?: Record<string, string>
+  /** Root runtime dependencies inherited by the packed manifest. */
+  readonly dependencies?: Record<string, string>
+  /** Optional runtime dependencies inherited by the packed manifest. */
   readonly optionalDependencies?: Record<string, string>
+  /** Peer compatibility ranges inherited by the packed manifest. */
+  readonly peerDependencies?: Record<string, string>
+  /** Peer optionality inherited by the packed manifest. */
+  readonly peerDependenciesMeta?: Record<string, { readonly optional?: boolean }>
   /**
    * The DSH Go native-panel declaration. COPIED into the packed manifest verbatim: every path it
    * carries (`view: "./dsh-go/views/mpd.json"`) is package-root-relative, i.e. the SAME path inside
@@ -110,10 +115,16 @@ interface PackedManifest {
   }
   /** The DSH Go native-panel declaration, mirrored verbatim from the root manifest (absent when it declares none). */
   dshGo: unknown
-  /** Third-party runtime plugin dependencies a loader row mounts, materialized by the boot fallback. */
+  /** Host and Node compatibility ranges copied from the root manifest. */
+  engines: RootManifest["engines"]
+  /** Root runtime dependencies plus the packed artifact's sidebar dependency. */
   dependencies: Record<string, string>
-  /** Toolchain binaries the consumer installs separately from this package. */
+  /** The root manifest's optional runtime dependencies. */
   optionalDependencies: Record<string, string>
+  /** Peer compatibility ranges copied from the root manifest. */
+  peerDependencies: RootManifest["peerDependencies"]
+  /** Peer optionality copied from the root manifest. */
+  peerDependenciesMeta: RootManifest["peerDependenciesMeta"]
 }
 
 /** The repository root, derived from this script's own URL under `<root>/scripts/`. */
@@ -409,12 +420,11 @@ const SOURCE_PKGS: readonly string[] = [
 /**
  * The root-level entries `package.json`'s `files` allowlist declares.
  *
- * Only ROOT-level shapes are returned: an entry with no separator is a root FILE, and `<dir>/*.<ext>`
- * is a root PATTERN (one level, one suffix — `locale/*.json` today). Every deeper entry belongs to a
- * tree this packer assembles through its own dedicated path, so it is deliberately not answered here.
- * @returns the declared root files and the declared root patterns, in manifest order.
+ * Root files and single-level globs are copied by the root asset loop. The package patterns
+ * are shared with npm so the relocatable manifest admits the same public package paths.
+ * @returns the root files, root globs and package globs, in manifest order.
  */
-function declaredRootEntries(): { readonly files: readonly string[]; readonly patterns: readonly string[] } {
+function declaredRootEntries(): { readonly files: readonly string[]; readonly patterns: readonly string[]; readonly packagePatterns: readonly string[] } {
   /** The manifest this package ships under. */
   const manifest = readJson<{ files?: unknown }>(join(repoRoot, "package.json"))
   /** The allowlist without its negations, or none when the manifest declares no `files`. */
@@ -427,11 +437,11 @@ function declaredRootEntries(): { readonly files: readonly string[]; readonly pa
     if (!entry.includes("/")) files.push(entry)
     else if (/^[^/]+\/\*\.[a-z0-9]+$/i.test(entry)) patterns.push(entry)
   }
-  return { files, patterns }
+  return { files, patterns, packagePatterns: listed.filter((entry): boolean => entry.startsWith("packages/")) }
 }
 
-/** The declared root assets, computed ONCE so the copy loop and the packed manifest cannot disagree. */
-const ROOT_DECLARED: { readonly files: readonly string[]; readonly patterns: readonly string[] } = declaredRootEntries()
+/** The declared public files and patterns shared by the checkout and the relocatable manifest. */
+const ROOT_DECLARED = declaredRootEntries()
 
 // WHY THE PACKED `files` ARRAY IS COLLAPSED (v0.16.2 packaging defect, the duplicate
 // `cordis.patch.yml` the 0.16.1 changelog promised to close): the array has TWO independently
@@ -450,7 +460,7 @@ const ROOT_DECLARED: { readonly files: readonly string[]; readonly patterns: rea
 // this is a REDUNDANCY, not two conflicting roles for one path, and collapsing it cannot lose an
 // admission. (`files` has exactly one npm semantic, so a genuine two-role conflict has no shape to
 // inhabit here; a refusal branch was therefore NOT invented for it.) Matching is EXACT-STRING
-// only: `packages/**` and a specific path below it are DIFFERENT entries by design and npm reads
+// only: a package glob and a specific path below it are DIFFERENT entries by design and npm reads
 // both, so a wildcard is never treated as a duplicate of the literal it happens to cover.
 /**
  * Collapse the packed `files` allowlist to its distinct exact strings, keeping the FIRST occurrence.
@@ -542,6 +552,11 @@ const VALIDATOR_BUNDLE: string = join("packages", "mpd-ext-plugin", "dist", "ind
 /** Repo-relative path of the validator entry the packed CLI actually imports. */
 const VALIDATOR_ENTRY: string = join("packages", "mpd-ext-plugin", "dist", "validator.js")
 
+/** Reject local runtime state before a recursive copy descends into it. */
+function publicPackSource(path: string): boolean {
+  return !isPrivatePackPath(relative(repoRoot, path))
+}
+
 /** Copy every plugin/MCP package's built `dist/` into the packed tree; a missing one aborts the pack. */
 function cpDist(): void {
   /** Package names whose `dist/` directory is absent, collected so ONE message names them all. */
@@ -551,7 +566,7 @@ function cpDist(): void {
     const src = join(repoRoot, "packages", p, "dist")
     if (!existsSync(src)) { missing.push(p); continue }
     mkdirSync(join(outDir, "packages", p), { recursive: true })
-    cpSync(src, join(outDir, "packages", p, "dist"), { recursive: true })
+    cpSync(src, join(outDir, "packages", p, "dist"), { recursive: true, filter: publicPackSource })
   }
   if (missing.length > 0) {
     console.error("[pack-mpd] FAIL: missing dist for " + missing.join(", ") + " — run the package's build script (bun build / scripts.build) first; a bundle must never ship without a plugin")
@@ -573,18 +588,18 @@ function cpAssets(): void {
       console.error("[pack-mpd] FAIL: missing " + src + " — the packed tree must carry <root>/" + dir + " (see ROOT_ASSET_DIRS); a bundle must never silently drop a shipped asset (T-38 class)")
       process.exit(1)
     }
-    cpSync(src, join(outDir, dir), { recursive: true })
+    cpSync(src, join(outDir, dir), { recursive: true, filter: publicPackSource })
   }
   // the roles plugin's persona assets ship under packages/mpd-roles-plugin/personas
-  cpSync(join(repoRoot, "presets"), join(outDir, "presets"), { recursive: true })
+  cpSync(join(repoRoot, "presets"), join(outDir, "presets"), { recursive: true, filter: publicPackSource })
   if (existsSync(join(repoRoot, "packages", "mpd-roles-plugin", "personas"))) {
-    cpSync(join(repoRoot, "packages", "mpd-roles-plugin", "personas"), join(outDir, "packages", "mpd-roles-plugin", "personas"), { recursive: true })
+    cpSync(join(repoRoot, "packages", "mpd-roles-plugin", "personas"), join(outDir, "packages", "mpd-roles-plugin", "personas"), { recursive: true, filter: publicPackSource })
   }
   // NOTE (de-vendor wave): the adopted `packages/mpd-agent-teams-plugin` used to be copied
   // wholesale here (lib + _deps + assets + LICENSE + READMEs). The body is DELETED, and the two
   // pieces the shipped product still uses now travel through the ordinary package tables: the
   // schemastery validator as `packages/mpd-schemastery/**` (a PLUGIN-PKGS-less plain package the
-  // `packages/**` files entry admits) and the adopted browser bundle as
+  // package-specific files entries admit) and the adopted browser bundle as
   // `packages/mpd-bundle-plugin/adopted/agent-teams-client.js` (copied just below, because the
   // rebuilt `client.js` cannot be regenerated after the pack without it).
   // Packages that ship SOURCE and own no dist/: the table is the declaration and a missing tree
@@ -596,7 +611,7 @@ function cpAssets(): void {
       console.error("[pack-mpd] FAIL: missing " + src + " — the packed tree must carry <root>/packages/" + p + " (see SOURCE_PKGS); a bundle must never silently drop a shipped asset (T-38 class)")
       process.exit(1)
     }
-    cpSync(src, join(outDir, "packages", p), { recursive: true })
+    cpSync(src, join(outDir, "packages", p), { recursive: true, filter: publicPackSource })
   }
   // The adopted browser client bundle, the SOURCE half of the committed
   // `packages/mpd-bundle-plugin/client.js`: it ships because `docker/ui/entrypoint.sh` and
@@ -609,7 +624,7 @@ function cpAssets(): void {
       console.error("[pack-mpd] FAIL: missing " + adopted + " — packages/mpd-bundle-plugin/client.js is composed from it by scripts/build-mpd-client.ts")
       process.exit(1)
     }
-    cpSync(adopted, join(outDir, "packages", "mpd-bundle-plugin", "adopted"), { recursive: true })
+    cpSync(adopted, join(outDir, "packages", "mpd-bundle-plugin", "adopted"), { recursive: true, filter: publicPackSource })
   }
   // the bundle's combined web client (adopted agent-teams panel + workmate library),
   // composed by scripts/build-mpd-client.ts — served as @mpd-dsh/mpd's ./client
@@ -654,7 +669,7 @@ function cpAssets(): void {
     // single-file entry worked). The stat picks the shape; the file arm is the call it always was.
     /** Whether this entry is a directory the copy must walk, rather than a single file. */
     const isDirectory = statSync(from).isDirectory()
-    if (isDirectory) cpSync(from, join(outDir, f), { recursive: true })
+    if (isDirectory) cpSync(from, join(outDir, f), { recursive: true, filter: publicPackSource })
     else cpSync(from, join(outDir, f))
   }
   for (const pattern of ROOT_DECLARED.patterns) {
@@ -708,12 +723,12 @@ function cpAssets(): void {
         console.error("[pack-mpd] FAIL: missing " + src + " — the " + p + " package ships it; a packed bundle must not silently drop a shipped asset")
         process.exit(1)
       }
-      cpSync(src, join(outDir, "packages", p, dir), { recursive: true })
+      cpSync(src, join(outDir, "packages", p, dir), { recursive: true, filter: publicPackSource })
     }
   }
   // Per-package bilingual README pair for every shipped plugin/MCP package
   // (the adopted agent-teams body is DELETED; the schemastery home it left behind ships
-  // through the ordinary `packages/**` entry, READMEs included).
+  // through its explicit package entries, READMEs included).
   for (const p of [...PLUGIN_PKGS, ...MCP_PKGS]) {
     for (const f of ["README.md", "README.zh-CN.md"]) {
       /** Absolute source path of this package's README (either language). */
@@ -731,7 +746,7 @@ function cpAssets(): void {
   // guessed: every statically imported RELATIVE module comes along, recursively, and
   // a specifier that does not resolve in the SOURCE tree is a hard FAIL because it
   // means the walker (or the source) is wrong — never a silent omission.
-  cpSync(join(repoRoot, "packages", "mpd-mcp-shared"), join(outDir, "packages", "mpd-mcp-shared"), { recursive: true, filter: (s: string): boolean => !/\.test\.ts$/.test(s) })
+  cpSync(join(repoRoot, "packages", "mpd-mcp-shared"), join(outDir, "packages", "mpd-mcp-shared"), { recursive: true, filter: (s: string): boolean => publicPackSource(s) && !/\.test\.ts$/.test(s) })
   /** The packages root every closure destination is expressed relative to. */
   const packagesRoot = join(repoRoot, "packages")
   /** Copy `packages/<pkg>/<file>` plus its static relative-import closure into the packed tree. */
@@ -748,6 +763,10 @@ function cpAssets(): void {
     }
     /** Absolute destination of this module inside the packed tree. */
     const outFile = join(outDir, "packages", rel)
+    if (!publicPackSource(absFile)) {
+      console.error("[pack-mpd] FAIL: a launcher import names local runtime state: " + rel)
+      process.exit(1)
+    }
     mkdirSync(dirname(outFile), { recursive: true })
     cpSync(absFile, outFile)
     if (seen.has(absFile)) return
@@ -852,22 +871,6 @@ function decouplePatch(srcPatch: string): string {
  */
 const PACK_THIRD_PARTY_DEPENDENCIES: Readonly<Record<string, string>> = { "dsh-better-sidebar": "0.28.0" }
 
-/**
- * The packer's OWN policy additions to the packed manifest's `optionalDependencies`, on TOP of the full
- * copy of the ROOT manifest's declaration — which is the declaration of record.
- *
- * These two keys are pack-ONLY on purpose, and that is a measured decision, not an oversight: the root
- * manifest declares neither, while the artifact this packer stages carries no `.toolchain/node_modules/.bin`
- * (writeManifest copies no `.toolchain/`, and the packed tree holds none), so the profile's own
- * `node_modules` is the only route left — `packages/mpd-mcp-astgrep/dist/launch.js` resolves
- * `@ast-grep/cli` there (packages/mpd-mcp-shared/bin-resolve.ts, the `@ast-grep/cli/package.json`
- * `require` tier, then its `ast-grep --version` probe) and `packages/mpd-comment-checker-plugin`
- * resolves `@code-yeongyu/comment-checker` there (its own `createRequire` tier). Drop either key and the
- * packed ast-grep row's engine probe takes its own BINARY_NOT_FOUND path while `mpd_comment_check`
- * reports no detector binary at all.
- */
-const PACK_ONLY_OPTIONAL_DEPENDENCIES: Readonly<Record<string, string>> = { "@ast-grep/cli": "0.45.2", "@code-yeongyu/comment-checker": "0.8.0" }
-
 /** One shipped MCP launcher and every npm package it resolves once its row starts it. */
 interface LauncherDependencies {
   /** Packed-relative path of the launcher module, spelled as a shipped row's `args` names it. */
@@ -890,11 +893,15 @@ interface LauncherDependencies {
  *
  * Evidence for the entries (wave tui-015): `cclsp` -> packages/mpd-mcp-lsp/src/launch.ts DEPENDENCY;
  * `@cyanheads/git-mcp-server` + `mcp-server-commands` -> packages/mpd-mcp-gitbash/src/launch.ts SERVERS
- * (one per row word, `git` / `shell`); `@ast-grep/cli` + `@colbymchenry/codegraph` ->
- * packages/mpd-mcp-shared/bin-resolve.ts, the two `packageJsonFor` call sites.
+ * (one per row word, `git` / `shell`); the native `@ast-grep/cli-*` packages and
+ * `@colbymchenry/codegraph` -> packages/mpd-mcp-shared/bin-resolve.ts.
  */
 const LAUNCHER_DEPENDENCIES: readonly LauncherDependencies[] = [
-  { launcher: "packages/mpd-mcp-astgrep/dist/launch.js", dependencies: ["@ast-grep/cli"] },
+  { launcher: "packages/mpd-mcp-astgrep/dist/launch.js", dependencies: [
+    "@ast-grep/cli-darwin-x64", "@ast-grep/cli-darwin-arm64", "@ast-grep/cli-linux-x64-gnu",
+    "@ast-grep/cli-linux-arm64-gnu", "@ast-grep/cli-win32-x64-msvc", "@ast-grep/cli-win32-ia32-msvc",
+    "@ast-grep/cli-win32-arm64-msvc",
+  ] },
   { launcher: "packages/mpd-mcp-codegraph/dist/launch.js", dependencies: ["@colbymchenry/codegraph"] },
   { launcher: "packages/mpd-mcp-gitbash/dist/launch.js", dependencies: ["@cyanheads/git-mcp-server", "mcp-server-commands"] },
   { launcher: "packages/mpd-mcp-lsp/dist/launch.js", dependencies: ["cclsp"] }
@@ -944,7 +951,7 @@ function verifyLauncherDependencies(manifest: PackedManifest): void {
     for (const name of known.dependencies) {
       resolved.add(name)
       if (declared.has(name)) continue
-      console.error("[pack-mpd] FAIL: the shipped row launcher " + launcher + " resolves " + name + " at start-up, but the packed manifest declares it in neither `dependencies` nor `optionalDependencies` — a packed install would start that row degraded (zero tools / no binary). Declare it in the ROOT package.json `optionalDependencies` (the packed set is copied from there) or, when it is pack-only policy, in PACK_ONLY_OPTIONAL_DEPENDENCIES")
+      console.error("[pack-mpd] FAIL: the shipped row launcher " + launcher + " resolves " + name + " at start-up, but the packed manifest declares it in neither `dependencies` nor `optionalDependencies` — a packed install would start that row degraded (zero tools / no binary). Declare it in the root package.json so the relocatable manifest inherits it.")
       process.exit(1)
     }
   }
@@ -994,7 +1001,7 @@ function writeManifest(): void {
       "./client": "./packages/mpd-bundle-plugin/client.js"
     },
     files: dedupePackedFiles([
-      "packages/**",
+      ...ROOT_DECLARED.packagePatterns,
       "skills/**",
       "presets/**",
       "extensions/**",
@@ -1014,7 +1021,8 @@ function writeManifest(): void {
       // uses — one source of truth, so a file cannot be copied without being declared or declared
       // without being copied (T-70; T-35 made that table the manifest's answer).
       ...ROOT_DECLARED.files,
-      ...ROOT_DECLARED.patterns
+      ...ROOT_DECLARED.patterns,
+      ...PACK_PRIVATE_EXCLUDES,
     ]),
     dsh: {
       bundle: { patch: PATCHES.array ? patchTargets : patchTargets[0] },
@@ -1023,49 +1031,14 @@ function writeManifest(): void {
       // graph-row inject stays empty, mirroring @linxin666/dsh-web-ui-all.
       client: { inject: [], platform: "web" }
     },
-    // The adopted agent-teams client bundle (MIT provenance, upstream @nanmicoder/
-    // dsh-agent-teams) is no longer a package: the body was DELETED by the de-vendor wave and the
-    // one piece the web client still embeds lives at packages/mpd-bundle-plugin/adopted/, inside
-    // the bundle's OWN package — it is NOT an npm dependency and must not become one.
-    //
-    // `dependencies` carries the bundle's THIRD-PARTY RUNTIME PLUGIN dependencies —
-    // packages a loader row mounts and nothing in the dsh installation provides.
-    // Today exactly one (the sidebar HOST the bundle's two GUI pages register into).
-    // BOTH halves are required, and both are measured
-    // (evidence/install-deps/implementation/**):
-    //  • pnpm (the engine behind `dsh plugin add`) does NOT link a bundle's
-    //    transitive deps into the profile root, so the declaration alone never
-    //    materializes the package — this half of the former claim still holds;
-    //  • `@deepseek-ai/dsh-app-boot#healProfileModuleFallback` DOES resolve the
-    //    dependency closure (dependencies + peerDependencies) of every
-    //    NON-INSTALLATION bundle layer into `<profile>/node_modules` before the
-    //    loader runs, so the declared package IS resolvable for the guarded row
-    //    this bundle ships in cordis.patch.yml — this half is what the former
-    //    claim missed.
-    // The former sentence here ("a plain `dependencies` entry is NOT enough … the
-    // row would silently self-disable at boot", repro evidence/plan-e/e1-team-route
-    // 2026-08-27T07-38-13.142Z) is therefore CORRECTED rather than deleted: that
-    // repro is a manifest/relocation check (version: null, min 0.1.13), not a
-    // proof about pnpm's linking, and the boot-time fallback above is the missing
-    // half. A dependency declared only here, with no row, mounts nothing.
-    //
-    // BOTH FIELDS ARE DERIVED FROM THE ROOT MANIFEST, NEVER RE-TYPED (defect fixed in
-    // wave tui-015). The root manifest is the declaration of record: every
-    // `optionalDependencies` entry it declares is copied into the packed manifest, and the
-    // packer's own policy tables add to that copy without ever replacing it. The former
-    // hand-written `optionalDependencies` literal silently DROPPED three packages the root
-    // declares and shipped rows' launchers resolve — `cclsp` (the mcp-lsp row),
-    // `@cyanheads/git-mcp-server` (mcp-git) and `mcp-server-commands` (mcp-shell) — so a
-    // packed install started the mcp-lsp row with ZERO tools: its launcher takes the
-    // `serveUnavailable` branch and the row stays alive, which is why no gate and no exit
-    // code noticed. Measured on a real machine:
-    // evidence/tui/dsh-tui-015/oneclick-reds/raw/pack-vs-root-manifest.txt (the divergence)
-    // and raw/local-tool-surface-diff.json (95 registered tools, the 12 `mcp__lsp__*` names
-    // missing). `verifyLauncherDependencies` below is the arm that keeps this closed.
-    dependencies: { ...PACK_THIRD_PARTY_DEPENDENCIES },
-    // Toolchain binaries: the packer's pack-only additions ON TOP of the root's own declaration
-    // (PACK_ONLY_OPTIONAL_DEPENDENCIES states why these two are not in the root manifest).
-    optionalDependencies: { ...(root.optionalDependencies ?? {}), ...PACK_ONLY_OPTIONAL_DEPENDENCIES },
+    // Carry the root install contract through relocation. The packed artifact also installs the
+    // sidebar for its guarded Web row. The harness makes that declared dependency visible to the
+    // loader through healProfileModuleFallback (evidence/install-deps/implementation/).
+    engines: root.engines,
+    dependencies: { ...PACK_THIRD_PARTY_DEPENDENCIES, ...root.dependencies },
+    optionalDependencies: { ...root.optionalDependencies },
+    peerDependencies: root.peerDependencies,
+    peerDependenciesMeta: root.peerDependenciesMeta,
     // The DSH Go native-panel declaration travels with the artifact for the same reason every other
     // root-level field here does: the packed manifest IS the declaration an installer reads, so a
     // block the root manifest carries and this writer omits would simply not exist after install

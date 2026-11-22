@@ -28,7 +28,7 @@
 #   tui.teamSceneOpened  the /mpd team scene opens on a real terminal
 #   tui.teamGraphDrawn   the team DAG BOXES are drawn, one per task the record carries (the ROUNDED
 #                        corner census equals that count; the square corners are the scene FRAME's)
-#   tui.teamGraphEdges   the dependency edges are drawn with box-drawing junctions
+#   tui.teamGraphEdges   connector arrowheads appear inside the boxed dependency graph
 #   tui.teamGraphContent every task id READ OUT OF THE LANE'S OWN RECORD is drawn as a node label (a
 #                        literal id could not catch a dropped task), and the record's own subject is
 #                        reachable one keystroke away in the pinned detail body clause AC1 moved it to
@@ -1046,8 +1046,11 @@ else
     "the boxes were NOT drawn one per task: the record carries ${TEAM_TASK_COUNT} task(s) and the pane's rounded corners are ╭${TEAM_BOX_TL} ╮${TEAM_BOX_TR} ╰${TEAM_BOX_BL} ╯${TEAM_BOX_BR}, each of which must equal the task count.${SCENE_UNBOUND_NOTE}" \
     "$TEAM_BOX_RAW"
 fi
-record tui.teamGraphEdges "$(printf '%s' "$TEAM_PANE" | grep -qE '┬|┴|│' && echo true || echo false)" \
-  "the dependency EDGES were drawn with box-drawing junctions${SCENE_UNBOUND_NOTE}" "junctions=$(printf '%s' "$TEAM_PANE" | grep -coE '┬|┴|│' || echo 0)"
+# Count the connectors only in the boxed drawing between its header and legend.
+source "$LIB_DIR/tui-team-edges.sh"
+TEAM_GRAPH_EDGES="$(team_graph_edges "$TUI_DIR/pane-team.txt")"
+record tui.teamGraphEdges "$([ "$TEAM_GRAPH_EDGES" -gt 0 ] && echo true || echo false)" \
+  "the dependency graph contains connector arrowheads between rendered node boxes${SCENE_UNBOUND_NOTE}" "arrowheads=$TEAM_GRAPH_EDGES pane=pane-team.txt"
 # ── THE CONTENT ARM: the RECORD's own ids and subject ─────────────────────────
 # The values come from the task table read above, never from a literal. Commit 6fdfc012 froze clause
 # AC1, which limits a node label to `<marker> <id>` and moves the subject into the PINNED DETAIL BODY;

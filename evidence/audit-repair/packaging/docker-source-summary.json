@@ -1,0 +1,17 @@
+{
+  "command": "node scripts/docker-e2e.ts --mode source --require-docker --no-browser",
+  "report": "evidence/docker/client-install/2026-11-22T16-15-56Z/result.json",
+  "exit": 1,
+  "rootless": "[driver] docker mode: ROOTLESS ([\"name=seccomp,profile=builtin\",\"name=rootless\",\"name=cgroupns\"])",
+  "installAndMount": {
+    "ast": "[owed-mcp] boot.mcpLiveSearch=true — a REAL mcp__ast_grep__search call through the mounted adapter matched 1 site(s) in /opt/mpd/packages/mpd-mcp-astgrep/src, and the negative control matched 0 — the search engine ran, so the registered name is backed by a working server on this machine",
+    "graph": "[record] tui.teamGraphEdges=true — the dependency graph contains connector arrowheads between rendered node boxes",
+    "optionalToolchain": "[record] qa.mcpCallEngine=true — the ast-grep engine the call arm's launcher resolves (bundle-relative, inside the packed tree the case installs) is staged and its own --version probe reports ast-grep, so qa.mcpCall below measures the CASE rather than a missing binary"
+  },
+  "failed": [
+    "[report] FAIL pack.staticCoherence — the artifact does NOT agree with the tree it was cut from — it is stale or was edited after the pack: 54 differing file(s), 0 carried file(s) with no twin | raw: drifted=AGENTS.md,README.md,README.zh-CN.md,agent-references/verification-flow.md,docs/development.md,docs/development.zh-CN.md,docs/feature-audit.md,docs/feature-audit.zh-CN.md,docs/user-guide.md,docs/user-guide.zh-CN.md,packages/mpd-autoproject-plugin/dist/index.js,packages/mpd-bootstrap-plugin/README.md untwinned=none",
+    "[report] FAIL pack.distFreshRebuild — the packed artifact's built entries do not match this container's from-source rebuild: 29 differing, 0 not produced by the rebuild. Both the artifact and this rebuild are under bun 1.4.0 (the declared bun@1.4.0, see pack.rebuildToolchain), so the difference is NOT explained by the compiler version | raw: drifted=packages/mpd-autoproject-plugin/dist/index.js,packages/mpd-bootstrap-plugin/dist/index.js,packages/mpd-bundle-plugin/dist/index.js,packages/mpd-cellwork-plugin/dist/index.js,packages/mpd-codegraph-plugin/dist/index.js,packages/mpd-comment-checker-plugin/dist/index.js,packages/mpd-config-plugin/dist/index.js,packages/mpd-dsh-adapter-plugin/dist/index.js,packages/mpd-ext-plugin/dist/index.js,packages/mpd-goal-plugin/dist/index.js,packages/mpd-hashline-plugin/dist/index.js,packages/mpd-mcp-astgrep/dist/cli.js uncovered=none rebuildBun=/opt/toolchain/bun-pinned/bin/bun rebuildBunVersion=1.4.0 declaredBuildToolchain=bun@1.4.0 declaredVersion=1.4.0 exactMatch=true witness=/work/rebuild.json"
+  ],
+  "verdict": false,
+  "complete": false
+}

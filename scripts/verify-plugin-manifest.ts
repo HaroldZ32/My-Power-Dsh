@@ -29,9 +29,11 @@
 //   node scripts/verify-plugin-manifest.ts --self-test     fixture-driven negative controls
 //   node scripts/verify-plugin-manifest.ts --out <dir>     also write <dir>/result.json + output.log
 import { spawnSync } from "node:child_process"
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { isPrivatePackPath, PACK_PRIVATE_EXCLUDES } from "./lib/pack-private-state.ts"
 
 /** Repository root, derived from this script's own location (`<root>/scripts/`). */
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)))
@@ -562,36 +564,60 @@ function checkPackaging(manifest: Record<string, unknown>, violations: Violation
  * carry is exactly the defect that turns a one-command user install into a broken boot.
  * @param mustShip - repository-relative paths the installed package must contain.
  * @param violations - violation sink.
- * @returns one check result, or undefined when npm could not be asked.
+ * @param cwd - directory whose actual manifest npm should pack.
+ * @returns one check result, including a violation when npm's file list is unavailable.
  */
-function checkPackedContent(mustShip: readonly string[], violations: Violation[]): CheckResult | undefined {
+function checkPackedContent(mustShip: readonly string[], violations: Violation[], cwd: string = repoRoot): CheckResult {
   /** Scratch npm cache inside the repository, so the run never writes to the operator's home. */
-  const cache = join(repoRoot, ".qa-tmp", "npm-cache")
+  const cache = join(cwd, ".qa-tmp", "npm-cache")
   mkdirSync(cache, { recursive: true })
   /** The pack run: dry, JSON, no lifecycle execution. */
   const packed = spawnSync("npm", ["pack", "--dry-run", "--json", "--ignore-scripts"], {
-    cwd: repoRoot,
+    cwd,
     encoding: "utf8",
     env: { ...process.env, npm_config_cache: cache, npm_config_update_notifier: "false" },
     timeout: 300_000,
   })
-  if (packed.status !== 0 || packed.stdout.trim() === "") return undefined
-/** The packed entries npm reported, when the document has the expected shape. */
-  let entries: Array<{ path: string }>
+  if (packed.status !== 0) {
+    return unknownPacklist(violations, packed.error?.message ?? `npm exited ${packed.status ?? packed.signal}`)
+  }
+  return evaluatePacklist(packed.stdout, mustShip, violations)
+}
+
+/** Record the failure in the same violation sink that controls the exit code and evidence verdict. */
+function unknownPacklist(violations: Violation[], reason: string): CheckResult {
+  /** The diagnostic shared by the check row and the overall failure. */
+  const detail = `npm pack --dry-run could not be read, so the packed set is UNKNOWN: ${reason}`
+  violations.push({ file: "package.json", rule: "packaging", detail })
+  return { id: "packed-content", ok: false, detail }
+}
+
+/** Validate npm's packlist before checking it for the paths required to install the bundle. */
+function evaluatePacklist(stdout: string, mustShip: readonly string[], violations: Violation[]): CheckResult {
+  /** The files reported by the one expected npm pack record. */
+  let files: unknown
   try {
-/** The first (and only) pack record. */
-    const parsed: unknown = JSON.parse(packed.stdout)
-/** The pack record's file list, when it is a list. */
-    const first = Array.isArray(parsed) ? parsed[0] : undefined
-/** The entries that actually carry a path string. */
-    const files = typeof first === "object" && first !== null ? (first as { files?: unknown }).files : undefined
-    if (!Array.isArray(files)) return undefined
-    entries = files.filter((entry): entry is { path: string } => typeof entry === "object" && entry !== null && typeof (entry as { path?: unknown }).path === "string")
+    /** npm returns one record per requested package. */
+    const parsed: unknown = JSON.parse(stdout)
+    /** Only a single record may supply the file list. */
+    const record: unknown = Array.isArray(parsed) && parsed.length === 1 ? parsed[0] : undefined
+    if (typeof record === "object" && record !== null && "files" in record) files = record.files
   } catch {
-    return undefined
+    return unknownPacklist(violations, "npm did not return valid JSON")
+  }
+  /** Every packlist entry must identify a nonempty path. */
+  const hasPath = (entry: unknown): entry is { path: string } =>
+    typeof entry === "object" && entry !== null && "path" in entry && typeof entry.path === "string" && entry.path.length > 0
+  if (!Array.isArray(files) || files.length === 0 || !files.every(hasPath)) {
+    return unknownPacklist(violations, "npm returned an invalid or empty file list")
   }
   /** The packed paths, as a set for membership tests. */
-  const present = new Set(entries.map((entry) => entry.path))
+  const present = new Set(files.map((entry) => entry.path))
+  /** Runtime logs and state from local boots may not enter the distributable package. */
+  const stateFiles = [...present].filter(isPrivatePackPath)
+  for (const path of stateFiles) {
+    violations.push({ file: path, rule: "packaging", detail: "npm pack --dry-run carried package-local runtime state" })
+  }
   /** Required paths npm would not carry. */
   const absent = [...new Set(mustShip)].map((path) => path.replace(/^\.\//, "")).filter((path) => !present.has(path))
   for (const path of absent) {
@@ -599,8 +625,8 @@ function checkPackedContent(mustShip: readonly string[], violations: Violation[]
   }
   return {
     id: "packed-content",
-    ok: absent.length === 0,
-    detail: `npm pack --dry-run lists ${entries.length} file(s); ${absent.length} required path(s) absent`,
+    ok: absent.length === 0 && stateFiles.length === 0,
+    detail: `npm pack --dry-run lists ${files.length} file(s); ${absent.length} required path(s) absent; ${stateFiles.length} runtime state file(s) leaked`,
   }
 }
 
@@ -624,6 +650,54 @@ function writeEvidence(out: string, payload: unknown, text: string): void {
   mkdirSync(out, { recursive: true })
   writeFileSync(join(out, "result.json"), `${JSON.stringify(payload, null, 2)}\n`, { flag: "wx" })
   writeFileSync(join(out, "output.log"), text, { flag: "wx" })
+}
+
+/** Run npm against the real allowlist using inert private files and a shipped runtime entry. */
+function privatePackFixture(manifest: Record<string, unknown>): boolean {
+  /** Only this disposable tree receives sentinel files or npm cache writes. */
+  const fixture = mkdtempSync(join(tmpdir(), "mpd-pack-private-state-"))
+  try {
+    /** A real bundled row under the narrowed package globs. */
+    const runtime = "packages/mpd-team-core-plugin/dist/index.js"
+    /** Reproduce both observed layouts and exercise every exclusion inside a public subtree. */
+    const sentinels = [
+      "packages/mpd-team-core-plugin/.mpd/logs/sentinel.txt",
+      "packages/mpd-team-core-plugin/ws-unused/.mpd/team/sentinel.txt",
+      ...PACK_PRIVATE_EXCLUDES.map((pattern): string => {
+        /** A concrete private name for the npm pattern exercised by this fixture. */
+        const name = pattern.slice("!**/".length).replace("*", "sentinel")
+        return `packages/mpd-team-core-plugin/dist/nested/${name}${name === ".credentials.yaml" ? "" : "/sentinel.txt"}`
+      }),
+    ]
+    for (const name of sentinels) {
+      /** Each test path is materialized with the same harmless payload. */
+      const file = join(fixture, name)
+      mkdirSync(dirname(file), { recursive: true })
+      writeFileSync(file, "inert pack sentinel\n")
+    }
+    cpSync(join(repoRoot, runtime), join(fixture, runtime))
+    /** Each fixture manifest uses the real npm allowlist or the original leaking rule. */
+    const fixtureManifest = join(fixture, "package.json")
+    /** Keep npm's manifest under test small while preserving the exact `files` rules. */
+    const metadata = { name: "mpd-pack-private-fixture", version: "1.0.0" }
+    writeFileSync(fixtureManifest, JSON.stringify({ ...metadata, files: ["packages/**", "!packages/*/_deps/**"] }))
+    /** Capture all old packlist violations and require both observed layouts to be present. */
+    const leaked: Violation[] = []
+    /** npm must return a real packlist; the strict gate must reject it for private paths. */
+    const red = checkPackedContent([runtime], leaked, fixture)
+    /** The old manifest must leak both probes and retain the runtime entry. */
+    const redOk = !red.ok && sentinels.slice(0, 2).every((path): boolean => leaked.some((violation): boolean => violation.file === path))
+      && leaked.every((violation): boolean => isPrivatePackPath(violation.file))
+    writeFileSync(fixtureManifest, JSON.stringify({ ...metadata, files: filesAllowlist(manifest) }))
+    /** Apply the same strict gate to the current release allowlist. */
+    const found: Violation[] = []
+    /** All sentinels must be absent while the real runtime file remains. */
+    const green = checkPackedContent([runtime], found, fixture)
+    console.log(`${redOk && green.ok ? "ok  " : "FAIL"}  private-pack-fixture: old allowlist ${redOk ? "leaked both layouts" : red.detail}; current allowlist: ${green.detail}`)
+    return redOk && green.ok && found.length === 0
+  } finally {
+    rmSync(fixture, { recursive: true })
+  }
 }
 
 /** The `--self-test` fixture arms: each mutant must fail for its own reason. */
@@ -747,7 +821,30 @@ function selfTest(): number {
   }
   if (vacuousMissed > 0) failures += 1
   else console.log("ok    component-ref vacuity: an unreadable / versionless / ref-less document is REFUSED, never blessed")
-  console.log(failures === 0 ? "self-test PASS (7 arms, each with a clean control; the component-ref arm also refuses its three vacuous shapes)" : `self-test FAIL (${failures} arm(s))`)
+  /** Packlist controls include invalid JSON and partly malformed lists even when the required path is listed. */
+  const packlistArms = [
+    { input: "[not-json", expected: "UNKNOWN" },
+    { input: '[{"files":[]}]', expected: "UNKNOWN" },
+    { input: '[{"files":[{"path":"required.js"},{}]}]', expected: "UNKNOWN" },
+    { input: '[{"files":[{"path":"other.js"}]}]', expected: "missing" },
+    { input: '[{"files":[{"path":"required.js"},{"path":"packages/mcp/dist/.mpd/logs/runtime.log"}]}]', expected: "state" },
+    { input: '[{"files":[{"path":"required.js"}]}]', expected: "pass" },
+  ]
+  for (const { input, expected } of packlistArms) {
+    /** The sink used by both the human verdict and the evidence verdict. */
+    const found: Violation[] = []
+    /** The matching row and its diagnostic classify the observed output. */
+    const row = evaluatePacklist(input, ["required.js"], found)
+    /** The reported outcome must agree with the gate's violation sink. */
+    const actual = row.ok ? "pass" : row.detail.includes("UNKNOWN") ? "UNKNOWN" :
+      found.some((violation) => violation.detail.includes("runtime state")) ? "state" : "missing"
+    if (actual !== expected || (found.length === 0) !== (expected === "pass")) {
+      failures += 1
+      console.log(`FAIL  packed-content ${expected}: ${row.detail}`)
+    }
+  }
+  if (!privatePackFixture(realManifest)) failures += 1
+  console.log(failures === 0 ? "self-test PASS (including invalid, missing and complete packlists, and an actual npm pack fixture)" : `self-test FAIL (${failures} control(s))`)
   return failures === 0 ? 0 : 1
 }
 
@@ -788,13 +885,7 @@ function main(): number {
         return []
       }
     }))
-    /** The pack arm's result, absent when npm could not be asked. */
-    const packedCheck = checkPackedContent(requiredPathsOf(patches, referenced), violations)
-    results.push(packedCheck ?? {
-      id: "packed-content",
-      ok: false,
-      detail: "npm pack --dry-run could not be read, so the packed set is UNKNOWN",
-    })
+    results.push(checkPackedContent(requiredPathsOf(patches, referenced), violations))
   }
 /** The rendered report, printed and optionally stored. */
   const text = render("repository manifest", results, violations)

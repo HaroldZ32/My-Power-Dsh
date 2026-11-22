@@ -1,0 +1,12 @@
+5f5dbbafb5cf0bb198026ba4d834813392ea24b4135b4e1a6dc1f9023cd50039  /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-packaging.gdUoTQ/frozen-pack/mpd-dsh-mpd-0.21.0.tgz
+web node=v24.21.0 pnpm=11.23.0 dsh=0.2.2-rc.5 tui=0.20.2
+Installed web from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-packaging.gdUoTQ/frozen-pack/mpd-dsh-mpd-0.21.0.tgz (AST launcher bytes match)
+web: mcp__ast_grep__search matched one fixture declaration and zero for the negative control
+Isolated session store: 0 workspace key(s) checked
+/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-packaging.gdUoTQ/frozen-pack/mpd-dsh-mpd-0.21.0.tgz: OK
+dsh-tui node=v24.21.0 pnpm=11.23.0 dsh=0.2.2-rc.5 tui=0.20.2
+Installed dsh-tui from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-packaging.gdUoTQ/frozen-pack/mpd-dsh-mpd-0.21.0.tgz (AST launcher bytes match)
+dsh-tui: mcp__ast_grep__search matched one fixture declaration and zero for the negative control
+Isolated session store: 0 workspace key(s) checked
+/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-packaging.gdUoTQ/frozen-pack/mpd-dsh-mpd-0.21.0.tgz: OK
+exit=0
