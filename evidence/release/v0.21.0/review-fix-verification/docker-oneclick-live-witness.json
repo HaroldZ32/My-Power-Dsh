@@ -1,0 +1,74 @@
+{
+  "evidence": "evidence/docker/client-install-oneclick/2026-11-22T14-38-37Z",
+  "startedAt": "2026-11-22T14:38:37.711Z",
+  "finishedAt": "2026-11-22T14:50:24.331Z",
+  "driver": {
+    "exitCode": 0,
+    "containerExit": 0,
+    "liveRequested": true,
+    "browserEnabled": true,
+    "unmeasured": [],
+    "excludedRequired": [
+      "ui.teamBoard"
+    ],
+    "teamRowsMissing": []
+  },
+  "report": {
+    "ok": true,
+    "complete": false,
+    "evidenceScrubbed": true,
+    "summary": {
+      "passed": 203,
+      "failed": 0,
+      "null": 41,
+      "failedNames": []
+    }
+  },
+  "harness": {
+    "harnessVersion": "0.2.2-rc.5",
+    "harnessVersionExpected": "0.2.2-rc.5"
+  },
+  "tui": {
+    "ok": true,
+    "raw": "version=0.20.2 bin=/usr/local/bin/dsh-tui"
+  },
+  "checks": [
+    {
+      "name": "install.exit",
+      "ok": true
+    },
+    {
+      "name": "install.profileDep",
+      "ok": true
+    },
+    {
+      "name": "install.installedTree",
+      "ok": true
+    },
+    {
+      "name": "install.buildScripts",
+      "ok": true
+    },
+    {
+      "name": "qa.mcpCall",
+      "ok": true
+    },
+    {
+      "name": "boot.presetMount",
+      "ok": true
+    },
+    {
+      "name": "tui.sessionPreset",
+      "ok": true
+    },
+    {
+      "name": "tui.teamFixtureBound",
+      "ok": true
+    }
+  ],
+  "userSurface": {
+    "passed": 85,
+    "failed": 0,
+    "declaredNull": 35
+  }
+}

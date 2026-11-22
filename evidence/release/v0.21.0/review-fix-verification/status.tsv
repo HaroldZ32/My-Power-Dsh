@@ -1,0 +1,17 @@
+dsh-version	dsh --version 	0	2026-11-22T13:02:35Z
+static-gates	bun run verify:gates 	1	2026-11-22T13:02:44Z
+no-host-override	node scripts/verify-no-host-override.ts 	0	2026-11-22T13:02:44Z
+manual-paths	node scripts/verify-manual-paths.ts 	0	2026-11-22T13:02:45Z
+manifest	bun run verify:manifest 	0	2026-11-22T13:02:47Z
+comments	bun run verify:comments 	0	2026-11-22T13:02:50Z
+typecheck	bun run typecheck 	0	2026-11-22T13:02:51Z
+package-tests	bun test packages 	1	2026-11-22T13:03:38Z
+qa-self-tests	bun run test:qa 	124	2026-11-22T13:06:38Z
+verify-law	node skills/dsh-qa/scripts/verify-law.ts --self-test 	0	2026-11-22T13:06:39Z
+install-dry-run	node scripts/install-profile.ts --dry-run 	0	2026-11-22T13:06:39Z
+lifecycle	bun skills/dsh-qa/scripts/bundle-lifecycle.ts 	1	2026-11-22T13:08:42Z
+preset-self-test	node skills/dsh-qa/scripts/preset-conformance.ts --self-test 	0	2026-11-22T13:08:42Z
+preset-register	node skills/dsh-qa/scripts/preset-register.ts 	1	2026-11-22T13:08:44Z
+pack	node scripts/pack-mpd.ts 	0	2026-11-22T13:08:45Z
+pack-closure	node scripts/verify-pack-closure.ts 	0	2026-11-22T13:08:45Z
+pack-closure-self-test	node scripts/verify-pack-closure.ts --self-test 	1	2026-11-22T13:08:49Z

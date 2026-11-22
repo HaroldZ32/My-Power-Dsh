@@ -1,0 +1,30 @@
+  ^ this test timed out after 5000ms.
+(fail) the client reports a non-JSON stdout line as a protocol error instead of dying [40.69ms]
+(fail) apply connects declared servers, publishes their tools before activation completes, and mpd_ext_show reports the state [46.30ms]
+(fail) startup failure is contained: a dead server is unavailable with its stderr tail while its sibling still connects [83.18ms]
+(fail) a hanging server is time-boxed and the others still publish in parallel [42.34ms]
+(fail) a later tool-list change is swapped in, and a mid-list conflict rolls back to ZERO tools [42.88ms]
+(fail) a server-initiated tools/list_changed notification triggers a re-sync [3052.62ms]
+(fail) a foreign inputSchema is projected for parameters while the wire schema stays untouched [39.94ms]
+(fail) an unsupported outputSchema drops the SCHEMA and keeps the tool, while an unprojectable inputSchema skips its tool [41.73ms]
+(fail) a non-object-rooted inputSchema is normalized onto an object root instead of being passed through [41.05ms]
+(fail) a public-name collision with an existing tool skips that tool and is recorded [41.52ms]
+(fail) tools/call maps content, structured content and isError onto the harness result contract [42.72ms]
+(fail) a tools/call slower than the server's budget is rejected naming that budget [43.24ms]
+(fail) the child env carries no credential-shaped variable inherited from the parent, and the child is reaped on dispose [41.53ms]
+(fail) a server's relative args and cwd resolve against the EXTENSION ROOT, not the dsh process cwd [41.46ms]
+(fail) the shipped example's stdio MCP server starts, lists its tool and answers a real call [83.76ms]
+(fail) F1 shipped artifact > the committed dists are the byte-identical products of a canonical build (T-62) [117.22ms]
+(fail) F1 shipped artifact > the committed dist is the byte-identical product of a canonical build (T-62) [106.40ms]
+(fail) T-43 real-home guard — both sides, in the shape production uses > node: sandbox HOME + DSH_HOME -> ALLOWED (the recipe the manual prescribes) [49.78ms]
+(fail) T-43 real-home guard — both sides, in the shape production uses > node: HOME unset + DSH_HOME -> REFUSED [55.16ms]
+(fail) T-43 real-home guard — both sides, in the shape production uses > node: real HOME + DSH_HOME -> REFUSED 403 real-home-refused [51.65ms]
+(fail) T-43 real-home guard — both sides, in the shape production uses > node: sandbox HOME + explicit override -> ALLOWED [58.38ms]
+(fail) T-43 real-home guard — both sides, in the shape production uses > FALSIFIABILITY: the same arms FAIL against the pre-fix predicate (homedir() follows $HOME) [44.24ms]
+
+ 4157 pass
+ 6 skip
+ 23 fail
+ 1 error
+ 54381 expect() calls
+Ran 4186 tests across 268 files. [47.16s]

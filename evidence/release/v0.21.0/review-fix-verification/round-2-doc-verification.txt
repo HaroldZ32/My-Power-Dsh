@@ -1,0 +1,22 @@
+UTC=2026-11-22T14:39:01Z
+Base=c0c041a6a4caaaa84df92d546c94d7bf7e56c6ed
+Patch SHA256 f711ab362b36139d229e2b2ba05421efeca8b1085980892fc4766862bf412d77  -
+Exact changed tracked paths
+README.md
+README.zh-CN.md
+Admitted TUI manifest coordinates
+@deepseek-harness-tui/dsh-tui@0.18.0
+@deepseek-harness-tui/dsh-tui@0.19.0
+@deepseek-harness-tui/dsh-tui@0.20.0
+@deepseek-harness-tui/dsh-tui@0.20.1
+@deepseek-harness-tui/dsh-tui@0.20.2
+Manifest lists match exit=0
+Measured host refs
+host-base	pkg:npm/@deepseek-ai/dsh-base@0.2.2-rc.5
+host-tui	pkg:npm/@deepseek-harness-tui/dsh-tui@0.20.2
+Harness engines=>=0.2.1-rc.5 <0.3.0-0
+[verify-docs-parity] links=640 checked=600 resolved=600 dead=0 exemptProvenance=0 absentSite=0 ignoredExternal=34 ignoredAnchorOnly=6 files=143
+
+[verify-docs-parity] root=/tmp/mpd-v0210-review2-worktree pairs=61 failed=0 violations=0 exempt=24 derived=3 links=640 dead=0 — PASS
+Docs gate exit=0
+Pack and closure PASS. Both updated README files are byte-identical in the packed tree. Closure reports 672 equal, zero drift.

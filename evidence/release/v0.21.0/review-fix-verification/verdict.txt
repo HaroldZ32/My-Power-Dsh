@@ -1,0 +1,13 @@
+Independent release verifier verdict
+Subject: c0c041a6a4caaaa84df92d546c94d7bf7e56c6ed
+Verification bounds: anchor-before.txt, anchor-rerun-before.txt, anchor-before-docker.txt, anchor-after-docker.txt
+The tracked source tree stayed at the subject revision throughout. The dual-track test updated only its existing evidence/dsh-qa/llm-dual-track/dual-track.tsv ledger during the run.
+
+Required gates PASS. Static aggregate 11/11. Package tests 4180 pass, 6 skip, 0 fail. QA self-tests 58/58. Manifest, comment coverage, typecheck, host override, manual paths, installer dry run, bundle lifecycle and verification-law offline and real boots exited 0. Pack closure 674 files byte-identical, zero drift, 38/38 control arms. Both live dual-track provider paths and recorded MCP fixture result passed.
+
+Docker rootless source live (2026-11-22T14-29-59Z): 204 pass, 0 fail, 40 declared null.
+Docker rootless candidate oneclick live (2026-11-22T14-38-37Z): 203 pass, 0 fail, 41 declared null.
+Docker rootless source without credentials/browser (2026-11-22T14-50-24Z): 163 pass, 0 fail, 81 declared null.
+Each lane exited 0, had no unmeasured required rows, and measured DSH 0.2.2-rc.5 and TUI 0.20.2 with install and mpd preset mount. User-surface rows were 85 passed, 0 failed, 35 declared null in every lane.
+
+The first sandboxed sweep hit subprocess restrictions. The unrestricted rerun is the release gate receipt. The auxiliary legacy standalone headless preset-register probe reproduced an established red, reporting roster 11 and process exit 0 with no agentPresets service. The web and TUI preset mounts were measured separately. See sandbox-bounds.txt.
