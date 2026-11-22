@@ -3,12 +3,13 @@
 [English](./tui.md) | **中文**
 
 本页说明 my-power-dsh 的 **DSH-TUI 版本**：它提供什么、如何安装、逐包兼容性测量的结果，以及它
-**明确不声明**什么。目标宿主为 `@deepseek-harness-tui/dsh-tui` **0.20.1** 及其内置的准入
-（admission）配置文件。0.20.1 相对 0.20.0 是**仅坐标的移动**（波次契约 §3 F7/F8/F10：每一条
-`@deepseek-ai/dsh-*` peer 范围都追加 harness `0.2.2-rc.3` 而**下限不变**，patch 文件零增量，本 bundle
-用到的 15 个 `tui*` 接缝都在相同的 file:line），其声明的 peer 范围上限为 DeepSeek Harness
-**`0.2.2-rc.3`**，同时仍接纳 `0.2.2-rc.2`、`0.2.2-rc.1` 与 `0.2.1-rc.5`。**§11.16 是本波次的修订**：
-其中记录了这次移动、被触及的载体与两条已声明边界。**§11.15 作为历史保持可读**：它记录的是
+**明确不声明**什么。目标宿主为 `@deepseek-harness-tui/dsh-tui` **0.20.2** 及其内置的准入
+（admission）配置文件。0.20.2 相对 0.20.1 是**仅坐标的移动**（波次契约 §3 F7–F9：每一条
+`@deepseek-ai/dsh-*` peer `||` 链都追加 `|| 0.2.2-rc.4 || 0.2.2-rc.5`，精确钉定的 `dsh-web` /
+`dsh-web-deepseek-api` 移到 `0.2.2-rc.5`，而 `lib/types/api.d.ts` / `lib/types/panels.d.ts` 逐字节相同），其声明的 peer 范围上限为 DeepSeek Harness
+**`0.2.2-rc.5`**，同时仍接纳 `0.2.2-rc.3`、`0.2.2-rc.2`、`0.2.2-rc.1` 与 `0.2.1-rc.5`。**§11.17 是本波次的修订**：
+其中记录了这次移动、被触及的载体与已声明边界。**§11.16 作为历史保持可读**：它记录的是
+DSH-TUI 0.20.1 那次移动。**§11.15 作为历史保持可读**：它记录的是
 DSH-TUI 0.20.0 那次移动。**§11.13 作为历史保持可读**：它记录的是 0.2.2-rc.1 / DSH-TUI 0.19.0 那次移动。**此前的钉定版本是
 0.18.0，那段表述作为历史保持可读**：0.18.0 的 `dsh-*` 范围覆盖 `0.2.1-rc.4` 与 `0.2.1-rc.5`（36 条
 全部如此），而 0.17.0 的名单止于 `0.2.1-rc.3`（读取自已发布的 tarball），§11.11 是那一波次的修订。
@@ -1625,3 +1626,34 @@ PTY 证据。`evidence/docker/client-install/2026-10-25T16-02-51Z/result.json` �
 `dsh-tui 0.20.1`（`arm H.host PASS`、`arm COMPAT.host-version PASS`），两个清单均为 `compatible`
 （`evidence/verify-022rc3/2026-11-15T12-45-50Z/logs/verify-gates-rc3.log`）。本**节**不声称对 `0.20.1` 做过**真机 TTY 抓取**：那属
 本波的挂载车道，没有车道演练过的结论不在这里声称。
+
+### 11.17 harness 0.2.2-rc.5 / DSH-TUI 0.20.2 适配波次后的修订（2026-11-22）
+
+本波次再次移动钉定组合，且不改动任何 TUI 插件源码、任何 patch 行或适配器。§11.1–§11.16 按原样保留：
+它们记录的是更早的波次，不是这一次。
+
+| 主题 | 之前 | 之后 |
+|---|---|---|
+| 本页的目标宿主（§ 前言） | **0.20.1** | **0.20.2**——**仅坐标的移动**（波次契约 §3 F7–F9）：该版本存在的目的正是抬高已声明的 harness 上限，因此每一条 `@deepseek-ai/dsh-*` peer `\|\|` 链都追加 `\|\| 0.2.2-rc.4 \|\| 0.2.2-rc.5`，精确钉定的 `dsh-web` / `dsh-web-deepseek-api` 从 `0.2.2-rc.3` 移到 `0.2.2-rc.5`。`engines.node`（`^22.19 \|\| >=24`）、19 个 `exports` 键、`bin`、`imports` 与 `files` 均未变；`lib/types/api.d.ts` 与 `lib/types/panels.d.ts` 在 `0.20.1`/`0.20.2` 之间**逐字节相同**；`tuiPanels` 存在（`lib/types/dsh-adapter/panels.d.ts`，`name="dsh-tui-panels"`，`TUI_PANEL_API_VERSION = 1`）；`cordis.patch.yml` 长度相同（24,831 字符）、首尾一致 |
+| harness 钉定（`dsh-distribution.json` 的 `host-base`；`docker/entrypoint.sh` 的 `DSH_VERSION`；Docker 与 QA 的默认值） | `0.2.2-rc.3` | **`0.2.2-rc.5`**（波次契约 §D1/§D3）。`engines.dsh` 仍为 `>=0.2.1-rc.5 <0.3.0-0`——它本来就接纳 rc.5，因此不移动——`engines.node` 仍为 `>=24.9.0`。本次发布**不声明**任何团队包 |
+| harness 这一跳本身（rc.3 → rc.5） | — | **纯打包 / 纯兼容，带恰好两处本 bundle 不消费的 API 可见变更**（波次契约 §3 F5/F6）：新增的 `CONTENT_REFUSED` 完成码，与被移除的 `searchProvider` 基础默认值。两次审计、逐字节相同的第三方 pin，以及它对 Docker 判定的已记录后果，都在 [`compatibility.zh-CN.md`](./compatibility.zh-CN.md) §2；本页只重复结论 |
+| `compat.hosts`（两个清单）与 `specs/tui-hosts.json` | `0.18.0`、`0.19.0`、`0.20.0`、`0.20.1` | **`0.18.0`、`0.19.0`、`0.20.0`、`0.20.1`、`0.20.2`**——三处集合完全相同且有序，`dsh-distribution.json` 的 `host-tui` 引用移到 `0.20.2` |
+| 团队挂载（harness 平面，非 TUI 源码） | rc.2 之后代际上由宿主自有的平面 | **不变**——harness 这一跳没有新增 `standard` preset 行、没有增删改 Cordis 服务 id、也没有 agent-preset schema 变化（F5），因此宿主仍自己声明那三个团队行，本 bundle 在这一代上仍**不挂任何团队行** |
+| `tool-office` 守卫式 preset 行 | 在 `0.2.2-rc.3` 上 ACTIVE，旧宿主上是守卫式 NOTE | **表述不变，但未在 rc.5 上重测**——`dsh-web-app` 的 lib 与 patch 相对 rc.3 逐字节相同（F5），因此 rc.3 那段表述所依托的声明没有改变；本页不声称在 rc.5 上重新挂载过该行，两种因宿主而异的表述仍不混为一谈 |
+| Ctrl+A 宿主接触点 | 以 `tuiPanels` 接缝做版本门控 | **不变**——接缝仍在、API 版本相同，`lib/types/ui.js` 的 dashboard 接触点仍在同一路径解析（F8，并由该包自己发布的类型导入它作为佐证），因此接缝存在时接触点保持惰性、Ctrl+A 保留宿主含义；合并视图通过 `alt+a` / `/mpd panel` 打开 |
+
+**配对律是本修订的一部分**（波次契约 §3 F9）：harness rc.4/rc.5 跑在 TUI `0.20.1` 上，超出该 TUI
+发布声明的 peer 契约——它的链止于 `0.2.2-rc.3`——并会产生启动漂移警告。两个 pin **必须一起移动**，
+不存在可接受的部分移动，这也正是本波次两个都动的原因。
+
+**已声明边界——它们是主张的一部分，不是脚注。**
+
+- **`0.2.2-rc.4` 被 `engines.dsh` 范围接纳，但没有被单独测量。** 它那两处 API 可见变更属于本波次
+  所针对的这一跳，但没有跑过 rc.4 的挂载；波段主张是「以 rc.5 为目标、旧宿主保持不变」，rc.4 只在
+  范围之内（波次契约 §6）。
+- **有一处宿主差异仍未证实（波次契约 §3 F10）：** `lib/types/dsh-adapter/index.d.ts` 恰好增长
+  **+277 字节**，首尾相同。它至多是增量（`Config` 是该插件仅可选的输入面），本波次不依赖它；记录在案，
+  而不是解释掉。
+- **本节不声称对 `0.20.2` 做过真机 TTY 抓取。** 上面的坐标读自已发布的 `0.20.2` 发布元数据与宿主自己的
+  类型（波次契约 §3 F7–F10）；真机抓取与本波自己的 `verify:gates` 记录文本属于本波的验证车道
+  （`evidence/release/v0.21.0/`），没有车道演练过的结论不在这里声称。

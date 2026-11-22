@@ -2077,10 +2077,14 @@ export async function writeMemberHandoff(deps: TeamActionDeps, caller: TeamActio
     while (existsSync(teamHandoffPath(caller.workspace, resolved.record.teamId, member.name, ordinal))) ordinal += 1
     /** The absolute path the document was written to. */
     const path = writeHandoffDocument(caller.workspace, resolved.record.teamId, member.name, ordinal, input.content)
+    // F2 §4.2: the record and the journal share ONE clock read, so `handoff.at` and the journal's `at`
+    // cannot disagree about when this checkpoint window opened.
+    /** The instant this handoff was written. */
+    const at = deps.now().toISOString()
     // The seat enters the handoff window: `mode: checkpoint` is what the next dispatch pass reads as
     // "never message this member" without a second state field to keep in sync.
-    writeTeam(caller.workspace, updateTeamMember(resolved.record, member.name, { handoff: { path, ordinal }, mode: "checkpoint" }))
-    appendTeamJournal(caller.workspace, { event: "handoff-written", teamId: resolved.record.teamId, at: deps.now().toISOString(), member: member.name, path })
+    writeTeam(caller.workspace, updateTeamMember(resolved.record, member.name, { handoff: { path, ordinal, at }, mode: "checkpoint" }))
+    appendTeamJournal(caller.workspace, { event: "handoff-written", teamId: resolved.record.teamId, at, member: member.name, path })
     return { ok: true, teamId: resolved.record.teamId, member: member.name, path, ordinal, mode: "checkpoint", directive: handoffWrittenDirective(path) }
   } catch (error) {
     return unexpectedRefusalOf(error)

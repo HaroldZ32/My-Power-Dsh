@@ -1,0 +1,1 @@
+run NaN (source-live) exit=0 evidence=evidence/docker/client-install/2026-11-22T09-24-43Z harness=0.2.2-rc.5 tui=0.20.2 failures=0 nulls=40 userSurfaceTrue=85

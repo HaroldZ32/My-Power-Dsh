@@ -948,10 +948,12 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       if (cellFenced) {
         /** How the plane's half ended. */
         const half = await reopenPlaneSeat(caller.sessionId, target.name)
-        /** The reopened CELL row: the fence keys are REMOVED and the barrier's checkpoint window is reset. */
+        /** The reopened CELL row: ALL FOUR window keys are REMOVED — the fence marker and the barrier's checkpoint window — exactly as the FORCED arm below does. */
         const reopened: CellMemberRecord = { ...row, mode: "member", handoffReady: false }
         delete reopened.fenced
         delete reopened.fencedReason
+        delete reopened.barrierFailures
+        delete reopened.checkpointSince
         clearedRows.set(target.key, reopened)
         outcomes.push({ member: target.name, unfenced: true, plane: half.plane, ...(half.planeReason === undefined ? {} : { planeReason: half.planeReason }), ...(half.plane === "refused" ? { retry: planeRetryOf(target.name) } : {}) })
         cleared.push({ name: target.name, plane: half.plane })
@@ -2490,7 +2492,9 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       /** The instant of the write. */
       const now = new Date()
       /** The MIRROR: the cell record follows the plane, never the other way round. */
-      const next: CellState = { ...caller.cell, members: { ...caller.cell.members, [caller.member]: { ...member, handoffReady: true, handoffs: ordinal } } }
+      // F2 §4.1: the CELL row also records WHEN this checkpoint window opened, so the forced-unfence lever
+      // can measure it. An EXISTING stamp is never rewritten — the window's start is the first handoff's.
+      const next: CellState = { ...caller.cell, members: { ...caller.cell.members, [caller.member]: { ...member, handoffReady: true, handoffs: ordinal, checkpointSince: member.checkpointSince ?? now.toISOString() } } }
       transition(caller.workspace, next, { event: "handoff", member: caller.member, ordinal, path, nextStep: nextStepOf(content) }, now)
       return { ok: true, path, member: caller.member, ordinal, sections: validation.sections, directive: handoffWrittenDirective(path) }
     },

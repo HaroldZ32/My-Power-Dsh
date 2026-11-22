@@ -133,8 +133,9 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
   **成功**的屏障，而被围栏的成员根本无法发起。成员无法靠自救恢复。
 - **`cellwork_dispatch {unfence:[…]}` 就是杠杆。** 仅队长、可选，并且在派发**之前**运行。判断按**记录**分别
   做出，因为屏障只在一个地方写下放弃的围栏。CELL 行带 `fenced: true` **就是**放弃（无论 TEAM 行怎么说）：
-  该行**删除** `fenced`/`fencedReason`（normalizer 禁止 `fenced: false`）、把 `mode` 恢复为 `"member"`、
-  把 `handoffReady` 设为 `false`、保持 `handoffs` 不变，并记 `member-unfenced`；同时通过团队平面的
+  重开该行会删除**整个检查点窗口**——`fenced`、`fencedReason`、`barrierFailures` 与 `checkpointSince`
+  四个键（键被删除，normalizer 禁止 `fenced: false`），把 `mode` 恢复为 `"member"`、把 `handoffReady`
+  设为 `false`、保持 `handoffs` 不变，并记 `member-unfenced`；同时通过团队平面的
   `unfence` 接缝重新打开 TEAM 座位（平面的 `mode: "checkpoint"` 同样算关闭拼写），答复携带
   `{member, unfenced: true, plane, planeReason?}`，并把平面那一半如实报告为 `unfenced`、`absent` 或
   `refused`，绝不声称一次没有发生的重开。

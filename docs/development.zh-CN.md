@@ -56,7 +56,7 @@ manifest 声明了一个外部运行时依赖 `dsh-better-sidebar`（承载 mpd 
 `bun add dsh-better-sidebar@0.28.0 --ignore-scripts` 跳过构建脚本安装（只有侧边栏的终端
 面板会降级；当初需要这个开关的传递依赖 `node-pty` 自 `0.24.1` 起已被移除，2026-10-02 实测；
 `0.28.0` 同样不含任何安装脚本，2026-10-21 实测）。`0.28.0` 要求 harness **DSH 0.2.1-rc.1+**
-（本仓库钉定 harness `0.2.2-rc.1`，同时仍支持 `0.2.1-rc.5`），并通过 `connection` 服务做路由围栏；`packages/mpd-better-sidebar-host`
+（本仓库钉定 harness `0.2.2-rc.5`，同时仍支持 `0.2.2-rc.3`、`0.2.2-rc.2`、`0.2.2-rc.1` 与 `0.2.1-rc.5`），并通过 `connection` 服务做路由围栏；`packages/mpd-better-sidebar-host`
 适配层重述的正是它的注入列表。打包安装则由 pnpm 负责。
 
 **没有 MCP 构建步骤。** MCP 服务器来自**声明式**的 npm 包，由薄启动器在安装 profile 实际物化它们的位置解析后启动：`cclsp`（LSP 服务器）与 git/shell 这一对 `@cyanheads/git-mcp-server` + `mcp-server-commands` 通过 `packages/mpd-mcp-shared/dependency-entry.ts` 的 `resolveDependencyEntry` 解析，而采纳的 ast-grep 与 codegraph 产物随各自启动器一起放在该包的 `dist/` 内。唯一在运行时解析（而非 import）的可执行文件是 `ast-grep` **二进制**：`packages/mpd-mcp-shared/bin-resolve.ts` 的 `resolveAstGrepBinary` 依次尝试 (1) 调用方已设的 `MPD_AST_GREP_SG_PATH`（启动器不会改动既有固定值）然后是 (2) `$MPD_AST_GREP_BIN_DIR/{ast-grep,sg}`、(3) 通过 `createRequire` 读该包自己的 `bin` 入口、(4) `<bundle>/.toolchain/node_modules/.bin`、(5) `<bundle>/node_modules/.bin`；候选都没通过 `--version` 探针时，启动器保持环境变量未设，由被采纳的服务器报出它自己的 `BINARY_NOT_FOUND`。因此检出目录**完全不需要** MCP 构建步骤：退役的 `scripts/build-mcp.ts` 及其 `vendor/mcp-src/**` 快照已随 de-omo 波次 B2 删除。
@@ -174,11 +174,11 @@ shell 子进程没有：在 case 命令里显式导出）。
 
 门禁没有磁盘上的证据 = 变更不算完成。
 
-**`bun run verify:gates` 需要两个环境输入；裸跑按设计就是红的。** PINNED harness 必须排在 `PATH`
-最前——否则环境里的 harness（`0.2.1-rc.5`，仍是 SUPPORTED 宿主）会让 `preset-conformance` 变红；`MPD_DSHGO_KIT`
-必须指向一个钉定的 `dsh-Go` 检出，否则 `dshgo` 成员以退出码 3 报 NOT-PASSED。两个都不给时，裸跑以
-`FAIL - 2/11 member gate(s) failed: preset-conformance (exit=1), dshgo (exit=3)` 结束：这是写明的默认行为，
-不是仓库坏了。完整调用（在仓库根目录）：
+**`bun run verify:gates` 需要两个环境输入。** 将钉定的 harness 放在 `PATH` 最前，让
+`preset-conformance` 验证发布目标。确认该前缀下的 `dsh --version` 与
+[发行清单](../dsh-distribution.json)中 `host-base` 声明的版本完全一致。
+将 `MPD_DSHGO_KIT` 指向钉定的 `dsh-Go` 检出以运行 `dshgo` 门禁，缺少此设置时该门禁以退出码 3
+报告 NOT-PASSED。在仓库根目录运行以下命令。
 
 ```bash
 PATH="$PWD/.qa-tmp/dsh-022/bin:$PATH" \

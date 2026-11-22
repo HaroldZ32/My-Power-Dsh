@@ -1,0 +1,4 @@
+startUtc=2026-11-22T10:07:05Z
+startLocal=2026-11-22 18:07:05 +0800
+endUtc=2026-11-22T10:16:50Z
+durationSeconds=585

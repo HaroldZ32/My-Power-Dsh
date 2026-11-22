@@ -81,8 +81,8 @@ jobs:
       # The harness the gates validate AGAINST. Its version is READ from the ONE carrier that names
       # the harness release this bundle distributes: the `host-base` component's npm coordinate in
       # `dsh-distribution.json`. `@deepseek-ai/dsh-base` ships in LOCKSTEP with the dsh CLI (measured
-      # at every supported release: 0.2.1-rc.5, 0.2.2-rc.1, 0.2.2-rc.2 and the current pin
-      # 0.2.2-rc.3 (each dsh X depends on dsh-base X), so that coordinate IS the pin.
+      # at every supported release (0.2.1-rc.5 and the whole 0.2.2-rc lineage; the current pin is
+      # 0.2.2-rc.5 — each dsh X depends on dsh-base X), so that coordinate IS the pin.
       # Why not package.json: since wave A3/T8
       # this bundle declares NO team package at all — a declared team package can only refuse one
       # host generation at INSTALL time, and the rc.1 official team plane is supplied by the host's

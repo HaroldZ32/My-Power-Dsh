@@ -1,0 +1,35 @@
+=== HEAD MOVED AFTER THE FREEZE ===
+utc=2026-11-22T09:41:01Z
+8828e3c9 chore(evidence): record the v0.21.0 gate transcripts for commit d2a93abc
+d2a93abc feat(adapt): support DSH 0.2.2-rc.5 and dsh-tui 0.20.2 (0.21.0)
+e3f36a99 Merge pull request #116 from HaroldZ32/fix/cellwork-seat-growth-and-checkpoint
+--- commit stat
+8828e3c9 chore(evidence): record the v0.21.0 gate transcripts for commit d2a93abc
+ .../00-freeze-proof.log                            |   29 +
+ .../01-verify-gates.log                            |  294 ++
+ .../01-verify-gates.meta                           |    8 +
+ .../02-verify-tui-admission.log                    |   63 +
+ .../02-verify-tui-admission.meta                   |    8 +
+ .../03-verify-no-host-override.log                 |   14 +
+ .../03-verify-no-host-override.meta                |    8 +
+ .../04-verify-manual-paths.log                     |  345 ++
+ .../04-verify-manual-paths.meta                    |    8 +
+ .../05-install-profile-dry-run.log                 |  576 +++
+ .../05-install-profile-dry-run.meta                |    8 +
+ .../06-preset-conformance-self-test.log            |    7 +
+ .../06-preset-conformance-self-test.meta           |    8 +
+--- non-evidence diff d2a93abc..HEAD (expect EMPTY)
+EMPTY — no code/doc/manifest change after the certified commit
+--- is my lane dir tracked in HEAD?
+evidence/release/v0.21.0/static-2026-11-22T09-32-05Z/00-freeze-proof.log
+evidence/release/v0.21.0/static-2026-11-22T09-32-05Z/01-verify-gates.log
+evidence/release/v0.21.0/static-2026-11-22T09-32-05Z/01-verify-gates.meta
+evidence/release/v0.21.0/static-2026-11-22T09-32-05Z/02-verify-tui-admission.log
+evidence/release/v0.21.0/static-2026-11-22T09-32-05Z/02-verify-tui-admission.meta
+(empty above = my lane dir is still untracked, to be committed by the captain)
+--- tracked dirty (expect empty)
+--- untracked evidence file count
+118
+--- evidence dirs committed by 8828e3c9
+evidence/release/v0.21.0/static-2026-11-22T09-32-05Z/
+evidence/release/v0.21.0/vendor-2026-11-22T09-27-40Z/

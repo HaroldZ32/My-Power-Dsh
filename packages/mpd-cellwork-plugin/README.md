@@ -163,9 +163,10 @@ documented here.
   cannot recover by itself.
 - **`cellwork_dispatch {unfence:[…]}` is the lever.** Captain-only and optional, and it runs BEFORE the
   pass. The decision is made PER RECORD, because the barrier writes the give-up in exactly one place.
-  A CELL row with `fenced: true` IS the give-up, whatever the TEAM row says: that row loses
-  `fenced`/`fencedReason` (the keys are removed — the normalizer forbids `fenced: false`), returns to
-  `mode: "member"` with `handoffReady: false`, keeps `handoffs` unchanged and journals `member-unfenced`,
+  A CELL row with `fenced: true` IS the give-up, whatever the TEAM row says: reopening it removes the
+  WHOLE checkpoint window — `fenced`, `fencedReason`, `barrierFailures` and `checkpointSince` (the keys
+  are removed — the normalizer forbids `fenced: false`) — returns to `mode: "member"` with
+  `handoffReady: false`, keeps `handoffs` unchanged and journals `member-unfenced`,
   AND the TEAM seat is reopened through the plane's `unfence` seam, whose `mode: "checkpoint"` is a closed
   spelling too; the answer carries `{member, unfenced: true, plane, planeReason?}` and reports the
   plane's half as `unfenced`, `absent` or `refused`, never claiming a reopen that did not happen.

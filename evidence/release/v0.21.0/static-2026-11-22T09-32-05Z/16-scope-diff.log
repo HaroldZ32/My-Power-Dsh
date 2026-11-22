@@ -1,0 +1,136 @@
+=== FULL NUMSTAT (added removed file) ===
+1	1	VENDOR_LOCK.json
+1	1	package.json
+1	1	scripts/mpd-tui-panels.ts
+1	1	skills/dsh-qa/scripts/install-dependencies.ts
+1	1	skills/dsh-qa/scripts/tui-admission.ts
+1	1	skills/dsh-qa/scripts/tui-deps-ctrla.ts
+1	1	skills/dsh-qa/scripts/tui-keeper-standdown.ts
+1	1	skills/dsh-qa/scripts/tui-panels.ts
+2	1	packages/mpd-tui-adapter-plugin/src/index.ts
+2	1	packages/mpd-tui-plugin/dsh-plugin.json
+2	1	specs/tui-hosts.json
+2	2	.github/workflows/gates.yml
+2	2	docker/ui/docker-compose.yml
+2	2	docs/index.md
+2	2	docs/index.zh-CN.md
+2	2	skills/dsh-qa/scripts/lib/tui-lane.ts
+2	2	skills/dsh-qa/scripts/tui-mount.ts
+2	2	skills/dsh-qa/scripts/tui-team-surface.ts
+2	2	skills/dsh-qa/scripts/user-surface-mount.ts
+3	3	docker/ui/entrypoint.sh
+4	3	docs/development.zh-CN.md
+4	3	dsh-plugin.json
+4	4	docs/user-guide.zh-CN.md
+5	4	docker/tui-lane.sh
+5	5	docs/user-guide.md
+6	4	docs/development.md
+6	4	presets/mpd.patch.yml
+6	5	packages/mpd-tui-plugin/test/panel-visibility.test.ts
+7	3	AGENTS.md
+8	7	docker/README.md
+8	7	docker/README.zh-CN.md
+8	7	docker/entrypoint.sh
+9	9	docker/docker-compose.yml
+9	9	dsh-distribution.json
+11	5	docs/tui-admission.zh-CN.md
+12	10	README.zh-CN.md
+13	6	docs/tui-admission.md
+15	12	README.md
+24	5	skills/dsh-qa/scripts/dual-track-smoke.ts
+36	6	skills/dsh-qa/scripts/preset-register.ts
+38	6	docs/tui.zh-CN.md
+43	7	docs/tui.md
+60	13	docs/compatibility.zh-CN.md
+72	17	docs/compatibility.md
+89	0	CHANGELOG.md
+
+=== ANY packages/*/dist CHANGED? ===
+NONE
+
+=== THE THREE CODE-ADJACENT FILES (full diff) ===
+diff --git a/packages/mpd-tui-adapter-plugin/src/index.ts b/packages/mpd-tui-adapter-plugin/src/index.ts
+index 6ef0984a..a451e318 100644
+--- a/packages/mpd-tui-adapter-plugin/src/index.ts
++++ b/packages/mpd-tui-adapter-plugin/src/index.ts
+@@ -996,7 +996,8 @@ export function hostSelfHealsPanelCsv(version: string): boolean {
+  * back. There is therefore NO enable-list state this adapter could still author — anything it wrote
+  * would be a second writer racing the host's own merge, which is exactly the incident class
+  * (`fix/sidebar-015-keeper-migration`) this gate retires. Which host the bundle is ADMITTED on is a
+- * different fact, declared in `dsh-plugin.json` `compat.hosts` (the 0.18.0 + 0.19.0 band since v0.18.0).
++ * different fact, declared in `dsh-plugin.json` `compat.hosts` (the five-host 0.18.0 – 0.20.2 band:
++ * 0.18.0, 0.19.0, 0.20.0, 0.20.1, 0.20.2).
+  */
+ export const PANEL_CSV_HOST_OWNED_SINCE = "0.16.1"
+ 
+diff --git a/packages/mpd-tui-plugin/test/panel-visibility.test.ts b/packages/mpd-tui-plugin/test/panel-visibility.test.ts
+index 2b98e994..a052ad3b 100644
+--- a/packages/mpd-tui-plugin/test/panel-visibility.test.ts
++++ b/packages/mpd-tui-plugin/test/panel-visibility.test.ts
+@@ -22,11 +22,12 @@
+ //      host's own minimum gets the host's "too narrow" notice in the band between the two.
+ //
+ // HOST ERAS. The enable-list rule changed twice under this file, so each affected arm carries the
+-// INSTALLED host's own branch instead of a version literal: the 0.17.0 arms branch on the presence of
+-// the consolidated panel-CSV API (`parseSidePanelPanels` + `resolveSidePanelIds`), which `docs/tui.md`
+-// §11.10 records as 0.17.0's "two host panel-CSV helpers consolidated"; the older arms keep the 0.15.0
+-// union and the 0.14 append, byte for byte. The admitted host is 0.17.0 (`dsh-plugin.json`
+-// `compat.hosts`), which is the branch this machine runs.
++// INSTALLED host's own branch instead of a version literal: the 0.17.0-and-later arms branch on the
++// presence of the consolidated panel-CSV API (`parseSidePanelPanels` + `resolveSidePanelIds`), which
++// `docs/tui.md` §11.10 records as 0.17.0's "two host panel-CSV helpers consolidated"; the older arms
++// keep the 0.15.0 union and the 0.14 append, byte for byte. The admitted band is 0.18.0 through 0.20.2
++// (five releases, `dsh-plugin.json` `compat.hosts`), so every admitted host takes that consolidated-API
++// branch; the arms judge whichever host `dsh-tui` on `PATH` actually resolves to.
+ import { describe, expect, test } from "bun:test"
+ import { readFileSync } from "node:fs"
+ import { EventEmitter } from "node:events"
+diff --git a/presets/mpd.patch.yml b/presets/mpd.patch.yml
+index 1e09b228..7cc1d6ba 100644
+--- a/presets/mpd.patch.yml
++++ b/presets/mpd.patch.yml
+@@ -377,10 +377,12 @@
+             config:
+               allowParallelInProgress: true
+ 
+-          # The `web` service and its search provider stay in the host composition; only
+-          # the model-facing tool is per-session. Fetching is enabled deliberately: an agent
+-          # without `web_fetch` cannot open a source page, and the read-only specialists have
+-          # no shell fallback. Evidence: evidence/web-plane/tool-web-fetch/.
++          # The `web` service itself stays host-owned; since DSH 0.2.2-rc.5 the host pins no
++          # `searchProvider` in `dsh-base`, and `dsh-web` chooses the provider per request route —
++          # so this row owns no provider and keeps only `{fetch, searchTimeoutMs}`. Only the
++          # model-facing tool is per-session. Fetching is enabled deliberately: an agent without
++          # `web_fetch` cannot open a source page, and the read-only specialists have no shell
++          # fallback. Evidence: evidence/web-plane/tool-web-fetch/.
+           - id: tool-web
+             name: '@deepseek-ai/dsh-tool-web'
+             config:
+
+=== THE 9 EXTRA skills/dsh-qa SCRIPT FILES: changed lines only ===
+-    remedy: "dsh plugin --profile dsh-tui add @deepseek-harness-tui/dsh-tui@0.20.1",
++    remedy: "dsh plugin --profile dsh-tui add @deepseek-harness-tui/dsh-tui@0.20.2",
+-//   • `dsh plugin --profile dsh-tui add @deepseek-harness-tui/dsh-tui@0.20.1` needs
++//   • `dsh plugin --profile dsh-tui add @deepseek-harness-tui/dsh-tui@0.20.2` needs
+-    { code: "absent-dsh-binary", probe: "dsh-tui", remedy: "npm i -g @deepseek-harness-tui/dsh-tui@0.20.1", present: tuiBinaryPresent },
++    { code: "absent-dsh-binary", probe: "dsh-tui", remedy: "npm i -g @deepseek-harness-tui/dsh-tui@0.20.2", present: tuiBinaryPresent },
+-// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.20.1"
++// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.20.2"
+-// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.20.1"
++// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.20.2"
+-// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.20.1"
++// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.20.2"
+-// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.20.1"
++// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.20.2"
+-const TUI_HOST_SPEC: string = "@deepseek-harness-tui/dsh-tui@" + (process.env.MPD_E2E_TUI_VERSION ?? "0.20.1")
++const TUI_HOST_SPEC: string = "@deepseek-harness-tui/dsh-tui@" + (process.env.MPD_E2E_TUI_VERSION ?? "0.20.2")
+-// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.20.1"
++// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.20.2"
+-// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.20.1"
++// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.20.2"
+-    { code: "absent-dsh-binary", probe: "dsh-tui", remedy: "npm i -g @deepseek-harness-tui/dsh-tui@0.20.1", present: () => binaryOnPath("dsh-tui") },
++    { code: "absent-dsh-binary", probe: "dsh-tui", remedy: "npm i -g @deepseek-harness-tui/dsh-tui@0.20.2", present: () => binaryOnPath("dsh-tui") },
+-// PREREQ: absent-dsh-binary dsh-tui npm i -g @deepseek-harness-tui/dsh-tui@0.20.1 (the TUI plane the palette witness needs)
++// PREREQ: absent-dsh-binary dsh-tui npm i -g @deepseek-harness-tui/dsh-tui@0.20.2 (the TUI plane the palette witness needs)
+-    const missing = !tuiBinaryPresent() ? { code: "absent-dsh-binary", probe: "dsh-tui", remedy: "npm i -g @deepseek-harness-tui/dsh-tui@0.20.1" } : { code: "absent-runtime", probe: "tmux", remedy: "apt-get install tmux" }
++    const missing = !tuiBinaryPresent() ? { code: "absent-dsh-binary", probe: "dsh-tui", remedy: "npm i -g @deepseek-harness-tui/dsh-tui@0.20.2" } : { code: "absent-runtime", probe: "tmux", remedy: "apt-get install tmux" }

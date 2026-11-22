@@ -2,7 +2,7 @@
 
 **English** | [中文](./compatibility.zh-CN.md)
 
-This page is the **three-plane compatibility matrix** of the `0.20.0` release: what each upstream plane
+This page is the **three-plane compatibility matrix** of the `0.21.0` release: what each upstream plane
 guarantees, what degrades on an older host, and what is **not available** there. Every line is traceable to
 a gate run, a mounted boot in an isolated `DSH_HOME`, or a source of the upstream package named beside it —
 never to a device, because this repository contains no Flutter host and no phone.
@@ -13,8 +13,8 @@ Three planes move independently, and the bundle adapts to each on its own terms:
 
 | Plane | Minimum supported | Current target | Where the claim is asserted |
 |---|---|---|---|
-| DSH core (`@deepseek-ai/dsh`) | `0.2.1-rc.5` | `0.2.2-rc.3` | `package.json` `engines.dsh`, `dsh-distribution.json` `host-base`, the isolated mount boot, `preset-conformance` |
-| DSH-TUI (`@deepseek-harness-tui/dsh-tui`) | `0.18.0` | `0.20.1` | both manifests' `compat.hosts`, `dsh-distribution.json` `host-tui`, `verify:tui-admission`, the host's own negotiation |
+| DSH core (`@deepseek-ai/dsh`) | `0.2.1-rc.5` | `0.2.2-rc.5` | `package.json` `engines.dsh`, `dsh-distribution.json` `host-base`, the isolated mount boot, `preset-conformance` |
+| DSH-TUI (`@deepseek-harness-tui/dsh-tui`) | `0.18.0` | `0.20.2` | both manifests' `compat.hosts`, `dsh-distribution.json` `host-tui`, `verify:tui-admission`, the host's own negotiation |
 | DSH-Go (`dsh-Go`, protocol v1) | view v1, always | view v2 where the app takes it | `dshGo` manifest, `verify:dshgo` |
 
 Three words are used with one meaning each. **Guaranteed** means a check in this repository exercises it.
@@ -25,10 +25,12 @@ The `engines.dsh` declaration spans both bands on purpose: `"dsh": ">=0.2.1-rc.5
 locked to the newer band would refuse the older host at install time, which is exactly what this wave's
 backward-compatibility rule forbids.
 
-## 2. DSH core: `0.2.1-rc.5`, `0.2.2-rc.1`, `0.2.2-rc.2` and `0.2.2-rc.3`
+## 2. DSH core: `0.2.1-rc.5` through `0.2.2-rc.5`
 
-**Four hosts are admitted on this plane.** `0.2.2-rc.3` is the current target; `0.2.2-rc.2`,
-`0.2.2-rc.1` and `0.2.1-rc.5` stay admitted. The rc.2 → rc.3 hop is PACKAGING ONLY (wave contract §3
+**Five hosts are admitted on this plane.** `0.2.2-rc.5` is the current target; `0.2.2-rc.3`,
+`0.2.2-rc.2`, `0.2.2-rc.1` and `0.2.1-rc.5` stay admitted. **`0.2.2-rc.4` is admitted by the `engines.dsh`
+range but is NOT separately claimed or measured by this release**: it is admitted by the range, never a
+row of its own. The rc.2 → rc.3 hop is PACKAGING ONLY (wave contract §3
 F1–F5): the host's own layers still declare `agent-team` / `tool-agent-team` / `ui-agent-team` at the
 same lines, `ctx.agentTeams` is still the six-member task-board service, the `standard` preset is
 row-for-row identical, no probed seam changed, and the rc.3 team packages' `src/` trees compare
@@ -37,6 +39,36 @@ tools, no team plane), and `engines.dsh` already admits the new host. The table 
 measured by this wave (contract §D6) and its transcript is recorded under
 `evidence/verify-022rc3/`, while a per-row activation measurement inside a full mount belongs to the
 wave's mount lane, not to this page.
+
+**The rc.3 → rc.5 hop is PACKAGING/COMPAT ONLY, and it carries exactly TWO API-visible changes this
+bundle does not consume** (wave contract §3 F5/F6). The whole `@deepseek-ai/*` closure travels
+patch-level in lockstep; every third-party pin (`@deepseek-ai/cordis ~4.1.0`, `cordis-plugin-loader
+~1.1.0`, `schemastery ~3.19.0`, `commander ^15`, `js-yaml ^4.3.2`, `node-addon-require-builtin ^0.1.9`)
+is byte-identical across rc.3/rc.4/rc.5 and `engines.node` stays `>=24.9.0`, so there is no
+loader/patch-dialect change, no Cordis service id added, renamed or removed, no `standard`-preset row
+change, no agent-preset schema change and no team-service config or tool change. The two exceptions:
+
+- **`CONTENT_REFUSED` (rc.4, `dsh-llm`).** A new finish code for DeepSeek's `refusal` stop reason, which
+  previously surfaced as `MALFORMED_RESPONSE`. **Not consumed:** the bundle never reads a finish/stop
+  code. `CONTENT_REFUSED`, `finishCode`, `finish_code`, `finishReason` and `finish_reason` have ZERO
+  occurrences in `packages/**`, `scripts/**`, `skills/**`, `presets/**`, `templates/**`,
+  `extensions/**` and `cordis.patch.yml`; the only `stopReason` the bundle carries is the SUBAGENT-SPAWN
+  result field, normalized as a free string with no `switch`, no enum and no throw on an unknown value.
+- **`searchProvider` base default removed (rc.5, `dsh-base`).** `dsh-base`'s `cordis.patch.yml` loses the
+  `searchProvider` line; `dsh-web` now picks the provider per request route and `WebSearchRequest` gains a
+  host-internal `llmProvider`. **Not consumed:** `searchProvider`, `search_provider`, `WebSearchRequest`,
+  `llmProvider`, `ctx.web` and `web.search` have ZERO occurrences in shipped source (those tokens appear
+  only in `evidence/**` recordings of the HOST's own rows). The bundle's only web row is `tool-web` with
+  `config: {fetch: true, searchTimeoutMs: 60000}` and no provider leaf; no bundle patch row opens a `web:`
+  config block.
+
+A consequence worth recording rather than fixing: `docker/lib/live-verdict.ts` gates
+`live.<plane>.noMalformedToolJson` on a turn-error prefix of `MALFORMED_RESPONSE`, which a
+`CONTENT_REFUSED` turn does not match — so a **pre-rc.4 FALSE RED on DeepSeek refusals disappears**, and
+no assertion weakens because that arm's other conjunct (zero malformed tool blocks) is the real
+measurement. `live.<plane>.noErrorTurns` still fails on a refused turn, which is honest: the turn really
+did not do the work. Note that rc.4 is covered by this audit of the hop rather than by a mount of its
+own — no separate rc.4 mount was run (contract §6).
 
 | | `0.2.1-rc.5` | `0.2.2-rc.1` |
 |---|---|---|
@@ -147,7 +179,9 @@ guarded row is ACTIVE: that host's `dsh-web-app` still declares
 resolves, so the row enables. On `0.2.2-rc.1` — and on `0.2.1-rc.5` — it stays a GUARDED NOTE: the
 package does not exist there and the row disables. `0.2.2-rc.3` also keeps the rc.2 team-plane posture
 unchanged: the host declares all three team rows itself, so the bundle declares none (wave contract §3
-F1/F2).
+F1/F2). The row's `0.2.2-rc.5` coordinate is **not separately measured** by this release: what is
+measured is that `dsh-web-app`'s lib and patch are byte-identical to rc.3 (F5), so the declaration this
+paragraph rests on is unchanged — no fresh mount of that row on rc.5 is claimed.
 
 **The adapter's rule changed with it — presence is not servability.** `0.2.2-rc.2` keeps
 `ctx.agentTeams` as a TASK-BOARD-ONLY service (`isEnabled`, `setEnabled`, `createTask`, `getTask`,
@@ -167,18 +201,36 @@ verified against the installed `0.2.2-rc.1` and `0.2.2-rc.3` runtimes and the re
 registration is a MEASURED boot failure; a per-row activation measurement inside a full mount belongs to
 the wave's own mount lane under `evidence/`, not to this page.
 
-## 3. dsh-TUI: `0.18.0`, `0.19.0`, `0.20.0` and `0.20.1` are all admitted
+## 3. dsh-TUI: `0.18.0`, `0.19.0`, `0.20.0`, `0.20.1` and `0.20.2` are all admitted
 
 `dsh-plugin.json` and `packages/mpd-tui-plugin/dsh-plugin.json` both declare
 `compat.hosts: ["@deepseek-harness-tui/dsh-tui@0.18.0", "@deepseek-harness-tui/dsh-tui@0.19.0",
-"@deepseek-harness-tui/dsh-tui@0.20.0", "@deepseek-harness-tui/dsh-tui@0.20.1"]`, and
-`dsh-distribution.json`'s `host-tui` ref names `0.20.1`. `verify:tui-admission` asserts that published
-band instead of trusting the field. **`0.20.1` is a COORDINATE-ONLY move over `0.20.0`** (wave contract
-§3 F7/F8/F10): every `@deepseek-ai/dsh-*` peer range appends harness `0.2.2-rc.3` with the FLOOR
-unchanged, the patch file is delta-free, all fifteen `tui*` seams the bundle uses sit at identical
-file:line, and the only content change is the launcher feed version `0.20.0` → `0.20.1`. The set of hosts this bundle CLAIMS is written data, not a
-discovered fact: `specs/tui-hosts.json` names all four hosts, and the gate's COMPAT lane carries five arms —
-four that run host-free in every static pass, plus one that can only run when a host is discoverable:
+"@deepseek-harness-tui/dsh-tui@0.20.0", "@deepseek-harness-tui/dsh-tui@0.20.1",
+"@deepseek-harness-tui/dsh-tui@0.20.2"]`, and
+`dsh-distribution.json`'s `host-tui` ref names `0.20.2`. `verify:tui-admission` asserts that published
+band instead of trusting the field.
+
+**`0.20.2` is a COORDINATE-ONLY move over `0.20.1`** (wave contract §3 F7–F9): it exists precisely to
+raise the declared harness ceiling. Every `@deepseek-ai/dsh-*` peer `||`-chain gains `|| 0.2.2-rc.4 ||
+0.2.2-rc.5`, and the exactly-pinned `dsh-web` / `dsh-web-deepseek-api` move `0.2.2-rc.3` → `0.2.2-rc.5`;
+`engines.node` (`^22.19 || >=24`), the 19 `exports` keys, `bin`, `imports` and `files` are unchanged. No
+seam change: `lib/types/api.d.ts` and `lib/types/panels.d.ts` are BYTE-IDENTICAL across `0.20.1`/`0.20.2`;
+`tuiPanels` is present (`lib/types/dsh-adapter/panels.d.ts`, `name="dsh-tui-panels"`,
+`TUI_PANEL_API_VERSION = 1`); the `lib/types/ui.js` dashboard contact still resolves at the same path; and
+`cordis.patch.yml` is length-identical (24,831 chars) with identical head/tail. The bundle's fifteen
+`tui*` seams need no change. **PAIRING LAW:** harness rc.4/rc.5 running on TUI `0.20.1` is OUTSIDE that
+TUI release's declared peer contract and produces a boot drift warning, so the two pins MUST move
+together — there is no admissible partial move. ONE delta stays declared UNVERIFIED: the host's
+`lib/types/dsh-adapter/index.d.ts` grew exactly +277 bytes with identical head and tail; it is additive
+at most (`Config` is the plugin's optional-only input surface) and nothing in this release depends on it.
+
+**`0.20.1` was a COORDINATE-ONLY move over `0.20.0`** (wave contract §3 F7/F8/F10): every
+`@deepseek-ai/dsh-*` peer range appends harness `0.2.2-rc.3` with the FLOOR unchanged, the patch file is
+delta-free, all fifteen `tui*` seams the bundle uses sit at identical file:line, and the only content
+change is the launcher feed version `0.20.0` → `0.20.1`. The set of hosts this bundle CLAIMS is written
+data, not a discovered fact: `specs/tui-hosts.json` names all five hosts, and the gate's COMPAT lane
+carries five arms — four that run host-free in every static pass, plus one that can only run when a host
+is discoverable:
 
 - `COMPAT.band:<label>` — each manifest's `compat.hosts` is a non-empty array of `@scope/name@x.y.z`
   coordinates (one arm per manifest).
@@ -269,6 +321,9 @@ bound is that the *page* is a markdown file the host renders, and its content is
   daemon — and a skip is never a pass.
 - **`0.2.1-rc.5` is proven at mount level**, with the one declared capability delta above. No claim is made
   that every `0.2.2-rc.1` behaviour exists on it.
+- **`0.2.2-rc.4` is admitted by the range, never measured on its own.** The rc.3 → rc.5 hop was audited as
+  one packaging change (F5/F6); rc.4 is the intermediate release its two API-visible changes belong to,
+  and this page reports them because the target carries them, not because an rc.4 mount was run.
 - **The official DSH-Go checker is not vendored**; without `MPD_DSHGO_KIT` its lane is NOT-PASSED (exit 3),
   which is a declared bound, not a green.
 - **A pending CodeRabbit review or a skipped gate is never a pass** — the release sweep records what actually
@@ -276,7 +331,7 @@ bound is that the *page* is a markdown file the host renders, and its content is
 
 ## 7. Where the detail lives
 
-The release narrative is in [`../CHANGELOG.md`](../CHANGELOG.md) `## 0.20.0`. The two upstream adaptation
+The release narrative is in [`../CHANGELOG.md`](../CHANGELOG.md) `## 0.21.0`. The two upstream adaptation
 sources this page rests on are the measured evidence bundle under
 `evidence/upstream/0.2.2/2026-11-07T05-45Z/` (mount, routing, row parity, the `0.19.0` negotiation probe and
 the batch-API finding) and the gate transcripts beside it. The DSH-Go standard is

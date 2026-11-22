@@ -1,0 +1,156 @@
+[cross] head=d2a93abc base=e3f36a99
+[cross] A.band-identical=PASS band=[@deepseek-harness-tui/dsh-tui@0.18.0, @deepseek-harness-tui/dsh-tui@0.19.0, @deepseek-harness-tui/dsh-tui@0.20.0, @deepseek-harness-tui/dsh-tui@0.20.1, @deepseek-harness-tui/dsh-tui@0.20.2]
+[cross] A.band-sorted=PASS (ascending lexicographic)
+[cross] A.band-target-present=PASS band-size=5
+[cross] B.carriers=0.21.0/0.21.0/0.21.0 PASS
+[cross] C.engines.dsh head=">=0.2.1-rc.5 <0.3.0-0" base=">=0.2.1-rc.5 <0.3.0-0" PASS-unchanged
+[cross] C.engines.node head=">=24.9.0" base=">=24.9.0" PASS-unchanged
+[cross] D.host-base=pkg:npm/@deepseek-ai/dsh-base@0.2.2-rc.5 PASS
+[cross] D.host-tui=pkg:npm/@deepseek-harness-tui/dsh-tui@0.20.2 PASS
+[cross] E.old-pin scan: 135 line(s) in tracked files (evidence/** is untracked and out of the scan)
+[cross] E.hit AGENTS.md:551: 0.2.2-rc.5 and still supports 0.2.2-rc.3, 0.2.2-rc.2, 0.2.2-rc.1 and 0.2.1-rc.5), injects `["webServer","sessions","connection","tools"]`, and contributes each mpd sidebar
+[cross] E.hit CHANGELOG.md:21: `0.2.2-rc.3`, `0.2.2-rc.2`, `0.2.2-rc.1` and `0.2.1-rc.5`; **`0.2.2-rc.4` is admitted by the
+[cross] E.hit CHANGELOG.md:23: `0.18.0`, `0.19.0`, `0.20.0` and `0.20.1` beside the new `0.20.2`. The hop is packaging/compat-only:
+[cross] E.hit CHANGELOG.md:31: move `0.2.2-rc.3` → `0.2.2-rc.5`, `engines.node` (`^22.19 || >=24`), the 19 `exports` keys, `bin`,
+[cross] E.hit CHANGELOG.md:33: BYTE-IDENTICAL across `0.20.1`/`0.20.2`, `tuiPanels` is present (`TUI_PANEL_API_VERSION = 1`), and
+[cross] E.hit CHANGELOG.md:35: together:** harness rc.4/rc.5 running on TUI `0.20.1` is outside that release's declared peer contract
+[cross] E.hit CHANGELOG.md:43: `specs/tui-hosts.json` now carry `0.18.0`, `0.19.0`, `0.20.0`, `0.20.1` and `0.20.2` as one identical
+[cross] E.hit CHANGELOG.md:48: `0.2.2-rc.3`, `0.2.2-rc.2`, `0.2.2-rc.1` and `0.2.1-rc.5`, and the bundle still declares **no** team
+[cross] E.hit CHANGELOG.md:72: statement stays HOST-SPECIFIC as measured on `0.2.2-rc.3` and is explicitly not re-measured on rc.5; the
+[cross] E.hit CHANGELOG.md:106: ## 0.20.0 — packaging-only hop: DSH 0.2.2-rc.3 and DSH-TUI 0.20.1 join the admitted band, with no plugin, patch-row or adapter change
+[cross] E.hit CHANGELOG.md:109: Harness `0.2.2-rc.3` and DSH-TUI `0.20.1` are now the release's target pair. The harness hop is
+[cross] E.hit CHANGELOG.md:117: `0.2.2-rc.3` with the FLOOR unchanged, `cordis.patch.yml` is delta-free (28 rows at identical lines),
+[cross] E.hit CHANGELOG.md:120: `0.20.0` → `0.20.1`.
+[cross] E.hit CHANGELOG.md:123: to `@deepseek-ai/dsh-base@0.2.2-rc.3` (with `docker/entrypoint.sh`'s `DSH_VERSION` default and the
+[cross] E.hit CHANGELOG.md:125: `@deepseek-harness-tui/dsh-tui@0.20.1`. `compat.hosts` in both manifests and `specs/tui-hosts.json`
+[cross] E.hit CHANGELOG.md:126: now carry `0.18.0`, `0.19.0`, `0.20.0` and `0.20.1` as one identical sorted set. `engines.dsh` stays
+[cross] E.hit CHANGELOG.md:128: `>=24.9.0`. The admitted harness band is now `0.2.2-rc.3`, `0.2.2-rc.2`, `0.2.2-rc.1` and
+[cross] E.hit CHANGELOG.md:135: statement is kept HOST-SPECIFIC: the guarded row is ACTIVE on `0.2.2-rc.3` (the host still mounts it as
+[cross] E.hit CHANGELOG.md:136: a `standard` row and resolves `@deepseek-ai/dsh-tool-office@0.2.2-rc.3`), and it remains a GUARDED NOTE
+[cross] E.hit CHANGELOG.md:144: **Declared bounds.** (1) `tuiMentions`, the ONE new host service in `0.20.1`
+[cross] E.hit CHANGELOG.md:148: packaging lane packed `@deepseek-ai/dsh-agent-team@0.2.2-rc.3` and
+[cross] E.hit CHANGELOG.md:149: `@deepseek-ai/dsh-tool-agent-team@0.2.2-rc.3` from the registry and compared their `src/` trees with
+[cross] E.hit CHANGELOG.md:152: absorption is needed. The wave's own `verify:gates` did negotiate `0.20.1` (`tui-admission` exit 0 —
+[cross] E.hit CHANGELOG.md:154: `dsh-tui 0.20.1`), but that arm is static admission plus
+[cross] E.hit CHANGELOG.md:155: the host's own negotiation only, so a live TTY capture of `0.20.1` is NOT claimed: a lane that did not
+[cross] E.hit README.md:161: | 0.20.0 | 0.2.2-rc.3 | 0.20.1 | previous |
+[cross] E.hit README.md:182: older hosts stay supported: `engines.dsh` spans `>=0.2.1-rc.5 <0.3.0-0`, harness `0.2.2-rc.3`,
+[cross] E.hit README.md:184: DSH-TUI `0.18.0`, `0.19.0`, `0.20.0` and `0.20.1` beside the new `0.20.2`. Harness `0.2.2-rc.4` is
+[cross] E.hit README.md:263: older **0.2.2-rc.3**, `0.2.2-rc.2`, `0.2.2-rc.1` and **0.2.1-rc.5** still mount and run. Expect
+[cross] E.hit README.zh-CN.md:142: | 0.20.0 | 0.2.2-rc.3 | 0.20.1 | 上一次发布 |
+[cross] E.hit README.zh-CN.md:163: `engines.dsh` 覆盖 `>=0.2.1-rc.5 <0.3.0-0`，harness `0.2.2-rc.3`、`0.2.2-rc.2`、`0.2.2-rc.1` 与 `0.2.1-rc.5` 仍可安装并运行，
+[cross] E.hit README.zh-CN.md:164: `compat.hosts` 波段在新宿主 `0.20.2` 之外保留 DSH-TUI `0.18.0`、`0.19.0`、`0.20.0` 与 `0.20.1`。harness `0.2.2-rc.4` 被该
+[cross] E.hit README.zh-CN.md:236: - **针对一个预发布版 harness 构建和验证。** 套件按 **0.2.2-rc.5** 测试，而更旧的 **0.2.2-rc.3**、`0.2.2-rc.2`、
+[cross] E.hit docker/README.md:38: `0.2.2-rc.3`, `0.2.2-rc.2`, `0.2.2-rc.1` and `0.2.1-rc.5` stay supported; the separate
+[cross] E.hit docker/README.md:101: `0.2.2-rc.5` (the release exists precisely to raise that ceiling) while keeping `0.2.2-rc.3`,
+[cross] E.hit docker/README.md:103: older-host arm; `0.20.1`, `0.20.0`, `0.19.0` and `0.18.0` stay admitted hosts (`0.18.0` accepts only the `0.2.1`
+[cross] E.hit docker/README.md:109: `0.20.1`, `0.20.0`, `0.19.0`, `0.18.0`, `0.16.1`, `0.15.0`, `0.14.0`, `0.13.0` and `0.12.0` were the pins
+[cross] E.hit docker/README.zh-CN.md:36: 打印的字符串**完全等于**该版本号。`0.2.2-rc.3`、`0.2.2-rc.2`、`0.2.2-rc.1` 与 `0.2.1-rc.5` 仍被支持，由单独的向后兼容启动步骤
+[cross] E.hit docker/README.zh-CN.md:87: `0.2.2-rc.4` 与 `0.2.2-rc.5`（该版本存在的目的正是抬高这个上限），同时保留 `0.2.2-rc.3`、
+[cross] E.hit docker/README.zh-CN.md:89: 当前基线与旧宿主臂；`0.20.1`、`0.20.0`、`0.19.0` 与 `0.18.0` 仍为已准入宿主（`0.18.0` 只接受 `0.2.1` 这一波），`0.17.0` 只排到 `0.2.1-rc.3`，`0.16.1` 的范围只到
+[cross] E.hit docker/README.zh-CN.md:92: `tui-logs/add-host.log` 捕获引用宿主自己的拒绝原文，而不是用一句歉意换绿。此前的 `0.20.1`、`0.20.0`、
+[cross] E.hit docs/compatibility.md:30: **Five hosts are admitted on this plane.** `0.2.2-rc.5` is the current target; `0.2.2-rc.3`,
+[cross] E.hit docs/compatibility.md:176: **`tool-office` is HOST-SPECIFIC — the two statements must not be conflated.** On `0.2.2-rc.3` the
+[cross] E.hit docs/compatibility.md:178: `@deepseek-ai/dsh-tool-office@0.2.2-rc.3`, the `standard` preset still mounts it, and the package
+[cross] E.hit docs/compatibility.md:180: package does not exist there and the row disables. `0.2.2-rc.3` also keeps the rc.2 team-plane posture
+[cross] E.hit docs/compatibility.md:199: ## 3. dsh-TUI: `0.18.0`, `0.19.0`, `0.20.0`, `0.20.1` and `0.20.2` are all admitted
+[cross] E.hit docs/compatibility.md:203: "@deepseek-harness-tui/dsh-tui@0.20.0", "@deepseek-harness-tui/dsh-tui@0.20.1",
+[cross] E.hit docs/compatibility.md:208: **`0.20.2` is a COORDINATE-ONLY move over `0.20.1`** (wave contract §3 F7–F9): it exists precisely to
+[cross] E.hit docs/compatibility.md:210: 0.2.2-rc.5`, and the exactly-pinned `dsh-web` / `dsh-web-deepseek-api` move `0.2.2-rc.3` → `0.2.2-rc.5`;
+[cross] E.hit docs/compatibility.md:212: seam change: `lib/types/api.d.ts` and `lib/types/panels.d.ts` are BYTE-IDENTICAL across `0.20.1`/`0.20.2`;
+[cross] E.hit docs/compatibility.md:216: `tui*` seams need no change. **PAIRING LAW:** harness rc.4/rc.5 running on TUI `0.20.1` is OUTSIDE that
+[cross] E.hit docs/compatibility.md:222: **`0.20.1` was a COORDINATE-ONLY move over `0.20.0`** (wave contract §3 F7/F8/F10): every
+[cross] E.hit docs/compatibility.md:223: `@deepseek-ai/dsh-*` peer range appends harness `0.2.2-rc.3` with the FLOOR unchanged, the patch file is
+[cross] E.hit docs/compatibility.md:225: change is the launcher feed version `0.20.0` → `0.20.1`. The set of hosts this bundle CLAIMS is written
+[cross] E.hit docs/compatibility.zh-CN.md:27: **这个平面接纳五台宿主。** `0.2.2-rc.5` 是当前目标；`0.2.2-rc.3`、`0.2.2-rc.2`、`0.2.2-rc.1` 与 `0.2.1-rc.5`
+[cross] E.hit docs/compatibility.zh-CN.md:154: **`tool-office` 因宿主而异——两种表述不得混为一谈。** 在 `0.2.2-rc.3` 上这条守卫行是 **ACTIVE**：该宿主的
+[cross] E.hit docs/compatibility.zh-CN.md:155: `dsh-web-app` 仍然声明 `@deepseek-ai/dsh-tool-office@0.2.2-rc.3`，`standard` preset 仍然挂载它，包也能解析，
+[cross] E.hit docs/compatibility.zh-CN.md:157: `0.2.2-rc.3` 也保持 rc.2 的团队平面姿态不变：宿主自己声明全部三个团队行，因此本 bundle 一个都不声明
+[cross] E.hit docs/compatibility.zh-CN.md:172: ## 3. dsh-TUI：`0.18.0`、`0.19.0`、`0.20.0`、`0.20.1` 与 `0.20.2` 都被接纳
+[cross] E.hit docs/compatibility.zh-CN.md:176: "@deepseek-harness-tui/dsh-tui@0.20.0", "@deepseek-harness-tui/dsh-tui@0.20.1",
+[cross] E.hit docs/compatibility.zh-CN.md:181: **`0.20.2` 相对 `0.20.1` 是仅坐标的移动**（波次契约 §3 F7–F9）：它存在的目的正是抬高已声明的 harness
+[cross] E.hit docs/compatibility.zh-CN.md:183: `dsh-web` / `dsh-web-deepseek-api` 从 `0.2.2-rc.3` 移到 `0.2.2-rc.5`；`engines.node`（`^22.19 || >=24`）、
+[cross] E.hit docs/compatibility.zh-CN.md:185: `lib/types/panels.d.ts` 在 `0.20.1`/`0.20.2` 之间**逐字节相同**；`tuiPanels` 存在
+[cross] E.hit docs/compatibility.zh-CN.md:188: 首尾一致。本 bundle 的 15 个 `tui*` 接缝无需改动。**配对律：**harness rc.4/rc.5 跑在 TUI `0.20.1` 上
+[cross] E.hit docs/compatibility.zh-CN.md:193: **`0.20.1` 相对 `0.20.0` 是仅坐标的移动**（波次契约 §3 F7/F8/F10：每一条
+[cross] E.hit docs/compatibility.zh-CN.md:194: `@deepseek-ai/dsh-*` peer 范围都追加 harness `0.2.2-rc.3` 而**下限不变**，patch 文件零增量，本 bundle
+[cross] E.hit docs/compatibility.zh-CN.md:195: 用到的 15 个 `tui*` 接缝都在相同的 file:line，唯一的内容变化是启动器 feed 版本 `0.20.0` → `0.20.1`）。
+[cross] E.hit docs/development.md:65: `0.2.2-rc.5` and still supports `0.2.2-rc.3`, `0.2.2-rc.2`, `0.2.2-rc.1` and `0.2.1-rc.5`) and fences its routes through the `connection` service, whose inject list the
+[cross] E.hit docs/development.zh-CN.md:59: （本仓库钉定 harness `0.2.2-rc.5`，同时仍支持 `0.2.2-rc.3`、`0.2.2-rc.2`、`0.2.2-rc.1` 与 `0.2.1-rc.5`），并通过 `connection` 服务做路由围栏；`packages/mpd-better-sidebar-host`
+[cross] E.hit docs/index.md:71: | [`compatibility.md`](compatibility.md) | everyone | The three-plane compatibility matrix: DSH core (`0.2.1-rc.5`, `0.2.2-rc.1`, `0.2.2-rc.2`, `0.2.2-rc.3` and `0.2.2-rc.5`, with 
+[cross] E.hit docs/index.zh-CN.md:69: | [`compatibility.zh-CN.md`](compatibility.zh-CN.md) | 所有人 | 三平面兼容矩阵：DSH 核心（`0.2.1-rc.5`、`0.2.2-rc.1`、`0.2.2-rc.2`、`0.2.2-rc.3` 与 `0.2.2-rc.5`，其中 `0.2.2-rc.4` 由范围接纳但未单独测量）、dsh-TUI（
+[cross] E.hit docs/tui-admission.md:84: COORDINATE-ONLY move over `0.20.1` (wave contract §3 F7–F9: every `@deepseek-ai/dsh-*` peer `||`-chain
+[cross] E.hit docs/tui-admission.md:86: `0.2.2-rc.3` → `0.2.2-rc.5`, `lib/types/api.d.ts` and `lib/types/panels.d.ts` are byte-identical,
+[cross] E.hit docs/tui-admission.md:89: plus `specs/tui-hosts.json` now carry `0.18.0`, `0.19.0`, `0.20.0`, `0.20.1` and `0.20.2` as one identical
+[cross] E.hit docs/tui-admission.md:91: claim** (F9): harness rc.4/rc.5 running on TUI `0.20.1` is OUTSIDE that release's declared peer contract
+[cross] E.hit docs/tui-admission.md:94: `0.19.0`, `0.20.0` and `0.20.1` measurements, this wave's own `verify:gates` transcript belongs to the
+[cross] E.hit docs/tui-admission.md:103: **This wave's `verify:gates` negotiated `0.20.1` (2026-11-15):** `tui-admission` exited 0 with
+[cross] E.hit docs/tui-admission.md:105: `@deepseek-harness-tui/dsh-tui 0.20.1` (`arm H.host PASS`, `arm COMPAT.host-version PASS`), and the
+[cross] E.hit docs/tui-admission.md:112: TTY capture of `0.20.1` is claimed here**; the pane-level lane under `evidence/` owns that, and a claim no
+[cross] E.hit docs/tui-admission.zh-CN.md:74: **本次发布把波段移到五台宿主，目标为 `0.20.2`。** `0.20.2` 相对 `0.20.1` 是**仅坐标的移动**
+[cross] E.hit docs/tui-admission.zh-CN.md:76: 精确钉定的 `dsh-web` / `dsh-web-deepseek-api` 从 `0.2.2-rc.3` 移到 `0.2.2-rc.5`，
+[cross] E.hit docs/tui-admission.zh-CN.md:80: `0.20.1` 与 `0.20.2`，`dsh-distribution.json` 的 `host-tui` 引用为 `0.20.2`。**配对律是这一主张的一部
+[cross] E.hit docs/tui-admission.zh-CN.md:81: 分**（F9）：harness rc.4/rc.5 跑在 TUI `0.20.1` 上超出该发布声明的 peer 契约，并会产生启动漂移警告，
+[cross] E.hit docs/tui-admission.zh-CN.md:83: 下面带日期的记录是 `0.19.0`、`0.20.0` 与 `0.20.1` 的测量，本波自己的 `verify:gates` 记录文本属于
+[cross] E.hit docs/tui-admission.zh-CN.md:91: **本波的 `verify:gates` 已协商 `0.20.1`（2026-11-15）：** `tui-admission` 退出 0，
+[cross] E.hit docs/tui-admission.zh-CN.md:93: `@deepseek-harness-tui/dsh-tui 0.20.1`（`arm H.host PASS`、`arm COMPAT.host-version PASS`），宿主自己的
+[cross] E.hit docs/tui-admission.zh-CN.md:99: `0.20.1` 做过真机 TTY 抓取**；面板级车道归 `evidence/` 下的运行，没有车道演练过的结论不在本页声称。
+[cross] E.hit docs/tui.md:8: profile. 0.20.2 is a COORDINATE-ONLY move over 0.20.1 (wave contract §3 F7–F9: every
+[cross] E.hit docs/tui.md:10: `dsh-web-deepseek-api` move `0.2.2-rc.3` → `0.2.2-rc.5`, and `lib/types/api.d.ts` /
+[cross] E.hit docs/tui.md:12: peer bands top out at DeepSeek Harness **`0.2.2-rc.5`** while still admitting `0.2.2-rc.3`,
+[cross] E.hit docs/tui.md:15: DSH-TUI 0.20.1. **§11.15 stays readable as history**: it recorded the move to
+[cross] E.hit docs/tui.md:1959: ### 11.16 Amendment after the harness 0.2.2-rc.3 / DSH-TUI 0.20.1 adaptation wave (2026-11-15)
+[cross] E.hit docs/tui.md:1966: | This page's target host (§ preamble) | **0.20.0** | **0.20.1** — a COORDINATE-ONLY move (wave contract §3 F7/F8/F10): every `@deepseek-ai/dsh-*` peer range appends harness `0.2.2
+[cross] E.hit docs/tui.md:1967: | Harness pin (`dsh-distribution.json` `host-base`; `docker/entrypoint.sh` `DSH_VERSION`; the Docker and QA defaults) | `0.2.2-rc.2` | **`0.2.2-rc.3`** (wave contract §D1/§D3). `en
+[cross] E.hit docs/tui.md:1968: | `compat.hosts` (both manifests) and `specs/tui-hosts.json` | `0.18.0`, `0.19.0`, `0.20.0` | **`0.18.0`, `0.19.0`, `0.20.0`, `0.20.1`** — identical sorted sets in all three places
+[cross] E.hit docs/tui.md:1970: | The `tool-office` guarded preset row | ACTIVE on rc.2, a GUARDED NOTE on the older hosts | **ACTIVE on `0.2.2-rc.3`** — the host still mounts `tool-office` as an active `standard
+[cross] E.hit docs/tui.md:1971: | The Ctrl+A host contact | version-gated on the `tuiPanels` seam | **unchanged** — 0.20.1 declares the same fifteen `tui*` services and an unchanged `lib/types/ui.js`, so the cont
+[cross] E.hit docs/tui.md:1975: - **`tuiMentions` is NOT adopted.** 0.20.1 adds ONE host service, `tuiMentions`
+[cross] E.hit docs/tui.md:1981: `@deepseek-ai/dsh-agent-team@0.2.2-rc.3` and `@deepseek-ai/dsh-tool-agent-team@0.2.2-rc.3` both
+[cross] E.hit docs/tui.md:1982: answer `0.2.2-rc.3`, and their `src/` trees are **IDENTICAL** to the rc.2 copies (ten files in the
+[cross] E.hit docs/tui.md:1989: **Measured here.** The coordinates above were read from the installed `0.20.1` host's own
+[cross] E.hit docs/tui.md:1993: `dsh-tui 0.20.1` (`arm H.host PASS`, `arm COMPAT.host-version PASS`), both manifests `compatible`
+[cross] E.hit docs/tui.md:1994: (`evidence/verify-022rc3/2026-11-15T12-45-50Z/logs/verify-gates-rc3.log`). No **live TTY capture** of `0.20.1` is
+[cross] E.hit docs/tui.md:2005: | This page's target host (§ preamble) | **0.20.1** | **0.20.2** — a COORDINATE-ONLY move (wave contract §3 F7–F9): the release exists precisely to raise the declared harness ceili
+[cross] E.hit docs/tui.md:2006: | Harness pin (`dsh-distribution.json` `host-base`; `docker/entrypoint.sh` `DSH_VERSION`; the Docker and QA defaults) | `0.2.2-rc.3` | **`0.2.2-rc.5`** (wave contract §D1/§D3). `en
+[cross] E.hit docs/tui.md:2008: | `compat.hosts` (both manifests) and `specs/tui-hosts.json` | `0.18.0`, `0.19.0`, `0.20.0`, `0.20.1` | **`0.18.0`, `0.19.0`, `0.20.0`, `0.20.1`, `0.20.2`** — identical sorted sets
+[cross] E.hit docs/tui.md:2010: | The `tool-office` guarded preset row | ACTIVE on `0.2.2-rc.3`, a GUARDED NOTE on the older hosts | **statement unchanged, NOT re-measured on rc.5** — `dsh-web-app`'s lib and patc
+[cross] E.hit docs/tui.md:2014: `0.20.1` is OUTSIDE that TUI release's declared peer contract — its chains end at `0.2.2-rc.3` — and
+[cross] E.hit docs/tui.zh-CN.md:7: （admission）配置文件。0.20.2 相对 0.20.1 是**仅坐标的移动**（波次契约 §3 F7–F9：每一条
+[cross] E.hit docs/tui.zh-CN.md:10: **`0.2.2-rc.5`**，同时仍接纳 `0.2.2-rc.3`、`0.2.2-rc.2`、`0.2.2-rc.1` 与 `0.2.1-rc.5`。**§11.17 是本波次的修订**：
+[cross] E.hit docs/tui.zh-CN.md:12: DSH-TUI 0.20.1 那次移动。**§11.15 作为历史保持可读**：它记录的是
+[cross] E.hit docs/tui.zh-CN.md:1594: ### 11.16 harness 0.2.2-rc.3 / DSH-TUI 0.20.1 适配波次后的修订（2026-11-15）
+[cross] E.hit docs/tui.zh-CN.md:1601: | 本页的目标宿主（§ 前言） | **0.20.0** | **0.20.1**——**仅坐标的移动**（波次契约 §3 F7/F8/F10）：每一条 `@deepseek-ai/dsh-*` peer 范围都追加 harness `0.2.2-rc.3` 而**下限不变**，因此新宿主仍接纳 `0.2.2-rc.2`、`0.2.2-rc.1` 与 `0.
+[cross] E.hit docs/tui.zh-CN.md:1602: | harness 钉定（`dsh-distribution.json` 的 `host-base`；`docker/entrypoint.sh` 的 `DSH_VERSION`；Docker 与 QA 的默认值） | `0.2.2-rc.2` | **`0.2.2-rc.3`**（波次契约 §D1/§D3）。`engines.dsh` 仍为 `>=0.2.
+[cross] E.hit docs/tui.zh-CN.md:1603: | `compat.hosts`（两个清单）与 `specs/tui-hosts.json` | `0.18.0`、`0.19.0`、`0.20.0` | **`0.18.0`、`0.19.0`、`0.20.0`、`0.20.1`**——三处集合完全相同且有序，`dsh-distribution.json` 的 `host-tui` 引用移到 `0.20.1
+[cross] E.hit docs/tui.zh-CN.md:1605: | `tool-office` 守卫式 preset 行 | rc.2 上 ACTIVE，旧宿主上是守卫式 NOTE | **在 `0.2.2-rc.3` 上是 ACTIVE**——该宿主仍把 `tool-office` 作为活跃的 `standard` 行挂载并解析 `@deepseek-ai/dsh-tool-office@0.2.2-rc.3`，因此守
+[cross] E.hit docs/tui.zh-CN.md:1606: | Ctrl+A 宿主接触点 | 以 `tuiPanels` 接缝做版本门控 | **不变**——0.20.1 声明同样的 15 个 `tui*` 服务、`lib/types/ui.js` 也未变，因此接缝存在时接触点保持惰性、Ctrl+A 保留宿主含义；合并视图通过 `alt+a` / `/mpd panel` 打开 |
+[cross] E.hit docs/tui.zh-CN.md:1610: - **不采用 `tuiMentions`。** 0.20.1 新增了**一个**宿主服务 `tuiMentions`
+[cross] E.hit docs/tui.zh-CN.md:1615: 并与 rc.2 副本对比：`@deepseek-ai/dsh-agent-team@0.2.2-rc.3` 与
+[cross] E.hit docs/tui.zh-CN.md:1616: `@deepseek-ai/dsh-tool-agent-team@0.2.2-rc.3` 的版本都是 `0.2.2-rc.3`，它们的 `src/` 树与 rc.2 副本
+[cross] E.hit docs/tui.zh-CN.md:1622: **本页实测。** 上面的坐标读自已安装的 `0.20.1` 宿主自身的 `package.json`、`cordis.patch.yml`、
+[cross] E.hit docs/tui.zh-CN.md:1626: `dsh-tui 0.20.1`（`arm H.host PASS`、`arm COMPAT.host-version PASS`），两个清单均为 `compatible`
+[cross] E.hit docs/tui.zh-CN.md:1627: （`evidence/verify-022rc3/2026-11-15T12-45-50Z/logs/verify-gates-rc3.log`）。本**节**不声称对 `0.20.1` 做过**真机 TTY 抓取**：那属
+[cross] E.hit docs/tui.zh-CN.md:1637: | 本页的目标宿主（§ 前言） | **0.20.1** | **0.20.2**——**仅坐标的移动**（波次契约 §3 F7–F9）：该版本存在的目的正是抬高已声明的 harness 上限，因此每一条 `@deepseek-ai/dsh-*` peer `\|\|` 链都追加 `\|\| 0.2.2-rc.4 \|\| 0.2.2-rc.5`，精确钉定的
+[cross] E.hit docs/tui.zh-CN.md:1638: | harness 钉定（`dsh-distribution.json` 的 `host-base`；`docker/entrypoint.sh` 的 `DSH_VERSION`；Docker 与 QA 的默认值） | `0.2.2-rc.3` | **`0.2.2-rc.5`**（波次契约 §D1/§D3）。`engines.dsh` 仍为 `>=0.2.
+[cross] E.hit docs/tui.zh-CN.md:1640: | `compat.hosts`（两个清单）与 `specs/tui-hosts.json` | `0.18.0`、`0.19.0`、`0.20.0`、`0.20.1` | **`0.18.0`、`0.19.0`、`0.20.0`、`0.20.1`、`0.20.2`**——三处集合完全相同且有序，`dsh-distribution.json` 的 `host
+[cross] E.hit docs/tui.zh-CN.md:1642: | `tool-office` 守卫式 preset 行 | 在 `0.2.2-rc.3` 上 ACTIVE，旧宿主上是守卫式 NOTE | **表述不变，但未在 rc.5 上重测**——`dsh-web-app` 的 lib 与 patch 相对 rc.3 逐字节相同（F5），因此 rc.3 那段表述所依托的声明没有改变；本页不声称在 rc.5 上重新挂载
+[cross] E.hit docs/tui.zh-CN.md:1645: **配对律是本修订的一部分**（波次契约 §3 F9）：harness rc.4/rc.5 跑在 TUI `0.20.1` 上，超出该 TUI
+[cross] E.hit docs/tui.zh-CN.md:1646: 发布声明的 peer 契约——它的链止于 `0.2.2-rc.3`——并会产生启动漂移警告。两个 pin **必须一起移动**，
+[cross] E.hit docs/user-guide.md:43: is built and verified against `0.2.2-rc.5` and keeps `0.2.2-rc.3`, `0.2.2-rc.2`, `0.2.2-rc.1` and
+[cross] E.hit docs/user-guide.zh-CN.md:39: **DSH 0.2.1-rc.1 或更新**；本 bundle 按 `0.2.2-rc.5` 构建并验证，同时保持 `0.2.2-rc.3`、`0.2.2-rc.2`、`0.2.2-rc.1` 与 `0.2.1-rc.5` 可用，因此这几台
+[cross] E.hit dsh-plugin.json:37: "@deepseek-harness-tui/dsh-tui@0.20.1",
+[cross] E.hit packages/mpd-tui-adapter-plugin/src/index.ts:1000: * 0.18.0, 0.19.0, 0.20.0, 0.20.1, 0.20.2).
+[cross] E.hit packages/mpd-tui-plugin/dsh-plugin.json:37: "@deepseek-harness-tui/dsh-tui@0.20.1",
+[cross] E.hit specs/tui-hosts.json:7: "@deepseek-harness-tui/dsh-tui@0.20.1",
+[cross] F.pair README.md <-> README.zh-CN.md en-switch=yes zh-switch=yes cjk=3979 PASS
+[cross] F.pair docker/README.md <-> docker/README.zh-CN.md en-switch=yes zh-switch=yes cjk=8225 PASS
+[cross] F.pair docs/compatibility.md <-> docs/compatibility.zh-CN.md en-switch=yes zh-switch=yes cjk=4743 PASS
+[cross] F.pair docs/development.md <-> docs/development.zh-CN.md en-switch=NO zh-switch=NO cjk=3971 FAIL
+[cross] F.pair docs/index.md <-> docs/index.zh-CN.md en-switch=NO zh-switch=NO cjk=2621 FAIL
+[cross] F.pair docs/tui-admission.md <-> docs/tui-admission.zh-CN.md en-switch=yes zh-switch=yes cjk=4995 PASS
+[cross] F.pair docs/tui.md <-> docs/tui.zh-CN.md en-switch=yes zh-switch=yes cjk=39431 PASS
+[cross] F.pair docs/user-guide.md <-> docs/user-guide.zh-CN.md en-switch=NO zh-switch=NO cjk=16850 FAIL
+[cross] F.bilingual-pairs=8 failures=3 FAIL
+[cross] G.AGENTS.md bytes=63152 budget=65536 margin=2384 PASS
+[cross] RESULT: FAIL

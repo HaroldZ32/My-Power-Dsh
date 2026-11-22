@@ -1,0 +1,35 @@
+[verify-gates] tui-admission out| [tui-admission] arm R5.allowance ALLOWED-DEVIATION — R5 fails by recorded decision (docs §5.1): the three ~/.mpd roots are written outside ~/.dsh-tui; ALLOWED, never a PASS
+[verify-gates] tui-admission out| [tui-admission] arm R5.no-dsh-tui-writes PASS — no mutating fs call on a .dsh-tui path in 224 package source file(s) (line-based bound)
+[verify-gates] tui-admission out| [tui-admission] arm D.residual BOUND — D stays PARTIAL: effectOn catches with a comment-only body (a scope that cannot own an effect fails silently) and no activation/runtime-generation id is recorded (docs §4 D)
+[verify-gates] tui-admission out| [tui-admission] arm E.residual BOUND — TUI-OBS-002 has no automated evaluator: the pinned matrix carries no row and no lane certifies docs/tui.md §2.1 (docs §4 E)
+[verify-gates] tui-admission out| [tui-admission] arm F.residual BOUND — no conformance claim is made, so TUI-CLAIM-001 is never exercised; the trusted-in-process disclosure is the host's own /plugin surface (docs §4 F)
+[verify-gates] tui-admission out| [tui-admission] arm G.market BOUND — the market-display rule belongs to the ecosystem directory, not to this repository (docs §4 G)
+[verify-gates] tui-admission out| [tui-admission] arm A6.no-digest BOUND — no artifact digest is recorded, so no Verified claim is possible; this blocks a claim, not admission (docs §6)
+[verify-gates] tui-admission out| [tui-admission] arm A.id-parity PASS — both manifests declare the id com.mpd-dsh.mpd-tui
+[verify-gates] tui-admission out| [tui-admission] arm A.identity-parity PASS — licence, facet apiVersion, permissions and requires.contracts agree across both manifests
+[verify-gates] tui-admission out| [tui-admission] arm A.packed-copy PASS — the packed copy keeps the identity com.mpd-dsh.mpd-tui at manifestVersion 0.15
+[verify-gates] tui-admission out| [tui-admission] host arm: using /home/haroldzhao/.dsh/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui (@deepseek-harness-tui/dsh-tui 0.20.2)
+[verify-gates] tui-admission out| [tui-admission] host modules: node_modules/@dsh-std/manifest/lib/index.js, lib/types/adapter/standard/registry.js, lib/types/adapter/standard/admission.js, lib/types/adapter/standard/descriptor.js, lib/types/adapter/spec/protocol-constants.js
+[verify-gates] tui-admission out| [tui-admission]
+[verify-gates] tui-admission out| [tui-admission] arm H.host PASS — the installed host @deepseek-harness-tui/dsh-tui 0.20.2 resolved at /home/haroldzhao/.dsh/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui
+[verify-gates] tui-admission out| [tui-admission] arm COMPAT.host-version PASS — the discovered host @deepseek-harness-tui/dsh-tui 0.20.2 is inside the declared band [@deepseek-harness-tui/dsh-tui@0.18.0, @deepseek-harness-tui/dsh-tui@0.19.0, @deepseek-harness-tui/dsh-tui@0.20.0, @deepseek-harness-tui/dsh-tui@0.20.1, @deepseek-harness-tui/dsh-tui@0.20.2]
+[verify-gates] tui-admission out| [tui-admission] arm H.spec-data PASS — loadSpecData() + verifyRegistry() + verifyContractProfiles() resolved /home/haroldzhao/.dsh/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui/tui-profile
+[verify-gates] tui-admission out| [tui-admission] arm H.descriptor PASS — the host's own legacy descriptor advertises 5 contract(s): commands.dsh/v1alpha1#Command, storage.dsh/v1alpha1#LocalStorage, messages.dsh/v1alpha1#MessageObserver, tui.dsh/v1alpha1#DecisionEvents, tui.dsh/v1alpha1#Backend
+[verify-gates] tui-admission out| [tui-admission] arm H.chain:bundle PASS — the host parsed, validated and negotiated dsh-plugin.json to `compatible`
+[verify-gates] tui-admission out| [tui-admission] arm H.chain:package PASS — the host parsed, validated and negotiated packages/mpd-tui-plugin/dsh-plugin.json to `compatible`
+[verify-gates] tui-admission out| [tui-admission] REPORT: PASS — 49 arms passed, 1 allowed deviation(s), 5 bound(s).
+[verify-gates] tui-admission out| [tui-admission] BOUND: static admission + the host's own negotiation only — NOT a live TTY mount, and NOT a Verified claim (no artifact digest exists).
+[verify-gates] member tui-admission: exit=0 PASS - 127ms
+[verify-gates] member dshgo :: node ./scripts/verify-dshgo-standard.ts
+[verify-gates] dshgo out| [dshgo-standard] root: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+[verify-gates] dshgo out| [dshgo-standard] standard: ccch1mneyyy/dsh-Go@f36bf91b0736e81ef40c2a7040b2ec337ca1ab40 (spec data under specs/dsh-go/)
+[verify-gates] dshgo out| [dshgo-standard] PIN: PASS — 8 of 8 site readings agree on f36bf91b0736e81ef40c2a7040b2ec337ca1ab40
+[verify-gates] dshgo out| [dshgo-standard] MANIFEST: PASS (0 error(s), 0 note(s))
+[verify-gates] dshgo out| [dshgo-standard] VIEW: PASS (0 error(s), 0 note(s))
+[verify-gates] dshgo out| [dshgo-standard] COMPAT: PASS (0 error(s), 0 note(s))
+[verify-gates] dshgo out| [dshgo-standard] HOST: PASS (0 error(s), 0 note(s))
+[verify-gates] dshgo out| [dshgo-standard] CROSS-CHECK: PASSED — PASSED: verdicts agree — official check.mjs exit=1 stops=false (array-patch false negative excluded: the official checker requires a string patch, DSH allows an array and this gate verified every path); this gate stops=false
+[verify-gates] dshgo out|   [note] crosscheck-normalized /home/haroldzhao/MyProj/DshProj/My-Power-Dsh — the official checker's only blocking item was its string-only `dsh.bundle.patch` assumption; every declared patch path is resolved by the MANIFEST lane
+[verify-gates] dshgo out| [dshgo-standard] RESULT: LEGAL — manifest, views, compatibility, host half and the official cross-check all agree
+[verify-gates] member dshgo: exit=0 PASS - 144ms
+[verify-gates] PASS - 11/11 member gate(s) green

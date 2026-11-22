@@ -5297,15 +5297,6 @@ function baseSeatName(name) {
   const ordinal = Number(match[2]);
   return Number.isFinite(ordinal) && ordinal >= 2 ? match[1] : trimmed;
 }
-function seatOrdinal(name) {
-  const trimmed = name.trim();
-  const base = baseSeatName(trimmed);
-  if (base === trimmed)
-    return 1;
-  const suffix = trimmed.slice(base.length + 1);
-  const ordinal = Number(suffix);
-  return Number.isFinite(ordinal) && ordinal >= 1 ? ordinal : 1;
-}
 function rosterRoleFor(base, rosterRoles, recordedRoles, personaFor) {
   const key = roleKey(base);
   if (key === "")
@@ -5379,6 +5370,13 @@ function grownSeatPrompt(cell, name, role, persona) {
 function rowName(row) {
   return typeof row.name === "string" ? row.name.trim() : "";
 }
+function addSeatNameKeys(set, name) {
+  set.add(roleKey(name));
+  set.add(nameKey(name));
+}
+function seatNameTaken(set, name) {
+  return set.has(roleKey(name)) || set.has(nameKey(name));
+}
 function busyOwnerKeys(tasks) {
   const busy = new Set;
   for (const task of tasks) {
@@ -5427,15 +5425,31 @@ async function growExecutionSeats(deps) {
   const tasks = growthTaskRows(deps.record.tasks);
   const roster = growthMemberRows(deps.record.members);
   const busy = busyOwnerKeys(tasks);
-  const usedNames = new Set([...roster.map((row) => roleKey(rowName(row))), ...Object.keys(deps.cell.members).map((name) => roleKey(name))]);
+  const usedNames = new Set;
+  for (const row of roster)
+    addSeatNameKeys(usedNames, rowName(row));
+  for (const name of Object.keys(deps.cell.members))
+    addSeatNameKeys(usedNames, name);
   const allocated = new Set;
   const excluded = new Set(deps.excludeTaskIds ?? []);
-  const seatsOfBase = (baseKey) => roster.filter((row) => !isPlanningSeatName(rowName(row)) && roleKey(baseSeatName(rowName(row))) === baseKey);
   const recordedRoles = [...new Set([
     ...Object.values(deps.cell.members).map((member) => member.role),
     ...roster.map((row) => typeof row.role === "string" ? row.role : "")
   ].filter((role) => role.trim() !== ""))];
   const cellRowOf = (name) => deps.cell.members[name];
+  const memberRoleOf = (row) => {
+    const name = rowName(row);
+    const spellings = [typeof row.role === "string" ? row.role : "", cellRowOf(name)?.role ?? "", baseSeatName(name)];
+    for (const spelling of spellings) {
+      if (spelling.trim() === "")
+        continue;
+      const canonical = rosterRoleFor(spelling, deps.rosterRoles, recordedRoles, deps.personaFor);
+      if (canonical !== undefined)
+        return canonical;
+    }
+    return;
+  };
+  const seatVerifierOnly = (row) => cellRowOf(rowName(row))?.mode === "verifier";
   const refuse = (taskId, subject, reason) => {
     result.refused.push({ taskId, subject, reason });
     appendSeatJournal(deps, { event: "seat-growth-refused", task: taskId, reason });
@@ -5487,14 +5501,23 @@ async function growExecutionSeats(deps) {
     const base = baseSeatName(owner);
     if (isPlanningSeatName(base))
       continue;
-    const role = rosterRoleFor(base, deps.rosterRoles, recordedRoles, deps.personaFor);
+    let role = rosterRoleFor(base, deps.rosterRoles, recordedRoles, deps.personaFor);
+    if (role === undefined) {
+      const spellings = [typeof ownerRow.role === "string" ? ownerRow.role : "", ownerCellRow?.role ?? ""];
+      for (const spelling of spellings) {
+        if (spelling.trim() === "")
+          continue;
+        role = rosterRoleFor(spelling, deps.rosterRoles, recordedRoles, deps.personaFor);
+        if (role !== undefined)
+          break;
+      }
+    }
     if (role === undefined) {
       refuse(taskId, task.subject ?? "", "owner base " + JSON.stringify(base) + " is not a roster role");
       continue;
     }
-    const baseKey = roleKey(base);
-    const idleSeats = seatsOfBase(baseKey).filter((row) => seatIdle(row)).sort((left, right) => seatOrdinal(rowName(left)) - seatOrdinal(rowName(right)));
-    const reuse = idleSeats[0];
+    const roleK = roleKey(role);
+    const reuse = roster.find((row) => !isPlanningSeatName(rowName(row)) && roleKey(rowName(row)) !== roleKey(owner) && typeof row.executorRef === "string" && row.executorRef !== "" && roleKey(memberRoleOf(row) ?? "") === roleK && !seatVerifierOnly(row) && seatIdle(row));
     if (reuse !== undefined) {
       const name2 = rowName(reuse);
       allocated.add(roleKey(name2));
@@ -5502,7 +5525,7 @@ async function growExecutionSeats(deps) {
       result.reused.push({ name: name2, taskId });
       continue;
     }
-    const perRoleCount = seatsOfBase(baseKey).length + result.grown.filter((seat) => roleKey(baseSeatName(seat.name)) === baseKey).length;
+    const perRoleCount = roster.filter((row) => !isPlanningSeatName(rowName(row)) && roleKey(memberRoleOf(row) ?? "") === roleK).length + result.grown.filter((seat) => roleKey(seat.role) === roleK).length;
     if (perRoleCount >= caps.perRole) {
       refuse(taskId, task.subject ?? "", seatCapReason(owner, "perRole", caps.perRole));
       continue;
@@ -5514,17 +5537,17 @@ async function growExecutionSeats(deps) {
     }
     let name = "";
     for (let ordinal = 2;ordinal <= 64; ordinal++) {
-      const candidate = base + "-" + String(ordinal);
-      if (usedNames.has(roleKey(candidate)))
+      const candidate = role + "-" + String(ordinal);
+      if (seatNameTaken(usedNames, candidate))
         continue;
       name = candidate;
       break;
     }
     if (name === "") {
-      refuse(taskId, task.subject ?? "", "no free seat name is left for base " + JSON.stringify(base) + " (names <base>-2 … <base>-64 are all taken)");
+      refuse(taskId, task.subject ?? "", "no free seat name is left for role " + JSON.stringify(role) + " (names <role>-2 … <role>-64 are all taken)");
       continue;
     }
-    usedNames.add(roleKey(name));
+    addSeatNameKeys(usedNames, name);
     let added;
     try {
       added = readAddMemberAnswer(await deps.dsh.executeTool({
@@ -5572,6 +5595,7 @@ function appendSeatJournal(deps, entry) {
     appendJournal(deps.workspace, deps.cell.cellId, entry, deps.now);
   } catch {}
 }
+var SEAT_GROWN_REASON = "seat base came from the seat's recorded role";
 function recordGrownSeat(deps, result, live, name, role, taskId, allocated, observedRole) {
   const liveName = rowName(live) !== "" ? rowName(live) : name;
   const handle = typeof live.executorRef === "string" ? live.executorRef : "";
@@ -5590,7 +5614,7 @@ function recordGrownSeat(deps, result, live, name, role, taskId, allocated, obse
   allocated.add(roleKey(liveName));
   if (rosterRole === "")
     result.warnings.push("the mid-run `add_member` arm recorded no `role` for " + JSON.stringify(liveName) + " (§7.1b) — routing falls back until the plan store persists it");
-  appendSeatJournal(deps, { event: "seat-grown", task: taskId, name: liveName, role, rosterRole, reason: "owner-busy" });
+  appendSeatJournal(deps, { event: "seat-grown", task: taskId, name: liveName, role, rosterRole, reason: SEAT_GROWN_REASON });
   result.grown.push({ name: liveName, role, taskId, rosterRole, reason: "owner-busy" });
   if (handle === "") {
     result.refused.push({ taskId, subject: "", reason: "seat " + JSON.stringify(liveName) + " was raised but carries no executor handle yet, so the row stays pending for the next pass" });
@@ -8733,6 +8757,8 @@ function installCellworkProtocol(deps) {
         const reopened = { ...row, mode: "member", handoffReady: false };
         delete reopened.fenced;
         delete reopened.fencedReason;
+        delete reopened.barrierFailures;
+        delete reopened.checkpointSince;
         clearedRows.set(target.key, reopened);
         outcomes.push({ member: target.name, unfenced: true, plane: half.plane, ...half.planeReason === undefined ? {} : { planeReason: half.planeReason }, ...half.plane === "refused" ? { retry: planeRetryOf(target.name) } : {} });
         cleared.push({ name: target.name, plane: half.plane });
@@ -9668,7 +9694,7 @@ missing sections: ` + result.missing.join(", ") : ""));
         return { ok: false, error: String(recorded.error ?? "the team plane refused the handoff, so nothing was written") };
       const path = writeHandoff(caller.workspace, caller.cell.cellId, caller.member, ordinal, content);
       const now = new Date;
-      const next = { ...caller.cell, members: { ...caller.cell.members, [caller.member]: { ...member, handoffReady: true, handoffs: ordinal } } };
+      const next = { ...caller.cell, members: { ...caller.cell.members, [caller.member]: { ...member, handoffReady: true, handoffs: ordinal, checkpointSince: member.checkpointSince ?? now.toISOString() } } };
       transition(caller.workspace, next, { event: "handoff", member: caller.member, ordinal, path, nextStep: nextStepOf(content) }, now);
       return { ok: true, path, member: caller.member, ordinal, sections: validation.sections, directive: handoffWrittenDirective(path) };
     }

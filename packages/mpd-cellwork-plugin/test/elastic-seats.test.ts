@@ -415,7 +415,9 @@ test("W1 §4.1: four ready rows on one BUSY seat grow seats and the same pass ha
   /** The growth journal rows. */
   const grownRows = journalRows(harness).filter((row) => row.event === "seat-grown")
   expect(grownRows.length).toBe(4)
-  expect(grownRows[0]).toMatchObject({ task: "T2", name: "Deep Worker-2", role: "Deep Worker", reason: "owner-busy" })
+  expect(grownRows[0]).toMatchObject({ task: "T2", name: "Deep Worker-2", role: "Deep Worker" })
+  // F1 §3.5: the JOURNAL row says where the seat's name base came from; the RESULT keeps `owner-busy`.
+  expect(String(grownRows[0].reason)).toContain("recorded role")
   // THE REAL CELL STATE FILE learned every seat, marked as grown.
   /** The member table on disk. */
   const onDisk = recordOnDisk(harness).members as Record<string, Record<string, unknown>>
@@ -545,6 +547,165 @@ test("W1 §4.1: a pass that finds `Deep Worker-2` idle hands the row to it inste
   expect(harness.board.members.length).toBe(2)
   expect(tasksOfOwner(harness.board, "Deep Worker-2").map((row) => row.id)).toEqual(["T2"])
   expect(journalRows(harness).filter((row) => row.event === "seat-grown").length).toBe(0)
+})
+
+// ── F1 (fix/cellwork-seat-growth-and-checkpoint): the OWNER's role, not the name's spelling ──────
+
+/**
+ * The executing cell carrying an ARM-CHOSEN member table, so an F1 arm controls the CELL rows growth
+ * reads (the base fixture hardcodes `Deep Worker`/`Reviewer`).
+ *
+ * @param board - the execution board whose ids the cell records as activated.
+ * @param members - the member table this arm's owner resolution reads.
+ * @returns the fresh record.
+ */
+function executingCellWith(board: DoubleTeamRecord, members: Record<string, CellMemberRecord>): CellState {
+  return { ...executingCell(board), members }
+}
+
+test("F1 A1: a BUSY `SE-2` whose CELL row records `Senior Engineer` REUSES the idle same-role seat", async () => {
+  // THE DEFECT: growth derived the base from the NAME (`SE`), asked whether `SE` is a roster role, and
+  // refused every pass. The owner's recorded role is the answer, and an idle seat of it is reusable.
+  /** The live roster row of the busy owner, carrying NO `role` (a mid-run append the plane left bare). */
+  const rolelessOwner: DoubleMember = { id: "M1", name: "SE-2", status: "running", executorRef: "handle-SE-2" }
+  /** The board: the busy owner plus an IDLE `Senior Engineer`. */
+  const board: DoubleTeamRecord = {
+    teamId: EXEC_TEAM,
+    members: [rolelessOwner, member("M2", "Senior Engineer", { status: "inactive", role: "Senior Engineer" })],
+    tasks: [task("T1", "SE-2", { status: "in_progress" }), task("T2", "SE-2")],
+  }
+  /** The CELL record: its `SE-2` row is where the fallback role comes from. */
+  const harness = makeHarness({
+    board,
+    cell: (): CellState => executingCellWith(board, {
+      "SE-2": cellMember("SE-2", { role: "Senior Engineer" }),
+      "Senior Engineer": cellMember("Senior Engineer", { role: "Senior Engineer" }),
+    }),
+  })
+  /** The dispatch pass. */
+  const answer = await runTool(harness, "cellwork_dispatch")
+  expect(answer.ok).toBe(true)
+  // REUSED, NOT GROWN: no new member, and the answer reports the reuse.
+  expect(answer.grownSeats).toBeUndefined()
+  expect(answer.seats.reused).toBe(1)
+  expect(harness.board.members.length).toBe(2)
+  // NOT REFUSED: the name base `SE` never reaches the roster-role refusal.
+  expect(journalRows(harness).some((row) => row.event === "seat-growth-refused")).toBe(false)
+  // PAIRED TO THE IDLE SEAT through the plane's own reassign, so the board holds a real claim.
+  expect(tasksOfOwner(harness.board, "Senior Engineer").map((row) => row.id)).toEqual(["T2"])
+})
+
+test("F1 A2: with NO idle same-role seat, growth raises `Senior Engineer-2` carrying the canonical role", async () => {
+  /** The board: the busy owner (live `role` recorded) and an idle seat of ANOTHER role. */
+  const board: DoubleTeamRecord = {
+    teamId: EXEC_TEAM,
+    members: [member("M1", "SE-2", { status: "running", role: "Senior Engineer" }), member("M2", "Reviewer", { status: "inactive" })],
+    tasks: [task("T1", "SE-2", { status: "in_progress" }), task("T2", "SE-2")],
+  }
+  /** The harness. */
+  const harness = makeHarness({ board })
+  /** The dispatch pass. */
+  const answer = await runTool(harness, "cellwork_dispatch")
+  expect(answer.ok).toBe(true)
+  /** The seats this pass raised. */
+  const grown = (answer.grownSeats as Array<Record<string, unknown>>) ?? []
+  expect(grown.map((row) => row.name)).toEqual(["Senior Engineer-2"])
+  expect(grown[0].role).toBe("Senior Engineer")
+  // THE APPEND carries the canonical role, so routing resolves the seat the moment it is born.
+  expect(harness.added[0]).toMatchObject({ name: "Senior Engineer-2", role: "Senior Engineer" })
+  // THE JOURNAL keeps `{event, task, name, role, reason}` and says where the base came from.
+  /** The seat-grown row. */
+  const row = journalRows(harness).find((entry) => entry.event === "seat-grown")
+  expect(row).toMatchObject({ task: "T2", name: "Senior Engineer-2", role: "Senior Engineer" })
+  expect(String(row?.reason)).toContain("recorded role")
+  // The plane claimed the row for the NEW seat.
+  expect(tasksOfOwner(harness.board, "Senior Engineer-2").map((taskRow) => taskRow.id)).toEqual(["T2"])
+})
+
+test("F1 regression (#116): an UNRESOLVABLE live role falls through to the CELL row's role", async () => {
+  // THE DEFECT: the fallback stopped at the FIRST non-empty spelling. A live row may carry a spelling this
+  // build cannot resolve (`Legacy Engineer`), and the CELL row's `Senior Engineer` must still answer.
+  /** The board whose busy owner records a role the roster cannot resolve. */
+  const board: DoubleTeamRecord = {
+    teamId: EXEC_TEAM,
+    members: [member("M1", "SE-2", { status: "running", role: "Legacy Engineer" })],
+    tasks: [task("T1", "SE-2", { status: "in_progress" }), task("T2", "SE-2")],
+  }
+  /** The CELL record whose `SE-2` row carries the resolvable role. */
+  const harness = makeHarness({
+    board,
+    cell: (): CellState => executingCellWith(board, { "SE-2": cellMember("SE-2", { role: "Senior Engineer" }) }),
+  })
+  /** The dispatch pass. */
+  const answer = await runTool(harness, "cellwork_dispatch")
+  expect(answer.ok).toBe(true)
+  // NOT REFUSED: the pass grows the canonical role instead of stopping at the unresolvable spelling.
+  expect(journalRows(harness).some((row) => row.event === "seat-growth-refused")).toBe(false)
+  /** The seats this pass raised. */
+  const grown = (answer.grownSeats as Array<Record<string, unknown>>) ?? []
+  expect(grown.map((row) => row.name)).toEqual(["Senior Engineer-2"])
+  expect(grown[0].role).toBe("Senior Engineer")
+})
+
+test("F1 A4: maxPerRole counts SEATS BY ROLE, and two passes never duplicate a member name", async () => {
+  // TWO busy seats of one role: no idle same-role seat exists, so the cap is what decides. The second
+  // seat's name base (`backend-primary`) is NOT the role's name, so counting by base NAME would count
+  // ONE seat and wrongly allow a third — only counting BY ROLE reaches the cap.
+  /** The board whose two `Senior Engineer` seats are both busy. */
+  const board: DoubleTeamRecord = {
+    teamId: EXEC_TEAM,
+    members: [member("M1", "SE-2", { status: "running", role: "Senior Engineer" }), member("M2", "backend-primary", { status: "running", role: "Senior Engineer" })],
+    tasks: [task("T0", "backend-primary", { status: "in_progress" }), task("T1", "SE-2", { status: "in_progress" }), task("T2", "SE-2")],
+  }
+  /** The harness with the per-role cap at two. */
+  const harness = makeHarness({ board, rowConfig: { seats: { maxPerRole: 2, max: 32 } } })
+  /** The first pass. */
+  const first = await runTool(harness, "cellwork_dispatch")
+  expect(first.ok).toBe(true)
+  expect(first.grownSeats).toBeUndefined()
+  // THE BUSY SKIP KEEPS ITS SHAPE, and its reason names the cap AND the value.
+  /** The skip T2 received. */
+  const capped = (first.skipped as Array<Record<string, unknown>>).find((row) => row.taskId === "T2")
+  expect(String(capped?.reason)).toContain("cellwork.seats.maxPerRole=2")
+  expect(journalRows(harness).some((row) => row.event === "seat-grown")).toBe(false)
+  /** The second pass over the same board. */
+  const second = await runTool(harness, "cellwork_dispatch")
+  expect(second.ok).toBe(true)
+  expect(harness.board.members.length).toBe(2)
+  /** Every member name after both passes. */
+  const names = harness.board.members.map((row) => row.name)
+  expect(new Set(names).size).toBe(names.length)
+  // The refusal is journaled on BOTH passes, so the sweep can repeat the latest sentence.
+  expect(journalRows(harness).some((row) => row.event === "seat-growth-refused" && String(row.reason).includes("maxPerRole=2"))).toBe(true)
+})
+
+// ── CodeRabbit #116 F2: a REUSE candidate must carry a handle ────────────────────────────────────
+
+test("F2 regression (#116): a HANDLE-LESS idle seat is SKIPPED, and a later same-role seat with a handle wins", async () => {
+  // THE DEFECT: `find` returned the FIRST idle same-role seat even when it carried no `executorRef`, and
+  // the plane's reassign refuses a target it cannot deliver to. The search must continue past it.
+  /** The board: the busy owner, a handle-less idle seat, then an idle seat WITH a handle. */
+  const board: DoubleTeamRecord = {
+    teamId: EXEC_TEAM,
+    members: [
+      member("M1", "Deep Worker", { status: "running" }),
+      member("M2", "Deep Worker-2", { status: "inactive", role: "Deep Worker", executorRef: "" }),
+      member("M3", "Deep Worker-3", { status: "inactive", role: "Deep Worker" }),
+    ],
+    tasks: [task("T1", "Deep Worker", { status: "in_progress" }), task("T2", "Deep Worker")],
+  }
+  /** The harness. */
+  const harness = makeHarness({ board })
+  /** The dispatch pass. */
+  const answer = await runTool(harness, "cellwork_dispatch")
+  expect(answer.ok).toBe(true)
+  // REUSED THE HANDLED SEAT: no growth, one reuse, and the board still holds exactly the three seats.
+  expect(answer.grownSeats).toBeUndefined()
+  expect(answer.seats.reused).toBe(1)
+  expect(harness.board.members.length).toBe(3)
+  // THE HAND-OVER LANDED ON `Deep Worker-3`; the handle-less seat received nothing.
+  expect(tasksOfOwner(harness.board, "Deep Worker-3").map((row) => row.id)).toEqual(["T2"])
+  expect(tasksOfOwner(harness.board, "Deep Worker-2")).toEqual([])
 })
 
 // ── §4.1 arm 5: the leave-it-alone arms ──────────────────────────────────────────────────────────

@@ -1,0 +1,15 @@
+[lane] credential present (len=35) — value never printed
+[lane] pack 1-before-source-live exit=0
+[lane] ===== run 1 (source-live) args: --mode source --require-docker --live =====
+run NaN (source-live) exit=0 evidence=evidence/docker/client-install/2026-11-22T09-24-43Z harness=0.2.2-rc.5 tui=0.20.2 failures=0 nulls=40 userSurfaceTrue=85
+[lane] run 1 exit=0
+[lane] pack 2-before-oneclick-live exit=0
+[lane] ===== run 2 (oneclick-live) args: --mode oneclick --require-docker --live =====
+run 2 (oneclick-live) exit=1 evidence=evidence/docker/client-install-oneclick/2026-11-22T09-43-42Z harness=0.2.2-rc.5 tui=0.20.2 failures=6 nulls=42 userSurfaceTrue=85
+[lane] run 2 exit=1
+[lane] pack 3-before-source-nobrowser exit=0
+[lane] ===== run 3 (source-nobrowser) args: --mode source --require-docker --no-browser =====
+run 3 (source-nobrowser) exit=0 evidence=evidence/docker/client-install/2026-11-22T10-07-05Z harness=0.2.2-rc.5 tui=0.20.2 failures=0 nulls=81 userSurfaceTrue=85
+[lane] run 3 exit=0
+[lane] done
+RUNNER_EXIT=0

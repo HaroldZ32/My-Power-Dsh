@@ -22,11 +22,12 @@
 //      host's own minimum gets the host's "too narrow" notice in the band between the two.
 //
 // HOST ERAS. The enable-list rule changed twice under this file, so each affected arm carries the
-// INSTALLED host's own branch instead of a version literal: the 0.17.0 arms branch on the presence of
-// the consolidated panel-CSV API (`parseSidePanelPanels` + `resolveSidePanelIds`), which `docs/tui.md`
-// §11.10 records as 0.17.0's "two host panel-CSV helpers consolidated"; the older arms keep the 0.15.0
-// union and the 0.14 append, byte for byte. The admitted host is 0.17.0 (`dsh-plugin.json`
-// `compat.hosts`), which is the branch this machine runs.
+// INSTALLED host's own branch instead of a version literal: the 0.17.0-and-later arms branch on the
+// presence of the consolidated panel-CSV API (`parseSidePanelPanels` + `resolveSidePanelIds`), which
+// `docs/tui.md` §11.10 records as 0.17.0's "two host panel-CSV helpers consolidated"; the older arms
+// keep the 0.15.0 union and the 0.14 append, byte for byte. The admitted band is 0.18.0 through 0.20.2
+// (five releases, `dsh-plugin.json` `compat.hosts`), so every admitted host takes that consolidated-API
+// branch; the arms judge whichever host `dsh-tui` on `PATH` actually resolves to.
 import { describe, expect, test } from "bun:test"
 import { readFileSync } from "node:fs"
 import { EventEmitter } from "node:events"

@@ -1,0 +1,7 @@
+argv=node evidence/release/v0.21.0/static-2026-11-22T09-32-05Z/11-cross-checks.cjs
+note=run2 (run1 kept at 11-cross-checks-run1.log: its bilingual test demanded the literal ./ spelling and produced 3 false FAILs on the pre-existing bare-form links)
+head=d2a93abc
+start=2026-11-22T09:36:52Z
+end=2026-11-22T09:36:52Z
+exit=0
+lines=156

@@ -1,0 +1,9 @@
+Sandbox diagnosis
+The first unrestricted rerun resolved sandbox child-process restrictions. Direct controls before rerun:
+rows-parity: spawnSync Node EPERM
+graph-model: subprocess output absent in seven CLI assertions
+dsh-go: official child checker spawnSync Node EPERM
+The unrestricted static rerun passed all eleven members.
+The unrestricted first QA self-test pass used an empty outer DSH_HOME. install-dependencies needed a sandbox credential store. Rerun with an inert fixture yielded 58/58.
+The supplemental headless preset-register live case returned a failed verdict. The underlying launcher exited 0, roster was 11, and preset-mpd awaited agentPresets. Primary mount evidence is the bundle lifecycle and Docker preset assertions.
+The supplemental preset-register signature is historical. The tracked verdict evidence/dsh-qa/preset-register/2026-10-06T13-01-14.800Z/result.json also reports case ok=false, launcher exit=0, presetLine blank, roster=11.
