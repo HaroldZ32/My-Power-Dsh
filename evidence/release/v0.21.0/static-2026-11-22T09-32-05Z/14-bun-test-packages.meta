@@ -1,0 +1,8 @@
+argv=bun test packages
+env=PATH=$PWD/.qa-tmp/dsh-022/bin:$PATH XDG_RUNTIME_DIR=$PWD/.qa-tmp/xdg
+note=supplementary arm: AGENTS.md §4 requires bun test on any plugin change; NOT in the wave contract §7 list. Repo-root bun test is avoided (it scans evidence/** fixtures).
+head=d2a93abc
+start=2026-11-22T09:36:52Z
+end=2026-11-22T09:37:32Z
+exit=0
+lines=5232

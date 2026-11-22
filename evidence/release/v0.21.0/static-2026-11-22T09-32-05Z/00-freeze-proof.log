@@ -1,0 +1,29 @@
+T4 FREEZE PROOF
+utc=2026-11-22T09:32:05Z
+branch=feature/dsh-022rc5-tui-0202
+head=d2a93abcda80a27cf9da725413613486895549eb
+head-oneline=d2a93abc feat(adapt): support DSH 0.2.2-rc.5 and dsh-tui 0.20.2 (0.21.0)
+tracked-dirty=0
+files-in-commit=45
+commit-stat= 45 files changed, 535 insertions(+), 191 deletions(-)
+pre-freeze-worktree-diff-sha256=9d9d5726d518bef3bbbbeebeaa3faaa67b553139bda420e9cc365137ed988ba7
+commit-diff-vs-base-sha256=9d9d5726d518bef3bbbbeebeaa3faaa67b553139bda420e9cc365137ed988ba7
+VERDICT: IDENTICAL — the pre-freeze working tree I measured is byte-identical to commit d2a93abc
+skills-files-in-commit:
+11
+skills-file-list:
+skills/dsh-qa/scripts/dual-track-smoke.ts
+skills/dsh-qa/scripts/install-dependencies.ts
+skills/dsh-qa/scripts/lib/tui-lane.ts
+skills/dsh-qa/scripts/preset-register.ts
+skills/dsh-qa/scripts/tui-admission.ts
+skills/dsh-qa/scripts/tui-deps-ctrla.ts
+skills/dsh-qa/scripts/tui-keeper-standdown.ts
+skills/dsh-qa/scripts/tui-mount.ts
+skills/dsh-qa/scripts/tui-panels.ts
+skills/dsh-qa/scripts/tui-team-surface.ts
+skills/dsh-qa/scripts/user-surface-mount.ts
+vendor-treeSha-line:
+8:      "treeSha": "8eb28169a485739be890415bd60151fd563e28ef36feb51d6a079d969c2d6366"
+12:      "treeSha": "a444f9d095ef0c0fda3aed28e6953ac0b01f71693c4edce77aa83cf6dde28eb6",
+22:      "treeSha": "7e6a28e2b1c6dc9c3942bb17da5cef86ae8398af6ed63bfe3cd128a08701c34a",

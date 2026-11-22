@@ -1,0 +1,8 @@
+argv=bun run verify:gates
+env=PATH=$PWD/.qa-tmp/dsh-022/bin:$PATH MPD_DSHGO_KIT=$PWD/.mpd/tmp-dshgo/kit XDG_RUNTIME_DIR=$PWD/.qa-tmp/xdg
+cwd=repo-root
+head=d2a93abc
+start=2026-11-22T09:32:18Z
+end=2026-11-22T09:32:27Z
+exit=0
+lines=294

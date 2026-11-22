@@ -1,0 +1,27 @@
+=== D5: TWO MEASURED VERSION STRINGS ===
+prefix-bin: 0.2.2-rc.5  [/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh/lib/bin.js]
+prefix-package.json version: 0.2.2-rc.5
+ambient-bin: 0.2.2-rc.5  [/home/haroldzhao/.nvm/versions/node/v24.21.0/bin/dsh]
+
+=== REPAIR PROBE: why the OLD sentinel was a false positive on HEAD bytes ===
+cordis.patch.yml blob base=655b8624a8e55f5e9e47c63b5fb51e3cb599f911
+cordis.patch.yml blob head=655b8624a8e55f5e9e47c63b5fb51e3cb599f911
+same-blob=YES
+occurrences 'typeof baseUrl'        = 14
+occurrences 'decodeURIComponent(baseUrl' = 5   # the packed operand, one per row operand
+occurrences 'fileURLToPath(baseUrl)' = 7   # the legitimate mount-guard TYPE GUARD
+guard line sample (no decode, no concat):
+typeof baseUrl === 'string' && baseUrl !== '') { profileDir = path.normalize(process.getBuiltinModule('node:url').fileURLToPa
+
+ARITHMETIC: after stripping every packed operand (one 'typeof baseUrl' each), typeof-count = 9 > 0, so the OLD sentinel dev.includes("typeof baseUrl") stayed TRUE on a healthy rewrite; the NEW sentinel dev.includes("decodeURIComponent(baseUrl") = 0 on the same rewrite.
+
+=== RUNTIME/CI PIN FILES: old-pin scan (expect 0 for every file) ===
+dsh-distribution.json old-pin-lines=0
+docker/entrypoint.sh old-pin-lines=0
+docker/docker-compose.yml old-pin-lines=0
+docker/tui-lane.sh old-pin-lines=0
+docker/ui/docker-compose.yml old-pin-lines=0
+docker/ui/entrypoint.sh old-pin-lines=0
+.github/workflows/gates.yml old-pin-lines=0
+skills/dsh-qa/scripts/tui-mount.ts old-pin-lines=0
+scripts/mpd-tui-panels.ts old-pin-lines=0

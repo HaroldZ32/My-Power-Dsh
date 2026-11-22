@@ -1,0 +1,8 @@
+argv=bun run typecheck
+env=PATH=$PWD/.qa-tmp/dsh-022/bin:$PATH XDG_RUNTIME_DIR=$PWD/.qa-tmp/xdg
+cwd=repo-root
+head=d2a93abc
+start=2026-11-22T09:33:12Z
+end=2026-11-22T09:33:13Z
+exit=0
+lines=1
