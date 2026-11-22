@@ -4,13 +4,15 @@
 
 This page describes the **DSH-TUI edition** of the my-power-dsh bundle: what it ships, how to
 install it, what the per-package compatibility measurement found, and what it explicitly does
-**not** claim. It targets `@deepseek-harness-tui/dsh-tui` **0.20.1** and its built-in admission
-profile. 0.20.1 is a COORDINATE-ONLY move over 0.20.0 (wave contract §3 F7/F8/F10: every
-`@deepseek-ai/dsh-*` peer range appends harness `0.2.2-rc.3` with the FLOOR unchanged, the patch file
-is delta-free and all fifteen `tui*` seams the bundle uses sit at identical file:line) and its declared
-peer bands top out at DeepSeek Harness **`0.2.2-rc.3`** while still admitting `0.2.2-rc.2`,
-`0.2.2-rc.1` and `0.2.1-rc.5`. **§11.16 is this wave's amendment**: it records the move, the carriers
-it touched and the two declared bounds. **§11.15 stays readable as history**: it recorded the move to
+**not** claim. It targets `@deepseek-harness-tui/dsh-tui` **0.20.2** and its built-in admission
+profile. 0.20.2 is a COORDINATE-ONLY move over 0.20.1 (wave contract §3 F7–F9: every
+`@deepseek-ai/dsh-*` peer `||`-chain gains `|| 0.2.2-rc.4 || 0.2.2-rc.5`, the exactly-pinned `dsh-web` /
+`dsh-web-deepseek-api` move `0.2.2-rc.3` → `0.2.2-rc.5`, and `lib/types/api.d.ts` /
+`lib/types/panels.d.ts` are byte-identical) and its declared
+peer bands top out at DeepSeek Harness **`0.2.2-rc.5`** while still admitting `0.2.2-rc.3`,
+`0.2.2-rc.2`, `0.2.2-rc.1` and `0.2.1-rc.5`. **§11.17 is this wave's amendment**: it records the move, the
+carriers it touched and the declared bounds. **§11.16 stays readable as history**: it recorded the move to
+DSH-TUI 0.20.1. **§11.15 stays readable as history**: it recorded the move to
 DSH-TUI 0.20.0. **§11.13 stays readable as history**: it recorded the 0.2.2-rc.1 / DSH-TUI 0.19.0 move. **The pin before it was 0.18.0, and that statement stays readable as history**:
 0.18.0's `dsh-*` bands ran through `0.2.1-rc.4` and `0.2.1-rc.5` (all 36 of them), while 0.17.0's stop
 at `0.2.1-rc.3` (read from the published tarballs), and §11.11 is that wave's amendment. **The pin
@@ -1992,3 +1994,37 @@ exited 0 with `REPORT: PASS — 49 arms passed, 1 allowed deviation(s), 5 bound(
 (`evidence/verify-022rc3/2026-11-15T12-45-50Z/logs/verify-gates-rc3.log`). No **live TTY capture** of `0.20.1` is
 claimed in this section: that belongs to the wave's mount lane, and a claim no lane exercised is not
 made here.
+
+### 11.17 Amendment after the harness 0.2.2-rc.5 / DSH-TUI 0.20.2 adaptation wave (2026-11-22)
+
+This wave moves the pin pair again and changes no TUI plugin source, no patch row and no adapter.
+§11.1–§11.16 stay as written: they record earlier waves, not this one.
+
+| Subject | Before | After |
+|---|---|---|
+| This page's target host (§ preamble) | **0.20.1** | **0.20.2** — a COORDINATE-ONLY move (wave contract §3 F7–F9): the release exists precisely to raise the declared harness ceiling, so every `@deepseek-ai/dsh-*` peer `\|\|`-chain gains `\|\| 0.2.2-rc.4 \|\| 0.2.2-rc.5` and the exactly-pinned `dsh-web` / `dsh-web-deepseek-api` move `0.2.2-rc.3` → `0.2.2-rc.5`. `engines.node` (`^22.19 \|\| >=24`), the 19 `exports` keys, `bin`, `imports` and `files` are unchanged; `lib/types/api.d.ts` and `lib/types/panels.d.ts` are **BYTE-IDENTICAL** across `0.20.1`/`0.20.2`; `tuiPanels` is present (`lib/types/dsh-adapter/panels.d.ts`, `name="dsh-tui-panels"`, `TUI_PANEL_API_VERSION = 1`); `cordis.patch.yml` is length-identical (24,831 chars) with identical head/tail |
+| Harness pin (`dsh-distribution.json` `host-base`; `docker/entrypoint.sh` `DSH_VERSION`; the Docker and QA defaults) | `0.2.2-rc.3` | **`0.2.2-rc.5`** (wave contract §D1/§D3). `engines.dsh` stays `>=0.2.1-rc.5 <0.3.0-0` — it already admitted rc.5, so it does not move — and `engines.node` stays `>=24.9.0`. The release declares **NO** team package |
+| The harness hop itself (rc.3 → rc.5) | — | **PACKAGING/COMPAT ONLY, with exactly TWO API-visible changes the bundle does not consume** (wave contract §3 F5/F6): the new `CONTENT_REFUSED` finish code and the removed `searchProvider` base default. Both audits, the byte-identical third-party pins and the recorded consequence for the Docker verdict are in [`compatibility.md`](./compatibility.md) §2; this page repeats only the conclusion |
+| `compat.hosts` (both manifests) and `specs/tui-hosts.json` | `0.18.0`, `0.19.0`, `0.20.0`, `0.20.1` | **`0.18.0`, `0.19.0`, `0.20.0`, `0.20.1`, `0.20.2`** — identical sorted sets in all three places, and `dsh-distribution.json`'s `host-tui` ref moves to `0.20.2` |
+| The team mount (harness plane, not TUI source) | host-owned plane on the rc.2+ generation | **unchanged** — the harness hop adds no `standard`-preset row, no Cordis service id and no agent-preset schema change (F5), so the host still owns the three team rows and the bundle still mounts NO team row on this generation |
+| The `tool-office` guarded preset row | ACTIVE on `0.2.2-rc.3`, a GUARDED NOTE on the older hosts | **statement unchanged, NOT re-measured on rc.5** — `dsh-web-app`'s lib and patch are byte-identical to rc.3 (F5), so the declaration the rc.3 statement rests on is unchanged; no fresh mount of this row on rc.5 is claimed, and the two host-specific statements stay un-conflated |
+| The Ctrl+A host contact | version-gated on the `tuiPanels` seam | **unchanged** — the seam is present at the same API version and the `lib/types/ui.js` dashboard contact still resolves at the same path (F8, corroborated by the package's own published types importing it), so the contact stays inert while the seam is present and Ctrl+A keeps its host meaning; the merged view opens through `alt+a` / `/mpd panel` |
+
+**The pairing law is part of this amendment** (wave contract §3 F9): harness rc.4/rc.5 running on TUI
+`0.20.1` is OUTSIDE that TUI release's declared peer contract — its chains end at `0.2.2-rc.3` — and
+produces a boot drift warning. The two pins MUST move together, there is no admissible partial move, and
+that is why this wave moves both.
+
+**Declared bounds — they are part of the claim, not a footnote.**
+
+- **`0.2.2-rc.4` is admitted by the `engines.dsh` range and was NOT separately measured.** Its two
+  API-visible changes belong to the hop this wave targets, but no rc.4 mount was run; the band claim is
+  rc.5 as target over the older hosts, with rc.4 inside the range only (wave contract §6).
+- **ONE host delta stays UNVERIFIED** (wave contract §3 F10): `lib/types/dsh-adapter/index.d.ts` grew
+  exactly **+277 bytes** with identical head and tail. It is additive at most (`Config` is the plugin's
+  optional-only input surface) and nothing in this wave depends on it; it is recorded rather than
+  explained.
+- **No live TTY capture of `0.20.2` is claimed in this section.** The coordinates above were read from
+  the published `0.20.2` release metadata and the host's own types (wave contract §3 F7–F10); a live
+  capture and this wave's own `verify:gates` transcript belong to the wave's verification lane under
+  `evidence/release/v0.21.0/`, and a claim no lane exercised is not made here.

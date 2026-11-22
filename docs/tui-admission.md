@@ -80,12 +80,19 @@ contract and permission registries and all eleven admission-decision source file
 the two tags** (the guide's blob is `6b9dfd3…`, 99,723 B; `permissions-0.1.json` is `f36cb6e…`), so the
 0.19.0 move required no admission rework.
 
-**This release moves the band to four hosts, with `0.20.1` as the target.** `0.20.1` is a
-COORDINATE-ONLY move over `0.20.0` (wave contract §3 F7/F8/F10: every `@deepseek-ai/dsh-*` peer range
-appends harness `0.2.2-rc.3` with the floor unchanged, the patch file is delta-free, all fifteen `tui*`
-seams sit at identical file:line, `lib/types/ui.js` is unchanged), and `compat.hosts` in both manifests
-plus `specs/tui-hosts.json` now carry `0.18.0`, `0.19.0`, `0.20.0` and `0.20.1` as one identical sorted
-set, with `dsh-distribution.json`'s `host-tui` ref at `0.20.1`.
+**This release moves the band to five hosts, with `0.20.2` as the target.** `0.20.2` is a
+COORDINATE-ONLY move over `0.20.1` (wave contract §3 F7–F9: every `@deepseek-ai/dsh-*` peer `||`-chain
+gains `|| 0.2.2-rc.4 || 0.2.2-rc.5`, the exactly-pinned `dsh-web` / `dsh-web-deepseek-api` move
+`0.2.2-rc.3` → `0.2.2-rc.5`, `lib/types/api.d.ts` and `lib/types/panels.d.ts` are byte-identical,
+`tuiPanels` is present at `TUI_PANEL_API_VERSION = 1`, and `cordis.patch.yml` is length-identical at
+24,831 chars with identical head/tail), and `compat.hosts` in both manifests
+plus `specs/tui-hosts.json` now carry `0.18.0`, `0.19.0`, `0.20.0`, `0.20.1` and `0.20.2` as one identical
+sorted set, with `dsh-distribution.json`'s `host-tui` ref at `0.20.2`. **The pairing law is part of the
+claim** (F9): harness rc.4/rc.5 running on TUI `0.20.1` is OUTSIDE that release's declared peer contract
+and produces a boot drift warning, so the two pins MUST move together and there is no admissible partial
+move. **This page makes no measured admission claim for `0.20.2`:** the dated records below are the
+`0.19.0`, `0.20.0` and `0.20.1` measurements, this wave's own `verify:gates` transcript belongs to the
+verification lane under `evidence/release/v0.21.0/`, and no live TTY capture of `0.20.2` is claimed here.
 
 **Measured on the `0.20.0` generation (2026-11-14), in `verify:gates` on the pinned host:**
 `tui-admission` exited 0 with

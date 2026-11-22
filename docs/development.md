@@ -62,7 +62,7 @@ install reads this repository. Where
 build scripts (only the sidebar's terminal panel degrades; the transitive `node-pty` this flag used to
 be needed for is gone since `0.24.1`, measured 2026-10-02, and `0.28.0` ships no install script,
 measured 2026-10-21). `0.28.0` requires harness **DSH 0.2.1-rc.1+** (this repository pins harness
-`0.2.2-rc.1` and still supports `0.2.1-rc.5`) and fences its routes through the `connection` service, whose inject list the
+`0.2.2-rc.5` and still supports `0.2.2-rc.3`, `0.2.2-rc.2`, `0.2.2-rc.1` and `0.2.1-rc.5`) and fences its routes through the `connection` service, whose inject list the
 `packages/mpd-better-sidebar-host` shim restates. A packed install gets it from pnpm.
 
 **There is NO MCP build step.** The MCP servers come from DECLARED npm packages, started by thin
@@ -207,9 +207,11 @@ profile `node_modules/@mpd-dsh/mpd`) when pnpm store access is unavailable; the 
 No evidence on disk for a gate = the change is not complete.
 
 **`bun run verify:gates` needs two env inputs, and a bare run is RED by design.** The PINNED harness must
-be FIRST on `PATH` — otherwise the ambient harness (`0.2.1-rc.5`, a SUPPORTED host) reddens
-`preset-conformance` — and `MPD_DSHGO_KIT` must point at a pinned `dsh-Go` checkout, or the `dshgo`
-member exits 3 NOT-PASSED. With neither input, a bare run ends
+be FIRST on `PATH` — otherwise the ambient harness (`0.2.2-rc.5`, measured 2026-11-22, itself a
+SUPPORTED host) reddens `preset-conformance` — and `MPD_DSHGO_KIT` must point at a pinned `dsh-Go`
+checkout, or the `dshgo` member exits 3 NOT-PASSED. The pinned prefix must never be OLDER than the
+ambient CLI: it measures whatever it points at, so a stale prefix is how a sweep "verifies" an older
+release and claims the current one. With neither input, a bare run ends
 `FAIL - 2/11 member gate(s) failed: preset-conformance (exit=1), dshgo (exit=3)`: that is the documented
 default, not a broken repository. The exact invocation, from the repository root:
 

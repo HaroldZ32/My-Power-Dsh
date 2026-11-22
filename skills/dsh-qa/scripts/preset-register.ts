@@ -41,7 +41,24 @@ const FIXTURE_ROLES = "oracle,librarian,prometheus,hephaestus,sisyphus,sisyphus-
 // caller pin wins untouched in the B8 launcher, so those pins bypassed exactly
 // the resolution chain a dev boot exists to exercise. Both halves are removed:
 // the operand becomes the bare checkout path and no CLI/binary pin is pre-set.
-const BASEURL_PREFIX = '(typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\\/\\/\\/(?=[A-Za-z]:)/, "").replace(/^file:\\/\\//, "")).replace(/\\/+$/, "") : "") + '
+//
+// QUOTE-AGNOSTIC (wave repair): the operand is JS embedded in YAML, so its two
+// string literals may be spelled `"…"` OR `'…'`. Both spellings are consumed, so
+// the rewrite cannot pass merely because the shipped patch happens to use one.
+// A `typeof baseUrl === 'string'` TYPE GUARD is NOT this operand: it guards
+// `fileURLToPath(baseUrl)`, decodes nothing and concatenates no path, so it is
+// left in place on purpose (see the sentinel below).
+/** The packed `baseUrl`-resolution operand in DOUBLE-quoted JS spelling, trailing ` + ` included. */
+const BASEURL_RESOLVE_DQ = '(typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\\/\\/\\/(?=[A-Za-z]:)/, "").replace(/^file:\\/\\//, "")).replace(/\\/+$/, "") : "") + '
+/** The same operand in SINGLE-quoted JS spelling, which the rewrite must consume exactly as it consumes the double-quoted one. */
+const BASEURL_RESOLVE_SQ = "(typeof baseUrl === 'string' ? decodeURIComponent(baseUrl.replace(/^file:\\/\\/\\/(?=[A-Za-z]:)/, '').replace(/^file:\\/\\//, '')).replace(/\\/+$/, '') : '') + "
+/**
+ * The surviving half of an UNREWRITTEN `baseUrl` operand: its `decodeURIComponent`
+ * call, which the resolution above makes and a pure `typeof baseUrl` type guard
+ * never does. This — not the bare token `typeof baseUrl` — is what "a baseUrl
+ * concatenation survived" means, so a mount guard's type guard never trips it.
+ */
+const BASEURL_DECODE = "decodeURIComponent(baseUrl"
 
 /**
  * The four MCP launchers a dev-flavored main patch must point at, checkout-absolute,
@@ -111,7 +128,8 @@ function declaredBundlePatches(): string[] {
 /** One patch file's text, rewritten for a checkout boot. */
 function devFlavor(text: string): string {
   return text
-    .split(BASEURL_PREFIX).join("")
+    .split(BASEURL_RESOLVE_DQ).join("")
+    .split(BASEURL_RESOLVE_SQ).join("")
     .split('"/node_modules/@mpd-dsh/mpd/').join('"' + repoRoot + "/")
     .split("name: '@mpd-dsh/mpd'").join("name: '" + join(repoRoot, "packages/mpd-bundle-plugin/dist/index.js") + "'")
     .split("@mpd-dsh/mpd/").join(repoRoot + "/")
@@ -157,11 +175,16 @@ function selfTest(): void {
   if (resolve(main.source) !== resolve(repoRoot, "cordis.patch.yml")) { console.error("[preset-register self-test] FAIL: the first declared patch is not the repository-root cordis.patch.yml (" + main.source + ")"); process.exit(1) }
   if (main.text.includes("name: '@mpd-dsh/mpd'") || !main.text.includes("name: '" + join(repoRoot, "packages/mpd-bundle-plugin/dist/index.js") + "'")) { console.error("[preset-register self-test] FAIL: devFlavor web-compat entry rewrite (bare '@mpd-dsh/mpd' must become the bundle-plugin main)"); process.exit(1) }
   // devFlavor must consume the packed `/node_modules/...` operand entirely: no
-  // `<baseUrl>/node_modules/<abs-repo>` splice, no baseUrl concat left, and every
-  // MCP row command must be the bare checkout-absolute launcher that a dev boot
-  // resolves through the B8 chain (the old operand only "worked" via mcpEnv pins).
+  // `<baseUrl>/node_modules/<abs-repo>` splice, no UNREWRITTEN baseUrl concatenation
+  // left, and every MCP row command must be the bare checkout-absolute launcher that a
+  // dev boot resolves through the B8 chain (the old operand only "worked" via mcpEnv pins).
+  // The sentinel is the operand's `decodeURIComponent` call, NOT the bare token
+  // `typeof baseUrl`: the mount guards legitimately carry `typeof baseUrl === 'string'`
+  // as a TYPE GUARD around `fileURLToPath(baseUrl)`, which decodes nothing and
+  // concatenates no path — a dev boot needs it, and flagging it made this case red on a
+  // tree whose packed operands were gone.
   for (const entry of rewrites) {
-    if (entry.text.includes("typeof baseUrl") || entry.text.includes("@mpd-dsh/mpd/")) { console.error("[preset-register self-test] FAIL: devFlavor left the packed @mpd-dsh/mpd operand or a baseUrl concat in " + entry.source); process.exit(1) }
+    if (entry.text.includes(BASEURL_DECODE) || entry.text.includes("@mpd-dsh/mpd/")) { console.error("[preset-register self-test] FAIL: devFlavor left the packed @mpd-dsh/mpd operand or a baseUrl concat in " + entry.source); process.exit(1) }
   }
   for (const mcp of MCP_LAUNCHERS) {
     /** The checkout-relative launcher the rewritten main patch must point at. */
@@ -196,6 +219,13 @@ function selfTest(): void {
   const controlMissing = missingMcpOperands(rawMain)
   if (controlMissing.length !== MCP_LAUNCHERS.length) {
     console.error("[preset-register self-test] FAIL: negative control — the un-rewritten patch must carry NONE of the checkout-absolute operands, but " + (MCP_LAUNCHERS.length - controlMissing.length) + " already matched")
+    process.exit(1)
+  }
+  // NEGATIVE CONTROL for the NARROWED baseUrl sentinel: the predicate that replaced
+  // `includes("typeof baseUrl")` must still FIRE on the patch as DECLARED, or the
+  // narrowing would have made it vacuous and an unrewritten operand could slip through.
+  if (!rawMain.includes(BASEURL_DECODE)) {
+    console.error("[preset-register self-test] FAIL: negative control — the un-rewritten main patch must still carry the packed baseUrl resolution (`" + BASEURL_DECODE + "`), else the narrowed sentinel cannot fail")
     process.exit(1)
   }
   // The PRESET patch must survive the rewrite as a real preset declaration: the
