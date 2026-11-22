@@ -103,7 +103,9 @@
     "!**/.review-tmp*",
     "!**/.qa-*",
     "!**/.tmp-*",
-    "!**/.venv*"
+    "!**/.venv*",
+    "!skills/frontend/references/design/ambience-skill.md",
+    "!skills/frontend/references/design/component-catalogs.md"
   ],
   "exports": {
     ".": "./packages/mpd-bundle-plugin/dist/index.js",

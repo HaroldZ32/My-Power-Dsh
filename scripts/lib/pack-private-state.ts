@@ -8,15 +8,28 @@ const PRIVATE_SEGMENTS: ReadonlySet<string> = new Set([
 /** Directory name families used by local QA, review tools, and virtual environments. */
 const PRIVATE_PREFIXES = [".review-tmp", ".qa-", ".tmp-", ".venv"] as const
 
-/** npm exclusions for the generated manifest, following its public inclusion patterns. */
+/** Operator references that may exist locally under the shipped skills tree. */
+const PRIVATE_PATHS: ReadonlySet<string> = new Set([
+  "skills/frontend/references/design/ambience-skill.md",
+  "skills/frontend/references/design/component-catalogs.md",
+])
+
+/** npm exclusions, following the public inclusion patterns. */
 export const PACK_PRIVATE_EXCLUDES: readonly string[] = [
   ...Array.from(PRIVATE_SEGMENTS, (name: string): string => `!**/${name}`),
   ...PRIVATE_PREFIXES.map((prefix): string => `!**/${prefix}*`),
+  ...Array.from(PRIVATE_PATHS, (path): string => `!${path}`),
 ]
 
-/** Test a relative path at any depth, including paths passed to the copy filter before traversal. */
+/**
+ * Identify private paths before the packer copies or traverses them.
+ * @param path Package-relative path in native or npm spelling.
+ * @returns Whether the path is reserved for local use.
+ */
 export function isPrivatePackPath(path: string): boolean {
-  return path.split(/[/\\]/).some((segment): boolean =>
+  /** Segments in native or npm path spelling. */
+  const segments = path.split(/[/\\]/)
+  return PRIVATE_PATHS.has(segments.join("/")) || segments.some((segment): boolean =>
     PRIVATE_SEGMENTS.has(segment) || PRIVATE_PREFIXES.some((prefix): boolean => segment.startsWith(prefix)),
   )
 }

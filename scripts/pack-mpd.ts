@@ -10,7 +10,7 @@ import { spawnSync } from "node:child_process"
 import { chmodSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { dirname, join, relative, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
-import { isPrivatePackPath, PACK_PRIVATE_EXCLUDES } from "./lib/pack-private-state.ts"
+import { isPrivatePackPath } from "./lib/pack-private-state.ts"
 import { readJson, repoRootFrom } from "./lib/repo.ts"
 
 /** The root `package.json` fields this packer reads; the rest of that document is never consulted. */
@@ -420,11 +420,10 @@ const SOURCE_PKGS: readonly string[] = [
 /**
  * The root-level entries `package.json`'s `files` allowlist declares.
  *
- * Root files and single-level globs are copied by the root asset loop. The package patterns
- * are shared with npm so the relocatable manifest admits the same public package paths.
- * @returns the root files, root globs and package globs, in manifest order.
+ * Root files and single-level globs are copied by the root asset loop.
+ * @returns the root files and root globs, in manifest order.
  */
-function declaredRootEntries(): { readonly files: readonly string[]; readonly patterns: readonly string[]; readonly packagePatterns: readonly string[] } {
+function declaredRootEntries(): { readonly files: readonly string[]; readonly patterns: readonly string[] } {
   /** The manifest this package ships under. */
   const manifest = readJson<{ files?: unknown }>(join(repoRoot, "package.json"))
   /** The allowlist without its negations, or none when the manifest declares no `files`. */
@@ -437,50 +436,25 @@ function declaredRootEntries(): { readonly files: readonly string[]; readonly pa
     if (!entry.includes("/")) files.push(entry)
     else if (/^[^/]+\/\*\.[a-z0-9]+$/i.test(entry)) patterns.push(entry)
   }
-  return { files, patterns, packagePatterns: listed.filter((entry): boolean => entry.startsWith("packages/")) }
+  return { files, patterns }
 }
 
-/** The declared public files and patterns shared by the checkout and the relocatable manifest. */
+/** Root entries whose source bytes the relocatable packer must copy. */
 const ROOT_DECLARED = declaredRootEntries()
 
-// WHY THE PACKED `files` ARRAY IS COLLAPSED (v0.16.2 packaging defect, the duplicate
-// `cordis.patch.yml` the 0.16.1 changelog promised to close): the array has TWO independently
-// derived contributors that were never promised to be disjoint, and for the main patch layer they
-// name the SAME file.
-//   1. `patchTargets` in `writeManifest()` — every staged patch layer, from the root manifest's
-//      `dsh.bundle.patch` array (`./cordis.patch.yml`, `./presets/mpd.patch.yml` today).
-//   2. `ROOT_DECLARED.files` in `declaredRootEntries()` — every ROOT-LEVEL entry of the root
-//      manifest's `files` allowlist, which declares `cordis.patch.yml` (a name with no separator,
-//      hence a root file) so the artifact's copy list stays the manifest's own answer (T-35/T-70).
-// `presets/mpd.patch.yml` escapes the same collision only by accident of SHAPE: it carries a
-// separator, so `declaredRootEntries()` classifies it as neither a root file nor a
-// `<dir>/*.<ext>` pattern and it arrives once, through `patchTargets` alone.
-//
-// The two contributions share ONE intended role — admit the staged patch file to the tarball — so
-// this is a REDUNDANCY, not two conflicting roles for one path, and collapsing it cannot lose an
-// admission. (`files` has exactly one npm semantic, so a genuine two-role conflict has no shape to
-// inhabit here; a refusal branch was therefore NOT invented for it.) Matching is EXACT-STRING
-// only: a package glob and a specific path below it are DIFFERENT entries by design and npm reads
-// both, so a wildcard is never treated as a duplicate of the literal it happens to cover.
-/**
- * Collapse the packed `files` allowlist to its distinct exact strings, keeping the FIRST occurrence.
- *
- * Order is preserved so the emitted manifest stays reproducible and reviewable: an earlier
- * contribution keeps its position, and a later exact repeat is dropped rather than the earlier one.
- * @param entries the assembled allowlist, in contributor order (wildcards, patch layers, root files, patterns).
- * @returns the same admission set with every later exact-string repeat removed.
- */
-function dedupePackedFiles(entries: readonly string[]): string[] {
-  /** The entries kept, in first-seen order — this array IS the emitted `files` value. */
-  const kept: string[] = []
-  /** Exact strings already kept, so a later repeat is skipped instead of appended a second time. */
-  const seen = new Set<string>()
-  for (const entry of entries) {
-    if (seen.has(entry)) continue
-    seen.add(entry)
-    kept.push(entry)
+/** List actual public staged files so later local state cannot be admitted by a recursive glob. */
+function stagedPublicFiles(): string[] {
+  /** npm excludes these ignore-control files from the tarball even when they are staged. */
+  const ignoreMetadata = new Set([".gitignore", ".npmignore"])
+  /** Canonically sorted POSIX paths, independent of filesystem enumeration order. */
+  const staged: string[] = []
+  for (const entry of readdirSync(outDir, { recursive: true, withFileTypes: true })) {
+    if (!entry.isFile() || ignoreMetadata.has(entry.name)) continue
+    /** An exact literal path to a file the relocatable packer copied or generated. */
+    const path = relative(outDir, join(entry.parentPath, entry.name)).replaceAll("\\", "/")
+    if (!isPrivatePackPath(path)) staged.push(path)
   }
-  return kept
+  return staged.sort()
 }
 
 // THE PRESENCE ANCHOR, KEPT FOR THE CLOSURE GATE — and NOT the copy decision any more.
@@ -1000,30 +974,7 @@ function writeManifest(): void {
       "./specs/*": "./specs/*",
       "./client": "./packages/mpd-bundle-plugin/client.js"
     },
-    files: dedupePackedFiles([
-      ...ROOT_DECLARED.packagePatterns,
-      "skills/**",
-      "presets/**",
-      "extensions/**",
-      "templates/**",
-      "docs/**",
-      "agent-references/**",
-      "specs/**",
-      "scripts/**",
-      // every staged patch file, named individually as well: the wildcards above
-      // cover them TODAY, and this line is what keeps the declaration honest if a
-      // future patch lands somewhere the wildcards do not reach. The main patch
-      // layer arrives HERE and again from `ROOT_DECLARED.files` below (the root
-      // `files` allowlist declares it as a root file) — the reason this whole array
-      // is passed through `dedupePackedFiles()`; see its contract comment above.
-      ...patchTargets.map((target: string): string => target.replace(/^\.\//, "")),
-      // the root assets the manifest's OWN `files` allowlist declares, from the table the copy loop
-      // uses — one source of truth, so a file cannot be copied without being declared or declared
-      // without being copied (T-70; T-35 made that table the manifest's answer).
-      ...ROOT_DECLARED.files,
-      ...ROOT_DECLARED.patterns,
-      ...PACK_PRIVATE_EXCLUDES,
-    ]),
+    files: stagedPublicFiles(),
     dsh: {
       bundle: { patch: PATCHES.array ? patchTargets : patchTargets[0] },
       // The bundle's web client (the adopted agent-teams panel + workmate library)

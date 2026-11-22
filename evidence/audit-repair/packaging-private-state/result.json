@@ -1,0 +1,70 @@
+{
+  "branch": "fix/team-and-audit-recovery",
+  "scope": "private-state exclusion from the root npm package and relocatable installable package",
+  "verdict": "pass",
+  "negativeControl": {
+    "command": "node scripts/verify-plugin-manifest.ts --self-test",
+    "exit": 0,
+    "legacyManifestAdmittedDirectAndNestedSentinels": true,
+    "currentManifestAdmittedPrivateSentinels": 0,
+    "currentManifestRetainedRealRuntime": true,
+    "privateSentinelsExercised": 25
+  },
+  "root": {
+    "command": ".toolchain/node_modules/.bin/bun run verify:manifest",
+    "exit": 0,
+    "checkoutPaths": 1272,
+    "requiredMissing": 0,
+    "privatePaths": 0,
+    "cleanPublicPathsCompared": 1272,
+    "cleanPublicPathDifferences": 0
+  },
+  "relocatable": {
+    "commands": [
+      "node scripts/pack-mpd.ts --out <disposable-dir>",
+      "node scripts/verify-pack-closure.ts --packed <disposable-dir> --require-packed",
+      "npm pack --dry-run --json --ignore-scripts --offline"
+    ],
+    "exit": 0,
+    "npmPaths": 681,
+    "privatePaths": 0,
+    "legacyPublicPathDifferences": 0,
+    "identicalByteComparisons": 672,
+    "byteDrift": 0,
+    "requiredMissing": 0,
+    "packedPrivateStateControlExit": 1,
+    "packedPrivateStateControlFinding": "PACK-PRIVATE-STATE",
+    "rawStageFiles": 685,
+    "dockerDeclarationGrader": {
+      "declarationCoherence": true,
+      "resolvingLiteralDeclarations": 680,
+      "resolvingPatchLayers": 2,
+      "resolvingRowModules": 29,
+      "identicalCarriedFiles": 683,
+      "missingPositiveControlCoherence": false,
+      "missingPositiveControlNamedExactPath": true
+    },
+    "npmOmissionsUnderBothManifests": [
+      "skills/ast-grep/.gitignore",
+      "skills/frontend/.gitignore",
+      "skills/frontend/.npmignore",
+      "skills/ultimate-browsing/.gitignore"
+    ]
+  },
+  "otherChecks": {
+    "initialTypecheckExit": 0,
+    "initialCommentCoverageExit": 0,
+    "sharedCheckoutFollowupTypecheckExit": 1,
+    "sharedCheckoutFollowupCommentCoverageExit": 1,
+    "sharedCheckoutFollowupFindings": "Concurrent changes to packages/mpd-team-core-plugin/test/team-record.test.ts produced two typecheck errors and seven missing declaration comments at sampling time.",
+    "docsParityExit": 0,
+    "packClosureSelfTestExit": 0,
+    "packClosureSelfTestControlsPassed": 43,
+    "packerScopedCommentCoverageExit": 0,
+    "diffCheckExit": 0
+  },
+  "bounds": [
+    "The reconciled checkout excludes two ignored and untracked skill-reference paths that the initial checkout package admitted.",
+    "Artifact tests used inert sentinels. The Docker declaration grader ran directly on a freshly staged artifact. Rootless Docker installation and rebuild verification are owned by the independent release integration lane."
+  ]
+}

@@ -1,0 +1,9 @@
+Root manifest with inert sentinels: npm exit 0, 1272 files, 0 private paths, 9/9 required paths
+Root legacy-vs-fixed npm packlist: exactly equal across 1272 public paths
+Relocatable stage exit 0. [pack-mpd] modes normalized: 685 files (644: 669, 755: 16)
+Relocatable closure exit 0. [verify-pack-closure] ok: 25 dist/index.js row(s) + 0 adopted lib/index.ts row(s) + 4 mcp row(s) of the bundle patch all resolve; 26 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references/specs declared and present; CLI validator surface 9 exports in step; packed tree: <scratch>/relocatable (524 asset files); agent references 2/2; root files 9/9; declared packages 30/30 present in the artifact; content bytes: 672 file(s) compared, 672 identical, 0 drift, 0 expected-after-pack; completeness: 562 declared source file(s) compared, 561 present, 1 declared exemption(s), 0 absent; pack stamp 2026-11-22T17:07:30.435Z (inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)); exemption exercised: packages/mpd-qa-roles-probe/dist/index.js
+Relocatable manifest: npm exit 0, 681 files, 0 private paths, 11/11 required paths
+Relocatable legacy-vs-fixed npm packlist: exactly equal across 681 public paths
+Raw staged vs npm comparison: 685 staged files. npm omits the same four ignore-control files under both manifests: skills/ast-grep/.gitignore, skills/frontend/.gitignore, skills/frontend/.npmignore, skills/ultimate-browsing/.gitignore
+Relocatable manifest with inert sentinels: npm exit 0, 681 files, 0 private paths, 9/9 required paths
+Relocatable closure negative control: exit 1, PACK-PRIVATE-STATE

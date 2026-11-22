@@ -590,9 +590,14 @@ function treeFiles(root: string, visit?: (path: string) => boolean): string[] {
   return out.sort()
 }
 
-/** Source comparisons cover the files eligible for the packer's public copy. */
-function publicSourceFiles(root: string): string[] {
-  return treeFiles(root, (path): boolean => !isPrivatePackPath(path))
+/**
+ * List source files eligible for the packer's public copy.
+ * @param root Absolute path of the subtree being compared.
+ * @param prefix Package-relative directory of that subtree, with a trailing slash when supplied.
+ * @returns Sorted paths relative to the subtree.
+ */
+function publicSourceFiles(root: string, prefix: string = ""): string[] {
+  return treeFiles(root, (path): boolean => !isPrivatePackPath(prefix + path))
 }
 
 /**
@@ -870,7 +875,7 @@ function checkContentHalf(opts: Options, findings: Finding[], asked: AskedAssets
   for (const dir of asked.rootAssets) {
     /** The artifact's file set under this asset directory. */
     const shipped = new Set(treeFiles(join(packed, dir)))
-    for (const rel of publicSourceFiles(join(opts.sourceRoot, dir))) {
+    for (const rel of publicSourceFiles(join(opts.sourceRoot, dir), dir + "/")) {
       /** The source file's packed-relative path. */
       const relPath = dir + "/" + rel
       /** The source file's absolute path. */

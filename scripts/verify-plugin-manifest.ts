@@ -664,6 +664,7 @@ function privatePackFixture(manifest: Record<string, unknown>): boolean {
       "packages/mpd-team-core-plugin/.mpd/logs/sentinel.txt",
       "packages/mpd-team-core-plugin/ws-unused/.mpd/team/sentinel.txt",
       ...PACK_PRIVATE_EXCLUDES.map((pattern): string => {
+        if (!pattern.startsWith("!**/")) return pattern.slice(1)
         /** A concrete private name for the npm pattern exercised by this fixture. */
         const name = pattern.slice("!**/".length).replace("*", "sentinel")
         return `packages/mpd-team-core-plugin/dist/nested/${name}${name === ".credentials.yaml" ? "" : "/sentinel.txt"}`
@@ -680,20 +681,20 @@ function privatePackFixture(manifest: Record<string, unknown>): boolean {
     const fixtureManifest = join(fixture, "package.json")
     /** Keep npm's manifest under test small while preserving the exact `files` rules. */
     const metadata = { name: "mpd-pack-private-fixture", version: "1.0.0" }
-    writeFileSync(fixtureManifest, JSON.stringify({ ...metadata, files: ["packages/**", "!packages/*/_deps/**"] }))
-    /** Capture all old packlist violations and require both observed layouts to be present. */
+    writeFileSync(fixtureManifest, JSON.stringify({ ...metadata, files: ["packages/**", "skills/**", "!packages/*/_deps/**"] }))
+    /** Capture old packlist violations for both layouts and every exclusion. */
     const leaked: Violation[] = []
     /** npm must return a real packlist; the strict gate must reject it for private paths. */
     const red = checkPackedContent([runtime], leaked, fixture)
-    /** The old manifest must leak both probes and retain the runtime entry. */
-    const redOk = !red.ok && sentinels.slice(0, 2).every((path): boolean => leaked.some((violation): boolean => violation.file === path))
+    /** Every fixture path must leak under the old manifest while the runtime entry remains present. */
+    const redOk = !red.ok && sentinels.every((path): boolean => leaked.some((violation): boolean => violation.file === path))
       && leaked.every((violation): boolean => isPrivatePackPath(violation.file))
     writeFileSync(fixtureManifest, JSON.stringify({ ...metadata, files: filesAllowlist(manifest) }))
     /** Apply the same strict gate to the current release allowlist. */
     const found: Violation[] = []
     /** All sentinels must be absent while the real runtime file remains. */
     const green = checkPackedContent([runtime], found, fixture)
-    console.log(`${redOk && green.ok ? "ok  " : "FAIL"}  private-pack-fixture: old allowlist ${redOk ? "leaked both layouts" : red.detail}; current allowlist: ${green.detail}`)
+    console.log(`${redOk && green.ok ? "ok  " : "FAIL"}  private-pack-fixture: old allowlist ${redOk ? `leaked all ${sentinels.length} probes` : red.detail}; current allowlist: ${green.detail}`)
     return redOk && green.ok && found.length === 0
   } finally {
     rmSync(fixture, { recursive: true })
