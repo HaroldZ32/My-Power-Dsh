@@ -1,0 +1,1 @@
+run 2 (oneclick-live) exit=1 evidence=evidence/docker/client-install-oneclick/2026-11-22T09-43-42Z harness=0.2.2-rc.5 tui=0.20.2 failures=6 nulls=42 userSurfaceTrue=85
