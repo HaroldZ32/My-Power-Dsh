@@ -2834,6 +2834,8 @@ export interface DshAdapter {
   listSkills(options?: { cwd?: string }): Promise<DshSkillSummary[]>
   /** Load one skill by name, resolved against `options.cwd` when one is given. */
   loadSkill(skillName: string, options?: { cwd?: string }): Promise<unknown>
+  /** Read the session's committed preset selection. Undefined means the host cannot report it. */
+  selectedAgentPreset?(agent: unknown): string | null | undefined
   /** Resolve one preset id onto the normalized {@link DshPresetInfo} shape. */
   resolvePreset(presetId: string): Promise<DshPresetInfo>
   /** Wrap any value into the single-text-block content array a harness message takes. */
@@ -7047,6 +7049,23 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     },
 
     // ── preset plane ────────────────────────────────────────────────────────
+    /** The live preset is stored in the session projection, independently of its immutable header. */
+    selectedAgentPreset(agent: unknown): string | null | undefined {
+      /** The exact session object the preset registry uses to read its projection. */
+      const session = (agent as { session?: unknown } | null | undefined)?.session
+      if (session === undefined || session === null) return undefined
+      try {
+        /** Older hosts may offer preset resolution without the committed selection read. */
+        const presets = service("agentPresets")
+        if (typeof presets?.presetForSession !== "function") return undefined
+        /** Null is an authoritative preset-less session. Undefined leaves callers on the legacy path. */
+        const selected: unknown = presets.presetForSession(session)
+        return selected === null || (typeof selected === "string" && selected.length > 0) ? selected : undefined
+      } catch {
+        return undefined
+      }
+    },
+    /** Resolve the named preset definition without changing any session's selection. */
     async resolvePreset(presetId: string): Promise<DshPresetInfo> {
       /** The preset registry, or a THROW naming the preset that could not be resolved. */
       const presets = requireService("agentPresets", "cannot resolve preset \"" + presetId + "\"")

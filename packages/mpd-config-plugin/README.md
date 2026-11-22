@@ -20,12 +20,14 @@ commas) with prototype-pollution-safe merge.
 - `team.stateDir`, `hashline.guardEditTools/maxDiffChars/registryFile`,
   `commentChecker.autoCheck/bin`, `modelchain.<role>`, `boulder.dir`,
   `autoproject.maxRounds`.
-- `team.reteam.enabled` (default `true`): gates ONLY the mid-session volume trigger; the
-  ended-aware and clean-terminal auto-end rules stay in force regardless.
-- `team.reteam.afterConsults` (default `4`): COMPLETED `mpd_role_spawn` / `mpd_role_spawn_async` /
-  `mpd_workmate_spawn` calls by this agent since the last fire before the gate stages a new empty
-  plan shell under `[AgentTeams] Re-team rule`. A failed or `AGENT_UNCONFIGURED` spawn does not
-  count; the count persists in `<ws>/.mpd/session-gate/<sessionId>.json`.
+- `team.reteam.enabled` (default `true`) controls completed-consult staging and concurrent consult
+  admission. Team settlement and clean-terminal auto-end are independent of this switch.
+- `team.reteam.afterConsults` (default `4`) is the completed-call threshold for staging a new empty
+  plan shell under `[AgentTeams] Re-team rule`. Successful `mpd_role_spawn`, `mpd_role_spawn_async`
+  and `mpd_workmate_spawn` calls by the agent count since the last fire. The count persists in
+  `<ws>/.mpd/session-gate/<sessionId>.json`. In mechanical mode, this setting also bounds overlapping
+  calls to those tools by an eligible top-level captain without a live team. At the default, MPD
+  redirects the fourth outstanding call before it can start another child.
 
 ## Agent routes (`agentRoutes`)
 

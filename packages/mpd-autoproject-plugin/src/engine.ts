@@ -892,8 +892,12 @@ export async function runAutoproject(args: AutoprojectArgs, exec: any, deps: Eng
    * @returns the normalized report, or null when the consult could not be raised.
    */
   async function consultOnce(role: string, task: string, context: string | undefined, signal: AbortSignal): Promise<RoleReport | null> {
+    /** Only this ledger-managed call receives the internal consult scope. */
+    const dispatch = (): ReturnType<AutoprojectEngineAdapter["executeTool"]> => dsh.executeTool({ name: ROLE_SPAWN_TOOL, arguments: { role, task, ...(context === undefined || context === "" ? {} : { context }) }, agent: exec?.agent, signal })
+    /** The roles service is optional on old or partial compositions. */
+    const consults = ctx.get?.("mpdConsults", false) as { runBounded?: <T>(dispatch: () => T) => T } | undefined
     /** The tool result, normalized by the adapter. */
-    const result = await dsh.executeTool({ name: ROLE_SPAWN_TOOL, arguments: { role, task, ...(context === undefined || context === "" ? {} : { context }) }, agent: exec?.agent, signal })
+    const result = await (typeof consults?.runBounded === "function" ? consults.runBounded(dispatch) : dispatch())
     if (result?.ok !== true || result.isError === true) {
       /** The failure text this call reported. */
       const text = errorTextOf(result?.error ?? "the role-spawn call did not report ok")

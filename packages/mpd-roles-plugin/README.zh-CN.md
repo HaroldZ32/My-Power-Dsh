@@ -124,13 +124,13 @@
 
 ### session 启动复杂度闸门（自 2026-10-20 起重新默认 MECHANICAL）
 
-在 session 的第一个 pre-step，本行求值冻结谓词
+在具备资格且包含用户请求的 pre-step，本行使用冻结谓词检查最新的用户文本
 
 ```
 trigger = explicit flag OR (matchedSignals >= 1)
 ```
 
-信号为 **A**（`team:` 前缀或 `!team`；标记会从目标文本中被**消费**）、**B**（不同交付动词 —— 阈值随 sensitivity 行而定）、**C**（**一个**信号，由其三路子信号中的足够多路触发：枚举行、不同动作动词、动作小句）、**D**（session 工作区存在**正在进行**的 boulder 工作：`.mpd/boulder.json` 中 `status: "active"` —— 仅有 plan **文件**并不构成信号；2026-10-07 修复，因为旧的文件探测在本工作区的每个 session 都会触发）、**E**（CJK 规模指令：Han 字符数**且**不同动作动词数；词表已包含中文指令实际使用的交付类动词）与 **F**（**工作区规模**：一次有界根目录 `readdir` 能找到一个项目清单文件、一个项目目录且可见条目 ≥ 8 —— 仅在 `easy` 行求值）。每一条通知都携带标记 `[AgentTeams] Session-start team rule`。
+信号为 **A**（`team:` 前缀或 `!team`；标记会从目标文本中被**消费**）、**B**（不同交付动词 —— 阈值随 sensitivity 行而定）、**C**（**一个**信号，由其三路子信号中的足够多路触发：枚举行、不同动作动词、动作小句）、**D**（session 工作区存在**正在进行**的 boulder 工作：`.mpd/boulder.json` 中 `status: "active"` —— 仅有 plan **文件**并不构成信号；2026-10-07 修复，因为旧的文件探测在本工作区的每个 session 都会触发）、**E**（CJK 规模指令：Han 字符数**且**不同动作动词数；词表已包含中文指令实际使用的交付类动词）与 **F**（**工作区规模**：一次有界根目录 `readdir` 能找到一个项目清单文件、一个项目目录且可见条目 ≥ 8，且会话闸门仅在 `easy` 模式的第一轮检查 F）。如果完成了两次 consult 工具调用，或闸门已记录暂存计划，用户随后明确要求修复前面所有问题可在每个工作波次触发一次独立信号。通知带有标记 `[AgentTeams] Session-start team rule`。
 
 `mpd.jsonc` 的 `team.sensitivity` 选择阈值行（`easy` —— **默认** | `normal` | `strict`）：`normal` 精确复现 2026-10-22 之前的**谓词** —— 同样的数值**以及**同一套 wave 之前的动词词表（本 wave 新增的英文与 CJK 动词在该行不可见）；缺失或未知的取值一律读作 `easy`（闸门不会因配置抛错）：
 
@@ -146,7 +146,7 @@ trigger = explicit flag OR (matchedSignals >= 1)
 - **advisory** —— 未挂载 `agent_teams_plan` 工具，或 `team.gate: "advisory"` 时，那**一条**通知声明 `NO team was staged`，并告诉 captain 在工作确实需要时自行 stage。
 - **off** —— 监听器直接返回。
 
-显式的 `team:` / `!team` 请求属于信号 **A**，走**同一条**路径：在 `mechanical` 下同样会 stage 该 shell，且标记会从目标文本中被**消费**。它只作用于顶层 `mpd` session（子 session —— subagent、teammate、workflow worker —— 以及其它 preset 的 session 都不会收到），每个 session 只结算一次，且其内部失败不会影响该 step。
+显式的 `team:` / `!team` 请求属于信号 **A**，走同一路径。在 `mechanical` 下同样会暂存空计划，标记会从目标文本移除。闸门适用于具备资格的顶层会话。宿主支持时使用当前选择的 `mpd` preset，旧宿主回退到创建时的会话头。未命中时，闸门仍可检查后续用户轮次。未经批准的计划不会执行。对于多方负责的大项工作，captain 仍需根据整个对话和任务依赖选择团队。
 
 ## 异步 consult 与 consult deadman（2026-11-05，2026-11-06 修订）
 
@@ -158,8 +158,11 @@ trigger = explicit flag OR (matchedSignals >= 1)
 | `mpd_role_spawn_async` | `{role, task, context?}` 立即返回 `{consultId, role, state:"running"}`；子 agent 继续在后台运行。 |
 | `mpd_role_consult` | `list`（id、role、state、startedAt、elapsedMs）；`wait`（`consultId`、`timeoutMs` ≤ 60 000 —— 已结算则返回报告，否则返回 `state:"running"`）；`collect`（返回已结算报告并释放记录）；`cancel`（中断该 consult 的子 agent）。 |
 
-并发上限由 `MPD_DSH_CONSULT_MAX`（默认 `8`，即宿主的活跃子 agent 上限）控制：超限的 consult 会
-**排队**，绝不抛错。上限在每次启动时读取。
+已准入的 consult 达到共用监督器的并发上限 `MPD_DSH_CONSULT_MAX`（默认 `8`，每次启动时读取）后会排队。
+在机械模式下，如果具备资格的顶层 captain 没有运行中的团队，新的公开角色或 workmate 调用可能会在启动前
+被引导至团队流程。由 `team.reteam.afterConsults` 决定，默认引导第四个重叠调用。子 agent 运行或排队等待
+启动期间都会占用名额。`team.reteam.enabled: false` 同时关闭该准入检查和按已完成调用数暂存计划的机制。
+有关计划批准和串行恢复，见[团队模式](../../docs/user-guide.zh-CN.md#6-团队模式)。
 
 **Deadman。** 每个 consult（阻塞式或后台式）在**每次武装**时读取上限：`consult.forceAfterMs`，
 回退到 `watchdog.forceAfterMs`，再回退到 `900000` ms。显式声明 `0` 即关闭 deadman，与

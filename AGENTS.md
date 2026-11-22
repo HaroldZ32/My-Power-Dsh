@@ -127,35 +127,25 @@ replaced or deleted. License: **MIT** (`LICENSE.md`); third-party components kee
   `max-rounds` deliberately LEAVES ITS GOAL ARMED, and goal mutations go through the harness goal TOOLS,
   never `ctx.goals`. `mpd-autoproject-plugin` answers `/autoproject` by submitting the autoproject activation
   directive as the invoking agent's OWN next user turn, so the run actually starts.
-- **The session-start complexity gate ships ON (default `mechanical`) — it stages an APPROVABLE PLAN
-  SHELL, never a team.** The frozen predicate `trigger = explicit flag OR (matchedSignals >= 1)` runs at
-  the session's first pre-step under the marker `[AgentTeams] Session-start team rule`; on a trigger the
-  gate stages a 0-member, 0-task plan shell through `agent_teams_plan`, which is INERT until the captain
-  extends it (`add_member` / `create_task`) and approves it. An explicit `team:` / `!team` request also
-  stages the shell (signal A) and has its marker CONSUMED from the goal text. `team.gate` in `mpd.jsonc`
-  selects `mechanical` (**the default again since the 2026-10-20 restore**) | `advisory` | `off`, and
-  `team.sensitivity` (`easy` DEFAULT | `normal` | `strict`) sets the signal thresholds:
-  `agent-references/overview-and-provenance.md`. With the tool
-  unmounted or under `advisory` the ONE notice says `NO team was staged` and the captain stages a team
-  itself when the work warrants one — or continues solo and says so. **APPROVAL BUNDLES THREE
-  MECHANISMS:** on the `agent_teams_plan` approve success path, after real activation, the same approval
-  anchors a persisted goal (objective = the plan description, falling back to the plan NAME when the
-  description is empty, source `team`) and seeds `todo_write` with one pending item per plan task —
-  both non-fatal, one log line on failure, no new knobs. Signal D
-  is an ACTIVE boulder work for this workspace
-  (`status: "active"` in `<workspace>/.mpd/boulder.json`, gitignored RUNTIME STATE); a plan FILE alone is
-  NOT a signal. Softer signals and the retired path: `agent-references/overview-and-provenance.md`.
-  **The gate RE-ARMS mid-session (2026-11-05).** "Leading" now means a team that has NOT ended: an
-  explicit `agent_teams_control end`, or a CLEAN-TERMINAL board (>= 1 task, every task
-  completed/cancelled, none failed), which the gate ATTEMPTS to end (`autoEndCleanTerminal`: ONE
-  `agent_teams_control end` per team per process, never retried — the team can stay open). A
-  `failed` task blocks BOTH the auto-end and any re-team and asks for a `kind=repair` row — a wave
-  whose verification failed is never closed silently. With no live team and
-  `team.reteam.afterConsults` (default 4) COMPLETED `mpd_role_spawn*` / `mpd_workmate_spawn` calls
-  since the last fire, the gate stages a NEW shell under the marker `[AgentTeams] Re-team rule` only
-  in `mechanical` mode, only when `stagePlan` succeeds and no plan is already staged (else nothing
-  new is staged), once per record in `<ws>/.mpd/session-gate/<sessionId>.json`. `team.reteam.enabled`
-  (default true) gates only the volume trigger.
+- **Choose the route before the first consult.** For an initial request or a follow-up that expands
+  it, use the conversation to identify planned owners, dependencies and integration. Use a team for
+  substantial work with several owners, shared implementation or a build/test handoff. Reuse a suitable
+  live board or plan, or stage one. Add members and owner-bound tasks, approve, dispatch to declared
+  owners and confirm delivery. Keep a one-shot consult for isolated work or one bounded question to
+  resolve scope. If planning or activation fails, name the blocker and report any limits of serial work.
+  See `agent-references/supervision.md`, "Choosing the route before consulting".
+- **The session-start complexity gate can stage an inert plan shell.** An explicit `team:` / `!team`
+  request or a signal selected by `team.sensitivity` (`easy` default | `normal` | `strict`) can
+  trigger `[AgentTeams] Session-start team rule`. Only approval can activate the plan and may also
+  anchor a goal and seed `todo_write`. A missed signal leaves the routing decision to the captain.
+  `team.gate` is `mechanical` by default. `advisory` leaves staging to the captain and `off` disables
+  automatic routing. See `agent-references/overview-and-provenance.md`, "Gate default".
+- **Re-team and consult volume.** The gate can attempt to end a clean-terminal board once per team per
+  process. A failed row blocks the automatic close and asks for a `kind=repair` row. With no live team,
+  mechanical mode can stage a `[AgentTeams] Re-team rule` shell after completed consult calls or
+  redirect overlapping public role/workmate consults before another child starts. `team.reteam.enabled`
+  (default true) controls both volume checks and `team.reteam.afterConsults` defaults to 4. The long
+  form and recovery are in `agent-references/supervision.md`.
 - **The ONLY shipped preset is `mpd`** — the main working agent — which also carries the
   project-instruction convention: every session MUST attempt to read `AGENT.md` (falling back to
   `AGENTS.md`, then `CLAUDE.md`) via `dsh-agent-instructions`. **`mpd-project-init` (host row) closes

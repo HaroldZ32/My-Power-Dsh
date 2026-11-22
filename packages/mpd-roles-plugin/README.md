@@ -299,7 +299,7 @@ The restore is recorded in `.mpd/plans/restore-guard-discipline.md`; the QA case
 
 ### The session-start complexity gate (MECHANICAL by default again since 2026-10-20)
 
-At a session's first pre-step the row evaluates the frozen predicate
+On an eligible pre-step with a human request, the row evaluates the latest user text with the frozen predicate
 
 ```
 trigger = explicit flag OR (matchedSignals >= 1)
@@ -313,7 +313,9 @@ a plan FILE alone is NOT a signal, repaired 2026-10-07 because the retired plan-
 in every session of this workspace), **E** (a CJK-scale instruction: Han characters AND distinct
 action verbs, the lexicon carrying the delivery vocabulary a Chinese instruction actually uses) and
 **F** (WORKSPACE SCALE: one bounded root listing finds a project manifest, a project directory and
-at least 8 visible entries — evaluated on the `easy` row only). Every notice carries the marker
+at least 8 visible entries — evaluated by the session gate only on the first turn under `easy`).
+A later direct request to repair the whole preceding set can contribute a separate signal once per
+wave, after two completed consult calls or a gate-recorded staged plan. A notice carries the marker
 `[AgentTeams] Session-start team rule`.
 
 `team.sensitivity` in `mpd.jsonc` selects the threshold row (`easy` — the DEFAULT — | `normal` |
@@ -343,10 +345,11 @@ What a trigger DOES is selected per call by `team.gate` in `mpd.jsonc`: `mechani
 - **off** — the listener returns immediately.
 
 An explicit `team:` / `!team` request is signal **A** and travels the SAME route: under
-`mechanical` it stages the shell too, and the marker is CONSUMED from the goal text. It is scoped
-to top-level `mpd` sessions (a child session — subagent, teammate, workflow worker — and another
-preset's session never get it), settles once per session, and a failure inside it leaves the step
-untouched.
+`mechanical` it stages the shell too, and the marker is removed from the goal text. The gate applies
+to eligible top-level sessions. It uses the currently selected `mpd` preset where the host exposes
+it, with the creation header as the compatibility fallback. A miss leaves the gate free to consider
+later human turns. An unapproved shell is inert. The captain still chooses a team for substantial
+multi-owner work based on the whole conversation and its task dependencies.
 
 ## Async consults and the consult deadman (2026-11-05, revised 2026-11-06)
 
@@ -358,8 +361,12 @@ untouched.
 | `mpd_role_spawn_async` | `{role, task, context?}` → `{consultId, role, state:"running"}` immediately; the child keeps running in the background. |
 | `mpd_role_consult` | `list` (id, role, state, startedAt, elapsedMs); `wait` (`consultId`, `timeoutMs` ≤ 60 000 — the report when settled, `state:"running"` when not); `collect` (returns the settled report and releases it); `cancel` (interrupts that consult's child). |
 
-Concurrency is capped by `MPD_DSH_CONSULT_MAX` (default `8`, the host's active-child limit): an
-over-cap consult QUEUES and never throws. The cap is read per start.
+Admitted consults queue at the shared supervisor cap, `MPD_DSH_CONSULT_MAX` (default `8`, read
+per start). In mechanical mode, an eligible top-level captain without a live team can be redirected
+before another public role or workmate consult starts. The default redirects the fourth overlapping
+call through `team.reteam.afterConsults`. Consult reservations remain in effect while the child runs
+or waits to start. `team.reteam.enabled: false` disables this admission check and completed-call
+staging. See [Team mode](../../docs/user-guide.md#6-team-mode) for plan approval and serial recovery.
 
 **Deadman.** Every consult — blocking or background — is armed with a bound read at EVERY arm from
 `consult.forceAfterMs`, falling back to `watchdog.forceAfterMs`, then `900000` ms. A declared `0`

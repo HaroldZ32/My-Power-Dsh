@@ -1919,35 +1919,44 @@ export function apply(ctx: Ctx): void {
       if (!task) throw new Error("mpd_workmate_spawn: task required")
       /** Resolve the route for this spawn before writing attribution. */
       const decided = spawnRouteOf(meta, exec)
-      // A REUSE ATTRIBUTES THE INSTANCE to the workspace using it (R-W3C B2), which is what makes
-      // `workmates.max` a per-workspace budget. Written only when the list actually changed, so a repeat
-      // spawn from the same project touches no byte.
-      /** The attribution list after this reuse. */
-      const attributed = attuneWorkspaces(meta.workspaces, workspaceOf(dsh, exec))
-      if (attributed.join("\u0000") !== meta.workspaces.join("\u0000")) {
-        meta.workspaces = attributed
-        writeFileSync(join(wmDir(key), "meta.json"), JSON.stringify(meta, null, 2) + "\n")
-        writeIndexEntry(key, meta)
-      }
-      /** The evolved persona, sent both inside the prompt and as the subagent's persona. */
-      const persona = readPersona(key)
-      /** The bounded independent memory, newest last. */
-      const memory = readMemory(key)
-      /** The note card, included so the workmate sees its own matching summary. */
-      const note = readNote(key)
-      /** The assembled prompt: persona, memory, note, task, optional context and the reflect instruction. */
-      const prompt = persona
-        + "\n\nYour independent memory (bounded, latest first):\n" + (memory || "(empty — you are a fresh workmate)")
-        + "\n\nWorkmate note:\n" + (note || "(none)")
-        + "\n\nTask: " + task
-        + (args?.context ? "\n\nContext:\n" + String(args.context) : "")
-        + "\n\nWork with the tools your role requires (read-only workmates must never modify anything)."
-        + " BEFORE your final report, call mpd_workmate_reflect with a concise self-summary (task / outcome / what you learned / optional persona_delta / optional new note) so your workmate persona and memory evolve. Then end with ONLY the structured report (name/summary/recommendation/details/evidence)."
-      // §E(a): hold the in-use gate for the whole spawn so a rename/delete cannot land mid-flight.
-      // The counter is released in `finally`, so even a THROWING spawn cannot leave a permanent
-      // mutation block on this workmate.
+      /** The roles service stays optional when Workmates is mounted on its own. */
+      const admission = (() => {
+        try {
+          return ctx.get?.("mpdConsults") as { reservePublicConsult?: (caller: DshToolExec) => Promise<(() => void) | undefined> } | undefined
+        } catch {
+          return undefined
+        }
+      })()
+      // Hold the workmate's identity across the reservation and child lifetime.
       noteSpawnStart(key)
+      /** Release the shared public allowance on settlement or any local failure. */
+      let release: (() => void) | undefined
       try {
+        release = await admission?.reservePublicConsult?.(exec)
+        exec?.signal?.throwIfAborted()
+        /** Another workspace or a reflect may have updated metadata while admission was pending. */
+        const { meta: currentMeta, dir } = ensureInstance(key)
+        /** Merge attribution into the latest record and update its index without yielding. */
+        const attributed = attuneWorkspaces(currentMeta.workspaces, workspaceOf(dsh, exec))
+        if (attributed.join("\u0000") !== currentMeta.workspaces.join("\u0000")) {
+          currentMeta.workspaces = attributed
+          writeFileSync(join(dir, "meta.json"), JSON.stringify(currentMeta, null, 2) + "\n")
+          writeIndexEntry(key, currentMeta)
+        }
+        /** The evolved persona, sent both inside the prompt and as the subagent's persona. */
+        const persona = readPersona(key)
+        /** The bounded independent memory, newest last. */
+        const memory = readMemory(key)
+        /** The note card, included so the workmate sees its own matching summary. */
+        const note = readNote(key)
+        /** The assembled prompt: persona, memory, note, task, optional context and the reflect instruction. */
+        const prompt = persona
+          + "\n\nYour independent memory (bounded, latest first):\n" + (memory || "(empty — you are a fresh workmate)")
+          + "\n\nWorkmate note:\n" + (note || "(none)")
+          + "\n\nTask: " + task
+          + (args?.context ? "\n\nContext:\n" + String(args.context) : "")
+          + "\n\nWork with the tools your role requires (read-only workmates must never modify anything)."
+          + " BEFORE your final report, call mpd_workmate_reflect with a concise self-summary (task / outcome / what you learned / optional persona_delta / optional new note) so your workmate persona and memory evolve. Then end with ONLY the structured report (name/summary/recommendation/details/evidence)."
         /** The route this spawn actually sends: the winning candidate after the ONE pre-spawn
          *  consumption of the fallback chain and the effort adaptation (contract §8). */
         const run = await resolveRunRoute(dsh, decided.route, decided.fallbacks)
@@ -1975,13 +1984,14 @@ export function apply(ctx: Ctx): void {
           // The route's OWN effort keyword rides along when it states one — AFTER the catalog
           // adaptation above. An absent keyword passes nothing and the harness keeps its resolution.
           ...(route.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: route.reasoningEffort } }),
-          ...(meta.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {})
+          ...(currentMeta.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {})
         })
         /** The structured report, or an empty object when the subagent answered none. */
         const st = result.structured ?? {}
         return { name: key, status: "complete", summary: String(st.summary ?? ""), recommendation: String(st.recommendation ?? ""), details: String(st.details ?? ""), evidence: Array.isArray(st.evidence) ? st.evidence.map(String) : [], stopReason: result.stopReason ?? null }
       } finally {
         noteSpawnEnd(key)
+        release?.()
       }
     }
   })

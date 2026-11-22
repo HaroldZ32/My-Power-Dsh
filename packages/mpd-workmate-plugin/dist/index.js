@@ -2415,6 +2415,20 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the harness skills service exposes no get()");
       return skills.get(skillName, options);
     },
+    selectedAgentPreset(agent) {
+      const session = agent?.session;
+      if (session === undefined || session === null)
+        return;
+      try {
+        const presets = service("agentPresets");
+        if (typeof presets?.presetForSession !== "function")
+          return;
+        const selected = presets.presetForSession(session);
+        return selected === null || typeof selected === "string" && selected.length > 0 ? selected : undefined;
+      } catch {
+        return;
+      }
+    },
     async resolvePreset(presetId) {
       const presets = requireService("agentPresets", 'cannot resolve preset "' + presetId + '"');
       if (typeof presets.resolve !== "function")
@@ -4103,17 +4117,30 @@ details: ` + v.details : "")) },
       if (!task)
         throw new Error("mpd_workmate_spawn: task required");
       const decided = spawnRouteOf(meta, exec);
-      const attributed = attuneWorkspaces(meta.workspaces, workspaceOf(dsh, exec));
-      if (attributed.join("\x00") !== meta.workspaces.join("\x00")) {
-        meta.workspaces = attributed;
-        writeFileSync(join2(wmDir(key), "meta.json"), JSON.stringify(meta, null, 2) + `
+      const admission = (() => {
+        try {
+          return ctx.get?.("mpdConsults");
+        } catch {
+          return;
+        }
+      })();
+      noteSpawnStart(key);
+      let release;
+      try {
+        release = await admission?.reservePublicConsult?.(exec);
+        exec?.signal?.throwIfAborted();
+        const { meta: currentMeta, dir } = ensureInstance(key);
+        const attributed = attuneWorkspaces(currentMeta.workspaces, workspaceOf(dsh, exec));
+        if (attributed.join("\x00") !== currentMeta.workspaces.join("\x00")) {
+          currentMeta.workspaces = attributed;
+          writeFileSync(join2(dir, "meta.json"), JSON.stringify(currentMeta, null, 2) + `
 `);
-        writeIndexEntry(key, meta);
-      }
-      const persona = readPersona(key);
-      const memory = readMemory(key);
-      const note = readNote(key);
-      const prompt = persona + `
+          writeIndexEntry(key, currentMeta);
+        }
+        const persona = readPersona(key);
+        const memory = readMemory(key);
+        const note = readNote(key);
+        const prompt = persona + `
 
 Your independent memory (bounded, latest first):
 ` + (memory || "(empty — you are a fresh workmate)") + `
@@ -4127,8 +4154,6 @@ Context:
 ` + String(args.context) : "") + `
 
 Work with the tools your role requires (read-only workmates must never modify anything).` + " BEFORE your final report, call mpd_workmate_reflect with a concise self-summary (task / outcome / what you learned / optional persona_delta / optional new note) so your workmate persona and memory evolve. Then end with ONLY the structured report (name/summary/recommendation/details/evidence).";
-      noteSpawnStart(key);
-      try {
         const run = await resolveRunRoute(dsh, decided.route, decided.fallbacks);
         const route = run.route;
         const result = await dsh.spawnAgent({
@@ -4142,12 +4167,13 @@ Work with the tools your role requires (read-only workmates must never modify an
           outputSchema: REPORT_SCHEMA,
           maxDepth: spawnMaxDepthOf(exec.agent),
           ...route.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: route.reasoningEffort } },
-          ...meta.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {}
+          ...currentMeta.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {}
         });
         const st = result.structured ?? {};
         return { name: key, status: "complete", summary: String(st.summary ?? ""), recommendation: String(st.recommendation ?? ""), details: String(st.details ?? ""), evidence: Array.isArray(st.evidence) ? st.evidence.map(String) : [], stopReason: result.stopReason ?? null };
       } finally {
         noteSpawnEnd(key);
+        release?.();
       }
     }
   });

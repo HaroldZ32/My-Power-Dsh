@@ -287,6 +287,17 @@ fallback) is not a tool call and is NOT gated, that is the one declared bound. Y
 the **Lead** (the captain): it stages the plan, spawns named teammates, opens tasks on the mpd board
 and integrates the results.
 
+Assess the planned owners, dependencies and integration before the first consult. Use a team for
+substantial work with several owners, shared implementation or a build/test handoff. For example,
+a follow-up like “一起解决掉吧” can ask for the repair of a whole preceding audit. Its scope comes
+from the conversation. Use a one-shot consult for an isolated question or bounded task.
+
+Check the board first. Use a suitable live team, or reuse or stage a plan, add members and tasks
+with declared owners and dependencies, and approve it. Dispatch to the declared owners and confirm
+member activation and delivery. If the team surface is unavailable or activation fails, report the
+concrete blocker. Bounded serial consults can cover part of the work when feasible. Report any
+remaining ownership or verification gaps.
+
 ```text
 agent_teams_plan { action }                                                # Lead only: create | add_member | create_task | edit | approve | delete | status
 agent_teams_plan { action: "add_member", member } / { action: "create_task", task }   # Lead only; each task declares blocked_by or independent
@@ -306,9 +317,9 @@ interrupt_agent { agent_id }                                              # Lead
   only board: `agent_teams_task` drives it and `agent_teams_plan {action:"status"}` reads it back. The
   five official authoring verbs: `spawn_teammate`, `team_task_create`, `team_task_list`,
   `team_task_get`, `team_task_update`: are REFUSED at the tool boundary, so the plan above is the only
-  door. Under `team.gate: "advisory"`, or with `agent_teams_plan`
-  unmounted, the gate stages nothing and says so in one notice, and the captain stages a team itself
-  when the work warrants one.
+  door. Under `team.gate: "advisory"`, the notice leaves staging to the captain. With
+  `team.gate: "off"`, automatic routing is disabled. An unmounted plan tool prevents staging.
+  A missed signal leaves the captain's assessment of the work in force.
 - **Sensitivity selects the thresholds.** `team.sensitivity` in `mpd.jsonc` is `easy` (the DEFAULT) |
   `normal` | `strict`, and an unknown or missing value resolves to `easy`. `easy` keeps the
   workspace-scale signal F and fires early; `normal` reproduces the pre-2026-10-22 five-signal
@@ -321,10 +332,20 @@ interrupt_agent { agent_id }                                              # Lead
   | `strict` | ≥ 6 | ≥ 4 / ≥ 4 / ≥ 4 (3-of-3) | ≥ 80 / ≥ 3 | off |
 
   Signal F is a bounded root `readdir` (never recursive): a project manifest **and** a project
-  directory **and** at least 8 visible entries. It is evaluated only under `easy`, and it is
-  deliberately coarse, in a large workspace F alone fires even for `hello`. The silent negative
-  controls therefore live in a TINY workspace (an empty or `hello` prompt and `验证一下` stage
-  nothing).
+  directory **and** at least 8 visible entries. The session gate uses F under `easy` on the first
+  turn only. A large workspace can therefore trigger on an opening `hello`. Later local requests
+  need another signal to trigger.
+- **A follow-up can revisit the plan.** A later human request to repair the whole preceding set, such
+  as “fix all of these” or “一起解决掉吧”, can trigger once per wave after two completed consult calls
+  or when the gate recorded a staged plan. This narrow rule is separate from the sensitivity verbs
+  and from the captain's assessment of the broader conversation.
+- **The mechanical gate also limits overlapping consults.** With the plan, board and dispatch tools
+  present and no live team, the default `team.reteam.afterConsults` of 4 defers an eligible captain's
+  fourth overlapping public role or workmate call with `TEAM_FIRST`. The response can point to an
+  inert plan shell for review and approval. If plan inspection or staging fails, let outstanding
+  consults settle and retry one bounded call at a time. If a Team tool is absent, consults use their
+  ordinary supervisor. `team.reteam.enabled: false` disables both the concurrent check and the
+  completed-call staging trigger.
 - **One approval starts three mechanisms.** On the `agent_teams_plan` approve SUCCESS path, after the
   team is really activated, the same approval anchors a persisted goal (objective = the plan
   description, falling back to the plan NAME when the description is empty, source `team`) and seeds

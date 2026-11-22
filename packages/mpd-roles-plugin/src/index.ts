@@ -21,6 +21,7 @@
 // spellings of the same thing.
 // Persona texts are assets under personas/<id>.md resolved relative to this
 // plugin's package location.
+import { AsyncLocalStorage } from "node:async_hooks"
 import { existsSync, readFileSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { ROLES, ROLE_BY_ID, type MpdRoleSpec } from "./roles.data.ts"
@@ -31,7 +32,7 @@ import { installAskUserQuestionGuard } from "./ask-user-guard.ts"
 import { QUESTION_ROUTES, installQuestionRelay, registerQuestionWeb, type PendingQuestion, type QuestionEffect } from "./question-relay.ts"
 import { DELEGATION_CONFIG_KEY, installDelegationGate } from "./delegation-gate.ts"
 import { installRosterSection } from "./roster-section.ts"
-import { installSessionGate } from "./session-gate.ts"
+import { installSessionGate, type SessionGateInstall } from "./session-gate.ts"
 import { BOULDER_DIR_CONFIG_KEY, GATE_CONFIG_KEY, RETEAM_AFTER_CONSULTS_CONFIG_KEY, RETEAM_ENABLED_CONFIG_KEY, SENSITIVITY_CONFIG_KEY } from "./complexity-gate.ts"
 import { rowLogLine, DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, bundleRootOf, createLazyDshAdapter, dshAdapterIdentity, dshSeamInject, installChildPersonaSeam, restrictToolsTolerant, textBlock, resolveRunRoute, agentUnconfiguredRefusal, type DshAdapter, type DshAsyncAgent, type DshQuestionAnswer, type DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 // THE dsh-Go TOOL CARDS: the kit's `toolCard()` wrapper plus the two pure builders the roster tools'
@@ -42,7 +43,7 @@ import { roleSpawnCard, rolesListCard } from "./tool-cards.ts"
 // cap, the deadman and the handoff writer. The deadman's bound and in-flight rule are the force
 // supervisor's (contract §S9), resolved per arm through the live config layer by the closures the
 // supervisor is built with below. Kept in its own module so its tests need no boot.
-import { CONSULT_ACTIVITY_HISTORY, CONSULT_FORCE_AFTER_MS, CONSULT_TOOL_IN_FLIGHT_MAX_MS, consultActivityKeyOf, consultLabelKey, consultMaxDeclaredFromEnv, createConsultSupervisor, type ConsultToolActivity } from "./spawn-async.ts"
+import { CONSULT_ACTIVITY_HISTORY, CONSULT_FORCE_AFTER_MS, CONSULT_TOOL_IN_FLIGHT_MAX_MS, consultActivityKeyOf, consultLabelKey, consultMaxDeclaredFromEnv, createConsultSupervisor, type ConsultStartInput, type ConsultToolActivity, type ConsultView } from "./spawn-async.ts"
 // The SERVICE seam a bounded plane outside this package consumes (cellwork's background delegation):
 // the SAME supervisor, published as `mpdConsults`, so no consumer needs a relative import into this row.
 import { createMpConsults } from "./consults.ts"
@@ -1081,13 +1082,37 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     toolInFlightMaxMs: () => consultInFlightBound(),
   })
 
+  /** The gate may degrade on a partial host. Consults stay usable in that composition. */
+  let reserveTeamConsult: SessionGateInstall["reserveConsult"] | undefined
+  /** Internal bounded runs mark only their own async chain and use their own slot ledger. */
+  const boundedConsult = new AsyncLocalStorage<true>()
+  /** Public workmate and role entry points share the same per-session reservation. */
+  async function reservePublicConsult(exec: DshToolExec | undefined): Promise<(() => void) | undefined> {
+    if (boundedConsult.getStore() === true) return undefined
+    return reserveTeamConsult?.(exec)
+  }
+
+  /** Keep the reservation across supervisor queueing, host retry and terminal settlement. */
+  async function startPublicConsult(input: ConsultStartInput & { exec: DshToolExec | undefined }): Promise<ConsultView> {
+    /** The prior reservation is released by the supervisor even when dispatch fails or is cancelled. */
+    const release = await reservePublicConsult(input.exec)
+    try {
+      input.exec?.signal?.throwIfAborted()
+      return consultSupervisor.start({ ...input, ...(release === undefined ? {} : { onSettled: release }) })
+    } catch (error) {
+      release?.()
+      throw error
+    }
+  }
+
   // ── the consult SERVICE seam (cellwork async delegation) ──────────────────
   // ONE supervisor, a second VIEW of it: a bounded plane outside this package starts and settles consults
   // through `mpdConsults` instead of importing this row (the cross-package coupling inventory is frozen).
   // It registers no tool, is listed by no tool output and adds no cap: `start` lands on the same
   // `consultSupervisor`, so `MPD_DSH_CONSULT_MAX` and the silence deadman govern both surfaces. The one
   // behavioural difference is that this path does NOT apply `consultDepthRefusal` — see `consults.ts`.
-  ctx.provide("mpdConsults", createMpConsults({
+  /** The existing supervised service, shared by cellwork and the public tool admission clients. */
+  const consults = createMpConsults({
     supervisor: consultSupervisor,
     // THE SAME INTERNAL PATH the async tool uses (`raiseConsultAsync`): persona, route, fallback and the
     // read-only child scope are identical. A caller MAY still pass an absolute `maxDepth`; when it does not
@@ -1103,7 +1128,13 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       const spec = roleOfToolInput(surface, String(role ?? ""))
       return spec === null ? null : spec.name
     },
-  }))
+  })
+  ctx.provide("mpdConsults", {
+    ...consults,
+    reservePublicConsult,
+    /** Run a trusted engine's already-bounded dispatch without applying the public overlap heuristic. */
+    runBounded: <T>(dispatch: () => T): T => boundedConsult.run(true, dispatch),
+  })
 
   dsh.registerTool({
     name: "mpd_roles_list",
@@ -1177,7 +1208,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       // `dsh.spawnAgent` directly, which is exactly what serialized the captain's consults behind the
       // previous child's full runtime.
       /** The started consult; this surface only waits for its settlement. */
-      const view = consultSupervisor.start({
+      const view = await startPublicConsult({
         role: spec.name,
         task,
         exec,
@@ -1274,7 +1305,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
 
   dsh.registerTool({
     name: "mpd_role_spawn_async",
-    description: "Start ONE bounded delegation WITHOUT waiting for its report — the BACKGROUND form of mpd_role_spawn. It returns a stable consultId immediately (peak in-flight consults overlap, so several questions run at once), rides the SAME adapter activation seam and read-only discipline as the blocking tool, and carries the SAME SILENCE deadman: the bound resolves per arm from `consult.forceAfterMs` → `watchdog.forceAfterMs` → 900000 ms (a declared `0` disables it), and a child with no observable activity for that long is interrupted with a handoff document written under .mpd/handoff/. Any in-flight tool younger than `watchdog.toolInFlightMaxMs` counts as activity, and an OPEN `bash` call is exempt at any age. Read the result with mpd_role_consult (wait / collect); a consult is still a ONE-SHOT and a LEAF. Concurrency is capped by MPD_DSH_CONSULT_MAX (default 8): over the cap a consult QUEUES, it never throws.",
+    description: "Start ONE bounded delegation WITHOUT waiting for its report — the BACKGROUND form of mpd_role_spawn. It returns a stable consultId immediately (peak in-flight consults overlap, so several questions run at once), rides the SAME adapter activation seam and read-only discipline as the blocking tool, and carries the SAME SILENCE deadman: the bound resolves per arm from `consult.forceAfterMs` → `watchdog.forceAfterMs` → 900000 ms (a declared `0` disables it), and a child with no observable activity for that long is interrupted with a handoff document written under .mpd/handoff/. Any in-flight tool younger than `watchdog.toolInFlightMaxMs` counts as activity, and an OPEN `bash` call is exempt at any age. Read the result with mpd_role_consult (wait / collect); a consult is still a ONE-SHOT and a LEAF. Admitted consults queue at MPD_DSH_CONSULT_MAX (default 8). An overlapping top-level batch in mechanical Team mode can be deferred before dispatch with plan or retry guidance.",
     parameters: { type: "object", properties: { role: { type: "string", description: "role name (see mpd_roles_list), e.g. \"Architect\" or \"Deep Worker\"" }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" } }, required: ["role", "task"], additionalProperties: false },
     output: { schema: { type: "object", properties: { consultId: { type: "string" }, role: { type: "string" }, state: { type: "string", enum: ["running"] }, startedAt: { type: "integer" } }, required: ["consultId", "role", "state"] }, render: (_a: unknown, v: any) => textBlock("consult " + v.consultId + " (" + v.role + ") " + v.state + " — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"" + v.consultId + "\"}") },
     execute: async (args: any, exec: any) => {
@@ -1284,7 +1315,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       const tooDeep = consultDepthRefusal(exec?.agent)
       if (tooDeep !== undefined) throw new Error(tooDeep)
       /** The started consult view; the spawn itself is supervised in the background. */
-      const view = consultSupervisor.start({ role: String(args?.role ?? ""), task: String(args?.task ?? ""), ...(args?.context === undefined ? {} : { context: String(args.context) }), exec, raise: () => raiseConsultAsync(args, exec) })
+      const view = await startPublicConsult({ role: String(args?.role ?? ""), task: String(args?.task ?? ""), ...(args?.context === undefined ? {} : { context: String(args.context) }), exec, raise: () => raiseConsultAsync(args, exec) })
       return { consultId: view.consultId, role: view.role, state: "running" as const, startedAt: view.startedAt }
     }
   })
@@ -1351,13 +1382,14 @@ export function apply(ctx: Ctx, config: Config = {}): void {
    * Precedence: the mounted `mpdConfig` layer first (a `.mpd/mpd.jsonc` edit is therefore picked up
    * LIVE, T-18), this row's own config second, `undefined` last so the plugin's own default applies.
    * @param key - the dot-path key, e.g. `team.gate`, `boulder.dir`, `captain.investigation`, `delegation.gate`, `consult.forceAfterMs` or `watchdog.toolInFlightMaxMs`.
+   * @param workspace - the specific workspace when the caller has resolved it.
    * @returns the raw value, or `undefined` when neither layer declares it.
    */
-  const configValue = (key: string): unknown => {
+  const configValue = (key: string, workspace?: string): unknown => {
     /** The live config service, absent until the `mpd-config` row has applied. */
-    const live = ((): { get?: (k: string) => unknown } | undefined => {
+    const live = ((): { get?: (k: string, root?: string) => unknown } | undefined => {
       try {
-        return ctx.get?.(CONFIG_SERVICE, false) as { get?: (k: string) => unknown } | undefined
+        return ctx.get?.(CONFIG_SERVICE, false) as { get?: (k: string, root?: string) => unknown } | undefined
       } catch {
         // A config service that refuses the lookup reads as ABSENT, never as a boot failure.
         return undefined
@@ -1366,7 +1398,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     /** The live layer's answer, which wins whenever the key is really declared there. */
     const value = ((): unknown => {
       try {
-        return live?.get?.(key)
+        return live?.get?.(key, workspace)
       } catch {
         return undefined
       }
@@ -1602,6 +1634,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       warn: (line) => warn(line),
       log: (line) => rowLogLine("mpd-roles", "[mpd-roles] " + line),
       configValue,
+      consultMax: consultSupervisor.effectiveBudgetOf,
       // The idempotence probe, read through the mpd record service PER CALL so the `mpd-team-core`
       // row may compose after this one. Its contract is THREE-VALUED and `stagedPlanProbe` keeps it
       // that way: `null` is the POSITIVE "nothing staged" answer, while an UNREADABLE probe THROWS —
@@ -1610,6 +1643,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       stagedPlan: stagedPlanProbe(ctx),
     })
     // The suffix is APPENDED so every existing `sessionGate=<mode>` substring assertion still holds.
+    reserveTeamConsult = gate.reserveConsult
     guardOutcome.push("sessionGate=" + gate.mode + " sensitivity=" + gate.sensitivity)
   } catch (error) {
     guardOutcome.push("sessionGate=absent")

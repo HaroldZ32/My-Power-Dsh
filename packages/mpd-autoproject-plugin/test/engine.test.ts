@@ -83,6 +83,8 @@ interface HarnessOptions {
   unconfiguredRole?: string
   /** What the PLAN REVIEWER declares: the plan gate's own verdict. */
   planReviewVerdict?: "VERDICT: PASS" | "VERDICT: FAIL"
+  /** Observes dispatch inside the internal bounded consult scope when the roles service is mounted. */
+  consults?: { runBounded: <T>(dispatch: () => T) => T }
   /** The LIVE `autoproject.slots` value this arm sets, or undefined to leave the live layer silent. */
   slots?: number
   /** The LIVE `autoproject.slotBoundMs` value this arm sets, or undefined for the shipped default. */
@@ -343,6 +345,7 @@ function makeHarness(options: HarnessOptions = {}): Harness {
         get: (key: string): unknown => (key === "autoproject.slots" ? options.slots : key === "autoproject.slotBoundMs" ? options.slotBoundMs : options.liveConfig?.[key])
       }
     }),
+    ...(options.consults === undefined ? {} : { mpdConsults: options.consults }),
     tools: toolsService,
     agents: { list: (): unknown[] => [agent] },
     commands: { register: (): (() => void) => () => {} },
@@ -996,8 +999,15 @@ test("(a) a child that NEVER settles is killed at the bound, its slot is release
 })
 
 test("(b) autoproject.slots REALLY caps concurrent children (observed high-water mark)", async () => {
+  /** Each supervised role dispatch must pass through the engine's internal bounded context once. */
+  let boundedDispatches = 0
   // The hyperplan wave raises FIVE Architects in parallel, so a cap of 2 must be visible.
-  const h = makeHarness({ slots: 2, slotBoundMs: 5_000, recordPass: true, criteria: ["create the file"] })
+  const h = makeHarness({ slots: 2, slotBoundMs: 5_000, recordPass: true, criteria: ["create the file"], consults: {
+    runBounded: <T>(dispatch: () => T): T => {
+      boundedDispatches += 1
+      return dispatch()
+    },
+  } })
   apply(h.ctx, rowConfig(h.workspace))
   /** The registered autoproject tool. */
   const tool = h.tools.find((entry) => entry.name === "mpd_autoproject")!
@@ -1007,6 +1017,7 @@ test("(b) autoproject.slots REALLY caps concurrent children (observed high-water
   expect(h.calls.filter((call) => call.name === "mpd_role_spawn" && call.arguments?.role === "Architect").length).toBe(5)
   // … and never more than TWO were in flight at once.
   expect(h.peakInFlight()).toBe(2)
+  expect(boundedDispatches).toBe(h.calls.filter((call) => call.name === "mpd_role_spawn").length)
   expect(res.status).not.toBe("blocked")
 })
 

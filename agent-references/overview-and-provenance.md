@@ -236,5 +236,6 @@ as history, never as the live default.
 to **`mechanical`** again since the 2026-10-20 restore (it had been `off` since the 2026-10-17 rollback).
 Since 2026-10-22 `team.sensitivity` defaults to **`easy`** (the stricter `normal`/`strict` are opt-in) and
 adds the workspace-scale signal F under `easy`; an `agent_teams_plan` approval now bundles the team
-record, a persisted goal and the todo list. `AGENTS.md` §1 is the binding statement; this section exists
-so a reader of the historical bytes cannot mistake them for what runs today.
+record, a persisted goal and the todo list. The captain evaluates task ownership and dependencies
+before consulting on an initial request or a follow-up that changes scope. See `AGENTS.md` §1 and
+`supervision.md`, "Choosing the route before consulting", for current routing and recovery.

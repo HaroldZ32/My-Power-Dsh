@@ -1,0 +1,40 @@
+{
+  "task": "T2",
+  "contract": ".mpd/plans/team-first-routing-followup.md",
+  "toolchain": { "bun": "1.4.0", "node": "24.21.0", "installedHarnessInspected": "0.2.2-rc.5" },
+  "red": {
+    "passed": 0,
+    "failed": 3,
+    "log": "red.log",
+    "observations": [
+      "The fourth and fifth public async tool calls both returned handles while three public consults were outstanding.",
+      "A top-level session with creation preset cordis staged no plan after its actual preset became mpd.",
+      "A resumed direct whole-scope repair follow-up did not trigger after two qualifying consults."
+    ]
+  },
+  "green": {
+    "focused": { "passed": 203, "failed": 0, "files": 4, "log": "controls.log" },
+    "runtimePackages": { "passed": 998, "failed": 0, "files": 66, "log": "packages.log" },
+    "typecheck": { "exit": 0, "log": "typecheck.log" },
+    "declarationComments": { "exit": 0, "log": "comments.log" },
+    "directRuntimeBuilds": {
+      "exit": 0,
+      "entries": ["mpd-dsh-adapter-plugin", "mpd-roles-plugin", "mpd-workmate-plugin", "mpd-autoproject-plugin"],
+      "log": "build.log"
+    }
+  },
+  "admission": {
+    "scope": "Top-level MPD or preset-less caller in mechanical mode with re-team volume enabled and the plan, task and dispatch tools available in the caller's view. An active team led by the caller bypasses the threshold.",
+    "limit": "max(1, min(team.reteam.afterConsults, the supervisor's effective budget) - 1) simultaneous outstanding public reservations per session and workspace. Defaults allow three outstanding calls. The fourth concurrent request can receive TEAM_FIRST before dispatch.",
+    "tracked": "Blocking and async role tools and the workmate tool share the same reservation ledger. An admitted async consult keeps its reservation through supervisor queueing, retry and settlement. Autoproject uses its existing slot ledger and an internal async-chain scope. Cellwork's bounded service path stays separate.",
+    "recovery": "Review a named staged plan against the current work before adding owners and tasks. Staging always requests approval. When an available Team surface cannot confirm a current plan, an excess request reports that state and a serial retry remains available after settlement. A missing Team tool falls back to the existing consult path."
+  },
+  "preStep": {
+    "preset": "The host's presetForSession projection takes precedence over immutable creation metadata. A missing or unreadable host capability falls back to the creation header. A projected null remains the preset-less state.",
+    "followUp": "A later direct whole-set repair request can reuse the current plan once per wave or stage one after prior multi-consult activity. The receipt persists in the same session-gate record. Workspace size alone is only a startup hint."
+  },
+  "bounds": [
+    "The overlap ledger limits outstanding public requests from one caller in this process. It does not measure or reserve host-global child capacity. The normal host can still refuse activation.",
+    "Tests use registered public tool bodies with controlled host seams and no external provider. Independent mounted-host verification and all adapter-dependent entry builds are tracked separately by the team."
+  ]
+}

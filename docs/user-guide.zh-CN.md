@@ -255,6 +255,14 @@ MPD 默认使用自己的原生执行器。DSH 提供官方团队服务、工具
 唯一声明的边界。你的会话智能体就是 **Lead**（captain）：它 stage 计划、spawn 具名队友、把任务
 开在 mpd 任务板上，并亲自整合结果。
 
+在第一次 consult 之前，先根据对话梳理负责人、依赖关系和整合工作。需要多位负责人协作、涉及共享实现，
+或需要交接构建与测试的大项工作使用团队。例如，审计后的「一起解决掉吧」可以要求修复前面审计发现的所有
+问题，工作范围由前文决定。单个明确的问题或边界清晰的任务可以使用一次性 consult。
+
+先查看任务板，使用合适的运行中团队。如果没有合适的团队，复用或暂存一份计划，添加成员及任务，声明负责人
+和依赖后批准计划。将任务派给指定负责人，确认成员已激活、任务已送达。如果团队工具不可用或激活失败，说明
+具体阻碍。有条件时可以串行执行范围明确的 consult，并说明仍缺哪些负责人或独立验证。
+
 ```text
 agent_teams_plan { action }                                                # 仅 Lead：create | add_member | create_task | edit | approve | delete | status
 agent_teams_plan { action: "add_member", member } / { action: "create_task", task }   # 仅 Lead；每个任务都要声明 blocked_by 或 independent
@@ -273,8 +281,9 @@ interrupt_agent { agent_id }                                              # 仅 
   平面是**我们的**（`mpd-team-core`），而 mpd RECORD 是唯一的任务板：`agent_teams_task` 驱动它，
   `agent_teams_plan {action:"status"}` 把它读回来。五个官方撰写动词： `spawn_teammate`、
   `team_task_create`、`team_task_list`、`team_task_get`、`team_task_update`：在工具边界被
-  **拒绝**，所以上面的计划是唯一的门。若 `team.gate: "advisory"`，或 `agent_teams_plan`
-  没有挂载，门就不会 stage 任何东西，只用一条通知说明，并由 captain 在工作确需团队时自行建队。
+  **拒绝**，所以上面的计划是唯一的入口。若 `team.gate: "advisory"`，通知会把是否暂存计划的决定交给
+  captain。`team.gate: "off"` 关闭自动路由。计划工具未挂载时无法暂存计划。没有命中信号时，仍由
+  captain 根据工作范围选择执行方式。
 - **敏感度决定阈值。** `mpd.jsonc` 里的 `team.sensitivity` 取 `easy`（**默认**）| `normal` | `strict`；
   未知或缺失的值一律解析为 `easy`。`easy` 保留工作区规模信号 F 并更早触发；`normal` 精确复现
   2026-10-22 之前的五信号行为；`strict` 收紧每一项阈值：
@@ -286,8 +295,16 @@ interrupt_agent { agent_id }                                              # 仅 
   | `strict` | ≥ 6 | ≥ 4 / ≥ 4 / ≥ 4（三取三） | ≥ 80 / ≥ 3 | 关 |
 
   信号 F 是一次**有界**的根目录 `readdir`（绝不递归）：存在一个项目清单**且**存在一个项目目录**且**
-  至少有 8 个可见条目。它只在 `easy` 下评估，而且刻意粗糙：在大工作区里，仅 F 一项就会让 `hello`
-  也触发。因此静默的负向对照放在**很小的**工作区里（空提示或 `hello`、以及 `验证一下` 都不会 stage）。
+  至少有 8 个可见条目。会话闸门仅在 `easy` 模式的第一轮使用 F。大工作区里，开头只说 `hello` 也可能触发。
+  后续针对局部工作的请求需要命中其他信号才会触发。
+- **后续请求可以重新审视计划。** 当用户要求修复前面发现的全部问题，例如「一起解决掉吧」或 “fix all of
+  these”，如果已完成两次 consult 工具调用，或闸门已记录暂存计划，则每个工作波次可触发一次。这条范围明确的
+  规则独立于敏感度的动词匹配，也独立于 captain 根据完整对话对工作范围的判断。
+- **机械闸门也限制重叠的 consult。** 当计划、任务板和派发工具已挂载且没有运行中的团队时，
+  `team.reteam.afterConsults` 默认值 4 会让符合条件的 captain 的第四个重叠公开角色或 workmate 调用返回
+  `TEAM_FIRST`。返回结果可以指向空计划，供 captain 审查和批准。如果无法检查或暂存计划，先等待已有
+  consult 结束，再一次重试一个范围明确的调用。如果缺少团队工具，consult 仍由原有监督器处理。
+  `team.reteam.enabled: false` 同时关闭并发检查和按已完成调用数暂存计划的机制。
 - **一次批准启动三套机制。** 在 `agent_teams_plan` 批准**成功**路径上，团队真正激活之后，同一次批准还会
   anchor 一个持久化 goal（objective = 计划描述；描述为空时回退到计划名称，来源 `team`），并用 `todo_write` 按计划任务写入待办
 （每个任务一条 pending；整表替换；计划没有任务时不写入）。两个副作用都是非致命的：失败只记一行日志，

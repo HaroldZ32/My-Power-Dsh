@@ -19,12 +19,13 @@
 - `team.stateDir`、`hashline.guardEditTools/maxDiffChars/registryFile`、
   `commentChecker.autoCheck/bin`、`modelchain.<role>`、`boulder.dir`、
   `autoproject.maxRounds`。
-- `team.reteam.enabled`（默认 `true`）：只控制**会话中途的 volume 触发器**；感知 ended 与
-  clean-terminal 的自动结束规则始终有效。
-- `team.reteam.afterConsults`（默认 `4`）：自上次触发以来，本 agent **已完成**的
-  `mpd_role_spawn` / `mpd_role_spawn_async` / `mpd_workmate_spawn` 调用数达到该值后，gate 会在
-  `[AgentTeams] Re-team rule` 标记下 stage 一个新的空 plan shell。失败的或
-  `AGENT_UNCONFIGURED` 的 spawn 不计入；计数持久化在 `<ws>/.mpd/session-gate/<sessionId>.json`。
+- `team.reteam.enabled`（默认 `true`）控制按已完成调用数暂存计划，以及并发 consult 的准入检查。
+  团队结案和任务板全部结案后的自动结束规则独立生效。
+- `team.reteam.afterConsults`（默认 `4`）是按已完成调用数触发 `[AgentTeams] Re-team rule` 暂存空计划的阈值。
+  自上次触发以来，此 agent 成功完成的 `mpd_role_spawn`、`mpd_role_spawn_async` 和 `mpd_workmate_spawn`
+  调用均会计数，计数保存在 `<ws>/.mpd/session-gate/<sessionId>.json`。机械模式下，该设置也约束具备资格且
+  没有运行中团队的顶层 captain 对这些工具的并发调用。默认情况下，第四个重叠的调用会在启动新子 agent 前被
+  引导至团队流程。
 
 ## Agent 路由（`agentRoutes`）
 

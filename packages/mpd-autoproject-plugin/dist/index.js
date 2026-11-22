@@ -2966,6 +2966,20 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the harness skills service exposes no get()");
       return skills.get(skillName, options);
     },
+    selectedAgentPreset(agent) {
+      const session = agent?.session;
+      if (session === undefined || session === null)
+        return;
+      try {
+        const presets = service("agentPresets");
+        if (typeof presets?.presetForSession !== "function")
+          return;
+        const selected = presets.presetForSession(session);
+        return selected === null || typeof selected === "string" && selected.length > 0 ? selected : undefined;
+      } catch {
+        return;
+      }
+    },
     async resolvePreset(presetId) {
       const presets = requireService("agentPresets", 'cannot resolve preset "' + presetId + '"');
       if (typeof presets.resolve !== "function")
@@ -3760,6 +3774,8 @@ function evaluateComplexityGate(text2, input = {}) {
     signals.push("E");
   if (thresholds.workspaceScale && input.workspaceScale === true)
     signals.push("F");
+  if (input.repairFollowUp === true)
+    signals.push("whole-scope repair follow-up");
   const strength = admissionOf(input.source ?? "human", source, { explicitFlag: input.explicitFlag === true, matchedSignals: signals.length });
   return {
     trigger: strength !== "ignore" && (input.explicitFlag === true || signals.length >= 1),
@@ -3848,12 +3864,13 @@ function gatePlanShell(input) {
   const firstLine = collapseWhitespace(goal.split(/\r?\n/u)[0] ?? "");
   const excerpt = collapseWhitespace(goal).slice(0, GATE_PLAN_EXCERPT_MAX);
   const matched = input.signals.length === 0 ? "complexity signals" : "complexity signals " + input.signals.join("/");
-  const lead = input.reteam === undefined ? "Staged mechanically by the mpd session-start complexity gate on " + matched + "." : "Staged mechanically by the mpd re-team gate: " + String(input.reteam.count) + " completed consult calls since the last team fire" + " (threshold " + String(input.reteam.threshold) + ") and no live team.";
-  const name = input.reteam === undefined ? firstLine === "" ? GATE_PLAN_NAME_FALLBACK : firstLine.slice(0, GATE_PLAN_NAME_MAX) : RETEAM_PLAN_NAME.slice(0, GATE_PLAN_NAME_MAX);
+  const lead = input.overlappingConsults !== undefined ? `Staged mechanically with ${input.overlappingConsults} outstanding consults and no live team.` : input.reteam === undefined ? "Staged mechanically by the mpd session-start complexity gate on " + matched + "." : "Staged mechanically by the mpd re-team gate: " + String(input.reteam.count) + " completed consult calls since the last team fire" + " (threshold " + String(input.reteam.threshold) + ") and no live team.";
+  const name = input.reteam !== undefined || input.overlappingConsults !== undefined ? RETEAM_PLAN_NAME.slice(0, GATE_PLAN_NAME_MAX) : firstLine === "" ? GATE_PLAN_NAME_FALLBACK : firstLine.slice(0, GATE_PLAN_NAME_MAX);
   return {
     name,
     description: lead + `
-This is a SHELL: 0 members and 0 tasks, because at the first pre-step there is no decomposition yet.` + (input.reteam === undefined ? `
+This is a SHELL: 0 members and 0 tasks.` + (input.overlappingConsults !== undefined ? `
+Set the team's objective from the current human request before adding members and tasks.` : input.reteam === undefined ? `
 Goal excerpt: ` + (excerpt === "" ? "(empty)" : excerpt) : `
 No user turn was judged: the re-team trigger counts COMPLETED consults, not prompt text.`) + "\nExtend it with `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[0] + "\"}` (each member's prompt comes from `mpd_role_persona`)" + " and `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[1] + '"}`,' + " then approve it with `" + STAGING_TOOL_NAME + ' {action:"approve"}` — approval is what spawns the members.' + `
 ` + INERT_PLAN_PHRASE + "." + (input.planPath === undefined ? "" : `
@@ -4550,7 +4567,9 @@ async function runAutoproject(args, exec, deps) {
     }
   }
   async function consultOnce(role, task, context, signal) {
-    const result = await dsh.executeTool({ name: ROLE_SPAWN_TOOL, arguments: { role, task, ...context === undefined || context === "" ? {} : { context } }, agent: exec?.agent, signal });
+    const dispatch = () => dsh.executeTool({ name: ROLE_SPAWN_TOOL, arguments: { role, task, ...context === undefined || context === "" ? {} : { context } }, agent: exec?.agent, signal });
+    const consults = ctx.get?.("mpdConsults", false);
+    const result = await (typeof consults?.runBounded === "function" ? consults.runBounded(dispatch) : dispatch());
     if (result?.ok !== true || result.isError === true) {
       const text2 = errorTextOf2(result?.error ?? "the role-spawn call did not report ok");
       stamp(isRouteUnconfigured(text2) ? "route-unconfigured:" + role : "child-degraded:" + role, "skipped", text2);

@@ -9,6 +9,7 @@ import { afterEach, beforeEach, expect, test } from "bun:test"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import type { DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index.ts"
 import { apply, attuneWorkspaces, WORKSPACE_ATTRIBUTION_CAP } from "../src/index.ts"
 
 /** The sandbox this file's arms run in: a HOME for the library and two workspace roots. */
@@ -57,14 +58,19 @@ const root = (): string => join(sb.home, ".mpd", "workmate")
  *
  * @returns the registered tools, looked up by name, and the exec for one given workspace.
  */
-function makePlugin(): { byName: (name: string) => any; execFrom: (workspace: string) => any } {
+function makePlugin(reservePublicConsult?: (caller: DshToolExec) => Promise<(() => void) | undefined>): { byName: (name: string) => any; execFrom: (workspace: string) => DshToolExec } {
   /** Every tool descriptor the row registered. */
   const tools: any[] = []
   /** The base template the fake roster serves. */
   const base = { id: "hephaestus", name: "Deep Worker", description: "autonomous goal-driven implementation", readonly: false, chain: [{ provider: "deepseek-official", model: "deepseek-v4-flash" }], persona: "You are the Deep Worker." }
   /** The fake host context. */
   const ctx: any = {
-    get: (k: string) => (k === "mpdRoles" ? { list: () => [base], get: () => base } : k === "agents" ? { list: () => [{ session: { header: { cwd: sb.a } } }, { session: { header: { cwd: sb.b } } }] } : undefined),
+    get: (k: string) => {
+      if (k === "mpdRoles") return { list: () => [base], get: () => base }
+      if (k === "agents") return { list: () => [{ session: { header: { cwd: sb.a } } }, { session: { header: { cwd: sb.b } } }] }
+      if (k === "mpdConsults" && reservePublicConsult !== undefined) return { reservePublicConsult }
+      return undefined
+    },
     tools: { register: (d: any): void => { tools.push(d) } },
     subagents: { start: async (): Promise<unknown> => ({ result: { structured: { name: "x", summary: "s" } } }) },
     provide: (): void => {},
@@ -72,7 +78,7 @@ function makePlugin(): { byName: (name: string) => any; execFrom: (workspace: st
   apply(ctx)
   return {
     byName: (name: string): any => tools.find((tool) => tool.name === name),
-    execFrom: (workspace: string): any => ({ agent: { id: "agent-1", session: { header: { cwd: workspace } } }, signal: new AbortController().signal }),
+    execFrom: (workspace: string): DshToolExec => ({ agent: { id: workspace, session: { header: { cwd: workspace } } }, signal: new AbortController().signal }),
   }
 }
 
@@ -147,6 +153,62 @@ test("attribution: init records the birth workspace, and reuse/bind keep the lis
   // The helper itself is the one rule: most recent first, de-duplicated, capped.
   expect(attuneWorkspaces([], "")).toEqual([])
   expect(attuneWorkspaces(["x", "y"], "y")).toEqual(["y", "x"])
+})
+
+test("simultaneous workmate spawns keep both workspace attributions and a reflect made during admission", async () => {
+  /** The two public attempts both wait before writing attribution. */
+  const admissions = [Promise.withResolvers<void>(), Promise.withResolvers<void>()]
+  /** The public tool invokes the admission service once per caller. */
+  let entered = 0
+  /** Successful reservations are released individually after the child settles. */
+  let released = 0
+  /** This double keeps each admission pending until its test-controlled resume. */
+  const { byName, execFrom } = makePlugin(async () => {
+    /** Reservation order identifies each of the two held calls. */
+    const admitted = admissions[entered]
+    if (admitted === undefined) throw new Error("Unexpected workmate admission")
+    entered += 1
+    await admitted.promise
+    return (): void => { released += 1 }
+  })
+  seedInstance("alice", "worker")
+  /** The workmate's library documents are shared by all workspace sessions. */
+  const metaPath = join(root(), "alice", "meta.json")
+  /** The later index write must preserve the fields produced by reflect as well. */
+  const indexPath = join(root(), "index.json")
+  /** Start both invocations from different sessions while the metadata is still the same. */
+  const [fromA, fromB] = [sb.a, sb.b].map((workspace) => byName("mpd_workmate_spawn").execute({ name: "alice", task: "bounded consult" }, execFrom(workspace)))
+  try {
+    expect(entered).toBe(2)
+    // Reflect under a third workspace to establish independent metadata and attribution during the await.
+    await byName("mpd_workmate_reflect").execute({ name: "alice", task: "recent reflect", outcome: "kept observation" }, execFrom(sb.home))
+    admissions[0].resolve()
+    await fromA
+    admissions[1].resolve()
+    await fromB
+    /** The complete record preserves both associations and the reflect. */
+    const meta = JSON.parse(readFileSync(metaPath, "utf8"))
+    expect(meta).toMatchObject({ workspaces: [sb.b, sb.a, sb.home], uses: 1, lastTask: "recent reflect" })
+    expect(JSON.parse(readFileSync(indexPath, "utf8")).alice).toMatchObject({ uses: 1, updatedAt: meta.updatedAt })
+    expect(released).toBe(2)
+  } finally {
+    for (const admission of admissions) admission.resolve()
+    await Promise.allSettled([fromA, fromB])
+  }
+})
+
+test("a TEAM_FIRST workmate refusal leaves metadata unchanged and releases the in-use guard", async () => {
+  /** Exercise the wire boundary without a live provider. */
+  const { byName, execFrom } = makePlugin(async () => { throw new Error("TEAM_FIRST: consult deferred") })
+  await byName("mpd_workmate_init").execute({ base: "Deep Worker", name: "alice" }, execFrom(sb.a))
+  /** Capture the exact metadata and index before an attempt from another project. */
+  const paths = [join(root(), "alice", "meta.json"), join(root(), "index.json")]
+  /** The bytes that must survive the refusal. */
+  const before = paths.map((path) => readFileSync(path, "utf8"))
+  await expect(byName("mpd_workmate_spawn").execute({ name: "alice", task: "excess consult" }, execFrom(sb.b))).rejects.toThrow(/TEAM_FIRST/)
+  expect(paths.map((path) => readFileSync(path, "utf8"))).toEqual(before)
+  await byName("mpd_workmate_rename").execute({ name: "alice", new_name: "alice-renamed" }, execFrom(sb.a))
+  expect(existsSync(join(root(), "alice-renamed", "meta.json"))).toBe(true)
 })
 
 test("B1: the merge's in-use gate sees a live team in ANOTHER workspace (the reviewer's probe)", async () => {
