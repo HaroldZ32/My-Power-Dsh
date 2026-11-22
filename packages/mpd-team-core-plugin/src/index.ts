@@ -1580,10 +1580,9 @@ export function apply(ctx: any): void {
    *
    * WHY BOTH (R3). `release` used to delete only the ledger pairing, leaving the task `in_progress`;
    * `readyTasks`/`casClaimTask` are pending-only, so a released task could never be dispatched again.
-   * The task row now returns to `pending` through `casReleaseTask` (CAS on the caller's revision when
-   * one is supplied), and the LEDGER row is freed first — a ledger row is a cache of "in flight" and a
-   * terminal or missing task row makes it stale by definition, so the ledger half is repaired even
-   * when the task half refuses.
+   * The task row returns to `pending` through `casReleaseTask` before the pairing is removed. An
+   * authorized retry can clean up the pairing for a pending, terminal or missing task. A stale
+   * revision leaves both files untouched.
    *
    * WHO MAY RELEASE (PR #60 review F1/CWE-862) is decided BEFORE either half writes: this team's Lead
    * or the task's own owner, through the store's own {@link authorizeRelease}. An unauthorized caller
@@ -1609,14 +1608,15 @@ export function apply(ctx: any): void {
     /** Why this caller may not release the task, or undefined when it may. */
     const refusal = authorizeRelease(fresh, taskId, caller, lead)
     if (refusal !== undefined) return { released: false, taskId, refused: refusal }
+    /** The task half's decision, based on the same revision used to authorize release. */
+    const outcome = casReleaseTask(fresh, taskId, expectedRevision, now())
+    if (!outcome.applied && outcome.staleRevision === true) return { released: false, taskId, refused: outcome.reason }
+    // Publish the board first. If the ledger write fails, release can clean up the pending pairing.
+    if (outcome.applied) writeTeam(workspace, withDerivedPhase(outcome.record))
     /** The ledger half: only THIS team's pairing is freed. */
     const freed = release(readLedger(workspace), record.teamId, taskId)
     if (freed.released) writeLedger(workspace, freed.ledger)
-    /** The task half's decision, or the refusal and its reason. */
-    const outcome = casReleaseTask(fresh, taskId, expectedRevision, now())
     if (!outcome.applied) return { released: freed.released, taskId, refused: outcome.reason }
-    // The phase is re-derived on the write: reopening the last open task takes a team out of `idle`.
-    writeTeam(workspace, withDerivedPhase(outcome.record))
     /** The reopened task as the record now holds it. */
     const view = outcome.record.tasks.find((candidate) => candidate.id === taskId)
     return { released: freed.released, taskId, status: view?.status, revision: view?.revision }

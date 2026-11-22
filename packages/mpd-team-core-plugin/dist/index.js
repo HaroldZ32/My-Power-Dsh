@@ -4495,7 +4495,7 @@ function casReleaseTask(fresh, taskId, expectedRevision, now) {
   if (task === undefined)
     return { applied: false, reason: `task ${taskId} is no longer on the board` };
   if (expectedRevision !== undefined && task.revision !== expectedRevision) {
-    return { applied: false, reason: `task ${taskId} changed under you (revision ${expectedRevision} -> ${task.revision}); re-read it and retry` };
+    return { applied: false, staleRevision: true, reason: `task ${taskId} changed under you (revision ${expectedRevision} -> ${task.revision}); re-read it and retry` };
   }
   if (task.status === "completed" || task.status === "failed" || task.status === "cancelled") {
     return { applied: false, reason: `task ${taskId} is already terminal ("${task.status}") and cannot be released` };
@@ -4871,8 +4871,13 @@ function readPlan(workspace, sessionId) {
     return;
   return { ...plan, version: STAGED_PLAN_VERSION };
 }
+function writePlanFile(path, plan) {
+  const temp = path + ".tmp-" + process.pid;
+  writeJson2(temp, plan);
+  renameSync3(temp, path);
+}
 function writePlan(workspace, plan) {
-  writeJson2(stagingPath(workspace, plan.sessionId), plan);
+  writePlanFile(stagingPath(workspace, plan.sessionId), plan);
 }
 function stagePlan(workspace, sessionId, input, now) {
   const existing = readPlan(workspace, sessionId);
@@ -4913,15 +4918,19 @@ function classifyBlocker(plan, reference) {
     return "position";
   return plan.tasks.some((task) => task.subject === reference) ? "subject" : "unknown";
 }
-function archivePlan(workspace, plan) {
+function archivePlan(workspace, plan, retryApproval = false) {
   const target = archivePathFor(workspace, plan.planId);
-  if (existsSync4(join5(target, "plan.json"))) {
-    throw new Error(`plan id "${plan.planId}" is already archived in this workspace — refusing to overwrite an archived plan`);
+  const path = join5(target, "plan.json");
+  if (existsSync4(path)) {
+    const archived = retryApproval ? readJson2(path) : undefined;
+    if (archived?.planId !== plan.planId || archived.sessionId !== plan.sessionId || archived.approvedAt === undefined || archived.approvedAt !== plan.approvedAt || JSON.stringify(archived.created?.tasks.map((task) => task.id)) !== JSON.stringify(plan.created?.tasks.map((task) => task.id))) {
+      throw new Error(`plan id "${plan.planId}" is already archived in this workspace — refusing to overwrite an archived plan`);
+    }
+  } else {
+    writePlanFile(path, plan);
   }
-  mkdirSync5(target, { recursive: true });
-  writeJson2(join5(target, "plan.json"), plan);
   const staged = stagingPath(workspace, plan.sessionId);
-  if (existsSync4(staged))
+  if (readPlan(workspace, plan.sessionId)?.planId === plan.planId)
     rmSync3(staged, { force: true });
   return target;
 }
@@ -6393,6 +6402,42 @@ function joinWorkmatePrompt(head, prompt) {
 
 ` + prompt;
 }
+function committedApprovalTasks(plan, record) {
+  if (plan.activation === undefined || record.approvedAt === undefined)
+    return;
+  if (record.approvalTaskIds !== undefined)
+    return record.approvalTaskIds;
+  if (plan.activation.stoppedAt !== undefined || plan.tasks.length === 0 || record.nextTaskNumber <= plan.tasks.length)
+    return;
+  const bindings = plan.activation.bindings;
+  if (!plan.members.every((staged, index) => record.members.some((member) => member.name === (bindings[index]?.member ?? staged.name) && member.executorRef !== undefined && member.status !== "provisioning" && member.status !== "failed")))
+    return;
+  const ids = plan.tasks.map((_task, index) => `T${index + 1}`);
+  return ids.every((id) => record.tasks.some((task) => task.id === id)) ? ids : undefined;
+}
+async function finalizeTeamApproval(deps, caller, plan, record, taskIds, bindings) {
+  if (readPlan(caller.workspace, caller.sessionId)?.planId !== plan.planId) {
+    return { ok: false, error: `plan ${plan.planId} was replaced or discarded during activation` };
+  }
+  const tasksById = new Map(record.tasks.map((task) => [task.id, task]));
+  const unresolved = taskIds.flatMap((id) => {
+    const references = tasksById.get(id)?.unresolvedBlockers;
+    return references === undefined || references.length === 0 ? [] : [{ taskId: id, references: [...references] }];
+  });
+  const created = {
+    members: plan.members.flatMap((staged, index) => {
+      const member = record.members.find((candidate) => candidate.name === (bindings[index]?.member ?? staged.name));
+      return member?.executorRef === undefined ? [] : [{ name: member.name, id: member.executorRef }];
+    }),
+    tasks: taskIds.map((id, index) => ({ id, subject: tasksById.get(id)?.subject ?? plan.tasks[index]?.subject.trim() ?? id })),
+    ...unresolved.length === 0 ? {} : { unresolved }
+  };
+  const { activation: _activation, ...completedPlan } = plan;
+  const approved = { ...completedPlan, approvedAt: record.approvedAt, created };
+  archivePlan(caller.workspace, approved, true);
+  await deps.bundleApprovalEffects(plan, caller);
+  return { ok: true, plan: approved, team: record, created, bindings };
+}
 async function approveTeam(deps, caller, input = {}) {
   const slot = actionSlotKey(caller);
   if (approvalsInFlight.has(slot))
@@ -6434,6 +6479,11 @@ async function approveTeamBody(deps, caller, input) {
     const parent = deps.deriveParentTeam(workspace, sessionId, lineage);
     if (input.dryRun === true) {
       return { ok: true, plan, created: { members: plan.members.map((m) => ({ name: m.name, id: "" })), tasks: plan.tasks.map((t) => ({ subject: t.subject, id: "" })) } };
+    }
+    if (previous !== undefined && plan.activation !== undefined) {
+      const committed = committedApprovalTasks(plan, previous);
+      if (committed !== undefined)
+        return await finalizeTeamApproval(deps, caller, plan, previous, committed, plan.activation.bindings);
     }
     const frozenBindings = plan.activation?.bindings;
     const bound = frozenBindings === undefined ? await bindStagedWorkmates(deps, plan, caller.agent, workspace) : {
@@ -6554,6 +6604,7 @@ async function approveTeamBody(deps, caller, input) {
     record = readTeam(workspace, record.teamId) ?? record;
     if (record.endedAt !== undefined)
       return { ok: false, error: `team ${record.teamId} ended during activation` };
+    const firstTask = record.tasks.length;
     for (const task of buildPlan.tasks) {
       record = addTeamTask(record, {
         subject: task.subject,
@@ -6568,7 +6619,7 @@ async function approveTeamBody(deps, caller, input) {
     }
     const planAlias = new Map;
     buildPlan.tasks.forEach((task, index) => {
-      const minted = record.tasks[index];
+      const minted = record.tasks[firstTask + index];
       if (minted === undefined)
         return;
       planAlias.set(String(index + 1), minted.id);
@@ -6576,7 +6627,7 @@ async function approveTeamBody(deps, caller, input) {
         planAlias.set(task.subject, minted.id);
     });
     for (const [index, task] of buildPlan.tasks.entries()) {
-      const minted = record.tasks[index];
+      const minted = record.tasks[firstTask + index];
       if (minted === undefined || (task.blockedBy ?? []).length === 0)
         continue;
       const mapped = (task.blockedBy ?? []).map((reference) => planAlias.get(reference) ?? reference);
@@ -6584,19 +6635,10 @@ async function approveTeamBody(deps, caller, input) {
         continue;
       record = updateTeamTask(record, minted.id, { blockedBy: mapped }, deps.now());
     }
-    const unresolvedBlockers = record.tasks.filter((task) => (task.unresolvedBlockers ?? []).length > 0).map((task) => ({ taskId: task.id, references: [...task.unresolvedBlockers ?? []] }));
-    if (unresolvedBlockers.length > 0)
-      created.unresolved = unresolvedBlockers;
-    for (const task of record.tasks)
-      created.tasks.push({ subject: task.subject, id: task.id });
-    const approvedRecord = withDerivedPhase({ ...record, approvedAt: record.approvedAt ?? deps.now().toISOString() });
+    const approvalTaskIds = record.tasks.slice(firstTask).map((task) => task.id);
+    const approvedRecord = withDerivedPhase({ ...record, approvedAt: record.approvedAt ?? deps.now().toISOString(), approvalTaskIds });
     writeTeam(workspace, approvedRecord);
-    const { activation: _activation, ...completedPlan } = plan;
-    const approved = { ...completedPlan, approvedAt: approvedRecord.approvedAt, created };
-    writePlan(workspace, approved);
-    archivePlan(workspace, { ...approved });
-    await deps.bundleApprovalEffects(plan, caller);
-    return { ok: true, plan: approved, team: approvedRecord, created, bindings: bound.bindings };
+    return await finalizeTeamApproval(deps, caller, plan, approvedRecord, approvalTaskIds, bound.bindings);
   } catch (error) {
     return unexpectedRefusalOf(error);
   }
@@ -9391,13 +9433,16 @@ function apply(ctx) {
     const refusal = authorizeRelease(fresh, taskId, caller, lead);
     if (refusal !== undefined)
       return { released: false, taskId, refused: refusal };
+    const outcome = casReleaseTask(fresh, taskId, expectedRevision, now());
+    if (!outcome.applied && outcome.staleRevision === true)
+      return { released: false, taskId, refused: outcome.reason };
+    if (outcome.applied)
+      writeTeam(workspace, withDerivedPhase(outcome.record));
     const freed = release(readLedger(workspace), record.teamId, taskId);
     if (freed.released)
       writeLedger(workspace, freed.ledger);
-    const outcome = casReleaseTask(fresh, taskId, expectedRevision, now());
     if (!outcome.applied)
       return { released: freed.released, taskId, refused: outcome.reason };
-    writeTeam(workspace, withDerivedPhase(outcome.record));
     const view = outcome.record.tasks.find((candidate) => candidate.id === taskId);
     return { released: freed.released, taskId, status: view?.status, revision: view?.revision };
   };

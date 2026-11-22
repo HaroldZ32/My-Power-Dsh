@@ -1,0 +1,11 @@
+Baseline revision 90d52e530282bccf3c4b54a27be6737bcb02f969
+Toolchain bun 1.4.0 (34cbb9a40)
+
+$ .toolchain/node_modules/.bin/bun test ./packages/mpd-team-core-plugin/test/team-record.test.ts ./packages/mpd-team-core-plugin/test/goal-todo-bundle.test.ts ./packages/mpd-team-core-plugin/test/pr42-review-repairs.test.ts ./packages/mpd-team-core-plugin/test/plan-store.test.ts
+89 pass
+0 fail
+379 expect() calls
+Ran 89 tests across 4 files.
+exit 0
+
+The regression test will create temporary team workspaces through the existing test harness and dispose of the persistence failpoint in a finally block. The two approval hypotheses are that a committed board is rebuilt after interruption, or that a pre-commit failure leaves previously minted ids on the board. The public release hypothesis is that the ledger changes even though the board CAS refuses.

@@ -1006,6 +1006,76 @@ function joinWorkmatePrompt(head: string, prompt: string): string {
 }
 
 /**
+ * Recover the task ids from the board linked by this plan's validated activation checkpoint.
+ * @param plan - the staged plan carrying the checkpoint.
+ * @param record - the checkpoint's record, after checking the plan id and Lead.
+ * @returns committed task ids, or undefined while tasks still need to be published.
+ */
+function committedApprovalTasks(plan: StagedPlan, record: TeamRecord): readonly string[] | undefined {
+  if (plan.activation === undefined || record.approvedAt === undefined) return undefined
+  if (record.approvalTaskIds !== undefined) return record.approvalTaskIds
+  // Older approvals published all tasks in one write, starting at T1. A stopped or incomplete roster
+  // never reached that write. Check the ordinal allocation and seat receipts even if a row was edited.
+  if (plan.activation.stoppedAt !== undefined || plan.tasks.length === 0 || record.nextTaskNumber <= plan.tasks.length) return undefined
+  /** The bound roster names as they appeared on the board when approval opened. */
+  const bindings = plan.activation.bindings
+  if (!plan.members.every((staged, index) => record.members.some((member) =>
+    member.name === (bindings[index]?.member ?? staged.name) && member.executorRef !== undefined
+      && member.status !== "provisioning" && member.status !== "failed"))) return undefined
+  /** Legacy approvals used plan positions as board ordinals. */
+  const ids = plan.tasks.map((_task, index) => `T${index + 1}`)
+  return ids.every((id) => record.tasks.some((task) => task.id === id)) ? ids : undefined
+}
+
+/**
+ * Finalize a published approval using only the live board and the checkpoint's bindings.
+ * @param deps - the seams for bundled approval effects.
+ * @param caller - the session that owns the staging slot.
+ * @param plan - the plan being finalized.
+ * @param record - the published team record, including intervening edits on a retry.
+ * @param taskIds - the ids allocated by this approval, in plan order.
+ * @param bindings - the frozen seat names, in staged member order.
+ * @returns the approved plan and its receipts, without rewriting the board.
+ */
+async function finalizeTeamApproval(
+  deps: TeamActionDeps,
+  caller: TeamActionCaller,
+  plan: StagedPlan,
+  record: TeamRecord,
+  taskIds: readonly string[],
+  bindings: TeamWorkmateBinding[],
+): Promise<TeamActionResult<TeamApprovePayload>> {
+  if (readPlan(caller.workspace, caller.sessionId)?.planId !== plan.planId) {
+    return { ok: false, error: `plan ${plan.planId} was replaced or discarded during activation` }
+  }
+  /** Read each receipt by identity so live edits or new rows cannot change its membership. */
+  const tasksById = new Map(record.tasks.map((task) => [task.id, task]))
+  /** The unresolved references on the plan's own rows. */
+  const unresolved = taskIds.flatMap((id) => {
+    /** The current references, if the task carries any. */
+    const references = tasksById.get(id)?.unresolvedBlockers
+    return references === undefined || references.length === 0 ? [] : [{ taskId: id, references: [...references] }]
+  })
+  /** The board's published receipts, limited to the staged roster and allocated task ids. */
+  const created: NonNullable<StagedPlan["created"]> = {
+    members: plan.members.flatMap((staged, index) => {
+      /** The published seat, which may have settled since the board commit. */
+      const member = record.members.find((candidate) => candidate.name === (bindings[index]?.member ?? staged.name))
+      return member?.executorRef === undefined ? [] : [{ name: member.name, id: member.executorRef }]
+    }),
+    tasks: taskIds.map((id, index) => ({ id, subject: tasksById.get(id)?.subject ?? plan.tasks[index]?.subject.trim() ?? id })),
+    ...(unresolved.length === 0 ? {} : { unresolved }),
+  }
+  /** The archive represents a finished approval while the staging slot retains the retry checkpoint. */
+  const { activation: _activation, ...completedPlan } = plan
+  /** The immutable staging contract and its approval receipts. */
+  const approved: StagedPlan = { ...completedPlan, approvedAt: record.approvedAt, created }
+  archivePlan(caller.workspace, approved, true)
+  await deps.bundleApprovalEffects(plan, caller)
+  return { ok: true, plan: approved, team: record, created, bindings }
+}
+
+/**
  * Approve the plan staged by one session: the `agent_teams_plan {action:"approve"}` body, exec-free.
  *
  * THE ORDER IS THE CONTRACT and is preserved exactly: the staged plan must exist and not be approved,
@@ -1131,6 +1201,11 @@ async function approveTeamBody(
     const parent = deps.deriveParentTeam(workspace, sessionId, lineage)
     if (input.dryRun === true) {
       return { ok: true, plan, created: { members: plan.members.map((m) => ({ name: m.name, id: "" })), tasks: plan.tasks.map((t) => ({ subject: t.subject, id: "" })) } }
+    }
+    if (previous !== undefined && plan.activation !== undefined) {
+      /** Commit proof from the checkpoint's board, even when the staging slot still looks incomplete. */
+      const committed = committedApprovalTasks(plan, previous)
+      if (committed !== undefined) return await finalizeTeamApproval(deps, caller, plan, previous, committed, plan.activation.bindings)
     }
     /** The bindings already committed by a prior attempt, if this call is a retry. */
     const frozenBindings = plan.activation?.bindings
@@ -1307,6 +1382,8 @@ async function approveTeamBody(
     // reach the board as references no task answered, flattening the whole DAG to one column with no
     // warning anywhere. `blockedBy` is therefore added in a second pass, through `updateTeamTask`,
     // once the plan's own namespace can be mapped to real board ids.
+    /** The first board position allocated by this approval. */
+    const firstTask = record.tasks.length
     for (const task of buildPlan.tasks) {
       record = addTeamTask(record, {
         subject: task.subject,
@@ -1325,7 +1402,7 @@ async function approveTeamBody(
     const planAlias = new Map<string, string>()
     buildPlan.tasks.forEach((task, index) => {
       /** The board task the staged task at this position was minted as; absent for an empty subject. */
-      const minted = record.tasks[index]
+      const minted = record.tasks[firstTask + index]
       if (minted === undefined) return
       // BOTH FORMS THE PLAN CAN MEAN are mapped, position first: `"2"` is the second staged task,
       // and the subject is what the plan-store's own documentation has always promised.
@@ -1334,7 +1411,7 @@ async function approveTeamBody(
     })
     for (const [index, task] of buildPlan.tasks.entries()) {
       /** The board task this staged task became. */
-      const minted = record.tasks[index]
+      const minted = record.tasks[firstTask + index]
       if (minted === undefined || (task.blockedBy ?? []).length === 0) continue
       /** What this task's references resolve to now that the whole plan is on the board. */
       const mapped = (task.blockedBy ?? []).map((reference) => planAlias.get(reference) ?? reference)
@@ -1345,27 +1422,12 @@ async function approveTeamBody(
       if (mapped.length === minted.blockedBy.length && mapped.every((id, at) => minted.blockedBy[at] === id)) continue
       record = updateTeamTask(record, minted.id, { blockedBy: mapped }, deps.now())
     }
-    // THE REPORT A CAPTAIN SEES AT APPROVAL TIME, not three layers downstream: every staged blocker
-    // that named no task is named HERE, with the board task it landed on. It travels in the
-    // approval ANSWER (rendered by the tool) and into the archived plan's `created.unresolved`, and
-    // the same list is on each board task as `unresolvedBlockers` for every later reader.
-    /** The board tasks carrying a blocker nothing answered, in board order. */
-    const unresolvedBlockers = record.tasks
-      .filter((task) => (task.unresolvedBlockers ?? []).length > 0)
-      .map((task) => ({ taskId: task.id, references: [...(task.unresolvedBlockers ?? [])] }))
-    if (unresolvedBlockers.length > 0) created.unresolved = unresolvedBlockers
-    for (const task of record.tasks) created.tasks.push({ subject: task.subject, id: task.id })
-    /** Complete activation only after all owner identities are available to the board. */
-    const approvedRecord = withDerivedPhase({ ...record, approvedAt: record.approvedAt ?? deps.now().toISOString() })
+    /** The receipts distinguish the committed board from the earlier member-by-member writes. */
+    const approvalTaskIds = record.tasks.slice(firstTask).map((task) => task.id)
+    /** Publish tasks and their commit proof in the same atomic team record write. */
+    const approvedRecord = withDerivedPhase({ ...record, approvedAt: record.approvedAt ?? deps.now().toISOString(), approvalTaskIds })
     writeTeam(workspace, approvedRecord)
-    /** Keep the original staged contract; the checkpoint is no longer needed after success. */
-    const { activation: _activation, ...completedPlan } = plan
-    /** The approved plan's final receipts and board ids. */
-    const approved: StagedPlan = { ...completedPlan, approvedAt: approvedRecord.approvedAt, created }
-    writePlan(workspace, approved)
-    archivePlan(workspace, { ...approved })
-    await deps.bundleApprovalEffects(plan, caller)
-    return { ok: true, plan: approved, team: approvedRecord, created, bindings: bound.bindings }
+    return await finalizeTeamApproval(deps, caller, plan, approvedRecord, approvalTaskIds, bound.bindings)
   } catch (error) {
     // A THROW HERE IS UNEXPECTED — a store write, a broken record, a failed archive — because every
     // POLICY refusal above (the empty shell, the graph, the scopes) is returned or converted before it

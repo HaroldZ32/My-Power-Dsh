@@ -6,7 +6,8 @@
 // makes the two halves DISAGREE (the executor reports handles the record must keep but never adopt,
 // and the readout is deliberately left stale) so a regression to "read the official plane" reddens
 // instead of passing quietly.
-import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test"
+import * as fs from "node:fs"
 import { mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -429,6 +430,81 @@ describe("approval builds an mpd-owned team record", () => {
     expect(listTeams(h.workspace)).toHaveLength(1)
   })
 
+  test.each(["before board", "after board", "after legacy board", "after archive"])("approval board commit interrupted %s rename preserves task and member identities on retry", async (interruption) => {
+    /** Drive the registered tools with the real filesystem stores. */
+    const h = harness()
+    sandboxes.push(h.workspace)
+    await staged(h)
+    /** The identity the checkpoint and board must both name. */
+    const plan = readPlan(h.workspace, "sess-1")
+    /** Only the first arm interrupts before the board is committed. */
+    const beforeBoard = interruption === "before board"
+    /** The archive arm commits both the board and the approved copy before checkpoint cleanup. */
+    const atArchive = interruption === "after archive"
+    /** Delegate every rename except the selected approval write. */
+    const rename = fs.renameSync
+    /** Interrupt the real persistence call, optionally letting its bytes reach the authoritative path first. */
+    const fail = spyOn(fs, "renameSync").mockImplementation((from, to) => {
+      if (atArchive && String(to).startsWith(join(teamRoot(h.workspace), "archive") + "/")) {
+        rename(from, to)
+        throw new Error("interrupted after archive rename")
+      }
+      if (!atArchive && String(to).startsWith(join(teamRoot(h.workspace), "teams") + "/")) {
+        /** Earlier record writes reserve and start members with an empty board. */
+        const stagedRecord: Pick<TeamRecord, "tasks"> = JSON.parse(readFileSync(from, "utf8"))
+        if (stagedRecord.tasks.length > 0) {
+          if (!beforeBoard) rename(from, to)
+          throw new Error(`interrupted ${interruption} rename`)
+        }
+      }
+      rename(from, to)
+    })
+    try {
+      await expect(h.call("agent_teams_plan", { action: "approve" })).rejects.toThrow(`interrupted ${interruption} rename`)
+    } finally {
+      fail.mockRestore()
+    }
+    /** The same checkpoint is still open and the actual board reflects the side of the rename. */
+    const interrupted = listTeams(h.workspace)[0]
+    expect(interrupted.planId).toBe(plan?.planId)
+    expect(readPlan(h.workspace, "sess-1")?.activation?.teamId).toBe(interrupted.teamId)
+    expect(interrupted.tasks.map((task) => [task.id, task.owner, task.blockedBy])).toEqual(beforeBoard
+      ? []
+      : [["T1", "Senior Engineer", []], ["T2", "Reviewer", ["T1"]]])
+    /** Older builds committed the same rows but had no explicit task receipt field. */
+    const { approvalTaskIds: _approvalTaskIds, ...legacyBoard } = interrupted
+    if (!beforeBoard) {
+      // An independent write to the authoritative record gives another task the original title and scope.
+      /** The board image to update, including the older persisted shape in the compatibility arm. */
+      const board = interruption === "after legacy board" ? legacyBoard : interrupted
+      /** The separately appended board row; the staged plan does not own it. */
+      const appended = addTeamTask(board, { subject: "core", description: "new work", writeScopes: ["packages/**"], blockedBy: [] }, new Date())
+      writeTeam(h.workspace, { ...appended, tasks: appended.tasks.map((task) => task.id === "T1" ? { ...task, subject: "renamed core" } : task) })
+      await h.call("agent_teams_task", { action: "claim", task_id: "T1", claimant: "Senior Engineer" })
+      await h.call("agent_teams_task", { action: "complete", task_id: "T1", note: "accepted between writes" })
+      await h.call("agent_teams_task", { action: "claim", task_id: "T2", claimant: "Reviewer" })
+      await h.call("agent_teams_task", { action: "depend", task_id: "T2", blocked_by: ["T3"] })
+    }
+    /** The latest board, including any work that landed after its first publication. */
+    const beforeRetry = readTeam(h.workspace, interrupted.teamId)
+    if (beforeRetry === undefined) throw new Error("the interrupted approval lost its team record")
+    /** The retry must adopt the existing receipts. */
+    const resumed = await h.call("agent_teams_plan", { action: "approve" }) as { team: TeamRecord; created: { tasks: Array<{ id: string }> } }
+    expect(resumed.team.teamId).toBe(interrupted.teamId)
+    if (!beforeBoard) expect(resumed.team).toEqual(beforeRetry)
+    expect(resumed.created.tasks.map((task) => task.id)).toEqual(["T1", "T2"])
+    expect(resumed.team.tasks.map((task) => [task.id, task.owner, task.blockedBy, task.status])).toEqual(beforeBoard
+      ? [["T1", "Senior Engineer", [], "pending"], ["T2", "Reviewer", ["T1"], "pending"]]
+      : [["T1", "Senior Engineer", [], "completed"], ["T2", "Reviewer", ["T1", "T3"], "in_progress"], ["T3", undefined, [], "pending"]])
+    expect(resumed.team.nextTaskNumber).toBe(beforeBoard ? 3 : 4)
+    expect(h.spawnRequests.map((request) => [request.name, request.memberId])).toEqual([["Senior Engineer", "M1"], ["Reviewer", "M2"]])
+    expect(listTeams(h.workspace)).toEqual([resumed.team])
+    expect(readPlan(h.workspace, "sess-1")).toBeUndefined()
+    /** The durable archive names only the plan's own published task ids. */
+    const archived: { created: { tasks: Array<{ id: string }> } } = JSON.parse(readFileSync(join(teamRoot(h.workspace), "archive", interrupted.planId ?? "", "plan.json"), "utf8"))
+    expect(archived.created.tasks.map((task) => task.id)).toEqual(["T1", "T2"])
+  })
+
   test("an already persisted zero-start approval can recover without a second team", async () => {
     /** The pre-upgrade state has an approved plan but every child start was refused. */
     const h = harness()
@@ -824,6 +900,79 @@ describe("a release that lands while a dispatch pass is in flight is never rever
     // this pass's accepted operations instead of discarding either half.
     expect(ledger[ledgerKey(teamId, "T3")]?.memberName).toBe("Reviewer")
     expect(ledger[ledgerKey(teamId, "T1")]).toBeUndefined()
+  })
+})
+
+describe("public release CAS keeps the board and its pairing consistent", () => {
+  test("public release CAS refuses a stale revision without changing either file", async () => {
+    /** Dispatch creates the pairing through the same public tool that would send work to a member. */
+    const h = harness()
+    sandboxes.push(h.workspace)
+    await staged(h)
+    await h.call("agent_teams_plan", { action: "approve" })
+    /** The pass that books T1 to its owner. */
+    const pass = await h.call("agent_teams_dispatch", { action: "run", limit: 1 }) as { pairs: Array<{ taskId: string }> }
+    expect(pass.pairs.map((pair) => pair.taskId)).toEqual(["T1"])
+    /** The board as it stood when the Lead decided to release. */
+    const dispatched = listTeams(h.workspace)[0]
+    /** The revision the release request will carry. */
+    const seenRevision = dispatched.tasks[0].revision
+    /** A concurrent task edit moves the revision after the release decision. */
+    const edited = updateTeamTask(dispatched, "T1", { note: "new information before release" }, new Date())
+    writeTeam(h.workspace, edited)
+    /** The existing pairing, which belongs to the in-progress task. */
+    const pairing = ledgerOnDisk(h.workspace)
+    /** The team-scoped ledger key this release may remove. */
+    const key = ledgerKey(dispatched.teamId, "T1")
+    expect(pairing[key]?.memberName).toBe("Senior Engineer")
+
+    /** The refused CAS must leave both persisted records unchanged. */
+    const refused = await h.call("agent_teams_task", { action: "release", task_id: "T1", expected_revision: seenRevision })
+    expect(readTeam(h.workspace, dispatched.teamId)).toEqual(edited)
+    expect(ledgerOnDisk(h.workspace)).toEqual(pairing)
+    expect(refused).toMatchObject({ released: false, refused: expect.stringContaining("changed under you") })
+
+    /** Re-reading and using the current revision frees both halves. */
+    const fresh = await h.call("agent_teams_task", { action: "release", task_id: "T1", expected_revision: edited.tasks[0].revision })
+    expect(fresh).toMatchObject({ released: true, status: "pending" })
+    expect(readTeam(h.workspace, dispatched.teamId)?.tasks[0]).toMatchObject({ status: "pending", note: "new information before release" })
+    expect(ledgerOnDisk(h.workspace)[key]).toBeUndefined()
+  })
+
+  test("public release CAS lets the Lead clean up a pending pairing after a failed ledger write", async () => {
+    /** The real board and ledger start from a successful dispatch. */
+    const h = harness()
+    sandboxes.push(h.workspace)
+    await staged(h)
+    await h.call("agent_teams_plan", { action: "approve" })
+    await h.call("agent_teams_dispatch", { action: "run", limit: 1 })
+    /** The in-progress board and its paired ledger entry. */
+    const dispatched = listTeams(h.workspace)[0]
+    /** The ledger key this recovery is allowed to remove. */
+    const key = ledgerKey(dispatched.teamId, "T1")
+    expect(ledgerOnDisk(h.workspace)[key]?.memberName).toBe("Senior Engineer")
+
+    /** Fail only the normal ledger rename, after the task has been requeued. */
+    const rename = fs.renameSync
+    /** The failing persistence seam. */
+    const fail = spyOn(fs, "renameSync").mockImplementation((from, to) => {
+      if (to === join(teamRoot(h.workspace), "dispatch.json")) throw new Error("interrupted release ledger rename")
+      rename(from, to)
+    })
+    try {
+      await expect(h.call("agent_teams_task", { action: "release", task_id: "T1", expected_revision: dispatched.tasks[0].revision })).rejects.toThrow("interrupted release ledger rename")
+    } finally {
+      fail.mockRestore()
+    }
+    /** The board already requeued T1 and advanced its revision. */
+    const requeued = readTeam(h.workspace, dispatched.teamId)
+    expect(requeued?.tasks[0]).toMatchObject({ status: "pending", revision: dispatched.tasks[0].revision + 1 })
+    expect(ledgerOnDisk(h.workspace)[key]?.memberName).toBe("Senior Engineer")
+    /** The unconditional dispatch release is an authorized cleanup of the remaining half. */
+    const retry = await h.call("agent_teams_dispatch", { action: "release", task_id: "T1" })
+    expect(retry).toMatchObject({ released: true, refused: expect.stringContaining('"pending"') })
+    expect(readTeam(h.workspace, dispatched.teamId)).toEqual(requeued)
+    expect(ledgerOnDisk(h.workspace)[key]).toBeUndefined()
   })
 })
 
