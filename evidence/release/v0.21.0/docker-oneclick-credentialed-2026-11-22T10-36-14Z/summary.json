@@ -1,0 +1,94 @@
+{
+  "exitCode": 0,
+  "containerExit": 0,
+  "dockerMode": "ROOTLESS",
+  "skipLine": null,
+  "harnessVersion": "0.2.2-rc.5",
+  "harnessVersionExpected": "0.2.2-rc.5",
+  "tuiVersion": "version=0.20.2 bin=/usr/local/bin/dsh-tui",
+  "counts": {
+    "true": 203,
+    "null": 41
+  },
+  "total": 244,
+  "ok": true,
+  "complete": false,
+  "unmeasured": [],
+  "fixtureBound": {
+    "ok": true,
+    "raw": "session=32dc54bd-878b-426b-9002-5b665bbb2b81 materialized=true attempts=2 source=created-during-this-boot-under-this-project-key projectKey=--work-ws-- index=/work/ws/.mpd/team/teams.json;active={\"session-1ec40b4c-2295-400b-9a16-d3842a36ca37\":\"tui-scene\",\"32dc54bd-878b-426b-9002-5b665bbb2b81\":\"tui-scene\"};recordLeadSessionId=32dc54bd-878b-426b-9002-5b665bbb2b81;keySource=import:packages/mpd-team-core-plugin/src/team-store.ts#sessionKey resolve=store=/root/sandbox-dsh/sessions;before=3;after=4;created=--work-ws--/32dc54bd-878b-426b-9002-5b665bbb2b81"
+  },
+  "six": {
+    "tui.mergedPanelOpens": {
+      "ok": true,
+      "raw": "panelSeam=present driver=docker/lib/tui-panel-body.ts TITLE_HITS=1 SUB_HITS=2 TEAM_HITS=2 CONTROL_HITS=0 SUB_LINE=7 TEAM_LINE=11 HEAD_LINE=7 EMPTY_LINE=8 pane=pane-merged.txt control=pane-teamClosed.txt chars=13387 controlChars=12367"
+    },
+    "tui.mergedPanelOrder": {
+      "ok": true,
+      "raw": "panelSeam=present driver=docker/lib/tui-panel-body.ts TITLE_HITS=1 SUB_HITS=2 TEAM_HITS=2 CONTROL_HITS=0 SUB_LINE=7 TEAM_LINE=11 HEAD_LINE=7 EMPTY_LINE=8 pane=pane-merged.txt control=pane-teamClosed.txt chars=13387 controlChars=12367"
+    },
+    "tui.teamSceneOpened": {
+      "ok": true,
+      "raw": "chars=11739"
+    },
+    "tui.teamGraphDrawn": {
+      "ok": true,
+      "raw": "corners=╭3 ╮3 ╰3 ╯3 tasksFromRecord=3 ids=T1,T2,T3 pane=pane-team.txt"
+    },
+    "tui.teamGraphContent": {
+      "ok": true,
+      "raw": "ids=T1,T2,T3 fromRecord=3 labelsExpected=3 missing=[none] pane=pane-team.txt chars=11739 pinnedFocus=T1 detail=[T1 · requirement · freeze the contract] pinnedPane=pane-teamPinned.txt"
+    },
+    "tui.laneExit": {
+      "ok": true,
+      "raw": "records=21"
+    }
+  },
+  "install": {
+    "install.exit": true,
+    "install.profileDep": true,
+    "install.installedTree": true,
+    "install.buildScripts": true
+  },
+  "presetMount": {
+    "ok": true,
+    "raw": "POST /api/session/create -> {\"type\":\"server-response\",\"rpcId\":\"rpc-1-1795343979-9366\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-fdb2330f-9ef0-4d11-acde-a0c63d1c78d1\",\"agentPreset\":\"mpd\"}}}"
+  },
+  "userSurface": {
+    "true": 85,
+    "null": 35
+  },
+  "userSurfaceTotal": 120,
+  "durationSeconds": 1156,
+  "startedAt": "2026-11-22T10:36:28.000Z",
+  "finishedAt": "2026-11-22T10:55:44.472Z",
+  "runEvidence": "evidence/docker/client-install-oneclick/2026-11-22T10-36-27Z",
+  "headAtRunStart": "3abf3e0a",
+  "headAtReport": "0c454ca8",
+  "captainCommit": {
+    "commit": "0c454ca8",
+    "subject": "chore(evidence): record the oneclick re-invocation and its fixture-binding figures",
+    "nonEvidenceChanges": 0,
+    "codeTreeHashesIdentical": true
+  },
+  "panes": {
+    "thisRun": {
+      "file": "pane-boardOpened.txt",
+      "sha256": "3d4d611f3371bfbe2898ec66c02e3f76f410e5f00caefafb2b14ec236cd887b7"
+    },
+    "failedRun": {
+      "file": "pane-boardOpened.failed-2026-11-22T09-43-42Z.txt",
+      "sha256": "ac118f042d0ef9988d459c0e32ce5ad510ace82b6281f96af91fc7784804efdf"
+    }
+  },
+  "failedRun": {
+    "dir": "evidence/docker/client-install-oneclick/2026-11-22T09-43-42Z",
+    "exitCode": 1,
+    "counts": {
+      "true": 196,
+      "false": 6,
+      "null": 42
+    },
+    "fixtureBoundRaw": "session=none materialized=false attempts=4 source=none projectKey=--work-ws-- no-bind-attempted resolve=store=/root/sandbox-dsh/sessions;before=3;after=3;created="
+  }
+}
