@@ -2,10 +2,10 @@
 
 **English** | [中文](./README.zh-CN.md)
 
-[![Version](https://img.shields.io/badge/version-0.20.0-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
+[![Version](https://img.shields.io/badge/version-0.21.0-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
 [![npm](https://img.shields.io/badge/npm-%40mpd--dsh%2Fmpd-CB3837.svg)](https://www.npmjs.com/package/@mpd-dsh/mpd)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE.md)
-[![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.2--rc.3-4B32C3.svg)](#acknowledgements)
+[![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.2--rc.5-4B32C3.svg)](#acknowledgements)
 [![Platforms](https://img.shields.io/badge/platforms-Web%20GUI%20%7C%20DSH--TUI-informational.svg)](#one-plugin-two-surfaces)
 [![Runtime](https://img.shields.io/badge/runtime-Bun%201.4.0-black.svg)](https://bun.sh)
 [![Gates](https://github.com/HaroldZ32/My-Power-Dsh/actions/workflows/gates.yml/badge.svg)](https://github.com/HaroldZ32/My-Power-Dsh/actions/workflows/gates.yml)
@@ -147,17 +147,19 @@ the dependency closure and what the install mounts.
 ## Version compatibility
 
 Each row is the host pair a release was **built and verified against**: the Docker real-machine lanes
-run the install and the mount on exactly that pair. The harness pin is the `host-base` ref in
-[`dsh-distribution.json`](./dsh-distribution.json) plus the `engines.dsh` span in
-[`package.json`](./package.json), and the DSH-TUI pin is both manifests' `compat.hosts` plus the
-`host-tui` ref in [`dsh-distribution.json`](./dsh-distribution.json). A newer host is not claimed
-until a release row names it; pin both.
+run the install and the mount on exactly that pair. [`dsh-distribution.json`](./dsh-distribution.json)
+pins the tested pair through `host-base` and `host-tui`. [`package.json`](./package.json) declares the
+supported harness range in `engines.dsh`. The `compat.hosts` lists in
+[`dsh-plugin.json`](./dsh-plugin.json) and
+[`packages/mpd-tui-plugin/dsh-plugin.json`](./packages/mpd-tui-plugin/dsh-plugin.json)
+declare which TUI hosts the bundle admits. Pin both hosts to the versions listed for your release.
 
 **The newest row is the version this package publishes; the rows below it are the pins of earlier releases, kept as history.**
 
 | `@mpd-dsh/mpd` | DeepSeek Harness | DSH-TUI | Notes |
 |---|---|---|---|
-| 0.20.0 | 0.2.2-rc.3 | 0.20.1 | the current release |
+| 0.21.0 | 0.2.2-rc.5 | 0.20.2 | the current release |
+| 0.20.0 | 0.2.2-rc.3 | 0.20.1 | previous |
 | 0.19.0 | 0.2.2-rc.2 | 0.20.0 | previous |
 | 0.18.1 | 0.2.2-rc.1 | 0.19.0 | previous |
 | 0.18.0 | 0.2.2-rc.1 | 0.19.0 | previous |
@@ -177,13 +179,13 @@ until a release row names it; pin both.
 | 0.15.0 | 0.2.1-rc.2 | 0.16.1 | previous |
 | 0.14.0 | 0.2.1-rc.2 | 0.16.1 | previous (the harness-0.2.1 adaptation release) |
 
-The newest row **is** that pair: `0.20.0` ships against harness `0.2.2-rc.3` and DSH-TUI `0.20.1`. The
-older hosts stay supported: `engines.dsh` spans `>=0.2.1-rc.5 <0.3.0-0`, harness `0.2.2-rc.2`,
-`0.2.2-rc.1` and `0.2.1-rc.5` keep mounting and running, and the `compat.hosts` band keeps DSH-TUI
-`0.18.0`, `0.19.0` and `0.20.0` beside the new `0.20.1`. The harness pin lives in
-[`dsh-distribution.json`](./dsh-distribution.json)'s `host-base` ref and [`package.json`](./package.json)
-`engines.dsh`; both manifests' `compat.hosts` list all four TUI hosts. The rows below it record what
-earlier releases actually pinned. The full matrix is
+Release `0.21.0` pairs harness `0.2.2-rc.5` with DSH-TUI `0.20.2`. If you use DSH-TUI with
+harness `0.2.2-rc.5`, use TUI `0.20.2`. The older hosts stay supported within their declared peer ranges.
+`engines.dsh` spans `>=0.2.1-rc.5 <0.3.0-0`, harness `0.2.2-rc.3`,
+`0.2.2-rc.2`, `0.2.2-rc.1` and `0.2.1-rc.5` keep mounting and running, and the `compat.hosts` band keeps
+DSH-TUI `0.18.0`, `0.19.0`, `0.20.0` and `0.20.1` beside the new `0.20.2`. Harness `0.2.2-rc.4` is
+admitted by that `engines.dsh` range but is **not separately claimed or measured** by this release.
+The full matrix is
 [`docs/compatibility.md`](./docs/compatibility.md).
 
 ## Quick start
@@ -256,9 +258,9 @@ which is HOME-scoped at `~/.mpd/workmate/`. See
 
 ## Status and known limitations
 
-- **Built and verified against a prerelease harness.** The bundle is tested against **0.2.2-rc.1**, and the
-  older **0.2.1-rc.5** still mounts and runs. Expect breakage while upstream stabilizes, and pin the
-  harness version you use.
+- **Built and verified against a prerelease harness.** The bundle is tested against **0.2.2-rc.5**, and the
+  older **0.2.2-rc.3**, `0.2.2-rc.2`, `0.2.2-rc.1` and **0.2.1-rc.5** still mount and run. Expect
+  breakage while upstream stabilizes, and pin the harness version you use.
 - **One capability is missing on the older harness.** `list_agents` is not mounted on `0.2.1-rc.5`: the
   newer harness removed the subpath export the row needed, and a single preset cannot straddle both. See
   [`docs/compatibility.md`](./docs/compatibility.md) §2.
@@ -305,7 +307,7 @@ bilingual (English and 简体中文).
 ## Changelog
 
 Release notes live in [`CHANGELOG.md`](./CHANGELOG.md), newest first, one section per released
-version (the current release is **v0.20.0**). Annotated tags are listed under
+version (the current release is **v0.21.0**). Annotated tags are listed under
 [Releases](https://github.com/HaroldZ32/My-Power-Dsh/releases).
 
 ## Acknowledgements

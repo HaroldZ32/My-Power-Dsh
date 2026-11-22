@@ -73,15 +73,22 @@ const FIXTURE_ROW = "- id: agent-default-model\n  config:\n    provider: deepsee
 // QA-harness fidelity defect), so no CLI/binary env pin is pre-set here either.
 /** The packed preset-root operand the rewrite replaces with the checkout's own `presets/`. */
 const PACKED_PRESETS_EXPR = '"/node_modules/@mpd-dsh/mpd/presets"'
-/** The packed baseUrl expression the rewrite strips out of every row operand. */
-const BASEURL_PREFIX = '(typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\\/\\/\\/(?=[A-Za-z]:)/, "").replace(/^file:\\/\\//, "")).replace(/\\/+$/, "") : "") + '
-/** Rewrite the committed bundle patch into a checkout-resolvable one, as the QA dev flavor does. */
-function devPatch(): string {
-  // The committed bundle patch, whose packed row operands are rewritten below.
-  const t = readFileSync(join(repoRoot, "cordis.patch.yml"), "utf8")
-  return t
+/** The packed `baseUrl`-resolution operand in DOUBLE-quoted JS spelling, trailing ` + ` included. */
+const BASEURL_RESOLVE_DQ = '(typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\\/\\/\\/(?=[A-Za-z]:)/, "").replace(/^file:\\/\\//, "")).replace(/\\/+$/, "") : "") + '
+/** The same operand in SINGLE-quoted JS spelling, consumed too so the rewrite is quote-agnostic. */
+const BASEURL_RESOLVE_SQ = "(typeof baseUrl === 'string' ? decodeURIComponent(baseUrl.replace(/^file:\\/\\/\\/(?=[A-Za-z]:)/, '').replace(/^file:\\/\\//, '')).replace(/\\/+$/, '') : '') + "
+/**
+ * The surviving half of an UNREWRITTEN `baseUrl` operand: its `decodeURIComponent`
+ * call, which the resolution above makes and a pure `typeof baseUrl` type guard
+ * never does — so the mount guards' type guard is not flagged.
+ */
+const BASEURL_DECODE = "decodeURIComponent(baseUrl"
+/** Rewrite packed row operands for a checkout boot, using the committed patch by default. */
+function devPatch(text: string = readFileSync(join(repoRoot, "cordis.patch.yml"), "utf8")): string {
+  return text
     .split(PACKED_PRESETS_EXPR).join(JSON.stringify(join(repoRoot, "presets")))
-    .split(BASEURL_PREFIX).join("")
+    .split(BASEURL_RESOLVE_DQ).join("")
+    .split(BASEURL_RESOLVE_SQ).join("")
     .split('"/node_modules/@mpd-dsh/mpd/').join('"' + repoRoot + "/")
     .split("name: '@mpd-dsh/mpd'").join("name: '" + join(repoRoot, "packages/mpd-bundle-plugin/dist/index.js") + "'")
     .split("@mpd-dsh/mpd/").join(repoRoot + "/")
@@ -94,10 +101,35 @@ function selfTest(): void {
   // Whether the fixture wrongly names the gateway route instead.
   const pipe = FIXTURE_ROW.includes("provider: pi-ai")
   if (!okRow || pipe) { console.error("[llm-dual-track self-test] FAIL"); process.exit(1) }
-  // the boot-repair rewrite must leave no packed operand behind
+  /** A mount guard shared by both inputs and preserved byte for byte. */
+  const guard = "const checkout = typeof baseUrl === 'string' ? fileURLToPath(baseUrl) : undefined"
+  /** Packed operands using each supported quote spelling around the base URL resolution. */
+  const operands = [
+    String.raw`(typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/, "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/example/dist/index.js"`,
+    String.raw`(typeof baseUrl === 'string' ? decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/, '').replace(/^file:\/\//, '')).replace(/\/+$/, '') : '') + "/node_modules/@mpd-dsh/mpd/packages/example/dist/index.js"`,
+  ]
+  /** The full expected rewrite, retaining the guard and spelling the checkout path directly. */
+  const expected = `${guard}\n"${repoRoot}/packages/example/dist/index.js"`
+  for (const operand of operands) {
+    if (devPatch(`${guard}\n${operand}`) !== expected) {
+      console.error("[llm-dual-track self-test] FAIL: packed operand rewrite or mount guard changed: " + operand)
+      process.exit(1)
+    }
+  }
+  // the boot-repair rewrite must leave no packed operand AND no unrewritten baseUrl concat
+  // behind. The sentinel is the operand's `decodeURIComponent` call, never the bare token
+  // `typeof baseUrl`: the mount guards legitimately carry `typeof baseUrl === 'string'` as a
+  // TYPE GUARD around `fileURLToPath(baseUrl)`, which decodes nothing and concatenates no
+  // path, so a dev boot needs it and flagging it reddens this case on a healthy tree.
   const dev = devPatch()
-  if (dev.includes("typeof baseUrl") || dev.includes("/node_modules/@mpd-dsh/mpd/") || dev.includes("name: '@mpd-dsh/mpd'")) {
+  if (dev.includes(BASEURL_DECODE) || dev.includes("/node_modules/@mpd-dsh/mpd/") || dev.includes("name: '@mpd-dsh/mpd'")) {
     console.error("[llm-dual-track self-test] FAIL: devPatch left a packed/self-row operand (boot would be ERR_MODULE_NOT_FOUND again)")
+    process.exit(1)
+  }
+  // NEGATIVE CONTROL: the narrowed sentinel must still FIRE on the patch as DECLARED, else it
+  // could never catch an unrewritten operand at all.
+  if (!readFileSync(join(repoRoot, "cordis.patch.yml"), "utf8").includes(BASEURL_DECODE)) {
+    console.error("[llm-dual-track self-test] FAIL: negative control — the committed patch must carry the packed baseUrl resolution (`" + BASEURL_DECODE + "`)")
     process.exit(1)
   }
   // THE ROUTE STAGE (F5): the deepseek track must declare the llm-pi-ai route AND the model id the

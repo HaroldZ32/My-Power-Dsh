@@ -1,0 +1,6 @@
+utc=2026-11-22T10:07:05Z
+head=2cfa9430
+headFull=2cfa94305c8e1cd4449500f23d851bc900e99acc
+branch=feature/dsh-022rc5-tui-0202
+diffSha=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+trackedChangedCount=0

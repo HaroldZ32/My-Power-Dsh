@@ -1,0 +1,1 @@
+--mode oneclick --require-docker --live

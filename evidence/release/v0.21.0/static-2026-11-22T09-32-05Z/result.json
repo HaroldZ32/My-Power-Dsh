@@ -1,0 +1,392 @@
+{
+  "lane": "T4 — static verification (direct captain commission; no board task, no claim, no dispatch)",
+  "wave": "dsh-022rc5-tui-0202",
+  "contract": ".mpd/plans/adapt-dsh-022rc5-tui-0202.md — §7 acceptance text (judged), §3 measured facts, §4 decisions",
+  "verdict": "PASS",
+  "riskLevel": "low",
+  "summary": "Every command in the frozen §7 sweep plus both §4 members outside the aggregate is green on the certified commit, all five COMPAT arms and the host arm pass individually, the three-way TUI band is identical and sorted, the three version carriers cohere at 0.21.0, the harness/TUI distribution refs are rc.5/0.20.2, engines.dsh and engines.node are unchanged, no live old pin survives outside dated history, every changed bilingual pair carries its switch link and a real Chinese body, and the pre-existing test:qa red was repaired by NARROWING a false-positive sentinel without weakening the leak checks (proved arithmetically on byte-identical patch bytes). Two Nits and no Blocker/High.",
+  "certifiedCommit": {
+    "sha": "d2a93abcda80a27cf9da725413613486895549eb",
+    "short": "d2a93abc",
+    "subject": "feat(adapt): support DSH 0.2.2-rc.5 and dsh-tui 0.20.2 (0.21.0)",
+    "branch": "feature/dsh-022rc5-tui-0202",
+    "filesInCommit": 45,
+    "insertions": 535,
+    "deletions": 191,
+    "trackedDirty": 0,
+    "diffSha256": "9d9d5726d518bef3bbbbeebeaa3faaa67b553139bda420e9cc365137ed988ba7",
+    "preFreezeWorktreeDiffSha256": "9d9d5726d518bef3bbbbeebeaa3faaa67b553139bda420e9cc365137ed988ba7",
+    "byteIdenticalToPreFreezeRun": true,
+    "skillsFilesInCommit": 11,
+    "proofLog": "00-freeze-proof.log"
+  },
+  "postFreeze": {
+    "headAtReportTime": "8828e3c9 chore(evidence): record the v0.21.0 gate transcripts for commit d2a93abc",
+    "nonEvidenceDiffVsCertified": "EMPTY — `git diff --name-only d2a93abc HEAD` filtered to non-evidence paths is empty, so the certified code/doc/manifest bytes are still d2a93abc; 8828e3c9 adds evidence transcripts only.",
+    "laneDirCommittedIn": "8828e3c9 committed this lane dir up to 16-scope-diff.log (17:39:07+08:00). result.json, 17-build-result.cjs and 18-post-freeze-head.log were written after it and are still untracked: the captain needs ONE follow-up evidence commit.",
+    "log": "18-post-freeze-head.log"
+  },
+  "environment": {
+    "dshPrefixBin": "0.2.2-rc.5",
+    "dshPrefixPath": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/dsh-022/bin/dsh -> .qa-tmp/dsh-022/lib/node_modules/@deepseek-ai/dsh/lib/bin.js",
+    "dshAmbientBin": "0.2.2-rc.5",
+    "dshAmbientPath": "/home/haroldzhao/.nvm/versions/node/v24.21.0/bin/dsh",
+    "d5Note": "The documented prefix held 0.2.2-rc.1 when this lane first read it (09:04Z) and 0.2.2-rc.5 at 09:07Z (package.json version + bin/dsh --version, dir mtime 2026-11-22T17:06:25+08:00): it was refreshed by another lane, not by me. Both the prefix bin and the ambient bin then measured 0.2.2-rc.5, so the documented prefixed command measured the wave target; no version substitution is claimed.",
+    "node": "v24.21.0",
+    "distToolchain": "bun 1.4.0 from .toolchain/node_modules/.bin/bun (verify-dist-fresh prints it)",
+    "xdgRuntimeDir": "<repo>/.qa-tmp/xdg",
+    "dshgoKit": "<repo>/.mpd/tmp-dshgo/kit"
+  },
+  "commands": [
+    {
+      "id": "01",
+      "argv": "bun run verify:gates",
+      "exit": 0,
+      "startUtc": "2026-11-22T09:32:18Z",
+      "endUtc": "2026-11-22T09:32:27Z",
+      "log": "01-verify-gates.log",
+      "keyLines": [
+        "[verify-gates] member vendor: exit=0 PASS - 143ms",
+        "[verify-gates] member dist-fresh: exit=0 PASS - 828ms",
+        "[verify-gates] member rows-parity: exit=0 PASS - 58ms",
+        "[verify-gates] member docs-parity: exit=0 PASS - 71ms",
+        "[verify-gates] member preset-conformance: exit=0 PASS - 936ms",
+        "[verify-gates] member plugin-manifest: exit=0 PASS - 2540ms",
+        "[verify-gates] member comment-coverage: exit=0 PASS - 3329ms",
+        "[verify-gates] member graph-model: exit=0 PASS - 447ms",
+        "[verify-gates] member workflows: exit=0 PASS - 43ms",
+        "[verify-gates] member tui-admission: exit=0 PASS - 110ms",
+        "[verify-gates] member dshgo: exit=0 PASS - 111ms",
+        "[verify-gates] PASS - 11/11 member gate(s) green"
+      ]
+    },
+    {
+      "id": "02",
+      "argv": "node scripts/verify-tui-admission.ts",
+      "exit": 0,
+      "startUtc": "2026-11-22T09:32:27Z",
+      "endUtc": "2026-11-22T09:32:27Z",
+      "log": "02-verify-tui-admission.log",
+      "keyLines": [
+        "[tui-admission] arm COMPAT.band:bundle PASS — dsh-plugin.json declares the band [@deepseek-harness-tui/dsh-tui@0.18.0, @deepseek-harness-tui/dsh-tui@0.19.0, @deepseek-harness-tui/dsh-tui@0.20.0, @deepseek-harness-tui/dsh-tui@0.20.1, @deepseek-harness-tui/dsh-tui@0.20.2]",
+        "[tui-admission] arm COMPAT.band:package PASS — packages/mpd-tui-plugin/dsh-plugin.json declares the band [@deepseek-harness-tui/dsh-tui@0.18.0, @deepseek-harness-tui/dsh-tui@0.19.0, @deepseek-harness-tui/dsh-tui@0.20.0, @deepseek-harness-tui/dsh-tui@0.20.1, @deepseek-harness-tui/dsh-tui@0.20.2]",
+        "[tui-admission] arm COMPAT.band-parity PASS — both manifests declare the same band [@deepseek-harness-tui/dsh-tui@0.18.0, @deepseek-harness-tui/dsh-tui@0.19.0, @deepseek-harness-tui/dsh-tui@0.20.0, @deepseek-harness-tui/dsh-tui@0.20.1, @deepseek-harness-tui/dsh-tui@0.20.2]",
+        "[tui-admission] arm COMPAT.distribution-ref PASS — the host-tui ref \"pkg:npm/@deepseek-harness-tui/dsh-tui@0.20.2\" is inside the band [@deepseek-harness-tui/dsh-tui@0.18.0, @deepseek-harness-tui/dsh-tui@0.19.0, @deepseek-harness-tui/dsh-tui@0.20.0, @deepseek-harness-tui/dsh-tui@0.20.1, @deepseek-harness-tui/dsh-tui@0.20.2]",
+        "[tui-admission] arm COMPAT.declared-hosts PASS — every declared host [@deepseek-harness-tui/dsh-tui@0.18.0, @deepseek-harness-tui/dsh-tui@0.19.0, @deepseek-harness-tui/dsh-tui@0.20.0, @deepseek-harness-tui/dsh-tui@0.20.1, @deepseek-harness-tui/dsh-tui@0.20.2] (from specs/tui-hosts.json) is inside each of the 2 manifest band(s)",
+        "[tui-admission] arm H.host PASS — the installed host @deepseek-harness-tui/dsh-tui 0.20.2 resolved at /home/haroldzhao/.dsh/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui",
+        "[tui-admission] arm COMPAT.host-version PASS — the discovered host @deepseek-harness-tui/dsh-tui 0.20.2 is inside the declared band [@deepseek-harness-tui/dsh-tui@0.18.0, @deepseek-harness-tui/dsh-tui@0.19.0, @deepseek-harness-tui/dsh-tui@0.20.0, @deepseek-harness-tui/dsh-tui@0.20.1, @deepseek-harness-tui/dsh-tui@0.20.2]",
+        "[tui-admission] REPORT: PASS — 49 arms passed, 1 allowed deviation(s), 5 bound(s)."
+      ]
+    },
+    {
+      "id": "03",
+      "argv": "node scripts/verify-no-host-override.ts",
+      "exit": 0,
+      "startUtc": "2026-11-22T09:32:27Z",
+      "endUtc": "2026-11-22T09:32:27Z",
+      "log": "03-verify-no-host-override.log",
+      "keyLines": [
+        "[verify-no-host-override] bundle id-targets (overrides): 0 (none: this bundle is purely additive)",
+        "[verify-no-host-override] bundle inserted rows (additive): 37",
+        "[verify-no-host-override] PASS: every id-target is bundle-owned (0 of 0 collide with the 226 host-declared row ids)"
+      ]
+    },
+    {
+      "id": "04",
+      "argv": "node scripts/verify-manual-paths.ts",
+      "exit": 0,
+      "startUtc": "2026-11-22T09:32:27Z",
+      "endUtc": "2026-11-22T09:32:27Z",
+      "log": "04-verify-manual-paths.log",
+      "keyLines": [
+        "[verify-manual-paths] manual-sha256 fbaa904c778f4c365a8a69c5ea6a090f7d7d0b63405a9c4a6b0434e4787861e3 bytes=63152 mtime=2026-11-22T09:14:07.245Z",
+        "[verify-manual-paths] PASS resolved=161 over-report=72 under-report=84 declared=2 (every audited path exists; the DECLARED anticipatory class is named with its reason and counted apart; the two matcher-error directions above are reported, not merged)"
+      ]
+    },
+    {
+      "id": "05",
+      "argv": "node scripts/install-profile.ts --dry-run",
+      "exit": 0,
+      "startUtc": "2026-11-22T09:32:27Z",
+      "endUtc": "2026-11-22T09:32:27Z",
+      "log": "05-install-profile-dry-run.log",
+      "keyLines": [
+        "[install-profile] dshHome=/home/haroldzhao/.dsh profile=mpd write=false",
+        "[install-profile] toolchain missing=false (use --skip-toolchain to skip)",
+        "[install-profile] rows about to be written to home patch: 37 (id-target=0, insert=37)"
+      ]
+    },
+    {
+      "id": "06",
+      "argv": "node skills/dsh-qa/scripts/preset-conformance.ts --self-test",
+      "exit": 0,
+      "startUtc": "2026-11-22T09:32:27Z",
+      "endUtc": "2026-11-22T09:32:28Z",
+      "log": "06-preset-conformance-self-test.log",
+      "keyLines": [
+        "[preset-conformance self-test] ok: 33 harness rows conform against the installed schemas (4 row(s) declare no schema), persona prefix=true, mpd preset 29 child rows, row parity 28/28 (negative controls: 6/6 reddened)"
+      ]
+    },
+    {
+      "id": "07",
+      "argv": "bun skills/dsh-qa/scripts/bundle-lifecycle.ts",
+      "exit": 0,
+      "startUtc": "2026-11-22T09:32:28Z",
+      "endUtc": "2026-11-22T09:32:36Z",
+      "log": "07-bundle-lifecycle.log",
+      "keyLines": [
+        "[bundle-lifecycle] ok=true -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/dsh-qa/bundle-lifecycle/2026-11-22T09-32-28.237Z",
+        "[bundle-lifecycle] PASS"
+      ]
+    },
+    {
+      "id": "08",
+      "argv": "bun run test:qa",
+      "exit": 0,
+      "startUtc": "2026-11-22T09:32:41Z",
+      "endUtc": "2026-11-22T09:32:58Z",
+      "log": "08-test-qa.log",
+      "keyLines": [
+        "[test:qa] dual-track-smoke.ts",
+        "[llm-dual-track self-test] ok: track fixture assertions + devPatch boot operand + the staged deepseek route verified",
+        "[test:qa] preset-register.ts",
+        "[preset-register self-test] ok: roster fixtures + 2 declared bundle patches rewritten to checkout-absolute operands + preset row intact + retired preset-root service absent",
+        "[test:qa] all self-tests passed"
+      ],
+      "casesRun": 59
+    },
+    {
+      "id": "09",
+      "argv": "bun run typecheck",
+      "exit": 0,
+      "startUtc": "2026-11-22T09:33:12Z",
+      "endUtc": "2026-11-22T09:33:13Z",
+      "log": "09-typecheck.log",
+      "keyLines": [
+        "$ tsgo --noEmit"
+      ],
+      "note": "no diagnostics emitted; exit 0 is the whole output"
+    },
+    {
+      "id": "10a",
+      "argv": "bun run verify:dist",
+      "exit": 0,
+      "startUtc": "2026-11-22T09:33:13Z",
+      "endUtc": "2026-11-22T09:33:14Z",
+      "log": "10a-verify-dist.log",
+      "keyLines": [
+        "[verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:",
+        "[verify-dist-fresh] ok: 35/35 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 708ms"
+      ]
+    },
+    {
+      "id": "10b",
+      "argv": "bun run verify:docs",
+      "exit": 0,
+      "startUtc": "2026-11-22T09:33:14Z",
+      "endUtc": "2026-11-22T09:33:14Z",
+      "log": "10b-verify-docs.log",
+      "keyLines": [
+        "[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=61 failed=0 violations=0 exempt=24 derived=3 links=640 dead=0 — PASS"
+      ]
+    },
+    {
+      "id": "10c",
+      "argv": "bun run verify:manifest",
+      "exit": 0,
+      "startUtc": "2026-11-22T09:33:14Z",
+      "endUtc": "2026-11-22T09:33:16Z",
+      "log": "10c-verify-manifest.log",
+      "keyLines": [
+        "ok    packed-content: npm pack --dry-run lists 1300 file(s); 0 required path(s) absent",
+        "VERDICT: PASS — the install-time rules and the packaging contract hold."
+      ]
+    },
+    {
+      "id": "11",
+      "argv": "node evidence/release/v0.21.0/static-2026-11-22T09-32-05Z/11-cross-checks.cjs",
+      "exit": 0,
+      "startUtc": "2026-11-22T09:36:52Z",
+      "endUtc": "2026-11-22T09:36:52Z",
+      "log": "11-cross-checks.log",
+      "keyLines": [
+        "[cross] A.band-identical=PASS band=[@deepseek-harness-tui/dsh-tui@0.18.0, @deepseek-harness-tui/dsh-tui@0.19.0, @deepseek-harness-tui/dsh-tui@0.20.0, @deepseek-harness-tui/dsh-tui@0.20.1, @deepseek-harness-tui/dsh-tui@0.20.2]",
+        "[cross] A.band-sorted=PASS (ascending lexicographic)",
+        "[cross] A.band-target-present=PASS band-size=5",
+        "[cross] B.carriers=0.21.0/0.21.0/0.21.0 PASS",
+        "[cross] C.engines.dsh head=\">=0.2.1-rc.5 <0.3.0-0\" base=\">=0.2.1-rc.5 <0.3.0-0\" PASS-unchanged",
+        "[cross] C.engines.node head=\">=24.9.0\" base=\">=24.9.0\" PASS-unchanged",
+        "[cross] D.host-base=pkg:npm/@deepseek-ai/dsh-base@0.2.2-rc.5 PASS",
+        "[cross] D.host-tui=pkg:npm/@deepseek-harness-tui/dsh-tui@0.20.2 PASS",
+        "[cross] F.bilingual-pairs=8 failures=0 PASS",
+        "[cross] G.AGENTS.md bytes=63152 budget=65536 margin=2384 PASS",
+        "[cross] RESULT: PASS"
+      ],
+      "note": "run2; run1 (11-cross-checks-run1.log) failed only its over-literal ./ switch-link form on three pre-existing bare-form links"
+    },
+    {
+      "id": "14",
+      "argv": "bun test packages",
+      "exit": 0,
+      "startUtc": "2026-11-22T09:36:52Z",
+      "endUtc": "2026-11-22T09:37:32Z",
+      "log": "14-bun-test-packages.log",
+      "keyLines": [
+        "(skip) svn backend REAL svn CLI: repo create, checkout, commit, log (svn/svnadmin not installed; the real-CLI arms need the Subversion toolchain)",
+        "(skip) both vcs: commits to git and svn (svn/svnadmin not installed; the real-CLI arms need the Subversion toolchain)",
+        "(skip) team-workflow projection (read-only, from the OFFICIAL live readout) > the REAL record of this session's own team projects without a hand-built object",
+        "(skip) binary resolves from toolchain (skipped: detector binary absent — run the installer with --with-comment-checker or set MPD_DSH_COMMENT_CHECKER_BIN)",
+        "(skip) comment file triggers detection (exit 2) (skipped: detector binary absent — run the installer with --with-comment-checker or set MPD_DSH_COMMENT_CHECKER_BIN)",
+        "(skip) clean file passes (exit 0) (skipped: detector binary absent — run the installer with --with-comment-checker or set MPD_DSH_COMMENT_CHECKER_BIN)",
+        "(skip) svn backend REAL svn CLI: repo create, checkout, commit, log (svn/svnadmin not installed; the real-CLI arms need the Subversion toolchain)",
+        "(skip) both vcs: commits to git and svn (svn/svnadmin not installed; the real-CLI arms need the Subversion toolchain)",
+        "(skip) team-workflow projection (read-only, from the OFFICIAL live readout) > the REAL record of this session's own team projects without a hand-built object",
+        "(skip) binary resolves from toolchain (skipped: detector binary absent — run the installer with --with-comment-checker or set MPD_DSH_COMMENT_CHECKER_BIN)",
+        "(skip) comment file triggers detection (exit 2) (skipped: detector binary absent — run the installer with --with-comment-checker or set MPD_DSH_COMMENT_CHECKER_BIN)",
+        "(skip) clean file passes (exit 0) (skipped: detector binary absent — run the installer with --with-comment-checker or set MPD_DSH_COMMENT_CHECKER_BIN)",
+        "4180 pass",
+        "6 skip",
+        "0 fail",
+        "Ran 4186 tests across 268 files. [40.17s]"
+      ],
+      "note": "SUPPLEMENTARY arm: AGENTS.md §4 requires bun test on a plugin change; not part of the wave contract §7 list; repo-root bun test avoided by design"
+    }
+  ],
+  "aggregateMembers": {
+    "vendor": {
+      "exit": 0,
+      "verdict": "PASS"
+    },
+    "dist-fresh": {
+      "exit": 0,
+      "verdict": "PASS"
+    },
+    "rows-parity": {
+      "exit": 0,
+      "verdict": "PASS"
+    },
+    "docs-parity": {
+      "exit": 0,
+      "verdict": "PASS"
+    },
+    "preset-conformance": {
+      "exit": 0,
+      "verdict": "PASS"
+    },
+    "plugin-manifest": {
+      "exit": 0,
+      "verdict": "PASS"
+    },
+    "comment-coverage": {
+      "exit": 0,
+      "verdict": "PASS"
+    },
+    "graph-model": {
+      "exit": 0,
+      "verdict": "PASS"
+    },
+    "workflows": {
+      "exit": 0,
+      "verdict": "PASS"
+    },
+    "tui-admission": {
+      "exit": 0,
+      "verdict": "PASS"
+    },
+    "dshgo": {
+      "exit": 0,
+      "verdict": "PASS"
+    }
+  },
+  "compatArms": {
+    "COMPAT.band": "PASS (both manifests: 0.18.0, 0.19.0, 0.20.0, 0.20.1, 0.20.2)",
+    "COMPAT.band-parity": "PASS (both manifests identical)",
+    "COMPAT.distribution-ref": "PASS (host-tui ref pkg:npm/@deepseek-harness-tui/dsh-tui@0.20.2 inside the band)",
+    "COMPAT.declared-hosts": "PASS (every declared host inside each of the 2 bands)",
+    "COMPAT.host-version": "PASS (discovered host 0.20.2 inside the band)",
+    "H.host (host arm)": "PASS (installed @deepseek-harness-tui/dsh-tui 0.20.2 resolved from the dsh-tui profile)",
+    "report": "PASS — 49 arms passed, 1 allowed deviation, 5 bounds"
+  },
+  "crossChecks": {
+    "band": "identical across dsh-plugin.json / packages/mpd-tui-plugin/dsh-plugin.json / specs/tui-hosts.json and strictly ascending (5 hosts)",
+    "carriers": "package.json 0.21.0, dsh-plugin.json 0.21.0, dsh-distribution.json distribution.version 0.21.0",
+    "engines": "engines.dsh \">=0.2.1-rc.5 <0.3.0-0\" and engines.node \">=24.9.0\" both byte-identical to base e3f36a99",
+    "distributionRefs": "host-base pkg:npm/@deepseek-ai/dsh-base@0.2.2-rc.5, host-tui pkg:npm/@deepseek-harness-tui/dsh-tui@0.20.2",
+    "oldPins": "135 occurrences of 0.2.2-rc.3 / 0.20.1 in tracked files (evidence/** excluded): 0 in runtime, CI or QA default files (dsh-distribution.json, docker/entrypoint.sh, docker/docker-compose.yml, docker/tui-lane.sh, docker/ui/docker-compose.yml, docker/ui/entrypoint.sh, .github/workflows/gates.yml, skills/dsh-qa/scripts/tui-mount.ts, scripts/mpd-tui-panels.ts all 0); the rest are the 5-host admitted band (3 files, 1 line each), the support-band claims in AGENTS/README/docs, the updated adapter note, and dated history (CHANGELOG 0.20.0 section; docs/tui.md/.zh-CN §11.16; the §11.17 before→after table; README/docker/README history rows)",
+    "bilingual": "8 changed pairs: switch link present in both directions and CJK body present (cjk 2621–39431); verify:docs independently reports pairs=61 failed=0 violations=0",
+    "agentsBudget": "AGENTS.md 63152 bytes, budget 65536, margin 2384",
+    "docsHistory": "CHANGELOG has 89 additions and 0 deletions (new 0.21.0 section; 0.20.0 untouched); docs/tui.md adds §11.17 after the intact §11.16 (body at old lines 1959-1997 untouched by the hunks)",
+    "noRuntimeChange": "packages/*/dist unchanged (NONE); the only package-src and patch-file edits are comments (adapter JSDoc, test-comment, presets/mpd.patch.yml tool-web comment); typecheck + dist-fresh + bun test packages corroborate",
+    "logs": [
+      "11-cross-checks.log",
+      "15-docs-integrity.log",
+      "16-scope-diff.log"
+    ]
+  },
+  "repairReview": {
+    "subject": "skills/dsh-qa/scripts/preset-register.ts + skills/dsh-qa/scripts/dual-track-smoke.ts (pre-existing test:qa red on dev)",
+    "claim": "typeof baseUrl === 'string' is a TYPE GUARD around fileURLToPath(baseUrl) (no decode, no path concat), so the old sentinel includes(\"typeof baseUrl\") reddened on a healthy rewrite",
+    "independentlyVerified": true,
+    "proof": {
+      "patchBlobBase": "655b8624a8e55f5e9e47c63b5fb51e3cb599f911",
+      "patchBlobHead": "655b8624a8e55f5e9e47c63b5fb51e3cb599f911 (cordis.patch.yml is NOT part of this wave)",
+      "typeofBaseUrlOccurrences": 14,
+      "decodeOperandOccurrences": 5,
+      "fileURLToPathGuardOccurrences": 7,
+      "arithmetic": "after stripping the 5 packed operands (one typeof baseUrl each), 9 typeof baseUrl occurrences remain from the guards => the OLD sentinel was necessarily TRUE on a healthy rewrite; the NEW sentinel decodeURIComponent(baseUrl) is 0 on the same rewrite",
+      "log": "13-repair-probe.log"
+    },
+    "doesItWeakenTheCheck": "NO — it narrows a false-positive predicate to the packed operand's decode call, keeps both real probes (the @mpd-dsh/mpd/ leak sentinel, the MCP launcher checks, the web-compat entry check), makes the stripper quote-agnostic (double + single), and ADDS a negative control in each file so the narrowed predicate cannot become vacuous silently (if the declared patch ever loses the decode form, the self-test reddens, which is loud rather than silent)",
+    "residualRisk": "A hand-written baseUrl concat with no decodeURIComponent call would not trip the narrowed sentinel; that shape is not produced by the packer, and the @mpd-dsh/mpd/ leak sentinel still catches the packed-layout leak class. Recorded as a Nit, not a defect.",
+    "verdict": "REPAIR ACCEPTED — not a gate game"
+  },
+  "findings": [
+    {
+      "severity": "Nit",
+      "where": "skills/dsh-qa/scripts/preset-register.ts, skills/dsh-qa/scripts/dual-track-smoke.ts — BASEURL_DECODE control",
+      "what": "The non-vacuity control asserts only the decode half; a future non-packer concat without decodeURIComponent would be invisible to it.",
+      "whyItMatters": "Only a hypothetical hand-written operand; the packed layout always carries the decode call and the @mpd-dsh/mpd/ leak sentinel still fires.",
+      "direction": "If desired, also assert the exact operand constants (BASEURL_RESOLVE_DQ/SQ) in the negative control — described, not applied."
+    },
+    {
+      "severity": "Nit",
+      "where": ".mpd/plans/adapt-dsh-022rc5-tui-0202.md §5 write scopes vs the shipped diff",
+      "what": "11 skills/dsh-qa/scripts files changed; the frozen §5 board named only skills/dsh-qa/scripts/tui-mount.ts (T1) and scripts/mpd-tui-panels.ts prose. Eight further QA scripts (install-dependencies, lib/tui-lane, tui-admission, tui-deps-ctrla, tui-keeper-standdown, tui-panels, tui-team-surface, user-surface-mount) carry consistent 0.20.1 -> 0.20.2 default/remedy updates that no frozen task row declared.",
+      "whyItMatters": "Content is consistent and every gate is green, but a frozen contract whose write scopes do not match the shipped diff weakens the audit trail for the next wave.",
+      "direction": "Amend §5 (or list the files in the T1 row) and name the QA consistency pass in the bilingual PR body — described, not applied."
+    },
+    {
+      "severity": "Nit",
+      "where": "docs/index.md, docs/development.md, docs/user-guide.md (+ .zh-CN twins)",
+      "what": "These three pairs spell the switch link as [中文](index.zh-CN.md) (bare relative) while AGENTS.md shows [中文](./index.zh-CN.md); pre-existing at base e3f36a99 and accepted by verify:docs (which is green).",
+      "whyItMatters": "Cosmetic inconsistency with the documented example only; not caused by this wave and not a policy violation the gate recognises.",
+      "direction": "Optional normalisation when those docs are next edited."
+    }
+  ],
+  "declinedToJudge": [
+    "Docker real-machine lane(s) — T5 is a parallel lane owning evidence/release/v0.21.0/docker-*; a static sweep cannot see an install (contract §5).",
+    "Harness 0.2.2-rc.4 — admitted by engines.dsh but not separately claimed or measured (contract §6); I did not measure it.",
+    "0.2.3-alpha.1 and its fileAddressFor relative-address migration — out of scope by contract §2/§6.",
+    "The +277-byte lib/types/dsh-adapter/index.d.ts delta (F10) — declared UNVERIFIED by the contract; nothing in this wave depends on it.",
+    "A live TTY mount and any \"Verified\" claim — tui-admission's own BOUND: static admission + the host's negotiation only, no artifact digest exists.",
+    "The tool-office guarded-row statement on rc.5 — docs keep it HOST-SPECIFIC and say it was not re-measured on rc.5; no install lane in my lane could re-measure it.",
+    "The base-commit reproduction of the pre-existing test:qa red — I did not check out base (that would mutate the tree mid-wave); I proved the false positive arithmetically on byte-identical patch bytes (13-repair-probe.log) and the wave's test:qa is green.",
+    "The three bare-form switch links — pre-existing and gate-green; judged cosmetic, not a defect.",
+    "The repo-root `bun test` — deliberately not run (it scans evidence/** fixtures per AGENTS.md §11); the per-package form `bun test packages` was run instead.",
+    "Individual per-package test inventories / coverage — not measured; the suite result is the claim."
+  ],
+  "bounds": [
+    "Static only: no Docker build, no install of the PUBLISHED package, no live TTY mount, no browser lane, no npm publish.",
+    "Certified bytes are commit d2a93abc (45 files, +535/-191, diff sha256 9d9d5726…) with a clean tracked tree; the pre-freeze working tree was byte-identical (00-freeze-proof.log).",
+    "Commands 01-07 also ran pre-freeze at 09:30:35-09:31:39Z on the byte-identical working tree; the verdict dir re-ran all of them on the frozen commit (09:32:18Z onward), so all evidence in the verdict dir post-dates the freeze.",
+    "Harness measured: dsh 0.2.2-rc.5 both from .qa-tmp/dsh-022/bin and from the ambient PATH; TUI host 0.20.2 as installed in the dsh-tui profile.",
+    "install-profile.ts --dry-run used the default DSH_HOME /home/haroldzhao/.dsh with write=false: it reads home paths and wrote nothing; this is the documented gate spelling, not an isolated-home run.",
+    "bundle-lifecycle.ts built its own sandbox DSH_HOME + HOME; its log never mentions the real ~/.dsh; it wrote its own evidence at evidence/dsh-qa/bundle-lifecycle/2026-11-22T09-32-28.237Z.",
+    "bun test packages: 4180 pass, 6 skip, 0 fail — skips are toolchain/environment (svn binary absent x2, live team readout x1, comment-checker binary absent x3), not failures.",
+    "The `pack` gate is exercised through verify:manifest --pack (10c: npm pack --dry-run, 1300 files, 0 required paths absent); no separate npm pack artifact was produced.",
+    "Docker lane not run and not judged (T5)."
+  ],
+  "evidenceDir": "evidence/release/v0.21.0/static-2026-11-22T09-32-05Z/ (final verdict dir)",
+  "preFreezeRunDir": "evidence/release/v0.21.0/static-2026-11-22T09-06-54Z/ (precondition snapshot + first-pass logs)",
+  "verifyPlane": "mpd_verify_* tools are mounted in this session, but no wave loop exists to bind: the only loop dated today is loop-20261122T074548-852bb1, opened BEFORE this team/wave (created 07:45Z, taskId null, gateFile state=absent, scope []). Per my brief I did not invent a recorded verdict; the verdict stands as this evidence record plus the captain's board verdict."
+}

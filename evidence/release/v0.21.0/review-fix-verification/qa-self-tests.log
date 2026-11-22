@@ -1,0 +1,30 @@
+PASS  kit absent + a green exit 0 is refused — judged violation
+PASS  kit present + a TIMED-OUT run is refused (a timeout is never a pass) — judged violation; named gate.timeout=failed
+PASS  kit absent + a TIMED-OUT run is refused (a timeout is never a pass) — judged violation; named gate.timeout=failed
+PASS  kit present + a JSON null report is refused (parseable requires an object) — judged violation; named gate.report.parseable=failed
+PASS  kit present + a JSON array report is refused (parseable requires an object) — judged violation; named gate.report.parseable=failed
+PASS  kit present + an unparsable report is refused — judged violation; named gate.report.parseable=failed
+PASS  the real gate fails a broken package — exit=1
+[dshgo-standard] SELF-TEST PASS — 11 arms (10 judge controls + 1 real broken-package control)
+[test:qa] dual-track-smoke.ts
+[llm-dual-track self-test] ok: track fixture assertions + devPatch boot operand + the staged deepseek route verified
+[test:qa] extension-isolation.ts
+433 |   })
+434 |   return {
+435 |     trace,
+436 |     // The listener is bound to a TCP port, so `address()` is always an AddressInfo here;
+437 |     // the `AddressInfo | string | null` union @types/node declares cannot say that.
+438 |     listen: () => new Promise<number>((resolve) => server.listen(0, "127.0.0.1", () => resolve((server.address() as AddressInfo).port))),
+                ^
+EPERM: operation not permitted, listen
+ syscall: "listen",
+   errno: -1,
+    code: "EPERM"
+
+      at <anonymous> (node:_http_server:359:39)
+      at <anonymous> (node:_http_server:332:33)
+      at new Promise (1:11)
+      at listen (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/skills/dsh-qa/scripts/extension-isolation.ts:438:19)
+      at selfTest (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/skills/dsh-qa/scripts/extension-isolation.ts:1161:27)
+      at /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/skills/dsh-qa/scripts/extension-isolation.ts:1267:9
+error: script "test:qa" was terminated by signal SIGTERM (Polite quit request)

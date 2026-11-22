@@ -1,0 +1,35 @@
+(pass) team-view D2: the hover card > labels the elapsed dash `not started` ONLY when the task never started (CodeRabbit repair) [44.19ms]
+(pass) team-view D2: the hover card > a legacy payload's progress falls back to STATUS, so claimed is 10 and in_progress 50 (CodeRabbit repair) [69.98ms]
+(pass) team-view D2: the hover card > pinning makes the next hover OPAQUE, leaves the detail body open, and mouseleave closes the card [48.32ms]
+(pass) team-view D2: the hover card > falls back to `unassigned` for a task with no owner, and clamps the progress bar [86.78ms]
+(pass) team-view D2: elapsed formatting and the ticker > formats Xs, Xm Ys and Xh Ym, and dashes a record that cannot answer [31.34ms]
+(pass) team-view D2: elapsed formatting and the ticker > ticks once a second ONLY while a running task is visible, and cleans the interval up [0.24ms]
+(pass) team-view D2: elapsed formatting and the ticker > the drawing stays CJK-free while the card shows the raw subject [39.65ms]
+(pass) D4 narrow seam: a subcell is a frame, not a task card > the geometry publishes one frame per group, SIZED BY ITS INTERIOR, and the flat model publishes none [32.45ms]
+(pass) D4 narrow seam: a subcell is a frame, not a task card > the render emits svg → frames → nodes, and NO `data-mpd-node` carries a group id [38.41ms]
+(pass) D4 narrow seam: a subcell is a frame, not a task card > the containment instrument catches a curve INSIDE the frame, and the real routes never enter it [31.11ms]
+(pass) D4 narrow seam: a subcell is a frame, not a task card > a flat render has no frames layer at all (the backward guarantee, on the DOM) [34.92ms]
+(pass) T23 · the recursive geometry draws a box's interior inside it > a frame is sized by its INTERIOR, and an inner subcell frame nests STRICTLY inside it [30.08ms]
+(pass) T23 · the recursive geometry draws a box's interior inside it > an interior keeps its OWN columns: a flattened layout would put both of its cards at one x [30.12ms]
+(pass) T23 · the recursive geometry draws a box's interior inside it > the nested render places cards ABSOLUTELY inside the frames, and the layers still order svg → frames → nodes [36.68ms]
+(pass) T25 · mixed heights keep the nested lanes apart > equal MIDDLES in neighbouring columns never become collinear runs [29.00ms]
+(pass) consults: the web drawing merges the served array on BOTH layout paths > the FLAT path draws a root consult and adds NO edge and NO rank [29.65ms]
+(pass) consults: the web drawing merges the served array on BOTH layout paths > identity on an ABSENT field: the same board without consults draws the same nodes [29.35ms]
+(pass) consults: the web drawing merges the served array on BOTH layout paths > the NESTED path draws a subcell's consult INSIDE that subcell's box [29.87ms]
+(pass) consults: the web drawing merges the served array on BOTH layout paths > R3.4: the excerpt reaches the hover title, the hover card and the pinned body, and the role prints once [75.61ms]
+(pass) consults: the web drawing merges the served array on BOTH layout paths > R7.4: a malformed consult instant degrades to a dash instead of throwing [40.15ms]
+(pass) consults: the web drawing merges the served array on BOTH layout paths > the rendered CARD shows the consult marker, its id, its role and its state [36.09ms]
+
+6 tests skipped:
+(skip) svn backend REAL svn CLI: repo create, checkout, commit, log (svn/svnadmin not installed; the real-CLI arms need the Subversion toolchain)
+(skip) both vcs: commits to git and svn (svn/svnadmin not installed; the real-CLI arms need the Subversion toolchain)
+(skip) team-workflow projection (read-only, from the OFFICIAL live readout) > the REAL record of this session's own team projects without a hand-built object
+(skip) binary resolves from toolchain (skipped: detector binary absent — run the installer with --with-comment-checker or set MPD_DSH_COMMENT_CHECKER_BIN)
+(skip) comment file triggers detection (exit 2) (skipped: detector binary absent — run the installer with --with-comment-checker or set MPD_DSH_COMMENT_CHECKER_BIN)
+(skip) clean file passes (exit 0) (skipped: detector binary absent — run the installer with --with-comment-checker or set MPD_DSH_COMMENT_CHECKER_BIN)
+
+ 4180 pass
+ 6 skip
+ 0 fail
+ 54470 expect() calls
+Ran 4186 tests across 268 files. [38.74s]

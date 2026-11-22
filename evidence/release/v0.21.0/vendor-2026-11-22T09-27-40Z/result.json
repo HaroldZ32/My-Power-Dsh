@@ -1,0 +1,93 @@
+{
+  "schema": "evidence/vendor-repin/v1",
+  "repo": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "branch": "feature/dsh-022rc5-tui-0202",
+  "wave": "v0.21.0",
+  "purpose": "Wave's SINGLE vendor re-pin: skills/** changed, invalidating the corpus treeSha (AGENTS.md §9/§11). Captain-authorised write.",
+  "authorisation": {
+    "granted_by": "captain (lead)",
+    "write_scope": "VENDOR_LOCK.json only, and only through scripts/repin-vendor.ts",
+    "override_flag": "--i-know-this-is-the-captains-step (captain-authorised, not reviewer-decided)"
+  },
+  "utc_start": "2026-11-22T09:27:40Z",
+  "utc_end": "2026-11-22T09:29:0xZ",
+  "lock": {
+    "path": "VENDOR_LOCK.json",
+    "sha256_before": "4cab7e1bce25c034d1f4ad035b1821a172ede19805125abc6040bfb9e21d832e",
+    "sha256_after": "805dcc49390da217898cb755c40915a6428e7b191a8b27a3b110293302432e56",
+    "bytes_before": 5027,
+    "bytes_after": 5027,
+    "lines_changed": 1,
+    "differing_bytes": 62
+  },
+  "commands": [
+    {
+      "index": 1,
+      "argv": ["node", "scripts/repin-vendor.ts", "--write", "--i-know-this-is-the-captains-step"],
+      "exit_code": 0,
+      "exit_code_observed": false,
+      "exit_code_basis": "DERIVED, not observed: the capturing wrapper lost the numeric status (see capture_incident). scripts/repin-vendor.ts runCli computes exitCode = opts.check ? (checkRed ? 1 : 0) : plan.problems.length > 0 ? 1 : 0, so write mode can return 1 only via a non-empty plan.problems, and no '[repin-vendor] PROBLEM' line was emitted. Command 2 returned 0 against the lock this run wrote.",
+      "effect": "applied 1 field change to VENDOR_LOCK.json",
+      "asset_delta": [
+        {
+          "asset": "skills",
+          "kind": "tree",
+          "field": "treeSha",
+          "old": "ff29c46d7c8969b42d5724f228ab49691e0daa3dd884d2c2d31be6c7509a3907",
+          "new": "8eb28169a485739be890415bd60151fd563e28ef36feb51d6a079d969c2d6366",
+          "fileCount_locked": 393,
+          "fileCount_computed": 393,
+          "lf_normalized_files": 1,
+          "enumerated_from": "git index (git ls-files)",
+          "raw_bytes_variant_not_written": "49cfb7292fe6b116b90e9f109e3d16c83239e22038434c7ba15d2c67cd787ae6"
+        }
+      ],
+      "assets_unchanged": [
+        "specs/dsh-go (treeSha a444f9d0…, 7 files)",
+        "packages/mpd-mcp-codegraph/dist/serve.js (sha256 ab287cdc…, 1 file)",
+        "packages/mpd-hashline-plugin/src/vendor (treeSha 7e6a28e2…, 8 files)",
+        "packages/mpd-autoproject-plugin/src/boulder/vendor (treeSha fa19e724…, 13 files)",
+        "packages/mpd-schemastery (treeSha c0701be1…, 19 files)",
+        "packages/mpd-bundle-plugin/adopted (treeSha a71be3db…, 2 files)",
+        "packages/mpd-bundle-plugin/client.js (sha256 5a1222f5…, 1 file)"
+      ],
+      "skipped_non_failures": ["_note (POLICY: underscore-prefixed metadata key, skipped by the gate too)"]
+    },
+    {
+      "index": 2,
+      "argv": ["node", "scripts/verify-vendor.ts"],
+      "exit_code": 0,
+      "exit_code_observed": true,
+      "pass_line_verbatim": "[verify-vendor] PASS - 8 shipped asset(s) fingerprinted, upstream identity not checked",
+      "assets_ok": 8
+    }
+  ],
+  "capture_incident": {
+    "what": "Command 1's stdout/exit status could not be written by the wrapper on the first attempt.",
+    "why": "Each bash call runs in a fresh shell and /tmp did not persist, so the evidence path variable was empty; `tee` then targeted a read-only '/output.log' and the wrapper aborted with its own status 1 while appending its trailing block.",
+    "impact_on_repin_vendor": "none — GNU tee kept copying stdin to stdout after its file open failed, so the complete output was captured in-session and transcribed verbatim into output.log; the write had already landed (confirmed by lock sha256 and by command 2 exit 0).",
+    "not_redone": "Command 1 was NOT re-run: a second --write would print 'nothing to re-pin' and cannot reproduce the delta, and re-running would violate the two-command authorisation."
+  },
+  "postconditions": {
+    "only_VENDOR_LOCK_json_added_to_dirty_set": true,
+    "pre_post_status_diff": "5a6 > ' M VENDOR_LOCK.json' (no other path added, none removed)",
+    "untracked_files_under_skills": 0,
+    "note_untracked": "no untracked file under skills/ means the git-index enumeration could not silently omit a new file; fileCount stayed 393, consistent with modify-only wave edits.",
+    "git_write_verbs_run": false,
+    "other_gates_run": false,
+    "skills_packages_docs_manifests_presets_touched": false
+  },
+  "observations_not_touched": [
+    "The task context states 9 changed files under skills/dsh-qa/scripts/, but `git status --porcelain skills` reports 11 modified tracked files: dual-track-smoke.ts, install-dependencies.ts, lib/tui-lane.ts, preset-register.ts, tui-admission.ts, tui-deps-ctrla.ts, tui-keeper-standdown.ts, tui-mount.ts, tui-panels.ts, tui-team-surface.ts, user-surface-mount.ts. The re-pin is unaffected (it hashes bytes, not a file list I supply), but the wave's stated file count is off by two.",
+    "The wave also leaves packages/mpd-tui-adapter-plugin/src/index.ts modified, which changes emitted bytes of every package importing the adapter (AGENTS.md §6) — dist freshness is the static sweep lane's gate, not this one.",
+    "VENDOR_LOCK.json's skills treeSha was re-derived from UNSTAGED working-tree bytes (git ls-files supplies the path list, readAssetBytes reads disk). The captain must commit these exact working-tree bytes; any further edit to skills/** before the commit re-reddens verify-vendor.",
+    "The lock's own asset fingerprints of packages/** were all in sync, so this wave has not drifted any package asset."
+  ],
+  "bounds": {
+    "ran": ["node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step", "node scripts/verify-vendor.ts"],
+    "not_run": "no other gate; no git write verb; no hand edit of VENDOR_LOCK.json; no touch of skills/**, packages/**, docs/**, README*, CHANGELOG.md, AGENTS.md, manifests or presets/**",
+    "evidence_dir": "evidence/release/v0.21.0/vendor-2026-11-22T09-27-40Z",
+    "evidence_files": ["result.json", "output.log", "pre-git-status.txt", "pre-lock-sha256.txt"]
+  },
+  "verdict": "PASS"
+}

@@ -14,6 +14,95 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
+## 0.21.0 — packaging/compat hop: DSH 0.2.2-rc.5 and DSH-TUI 0.20.2 join the admitted band, with no plugin, patch-row or adapter change
+
+**Added — two newly supported hosts, and a band that keeps every older host.** DeepSeek Harness
+`0.2.2-rc.5` and DSH-TUI `0.20.2` are now the release's target pair. The harness band keeps
+`0.2.2-rc.3`, `0.2.2-rc.2`, `0.2.2-rc.1` and `0.2.1-rc.5`; **`0.2.2-rc.4` is admitted by the
+`engines.dsh` range but is not separately claimed or measured by this release.** The TUI band keeps
+`0.18.0`, `0.19.0`, `0.20.0` and `0.20.1` beside the new `0.20.2`. The hop is packaging/compat-only:
+the whole `@deepseek-ai/*` closure travels patch-level in lockstep, every third-party pin
+(`@deepseek-ai/cordis ~4.1.0`, `cordis-plugin-loader ~1.1.0`, `schemastery ~3.19.0`, `commander ^15`,
+`js-yaml ^4.3.2`, `node-addon-require-builtin ^0.1.9`) is byte-identical across rc.3/rc.4/rc.5, there is
+no loader/patch-dialect change, no Cordis service id added, renamed or removed, no `standard`-preset row
+change, no agent-preset schema change and no team-service config or tool change. `0.20.2` exists
+precisely to raise the TUI release's declared harness ceiling: every `@deepseek-ai/dsh-*` peer
+`||`-chain gains `|| 0.2.2-rc.4 || 0.2.2-rc.5`, the exactly-pinned `dsh-web` / `dsh-web-deepseek-api`
+move `0.2.2-rc.3` → `0.2.2-rc.5`, `engines.node` (`^22.19 || >=24`), the 19 `exports` keys, `bin`,
+`imports` and `files` are unchanged, `lib/types/api.d.ts` and `lib/types/panels.d.ts` are
+BYTE-IDENTICAL across `0.20.1`/`0.20.2`, `tuiPanels` is present (`TUI_PANEL_API_VERSION = 1`), and
+`cordis.patch.yml` is length-identical (24,831 chars) with identical head/tail. **The two pins must move
+together:** harness rc.4/rc.5 running on TUI `0.20.1` is outside that release's declared peer contract
+and produces a boot drift warning, so there is no admissible partial move.
+
+**Changed — the pin pair and the three version carriers.** `dsh-distribution.json`'s `host-base`
+component moves to `@deepseek-ai/dsh-base@0.2.2-rc.5`, and its `host-tui` ref moves to
+`@deepseek-harness-tui/dsh-tui@0.20.2`. Behind them, in the same change: `docker/entrypoint.sh`'s
+`DSH_VERSION` default, the compose and UI-stack defaults, `docker/tui-lane.sh`'s `TUI_VERSION`, and the
+QA install pin at `skills/dsh-qa/scripts/tui-mount.ts`. `compat.hosts` in both manifests and
+`specs/tui-hosts.json` now carry `0.18.0`, `0.19.0`, `0.20.0`, `0.20.1` and `0.20.2` as one identical
+sorted set. The bundle version `0.21.0` lands in all THREE carriers `verify:manifest` coheres —
+`package.json`, `dsh-plugin.json` and `dsh-distribution.json` (`distribution.version`). `engines.dsh`
+does **not** move: `>=0.2.1-rc.5 <0.3.0-0` already admitted rc.5, and narrowing it would refuse an older
+host at install time. `engines.node` stays `>=24.9.0`, the admitted harness band is now `0.2.2-rc.5`,
+`0.2.2-rc.3`, `0.2.2-rc.2`, `0.2.2-rc.1` and `0.2.1-rc.5`, and the bundle still declares **no** team
+package.
+
+**Changed — the two upstream breaks are RECORDED as measured no-ops, not adapted.** A new host capability
+is optional (AGENTS.md §2 rule 7), so neither is adopted: (1) rc.4's `dsh-llm` adds a `CONTENT_REFUSED`
+finish code for DeepSeek's `refusal` stop reason, which previously surfaced as `MALFORMED_RESPONSE` —
+`CONTENT_REFUSED`, `finishCode`, `finish_code`, `finishReason` and `finish_reason` have ZERO occurrences
+in the shipped tree, and the only `stopReason` the bundle carries is the SUBAGENT-SPAWN result field,
+normalized as a free string with no `switch`, no enum and no throw on an unknown value; (2) rc.5 deletes
+the `searchProvider` line from `dsh-base`'s `cordis.patch.yml` and picks the provider per request route
+instead, adding a host-internal `WebSearchRequest.llmProvider` — `searchProvider`, `search_provider`,
+`WebSearchRequest`, `llmProvider`, `ctx.web` and `web.search` have ZERO occurrences in shipped source,
+and the bundle's only web row is `tool-web` with `config: {fetch: true, searchTimeoutMs: 60000}` and no
+provider leaf. One consequence is recorded rather than fixed: `docker/lib/live-verdict.ts` gates
+`live.<plane>.noMalformedToolJson` on a `MALFORMED_RESPONSE` turn-error prefix, which a `CONTENT_REFUSED`
+turn does not match, so a **pre-rc.4 false red on DeepSeek refusals disappears** while no assertion
+weakens — that arm's other conjunct (zero malformed tool blocks) is the real measurement, and
+`live.<plane>.noErrorTurns` still fails a refused turn.
+
+**Changed — the docs state the five-host band in both languages.** `docs/compatibility.md`,
+`docs/tui.md` (a new §11.17 amendment; §11.16 stays readable as history), `docs/tui-admission.md`,
+`docs/index.md`, `docs/user-guide.md`, `docs/development.md`, the two `docker/README` files, both root
+READMEs and `AGENTS.md` §4/§8 move their pin statements in the same change, each with its 简体中文 twin.
+Every dated measured record and the upstream-adaptation history stay verbatim. The `tool-office`
+statement stays HOST-SPECIFIC as measured on `0.2.2-rc.3` and is explicitly not re-measured on rc.5; the
+rc.5 coordinate is not claimed.
+
+**Changed — the QA harness measures the target, not an older prefix.** The pinned QA harness prefix
+`.qa-tmp/dsh-022` was refreshed to `0.2.2-rc.5` (measured 2026-11-22: `.qa-tmp/dsh-022/bin/dsh
+--version` prints `0.2.2-rc.5`), so a gate sweep run through the documented
+`PATH="$PWD/.qa-tmp/dsh-022/bin:$PATH"` prefix measures the TARGET rather than an older release — the
+documented prefix used to be OLDER than the ambient CLI, which is exactly how a wave "verifies" rc.1 and
+claims rc.5. Install lanes export `XDG_RUNTIME_DIR="$REPO/.qa-tmp/xdg"` and record the cause (a previous
+wave saw pnpm's store lock fail under the sandboxed `/run/user`), never implying a version defect.
+
+**Fixed — the stale notes that were already wrong, unrelated to this hop.** The TUI panel-visibility test
+claimed the admitted host was `0.17.0`, and the TUI adapter's own comment claimed the band was
+"0.18.0 + 0.19.0"; both now state the five-host `0.18.0`–`0.20.2` band. The `presets/mpd.patch.yml`
+comment that said the `web` service and its search provider stay in the host composition is corrected
+too — after rc.5 the provider is a per-request route decision, not a composition value. The same class of
+drift is corrected in `docs/development.md`, which still said the repository pinned harness `0.2.2-rc.1`
+and that the ambient harness is `0.2.1-rc.5`; the ambient CLI is `0.2.2-rc.5` (measured 2026-11-22) and a
+pinned prefix older than ambient now measures the wrong harness. (The adapter
+comment lives in a file `bun build` inlines into every dependent package, so its dist fan-out was
+rebuilt with the pinned toolchain rather than left stale.)
+
+**Removed — nothing.** No row, seam, tool or configuration leaf is removed; the bundle's own web row
+keeps its exact config.
+
+**Declared bounds.** (1) `0.2.2-rc.4` is inside the `engines.dsh` range and was NOT separately mounted:
+the rc.3 → rc.5 hop was audited as one packaging change, rc.4 is the intermediate release its two
+API-visible changes belong to, and no rc.4 claim is made. (2) ONE host delta stays UNVERIFIED:
+`lib/types/dsh-adapter/index.d.ts` grew exactly +277 bytes with identical head and tail; it is additive
+at most and nothing in this release depends on it. (3) No live TTY capture of `0.20.2` is claimed by this
+release — static admission plus the host's own negotiation is not a live TTY mount, and a lane that did
+not run is never a pass. (4) `0.2.3-alpha.1` is out of scope: it carries the real migration hazard
+(`fileAddressFor` relative addresses), and this release does not pre-adapt to it.
+
 ## 0.20.0 — packaging-only hop: DSH 0.2.2-rc.3 and DSH-TUI 0.20.1 join the admitted band, with no plugin, patch-row or adapter change
 
 **Added — two newly supported hosts, on the same admission terms as the hosts already there.** DeepSeek

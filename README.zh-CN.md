@@ -2,10 +2,10 @@
 
 [English](./README.md) | **中文**
 
-[![版本](https://img.shields.io/badge/version-0.20.0-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
+[![版本](https://img.shields.io/badge/version-0.21.0-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
 [![npm](https://img.shields.io/badge/npm-%40mpd--dsh%2Fmpd-CB3837.svg)](https://www.npmjs.com/package/@mpd-dsh/mpd)
 [![许可证：MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE.md)
-[![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.2--rc.3-4B32C3.svg)](#致谢)
+[![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.2--rc.5-4B32C3.svg)](#致谢)
 [![平台](https://img.shields.io/badge/platforms-Web%20GUI%20%7C%20DSH--TUI-informational.svg)](#一个插件两个端)
 [![运行时](https://img.shields.io/badge/runtime-Bun%201.4.0-black.svg)](https://bun.sh)
 [![质量门](https://github.com/HaroldZ32/My-Power-Dsh/actions/workflows/gates.yml/badge.svg)](https://github.com/HaroldZ32/My-Power-Dsh/actions/workflows/gates.yml)
@@ -129,16 +129,18 @@ dsh plugin --profile web add .
 ## 版本对应关系
 
 表中每一行都是某个版本**构建并验证时**所针对的那一对宿主：Docker 真机车道正是拿着这一对跑安装与挂载。
-harness 的 pin 是 [`dsh-distribution.json`](./dsh-distribution.json) 的 `host-base` 引用，加上
-[`package.json`](./package.json) 的 `engines.dsh` 范围；DSH-TUI 的 pin 是两个清单的 `compat.hosts` 与
-[`dsh-distribution.json`](./dsh-distribution.json) 的 `host-tui` 引用。更新的宿主在被某个发布行写明之前
-**不作声明**：这两个版本请一起钉。
+[`dsh-distribution.json`](./dsh-distribution.json) 通过 `host-base` 和 `host-tui` 钉定经过验证的宿主组合。
+[`package.json`](./package.json) 的 `engines.dsh` 声明支持的 harness 版本范围。
+[`dsh-plugin.json`](./dsh-plugin.json) 与
+[`packages/mpd-tui-plugin/dsh-plugin.json`](./packages/mpd-tui-plugin/dsh-plugin.json)
+中的 `compat.hosts` 列出套件接纳的 TUI 宿主。请将两个宿主都钉定到对应发布行的版本。
 
 **最新一行是本包当前发布的版本（可从 registry 安装）；其下各行是更早版本钉定的组合，标注为 `previous`，作为历史保留。**
 
 | `@mpd-dsh/mpd` | DeepSeek Harness | DSH-TUI | 说明 |
 |---|---|---|---|
-| 0.20.0 | 0.2.2-rc.3 | 0.20.1 | 本次发布 |
+| 0.21.0 | 0.2.2-rc.5 | 0.20.2 | 本次发布 |
+| 0.20.0 | 0.2.2-rc.3 | 0.20.1 | 上一次发布 |
 | 0.19.0 | 0.2.2-rc.2 | 0.20.0 | 上一次发布 |
 | 0.18.1 | 0.2.2-rc.1 | 0.19.0 | 上一次发布 |
 | 0.18.0 | 0.2.2-rc.1 | 0.19.0 | 上一次发布 |
@@ -158,12 +160,11 @@ harness 的 pin 是 [`dsh-distribution.json`](./dsh-distribution.json) 的 `host
 | 0.15.0 | 0.2.1-rc.2 | 0.16.1 | `previous` |
 | 0.14.0 | 0.2.1-rc.2 | 0.16.1 | `previous`（harness 0.2.1 适配发布） |
 
-最新一行**就是**这一对：`0.20.0` 对 harness `0.2.2-rc.3` 与 DSH-TUI `0.20.1`。旧宿主继续被支持：
-`engines.dsh` 覆盖 `>=0.2.1-rc.5 <0.3.0-0`，harness `0.2.2-rc.2`、`0.2.2-rc.1` 与 `0.2.1-rc.5` 仍可安装并运行，
-`compat.hosts` 波段在新宿主 `0.20.1` 之外保留 DSH-TUI `0.18.0`、`0.19.0` 与 `0.20.0`。钉定位置是
-[`dsh-distribution.json`](./dsh-distribution.json) 的 `host-base` 引用与
-[`package.json`](./package.json) 的 `engines.dsh`；两个清单的 `compat.hosts` 同时列出四个 TUI 宿主。
-其下各行保留为历史，记录更早版本实际钉定的组合。完整矩阵见
+`0.21.0` 搭配 harness `0.2.2-rc.5` 和 DSH-TUI `0.20.2`。在 harness `0.2.2-rc.5` 上使用 DSH-TUI 时，
+请使用 TUI `0.20.2`。旧宿主在各自声明的 peer 依赖范围内仍受支持。
+`engines.dsh` 覆盖 `>=0.2.1-rc.5 <0.3.0-0`，harness `0.2.2-rc.3`、`0.2.2-rc.2`、`0.2.2-rc.1` 与 `0.2.1-rc.5` 仍可安装并运行，
+`compat.hosts` 波段在新宿主 `0.20.2` 之外保留 DSH-TUI `0.18.0`、`0.19.0`、`0.20.0` 与 `0.20.1`。harness `0.2.2-rc.4` 被该
+`engines.dsh` 范围接纳，但本发布**没有单独声明也没有单独测量**它。完整矩阵见
 [`docs/compatibility.zh-CN.md`](./docs/compatibility.zh-CN.md)。
 
 ## 快速上手
@@ -231,8 +232,8 @@ harness 的 pin 是 [`dsh-distribution.json`](./dsh-distribution.json) 的 `host
 
 ## 状态与已知限制
 
-- **针对一个预发布版 harness 构建和验证。** 套件按 **0.2.2-rc.1** 测试，而更旧的 **0.2.1-rc.5** 仍然可以
-  安装并运行。上游稳定之前请预期会有破坏，并钉住你使用的 harness 版本。
+- **针对一个预发布版 harness 构建和验证。** 套件按 **0.2.2-rc.5** 测试，而更旧的 **0.2.2-rc.3**、`0.2.2-rc.2`、
+  `0.2.2-rc.1` 与 **0.2.1-rc.5** 仍然可以安装并运行。上游稳定之前请预期会有破坏，并钉住你使用的 harness 版本。
 - **旧 harness 上缺少一项能力。** `list_agents` 在 `0.2.1-rc.5` 上不会被挂载：新 harness 移除了该行所需的
   子路径导出，而单个 preset 无法同时横跨两者。见
   [`docs/compatibility.zh-CN.md`](./docs/compatibility.zh-CN.md) §2。
@@ -273,7 +274,7 @@ harness 的 pin 是 [`dsh-distribution.json`](./dsh-distribution.json) 的 `host
 
 ## 变更日志
 
-发布说明在 [`CHANGELOG.md`](./CHANGELOG.md)，最新的在前，每个已发布版本一节（当前版本是 **v0.18.1**）。
+发布说明在 [`CHANGELOG.md`](./CHANGELOG.md)，最新的在前，每个已发布版本一节（当前版本是 **v0.21.0**）。
 带注释的 tag 列在 [Releases](https://github.com/HaroldZ32/My-Power-Dsh/releases)。
 
 ## 致谢

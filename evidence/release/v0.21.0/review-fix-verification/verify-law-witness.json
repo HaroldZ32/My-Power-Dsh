@@ -1,0 +1,38 @@
+{
+  "ok": true,
+  "slug": "verify-law",
+  "reported": {
+    "runAExit": 0,
+    "runBExit": 0,
+    "runAResultOk": true,
+    "runBResultOk": true,
+    "bootLine": "[2026-11-22T14:29:41.102Z] [mpd-roles] team plane: readOnlyGuard=installed deny=10 captainInvestigation=deny captainShell=deny patterns=19 delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed questions=relay routes=0 rosterSection=agent-scoped order=605 sessionGate=mechanical sensitivity=easy"
+  },
+  "realMarkerBefore": true,
+  "steps": [
+    {
+      "name": "written",
+      "ok": true
+    },
+    {
+      "name": "retiredKnobWritten",
+      "ok": true
+    },
+    {
+      "name": "mounted",
+      "ok": true
+    },
+    {
+      "name": "withdrawnReported",
+      "ok": true
+    },
+    {
+      "name": "realMarkerUnchanged",
+      "ok": true
+    },
+    {
+      "name": "sessionsSandboxed",
+      "ok": true
+    }
+  ]
+}

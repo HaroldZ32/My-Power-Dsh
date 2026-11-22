@@ -1,0 +1,1749 @@
+{
+  "lane": "LANE T5 — Docker real-machine lane",
+  "release": "v0.21.0",
+  "generatedAt": "2026-11-22T10:19:09.707Z",
+  "verdict": "FAIL",
+  "verdictReasons": [
+    "run 2 (oneclick-live) exited 1 — failing facts: tui.mergedPanelOpens,tui.mergedPanelOrder,tui.teamSceneOpened,tui.teamGraphDrawn,tui.teamGraphContent,tui.laneExit"
+  ],
+  "expected": {
+    "harness": "0.2.2-rc.5",
+    "tui": "0.20.2"
+  },
+  "branch": "feature/dsh-022rc5-tui-0202",
+  "startAnchor": {
+    "utc": "2026-11-22T09:24:43Z",
+    "head": "e3f36a99",
+    "diffSha": "69e285f76dfb7ecd569391625aa3f858bdd14c9cd1fc1d9059def7b8e1412013",
+    "trackedChangedCount": 44,
+    "probe": {
+      "headShort": "e3f36a99",
+      "diffSha256": "e0b00ab5de4230b8c13f20f68a6f9720ba5505b9cb61a24bbc71bc1f9654924c",
+      "note": "first observation at lane start, before the pack pre-cut"
+    }
+  },
+  "endAnchor": {
+    "utc": "2026-11-22T10:16:50Z",
+    "head": "2cfa9430",
+    "diffSha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "trackedChangedCount": 0
+  },
+  "commitsDuringLane": [
+    {
+      "sha": "d2a93abc",
+      "at": "2026-11-22T09:31:09Z",
+      "subject": "feat(adapt): support DSH 0.2.2-rc.5 and dsh-tui 0.20.2 (0.21.0)"
+    },
+    {
+      "sha": "8828e3c9",
+      "at": "2026-11-22T09:39:07Z",
+      "subject": "chore(evidence): record the v0.21.0 gate transcripts for commit d2a93abc"
+    },
+    {
+      "sha": "2cfa9430",
+      "at": "2026-11-22T09:42:48Z",
+      "subject": "chore(evidence): add the static verdict record and its post-freeze proof"
+    }
+  ],
+  "treeDifference": {
+    "run1BuildTree": "HEAD e3f36a99 + 44 tracked dirty paths (the wave version carriers already moved), build context frozen at 2026-11-22T09:24:43Z",
+    "run2BuildTree": "HEAD 2cfa9430 (wave commit d2a93abc plus two evidence-only commits), clean working tree",
+    "substantiveDelta": [
+      "VENDOR_LOCK.json — the vendor re-pin, mtime 2026-11-22T17:27:43+08:00 (09:27:43Z), after run 1 build freeze; it IS carried in dist/mpd-package but is not one of the 32 hashed installed files"
+    ],
+    "noOtherDelta": "all other 44 paths of the wave tree had mtimes before run 1 09:24:43Z build freeze; commits 8828e3c9 and 2cfa9430 add evidence/ only, and the Docker build context and the pack both exclude evidence/",
+    "artifactIdentity": "the 32 recorded installed-artifact hashes are identical across all three runs"
+  },
+  "treeMovement": {
+    "start": {
+      "utc": "2026-11-22T09:24:43Z",
+      "head": "e3f36a99",
+      "diffSha": "69e285f76dfb7ecd569391625aa3f858bdd14c9cd1fc1d9059def7b8e1412013",
+      "trackedChangedCount": 44
+    },
+    "end": {
+      "utc": "2026-11-22T10:16:50Z",
+      "head": "2cfa9430",
+      "diffSha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "trackedChangedCount": 0
+    },
+    "moved": true,
+    "addedPaths": [],
+    "removedPaths": [
+      "AGENTS.md",
+      "CHANGELOG.md",
+      "docker/docker-compose.yml",
+      "docker/entrypoint.sh",
+      "docker/README.md",
+      "docker/README.zh-CN.md",
+      "docker/tui-lane.sh",
+      "docker/ui/docker-compose.yml",
+      "docker/ui/entrypoint.sh",
+      "docs/compatibility.md",
+      "docs/compatibility.zh-CN.md",
+      "docs/development.md",
+      "docs/development.zh-CN.md",
+      "docs/index.md",
+      "docs/index.zh-CN.md",
+      "docs/tui-admission.md",
+      "docs/tui-admission.zh-CN.md",
+      "docs/tui.md",
+      "docs/tui.zh-CN.md",
+      "docs/user-guide.md",
+      "docs/user-guide.zh-CN.md",
+      "dsh-distribution.json",
+      "dsh-plugin.json",
+      ".github/workflows/gates.yml",
+      "package.json",
+      "packages/mpd-tui-adapter-plugin/src/index.ts",
+      "packages/mpd-tui-plugin/dsh-plugin.json",
+      "packages/mpd-tui-plugin/test/panel-visibility.test.ts",
+      "presets/mpd.patch.yml",
+      "README.md",
+      "README.zh-CN.md",
+      "scripts/mpd-tui-panels.ts",
+      "skills/dsh-qa/scripts/dual-track-smoke.ts",
+      "skills/dsh-qa/scripts/install-dependencies.ts",
+      "skills/dsh-qa/scripts/lib/tui-lane.ts",
+      "skills/dsh-qa/scripts/preset-register.ts",
+      "skills/dsh-qa/scripts/tui-admission.ts",
+      "skills/dsh-qa/scripts/tui-deps-ctrla.ts",
+      "skills/dsh-qa/scripts/tui-keeper-standdown.ts",
+      "skills/dsh-qa/scripts/tui-mount.ts",
+      "skills/dsh-qa/scripts/tui-panels.ts",
+      "skills/dsh-qa/scripts/tui-team-surface.ts",
+      "skills/dsh-qa/scripts/user-surface-mount.ts",
+      "specs/tui-hosts.json"
+    ],
+    "perRun": [
+      {
+        "run": 1,
+        "slug": "source-live",
+        "before": {
+          "utc": "2026-11-22T09:24:43Z",
+          "head": "e3f36a99",
+          "diffSha": "69e285f76dfb7ecd569391625aa3f858bdd14c9cd1fc1d9059def7b8e1412013",
+          "trackedChangedCount": 44
+        },
+        "after": {
+          "utc": "2026-11-22T09:43:41Z",
+          "head": "2cfa9430",
+          "diffSha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "trackedChangedCount": 0
+        },
+        "movedDuringRun": true,
+        "addedPaths": [],
+        "removedPaths": [
+          "AGENTS.md",
+          "CHANGELOG.md",
+          "docker/docker-compose.yml",
+          "docker/entrypoint.sh",
+          "docker/README.md",
+          "docker/README.zh-CN.md",
+          "docker/tui-lane.sh",
+          "docker/ui/docker-compose.yml",
+          "docker/ui/entrypoint.sh",
+          "docs/compatibility.md",
+          "docs/compatibility.zh-CN.md",
+          "docs/development.md",
+          "docs/development.zh-CN.md",
+          "docs/index.md",
+          "docs/index.zh-CN.md",
+          "docs/tui-admission.md",
+          "docs/tui-admission.zh-CN.md",
+          "docs/tui.md",
+          "docs/tui.zh-CN.md",
+          "docs/user-guide.md",
+          "docs/user-guide.zh-CN.md",
+          "dsh-distribution.json",
+          "dsh-plugin.json",
+          ".github/workflows/gates.yml",
+          "package.json",
+          "packages/mpd-tui-adapter-plugin/src/index.ts",
+          "packages/mpd-tui-plugin/dsh-plugin.json",
+          "packages/mpd-tui-plugin/test/panel-visibility.test.ts",
+          "presets/mpd.patch.yml",
+          "README.md",
+          "README.zh-CN.md",
+          "scripts/mpd-tui-panels.ts",
+          "skills/dsh-qa/scripts/dual-track-smoke.ts",
+          "skills/dsh-qa/scripts/install-dependencies.ts",
+          "skills/dsh-qa/scripts/lib/tui-lane.ts",
+          "skills/dsh-qa/scripts/preset-register.ts",
+          "skills/dsh-qa/scripts/tui-admission.ts",
+          "skills/dsh-qa/scripts/tui-deps-ctrla.ts",
+          "skills/dsh-qa/scripts/tui-keeper-standdown.ts",
+          "skills/dsh-qa/scripts/tui-mount.ts",
+          "skills/dsh-qa/scripts/tui-panels.ts",
+          "skills/dsh-qa/scripts/tui-team-surface.ts",
+          "skills/dsh-qa/scripts/user-surface-mount.ts",
+          "specs/tui-hosts.json"
+        ]
+      },
+      {
+        "run": 2,
+        "slug": "oneclick-live",
+        "before": {
+          "utc": "2026-11-22T09:43:42Z",
+          "head": "2cfa9430",
+          "diffSha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "trackedChangedCount": 0
+        },
+        "after": {
+          "utc": "2026-11-22T10:07:05Z",
+          "head": "2cfa9430",
+          "diffSha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "trackedChangedCount": 0
+        },
+        "movedDuringRun": false,
+        "addedPaths": [],
+        "removedPaths": []
+      },
+      {
+        "run": 3,
+        "slug": "source-nobrowser",
+        "before": {
+          "utc": "2026-11-22T10:07:05Z",
+          "head": "2cfa9430",
+          "diffSha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "trackedChangedCount": 0
+        },
+        "after": {
+          "utc": "2026-11-22T10:16:50Z",
+          "head": "2cfa9430",
+          "diffSha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "trackedChangedCount": 0
+        },
+        "movedDuringRun": false,
+        "addedPaths": [],
+        "removedPaths": []
+      }
+    ],
+    "note": "Each run's `COPY . /src/` freezes the build context at BUILD time, so a mid-run edit after that freeze does not change what the container installed; the per-run anchors record when the shared checkout moved."
+  },
+  "docker": {
+    "client": "29.9.2",
+    "server": "29.8.2",
+    "compose": "5.7.0",
+    "rootless": true,
+    "securityOptions": "[\"name=seccomp,profile=builtin\",\"name=rootless\",\"name=cgroupns\"]",
+    "xdgRuntimeDir": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/xdg"
+  },
+  "keySource": "$HOME/.dsh/.credentials.yaml refs.DEEPSEEK_API_KEY; exported into the runner environment and forwarded to compose by NAME (-e DEEPSEEK_API_KEY); value never printed, never written to evidence",
+  "runs": [
+    {
+      "run": 1,
+      "slug": "source-live",
+      "args": "--mode source --require-docker --live",
+      "exitCode": 0,
+      "dockerMode": "[driver] docker mode: ROOTLESS ([\"name=seccomp,profile=builtin\",\"name=rootless\",\"name=cgroupns\"])",
+      "skipped": false,
+      "evidenceDir": "evidence/docker/client-install/2026-11-22T09-24-43Z",
+      "printedEvidencePath": "evidence/docker/client-install/2026-11-22T09-24-43Z",
+      "ok": true,
+      "complete": false,
+      "assertions": {
+        "total": 244,
+        "passed": 204,
+        "failed": 0,
+        "null": 40,
+        "failedNames": [],
+        "nullNames": [
+          "oneclick.scratchRepo",
+          "oneclick.requiredPaths",
+          "oneclick.filesAllowlist",
+          "oneclick.distByteIdentical",
+          "ui.teamBoard",
+          "userSurface.row.mpd-better-sidebar",
+          "userSurface.row.mpd-agent-team",
+          "userSurface.row.mpd-tool-agent-team",
+          "userSurface.row.mpd-ui-agent-team",
+          "userSurface.row.persona",
+          "userSurface.row.agent-instructions",
+          "userSurface.row.time-context",
+          "userSurface.row.tool-bash",
+          "userSurface.row.tool-pwsh",
+          "userSurface.row.tool-fs",
+          "userSurface.row.tool-fs-search",
+          "userSurface.row.tool-jobs",
+          "userSurface.row.tool-schedule",
+          "userSurface.row.skill-filesystem",
+          "userSurface.row.tool-skill",
+          "userSurface.row.command-goal",
+          "userSurface.row.tool-goal",
+          "userSurface.row.planning",
+          "userSurface.row.plan-mode",
+          "userSurface.row.compaction",
+          "userSurface.row.compaction-basic",
+          "userSurface.row.command-compact",
+          "userSurface.row.tool-result-pruner",
+          "userSurface.row.delegation",
+          "userSurface.row.tool-subagent-control",
+          "userSurface.row.tool-subagent",
+          "userSurface.row.tool-subagent-fork",
+          "userSurface.row.tool-workflow",
+          "userSurface.row.tool-ask-user",
+          "userSurface.row.tool-todo",
+          "userSurface.row.tool-web",
+          "userSurface.row.present",
+          "userSurface.row.tool-office",
+          "userSurface.row.tool-plugin-manager",
+          "userSurface.row.tool-plugin-market"
+        ]
+      },
+      "stamps": {
+        "harnessInstalled": "0.2.2-rc.5",
+        "harnessExpected": "0.2.2-rc.5",
+        "tuiInstalled": "0.20.2",
+        "pins": "nodePin=24.19.0 dsh=0.2.2-rc.5 pnpm=11.23.0"
+      },
+      "requiredProof": {
+        "installOk": true,
+        "mountOk": true,
+        "userSurfaceOk": true,
+        "stampOk": true,
+        "all": true
+      },
+      "install": [
+        {
+          "name": "install.exit",
+          "ok": true,
+          "reason": "one command installed the bundle into the profile",
+          "raw": "exit=0 spec=."
+        },
+        {
+          "name": "install.profileDep",
+          "ok": true,
+          "reason": "the profile links the checkout and keeps the box bundles",
+          "raw": "dep=link:/opt/mpd bundles=@deepseek-ai/dsh-base,@deepseek-ai/dsh-web-app,@mpd-dsh/mpd"
+        },
+        {
+          "name": "install.installedTree",
+          "ok": true,
+          "reason": "the installed bundle resolves inside the profile",
+          "raw": "/root/sandbox-dsh/profiles/web/node_modules/@mpd-dsh/mpd"
+        },
+        {
+          "name": "install.buildScripts",
+          "ok": true,
+          "reason": "the client install completed with NO unapproved build script: exit 0, no ERR_PNPM_IGNORED_BUILDS anywhere in the install output, no ignored-build-scripts warning, and the 2 installed closure root(s) were walked for manifests declaring preinstall/install/postinstall/prepare (0 found)",
+          "raw": "ERROR_CLASS_LINES=none WARN_LINES=none INVENTORY=none"
+        }
+      ],
+      "mount": [
+        {
+          "name": "compose.mpdRows",
+          "ok": true,
+          "reason": "the mpd host rows compose as INSERTS (additive-only) and the SHIPPED patch layers carry ZERO column-0 id-targets, i.e. no host row is overridden — the strict zero-override contract; the preset default is the USER's setting, not the bundle's",
+          "raw": "rows=mpd-dsh-adapter,mpd-bootstrap,mpd-web-compat,mpd-roles,mpd-workmate layers=2 idTargets=0 defaultMpdLines=0 gate exit=0 subject=byte-identical [verify-no-host-override] PASS: every id-target is bundle-owned (0 of 0 collide with the 204 host-declared row ids) "
+        },
+        {
+          "name": "compose.presetRow",
+          "ok": true,
+          "reason": "the mpd preset is declared as a @deepseek-ai/dsh-agent-preset row (§4 D1)",
+          "raw": "- id: preset-mpd"
+        },
+        {
+          "name": "boot.mpdTools",
+          "ok": true,
+          "reason": "every core mpd tool answered from the live registry",
+          "raw": "CORE_TOOLS=6/6"
+        },
+        {
+          "name": "boot.presetMount",
+          "ok": true,
+          "reason": "the gateway created a session with agentPreset=mpd — every row of the mpd preset activated (it refuses on an inactive row)",
+          "raw": "POST /api/session/create -> {\"type\":\"server-response\",\"rpcId\":\"rpc-1-1795339840-16398\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-2dab7e26-ee26-4854-a22d-34e9e71bd135\",\"agentPreset\":\"mpd\"}}}"
+        },
+        {
+          "name": "boot.sessionGateListener",
+          "ok": true,
+          "reason": "the mpd session gate listener is REGISTERED for the created session — witnessed in the row's OWN file log <workspace>/.mpd/logs/mpd-roles.log (R5), liveness not composition (the contract that was silently dead in v0.10.0)",
+          "raw": "[mpd-roles] session gate listener registered for agent \"session-2dab7e26-ee26-4854-a22d-34e9e71bd135\" agentPreset=mpd (file=/work/.mpd/logs/mpd-roles.log)"
+        },
+        {
+          "name": "boot.servesHttp",
+          "ok": true,
+          "reason": "the booted Web app answered 200",
+          "raw": "/plugins/mpd-workmate/list -> 200"
+        },
+        {
+          "name": "boot.agentTeamTools",
+          "ok": true,
+          "reason": "every official agent-team tool for THIS host generation answered from an EXACT AGENT SCOPE after session creation — graded set: 4 team_task_* tools (0.2.2-rc.2 lineage)",
+          "raw": "[docker-probe] AGENT_TEAM_TOOLS=4/4 agent=session-2dab7e26-ee26-4854-a22d-34e9e71b generation=task-board-only scopelessRead=4/4"
+        },
+        {
+          "name": "tui.hostInstall",
+          "ok": true,
+          "reason": "the TUI host installs globally and lands on PATH",
+          "raw": "version=0.20.2 bin=/usr/local/bin/dsh-tui"
+        },
+        {
+          "name": "tui.boot",
+          "ok": true,
+          "reason": "the REAL TUI booted on a real PTY and reached its CHAT screen (the composer is drawn and no 0.13.0 landing marker is on screen)",
+          "raw": "tmux=new-session-ok ready=chat-screen noLaunchpad=1 onboardingHex=7b0a202022636f6d… landingMarkerHits=0"
+        },
+        {
+          "name": "tui.presetPreference",
+          "ok": true,
+          "reason": "the lane performed the DOCUMENTED USER path: <HOME>/.dsh-tui/agent-preset.json written byte-exactly (21 bytes, no trailing newline) and dsh-tui@0.20.2 lib/types/presetPrefs.js#writePresetPref — AND the host registry row is UNTOUCHED by the bundle (its own default reads 'standard', no bundle-forced 'mpd', and the shipped layers id-target it nowhere). tui.sessionPreset is the arm that proves the preference is what resolved mpd",
+          "raw": "pref=/root/sandbox-home/.dsh-tui/agent-preset.json hex=7b0a202022707265736574223a20226d7064220a7d writerParity=identical hostRowDefault=standard bundleForcedMpdLines=0 shippedIdTargets=<none> layers=2/2"
+        },
+        {
+          "name": "tui.presetRow",
+          "ok": true,
+          "reason": "the mpd preset row is composed in the TUI plane",
+          "raw": "id=preset-mpd"
+        },
+        {
+          "name": "tui.sessionPreset",
+          "ok": true,
+          "reason": "the session the TUI created records agentPreset=mpd (the D10 default, read from the harness's own store)",
+          "raw": "{\"found\":true,\"sessionId\":\"4986cc67-c485-46bc-bc2a-28ab7fac2457\",\"agentPreset\":\"mpd\",\"bytes\":196432,\"scope\":\"this-boot-session\"}"
+        }
+      ],
+      "userSurface": {
+        "total": 120,
+        "trueCount": 85,
+        "falseCount": 0,
+        "nullCount": 35,
+        "rowCount": 69,
+        "rowTrue": 34,
+        "rowNullExcused": 35,
+        "rowNullUnexcused": [],
+        "boundTrueCount": 35,
+        "probe": {
+          "name": "userSurface.probe",
+          "ok": true,
+          "reason": "the instrumentation row mounted and recorded the live loader and registries",
+          "raw": "phase=tick-13 loaderEntries=158 commands=34 tools=129"
+        },
+        "rowsEnumerated": {
+          "name": "userSurface.rowsEnumerated",
+          "ok": true,
+          "reason": "the installed artifact's own layers were enumerated at run time",
+          "raw": "version=0.21.0 layers=cordis.patch.yml,mpd.patch.yml rows=69 disabled=mcp-git,mcp-shell,tool-plugin-market"
+        },
+        "rowsWitness": {
+          "name": "userSurface.rowsWitness",
+          "ok": true,
+          "reason": "no declared row is defective in the real boot (34 witnessed, 35 declared bounds)",
+          "raw": "witnessCounts={\"declared-bound\":35,\"loader-active\":9,\"disabled-by-design\":2,\"sink\":14,\"registration\":9} failed=-"
+        },
+        "rowsDeclaredBound": {
+          "name": "userSurface.rowsDeclaredBound",
+          "ok": true,
+          "reason": "35 row(s) are COMPOSED BUT NOT PROVEN on this plane; their ids are listed so no reader mistakes them for a pass",
+          "raw": "bound=mpd-better-sidebar(declared-bound),mpd-agent-team(declared-bound),mpd-tool-agent-team(declared-bound),mpd-ui-agent-team(declared-bound),persona(declared-bound),agent-instructions(declared-bound),time-context(declared-bound),tool-bash(declared-bound),tool-pwsh(declared-bound),tool-fs(declared-bound),tool-fs-search(declared-bound),tool-jobs(declared-bound),tool-schedule(declared-bound),skill-filesystem(declared-bound),tool-skill(declared-bound),command-goal(declared-bound),tool-goal(declared-bound),planning(declared-bound),plan-mode(declared-bound),compaction(declared-bound),compaction-basic(declared-bound),command-compact(declared-bound),tool-result-pruner(declared-bound),delegation(declared-bound),tool-subagent-control(declared-bound),tool-subagent(declared-bound),tool-subagent-fork(declared-bound),tool-workflow(declared-bound),tool-ask-user(declared-bound),tool-todo(declared-bound),tool-web(declared-bound),present(declared-bound),tool-office(declared-bound),tool-plugin-manager(declared-bound),tool-plugin-market(declared-bound)"
+        },
+        "negativeControl": {
+          "name": "userSurface.negativeControl",
+          "ok": true,
+          "reason": "a command no row contributes is absent from both surfaces while the palette stayed alive on both sides",
+          "raw": "registry=false controlCount=null controlRows=- aliveBefore=97 aliveAfter=97"
+        }
+      },
+      "oneclick": [
+        {
+          "name": "oneclick.scratchRepo",
+          "ok": null,
+          "reason": "not applicable in mode=source: this row grades the PUBLISHED package's installed tree (the scratch git build, the manifest's files allowlist, and the byte identity of what landed), and this mode installs the checkout by path — the one-click lane carries the measurement",
+          "raw": "mode=source"
+        },
+        {
+          "name": "oneclick.requiredPaths",
+          "ok": null,
+          "reason": "not applicable in mode=source: this row grades the PUBLISHED package's installed tree (the scratch git build, the manifest's files allowlist, and the byte identity of what landed), and this mode installs the checkout by path — the one-click lane carries the measurement",
+          "raw": "mode=source"
+        },
+        {
+          "name": "oneclick.filesAllowlist",
+          "ok": null,
+          "reason": "not applicable in mode=source: this row grades the PUBLISHED package's installed tree (the scratch git build, the manifest's files allowlist, and the byte identity of what landed), and this mode installs the checkout by path — the one-click lane carries the measurement",
+          "raw": "mode=source"
+        },
+        {
+          "name": "oneclick.distByteIdentical",
+          "ok": null,
+          "reason": "not applicable in mode=source: this row grades the PUBLISHED package's installed tree (the scratch git build, the manifest's files allowlist, and the byte identity of what landed), and this mode installs the checkout by path — the one-click lane carries the measurement",
+          "raw": "mode=source"
+        }
+      ],
+      "pack": [
+        {
+          "name": "pack.present",
+          "ok": true,
+          "reason": "the packed artifact travelled into the container and is graded below",
+          "raw": "artifact=/src/dist/mpd-package"
+        },
+        {
+          "name": "pack.licenceCoherence",
+          "ok": true,
+          "reason": "the packed artifact carries LICENSE.md + LICENSE-NOTICES.md byte-identical to the tree it was cut from, and declares license=MIT as the source manifest does",
+          "raw": "carried=LICENSE.md,LICENSE-NOTICES.md artifactLicense=MIT sourceLicense=MIT"
+        },
+        {
+          "name": "pack.declarationCoherence",
+          "ok": true,
+          "reason": "every declaration the artifact makes about itself holds: 27 files entries resolve, its 2 bundle-patch layers exist, all 29 row module paths its own patch names resolve inside it, and no host tree (evidence/.git/docker/.toolchain/node_modules) travelled along",
+          "raw": "rowPathsChecked=29 files=687"
+        },
+        {
+          "name": "pack.staticCoherence",
+          "ok": true,
+          "reason": "the artifact agrees with the tree it was cut from: 685 carried file(s) byte-identical, 2 generated path(s) exempted (package.json, packages/mpd-ext-plugin/dist/validator.js), none missing",
+          "raw": "drifted=none untwinned=none"
+        },
+        {
+          "name": "pack.distFreshRebuild",
+          "ok": true,
+          "reason": "every one of the 35 built entries in the artifact is byte-identical to the container's own from-source rebuild — the packed dist is FRESH, not merely present",
+          "raw": "drifted=none uncovered=none rebuildBun=/opt/toolchain/bun-pinned/bin/bun rebuildBunVersion=1.4.0 declaredBuildToolchain=bun@1.4.0 declaredVersion=1.4.0 exactMatch=true witness=/work/rebuild.json"
+        },
+        {
+          "name": "pack.distFreshRebuildControl",
+          "ok": true,
+          "reason": "the freshness arm is FALSIFIABLE on this machine: mutating one built entry in a copy of the same artifact flips pack.distFreshRebuild to FALSE against the SAME from-source rebuild, so a green on the untouched artifact is a measurement rather than a constant (the control's own rows are in /out/owed/pack-control.ndjson)",
+          "raw": "mutated=packages/mpd-autoproject-plugin/dist/index.js controlVerdict=false artifactCopy=/work/pack-mutated"
+        }
+      ],
+      "live": [
+        {
+          "name": "live.credentialStaged",
+          "ok": true,
+          "raw": "path=/root/sandbox-dsh/.credentials.yaml scope=sandbox"
+        },
+        {
+          "name": "live.credentialScoped",
+          "ok": true,
+          "raw": "mode=600 path=/root/sandbox-dsh/.credentials.yaml"
+        },
+        {
+          "name": "live.credentialRemoved",
+          "ok": true,
+          "raw": "path=/root/sandbox-dsh/.credentials.yaml"
+        },
+        {
+          "name": "live.web.turnStarted",
+          "ok": true,
+          "raw": "session=session-2dab7e26-ee26-4854-a22d-34e9e71bd135 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=1 names=[mpd_config_get]"
+        },
+        {
+          "name": "live.web.turnCompleted",
+          "ok": true,
+          "raw": "session=session-2dab7e26-ee26-4854-a22d-34e9e71bd135 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=1 names=[mpd_config_get]"
+        },
+        {
+          "name": "live.web.noErrorTurns",
+          "ok": true,
+          "raw": "session=session-2dab7e26-ee26-4854-a22d-34e9e71bd135 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=1 names=[mpd_config_get] errors=[]"
+        },
+        {
+          "name": "live.web.noPromptVariableError",
+          "ok": true,
+          "raw": "session=session-2dab7e26-ee26-4854-a22d-34e9e71bd135 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=1 names=[mpd_config_get] promptVariableErrors=[]"
+        },
+        {
+          "name": "live.web.noMalformedToolJson",
+          "ok": true,
+          "raw": "session=session-2dab7e26-ee26-4854-a22d-34e9e71bd135 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=1 names=[mpd_config_get] malformed=[]"
+        },
+        {
+          "name": "live.web.toolCallsParsed",
+          "ok": true,
+          "raw": "session=session-2dab7e26-ee26-4854-a22d-34e9e71bd135 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=1 names=[mpd_config_get]"
+        },
+        {
+          "name": "live.web.mpdToolCalled",
+          "ok": true,
+          "raw": "session=session-2dab7e26-ee26-4854-a22d-34e9e71bd135 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=1 names=[mpd_config_get]"
+        },
+        {
+          "name": "live.web.assistantReplied",
+          "ok": true,
+          "raw": "session=session-2dab7e26-ee26-4854-a22d-34e9e71bd135 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=1 names=[mpd_config_get]"
+        },
+        {
+          "name": "live.tui.turnStarted",
+          "ok": true,
+          "raw": "session=4986cc67-c485-46bc-bc2a-28ab7fac2457 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=2 names=[mpd_config_get]"
+        },
+        {
+          "name": "live.tui.turnCompleted",
+          "ok": true,
+          "raw": "session=4986cc67-c485-46bc-bc2a-28ab7fac2457 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=2 names=[mpd_config_get]"
+        },
+        {
+          "name": "live.tui.noErrorTurns",
+          "ok": true,
+          "raw": "session=4986cc67-c485-46bc-bc2a-28ab7fac2457 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=2 names=[mpd_config_get] errors=[]"
+        },
+        {
+          "name": "live.tui.noPromptVariableError",
+          "ok": true,
+          "raw": "session=4986cc67-c485-46bc-bc2a-28ab7fac2457 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=2 names=[mpd_config_get] promptVariableErrors=[]"
+        },
+        {
+          "name": "live.tui.noMalformedToolJson",
+          "ok": true,
+          "raw": "session=4986cc67-c485-46bc-bc2a-28ab7fac2457 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=2 names=[mpd_config_get] malformed=[]"
+        },
+        {
+          "name": "live.tui.toolCallsParsed",
+          "ok": true,
+          "raw": "session=4986cc67-c485-46bc-bc2a-28ab7fac2457 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=2 names=[mpd_config_get]"
+        },
+        {
+          "name": "live.tui.mpdToolCalled",
+          "ok": true,
+          "raw": "session=4986cc67-c485-46bc-bc2a-28ab7fac2457 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=2 names=[mpd_config_get]"
+        },
+        {
+          "name": "live.tui.assistantReplied",
+          "ok": true,
+          "raw": "session=4986cc67-c485-46bc-bc2a-28ab7fac2457 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=2 names=[mpd_config_get]"
+        },
+        {
+          "name": "live.headless.turnStarted",
+          "ok": true,
+          "raw": "session=session-776a876e-eea7-41db-85f6-a5cf9a2963d8 turns=3 completed=3 errors=0 tools=19/19parsed malformed=0 texts=3 names=[mpd_config_get,agent_teams_plan,mpd_role_persona,agent_teams_dispatch,wait_agent,agent_teams_task,glob,read,mpd_goal_status,bash,mpd_goal_finish]"
+        },
+        {
+          "name": "live.headless.turnCompleted",
+          "ok": true,
+          "raw": "session=session-776a876e-eea7-41db-85f6-a5cf9a2963d8 turns=3 completed=3 errors=0 tools=19/19parsed malformed=0 texts=3 names=[mpd_config_get,agent_teams_plan,mpd_role_persona,agent_teams_dispatch,wait_agent,agent_teams_task,glob,read,mpd_goal_status,bash,mpd_goal_finish]"
+        },
+        {
+          "name": "live.headless.noErrorTurns",
+          "ok": true,
+          "raw": "session=session-776a876e-eea7-41db-85f6-a5cf9a2963d8 turns=3 completed=3 errors=0 tools=19/19parsed malformed=0 texts=3 names=[mpd_config_get,agent_teams_plan,mpd_role_persona,agent_teams_dispatch,wait_agent,agent_teams_task,glob,read,mpd_goal_status,bash,mpd_goal_finish] errors=[]"
+        },
+        {
+          "name": "live.headless.noPromptVariableError",
+          "ok": true,
+          "raw": "session=session-776a876e-eea7-41db-85f6-a5cf9a2963d8 turns=3 completed=3 errors=0 tools=19/19parsed malformed=0 texts=3 names=[mpd_config_get,agent_teams_plan,mpd_role_persona,agent_teams_dispatch,wait_agent,agent_teams_task,glob,read,mpd_goal_status,bash,mpd_goal_finish] promptVariableErrors=[]"
+        },
+        {
+          "name": "live.headless.noMalformedToolJson",
+          "ok": true,
+          "raw": "session=session-776a876e-eea7-41db-85f6-a5cf9a2963d8 turns=3 completed=3 errors=0 tools=19/19parsed malformed=0 texts=3 names=[mpd_config_get,agent_teams_plan,mpd_role_persona,agent_teams_dispatch,wait_agent,agent_teams_task,glob,read,mpd_goal_status,bash,mpd_goal_finish] malformed=[]"
+        },
+        {
+          "name": "live.headless.toolCallsParsed",
+          "ok": true,
+          "raw": "session=session-776a876e-eea7-41db-85f6-a5cf9a2963d8 turns=3 completed=3 errors=0 tools=19/19parsed malformed=0 texts=3 names=[mpd_config_get,agent_teams_plan,mpd_role_persona,agent_teams_dispatch,wait_agent,agent_teams_task,glob,read,mpd_goal_status,bash,mpd_goal_finish]"
+        },
+        {
+          "name": "live.headless.mpdToolCalled",
+          "ok": true,
+          "raw": "session=session-776a876e-eea7-41db-85f6-a5cf9a2963d8 turns=3 completed=3 errors=0 tools=19/19parsed malformed=0 texts=3 names=[mpd_config_get,agent_teams_plan,mpd_role_persona,agent_teams_dispatch,wait_agent,agent_teams_task,glob,read,mpd_goal_status,bash,mpd_goal_finish]"
+        },
+        {
+          "name": "live.headless.assistantReplied",
+          "ok": true,
+          "raw": "session=session-776a876e-eea7-41db-85f6-a5cf9a2963d8 turns=3 completed=3 errors=0 tools=19/19parsed malformed=0 texts=3 names=[mpd_config_get,agent_teams_plan,mpd_role_persona,agent_teams_dispatch,wait_agent,agent_teams_task,glob,read,mpd_goal_status,bash,mpd_goal_finish]"
+        },
+        {
+          "name": "live.teamRecord",
+          "ok": true,
+          "raw": "file=team-20261122093907927-34wx-003.json phase=ended mtime=1795340421.2660368160"
+        },
+        {
+          "name": "live.nativeExecutor",
+          "ok": true,
+          "raw": "members-with-handle=1/1 file=team-20261122093907927-34wx-003.json"
+        },
+        {
+          "name": "live.headlessPresetRow",
+          "ok": true,
+          "raw": "pending=preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets) registryRows=0"
+        }
+      ],
+      "failures": [],
+      "unmeasured": [],
+      "missing": [],
+      "durationMinutes": 19,
+      "imageMiB": 522
+    },
+    {
+      "run": 2,
+      "slug": "oneclick-live",
+      "args": "--mode oneclick --require-docker --live",
+      "exitCode": 1,
+      "dockerMode": "[driver] docker mode: ROOTLESS ([\"name=seccomp,profile=builtin\",\"name=rootless\",\"name=cgroupns\"])",
+      "skipped": false,
+      "evidenceDir": "evidence/docker/client-install-oneclick/2026-11-22T09-43-42Z",
+      "printedEvidencePath": "evidence/docker/client-install-oneclick/2026-11-22T09-43-42Z",
+      "ok": false,
+      "complete": false,
+      "assertions": {
+        "total": 244,
+        "passed": 196,
+        "failed": 6,
+        "null": 42,
+        "failedNames": [
+          "tui.mergedPanelOpens",
+          "tui.mergedPanelOrder",
+          "tui.teamSceneOpened",
+          "tui.teamGraphDrawn",
+          "tui.teamGraphContent",
+          "tui.laneExit"
+        ],
+        "nullNames": [
+          "build.bunInstall",
+          "build.dists",
+          "pack.distFreshRebuild",
+          "pack.rebuildToolchain",
+          "pack.distFreshRebuildControl",
+          "tui.teamFixtureBound",
+          "ui.teamBoard",
+          "userSurface.row.mpd-better-sidebar",
+          "userSurface.row.mpd-agent-team",
+          "userSurface.row.mpd-tool-agent-team",
+          "userSurface.row.mpd-ui-agent-team",
+          "userSurface.row.persona",
+          "userSurface.row.agent-instructions",
+          "userSurface.row.time-context",
+          "userSurface.row.tool-bash",
+          "userSurface.row.tool-pwsh",
+          "userSurface.row.tool-fs",
+          "userSurface.row.tool-fs-search",
+          "userSurface.row.tool-jobs",
+          "userSurface.row.tool-schedule",
+          "userSurface.row.skill-filesystem",
+          "userSurface.row.tool-skill",
+          "userSurface.row.command-goal",
+          "userSurface.row.tool-goal",
+          "userSurface.row.planning",
+          "userSurface.row.plan-mode",
+          "userSurface.row.compaction",
+          "userSurface.row.compaction-basic",
+          "userSurface.row.command-compact",
+          "userSurface.row.tool-result-pruner",
+          "userSurface.row.delegation",
+          "userSurface.row.tool-subagent-control",
+          "userSurface.row.tool-subagent",
+          "userSurface.row.tool-subagent-fork",
+          "userSurface.row.tool-workflow",
+          "userSurface.row.tool-ask-user",
+          "userSurface.row.tool-todo",
+          "userSurface.row.tool-web",
+          "userSurface.row.present",
+          "userSurface.row.tool-office",
+          "userSurface.row.tool-plugin-manager",
+          "userSurface.row.tool-plugin-market"
+        ]
+      },
+      "stamps": {
+        "harnessInstalled": "0.2.2-rc.5",
+        "harnessExpected": "0.2.2-rc.5",
+        "tuiInstalled": "0.20.2",
+        "pins": "nodePin=24.19.0 dsh=0.2.2-rc.5 pnpm=11.23.0"
+      },
+      "requiredProof": {
+        "installOk": true,
+        "mountOk": true,
+        "userSurfaceOk": true,
+        "stampOk": true,
+        "all": true
+      },
+      "install": [
+        {
+          "name": "install.exit",
+          "ok": true,
+          "reason": "one command installed the bundle into the profile",
+          "raw": "exit=0 spec=git+file:///opt/oneclick.git"
+        },
+        {
+          "name": "install.profileDep",
+          "ok": true,
+          "reason": "the profile records the GIT spec pnpm resolved — the published-package path, not a checkout link — and keeps the box bundles",
+          "raw": "dep=git+file:///opt/oneclick.git bundles=@deepseek-ai/dsh-base,@deepseek-ai/dsh-web-app,@mpd-dsh/mpd"
+        },
+        {
+          "name": "install.installedTree",
+          "ok": true,
+          "reason": "the installed bundle resolves inside the profile",
+          "raw": "/root/sandbox-dsh/profiles/web/node_modules/@mpd-dsh/mpd"
+        },
+        {
+          "name": "install.buildScripts",
+          "ok": true,
+          "reason": "the client install completed with NO unapproved build script: exit 0, no ERR_PNPM_IGNORED_BUILDS anywhere in the install output, no ignored-build-scripts warning, and the 2 installed closure root(s) were walked for manifests declaring preinstall/install/postinstall/prepare (12 found)",
+          "raw": "ERROR_CLASS_LINES=none WARN_LINES=none INVENTORY=node_modules/@cyanheads/git-mcp-server:prepare,node_modules/colorette:prepare,node_modules/content-disposition:prepare,node_modules/content-type:prepare,node_modules/eventsource:prepare,node_modules/express-rate-limit:prepare,node_modules/ip-address:prepare,node_modules/mcp-server-commands:prepare,node_modules/path-to-regexp:prepare,node_modules/pino-abstract-transport:prepare,node_modules/signal-exit:prepare,node_modules/typescript-language-server:prepare"
+        }
+      ],
+      "mount": [
+        {
+          "name": "compose.mpdRows",
+          "ok": true,
+          "reason": "the mpd host rows compose as INSERTS (additive-only) and the SHIPPED patch layers carry ZERO column-0 id-targets, i.e. no host row is overridden — the strict zero-override contract; the preset default is the USER's setting, not the bundle's",
+          "raw": "rows=mpd-dsh-adapter,mpd-bootstrap,mpd-web-compat,mpd-roles,mpd-workmate layers=2 idTargets=0 defaultMpdLines=0 gate exit=0 subject=byte-identical [verify-no-host-override] PASS: every id-target is bundle-owned (0 of 0 collide with the 204 host-declared row ids) "
+        },
+        {
+          "name": "compose.presetRow",
+          "ok": true,
+          "reason": "the mpd preset is declared as a @deepseek-ai/dsh-agent-preset row (§4 D1)",
+          "raw": "- id: preset-mpd"
+        },
+        {
+          "name": "boot.mpdTools",
+          "ok": true,
+          "reason": "every core mpd tool answered from the live registry",
+          "raw": "CORE_TOOLS=6/6"
+        },
+        {
+          "name": "boot.presetMount",
+          "ok": true,
+          "reason": "the gateway created a session with agentPreset=mpd — every row of the mpd preset activated (it refuses on an inactive row)",
+          "raw": "POST /api/session/create -> {\"type\":\"server-response\",\"rpcId\":\"rpc-1-1795340806-27786\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-6b92dc0c-c56c-4130-b19c-9e8f04bf6b4a\",\"agentPreset\":\"mpd\"}}}"
+        },
+        {
+          "name": "boot.sessionGateListener",
+          "ok": true,
+          "reason": "the mpd session gate listener is REGISTERED for the created session — witnessed in the row's OWN file log <workspace>/.mpd/logs/mpd-roles.log (R5), liveness not composition (the contract that was silently dead in v0.10.0)",
+          "raw": "[mpd-roles] session gate listener registered for agent \"session-6b92dc0c-c56c-4130-b19c-9e8f04bf6b4a\" agentPreset=mpd (file=/work/.mpd/logs/mpd-roles.log)"
+        },
+        {
+          "name": "boot.servesHttp",
+          "ok": true,
+          "reason": "the booted Web app answered 200",
+          "raw": "/plugins/mpd-workmate/list -> 200"
+        },
+        {
+          "name": "boot.agentTeamTools",
+          "ok": true,
+          "reason": "every official agent-team tool for THIS host generation answered from an EXACT AGENT SCOPE after session creation — graded set: 4 team_task_* tools (0.2.2-rc.2 lineage)",
+          "raw": "[docker-probe] AGENT_TEAM_TOOLS=4/4 agent=session-6b92dc0c-c56c-4130-b19c-9e8f04bf generation=task-board-only scopelessRead=4/4"
+        },
+        {
+          "name": "tui.hostInstall",
+          "ok": true,
+          "reason": "the TUI host installs globally and lands on PATH",
+          "raw": "version=0.20.2 bin=/usr/local/bin/dsh-tui"
+        },
+        {
+          "name": "tui.boot",
+          "ok": true,
+          "reason": "the REAL TUI booted on a real PTY and reached its CHAT screen (the composer is drawn and no 0.13.0 landing marker is on screen)",
+          "raw": "tmux=new-session-ok ready=chat-screen noLaunchpad=1 onboardingHex=7b0a202022636f6d… landingMarkerHits=0"
+        },
+        {
+          "name": "tui.presetPreference",
+          "ok": true,
+          "reason": "the lane performed the DOCUMENTED USER path: <HOME>/.dsh-tui/agent-preset.json written byte-exactly (21 bytes, no trailing newline) and dsh-tui@0.20.2 lib/types/presetPrefs.js#writePresetPref — AND the host registry row is UNTOUCHED by the bundle (its own default reads 'standard', no bundle-forced 'mpd', and the shipped layers id-target it nowhere). tui.sessionPreset is the arm that proves the preference is what resolved mpd",
+          "raw": "pref=/root/sandbox-home/.dsh-tui/agent-preset.json hex=7b0a202022707265736574223a20226d7064220a7d writerParity=identical hostRowDefault=standard bundleForcedMpdLines=0 shippedIdTargets=<none> layers=2/2"
+        },
+        {
+          "name": "tui.presetRow",
+          "ok": true,
+          "reason": "the mpd preset row is composed in the TUI plane",
+          "raw": "id=preset-mpd"
+        },
+        {
+          "name": "tui.sessionPreset",
+          "ok": true,
+          "reason": "the session the TUI created records agentPreset=mpd (the D10 default, read from the harness's own store)",
+          "raw": "{\"found\":true,\"sessionId\":\"e078be04-acd6-4c5f-ba8f-2f1c9d9ee256\",\"agentPreset\":\"mpd\",\"bytes\":189692,\"scope\":\"newest-record-proxy\"}"
+        }
+      ],
+      "userSurface": {
+        "total": 120,
+        "trueCount": 85,
+        "falseCount": 0,
+        "nullCount": 35,
+        "rowCount": 69,
+        "rowTrue": 34,
+        "rowNullExcused": 35,
+        "rowNullUnexcused": [],
+        "boundTrueCount": 35,
+        "probe": {
+          "name": "userSurface.probe",
+          "ok": true,
+          "reason": "the instrumentation row mounted and recorded the live loader and registries",
+          "raw": "phase=tick-16 loaderEntries=158 commands=34 tools=116"
+        },
+        "rowsEnumerated": {
+          "name": "userSurface.rowsEnumerated",
+          "ok": true,
+          "reason": "the installed artifact's own layers were enumerated at run time",
+          "raw": "version=0.21.0 layers=cordis.patch.yml,mpd.patch.yml rows=69 disabled=mcp-git,mcp-shell,tool-plugin-market"
+        },
+        "rowsWitness": {
+          "name": "userSurface.rowsWitness",
+          "ok": true,
+          "reason": "no declared row is defective in the real boot (34 witnessed, 35 declared bounds)",
+          "raw": "witnessCounts={\"declared-bound\":35,\"loader-active\":9,\"disabled-by-design\":2,\"sink\":14,\"registration\":9} failed=-"
+        },
+        "rowsDeclaredBound": {
+          "name": "userSurface.rowsDeclaredBound",
+          "ok": true,
+          "reason": "35 row(s) are COMPOSED BUT NOT PROVEN on this plane; their ids are listed so no reader mistakes them for a pass",
+          "raw": "bound=mpd-better-sidebar(declared-bound),mpd-agent-team(declared-bound),mpd-tool-agent-team(declared-bound),mpd-ui-agent-team(declared-bound),persona(declared-bound),agent-instructions(declared-bound),time-context(declared-bound),tool-bash(declared-bound),tool-pwsh(declared-bound),tool-fs(declared-bound),tool-fs-search(declared-bound),tool-jobs(declared-bound),tool-schedule(declared-bound),skill-filesystem(declared-bound),tool-skill(declared-bound),command-goal(declared-bound),tool-goal(declared-bound),planning(declared-bound),plan-mode(declared-bound),compaction(declared-bound),compaction-basic(declared-bound),command-compact(declared-bound),tool-result-pruner(declared-bound),delegation(declared-bound),tool-subagent-control(declared-bound),tool-subagent(declared-bound),tool-subagent-fork(declared-bound),tool-workflow(declared-bound),tool-ask-user(declared-bound),tool-todo(declared-bound),tool-web(declared-bound),present(declared-bound),tool-office(declared-bound),tool-plugin-manager(declared-bound),tool-plugin-market(declared-bound)"
+        },
+        "negativeControl": {
+          "name": "userSurface.negativeControl",
+          "ok": true,
+          "reason": "a command no row contributes is absent from both surfaces while the palette stayed alive on both sides",
+          "raw": "registry=false controlCount=null controlRows=- aliveBefore=97 aliveAfter=97"
+        }
+      },
+      "oneclick": [
+        {
+          "name": "oneclick.scratchRepo",
+          "ok": true,
+          "reason": "the scratch remote (a git repository of the build context) exists, so the spec resolves through the real git path",
+          "raw": "commit=255c17a28a8d36525c5f1b0f558b783341a3c44f repo=/opt/oneclick.git"
+        },
+        {
+          "name": "oneclick.requiredPaths",
+          "ok": true,
+          "reason": "every path the rows and the display metadata name is present in the installed package",
+          "raw": "checked: patch files, MCP launchers, web client, icon, locale, skills corpus"
+        },
+        {
+          "name": "oneclick.filesAllowlist",
+          "ok": true,
+          "reason": "the files allowlist was honoured: no frozen evidence tree, no git history, no lane scratch in the installed package",
+          "raw": "absent: evidence/ .git/ docker/ .qa-tmp/"
+        },
+        {
+          "name": "oneclick.distByteIdentical",
+          "ok": true,
+          "reason": "36 committed dist entry/entries landed byte-identical, so the install ran no build and shipped what the source tree builds",
+          "raw": "cmp -s on each entry"
+        }
+      ],
+      "pack": [
+        {
+          "name": "pack.present",
+          "ok": true,
+          "reason": "the packed artifact travelled into the container and is graded below",
+          "raw": "artifact=/src/dist/mpd-package"
+        },
+        {
+          "name": "pack.licenceCoherence",
+          "ok": true,
+          "reason": "the packed artifact carries LICENSE.md + LICENSE-NOTICES.md byte-identical to the tree it was cut from, and declares license=MIT as the source manifest does",
+          "raw": "carried=LICENSE.md,LICENSE-NOTICES.md artifactLicense=MIT sourceLicense=MIT"
+        },
+        {
+          "name": "pack.declarationCoherence",
+          "ok": true,
+          "reason": "every declaration the artifact makes about itself holds: 27 files entries resolve, its 2 bundle-patch layers exist, all 29 row module paths its own patch names resolve inside it, and no host tree (evidence/.git/docker/.toolchain/node_modules) travelled along",
+          "raw": "rowPathsChecked=29 files=687"
+        },
+        {
+          "name": "pack.staticCoherence",
+          "ok": true,
+          "reason": "the artifact agrees with the tree it was cut from: 685 carried file(s) byte-identical, 2 generated path(s) exempted (package.json, packages/mpd-ext-plugin/dist/validator.js), none missing",
+          "raw": "drifted=none untwinned=none"
+        },
+        {
+          "name": "pack.distFreshRebuild",
+          "ok": null,
+          "reason": "not measured in this mode: no from-source rebuild of the tree was produced here, so there is nothing to compare the artifact against. A comparison against an un-rebuilt copy would be a second byte-coherence check wearing freshness's name — the source lane carries this measurement",
+          "raw": "rebuild=<none passed>"
+        },
+        {
+          "name": "pack.distFreshRebuildControl",
+          "ok": null,
+          "reason": "not applicable in mode=oneclick: the control mutates the packed artifact and re-grades it against a from-source rebuild, and this mode produces no rebuild to compare against (see pack.distFreshRebuild in this same report)",
+          "raw": "mode=oneclick"
+        }
+      ],
+      "live": [
+        {
+          "name": "live.credentialStaged",
+          "ok": true,
+          "raw": "path=/root/sandbox-dsh/.credentials.yaml scope=sandbox"
+        },
+        {
+          "name": "live.credentialScoped",
+          "ok": true,
+          "raw": "mode=600 path=/root/sandbox-dsh/.credentials.yaml"
+        },
+        {
+          "name": "live.credentialRemoved",
+          "ok": true,
+          "raw": "path=/root/sandbox-dsh/.credentials.yaml"
+        },
+        {
+          "name": "live.web.turnStarted",
+          "ok": true,
+          "raw": "session=session-6b92dc0c-c56c-4130-b19c-9e8f04bf6b4a turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=1 names=[mpd_config_get]"
+        },
+        {
+          "name": "live.web.turnCompleted",
+          "ok": true,
+          "raw": "session=session-6b92dc0c-c56c-4130-b19c-9e8f04bf6b4a turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=1 names=[mpd_config_get]"
+        },
+        {
+          "name": "live.web.noErrorTurns",
+          "ok": true,
+          "raw": "session=session-6b92dc0c-c56c-4130-b19c-9e8f04bf6b4a turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=1 names=[mpd_config_get] errors=[]"
+        },
+        {
+          "name": "live.web.noPromptVariableError",
+          "ok": true,
+          "raw": "session=session-6b92dc0c-c56c-4130-b19c-9e8f04bf6b4a turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=1 names=[mpd_config_get] promptVariableErrors=[]"
+        },
+        {
+          "name": "live.web.noMalformedToolJson",
+          "ok": true,
+          "raw": "session=session-6b92dc0c-c56c-4130-b19c-9e8f04bf6b4a turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=1 names=[mpd_config_get] malformed=[]"
+        },
+        {
+          "name": "live.web.toolCallsParsed",
+          "ok": true,
+          "raw": "session=session-6b92dc0c-c56c-4130-b19c-9e8f04bf6b4a turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=1 names=[mpd_config_get]"
+        },
+        {
+          "name": "live.web.mpdToolCalled",
+          "ok": true,
+          "raw": "session=session-6b92dc0c-c56c-4130-b19c-9e8f04bf6b4a turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=1 names=[mpd_config_get]"
+        },
+        {
+          "name": "live.web.assistantReplied",
+          "ok": true,
+          "raw": "session=session-6b92dc0c-c56c-4130-b19c-9e8f04bf6b4a turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=1 names=[mpd_config_get]"
+        },
+        {
+          "name": "live.tui.turnStarted",
+          "ok": true,
+          "raw": "session=e078be04-acd6-4c5f-ba8f-2f1c9d9ee256 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=2 names=[mpd_config_get]"
+        },
+        {
+          "name": "live.tui.turnCompleted",
+          "ok": true,
+          "raw": "session=e078be04-acd6-4c5f-ba8f-2f1c9d9ee256 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=2 names=[mpd_config_get]"
+        },
+        {
+          "name": "live.tui.noErrorTurns",
+          "ok": true,
+          "raw": "session=e078be04-acd6-4c5f-ba8f-2f1c9d9ee256 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=2 names=[mpd_config_get] errors=[]"
+        },
+        {
+          "name": "live.tui.noPromptVariableError",
+          "ok": true,
+          "raw": "session=e078be04-acd6-4c5f-ba8f-2f1c9d9ee256 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=2 names=[mpd_config_get] promptVariableErrors=[]"
+        },
+        {
+          "name": "live.tui.noMalformedToolJson",
+          "ok": true,
+          "raw": "session=e078be04-acd6-4c5f-ba8f-2f1c9d9ee256 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=2 names=[mpd_config_get] malformed=[]"
+        },
+        {
+          "name": "live.tui.toolCallsParsed",
+          "ok": true,
+          "raw": "session=e078be04-acd6-4c5f-ba8f-2f1c9d9ee256 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=2 names=[mpd_config_get]"
+        },
+        {
+          "name": "live.tui.mpdToolCalled",
+          "ok": true,
+          "raw": "session=e078be04-acd6-4c5f-ba8f-2f1c9d9ee256 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=2 names=[mpd_config_get]"
+        },
+        {
+          "name": "live.tui.assistantReplied",
+          "ok": true,
+          "raw": "session=e078be04-acd6-4c5f-ba8f-2f1c9d9ee256 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=2 names=[mpd_config_get]"
+        },
+        {
+          "name": "live.headless.turnStarted",
+          "ok": true,
+          "raw": "session=session-40c1cfc9-3b69-4cb4-9513-a04e32edfa60 turns=4 completed=4 errors=0 tools=43/43parsed malformed=0 texts=4 names=[mpd_config_get,agent_teams_plan,mpd_role_persona,agent_teams_dispatch,agent_teams_task,bash,mpd_goal_status,read,mpd_goal_finish]"
+        },
+        {
+          "name": "live.headless.turnCompleted",
+          "ok": true,
+          "raw": "session=session-40c1cfc9-3b69-4cb4-9513-a04e32edfa60 turns=4 completed=4 errors=0 tools=43/43parsed malformed=0 texts=4 names=[mpd_config_get,agent_teams_plan,mpd_role_persona,agent_teams_dispatch,agent_teams_task,bash,mpd_goal_status,read,mpd_goal_finish]"
+        },
+        {
+          "name": "live.headless.noErrorTurns",
+          "ok": true,
+          "raw": "session=session-40c1cfc9-3b69-4cb4-9513-a04e32edfa60 turns=4 completed=4 errors=0 tools=43/43parsed malformed=0 texts=4 names=[mpd_config_get,agent_teams_plan,mpd_role_persona,agent_teams_dispatch,agent_teams_task,bash,mpd_goal_status,read,mpd_goal_finish] errors=[]"
+        },
+        {
+          "name": "live.headless.noPromptVariableError",
+          "ok": true,
+          "raw": "session=session-40c1cfc9-3b69-4cb4-9513-a04e32edfa60 turns=4 completed=4 errors=0 tools=43/43parsed malformed=0 texts=4 names=[mpd_config_get,agent_teams_plan,mpd_role_persona,agent_teams_dispatch,agent_teams_task,bash,mpd_goal_status,read,mpd_goal_finish] promptVariableErrors=[]"
+        },
+        {
+          "name": "live.headless.noMalformedToolJson",
+          "ok": true,
+          "raw": "session=session-40c1cfc9-3b69-4cb4-9513-a04e32edfa60 turns=4 completed=4 errors=0 tools=43/43parsed malformed=0 texts=4 names=[mpd_config_get,agent_teams_plan,mpd_role_persona,agent_teams_dispatch,agent_teams_task,bash,mpd_goal_status,read,mpd_goal_finish] malformed=[]"
+        },
+        {
+          "name": "live.headless.toolCallsParsed",
+          "ok": true,
+          "raw": "session=session-40c1cfc9-3b69-4cb4-9513-a04e32edfa60 turns=4 completed=4 errors=0 tools=43/43parsed malformed=0 texts=4 names=[mpd_config_get,agent_teams_plan,mpd_role_persona,agent_teams_dispatch,agent_teams_task,bash,mpd_goal_status,read,mpd_goal_finish]"
+        },
+        {
+          "name": "live.headless.mpdToolCalled",
+          "ok": true,
+          "raw": "session=session-40c1cfc9-3b69-4cb4-9513-a04e32edfa60 turns=4 completed=4 errors=0 tools=43/43parsed malformed=0 texts=4 names=[mpd_config_get,agent_teams_plan,mpd_role_persona,agent_teams_dispatch,agent_teams_task,bash,mpd_goal_status,read,mpd_goal_finish]"
+        },
+        {
+          "name": "live.headless.assistantReplied",
+          "ok": true,
+          "raw": "session=session-40c1cfc9-3b69-4cb4-9513-a04e32edfa60 turns=4 completed=4 errors=0 tools=43/43parsed malformed=0 texts=4 names=[mpd_config_get,agent_teams_plan,mpd_role_persona,agent_teams_dispatch,agent_teams_task,bash,mpd_goal_status,read,mpd_goal_finish]"
+        },
+        {
+          "name": "live.teamRecord",
+          "ok": true,
+          "raw": "file=team-20261122095745467-a0j5-003.json phase=ended mtime=1795341584.0127807850"
+        },
+        {
+          "name": "live.nativeExecutor",
+          "ok": true,
+          "raw": "members-with-handle=1/1 file=team-20261122095745467-a0j5-003.json"
+        },
+        {
+          "name": "live.headlessPresetRow",
+          "ok": true,
+          "raw": "pending=preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets) registryRows=0"
+        }
+      ],
+      "failures": [
+        {
+          "name": "tui.mergedPanelOpens",
+          "reason": "the MPD combo did NOT open the merged panel on the captured pane, or the capture cannot attribute the panel to the combo: the captured pane does NOT carry the merged panel: titleHits=1 subagentHits=2 teamHits=0 subagentMarker=line 7 teamMarker=line 0 header=line 7 emptyState=line 8 (each family must be > 0, pre-key control hits = 0) THE FIXTURE WAS NOT BOUND TO THIS SESSION (session=none materialized=false attempts=4 source=none projectKey=--work-ws-- no-bind-attempted resolve=store=/root/sandbox-dsh/sessions;before=3;after=3;created=), so this red is about an UNMEASURED fixture and NOT yet about the drawing: the product is entitled to draw the empty state for a session that owns no board (tui.teamFixtureBound carries the cause).",
+          "raw": "panelSeam=present driver=docker/lib/tui-panel-body.ts TITLE_HITS=1 SUB_HITS=2 TEAM_HITS=0 CONTROL_HITS=0 SUB_LINE=7 TEAM_LINE=0 HEAD_LINE=7 EMPTY_LINE=8 pane=pane-merged.txt control=pane-teamClosed.txt chars=13196 controlChars=12349 log=[tui-panel] SHAPE=present [tui-panel] TITLE_HITS=1 SUB_HITS=2 TEAM_HITS=0 CONTROL_HITS=0 [tui-panel] SUB_LINE=7 TEAM_LINE=0 HEAD_LINE=7 EMPTY_LINE=8 [tui-panel] OPENS=false [tui-panel] ORDER=false [tui-panel] REASON=the captured pane does NOT carry the merged panel: titleHits=1 subagentHits=2 teamHits=0 subagentMarker=line 7 teamMarker=line 0 header=line 7 emptyState=line 8 (each family must be > 0, pre-key control hits = 0)"
+        },
+        {
+          "name": "tui.mergedPanelOrder",
+          "reason": "the subagent section is NOT above the team body on the captured pane (or a marker is missing, or the panel did not open — an order claim about a panel that is not on screen is not a measurement): the captured pane does NOT carry the merged panel: titleHits=1 subagentHits=2 teamHits=0 subagentMarker=line 7 teamMarker=line 0 header=line 7 emptyState=line 8 (each family must be > 0, pre-key control hits = 0) THE FIXTURE WAS NOT BOUND TO THIS SESSION (session=none materialized=false attempts=4 source=none projectKey=--work-ws-- no-bind-attempted resolve=store=/root/sandbox-dsh/sessions;before=3;after=3;created=), so this red is about an UNMEASURED fixture and NOT yet about the drawing: the product is entitled to draw the empty state for a session that owns no board (tui.teamFixtureBound carries the cause).",
+          "raw": "panelSeam=present driver=docker/lib/tui-panel-body.ts TITLE_HITS=1 SUB_HITS=2 TEAM_HITS=0 CONTROL_HITS=0 SUB_LINE=7 TEAM_LINE=0 HEAD_LINE=7 EMPTY_LINE=8 pane=pane-merged.txt control=pane-teamClosed.txt chars=13196 controlChars=12349"
+        },
+        {
+          "name": "tui.teamSceneOpened",
+          "reason": "the /mpd team scene opened on a real terminal (the capture waited for the scene's own header or for the product's empty-state line, so a pane still on the host's startup frame is no longer judged as a drawing) THE FIXTURE WAS NOT BOUND TO THIS SESSION (session=none materialized=false attempts=4 source=none projectKey=--work-ws-- no-bind-attempted resolve=store=/root/sandbox-dsh/sessions;before=3;after=3;created=), so this red is about an UNMEASURED fixture and NOT yet about the drawing: the product is entitled to draw the empty state for a session that owns no board (tui.teamFixtureBound carries the cause).",
+          "raw": "chars=11549"
+        },
+        {
+          "name": "tui.teamGraphDrawn",
+          "reason": "the boxes were NOT drawn one per task: the record carries 3 task(s) and the pane's rounded corners are ╭0 ╮0 ╰0 ╯0, each of which must equal the task count. THE FIXTURE WAS NOT BOUND TO THIS SESSION (session=none materialized=false attempts=4 source=none projectKey=--work-ws-- no-bind-attempted resolve=store=/root/sandbox-dsh/sessions;before=3;after=3;created=), so this red is about an UNMEASURED fixture and NOT yet about the drawing: the product is entitled to draw the empty state for a session that owns no board (tui.teamFixtureBound carries the cause).",
+          "raw": "corners=╭0 ╮0 ╰0 ╯0 tasksFromRecord=3 ids=T1,T2,T3 pane=pane-team.txt"
+        },
+        {
+          "name": "tui.teamGraphContent",
+          "reason": "the pane does not carry the record's own data: ids read from the record=3 missing=[T1,T2,T3] pinnedFocus=[none] — each record id must be DRAWN, and one 'j' keystroke must reach a task's own subject in the pinned detail body. THE FIXTURE WAS NOT BOUND TO THIS SESSION (session=none materialized=false attempts=4 source=none projectKey=--work-ws-- no-bind-attempted resolve=store=/root/sandbox-dsh/sessions;before=3;after=3;created=), so this red is about an UNMEASURED fixture and NOT yet about the drawing: the product is entitled to draw the empty state for a session that owns no board (tui.teamFixtureBound carries the cause).",
+          "raw": "ids=T1,T2,T3 fromRecord=3 labelsExpected=3 missing=[T1,T2,T3] pane=pane-team.txt chars=11549 pinnedFocus=none detail=[none] pinnedPane=pane-teamPinned.txt"
+        },
+        {
+          "name": "tui.laneExit",
+          "reason": "the TUI lane finished with failing or missing assertions",
+          "raw": "records=21 failed=5"
+        }
+      ],
+      "unmeasured": [],
+      "missing": [],
+      "durationMinutes": 23.4,
+      "imageMiB": 522
+    },
+    {
+      "run": 3,
+      "slug": "source-nobrowser",
+      "args": "--mode source --require-docker --no-browser",
+      "exitCode": 0,
+      "dockerMode": "[driver] docker mode: ROOTLESS ([\"name=seccomp,profile=builtin\",\"name=rootless\",\"name=cgroupns\"])",
+      "skipped": false,
+      "evidenceDir": "evidence/docker/client-install/2026-11-22T10-07-05Z",
+      "printedEvidencePath": "evidence/docker/client-install/2026-11-22T10-07-05Z",
+      "ok": true,
+      "complete": false,
+      "assertions": {
+        "total": 244,
+        "passed": 163,
+        "failed": 0,
+        "null": 81,
+        "failedNames": [],
+        "nullNames": [
+          "qa.mcpCall",
+          "oneclick.scratchRepo",
+          "oneclick.requiredPaths",
+          "oneclick.filesAllowlist",
+          "oneclick.distByteIdentical",
+          "live.credentialStaged",
+          "live.credentialScoped",
+          "live.credentialRemoved",
+          "live.web.turnStarted",
+          "live.web.turnCompleted",
+          "live.web.noErrorTurns",
+          "live.web.noPromptVariableError",
+          "live.web.noMalformedToolJson",
+          "live.web.toolCallsParsed",
+          "live.web.mpdToolCalled",
+          "live.web.assistantReplied",
+          "live.tui.turnStarted",
+          "live.tui.turnCompleted",
+          "live.tui.noErrorTurns",
+          "live.tui.noPromptVariableError",
+          "live.tui.noMalformedToolJson",
+          "live.tui.toolCallsParsed",
+          "live.tui.mpdToolCalled",
+          "live.tui.assistantReplied",
+          "live.headless.turnStarted",
+          "live.headless.turnCompleted",
+          "live.headless.noErrorTurns",
+          "live.headless.noPromptVariableError",
+          "live.headless.noMalformedToolJson",
+          "live.headless.toolCallsParsed",
+          "live.headless.mpdToolCalled",
+          "live.headless.assistantReplied",
+          "live.teamRecord",
+          "live.nativeExecutor",
+          "live.headlessPresetRow",
+          "boot.llmTurn",
+          "ui.loads",
+          "ui.workspaceSelected",
+          "ui.composerPresent",
+          "ui.promptSent",
+          "ui.replyRendered",
+          "ui.mpdSettingsSection",
+          "ui.teamPanel",
+          "ui.noConsoleErrors",
+          "ui.mpdSettingsSectionNegativeControl",
+          "ui.teamBoard",
+          "userSurface.row.mpd-better-sidebar",
+          "userSurface.row.mpd-agent-team",
+          "userSurface.row.mpd-tool-agent-team",
+          "userSurface.row.mpd-ui-agent-team",
+          "userSurface.row.persona",
+          "userSurface.row.agent-instructions",
+          "userSurface.row.time-context",
+          "userSurface.row.tool-bash",
+          "userSurface.row.tool-pwsh",
+          "userSurface.row.tool-fs",
+          "userSurface.row.tool-fs-search",
+          "userSurface.row.tool-jobs",
+          "userSurface.row.tool-schedule",
+          "userSurface.row.skill-filesystem",
+          "userSurface.row.tool-skill",
+          "userSurface.row.command-goal",
+          "userSurface.row.tool-goal",
+          "userSurface.row.planning",
+          "userSurface.row.plan-mode",
+          "userSurface.row.compaction",
+          "userSurface.row.compaction-basic",
+          "userSurface.row.command-compact",
+          "userSurface.row.tool-result-pruner",
+          "userSurface.row.delegation",
+          "userSurface.row.tool-subagent-control",
+          "userSurface.row.tool-subagent",
+          "userSurface.row.tool-subagent-fork",
+          "userSurface.row.tool-workflow",
+          "userSurface.row.tool-ask-user",
+          "userSurface.row.tool-todo",
+          "userSurface.row.tool-web",
+          "userSurface.row.present",
+          "userSurface.row.tool-office",
+          "userSurface.row.tool-plugin-manager",
+          "userSurface.row.tool-plugin-market"
+        ]
+      },
+      "stamps": {
+        "harnessInstalled": "0.2.2-rc.5",
+        "harnessExpected": "0.2.2-rc.5",
+        "tuiInstalled": "0.20.2",
+        "pins": "nodePin=24.19.0 dsh=0.2.2-rc.5 pnpm=11.23.0"
+      },
+      "requiredProof": {
+        "installOk": true,
+        "mountOk": true,
+        "userSurfaceOk": true,
+        "stampOk": true,
+        "all": true
+      },
+      "install": [
+        {
+          "name": "install.exit",
+          "ok": true,
+          "reason": "one command installed the bundle into the profile",
+          "raw": "exit=0 spec=."
+        },
+        {
+          "name": "install.profileDep",
+          "ok": true,
+          "reason": "the profile links the checkout and keeps the box bundles",
+          "raw": "dep=link:/opt/mpd bundles=@deepseek-ai/dsh-base,@deepseek-ai/dsh-web-app,@mpd-dsh/mpd"
+        },
+        {
+          "name": "install.installedTree",
+          "ok": true,
+          "reason": "the installed bundle resolves inside the profile",
+          "raw": "/root/sandbox-dsh/profiles/web/node_modules/@mpd-dsh/mpd"
+        },
+        {
+          "name": "install.buildScripts",
+          "ok": true,
+          "reason": "the client install completed with NO unapproved build script: exit 0, no ERR_PNPM_IGNORED_BUILDS anywhere in the install output, no ignored-build-scripts warning, and the 2 installed closure root(s) were walked for manifests declaring preinstall/install/postinstall/prepare (0 found)",
+          "raw": "ERROR_CLASS_LINES=none WARN_LINES=none INVENTORY=none"
+        }
+      ],
+      "mount": [
+        {
+          "name": "compose.mpdRows",
+          "ok": true,
+          "reason": "the mpd host rows compose as INSERTS (additive-only) and the SHIPPED patch layers carry ZERO column-0 id-targets, i.e. no host row is overridden — the strict zero-override contract; the preset default is the USER's setting, not the bundle's",
+          "raw": "rows=mpd-dsh-adapter,mpd-bootstrap,mpd-web-compat,mpd-roles,mpd-workmate layers=2 idTargets=0 defaultMpdLines=0 gate exit=0 subject=byte-identical [verify-no-host-override] PASS: every id-target is bundle-owned (0 of 0 collide with the 204 host-declared row ids) "
+        },
+        {
+          "name": "compose.presetRow",
+          "ok": true,
+          "reason": "the mpd preset is declared as a @deepseek-ai/dsh-agent-preset row (§4 D1)",
+          "raw": "- id: preset-mpd"
+        },
+        {
+          "name": "boot.mpdTools",
+          "ok": true,
+          "reason": "every core mpd tool answered from the live registry",
+          "raw": "CORE_TOOLS=6/6"
+        },
+        {
+          "name": "boot.presetMount",
+          "ok": true,
+          "reason": "the gateway created a session with agentPreset=mpd — every row of the mpd preset activated (it refuses on an inactive row)",
+          "raw": "POST /api/session/create -> {\"type\":\"server-response\",\"rpcId\":\"rpc-1-1795342333-25805\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-572e0144-47bc-486b-bbc1-8c42246f4055\",\"agentPreset\":\"mpd\"}}}"
+        },
+        {
+          "name": "boot.sessionGateListener",
+          "ok": true,
+          "reason": "the mpd session gate listener is REGISTERED for the created session — witnessed in the row's OWN file log <workspace>/.mpd/logs/mpd-roles.log (R5), liveness not composition (the contract that was silently dead in v0.10.0)",
+          "raw": "[mpd-roles] session gate listener registered for agent \"session-572e0144-47bc-486b-bbc1-8c42246f4055\" agentPreset=mpd (file=/work/.mpd/logs/mpd-roles.log)"
+        },
+        {
+          "name": "boot.servesHttp",
+          "ok": true,
+          "reason": "the booted Web app answered 200",
+          "raw": "/plugins/mpd-workmate/list -> 200"
+        },
+        {
+          "name": "boot.agentTeamTools",
+          "ok": true,
+          "reason": "every official agent-team tool for THIS host generation answered from an EXACT AGENT SCOPE after session creation — graded set: 4 team_task_* tools (0.2.2-rc.2 lineage)",
+          "raw": "[docker-probe] AGENT_TEAM_TOOLS=4/4 agent=session-572e0144-47bc-486b-bbc1-8c42246f generation=task-board-only scopelessRead=4/4"
+        },
+        {
+          "name": "tui.hostInstall",
+          "ok": true,
+          "reason": "the TUI host installs globally and lands on PATH",
+          "raw": "version=0.20.2 bin=/usr/local/bin/dsh-tui"
+        },
+        {
+          "name": "tui.boot",
+          "ok": true,
+          "reason": "the REAL TUI booted on a real PTY and reached its CHAT screen (the composer is drawn and no 0.13.0 landing marker is on screen)",
+          "raw": "tmux=new-session-ok ready=chat-screen noLaunchpad=1 onboardingHex=7b0a202022636f6d… landingMarkerHits=0"
+        },
+        {
+          "name": "tui.presetPreference",
+          "ok": true,
+          "reason": "the lane performed the DOCUMENTED USER path: <HOME>/.dsh-tui/agent-preset.json written byte-exactly (21 bytes, no trailing newline) and dsh-tui@0.20.2 lib/types/presetPrefs.js#writePresetPref — AND the host registry row is UNTOUCHED by the bundle (its own default reads 'standard', no bundle-forced 'mpd', and the shipped layers id-target it nowhere). tui.sessionPreset is the arm that proves the preference is what resolved mpd",
+          "raw": "pref=/root/sandbox-home/.dsh-tui/agent-preset.json hex=7b0a202022707265736574223a20226d7064220a7d writerParity=identical hostRowDefault=standard bundleForcedMpdLines=0 shippedIdTargets=<none> layers=2/2"
+        },
+        {
+          "name": "tui.presetRow",
+          "ok": true,
+          "reason": "the mpd preset row is composed in the TUI plane",
+          "raw": "id=preset-mpd"
+        },
+        {
+          "name": "tui.sessionPreset",
+          "ok": true,
+          "reason": "the session the TUI created records agentPreset=mpd (the D10 default, read from the harness's own store)",
+          "raw": "{\"found\":true,\"sessionId\":\"7df5c697-0513-4004-9f74-37b8a0786d55\",\"agentPreset\":\"mpd\",\"bytes\":1456,\"scope\":\"this-boot-session\"}"
+        }
+      ],
+      "userSurface": {
+        "total": 120,
+        "trueCount": 85,
+        "falseCount": 0,
+        "nullCount": 35,
+        "rowCount": 69,
+        "rowTrue": 34,
+        "rowNullExcused": 35,
+        "rowNullUnexcused": [],
+        "boundTrueCount": 35,
+        "probe": {
+          "name": "userSurface.probe",
+          "ok": true,
+          "reason": "the instrumentation row mounted and recorded the live loader and registries",
+          "raw": "phase=tick-13 loaderEntries=158 commands=34 tools=129"
+        },
+        "rowsEnumerated": {
+          "name": "userSurface.rowsEnumerated",
+          "ok": true,
+          "reason": "the installed artifact's own layers were enumerated at run time",
+          "raw": "version=0.21.0 layers=cordis.patch.yml,mpd.patch.yml rows=69 disabled=mcp-git,mcp-shell,tool-plugin-market"
+        },
+        "rowsWitness": {
+          "name": "userSurface.rowsWitness",
+          "ok": true,
+          "reason": "no declared row is defective in the real boot (34 witnessed, 35 declared bounds)",
+          "raw": "witnessCounts={\"declared-bound\":35,\"loader-active\":9,\"disabled-by-design\":2,\"sink\":14,\"registration\":9} failed=-"
+        },
+        "rowsDeclaredBound": {
+          "name": "userSurface.rowsDeclaredBound",
+          "ok": true,
+          "reason": "35 row(s) are COMPOSED BUT NOT PROVEN on this plane; their ids are listed so no reader mistakes them for a pass",
+          "raw": "bound=mpd-better-sidebar(declared-bound),mpd-agent-team(declared-bound),mpd-tool-agent-team(declared-bound),mpd-ui-agent-team(declared-bound),persona(declared-bound),agent-instructions(declared-bound),time-context(declared-bound),tool-bash(declared-bound),tool-pwsh(declared-bound),tool-fs(declared-bound),tool-fs-search(declared-bound),tool-jobs(declared-bound),tool-schedule(declared-bound),skill-filesystem(declared-bound),tool-skill(declared-bound),command-goal(declared-bound),tool-goal(declared-bound),planning(declared-bound),plan-mode(declared-bound),compaction(declared-bound),compaction-basic(declared-bound),command-compact(declared-bound),tool-result-pruner(declared-bound),delegation(declared-bound),tool-subagent-control(declared-bound),tool-subagent(declared-bound),tool-subagent-fork(declared-bound),tool-workflow(declared-bound),tool-ask-user(declared-bound),tool-todo(declared-bound),tool-web(declared-bound),present(declared-bound),tool-office(declared-bound),tool-plugin-manager(declared-bound),tool-plugin-market(declared-bound)"
+        },
+        "negativeControl": {
+          "name": "userSurface.negativeControl",
+          "ok": true,
+          "reason": "a command no row contributes is absent from both surfaces while the palette stayed alive on both sides",
+          "raw": "registry=false controlCount=null controlRows=- aliveBefore=97 aliveAfter=97"
+        }
+      },
+      "oneclick": [
+        {
+          "name": "oneclick.scratchRepo",
+          "ok": null,
+          "reason": "not applicable in mode=source: this row grades the PUBLISHED package's installed tree (the scratch git build, the manifest's files allowlist, and the byte identity of what landed), and this mode installs the checkout by path — the one-click lane carries the measurement",
+          "raw": "mode=source"
+        },
+        {
+          "name": "oneclick.requiredPaths",
+          "ok": null,
+          "reason": "not applicable in mode=source: this row grades the PUBLISHED package's installed tree (the scratch git build, the manifest's files allowlist, and the byte identity of what landed), and this mode installs the checkout by path — the one-click lane carries the measurement",
+          "raw": "mode=source"
+        },
+        {
+          "name": "oneclick.filesAllowlist",
+          "ok": null,
+          "reason": "not applicable in mode=source: this row grades the PUBLISHED package's installed tree (the scratch git build, the manifest's files allowlist, and the byte identity of what landed), and this mode installs the checkout by path — the one-click lane carries the measurement",
+          "raw": "mode=source"
+        },
+        {
+          "name": "oneclick.distByteIdentical",
+          "ok": null,
+          "reason": "not applicable in mode=source: this row grades the PUBLISHED package's installed tree (the scratch git build, the manifest's files allowlist, and the byte identity of what landed), and this mode installs the checkout by path — the one-click lane carries the measurement",
+          "raw": "mode=source"
+        }
+      ],
+      "pack": [
+        {
+          "name": "pack.present",
+          "ok": true,
+          "reason": "the packed artifact travelled into the container and is graded below",
+          "raw": "artifact=/src/dist/mpd-package"
+        },
+        {
+          "name": "pack.licenceCoherence",
+          "ok": true,
+          "reason": "the packed artifact carries LICENSE.md + LICENSE-NOTICES.md byte-identical to the tree it was cut from, and declares license=MIT as the source manifest does",
+          "raw": "carried=LICENSE.md,LICENSE-NOTICES.md artifactLicense=MIT sourceLicense=MIT"
+        },
+        {
+          "name": "pack.declarationCoherence",
+          "ok": true,
+          "reason": "every declaration the artifact makes about itself holds: 27 files entries resolve, its 2 bundle-patch layers exist, all 29 row module paths its own patch names resolve inside it, and no host tree (evidence/.git/docker/.toolchain/node_modules) travelled along",
+          "raw": "rowPathsChecked=29 files=687"
+        },
+        {
+          "name": "pack.staticCoherence",
+          "ok": true,
+          "reason": "the artifact agrees with the tree it was cut from: 685 carried file(s) byte-identical, 2 generated path(s) exempted (package.json, packages/mpd-ext-plugin/dist/validator.js), none missing",
+          "raw": "drifted=none untwinned=none"
+        },
+        {
+          "name": "pack.distFreshRebuild",
+          "ok": true,
+          "reason": "every one of the 35 built entries in the artifact is byte-identical to the container's own from-source rebuild — the packed dist is FRESH, not merely present",
+          "raw": "drifted=none uncovered=none rebuildBun=/opt/toolchain/bun-pinned/bin/bun rebuildBunVersion=1.4.0 declaredBuildToolchain=bun@1.4.0 declaredVersion=1.4.0 exactMatch=true witness=/work/rebuild.json"
+        },
+        {
+          "name": "pack.distFreshRebuildControl",
+          "ok": true,
+          "reason": "the freshness arm is FALSIFIABLE on this machine: mutating one built entry in a copy of the same artifact flips pack.distFreshRebuild to FALSE against the SAME from-source rebuild, so a green on the untouched artifact is a measurement rather than a constant (the control's own rows are in /out/owed/pack-control.ndjson)",
+          "raw": "mutated=packages/mpd-autoproject-plugin/dist/index.js controlVerdict=false artifactCopy=/work/pack-mutated"
+        }
+      ],
+      "live": [
+        {
+          "name": "live.credentialStaged",
+          "ok": null,
+          "raw": "MPD_E2E_LIVE=0 key=absent"
+        },
+        {
+          "name": "live.credentialScoped",
+          "ok": null,
+          "raw": "staged=none"
+        },
+        {
+          "name": "live.credentialRemoved",
+          "ok": null,
+          "raw": "staged=none"
+        },
+        {
+          "name": "live.web.turnStarted",
+          "ok": null,
+          "raw": "not attempted"
+        },
+        {
+          "name": "live.web.turnCompleted",
+          "ok": null,
+          "raw": "not attempted"
+        },
+        {
+          "name": "live.web.noErrorTurns",
+          "ok": null,
+          "raw": "not attempted"
+        },
+        {
+          "name": "live.web.noPromptVariableError",
+          "ok": null,
+          "raw": "not attempted"
+        },
+        {
+          "name": "live.web.noMalformedToolJson",
+          "ok": null,
+          "raw": "not attempted"
+        },
+        {
+          "name": "live.web.toolCallsParsed",
+          "ok": null,
+          "raw": "not attempted"
+        },
+        {
+          "name": "live.web.mpdToolCalled",
+          "ok": null,
+          "raw": "not attempted"
+        },
+        {
+          "name": "live.web.assistantReplied",
+          "ok": null,
+          "raw": "not attempted"
+        },
+        {
+          "name": "live.tui.turnStarted",
+          "ok": null,
+          "raw": "not attempted"
+        },
+        {
+          "name": "live.tui.turnCompleted",
+          "ok": null,
+          "raw": "not attempted"
+        },
+        {
+          "name": "live.tui.noErrorTurns",
+          "ok": null,
+          "raw": "not attempted"
+        },
+        {
+          "name": "live.tui.noPromptVariableError",
+          "ok": null,
+          "raw": "not attempted"
+        },
+        {
+          "name": "live.tui.noMalformedToolJson",
+          "ok": null,
+          "raw": "not attempted"
+        },
+        {
+          "name": "live.tui.toolCallsParsed",
+          "ok": null,
+          "raw": "not attempted"
+        },
+        {
+          "name": "live.tui.mpdToolCalled",
+          "ok": null,
+          "raw": "not attempted"
+        },
+        {
+          "name": "live.tui.assistantReplied",
+          "ok": null,
+          "raw": "not attempted"
+        },
+        {
+          "name": "live.headless.turnStarted",
+          "ok": null,
+          "raw": "not attempted"
+        },
+        {
+          "name": "live.headless.turnCompleted",
+          "ok": null,
+          "raw": "not attempted"
+        },
+        {
+          "name": "live.headless.noErrorTurns",
+          "ok": null,
+          "raw": "not attempted"
+        },
+        {
+          "name": "live.headless.noPromptVariableError",
+          "ok": null,
+          "raw": "not attempted"
+        },
+        {
+          "name": "live.headless.noMalformedToolJson",
+          "ok": null,
+          "raw": "not attempted"
+        },
+        {
+          "name": "live.headless.toolCallsParsed",
+          "ok": null,
+          "raw": "not attempted"
+        },
+        {
+          "name": "live.headless.mpdToolCalled",
+          "ok": null,
+          "raw": "not attempted"
+        },
+        {
+          "name": "live.headless.assistantReplied",
+          "ok": null,
+          "raw": "not attempted"
+        },
+        {
+          "name": "live.teamRecord",
+          "ok": null,
+          "raw": "staged=none"
+        },
+        {
+          "name": "live.nativeExecutor",
+          "ok": null,
+          "raw": "staged=none"
+        },
+        {
+          "name": "live.headlessPresetRow",
+          "ok": null,
+          "raw": "staged=none"
+        }
+      ],
+      "failures": [],
+      "unmeasured": [],
+      "missing": [],
+      "durationMinutes": 9.7,
+      "imageMiB": 522
+    }
+  ],
+  "artifactHashIdentity": {
+    "runsCompared": [
+      "run-1-source-live",
+      "run-2-oneclick-live",
+      "run-3-source-nobrowser"
+    ],
+    "entryCount": 32,
+    "identical": true,
+    "differingPaths": []
+  },
+  "userSurfaceArm": {
+    "requiredInEveryMode": true,
+    "ranInEveryRun": true,
+    "perRun": [
+      {
+        "run": 1,
+        "total": 120,
+        "trueCount": 85,
+        "rowCount": 69,
+        "rowNullExcused": 35,
+        "rowNullUnexcused": [],
+        "boundTrueCount": 35,
+        "rowsWitness": {
+          "name": "userSurface.rowsWitness",
+          "ok": true,
+          "reason": "no declared row is defective in the real boot (34 witnessed, 35 declared bounds)",
+          "raw": "witnessCounts={\"declared-bound\":35,\"loader-active\":9,\"disabled-by-design\":2,\"sink\":14,\"registration\":9} failed=-"
+        }
+      },
+      {
+        "run": 2,
+        "total": 120,
+        "trueCount": 85,
+        "rowCount": 69,
+        "rowNullExcused": 35,
+        "rowNullUnexcused": [],
+        "boundTrueCount": 35,
+        "rowsWitness": {
+          "name": "userSurface.rowsWitness",
+          "ok": true,
+          "reason": "no declared row is defective in the real boot (34 witnessed, 35 declared bounds)",
+          "raw": "witnessCounts={\"declared-bound\":35,\"loader-active\":9,\"disabled-by-design\":2,\"sink\":14,\"registration\":9} failed=-"
+        }
+      },
+      {
+        "run": 3,
+        "total": 120,
+        "trueCount": 85,
+        "rowCount": 69,
+        "rowNullExcused": 35,
+        "rowNullUnexcused": [],
+        "boundTrueCount": 35,
+        "rowsWitness": {
+          "name": "userSurface.rowsWitness",
+          "ok": true,
+          "reason": "no declared row is defective in the real boot (34 witnessed, 35 declared bounds)",
+          "raw": "witnessCounts={\"declared-bound\":35,\"loader-active\":9,\"disabled-by-design\":2,\"sink\":14,\"registration\":9} failed=-"
+        }
+      }
+    ]
+  },
+  "bounds": [
+    "A run that cannot find a rootless daemon SKIPS, and a SKIP is never a pass; --require-docker turns it into exit 3.",
+    "The live/browser arms are model-driven and depend on the operator's credential; a credential-free run cannot see a path that depends on an EMPTY model catalog.",
+    "Declared bounds (`userSurface.bound.<id>`) are composed-but-not-individually-proven rows, not passes.",
+    "The driver's own evidence lands under evidence/docker/<slug>/<stamp>/ per its contract; this lane copies the verdicts and metadata into this release directory."
+  ],
+  "packCuts": [
+    {
+      "label": "1-before-source-live",
+      "version": "0.21.0",
+      "fileCount": 687,
+      "treeSha256": "eceb56c6f994ba77d3062206330c24decf325fcd665f13210d3f0e083c760f6f",
+      "packedAtUtc": "2026-11-22T09:24:43.457Z"
+    },
+    {
+      "label": "2-before-oneclick-live",
+      "version": "0.21.0",
+      "fileCount": 687,
+      "treeSha256": "3b5709c03ce71166e669bcdd39c018f4c4b574d315982ccf712a28394ffb327a",
+      "packedAtUtc": "2026-11-22T09:43:42.069Z"
+    },
+    {
+      "label": "3-before-source-nobrowser",
+      "version": "0.21.0",
+      "fileCount": 687,
+      "treeSha256": "3b5709c03ce71166e669bcdd39c018f4c4b574d315982ccf712a28394ffb327a",
+      "packedAtUtc": "2026-11-22T10:07:05.663Z"
+    }
+  ],
+  "requiredProofsVerdict": "PASS",
+  "requiredProofsStatement": "INSTALL, MOUNT (rows activating, tools registering, TUI present, agentPreset=mpd), the userSurface arm, and both stamps 0.2.2-rc.5 / 0.20.2 are TRUE in all three runs; the overall FAIL comes from run 2's six TUI team-fixture rows, not from the version, install or mount proof.",
+  "findings": [
+    {
+      "severity": "High",
+      "area": "run 2 (oneclick-live)",
+      "symptom": "tui.teamFixtureBound NULL (session=none materialized=false attempts=4; store before=3 after=3) and five dependent scene rows plus tui.laneExit FALSE; run exits 1",
+      "cause": "the TUI team fixture was never bound to a live session; the product drew its correct empty state and a live turn later used session e078be04, so the materializer did not observe the session store change",
+      "direction": "drive /mpd board only after the chat session is registered / wait on the session store's own signal, then re-run the oneclick live arm; root cause not settled by this lane",
+      "blocking": true
+    },
+    {
+      "severity": "Medium",
+      "area": "tree",
+      "symptom": "run 1 built HEAD e3f36a99 + 44 dirty paths before the wave commit; runs 2-3 built commit 2cfa9430",
+      "cause": "the captain committed the wave and two evidence-only commits while run 1 was in flight; the only substantive delta is VENDOR_LOCK.json (vendor re-pin, after run 1's build freeze), which is packed but not among the 32 hashed installed files",
+      "direction": "re-run the source --live arm on the final commit if the release record must cite a single artifact",
+      "blocking": false
+    },
+    {
+      "severity": "Nit",
+      "area": "TUI stamp",
+      "symptom": "tui.hostInstall records version=$TUI_VERSION (the requested exact pin), not an observed installed version",
+      "cause": "the lane installs @deepseek-harness-tui/dsh-tui@0.20.2 exactly and echoes the pin; the harness stamp is measured",
+      "direction": "read the installed profile package.json or dsh-tui --version back into the stamp",
+      "blocking": false
+    }
+  ],
+  "declinedToJudge": [
+    "tui.boot readiness vs the 正在启动 DSH… line in pane-boot: the same line appears in the two green source runs, so it cannot be established as a landing frame rather than the status/footer",
+    "reproducibility of the oneclick fixture failure: exactly one run per required command, nothing retried",
+    "the 35 userSurface.row.* NULLs per run: each excused by a TRUE userSurface.bound.<id> marker (35/35)",
+    "pack.distFreshRebuild and pack.distFreshRebuildControl NULL in oneclick mode: by design, the source runs carry the measurement",
+    "complete=false on the two green runs: declared bounds (40 and 81 NULLs), required-arm gate passed"
+  ]
+}

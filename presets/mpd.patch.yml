@@ -377,10 +377,12 @@
             config:
               allowParallelInProgress: true
 
-          # The `web` service and its search provider stay in the host composition; only
-          # the model-facing tool is per-session. Fetching is enabled deliberately: an agent
-          # without `web_fetch` cannot open a source page, and the read-only specialists have
-          # no shell fallback. Evidence: evidence/web-plane/tool-web-fetch/.
+          # The `web` service itself stays host-owned; since DSH 0.2.2-rc.5 the host pins no
+          # `searchProvider` in `dsh-base`, and `dsh-web` chooses the provider per request route —
+          # so this row owns no provider and keeps only `{fetch, searchTimeoutMs}`. Only the
+          # model-facing tool is per-session. Fetching is enabled deliberately: an agent without
+          # `web_fetch` cannot open a source page, and the read-only specialists have no shell
+          # fallback. Evidence: evidence/web-plane/tool-web-fetch/.
           - id: tool-web
             name: '@deepseek-ai/dsh-tool-web'
             config:

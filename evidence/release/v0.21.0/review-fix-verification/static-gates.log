@@ -1,0 +1,26 @@
+$ node ./scripts/verify-gates.ts
+[verify-gates] running 11 member gate(s) (declared table)
+[verify-gates] member vendor :: node ./scripts/verify-vendor.ts
+[verify-gates] member vendor: exit=0 PASS - 164ms
+[verify-gates] member dist-fresh :: node ./scripts/verify-dist-fresh.ts
+[verify-gates] member dist-fresh: exit=0 PASS - 910ms
+[verify-gates] member rows-parity :: node ./scripts/verify-rows-parity.ts
+[verify-gates] member rows-parity: exit=1 FAIL - 121ms
+[verify-gates] member docs-parity :: node ./scripts/verify-docs-parity.ts
+[verify-gates] member docs-parity: exit=0 PASS - 103ms
+[verify-gates] member preset-conformance :: node ./skills/dsh-qa/scripts/preset-conformance.ts --self-test
+[verify-gates] member preset-conformance: exit=0 PASS - 887ms
+[verify-gates] member plugin-manifest :: node ./scripts/verify-plugin-manifest.ts --pack
+[verify-gates] member plugin-manifest: exit=0 PASS - 2694ms
+[verify-gates] member comment-coverage :: node ./scripts/verify-comment-coverage.ts
+[verify-gates] member comment-coverage: exit=0 PASS - 3234ms
+[verify-gates] member graph-model :: node ./scripts/verify-graph-model.ts --self-test
+[verify-gates] member graph-model: exit=1 FAIL - 965ms
+[verify-gates] member workflows :: node ./scripts/verify-workflows.ts
+[verify-gates] member workflows: exit=0 PASS - 64ms
+[verify-gates] member tui-admission :: node ./scripts/verify-tui-admission.ts
+[verify-gates] member tui-admission: exit=0 PASS - 133ms
+[verify-gates] member dshgo :: node ./scripts/verify-dshgo-standard.ts
+[verify-gates] member dshgo: exit=3 FAIL - 144ms
+[verify-gates] FAIL - 3/11 member gate(s) failed: rows-parity (exit=1), graph-model (exit=1), dshgo (exit=3)
+error: script "verify:gates" exited with code 1

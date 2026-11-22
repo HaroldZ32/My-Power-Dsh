@@ -1,0 +1,30 @@
+[verify-manual-paths] under-report:placeholder AGENTS.md:274 -> feature/<slug>
+[verify-manual-paths] under-report:placeholder AGENTS.md:275 -> fix/<slug>
+[verify-manual-paths] under-report:placeholder AGENTS.md:283 -> agent/<team>/<member>
+[verify-manual-paths] under-report:placeholder AGENTS.md:289 -> backup/<branch>-<sha>
+[verify-manual-paths] under-report:placeholder AGENTS.md:294 -> feature/<slug>
+[verify-manual-paths] under-report:placeholder AGENTS.md:294 -> fix/<slug>
+[verify-manual-paths] under-report:placeholder AGENTS.md:338 -> .mpd/verify/repairs/<id>.json
+[verify-manual-paths] under-report:placeholder AGENTS.md:377 -> packages/<pkg>/dist/index.js
+[verify-manual-paths] under-report:placeholder AGENTS.md:377 -> @mpd-dsh/<name>
+[verify-manual-paths] under-report:placeholder AGENTS.md:396 -> <root>/lib/types/ui.js
+[verify-manual-paths] under-report:placeholder AGENTS.md:420 -> <bundle>/skills
+[verify-manual-paths] under-report:placeholder AGENTS.md:421 -> <bundle>/presets
+[verify-manual-paths] under-report:placeholder AGENTS.md:425 -> <file>.ts
+[verify-manual-paths] under-report:placeholder AGENTS.md:448 -> packages/{mpd-dsh,mpd-tui}-adapter-plugin/src
+[verify-manual-paths] under-report:placeholder AGENTS.md:469 -> <DSH_HOME>/sessions/<projectKey(realCwd)>
+[verify-manual-paths] under-report:placeholder AGENTS.md:482 -> evidence/<domain>/<slug>/<timestamp>/{result.json,
+[verify-manual-paths] under-report:placeholder AGENTS.md:515 -> <profile>/node_modules
+[verify-manual-paths] under-report:placeholder AGENTS.md:535 -> github:<owner>/<repo>
+[verify-manual-paths] under-report:placeholder AGENTS.md:537 -> github:<owner>/<repo>#dev
+[verify-manual-paths] under-report:placeholder AGENTS.md:555 -> <bundle>/skills
+[verify-manual-paths] under-report:placeholder AGENTS.md:673 -> <ws>/.mpd/mpd.jsonc
+[verify-manual-paths] under-report:placeholder AGENTS.md:679 -> <ws>/.mpd/mpd.jsonc
+[verify-manual-paths] under-report:placeholder AGENTS.md:680 -> <ws>/.mpd/model-config-seed.json
+[verify-manual-paths] census bucket=under-report:elided direction=under-report count=1 reason="contains an elision mark — the path is not written out, so no literal target exists"
+[verify-manual-paths] under-report:elided AGENTS.md:18 -> [中文](./<name>.zh-CN.md) [non-ASCII/elision characters]
+[verify-manual-paths] census bucket=under-report:prose direction=under-report count=0 reason="a directory spelled in words rather than as a token — nothing to stat"
+[verify-manual-paths] census family=over-report direction=over-report total=72 buckets=6 (counted apart from under-report and from unresolved)
+[verify-manual-paths] census family=under-report direction=under-report total=84 buckets=7 (counted apart from over-report and from unresolved)
+[verify-manual-paths] census family=declared direction=declared total=2 buckets=2 (the DECLARED anticipatory class and its rot guard — counted apart from the audited subjects and from unresolved)
+[verify-manual-paths] PASS resolved=161 over-report=72 under-report=84 declared=2 (every audited path exists; the DECLARED anticipatory class is named with its reason and counted apart; the two matcher-error directions above are reported, not merged)

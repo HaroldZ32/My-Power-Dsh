@@ -1,0 +1,21 @@
+{
+  "ok": true,
+  "durationMs": 41470,
+  "lspDependencySource": "checkout-store",
+  "enumExit": 0,
+  "callExit": 0,
+  "assertion": "harness-recorded tool list (request/header.header.tools) + harness-recorded tool/call with a non-error result carrying the fixture line",
+  "enumFacts": {
+    "hasAstGrep": true,
+    "hasLsp": true,
+    "proseListedBoth": true
+  },
+  "callFacts": {
+    "called": true,
+    "succeeded": true,
+    "resultHasFixtureLine": true,
+    "resultHasBinaryNotFound": false,
+    "proseHasAstGrepWord": true,
+    "proseHasBinaryNotFound": false
+  }
+}

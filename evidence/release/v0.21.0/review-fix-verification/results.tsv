@@ -1,0 +1,16 @@
+static-gates-unrestricted	bun run verify:gates 	0	2026-11-22T14:27:17Z
+package-tests-unrestricted	bun test packages 	0	2026-11-22T14:27:56Z
+qa-self-tests-unrestricted	bun run test:qa 	1	2026-11-22T14:28:22Z
+verify-law-unrestricted	node skills/dsh-qa/scripts/verify-law.ts --self-test 	0	2026-11-22T14:28:22Z
+install-dry-run-unrestricted	node scripts/install-profile.ts --dry-run 	0	2026-11-22T14:28:22Z
+lifecycle-unrestricted	bun skills/dsh-qa/scripts/bundle-lifecycle.ts 	0	2026-11-22T14:28:29Z
+preset-register-unrestricted	node skills/dsh-qa/scripts/preset-register.ts 	1	2026-11-22T14:28:36Z
+pack-unrestricted	node scripts/pack-mpd.ts 	0	2026-11-22T14:28:36Z
+pack-closure-unrestricted	node scripts/verify-pack-closure.ts 	0	2026-11-22T14:28:36Z
+pack-closure-self-test-unrestricted	node scripts/verify-pack-closure.ts --self-test 	0	2026-11-22T14:28:40Z
+smoke-dual-track	bash -c live\ \"\$@\" bash node skills/dsh-qa/scripts/dual-track-smoke.ts 	0	2026-11-22T14:28:57Z
+smoke-mcp-call	bash -c live\ \"\$@\" bash node skills/dsh-qa/scripts/mcp-call.ts 	0	2026-11-22T14:29:38Z
+verify-law-live	bash -c live\ \"\$@\" bash node skills/dsh-qa/scripts/verify-law.ts 	0	2026-11-22T14:29:58Z
+docker-source-live	bash -c live\ \"\$@\" bash node scripts/docker-e2e.ts --mode source --require-docker --live 	0	2026-11-22T14:38:37Z
+docker-oneclick-live	bash -c live\ \"\$@\" bash node scripts/docker-e2e.ts --mode oneclick --require-docker --live 	0	2026-11-22T14:50:24Z
+docker-source-no-browser	env -u DEEPSEEK_API_KEY node scripts/docker-e2e.ts --mode source --require-docker --no-browser 	0	2026-11-22T14:54:42Z

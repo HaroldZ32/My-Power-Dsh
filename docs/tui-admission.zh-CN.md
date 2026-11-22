@@ -71,11 +71,17 @@
 tag 上**逐字节相同**（指南 blob 为 `6b9dfd3…`，99,723 B；`permissions-0.1.json` 为 `f36cb6e…`），因此
 0.19.0 这次移动不需要任何准入返工。
 
-**本次发布把波段移到四台宿主，目标为 `0.20.1`。** `0.20.1` 相对 `0.20.0` 是**仅坐标的移动**
-（波次契约 §3 F7/F8/F10：每一条 `@deepseek-ai/dsh-*` peer 范围都追加 harness `0.2.2-rc.3` 而**下限不变**，
-patch 文件零增量，15 个 `tui*` 接缝都在相同的 file:line，`lib/types/ui.js` 未变），两个清单的
-`compat.hosts` 与 `specs/tui-hosts.json` 现在都以同一份有序集合携带 `0.18.0`、`0.19.0`、`0.20.0` 与
-`0.20.1`，`dsh-distribution.json` 的 `host-tui` 引用为 `0.20.1`。
+**本次发布把波段移到五台宿主，目标为 `0.20.2`。** `0.20.2` 相对 `0.20.1` 是**仅坐标的移动**
+（波次契约 §3 F7–F9：每一条 `@deepseek-ai/dsh-*` peer `||` 链都追加 `|| 0.2.2-rc.4 || 0.2.2-rc.5`，
+精确钉定的 `dsh-web` / `dsh-web-deepseek-api` 从 `0.2.2-rc.3` 移到 `0.2.2-rc.5`，
+`lib/types/api.d.ts` 与 `lib/types/panels.d.ts` 逐字节相同，`tuiPanels` 存在且
+`TUI_PANEL_API_VERSION = 1`，`cordis.patch.yml` 长度相同（24,831 字符）、首尾一致），两个清单的
+`compat.hosts` 与 `specs/tui-hosts.json` 现在都以同一份有序集合携带 `0.18.0`、`0.19.0`、`0.20.0`、
+`0.20.1` 与 `0.20.2`，`dsh-distribution.json` 的 `host-tui` 引用为 `0.20.2`。**配对律是这一主张的一部
+分**（F9）：harness rc.4/rc.5 跑在 TUI `0.20.1` 上超出该发布声明的 peer 契约，并会产生启动漂移警告，
+因此两个 pin **必须一起移动**，不存在可接受的部分移动。**本页不为 `0.20.2` 作任何已测量的准入声明：**
+下面带日期的记录是 `0.19.0`、`0.20.0` 与 `0.20.1` 的测量，本波自己的 `verify:gates` 记录文本属于
+`evidence/release/v0.21.0/` 下的验证车道，本页也不声称对 `0.20.2` 做过真机 TTY 抓取。
 
 **在 `0.20.0` 代际上实测（2026-11-14），于钉定宿主上的 `verify:gates`）：** `tui-admission` 退出 0，
 `REPORT: PASS — 49 arms passed, 1 allowed deviation(s), 5 bound(s)`，且宿主自己的链把**两个**清单都协商为

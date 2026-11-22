@@ -1,0 +1,1 @@
+--mode source --require-docker --no-browser
