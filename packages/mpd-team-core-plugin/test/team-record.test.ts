@@ -939,7 +939,7 @@ describe("public release CAS keeps the board and its pairing consistent", () => 
     expect(ledgerOnDisk(h.workspace)[key]).toBeUndefined()
   })
 
-  test("public release CAS lets the Lead clean up a pending pairing after a failed ledger write", async () => {
+  test.each(["agent_teams_task", "agent_teams_dispatch"])("public release CAS reports pending pairing recovery through %s", async (tool) => {
     /** The real board and ledger start from a successful dispatch. */
     const h = harness()
     sandboxes.push(h.workspace)
@@ -966,11 +966,30 @@ describe("public release CAS keeps the board and its pairing consistent", () => 
     }
     /** The board already requeued T1 and advanced its revision. */
     const requeued = readTeam(h.workspace, dispatched.teamId)
-    expect(requeued?.tasks[0]).toMatchObject({ status: "pending", revision: dispatched.tasks[0].revision + 1 })
+    if (requeued === undefined) throw new Error("release lost the board record")
+    expect(requeued.tasks[0]).toMatchObject({ status: "pending", revision: dispatched.tasks[0].revision + 1 })
     expect(ledgerOnDisk(h.workspace)[key]?.memberName).toBe("Senior Engineer")
-    /** The unconditional dispatch release is an authorized cleanup of the remaining half. */
-    const retry = await h.call("agent_teams_dispatch", { action: "release", task_id: "T1" })
-    expect(retry).toMatchObject({ released: true, refused: expect.stringContaining('"pending"') })
+    /** A stale caller still cannot clear the pending pairing. */
+    const stale = await h.call("agent_teams_task", { action: "release", task_id: "T1", expected_revision: dispatched.tasks[0].revision })
+    expect(stale).toMatchObject({ released: false, refused: expect.stringContaining("changed under you") })
+    expect(ledgerOnDisk(h.workspace)[key]?.memberName).toBe("Senior Engineer")
+    /** Dispatch release is unconditional; task release binds to the observed pending row. */
+    const args = { action: "release", task_id: "T1", ...(tool === "agent_teams_task" ? { expected_revision: requeued.tasks[0].revision } : {}) }
+    /** The response and renderer that the public caller sees. */
+    const retry = await h.call(tool, args)
+    /** Render the actual tool result using its registered renderer. */
+    const render = (h.tools.get(tool) as unknown as { output: { render: (args: unknown, value: unknown) => Array<{ text?: string }> } }).output.render
+    /** A successful retry says it freed a pairing. */
+    const text = render(args, retry).map((part) => part.text ?? "").join("")
+    expect(text).toBe(tool === "agent_teams_task" ? "T1 -> pending (pairing freed)" : "released")
+    expect(retry).toMatchObject({ released: true, status: "pending", revision: requeued.tasks[0].revision })
+    expect(retry).not.toHaveProperty("refused")
+    expect(readTeam(h.workspace, dispatched.teamId)).toEqual(requeued)
+    expect(ledgerOnDisk(h.workspace)[key]).toBeUndefined()
+    /** Repeating the call after cleanup finds nothing to release. */
+    const empty = await h.call(tool, args)
+    expect(render(args, empty).map((part) => part.text ?? "").join("")).toBe('refused: task T1 is "pending" and holds no dispatch to release')
+    expect(empty).toMatchObject({ released: false, refused: 'task T1 is "pending" and holds no dispatch to release' })
     expect(readTeam(h.workspace, dispatched.teamId)).toEqual(requeued)
     expect(ledgerOnDisk(h.workspace)[key]).toBeUndefined()
   })

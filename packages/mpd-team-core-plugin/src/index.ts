@@ -347,9 +347,9 @@ export interface TaskReleaseResult {
   released: boolean
   /** The task the call named. */
   taskId: string
-  /** The task's status AFTER the reset (`pending` on success); absent when the row refused. */
+  /** The task's status when release or pending pairing recovery succeeds. */
   status?: string
-  /** The task's revision after the reset, so a caller can chain a claim against it. */
+  /** The task's current revision, so a caller can chain a claim against it. */
   revision?: number
   /** Why the TASK row would not reset; the ledger half is still reported beside it. */
   refused?: string
@@ -1616,7 +1616,12 @@ export function apply(ctx: any): void {
     /** The ledger half: only THIS team's pairing is freed. */
     const freed = release(readLedger(workspace), record.teamId, taskId)
     if (freed.released) writeLedger(workspace, freed.ledger)
-    if (!outcome.applied) return { released: freed.released, taskId, refused: outcome.reason }
+    if (!outcome.applied) {
+      /** A stranded pairing can be cleared without changing the task that is already pending. */
+      const pending = freed.released ? fresh.tasks.find((candidate) => candidate.id === taskId && candidate.status === "pending") : undefined
+      if (pending !== undefined) return { released: true, taskId, status: pending.status, revision: pending.revision }
+      return { released: freed.released, taskId, refused: outcome.reason }
+    }
     /** The reopened task as the record now holds it. */
     const view = outcome.record.tasks.find((candidate) => candidate.id === taskId)
     return { released: freed.released, taskId, status: view?.status, revision: view?.revision }

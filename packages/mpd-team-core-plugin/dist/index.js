@@ -9441,8 +9441,12 @@ function apply(ctx) {
     const freed = release(readLedger(workspace), record.teamId, taskId);
     if (freed.released)
       writeLedger(workspace, freed.ledger);
-    if (!outcome.applied)
+    if (!outcome.applied) {
+      const pending = freed.released ? fresh.tasks.find((candidate) => candidate.id === taskId && candidate.status === "pending") : undefined;
+      if (pending !== undefined)
+        return { released: true, taskId, status: pending.status, revision: pending.revision };
       return { released: freed.released, taskId, refused: outcome.reason };
+    }
     const view = outcome.record.tasks.find((candidate) => candidate.id === taskId);
     return { released: freed.released, taskId, status: view?.status, revision: view?.revision };
   };
