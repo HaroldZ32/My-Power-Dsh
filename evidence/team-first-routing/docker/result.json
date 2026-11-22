@@ -1,0 +1,246 @@
+{
+  "commit": "532520024568a3dcb56635d55576520c679078d5",
+  "docker": "Docker version 29.9.2, build a82e528",
+  "compose": "Docker Compose version v5.7.0",
+  "command": "node scripts/docker-e2e.ts --mode source --require-docker --no-browser",
+  "startedAt": "2026-11-22T18:19:42.695Z",
+  "finishedAt": "2026-11-22T18:24:07.045Z",
+  "durationSeconds": 264.35,
+  "exitCode": 0,
+  "containerExit": 0,
+  "browserEnabled": false,
+  "liveRequested": false,
+  "harness": {
+    "installed": "0.2.2-rc.5",
+    "expected": "0.2.2-rc.5",
+    "assertion": "harness.version",
+    "node": "v24.21.0 (npm 11.19.0)",
+    "bun": "1.4.5 (route=official-script, BUN_INSTALL=/opt/toolchain/bun)",
+    "pnpm": "11.23.0",
+    "ubuntu": "ubuntu 24.04 (Ubuntu 24.04.5 LTS)"
+  },
+  "summary": {
+    "total": 244,
+    "passed": 163,
+    "failed": 0,
+    "null": 81,
+    "failedNames": [],
+    "nullNames": [
+      "qa.mcpCall",
+      "oneclick.scratchRepo",
+      "oneclick.requiredPaths",
+      "oneclick.filesAllowlist",
+      "oneclick.distByteIdentical",
+      "live.credentialStaged",
+      "live.credentialScoped",
+      "live.credentialRemoved",
+      "live.web.turnStarted",
+      "live.web.turnCompleted",
+      "live.web.noErrorTurns",
+      "live.web.noPromptVariableError",
+      "live.web.noMalformedToolJson",
+      "live.web.toolCallsParsed",
+      "live.web.mpdToolCalled",
+      "live.web.assistantReplied",
+      "live.tui.turnStarted",
+      "live.tui.turnCompleted",
+      "live.tui.noErrorTurns",
+      "live.tui.noPromptVariableError",
+      "live.tui.noMalformedToolJson",
+      "live.tui.toolCallsParsed",
+      "live.tui.mpdToolCalled",
+      "live.tui.assistantReplied",
+      "live.headless.turnStarted",
+      "live.headless.turnCompleted",
+      "live.headless.noErrorTurns",
+      "live.headless.noPromptVariableError",
+      "live.headless.noMalformedToolJson",
+      "live.headless.toolCallsParsed",
+      "live.headless.mpdToolCalled",
+      "live.headless.assistantReplied",
+      "live.teamRecord",
+      "live.nativeExecutor",
+      "live.headlessPresetRow",
+      "boot.llmTurn",
+      "ui.loads",
+      "ui.workspaceSelected",
+      "ui.composerPresent",
+      "ui.promptSent",
+      "ui.replyRendered",
+      "ui.mpdSettingsSection",
+      "ui.teamPanel",
+      "ui.noConsoleErrors",
+      "ui.mpdSettingsSectionNegativeControl",
+      "ui.teamBoard",
+      "userSurface.row.mpd-better-sidebar",
+      "userSurface.row.mpd-agent-team",
+      "userSurface.row.mpd-tool-agent-team",
+      "userSurface.row.mpd-ui-agent-team",
+      "userSurface.row.persona",
+      "userSurface.row.agent-instructions",
+      "userSurface.row.time-context",
+      "userSurface.row.tool-bash",
+      "userSurface.row.tool-pwsh",
+      "userSurface.row.tool-fs",
+      "userSurface.row.tool-fs-search",
+      "userSurface.row.tool-jobs",
+      "userSurface.row.tool-schedule",
+      "userSurface.row.skill-filesystem",
+      "userSurface.row.tool-skill",
+      "userSurface.row.command-goal",
+      "userSurface.row.tool-goal",
+      "userSurface.row.planning",
+      "userSurface.row.plan-mode",
+      "userSurface.row.compaction",
+      "userSurface.row.compaction-basic",
+      "userSurface.row.command-compact",
+      "userSurface.row.tool-result-pruner",
+      "userSurface.row.delegation",
+      "userSurface.row.tool-subagent-control",
+      "userSurface.row.tool-subagent",
+      "userSurface.row.tool-subagent-fork",
+      "userSurface.row.tool-workflow",
+      "userSurface.row.tool-ask-user",
+      "userSurface.row.tool-todo",
+      "userSurface.row.tool-web",
+      "userSurface.row.present",
+      "userSurface.row.tool-office",
+      "userSurface.row.tool-plugin-manager",
+      "userSurface.row.tool-plugin-market"
+    ]
+  },
+  "requiredUnmeasured": [],
+  "keyWitnesses": [
+    {
+      "name": "copy.contextFiltered",
+      "ok": true,
+      "reason": "the build context carries no host state and no install-affecting config, so nothing can pass for a dependency the container should have installed; the ONLY packed output it carries is dist/mpd-package, which is the subject of the pack assertions"
+    },
+    {
+      "name": "install.exit",
+      "ok": true,
+      "reason": "one command installed the bundle into the profile"
+    },
+    {
+      "name": "pack.staticCoherence",
+      "ok": true,
+      "reason": "the artifact agrees with the tree it was cut from: 683 carried file(s) byte-identical, 2 generated path(s) exempted (package.json, packages/mpd-ext-plugin/dist/validator.js), none missing"
+    },
+    {
+      "name": "pack.distFreshRebuild",
+      "ok": true,
+      "reason": "every one of the 35 built entries in the artifact is byte-identical to the container's own from-source rebuild \u2014 the packed dist is FRESH, not merely present"
+    },
+    {
+      "name": "pack.distFreshRebuildControl",
+      "ok": true,
+      "reason": "the freshness arm is FALSIFIABLE on this machine: mutating one built entry in a copy of the same artifact flips pack.distFreshRebuild to FALSE against the SAME from-source rebuild, so a green on the untouched artifact is a measurement rather than a constant (the control's own rows are in /out/owed/pack-control.ndjson)"
+    },
+    {
+      "name": "boot.presetMount",
+      "ok": true,
+      "reason": "the gateway created a session with agentPreset=mpd \u2014 every row of the mpd preset activated (it refuses on an inactive row)"
+    },
+    {
+      "name": "boot.sessionGateListener",
+      "ok": true,
+      "reason": "the mpd session gate listener is REGISTERED for the created session \u2014 witnessed in the row's OWN file log <workspace>/.mpd/logs/mpd-roles.log (R5), liveness not composition (the contract that was silently dead in v0.10.0)"
+    },
+    {
+      "name": "boot.mcpLiveSearch",
+      "ok": true,
+      "reason": "a REAL mcp__ast_grep__search call through the mounted adapter matched 1 site(s) in /opt/mpd/packages/mpd-mcp-astgrep/src, and the negative control matched 0 \u2014 the search engine ran, so the registered name is backed by a working server on this machine"
+    },
+    {
+      "name": "tui.boot",
+      "ok": true,
+      "reason": "the REAL TUI booted on a real PTY and reached its CHAT screen (the composer is drawn and no 0.13.0 landing marker is on screen)"
+    },
+    {
+      "name": "tui.sessionPreset",
+      "ok": true,
+      "reason": "the session the TUI created records agentPreset=mpd (the D10 default, read from the harness's own store)"
+    }
+  ],
+  "userSurface": {
+    "total": 120,
+    "passed": 85,
+    "declaredBound": 35,
+    "witnesses": [
+      {
+        "name": "userSurface.commandCorpus",
+        "ok": true,
+        "reason": "the expected set is exactly the published seven"
+      },
+      {
+        "name": "userSurface.command.autoproject",
+        "ok": true,
+        "reason": "registered in the live command registry AND drawn in the command palette"
+      },
+      {
+        "name": "userSurface.command.cellwork",
+        "ok": true,
+        "reason": "registered in the live command registry AND drawn in the command palette"
+      },
+      {
+        "name": "userSurface.command.agent-teams",
+        "ok": true,
+        "reason": "registered in the live command registry AND drawn in the command palette"
+      },
+      {
+        "name": "userSurface.command.mpd",
+        "ok": true,
+        "reason": "drawn in the command palette on its documented TUI-only plane (a registry listing is not required there)"
+      },
+      {
+        "name": "userSurface.command.mpd-model",
+        "ok": true,
+        "reason": "drawn in the command palette on its documented TUI-only plane (a registry listing is not required there)"
+      },
+      {
+        "name": "userSurface.row.mpd-dsh-adapter",
+        "ok": true,
+        "reason": "the row's own log sink exists and is non-empty after the boot"
+      },
+      {
+        "name": "userSurface.row.mpd-roles",
+        "ok": true,
+        "reason": "the row's own log sink exists and is non-empty after the boot"
+      },
+      {
+        "name": "userSurface.row.preset-mpd",
+        "ok": true,
+        "reason": "the loader holds an ACTIVE fiber with a runtime for this row (its apply() ran); the row names no inspectable tool/command and writes no sink"
+      },
+      {
+        "name": "userSurface.row.persona",
+        "ok": null,
+        "reason": "preset-owned row: the artifact declares it inside the `mpd` preset (materialised per session), the root loader holds no entry of its own, and it names no tool/command/sink this plane can read \u2014 composed, NOT individually proven"
+      },
+      {
+        "name": "userSurface.row.agent-instructions",
+        "ok": null,
+        "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read \u2014 composed, NOT individually proven"
+      },
+      {
+        "name": "userSurface.command.mpd-codegraph",
+        "ok": true,
+        "reason": "registered in the live command registry AND drawn in the command palette"
+      }
+    ]
+  },
+  "optionalUnmeasured": {
+    "boot": 1,
+    "live": 30,
+    "oneclick": 4,
+    "qa": 1,
+    "ui": 10,
+    "userSurface": 35
+  },
+  "rawEvidenceLocation": ".qa-team-first-docker.UJG8Mywp/evidence/docker/client-install/2026-11-22T18-19-42Z",
+  "rawSha256": {
+    "driver.json": "34f7a4d1b5e40139a7b2bfe7437b26a12ae0d0e630a81dc65e1e885cd58f5722",
+    "result.json": "e15995368cdbb7d984de6358dfc5d2b086aa08ecf3b259c7948470dc37c90c07",
+    "output.log": "6ad33acc555067f56d3bcdd3931eefb7928a7833a66c8fcb763e725ad6f39ac9"
+  }
+}

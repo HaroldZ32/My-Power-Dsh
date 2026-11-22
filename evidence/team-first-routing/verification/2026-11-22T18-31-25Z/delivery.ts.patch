@@ -1,0 +1,81 @@
+--- delivery.ts
++++ delivery.ts
+@@ -92,6 +92,7 @@
+   const fired = new Set<string>()
+   const childRequests: { readonly tag: string; readonly started: number; ended?: number }[] = []
+   const offered = new Map<string, readonly string[]>()
++  const held = Promise.withResolvers<void>()
+   const model = createServer(async (req, res) => {
+     const chunks: Buffer[] = []
+     for await (const chunk of req) chunks.push(Buffer.from(chunk))
+@@ -101,9 +102,9 @@
+     const tag = taggedTurn ?? (planned.has("QaTurn-cell-serve") && wire.toolNames.includes("cellwork_requirements") ? "QaTurn-cell-serve" : undefined)
+     const child = userTexts.map((text) => /QaChild-[a-z0-9-]+/.exec(text)?.[0]).find((tag) => tag !== undefined)
+     if (child !== undefined && tag === undefined && !wire.toolNames.includes("mpd_role_spawn_async")) {
+-      const measurement = { tag: child, started: Date.now(), ended: undefined as number | undefined }
++      const measurement: (typeof childRequests)[number] = { tag: child, started: Date.now() }
+       childRequests.push(measurement)
+-      if (child.includes("-burst-")) await pause(2700)
++      if (child.includes("-burst-")) await Promise.race([held.promise, pause(25_000, undefined, { ref: false })])
+       measurement.ended = Date.now()
+     }
+     const actions = tag === undefined ? undefined : planned.get(tag)
+@@ -215,8 +216,57 @@
+       const small = await prompt(`${mode}-small`, "Ask for one short answer to a narrow wording question.", [role(`${mode}-small`)])
+       const expand = "一起解决掉吧。Fix the routing policy, wire the adapter, update the bilingual docs, and have an independent verifier run the runtime and build checks. These are parallel lanes with separate owners and a final integration handoff."
+       const followup = await prompt(`${mode}-expand`, expand, [role(`${mode}-expand`)])
++      const initialized = await prompt(`${mode}-workmate-init`, "Prepare one isolated local QA helper.", [{ name: "mpd_workmate_init", args: { base: "Junior Engineer", name: "routing-probe" } }])
++      assert.equal(initialized[0]?.error, false, initialized[0]?.text)
+       const burst = await prompt(`${mode}-burst`, expand, Array.from({ length: 8 }, (_, index) => role(`${mode}-burst-${index}`, "mpd_role_spawn_async")))
+-      await pause(3100)
++      const refused = burst.filter((call) => call.error && call.text.includes("TEAM_FIRST"))
++      assert.equal(refused.length, 5, "Expected five consult admission refusals")
++      const planId = /plan-[a-z0-9-]+/.exec(refused[0]?.text ?? "")?.[0]
++      assert(planId !== undefined && refused.every((call) => call.text.includes(planId)), "Refusals did not name one staged plan")
++      const inFlight = (): number => childRequests.filter((request) => request.tag.includes("-burst-") && request.ended === undefined).length
++      await until(() => inFlight() === 3 ? true : undefined, "three live provider calls before boundary checks")
++      const blocked = await prompt(`${mode}-shared-guard`, "Check the same admission boundary with a mixed pair.", [
++        role(`${mode}-extra-blocking`),
++        { name: "mpd_workmate_spawn", args: { name: "routing-probe", task: "Return the fixed QA text for QaChild-workmate-boundary." } },
++      ])
++      assert(blocked.length === 2 && blocked.every((call) => call.error && call.text.includes("TEAM_FIRST") && call.text.includes(planId)), "Blocking role and workmate did not share the live reservations")
++      const beforeApproval = inFlight()
++      assert.equal(beforeApproval, 3, "Both refusal paths must finish before outstanding children settle")
++      const ownerMarker = `QaTurn-${mode}-owner-receipt`
++      planned.set(ownerMarker, [{ name: "agent_teams_task", args: { action: "complete", task_id: "T1", note: "QA_OWNER_DELIVERY_RECEIPT" } }])
++      const planActions: readonly Action[] = [
++        { name: "agent_teams_plan", args: { action: "status" } },
++        { name: "agent_teams_plan", args: { action: "add_member", member: { name: "routing-probe", role: "Junior Engineer", prompt: "Follow your assigned board row." } } },
++        { name: "agent_teams_plan", args: { action: "create_task", task: { subject: ownerMarker, description: "Return the fixed owner verification receipt.", owner: "routing-probe", blocked_by: [], kind: "requirement" } } },
++        { name: "agent_teams_plan", args: { action: "approve" } },
++        { name: "agent_teams_dispatch", args: { action: "run" } },
++      ]
++      const planReceipts: Call[] = []
++      for (const [index, action] of planActions.entries()) {
++        const results = await prompt(`${mode}-route-${index}`, "Perform the next isolated QA check.", [action])
++        planReceipts.push(...results)
++        assert.equal(results[0]?.error, false, results[0]?.text)
++      }
++      assert(planReceipts[0]?.text.includes(planId), "Captain did not reuse the redirect plan")
++      assert(planReceipts.at(-1)?.text.includes(`${ownerMarker} -> routing-probe`), "Dispatch did not name the declared owner")
++      const owner = await until(() => {
++        const sessionsDir = join(dshHome, "sessions", projectKey(workspace))
++        for (const id of readdirSync(sessionsDir).filter((id) => id !== session)) {
++          const log = logFor(dshHome, workspace, id)
++          const call = callsOf(log).find((call) => call.id === `call_${ownerMarker}_0` && call.error !== null)
++          if (call !== undefined) return { depth: log[0]?.delegationDepth, call }
++        }
++        return undefined
++      }, "declared owner's dispatch receipt and board completion")
++      const atOwnerReceipt = inFlight()
++      held.resolve()
++      assert.equal(owner.call.error, false, owner.call.text)
++      assert.equal(owner.depth, 1, "Receipt was not returned by the team seat")
++      assert.equal(atOwnerReceipt, 3, "Admitted consults settled before the board receipt")
++      const delivery = { planId, initialized, blocked, beforeApproval, planReceipts, owner, atOwnerReceipt }
++      writeFileSync(join(runDir, "delivery.json"), JSON.stringify(delivery, null, 2) + "\n")
++      console.log(`Reserved-team delivery: ${atOwnerReceipt} consults still live, owner task completed`)
++      await pause(500)
+       const records = logFor(dshHome, workspace, session)
+       const children = childRequests.filter((request) => request.tag.startsWith(`QaChild-${mode}-burst-`))
+       const peak = Math.max(0, ...children.map((child) => children.filter((other) => other.started <= child.started && (other.ended ?? Infinity) > child.started).length))

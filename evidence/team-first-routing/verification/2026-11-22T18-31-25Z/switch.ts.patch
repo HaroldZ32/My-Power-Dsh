@@ -1,0 +1,100 @@
+--- switch.ts
++++ switch.ts
+@@ -156,19 +156,19 @@
+         `${method} refused (HTTP ${response.status}) ${JSON.stringify(field(result, "error") ?? field(envelope, "error"))}`)
+       return field(result, "value")
+     }
+-    const seatsOnly = process.env.QA_SEATS_ONLY === "1"
+-    const allModes = seatsOnly ? ["member", "cell"] : ["mechanical", "advisory", "off"]
+-    const modes = process.env.QA_ONLY_MODE === undefined ? allModes : allModes.filter((mode) => mode === process.env.QA_ONLY_MODE)
+-    assert(modes.length > 0, "Requested mode is unavailable")
+-    for (const mode of modes) {
++    for (const mode of ["outside", "inside"] as const) {
+       const workspace = sandboxWorkspace(runDir, mode)
+-      const gate = mode === "member" || mode === "cell" ? "mechanical" : mode
+       mkdirSync(join(workspace, ".mpd"))
+-      writeFileSync(join(workspace, ".mpd", "mpd.jsonc"), JSON.stringify({ team: { gate, sensitivity: "easy" }, workmates: { autoInit: false }, cellwork: { planning: { analysts: 0 } }, agentRoutes: { "Junior Engineer": route, Explorer: route, Planner: route } }))
+-      const created = await rpc("session/create", { request: { cwd: workspace } })
++      writeFileSync(join(workspace, ".mpd", "mpd.jsonc"), JSON.stringify({ team: { gate: "mechanical" }, agentRoutes: { "Junior Engineer": route } }))
++      const request = mode === "outside" ? { cwd: workspace, agentPreset: "mpd" } : { cwd: workspace }
++      const created = await rpc("session/create", { request })
+       const session = field(created, "sessionId")
+-      assert(typeof session === "string" && field(created, "agentPreset") === "cordis", `Default creation preset did not equal cordis in ${mode}`)
+-      const selected = await rpc("agentPresets/select", { agentId: session, agentPreset: "mpd" })
++      const creationPreset = mode === "outside" ? "mpd" : "cordis"
++      assert(typeof session === "string" && field(created, "agentPreset") === creationPreset)
++      const choices = mode === "outside" ? ["cordis"] : ["mpd", "cordis", "mpd"]
++      for (const agentPreset of choices) {
++        assert.equal(await rpc("agentPresets/select", { agentId: session, agentPreset }), agentPreset)
++      }
+       await rpc("session/selectModel", { request: { sessionId: session, ...route } })
+       const role = (tag: string, name = "mpd_role_spawn"): Action => ({ name, args: { role: "Junior Engineer", task: `Return the fixed QA text for QaChild-${tag}.` } })
+       const prompt = async (tag: string, text: string, actions: readonly Action[]): Promise<Call[]> => {
+@@ -180,53 +180,22 @@
+           return calls.length === actions.length && calls.every((call) => call.error !== null) ? calls : undefined
+         }, `${marker} real ${actions.map((action) => action.name).join(" ")} receipts, tools offered: ${offered.get(marker)?.length ?? 0}`)
+       }
+-      if (mode === "member" || mode === "cell") {
+-        const controls: Call[] = []
+-        if (mode === "member") {
+-          planned.set("QaTurn-member-serve", [role("member-serve", "mpd_role_spawn_async")])
+-          const plan: readonly Action[] = [
+-            { name: "agent_teams_plan", args: { action: "create", name: "qa-owner", description: "One assigned routing check." } },
+-            { name: "agent_teams_plan", args: { action: "add_member", member: { name: "probe-owner", role: "Junior Engineer", prompt: "Follow your assigned board row." } } },
+-            { name: "agent_teams_plan", args: { action: "create_task", task: { subject: "QaTurn-member-serve", description: "Perform the assigned consult check.", owner: "probe-owner", blocked_by: [], kind: "requirement" } } },
+-            { name: "agent_teams_plan", args: { action: "approve" } },
+-            { name: "agent_teams_dispatch", args: { action: "run" } },
+-          ]
+-          for (const [index, action] of plan.entries()) controls.push(...await prompt(`member-${index}`, "Perform the next isolated QA check.", [action]))
+-        } else {
+-          planned.set("QaTurn-cell-serve", [{ name: "cellwork_recon", args: { role: "Explorer", task: "Return the fixed QA text for QaChild-cell-serve." } }])
+-          controls.push(...await prompt("cell-open", "Open the isolated QA check.", [{ name: "cellwork_open", args: { objective: "Check the planner's QA consultation." } }]))
+-          controls.push(...await prompt("cell-start", "Begin the isolated QA check.", [{ name: "cellwork_start", args: {} }]))
+-        }
+-        writeFileSync(join(runDir, `${mode}-setup.json`), JSON.stringify(controls, null, 2) + "\n")
+-        const seat = await until(() => {
+-          const sessionsDir = join(dshHome, "sessions", projectKey(workspace))
+-          for (const id of readdirSync(sessionsDir).filter((id) => id !== session)) {
+-            const log = logFor(dshHome, workspace, id)
+-            const call = callsOf(log).find((call) => call.id.startsWith(`call_QaTurn-${mode}-serve_`) && call.error !== null)
+-            if (call !== undefined) return { depth: log[0]?.delegationDepth, call }
+-          }
+-          return undefined
+-        }, `${mode} tool result from delegated seat in ${runDir}`)
+-        assert.equal(seat.call.error, false, `${mode} consult was refused`)
+-        console.log(`${mode} seat depth=${seat.depth} consult=${seat.call.name} nonError=true`)
+-        starts.push({ mode, controls, seat })
+-        continue
+-      }
+-      const small = await prompt(`${mode}-small`, "Ask for one short answer to a narrow wording question.", [role(`${mode}-small`)])
+-      const expand = "一起解决掉吧。Fix the routing policy, wire the adapter, update the bilingual docs, and have an independent verifier run the runtime and build checks. These are parallel lanes with separate owners and a final integration handoff."
+-      const followup = await prompt(`${mode}-expand`, expand, [role(`${mode}-expand`)])
+-      const burst = await prompt(`${mode}-burst`, expand, Array.from({ length: 8 }, (_, index) => role(`${mode}-burst-${index}`, "mpd_role_spawn_async")))
++      const burst = await prompt(`${mode}-burst`, "Fix the routing and adapter, update the docs, and run independent verification in parallel with separate owners.", Array.from({ length: 8 }, (_, index) => role(`${mode}-burst-${index}`, "mpd_role_spawn_async")))
+       await pause(3100)
+       const records = logFor(dshHome, workspace, session)
+-      const children = childRequests.filter((request) => request.tag.startsWith(`QaChild-${mode}-burst-`))
+-      const peak = Math.max(0, ...children.map((child) => children.filter((other) => other.started <= child.started && (other.ended ?? Infinity) > child.started).length))
+-      const gateDir = join(workspace, ".mpd", "session-gate")
+-      const planDir = join(workspace, ".mpd", "team", "plans")
+-      const notices = records.filter((record) => record.type === "user/message" && field(field(record.data, "source"), "kind") !== "agent-instructions")
+-        .map((record) => JSON.stringify(field(record.data, "content"))).filter((text) => text?.includes("[AgentTeams]"))
+-      starts.push({ mode, creationPreset: field(created, "agentPreset"), selected, header: records[0]?.agentPreset, presetEvents: records.filter((record) => record.type === "agent-preset/selected").map((record) => record.data), notices, gateFiles: existsSync(gateDir) ? readdirSync(gateDir).length : 0, planFiles: existsSync(planDir) ? readdirSync(planDir).length : 0, small, followup, burst, burstChildCalls: new Set(children.map((child) => child.tag)).size, peak })
+-      writeFileSync(join(runDir, "result.json"), JSON.stringify({ starts, runDir }, null, 2) + "\n")
+-      console.log(`${mode} small=${small[0]?.error} expand=${followup[0]?.error} burst=${burst.filter((call) => call.error === false).length}/8 children=${children.length} peak=${peak}`)
++      const observed = records.filter((entry) => entry.type === "agent-preset/selected").map((entry) => field(entry.data, "agentPreset"))
++      const started = burst.filter((call) => call.error === false).length
++      const refused = burst.filter((call) => call.error && call.text.includes("TEAM_FIRST")).length
++      const children = new Set(childRequests.filter((child) => child.tag.includes(`${mode}-burst`)).map((child) => child.tag)).size
++      const receipt = { mode, creationPreset, immutablePreset: records[0]?.agentPreset, observed, started, refused, children, burst }
++      starts.push(receipt)
++      writeFileSync(join(runDir, "result.json"), JSON.stringify({ starts }, null, 2) + "\n")
++      assert.deepEqual(observed, choices)
++      assert.equal(receipt.immutablePreset, creationPreset)
++      assert.equal(started, mode === "outside" ? 8 : 3)
++      assert.equal(refused, mode === "outside" ? 0 : 5)
++      assert.equal(children, started)
++      console.log(`${mode} immutable=${creationPreset} selections=${choices.join(",")} started=${started} refused=${refused} children=${children}`)
+     }
+     const isolation = assertSessionsSandboxed(dshHome, root, { forbidden: [projectKey(dirname(root))] })
+     writeFileSync(join(runDir, "result.json"), JSON.stringify({ starts, isolation }, null, 2) + "\n")
