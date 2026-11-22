@@ -129,10 +129,11 @@ dsh plugin --profile web add .
 ## 版本对应关系
 
 表中每一行都是某个版本**构建并验证时**所针对的那一对宿主：Docker 真机车道正是拿着这一对跑安装与挂载。
-harness 的 pin 是 [`dsh-distribution.json`](./dsh-distribution.json) 的 `host-base` 引用，加上
-[`package.json`](./package.json) 的 `engines.dsh` 范围；DSH-TUI 的 pin 是两个清单的 `compat.hosts` 与
-[`dsh-distribution.json`](./dsh-distribution.json) 的 `host-tui` 引用。更新的宿主在被某个发布行写明之前
-**不作声明**：这两个版本请一起钉。
+[`dsh-distribution.json`](./dsh-distribution.json) 通过 `host-base` 和 `host-tui` 钉定经过验证的宿主组合。
+[`package.json`](./package.json) 的 `engines.dsh` 声明支持的 harness 版本范围。
+[`dsh-plugin.json`](./dsh-plugin.json) 与
+[`packages/mpd-tui-plugin/dsh-plugin.json`](./packages/mpd-tui-plugin/dsh-plugin.json)
+中的 `compat.hosts` 列出套件接纳的 TUI 宿主。请将两个宿主都钉定到对应发布行的版本。
 
 **最新一行是本包当前发布的版本（可从 registry 安装）；其下各行是更早版本钉定的组合，标注为 `previous`，作为历史保留。**
 
@@ -163,10 +164,7 @@ harness 的 pin 是 [`dsh-distribution.json`](./dsh-distribution.json) 的 `host
 请使用 TUI `0.20.2`。旧宿主在各自声明的 peer 依赖范围内仍受支持。
 `engines.dsh` 覆盖 `>=0.2.1-rc.5 <0.3.0-0`，harness `0.2.2-rc.3`、`0.2.2-rc.2`、`0.2.2-rc.1` 与 `0.2.1-rc.5` 仍可安装并运行，
 `compat.hosts` 波段在新宿主 `0.20.2` 之外保留 DSH-TUI `0.18.0`、`0.19.0`、`0.20.0` 与 `0.20.1`。harness `0.2.2-rc.4` 被该
-`engines.dsh` 范围接纳，但本发布**没有单独声明也没有单独测量**它。钉定位置是
-[`dsh-distribution.json`](./dsh-distribution.json) 的 `host-base` 引用与
-[`package.json`](./package.json) 的 `engines.dsh`；两个清单的 `compat.hosts` 同时列出五个 TUI 宿主。
-其下各行保留为历史，记录更早版本实际钉定的组合。完整矩阵见
+`engines.dsh` 范围接纳，但本发布**没有单独声明也没有单独测量**它。完整矩阵见
 [`docs/compatibility.zh-CN.md`](./docs/compatibility.zh-CN.md)。
 
 ## 快速上手

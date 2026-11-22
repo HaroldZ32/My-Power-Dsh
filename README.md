@@ -147,11 +147,12 @@ the dependency closure and what the install mounts.
 ## Version compatibility
 
 Each row is the host pair a release was **built and verified against**: the Docker real-machine lanes
-run the install and the mount on exactly that pair. The harness pin is the `host-base` ref in
-[`dsh-distribution.json`](./dsh-distribution.json) plus the `engines.dsh` span in
-[`package.json`](./package.json), and the DSH-TUI pin is both manifests' `compat.hosts` plus the
-`host-tui` ref in [`dsh-distribution.json`](./dsh-distribution.json). A newer host is not claimed
-until a release row names it; pin both.
+run the install and the mount on exactly that pair. [`dsh-distribution.json`](./dsh-distribution.json)
+pins the tested pair through `host-base` and `host-tui`. [`package.json`](./package.json) declares the
+supported harness range in `engines.dsh`. The `compat.hosts` lists in
+[`dsh-plugin.json`](./dsh-plugin.json) and
+[`packages/mpd-tui-plugin/dsh-plugin.json`](./packages/mpd-tui-plugin/dsh-plugin.json)
+declare which TUI hosts the bundle admits. Pin both hosts to the versions listed for your release.
 
 **The newest row is the version this package publishes; the rows below it are the pins of earlier releases, kept as history.**
 
@@ -183,11 +184,8 @@ harness `0.2.2-rc.5`, use TUI `0.20.2`. The older hosts stay supported within th
 `engines.dsh` spans `>=0.2.1-rc.5 <0.3.0-0`, harness `0.2.2-rc.3`,
 `0.2.2-rc.2`, `0.2.2-rc.1` and `0.2.1-rc.5` keep mounting and running, and the `compat.hosts` band keeps
 DSH-TUI `0.18.0`, `0.19.0`, `0.20.0` and `0.20.1` beside the new `0.20.2`. Harness `0.2.2-rc.4` is
-admitted by that `engines.dsh` range but is **not separately claimed or measured** by this release. The
-harness pin lives in
-[`dsh-distribution.json`](./dsh-distribution.json)'s `host-base` ref and [`package.json`](./package.json)
-`engines.dsh`; both manifests' `compat.hosts` list all five TUI hosts. The rows below it record what
-earlier releases actually pinned. The full matrix is
+admitted by that `engines.dsh` range but is **not separately claimed or measured** by this release.
+The full matrix is
 [`docs/compatibility.md`](./docs/compatibility.md).
 
 ## Quick start
