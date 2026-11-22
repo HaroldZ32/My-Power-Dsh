@@ -107,7 +107,7 @@ run produced no `result.json` at all, `3` the host has no usable docker.
     ranges — the lane then reddens at that step and its `tui-logs/add-host.log` capture quotes the
     host's own refusal, rather than passing green on an apology.
     `0.20.1`, `0.20.0`, `0.19.0`, `0.18.0`, `0.16.1`, `0.15.0`, `0.14.0`, `0.13.0` and `0.12.0` were the pins
-    before it, kept as history.
+    before it. This list records the pin history.
     Override it
     with `MPD_E2E_TUI_VERSION`, and keep it in step with `MPD_E2E_DSH_VERSION`. It installs THIS bundle
     into the `dsh-tui` profile as the third

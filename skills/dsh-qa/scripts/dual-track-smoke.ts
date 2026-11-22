@@ -83,11 +83,9 @@ const BASEURL_RESOLVE_SQ = "(typeof baseUrl === 'string' ? decodeURIComponent(ba
  * never does — so the mount guards' type guard is not flagged.
  */
 const BASEURL_DECODE = "decodeURIComponent(baseUrl"
-/** Rewrite the committed bundle patch into a checkout-resolvable one, as the QA dev flavor does. */
-function devPatch(): string {
-  // The committed bundle patch, whose packed row operands are rewritten below.
-  const t = readFileSync(join(repoRoot, "cordis.patch.yml"), "utf8")
-  return t
+/** Rewrite packed row operands for a checkout boot, using the committed patch by default. */
+function devPatch(text: string = readFileSync(join(repoRoot, "cordis.patch.yml"), "utf8")): string {
+  return text
     .split(PACKED_PRESETS_EXPR).join(JSON.stringify(join(repoRoot, "presets")))
     .split(BASEURL_RESOLVE_DQ).join("")
     .split(BASEURL_RESOLVE_SQ).join("")
@@ -103,6 +101,21 @@ function selfTest(): void {
   // Whether the fixture wrongly names the gateway route instead.
   const pipe = FIXTURE_ROW.includes("provider: pi-ai")
   if (!okRow || pipe) { console.error("[llm-dual-track self-test] FAIL"); process.exit(1) }
+  /** A mount guard shared by both inputs and preserved byte for byte. */
+  const guard = "const checkout = typeof baseUrl === 'string' ? fileURLToPath(baseUrl) : undefined"
+  /** Packed operands using each supported quote spelling around the base URL resolution. */
+  const operands = [
+    String.raw`(typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/, "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/example/dist/index.js"`,
+    String.raw`(typeof baseUrl === 'string' ? decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/, '').replace(/^file:\/\//, '')).replace(/\/+$/, '') : '') + "/node_modules/@mpd-dsh/mpd/packages/example/dist/index.js"`,
+  ]
+  /** The full expected rewrite, retaining the guard and spelling the checkout path directly. */
+  const expected = `${guard}\n"${repoRoot}/packages/example/dist/index.js"`
+  for (const operand of operands) {
+    if (devPatch(`${guard}\n${operand}`) !== expected) {
+      console.error("[llm-dual-track self-test] FAIL: packed operand rewrite or mount guard changed: " + operand)
+      process.exit(1)
+    }
+  }
   // the boot-repair rewrite must leave no packed operand AND no unrewritten baseUrl concat
   // behind. The sentinel is the operand's `decodeURIComponent` call, never the bare token
   // `typeof baseUrl`: the mount guards legitimately carry `typeof baseUrl === 'string'` as a

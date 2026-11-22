@@ -206,14 +206,11 @@ profile `node_modules/@mpd-dsh/mpd`) when pnpm store access is unavailable; the 
 
 No evidence on disk for a gate = the change is not complete.
 
-**`bun run verify:gates` needs two env inputs, and a bare run is RED by design.** The PINNED harness must
-be FIRST on `PATH` — otherwise the ambient harness (`0.2.2-rc.5`, measured 2026-11-22, itself a
-SUPPORTED host) reddens `preset-conformance` — and `MPD_DSHGO_KIT` must point at a pinned `dsh-Go`
-checkout, or the `dshgo` member exits 3 NOT-PASSED. The pinned prefix must never be OLDER than the
-ambient CLI: it measures whatever it points at, so a stale prefix is how a sweep "verifies" an older
-release and claims the current one. With neither input, a bare run ends
-`FAIL - 2/11 member gate(s) failed: preset-conformance (exit=1), dshgo (exit=3)`: that is the documented
-default, not a broken repository. The exact invocation, from the repository root:
+**`bun run verify:gates` needs two environment inputs.** Put the pinned harness first on `PATH` so
+`preset-conformance` runs against the release target. Confirm that the prefix's `dsh --version`
+exactly matches the `host-base` version in [the distribution manifest](../dsh-distribution.json).
+Set `MPD_DSHGO_KIT` to the pinned `dsh-Go` checkout to run the `dshgo` gate, which exits 3
+NOT-PASSED without it. Run the following from the repository root.
 
 ```bash
 PATH="$PWD/.qa-tmp/dsh-022/bin:$PATH" \

@@ -174,6 +174,21 @@ function selfTest(): void {
   // against the root the manifest's own declaration resolves to.
   if (resolve(main.source) !== resolve(repoRoot, "cordis.patch.yml")) { console.error("[preset-register self-test] FAIL: the first declared patch is not the repository-root cordis.patch.yml (" + main.source + ")"); process.exit(1) }
   if (main.text.includes("name: '@mpd-dsh/mpd'") || !main.text.includes("name: '" + join(repoRoot, "packages/mpd-bundle-plugin/dist/index.js") + "'")) { console.error("[preset-register self-test] FAIL: devFlavor web-compat entry rewrite (bare '@mpd-dsh/mpd' must become the bundle-plugin main)"); process.exit(1) }
+  /** A mount guard shared by both inputs and preserved byte for byte. */
+  const guard = "const checkout = typeof baseUrl === 'string' ? fileURLToPath(baseUrl) : undefined"
+  /** Packed operands using each supported quote spelling around the base URL resolution. */
+  const operands = [
+    String.raw`(typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/, "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/example/dist/index.js"`,
+    String.raw`(typeof baseUrl === 'string' ? decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/, '').replace(/^file:\/\//, '')).replace(/\/+$/, '') : '') + "/node_modules/@mpd-dsh/mpd/packages/example/dist/index.js"`,
+  ]
+  /** The full expected rewrite, retaining the guard and spelling the checkout path directly. */
+  const expected = `${guard}\n"${repoRoot}/packages/example/dist/index.js"`
+  for (const operand of operands) {
+    if (devFlavor(`${guard}\n${operand}`) !== expected) {
+      console.error("[preset-register self-test] FAIL: packed operand rewrite or mount guard changed: " + operand)
+      process.exit(1)
+    }
+  }
   // devFlavor must consume the packed `/node_modules/...` operand entirely: no
   // `<baseUrl>/node_modules/<abs-repo>` splice, no UNREWRITTEN baseUrl concatenation
   // left, and every MCP row command must be the bare checkout-absolute launcher that a

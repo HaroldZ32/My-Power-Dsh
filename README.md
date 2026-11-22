@@ -178,8 +178,9 @@ until a release row names it; pin both.
 | 0.15.0 | 0.2.1-rc.2 | 0.16.1 | previous |
 | 0.14.0 | 0.2.1-rc.2 | 0.16.1 | previous (the harness-0.2.1 adaptation release) |
 
-The newest row **is** that pair: `0.21.0` ships against harness `0.2.2-rc.5` and DSH-TUI `0.20.2`. The
-older hosts stay supported: `engines.dsh` spans `>=0.2.1-rc.5 <0.3.0-0`, harness `0.2.2-rc.3`,
+Release `0.21.0` pairs harness `0.2.2-rc.5` with DSH-TUI `0.20.2`. If you use DSH-TUI with
+harness `0.2.2-rc.5`, use TUI `0.20.2`. The older hosts stay supported within their declared peer ranges.
+`engines.dsh` spans `>=0.2.1-rc.5 <0.3.0-0`, harness `0.2.2-rc.3`,
 `0.2.2-rc.2`, `0.2.2-rc.1` and `0.2.1-rc.5` keep mounting and running, and the `compat.hosts` band keeps
 DSH-TUI `0.18.0`, `0.19.0`, `0.20.0` and `0.20.1` beside the new `0.20.2`. Harness `0.2.2-rc.4` is
 admitted by that `engines.dsh` range but is **not separately claimed or measured** by this release. The

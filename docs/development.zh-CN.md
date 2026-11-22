@@ -174,12 +174,11 @@ shell 子进程没有：在 case 命令里显式导出）。
 
 门禁没有磁盘上的证据 = 变更不算完成。
 
-**`bun run verify:gates` 需要两个环境输入；裸跑按设计就是红的。** PINNED harness 必须排在 `PATH`
-最前——否则环境里的 harness（`0.2.2-rc.5`，2026-11-22 实测，本身也是 SUPPORTED 宿主）会让 `preset-conformance` 变红；`MPD_DSHGO_KIT`
-必须指向一个钉定的 `dsh-Go` 检出，否则 `dshgo` 成员以退出码 3 报 NOT-PASSED。钉定的前缀**绝不能比环境
-CLI 更旧**：它测的就是它指向的那一版，前缀陈旧正是「验了旧版却声称当前版」的来路。两个都不给时，裸跑以
-`FAIL - 2/11 member gate(s) failed: preset-conformance (exit=1), dshgo (exit=3)` 结束：这是写明的默认行为，
-不是仓库坏了。完整调用（在仓库根目录）：
+**`bun run verify:gates` 需要两个环境输入。** 将钉定的 harness 放在 `PATH` 最前，让
+`preset-conformance` 验证发布目标。确认该前缀下的 `dsh --version` 与
+[发行清单](../dsh-distribution.json)中 `host-base` 声明的版本完全一致。
+将 `MPD_DSHGO_KIT` 指向钉定的 `dsh-Go` 检出以运行 `dshgo` 门禁，缺少此设置时该门禁以退出码 3
+报告 NOT-PASSED。在仓库根目录运行以下命令。
 
 ```bash
 PATH="$PWD/.qa-tmp/dsh-022/bin:$PATH" \

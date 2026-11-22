@@ -159,7 +159,8 @@ harness 的 pin 是 [`dsh-distribution.json`](./dsh-distribution.json) 的 `host
 | 0.15.0 | 0.2.1-rc.2 | 0.16.1 | `previous` |
 | 0.14.0 | 0.2.1-rc.2 | 0.16.1 | `previous`（harness 0.2.1 适配发布） |
 
-最新一行**就是**这一对：`0.21.0` 对 harness `0.2.2-rc.5` 与 DSH-TUI `0.20.2`。旧宿主继续被支持：
+`0.21.0` 搭配 harness `0.2.2-rc.5` 和 DSH-TUI `0.20.2`。在 harness `0.2.2-rc.5` 上使用 DSH-TUI 时，
+请使用 TUI `0.20.2`。旧宿主在各自声明的 peer 依赖范围内仍受支持。
 `engines.dsh` 覆盖 `>=0.2.1-rc.5 <0.3.0-0`，harness `0.2.2-rc.3`、`0.2.2-rc.2`、`0.2.2-rc.1` 与 `0.2.1-rc.5` 仍可安装并运行，
 `compat.hosts` 波段在新宿主 `0.20.2` 之外保留 DSH-TUI `0.18.0`、`0.19.0`、`0.20.0` 与 `0.20.1`。harness `0.2.2-rc.4` 被该
 `engines.dsh` 范围接纳，但本发布**没有单独声明也没有单独测量**它。钉定位置是

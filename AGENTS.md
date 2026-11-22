@@ -259,11 +259,9 @@ CLEAN tree: a dirty `skills/**` corpus reddens the vendor gate until the wave's 
 **A bare `bun run verify:gates` is RED by design**: it needs the PINNED harness FIRST on `PATH` and a
 pinned `dsh-Go` checkout in `MPD_DSHGO_KIT`:
 `PATH="$PWD/.qa-tmp/dsh-022/bin:$PATH" MPD_DSHGO_KIT="$PWD/.mpd/tmp-dshgo/kit" bun run verify:gates`.
-Otherwise `preset-conformance` reddens under the AMBIENT host and `dshgo` exits 3 NOT-PASSED. **The
-prefix must never be OLDER than the ambient CLI** (measured 2026-11-22: ambient is `0.2.2-rc.5` while
-`.qa-tmp/dsh-022` sat at `0.2.2-rc.1`) — a documented prefix older than ambient measures the wrong
-harness, which is exactly how a wave "verifies" rc.1 and claims rc.5. The wave that moves the pin
-refreshes it to the target; a prefix older than ambient is a DEFECT, not a variant of this command.
+Otherwise `preset-conformance` can fail under the ambient host and `dshgo` exits 3 NOT-PASSED. **Verify
+that the prefix's `dsh --version` exactly matches the `host-base` version in `dsh-distribution.json`.**
+Refresh the prefix whenever the declared pin moves.
 
 ---
 
