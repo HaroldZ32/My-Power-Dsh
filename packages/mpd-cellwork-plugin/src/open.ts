@@ -38,6 +38,8 @@ export type OpenCellOutcome =
     statePath: string
     /** The activation directive text the caller relays (or the command submitted). */
     directive: string
+    /** The original request already created this cell. */
+    replayed?: true
     /** Whether this cell still needs its requirements entry directive injected. */
     needsDirective: boolean
   }
@@ -54,6 +56,8 @@ export type OpenCellOutcome =
 export interface OpenCellInput {
   /** The caller's workspace root (resolved by the caller through the adapter, per call). */
   workspace: string
+  /** Lazily mounted admission service, shared with Team approvals. */
+  admission?: { admitCell<T>(input: { checkoutRoot: string; sessionId: string }, open: (workspace: string) => T): T }
   /** The user's objective, verbatim after trimming. */
   objective: string
   /** The session that becomes this cell's captain. */
@@ -118,14 +122,31 @@ export function openCell(input: OpenCellInput): OpenCellOutcome {
     const mandate = mandateArtifact(input.workspace, runId)
     if ("refusal" in mandate) return { ok: false, error: mandate.refusal }
   }
+  if (input.admission === undefined) return openAt(input, objective, runId)
+  try {
+    return input.admission.admitCell({ checkoutRoot: input.workspace, sessionId: input.captainSessionId }, (workspace) => openAt({ ...input, workspace }, objective, runId))
+  } catch (error) {
+    if (error instanceof Error) return { ok: false, error: error.message }
+    throw error
+  }
+}
+
+/** Persist or replay the cell inside its selected shared state root. */
+function openAt(input: OpenCellInput, objective: string, runId: string | undefined): OpenCellOutcome {
   /** The workspace's current cell scan. */
   const active = readActiveCell(input.workspace)
   if (!active.ok) return { ok: false, error: "cellwork_open refused: " + readFailureText(active), path: active.path }
   if (active.cell !== null) {
-    /** The active cell can acknowledge a retry after the original tool reply was lost. */
-    const state = active.cell.state
-    if (runId !== undefined && state.mandateRunId === runId && state.captainSessionId === input.captainSessionId && state.objective === objective) {
-      return openOutcome(input.workspace, state)
+    /** Only the original captain can replay the same request and mandate. */
+    const prior = active.cell.state
+    if ((runId !== undefined || input.admission !== undefined) && prior.mandateRunId === runId
+      && prior.captainSessionId === input.captainSessionId && prior.objective === objective) {
+      /** A project command may re-enter before the original directive was acknowledged. */
+      const outcome = openOutcome(input.workspace, prior)
+      if (outcome.needsDirective && input.submit !== undefined && input.submit(outcome.directive) !== true) {
+        return { ok: false, error: "cellwork could not resume " + prior.cellId + ": no live agent turn surface accepted the activation directive" }
+      }
+      return { ...outcome, replayed: true }
     }
     return {
       ok: false,

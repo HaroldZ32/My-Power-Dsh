@@ -8,8 +8,9 @@
 // WHY SECTIONS AND NOT FREE PROSE. A requirements document that omits "non-goals" or "open questions"
 // looks complete and is not: the splitter then invents scope the user never agreed to. `finalize`
 // REFUSES such a document, naming every missing section, and the planner asks the user the next question.
+import { createHash } from "node:crypto"
 import { existsSync, readFileSync } from "node:fs"
-import { atomicWriteText, requirementsPath } from "./state"
+import { atomicWriteText, requirementsPath, type CellState } from "./state"
 
 /** One required section: the canonical key, its display title, and the heading spellings it accepts. */
 export interface RequirementSection {
@@ -204,4 +205,23 @@ export function storedRequirementsText(text: string): string {
  */
 export function writeRequirements(workspace: string, cellId: string, text: string): void {
   atomicWriteText(requirementsPath(workspace, cellId), storedRequirementsText(text))
+}
+
+/** Digest exact stored bytes without normalizing edits to an already accepted file. */
+export function requirementsHash(document: string): string {
+  return createHash("sha256").update(document).digest("hex")
+}
+
+/** A split can use only bytes authenticated by the accepted revision when a digest is available. */
+export function acceptedRequirementsMatch(workspace: string, cell: CellState): boolean {
+  /** New acceptances carry their digest and legacy revisions remain readable before upgrade. */
+  const hash = cell.requirementsUpdateHash ?? cell.requirementsBaseHash
+  if (hash === undefined) return true
+  try {
+    /** A missing or changed editable document cannot stand for an accepted revision. */
+    const document = readRequirements(workspace, cell.cellId)
+    return document !== null && requirementsHash(document) === hash
+  } catch {
+    return false
+  }
 }

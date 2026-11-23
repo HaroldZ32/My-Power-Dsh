@@ -298,10 +298,8 @@ export const TOOL_EXPECTATIONS: readonly ToolExpectation[] = [
   { source: "teamCore", name: "agent_teams_task", actions: ["claim", "contract", "release", "complete", "fail", "depend", "context", "handoff"] },
   { source: "teamCore", name: "agent_teams_dispatch", parameters: ["action", "task_id", "dry_run", "limit", "mode", "reassign"], actions: ["run", "release"] },
   { source: "teamCore", name: "agent_teams_mail", actions: ["send", "unread", "read", "summary", "permit", "wait"] },
-  // A4-F2: the `end` verb is PINNED with the rest — the pinned set is a SUBSET check, so an ADDED action is
-  // tolerated and would have been invisible; naming it is what makes a future REMOVAL of `end` redden like
-  // `fence` does.
-  { source: "teamCore", name: "agent_teams_control", actions: ["halt", "resume", "fence", "unfence", "end"] },
+  // Each supported verb must be named here because the surface pin permits additive actions.
+  { source: "teamCore", name: "agent_teams_control", parameters: ["wake"], actions: ["halt", "resume", "fence", "unfence", "end", "wake"] },
   // 4 — cellwork keeps its 15 names; `cellwork_open` is the NEW one.
   { source: "cellworkIndex", name: "cellwork_open" },
   // 5 — the workmate surfaces the wave added.
@@ -522,15 +520,25 @@ function selfTest(): void {
   /** The autoproject tool with `scope` renamed away. */
   const noScope = mutated("autoproject", (text) => text.replace("scope: { type: \"array\"", "declaredScope: { type: \"array\""))
   check(problemsOf(noScope).includes("no longer declares parameter 'scope'"), "negative control: a renamed parameter must redden")
-  // (b) a removed ACTION VERB reddens.
-  // THE ANCHOR IS THE CURRENT ENUM, VERBATIM: it still carried the four verbs the tool had before the
-  // team-END verb landed, so the replace became a NO-OP and the control could no longer redden at all —
-  // a dead negative control is worse than a missing one. The pinned action set above stays a SUBSET check
-  // (a NEW verb is tolerated there, which is why the live case stayed green); only this mutation has to
-  // spell the whole literal it edits.
-  /** The control tool with `fence` removed from its enum. */
-  const noFence = mutated("teamCore", (text) => text.replace('enum: ["halt", "resume", "fence", "unfence", "end"]', 'enum: ["halt", "resume"]'))
-  check(problemsOf(noFence).includes("no longer offers action 'fence'"), "negative control: a removed action verb must redden")
+  // (b) Remove each named verb from the control tool's own action enum, preserving all other verbs.
+  for (const verb of ["fence", "end", "wake"]) {
+    /** The real source, with exactly this action removed from the control registration. */
+    const missingVerb = mutated("teamCore", (text) => {
+      /** The registration scope prevents mutating another tool's enum. */
+      const control = toolNamed(text, "agent_teams_control")
+      if (control === undefined) return text
+      /** JSON string enums use quoted verb names, so additions and reordering need no fixture edit. */
+      const block = control.block.replace(/(\baction\s*:\s*\{\s*type:\s*"string"\s*,\s*enum:\s*)\[([^\]]*)\]/u, (_match, prefix: string, values: string) => {
+        /** Only the named verb is omitted, wherever it occurs in the enum. */
+        const remaining = [...values.matchAll(/"([^"]*)"/gu)].map((match) => match[1]).filter((action) => action !== verb)
+        return prefix + JSON.stringify(remaining)
+      })
+      return text.replace(control.block, () => block)
+    })
+    /** The mutation must trigger just this tool's missing-verb pin. */
+    const expected = "tool agent_teams_control no longer offers action '" + verb + "'"
+    check(problemsOf(missingVerb) === expected, "negative control: removing agent_teams_control action '" + verb + "' must produce only the missing-verb diagnostic")
+  }
   // (c) a RETIRED ALIAS reappearing reddens.
   /** The autoproject source with an `mpd_ulw` alias re-added. */
   const alias = mutated("autoproject", (text) => text + '\n  dsh.registerTool({ name: "mpd_ulw", description: "alias", parameters: { type: "object", properties: {} } })\n')
@@ -580,7 +588,7 @@ function selfTest(): void {
     for (const problem of problems) console.error("  - " + problem)
     process.exit(1)
   }
-  console.log("[" + SLUG + " self-test] ok: the extractors, the SHIPPED-tree pin, EIGHT negative controls (parameter, action verb, alias tool, alias command, cellwork name, producer output key, consumer read, command name) and the SKILL.md case-table row")
+  console.log("[" + SLUG + " self-test] ok: the extractors, the SHIPPED-tree pin, eight mutation classes (including control actions fence, end and wake) and the SKILL.md case-table row")
 }
 
 // The case body runs ONLY when this file is the entry; importing its predicates must be inert.
@@ -595,6 +603,6 @@ if (process.argv[1] !== undefined && import.meta.url === new URL("file://" + pro
       for (const problem of problems) console.error("  - " + problem)
       process.exit(1)
     }
-    console.log("[" + SLUG + "] PASS — every surface the autoproject refactor introduced is declared as the contract fixes it (12 tool surfaces, 2 command surfaces, 15 cellwork names, 4 archive producer keys + 7 consumer reads)")
+    console.log("[" + SLUG + "] PASS — 12 tool surfaces (including the agent_teams_control wake action and parameter), 2 command surfaces, 15 cellwork names, 4 archive producer keys + 7 consumer reads")
   }
 }

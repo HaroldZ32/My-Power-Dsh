@@ -15,7 +15,7 @@ import { join } from "node:path"
 
 import { apply } from "../src/index"
 import { addMember, addTask, stagePlan, writePlan } from "../src/plan-store"
-import { addTeamMember, bindActiveTeam, createTeam, updateTeamMember, writeTeam } from "../src/team-store"
+import { addTeamMember, bindActiveTeam, createTeam, endTeamRecord, updateTeamMember, writeTeam } from "../src/team-store"
 
 /** The instant every store write in this file is stamped with. */
 const NOW = new Date("2026-11-02T04:00:00.000Z")
@@ -165,8 +165,11 @@ describe("agent_teams_plan approve — the bindings are DECLARED and RENDERED", 
     /** This arm's sandbox. */
     const workspace = mkdtempSync(join(tmpdir(), "mpd-wm-mode-"))
     sandboxes.push(workspace)
-    /** The harness; the approve branch needs a staged plan, not a record. */
-    const h = harness(workspace, recordWithBinding(workspace, "reuse"))
+    /** The harness also carries a historical workmate binding for its status surface. */
+    const old = recordWithBinding(workspace, "reuse")
+    endTeamRecord(workspace, old, "workmate fixture wave ended", NOW)
+    /** The initial tool composition. */
+    const h = harness(workspace, old)
     /** The staged plan this arm approves. */
     let plan = stagePlan(workspace, LEAD, { name: "the bound wave", description: "bind one seat", approval: "required" }, NOW)
     plan = addMember(plan, { name: "impl", description: "implements", prompt: "You implement.", role: "Senior Engineer" })

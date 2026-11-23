@@ -1111,9 +1111,12 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   // It registers no tool, is listed by no tool output and adds no cap: `start` lands on the same
   // `consultSupervisor`, so `MPD_DSH_CONSULT_MAX` and the silence deadman govern both surfaces. The one
   // behavioural difference is that this path does NOT apply `consultDepthRefusal` — see `consults.ts`.
+  /** Scoped project handles can be consumed only through their owner's Cellwork surface. */
+  const scopedConsults = new Set<string>()
   /** The existing supervised service, shared by cellwork and the public tool admission clients. */
   const consults = createMpConsults({
     supervisor: consultSupervisor,
+    scopedHandle: (id, active) => { if (active) scopedConsults.add(id); else scopedConsults.delete(id) },
     // THE SAME INTERNAL PATH the async tool uses (`raiseConsultAsync`): persona, route, fallback and the
     // read-only child scope are identical. A caller MAY still pass an absolute `maxDepth`; when it does not
     // (cellwork no longer does — its `depthMax` counts nested CELLS), `raiseConsultAsync` applies this
@@ -1281,8 +1284,13 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     }
     /** The route this spawn actually sends (fallbacks consumed once, effort adapted). */
     const run = await resolveRunRoute(dsh, primary, resolution.ok ? resolution.route.fallbacks ?? [] : [])
-    /** The assembled prompt, identical to the blocking path's. */
-    const prompt = spec.persona + "\n\nTask: " + task + (args?.context ? "\n\nContext:\n" + String(args.context) : "") + "\n\nWork with the tools your role requires (read-only roles must never modify anything). End with ONLY the structured report (role/summary/recommendation/details/evidence)."
+    /** Scoped helpers get only owner-authorized project inputs and their own role instructions. */
+    const helperFiles: import("../../mpd-dsh-adapter-plugin/src/index").DshHelperFiles | undefined = args?.helperFiles
+    if (helperFiles !== undefined && spec.readonly && helperFiles.write.length > 0) throw new Error("a read-only helper role cannot accept writable paths")
+    /** The worker's selected scope is explicit and remains separate from their own task context. */
+    const scopeHint = helperFiles === undefined ? "Work with the tools your role requires (read-only roles must never modify anything)." : `Use only these delegated paths. Read ${[...helperFiles.read, ...helperFiles.write].join(", ") || "none"}. Write ${helperFiles.write.join(", ") || "none"}.`
+    /** Supply the assigned task and bounded context without appending the parent's conversation. */
+    const prompt = spec.persona + "\n\nTask: " + task + (args?.context ? "\n\nContext:\n" + String(args.context) : "") + "\n\n" + scopeHint + " End with ONLY the structured report (role/summary/recommendation/details/evidence)."
     // THE DEPTH CAP: a declared positive ABSOLUTE cap overrides this row's caller-depth arithmetic; anything
     // unusable — and ABSENT, which is what the cellwork path sends since the R1.1 repair — falls back to
     // `spawnMaxDepthOf`, never to `undefined`, so a child is never raised under the host's hidden default.
@@ -1299,7 +1307,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       outputSchema: REPORT_SCHEMA,
       maxDepth: depthCap,
       ...(run.route.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: run.route.reasoningEffort } }),
-      ...(spec.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {})
+      ...(helperFiles === undefined ? (spec.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {}) : { helperFiles }),
     })
   }
 
@@ -1328,10 +1336,11 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     execute: async (args: any, _exec: any) => {
       /** The requested action, normalized. */
       const action = String(args?.action ?? "").trim()
-      if (action === "list") return { action, consults: consultSupervisor.list() }
+      if (action === "list") return { action, consults: consultSupervisor.list().filter((entry) => !scopedConsults.has(entry.consultId)) }
       /** The consult id; required for every action except list. */
       const consultId = String(args?.consultId ?? "").trim()
       if (consultId === "") throw new Error("mpd_role_consult: consultId required for action \"" + action + "\"")
+      if (scopedConsults.has(consultId)) throw new Error("project helpers are collected by the owning assignment via cellwork_consult")
       if (action === "wait") {
         /** The wait bound in ms (the supervisor clamps it to CONSULT_WAIT_MAX_MS). */
         const timeoutMs = Number(args?.timeoutMs ?? 30000)

@@ -642,14 +642,18 @@ describe("task release (R3)", () => {
     expect("finishedAt" in row).toBe(false)
     // The revision moved (a CAS target for the next caller); the attempt did NOT reset.
     expect(row.revision).toBe(inFlight.tasks[0].revision + 1)
-    expect(row.attempt ?? 0).toBe(0)
+    expect(row.attempt).toBe(1)
+    expect(row.attempt).toBe(inFlight.tasks[0].attempt)
     // DISPATCHABLE AGAIN: the pool's own readiness rule sees the row.
     expect(readyTasks(released.record).map((task) => task.id)).toEqual(["T1"])
     // A later claim starts a NEW clock, which is why the release cleared it.
     /** The second claim on the reopened row. */
     const reclaimed = casClaimTask(released.record, "T1", "Reviewer", released.record.tasks[0].revision, new Date(LATER.getTime() + 1000))
     expect(reclaimed.applied).toBe(true)
-    if (reclaimed.applied) expect(reclaimed.record.tasks[0].startedAt).toBe(new Date(LATER.getTime() + 1000).toISOString())
+    if (reclaimed.applied) {
+      expect(reclaimed.record.tasks[0].startedAt).toBe(new Date(LATER.getTime() + 1000).toISOString())
+      expect(reclaimed.record.tasks[0].attempt).toBe(2)
+    }
   })
 
   test("a TERMINAL row is refused, and a DOUBLE release is a no-op with the right refusal", () => {

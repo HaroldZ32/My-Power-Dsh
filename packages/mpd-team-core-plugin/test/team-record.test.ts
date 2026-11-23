@@ -1034,12 +1034,12 @@ describe("PR #60 F2 — the release line is rendered, and the close line is not 
     const paintedClaimOnly = (render?.({}, claimOnly) ?? []).map((part) => part.text ?? "").join("")
     expect(paintedClaimOnly).toBe("T1 -> pending (no pairing to free)")
     // A REAL closure still paints the close line: the reordered branches must not swallow it.
-    /** The closure of the remaining row, through the same tool. */
-    const closed = await h.call("agent_teams_task", { action: "complete", task_id: "T2" }) as { status?: string; closedBy?: string }
+    /** Close the ready root while its dependent is still blocked. */
+    const closed = await h.call("agent_teams_task", { action: "complete", task_id: "T1" }) as { status?: string; closedBy?: string }
     expect(closed.status).toBe("completed")
     expect(closed.closedBy).toBe("lead")
     /** The painted line for the closure. */
     const paintedClose = (render?.({}, closed) ?? []).map((part) => part.text ?? "").join("")
-    expect(paintedClose).toContain("T2 -> completed (by lead, attempt")
+    expect(paintedClose).toContain("T1 -> completed (by lead, attempt")
   })
 })

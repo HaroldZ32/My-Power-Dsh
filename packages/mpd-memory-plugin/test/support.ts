@@ -83,13 +83,13 @@ export function enterSandboxHome(home: string): () => void {
  *
  * @param workspace - the workspace the plugin must resolve through `DSH_WORKSPACE_ROOT`.
  * @param config - the row config under test (vcs mode, slug, reflectionEvery, globalDir).
- * @param options - the `mpdTeams` service stub, when the arm needs one.
+ * @param options - optional MPD service stubs and the map receiving this row's service.
  * @returns the captured tools and listener plus the restore/dispose hooks.
  */
 export function mount(
   workspace: string,
   config: Parameters<typeof apply>[1],
-  options: { teams?: unknown } = {},
+  options: { teams?: unknown; services?: Map<string, unknown> } = {},
 ): MountedPlugin {
   /** Every tool definition the plugin registered, in registration order. */
   const tools: DshToolDef[] = []
@@ -107,8 +107,10 @@ export function mount(
       /** Answer a lookup by tool name; the memory plugin never reaches a service through this seam. */
       get(name: string): DshToolDef | undefined { return tools.find((tool) => tool.name === name) },
     },
-    /** The harness service probe: only `mpdTeams` is served, so `mpdConfig` stays absent. */
-    get(name: string): unknown { return name === "mpdTeams" ? options.teams : undefined },
+    /** Resolve one fixture service with the optional legacy teams stub. */
+    get(name: string): unknown { return options.services?.get(name) ?? (name === "mpdTeams" ? options.teams : undefined) },
+    /** Capture the member key-value service in fixtures that supply the service map. */
+    provide(name: string, service: unknown): void { options.services?.set(name, service) },
     /** The cordis event subscription: capture the waterfall registration and the dispose cleanup. */
     on(event: string, callback: any): () => void {
       if (event === "tools/post-execute") {

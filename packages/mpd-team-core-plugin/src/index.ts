@@ -82,13 +82,22 @@ import { installTeamDoorGuard } from "./team-door-guard.ts"
 import { planForSession, registerTeamRoutes, TEAM_ACTION_ROUTES, TEAM_ROUTES, type TeamWebActions, type TeamWebPlan } from "./team-web"
 // THE TWO TEAM ACTIONS, exec-free: the bodies that used to sit inline in the `approve` and `run`
 // branches, so a tool call, the `mpdTeamActions` service and an HTTP route all drive ONE sequence.
-import { approveTeam, cancelTasks, clearConsults, endTeam, fenceMember, forceWedgedTask, graceWedgedTask, runDispatch, TEAM_ACTIONS_SERVICE, unfenceMember, upsertConsult, writeMemberHandoff, type MpdTeamActionsService, type TeamActionCaller, type TeamActionDeps } from "./team-actions"
+import { approveTeam, cancelTasks, clearConsults, endTeam, fenceMember, forceWedgedTask, graceWedgedTask, projectMemberDeclaration, runDispatch, TEAM_ACTIONS_SERVICE, unfenceMember, upsertConsult, writeMemberHandoff, type MpdTeamActionsService, type TeamActionCaller, type TeamActionDeps } from "./team-actions"
+import { addFixedProjectMember, fixedProjectRoster, guardCellPlanningStage, projectCellRun, projectIdentity, projectStateWorkspace, type ProjectIdentityService } from "./project-admission"
+import { readProjectRosterBindings } from "./project-roster-binding"
+import { routeValue } from "./project-store"
+import { installProjectContext } from "./project-context"
+import { installProjectProgress } from "./project-progress"
+import { readProjectStage, withProjectStage } from "./project-staging"
+import { withProjectTaskWrite } from "./task-ownership"
+import { commitResplit, resplitTicketAccepted } from "./cellwork-resplit"
 import { installIdleGuard, withIdlePreamble } from "./idle-guard"
 import { memberWorktreeLookup, type MemberWorktreeAssignment } from "./worktree.ts"
 import { appendTeamJournal } from "./team-journal.ts"
 import { GraphModels } from "./graph-model"
 import type { GraphModel } from "../../mpd-graph-core/src/index.ts"
 import { ChangeFeed } from "./change-feed"
+import { captainWakeScope, installCaptainWake, renderCaptainWake } from "./captain-wake.ts"
 import {
   activeTeamId,
   addTeamMember,
@@ -118,6 +127,7 @@ import {
   rememberLead,
   summariseTeam,
   taskDepths,
+  taskOwnerMatches,
   removeTeamMember,
   taskVisual,
   unbindActiveTeam,
@@ -214,6 +224,8 @@ export interface TeamDepthBudget {
 
 /** The read surface published as {@link TEAMS_SERVICE}; every member is synchronous and non-throwing. */
 export interface MpdTeamsService {
+  /** The structured project state root; file tools still retain their actual checkout. */
+  stateWorkspace?: (workspace: string, sessionId: string) => string
   /** Every team this workspace holds, newest first. */
   list: (workspace: string) => TeamRecord[]
   /** One team by id, or undefined. */
@@ -1301,6 +1313,9 @@ export function apply(ctx: any): void {
    */
   const feed = new ChangeFeed({ warn: (line: string): void => { rowLogLine("mpd-team-core", line) } })
   disposers.push((): void => { feed.dispose() })
+  /** Captain-wake observers react only to committed board/mail state and host idle edges. */
+  const captainWake = installCaptainWake({ dsh, feed, now, warn: (line) => { rowLogLine("mpd-team-core", line) } })
+  disposers.push((): void => { captainWake.dispose() })
 
   // ── THE ONE GRAPH MODEL: computed here, served to BOTH planes ───────────────
   // `mpd-graph-core` owns the derivation and the merge; this row owns the record, so this is the ONE
@@ -1337,7 +1352,7 @@ export function apply(ctx: any): void {
    * A child resolves through its own identity (the member arm) and nothing else.
    */
   const where = (exec: DshToolExec | undefined): { workspace: string; sessionId: string; lineage: string[] } => ({
-    workspace: dsh.workspaceRoot(exec),
+    workspace: projectStateWorkspace(dsh.workspaceRoot(exec), sessionIdOf(exec)),
     sessionId: sessionIdOf(exec),
     lineage: sessionIsDelegatedChild(exec) ? [] : sessionLineageOf(exec),
   })
@@ -1350,9 +1365,7 @@ export function apply(ctx: any): void {
    * through to its live APPROVED team — the mid-run append verb the old surface never had. The third
    * sentence ("no team is staged in this session") is produced by the caller when NEITHER exists.
    */
-  const stagedPlan = (workspace: string, sessionId: string): StagedPlan | undefined => {
-    /** The session's staged plan, or undefined when nothing is staged yet. */
-    const plan = readPlan(workspace, sessionId)
+  const stagedPlan = (plan: StagedPlan | undefined): StagedPlan | undefined => {
     if (plan?.activation !== undefined) throw new Error(`plan ${plan.planId} has begun activation; retry approve before changing the team`)
     if (plan !== undefined && plan.approvedAt !== undefined) throw new Error(`plan ${plan.planId} is already approved; stage a new one to change the team`)
     return plan
@@ -1553,7 +1566,7 @@ export function apply(ctx: any): void {
     try {
       /** The workspace of the live session this request names, when the adapter can resolve it. */
       const own = dsh.workspaceRootForSession(sessionId)
-      if (own !== undefined && own !== "") return own
+      if (typeof own === "string" && own !== "") return projectStateWorkspace(own, sessionId)
     } catch {
       // A composition whose adapter predates the method falls through to the artifact scan.
     }
@@ -1599,7 +1612,7 @@ export function apply(ctx: any): void {
    * @param lead - true when the ROSTER says the caller leads this team.
    * @returns what each half did; see {@link TaskReleaseResult}.
    */
-  const releaseDispatchedTask = (workspace: string, record: TeamRecord, taskId: string, expectedRevision: number | undefined, caller: readonly string[], lead: boolean): TaskReleaseResult => {
+  const releaseDispatchedTask = (workspace: string, record: TeamRecord, taskId: string, expectedRevision: number | undefined, caller: readonly string[], lead: boolean): TaskReleaseResult => withProjectTaskWrite(workspace, () => {
     // Re-read immediately before deciding, the dispatch pass's own discipline: the record was opened
     // before this call and a concurrent write may have moved the task's owner or revision. The SAME
     // reading serves the authorization and the CAS below — nothing writes the team record between them.
@@ -1625,7 +1638,7 @@ export function apply(ctx: any): void {
     /** The reopened task as the record now holds it. */
     const view = outcome.record.tasks.find((candidate) => candidate.id === taskId)
     return { released: freed.released, taskId, status: view?.status, revision: view?.revision }
-  }
+  })
 
   /**
    * The ONE graph model for one team, or the workspace principal when the caller named none.
@@ -1660,7 +1673,7 @@ export function apply(ctx: any): void {
     registerAgentPreStep: (agent, listener) => dsh.registerAgentPreStep(agent, listener),
     onEvent: (event, handler) => dsh.onEvent(event, handler),
     guardTool: (guard) => dsh.guardTool(guard),
-    workspaceRoot: (exec) => dsh.workspaceRoot(exec),
+    workspaceRoot: (exec) => where(exec).workspace,
     rowLog: (line) => { rowLogLine("mpd-team-core", line) },
   })
   for (const dispose of idleGuard.disposers) disposers.push(dispose)
@@ -1684,6 +1697,7 @@ export function apply(ctx: any): void {
     deriveParentTeam,
     resolveTeam,
     readWatchdogHold,
+    routeCatalog: dsh,
     service: (id) => {
       // The optional-services read the row already performs everywhere: a cordis `get(id, false)`,
       // contained because a service's own getter is another row's code.
@@ -1772,7 +1786,7 @@ export function apply(ctx: any): void {
     /** The session title of the resolved agent — the identity plane's member arm reads it. */
     const title = sessionTitleOf({ agent } as DshToolExec)
     try {
-      return { ok: true, caller: { workspace: workspaceForRequest(sessionId), sessionId, lineage, agent, ...(title === "" ? {} : { title }), ...(signal === undefined ? {} : { signal }) } }
+      return { ok: true, caller: { workspace: where({ agent } as DshToolExec).workspace, checkoutRoot: dsh.workspaceRoot({ agent }), sessionId, lineage, agent, ...(title === "" ? {} : { title }), ...(signal === undefined ? {} : { signal }) } }
     } catch (error) {
       return { ok: false, error: String((error as Error)?.message ?? error) }
     }
@@ -1783,6 +1797,11 @@ export function apply(ctx: any): void {
   // session id — the answer is `{ ok: false, error }`, which is what a panel button can render.
   /** The action surface published as {@link TEAM_ACTIONS_SERVICE}. */
   const teamActions: MpdTeamActionsService = {
+    commitResplit: (agent, input, publish) => {
+      /** Derive both the canonical workspace and planner from the actual calling agent. */
+      const { workspace, sessionId } = where({ agent })
+      return commitResplit(workspace, sessionId, input, publish, now())
+    },
     approve: async ({ sessionId }) => {
       /** The session's caller, or the refusal this member answers instead of acting. */
       const resolved = callerForSession(sessionId)
@@ -1867,6 +1886,20 @@ export function apply(ctx: any): void {
     }
   }
 
+  /** Reuse the authoritative mounted watchdog reading when a new Cellwork caller could retire a board. */
+  const mountedProjectIdentity: ProjectIdentityService = {
+    ...projectIdentity,
+    admitCell: (input, open) => projectIdentity.admitCell(input, open, (root, team) => readWatchdogHold(root, team.leadSessionId).state === "free"),
+  }
+  if (typeof (ctx as { provide?: unknown })?.provide === "function") {
+    ;(ctx as { provide: (id: string, value: unknown) => unknown }).provide("mpdProjectIdentity", mountedProjectIdentity)
+  }
+  disposers.push(installProjectContext(dsh, {
+    identity: projectIdentity,
+    memory: (): unknown => ctx.get?.("mpdMemory", false),
+    warn: (line): void => { rowLogLine("mpd-team-core", line) },
+  }))
+
   // ── the mpd team read surface: THE seam every other mpd plugin reads ────────
   // Published before the tools so a consumer that resolves the service during this row's own
   // activation still finds it. Every member is synchronous and non-throwing: it is called from
@@ -1875,6 +1908,7 @@ export function apply(ctx: any): void {
   if (typeof (ctx as { provide?: unknown })?.provide === "function") {
     try {
       ;(ctx as { provide: (id: string, value: unknown) => unknown }).provide(TEAMS_SERVICE, {
+        stateWorkspace: projectStateWorkspace,
         list: (workspace: string) => { try { return listTeams(workspace) } catch { return [] } },
         get: (workspace: string, teamId: string) => { try { return readTeam(workspace, teamId) } catch { return undefined } },
         active: (workspace: string, sessionId?: string) => recordFor(workspace, sessionId ?? "workspace"),
@@ -2000,16 +2034,16 @@ export function apply(ctx: any): void {
   disposers.push(dsh.registerTool({
     name: "agent_teams_plan",
     description:
-      "The team PLAN. `create` stages (spawns nothing); `add_member`/`create_task` append; `edit` reads or replaces; `approve` EXECUTES via the TEAM EXECUTOR (refuses an EMPTY plan); `delete` archives; `status` prints plan, hold, roster, board. `create_task` WARNS when a work/repair/integration row has no write_scopes.",
+      "Stage (`create`), append, `edit`, `approve` to execute, `delete` to archive, or inspect `status`. `roster` reads fixed members; the project captain can declare one with `member`. `create_task` WARNS when a work row has no write_scopes.",
     parameters: {
       type: "object",
       properties: {
-        action: { type: "string", enum: ["create", "add_member", "create_task", "edit", "approve", "delete", "status"], description: "What to do." },
+        action: { type: "string", enum: ["create", "add_member", "create_task", "edit", "approve", "delete", "status", "roster"], description: "What to do." },
         name: { type: "string", description: "create: team name." },
         description: { type: "string", description: "create/edit: what the team is for." },
         approval: { type: "string", enum: ["required", "automatic"], description: "create: `required` (default) waits for approve." },
         replace: { type: "boolean", description: "create: replace an APPROVED plan." },
-        member: { type: "object", description: "add_member: {name, prompt, description?, role?}." },
+        member: { type: "object", description: "add_member: name,prompt,role?,scope:run?; roster: name,role?,route?." },
         // The canonical shape stays in the description because the context budget below is binding:
         // only the keys a caller really put somewhere else are declared as their own properties. The
         // C7-4 F1 requirement-chain fields (kind/coverageOf/sourceTaskId) ride inside `task`; `kind`
@@ -2045,6 +2079,7 @@ export function apply(ctx: any): void {
           summary: { oneOf: [{ type: "object" }, { type: "null" }] },
           members: { type: "array", items: { type: "object" } },
           rosterUnsupported: { type: "object" },
+          projectRoster: { type: "object" },
           tasks: { type: "array", items: { type: "object" } },
           contracts: { type: "array", items: { type: "object" } },
           created: { type: "object" },
@@ -2070,7 +2105,8 @@ export function apply(ctx: any): void {
       },
       render: (_args: any, value: any) => {
         /** The sentence this branch paints, before any write-time warning rides below it. */
-        const painted = value?.archivedTo !== undefined ? `archived to ${value.archivedTo}`
+        const painted = value?.projectRoster !== undefined ? `fixed project roster\n${JSON.stringify(value.projectRoster)}`
+            : value?.archivedTo !== undefined ? `archived to ${value.archivedTo}`
             : value?.created !== undefined ? `${value.stoppedAt === undefined ? "approved" : "activation paused for"} ${value.plan?.planId ?? ""}: ${value.created.members?.length ?? 0} member(s), ${value.created.tasks?.length ?? 0} task(s)` + (value.stoppedAt === undefined ? "" : ` — ${value.stoppedAt}`)
               // THE LOUD HALF. An approval that carried a blocker naming no task says so HERE, in the
               // answer the captain reads, with the board task and the exact text — because the whole
@@ -2104,20 +2140,42 @@ export function apply(ctx: any): void {
       /** Whether this caller is a recorded delegation child (the C7-4 F5 heal guard). */
       const delegated = sessionIsDelegatedChild(exec)
 
+      if (action === "roster") {
+        /** Authority checks use the actual checkout so an approved independent copy cannot act as captain. */
+        const scope = { checkoutRoot: dsh.workspaceRoot(exec), sessionId }
+        if (delegated || sessionId === "workspace") throw new Error("only the authenticated project captain may use the fixed roster")
+        if (args?.member === undefined) return { projectRoster: fixedProjectRoster(scope) }
+        // Read authority before configuration or route discovery; the writer repeats it under the lock.
+        if (fixedProjectRoster(scope).projectId === null) throw new Error("start a project Team or Cellwork run before declaring a fixed member")
+        /** Parse only the single named declaration requested by the actual captain. */
+        const raw = args.member as Record<string, unknown>
+        /** The explicit name and optional role belong to the roster, never a transient executor. */
+        const name = typeof raw.name === "string" ? raw.name.trim() : ""
+        if (name === "" || name.length > 96) throw new Error("fixed member name must be 1–96 characters")
+        /** Routes use the same stored shape and pinned resolve path as ordinary declarations. */
+        const role = typeof raw.role === "string" ? raw.role.trim() : undefined
+        /** The optional explicitly authorized provider/model override. */
+        const route = raw.route
+        if (route !== undefined && (!routeValue(route) || route === null || route.provider.trim() === "" || route.model.trim() === "")) throw new Error("member.route must specify provider and model")
+        /** Unspecified routes use the configured roster role. */
+        const declaration = route === undefined ? await projectMemberDeclaration(teamActionsDeps, { name, description: name, ...(role ? { role } : {}) }, scope.checkoutRoot) : { name, ...(role ? { role } : {}), route }
+        return { projectRoster: addFixedProjectMember(scope, declaration) }
+      }
+
       if (action === "status") {
         /** Read one seam defensively: a status call must answer even when a service is absent. */
         const read = <T,>(fn: () => T, fallback: T): T => { try { return fn() } catch { return fallback } }
         /** The mpd record bound to this session — the team, when one was ever approved here. */
         const record = recordFor(workspace, sessionId)
-        /** The adapter's compatibility array may carry a non-JSON capability marker. */
+        /** The official fallback array may carry a non-enumerable capability marker that JSON rejects. */
         const officialMembers = record === undefined ? read(() => dsh.teamListMembers(exec.agent), []) : undefined
-        /** Preserve the marker beside the rows, where the host can snapshot it. */
+        /** Keep the capability diagnostic separate from the JSON roster array. */
         const rosterUnsupported = officialMembers?.unsupported
         // THE AUTHORITATIVE HALF: with a record present, the roster and the board are MPD's. The
         // official readout is still reported, but BESIDE it and under its own key, so a reader can
         // see the executor's view without confusing it for the team.
         return {
-          plan: readPlan(workspace, sessionId) ?? null,
+          plan: readProjectStage(workspace, sessionId).plan ?? null,
           hold: readHold(workspace) ?? null,
           team: record ?? null,
           // A `failed` row is a raise that never happened: the live append and the approval REMOVE it, and
@@ -2134,20 +2192,21 @@ export function apply(ctx: any): void {
       }
 
       if (action === "create") {
-        /** The plan already staged here, whose approval state decides whether this create may replace it. */
-        const existing = readPlan(workspace, sessionId)
-        if (existing?.activation !== undefined && args?.replace !== true) throw new Error(`plan ${existing.planId} has begun activation; retry approve or pass replace:true`)
-        if (existing?.approvedAt !== undefined && args?.replace !== true) {
-          throw new Error(`plan ${existing.planId} is already approved; pass replace:true to stage a different team`)
-        }
-        // NO NESTING ARGUMENT IS STAGED HERE, deliberately (cellwork wave 4): the parent team is derived
-        // at APPROVAL from the record's own roster (see `deriveParentTeam`), so a plan carries no value a
-        // model could mistype and this tool surface spends no context on one.
-        return { plan: stagePlan(workspace, sessionId, {
-          name: String(args?.name ?? "team"),
-          description: String(args?.description ?? ""),
-          approval: args?.approval === "automatic" ? "automatic" : "required",
-        }, now()) }
+        return withProjectStage(workspace, sessionId, (stage) => {
+          if (stage.plan?.activation !== undefined && args?.replace !== true) throw new Error(`plan ${stage.plan.planId} has begun activation; retry approve or pass replace:true`)
+          if (stage.plan?.approvedAt !== undefined && args?.replace !== true) {
+            throw new Error(`plan ${stage.plan.planId} is already approved; pass replace:true to stage a different team`)
+          }
+          /** Replacing a shell for a live Cellwork reservation must retain any real caller draft. */
+          const name = String(args?.name ?? "team")
+          guardCellPlanningStage(stage.workspace, dsh.workspaceRoot(exec), sessionId, name, stage.plan)
+          // The parent remains derived from the live roster at approval.
+          return { plan: stagePlan(stage.workspace, sessionId, {
+            name,
+            description: String(args?.description ?? ""),
+            approval: args?.approval === "automatic" ? "automatic" : "required",
+          }, now()) }
+        }, args?.replace === true)
       }
 
       if (action === "add_member") {
@@ -2159,15 +2218,19 @@ export function apply(ctx: any): void {
           description: String(raw.description ?? ""),
           prompt: String(raw.prompt ?? ""),
           ...(raw.role === undefined ? {} : { role: String(raw.role) }),
+          ...(raw.scope === "run" ? { scope: "run" as const } : {}),
         }
-        /** The staged, not-yet-approved plan this call appends to, when one exists. */
-        const plan = stagedPlan(workspace, sessionId)
-        if (plan !== undefined) {
+        /** Append to the exact owner draft before considering the live-board arm. */
+        const staged = withProjectStage(workspace, sessionId, (stage) => {
+          /** The caller's current unapproved stage, selected under the admission lock. */
+          const plan = stagedPlan(stage.plan)
+          if (plan === undefined) return undefined
           /** The plan with the member appended (trimmed and duplicate-checked by the store). */
           const next = addMember(plan, input)
-          writePlan(workspace, next)
+          writePlan(stage.workspace, next)
           return { plan: next }
-        }
+        })
+        if (staged !== undefined) return staged
         // ── THE MID-RUN ARM (C7-4 F1) ─────────────────────────────────────────
         // With NO staged plan the caller used to get "no team is staged in this session" even though it
         // HAD approved a team minutes earlier (approval archives the staging file). Resolution finds the
@@ -2188,9 +2251,23 @@ export function apply(ctx: any): void {
         /** The trimmed name, which is both the duplicate key and the stored value. */
         const name = input.name.trim()
         if (name === "") throw new Error("a teammate needs a non-empty name")
-        if (resolved.record.members.some((member) => member.name === name)) throw new Error(`teammate "${name}" is already on the roster of team ${resolved.record.teamId}`)
-        /** The live record with the member appended. */
-        const roster = addTeamMember(resolved.record, input, now())
+        /** Resolve the known logical seat independently of any temporary worker hint. */
+        const known = readProjectRosterBindings(workspace, input.scope === "run" ? [] : [{ ...input, name }], true)
+        /** This arm can attach existing fixed seats but never creates an account. */
+        const seat = input.scope === "run" ? undefined : known.byLogicalName.get(name)
+        /** Ordinary Team appends may attach a temporary seat; established Cellwork splits require fixed owners. */
+        if (seat === undefined && input.scope !== "run" && known.members.length > 0 && projectCellRun(workspace, sessionId, resolved.record.name) === "execution") {
+          throw new Error(`unresolved fixed owner ${JSON.stringify(name)}; use agent_teams_plan action roster to declare one explicitly`)
+        }
+        /** The current board is still the authority for actually starting a seat. */
+        const current = readTeam(workspace, resolved.record.teamId) ?? resolved.record
+        if (current.endedAt !== undefined || current.phase === "ended") throw new Error(`team ${current.teamId} already ended`)
+        if (current.members.some((member) => member.name === name)) throw new Error(`teammate "${name}" is already on the roster of team ${current.teamId}`)
+        if (seat !== undefined && current.members.some((member) => member.projectMemberId === seat.memberId || member.name === seat.name)) {
+          throw new Error(`teammate ${JSON.stringify(name)} already has a durable seat on team ${current.teamId}`)
+        }
+        /** The live record with a board-local id and an independent durable seat id. */
+        const roster = addTeamMember(current, seat === undefined ? { ...input, projectScope: "run" } : { ...input, name: seat.name, role: seat.role, projectMemberId: seat.memberId, ...(seat.route === null ? {} : { route: `${seat.route.provider}/${seat.route.model}` }) }, now())
         /** The member this append minted — the LAST row of the new roster. */
         const added = roster.members[roster.members.length - 1]
         writeTeam(workspace, withDerivedPhase(roster))
@@ -2247,6 +2324,7 @@ export function apply(ctx: any): void {
             // channel, so a member appended to a LIVE roster is routed by its slot — not by the
             // staging session that happens to be running this append.
             ...(added.role === undefined ? {} : { role: added.role }),
+            ...(seat?.route == null ? {} : { agentOptions: seat.route }),
             // The member's OWN git worktree, or no key at all: an absent path must let the host
             // inherit the Lead's directory rather than receive a written `cwd: undefined`.
             ...(cwd === undefined ? {} : { cwd }),
@@ -2304,9 +2382,11 @@ export function apply(ctx: any): void {
         const coverageOf = raw.coverageOf
         /** The task a repair row was opened from, when the caller named one. */
         const sourceTaskId = raw.sourceTaskId
-        /** The staged, not-yet-approved plan this call appends to, when one exists. */
-        const plan = stagedPlan(workspace, sessionId)
-        if (plan !== undefined) {
+        /** Stage on the original owner slot under the project lock. */
+        const staged = withProjectStage(workspace, sessionId, (stage) => {
+          /** The caller's stage may still be in a losing linked worktree. */
+          const plan = stagedPlan(stage.plan)
+          if (plan === undefined) return undefined
           // THE STAGED ARM CARRIES THE SAME THREE FIELDS AS THE LIVE ONE (PR #42 review F-J). It used to
           // parse `kind` and drop it together with `coverageOf`/`sourceTaskId`, so `approve` wrote
           // `kind: "work"` for every staged task and a `repair` row reached the board as a plain work row
@@ -2340,7 +2420,7 @@ export function apply(ctx: any): void {
             namedTask(stagedId, stagedTask.subject),
             blockedBy.filter((reference) => planReferenceTarget(next, reference) === stagedId),
           )
-          writePlan(workspace, next)
+          writePlan(stage.workspace, next)
           // SAID AT WRITE TIME (R21): each reference is classified against the plan AS IT NOW STANDS, so
           // a captain sees immediately which forms will resolve and which name nothing this plan can
           // resolve — the sentence the defect never produced. Advisory, never a refusal: a forward
@@ -2352,7 +2432,8 @@ export function apply(ctx: any): void {
             ...(blockedBy.length === 0 ? {} : { blockers: blockerReading(next, blockedBy) }),
             ...(scopesWarning === undefined ? {} : { warning: scopesWarning }),
           }
-        }
+        })
+        if (staged !== undefined) return staged
         // ── THE MID-RUN ARM (C7-4 F1) ─────────────────────────────────────────
         // The measured defect: after approval this exact call answered "no team is staged in this
         // session", so a DAG could never grow a repair row mid-run. It now appends to the live APPROVED
@@ -2411,49 +2492,56 @@ export function apply(ctx: any): void {
       }
 
       if (action === "edit") {
-        /** The plan being edited, or undefined when the session has nothing staged. */
-        const plan = readPlan(workspace, sessionId)
-        if (plan === undefined) throw new Error("no team is staged in this session — use action:\"create\" first")
-        if (args?.members === undefined && args?.tasks === undefined && args?.description === undefined) return { plan }
-        if (plan.activation !== undefined) throw new Error(`plan ${plan.planId} has begun activation; retry approve before changing the team`)
-        if (plan.approvedAt !== undefined) throw new Error(`plan ${plan.planId} is already approved and cannot be edited`)
-        /** The replacement plan, assembled immutably so a rejected edit leaves the stored one untouched. */
-        const next: StagedPlan = {
-          ...plan,
-          ...(args?.description === undefined ? {} : { description: String(args.description) }),
-          ...(Array.isArray(args?.members)
-            ? { members: args.members.map((raw: any): StagedMember => {
-                if (typeof raw?.name !== "string" || raw.name.trim() === "") throw new Error("every staged member needs a name")
-                if (typeof raw?.prompt !== "string" || raw.prompt.trim() === "") throw new Error(`staged member "${raw.name}" needs a prompt`)
-                return { name: raw.name, description: String(raw?.description ?? ""), prompt: raw.prompt, ...(raw?.role === undefined ? {} : { role: String(raw.role) }) }
-              }) }
-            : {}),
-          ...(Array.isArray(args?.tasks)
-            ? { tasks: args.tasks.map((raw: any): StagedTask => {
-                if (typeof raw?.subject !== "string" || raw.subject.trim() === "") throw new Error("every staged task needs a subject")
-                return {
-                  subject: raw.subject,
-                  description: String(raw?.description ?? ""),
-                  ...(Array.isArray(raw?.blockedBy) || Array.isArray(raw?.blocked_by) ? { blockedBy: (raw.blockedBy ?? raw.blocked_by).map(String) } : {}),
-                  ...(Array.isArray(raw?.writeScopes) || Array.isArray(raw?.write_scopes) ? { writeScopes: (raw.writeScopes ?? raw.write_scopes).map(String) } : {}),
-                  ...(raw?.owner === undefined ? {} : { owner: String(raw.owner) }),
-                }
-              }) }
-            : {}),
+        if (args?.members === undefined && args?.tasks === undefined && args?.description === undefined) {
+          /** The read-only edit spelling does not acquire the filesystem write lock. */
+          const draft = readProjectStage(workspace, sessionId).plan
+          if (draft === undefined) throw new Error("no team is staged in this session — use action:\"create\" first")
+          return { plan: draft }
         }
-        writePlan(workspace, next)
-        // An edit REPLACES the task list, so the same write-time reading is answered here: every
-        // reference of every task that survived the edit, classified against the plan as it now stands.
-        /** Every blocker reference the edited plan carries, in task order. */
-        const editedReferences = next.tasks.flatMap((task) => task.blockedBy ?? [])
-        return { plan: next, ...(editedReferences.length === 0 ? {} : { blockers: blockerReading(next, editedReferences) }) }
+        return withProjectStage(workspace, sessionId, ({ workspace: stageRoot, plan }) => {
+          if (plan === undefined) throw new Error("no team is staged in this session — use action:\"create\" first")
+          if (plan.activation !== undefined) throw new Error(`plan ${plan.planId} has begun activation; retry approve before changing the team`)
+          if (plan.approvedAt !== undefined) throw new Error(`plan ${plan.planId} is already approved and cannot be edited`)
+          /** The replacement plan, assembled immutably so a rejected edit leaves the stored one untouched. */
+          const next: StagedPlan = {
+            ...plan,
+            ...(args?.description === undefined ? {} : { description: String(args.description) }),
+            ...(Array.isArray(args?.members)
+              ? { members: args.members.map((raw: any): StagedMember => {
+                  if (typeof raw?.name !== "string" || raw.name.trim() === "") throw new Error("every staged member needs a name")
+                  if (typeof raw?.prompt !== "string" || raw.prompt.trim() === "") throw new Error(`staged member "${raw.name}" needs a prompt`)
+                  return { name: raw.name, description: String(raw?.description ?? ""), prompt: raw.prompt, ...(raw?.role === undefined ? {} : { role: String(raw.role) }) }
+                }) }
+              : {}),
+            ...(Array.isArray(args?.tasks)
+              ? { tasks: args.tasks.map((raw: any): StagedTask => {
+                  if (typeof raw?.subject !== "string" || raw.subject.trim() === "") throw new Error("every staged task needs a subject")
+                  /** Keep the caller's task kind when replacing the staged graph. */
+                  const kind = parseTaskKind(raw?.kind)
+                  return {
+                    subject: raw.subject,
+                    ...(kind === undefined ? {} : { kind }),
+                    ...(raw?.coverageOf === undefined ? {} : { coverageOf: String(raw.coverageOf) }),
+                    ...(raw?.sourceTaskId === undefined ? {} : { sourceTaskId: String(raw.sourceTaskId) }),
+                    description: String(raw?.description ?? ""),
+                    ...(Array.isArray(raw?.blockedBy) || Array.isArray(raw?.blocked_by) ? { blockedBy: (raw.blockedBy ?? raw.blocked_by).map(String) } : {}),
+                    ...(Array.isArray(raw?.writeScopes) || Array.isArray(raw?.write_scopes) ? { writeScopes: (raw.writeScopes ?? raw.write_scopes).map(String) } : {}),
+                    ...(raw?.owner === undefined ? {} : { owner: String(raw.owner) }),
+                  }
+                }) }
+              : {}),
+          }
+          writePlan(stageRoot, next)
+          // An edit REPLACES the task list, so the same write-time reading is answered here: every
+          // reference of every task that survived the edit, classified against the plan as it now stands.
+          /** Every blocker reference the edited plan carries, in task order. */
+          const editedReferences = next.tasks.flatMap((task) => task.blockedBy ?? [])
+          return { plan: next, ...(editedReferences.length === 0 ? {} : { blockers: blockerReading(next, editedReferences) }) }
+        })
       }
 
       if (action === "delete") {
-        /** The plan to archive, or undefined when there is nothing to archive. */
-        const plan = readPlan(workspace, sessionId)
-        if (plan === undefined) return {}
-        return { archivedTo: archivePlan(workspace, plan) }
+        return withProjectStage(workspace, sessionId, (stage) => stage.plan === undefined ? {} : { archivedTo: archivePlan(stage.workspace, stage.plan) })
       }
 
       if (action === "approve") {
@@ -2463,7 +2551,7 @@ export function apply(ctx: any): void {
         // the thrown error a tool caller has always observed — the message is the action's sentence.
         /** The approval's outcome, or the sentence it refused with. */
         const outcome = await approveTeam(teamActionsDeps, {
-          workspace, sessionId, lineage,
+          workspace, checkoutRoot: dsh.workspaceRoot(exec), sessionId, lineage,
           ...(exec.agent === undefined ? {} : { agent: exec.agent }),
           ...(exec.signal === undefined ? {} : { signal: exec.signal }),
         }, { dryRun: args?.dry_run === true })
@@ -2477,16 +2565,20 @@ export function apply(ctx: any): void {
     },
   }))
 
+  /** The original worker's optional, revisioned next operation and waiting record. */
+  const projectProgress = installProjectProgress({ dsh, identity: projectIdentity, warn: (line) => rowLogLine("mpd-team-core", line) })
+  disposers.push(projectProgress.dispose)
+
   toolRegistrations += 1
   disposers.push(dsh.registerTool({
     name: "agent_teams_task",
     description:
-      "Board tasks: `claim` (freezes the contract), `contract`, `release`, terminal `complete`/`fail` (owner-only; `note`/`expected_revision`; a FAIL unblocks dependents), `depend` (append `blocked_by`), `context` (your occupancy/seat), `handoff` (write the document, then end your turn).",
+      "Board: claim freezes contract; complete/fail close work; fail unblocks. Progress uses content and expected_revision. Depend adds blockers; handoff writes before ending.",
     parameters: {
       type: "object",
       properties: {
-        action: { type: "string", enum: ["claim", "contract", "release", "complete", "fail", "depend", "context", "handoff"], description: "What to do." },
-        content: { type: "string", description: "handoff: document." },
+        action: { type: "string", enum: ["claim", "contract", "release", "complete", "fail", "depend", "context", "handoff", "progress"], description: "What to do." },
+        content: { type: "string", description: "Handoff document or progress: read/write/edit PATH, collect ID, wait REASON." },
         task_id: { type: "string", description: "the task id." },
         claimant: { type: "string", description: "claim: who claims (default caller)." },
         note: { type: "string", description: "complete/fail: one line." },
@@ -2498,7 +2590,7 @@ export function apply(ctx: any): void {
     },
     output: {
       presentationMeta: toolCard(agentTeamsTaskCard),
-      schema: { type: "object", properties: { contract: { type: "object" }, contracts: { type: "array", items: { type: "object" } }, task: { type: "object" }, released: { type: "boolean" }, refused: { type: "string" }, taskId: { type: "string" }, status: { type: "string" }, closedBy: { type: "string" }, attempt: { type: "number" }, revision: { type: "number" }, dependents: { type: "array", items: { type: "object" } }, note: { oneOf: [{ type: "string" }, { type: "null" }] }, added: { type: "array", items: { type: "string" } }, idempotent: { type: "boolean" }, unresolved: { type: "array", items: { type: "string" } }, teamId: { type: "string" }, member: { type: "string" }, mode: { type: "string" }, fenced: { type: "boolean" }, fencedReason: { type: "string" }, usedTokens: { oneOf: [{ type: "number" }, { type: "null" }] }, windowTokens: { oneOf: [{ type: "number" }, { type: "null" }] }, ratio: { oneOf: [{ type: "number" }, { type: "null" }] }, provenance: { type: "string" }, contextCheckpoint: { type: "object" }, path: { type: "string" }, ordinal: { type: "number" }, directive: { type: "string" } } },
+      schema: { type: "object", properties: { progress: { type: "object" }, contract: { type: "object" }, contracts: { type: "array", items: { type: "object" } }, task: { type: "object" }, released: { type: "boolean" }, refused: { type: "string" }, taskId: { type: "string" }, status: { type: "string" }, closedBy: { type: "string" }, attempt: { type: "number" }, revision: { type: "number" }, dependents: { type: "array", items: { type: "object" } }, note: { oneOf: [{ type: "string" }, { type: "null" }] }, added: { type: "array", items: { type: "string" } }, idempotent: { type: "boolean" }, unresolved: { type: "array", items: { type: "string" } }, teamId: { type: "string" }, member: { type: "string" }, mode: { type: "string" }, fenced: { type: "boolean" }, fencedReason: { type: "string" }, usedTokens: { oneOf: [{ type: "number" }, { type: "null" }] }, windowTokens: { oneOf: [{ type: "number" }, { type: "null" }] }, ratio: { oneOf: [{ type: "number" }, { type: "null" }] }, provenance: { type: "string" }, contextCheckpoint: { type: "object" }, path: { type: "string" }, ordinal: { type: "number" }, directive: { type: "string" } } },
       // THE RELEASE BRANCH COMES FIRST (PR #60 review F2). A successful release ALSO answers the task's
       // new `status` (`pending`), so with `status` checked first the CLOSE line was printed for a
       // release that closed nothing: `T1 -> pending (by undefined, attempt undefined)`. The release
@@ -2506,6 +2598,7 @@ export function apply(ctx: any): void {
       render: (_args: any, value: any) =>
         text(
           value?.refused !== undefined ? `refused: ${value.refused}`
+            : value?.progress !== undefined ? `progress r${value.progress.revision} ${value.progress.state}: ${value.progress.state === "waiting" ? value.progress.reason : `${value.progress.operation} ${value.progress.target}`}`
             // THE HANDOFF BRANCH FIRST: its answer also carries `mode`, which the context branch would read.
             : value?.directive !== undefined ? `handoff written: ${value.path} (#${value.ordinal}) — end your turn now`
               // THE CONTEXT BRANCH: occupancy, the seat state beside it, and the provenance of the numbers.
@@ -2528,6 +2621,8 @@ export function apply(ctx: any): void {
       const delegated = sessionIsDelegatedChild(exec)
       /** The requested action, stringified so a non-string argument can only miss, never throw. */
       const action = String(args?.action ?? "")
+
+      if (action === "progress") return { progress: projectProgress.write(exec.agent, args?.task_id, args?.expected_revision, args?.content) }
 
       if (action === "context") {
         // THE CALLER'S OWN OCCUPANCY (D4), read through the adapter's meter seam. The seat state is added
@@ -2604,7 +2699,7 @@ export function apply(ctx: any): void {
         return releaseDispatchedTask(workspace, resolved.record, taskId, typeof args?.expected_revision === "number" ? args.expected_revision : undefined, caller, membership?.role === "lead")
       }
 
-      if (action === "depend") {
+      if (action === "depend") return withProjectTaskWrite(workspace, () => {
         // APPEND-ONLY EDGES (contract: team-tool plan surface §2). The board could grow a row mid-run
         // but never GROW AN EDGE: `create_task` was the only writer of `blockedBy`, and it mints a NEW
         // row — so a lane added after approval could not depend on anything and the DAG stayed flat.
@@ -2700,7 +2795,7 @@ export function apply(ctx: any): void {
         /** The updated row, echoed with both its `blockedBy` and its `unresolvedBlockers`. */
         const view = next.tasks.find((candidate) => candidate.id === taskId) ?? task
         return { taskId, task: view, idempotent: false, added, unresolved: outcome.unresolved }
-      }
+      })
 
       if (action === "contract") {
         if (args?.task_id === undefined) return { contracts: listContracts(workspace) }
@@ -2710,72 +2805,68 @@ export function apply(ctx: any): void {
         return { contract }
       }
 
-      if (action === "claim") {
-        // THE RECORD IS THE BOARD (W2): the task, its acceptance text and its blockers are read
-        // from mpd's own team, so a contract can be frozen in a composition where no backend board
-        // exists at all. The `revision` the contract freezes is the record's own, which moves on
-        // every mpd mutation and never on somebody else's.
-        // THE SPECIFIC SENTENCE WHERE THERE IS ONE: an ambiguous roster gets the refusal that names the
-        // teams instead of the standing "approve a plan first", which would be a lie about the cause.
-        /** The team this call works on, or the sentence saying why none resolved. */
+      if (action === "claim") return withProjectTaskWrite(workspace, () => {
+        /** Only the current project's resolved board can grant an ordinary claim. */
         const resolved = resolveForWrite(workspace, sessionId, lineage, delegated, sessionTitleOf(exec))
         if (resolved.record === undefined) throw new Error(resolved.refusal ?? "no team record in this workspace — approve a plan first")
-        /** The team this call works on. */
-        const record = resolved.record
-        /** The task being claimed. */
+        /** Re-read the exact resolved board before comparing identity, readiness and revision. */
+        const record = readTeam(workspace, resolved.record.teamId)
+        if (record === undefined || record.phase === "ended") throw new Error("the resolved team is no longer active")
+        /** The requested task, whose board row owns the attempt counter. */
         const task = record.tasks.find((candidate) => candidate.id === String(args?.task_id ?? ""))
         if (task === undefined) throw new Error(`no task "${String(args?.task_id ?? "")}" in team ${record.teamId}`)
-        // ── THE READINESS GATE (R3) ───────────────────────────────────────────
-        // PROBE 1, the measured defect: a task blocked by a still-`pending` task was CLAIMED
-        // (`in_progress`, `startedAt` stamped) while `agent_teams_dispatch` refused the same pairing with
-        // "not ready (blocked by T1)". The claim path is the verb a captain actually uses, so it must ask
-        // the SAME question — `assertClaimReady` calls `blockingDependencies`, the predicate `readyTasks`
-        // and `taskVisual` are built on — and it asks it BEFORE the contract is written, so a refusal
-        // leaves no frozen attempt behind.
+        /** A supplied spelling selects a seat for the captain or confirms the member's own seat. */
+        const claimant = String(args?.claimant ?? sessionId).trim()
+        /** Keep the caller identity and requested seat separate. */
+        const identity = callerIdentity(record, sessionId, sessionTitleOf(exec), lineage)
+        /** A roster alias can address the member, but only an authenticated member can act as it. */
+        const actor = [sessionId, ...identity.ancestry, ...(identity.ownMember === undefined ? [] : [identity.ownMember.name, identity.ownMember.id])]
+        /** A legitimate captain can explicitly claim for a roster seat, subject to the declared assignment. */
+        const lead = recordNamesLead(record, [sessionId, ...identity.ancestry])
+        if (claimant === "" || (lead ? record.members.length > 0 && claimant !== sessionId && !recordNamesLead(record, [claimant]) &&
+            !record.members.some((member) => taskOwnerMatches(record, member.id, [claimant])) :
+            identity.ownMember === undefined || !taskOwnerMatches(record, claimant, actor))) {
+          throw new Error(`task ${task.id}: the caller cannot claim for "${claimant}"`)
+        }
+        if (task.owner && !taskOwnerMatches(record, task.owner, args?.claimant === undefined ? actor : [claimant])) {
+          throw new Error(`task ${task.id} is assigned to "${task.owner}"; use explicit captain release or reassignment to change the owner`)
+        }
+        if (typeof args?.expected_revision === "number" && task.revision !== args.expected_revision) {
+          throw new Error(`task ${task.id} changed under you (revision ${args.expected_revision} -> ${task.revision}); re-read it and retry`)
+        }
+        /** Dispatched tasks already have an active owner and a start clock. */
+        const active = task.status === "claimed" || task.status === "in_progress"
+        if (!active && task.status !== "pending") throw new Error(`task ${task.id} is already terminal ("${task.status}")`)
+        if (active && !taskOwnerMatches(record, task.owner, actor)) throw new Error(`task ${task.id}: only its active owner may acknowledge this assignment`)
+        if (!resplitTicketAccepted(workspace, record.teamId, task)) throw new Error(`task ${task.id} is waiting for its Cellwork requirements revision to be accepted`)
         assertClaimReady(record.tasks, task)
-        /** The claimer, defaulting to the calling session. */
-        const claimant = String(args?.claimant ?? sessionId)
-        // ONE clock reading for the contract and the row, so no two fields of one claim can disagree.
-        /** The instant this claim is stamped with. */
-        const claimAt = now()
-        /** The contract for this attempt, written before the record is told about the claim. */
-        const contract = claimContract(workspace, {
-          id: task.id,
-          subject: task.subject,
-          description: task.description,
-          blockedBy: task.blockedBy,
-          writeScopes: task.writeScopes,
-          revision: task.revision,
-        }, claimant, claimAt)
-        // ── S8: THE CLAIM STARTS A FRESH ACTIVITY CLOCK ──────────────────────────────
-        // `updateTeamTask` keeps the ORIGINAL `startedAt` on a reopen (its documented transition rule),
-        // so a re-claimed old row used to revive a day-old instant — the D6 defect, which made the row
-        // force-eligible on the very next tick. The stale instant is DELETED first and the in_progress
-        // transition then stamps THIS claim's clock: the activity baseline is never inherited.
-        /** The record with the stale start deleted, so the transition below re-stamps it. */
-        const reopened = updateTeamTask(record, task.id, { resetStartedAt: true }, claimAt)
-        /** The record after the claim: owned, in flight, and carrying the new attempt counter. */
-        const claimed = updateTeamTask(reopened, task.id, { status: "in_progress", owner: claimant === "" ? undefined : claimant, attempt: contract.attempt }, claimAt)
-        /** The roster row the claimant names, when the claimant IS a member of this team. */
-        const claimedMember = memberNamedBy(claimed, [claimant])
-        // THE CLAIMED MEMBER IS `running` AGAIN (PR #60 review F3). This path used to write the task and
-        // nothing else, so a SETTLED member woken by a Lead message and claiming its own row stayed
-        // `inactive`: the workmate in-use gate read it as free, and `settleMember` only settles a
-        // `running` row, so nothing ever corrected it. The roster row is resolved from the claimant's
-        // spelling and flipped exactly as a dispatch pass flips the member it paired; a `failed` or
-        // `provisioning` row is deliberately left alone, and a claimant the roster does not name is a
-        // no-op. THE PHASE IS RE-DERIVED either way, because a claim can take a SETTLED team out of
-        // `idle` (R2): the stored phase is what a reader trusts, and leaving it idle beside an in-flight
-        // row is the exact drift `withDerivedPhase` exists to prevent.
-        /** The record to persist: the claim, plus the member flip when a settled row was named. */
-        const next = withDerivedPhase(claimedMember?.status === "inactive" ? updateTeamMember(claimed, claimedMember.id, { status: "running" }) : claimed)
-        writeTeam(workspace, next)
-        /** This task as the record now holds it. */
-        const view = next.tasks.find((candidate) => candidate.id === task.id) ?? task
-        return { contract, task: view }
-      }
+        /** On repeat, the board's own attempt and start clock identify the already-frozen contract. */
+        const previous = active ? readContract(workspace, task.id) : undefined
+        if (previous !== undefined && previous.attempt === task.attempt && previous.claimedAt === task.startedAt &&
+            (previous.teamId === undefined || previous.teamId === record.teamId) && taskOwnerMatches(record, task.owner, [previous.claimedBy])) {
+          return { contract: previous, task }
+        }
+        /** A legacy in-flight row may need a first contract, without becoming a different attempt. */
+        const claimAt = active && task.startedAt !== undefined ? new Date(task.startedAt) : now()
+        /** Use dispatch's CAS for a new assignment. Acknowledging a dispatched assignment preserves its owner. */
+        const decision = active
+          ? { applied: true as const, record: task.status === "in_progress" && task.attempt !== undefined && task.startedAt !== undefined
+              ? record : updateTeamTask(record, task.id, { status: "in_progress", attempt: task.attempt ?? 1 }, claimAt) }
+          : casClaimTask(record, task.id, claimant, task.revision, claimAt)
+        if (!decision.applied) throw new Error(decision.reason)
+        /** The task as the authoritative attempt now holds it. */
+        const claimed = decision.record.tasks.find((candidate) => candidate.id === task.id) ?? task
+        /** Freeze this board's attempt before publishing a new row. */
+        const contract = claimContract(workspace, { ...task, teamId: record.teamId, attempt: claimed.attempt ?? 1 }, claimed.owner ?? claimant, claimAt)
+        /** A settled member becomes running again when it takes its own assignment. */
+        const claimedMember = record.members.find((member) => taskOwnerMatches(record, claimed.owner, [member.id]))
+        /** The claim and any consequent member status change share one board write. */
+        const next = claimedMember?.status === "inactive" ? updateTeamMember(decision.record, claimedMember.id, { status: "running" }) : decision.record
+        if (next !== record) writeTeam(workspace, withDerivedPhase(next))
+        return { contract, task: claimed }
+      })
 
-      if (action === "complete" || action === "fail") {
+      if (action === "complete" || action === "fail") return withProjectTaskWrite(workspace, () => {
         // THE MISSING TERMINAL VERB (captain amendment, 2026-10-07). The mpd-native plane could open a
         // plan, add members and create tasks, and then NOTHING could close a row: the official
         // `team_task_*` verbs are disabled in a dsh-tui boot (the host refuses the root-bound effect
@@ -2792,38 +2883,21 @@ export function apply(ctx: any): void {
         /** The task to close. */
         const taskId = String(args?.task_id ?? "")
         if (taskId === "") throw new Error(`agent_teams_task ${action}: task_id is required`)
-        /** The raw calling agent, read for the title the harness gives it. */
-        const self = exec.agent as any
-        /** The caller's team identity, when the official plane knows one. */
+        /** Resolve actors against the exact board that the terminal compare-and-set will inspect. */
+        const fresh = readTeam(workspace, record.teamId)
+        if (fresh === undefined || fresh.phase === "ended") return { refused: "the resolved team is no longer active", taskId }
+        /** A real member is addressed by the board's aliases, never by an arbitrary session title. */
+        const identity = callerIdentity(fresh, sessionId, sessionTitleOf(exec), lineage)
+        /** Both old name-based rows and new session-based rows keep their owner. */
+        const caller = [sessionId, ...identity.ancestry, ...(identity.ownMember === undefined ? [] : [identity.ownMember.name, identity.ownMember.id])]
+        /** Keep official captain fallback for legacy compositions without overriding a known member seat. */
         const membership = officialTeamMembership(dsh, exec)
-        /** The session header title the harness gives this caller (the persona prompt prefix). */
-        const title = String(self?.session?.header?.title ?? "")
-        // ── C7-4 F2: THE MEMBER'S OWN NAME ────────────────────────────────────
-        // A member's session id IS the `executorRef` the record kept at spawn, while its row's `owner`
-        // may be the member's NAME — and the caller's other spelling is the session TITLE, which in this
-        // composition is the persona prompt prefix ("You are the Senior Engineer,"), not a name. So the
-        // caller could not normalize to its own row and the captain closed every task by hand. The
-        // record ALREADY knows which member this session is: match it by the recorded handle, then fall
-        // back to a member name the title CONTAINS, and add that name to the caller's spellings.
-        /** The member this session is, as the resolved record names it. */
-        // THE ROSTER NAMES THE CALLER BY ITS OWN ID ONLY (PR #42 review F-B, CWE-863): a member's
-        // session carries the Lead as its `parentSession`, so searching the roster with the lineage
-        // would let a member match the LEAD's spelling and take the Lead close override below.
-        /** Who this call's own identity says it is: its member row, and the ancestry it may borrow. */
-        const identity = callerIdentity(record, sessionId, title, lineage)
-        // THE CALLER'S OWN SPELLINGS, never a name the caller TYPES: `claimant` is deliberately NOT read
-        // here, because accepting it would let any agent close any row by naming its owner. `ancestry`
-        // is EMPTY for a roster member and is the C7-4 F5 captain-continuity link for everyone else.
-        const caller = [sessionId, title, String(membership?.name ?? ""), ...(identity.ownMember === undefined ? [] : [identity.ownMember.name]), ...identity.ancestry].filter((value) => value !== "")
-        // RE-READ IMMEDIATELY BEFORE THE CAS, the dispatch pass's own discipline: the record was opened
-        // before this branch and a concurrent write may have moved it.
-        const fresh = readTeam(workspace, record.teamId) ?? record
         /** The closure decision, or the refusal and its reason. */
         const outcome = casCloseTask(fresh, {
           taskId,
           status: action === "complete" ? "completed" : "failed",
           caller,
-          lead: membership?.role === "lead",
+          lead: identity.ownMember === undefined && membership?.role === "lead",
           ...(typeof args?.expected_revision === "number" ? { expectedRevision: args.expected_revision } : {}),
           ...(args?.note === undefined ? {} : { note: String(args.note) }),
           now: now(),
@@ -2866,9 +2940,9 @@ export function apply(ctx: any): void {
           dependents: outcome.dependents,
           releasedFromDispatch,
         }
-      }
+      })
 
-      throw new Error(`agent_teams_task: unknown action "${action}" (claim | contract | release | complete | fail | depend | context | handoff)`)
+      throw new Error(`agent_teams_task: unknown action "${action}" (claim | contract | release | complete | fail | depend | context | handoff | progress)`)
     },
   }))
 
@@ -3184,6 +3258,8 @@ export function apply(ctx: any): void {
           ...(mailTeam === undefined ? {} : { teamId: mailTeam.teamId }),
         }, resolved.targets, now())
         if (!result.ok) return { refused: result.detail }
+        // The captain's conditional wake observes the committed mailbox independently of transport.
+        if (leadId !== "" && result.messages.some((message) => message.toId === leadId)) feed.notify(workspace)
         // The transport carries each row; a delivery failure does NOT lose the record — the message
         // stays undelivered in the ledger, which is exactly what `summary` reports.
         /** The ids whose recipient really accepted them, so `delivered` is stamped only where it is true. */
@@ -3423,31 +3499,42 @@ export function apply(ctx: any): void {
   disposers.push(dsh.registerTool({
     name: "agent_teams_control",
     description:
-      "`halt` stops NEW DISPATCH only; `resume` clears the hold; `fence`/`unfence` close/reopen ONE seat, then never messaged (Lead only); `end` closes the team (Lead only, idempotent).",
+      "`halt`/`resume` dispatch, `fence`/`unfence` seats, `end` team. `wake` arms or waits in-turn.",
     parameters: {
       type: "object",
       properties: {
-        action: { type: "string", enum: ["halt", "resume", "fence", "unfence", "end"], description: "What to do." },
+        action: { type: "string", enum: ["halt", "resume", "fence", "unfence", "end", "wake"] },
         reason: { type: "string", description: "halt/fence/end: why." },
         member: { type: "string", description: "fence/unfence: seat." },
-        team_id: { type: "string", description: "end: team to close (default: yours)." },
+        team_id: { type: "string", description: "end: default yours." },
+        wake: { type: "object", description: "{action:arm|wait|status|cancel,id?,task_ids?,mode:all|any,event:mail?,from_member?}" },
       },
       required: ["action"],
       additionalProperties: false,
     },
     output: {
-      schema: { type: "object", properties: { hold: { type: "object" }, resumed: { type: "boolean" }, teamId: { type: "string" }, member: { type: "string" }, fenced: { type: "boolean" }, endedAt: { type: "string" }, changed: { type: "boolean" }, reason: { type: "string" }, refused: { type: "string" } } },
+      schema: { type: "object", properties: { hold: { type: "object" }, resumed: { type: "boolean" }, teamId: { type: "string" }, member: { type: "string" }, fenced: { type: "boolean" }, endedAt: { type: "string" }, changed: { type: "boolean" }, reason: { type: "string" }, refused: { type: "string" }, registration: { type: "object" }, registrations: { type: "array", items: { type: "object" } }, next: { type: "string" }, wait: { type: "object" } } },
       render: (_args: any, value: any) =>
-        text(value?.refused !== undefined ? `refused: ${value.refused}`
+        text(value?.registration !== undefined || value?.registrations !== undefined || value?.wait !== undefined ? renderCaptainWake(value)
+          : value?.refused !== undefined ? `refused: ${value.refused}`
           : value?.changed !== undefined ? (value.changed ? `team ${value.teamId} ended (${value.reason})` : `team ${value.teamId} was already ended at ${value.endedAt} — nothing changed`)
             : value?.fenced !== undefined ? `${value.member} ${value.fenced ? "fenced" : "unfenced"}${value.fenced && typeof value.reason === "string" && value.reason !== "" ? ` (${value.reason})` : ""}`
               : value?.resumed !== undefined ? (value.resumed ? "resumed" : "was not halted") : value?.hold === undefined ? "not halted" : `halted: ${value.hold.reason}`),
     },
     execute: async (args: any, exec: DshToolExec) => {
-      /** The call's workspace, session and recorded ancestry. */
-      const { workspace, sessionId, lineage } = where(exec)
       /** The requested action, stringified so a non-string argument can only miss, never throw. */
       const action = String(args?.action ?? "")
+      if (action === "wake") {
+        if (args?.team_id !== undefined || sessionIsDelegatedChild(exec)) throw new Error("wake is scoped to this captain's own team and session")
+        /** Resolve the Team root from the exact live session, without process cwd fallback. */
+        const scope = captainWakeScope(exec.agent)
+        if (scope === undefined || scope.sessionId !== sessionIdOf(exec)) throw new Error("wake needs the captain's live session and workspace")
+        /** Inspection and cancellation stay available even after the original team closes. */
+        const team = args?.wake?.action === "arm" || args?.wake?.action === "wait" ? recordFor(scope.workspace, scope.sessionId) : undefined
+        return captainWake.execute(exec, scope, args?.wake, team)
+      }
+      /** The call's workspace, session and recorded ancestry. */
+      const { workspace, sessionId, lineage } = where(exec)
       /** The session title the harness stamped (the persona prompt prefix); the identity plane reads it. */
       const title = sessionTitleOf(exec)
       /** The caller this action acts as, built exactly like every other team action's caller. */
@@ -3486,7 +3573,7 @@ export function apply(ctx: any): void {
         return reply
       }
       if (action === "resume") return { resumed: clearHold(workspace) }
-      if (action !== "halt") throw new Error(`agent_teams_control: unknown action "${action}" (halt | resume | fence | unfence | end)`)
+      if (action !== "halt") throw new Error(`agent_teams_control: unknown action "${action}" (halt | resume | fence | unfence | end | wake)`)
       return { hold: placeHold(workspace, String(args?.reason ?? ""), sessionIdOf(exec), now()) }
     },
   }))
@@ -3497,10 +3584,8 @@ export function apply(ctx: any): void {
     description: "Stage a team for the current goal: /agent-teams <what the team is for>",
     input: { hint: "what the team is for" },
     handler: async (invocation: any) => {
-      /** The command's workspace: a command has no tool exec, so it resolves from the process view. */
-      const workspace = dsh.workspaceRoot()
-      /** The invoking session, so the plan is staged where that session will approve it. */
-      const sessionId = sessionIdOf({ agent: invocation?.agent } as DshToolExec)
+      /** The invoking session's project state, staged where the normal Team tool will read it. */
+      const { sessionId, workspace } = where({ agent: invocation?.agent } as DshToolExec)
       /** The command's argument, trimmed; empty means the user gets usage instead of a plan. */
       const goal = String(invocation?.rawInput ?? "").trim()
       if (goal === "") {
@@ -3511,7 +3596,7 @@ export function apply(ctx: any): void {
         return { kind: "message", text: "Usage: /agent-teams <what the team is for> — stages a plan; nobody is spawned until you approve it with agent_teams_plan {action: \"approve\"}." }
       }
       /** The staged plan, awaiting approval — which the reply says explicitly. */
-      const plan = stagePlan(workspace, sessionId, { name: goal.slice(0, 60), description: goal, approval: "required" }, now())
+      const plan = withProjectStage(workspace, sessionId, (stage) => stagePlan(stage.workspace, sessionId, { name: goal.slice(0, 60), description: goal, approval: "required" }, now()))
       return {
         kind: "message",
         text: `Staged ${describePlan(plan)}.\nAdd members and tasks with agent_teams_plan {action: \"add_member\" | \"create_task\"}, then approve with agent_teams_plan {action: \"approve\"}. Nobody is spawned before that.`,

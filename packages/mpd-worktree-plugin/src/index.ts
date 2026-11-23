@@ -2,7 +2,7 @@
 // the child session's EFFECTIVE cwd, so members write in parallel without sharing `.git/HEAD`.
 //
 // What this row owns (frozen contract: `.mpd/plans/agent-worktrees.md` §3 Lane A):
-//   * the five `mpd_worktree_*` tools (create / list / status / merge / remove) and their state file
+//   * the linked worktree tools (create / list / status / merge / remove) and their state file
 //     `<ws>/.mpd/worktrees/index.json` (atomic write, tolerant read, in-process critical section);
 //   * the `mpdWorktree` service (`createForMember` / `cwdForMember`) — the ONLY surface the team-core
 //     and cellwork lanes call, which NEVER throws: a degraded spawn is today's shared-checkout
@@ -17,6 +17,7 @@
 // two this row uses, and `ctx.provide` publishes the service without touching a harness service.
 import { DSH_SEAM_TOOLS, dshSeamInject, resolveDshAdapter, type DshAdapter, type DshToolDef } from "../../mpd-dsh-adapter-plugin/src/index.ts"
 import { effectiveConfig, type Config } from "./config.ts"
+import { COPY_TOOL_NAME, copyTool } from "./copy-tool.ts"
 import {
   createWorktree,
   createWorktreeService,
@@ -43,13 +44,14 @@ const LOG_ROW = "mpd-worktree"
 /** The service id the team-core and cellwork lanes resolve with `ctx.get("mpdWorktree", false)`. */
 export const WORKTREE_SERVICE = "mpdWorktree"
 
-/** The five tool names this row must register; the boot line counts against this list. */
+/** The tool names this row must register; the boot line counts against this list. */
 const TOOL_NAMES: readonly string[] = [
   "mpd_worktree_create",
   "mpd_worktree_list",
   "mpd_worktree_status",
   "mpd_worktree_merge",
   "mpd_worktree_remove",
+  COPY_TOOL_NAME,
 ]
 
 /**
@@ -62,7 +64,7 @@ function messageOf(error: unknown): string {
 }
 
 /**
- * The row entry point: registers the five tools and publishes the `mpdWorktree` service.
+ * Register the linked worktree and development copy tools and publish the `mpdWorktree` service.
  * Never throws out of `apply` — a seam or registration failure is ONE log line, not a broken boot.
  * @param ctx the cordis context (only `resolveDshAdapter` and `ctx.provide` are read).
  * @param config the row config from `cordis.patch.yml`.
@@ -185,6 +187,8 @@ export function apply(ctx: unknown, config: Config = {}): void {
     },
     execute: (args: RemoveArgs, exec: unknown) => removeWorktree(depsFor(exec), args),
   })
+
+  register(copyTool(ctx, dsh, resolved.protectedBranches))
 
   // The service the team-core and cellwork lanes consume. Its methods never throw: a workspace that is
   // not a repository, a failed create or a disabled row all degrade to `undefined` (the spawn then

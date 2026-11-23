@@ -61,6 +61,8 @@ interface Injection {
   dispatchReadThrows: boolean
   /** Fail the MEMBER the mint stages on the not-yet-approved plan (the seed seat), once. */
   mintMemberFails: boolean
+  /** Pause the next execution approval with its Team board already reserved. */
+  mintApprovalPauses: boolean
   /** Fail the `delete` the mint performs to leave a failed slot clean, once. */
   deleteFails: boolean
   /**
@@ -174,7 +176,7 @@ function makeHarness(): Harness {
   /** Whether the dispatch-stage read has already been made to throw. */
   let dispatchReadThrown = false
   /** The injection switches, read by the doubles below. */
-  const injection: Injection = { openFailAt: 0, memberFailAt: 0, taskFailAt: 0, dispatchReadThrows: false, mintMemberFails: false, deleteFails: false, unreadableTeamIds: [] }
+  const injection: Injection = { openFailAt: 0, memberFailAt: 0, taskFailAt: 0, dispatchReadThrows: false, mintMemberFails: false, mintApprovalPauses: false, deleteFails: false, unreadableTeamIds: [] }
   /** The captain's handle. */
   const captain: FakeAgent = { id: "session-captain", session: { id: "session-captain", header: { cwd: workspace } }, followup: (): void => { events.push("submit") } }
   /**
@@ -243,10 +245,19 @@ function makeHarness(): Harness {
       }
       if (action === "approve") {
         if (plan === null) throw new Error("no plan")
+        if (injection.mintApprovalPauses) {
+          injection.mintApprovalPauses = false
+          record = { teamId: "team-" + String(teamRecords.size + 1), name: plan.name, planId: plan.planId, phase: "forming", members: [], tasks: [] }
+          teamRecords.set(String(record.teamId), record)
+          plan = { ...plan, activation: { teamId: record.teamId } }
+          return { isError: false, value: { plan, team: record, stoppedAt: "fixture child quota" } }
+        }
+        /** A stopped approval retries its original board. */
+        const checkpoint = plan.activation?.teamId
         record = {
           // A FRESH ID PER APPROVAL: the ended planning team keeps its own record (`team-1`), so a mint
           // is visible as a DIFFERENT team rather than an overwrite of the dead one.
-          teamId: "team-" + String(teamRecords.size + 1),
+          teamId: checkpoint ?? "team-" + String(teamRecords.size + 1),
           // THE PHASE A REAL APPROVAL WRITES: every seed member is running, so team-core derives `active`.
           // The exact value is asserted by the MINT arm (N3), never merely "not ended".
           phase: "active",
@@ -1180,6 +1191,26 @@ function createCalls(harness: Harness): number {
 function teamWriteCalls(harness: Harness): number {
   return harness.calls.filter((call) => call.name === "agent_teams_plan" && (call.arguments.action === "add_member" || call.arguments.action === "create_task")).length
 }
+
+test("MINT RETRY resumes a paused Team approval before appending split work", async () => {
+  /** A Cellwork tool harness with an ended planning board uses the execution mint path. */
+  const harness = makeHarness()
+  await endedPlanningCell(harness)
+  /** The first approval reserves a board but has not started its seed. */
+  harness.injection.mintApprovalPauses = true
+  /** The mint's attempted create and seed append are the only board writes before approval. */
+  const createsBefore = createCalls(harness)
+  /** The failed answer must retain the board id for the captain's retry. */
+  const paused = await runTool(harness, "cellwork_activate", {})
+  expect(paused).toMatchObject({ ok: false, mintedTeamId: "team-2", error: expect.stringContaining("fixture child quota") })
+  expect(harness.teamRecords.get("team-2")?.tasks).toEqual([])
+  expect(harness.sends).toEqual([])
+  /** The second activation resumes approval and then materializes the same accepted split. */
+  const resumed = await runTool(harness, "cellwork_activate", {})
+  expect(resumed.ok).toBe(true)
+  expect(createCalls(harness)).toBe(createsBefore + 1)
+  expect(harness.teamRecords.get("team-2")?.tasks).toHaveLength(4)
+})
 
 test("MINT RETRY A: a failure BEFORE the first board row reuses the minted team; `create` stays spent once", async () => {
   /** The harness on an ended planning board. */

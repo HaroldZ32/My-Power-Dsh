@@ -1,0 +1,52 @@
+{
+  "scope": "Standalone MPD project team on DSH 0.2.2-rc.5",
+  "result": "PASS: local standalone runtime acceptance with measured bounds",
+  "verifiedRuntime": "2225fb75e48423c2fa1b7be7fa60aab1abcf6ec9",
+  "verifiedDelivery": "88d34a41f9552432c1a4b533661f370254651004",
+  "recordId": "rec-20261123T122355-42ed02",
+  "frozenContractSha256": "86000639f7b461337fb75c7e6a4d02bfe81c94036b863829bcc431b2fde14076",
+  "sourceReceiptSha256": "1f16f105ec9557842f6f333411c8094c3f50b9dce9023450b2fa5aededde4057",
+  "objectives": [
+    {
+      "file": "dispatch/DELIVERY.csv",
+      "hash": "ca8897b8c41c0ef24a3dcfa7149eec442ec4d67e796c215b55c3a75a2d3963c9",
+      "nativeRecord": "rec-20261123T120620-aa4ec5",
+      "helperChoice": "solo"
+    },
+    {
+      "file": "audit/DELTA.csv",
+      "hash": "a4ef2fdccaeab728c881bcb3ccc7f076c8db17bd0a5ada8c2c35696309848096",
+      "nativeRecord": "rec-20261123T120846-55a96c",
+      "helperChoice": "solo"
+    }
+  ],
+  "roster": {
+    "durableRoleCount": 2,
+    "homeNamedCount": 0,
+    "transientPlanningCountPerBoard": 4
+  },
+  "verification": {
+    "packagePass": 4261,
+    "packageFail": 0,
+    "packageSkip": 6,
+    "staticPass": 11,
+    "distFresh": 35,
+    "distOutsideMapping": "one prebuilt CodeGraph target",
+    "offlinePass": 56,
+    "offlineFail": 0,
+    "offlineSkip": 2,
+    "documentation": {
+      "pairs": 61,
+      "regularLinksChecked": 606,
+      "totalLinksClassified": 656,
+      "dead": 0
+    },
+    "olderHost": "0.2.2-rc.2 cold planning and immediate-match native wait passed; not full runtime sweep"
+  },
+  "bounds": [
+    "The two objective-only writers both chose solo. A separate controlled real-host run exercised scoped one-shot delegation, collection and completion in the original turn.",
+    "The full HTTP request size may grow while an individual role context is bounded.",
+    "The slash Autoproject command completed independently verified work; the host restricted persistent GOAL creation to a direct human turn.",
+    "The optional Superagent integration is outside this local release."
+  ]
+}

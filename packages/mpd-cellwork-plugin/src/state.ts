@@ -190,6 +190,10 @@ export interface CellState {
   subcellIds: string[]
   /** The accepted requirements revision; 0 before the first `finalize`. */
   requirementsRevision: number
+  /** Digest pinned for the initial or legacy accepted document before overwriting its editable copy. */
+  requirementsBaseHash?: string
+  /** Accepted update bytes identify a retry of the immediately preceding revision. */
+  requirementsUpdateHash?: string
   /** The accepted split revision, or null while no split has been accepted. */
   splitRevision: number | null
   /**
@@ -1116,6 +1120,8 @@ function normalizeCellState(raw: unknown): CellState | null {
     parentTeamId: typeof raw.parentTeamId === "string" ? raw.parentTeamId : "",
     subcellIds: Array.isArray(raw.subcellIds) ? raw.subcellIds.map(String) : [],
     requirementsRevision: typeof raw.requirementsRevision === "number" ? raw.requirementsRevision : 0,
+    ...(typeof raw.requirementsBaseHash === "string" ? { requirementsBaseHash: raw.requirementsBaseHash } : {}),
+    ...(typeof raw.requirementsUpdateHash === "string" ? { requirementsUpdateHash: raw.requirementsUpdateHash } : {}),
     splitRevision: typeof raw.splitRevision === "number" ? raw.splitRevision : null,
     // TOLERANT READ: a record written before the split ticket's id was recorded carries no key, and the
     // readers fall back to finding the ticket by its owner (contract C11) instead of refusing the record.

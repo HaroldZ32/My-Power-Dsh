@@ -231,7 +231,7 @@ describe("approveTeam — deterministic workmate binding (W3-C)", () => {
     expect(storedTeam(observed.workspace).tasks[0]?.owner).toBe("oracle-1")
   })
 
-  test("(b) a STRONG match reuses and renames the member; a WEAK match initializes a new workmate", async () => {
+  test("(b) a STRONG match reuses and renames the member; a WEAK match stays a plain seat", async () => {
     /** This arm's seams: one instance scores clear of the threshold, the other does not match at all. */
     const { observed, deps, library } = fixture({ library: { "reviewer-1": { baseName: "Reviewer", note: "judges correctness", readonly: false, persona: "You are the reviewer.", memory: "" } }, scores: { "reviewer-1": 0.9 } })
     stageWave(observed.workspace, [
@@ -242,16 +242,16 @@ describe("approveTeam — deterministic workmate binding (W3-C)", () => {
     const result = await approveTeam(deps, callerOf(observed.workspace))
     expect(result.ok).toBe(true)
     /** The reported decision table. */
-    const bindings = (result as { bindings?: Array<{ member: string; mode: string; workmate?: string }> }).bindings ?? []
-    // Member 1 reused the strong match; member 2 initialized `senior-engineer-1` (its role slug, first free ordinal).
+    const bindings = (result as { bindings?: Array<{ member: string; mode: string; workmate?: string; reason?: string }> }).bindings ?? []
+    // Reuse is read-only; a match miss preserves the staged name and the existing library.
     expect(bindings[0]).toEqual({ member: "reviewer-1", mode: "reuse", workmate: "reviewer-1" })
-    expect(bindings[1]).toEqual({ member: "senior-engineer-1", mode: "init", workmate: "senior-engineer-1" })
-    expect(observed.inits).toEqual([{ base: "Senior Engineer", name: "senior-engineer-1" }])
-    // The library now holds both instances, and the record names both bindings.
-    expect(library.has("senior-engineer-1")).toBe(true)
-    expect(storedTeam(observed.workspace).members.map((member) => member.workmate)).toEqual(["reviewer-1", "senior-engineer-1"])
+    expect(bindings[1]).toEqual({ member: "builder", mode: "none", reason: "no-match" })
+    expect(observed.inits).toEqual([])
+    // The original instance is the only durable library entry.
+    expect([...library.keys()]).toEqual(["reviewer-1"])
+    expect(storedTeam(observed.workspace).members.map((member) => member.workmate)).toEqual(["reviewer-1", undefined])
     // W3-C2: the record also says HOW each seat was bound, so `status` can report the decision.
-    expect(storedTeam(observed.workspace).members.map((member) => member.workmateMode)).toEqual(["reuse", "init"])
+    expect(storedTeam(observed.workspace).members.map((member) => member.workmateMode)).toEqual(["reuse", "none"])
   })
 
   test("normalized owners follow distinct seats when both rank the same workmate first", async () => {
@@ -269,9 +269,9 @@ describe("approveTeam — deterministic workmate binding (W3-C)", () => {
     expect(storedTeam(observed.workspace).tasks.map((task) => task.owner)).toEqual(observed.spawns)
   })
 
-  test("(c) at workmates.max the seat falls back to mode:none with reason:cap, and the inits equal min(N,cap)", async () => {
+  test("(c) legacy auto-init config does not create instances for unmatched seats", async () => {
     /** This arm's seams: an empty library, a cap of two, and three members that match nothing. */
-    const { observed, deps, library } = fixture({ knobs: { "workmates.max": 2 } })
+    const { observed, deps, library } = fixture({ knobs: { "workmates.autoInit": true, "workmates.max": 2 } })
     stageWave(observed.workspace, [
       { name: "one", description: "first", prompt: "One.", role: "Senior Engineer" },
       { name: "two", description: "second", prompt: "Two.", role: "Reviewer" },
@@ -282,22 +282,22 @@ describe("approveTeam — deterministic workmate binding (W3-C)", () => {
     expect(result.ok).toBe(true)
     /** The reported decision table. */
     const bindings = (result as { bindings?: Array<{ mode: string; reason?: string }> }).bindings ?? []
-    // Two initializations fill the cap; the third is a plain seat with the reason recorded.
-    expect(bindings.map((binding) => binding.mode)).toEqual(["init", "init", "none"])
-    expect(bindings[2]?.reason).toBe("cap")
-    expect(observed.inits.length).toBe(2)
-    expect(library.size).toBe(2)
+    // All three retain the staged seat and explain the match miss.
+    expect(bindings.map((binding) => binding.mode)).toEqual(["none", "none", "none"])
+    expect(bindings[2]?.reason).toBe("no-match")
+    expect(observed.inits).toEqual([])
+    expect(library.size).toBe(0)
     // The capped seat KEEPS its staged name, so the board still addresses it as staged.
-    expect(observed.spawns).toEqual(["senior-engineer-1", "reviewer-1", "three"])
+    expect(observed.spawns).toEqual(["one", "two", "three"])
     // W3-C2: `none` is a real persisted value, and the reason travels with it.
-    expect(storedTeam(observed.workspace).members.map((member) => member.workmateMode)).toEqual(["init", "init", "none"])
-    expect(storedTeam(observed.workspace).members[2]?.workmateReason).toBe("cap")
+    expect(storedTeam(observed.workspace).members.map((member) => member.workmateMode)).toEqual(["none", "none", "none"])
+    expect(storedTeam(observed.workspace).members[2]?.workmateReason).toBe("no-match")
   })
 
-  test("(c2) the auto-init cap is PER WORKSPACE (R-W3C Medium 1): another project's instances are free", async () => {
+  test("(c2) unrelated and workspace-owned instances remain unchanged after a match miss", async () => {
     /** A library of two instances owned by a DIFFERENT project. */
     const other = fixture({
-      knobs: { "workmates.max": 2 },
+      knobs: { "workmates.autoInit": true, "workmates.max": 2 },
       library: {
         "other-1": { baseName: "Planner", note: "unrelated budgeting notes", readonly: false, persona: "p", memory: "", workspaces: ["/projects/somewhere-else"] },
         "other-2": { baseName: "Planner", note: "unrelated budgeting notes", readonly: false, persona: "p", memory: "", workspaces: ["/projects/somewhere-else"] }
@@ -309,12 +309,13 @@ describe("approveTeam — deterministic workmate binding (W3-C)", () => {
     expect(free.ok).toBe(true)
     /** The binding rows of the fresh workspace's approval. */
     const freeBindings = (free as { bindings?: Array<{ mode: string; reason?: string }> }).bindings ?? []
-    // Another project's two instances do not consume THIS workspace's budget, so auto-init runs.
-    expect(freeBindings.map((binding) => binding.mode)).toEqual(["init"])
-    expect(other.observed.inits.length).toBe(1)
-    // THE NEGATIVE CONTROL: the identical library attributed to THIS workspace fills its budget instead.
+    // Linking eligibility does not create an instance for a missing compatible match.
+    expect(freeBindings[0]).toMatchObject({ mode: "none", reason: "no-match" })
+    expect(other.observed.inits).toEqual([])
+    expect([...other.library.keys()]).toEqual(["other-1", "other-2"])
+    // The same outcome holds for instances that belong to this workspace.
     const own = fixture({
-      knobs: { "workmates.max": 2 },
+      knobs: { "workmates.autoInit": true, "workmates.max": 2 },
       library: {
         "own-1": { baseName: "Planner", note: "unrelated budgeting notes", readonly: false, persona: "p", memory: "" },
         "own-2": { baseName: "Planner", note: "unrelated budgeting notes", readonly: false, persona: "p", memory: "" }
@@ -328,7 +329,8 @@ describe("approveTeam — deterministic workmate binding (W3-C)", () => {
     /** The binding rows of the capped workspace's approval. */
     const cappedBindings = (capped as { bindings?: Array<{ mode: string; reason?: string }> }).bindings ?? []
     expect(cappedBindings[0]?.mode).toBe("none")
-    expect(cappedBindings[0]?.reason).toBe("cap")
+    expect(cappedBindings[0]?.reason).toBe("no-match")
+    expect([...own.library.keys()]).toEqual(["own-1", "own-2"])
     expect(own.observed.inits.length).toBe(0)
   })
 

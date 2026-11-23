@@ -46,6 +46,7 @@ import type { TeamActionsServiceView } from "./caller"
 import type { DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 import { findSplitTicket } from "./staging"
 import { growExecutionSeats, type SeatGrowthResult } from "./elastic"
+import { fixedOwners, type FixedSeat } from "./fixed-roster"
 
 /**
  * The placeholder sentence a frozen contract carries until {@link withLoopId} replaces it.
@@ -92,6 +93,8 @@ export interface ActivateDeps {
   captainAgent: unknown
   /** The measured, ACCEPTED split verdict being materialised. */
   split: SplitVerdict
+  /** The authenticated fixed pool, when this host mounts the project identity service. */
+  fixedRoster?: readonly FixedSeat[]
   /** The roster persona text for one role, or null when the roster service cannot answer. */
   personaFor: (role: string) => string | null
   /** Read the live team record by id, or undefined when the team service cannot answer. */
@@ -103,6 +106,10 @@ export interface ActivateDeps {
    * which is today's behaviour — never a refused activation.
    */
   teams?: () => BoardTeamService | undefined
+  /** Seal an exact canonical producer document after it receives its real loop id. */
+  sealContract?: (loopId: string) => { sha256: string } | { refused: string }
+  /** Detect an interrupted new loop publication without reopening a legacy frozen contract. */
+  contractPending?: (path: string) => boolean
   /**
    * The canonical roster role names, for runtime seat growth (§4.1).
    *
@@ -326,6 +333,8 @@ export function memberPrompt(deps: Pick<ActivateDeps, "cell" | "personaFor" | "c
   const persona = deps.personaFor(ownerRole)
   /** One line per owned task: its key and subject. */
   const taskLines = owned.map((task) => "  · " + task.key + " — " + task.subject)
+  /** Only execution owners with a real write scope can start project-scoped one-shots. */
+  const mayDelegate = owned.some((task) => (task.kind === "work" || task.kind === "repair" || task.kind === "integration") && task.writeScopes.length > 0)
   return [
     ...(persona === null ? [] : [persona, ""]),
     "[mpd-cellwork] You are " + memberName + " (" + ownerRole + ") on cell " + deps.cell.cellId + ".",
@@ -343,6 +352,7 @@ export function memberPrompt(deps: Pick<ActivateDeps, "cell" | "personaFor" | "c
     "4. On completion: agent_teams_task {action:\"complete\", task_id, note:\"<one line>\"}.",
     "5. If you need a user decision, mail the captain; the captain relays the question. Do not guess.",
     "6. If the plugin tells you to CHECKPOINT, call cellwork_handoff and end your turn.",
+    ...(mayDelegate ? ["For genuinely independent work, use cellwork_delegate for a bounded subtask when useful without captain approval, and retain responsibility for the result."] : []),
   ].join("\n")
 }
 
@@ -352,20 +362,47 @@ export function memberPrompt(deps: Pick<ActivateDeps, "cell" | "personaFor" | "c
  * @param task - the review task's verdict row.
  * @param workTask - the work task it reviews.
  * @param cellId - the cell.
- * @param workContractKey - the file stem of the exact work row's contract.
+ * @param workspace - the canonical project state root when delivering this description.
+ * @param additional - other explicitly reviewed producer tasks with actual frozen contracts.
+ * @param contractKeys - replacement stems derived from the accepted board.
  * @returns the task description.
  */
-export function reviewTaskDescription(task: SplitTaskVerdict, workTask: SplitTaskVerdict, cellId: string, workContractKey: string = workTask.key): string {
-  /** The contract path, relative to the workspace, that the verifier is handed. */
-  const contract = contractRelativePath(cellId, workContractKey)
+export function reviewTaskDescription(task: SplitTaskVerdict, workTask: SplitTaskVerdict | undefined, cellId: string, workspace?: string, additional: readonly SplitTaskVerdict[] = [], contractKeys: ReadonlyMap<string, string> = new Map()): string {
+  /** Every supplied producer reference uses its real file, not the review's unwritten own key. */
+  const pathOf = (key: string): string => workspace === undefined ? contractRelativePath(cellId, contractKeys.get(key) ?? key) : contractPath(workspace, cellId, contractKeys.get(key) ?? key)
+  if (workTask === undefined) return task.description
   return [
     "VERIFY the work task " + JSON.stringify(workTask.key) + " (" + workTask.subject + ") as a BLIND reviewer.",
-    "Frozen contract: " + contract + " — read it (and the repository documentation) BEFORE the implementation.",
+    "FROZEN CONTRACT: " + pathOf(workTask.key),
+    ...additional.map((producer) => "Additional frozen producer contract (" + producer.key + "): " + pathOf(producer.key)),
+    ...(task.description.trim() === "" ? [] : ["Review requirements: " + task.description]),
+    "Read the supplied frozen contracts and repository documentation BEFORE the implementation.",
+    "Each producer contract names its own loop to bind with `mpd_verify_seat`; the loop was opened at activation.",
+    "Then run the gates it lists, and record the verdict with `mpd_verify_record`",
+    "(a PASS cites the documents it rests on and the gate evidence ids; a FAIL names each finding and its",
+    "document source). You never fix the work: a FAIL bounces it back to its writer as a repair task.",
+  ].join("\n")
+}
+
+/** Reconstruct the exact review receipt emitted before canonical producer paths were introduced. */
+function legacyReviewDescription(task: SplitTaskVerdict, work: SplitTaskVerdict, cellId: string, workKey: string): string {
+  return [
+    "VERIFY the work task " + JSON.stringify(work.key) + " (" + work.subject + ") as a BLIND reviewer.",
+    "Frozen contract: " + contractRelativePath(cellId, workKey) + " — read it (and the repository documentation) BEFORE the implementation.",
     "It names the verification loop to bind with `mpd_verify_seat`; the loop was opened at activation.",
     "Then run the gates it lists, and record the verdict with `mpd_verify_record`",
     "(a PASS cites the documents it rests on and the gate evidence ids; a FAIL names each finding and its",
     "document source). You never fix the work: a FAIL bounces it back to its writer as a repair task.",
   ].join("\n")
+}
+
+/** Check the accepted text, allowing a contract from before native producer scoping was introduced. */
+function matchesFrozenAcceptance(frozen: string, original: string, cellId: string, boardId: string): boolean {
+  /** A recovered board id may already have been written before the reply was lost. */
+  const recorded = frozen.replace(" · Board task: `" + boardId + "`", " · Board task: ``").split("\n## Gate commands\n")[0]
+  /** Gate commands after this boundary are kept verbatim when adopting an old freeze. */
+  const expected = original.split("\n## Gate commands\n")[0]
+  return recorded === expected || recorded === expected.replace("producer: " + producerIdentity(cellId) + "\n", "")
 }
 
 /**
@@ -520,6 +557,8 @@ type PlanCall = (arguments_: Record<string, unknown>) => Promise<{ ok: true; val
 interface MintSeedMember {
   /** The board name the approval raises. */
   name: string
+  /** Temporary seed on a project without an established fixed pool. */
+  scope?: "run"
   /** The roster role the seat routes by. */
   role: string
   /** The description the roster row carries. */
@@ -549,7 +588,7 @@ interface MintExecutionInput {
  * @param input - the plan name, description and seed member.
  * @returns the minted team id, or the refusal sentence naming the verb that failed.
  */
-async function mintExecutionTeam(call: PlanCall, input: MintExecutionInput): Promise<{ ok: true; teamId: string } | { ok: false; error: string }> {
+async function mintExecutionTeam(call: PlanCall, input: MintExecutionInput): Promise<{ ok: true; teamId: string; stoppedAt?: string } | { ok: false; error: string }> {
   /** The staged plan. */
   const created = await call({ action: "create", name: input.planName, description: input.description })
   if (!created.ok) return { ok: false, error: "the mint plan could not be staged: " + created.error }
@@ -569,6 +608,11 @@ async function mintExecutionTeam(call: PlanCall, input: MintExecutionInput): Pro
         : " (AND the empty plan slot could NOT be deleted: " + cleaned.error + " — clear that staged plan before retrying)"),
     }
   }
+  return approveExecutionTeam(call)
+}
+
+/** Retry the exact execution plan through the Team approval checkpoint. */
+async function approveExecutionTeam(call: PlanCall): Promise<{ ok: true; teamId: string; stoppedAt?: string } | { ok: false; error: string }> {
   /** The approval, which creates the record and raises the seed seat. */
   const approved = await call({ action: "approve" })
   if (!approved.ok) return { ok: false, error: "the mint plan could not be approved: " + approved.error }
@@ -577,7 +621,9 @@ async function mintExecutionTeam(call: PlanCall, input: MintExecutionInput): Pro
   /** The minted team id. */
   const teamId = typeof team.teamId === "string" ? team.teamId : ""
   if (teamId === "") return { ok: false, error: "the mint plan was approved but the answer carried no team id — inspect `agent_teams_plan {action:\"status\"}` before retrying" }
-  return { ok: true, teamId }
+  /** The Team tool reports paused approvals as a structured success with a stopped reason. */
+  const stoppedAt = typeof approved.value.stoppedAt === "string" ? approved.value.stoppedAt : undefined
+  return { ok: true, teamId, ...(stoppedAt === undefined ? {} : { stoppedAt }) }
 }
 
 /** Read the append intents of this pass and every not-yet-materialised predecessor. */
@@ -606,16 +652,18 @@ function replacementContractKey(key: string, revision: number): string {
 
 /** The suffix persisted atomically with a board row. */
 function taskMarker(cellId: string, revision: number, key: string): string {
-  return "\nCELLWORK TASK: " + JSON.stringify([cellId, revision, key]) + "\nFROZEN CONTRACT: "
+  return "\nCELLWORK TASK: " + JSON.stringify([cellId, revision, key])
 }
 
 /** Recognise a revision-specific contract on a mapped row without using board text as a path. */
-function boardContractKey(cellId: string, key: string, description: string | undefined): string {
+function boardContractKey(workspace: string, cellId: string, key: string, description: string | undefined): string {
   /** The fixed prefix of a replacement contract pointer. */
-  const prefix = "FROZEN CONTRACT: " + contractRelativePath(cellId, key + "@r").slice(0, -3)
+  const prefixes = [contractRelativePath(cellId, key + "@r"), contractPath(workspace, cellId, key + "@r")].map((path) => "FROZEN CONTRACT: " + path.slice(0, -3))
   /** A decimal revision can only be read from the final pointer line. */
   const pointer = description?.split("\n").at(-1)
-  if (pointer === undefined || !pointer.startsWith(prefix)) return key
+  /** Both historical relative and current canonical paths identify the same deterministic stem. */
+  const prefix = prefixes.find((candidate) => pointer?.startsWith(candidate))
+  if (pointer === undefined || prefix === undefined) return key
   /** The path fragment after the fixed key and revision separator. */
   const suffix = pointer.slice(prefix.length)
   return /^[1-9]\d*\.md$/.test(suffix) ? replacementContractKey(key, Number(suffix.slice(0, -3))) : key
@@ -623,7 +671,7 @@ function boardContractKey(cellId: string, key: string, description: string | und
 
 /** Find claims made by the board footer, including a claim with a malformed contract pointer. */
 function markedTaskRows(tasks: NonNullable<DispatchRecordView["tasks"]>, marker: string): NonNullable<DispatchRecordView["tasks"]> {
-  return tasks.filter((row) => typeof row.description === "string" && row.description.slice(row.description.lastIndexOf("\nCELLWORK TASK: ")).startsWith(marker))
+  return tasks.filter((row) => typeof row.description === "string" && row.description.slice(row.description.lastIndexOf("\nCELLWORK TASK: ")).split("\n", 2)[1] === marker.slice(1))
 }
 
 /** The material task fields and review assignment that identify the frozen work. */
@@ -672,12 +720,16 @@ function priorBoardTasks(deps: ActivateDeps, revisions: readonly number[], tasks
       /** A superseded terminal row may precede a replacement with its own contract. */
       const earlier = prior.get(task.key)
       /** Only these two deterministic pointers can have been minted for this key. */
-      const paths = [task.key, replacementContractKey(task.key, revision)].map((key) => contractRelativePath(deps.cell.cellId, key))
+      const suffixes = [task.key, replacementContractKey(task.key, revision)].flatMap((key) => [
+        marker + "\nFROZEN CONTRACT: " + contractRelativePath(deps.cell.cellId, key),
+        marker + "\nFROZEN CONTRACT: " + contractPath(deps.workspace, deps.cell.cellId, key),
+      ])
+      if (task.writeScopes.length === 0) suffixes.push(marker)
       if (matches.length !== 1 || row === undefined || typeof row.id !== "string" || row.id === ""
-        || (earlier !== undefined && (!terminalTask(earlier.row.status) || !row.description?.endsWith(marker + paths[1])))) throw ambiguous(task.key)
+        || (earlier !== undefined && (!terminalTask(earlier.row.status) || task.writeScopes.length > 0 && boardContractKey(deps.workspace, deps.cell.cellId, task.key, row.description) !== replacementContractKey(task.key, revision)))) throw ambiguous(task.key)
       if (row.subject !== task.subject || row.kind !== task.kind || JSON.stringify(row.writeScopes ?? []) !== JSON.stringify(task.writeScopes)
-        || !paths.some((path) => row.description?.endsWith(marker + path))
-        || (task.kind !== "review" && !paths.some((path) => row.description === task.description + "\n" + marker + path))) throw ambiguous(task.key)
+        || !suffixes.some((suffix) => row.description?.endsWith(suffix))
+        || (task.kind !== "review" && !suffixes.some((suffix) => row.description === task.description + "\n" + suffix))) throw ambiguous(task.key)
       prior.set(task.key, { row: { ...row, id: row.id }, task, split: stored.verdict })
     }
   }
@@ -691,6 +743,12 @@ function priorBoardTasks(deps: ActivateDeps, revisions: readonly number[], tasks
  * @returns the artifacts created, or the refusal sentence plus the partial it may resume from.
  */
 export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResult> {
+  if (deps.fixedRoster !== undefined) {
+    try { deps = { ...deps, split: fixedOwners(deps.split, deps.fixedRoster) } } catch (error) {
+      if (error instanceof Error) return { ok: false, error: error.message }
+      throw error
+    }
+  }
   // THE BOARD IS RESOLVED, NOT TRUSTED FROM THE RECORD (§7.1/§7.1a sites 3 and 8): a normal cell's
   // planning team goes clean-terminal and activation lands on a FRESH team, so `cell.teamId` names the
   // dead one. Every team read below — the live-roster seed, the cancellation, the final report — goes
@@ -843,7 +901,7 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
   for (const [key, id] of previous) {
     /** Follow a versioned pointer after a previously checkpointed replacement. */
     const row = live?.tasks?.find((task) => task.id === id)
-    contractKeys.set(key, boardContractKey(deps.cell.cellId, key, row?.description))
+    contractKeys.set(key, boardContractKey(deps.workspace, deps.cell.cellId, key, row?.description))
   }
   // Resolve blockers first: reusing a dependent whose blocker was replaced would bind it to old work.
   for (const task of topologicalOrder(deps.split.tasks)) {
@@ -857,7 +915,7 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     /** A recorded replacement wins only when the older row is already closed. */
     const recordedId = previous.get(task.key)
     if (current.length > 1 || (current.length === 1 && (!appendStarted || !terminalTask(older.row.status)
-      || boardContractKey(deps.cell.cellId, task.key, current[0]?.description) !== replacementKey))
+      || (task.writeScopes.length > 0 && boardContractKey(deps.workspace, deps.cell.cellId, task.key, current[0]?.description) !== replacementKey)))
       || (recordedId !== undefined && recordedId !== older.row.id && (current[0]?.id !== recordedId || !terminalTask(older.row.status)))) {
       return fail("cellwork_activate: ambiguous board rows for split task " + JSON.stringify(task.key) + " — reconcile the rows on " + teamId + " before retrying")
     }
@@ -878,7 +936,7 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
       continue
     }
     /** The old board row names its own immutable contract filename. */
-    const contractKey = boardContractKey(deps.cell.cellId, task.key, older.row.description)
+    const contractKey = boardContractKey(deps.workspace, deps.cell.cellId, task.key, older.row.description)
     if (task.writeScopes.length > 0) {
       try {
         /** The preceding pass wrote this file before its append; unreadable evidence prevents adoption. */
@@ -886,8 +944,8 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
         /** The original reviewer is the one frozen alongside the work. */
         const reviewer = older.split.tasks.find((candidate) => candidate.kind === "review" && candidate.blockedBy.includes(task.key))
         /** The acceptance and owner fields precede the configurable gates, which stay as frozen. */
-        const acceptance = buildContractDoc({ ...deps, split: older.split }, older.task, reviewer, "").split("\n## Gate commands\n")[0]
-        if (frozen.replace(" · Board task: `" + older.row.id + "`", " · Board task: ``").split("\n## Gate commands\n")[0] !== acceptance) {
+        const acceptance = buildContractDoc({ ...deps, split: older.split }, older.task, reviewer, "")
+        if (!matchesFrozenAcceptance(frozen, acceptance, deps.cell.cellId, older.row.id)) {
           return fail("cellwork_activate: frozen contract does not match recovered task " + JSON.stringify(task.key))
         }
         recoveredContracts.set(task.key, frozen.trimEnd())
@@ -952,7 +1010,9 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     // F1: a KEPT task from a cell activated BEFORE `activatedLoops` existed has no recorded id, but its
     // frozen contract may already name a loop. Re-opening would duplicate the loop and rewrite a contract
     // a verifier may be reading — so such a task is skipped, and its arming satisfies the dispatch gate.
-    if (keptKeys.has(task.key) && contractAlreadyNamesLoop(deps, contractKeys.get(task.key) ?? task.key)) {
+    /** Replacement contracts are addressed by the actual board row's stem. */
+    const contractKey = contractKeys.get(task.key) ?? task.key
+    if (keptKeys.has(task.key) && contractAlreadyNamesLoop(deps, contractKey) && deps.contractPending?.(contractPath(deps.workspace, deps.cell.cellId, contractKey)) !== true) {
       armedByContract.add(task.key)
       continue
     }
@@ -974,6 +1034,23 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
   // seat its approval raised. `recordedMinted !== ""` is BELT AND BRACES beside `resplit`, because "never
   // mint a second execution team" is the invariant, not a side effect of how `resplit` happens to be
   // computed.
+  /** The exact staged name distinguishes this cell's execution board from the planning board. */
+  const executionPlanName = "cell " + deps.cell.cellId + " execution"
+  if (live?.name === executionPlanName && typeof live.planId === "string" && intendedBoard === undefined && (deps.cell.activatedRevision ?? 0) === 0) {
+    /** A Team checkpoint must be finalized before Cellwork can append to the resulting board. */
+    const status = await call({ action: "status" })
+    if (!status.ok) return fail("cellwork_activate could not read the execution plan: " + status.error)
+    /** Only an exact plan and board relationship can resume an approval. */
+    const plan = typeof status.value.plan === "object" && status.value.plan !== null ? status.value.plan as Record<string, unknown> : undefined
+    if (plan?.planId === live.planId && plan.name === executionPlanName && plan.activation !== undefined) {
+      /** Continue the Team checkpoint without staging a replacement execution board. */
+      const resumed = await approveExecutionTeam(call)
+      if (!resumed.ok) return fail(resumed.error)
+      if (resumed.teamId !== teamId) return fail("cellwork_activate: execution approval returned a different board " + resumed.teamId)
+      if (resumed.stoppedAt !== undefined) return fail("cellwork_activate: the execution team approval is paused: " + resumed.stoppedAt)
+      try { live = deps.recordFor(teamId) } catch { live = undefined }
+    }
+  }
   if (intendedBoard === undefined && recordedMinted === "" && !resplit && !isLiveTeamRecord(live)) {
     /** WHY the resolved board is being replaced; `unreadable` is a REFUSAL, never a reason to mint (M2). */
     const trigger = mintTriggerFor(deps.workspace, teamId, live)
@@ -995,9 +1072,9 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     const seedRole = (seedOwned[0]?.ownerRole ?? seedMember).trim()
     /** The mint's answer. */
     const minted = await mintExecutionTeam(call, {
-      planName: "cell " + deps.cell.cellId + " execution",
+      planName: executionPlanName,
       description: deps.cell.objective,
-      member: { name: seedMember, role: seedRole, description: seedMember, prompt: memberPrompt(deps, seedMember, seedRole, seedOwned) },
+      member: { name: seedMember, role: seedRole, description: seedMember, prompt: memberPrompt(deps, seedMember, seedRole, seedOwned), ...(deps.fixedRoster?.length === 0 ? { scope: "run" } : {}) },
     })
     if (!minted.ok) return fail("cellwork_activate could not mint the execution team after the planning team " + JSON.stringify(teamId) + " ended: " + minted.error)
     mintedTeamId = minted.teamId
@@ -1011,6 +1088,7 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     partial.minted = true
     partial.mintTrigger = trigger
     mutated = true
+    if (minted.stoppedAt !== undefined) return fail("cellwork_activate: the execution team approval is paused: " + minted.stoppedAt)
     // THE LIVE SEED IS THE MINTED TEAM, re-read so the seed member the approval raised is reused.
     try { live = deps.recordFor(teamId) } catch { live = undefined }
   }
@@ -1084,7 +1162,19 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     /** The absolute path. */
     const path = contractPath(deps.workspace, deps.cell.cellId, contractKeys.get(task.key) ?? task.key)
     try {
-      atomicWriteText(path, doc + "\n")
+      /** Preserve an already-published freeze when the board reply or cell checkpoint was lost. */
+      const marker = taskMarker(deps.cell.cellId, deps.split.revision, task.key)
+      /** The board row that had already bound this file on the preceding attempt. */
+      const published = markedTaskRows(live?.tasks ?? [], marker)[0]
+      if (published?.id === undefined) atomicWriteText(path, doc + "\n")
+      else {
+        /** Check immutable acceptance before recovering its existing gate and loop bytes. */
+        const frozen = readFileSync(path, "utf8")
+        if (!matchesFrozenAcceptance(frozen, doc, deps.cell.cellId, published.id)) {
+          return fail("cellwork_activate: frozen contract does not match recovered task " + JSON.stringify(task.key))
+        }
+        recoveredContracts.set(task.key, frozen.trimEnd())
+      }
     } catch (error) {
       return fail("cellwork_activate could not write the contract for " + JSON.stringify(task.key) + ": " + errorText(error))
     }
@@ -1127,7 +1217,7 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     /** The member append; the live arm raises the teammate immediately. The ROLE carries the routing. */
     const added = await call({
       action: "add_member",
-      member: { name: memberName, role: ownerRole, description: memberName + (pureVerifier ? " (verifier)" : ""), prompt: memberPrompt(deps, memberName, ownerRole, owned) },
+      member: { name: memberName, role: ownerRole, description: memberName + (pureVerifier ? " (verifier)" : ""), prompt: memberPrompt(deps, memberName, ownerRole, owned), ...(deps.fixedRoster?.length === 0 ? { scope: "run" } : {}) },
     })
     if (!added.ok) {
       // A DUPLICATE IS A RECONCILIATION, NOT A FAILURE (contract A3): the member exists on the live
@@ -1184,15 +1274,22 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     // Any dispatcher — the team plane today — delivers the description VERBATIM, so putting the pointer
     // here is what keeps Amendment 6 R1 true through the plane instead of only through cellwork's own
     // message text. The pointer names the SPLIT KEY's contract file, never the board id's.
-    /** The path the verifier's loop froze for this split key. */
-    const contract = contractRelativePath(deps.cell.cellId, contractKeys.get(task.key) ?? task.key)
+    /** The stem and exact path of a producer's immutable contract. */
+    const stem = contractKeys.get(task.key) ?? task.key
     /** The stable append identity, unique to this cell, accepted revision and split key. */
     const marker = taskMarker(deps.cell.cellId, deps.split.revision, task.key)
-    /** A review points to the exact contract of the work row it blocks on. */
-    const reviewed = task.kind === "review" ? deps.split.tasks.find((candidate) => candidate.key === task.blockedBy[0]) ?? task : undefined
-    /** The task's description and the durable identity written in the same transaction as the row. */
-    const description = (reviewed === undefined ? task.description
-      : reviewTaskDescription(task, reviewed, deps.cell.cellId, contractKeys.get(reviewed.key))) + "\n" + marker + contract
+    /** Each direct dependency may supply an actual frozen producer contract; requirement rows may not. */
+    const producers = task.kind !== "review" ? [] : task.blockedBy.flatMap((key) => {
+      /** Use the accepted producer from the split and its existing frozen file, including a kept task. */
+      const producer = deps.split.tasks.find((candidate) => candidate.key === key && candidate.writeScopes.length > 0)
+      return producer !== undefined && existsSync(contractPath(deps.workspace, deps.cell.cellId, contractKeys.get(key) ?? key)) ? [producer] : []
+    })
+    /** The human envelope has only the actual producer contracts. */
+    const acceptance = task.kind === "review"
+      ? reviewTaskDescription(task, producers[0], deps.cell.cellId, deps.workspace, producers.slice(1), contractKeys)
+      : task.description
+    /** The board footer points to a file only when this row has its own frozen contract. */
+    const description = acceptance + "\n" + marker + (task.writeScopes.length === 0 ? "" : "\nFROZEN CONTRACT: " + contractPath(deps.workspace, deps.cell.cellId, stem))
     /** Read the target board immediately before an append so a lost reply cannot duplicate it. */
     let record: DispatchRecordView | undefined
     try { record = deps.recordFor(teamId) } catch (error) {
@@ -1207,16 +1304,23 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     /** Pre-upgrade rows have only the contract pointer, so their revision cannot be proved. */
     const legacyPointer = "\n\nFROZEN CONTRACT: " + contractRelativePath(deps.cell.cellId, task.key)
     /** A terminal cancellation can be replaced by a later revision. */
-    const legacy = (tasks ?? []).filter((row) => row.description?.endsWith(legacyPointer)
+    const legacy = (tasks ?? []).filter((row) => (row.description?.endsWith(legacyPointer) || row.description?.endsWith("\n\nFROZEN CONTRACT: " + contractPath(deps.workspace, deps.cell.cellId, task.key)))
+      && !row.description?.includes("\nCELLWORK TASK: ")
       && row.id !== deps.cell.cancelledTasks[task.key] && row.status !== "cancelled")
+    /** Earlier builds used a relative footer and gave every row a pointer. */
+    const legacyWork = task.kind === "review" ? deps.split.tasks.find((candidate) => candidate.key === task.blockedBy[0]) ?? task : undefined
+    /** The pre-merge human envelope and machine footer together prove this recorded append. */
+    const legacyDescription = (legacyWork === undefined ? task.description
+      : legacyReviewDescription(task, legacyWork, deps.cell.cellId, contractKeys.get(legacyWork.key) ?? legacyWork.key))
+      + "\n" + marker + "\nFROZEN CONTRACT: " + contractRelativePath(deps.cell.cellId, stem)
     /** The matching row, when a previous attempt already appended it. */
     const recovered = matches[0]
     if (matches.length > 1 || legacy.length > 0 || (recovered !== undefined && (
       typeof recovered.id !== "string" || recovered.id === "" || recovered.status === "cancelled"
-      || [...boardIds.values()].includes(recovered.id) || recovered.description !== description
+      || [...boardIds.values()].includes(recovered.id) || (recovered.description !== description && recovered.description !== legacyDescription)
       || recovered.subject !== task.subject || recovered.kind !== task.kind || recovered.owner !== memberName
       || JSON.stringify(recovered.blockedBy) !== JSON.stringify(mappedBlockers)
-      || JSON.stringify(recovered.writeScopes) !== JSON.stringify(task.writeScopes)
+      || JSON.stringify(recovered.writeScopes ?? []) !== JSON.stringify(task.writeScopes)
     ))) {
       return fail("cellwork_activate: ambiguous board rows for split task " + JSON.stringify(task.key) + " on " + teamId
         + " (" + [...matches, ...legacy].map((row) => row.id ?? "unknown id").join(", ") + ") — reconcile the rows before retrying")
@@ -1258,8 +1362,10 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     if (boardId === "") return fail("cellwork_activate has no board id for " + JSON.stringify(task.key) + " — refusing to open a verify loop for a row that is not on the board")
     /** The file stem distinguishes replaced contracts for the same split key. */
     const contractKey = contractKeys.get(task.key) ?? task.key
-    /** The relative contract path the loop freezes. */
-    const contract = contractRelativePath(deps.cell.cellId, contractKey)
+    /** Legacy planes still use the working workspace; native project loops bind the original file. */
+    const path = contractPath(deps.workspace, deps.cell.cellId, contractKey)
+    /** The contract reference we hand to both the seat and record. */
+    const contract = deps.sealContract === undefined ? contractRelativePath(deps.cell.cellId, contractKey) : path
     /** The board member that OWNS this code task (contract C1). */
     const memberName = resolvedMemberName(task)
     /** The member row that carries the owner's agent identity, from this pass or the earlier seed. */
@@ -1269,6 +1375,12 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     // display name. The cell record's `sessionId` is that identity; `executorRef` is the fallback for a
     // composition that hands back only the executor handle.
     const writerId = (owner?.sessionId ?? "").trim() === "" ? (owner?.executorRef ?? "").trim() : (owner?.sessionId ?? "").trim()
+    /** The named reviewer owns this producer loop, including when its execution seat was retained. */
+    const review = reviewerOf(task.key)
+    /** Select the exact accepted review owner rather than an arbitrary live member. */
+    const reviewName = review === undefined ? undefined : resolvedMemberName(review)
+    /** The original verifier's native session, when this split declares one. */
+    const verifier = reviewName === undefined ? undefined : (newMembers[reviewName] ?? existingMembers.get(roleKey(reviewName)))?.sessionId
     /** The loop-open call, under the CAPTAIN'S OWN agent (contract A4). */
     let opened: { ok: boolean; value?: unknown; error?: unknown }
     try {
@@ -1279,6 +1391,7 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
           contract,
           scope: [...task.writeScopes],
           task_id: boardId,
+          ...(deps.sealContract === undefined || !verifier ? {} : { verifier }),
           ...(writerId === "" ? {} : { writer_id: writerId, writer_reason: "member: " + memberName }),
         },
         agent: deps.captainAgent,
@@ -1293,20 +1406,23 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     /** The minted loop id. */
     const loopId = typeof value.loopId === "string" ? value.loopId : ""
     if (loopId === "") return fail("cellwork_activate opened no loop id for " + JSON.stringify(task.key) + " — refusing to dispatch unarmed work")
+    // A replayed sealed project loop already checked its file. Never rewrite that accepted revision.
+    if (typeof value.contractSha256 !== "string" || value.contractSha256 === "") {
+      /** Include the actual producer board row and loop id in the final accepted bytes. */
+      const stored = recoveredContracts.get(task.key)?.replace(" · Board task: ``", " · Board task: `" + boardId + "`")
+        ?? buildContractDoc(deps, task, review, boardId)
+      try {
+        atomicWriteText(path, withLoopId(stored, loopId) + "\n")
+        /** Capture the final bytes before the loop is considered ready for dispatch. */
+        const sealed = deps.sealContract?.(loopId)
+        if (sealed !== undefined && "refused" in sealed) return fail("cellwork_activate could not seal the producer contract for " + JSON.stringify(task.key) + ": " + sealed.refused)
+      } catch (error) {
+        return fail("cellwork_activate could not finalize the contract for " + JSON.stringify(task.key) + ": " + errorText(error))
+      }
+    }
     loopIds.set(task.key, loopId)
     loops.push({ taskKey: task.key, boardId, loopId })
     partial.loopIds[task.key] = loopId
-    // THE FROZEN CONTRACT NAMES THE LOOP (the existing `withLoopId` path). The path is DERIVED, not
-    // remembered: on a resume the contract was written by the pass that crashed, before the loop existed.
-    const path = partial.contracts[task.key] ?? contractPath(deps.workspace, deps.cell.cellId, contractKey)
-    /** An adopted freeze keeps its original revision, gates and acceptance text. */
-    const stored = recoveredContracts.get(task.key)?.replace(" · Board task: ``", " · Board task: `" + boardId + "`")
-      ?? buildContractDoc(deps, task, reviewerOf(task.key), boardId)
-    try {
-      atomicWriteText(path, withLoopId(stored, loopId) + "\n")
-    } catch (error) {
-      return fail("cellwork_activate could not rewrite the contract for " + JSON.stringify(task.key) + ": " + errorText(error))
-    }
     progress("loop", task.key)
   }
   // THE DISPATCH GATE (contract A3): only after EVERY task has a board id and EVERY code task has a loop
@@ -1351,6 +1467,7 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
       record: afterBoard.record,
       refreshRecord: () => deps.recordFor(afterBoard.teamId),
       rosterRoles: deps.rosterRoles?.() ?? [],
+      ...(deps.fixedRoster === undefined ? {} : { fixedRoster: deps.fixedRoster }),
       personaFor: deps.personaFor,
       now: deps.now,
     })

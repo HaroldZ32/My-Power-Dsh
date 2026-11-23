@@ -1,9 +1,48 @@
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
-import { resolve as resolve2, sep as sep2 } from "node:path";
+
+// packages/mpd-dsh-adapter-plugin/src/scoped-helper.ts
+import { realpathSync } from "node:fs";
+import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
+function helperTarget(checkout, value) {
+  try {
+    const root = realpathSync(checkout);
+    const path = resolve(root, value);
+    const local = relative(root, path);
+    if (local === "" || local === ".." || local.startsWith(`..${sep}`) || isAbsolute(local) || local.split(sep).some((item) => item === ".mpd" || item === ".git"))
+      return;
+    let probe = path;
+    while (probe !== root) {
+      try {
+        if (realpathSync(probe) !== probe)
+          return;
+      } catch (error) {
+        if (!(error instanceof Error) || !("code" in error) || error.code !== "ENOENT")
+          throw error;
+      }
+      probe = dirname(probe);
+    }
+    return local.split(sep).join("/");
+  } catch (error) {
+    if (error instanceof Error)
+      return;
+    throw error;
+  }
+}
+function helperFileRefusal(scope, name, args) {
+  if (name === "structured_output")
+    return;
+  if (scope.current?.() === false)
+    return "The original assignment no longer authorizes this helper.";
+  const path = typeof args === "object" && args !== null && "file_path" in args && typeof args.file_path === "string" ? helperTarget(scope.checkout, args.file_path) : undefined;
+  const allowed = path !== undefined && (name === "read" ? scope.read.includes(path) || scope.write.includes(path) : (name === "write" || name === "edit") && scope.write.includes(path));
+  return allowed ? undefined : "This one-shot can use only the exact file tools and paths its owner delegated.";
+}
+// packages/mpd-dsh-adapter-plugin/src/index.ts
+import { resolve as resolve3, sep as sep3 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
-import { dirname } from "node:path";
+import { dirname as dirname2 } from "node:path";
 import { fileURLToPath } from "node:url";
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -12,13 +51,13 @@ function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
 }
 function bundleRootOf(moduleUrl) {
-  return dirname(dirname(dirname(dirname(fileURLToPath(moduleUrl)))));
+  return dirname2(dirname2(dirname2(dirname2(fileURLToPath(moduleUrl)))));
 }
 
 // packages/mpd-mcp-shared/log-sink.ts
 import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { isAbsolute as isAbsolute2, join, relative as relative2, resolve as resolve2, sep as sep2 } from "node:path";
 var LOG_SUBDIR = join(".mpd", "logs");
 var DEFAULT_MAX_BYTES = 1024 * 1024;
 var DEFAULT_MAX_LINE_BYTES = 8192;
@@ -43,7 +82,7 @@ function resolveLogRoots(env = process.env, cwd) {
       continue;
     let absolute;
     try {
-      absolute = resolve(candidate);
+      absolute = resolve2(candidate);
     } catch {
       continue;
     }
@@ -68,8 +107,8 @@ function owningRoot(roots, file) {
   for (const root of roots) {
     if (file === root)
       return root;
-    const rel = relative(root, file);
-    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel))
+    const rel = relative2(root, file);
+    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep2}`) && !isAbsolute2(rel))
       return root;
   }
   return null;
@@ -376,10 +415,10 @@ function sessionCwdOf(agent) {
 function workspaceRootOfAgent(agent) {
   const session = sessionCwdOf(agent);
   if (session !== undefined)
-    return resolve2(session);
+    return resolve3(session);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve2(override);
+    return resolve3(override);
   return process.cwd();
 }
 function workspaceRootOf(exec) {
@@ -387,7 +426,7 @@ function workspaceRootOf(exec) {
     return workspaceRootOfAgent(exec.agent);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve2(override);
+    return resolve3(override);
   return process.cwd();
 }
 var rowLogSinks = new Map;
@@ -452,7 +491,7 @@ function workspaceRootsOf(agents) {
     for (const agent of list) {
       const cwd = sessionCwdOf(agent);
       if (cwd !== undefined)
-        roots.add(resolve2(cwd));
+        roots.add(resolve3(cwd));
     }
     return [...roots];
   } catch {
@@ -1813,6 +1852,13 @@ function createDshAdapter(ctx, config = {}) {
       const registered = systemPrompt.section(section);
       return typeof registered === "function" ? registered : noop;
     },
+    registerPromptContext(context) {
+      const systemPrompt = service("systemPrompt");
+      if (typeof systemPrompt?.context !== "function")
+        return;
+      const registered = systemPrompt.context(context);
+      return typeof registered === "function" ? registered : noop;
+    },
     guardTool(guard) {
       const tools = requireService("tools", "cannot install a tool guard");
       if (typeof tools.guard !== "function")
@@ -2045,14 +2091,45 @@ function createDshAdapter(ctx, config = {}) {
           ...spec.outputSchema === undefined ? {} : { outputSchema: spec.outputSchema },
           ...spec.maxDepth === undefined ? {} : { maxDepth: spec.maxDepth }
         };
-        const activation = await subagents.startActivation.call(subagents, dualShapeActivationSpec({
-          provider,
-          label: spec.label,
-          signal,
-          delivery: "parent"
-        }, activationRequest));
-        return activationHandleOf(activation, subagents, spec.parent);
+        const files = spec.helperFiles;
+        if (files === undefined) {
+          const activation = await subagents.startActivation.call(subagents, dualShapeActivationSpec({ provider, label: spec.label, signal, delivery: "parent" }, activationRequest));
+          return activationHandleOf(activation, subagents, spec.parent);
+        }
+        if (provider !== "spawn" || typeof service("tools")?.guard !== "function")
+          throw new Error("scoped one-shot requires native child and tool-guard support");
+        if (files.current?.() === false)
+          throw new Error("the original helper assignment changed before admission");
+        const childId = randomUUID();
+        const offGuard = adapter.guardTool((exec) => sessionIdOfAgent(exec.agent) === childId ? helperFileRefusal(files, exec.name, exec.arguments) : undefined);
+        let installed = false;
+        const offCreated = onEvent("agent/created", (payload) => {
+          const child = payload?.agent;
+          if (sessionIdOfAgent(child) !== childId)
+            return;
+          const allow = files.write.length > 0 ? ["read", "write", "edit"] : files.read.length > 0 ? ["read"] : [];
+          applyScopedRestriction(child, { allow });
+          installed = true;
+        });
+        try {
+          if (offCreated === undefined)
+            throw new Error("scoped one-shot requires the native agent creation hook");
+          const activation = await subagents.startActivation.call(subagents, dualShapeActivationSpec({ provider, label: spec.label, signal, delivery: "caller", childId }, { ...activationRequest, cwd: files.checkout }));
+          if (!installed) {
+            await releaseActivation(activation);
+            throw new Error("the host did not publish the reserved scoped helper");
+          }
+          const handle = activationHandleOf(activation, subagents, spec.parent);
+          return { ...handle, result: handle.result.finally(offGuard) };
+        } catch (error) {
+          offGuard();
+          throw error;
+        } finally {
+          offCreated?.();
+        }
       }
+      if (spec.helperFiles !== undefined)
+        throw new Error("scoped one-shot requires native child start support");
       if (typeof subagents.start !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagent service exposes neither startActivation() nor start()");
       const run = await subagents.start(provider, {
@@ -2589,7 +2666,7 @@ function createLazyDshAdapter(ctx, options) {
   let temporary;
   let warnedPending = false;
   let warnedMissing = false;
-  const resolve3 = () => {
+  const resolve4 = () => {
     if (mounted !== undefined)
       return mounted;
     const active = probeMpdDsh(ctx, true);
@@ -2613,12 +2690,12 @@ function createLazyDshAdapter(ctx, options) {
   };
   return new Proxy({}, {
     get(_target, property) {
-      const impl = resolve3();
+      const impl = resolve4();
       const value = impl[property];
       return typeof value === "function" ? value.bind(impl) : value;
     },
     has(_target, property) {
-      return property in resolve3();
+      return property in resolve4();
     }
   });
 }
@@ -2663,7 +2740,7 @@ var MPD_EXT_CONTRACT = {
 
 // packages/mpd-ext-plugin/src/registry.ts
 import { existsSync, readFileSync as readFileSync3, readdirSync as readdirSync2 } from "node:fs";
-import { isAbsolute as isAbsolute2, join as join3, resolve as resolve3 } from "node:path";
+import { isAbsolute as isAbsolute3, join as join3, resolve as resolve4 } from "node:path";
 
 // packages/mpd-ext-plugin/src/skills.ts
 import { readFileSync } from "node:fs";
@@ -3364,7 +3441,7 @@ var DEFAULT_EXTENSION_CONFIG = {
 function isRelativeAssetPath(value) {
   if (typeof value !== "string" || value.trim() === "")
     return false;
-  if (isAbsolute2(value))
+  if (isAbsolute3(value))
     return false;
   if (/^[A-Za-z]:[\\/]/.test(value))
     return false;
@@ -3734,7 +3811,7 @@ function buildExtension(options) {
   } else {
     descriptor.contributes.skills.forEach((item, index) => {
       const label = `contributes.skills[${index}]`;
-      const directory = resolve3(options.root, item.root);
+      const directory = resolve4(options.root, item.root);
       resolvedRoots.skills.push(directory);
       const loaded = enumerateSkillEntries(directory, { source: options.source, rank: item.rank, itemLabel: label });
       skillEntries.push(...loaded.entries);
@@ -3746,7 +3823,7 @@ function buildExtension(options) {
   } else {
     descriptor.contributes.flows.forEach((item, index) => {
       const label = `contributes.flows[${index}]`;
-      const directory = resolve3(options.root, item.dir);
+      const directory = resolve4(options.root, item.dir);
       resolvedRoots.flows.push(directory);
       const loaded = loadFlows(directory, {
         rank: item.rank,
@@ -3762,7 +3839,7 @@ function buildExtension(options) {
   const roleCandidates = [];
   descriptor.contributes.roles.forEach((item, index) => {
     const label = `contributes.roles[${index}]`;
-    const persona = options.root === "" ? item.persona : resolve3(options.root, item.persona);
+    const persona = options.root === "" ? item.persona : resolve4(options.root, item.persona);
     const refuse = (reason) => {
       roleCandidates.push({ index, item: label, name: item.name, persona, usable: false, reason });
       errors.push({ item: label, reason: ROLE_REFUSAL_PREFIX + reason });
@@ -4054,7 +4131,7 @@ function extensionConfig(ctx) {
 
 // packages/mpd-ext-plugin/src/project-watch.ts
 import { statSync as statSync2, watch } from "node:fs";
-import { dirname as dirname3, resolve as resolve4 } from "node:path";
+import { dirname as dirname4, resolve as resolve5 } from "node:path";
 function projectSkillWatcher(control, warn) {
   const { signal, invalidate } = control ?? {};
   if (!signal || !invalidate || signal.aborted)
@@ -4070,7 +4147,7 @@ function projectSkillWatcher(control, warn) {
     if (signal.aborted || workspaces.has(cwd))
       return;
     const root = projectExtensionsDir(cwd);
-    const mpd = dirname3(root);
+    const mpd = dirname4(root);
     const watchers = [];
     workspaces.set(cwd, watchers);
     const stop = () => {
@@ -4109,12 +4186,12 @@ function projectSkillWatcher(control, warn) {
     }
   };
   return (cwd) => {
-    observe(resolve4(cwd));
+    observe(resolve5(cwd));
   };
 }
 
 // packages/mpd-ext-plugin/src/mcp.ts
-import { resolve as resolve5 } from "node:path";
+import { resolve as resolve6 } from "node:path";
 
 // packages/mpd-ext-plugin/src/mcp-client.ts
 import { createHash } from "node:crypto";
@@ -4183,8 +4260,8 @@ class McpProtocolError extends Error {
 var EXIT_FLUSH_MS = 25;
 async function raceWithTimer(work, ms) {
   let timer;
-  const timeout = new Promise((resolve5) => {
-    timer = setTimeout(() => resolve5({ timedOut: true }), ms);
+  const timeout = new Promise((resolve6) => {
+    timer = setTimeout(() => resolve6({ timedOut: true }), ms);
   });
   const done = await Promise.race([work.then(() => ({ timedOut: false })), timeout]);
   if (timer !== undefined)
@@ -4363,7 +4440,7 @@ class McpStdioClient {
       return Promise.reject(new Error(`mcp-client(${this.serverName}): the server process is not running`));
     }
     const id = this.nextId++;
-    return new Promise((resolve5, reject) => {
+    return new Promise((resolve6, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
         reject(new Error(`mcp-client(${this.serverName}): ${method} timed out after ${timeoutMs}ms`));
@@ -4388,7 +4465,7 @@ class McpStdioClient {
         resolve: (value) => {
           if (signal !== undefined)
             signal.removeEventListener("abort", onAbort);
-          resolve5(value);
+          resolve6(value);
         },
         reject: (error) => {
           if (signal !== undefined)
@@ -4992,7 +5069,7 @@ class ServerRuntime {
     this.dsh = options.dsh;
     this.warn = options.warn;
     this.timeouts = resolveTimeouts(options.item, options.config);
-    this.cwd = options.entry.root === "" ? process.cwd() : resolve5(options.entry.root, options.item.cwd === "" ? "." : options.item.cwd);
+    this.cwd = options.entry.root === "" ? process.cwd() : resolve6(options.entry.root, options.item.cwd === "" ? "." : options.item.cwd);
     if (options.disabled === true)
       this.state = "disabled";
     this.record();

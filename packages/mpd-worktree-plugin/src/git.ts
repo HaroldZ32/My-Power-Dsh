@@ -26,11 +26,12 @@ export const GIT_TIMEOUT_CODE = -2
  * @param cwd the directory `git -C` runs in.
  * @param args the git arguments, in argv order.
  * @param timeoutMs the wall-clock bound for this invocation; defaults to {@link GIT_TIMEOUT_MS}.
+ * @param env optional child environment for isolated copy operations.
  * @returns the exit code and both streams; never throws.
  */
-export function runGit(cwd: string, args: readonly string[], timeoutMs: number = GIT_TIMEOUT_MS): GitResult {
+export function runGit(cwd: string, args: readonly string[], timeoutMs: number = GIT_TIMEOUT_MS, env?: NodeJS.ProcessEnv): GitResult {
   /** The child's captured result; spawnSync kills a run past the bound and reports `ETIMEDOUT`. */
-  const result = spawnSync("git", ["-C", cwd, ...args], { encoding: "utf8", timeout: timeoutMs, killSignal: "SIGKILL" })
+  const result = spawnSync("git", ["-C", cwd, ...args], { encoding: "utf8", timeout: timeoutMs, killSignal: "SIGKILL", env })
   /** Whether the bound, not git, ended the run; that answer must not be confused with a spawn failure. */
   const timedOut = (result.error as { code?: string } | undefined)?.code === "ETIMEDOUT"
   return {

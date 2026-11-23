@@ -4,7 +4,46 @@ import { join as join6 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
-import { resolve as resolve2, sep as sep2 } from "node:path";
+
+// packages/mpd-dsh-adapter-plugin/src/scoped-helper.ts
+import { realpathSync } from "node:fs";
+import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
+function helperTarget(checkout, value) {
+  try {
+    const root = realpathSync(checkout);
+    const path = resolve(root, value);
+    const local = relative(root, path);
+    if (local === "" || local === ".." || local.startsWith(`..${sep}`) || isAbsolute(local) || local.split(sep).some((item) => item === ".mpd" || item === ".git"))
+      return;
+    let probe = path;
+    while (probe !== root) {
+      try {
+        if (realpathSync(probe) !== probe)
+          return;
+      } catch (error) {
+        if (!(error instanceof Error) || !("code" in error) || error.code !== "ENOENT")
+          throw error;
+      }
+      probe = dirname(probe);
+    }
+    return local.split(sep).join("/");
+  } catch (error) {
+    if (error instanceof Error)
+      return;
+    throw error;
+  }
+}
+function helperFileRefusal(scope, name, args) {
+  if (name === "structured_output")
+    return;
+  if (scope.current?.() === false)
+    return "The original assignment no longer authorizes this helper.";
+  const path = typeof args === "object" && args !== null && "file_path" in args && typeof args.file_path === "string" ? helperTarget(scope.checkout, args.file_path) : undefined;
+  const allowed = path !== undefined && (name === "read" ? scope.read.includes(path) || scope.write.includes(path) : (name === "write" || name === "edit") && scope.write.includes(path));
+  return allowed ? undefined : "This one-shot can use only the exact file tools and paths its owner delegated.";
+}
+// packages/mpd-dsh-adapter-plugin/src/index.ts
+import { resolve as resolve3, sep as sep3 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
 function errorMessage(error) {
@@ -14,7 +53,7 @@ function errorMessage(error) {
 // packages/mpd-mcp-shared/log-sink.ts
 import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { isAbsolute as isAbsolute2, join, relative as relative2, resolve as resolve2, sep as sep2 } from "node:path";
 var LOG_SUBDIR = join(".mpd", "logs");
 var DEFAULT_MAX_BYTES = 1024 * 1024;
 var DEFAULT_MAX_LINE_BYTES = 8192;
@@ -39,7 +78,7 @@ function resolveLogRoots(env = process.env, cwd) {
       continue;
     let absolute;
     try {
-      absolute = resolve(candidate);
+      absolute = resolve2(candidate);
     } catch {
       continue;
     }
@@ -64,8 +103,8 @@ function owningRoot(roots, file) {
   for (const root of roots) {
     if (file === root)
       return root;
-    const rel = relative(root, file);
-    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel))
+    const rel = relative2(root, file);
+    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep2}`) && !isAbsolute2(rel))
       return root;
   }
   return null;
@@ -374,10 +413,10 @@ function sessionCwdOf(agent) {
 function workspaceRootOfAgent(agent) {
   const session = sessionCwdOf(agent);
   if (session !== undefined)
-    return resolve2(session);
+    return resolve3(session);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve2(override);
+    return resolve3(override);
   return process.cwd();
 }
 function workspaceRootOf(exec) {
@@ -385,7 +424,7 @@ function workspaceRootOf(exec) {
     return workspaceRootOfAgent(exec.agent);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve2(override);
+    return resolve3(override);
   return process.cwd();
 }
 var rowLogSinks = new Map;
@@ -450,7 +489,7 @@ function workspaceRootsOf(agents) {
     for (const agent of list) {
       const cwd = sessionCwdOf(agent);
       if (cwd !== undefined)
-        roots.add(resolve2(cwd));
+        roots.add(resolve3(cwd));
     }
     return [...roots];
   } catch {
@@ -1811,6 +1850,13 @@ function createDshAdapter(ctx, config = {}) {
       const registered = systemPrompt.section(section);
       return typeof registered === "function" ? registered : noop;
     },
+    registerPromptContext(context) {
+      const systemPrompt = service("systemPrompt");
+      if (typeof systemPrompt?.context !== "function")
+        return;
+      const registered = systemPrompt.context(context);
+      return typeof registered === "function" ? registered : noop;
+    },
     guardTool(guard) {
       const tools = requireService("tools", "cannot install a tool guard");
       if (typeof tools.guard !== "function")
@@ -2043,14 +2089,45 @@ function createDshAdapter(ctx, config = {}) {
           ...spec.outputSchema === undefined ? {} : { outputSchema: spec.outputSchema },
           ...spec.maxDepth === undefined ? {} : { maxDepth: spec.maxDepth }
         };
-        const activation = await subagents.startActivation.call(subagents, dualShapeActivationSpec({
-          provider,
-          label: spec.label,
-          signal,
-          delivery: "parent"
-        }, activationRequest));
-        return activationHandleOf(activation, subagents, spec.parent);
+        const files = spec.helperFiles;
+        if (files === undefined) {
+          const activation = await subagents.startActivation.call(subagents, dualShapeActivationSpec({ provider, label: spec.label, signal, delivery: "parent" }, activationRequest));
+          return activationHandleOf(activation, subagents, spec.parent);
+        }
+        if (provider !== "spawn" || typeof service("tools")?.guard !== "function")
+          throw new Error("scoped one-shot requires native child and tool-guard support");
+        if (files.current?.() === false)
+          throw new Error("the original helper assignment changed before admission");
+        const childId = randomUUID();
+        const offGuard = adapter.guardTool((exec) => sessionIdOfAgent(exec.agent) === childId ? helperFileRefusal(files, exec.name, exec.arguments) : undefined);
+        let installed = false;
+        const offCreated = onEvent("agent/created", (payload) => {
+          const child = payload?.agent;
+          if (sessionIdOfAgent(child) !== childId)
+            return;
+          const allow = files.write.length > 0 ? ["read", "write", "edit"] : files.read.length > 0 ? ["read"] : [];
+          applyScopedRestriction(child, { allow });
+          installed = true;
+        });
+        try {
+          if (offCreated === undefined)
+            throw new Error("scoped one-shot requires the native agent creation hook");
+          const activation = await subagents.startActivation.call(subagents, dualShapeActivationSpec({ provider, label: spec.label, signal, delivery: "caller", childId }, { ...activationRequest, cwd: files.checkout }));
+          if (!installed) {
+            await releaseActivation(activation);
+            throw new Error("the host did not publish the reserved scoped helper");
+          }
+          const handle = activationHandleOf(activation, subagents, spec.parent);
+          return { ...handle, result: handle.result.finally(offGuard) };
+        } catch (error) {
+          offGuard();
+          throw error;
+        } finally {
+          offCreated?.();
+        }
       }
+      if (spec.helperFiles !== undefined)
+        throw new Error("scoped one-shot requires native child start support");
       if (typeof subagents.start !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagent service exposes neither startActivation() nor start()");
       const run = await subagents.start(provider, {
@@ -2578,7 +2655,7 @@ function createLazyDshAdapter(ctx, options) {
   let temporary;
   let warnedPending = false;
   let warnedMissing = false;
-  const resolve3 = () => {
+  const resolve4 = () => {
     if (mounted !== undefined)
       return mounted;
     const active = probeMpdDsh(ctx, true);
@@ -2602,12 +2679,12 @@ function createLazyDshAdapter(ctx, options) {
   };
   return new Proxy({}, {
     get(_target, property) {
-      const impl = resolve3();
+      const impl = resolve4();
       const value = impl[property];
       return typeof value === "function" ? value.bind(impl) : value;
     },
     has(_target, property) {
-      return property in resolve3();
+      return property in resolve4();
     }
   });
 }
@@ -2766,6 +2843,8 @@ function verifierEnvelopeDecision(input) {
   if (raw === undefined) {
     return { deny: "verification law: a bound VERIFIER seat must NAME the path it reads while it is blind — a bare" + " `" + tool + "` would search the whole workspace, implementation included. Name one of the frozen docs or a" + " path under " + VERIFIER_DOC_PREFIXES.map((prefix) => "`" + prefix + "`").join(", ") + ". After a recorded FAIL" + " the ratchet unlocks implementation reading for diagnosis only." };
   }
+  if (tool === "read" && seat.canonicalCellworkDoc !== undefined && toPosix(raw) === toPosix(seat.canonicalCellworkDoc))
+    return {};
   const target = classifyWriteTarget(input.workspaceRoot, raw);
   if (target.kind === "pass")
     return {};
@@ -2825,13 +2904,14 @@ function resolvePositiveInt(raw, fallback) {
   return Number.isFinite(value) && value > 0 ? Math.floor(value) : fallback;
 }
 
-// packages/mpd-verify-plugin/src/observe.ts
-import { join as join4 } from "node:path";
+// packages/mpd-verify-plugin/src/cellwork-contract.ts
+import { readFileSync as readFileSync2, realpathSync as realpathSync2, statSync as statSync3 } from "node:fs";
+import { isAbsolute as isAbsolute4, relative as relative4, resolve as resolve4, sep as sep5 } from "node:path";
 
 // packages/mpd-verify-plugin/src/ledger.ts
 import { createHash, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync as mkdirSync2, readFileSync, readdirSync, renameSync as renameSync2, statSync as statSync2, writeFileSync } from "node:fs";
-import { isAbsolute as isAbsolute2, join as join2, relative as relative2, sep as sep3 } from "node:path";
+import { isAbsolute as isAbsolute3, join as join2, relative as relative3, sep as sep4 } from "node:path";
 function verifyRoot(workspace) {
   return join2(workspace, ".mpd", "verify");
 }
@@ -2915,13 +2995,13 @@ function hashDoc(workspace, path) {
   const digest = sha256File(path);
   if (digest === "")
     return;
-  const rel = relative2(workspace, path);
-  const inside = rel !== "" && rel !== ".." && !rel.startsWith(".." + sep3) && !isAbsolute2(rel);
+  const rel = relative3(workspace, path);
+  const inside = rel !== "" && rel !== ".." && !rel.startsWith(".." + sep4) && !isAbsolute3(rel);
   if (!inside)
     return { path, sha256: digest };
   return { path: toPosixRelative(rel), sha256: digest };
 }
-function toPosixRelative(rel, separator = sep3) {
+function toPosixRelative(rel, separator = sep4) {
   return separator === "/" ? rel : rel.split(separator).join("/");
 }
 function readLoops(workspace) {
@@ -2996,10 +3076,83 @@ function readEscapes(workspace) {
   return rows;
 }
 
+// packages/mpd-verify-plugin/src/cellwork-contract.ts
+function authorizedCellworkContract(service, site, input) {
+  if (!isAbsolute4(input) || typeof service !== "object" || service === null || !("resolveSeat" in service) || typeof service.resolveSeat !== "function")
+    return;
+  const binding = service.resolveSeat({ checkoutRoot: site.workspace, sessionId: site.sessionId });
+  if (typeof binding !== "object" || binding === null || !("kind" in binding) || binding.kind !== "member" || !("projectRoot" in binding) || typeof binding.projectRoot !== "string" || !("projectId" in binding) || typeof binding.projectId !== "string")
+    return;
+  try {
+    const path = resolve4(input);
+    const [state, plane, cellId, documents, filename, ...rest] = relative4(binding.projectRoot, path).split(sep5);
+    if (state !== ".mpd" || plane !== "cellwork" || !/^cell-[\w.-]+$/.test(cellId ?? "") || documents !== "contracts" || !/^[\w.-]+(?:@r[1-9]\d*)?\.md$/.test(filename ?? "") || rest.length > 0)
+      return;
+    if (realpathSync2(path) !== path || !statSync3(path).isFile())
+      return;
+    const cell = readJson(resolve4(binding.projectRoot, ".mpd", "cellwork", cellId, "state.json"));
+    return cell?.captainSessionId === site.sessionId && cell.phase !== "stopped" ? { path, projectId: binding.projectId } : undefined;
+  } catch (error) {
+    if (error instanceof Error)
+      return;
+    throw error;
+  }
+}
+function cellworkContractDigest(contract) {
+  try {
+    return realpathSync2(contract.path) === contract.path && statSync3(contract.path).isFile() ? sha256File(contract.path) : "";
+  } catch (error) {
+    if (error instanceof Error)
+      return "";
+    throw error;
+  }
+}
+function checkCellworkContract(loop) {
+  const contract = loop.cellworkContract;
+  if (contract === undefined)
+    return;
+  if (!contract.sha256)
+    return { reason: "frozen-contract-unsealed", detail: "the originating cell has not sealed its producer contract yet" };
+  const actual = cellworkContractDigest(contract);
+  if (actual === "")
+    return { reason: "frozen-contract-missing", detail: `cannot read sealed producer contract ${contract.path}` };
+  if (actual !== contract.sha256)
+    return { reason: "frozen-contract-drift", detail: `the sealed producer contract changed (${contract.path})` };
+  return;
+}
+function sealCellworkContract(site, loopId) {
+  const loop = readLoops(site.workspace).find((candidate) => candidate.loopId === loopId);
+  const pending = loop?.cellworkContract;
+  if (loop === undefined || pending === undefined || loop.sessionId !== site.sessionId || loop.status !== "armed")
+    return { refused: "no pending Cellwork contract for this originating session and loop" };
+  if (pending.sha256 !== undefined) {
+    const refusal = checkCellworkContract(loop);
+    return refusal === undefined ? { sha256: pending.sha256 } : { refused: refusal.detail };
+  }
+  const sha256 = cellworkContractDigest(pending);
+  if (sha256 === "")
+    return { refused: "cannot read the original prepared Cellwork contract" };
+  try {
+    if (!readFileSync2(pending.path, "utf8").includes(`mpd_verify_seat {loop_id:"${loopId}"}`) || cellworkContractDigest(pending) !== sha256)
+      return { refused: "the prepared contract does not stably name its actual new verification loop" };
+  } catch (error) {
+    if (error instanceof Error)
+      return { refused: error.message };
+    throw error;
+  }
+  return writeLoop(site.workspace, { ...loop, cellworkContract: { ...pending, sha256 } }) ? { sha256 } : { refused: "could not persist the sealed Cellwork contract" };
+}
+function cellworkContractPending(site, path) {
+  return readLoops(site.workspace).some((loop) => loop.sessionId === site.sessionId && loop.cellworkContract?.path === path && loop.cellworkContract.sha256 === undefined && loop.status === "armed");
+}
+
+// packages/mpd-verify-plugin/src/observe.ts
+import { join as join4 } from "node:path";
+
 // packages/mpd-verify-plugin/src/gates.ts
 import { spawnSync } from "node:child_process";
-import { existsSync as existsSync2, readFileSync as readFileSync2, statSync as statSync3 } from "node:fs";
-import { basename, isAbsolute as isAbsolute3, join as join3, relative as relative3 } from "node:path";
+import { existsSync as existsSync2, readFileSync as readFileSync3, statSync as statSync4 } from "node:fs";
+import { basename, isAbsolute as isAbsolute5, join as join3, relative as relative5 } from "node:path";
 var GATE_TABLE = [
   { id: "gates", cmd: "bun run verify:gates", runner: "bun", argv: ["run", "verify:gates"] },
   { id: "tests", cmd: "bun test packages", runner: "bun", argv: ["test", "packages"] },
@@ -3040,7 +3193,7 @@ function loadProjectGates(workspace) {
     return { ok: true, specs: [] };
   let text = "";
   try {
-    text = readFileSync2(file, "utf8");
+    text = readFileSync3(file, "utf8");
   } catch (error) {
     return refuseProjectFile("it cannot be read (" + describeError(error) + ")");
   }
@@ -3180,9 +3333,9 @@ function runGate(workspace, spec, timeoutMs) {
 function probeArtifacts(workspace, paths) {
   const readings = [];
   for (const raw of paths.slice(0, PROBE_PATH_LIMIT)) {
-    const absolute = isAbsolute3(raw) ? raw : join3(workspace, raw);
-    const rel = relative3(workspace, absolute);
-    if (rel.startsWith("..") || isAbsolute3(rel)) {
+    const absolute = isAbsolute5(raw) ? raw : join3(workspace, raw);
+    const rel = relative5(workspace, absolute);
+    if (rel.startsWith("..") || isAbsolute5(rel)) {
       readings.push({ path: raw, exists: false, kind: "absent", bytes: 0, sha256: "", mtime: "" });
       continue;
     }
@@ -3191,7 +3344,7 @@ function probeArtifacts(workspace, paths) {
         readings.push({ path: rel, exists: false, kind: "absent", bytes: 0, sha256: "", mtime: "" });
         continue;
       }
-      const stat = statSync3(absolute);
+      const stat = statSync4(absolute);
       if (stat.isDirectory()) {
         readings.push({ path: rel, exists: true, kind: "dir", bytes: 0, sha256: "", mtime: stat.mtime.toISOString() });
         continue;
@@ -3879,7 +4032,7 @@ function buildRecord(input, identity) {
 }
 
 // packages/mpd-verify-plugin/src/tools.ts
-import { isAbsolute as isAbsolute4, join as join5 } from "node:path";
+import { isAbsolute as isAbsolute6, join as join5, resolve as resolve5 } from "node:path";
 var DEFAULT_LOOP_TTL_MS = 24 * 60 * 60 * 1000;
 var DEFAULT_GATE_TIMEOUT_MS = 15 * 60 * 1000;
 var BOOT_MARKER_FILE = "boot.json";
@@ -3895,7 +4048,7 @@ function writeBootMarker(workspace, installedAt) {
   return writeJsonAtomic(join5(verifyRoot(workspace), BOOT_MARKER_FILE), { version: 1, installedAt });
 }
 function sourceDoc(workspace, path) {
-  return hashDoc(workspace, isAbsolute4(path) ? path : join5(workspace, path));
+  return hashDoc(workspace, isAbsolute6(path) ? path : join5(workspace, path));
 }
 function registerVerifyTools(dsh, deps) {
   const definitions = [
@@ -3920,7 +4073,7 @@ function openTool(deps) {
         writer_id: { type: "string", description: 'writer:"delegate" only: the loop\'s WRITER identity — the member\'s session id (an agent key, not a display name), trimmed to 1..200 characters. Absent records the `delegate:pending` placeholder. Refused with writer:"self".' },
         writer_reason: { type: "string", description: 'writer:"delegate" only: text stored on the loop\'s `writer.reason`, e.g. `member: <name>` when `writer_id` is a session id; trimmed to 1..200 characters. Refused with writer:"self".' },
         scope: { type: "array", items: { type: "string" }, description: "The paths this loop covers, relative to the workspace. EMPTY means the whole workspace." },
-        contract: { type: "string", description: "The wave contract this loop freezes for its verifier: a workspace-relative path (e.g. `.mpd/plans/verify-law-defects.md`). `mpd_verify_seat` hands the seat exactly this document and `mpd_verify_record` hashes it as the record's `basis.frozenContract`. With none, the declared default `" + DEFAULT_CONTRACT_PATH + "` applies — never a previous wave's plan." },
+        contract: { type: "string", description: "Frozen document path relative to the caller's workspace. A native Cellwork captain can use its authorized canonical absolute contract. Omit for `" + DEFAULT_CONTRACT_PATH + "`." },
         task_id: { type: "string", description: "The board task this loop verifies, when it verifies one." },
         ttl_ms: { type: "number", description: "Loop lifetime in ms; defaults to 24h (verify.loopTtlMs)." }
       },
@@ -3954,6 +4107,20 @@ function openTool(deps) {
       }
       const ttlMs = resolvePositiveInt(args?.ttl_ms, resolvePositiveInt(deps.configValue("verify.loopTtlMs"), DEFAULT_LOOP_TTL_MS));
       const contract = normalizeContractPath(args?.contract);
+      const cellworkContract = contract !== undefined && isAbsolute6(contract) ? authorizedCellworkContract(deps.projectIdentity?.(), { workspace, sessionId }, contract) : undefined;
+      if (contract !== undefined && isAbsolute6(contract) && cellworkContract === undefined)
+        return { refused: "absolute contract is outside the calling captain's active Cellwork scope" };
+      if (cellworkContract !== undefined && (writerKind !== "delegate" || writerId === undefined || typeof args?.task_id !== "string" || args.task_id === ""))
+        return { refused: "a Cellwork producer loop needs its actual delegated writer and board task" };
+      const previous = cellworkContract === undefined ? undefined : readLoops(workspace).find((loop2) => loop2.cellworkContract?.path === cellworkContract.path && loop2.cellworkContract.projectId === cellworkContract.projectId && loop2.taskId === args?.task_id && loop2.sessionId === sessionId && loop2.status === "armed");
+      if (previous !== undefined) {
+        if (previous.writer.id !== writerId || verifier !== "" && previous.verifier.id !== verifier)
+          return { refused: "the original Cellwork verification loop belongs to a different writer or verifier" };
+        const refusal = previous.cellworkContract?.sha256 === undefined ? undefined : checkCellworkContract(previous);
+        if (refusal !== undefined)
+          return { refused: refusal.detail };
+        return openReply(previous);
+      }
       const now = new Date;
       const loopId = mintId("loop");
       const loop = {
@@ -3961,6 +4128,7 @@ function openTool(deps) {
         loopId,
         taskId: args?.task_id === undefined ? null : String(args.task_id),
         ...contract === undefined ? {} : { contract },
+        ...cellworkContract === undefined ? {} : { cellworkContract },
         gateFile: projectGateIdentity(workspace),
         workspace,
         sessionId,
@@ -3979,14 +4147,13 @@ function openTool(deps) {
       if (!writeLoop(workspace, loop))
         return { refused: "the loop could not be written to " + join5(loopsDir(workspace), loopId + ".json") };
       deps.log("opened loop " + loopId + " writer=" + loop.writer.kind + " verifier=" + loop.verifier.id + " contract=" + loopContractPath(loop));
-      const writerView = {
-        kind: loop.writer.kind,
-        id: loop.writer.id,
-        ...typeof loop.writer.reason === "string" ? { reason: loop.writer.reason } : {}
-      };
-      return { loopId, writer: writerView, verifier: loop.verifier, scope: loop.scope, contract: loopContractPath(loop), gateFile: loop.gateFile, status: loop.status, expiresAt: loop.expiresAt };
+      return openReply(loop);
     }
   };
+}
+function openReply(loop) {
+  const writer = { kind: loop.writer.kind, id: loop.writer.id, ...loop.writer.reason === undefined ? {} : { reason: loop.writer.reason } };
+  return { loopId: loop.loopId, writer, verifier: loop.verifier, scope: loop.scope, contract: loopContractPath(loop), gateFile: loop.gateFile ?? null, status: loop.status, expiresAt: loop.expiresAt, ...loop.cellworkContract?.sha256 === undefined ? {} : { contractSha256: loop.cellworkContract.sha256 } };
 }
 function escapeTool(deps) {
   return {
@@ -4034,7 +4201,9 @@ function seatTool(deps) {
       additionalProperties: false
     },
     output: {
-      render: (_args, value) => textBlock(value?.refused !== undefined ? "refused: " + value.refused : "seat bound: " + value.verifierId + " verifies loop " + value.loopId + " (" + value.docs.length + " frozen doc(s))")
+      render: (_args, value) => textBlock(value?.refused !== undefined ? "refused: " + value.refused : "seat bound: " + value.verifierId + " verifies loop " + value.loopId + " (" + value.docs.length + " frozen doc(s))" + (value.contractSha256 === undefined ? "" : `
+FROZEN CONTRACT: ` + value.docs[0] + `
+SHA-256: ` + value.contractSha256))
     },
     execute: (args, exec) => {
       const { workspace, sessionId } = where(deps, exec);
@@ -4044,10 +4213,15 @@ function seatTool(deps) {
       if (String(loop.writer?.id ?? "") === sessionId) {
         return { refused: "this session (" + sessionId + ") is loop " + loop.loopId + "'s WRITER — a writer cannot verify its own work. Ask a different agent to take the seat." };
       }
+      const contractFailure = checkCellworkContract(loop);
+      if (contractFailure !== undefined)
+        return { refused: `${contractFailure.reason}: ${contractFailure.detail}` };
+      if (loop.cellworkContract !== undefined && loop.verifier.id !== "unbound" && loop.verifier.id !== sessionId)
+        return { refused: "this Cellwork loop belongs to a different original verifier" };
       const seats = readSeats(workspace);
       const contract = loopContractPath(loop);
       const docPaths = [...new Set([contract])];
-      const seat = { loopId: loop.loopId, verifierId: sessionId, unlocked: seats.seats?.[sessionId]?.unlocked === true, docPaths };
+      const seat = { loopId: loop.loopId, verifierId: sessionId, unlocked: seats.seats?.[sessionId]?.unlocked === true, docPaths, ...loop.cellworkContract === undefined ? {} : { canonicalCellworkDoc: contract } };
       seats.version = 1;
       seats.seats = { ...seats.seats ?? {}, [sessionId]: seat };
       if (!writeSeats(workspace, seats))
@@ -4057,7 +4231,7 @@ function seatTool(deps) {
       }
       deps.log("seat bound loop=" + loop.loopId + " verifier=" + sessionId);
       const membership = deps.dsh.teamMembership(exec?.agent);
-      return { loopId: loop.loopId, verifierId: sessionId, role: "verifier", blind: !seat.unlocked, docs: docPaths, verifiedWriter: String(loop.writer?.id ?? ""), ...membership === undefined ? {} : { teamName: membership.name } };
+      return { loopId: loop.loopId, verifierId: sessionId, role: "verifier", blind: !seat.unlocked, docs: docPaths, verifiedWriter: String(loop.writer?.id ?? ""), ...loop.cellworkContract?.sha256 === undefined ? {} : { contractSha256: loop.cellworkContract.sha256 }, ...membership === undefined ? {} : { teamName: membership.name } };
     }
   };
 }
@@ -4178,7 +4352,16 @@ function recordTool(deps) {
       const explicitBasis = typeof args?.basis_kind === "string" ? String(args.basis_kind) : "";
       const basisKind = explicitBasis === "pre-plugin" ? "pre-plugin" : explicitBasis === "unproven" ? "unproven" : explicitBasis === "blind" ? "blind" : deps.runtime.observedCodeRead(sessionId) ? "unproven" : "blind";
       const contractPath = loopContractPath(loop);
-      const contractSha = sha256File(join5(workspace, contractPath));
+      const contractSha = loop?.cellworkContract?.sha256 ?? sha256File(resolve5(workspace, contractPath));
+      if (loop?.cellworkContract !== undefined) {
+        const refusal = checkCellworkContract(loop);
+        if (refusal !== undefined)
+          return { refused: refusal };
+        if (loop.verifier.id !== sessionId || readSeats(workspace).seats?.[sessionId]?.loopId !== loopId)
+          return { refused: { reason: "bind-unproven", detail: "bind this original Cellwork verifier to the sealed loop before recording a verdict" } };
+        if (args?.writer !== undefined && String(args.writer) !== loop.writer.id)
+          return { refused: { reason: "writer-mismatch", detail: "the sealed Cellwork loop already records its original writer" } };
+      }
       const sources = (Array.isArray(args?.sources) ? args.sources.map(String) : []).map((path) => sourceDoc(workspace, path)).filter((doc) => doc !== undefined);
       const produced = readEvidence(workspace).filter((row2) => row2.kind === "gate" && row2.loopId === loopId);
       const cited = Array.isArray(args?.evidence_ids) ? args.evidence_ids.map(String) : [];
@@ -4235,6 +4418,13 @@ function recordTool(deps) {
       if (!outcome.ok) {
         deps.log("record refused reason=" + outcome.reason);
         return { refused: { reason: outcome.reason, detail: outcome.detail } };
+      }
+      if (loop?.cellworkContract !== undefined) {
+        const refusal = checkCellworkContract(loop);
+        if (refusal !== undefined)
+          return { refused: refusal };
+        if ([...sources, ...record.basis.docs].some((doc) => resolve5(workspace, doc.path) === contractPath && doc.sha256 !== contractSha))
+          return { refused: { reason: "frozen-contract-drift", detail: "a producer contract citation changed during verification record assembly" } };
       }
       if (!writeRecord(workspace, record))
         return { refused: { reason: "write-failed", detail: "the record could not be written under " + recordsDir(workspace) } };
@@ -4315,8 +4505,10 @@ function apply(ctx, config = {}) {
     defaultEscapeUses: 1,
     loopTtlMs: resolvePositiveInt(configValue("verify.loopTtlMs"), DEFAULT_LOOP_TTL_MS)
   });
+  const seal = (exec, loopId) => sealCellworkContract({ workspace: dsh.workspaceRoot(exec), sessionId: sessionKeyOf(exec.agent) }, loopId);
+  const pending = (exec, path) => cellworkContractPending({ workspace: dsh.workspaceRoot(exec), sessionId: sessionKeyOf(exec.agent) }, path);
   try {
-    ctx.provide(VERIFY_SERVICE, runtime);
+    ctx.provide(VERIFY_SERVICE, { ...runtime, sealCellworkContract: seal, cellworkContractPending: pending });
   } catch (error) {
     log("could not publish the " + VERIFY_SERVICE + " service (" + (error instanceof Error ? error.message : String(error)) + ") — the guard will read an empty law");
   }
@@ -4336,6 +4528,7 @@ function apply(ctx, config = {}) {
       runtime,
       configValue,
       dsh,
+      projectIdentity: () => ctx.get?.("mpdProjectIdentity", false),
       log: (line) => log(line)
     });
     outcome.push("tools=5");

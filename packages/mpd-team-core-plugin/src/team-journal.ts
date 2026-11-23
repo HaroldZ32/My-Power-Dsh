@@ -48,7 +48,7 @@ import { teamRoot } from "./team-store"
  * are the remaining channels, and neither is guaranteed) — in which case the seat inherits the calling
  * session's route. The `reason` carries the one-sentence warning; the append itself still happens.
  */
-export type TeamJournalEvent = "task-reassigned" | "task-cancelled" | "member-fenced" | "member-unfenced" | "handoff-written" | "team-ended" | "wedged-force" | "wedged-grace" | "consult-upsert" | "consult-clear" | "member-role-omitted"
+export type TeamJournalEvent = "task-reassigned" | "task-cancelled" | "member-fenced" | "member-unfenced" | "handoff-written" | "team-ended" | "wedged-force" | "wedged-grace" | "consult-upsert" | "consult-clear" | "member-role-omitted" | "worker-ended-open" | "worker-action-continued"
 
 /** One team-journal row. */
 export interface TeamJournalEntry {

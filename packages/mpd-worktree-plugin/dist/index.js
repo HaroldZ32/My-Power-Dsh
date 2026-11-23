@@ -1,6 +1,45 @@
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
-import { resolve as resolve2, sep as sep2 } from "node:path";
+
+// packages/mpd-dsh-adapter-plugin/src/scoped-helper.ts
+import { realpathSync } from "node:fs";
+import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
+function helperTarget(checkout, value) {
+  try {
+    const root = realpathSync(checkout);
+    const path = resolve(root, value);
+    const local = relative(root, path);
+    if (local === "" || local === ".." || local.startsWith(`..${sep}`) || isAbsolute(local) || local.split(sep).some((item) => item === ".mpd" || item === ".git"))
+      return;
+    let probe = path;
+    while (probe !== root) {
+      try {
+        if (realpathSync(probe) !== probe)
+          return;
+      } catch (error) {
+        if (!(error instanceof Error) || !("code" in error) || error.code !== "ENOENT")
+          throw error;
+      }
+      probe = dirname(probe);
+    }
+    return local.split(sep).join("/");
+  } catch (error) {
+    if (error instanceof Error)
+      return;
+    throw error;
+  }
+}
+function helperFileRefusal(scope, name, args) {
+  if (name === "structured_output")
+    return;
+  if (scope.current?.() === false)
+    return "The original assignment no longer authorizes this helper.";
+  const path = typeof args === "object" && args !== null && "file_path" in args && typeof args.file_path === "string" ? helperTarget(scope.checkout, args.file_path) : undefined;
+  const allowed = path !== undefined && (name === "read" ? scope.read.includes(path) || scope.write.includes(path) : (name === "write" || name === "edit") && scope.write.includes(path));
+  return allowed ? undefined : "This one-shot can use only the exact file tools and paths its owner delegated.";
+}
+// packages/mpd-dsh-adapter-plugin/src/index.ts
+import { resolve as resolve3, sep as sep3 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
 function errorMessage(error) {
@@ -10,7 +49,7 @@ function errorMessage(error) {
 // packages/mpd-mcp-shared/log-sink.ts
 import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { isAbsolute as isAbsolute2, join, relative as relative2, resolve as resolve2, sep as sep2 } from "node:path";
 var LOG_SUBDIR = join(".mpd", "logs");
 var DEFAULT_MAX_BYTES = 1024 * 1024;
 var DEFAULT_MAX_LINE_BYTES = 8192;
@@ -35,7 +74,7 @@ function resolveLogRoots(env = process.env, cwd) {
       continue;
     let absolute;
     try {
-      absolute = resolve(candidate);
+      absolute = resolve2(candidate);
     } catch {
       continue;
     }
@@ -60,8 +99,8 @@ function owningRoot(roots, file) {
   for (const root of roots) {
     if (file === root)
       return root;
-    const rel = relative(root, file);
-    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel))
+    const rel = relative2(root, file);
+    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep2}`) && !isAbsolute2(rel))
       return root;
   }
   return null;
@@ -370,10 +409,10 @@ function sessionCwdOf(agent) {
 function workspaceRootOfAgent(agent) {
   const session = sessionCwdOf(agent);
   if (session !== undefined)
-    return resolve2(session);
+    return resolve3(session);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve2(override);
+    return resolve3(override);
   return process.cwd();
 }
 function workspaceRootOf(exec) {
@@ -381,7 +420,7 @@ function workspaceRootOf(exec) {
     return workspaceRootOfAgent(exec.agent);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve2(override);
+    return resolve3(override);
   return process.cwd();
 }
 var rowLogSinks = new Map;
@@ -446,7 +485,7 @@ function workspaceRootsOf(agents) {
     for (const agent of list) {
       const cwd = sessionCwdOf(agent);
       if (cwd !== undefined)
-        roots.add(resolve2(cwd));
+        roots.add(resolve3(cwd));
     }
     return [...roots];
   } catch {
@@ -1807,6 +1846,13 @@ function createDshAdapter(ctx, config = {}) {
       const registered = systemPrompt.section(section);
       return typeof registered === "function" ? registered : noop;
     },
+    registerPromptContext(context) {
+      const systemPrompt = service("systemPrompt");
+      if (typeof systemPrompt?.context !== "function")
+        return;
+      const registered = systemPrompt.context(context);
+      return typeof registered === "function" ? registered : noop;
+    },
     guardTool(guard) {
       const tools = requireService("tools", "cannot install a tool guard");
       if (typeof tools.guard !== "function")
@@ -2039,14 +2085,45 @@ function createDshAdapter(ctx, config = {}) {
           ...spec.outputSchema === undefined ? {} : { outputSchema: spec.outputSchema },
           ...spec.maxDepth === undefined ? {} : { maxDepth: spec.maxDepth }
         };
-        const activation = await subagents.startActivation.call(subagents, dualShapeActivationSpec({
-          provider,
-          label: spec.label,
-          signal,
-          delivery: "parent"
-        }, activationRequest));
-        return activationHandleOf(activation, subagents, spec.parent);
+        const files = spec.helperFiles;
+        if (files === undefined) {
+          const activation = await subagents.startActivation.call(subagents, dualShapeActivationSpec({ provider, label: spec.label, signal, delivery: "parent" }, activationRequest));
+          return activationHandleOf(activation, subagents, spec.parent);
+        }
+        if (provider !== "spawn" || typeof service("tools")?.guard !== "function")
+          throw new Error("scoped one-shot requires native child and tool-guard support");
+        if (files.current?.() === false)
+          throw new Error("the original helper assignment changed before admission");
+        const childId = randomUUID();
+        const offGuard = adapter.guardTool((exec) => sessionIdOfAgent(exec.agent) === childId ? helperFileRefusal(files, exec.name, exec.arguments) : undefined);
+        let installed = false;
+        const offCreated = onEvent("agent/created", (payload) => {
+          const child = payload?.agent;
+          if (sessionIdOfAgent(child) !== childId)
+            return;
+          const allow = files.write.length > 0 ? ["read", "write", "edit"] : files.read.length > 0 ? ["read"] : [];
+          applyScopedRestriction(child, { allow });
+          installed = true;
+        });
+        try {
+          if (offCreated === undefined)
+            throw new Error("scoped one-shot requires the native agent creation hook");
+          const activation = await subagents.startActivation.call(subagents, dualShapeActivationSpec({ provider, label: spec.label, signal, delivery: "caller", childId }, { ...activationRequest, cwd: files.checkout }));
+          if (!installed) {
+            await releaseActivation(activation);
+            throw new Error("the host did not publish the reserved scoped helper");
+          }
+          const handle = activationHandleOf(activation, subagents, spec.parent);
+          return { ...handle, result: handle.result.finally(offGuard) };
+        } catch (error) {
+          offGuard();
+          throw error;
+        } finally {
+          offCreated?.();
+        }
       }
+      if (spec.helperFiles !== undefined)
+        throw new Error("scoped one-shot requires native child start support");
       if (typeof subagents.start !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagent service exposes neither startActivation() nor start()");
       const run = await subagents.start(provider, {
@@ -2627,16 +2704,16 @@ function effectiveConfig(ctx, config) {
   return resolveConfig(merged);
 }
 
-// packages/mpd-worktree-plugin/src/ops.ts
-import { existsSync as existsSync3 } from "node:fs";
-import { join as join3, resolve as resolve4 } from "node:path";
+// packages/mpd-worktree-plugin/src/copy-git.ts
+import { lstatSync, readdirSync, realpathSync as realpathSync3 } from "node:fs";
+import { join as join4, matchesGlob } from "node:path";
 
 // packages/mpd-worktree-plugin/src/git.ts
 import { spawnSync } from "node:child_process";
 var GIT_TIMEOUT_MS = 30000;
 var GIT_TIMEOUT_CODE = -2;
-function runGit(cwd, args, timeoutMs = GIT_TIMEOUT_MS) {
-  const result = spawnSync("git", ["-C", cwd, ...args], { encoding: "utf8", timeout: timeoutMs, killSignal: "SIGKILL" });
+function runGit(cwd, args, timeoutMs = GIT_TIMEOUT_MS, env) {
+  const result = spawnSync("git", ["-C", cwd, ...args], { encoding: "utf8", timeout: timeoutMs, killSignal: "SIGKILL", env });
   const timedOut = result.error?.code === "ETIMEDOUT";
   return {
     code: timedOut ? GIT_TIMEOUT_CODE : result.status ?? -1,
@@ -2769,31 +2846,35 @@ function mergeBranch(repo, branch, message) {
   return abort.code === 0 ? { ok: false, conflicts } : { ok: false, conflicts, reason: "git merge --abort failed: " + (firstLine(abort.stderr) || "exit " + abort.code) };
 }
 
+// packages/mpd-worktree-plugin/src/ops.ts
+import { existsSync as existsSync3 } from "node:fs";
+import { join as join3, resolve as resolve5 } from "node:path";
+
 // packages/mpd-worktree-plugin/src/paths.ts
-import { existsSync, realpathSync } from "node:fs";
-import { basename, dirname, isAbsolute as isAbsolute2, join as join2, relative as relative2, resolve as resolve3, sep as sep3 } from "node:path";
+import { existsSync, realpathSync as realpathSync2 } from "node:fs";
+import { basename, dirname as dirname2, isAbsolute as isAbsolute3, join as join2, relative as relative3, resolve as resolve4, sep as sep4 } from "node:path";
 var NAME_PATTERN = /^[a-z0-9][a-z0-9._-]{0,79}$/;
 function isValidName(name) {
   return NAME_PATTERN.test(name);
 }
 function canonicalPath(target) {
-  let probe = resolve3(target);
+  let probe = resolve4(target);
   const tail = [];
   while (!existsSync(probe)) {
-    const parent = dirname(probe);
+    const parent = dirname2(probe);
     if (parent === probe)
-      return resolve3(target);
+      return resolve4(target);
     tail.unshift(basename(probe));
     probe = parent;
   }
-  const real = realpathSync(probe);
+  const real = realpathSync2(probe);
   return tail.length === 0 ? real : join2(real, ...tail);
 }
 function isUnderRoot(root, target) {
   const base = canonicalPath(root);
   const path = canonicalPath(target);
-  const rel = relative2(base, path);
-  return rel === "" || rel !== ".." && !rel.startsWith(".." + sep3) && !isAbsolute2(rel);
+  const rel = relative3(base, path);
+  return rel === "" || rel !== ".." && !rel.startsWith(".." + sep4) && !isAbsolute3(rel);
 }
 function slugify(raw) {
   const slug = raw.toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^[^a-z0-9]+/, "").replace(/-+$/, "").slice(0, 80);
@@ -2802,7 +2883,7 @@ function slugify(raw) {
 
 // packages/mpd-worktree-plugin/src/store.ts
 import { existsSync as existsSync2, mkdirSync as mkdirSync2, readFileSync, renameSync as renameSync2, writeFileSync } from "node:fs";
-import { dirname as dirname2 } from "node:path";
+import { dirname as dirname3 } from "node:path";
 function emptyIndex() {
   return { version: 1, worktrees: [] };
 }
@@ -2828,7 +2909,7 @@ function readIndex(file) {
   }
 }
 function writeIndex(file, index) {
-  mkdirSync2(dirname2(file), { recursive: true });
+  mkdirSync2(dirname3(file), { recursive: true });
   const temp = file + "." + process.pid + "." + Date.now() + ".tmp";
   writeFileSync(temp, JSON.stringify(index, null, 2) + `
 `, "utf8");
@@ -2856,7 +2937,7 @@ class WorktreeError extends Error {
   }
 }
 function worktreeDir(deps) {
-  return deps.config.dir === undefined ? join3(deps.root, ".mpd", "worktrees") : resolve4(deps.root, deps.config.dir);
+  return deps.config.dir === undefined ? join3(deps.root, ".mpd", "worktrees") : resolve5(deps.root, deps.config.dir);
 }
 function indexFile(deps) {
   return join3(worktreeDir(deps), "index.json");
@@ -2868,7 +2949,7 @@ function assertRepoInWorkspace(deps, repo) {
 }
 function resolveRepo(deps, override) {
   const candidate = override ?? deps.config.repo;
-  const dir = candidate === undefined ? deps.root : resolve4(deps.root, candidate);
+  const dir = candidate === undefined ? deps.root : resolve5(deps.root, candidate);
   const top = repoTopLevel(dir);
   if (top === undefined) {
     throw new WorktreeError("not-a-repo", `"${dir}" is not a git repository (git rev-parse --show-toplevel failed); pass repo or configure worktree.repo`);
@@ -2976,7 +3057,7 @@ function createWorktree(deps, args) {
   const repo = typeof args.repo === "string" && args.repo.trim() !== "" ? args.repo.trim() : undefined;
   return createEntry(deps, {
     name,
-    path: resolve4(worktreeDir(deps), name),
+    path: resolve5(worktreeDir(deps), name),
     branch,
     ...teamId === undefined ? {} : { teamId },
     ...member === undefined ? {} : { member },
@@ -3213,6 +3294,746 @@ function createWorktreeService(options) {
   };
 }
 
+// packages/mpd-worktree-plugin/src/copy-git.ts
+var OBJECT_ID = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
+function directoryId(path) {
+  const stat = lstatSync(path, { bigint: true });
+  if (!stat.isDirectory() || realpathSync3(path) !== path) {
+    throw new WorktreeError("copy-path-changed", `expected a canonical directory at ${path}`);
+  }
+  return `${stat.dev}:${stat.ino}`;
+}
+function pathExists(path) {
+  try {
+    lstatSync(path);
+    return true;
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT")
+      return false;
+    throw error;
+  }
+}
+function gitEnvironment() {
+  return {
+    ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_"))),
+    GIT_CONFIG_GLOBAL: process.platform === "win32" ? "NUL" : "/dev/null",
+    GIT_CONFIG_NOSYSTEM: "1",
+    GIT_TERMINAL_PROMPT: "0"
+  };
+}
+function localGit(cwd, args) {
+  const nullDevice = process.platform === "win32" ? "NUL" : "/dev/null";
+  return runGit(cwd, [
+    "--no-replace-objects",
+    "-c",
+    "protocol.allow=never",
+    "-c",
+    "protocol.file.allow=always",
+    "-c",
+    `core.hooksPath=${nullDevice}`,
+    "-c",
+    "core.fsmonitor=false",
+    "-c",
+    "submodule.recurse=false",
+    ...args
+  ], GIT_TIMEOUT_MS, gitEnvironment());
+}
+function git(cwd, args) {
+  const result = localGit(cwd, args);
+  if (result.code !== 0) {
+    throw new WorktreeError("copy-git", `git ${args[0]} exited ${result.code}: ${firstLine(result.stderr)}`);
+  }
+  return result.stdout;
+}
+function exactCommit(repo, sha) {
+  if (!OBJECT_ID.test(sha) || git(repo, ["rev-parse", "--verify", `${sha}^{commit}`]).trim() !== sha) {
+    throw new WorktreeError("copy-exact-commit", "provide a full Git commit object ID");
+  }
+  return sha;
+}
+function checkSource(repo, base) {
+  if (git(repo, ["rev-parse", "--show-toplevel"]).trim() !== repo || git(repo, ["rev-parse", "--is-shallow-repository"]).trim() !== "false") {
+    throw new WorktreeError("copy-source", "use the canonical project Git checkout with full history");
+  }
+  exactCommit(repo, base);
+  if (git(repo, ["ls-tree", "--name-only", "-z", base, "--", ".mpd"]) !== "") {
+    throw new WorktreeError("copy-runtime-state", "the approved commit includes a tracked .mpd path");
+  }
+}
+function createCopy(repo, copy, base) {
+  const format = git(repo, ["rev-parse", "--show-object-format"]).trim();
+  git(copy, ["init", "--template=", `--object-format=${format}`]);
+  fetchCopyCommit(copy, repo, base);
+  git(copy, ["switch", "--create", "development", base]);
+}
+function fetchCopyCommit(target, source, sha) {
+  git(target, ["fetch", "--no-tags", "--no-recurse-submodules", "--no-write-fetch-head", "--no-auto-gc", "--", source, sha]);
+  exactCommit(target, sha);
+}
+function independentGitId(repo, copy) {
+  const gitDir = join4(copy, ".git");
+  const id = directoryId(gitDir);
+  directoryId(join4(gitDir, "objects"));
+  if (git(copy, ["rev-parse", "--show-toplevel"]).trim() !== copy || canonicalPath(git(copy, ["rev-parse", "--path-format=absolute", "--git-common-dir"]).trim()) !== gitDir || canonicalPath(git(repo, ["rev-parse", "--path-format=absolute", "--git-common-dir"]).trim()) === gitDir || ["objects/info/alternates", "objects/info/http-alternates", "commondir", "shallow", "worktrees", "modules"].some((entry) => pathExists(join4(gitDir, entry)))) {
+    throw new WorktreeError("copy-not-independent", "the copy must use its own complete Git directory without alternates or attached worktrees/submodules");
+  }
+  return id;
+}
+function isAncestor2(repo, ancestor, later) {
+  const result = localGit(repo, ["merge-base", "--is-ancestor", ancestor, later]);
+  if (result.code === 0 || result.code === 1)
+    return result.code === 0;
+  throw new WorktreeError("copy-unmerged", `Git could not prove ${ancestor} is integrated`);
+}
+function pinCandidate(copy, base, sha, scopes) {
+  exactCommit(copy, sha);
+  if (!isAncestor2(copy, base, sha))
+    throw new WorktreeError("copy-base", "the candidate must descend from the approved base");
+  const paths = git(copy, ["log", "--format=", "--name-only", "-z", "-m", "--no-renames", "--no-ext-diff", "--no-textconv", `${base}..${sha}`, "--"]).split("\x00").filter(Boolean);
+  for (const path of paths) {
+    if (path === ".mpd" || path.startsWith(".mpd/") || !scopes.some((scope) => scope === "." || path === scope || path.startsWith(`${scope}/`) || matchesGlob(path, scope))) {
+      throw new WorktreeError("copy-scope", `candidate changes an unauthorized path: ${path}`);
+    }
+  }
+  git(copy, ["update-ref", `refs/mpd/candidates/${sha}`, sha]);
+}
+function checkGitIdle(repo) {
+  const gitDir = git(repo, ["rev-parse", "--absolute-git-dir"]).trim();
+  if (["MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD", "REBASE_HEAD", "rebase-apply", "rebase-merge", "sequencer", "index.lock"].some((entry) => pathExists(join4(gitDir, entry)))) {
+    throw new WorktreeError("copy-git-in-progress", "finish the checkout's current Git operation before proceeding");
+  }
+}
+function checkClean(repo, disposal) {
+  checkGitIdle(repo);
+  if (git(repo, [
+    "status",
+    "--porcelain=v1",
+    "-z",
+    "--ignore-submodules=none",
+    ...disposal ? ["--untracked-files=all", "--ignored=matching"] : ["--untracked-files=no"]
+  ]) !== "") {
+    throw new WorktreeError("copy-dirty", "preserve or clean the checkout's local changes and files first");
+  }
+}
+function integrateCandidate(repo, copy, sha, into) {
+  checkClean(repo, false);
+  checkBranch(repo, into);
+  fetchCopyCommit(repo, copy, sha);
+  const identity = runGit(repo, ["var", "GIT_COMMITTER_IDENT"]);
+  const author = identity.code === 0 ? /^(.*) <([^<>]+)> \d+ [+-]\d{4}$/.exec(identity.stdout.trim()) : null;
+  const identityArgs = author === null ? [] : ["-c", `user.name=${author[1]}`, "-c", `user.email=${author[2]}`];
+  const result = localGit(repo, [...identityArgs, "merge", "--no-ff", "--no-autostash", "-m", `Merge verified development copy ${sha}`, sha]);
+  if (result.code === 0)
+    return { merged: true, conflicts: [] };
+  if (localGit(repo, ["rev-parse", "--verify", "--quiet", "MERGE_HEAD"]).code !== 0) {
+    throw new WorktreeError("copy-merge", firstLine(result.stderr) || `git merge exited ${result.code}`);
+  }
+  const conflicts = localGit(repo, ["diff", "--name-only", "-z", "--diff-filter=U"]);
+  git(repo, ["merge", "--abort"]);
+  return { merged: false, conflicts: conflicts.stdout.split("\x00").filter(Boolean) };
+}
+function checkBranch(repo, into) {
+  if (git(repo, ["symbolic-ref", "HEAD"]).trim() !== `refs/heads/${into}`) {
+    throw new WorktreeError("copy-integration-branch", "check out the named integration branch first");
+  }
+}
+function checkDisposable(repo, copy, integrated, branch) {
+  checkClean(copy, true);
+  const tracked = git(copy, ["ls-files", "-v", "-z"]).split("\x00");
+  if (tracked.some((line) => /^[a-zS] /.test(line))) {
+    throw new WorktreeError("copy-hidden-changes", "clear assume-unchanged and skip-worktree flags before disposal");
+  }
+  const target = `refs/heads/${branch}`;
+  if (!isAncestor2(repo, integrated, target))
+    throw new WorktreeError("copy-integration-lost", "the integration branch no longer contains the verified commit");
+  const refs = git(copy, ["for-each-ref", "--format=%(objectname) %(objecttype) %(refname)"]).trim();
+  for (const line of refs.split(`
+`).filter(Boolean)) {
+    const [sha, type, ref] = line.split(" ");
+    if (sha === undefined || ref === undefined)
+      throw new WorktreeError("copy-ref", "an unreadable local ref prevents disposal");
+    if (type === "commit" && (ref.startsWith("refs/heads/") || ref.startsWith("refs/mpd/candidates/"))) {
+      if (isAncestor2(repo, sha, target))
+        continue;
+    } else if (localGit(repo, ["show-ref", "--verify", "--hash", ref]).stdout.trim() === sha) {
+      continue;
+    }
+    throw new WorktreeError("copy-private-ref", `preserve private ref ${ref} before disposal`);
+  }
+  const localHistory = git(copy, ["reflog", "show", "--all", "--format=%H"]).trim().split(`
+`).filter(Boolean);
+  for (const sha of new Set([git(copy, ["rev-parse", "HEAD"]).trim(), ...localHistory])) {
+    if (!isAncestor2(repo, sha, target))
+      throw new WorktreeError("copy-unmerged", `local history ${sha} is outside the integration branch`);
+  }
+}
+function allocatedCopyBytes(path, device) {
+  const stat = lstatSync(path, { bigint: true });
+  if (device !== undefined && stat.dev !== device) {
+    throw new WorktreeError("copy-filesystem", "unmount the nested filesystem before measuring or disposing of the copy");
+  }
+  const own = stat.blocks * 512n;
+  return stat.isDirectory() ? readdirSync(path).reduce((size, entry) => size + allocatedCopyBytes(join4(path, entry), stat.dev), own) : own;
+}
+
+// packages/mpd-worktree-plugin/src/copy-authority.ts
+function callerSession(exec) {
+  const agent = exec.agent;
+  const id = agent?.session?.id ?? agent?.sessionId ?? agent?.id;
+  return typeof id === "string" && id !== "" ? id : undefined;
+}
+function authorizeCopy(ctx, checkoutRoot, exec) {
+  const context = ctx;
+  const identity = context?.get?.("mpdProjectIdentity", false);
+  const teams = context?.get?.("mpdTeams", false);
+  if (typeof identity?.resolveSeat !== "function" || typeof identity.bindCheckout !== "function" || typeof identity.unbindCheckout !== "function" || typeof teams?.get !== "function") {
+    throw new WorktreeError("copy-unavailable", "native project identity or the native board is unavailable; use a linked worktree");
+  }
+  const session = callerSession(exec);
+  if (session === undefined)
+    throw new WorktreeError("copy-forbidden", "a live project session is required");
+  const seat = identity.resolveSeat({ checkoutRoot, sessionId: session });
+  if (seat.kind !== "member")
+    throw new WorktreeError("copy-forbidden", "this session has no authorized project seat");
+  directoryId(seat.projectRoot);
+  return { seat, session, identity, teams };
+}
+function activeCopyTask(authority, teamId, taskId, memberName, writerSession) {
+  const team = authority.teams.get(authority.seat.projectRoot, teamId);
+  const member = team?.members.find((row) => row.name === memberName && row.executorRef === writerSession);
+  const task = team?.tasks.find((row) => row.id === taskId);
+  if (team?.phase !== "active" || member === undefined || member.fenced || member.mode === "checkpoint" || task === undefined || !["work", "repair", "integration"].includes(task.kind) || task.status !== "claimed" && task.status !== "in_progress" || task.owner !== member.name && task.owner !== member.id && task.owner !== writerSession) {
+    throw new WorktreeError("copy-stale-assignment", "the original writer must still own an active write assignment");
+  }
+  return task;
+}
+function requireCaptain(authority) {
+  if (authority.seat.seat !== "captain" || authority.seat.checkoutRoot !== authority.seat.projectRoot) {
+    throw new WorktreeError("copy-forbidden", "the authorized project captain must call from the project checkout");
+  }
+}
+function requireGrantCaptain(authority, record) {
+  requireCaptain(authority);
+  const visited = new Set;
+  let id = record.teamId;
+  while (id !== undefined && !visited.has(id)) {
+    visited.add(id);
+    const team = authority.teams.get(authority.seat.projectRoot, id);
+    if (team === undefined || team.phase === "staged" || team.phase === "ended")
+      break;
+    if (authority.seat.teamId === id && (team.leadSessionId === authority.session || team.leadHistory?.includes(authority.session)))
+      return;
+    id = team.parentTeamId;
+  }
+  throw new WorktreeError("copy-forbidden", "the project captain does not own this active board");
+}
+function ownCopy(authority, record) {
+  return authority.seat.projectId === record.projectId && (authority.seat.seat === "captain" || authority.seat.memberId === record.memberId && authority.session === record.writerSession);
+}
+function checkCopyAssignment(authority, record) {
+  const task = activeCopyTask(authority, record.teamId, record.taskId, record.memberName, record.writerSession);
+  if ((task.attempt ?? 0) !== record.attempt || !record.scope.every((scope) => task.writeScopes.includes(scope))) {
+    throw new WorktreeError("copy-stale-assignment", "the task attempt or its write scope changed");
+  }
+}
+
+// packages/mpd-worktree-plugin/src/copy-integration.ts
+import { renameSync as renameSync5, rmSync as rmSync2 } from "node:fs";
+
+// packages/mpd-worktree-plugin/src/copy-lifecycle.ts
+import { randomUUID as randomUUID3 } from "node:crypto";
+import { mkdirSync as mkdirSync4, renameSync as renameSync4 } from "node:fs";
+import { resolve as resolve6 } from "node:path";
+
+// packages/mpd-worktree-plugin/src/copy-store.ts
+import { randomUUID as randomUUID2 } from "node:crypto";
+import { mkdirSync as mkdirSync3, readdirSync as readdirSync2, readFileSync as readFileSync2, renameSync as renameSync3, rmdirSync, statfsSync, lstatSync as lstatSync2, writeFileSync as writeFileSync2 } from "node:fs";
+import { join as join5 } from "node:path";
+var COPY_APPROVAL_MS = 24 * 60 * 60 * 1000;
+var COPY_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+var FILE_ID = /^\d+:\d+$/;
+var PHASES = ["requested", "approved", "declined", "creating", "ready", "integrated", "disposing", "disposed"];
+function copyDirectory(root) {
+  const path = join5(root, ".mpd", "copies");
+  if (canonicalPath(path) !== path)
+    throw new WorktreeError("copy-path-changed", "the copy state path contains a symlink");
+  return path;
+}
+function copyPath(dir, destination) {
+  if (!isValidName(destination))
+    throw new WorktreeError("copy-destination", "destination must be a lowercase name inside .mpd/copies/checkouts");
+  const path = join5(dir, "checkouts", destination);
+  if (canonicalPath(path) !== path)
+    throw new WorktreeError("copy-path-changed", "the destination contains a symlink");
+  return path;
+}
+function stagePath(dir, id) {
+  if (!COPY_ID.test(id))
+    throw new WorktreeError("copy-id", "invalid copy request id");
+  const path = join5(dir, "staging", id);
+  if (canonicalPath(path) !== path)
+    throw new WorktreeError("copy-path-changed", "the staging path contains a symlink");
+  return path;
+}
+function availableBytes(path) {
+  const stat = statfsSync(path, { bigint: true });
+  return stat.bavail * stat.bsize;
+}
+function prepareCopyDirectories(dir, destination, stage) {
+  for (const path of [join5(dir, "requests"), join5(dir, "checkouts"), join5(dir, "staging")]) {
+    mkdirSync3(path, { recursive: true, mode: 448 });
+    directoryId(path);
+  }
+  const device = lstatSync2(dir, { bigint: true }).dev;
+  if ([destination, stage].some((path) => lstatSync2(join5(path, ".."), { bigint: true }).dev !== device)) {
+    throw new WorktreeError("copy-filesystem", "staging and checkouts must use the reservation ledger's filesystem");
+  }
+}
+function objectOf(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value) ? Object.fromEntries(Object.entries(value)) : {};
+}
+function isRecord2(record) {
+  const requiredText = [
+    "id",
+    "projectId",
+    "teamId",
+    "taskId",
+    "memberId",
+    "memberName",
+    "writerSession",
+    "source",
+    "base",
+    "destination",
+    "reason",
+    "setup",
+    "availableAtRequest",
+    "requestedAt",
+    "status"
+  ];
+  const optionalText = ["captainSession", "decidedAt", "decisionReason", "submittedAt", "verifiedRecord", "integrationBranch"];
+  const bytes = ["allocatedBytes", "availableAtApproval", "freeBeforeDisposal", "freeAfterDisposal", "releasedBytes"];
+  return requiredText.every((key) => typeof record[key] === "string" && record[key] !== "") && optionalText.every((key) => record[key] === undefined || typeof record[key] === "string") && bytes.every((key) => record[key] === undefined || /^\d+$/.test(String(record[key]))) && ["rootId", "gitId"].every((key) => record[key] === undefined || FILE_ID.test(String(record[key]))) && COPY_ID.test(String(record.id)) && isValidName(String(record.destination)) && OBJECT_ID.test(String(record.base)) && (record.candidate === undefined || OBJECT_ID.test(String(record.candidate))) && PHASES.some((phase) => phase === record.status) && Number.isSafeInteger(record.attempt) && Number(record.attempt) >= 0 && Number.isSafeInteger(record.estimatedBytes) && Number(record.estimatedBytes) > 0 && Array.isArray(record.scope) && record.scope.length > 0 && record.scope.every((scope) => typeof scope === "string");
+}
+function readCopies(dir) {
+  const requests = join5(dir, "requests");
+  if (!pathExists(requests))
+    return [];
+  directoryId(requests);
+  return readdirSync2(requests).filter((file) => COPY_ID.test(file.slice(0, -5)) && file.endsWith(".json")).map((file) => {
+    const path = join5(requests, file);
+    if (!lstatSync2(path).isFile())
+      throw new WorktreeError("copy-ledger", `expected a regular request file at ${file}`);
+    const record = objectOf(JSON.parse(readFileSync2(path, "utf8")));
+    if (isRecord2(record) && `${record.id}.json` === file)
+      return record;
+    throw new WorktreeError("copy-ledger", `invalid copy request ${file}`);
+  });
+}
+function writeCopy(dir, record) {
+  const temp = join5(dir, "requests", `${randomUUID2()}.tmp`);
+  writeFileSync2(temp, `${JSON.stringify(record, null, 2)}
+`, { flag: "wx", mode: 384, flush: true });
+  renameSync3(temp, join5(dir, "requests", `${record.id}.json`));
+  return record;
+}
+function withCopyLock(dir, operation) {
+  mkdirSync3(dir, { recursive: true, mode: 448 });
+  directoryId(dir);
+  const lock = join5(dir, "lock");
+  try {
+    mkdirSync3(lock, { mode: 448 });
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "EEXIST") {
+      throw new WorktreeError("copy-busy", "another process holds the project copy lock; retry after it finishes");
+    }
+    throw error;
+  }
+  try {
+    return operation();
+  } finally {
+    rmdirSync(lock);
+  }
+}
+function reservedBytes(records, except) {
+  return records.reduce((total, record) => {
+    if (record.id === except || record.status === "requested" || record.status === "declined" || record.status === "disposed" || record.status === "approved" && Date.now() >= Date.parse(record.requestedAt) + COPY_APPROVAL_MS)
+      return total;
+    const unspent = BigInt(record.estimatedBytes) - BigInt(record.allocatedBytes ?? 0);
+    return total + (unspent > 0n ? unspent : 0n);
+  }, 0n);
+}
+
+// packages/mpd-worktree-plugin/src/copy-lifecycle.ts
+function checkFresh(record) {
+  if (!(Date.now() < Date.parse(record.requestedAt) + COPY_APPROVAL_MS)) {
+    throw new WorktreeError("copy-expired", "the request is older than 24 hours; have the writer send a fresh request");
+  }
+}
+function listCopies(authority) {
+  return readCopies(copyDirectory(authority.seat.projectRoot)).filter((record) => ownCopy(authority, record));
+}
+function requestCopy(authority, request) {
+  if (authority.seat.seat !== "member")
+    throw new WorktreeError("copy-forbidden", "only the assigned member may request a copy");
+  const root = authority.seat.projectRoot;
+  if (resolve6(root, request.source) !== root)
+    throw new WorktreeError("copy-source", "the source must be the admitted project checkout");
+  checkSource(root, request.base);
+  const teamId = authority.seat.teamId;
+  const task = activeCopyTask(authority, teamId, request.taskId, authority.seat.memberName, authority.session);
+  if (!request.scope.every((scope) => task.writeScopes.includes(scope))) {
+    throw new WorktreeError("copy-scope", "request only write scopes declared on the assigned board task");
+  }
+  const dir = copyDirectory(root);
+  const destination = copyPath(dir, request.destination);
+  return withCopyLock(dir, () => {
+    const records = readCopies(dir);
+    const previous = records.find((row) => row.teamId === teamId && row.taskId === task.id && row.attempt === (task.attempt ?? 0) && row.status !== "declined" && (row.status !== "requested" && row.status !== "approved" || Date.now() < Date.parse(row.requestedAt) + COPY_APPROVAL_MS));
+    if (previous !== undefined) {
+      if (ownCopy(authority, previous) && previous.base === request.base && previous.destination === request.destination && previous.reason === request.reason && previous.setup === request.setup && previous.estimatedBytes === request.estimatedBytes && JSON.stringify(previous.scope) === JSON.stringify(request.scope))
+        return previous;
+      throw new WorktreeError("copy-already-requested", "this task attempt already has a copy request");
+    }
+    if (pathExists(destination))
+      throw new WorktreeError("copy-destination-exists", "choose an unused copy destination");
+    const id = randomUUID3();
+    prepareCopyDirectories(dir, destination, stagePath(dir, id));
+    return writeCopy(dir, {
+      ...request,
+      id,
+      teamId,
+      attempt: task.attempt ?? 0,
+      source: root,
+      memberId: authority.seat.memberId,
+      memberName: authority.seat.memberName,
+      writerSession: authority.session,
+      projectId: authority.seat.projectId,
+      availableAtRequest: String(availableBytes(dir)),
+      requestedAt: new Date().toISOString(),
+      status: "requested"
+    });
+  });
+}
+function changeCopy(authority, id, operation) {
+  const dir = copyDirectory(authority.seat.projectRoot);
+  return withCopyLock(dir, () => {
+    const records = readCopies(dir);
+    const record = records.find((row) => row.id === id && ownCopy(authority, row));
+    if (record === undefined || record.source !== authority.seat.projectRoot) {
+      throw new WorktreeError("copy-unknown", "no accessible copy request has this id");
+    }
+    const path = copyPath(dir, record.destination);
+    const stage = stagePath(dir, record.id);
+    prepareCopyDirectories(dir, path, stage);
+    return operation({ authority, record, records, dir, path, stage });
+  });
+}
+function checkCapacity(copy) {
+  const available = availableBytes(copy.dir);
+  if (available - reservedBytes(copy.records, copy.record.id) < BigInt(copy.record.estimatedBytes)) {
+    throw new WorktreeError("copy-insufficient-space", "available bytes after other copy reservations are below this request's estimate");
+  }
+  return String(available);
+}
+function decideCopy(copy, approved, reason) {
+  const { authority, record, dir, path } = copy;
+  requireGrantCaptain(authority, record);
+  if (!approved) {
+    if (record.status === "declined")
+      return record;
+    if (record.status !== "requested" && record.status !== "approved")
+      throw new WorktreeError("copy-state", "an allocated copy cannot be declined");
+    const { decisionReason: _previousReason, ...pending } = record;
+    return writeCopy(dir, {
+      ...pending,
+      status: "declined",
+      captainSession: authority.session,
+      decidedAt: new Date().toISOString(),
+      ...reason === undefined ? {} : { decisionReason: reason }
+    });
+  }
+  if (["creating", "ready", "integrated", "disposed"].includes(record.status))
+    return record;
+  if (record.status !== "requested" && record.status !== "approved")
+    throw new WorktreeError("copy-state", "only a pending request can be approved");
+  checkFresh(record);
+  checkCopyAssignment(authority, record);
+  checkSource(record.source, record.base);
+  if (pathExists(path) || copy.records.some((row) => row.id !== record.id && row.destination === record.destination && !["declined", "disposed", "requested"].includes(row.status) && (row.status !== "approved" || Date.now() < Date.parse(row.requestedAt) + COPY_APPROVAL_MS))) {
+    throw new WorktreeError("copy-destination-exists", "this destination is already allocated or reserved");
+  }
+  if (record.status === "approved")
+    return record;
+  return writeCopy(dir, {
+    ...record,
+    status: "approved",
+    captainSession: authority.session,
+    decidedAt: new Date().toISOString(),
+    availableAtApproval: checkCapacity(copy),
+    ...reason === undefined ? {} : { decisionReason: reason }
+  });
+}
+function requireWriter(authority, record) {
+  if (authority.seat.seat !== "member" || !ownCopy(authority, record)) {
+    throw new WorktreeError("copy-forbidden", "only the assigned writer can allocate or submit this copy");
+  }
+  checkCopyAssignment(authority, record);
+}
+function checkCheckout(record, path) {
+  if (directoryId(path) !== record.rootId || independentGitId(record.source, path) !== record.gitId) {
+    throw new WorktreeError("copy-path-changed", "the recorded checkout or Git directory was replaced");
+  }
+}
+function allocateCopy(copy) {
+  const { authority, record, dir, path, stage } = copy;
+  requireWriter(authority, record);
+  if (record.status === "ready") {
+    checkCheckout(record, path);
+    return record;
+  }
+  if (record.status !== "approved" && record.status !== "creating" || !record.captainSession || !record.decidedAt) {
+    throw new WorktreeError("copy-approval-required", "the project captain must approve this request first");
+  }
+  let preparing = record;
+  if (record.status === "approved") {
+    checkFresh(record);
+    checkCapacity(copy);
+    checkSource(record.source, record.base);
+    if (pathExists(path) || pathExists(stage))
+      throw new WorktreeError("copy-destination-exists", "the checkout or staging path is already occupied");
+    mkdirSync4(stage, { mode: 448 });
+    preparing = writeCopy(dir, { ...record, status: "creating", rootId: directoryId(stage) });
+    createCopy(record.source, stage, record.base);
+    preparing = writeCopy(dir, { ...preparing, gitId: independentGitId(record.source, stage), allocatedBytes: String(allocatedCopyBytes(stage)) });
+  }
+  if (preparing.gitId === undefined) {
+    throw new WorktreeError("copy-incomplete", "the interrupted staging copy is retained for recovery; no second allocation was made");
+  }
+  checkCopyAssignment(authority, preparing);
+  if (!pathExists(path)) {
+    checkCheckout(preparing, stage);
+    renameSync4(stage, path);
+  }
+  checkCheckout(preparing, path);
+  authority.identity.bindCheckout({ projectRoot: record.source, checkoutRoot: path, memberId: record.memberId });
+  return writeCopy(dir, { ...preparing, status: "ready" });
+}
+
+// packages/mpd-worktree-plugin/src/copy-verification.ts
+import { lstatSync as lstatSync3, readdirSync as readdirSync3, readFileSync as readFileSync3 } from "node:fs";
+import { join as join6 } from "node:path";
+var RECORD_ID = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,199}$/;
+function readProof(dir, id) {
+  const path = join6(dir, `${id}.json`);
+  if (!pathExists(path) || !lstatSync3(path).isFile()) {
+    throw new WorktreeError("copy-verification", "the verification record must exist as a regular file");
+  }
+  return objectOf(JSON.parse(readFileSync3(path, "utf8")));
+}
+function verifyCopyCandidate(root, copy, id) {
+  if (!RECORD_ID.test(id) || copy.candidate === undefined || copy.submittedAt === undefined) {
+    throw new WorktreeError("copy-verification", "submit a candidate and provide its verification record id");
+  }
+  const dir = join6(root, ".mpd", "verify", "records");
+  if (!pathExists(dir))
+    throw new WorktreeError("copy-verification", "the project has no recorded verification");
+  directoryId(dir);
+  const record = readProof(dir, id);
+  const binding = `git-copy:${copy.id}:${copy.candidate}`;
+  const gates = Array.isArray(record.gateEvidence) ? record.gateEvidence.map(objectOf) : [];
+  if (record.version !== 1 || record.recordId !== id || record.workspace !== root || record.taskId !== copy.taskId || record.writerId !== copy.writerSession || typeof record.verifierId !== "string" || !record.verifierId || record.verifierId === copy.writerSession || record.verdict !== "PASS" || objectOf(record.basis).kind !== "blind" || typeof record.loopId !== "string" || !record.loopId || typeof record.createdAt !== "string" || !(Date.parse(record.createdAt) >= Date.parse(copy.submittedAt)) || !Array.isArray(record.sources) || !record.sources.length || !gates.some((gate) => gate.exit === 0 && typeof gate.evidenceId === "string" && gate.evidenceId !== "") || !Array.isArray(record.notes) || !record.notes.includes(binding)) {
+    throw new WorktreeError("copy-verification", `an independent PASS after submission must name the assigned writer, task and ${binding}`);
+  }
+  const loopId = record.loopId;
+  if (!RECORD_ID.test(loopId))
+    throw new WorktreeError("copy-verification", "invalid verification loop ID");
+  const loops = join6(root, ".mpd", "verify", "loops");
+  directoryId(loops);
+  const loop = readProof(loops, loopId);
+  if (loop.version !== 1 || loop.loopId !== loopId || loop.workspace !== root || loop.taskId !== copy.taskId || objectOf(loop.writer).id !== copy.writerSession || objectOf(loop.verifier).id !== record.verifierId || objectOf(loop.writer).kind !== "delegate") {
+    throw new WorktreeError("copy-verification", "the verification loop must bind the project, task, writer and independent verifier");
+  }
+  for (const file of readdirSync3(dir)) {
+    const otherId = file.slice(0, -5);
+    if (!file.endsWith(".json") || otherId === id || !RECORD_ID.test(otherId))
+      continue;
+    const other = readProof(dir, otherId);
+    if (other.loopId === record.loopId && other.verdict === "FAIL" && typeof other.createdAt === "string" && Date.parse(other.createdAt) >= Date.parse(record.createdAt)) {
+      throw new WorktreeError("copy-verification", "the verification loop has a later FAIL");
+    }
+  }
+}
+
+// packages/mpd-worktree-plugin/src/copy-integration.ts
+function submitCopy(copy, commit) {
+  const { authority, record, dir, path } = copy;
+  requireWriter(authority, record);
+  if (record.status !== "ready")
+    throw new WorktreeError("copy-state", "only a ready copy can submit a candidate");
+  checkCheckout(record, path);
+  if (record.candidate === commit)
+    return record;
+  pinCandidate(path, record.base, commit, record.scope);
+  return writeCopy(dir, { ...record, candidate: commit, submittedAt: new Date().toISOString() });
+}
+function mergeCopy(copy, into, verification, protectedBranches) {
+  const { authority, record, dir, path } = copy;
+  requireCaptain(authority);
+  if (record.status === "integrated" && record.integrationBranch === into && record.verifiedRecord === verification) {
+    return { merged: true, conflicts: [], record };
+  }
+  if (record.status !== "ready" || record.candidate === undefined) {
+    throw new WorktreeError("copy-state", "only a ready copy with a submitted candidate can integrate");
+  }
+  if (!isValidBranch(record.source, into) || protectedBranches.includes(into)) {
+    throw new WorktreeError("copy-integration-branch", "use the repository's unprotected integration branch");
+  }
+  checkCheckout(record, path);
+  verifyCopyCandidate(record.source, record, verification);
+  const result = integrateCandidate(record.source, path, record.candidate, into);
+  return { ...result, record: result.merged ? writeCopy(dir, {
+    ...record,
+    status: "integrated",
+    verifiedRecord: verification,
+    integrationBranch: into
+  }) : record };
+}
+function checkWriterFinished(copy) {
+  const team = copy.authority.teams.get(copy.record.source, copy.record.teamId);
+  const task = team?.tasks.find((row) => row.id === copy.record.taskId);
+  if (task === undefined || !["completed", "failed", "cancelled"].includes(task.status)) {
+    throw new WorktreeError("copy-writer-active", "close the original board assignment before disposing of the copy");
+  }
+}
+function disposeCopy(copy) {
+  const { authority, record, dir, path, stage } = copy;
+  requireCaptain(authority);
+  if (record.status === "disposed")
+    return record;
+  if (record.status !== "integrated" && record.status !== "disposing" || !record.integrationBranch || !record.candidate) {
+    throw new WorktreeError("copy-state", "successful integration must precede disposal");
+  }
+  checkWriterFinished(copy);
+  let disposing = record;
+  if (record.status === "integrated") {
+    checkCheckout(record, path);
+    checkDisposable(record.source, path, record.candidate, record.integrationBranch);
+    if (pathExists(stage))
+      throw new WorktreeError("copy-path-changed", "the cleanup quarantine is occupied");
+    disposing = writeCopy(dir, {
+      ...record,
+      status: "disposing",
+      releasedBytes: String(allocatedCopyBytes(path)),
+      freeBeforeDisposal: String(availableBytes(dir))
+    });
+  }
+  if (pathExists(path)) {
+    checkCheckout(disposing, path);
+    checkDisposable(record.source, path, record.candidate, record.integrationBranch);
+    if (pathExists(stage))
+      throw new WorktreeError("copy-path-changed", "the cleanup quarantine is occupied");
+    authority.identity.unbindCheckout({ projectRoot: record.source, checkoutRoot: path, memberId: record.memberId });
+    renameSync5(path, stage);
+  }
+  if (pathExists(stage)) {
+    checkCheckout(disposing, stage);
+    checkDisposable(record.source, stage, record.candidate, record.integrationBranch);
+    allocatedCopyBytes(stage);
+    rmSync2(stage, { recursive: true });
+  }
+  return writeCopy(dir, { ...disposing, status: "disposed", freeAfterDisposal: String(availableBytes(dir)) });
+}
+
+// packages/mpd-worktree-plugin/src/copy-tool.ts
+var COPY_TOOL_NAME = "mpd_worktree_copy";
+var ACTIONS = ["request", "list", "approve", "decline", "create", "submit", "integrate", "dispose"];
+function text(args, key) {
+  const value = args[key];
+  if (typeof value !== "string" || !value.trim() || value.length > 4096 || value.includes("\x00")) {
+    throw new WorktreeError("copy-arguments", `provide a valid ${key}`);
+  }
+  return value.trim();
+}
+function parseRequest(args) {
+  const scope = args.scope;
+  const estimatedBytes = args.estimatedBytes;
+  if (typeof estimatedBytes !== "number" || !Number.isSafeInteger(estimatedBytes) || estimatedBytes <= 0 || !Array.isArray(scope) || !scope.length || scope.length > 64 || !scope.every((path) => typeof path === "string" && path.length > 0 && path.length <= 1024 && !/^[\/\\]|[\0\\]/.test(path) && !path.split("/").includes("..") && !path.startsWith(".mpd/"))) {
+    throw new WorktreeError("copy-arguments", "provide a positive estimatedBytes value and project-relative scope entries");
+  }
+  return {
+    taskId: text(args, "taskId"),
+    source: text(args, "source"),
+    base: text(args, "base"),
+    destination: text(args, "destination"),
+    reason: text(args, "reason"),
+    setup: text(args, "setup"),
+    scope,
+    estimatedBytes
+  };
+}
+function viewCopy(record) {
+  return { ...record, path: copyPath(copyDirectory(record.source), record.destination) };
+}
+function copyTool(ctx, dsh, protectedBranches) {
+  return {
+    name: COPY_TOOL_NAME,
+    description: "Request and manage one independent local Git copy for an assigned task. The project captain approves or declines the durable request. Its owner creates and submits, then the captain integrates an independently verified exact commit and disposes of a clean, fully integrated copy. A linked worktree is the default.",
+    parameters: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        action: { type: "string", enum: [...ACTIONS] },
+        id: { type: "string", description: "Request ID for approve, decline, create, submit, integrate or dispose; optional on list to show only that request." },
+        taskId: { type: "string", description: "request: the writer's active board task ID." },
+        source: { type: "string", description: "request: canonical project checkout or '.' relative to that checkout." },
+        base: { type: "string", description: "request: full object ID of the committed source base." },
+        destination: { type: "string", description: "request: a unique lowercase name under project .mpd/copies/checkouts." },
+        scope: { type: "array", items: { type: "string" }, description: "request: a subset of the exact write scopes on the active task." },
+        reason: { type: "string", description: "request: why a linked worktree is unsuitable. Decline/approve: optional decision note." },
+        setup: { type: "string", description: "request: known build and setup needs in the estimate. Identify any needed dirty or untracked inputs for separate authorization." },
+        estimatedBytes: { type: "integer", minimum: 1, description: "request: estimated peak bytes for objects, checkout, temporary packs and known setup/build data." },
+        commit: { type: "string", description: "submit: full commit object ID in the registered copy." },
+        verification: { type: "string", description: "integrate: independent mpd_verify_record PASS id for this request and submitted SHA." },
+        into: { type: "string", description: "integrate: currently checked-out unprotected integration branch in the project." }
+      },
+      required: ["action"]
+    },
+    output: {
+      render: (_args, value) => textBlock(JSON.stringify(value, null, 2))
+    },
+    execute: (raw, exec) => {
+      const authority = authorizeCopy(ctx, dsh.workspaceRoot(exec), exec);
+      const args = objectOf(raw);
+      const action = args.action;
+      if (action === "list") {
+        const id = args.id === undefined ? undefined : text(args, "id");
+        return { copies: listCopies(authority).filter((record) => id === undefined || record.id === id).map(viewCopy) };
+      }
+      if (action === "request")
+        return viewCopy(requestCopy(authority, parseRequest(args)));
+      return changeCopy(authority, text(args, "id"), (copy) => {
+        switch (action) {
+          case "approve":
+          case "decline":
+            return viewCopy(decideCopy(copy, action === "approve", args.reason === undefined ? undefined : text(args, "reason")));
+          case "create":
+            return viewCopy(allocateCopy(copy));
+          case "submit":
+            return viewCopy(submitCopy(copy, text(args, "commit")));
+          case "integrate": {
+            const result = mergeCopy(copy, text(args, "into"), text(args, "verification"), protectedBranches);
+            return { ...result, record: viewCopy(result.record) };
+          }
+          case "dispose":
+            return viewCopy(disposeCopy(copy));
+          default:
+            throw new WorktreeError("copy-arguments", "choose a supported copy action");
+        }
+      });
+    }
+  };
+}
+
 // packages/mpd-worktree-plugin/src/index.ts
 var name = "mpd-worktree";
 var inject = dshSeamInject(DSH_SEAM_TOOLS);
@@ -3223,7 +4044,8 @@ var TOOL_NAMES = [
   "mpd_worktree_list",
   "mpd_worktree_status",
   "mpd_worktree_merge",
-  "mpd_worktree_remove"
+  "mpd_worktree_remove",
+  COPY_TOOL_NAME
 ];
 function messageOf2(error) {
   return error instanceof Error ? error.message : String(error);
@@ -3315,6 +4137,7 @@ function apply(ctx, config = {}) {
     },
     execute: (args, exec) => removeWorktree(depsFor(exec), args)
   });
+  register(copyTool(ctx, dsh, resolved.protectedBranches));
   try {
     const service = createWorktreeService({ rootOf, config: resolved, log });
     const provide = ctx?.provide;

@@ -14,7 +14,118 @@ service is the **fallback** for a composition that runs the official executor, r
 `mpd-dsh-adapter`, and no surface here treats `dsh.teamLiveTeams()` as truth. The sidecar files under
 `<workspace>/.mpd/team/` are the workflow state *around* that record, never a second copy of it.
 
+## Durable project roster
+
+The first required Team plan approval can establish the project's fixed roster from its deliberate
+member declarations. After the project admits a Team or Cellwork run, the recorded project captain
+can inspect and extend that roster without spawning anyone.
+
+```text
+agent_teams_plan { "action": "roster" }
+agent_teams_plan { "action": "roster", "member": { "name": "build-reviewer", "role": "Reviewer", "route": { "provider": "deepseek-official", "model": "deepseek-chat" } } }
+```
+
+Omit `route` to use the configured role route. Repeating a declaration preserves its existing member
+ID and pinned settings. Use `add_member` in a later Team plan to attach that declared member to the
+run. A live `add_member` can also raise a run-scoped seat without assigning a fixed project identity.
+Cellwork planning seats and one-shot consults are run-scoped. Established Cellwork splits use declared
+compatible fixed members. Busy work queues when there is no compatible idle fixed member.
+
+Workmate matching can choose an available existing binding during first Team approval. A missing
+match leaves a plain seat and does not create a HOME instance. Later boards reuse the same identity,
+role, route and binding, including across linked checkouts. An explicit `workmate:` pin can change the
+binding to an available Workmate while preserving private memory. Previously stored aliases require
+unique approval and board evidence. A conflict stops approval and names the affected logical member.
+
+## Project context in model requests
+
+When the host exposes native runtime context, authenticated project seats receive a fresh view of
+the current goal, board and relevant dependencies when the host assembles a request. The captain sees board
+and evidence summaries plus parsed module metadata. A member with claimed or running work can also
+receive the first 440 bytes of one exact regular file in their declared scope, from their own
+checkout. The section identifies the file prefix and package manifest by SHA-256. It skips missing,
+changed, symlinked, hidden and non-text sources.
+
+A task description can reference existing memory explicitly with `Context private: <key>` or
+`Context shared: {"key":"api","revision":2,"appliesTo":"v2"}` on its own line. Private references
+resolve only for that original member. Shared references require the current revision and exact
+applicability. Other task text, notes, sources and filenames are only context data.
+
+The section cap is 2,048 UTF-8 bytes for the captain and 3,584 for a member. If the host reports
+context occupancy of at least 88%, the cap falls to 768 bytes and source previews are omitted. At
+96% the section is omitted. This budget covers the added section. The host still owns tool schemas,
+conversation history, and request scheduling. Its latest runtime snapshot supersedes earlier ones.
+A host without the runtime-context registry continues ordinary turns and logs the unavailable hook.
+
 ## Tools
+
+### Captain wake
+
+Use `agent_teams_control` to arm one condition on your active team and then end the current turn.
+The team's recorded captain session can arm, inspect, and cancel its own registrations.
+
+```json
+{"action":"wake","wake":{"action":"arm","task_ids":["T2","T3"],"mode":"all"}}
+{"action":"wake","wake":{"action":"arm","event":"mail","from_member":"M1"}}
+{"action":"wake","wake":{"action":"status"}}
+{"action":"wake","wake":{"action":"cancel","id":"<registration-id>"}}
+```
+
+Task mode defaults to `all`. Choose `any` to wake when the first selected task reaches `completed`,
+`failed`, or `cancelled`. `event: "mail"` waits for team-stamped mail addressed to the captain.
+`from_member` is an optional roster ID. The wake includes the mailbox ID and leaves the message in
+`agent_teams_mail`. An already-true task condition or matching unread mail returns `satisfied` and
+needs no yield. An identical pending arm returns the existing ID. Cancel an outstanding wait before
+arming a different condition. Add `id` to a `status` call to inspect one registration.
+
+`waiting` means the condition is open. `ready` means the condition holds and can trigger delivery
+when the original captain becomes idle. `submitted` records the host's acceptance of one next-turn
+item. Use the host turn record to establish that the next turn actually ran. `cancelled` and `failed`
+report closed attempts. `delivery-unknown` reports an interrupted reservation with no definitive
+host receipt. The wake carries board IDs and terminal statuses or a mailbox ID.
+
+The selected team ID appears in the response. If the team closes, a ready match already recorded or
+a terminal task outcome recorded at or before close still counts. An unmet condition fails. Mail
+first observed after close needs a send timestamp strictly before close.
+
+Ordinary `agent_teams_mail` sends to the Team captain notify the wake in process after commit.
+Canonical mail written by other producers or processes depends on filesystem notifications or a
+later reconciliation. If the filesystem watcher is unavailable, those writes may go unobserved
+until a host status event or when the original session reopens. `cellwork_send` uses cell addresses
+and is outside this Team mail condition.
+
+Pending arms survive a resident-host restart and are checked when the original session reopens in
+its original workspace. A stopped host needs to reopen the session before it can submit a turn.
+The original captain must expose observable idle status and next-turn submission. An interrupted
+submission is left for inspection. Check the original session for the wake ID before arming again.
+The wake schedules no model polling. Human input, active goals, and other host events may still start
+turns independently.
+
+### Wait for a Team event in the current turn
+
+Use `wait` when an active goal should stay armed while the captain waits for Team work. The original
+tool call waits for a committed event and returns in the same turn, without a polling loop or a
+follow-up. The running turn keeps the host from admitting another automatic goal round during the
+wait. The goal can continue normally after the call or turn ends.
+
+```json
+{"action":"wake","wake":{"action":"wait","task_ids":["T2","T3"],"mode":"all"}}
+{"action":"wake","wake":{"action":"wait","event":"mail","from_member":"M1"}}
+```
+
+Task and mailbox filters match `arm`. The result is `wait: { state, teamId, match?, reason? }`.
+An already-true condition returns `matched` immediately. A scoped human message releases the call
+with `steered` and stays in the host inbox. An abort returns `cancelled` where the host delivers the
+result, and host or plugin teardown returns `disposed`. An unmatched team close returns `ended`.
+Only one wait can run per captain session. Cancel a pending durable registration before starting a
+wait. An in-turn wait creates no durable registration and cannot resume after process exit.
+
+A pending wait needs the original running session, its observable inbox and cancellation events.
+If the host reports `unsupported`, continue the turn or use `arm` and end the turn when a durable
+watch is appropriate. A host without the optional turn-conclusion hook can release a queued human
+follow-up and admit it at its normal next-turn boundary.
+
+### Other Team actions
 
 | Tool | `action` values | What it does |
 |---|---|---|

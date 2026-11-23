@@ -18,7 +18,8 @@ import type { GraphModel } from "../../mpd-graph-core/src/index.ts"
 import type { TeamRecord, TaskStatus, TaskVisual } from "./team-store"
 import { blockingDependencies, cycleIds, derivePhase, idleMembers, listTeams, memberIsCheckpoint, memberProgress, readyTasks, summariseTeam, taskVisual, activeTeamId } from "./team-store"
 import { stageLabel, teamStage } from "./stage"
-import { listContracts, readHold, readPlan, type StagedPlan } from "./plan-store"
+import { listContracts, readHold, type StagedPlan } from "./plan-store"
+import { readProjectStage } from "./project-staging"
 import { readMailbox, readRecords } from "./mailbox-store"
 import type { MailAnswer, MailQuestion } from "../../mpd-mail-protocol/src/index"
 // TYPE ONLY: the mutations are EXECUTED by the row (which owns the service); this module only shapes
@@ -807,7 +808,7 @@ export function buildTeamMail(workspace: string): TeamWebMail {
  * @returns the payload.
  */
 export function planForSession(workspace: string, sessionId: string): TeamWebPlan {
-  return buildTeamPlan(readPlan(workspace, sessionId), workspace, sessionId)
+  return buildTeamPlan(readProjectStage(workspace, sessionId).plan, workspace, sessionId)
 }
 
 /** The response surface a route handler may rely on, structurally typed. */

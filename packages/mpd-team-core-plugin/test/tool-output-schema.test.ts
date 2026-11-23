@@ -21,6 +21,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { apply } from "../src/index"
 import { listTeams, readTeam } from "../src/team-store"
+import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** One value JSON can carry without loss. */
 type Json = null | boolean | number | string | Json[] | { [key: string]: Json }
@@ -162,9 +163,12 @@ interface Fixture {
 /**
  * Build the harness: the real plugin applied against a stub adapter and a stub executor.
  * @param roles - the roster rows the `mpdRoles` service publishes (the C7-2 source); empty by default.
+ * @param official - when supplied, the official team service read through the real adapter roster and board views.
  * @returns the fixture.
  */
-function fixture(roles: Array<{ name: string; readonly?: boolean }> = [], officialMembers: object[] = []): Fixture {
+function fixture(roles: Array<{ name: string; readonly?: boolean }> = [], official?: object): Fixture {
+  /** Use the real fallback views when an arm exercises the official service. */
+  const officialReads = official === undefined ? undefined : createDshAdapter({ get: (id: string) => id === "agentTeams" ? official : undefined })
   /** The sandbox workspace, which is what `workspaceRoot` answers. */
   const workspace = mkdtempSync(join(tmpdir(), "mpd-output-"))
   /** The tools the plugin registered. */
@@ -194,8 +198,8 @@ function fixture(roles: Array<{ name: string; readonly?: boolean }> = [], offici
       // THE METER SEAM answers the adapter's OWN empty reading, which is what it returns for a session it
       // cannot resolve: a null window keeps the context verb's reply lossless JSON (no `undefined`).
       if (prop === "contextPressure") return () => ({ usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" })
-      if (prop === "teamListMembers") return () => officialMembers
-      if (prop === "teamListTasks") return () => []
+      if (prop === "teamListMembers") return officialReads?.teamListMembers ?? (() => [])
+      if (prop === "teamListTasks") return officialReads?.teamListTasks ?? (() => [])
       if (prop === "capabilities") return () => ({})
       return noop
     },
@@ -324,23 +328,56 @@ describe("an EMPTY plan cannot be approved (D4a)", () => {
 })
 
 describe("every action's value satisfies its declared output contract", () => {
+  test("task-only official roster is lossless before Cellwork staging and after a plan amendment", async () => {
+    /** The real adapter against a host that exposes the official board but lacks a roster. */
+    const f = fixture([], { listTasks: (): unknown[] => [] })
+    try {
+      /** Fresh-session status is the first call made by public cellwork_start. */
+      const fresh = await f.call("agent_teams_plan", { action: "status" })
+      expect(fresh.plan).toBeNull()
+      expect(fresh.team).toBeNull()
+      expect(fresh.members).toEqual([])
+      expect(fresh.rosterUnsupported).toMatchObject({ unsupported: true, capability: "roster", reason: expect.any(String) })
+      await f.call("agent_teams_plan", { action: "create", name: "cell planning", description: "initial" })
+      await f.call("agent_teams_plan", { action: "edit", description: "amended" })
+      /** Status for a partially staged plan must retain its current contents and capability reading. */
+      const amended = await f.call("agent_teams_plan", { action: "status" })
+      expect(amended.plan).toMatchObject({ name: "cell planning", description: "amended" })
+      expect(amended.members).toEqual([])
+      expect(amended.rosterUnsupported).toEqual(fresh.rosterUnsupported)
+    } finally {
+      rmSync(f.workspace, { recursive: true, force: true })
+    }
+  })
+
+  test("status keeps the adapter's plain empty arrays for malformed official collections", async () => {
+    /** Non-array host answers must never become array entries by spreading an iterable scalar. */
+    const f = fixture([], { listMembers: (): string => "bad-roster", listTasks: (): object => ({ invalid: true }) })
+    try {
+      /** The official fallback is available, so it has no unsupported-capability marker. */
+      const status = await f.call("agent_teams_plan", { action: "status" })
+      expect(status.members).toEqual([])
+      expect(status.tasks).toEqual([])
+      expect(status).not.toHaveProperty("rosterUnsupported")
+    } finally {
+      rmSync(f.workspace, { recursive: true, force: true })
+    }
+  })
+
   test("status keeps official fallback rows and their diagnostic across the lossless JSON boundary", async () => {
-    /** The capability marker that the adapter attaches to an empty official roster. */
-    const unsupported = { unsupported: true, capability: "roster", generation: "task-board-only", reason: "the official roster is unavailable" }
-    /** The array kept backward compatible for adapter callers that iterate over rows. */
-    const rows = Object.defineProperty([], "unsupported", { value: unsupported })
     /** The host composition with a mounted, board-only official service. */
-    const f = fixture([], rows)
+    const f = fixture([], { listTasks: (): unknown[] => [] })
     try {
       /** The status payload after the same lossless check the harness runs before rendering. */
       const status = await f.call("agent_teams_plan", { action: "status" })
       expect(status.members).toEqual([])
-      expect(status.rosterUnsupported).toEqual(unsupported)
+      expect(status.rosterUnsupported).toMatchObject({ unsupported: true, capability: "roster", generation: "partial" })
       expect(Reflect.ownKeys(status.members)).toEqual(["length"])
     } finally {
       rmSync(f.workspace, { recursive: true, force: true })
     }
   })
+
   test("status answers null plan/hold, the record and a LOSSLESS summary — and the harness accepts it", async () => {
     /** The harness under test. */
     const f = fixture()
@@ -438,15 +475,12 @@ describe("create_task carries owner and blocked_by from BOTH spellings", () => {
       /** The board, whose FIRST task is left in progress by a dispatch pass below. */
       const record = readTeam(f.workspace, listTeams(f.workspace)[0].teamId)
       expect(record?.tasks.map((task) => task.owner)).toEqual(["Reviewer", "Reviewer"])
-      // Now make the member genuinely busy (its first wave's task is in progress) and stage a THIRD
-      // task with the same owner: a busy member is not a reason to drop the owner the caller stated.
-      await f.call("agent_teams_plan", { action: "create", name: "wave-2", description: "next" })
-      await f.call("agent_teams_plan", { action: "add_member", member: { name: "Reviewer", description: "judges", prompt: "You review." } })
+      await f.call("agent_teams_dispatch", { action: "run", limit: 1 })
+      expect(readTeam(f.workspace, listTeams(f.workspace)[0].teamId)?.tasks[0]?.status).toBe("in_progress")
       await f.call("agent_teams_plan", { action: "create_task", task: { subject: "third", description: "d", owner: "Reviewer", blocked_by: [] } })
-      await f.call("agent_teams_plan", { action: "approve" })
-      /** The SECOND board, which must carry the owner too. */
-      const second = readTeam(f.workspace, listTeams(f.workspace)[0].teamId)
-      expect(second?.tasks.map((task) => task.owner)).toEqual(["Reviewer"])
+      /** A busy member can still own another task on the live board. */
+      const updated = readTeam(f.workspace, listTeams(f.workspace)[0].teamId)
+      expect(updated?.tasks.map((task) => task.owner)).toEqual(["Reviewer", "Reviewer", "Reviewer"])
     } finally {
       rmSync(f.workspace, { recursive: true, force: true })
     }

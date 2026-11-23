@@ -1,6 +1,45 @@
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
-import { resolve as resolve2, sep as sep2 } from "node:path";
+
+// packages/mpd-dsh-adapter-plugin/src/scoped-helper.ts
+import { realpathSync } from "node:fs";
+import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
+function helperTarget(checkout, value) {
+  try {
+    const root = realpathSync(checkout);
+    const path = resolve(root, value);
+    const local = relative(root, path);
+    if (local === "" || local === ".." || local.startsWith(`..${sep}`) || isAbsolute(local) || local.split(sep).some((item) => item === ".mpd" || item === ".git"))
+      return;
+    let probe = path;
+    while (probe !== root) {
+      try {
+        if (realpathSync(probe) !== probe)
+          return;
+      } catch (error) {
+        if (!(error instanceof Error) || !("code" in error) || error.code !== "ENOENT")
+          throw error;
+      }
+      probe = dirname(probe);
+    }
+    return local.split(sep).join("/");
+  } catch (error) {
+    if (error instanceof Error)
+      return;
+    throw error;
+  }
+}
+function helperFileRefusal(scope, name, args) {
+  if (name === "structured_output")
+    return;
+  if (scope.current?.() === false)
+    return "The original assignment no longer authorizes this helper.";
+  const path = typeof args === "object" && args !== null && "file_path" in args && typeof args.file_path === "string" ? helperTarget(scope.checkout, args.file_path) : undefined;
+  const allowed = path !== undefined && (name === "read" ? scope.read.includes(path) || scope.write.includes(path) : (name === "write" || name === "edit") && scope.write.includes(path));
+  return allowed ? undefined : "This one-shot can use only the exact file tools and paths its owner delegated.";
+}
+// packages/mpd-dsh-adapter-plugin/src/index.ts
+import { resolve as resolve3, sep as sep3 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
 function errorMessage(error) {
@@ -10,7 +49,7 @@ function errorMessage(error) {
 // packages/mpd-mcp-shared/log-sink.ts
 import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { isAbsolute as isAbsolute2, join, relative as relative2, resolve as resolve2, sep as sep2 } from "node:path";
 var LOG_SUBDIR = join(".mpd", "logs");
 var DEFAULT_MAX_BYTES = 1024 * 1024;
 var DEFAULT_MAX_LINE_BYTES = 8192;
@@ -35,7 +74,7 @@ function resolveLogRoots(env = process.env, cwd) {
       continue;
     let absolute;
     try {
-      absolute = resolve(candidate);
+      absolute = resolve2(candidate);
     } catch {
       continue;
     }
@@ -60,8 +99,8 @@ function owningRoot(roots, file) {
   for (const root of roots) {
     if (file === root)
       return root;
-    const rel = relative(root, file);
-    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel))
+    const rel = relative2(root, file);
+    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep2}`) && !isAbsolute2(rel))
       return root;
   }
   return null;
@@ -371,10 +410,10 @@ function sessionCwdOf(agent) {
 function workspaceRootOfAgent(agent) {
   const session = sessionCwdOf(agent);
   if (session !== undefined)
-    return resolve2(session);
+    return resolve3(session);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve2(override);
+    return resolve3(override);
   return process.cwd();
 }
 function workspaceRootOf(exec) {
@@ -382,7 +421,7 @@ function workspaceRootOf(exec) {
     return workspaceRootOfAgent(exec.agent);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve2(override);
+    return resolve3(override);
   return process.cwd();
 }
 var rowLogSinks = new Map;
@@ -447,7 +486,7 @@ function workspaceRootsOf(agents) {
     for (const agent of list) {
       const cwd = sessionCwdOf(agent);
       if (cwd !== undefined)
-        roots.add(resolve2(cwd));
+        roots.add(resolve3(cwd));
     }
     return [...roots];
   } catch {
@@ -1808,6 +1847,13 @@ function createDshAdapter(ctx, config = {}) {
       const registered = systemPrompt.section(section);
       return typeof registered === "function" ? registered : noop;
     },
+    registerPromptContext(context) {
+      const systemPrompt = service("systemPrompt");
+      if (typeof systemPrompt?.context !== "function")
+        return;
+      const registered = systemPrompt.context(context);
+      return typeof registered === "function" ? registered : noop;
+    },
     guardTool(guard) {
       const tools = requireService("tools", "cannot install a tool guard");
       if (typeof tools.guard !== "function")
@@ -2040,14 +2086,45 @@ function createDshAdapter(ctx, config = {}) {
           ...spec.outputSchema === undefined ? {} : { outputSchema: spec.outputSchema },
           ...spec.maxDepth === undefined ? {} : { maxDepth: spec.maxDepth }
         };
-        const activation = await subagents.startActivation.call(subagents, dualShapeActivationSpec({
-          provider,
-          label: spec.label,
-          signal,
-          delivery: "parent"
-        }, activationRequest));
-        return activationHandleOf(activation, subagents, spec.parent);
+        const files = spec.helperFiles;
+        if (files === undefined) {
+          const activation = await subagents.startActivation.call(subagents, dualShapeActivationSpec({ provider, label: spec.label, signal, delivery: "parent" }, activationRequest));
+          return activationHandleOf(activation, subagents, spec.parent);
+        }
+        if (provider !== "spawn" || typeof service("tools")?.guard !== "function")
+          throw new Error("scoped one-shot requires native child and tool-guard support");
+        if (files.current?.() === false)
+          throw new Error("the original helper assignment changed before admission");
+        const childId = randomUUID();
+        const offGuard = adapter.guardTool((exec) => sessionIdOfAgent(exec.agent) === childId ? helperFileRefusal(files, exec.name, exec.arguments) : undefined);
+        let installed = false;
+        const offCreated = onEvent("agent/created", (payload) => {
+          const child = payload?.agent;
+          if (sessionIdOfAgent(child) !== childId)
+            return;
+          const allow = files.write.length > 0 ? ["read", "write", "edit"] : files.read.length > 0 ? ["read"] : [];
+          applyScopedRestriction(child, { allow });
+          installed = true;
+        });
+        try {
+          if (offCreated === undefined)
+            throw new Error("scoped one-shot requires the native agent creation hook");
+          const activation = await subagents.startActivation.call(subagents, dualShapeActivationSpec({ provider, label: spec.label, signal, delivery: "caller", childId }, { ...activationRequest, cwd: files.checkout }));
+          if (!installed) {
+            await releaseActivation(activation);
+            throw new Error("the host did not publish the reserved scoped helper");
+          }
+          const handle = activationHandleOf(activation, subagents, spec.parent);
+          return { ...handle, result: handle.result.finally(offGuard) };
+        } catch (error) {
+          offGuard();
+          throw error;
+        } finally {
+          offCreated?.();
+        }
       }
+      if (spec.helperFiles !== undefined)
+        throw new Error("scoped one-shot requires native child start support");
       if (typeof subagents.start !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagent service exposes neither startActivation() nor start()");
       const run = await subagents.start(provider, {
@@ -2576,7 +2653,7 @@ function probeMpdDsh(ctx, strict) {
 
 // packages/mpd-cellwork-plugin/src/state.ts
 import { appendFileSync, existsSync, mkdirSync as mkdirSync2, readFileSync, readdirSync, renameSync as renameSync2, statSync as statSync2, unlinkSync, writeFileSync } from "node:fs";
-import { dirname, join as join2 } from "node:path";
+import { dirname as dirname2, join as join2 } from "node:path";
 var CELLWORK_STATE_VERSION = 1;
 var CELLWORK_ROOT_SEGMENTS = [".mpd", "cellwork"];
 var CELL_STATE_FILE = "state.json";
@@ -2724,7 +2801,7 @@ function appendJournal(workspace, cellId, entry, now) {
   const line = JSON.stringify({ at: now.toISOString(), ...entry }) + `
 `;
   try {
-    mkdirSync2(dirname(path), { recursive: true });
+    mkdirSync2(dirname2(path), { recursive: true });
     const before = journalSize(path);
     appendFileSync(path, line, "utf8");
     const after = journalSize(path);
@@ -2887,8 +2964,8 @@ function recordTransition(workspace, next, entry, now) {
   return writeCell(workspace, stamped);
 }
 function atomicWriteText(file, text) {
-  const tmp = join2(dirname(file), "." + file.split("/").pop() + ".tmp-" + String(process.pid) + "-" + String(tempCounter++));
-  mkdirSync2(dirname(file), { recursive: true });
+  const tmp = join2(dirname2(file), "." + file.split("/").pop() + ".tmp-" + String(process.pid) + "-" + String(tempCounter++));
+  mkdirSync2(dirname2(file), { recursive: true });
   try {
     writeFileSync(tmp, text, "utf8");
     renameSync2(tmp, file);
@@ -2982,6 +3059,8 @@ function normalizeCellState(raw) {
     parentTeamId: typeof raw.parentTeamId === "string" ? raw.parentTeamId : "",
     subcellIds: Array.isArray(raw.subcellIds) ? raw.subcellIds.map(String) : [],
     requirementsRevision: typeof raw.requirementsRevision === "number" ? raw.requirementsRevision : 0,
+    ...typeof raw.requirementsBaseHash === "string" ? { requirementsBaseHash: raw.requirementsBaseHash } : {},
+    ...typeof raw.requirementsUpdateHash === "string" ? { requirementsUpdateHash: raw.requirementsUpdateHash } : {},
     splitRevision: typeof raw.splitRevision === "number" ? raw.splitRevision : null,
     splitTaskId: typeof raw.splitTaskId === "string" ? raw.splitTaskId : "",
     activatedRevision: typeof raw.activatedRevision === "number" ? raw.activatedRevision : null,
@@ -3012,13 +3091,14 @@ function sessionIdOf(agent) {
   return "";
 }
 function callerContext(dsh, exec, deps = {}) {
+  const sessionId = sessionIdOf(exec?.agent);
   let workspace = "";
   try {
-    workspace = dsh.workspaceRoot(exec);
+    const checkout = dsh.workspaceRoot(exec);
+    workspace = deps.teams?.()?.stateWorkspace?.(checkout, sessionId) ?? checkout;
   } catch {
     workspace = "";
   }
-  const sessionId = sessionIdOf(exec?.agent);
   if (workspace === "")
     return { workspace, sessionId, member: "", seat: undefined, cell: null, refusal: null };
   const scan = liveTree(workspace);
@@ -3558,13 +3638,28 @@ function openCell(input) {
     if ("refusal" in mandate)
       return { ok: false, error: mandate.refusal };
   }
+  if (input.admission === undefined)
+    return openAt(input, objective, runId);
+  try {
+    return input.admission.admitCell({ checkoutRoot: input.workspace, sessionId: input.captainSessionId }, (workspace) => openAt({ ...input, workspace }, objective, runId));
+  } catch (error) {
+    if (error instanceof Error)
+      return { ok: false, error: error.message };
+    throw error;
+  }
+}
+function openAt(input, objective, runId) {
   const active = readActiveCell(input.workspace);
   if (!active.ok)
     return { ok: false, error: "cellwork_open refused: " + readFailureText(active), path: active.path };
   if (active.cell !== null) {
-    const state = active.cell.state;
-    if (runId !== undefined && state.mandateRunId === runId && state.captainSessionId === input.captainSessionId && state.objective === objective) {
-      return openOutcome(input.workspace, state);
+    const prior = active.cell.state;
+    if ((runId !== undefined || input.admission !== undefined) && prior.mandateRunId === runId && prior.captainSessionId === input.captainSessionId && prior.objective === objective) {
+      const outcome2 = openOutcome(input.workspace, prior);
+      if (outcome2.needsDirective && input.submit !== undefined && input.submit(outcome2.directive) !== true) {
+        return { ok: false, error: "cellwork could not resume " + prior.cellId + ": no live agent turn surface accepted the activation directive" };
+      }
+      return { ...outcome2, replayed: true };
     }
     return {
       ok: false,
@@ -3612,7 +3707,103 @@ function readFailureText(failure) {
   return "the cell record at " + failure.path + " cannot be read (" + failure.reason + ": " + failure.detail + ") — nothing was changed; repair or archive that file first";
 }
 
+// packages/mpd-cellwork-plugin/src/worker-pressure-authority.ts
+function recordOf(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : undefined;
+}
+function recordsOf(value) {
+  return Array.isArray(value) ? value.map(recordOf).filter((row) => row !== undefined) : [];
+}
+function writerBinding(deps, agent) {
+  const { caller, board: raw } = deps.inspect(agent);
+  const member = caller.cell?.members[caller.member];
+  if (caller.cell === null || caller.seat?.mode !== "member" || member?.mode !== "member" || member.fenced === true || member.handoffReady || member.sessionId !== caller.sessionId)
+    return;
+  const board = recordOf(raw);
+  if (typeof board?.teamId !== "string" || board.phase === "ended" || board.endedAt !== undefined)
+    return;
+  const row = recordsOf(board.members).find((candidate) => candidate.executorRef === caller.sessionId && candidate.name === caller.member);
+  if (typeof row?.projectMemberId !== "string" || row.status === "failed" || row.fenced === true || row.mode === "checkpoint")
+    return;
+  const roles = recordOf(deps.ctx.get?.("mpdRoles", false));
+  if (typeof row.role === "string" && typeof roles?.get === "function" && recordOf(roles.get(row.role))?.readonly === true)
+    return;
+  const service = recordOf(deps.ctx.get?.("mpdProjectIdentity", false));
+  if (typeof service?.resolveSeat !== "function")
+    return;
+  const identity = recordOf(service.resolveSeat({ checkoutRoot: deps.dsh.workspaceRoot({ agent }), sessionId: caller.sessionId }));
+  if (identity?.kind !== "member" || typeof identity.projectId !== "string" || identity.seat !== "member" || identity.teamId !== board.teamId || identity.memberId !== row.projectMemberId || identity.projectRoot !== caller.workspace)
+    return;
+  return { projectId: identity.projectId, workspace: caller.workspace, cellId: caller.cell.cellId, teamId: board.teamId, memberId: row.projectMemberId, sessionId: caller.sessionId, tasks: recordsOf(board.tasks) };
+}
+function writerTask(binding) {
+  const { tasks, projectId, workspace, cellId, teamId, memberId, sessionId } = binding;
+  const eligible = tasks.filter((task2) => (task2.status === "claimed" || task2.status === "in_progress") && task2.owner === sessionId && (task2.kind === "work" || task2.kind === "repair" || task2.kind === "integration") && Array.isArray(task2.writeScopes) && task2.writeScopes.length > 0 && Array.isArray(task2.blockedBy) && task2.blockedBy.every((id) => tasks.some((blocker) => blocker.id === id && (blocker.status === "completed" || blocker.status === "failed" || blocker.status === "cancelled"))));
+  const task = eligible.length === 1 ? eligible[0] : undefined;
+  if (typeof task?.id !== "string" || typeof task.attempt !== "number" || typeof task.revision !== "number")
+    return;
+  const attemptKey = JSON.stringify([projectId, cellId, teamId, memberId, sessionId, task.id, task.attempt]);
+  return { key: `${attemptKey}:${task.revision}`, attemptKey, workspace, cellId, teamId, memberId, sessionId, taskId: task.id, attempt: task.attempt, revision: task.revision };
+}
+
+// packages/mpd-cellwork-plugin/src/project-helper.ts
+function scopedPaths(checkout, value) {
+  if (value === undefined)
+    return [];
+  if (!Array.isArray(value) || value.length > 12)
+    throw new Error("helper scope needs up to 12 literal paths per mode");
+  return [...new Set(value.map((path) => {
+    const target = typeof path === "string" && path.length <= 180 ? helperTarget(checkout, path) : undefined;
+    if (target === undefined)
+      throw new Error("helper path is outside the assigned checkout");
+    return target;
+  }))];
+}
+function helperAssignment(deps, agent, caller) {
+  if (caller.seat?.mode !== "member" || typeof agent !== "object" || agent === null)
+    return;
+  const service = recordOf(deps.ctx.get?.("mpdProjectIdentity", false));
+  if (typeof service?.resolveSeat !== "function")
+    return;
+  const checkoutRoot = deps.dsh.workspaceRoot({ agent });
+  const identity = recordOf(service.resolveSeat({ checkoutRoot, sessionId: caller.sessionId }));
+  if (identity?.kind === "unbound")
+    return;
+  const binding = writerBinding(deps, agent);
+  const active = binding === undefined ? undefined : writerTask(binding);
+  if (active === undefined || binding === undefined || typeof identity?.checkoutRoot !== "string")
+    throw new Error("a scoped helper requires this original worker's current writable assignment");
+  const worktrees = recordOf(deps.ctx.get?.("mpdWorktree", false));
+  const assigned = typeof worktrees?.cwdForMember === "function" ? worktrees.cwdForMember({ agent }, { teamId: active.teamId, member: caller.member }) : undefined;
+  const assignedIdentity = typeof assigned === "string" && identity.checkoutRoot === identity.projectRoot ? recordOf(service.resolveSeat({ checkoutRoot: assigned, sessionId: caller.sessionId })) : undefined;
+  const checkout = assignedIdentity !== undefined && assignedIdentity.projectId === identity.projectId && assignedIdentity.memberId === identity.memberId && typeof assignedIdentity.checkoutRoot === "string" ? assignedIdentity.checkoutRoot : identity.checkoutRoot;
+  const scopes = binding.tasks.find((task) => task.id === active.taskId)?.writeScopes;
+  return {
+    owner: active.attemptKey,
+    teamId: active.teamId,
+    helperFiles: (raw) => {
+      const scope = raw === undefined ? {} : recordOf(raw);
+      if (scope === undefined || Object.keys(scope).some((key) => key !== "read" && key !== "write"))
+        throw new Error("helper scope is {read?: paths, write?: paths}");
+      const read = scopedPaths(checkout, scope.read);
+      const write = scopedPaths(checkout, scope.write);
+      if (write.some((target) => !Array.isArray(scopes) || !scopes.some((value) => {
+        if (typeof value !== "string")
+          return false;
+        const parent = helperTarget(checkout, value.replace(/\/\*\*$/, ""));
+        return parent !== undefined && (target === parent || (value.endsWith("/**") || value.endsWith("/")) && target.startsWith(`${parent}/`));
+      })))
+        throw new Error("helper write path exceeds this assignment's scope");
+      return { checkout, read, write, current: () => {
+        const fresh = writerBinding(deps, agent);
+        return fresh !== undefined && writerTask(fresh)?.attemptKey === active.attemptKey;
+      } };
+    }
+  };
+}
+
 // packages/mpd-cellwork-plugin/src/requirements.ts
+import { createHash } from "node:crypto";
 import { existsSync as existsSync3, readFileSync as readFileSync2 } from "node:fs";
 var REQUIREMENT_SECTIONS = [
   { key: "goal", title: "Goal", aliases: ["goal", "objective", "aim"] },
@@ -3688,14 +3879,28 @@ function storedRequirementsText(text) {
 function writeRequirements(workspace, cellId, text) {
   atomicWriteText(requirementsPath(workspace, cellId), storedRequirementsText(text));
 }
+function requirementsHash(document) {
+  return createHash("sha256").update(document).digest("hex");
+}
+function acceptedRequirementsMatch(workspace, cell) {
+  const hash = cell.requirementsUpdateHash ?? cell.requirementsBaseHash;
+  if (hash === undefined)
+    return true;
+  try {
+    const document = readRequirements(workspace, cell.cellId);
+    return document !== null && requirementsHash(document) === hash;
+  } catch {
+    return false;
+  }
+}
 
 // packages/mpd-cellwork-plugin/src/split.ts
 import { existsSync as existsSync4, readdirSync as readdirSync2, readFileSync as readFileSync3 } from "node:fs";
-import { dirname as dirname2 } from "node:path";
+import { dirname as dirname3 } from "node:path";
 
 // packages/mpd-cellwork-plugin/src/budget.ts
 import { closeSync as closeSync2, openSync as openSync2, readSync, statSync as statSync3 } from "node:fs";
-import { isAbsolute as isAbsolute2, join as join4, relative as relative2, resolve as resolve3 } from "node:path";
+import { isAbsolute as isAbsolute3, join as join4, relative as relative3, resolve as resolve4 } from "node:path";
 var CJK_BYTES_PER_CHAR = 3;
 var SAMPLE_BYTES = 16384;
 var CONTENT_BLOCKS = 1;
@@ -3719,9 +3924,9 @@ function resolveInputPath(workspace, declared) {
   const trimmed = declared.trim();
   if (trimmed === "")
     return { path: "", error: "an input path is empty" };
-  const absolute = isAbsolute2(trimmed) ? resolve3(trimmed) : resolve3(join4(workspace, trimmed));
-  const rel = relative2(workspace, absolute);
-  if (rel.startsWith("..") || isAbsolute2(rel))
+  const absolute = isAbsolute3(trimmed) ? resolve4(trimmed) : resolve4(join4(workspace, trimmed));
+  const rel = relative3(workspace, absolute);
+  if (rel.startsWith("..") || isAbsolute3(rel))
     return { path: absolute, error: "the input path is outside the workspace" };
   return { path: absolute };
 }
@@ -4161,7 +4366,7 @@ async function submitSplit(deps, submission) {
   }
   const tasks = [];
   for (const task of submission.tasks) {
-    const inputs = task.inputs.map((declared) => measureInput(deps.workspace, declared, deps.config));
+    const inputs = task.inputs.map((declared) => measureInput(deps.checkout ?? deps.workspace, declared, deps.config));
     const reading = readings.get(roleKey(task.ownerRole)) ?? { provider: "", model: "", window: null, provenance: "uncertified", maxOutputTokens: null, reason: "the owner role resolved no window" };
     const routeKey = reading.provider === "" || reading.model === "" ? "" : reading.provider + "/" + reading.model;
     const estimate = estimateTask({ subject: task.subject, description: task.description, inputs, config: deps.config, routeKey, modelMaxTokens: reading.maxOutputTokens });
@@ -4260,7 +4465,7 @@ function readSplit(workspace, cellId, revision) {
   return readVerdictFile(splitPath(workspace, cellId, revision));
 }
 function latestSplit(workspace, cellId) {
-  const dir = dirname2(splitPath(workspace, cellId, 0));
+  const dir = dirname3(splitPath(workspace, cellId, 0));
   let entries = [];
   try {
     entries = readdirSync2(dir);
@@ -4377,7 +4582,7 @@ function readDelegateTasks(raw, maxTasks = DELEGATE_MAX_TASKS) {
       return { ok: false, error: "cellwork_delegate: tasks[" + String(index) + "].task is empty — one consult answers one concrete assignment; nothing was started" };
     if (record.context !== undefined && typeof record.context !== "string")
       return { ok: false, error: "cellwork_delegate: tasks[" + String(index) + "].context must be a string when present; nothing was started" };
-    tasks.push({ role, task, ...typeof record.context === "string" && record.context !== "" ? { context: record.context } : {} });
+    tasks.push({ role, task, ...record.scope === undefined ? {} : { scope: record.scope }, ...typeof record.context === "string" && record.context !== "" ? { context: record.context } : {} });
   }
   return { tasks };
 }
@@ -4446,6 +4651,20 @@ async function startDelegation(deps, rawTasks) {
     return { ok: false, error: missingConsultsServiceRefusal("cellwork_delegate") };
   if (deps.rosterNames().length === 0)
     return { ok: false, error: missingRosterRefusal() };
+  if (deps.helperFiles !== undefined && service.scopedFiles !== true)
+    return { ok: false, error: "cellwork_delegate: native scoped helpers are unavailable" };
+  let files;
+  try {
+    files = parsed.tasks.map((task) => {
+      if (deps.helperFiles === undefined && task.scope !== undefined)
+        throw new Error("explicit files require an active project assignment");
+      if (deps.helperFiles !== undefined && (Buffer.byteLength(task.task) > 1400 || Buffer.byteLength(task.context ?? "") > 4000))
+        throw new Error("project helper subtask or context exceeds its input limit");
+      return deps.helperFiles?.(task.scope);
+    });
+  } catch (error) {
+    return { ok: false, error: `cellwork_delegate: ${error instanceof Error ? error.message : String(error)}; nothing was started` };
+  }
   const roles = [];
   for (let index = 0;index < parsed.tasks.length; index += 1) {
     const answer = (() => {
@@ -4468,6 +4687,7 @@ async function startDelegation(deps, rawTasks) {
         role: roles[index],
         task: task.task,
         ...task.context === undefined ? {} : { context: task.context },
+        ...files[index] === undefined ? {} : { helperFiles: files[index] },
         exec: deps.exec,
         ...deps.consultMax === undefined ? {} : { maxConcurrent: deps.consultMax },
         onSettled: settlementObserverOf(deps)
@@ -4476,7 +4696,7 @@ async function startDelegation(deps, rawTasks) {
       if (row === undefined)
         return { ok: false, error: "cellwork_delegate: the `mpdConsults` service answered tasks[" + String(index) + "] without a consultId — " + String(consults.length) + " of " + String(parsed.tasks.length) + " consults were already started (" + consults.map((entry) => entry.consultId).join(", ") + "); collect them with `cellwork_consult`" };
       consults.push({ consultId: row.consultId, role: row.role === "" ? roles[index] : row.role, startedAt: row.startedAt });
-      rememberConsult(deps.book, deps.cellId, { consultId: row.consultId, role: row.role === "" ? roles[index] : row.role, startedAt: row.startedAt, question: task.task });
+      rememberConsult(deps.book, deps.cellId, { consultId: row.consultId, role: row.role === "" ? roles[index] : row.role, startedAt: row.startedAt, question: task.task, ...deps.owner === undefined ? {} : { owner: deps.owner } });
       appendJournal(deps.workspace, deps.cellId, {
         event: "delegate-start",
         role: row.role === "" ? roles[index] : row.role,
@@ -4542,9 +4762,10 @@ async function clearCellConsults(deps) {
 function foreignConsultRefusal(toolName, consultId, cellId) {
   return "cellwork: `" + toolName + "` refused " + JSON.stringify(consultId) + " — this cell did not start" + " that consult, so it is not this cell's to settle. `cellwork_consult` answers only ids that" + " `cellwork_delegate` returned IN CELL " + cellId + " and that the consult supervisor still knows:" + " an id from `mpd_role_spawn_async` belongs to `mpd_role_consult`, a consult another cell started" + " belongs to that cell, and a process restart drops every in-memory handle — re-delegate the task" + " with `cellwork_delegate` when you need it again.";
 }
-function successOf(action, row) {
-  const { error, ...rest } = row;
-  return { ok: true, action, ...rest, ...error === undefined ? {} : { errorDetail: error } };
+function successOf(action, row, scoped = false) {
+  const { error, report, ...rest } = row;
+  const bounded = report === undefined || !scoped ? report : { ...report, summary: report.summary.slice(0, 1200), recommendation: report.recommendation.slice(0, 500), details: report.details.slice(0, 900), evidence: report.evidence.slice(0, 6).map((item) => item.slice(0, 160)) };
+  return { ok: true, action, ...rest, ...bounded === undefined ? {} : { report: bounded }, ...error === undefined ? {} : { errorDetail: scoped ? error.slice(0, 320) : error } };
 }
 async function runConsultAction(deps, args) {
   const action = args.action.trim();
@@ -4560,20 +4781,23 @@ async function runConsultAction(deps, args) {
     const live = (Array.isArray(answer) ? answer : []).map((entry) => consultRowOf(entry)).filter((entry) => entry !== undefined);
     const own = deps.book.get(deps.cellId) ?? new Map;
     const consults = [];
-    for (const owned of [...own.values()]) {
-      const row = live.find((entry) => entry.consultId === owned.consultId);
+    for (const owned2 of [...own.values()]) {
+      if (owned2.owner !== undefined && owned2.owner !== deps.owner)
+        continue;
+      const row = live.find((entry) => entry.consultId === owned2.consultId);
       if (row === undefined) {
-        forgetConsult(deps.book, deps.cellId, owned.consultId);
+        forgetConsult(deps.book, deps.cellId, owned2.consultId);
         continue;
       }
-      consults.push({ consultId: row.consultId, role: row.role === "" ? owned.role : row.role, state: row.state, startedAt: row.startedAt, elapsedMs: row.elapsedMs, ...row.hostRetries === undefined ? {} : { hostRetries: row.hostRetries }, question: owned.question });
+      consults.push({ consultId: row.consultId, role: row.role === "" ? owned2.role : row.role, state: row.state, startedAt: row.startedAt, elapsedMs: row.elapsedMs, ...row.hostRetries === undefined ? {} : { hostRetries: row.hostRetries }, question: owned2.question });
     }
     return { ok: true, action, consults };
   }
   const consultId = args.consultId.trim();
   if (consultId === "")
     return { ok: false, error: 'cellwork_consult: `consultId` is required for action "' + action + '" — use the id `cellwork_delegate` returned, or action "list" to see this cell\'s ids' };
-  if (ownedConsult(deps.book, deps.cellId, consultId) === undefined)
+  const owned = ownedConsult(deps.book, deps.cellId, consultId);
+  if (owned === undefined || owned.owner !== undefined && owned.owner !== deps.owner)
     return { ok: false, error: foreignConsultRefusal("cellwork_consult", consultId, deps.cellId) };
   try {
     if (action === "wait") {
@@ -4584,7 +4808,7 @@ async function runConsultAction(deps, args) {
       if (row2 === undefined)
         return { ok: false, error: "cellwork_consult: the `mpdConsults` service answered `wait` without a consult view for " + JSON.stringify(consultId) };
       await recordConsultRow(deps, row2, ownedConsult(deps.book, deps.cellId, consultId)?.question ?? "");
-      return successOf(action, row2);
+      return successOf(action, row2, owned.owner !== undefined);
     }
     if (action === "collect") {
       if (typeof service.collect !== "function")
@@ -4598,7 +4822,7 @@ async function runConsultAction(deps, args) {
       if (row2.state !== "running")
         forgetConsult(deps.book, deps.cellId, consultId);
       await recordConsultRow(deps, row2, remembered);
-      return successOf(action, row2);
+      return successOf(action, row2, owned.owner !== undefined);
     }
     if (typeof service.cancel !== "function")
       return { ok: false, error: missingConsultsServiceRefusal("cellwork_consult") };
@@ -4607,7 +4831,7 @@ async function runConsultAction(deps, args) {
       return { ok: false, error: "cellwork_consult: the `mpdConsults` service answered `cancel` without a consult view for " + JSON.stringify(consultId) };
     appendJournal(deps.workspace, deps.cellId, { event: "consult-cancelled", role: row.role, consultId }, deps.now);
     await recordConsultRow(deps, row, taskOfConsult(deps, consultId));
-    return successOf(action, row);
+    return successOf(action, row, owned.owner !== undefined);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return { ok: false, error: "cellwork_consult: `" + action + "` on " + JSON.stringify(consultId) + " failed: " + message };
@@ -4738,6 +4962,43 @@ async function runRecon(deps, input) {
     personaInjected: persona !== null,
     ...single === undefined ? { reports } : legacyOnly ? { report: single.report, stopReason: single.stopReason } : { reports, report: single.report, stopReason: single.stopReason }
   };
+}
+
+// packages/mpd-cellwork-plugin/src/fixed-roster.ts
+function fixedSeat(value) {
+  return typeof value === "object" && value !== null && "memberId" in value && typeof value.memberId === "string" && "name" in value && typeof value.name === "string" && (!("logicalName" in value) || typeof value.logicalName === "string") && (!("role" in value) || typeof value.role === "string");
+}
+function fixedRosterOf(ctx, checkoutRoot, sessionId) {
+  const identity = ctx.get?.("mpdProjectIdentity", false);
+  if (typeof identity !== "object" || identity === null || !("roster" in identity) || typeof identity.roster !== "function")
+    return;
+  const value = identity.roster({ checkoutRoot, sessionId });
+  if (typeof value !== "object" || value === null || !("members" in value) || !Array.isArray(value.members) || !value.members.every(fixedSeat)) {
+    throw new Error("project roster could not be read; no execution seats were raised");
+  }
+  return value.members;
+}
+function seatOf(owner, role, roster) {
+  const exact = roster.filter((seat) => roleKey(seat.name) === roleKey(owner) || roleKey(seat.logicalName ?? seat.name) === roleKey(owner));
+  const matches = exact.length === 0 && roleKey(owner) === roleKey(role) ? roster.filter((seat) => roleKey(seat.role ?? "") === roleKey(role)) : exact;
+  return matches.length === 1 && roleKey(matches[0].role ?? "") === roleKey(role) ? matches[0] : undefined;
+}
+function fixedOwners(split, roster) {
+  if (roster.length === 0)
+    return split;
+  const tasks = split.tasks.map((task) => {
+    const owner = task.member.trim() || task.ownerRole.trim();
+    const seat = seatOf(owner, task.ownerRole, roster);
+    if (seat === undefined)
+      throw new Error(`unresolved fixed owner ${JSON.stringify(owner)} for ${JSON.stringify(task.ownerRole)}; name a compatible declared member or ask the project captain to declare one via agent_teams_plan action roster, then resubmit the split`);
+    return { ...task, member: seat.name };
+  });
+  for (const task of tasks) {
+    if (task.kind === "review" && tasks.some((candidate) => candidate.kind !== "review" && task.blockedBy.includes(candidate.key) && task.member === candidate.member)) {
+      throw new Error(`review ${JSON.stringify(task.key)} resolves to the same fixed seat as its writer; select an independent verifier and resubmit the split`);
+    }
+  }
+  return { ...split, tasks };
 }
 
 // packages/mpd-cellwork-plugin/src/activate.ts
@@ -4929,6 +5190,11 @@ function splitterPrompt(deps) {
     "  · kind: requirement | work | review | repair | integration (omitted means work).",
     "  · ownerRole: a ROSTER role name (Senior Engineer, Deep Worker, Junior Engineer, Reviewer, …) or a cell",
     "    role (cell-planner, cell-splitter). It is the role the executor routes the member by.",
+    ...deps.fixedRoster && deps.fixedRoster.length > 0 ? [
+      "FIXED EXECUTION MEMBERS: choose a compatible name from this list. Busy members queue tasks; do not invent extra names:",
+      ...deps.fixedRoster.map((seat) => `  ${JSON.stringify(seat.name)} (${seat.role ?? "role unpinned"})`),
+      "  Ask the project captain for an explicit roster change if no compatible member is available."
+    ] : [],
     "  · member: the BOARD MEMBER the task is raised for — THE PARALLELISM SWITCH. Omit it and the role",
     "    spelling IS the member, so that role runs ONE seat and its tasks queue behind one another. Name it",
     "    (`Reviewer-2`, `Reviewer-3`, …) and THAT NAME is a separate seat, so several seats may share one",
@@ -5086,8 +5352,17 @@ function planningSeats(deps, lanes) {
   return seats;
 }
 async function stagePlanningTeam(deps) {
+  const call = async (arguments_) => {
+    const result = await deps.dsh.executeTool({ name: "agent_teams_plan", arguments: arguments_, agent: deps.captainAgent });
+    if (!result.ok)
+      return { ok: false, error: typeof result.error === "string" ? result.error : "the agent_teams_plan call failed" };
+    return { ok: true, value: typeof result.value === "object" && result.value !== null ? result.value : {} };
+  };
   const existingTeamId = deps.cell.teamId;
-  if (existingTeamId !== "") {
+  const retryStatus = existingTeamId === "" || deps.cell.splitTaskId ? undefined : await call({ action: "status" });
+  const retryPlan = retryStatus?.ok === true && typeof retryStatus.value.plan === "object" && retryStatus.value.plan !== null ? retryStatus.value.plan : undefined;
+  const retryActivation = textField2(retryPlan, "name") === "cell " + deps.cell.cellId && typeof retryPlan?.activation === "object" && retryPlan.activation !== null ? retryPlan.activation : undefined;
+  if (existingTeamId !== "" && textField2(retryActivation, "teamId") !== existingTeamId) {
     const record = deps.teams()?.get?.(deps.workspace, existingTeamId);
     const ticket2 = await resolveSplitTicket(deps, existingTeamId, "", false);
     if (ticket2.boardReadable && ticket2.splitTaskId === "")
@@ -5104,20 +5379,14 @@ async function stagePlanningTeam(deps) {
       }
     };
   }
-  const call = async (arguments_) => {
-    const result = await deps.dsh.executeTool({ name: "agent_teams_plan", arguments: arguments_, agent: deps.captainAgent });
-    if (!result.ok)
-      return { ok: false, error: typeof result.error === "string" ? result.error : "the agent_teams_plan call failed" };
-    return { ok: true, value: typeof result.value === "object" && result.value !== null ? result.value : {} };
-  };
   const planName = "cell " + deps.cell.cellId;
-  const status = await call({ action: "status" });
+  const status = retryStatus ?? await call({ action: "status" });
   if (!status.ok)
     return { ok: false, error: "cellwork could not read the session's team state: " + status.error };
   const staged = status.value.plan;
   const plan = typeof staged === "object" && staged !== null ? staged : undefined;
   const resumable = plan !== undefined && textField2(plan, "name") === planName;
-  const approvedAlready = resumable && textField2(plan, "approvedAt") !== "";
+  const approvedAlready = resumable && plan?.activation === undefined && textField2(plan, "approvedAt") !== "";
   if (plan !== undefined && !resumable) {
     if (textField2(plan, "approvedAt") !== "") {
       return { ok: false, error: "a team plan is already APPROVED in this session; cellwork needs the staging slot free — finish or archive that team first" };
@@ -5142,7 +5411,7 @@ async function stagePlanningTeam(deps) {
         recovered[seat.name] = livePlanningMemberRow(seat.name, seat.role, textField2(row, "executorRef") === "" ? textField2(row, "id") : textField2(row, "executorRef"), deps.cell, deps.now);
         continue;
       }
-      const appended = await call({ action: "add_member", member: { name: seat.name, role: seat.role, description: seat.name + " (" + seat.role + ")", prompt: seat.prompt } });
+      const appended = await call({ action: "add_member", member: { name: seat.name, role: seat.role, scope: "run", description: seat.name + " (" + seat.role + ")", prompt: seat.prompt } });
       if (!appended.ok) {
         return { ok: false, error: "the planning team " + recoveredId + " is approved but " + seat.name + " could not be raised: " + appended.error, planName, teamId: recoveredId, partial: true };
       }
@@ -5163,7 +5432,7 @@ async function stagePlanningTeam(deps) {
       return { ok: false, error: "the planning team " + recoveredId + " is approved but " + recoveredTicket.repairError, teamId: recoveredId, members: recovered, planName, partial: true };
     return { ok: true, alreadyStaged: true, teamId: recoveredId, members: recovered, tasks: { splitId: recoveredTicket.splitTaskId }, planName, ...recoveredTicket.ownerRepaired ? { ownerRepaired: true } : {}, ...recoveredTicket.repairError === "" ? {} : { ownerRepairError: recoveredTicket.repairError } };
   }
-  if (plan === undefined) {
+  if (!resumable) {
     if (typeof status.value.team === "object" && status.value.team !== null) {
       return { ok: false, error: "this session already drives team " + textField2(status.value.team, "teamId") + "; cellwork requires its own fresh team" };
     }
@@ -5183,7 +5452,7 @@ async function stagePlanningTeam(deps) {
   for (const seat of seats) {
     if (presentMembers.has(seat.name))
       continue;
-    const appended = await call({ action: "add_member", member: { name: seat.name, role: seat.role, description: seat.name + " (" + seat.role + ")", prompt: seat.prompt } });
+    const appended = await call({ action: "add_member", member: { name: seat.name, role: seat.role, scope: "run", description: seat.name + " (" + seat.role + ")", prompt: seat.prompt } });
     if (!appended.ok)
       return { ok: false, error: "cellwork could not stage " + seat.name + ": " + appended.error, planName, partial: true };
   }
@@ -5472,6 +5741,7 @@ async function growExecutionSeats(deps) {
   const result = { members: {}, reassign: [], grown: [], reused: [], refused: [], warnings: [], caps: { perRole: caps.perRole, total: caps.total } };
   if (deps.record === undefined)
     return result;
+  const fixedNames = new Set((deps.fixedRoster ?? []).map((seat) => roleKey(seat.name)));
   const tasks = growthTaskRows(deps.record.tasks);
   const roster = growthMemberRows(deps.record.members);
   const busy = busyOwnerKeys(tasks);
@@ -5524,7 +5794,7 @@ async function growExecutionSeats(deps) {
   };
   for (const task of tasks) {
     const taskId = task.id;
-    if (task.status !== "pending")
+    if (task.status !== "pending" || task.kind === "review")
       continue;
     if (!blockersSatisfied(tasks, task.blockedBy))
       continue;
@@ -5567,12 +5837,16 @@ async function growExecutionSeats(deps) {
       continue;
     }
     const roleK = roleKey(role);
-    const reuse = roster.find((row) => !isPlanningSeatName(rowName(row)) && roleKey(rowName(row)) !== roleKey(owner) && typeof row.executorRef === "string" && row.executorRef !== "" && roleKey(memberRoleOf(row) ?? "") === roleK && !seatVerifierOnly(row) && seatIdle(row));
+    const reuse = roster.find((row) => (fixedNames.size === 0 || fixedNames.has(roleKey(rowName(row)))) && !isPlanningSeatName(rowName(row)) && roleKey(rowName(row)) !== roleKey(owner) && typeof row.executorRef === "string" && row.executorRef !== "" && roleKey(memberRoleOf(row) ?? "") === roleK && !seatVerifierOnly(row) && seatIdle(row));
     if (reuse !== undefined) {
       const name2 = rowName(reuse);
       allocated.add(roleKey(name2));
       result.reassign.push({ task_id: taskId, owner: name2 });
       result.reused.push({ name: name2, taskId });
+      continue;
+    }
+    if (fixedNames.size > 0) {
+      refuse(taskId, task.subject ?? "", `declared owner ${JSON.stringify(owner)} is BUSY and no compatible fixed seat is available; the task remains queued`);
       continue;
     }
     const perRoleCount = roster.filter((row) => !isPlanningSeatName(rowName(row)) && roleKey(memberRoleOf(row) ?? "") === roleK).length + result.grown.filter((seat) => roleKey(seat.role) === roleK).length;
@@ -5604,7 +5878,7 @@ async function growExecutionSeats(deps) {
         name: "agent_teams_plan",
         arguments: {
           action: "add_member",
-          member: { name, role, description: name, prompt: grownSeatPrompt(deps.cell, name, role, deps.personaFor(role)) }
+          member: { name, role, scope: "run", description: name, prompt: grownSeatPrompt(deps.cell, name, role, deps.personaFor(role)) }
         },
         agent: deps.captainAgent
       }));
@@ -5706,6 +5980,7 @@ function resolvedMemberName(task) {
 function memberPrompt(deps, memberName, ownerRole, owned) {
   const persona = deps.personaFor(ownerRole);
   const taskLines = owned.map((task) => "  · " + task.key + " — " + task.subject);
+  const mayDelegate = owned.some((task) => (task.kind === "work" || task.kind === "repair" || task.kind === "integration") && task.writeScopes.length > 0);
   return [
     ...persona === null ? [] : [persona, ""],
     "[mpd-cellwork] You are " + memberName + " (" + ownerRole + ") on cell " + deps.cell.cellId + ".",
@@ -5722,21 +5997,48 @@ function memberPrompt(deps, memberName, ownerRole, owned) {
     "3. Read the frozen contract named in the message before you start; it is what your verifier judges.",
     '4. On completion: agent_teams_task {action:"complete", task_id, note:"<one line>"}.',
     "5. If you need a user decision, mail the captain; the captain relays the question. Do not guess.",
-    "6. If the plugin tells you to CHECKPOINT, call cellwork_handoff and end your turn."
+    "6. If the plugin tells you to CHECKPOINT, call cellwork_handoff and end your turn.",
+    ...mayDelegate ? ["For genuinely independent work, use cellwork_delegate for a bounded subtask when useful without captain approval, and retain responsibility for the result."] : []
   ].join(`
 `);
 }
-function reviewTaskDescription(task, workTask, cellId, workContractKey = workTask.key) {
-  const contract = contractRelativePath(cellId, workContractKey);
+function reviewTaskDescription(task, workTask, cellId, workspace, additional = [], contractKeys = new Map) {
+  const pathOf = (key) => workspace === undefined ? contractRelativePath(cellId, contractKeys.get(key) ?? key) : contractPath(workspace, cellId, contractKeys.get(key) ?? key);
+  if (workTask === undefined)
+    return task.description;
   return [
     "VERIFY the work task " + JSON.stringify(workTask.key) + " (" + workTask.subject + ") as a BLIND reviewer.",
-    "Frozen contract: " + contract + " — read it (and the repository documentation) BEFORE the implementation.",
+    "FROZEN CONTRACT: " + pathOf(workTask.key),
+    ...additional.map((producer) => "Additional frozen producer contract (" + producer.key + "): " + pathOf(producer.key)),
+    ...task.description.trim() === "" ? [] : ["Review requirements: " + task.description],
+    "Read the supplied frozen contracts and repository documentation BEFORE the implementation.",
+    "Each producer contract names its own loop to bind with `mpd_verify_seat`; the loop was opened at activation.",
+    "Then run the gates it lists, and record the verdict with `mpd_verify_record`",
+    "(a PASS cites the documents it rests on and the gate evidence ids; a FAIL names each finding and its",
+    "document source). You never fix the work: a FAIL bounces it back to its writer as a repair task."
+  ].join(`
+`);
+}
+function legacyReviewDescription(task, work, cellId, workKey) {
+  return [
+    "VERIFY the work task " + JSON.stringify(work.key) + " (" + work.subject + ") as a BLIND reviewer.",
+    "Frozen contract: " + contractRelativePath(cellId, workKey) + " — read it (and the repository documentation) BEFORE the implementation.",
     "It names the verification loop to bind with `mpd_verify_seat`; the loop was opened at activation.",
     "Then run the gates it lists, and record the verdict with `mpd_verify_record`",
     "(a PASS cites the documents it rests on and the gate evidence ids; a FAIL names each finding and its",
     "document source). You never fix the work: a FAIL bounces it back to its writer as a repair task."
   ].join(`
 `);
+}
+function matchesFrozenAcceptance(frozen, original, cellId, boardId) {
+  const recorded = frozen.replace(" · Board task: `" + boardId + "`", " · Board task: ``").split(`
+## Gate commands
+`)[0];
+  const expected = original.split(`
+## Gate commands
+`)[0];
+  return recorded === expected || recorded === expected.replace("producer: " + producerIdentity(cellId) + `
+`, "");
 }
 function resplitNotice(keptCount, dispatched, rebuiltKept) {
   const exception = rebuiltKept.length === 0 ? "Stage-4 exception: a kept task whose loop was never recorded is the ONLY case where a kept contract is rebuilt, gaining its verify loop id." : "Stage-4 exception: " + String(rebuiltKept.length) + " kept task(s) had no recorded loop, so their frozen contracts WERE rebuilt with the loop id (" + rebuiltKept.join(", ") + ").";
@@ -5812,6 +6114,9 @@ async function mintExecutionTeam(call, input) {
       error: "the mint member could not be staged: " + added.error + (cleaned.ok ? " (the empty plan slot was deleted)" : " (AND the empty plan slot could NOT be deleted: " + cleaned.error + " — clear that staged plan before retrying)")
     };
   }
+  return approveExecutionTeam(call);
+}
+async function approveExecutionTeam(call) {
   const approved = await call({ action: "approve" });
   if (!approved.ok)
     return { ok: false, error: "the mint plan could not be approved: " + approved.error };
@@ -5819,7 +6124,8 @@ async function mintExecutionTeam(call, input) {
   const teamId = typeof team.teamId === "string" ? team.teamId : "";
   if (teamId === "")
     return { ok: false, error: 'the mint plan was approved but the answer carried no team id — inspect `agent_teams_plan {action:"status"}` before retrying' };
-  return { ok: true, teamId };
+  const stoppedAt = typeof approved.value.stoppedAt === "string" ? approved.value.stoppedAt : undefined;
+  return { ok: true, teamId, ...stoppedAt === undefined ? {} : { stoppedAt } };
 }
 function appendIntents(deps) {
   const intents = new Map;
@@ -5842,21 +6148,22 @@ function replacementContractKey(key, revision) {
 }
 function taskMarker(cellId, revision, key) {
   return `
-CELLWORK TASK: ` + JSON.stringify([cellId, revision, key]) + `
-FROZEN CONTRACT: `;
+CELLWORK TASK: ` + JSON.stringify([cellId, revision, key]);
 }
-function boardContractKey(cellId, key, description) {
-  const prefix = "FROZEN CONTRACT: " + contractRelativePath(cellId, key + "@r").slice(0, -3);
+function boardContractKey(workspace, cellId, key, description) {
+  const prefixes = [contractRelativePath(cellId, key + "@r"), contractPath(workspace, cellId, key + "@r")].map((path) => "FROZEN CONTRACT: " + path.slice(0, -3));
   const pointer = description?.split(`
 `).at(-1);
-  if (pointer === undefined || !pointer.startsWith(prefix))
+  const prefix = prefixes.find((candidate) => pointer?.startsWith(candidate));
+  if (pointer === undefined || prefix === undefined)
     return key;
   const suffix = pointer.slice(prefix.length);
   return /^[1-9]\d*\.md$/.test(suffix) ? replacementContractKey(key, Number(suffix.slice(0, -3))) : key;
 }
 function markedTaskRows(tasks, marker) {
   return tasks.filter((row) => typeof row.description === "string" && row.description.slice(row.description.lastIndexOf(`
-CELLWORK TASK: `)).startsWith(marker));
+CELLWORK TASK: `)).split(`
+`, 2)[1] === marker.slice(1));
 }
 function frozenTaskShape(split, task) {
   const review = split.tasks.find((candidate) => candidate.kind === "review" && candidate.blockedBy.includes(task.key));
@@ -5893,11 +6200,18 @@ function priorBoardTasks(deps, revisions, tasks) {
         continue;
       const row = matches[0];
       const earlier = prior.get(task.key);
-      const paths = [task.key, replacementContractKey(task.key, revision)].map((key) => contractRelativePath(deps.cell.cellId, key));
-      if (matches.length !== 1 || row === undefined || typeof row.id !== "string" || row.id === "" || earlier !== undefined && (!terminalTask(earlier.row.status) || !row.description?.endsWith(marker + paths[1])))
+      const suffixes = [task.key, replacementContractKey(task.key, revision)].flatMap((key) => [
+        marker + `
+FROZEN CONTRACT: ` + contractRelativePath(deps.cell.cellId, key),
+        marker + `
+FROZEN CONTRACT: ` + contractPath(deps.workspace, deps.cell.cellId, key)
+      ]);
+      if (task.writeScopes.length === 0)
+        suffixes.push(marker);
+      if (matches.length !== 1 || row === undefined || typeof row.id !== "string" || row.id === "" || earlier !== undefined && (!terminalTask(earlier.row.status) || task.writeScopes.length > 0 && boardContractKey(deps.workspace, deps.cell.cellId, task.key, row.description) !== replacementContractKey(task.key, revision)))
         throw ambiguous(task.key);
-      if (row.subject !== task.subject || row.kind !== task.kind || JSON.stringify(row.writeScopes ?? []) !== JSON.stringify(task.writeScopes) || !paths.some((path) => row.description?.endsWith(marker + path)) || task.kind !== "review" && !paths.some((path) => row.description === task.description + `
-` + marker + path))
+      if (row.subject !== task.subject || row.kind !== task.kind || JSON.stringify(row.writeScopes ?? []) !== JSON.stringify(task.writeScopes) || !suffixes.some((suffix) => row.description?.endsWith(suffix)) || task.kind !== "review" && !suffixes.some((suffix) => row.description === task.description + `
+` + suffix))
         throw ambiguous(task.key);
       prior.set(task.key, { row: { ...row, id: row.id }, task, split: stored.verdict });
     }
@@ -5905,6 +6219,15 @@ function priorBoardTasks(deps, revisions, tasks) {
   return prior;
 }
 async function materializeSplit(deps) {
+  if (deps.fixedRoster !== undefined) {
+    try {
+      deps = { ...deps, split: fixedOwners(deps.split, deps.fixedRoster) };
+    } catch (error) {
+      if (error instanceof Error)
+        return { ok: false, error: error.message };
+      throw error;
+    }
+  }
   const recordedMinted = (deps.cell.mintedTeamId ?? "").trim();
   const resplit = recordedMinted !== "" || Object.values(deps.cell.activatedTasks ?? {}).some((id) => id !== "");
   let intents;
@@ -5993,7 +6316,7 @@ async function materializeSplit(deps) {
   }
   for (const [key, id] of previous) {
     const row = live?.tasks?.find((task) => task.id === id);
-    contractKeys.set(key, boardContractKey(deps.cell.cellId, key, row?.description));
+    contractKeys.set(key, boardContractKey(deps.workspace, deps.cell.cellId, key, row?.description));
   }
   for (const task of topologicalOrder(deps.split.tasks)) {
     const older = prior.get(task.key);
@@ -6002,7 +6325,7 @@ async function materializeSplit(deps) {
     const current = markedTaskRows(live?.tasks ?? [], taskMarker(deps.cell.cellId, deps.split.revision, task.key));
     const replacementKey = replacementContractKey(task.key, deps.split.revision);
     const recordedId = previous.get(task.key);
-    if (current.length > 1 || current.length === 1 && (!appendStarted || !terminalTask(older.row.status) || boardContractKey(deps.cell.cellId, task.key, current[0]?.description) !== replacementKey) || recordedId !== undefined && recordedId !== older.row.id && (current[0]?.id !== recordedId || !terminalTask(older.row.status))) {
+    if (current.length > 1 || current.length === 1 && (!appendStarted || !terminalTask(older.row.status) || task.writeScopes.length > 0 && boardContractKey(deps.workspace, deps.cell.cellId, task.key, current[0]?.description) !== replacementKey) || recordedId !== undefined && recordedId !== older.row.id && (current[0]?.id !== recordedId || !terminalTask(older.row.status))) {
       return fail("cellwork_activate: ambiguous board rows for split task " + JSON.stringify(task.key) + " — reconcile the rows on " + teamId + " before retrying");
     }
     if (recordedId !== undefined && recordedId !== older.row.id)
@@ -6018,17 +6341,13 @@ async function materializeSplit(deps) {
       contractKeys.set(task.key, replacementContractKey(task.key, deps.split.revision));
       continue;
     }
-    const contractKey = boardContractKey(deps.cell.cellId, task.key, older.row.description);
+    const contractKey = boardContractKey(deps.workspace, deps.cell.cellId, task.key, older.row.description);
     if (task.writeScopes.length > 0) {
       try {
         const frozen = readFileSync5(contractPath(deps.workspace, deps.cell.cellId, contractKey), "utf8");
         const reviewer = older.split.tasks.find((candidate) => candidate.kind === "review" && candidate.blockedBy.includes(task.key));
-        const acceptance = buildContractDoc({ ...deps, split: older.split }, older.task, reviewer, "").split(`
-## Gate commands
-`)[0];
-        if (frozen.replace(" · Board task: `" + older.row.id + "`", " · Board task: ``").split(`
-## Gate commands
-`)[0] !== acceptance) {
+        const acceptance = buildContractDoc({ ...deps, split: older.split }, older.task, reviewer, "");
+        if (!matchesFrozenAcceptance(frozen, acceptance, deps.cell.cellId, older.row.id)) {
           return fail("cellwork_activate: frozen contract does not match recovered task " + JSON.stringify(task.key));
         }
         recoveredContracts.set(task.key, frozen.trimEnd());
@@ -6083,7 +6402,8 @@ async function materializeSplit(deps) {
   for (const task of codeTasks) {
     if (loopIds.has(task.key))
       continue;
-    if (keptKeys.has(task.key) && contractAlreadyNamesLoop(deps, contractKeys.get(task.key) ?? task.key)) {
+    const contractKey = contractKeys.get(task.key) ?? task.key;
+    if (keptKeys.has(task.key) && contractAlreadyNamesLoop(deps, contractKey) && deps.contractPending?.(contractPath(deps.workspace, deps.cell.cellId, contractKey)) !== true) {
       armedByContract.add(task.key);
       continue;
     }
@@ -6092,6 +6412,27 @@ async function materializeSplit(deps) {
   total = freshCode.length + memberOrder.length + fresh.length + loopTargets.length;
   let mintedTeamId = "";
   let mintTrigger;
+  const executionPlanName = "cell " + deps.cell.cellId + " execution";
+  if (live?.name === executionPlanName && typeof live.planId === "string" && intendedBoard === undefined && (deps.cell.activatedRevision ?? 0) === 0) {
+    const status = await call({ action: "status" });
+    if (!status.ok)
+      return fail("cellwork_activate could not read the execution plan: " + status.error);
+    const plan = typeof status.value.plan === "object" && status.value.plan !== null ? status.value.plan : undefined;
+    if (plan?.planId === live.planId && plan.name === executionPlanName && plan.activation !== undefined) {
+      const resumed = await approveExecutionTeam(call);
+      if (!resumed.ok)
+        return fail(resumed.error);
+      if (resumed.teamId !== teamId)
+        return fail("cellwork_activate: execution approval returned a different board " + resumed.teamId);
+      if (resumed.stoppedAt !== undefined)
+        return fail("cellwork_activate: the execution team approval is paused: " + resumed.stoppedAt);
+      try {
+        live = deps.recordFor(teamId);
+      } catch {
+        live = undefined;
+      }
+    }
+  }
   if (intendedBoard === undefined && recordedMinted === "" && !resplit && !isLiveTeamRecord(live)) {
     const trigger = mintTriggerFor(deps.workspace, teamId, live);
     if (trigger === "unreadable") {
@@ -6104,9 +6445,9 @@ async function materializeSplit(deps) {
     const seedOwned = deps.split.tasks.filter((task) => roleKey(resolvedMemberName(task)) === roleKey(seedMember));
     const seedRole = (seedOwned[0]?.ownerRole ?? seedMember).trim();
     const minted = await mintExecutionTeam(call, {
-      planName: "cell " + deps.cell.cellId + " execution",
+      planName: executionPlanName,
       description: deps.cell.objective,
-      member: { name: seedMember, role: seedRole, description: seedMember, prompt: memberPrompt(deps, seedMember, seedRole, seedOwned) }
+      member: { name: seedMember, role: seedRole, description: seedMember, prompt: memberPrompt(deps, seedMember, seedRole, seedOwned), ...deps.fixedRoster?.length === 0 ? { scope: "run" } : {} }
     });
     if (!minted.ok)
       return fail("cellwork_activate could not mint the execution team after the planning team " + JSON.stringify(teamId) + " ended: " + minted.error);
@@ -6117,6 +6458,8 @@ async function materializeSplit(deps) {
     partial.minted = true;
     partial.mintTrigger = trigger;
     mutated = true;
+    if (minted.stoppedAt !== undefined)
+      return fail("cellwork_activate: the execution team approval is paused: " + minted.stoppedAt);
     try {
       live = deps.recordFor(teamId);
     } catch {
@@ -6178,8 +6521,18 @@ async function materializeSplit(deps) {
     const doc = buildContractDoc(deps, task, reviewer, "");
     const path = contractPath(deps.workspace, deps.cell.cellId, contractKeys.get(task.key) ?? task.key);
     try {
-      atomicWriteText(path, doc + `
+      const marker = taskMarker(deps.cell.cellId, deps.split.revision, task.key);
+      const published = markedTaskRows(live?.tasks ?? [], marker)[0];
+      if (published?.id === undefined)
+        atomicWriteText(path, doc + `
 `);
+      else {
+        const frozen = readFileSync5(path, "utf8");
+        if (!matchesFrozenAcceptance(frozen, doc, deps.cell.cellId, published.id)) {
+          return fail("cellwork_activate: frozen contract does not match recovered task " + JSON.stringify(task.key));
+        }
+        recoveredContracts.set(task.key, frozen.trimEnd());
+      }
     } catch (error) {
       return fail("cellwork_activate could not write the contract for " + JSON.stringify(task.key) + ": " + errorText4(error));
     }
@@ -6209,7 +6562,7 @@ async function materializeSplit(deps) {
     const pureVerifier = owned.every((candidate) => candidate.kind === "review");
     const added = await call({
       action: "add_member",
-      member: { name: memberName, role: ownerRole, description: memberName + (pureVerifier ? " (verifier)" : ""), prompt: memberPrompt(deps, memberName, ownerRole, owned) }
+      member: { name: memberName, role: ownerRole, description: memberName + (pureVerifier ? " (verifier)" : ""), prompt: memberPrompt(deps, memberName, ownerRole, owned), ...deps.fixedRoster?.length === 0 ? { scope: "run" } : {} }
     });
     if (!added.ok) {
       if (added.error.includes("is already on the roster")) {
@@ -6256,11 +6609,16 @@ async function materializeSplit(deps) {
   for (const task of topologicalOrder(fresh)) {
     const memberName = resolvedMemberName(task);
     const mappedBlockers = task.blockedBy.map((reference) => boardIds.get(reference) ?? previous.get(reference) ?? reference);
-    const contract = contractRelativePath(deps.cell.cellId, contractKeys.get(task.key) ?? task.key);
+    const stem = contractKeys.get(task.key) ?? task.key;
     const marker = taskMarker(deps.cell.cellId, deps.split.revision, task.key);
-    const reviewed = task.kind === "review" ? deps.split.tasks.find((candidate) => candidate.key === task.blockedBy[0]) ?? task : undefined;
-    const description = (reviewed === undefined ? task.description : reviewTaskDescription(task, reviewed, deps.cell.cellId, contractKeys.get(reviewed.key))) + `
-` + marker + contract;
+    const producers = task.kind !== "review" ? [] : task.blockedBy.flatMap((key) => {
+      const producer = deps.split.tasks.find((candidate) => candidate.key === key && candidate.writeScopes.length > 0);
+      return producer !== undefined && existsSync5(contractPath(deps.workspace, deps.cell.cellId, contractKeys.get(key) ?? key)) ? [producer] : [];
+    });
+    const acceptance = task.kind === "review" ? reviewTaskDescription(task, producers[0], deps.cell.cellId, deps.workspace, producers.slice(1), contractKeys) : task.description;
+    const description = acceptance + `
+` + marker + (task.writeScopes.length === 0 ? "" : `
+FROZEN CONTRACT: ` + contractPath(deps.workspace, deps.cell.cellId, stem));
     let record2;
     try {
       record2 = deps.recordFor(teamId);
@@ -6277,9 +6635,16 @@ async function materializeSplit(deps) {
     const legacyPointer = `
 
 FROZEN CONTRACT: ` + contractRelativePath(deps.cell.cellId, task.key);
-    const legacy = (tasks ?? []).filter((row) => row.description?.endsWith(legacyPointer) && row.id !== deps.cell.cancelledTasks[task.key] && row.status !== "cancelled");
+    const legacy = (tasks ?? []).filter((row) => (row.description?.endsWith(legacyPointer) || row.description?.endsWith(`
+
+FROZEN CONTRACT: ` + contractPath(deps.workspace, deps.cell.cellId, task.key))) && !row.description?.includes(`
+CELLWORK TASK: `) && row.id !== deps.cell.cancelledTasks[task.key] && row.status !== "cancelled");
+    const legacyWork = task.kind === "review" ? deps.split.tasks.find((candidate) => candidate.key === task.blockedBy[0]) ?? task : undefined;
+    const legacyDescription = (legacyWork === undefined ? task.description : legacyReviewDescription(task, legacyWork, deps.cell.cellId, contractKeys.get(legacyWork.key) ?? legacyWork.key)) + `
+` + marker + `
+FROZEN CONTRACT: ` + contractRelativePath(deps.cell.cellId, stem);
     const recovered = matches[0];
-    if (matches.length > 1 || legacy.length > 0 || recovered !== undefined && (typeof recovered.id !== "string" || recovered.id === "" || recovered.status === "cancelled" || [...boardIds.values()].includes(recovered.id) || recovered.description !== description || recovered.subject !== task.subject || recovered.kind !== task.kind || recovered.owner !== memberName || JSON.stringify(recovered.blockedBy) !== JSON.stringify(mappedBlockers) || JSON.stringify(recovered.writeScopes) !== JSON.stringify(task.writeScopes))) {
+    if (matches.length > 1 || legacy.length > 0 || recovered !== undefined && (typeof recovered.id !== "string" || recovered.id === "" || recovered.status === "cancelled" || [...boardIds.values()].includes(recovered.id) || recovered.description !== description && recovered.description !== legacyDescription || recovered.subject !== task.subject || recovered.kind !== task.kind || recovered.owner !== memberName || JSON.stringify(recovered.blockedBy) !== JSON.stringify(mappedBlockers) || JSON.stringify(recovered.writeScopes ?? []) !== JSON.stringify(task.writeScopes))) {
       return fail("cellwork_activate: ambiguous board rows for split task " + JSON.stringify(task.key) + " on " + teamId + " (" + [...matches, ...legacy].map((row) => row.id ?? "unknown id").join(", ") + ") — reconcile the rows before retrying");
     }
     let boardId = recovered?.id ?? "";
@@ -6313,10 +6678,14 @@ FROZEN CONTRACT: ` + contractRelativePath(deps.cell.cellId, task.key);
     if (boardId === "")
       return fail("cellwork_activate has no board id for " + JSON.stringify(task.key) + " — refusing to open a verify loop for a row that is not on the board");
     const contractKey = contractKeys.get(task.key) ?? task.key;
-    const contract = contractRelativePath(deps.cell.cellId, contractKey);
+    const path = contractPath(deps.workspace, deps.cell.cellId, contractKey);
+    const contract = deps.sealContract === undefined ? contractRelativePath(deps.cell.cellId, contractKey) : path;
     const memberName = resolvedMemberName(task);
     const owner = newMembers[memberName] ?? existingMembers.get(roleKey(memberName));
     const writerId = (owner?.sessionId ?? "").trim() === "" ? (owner?.executorRef ?? "").trim() : (owner?.sessionId ?? "").trim();
+    const review = reviewerOf(task.key);
+    const reviewName = review === undefined ? undefined : resolvedMemberName(review);
+    const verifier = reviewName === undefined ? undefined : (newMembers[reviewName] ?? existingMembers.get(roleKey(reviewName)))?.sessionId;
     let opened;
     try {
       opened = await deps.dsh.executeTool({
@@ -6326,6 +6695,7 @@ FROZEN CONTRACT: ` + contractRelativePath(deps.cell.cellId, task.key);
           contract,
           scope: [...task.writeScopes],
           task_id: boardId,
+          ...deps.sealContract === undefined || !verifier ? {} : { verifier },
           ...writerId === "" ? {} : { writer_id: writerId, writer_reason: "member: " + memberName }
         },
         agent: deps.captainAgent
@@ -6341,17 +6711,21 @@ FROZEN CONTRACT: ` + contractRelativePath(deps.cell.cellId, task.key);
     const loopId = typeof value.loopId === "string" ? value.loopId : "";
     if (loopId === "")
       return fail("cellwork_activate opened no loop id for " + JSON.stringify(task.key) + " — refusing to dispatch unarmed work");
+    if (typeof value.contractSha256 !== "string" || value.contractSha256 === "") {
+      const stored = recoveredContracts.get(task.key)?.replace(" · Board task: ``", " · Board task: `" + boardId + "`") ?? buildContractDoc(deps, task, review, boardId);
+      try {
+        atomicWriteText(path, withLoopId(stored, loopId) + `
+`);
+        const sealed = deps.sealContract?.(loopId);
+        if (sealed !== undefined && "refused" in sealed)
+          return fail("cellwork_activate could not seal the producer contract for " + JSON.stringify(task.key) + ": " + sealed.refused);
+      } catch (error) {
+        return fail("cellwork_activate could not finalize the contract for " + JSON.stringify(task.key) + ": " + errorText4(error));
+      }
+    }
     loopIds.set(task.key, loopId);
     loops.push({ taskKey: task.key, boardId, loopId });
     partial.loopIds[task.key] = loopId;
-    const path = partial.contracts[task.key] ?? contractPath(deps.workspace, deps.cell.cellId, contractKey);
-    const stored = recoveredContracts.get(task.key)?.replace(" · Board task: ``", " · Board task: `" + boardId + "`") ?? buildContractDoc(deps, task, reviewerOf(task.key), boardId);
-    try {
-      atomicWriteText(path, withLoopId(stored, loopId) + `
-`);
-    } catch (error) {
-      return fail("cellwork_activate could not rewrite the contract for " + JSON.stringify(task.key) + ": " + errorText4(error));
-    }
     progress("loop", task.key);
   }
   for (const task of deps.split.tasks) {
@@ -6386,6 +6760,7 @@ FROZEN CONTRACT: ` + contractRelativePath(deps.cell.cellId, task.key);
       record: afterBoard.record,
       refreshRecord: () => deps.recordFor(afterBoard.teamId),
       rosterRoles: deps.rosterRoles?.() ?? [],
+      ...deps.fixedRoster === undefined ? {} : { fixedRoster: deps.fixedRoster },
       personaFor: deps.personaFor,
       now: deps.now
     });
@@ -6480,7 +6855,7 @@ function stringList(value) {
 function refusalText(failure) {
   return "the cell record at " + failure.path + " cannot be read (" + failure.reason + ": " + failure.detail + ") — nothing was changed; repair or archive that file first";
 }
-function recordOf(teams, workspace, teamId) {
+function recordOf2(teams, workspace, teamId) {
   if (teams === undefined || teamId === "" || workspace === "")
     return;
   const record = teams.get?.(workspace, teamId);
@@ -6513,7 +6888,11 @@ function installCellworkFlow(deps) {
     const service = deps.ctx.get?.("mpdTeamActions", false);
     return typeof service === "object" && service !== null ? service : undefined;
   };
-  const boardOf = (workspace, cell) => resolveCellTeam({ workspace, cell, teams: teams(), recordFor: (teamId) => recordOf(teams(), workspace, teamId) });
+  const boardOf = (workspace, cell) => resolveCellTeam({ workspace, cell, teams: teams(), recordFor: (teamId) => recordOf2(teams(), workspace, teamId) });
+  const assignmentOf = (agent, caller) => helperAssignment({ dsh, ctx: deps.ctx, inspect: (actual) => {
+    const fresh = callerContext(dsh, { agent: actual }, { teams, adopt: false });
+    return { caller: fresh, board: fresh.cell === null ? undefined : boardOf(fresh.workspace, fresh.cell).record };
+  } }, agent, caller);
   const roster = () => {
     const service = deps.ctx.get?.("mpdRoles", false);
     return typeof service === "object" && service !== null ? service : undefined;
@@ -6570,10 +6949,10 @@ function installCellworkFlow(deps) {
   const routeOf = (role) => {
     try {
       const service = configService();
-      const resolve4 = service?.agentRouteResolutionOf;
-      if (typeof resolve4 !== "function")
+      const resolve5 = service?.agentRouteResolutionOf;
+      if (typeof resolve5 !== "function")
         return;
-      const answer = resolve4.call(service, role);
+      const answer = resolve5.call(service, role);
       return typeof answer === "object" && answer !== null ? answer : undefined;
     } catch {
       return;
@@ -6588,7 +6967,7 @@ function installCellworkFlow(deps) {
     return { ...stamped, updatedAt: now.toISOString() };
   };
   const completeCellTask = async (exec, teamId, predicate, note) => {
-    const record = recordOf(teams(), dsh.workspaceRoot(exec), teamId);
+    const record = recordOf2(teams(), callerFor(exec).workspace, teamId);
     const row = boardTasksOf(record).find((candidate) => predicate(candidate) && candidate.status !== "completed" && candidate.status !== "failed" && candidate.status !== "cancelled");
     if (row === undefined)
       return;
@@ -6605,7 +6984,8 @@ function installCellworkFlow(deps) {
       type: "object",
       properties: {
         action: { type: "string", enum: ["finalize", "update"], description: "finalize the agreed document, or update it (bumps the revision, marks the split stale)." },
-        content: { type: "string", description: "The full markdown document. Omit to validate the file already at <cell>/requirements.md." }
+        content: { type: "string", description: "The full markdown document. Omit to validate the file already at <cell>/requirements.md." },
+        expected_revision: { type: "integer", description: "update: the currently accepted requirements revision. Repeating it with the same content replays the previous acceptance." }
       },
       required: ["action"],
       additionalProperties: false
@@ -6621,6 +7001,8 @@ function installCellworkFlow(deps) {
           revision: { type: "number" },
           splitStale: { type: "boolean" },
           alreadyFinalized: { type: "boolean" },
+          replayed: { type: "boolean" },
+          message: { type: "string" },
           missing: { type: "array", items: { type: "string" } },
           sections: { type: "array", items: { type: "object" } },
           requirementsPath: { type: "string" },
@@ -6639,8 +7021,9 @@ function installCellworkFlow(deps) {
         if (result.ok === false)
           return text("cellwork_requirements refused: " + String(result.error ?? "unknown refusal") + (Array.isArray(result.missing) && result.missing.length > 0 ? `
 missing sections: ` + result.missing.join(", ") : ""));
-        return text("requirements " + String(result.action ?? "") + ": revision " + String(result.revision ?? "?") + (result.alreadyFinalized === true ? " (already finalized)" : "") + (result.splitStale === true ? " — the accepted split is STALE and must be re-submitted" : "") + (typeof result.closedTaskId === "string" ? " · requirements task " + result.closedTaskId + " completed" : "") + (typeof result.boardNote === "string" ? `
-BOARD: ` + result.boardNote : ""));
+        return text("requirements " + String(result.action ?? "") + ": revision " + String(result.revision ?? "?") + (result.alreadyFinalized === true ? " (already finalized)" : result.replayed === true ? " (already accepted)" : "") + (result.splitStale === true ? " — the accepted split is STALE and must be re-submitted" : "") + (typeof result.closedTaskId === "string" ? " · requirements task " + result.closedTaskId + " completed" : "") + (typeof result.boardNote === "string" ? `
+BOARD: ` + result.boardNote : "") + (result.redispatchable === true && typeof result.recordedSplitTaskId === "string" ? `
+Split ticket ` + result.recordedSplitTaskId + " · " + String(result.splitTaskStatus) + "; use `cellwork_dispatch` for the original splitter." : ""));
       }
     },
     execute: async (args, exec) => {
@@ -6697,20 +7080,95 @@ BOARD: ` + result.boardNote : ""));
         writeRequirements(caller.workspace, state.cellId, text_);
         const board2 = boardOf(caller.workspace, state);
         const closed = await completeCellTask(exec, board2.teamId, (row) => String(row.kind ?? "") === "requirement" && String(row.owner ?? "") === PLANNER_MEMBER, "requirements revision 1 finalized");
-        const next2 = { ...state, requirementsRevision: 1, phase: state.phase === "requirements" ? "split" : state.phase };
+        const next2 = { ...state, requirementsRevision: 1, requirementsBaseHash: requirementsHash(storedRequirementsText(text_)), phase: state.phase === "requirements" ? "split" : state.phase };
         transition(caller.workspace, next2, { event: "requirements-finalize", revision: 1, sections: validation.sections.map((section) => section.key), closedTaskId: closed ?? null, boardTeamId: board2.teamId, recordedTeamId: board2.recordedTeamId, ...board2.note === undefined ? {} : { boardNote: board2.note } }, now);
         return { ok: true, action, revision: 1, splitStale: next2.splitStale, alreadyFinalized: false, sections: validation.sections, requirementsPath: path, ...closed === undefined ? {} : { closedTaskId: closed }, ...board2.note === undefined ? {} : { boardNote: board2.note } };
       }
-      writeRequirements(caller.workspace, state.cellId, text_);
-      const revision = Math.max(1, state.requirementsRevision) + 1;
       const board = boardOf(caller.workspace, state);
-      const record = recordOf(teams(), caller.workspace, board.teamId);
+      const commit = teamActions()?.commitResplit;
+      if (commit !== undefined && state.teamId !== "") {
+        const hash = requirementsHash(storedRequirementsText(text_));
+        const expected = argv.expected_revision ?? state.requirementsRevision;
+        if (typeof expected !== "number" || !Number.isSafeInteger(expected) || expected < 1)
+          return { ok: false, error: "cellwork_requirements: update requires a finalized revision and a positive expected_revision" };
+        const replayed = hash === state.requirementsUpdateHash && (expected === state.requirementsRevision - 1 || argv.expected_revision === undefined);
+        if (!replayed && expected !== state.requirementsRevision)
+          return { ok: false, error: "cellwork_requirements: expected revision " + String(expected) + ", found " + String(state.requirementsRevision) + " — re-read the accepted requirements and retry" };
+        if (replayed && !acceptedRequirementsMatch(caller.workspace, state))
+          return { ok: false, error: "cellwork_requirements: editable requirements have changed since the last acceptance; update against the current revision" };
+        if (board.teamId !== state.teamId)
+          return { ok: false, error: "cellwork_requirements: the exact recorded board could not be verified; requirements were kept" };
+        let ticket = boardTasksOf(recordOf2(teams(), caller.workspace, board.teamId)).find((task) => task.id === state.splitTaskId);
+        const revision2 = replayed ? state.requirementsRevision : expected + 1;
+        let replacementSplitTaskId2 = "";
+        const document = text_;
+        if (!replayed) {
+          const result = commit(exec.agent, { cellId: state.cellId, teamId: board.teamId, previousRevision: expected, revision: revision2 }, (chosen) => {
+            const fresh = readCell(caller.workspace, state.cellId);
+            if (!fresh.ok || fresh.state.phase === "stopped" || fresh.state.requirementsRevision !== expected)
+              throw new Error("the Cellwork revision changed before publication");
+            const previous = readRequirements(caller.workspace, state.cellId);
+            if (fresh.state.requirementsUpdateHash === undefined && fresh.state.requirementsBaseHash === undefined) {
+              writeCell(caller.workspace, { ...fresh.state, requirementsBaseHash: requirementsHash(previous ?? "") });
+            }
+            writeRequirements(caller.workspace, state.cellId, document);
+            try {
+              const splitStale = fresh.state.splitRevision !== null || fresh.state.splitStale;
+              transition(caller.workspace, {
+                ...fresh.state,
+                requirementsRevision: revision2,
+                requirementsUpdateHash: hash,
+                splitTaskId: chosen.id,
+                splitStale
+              }, {
+                event: "requirements-update",
+                revision: revision2,
+                previousRevision: expected,
+                splitStale,
+                splitTaskId: chosen.id,
+                splitTaskStatus: chosen.status,
+                redispatchable: true,
+                recordedSplitTaskId: chosen.id,
+                boardTeamId: board.teamId,
+                recordedTeamId: state.teamId,
+                ...chosen.replacement ? { replacementSplitTaskId: chosen.id } : {}
+              }, now);
+            } catch (error) {
+              if (previous !== null)
+                writeRequirements(caller.workspace, state.cellId, previous);
+              throw error;
+            }
+            ticket = chosen;
+            if (chosen.replacement)
+              replacementSplitTaskId2 = chosen.id;
+          });
+          if (!result.ok)
+            return { ok: false, error: "cellwork_requirements: " + result.error + " — re-read the current revision and retry the update" };
+        }
+        const status = String(ticket?.status ?? "");
+        return {
+          ok: true,
+          action,
+          revision: revision2,
+          replayed,
+          splitStale: replayed ? state.splitStale : state.splitRevision !== null || state.splitStale,
+          sections: validation.sections,
+          requirementsPath: path,
+          splitTaskId: ticket?.id ?? "",
+          splitTaskStatus: status,
+          redispatchable: status === "pending" || status === "claimed" || status === "in_progress",
+          replacementSplitTaskId: replacementSplitTaskId2,
+          recordedSplitTaskId: ticket?.id ?? state.splitTaskId
+        };
+      }
+      const revision = Math.max(1, state.requirementsRevision) + 1;
+      const record = recordOf2(teams(), caller.workspace, board.teamId);
       const splitTask = findSplitTicket(boardTasksOf(record), state.splitTaskId ?? "", true) ?? findSplitTicket(boardTasksOf(record), state.splitTaskId ?? "", false);
       const splitTaskId = splitTask === undefined ? "" : String(splitTask.id ?? "");
       const splitTaskStatus = splitTask === undefined ? "" : String(splitTask.status ?? "");
       const redispatchable = splitTaskStatus === "pending" || splitTaskStatus === "claimed" || splitTaskStatus === "in_progress";
       let replacementSplitTaskId = "";
-      if (!redispatchable && board.teamId !== "") {
+      if (!redispatchable && board.teamId !== "" && splitTaskId !== "") {
         const appended = await dsh.executeTool({
           name: "agent_teams_plan",
           arguments: {
@@ -6730,9 +7188,12 @@ BOARD: ` + result.boardNote : ""));
           const task = typeof row.task === "object" && row.task !== null ? row.task : undefined;
           replacementSplitTaskId = typeof task?.id === "string" ? task.id : "";
         }
+        if (replacementSplitTaskId === "")
+          return { ok: false, error: "cellwork_requirements: the Team plane did not reserve a split ticket for revision " + String(revision) + " — requirements were kept (" + String(appended.error ?? "the append returned no task id") + ")" };
       }
+      writeRequirements(caller.workspace, state.cellId, text_);
       const recordedSplitTaskId = replacementSplitTaskId !== "" ? replacementSplitTaskId : splitTaskId !== "" ? splitTaskId : state.splitTaskId ?? "";
-      const next = { ...state, requirementsRevision: revision, splitTaskId: recordedSplitTaskId, splitStale: state.splitRevision !== null ? true : state.splitStale };
+      const next = { ...state, requirementsRevision: revision, requirementsUpdateHash: requirementsHash(storedRequirementsText(text_)), splitTaskId: recordedSplitTaskId, splitStale: state.splitRevision !== null ? true : state.splitStale };
       transition(caller.workspace, next, { event: "requirements-update", revision, previousRevision: state.requirementsRevision, splitStale: next.splitStale, splitTaskId, splitTaskStatus, redispatchable, recordedSplitTaskId, boardTeamId: board.teamId, recordedTeamId: board.recordedTeamId, ...board.note === undefined ? {} : { boardNote: board.note }, ...replacementSplitTaskId === "" ? {} : { replacementSplitTaskId } }, now);
       if (replacementSplitTaskId !== "") {
         appendJournal(caller.workspace, caller.cell.cellId, { event: "split-task-replaced", previousTaskId: splitTaskId, replacementTaskId: replacementSplitTaskId, revision }, now);
@@ -6860,7 +7321,8 @@ BOARD: ` + result.boardNote : ""));
             properties: {
               role: { type: "string", description: "A roster role NAME (any case, space, hyphen or underscore spelling; see `mpd_roles_list`)." },
               task: { type: "string", description: "The assignment / question this consult answers." },
-              context: { type: "string", description: "Optional extra prompt block (why the consult exists)." }
+              context: { type: "string", description: "Supporting text for the subproblem." },
+              scope: { type: "object", description: "Project helper: explicit read/write path lists. Omit for a text-only helper." }
             },
             required: ["role", "task"],
             additionalProperties: false
@@ -6915,7 +7377,14 @@ BOARD: ` + result.boardNote : ""));
       const cell = caller.cell;
       if (cell === null)
         return { ok: false, error: "cellwork_delegate: no active cell in this workspace" };
+      let assignment;
+      try {
+        assignment = assignmentOf(exec.agent, caller);
+      } catch (error) {
+        return { ok: false, error: `cellwork_delegate: ${error instanceof Error ? error.message : String(error)}` };
+      }
       const result = await startDelegation({
+        ...assignment === undefined ? {} : { owner: assignment.owner, helperFiles: assignment.helperFiles },
         service: consults,
         rosterNames,
         cellId: cell.cellId,
@@ -6923,7 +7392,7 @@ BOARD: ` + result.boardNote : ""));
         exec,
         now: new Date,
         book: consultBook,
-        teamId: cell.teamId,
+        teamId: assignment?.teamId ?? cell.teamId,
         teamActions,
         maxTasks: knobOf("delegateMaxTasks"),
         consultMax: knobOf("consultMax")
@@ -7029,7 +7498,14 @@ evidence:
       const cell = caller.cell;
       if (cell === null)
         return { ok: false, error: "cellwork_consult: no active cell in this workspace" };
+      let assignment;
+      try {
+        assignment = assignmentOf(exec.agent, caller);
+      } catch (error) {
+        return { ok: false, error: `cellwork_consult: ${error instanceof Error ? error.message : String(error)}` };
+      }
       const result = await runConsultAction({
+        ...assignment === undefined ? {} : { owner: assignment.owner },
         service: consults,
         rosterNames,
         cellId: cell.cellId,
@@ -7037,7 +7513,7 @@ evidence:
         exec,
         now: new Date,
         book: consultBook,
-        teamId: cell.teamId,
+        teamId: assignment?.teamId ?? cell.teamId,
         teamActions
       }, { action: argString(argv, "action"), consultId: argString(argv, "consultId"), timeoutMs: argv.timeoutMs });
       return result;
@@ -7152,6 +7628,8 @@ Remedy: ` + remedies.join("; ");
       }
       if (state.requirementsRevision === 0)
         return { ok: false, error: "cellwork_split: the requirements document has not been FINALIZED yet (revision 0) — wait for the planner to close the interview and the captain to dispatch you" };
+      if (!acceptedRequirementsMatch(caller.workspace, state))
+        return { ok: false, error: "cellwork_split: editable requirements differ from the accepted revision — retry the planner update before splitting" };
       const asked = typeof argv.revision === "number" ? argv.revision : state.requirementsRevision;
       if (asked !== state.requirementsRevision) {
         return { ok: false, error: "cellwork_split: revision " + String(asked) + " does not match the accepted requirements revision " + String(state.requirementsRevision) + " — a split is judged against the document it targets; re-read `cellwork_status` and resubmit against revision " + String(state.requirementsRevision) };
@@ -7181,11 +7659,14 @@ Remedy: ` + remedies.join("; ");
           };
         })
       };
-      const verdict = await submitSplit({ workspace: caller.workspace, cellId: state.cellId, config, roster: roster2, window: windowFor, now: new Date }, submission);
+      const verdict = await submitSplit({ workspace: caller.workspace, checkout: dsh.workspaceRoot(exec), cellId: state.cellId, config, roster: roster2, window: windowFor, now: new Date }, submission);
       const splitPath2 = splitPathFor(caller.workspace, verdict);
       if (verdict.accepted) {
-        const supersededRevision = state.splitRevision !== null && state.splitRevision !== verdict.revision ? state.splitRevision : null;
-        transition(caller.workspace, { ...state, splitRevision: verdict.revision, splitStale: false }, { event: "split-accepted", revision: verdict.revision, totals: verdict.totals, ...supersededRevision === null ? {} : { supersededRevision } }, new Date);
+        const fresh = readCell(caller.workspace, state.cellId);
+        if (!fresh.ok || fresh.state.phase === "stopped" || fresh.state.requirementsRevision !== asked || !acceptedRequirementsMatch(caller.workspace, fresh.state))
+          return { ok: false, error: "cellwork_split: the requirements changed during measurement — re-read `cellwork_status` and submit against the current revision" };
+        const supersededRevision = fresh.state.splitRevision !== null && fresh.state.splitRevision !== verdict.revision ? fresh.state.splitRevision : null;
+        transition(caller.workspace, { ...fresh.state, splitRevision: verdict.revision, splitStale: false }, { event: "split-accepted", revision: verdict.revision, totals: verdict.totals, ...supersededRevision === null ? {} : { supersededRevision } }, new Date);
         if (supersededRevision !== null) {
           appendJournal(caller.workspace, state.cellId, { event: "split-superseded", revision: supersededRevision, by: verdict.revision, activated: state.activatedRevision }, new Date);
         }
@@ -7257,6 +7738,8 @@ BOARD: ` + result.boardNote : ""));
         return { ok: false, error: "cellwork_activate is CAPTAIN-ONLY: the captain of " + state.cellId + " is session " + state.captainSessionId + ", which is not this caller" };
       if (state.phase === "stopped")
         return { ok: false, error: "cellwork_activate: cell " + state.cellId + " is stopped and archived" };
+      if (!acceptedRequirementsMatch(caller.workspace, state))
+        return { ok: false, error: "cellwork_activate: editable requirements differ from the accepted revision — retry the planner update before activating" };
       if (state.teamId === "")
         return { ok: false, error: "cellwork_activate: no planning team is recorded on " + state.cellId + " — run `cellwork_start` first" };
       const acceptedRevision = state.splitRevision;
@@ -7321,17 +7804,36 @@ BOARD: ` + result.boardNote : ""));
           ...error === undefined ? {} : { error }
         }, activatedAt);
       };
+      const verifier = readArgs(deps.ctx.get?.("mpdVerify", false));
+      const project = readArgs(deps.ctx.get?.("mpdProjectIdentity", false));
+      const binding = typeof project.resolveSeat === "function" ? readArgs(project.resolveSeat({ checkoutRoot: dsh.workspaceRoot(exec), sessionId: caller.sessionId })) : {};
+      const seal = verifier.sealCellworkContract;
+      const pending = verifier.cellworkContractPending;
+      let fixedRoster;
+      try {
+        fixedRoster = fixedRosterOf(deps.ctx, dsh.workspaceRoot(exec), caller.sessionId);
+      } catch (error) {
+        return { ok: false, error: error instanceof Error ? error.message : String(error) };
+      }
       const activated = await materializeSplit({
+        ...binding.kind !== "member" || binding.projectRoot !== caller.workspace || typeof seal !== "function" ? {} : {
+          sealContract: (loopId) => {
+            const result = readArgs(seal.call(verifier, exec, loopId));
+            return typeof result.sha256 === "string" && /^[a-f0-9]{64}$/.test(result.sha256) ? { sha256: result.sha256 } : { refused: typeof result.refused === "string" ? result.refused : "the verify plane returned no sealed contract digest" };
+          },
+          ...typeof pending !== "function" ? {} : { contractPending: (path) => pending.call(verifier, exec, path) === true }
+        },
         dsh,
         workspace: caller.workspace,
         cell: state,
         config,
         captainAgent: exec.agent,
         split: stored.verdict,
+        ...fixedRoster === undefined ? {} : { fixedRoster },
         personaFor,
         teams,
         rosterRoles: rosterNames,
-        recordFor: (teamId) => recordOf(teams(), caller.workspace, teamId),
+        recordFor: (teamId) => recordOf2(teams(), caller.workspace, teamId),
         teamActions,
         progress: (step) => {
           appendJournal(caller.workspace, state.cellId, { event: "cell-activation-progress", revision: acceptedRevision, ...step }, activatedAt);
@@ -8745,9 +9247,232 @@ function nextStepOf(text2) {
 }
 
 // packages/mpd-cellwork-plugin/src/protocol.ts
-import { readFileSync as readFileSync8, statSync as statSync4 } from "node:fs";
-import { createHash } from "node:crypto";
-import { join as join9 } from "node:path";
+import { readFileSync as readFileSync9, statSync as statSync4 } from "node:fs";
+import { createHash as createHash3 } from "node:crypto";
+import { join as join10 } from "node:path";
+
+// packages/mpd-cellwork-plugin/src/pressure-epochs.ts
+import { createHash as createHash2, randomUUID as randomUUID2 } from "node:crypto";
+import { mkdirSync as mkdirSync5, readFileSync as readFileSync8, readdirSync as readdirSync4, renameSync as renameSync3, rmSync as rmSync2, writeFileSync as writeFileSync2 } from "node:fs";
+import { basename, join as join9 } from "node:path";
+function address(task) {
+  return { directory: join9(cellDir(task.workspace, task.cellId), "pressure"), prefix: createHash2("sha256").update(task.attemptKey).digest("hex") };
+}
+function reservePressureEpoch(task, observed) {
+  const { directory, prefix } = address(task);
+  mkdirSync5(directory, { recursive: true });
+  const markers = readdirSync4(directory).filter((name) => name === `${prefix}.json` || name.startsWith(`${prefix}-`) && /^\d+\.json$/.test(name.slice(prefix.length + 1)));
+  const previous = markers.sort((left, right) => Number(right.slice(prefix.length + 1, -5)) - Number(left.slice(prefix.length + 1, -5)))[0];
+  const prior = previous === undefined ? undefined : readResult(join9(directory, previous));
+  if (previous !== undefined && (prior === undefined || observed === undefined || observed.useful === undefined || observed.useful.seq <= prior.seq || observed.useful.bytes < 2048 || observed.window !== prior.window || observed.used - prior.used < 4096))
+    return;
+  const marker = join9(directory, prior === undefined ? `${prefix}.json` : `${prefix}-${prior.seq}.json`);
+  try {
+    writeFileSync2(marker, JSON.stringify({ teamId: task.teamId, sessionId: task.sessionId, taskId: task.taskId, attempt: task.attempt, revision: task.revision }) + `
+`, { flag: "wx", mode: 384 });
+    return marker;
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "EEXIST")
+      return;
+    throw error;
+  }
+}
+function readResult(marker) {
+  try {
+    const value = JSON.parse(readFileSync8(`${marker}.result`, "utf8"));
+    if (typeof value !== "object" || value === null || !("seq" in value) || !("used" in value) || !("window" in value))
+      return;
+    if (typeof value.seq !== "number" || !Number.isSafeInteger(value.seq) || typeof value.used !== "number" || !Number.isFinite(value.used) || typeof value.window !== "number" || !Number.isFinite(value.window) || value.window <= 0)
+      return;
+    return { seq: value.seq, used: value.used, window: value.window };
+  } catch (error) {
+    if (error instanceof SyntaxError || error instanceof Error && "code" in error && error.code === "ENOENT")
+      return;
+    throw error;
+  }
+}
+function finishPressureEpoch(marker, result) {
+  const temporary = join9(marker, "..", `${basename(marker)}-${randomUUID2()}.tmp`);
+  writeFileSync2(temporary, JSON.stringify(result) + `
+`, { mode: 384 });
+  try {
+    renameSync3(temporary, `${marker}.result`);
+  } finally {
+    rmSync2(temporary, { force: true });
+  }
+}
+
+// packages/mpd-cellwork-plugin/src/worker-pressure.ts
+function workerPressureBudget(pressure, config, maxOutput) {
+  const { usedTokens: used, windowTokens: window, provenance } = pressure;
+  if (provenance !== "observed" || used === null || window === null || !Number.isFinite(window) || !Number.isFinite(used) || used < 0 || window <= 0)
+    return;
+  const reserve = Math.max(config.outputReserveTokens, typeof maxOutput === "number" && Number.isFinite(maxOutput) ? maxOutput : 0) + config.compactionHeadroomTokens;
+  return { kind: window - used <= reserve ? "hard" : used / window >= config.checkpointRatio ? "defer" : "below", used, window, reserve };
+}
+function installWorkerPressure(deps) {
+  const activations = new Map;
+  const sessions = new Map;
+  const maxima = new Map;
+  const taskFor = (agent) => {
+    const binding = writerBinding(deps, agent);
+    return binding === undefined ? undefined : writerTask(binding);
+  };
+  const journal = (intent, event, details = {}) => {
+    const { workspace, cellId, teamId, memberId, sessionId, taskId, attempt, revision } = intent.task;
+    appendJournal(workspace, cellId, { event, teamId, memberId, sessionId, taskId, attempt, revision, turn: intent.turn, ...intent.budget, ...details }, new Date);
+  };
+  const compact = async (state, intent) => {
+    if (state.pending !== intent || state.running !== undefined)
+      return;
+    const surface = recordOf(state.agent);
+    if (surface?.status !== "idle" || typeof surface.id !== "string" || deps.dsh.liveAgentExact(surface.id) !== state.agent)
+      return;
+    if (state.terminal !== "completed" && !(state.terminal === "blocked" && intent.budget.kind === "hard"))
+      return;
+    if (taskFor(state.agent)?.key !== intent.task.key)
+      return;
+    const before = workerPressureBudget(deps.dsh.contextPressure(state.agent), deps.config, intent.budget.reserve - deps.config.compactionHeadroomTokens);
+    if (before === undefined || before.kind === "below")
+      return;
+    const marker = reservePressureEpoch(intent.task, { used: before.used, window: before.window, useful: state.useful });
+    if (marker === undefined)
+      return;
+    const control = new AbortController;
+    state.running = control;
+    const sequence = () => recordOf(recordOf(state.agent)?.session)?.seq;
+    const startSeq = sequence();
+    try {
+      const engine = recordOf(deps.dsh.compactionEngineForLiveAgent(state.agent));
+      if (typeof engine?.compactNow !== "function") {
+        if (typeof startSeq === "number")
+          finishPressureEpoch(marker, { seq: startSeq, used: before.used, window: before.window });
+        journal(intent, "project-pressure-maintenance", { outcome: "unavailable", terminal: state.terminal });
+        return;
+      }
+      journal(intent, "project-pressure-maintenance-start", { terminal: state.terminal, beforeUsed: before.used, ...state.useful === undefined ? {} : { usefulSeq: state.useful.seq, usefulBytes: state.useful.bytes } });
+      const result = await engine.compactNow(state.agent, control.signal);
+      const after = deps.dsh.contextPressure(state.agent);
+      const currentBudget = workerPressureBudget(after, deps.config, intent.budget.reserve - deps.config.compactionHeadroomTokens);
+      const endSeq = sequence();
+      if (typeof endSeq === "number" && currentBudget !== undefined)
+        finishPressureEpoch(marker, { seq: endSeq, used: currentBudget.used, window: currentBudget.window });
+      journal(intent, "project-pressure-maintenance", { outcome: classifyCompactionResult(result), terminal: state.terminal, beforeUsed: before.used, afterUsed: after.usedTokens, afterWindow: after.windowTokens, afterAdmission: currentBudget?.kind ?? "unproven", compactionId: recordOf(result)?.compactionId, assignmentCurrent: taskFor(state.agent)?.key === intent.task.key });
+    } catch (error) {
+      if (typeof startSeq === "number")
+        finishPressureEpoch(marker, { seq: startSeq, used: before.used, window: before.window });
+      journal(intent, "project-pressure-maintenance", { outcome: "refused", terminal: state.terminal, afterAdmission: before.kind, assignmentCurrent: taskFor(state.agent)?.key === intent.task.key, reason: error instanceof Error ? error.message : String(error) });
+    } finally {
+      state.running = undefined;
+    }
+  };
+  const offSession = deps.dsh.onEvent("session/event", (subject, event) => {
+    const body = recordOf(event);
+    const id = recordOf(subject)?.id;
+    const state = typeof id === "string" ? sessions.get(id) : undefined;
+    const data = recordOf(body?.data);
+    if (state === undefined || data === undefined)
+      return;
+    if (body?.type === "tool/call" && typeof data.callId === "string" && (data.name === "read" || data.name === "write" || data.name === "edit")) {
+      if (state.pending !== undefined && taskFor(state.agent)?.attemptKey === state.pending.task.attemptKey)
+        state.sourceCalls.add(data.callId);
+    } else if (body?.type === "tool/result") {
+      const message = recordOf(data.message);
+      if (typeof message?.toolCallId === "string" && state.sourceCalls.delete(message.toolCallId) && message.isError === false && typeof body.seq === "number") {
+        const bytes = Buffer.byteLength(JSON.stringify(message.content ?? []));
+        if (bytes >= 2048)
+          state.useful = { seq: body.seq, bytes };
+      }
+    } else if (body?.type === "turn/end" && state.pending !== undefined && data.turn === state.pending.turn) {
+      const kind = recordOf(data.reason)?.kind;
+      state.terminal = typeof kind === "string" ? kind : undefined;
+    }
+  });
+  const remove = (agent) => {
+    const state = activations.get(agent);
+    if (state === undefined)
+      return;
+    state.running?.abort();
+    state.offIdle();
+    activations.delete(agent);
+    for (const [id, active] of sessions)
+      if (active === state)
+        sessions.delete(id);
+  };
+  const offDispose = deps.dsh.onEvent("agent/disposed", (payload) => {
+    const agent = recordOf(payload)?.agent;
+    if (typeof agent === "object" && agent !== null)
+      remove(agent);
+  });
+  return {
+    check: (agent, payload, pressure) => {
+      if (typeof payload.turn !== "number" || payload.signal?.aborted || pressure.provenance !== "observed")
+        return;
+      const binding = writerBinding(deps, agent);
+      if (binding === undefined)
+        return;
+      const turn = payload.turn;
+      const route = recordOf(payload.modelSelection);
+      const routeKey = `${route?.provider ?? ""}/${route?.model ?? ""}`;
+      if (!maxima.has(routeKey))
+        maxima.set(routeKey, Promise.resolve().then(async () => (await deps.dsh.llmCatalog()).providers.find((provider) => provider.id === route?.provider)?.models.find((model) => model.id === route?.model)?.maxOutputTokens ?? undefined).catch(() => {
+          return;
+        }));
+      return Promise.resolve(maxima.get(routeKey)).then((maximum) => {
+        if (payload.signal?.aborted)
+          return;
+        const current = writerBinding(deps, agent);
+        if (current?.memberId !== binding.memberId || current.teamId !== binding.teamId)
+          return;
+        const budget = workerPressureBudget(deps.dsh.contextPressure(agent), deps.config, maximum);
+        if (budget === undefined)
+          return;
+        let state = activations.get(agent);
+        const task = writerTask(current);
+        if (budget.kind === "below" || task === undefined) {
+          if (state !== undefined)
+            state.pending = undefined;
+          return budget;
+        }
+        if (state === undefined) {
+          const scope = deps.dsh.agentScope(agent);
+          if (scope === undefined)
+            return budget.kind === "hard" ? budget : undefined;
+          const offIdle = scope.on("agent/status", (value) => {
+            const active = activations.get(agent);
+            const intent2 = active?.pending;
+            if (recordOf(value)?.status !== "idle" || active === undefined || intent2 === undefined)
+              return;
+            compact(active, intent2).catch((error) => deps.warn(`[mpd-cellwork] pressure maintenance: ${String(error)}`));
+          });
+          state = { agent, offIdle, sourceCalls: new Set };
+          activations.set(agent, state);
+          sessions.set(task.sessionId, state);
+        }
+        const previous = state.pending;
+        const intent = { task, turn, budget };
+        state.pending = intent;
+        state.terminal = undefined;
+        if (previous?.turn !== intent.turn || previous.budget.kind !== budget.kind) {
+          if (budget.kind === "hard")
+            journal(intent, "project-pressure-hard-limit", { remaining: budget.window - budget.used, nextAction: "Resume only after observed headroom exceeds the reserved output and maintenance budget." });
+          else
+            journal(intent, "project-pressure-deferred");
+        }
+        return budget;
+      });
+    },
+    latest: (agent) => typeof agent === "object" && agent !== null ? activations.get(agent)?.pending?.budget : undefined,
+    dispose: () => {
+      offSession?.();
+      offDispose?.();
+      for (const agent of activations.keys())
+        remove(agent);
+    }
+  };
+}
+
+// packages/mpd-cellwork-plugin/src/protocol.ts
 function workspaceConfigReader(ctx) {
   return (dottedKey) => {
     const service = ctx.get?.("mpdConfig", false);
@@ -8886,7 +9611,7 @@ function isPlainRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function contentHashOf(value) {
-  return createHash("sha256").update(JSON.stringify(value) ?? "undefined").digest("hex");
+  return createHash3("sha256").update(JSON.stringify(value) ?? "undefined").digest("hex");
 }
 var SESSION_HANDLE_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 var HANDOVER_EVENTS = new Set(["compaction", "seat-rebound", "member-reseeded", "reseed-parent", "member-rebound", "checkpoint-unrecoverable", "member-adopted"]);
@@ -8894,7 +9619,7 @@ var HANDOVER_HANDLE_FIELDS = ["newHandle", "newSessionId", "handle", "orphanChil
 function readTeamRecordSnapshot(path) {
   let text2;
   try {
-    text2 = readFileSync8(path, "utf8");
+    text2 = readFileSync9(path, "utf8");
   } catch (error) {
     const code = error.code;
     if (code === "ENOENT")
@@ -8937,7 +9662,7 @@ function recordWriteInstantOf(snapshot, path) {
 function concurrentWriteOf(path, snapshot) {
   let now;
   try {
-    now = readFileSync8(path, "utf8");
+    now = readFileSync9(path, "utf8");
   } catch (error) {
     return "it could not be re-read before the write (" + errorText4(error) + ")";
   }
@@ -8980,13 +9705,18 @@ function installCellworkProtocol(deps) {
     return typeof service === "object" && service !== null ? service : undefined;
   };
   const callerFor = (exec) => callerContext(dsh, exec, { teams });
-  const recordOf2 = (workspace, teamId) => {
+  const recordOf3 = (workspace, teamId) => {
     if (teamId === "" || workspace === "")
       return;
     const record = teams()?.get?.(workspace, teamId);
     return typeof record === "object" && record !== null ? record : undefined;
   };
-  const boardOf = (workspace, cell) => resolveCellTeam({ workspace, cell, teams: teams(), recordFor: (teamId) => recordOf2(workspace, teamId) });
+  const boardOf = (workspace, cell) => resolveCellTeam({ workspace, cell, teams: teams(), recordFor: (teamId) => recordOf3(workspace, teamId) });
+  const workerPressure = installWorkerPressure({ dsh, ctx: deps.ctx, config, warn: deps.warn, inspect: (agent) => {
+    const caller = callerContext(dsh, { agent }, { teams, adopt: false });
+    return { caller, board: caller.cell === null ? undefined : boardOf(caller.workspace, caller.cell).record };
+  } });
+  disposers.push(workerPressure.dispose);
   const rosterRoles = () => {
     try {
       const rows = deps.ctx.get?.("mpdRoles", false)?.list?.();
@@ -9018,7 +9748,7 @@ function installCellworkProtocol(deps) {
     }
     return ids;
   };
-  const recordSeat = (cell, workspace, name) => planeSeatOf(recordOf2(workspace, cell.teamId), name);
+  const recordSeat = (cell, workspace, name) => planeSeatOf(recordOf3(workspace, cell.teamId), name);
   const transition = (workspace, next, entry, now) => {
     const lines = appendJournal(workspace, next.cellId, entry, now);
     const stamped = { ...next, journalCursor: lines > 0 ? lines : next.journalCursor };
@@ -9153,7 +9883,7 @@ function installCellworkProtocol(deps) {
     const recordNamesAny = teamHandle !== "" || cellHandle !== "";
     let text2 = "";
     try {
-      text2 = readFileSync8(journalPath(workspace, cellId), "utf8");
+      text2 = readFileSync9(journalPath(workspace, cellId), "utf8");
     } catch {
       text2 = "";
     }
@@ -9307,7 +10037,7 @@ function installCellworkProtocol(deps) {
       }
       let after;
       try {
-        after = recordOf2(caller.workspace, teamId);
+        after = recordOf3(caller.workspace, teamId);
         if (after === undefined) {
           const again = readTeamRecordSnapshot(path);
           after = again.kind === "ok" ? again.snapshot.record : undefined;
@@ -9635,6 +10365,12 @@ function installCellworkProtocol(deps) {
       const applied = unfenceWithheld !== undefined || unfenceTargets.length === 0 ? { cell: current, outcomes: [] } : await unfenceSeats(caller, current, unfenceTargets, now);
       const unfenced = applied.outcomes;
       current = applied.cell.teamId === resolvedTeamId ? applied.cell : { ...applied.cell, teamId: resolvedTeamId };
+      let fixedRoster;
+      try {
+        fixedRoster = fixedRosterOf(deps.ctx, dsh.workspaceRoot(exec), caller.sessionId);
+      } catch (error) {
+        return { ok: false, error: error instanceof Error ? error.message : String(error) };
+      }
       const rawReassign = readArgs2(args)["reassign"];
       const growth = await growExecutionSeats({
         dsh,
@@ -9643,10 +10379,11 @@ function installCellworkProtocol(deps) {
         config,
         captainAgent: exec.agent,
         record: board.record,
-        refreshRecord: () => recordOf2(caller.workspace, board.teamId),
+        refreshRecord: () => recordOf3(caller.workspace, board.teamId),
         rosterRoles: rosterRoles(),
         personaFor: rosterPersona,
         excludeTaskIds: reassignedTaskIds(rawReassign),
+        ...fixedRoster === undefined ? {} : { fixedRoster },
         now
       });
       if (Object.keys(growth.members).length > 0) {
@@ -9916,6 +10653,7 @@ function installCellworkProtocol(deps) {
       const plane = planePressureOf(teams(), caller.workspace, board.teamId, caller.member);
       const pressure = plane ?? dsh.contextPressure(exec.agent);
       const plan = planCheckpoint(caller.cell, caller.member, pressure, config, null);
+      const workerBudget = workerPressure.latest(exec.agent);
       return {
         ok: true,
         member: caller.member,
@@ -9928,8 +10666,8 @@ function installCellworkProtocol(deps) {
         ratio: pressure.ratio,
         provenance: pressure.provenance,
         checkpointRatio: config.checkpointRatio,
-        willCheckpoint: plan.inject,
-        reason: plan.reason
+        willCheckpoint: workerBudget === undefined && plan.inject,
+        reason: workerBudget?.kind === "defer" ? "original worker stays open and maintenance waits for natural idle" : workerBudget?.kind === "hard" ? "another request needs more observed context headroom" : plan.reason
       };
     }
   }));
@@ -10260,12 +10998,12 @@ missing sections: ` + result.missing.join(", ") : ""));
       const delivered = [];
       for (let index = 0;index < sent.messages.length; index += 1) {
         const message = sent.messages[index];
-        const address = outbound[index];
-        const recipientMember = Object.values(target.members).find((member) => seatKey(target, member.name) === address.id);
+        const address2 = outbound[index];
+        const recipientMember = Object.values(target.members).find((member) => seatKey(target, member.name) === address2.id);
         const attemptWake = async () => {
           if (crossCell)
             return { sent: false, reason: "cross-cell mail is DURABLE ONLY — this cell holds no Lead authority over " + targetCellId + ", so its captain wakes the row (it shows on that cell's `cellwork_supervise`)" };
-          if (nameKey(address.name) === "captain")
+          if (nameKey(address2.name) === "captain")
             return { sent: false, reason: "the Lead has no executor handle in this composition; the captain reads it on `cellwork_inbox`" };
           if (caller.sessionId !== cell.captainSessionId)
             return { sent: false, reason: "only the captain holds the Lead authority the executor needs; a member-to-member message is durable and read on `cellwork_inbox`" };
@@ -10391,12 +11129,15 @@ acknowledgement refused for ` + String(refused.length) + " row(s), which stay un
   const onPreStep = (payload, decision) => {
     try {
       const agent = payload?.agent;
-      if (agent === undefined || agent === null)
+      if (typeof agent !== "object" || agent === null || decision?.kind === "reject")
         return;
       const caller = callerContext(dsh, { agent }, { teams });
       if (caller.cell === null || caller.member === "" || caller.member === "captain")
         return;
       const pressure = dsh.contextPressure(agent);
+      const native = workerPressure.check(agent, payload, pressure);
+      if (native !== undefined)
+        return native.then((answer) => answer?.kind === "hard" ? { kind: "reject" } : undefined);
       const plan = planCheckpoint(caller.cell, caller.member, pressure, config, typeof payload.turn === "number" ? payload.turn : null);
       if (!plan.inject)
         return;
@@ -10427,7 +11168,7 @@ acknowledgement refused for ` + String(refused.length) + " row(s), which stay un
     disposers.push(preStepDispose);
   const teamRecordPathOf = (workspace, teamId) => {
     const cleaned = String(teamId).replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^[.-]+/, "").replace(/-+$/, "");
-    return join9(workspace, ".mpd", "team", "teams", (cleaned === "" ? "unnamed" : cleaned) + ".json");
+    return join10(workspace, ".mpd", "team", "teams", (cleaned === "" ? "unnamed" : cleaned) + ".json");
   };
   const bindReseededSeat = (input) => {
     if (input.workspace === "" || input.teamId === "")
@@ -10494,7 +11235,7 @@ acknowledgement refused for ` + String(refused.length) + " row(s), which stay un
     const rollbackBind = (surface, cause) => {
       let current;
       try {
-        current = readFileSync8(path, "utf8");
+        current = readFileSync9(path, "utf8");
       } catch (error) {
         return { ok: false, surface, reason: cause + "; the rollback FAILED: the record could not be re-read (" + errorText4(error) + "), so the pre-bind row was NOT restored", rollback: "failed", rollbackReason: "re-read failed: " + errorText4(error) };
       }
@@ -10536,7 +11277,7 @@ acknowledgement refused for ` + String(refused.length) + " row(s), which stay un
     let verifyFailure;
     try {
       if (service !== undefined) {
-        after = recordOf2(input.workspace, input.teamId);
+        after = recordOf3(input.workspace, input.teamId);
         if (after === undefined)
           verifyFailure = "the plane answered nothing for a record this bind just wrote";
       } else {
@@ -10636,7 +11377,7 @@ acknowledgement refused for ` + String(refused.length) + " row(s), which stay un
     try {
       let handoffText = "";
       try {
-        handoffText = readFileSync8(handoffPath(caller.workspace, caller.cell.cellId, caller.member, member.handoffs), "utf8");
+        handoffText = readFileSync9(handoffPath(caller.workspace, caller.cell.cellId, caller.member, member.handoffs), "utf8");
       } catch {
         handoffText = "(the handoff document could not be read back; the journal names its path)";
       }
@@ -10659,7 +11400,7 @@ acknowledgement refused for ` + String(refused.length) + " row(s), which stay un
             deps.warn("[mpd-cellwork] the promotion directive could not be injected: " + (error instanceof Error ? error.message : String(error)));
           }
         },
-        sleep: (ms) => new Promise((resolve4) => setTimeout(resolve4, ms)),
+        sleep: (ms) => new Promise((resolve5) => setTimeout(resolve5, ms)),
         worktreeCwd: (input) => {
           try {
             const service = deps.ctx.get?.("mpdWorktree", false);
@@ -10806,6 +11547,12 @@ function configValue(ctx, dottedKey) {
 function teamsService(ctx) {
   const service = ctx.get?.("mpdTeams", false);
   if (typeof service !== "object" || service === null)
+    return;
+  return service;
+}
+function projectAdmission(ctx) {
+  const service = ctx.get?.("mpdProjectIdentity", false);
+  if (typeof service !== "object" || service === null || !("admitCell" in service) || typeof service.admitCell !== "function")
     return;
   return service;
 }
@@ -11118,7 +11865,13 @@ function apply(ctx, config = {}) {
         recordTransition(caller.workspace, next, { event: "start", phase: next.phase, captainSessionId: state.captainSessionId }, now);
       }
       let stagedState = next;
-      if (next.teamId === "") {
+      if (next.teamId === "" || next.phase === "requirements" && !next.splitTaskId && typeof teamRecordOf2(ctx, caller.workspace, next.teamId)?.planId === "string") {
+        let fixedRoster;
+        try {
+          fixedRoster = fixedRosterOf(ctx, dsh.workspaceRoot(exec), caller.sessionId);
+        } catch (error) {
+          return { ok: false, error: error instanceof Error ? error.message : String(error) };
+        }
         const staged = await stagePlanningTeam({
           dsh,
           workspace: caller.workspace,
@@ -11127,6 +11880,7 @@ function apply(ctx, config = {}) {
           personaFor: (label) => personaOf(ctx, label),
           teams: () => teamsService(ctx),
           config: cfg,
+          ...fixedRoster === undefined ? {} : { fixedRoster },
           now
         });
         if (!staged.ok) {
@@ -11242,7 +11996,7 @@ function apply(ctx, config = {}) {
   }));
   disposers.push(dsh.registerTool({
     name: "cellwork_open",
-    description: "The PROGRAMMATIC cell entry: create one cell for an objective and return its activation directive. CAPTAIN-ONLY (a member or a delegated child may not open a second front); reuses an active cell only for a matching mandate, captain and objective; a `mandate` is accepted only when `.mpd/autoproject/<runId>/escalation.json` exists. `/cellwork` is the same path with a live turn to submit into.",
+    description: "The PROGRAMMATIC cell entry: create one cell for an objective and return its activation directive. CAPTAIN-ONLY (a member or a delegated child may not open a second front); reuses an active cell when the captain, objective and mandate match, with project admission required for a replay without a mandate; a `mandate` is accepted only when `.mpd/autoproject/<runId>/escalation.json` exists. `/cellwork` is the same path with a live turn to submit into.",
     parameters: {
       type: "object",
       properties: {
@@ -11280,6 +12034,7 @@ function apply(ctx, config = {}) {
         return { ok: false, error: "cellwork_open: mandate must be a string run id" };
       const outcome = openCell({
         workspace,
+        admission: projectAdmission(ctx),
         objective: String(argv.objective ?? ""),
         captainSessionId: sessionId,
         ...argv.mandate === undefined ? {} : { mandate: argv.mandate },
@@ -11306,12 +12061,13 @@ function apply(ctx, config = {}) {
     const workspace = dsh.workspaceRoot({ agent: invocation?.agent });
     const outcome = openCell({
       workspace,
+      admission: projectAdmission(ctx),
       objective,
       captainSessionId: sessionIdOf(invocation?.agent),
       now: new Date,
       submit: (text2) => invocation?.submit?.(dsh.userMessage({ text: text2, source: { kind: "mpd-cellwork", reason: "activation-directive" } })) === true
     });
-    return outcome.ok ? { kind: "success", text: "cellwork active: " + outcome.cellId + " — the activation directive was submitted as this agent's next turn" } : { kind: "error", text: outcome.error };
+    return outcome.ok ? { kind: "success", text: outcome.replayed === true ? "cellwork already active: " + outcome.cellId : "cellwork active: " + outcome.cellId + " — the activation directive was submitted as this agent's next turn" } : { kind: "error", text: outcome.error };
   };
   let stopConsultCleanup;
   disposers.push(...installCellworkFlow({ dsh, ctx, config: cfg, warn, onConsultStop: (hook) => {

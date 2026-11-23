@@ -1,3 +1,4 @@
+import { fixedOwners, type FixedSeat } from "../src/fixed-roster"
 // OFFLINE PROOF OF RUNTIME SEAT GROWTH (§4.1), the seat projection (§4.2), the O(1) journal append
 // (§4.3) and the §7.1 board resolution — over the REAL cell state file and the shared team-plane double.
 //
@@ -72,6 +73,8 @@ interface HarnessOptions {
   cell?: (workspace: string) => CellState
   /** The meter read the fake `mpdTeams` exposes. */
   memberContext?: FakeTeams["memberContext"]
+  /** Native fixed roster returned to this synthetic captain. */
+  fixedRoster?: readonly FixedSeat[]
   /**
    * Called INSIDE each live `add_member` append, which is the harness's await window.
    *
@@ -316,6 +319,7 @@ function makeHarness(options: HarnessOptions = {}): Harness {
     agents: { list: (): FakeAgent[] => [captain] },
     mpdTeams: teamsService,
     mpdTeamActions: double.service,
+    ...(options.fixedRoster === undefined ? {} : { mpdProjectIdentity: { roster: () => ({ members: options.fixedRoster }) } }),
     mpdRoles: {
       list: (): Array<{ name: string; persona: string }> => ROLES.map((role) => ({ name: role, persona: role + " persona" })),
       get: (key: string): { persona: string } | null => ROLES.includes(key) ? { persona: key + " persona" } : null,
@@ -1050,6 +1054,46 @@ async function splitFixture(workspace: string, cellId: string, revision: number,
     tasks: keys.map((key) => ({ key, subject: key + " task", description: "do " + key, ownerRole: "Deep Worker", writeScopes: [], blockedBy: [], independent: true, inputs: [], verify: false })),
   })
 }
+
+test("an established fixed roster reuses compatible idle capacity and queues the rest", async () => {
+  /** The fixture includes another fixed member of the same role and a temporary idle helper. */
+  const board = busyBoard()
+  board.members.push(member("M2", "Backup", { role: "Deep Worker" }), member("M3", "Temporary", { role: "Deep Worker" }))
+  /** Only the two declared seats are eligible for automatic hand-over. */
+  const fixedRoster: readonly FixedSeat[] = [
+    { memberId: "fixed-a", name: "Deep Worker", role: "Deep Worker" },
+    { memberId: "fixed-b", name: "Backup", role: "Deep Worker" },
+  ]
+  /** Dispatch uses the same capacity rule on all subsequent scans. */
+  const h = makeHarness({ board, fixedRoster })
+  await runTool(h, "cellwork_dispatch")
+  expect(h.added).toEqual([])
+  expect(board.tasks.filter((row) => row.owner === "Backup")).toHaveLength(1)
+  expect(board.tasks.filter((row) => row.status === "pending")).not.toHaveLength(0)
+  expect(board.tasks.some((row) => row.owner === "Temporary")).toBe(false)
+  await runTool(h, "cellwork_dispatch")
+  expect(h.added).toEqual([])
+  expect(board.tasks.filter((row) => row.owner === "Backup")).toHaveLength(1)
+})
+
+test("an unresolved accepted split stops before allocation and a revised split can reuse the declared seat", async () => {
+  /** The detail-free fixture has one already accepted task sized by the real split validator. */
+  const h = makeHarness()
+  /** The first revision names a role that is not itself a fixed member name in the amended split. */
+  const valid = await splitFixture(h.workspace, executingCell(h.board).cellId, 1, ["one"])
+  /** The one permitted stable logical/board identity. */
+  const fixedRoster: readonly FixedSeat[] = [{ memberId: "fixed-a", name: "WorkerA", logicalName: "worker", role: "Deep Worker" }]
+  /** An accepted legacy graph can still name a generated owner that cannot be allocated. */
+  const unresolved = { ...valid, tasks: valid.tasks.map((row) => ({ ...row, member: "Generated-99" })) }
+  /** No board creation, task write or send occurs before this result. */
+  const attempt = directActivation({ workspace: h.workspace, cell: executingCell(h.board), split: unresolved })
+  expect(await materializeSplit({ ...attempt.deps, fixedRoster })).toMatchObject({ ok: false, error: expect.stringContaining("unresolved fixed owner") })
+  expect(attempt.calls).toEqual([])
+  expect(attempt.reads).toEqual([])
+  /** An amended graph can refer to the same identity using its logical name. */
+  const revised = { ...valid, revision: 2, tasks: valid.tasks.map((row) => ({ ...row, member: "worker" })) }
+  expect(fixedOwners(revised, fixedRoster).tasks[0]?.member).toBe("WorkerA")
+})
 
 // ── C1: §4.4.4 as its OWN named claim ───────────────────────────────────────────────────────────
 

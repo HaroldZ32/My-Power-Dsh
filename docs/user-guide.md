@@ -158,7 +158,8 @@ The only shipped preset is **MPD (Main Working Agent)**. Its conventions:
 | Explore a codebase | `mcp__ast_grep__*` (structural search/rewrite), `mcp__lsp__*` (cclsp: definitions, references, implementation, diagnostics, hover, workspace symbols, call hierarchy, rename), `mcp__codegraph__*` (project graph) | MCP tool servers; their tools appear as `mcp__<server>__<tool>`. Two more families are **not available by default**: `mcp__git__*` (a git toolbox, 28 tools) and `mcp__shell__*` (`run_process`, raw shell). Both rows ship `disabled: true`, so no such tool appears in a normal session: enable the one you want by flipping that row's `disabled:` to `false` in `cordis.patch.yml` and reinstalling the bundle. |
 | Edit safely | the write guard and output truncation (no configuration needed), `mpd_hashline_read/edit/format/restore`, `mpd_comment_check` | hash-anchored edits reject a stale anchor instead of writing to the wrong line |
 | Drive long work | `mpd_autoproject` (tier `light` or `heavy`: plan gate, execution rounds, verification gate) or its `/autoproject <objective>` command, `mpd_boulder_start/status/complete/task_timer/plan_progress/plans` | the command injects the autoproject activation directive: the run executes autonomously and stops for a human only at its three decision points, and stages its own team when the work warrants one; `mpd_boulder_*` tracks progress of a plan markdown file across sessions |
-| Keep a long run going across turns | `mpd_goal_status`, `mpd_goal_anchor`, `mpd_goal_finish` (plus the host's `/goal` command and its goal round driver) | see §13.10: the **persisted goal** is the bundle's basis of continuous execution: a heavy autoproject run, a plan-bound boulder work or an `agent_teams_plan` approval anchors one (`goal.autoAnchor` covers the long runs; a team approval anchors on its own), and it stays armed when the in-turn engine stops short of the objective |
+| Keep a long run going across turns | `mpd_goal_status`, `mpd_goal_anchor`, `mpd_goal_finish` and the host's `/goal` command | See §13.10 for the direct-human authorization rule and how to confirm that the session has a persisted goal. |
+| Reuse a local project team | `agent_teams_plan`, `/cellwork`, `mpd_memory_read`, `mpd_worktree_copy` | [§13.12](#1312-the-local-project-team) follows the same roster through a new assignment, private and shared memory, and an optional independent Git copy. |
 | Keep memory | `mpd_memory_write/read/reflect/reflect_complete/status`, `mpd_memory_save/recall` | the VCS-backed store can be git or svn; `mpd_memory_save/recall` is the simple key/value layer |
 | Consult a specialist | `mpd_roles_list`, `mpd_role_spawn`, `mpd_role_persona` | ONE-SHOT single-call consult subagents (the activation is disposed after the report: ask a new question with a new spawn); read-only roles are denied write tools |
 | Keep an evolving agent | `mpd_workmate_list/init/spawn/reflect/match/rename/delete` | see §5 |
@@ -347,7 +348,7 @@ interrupt_agent { agent_id }                                              # Lead
   ordinary supervisor. `team.reteam.enabled: false` disables both the concurrent check and the
   completed-call staging trigger.
 - **One approval starts three mechanisms.** On the `agent_teams_plan` approve SUCCESS path, after the
-  team is really activated, the same approval anchors a persisted goal (objective = the plan
+  team is activated, the same approval attempts to anchor a persisted goal (objective = the plan
   description, falling back to the plan NAME when the description is empty, source `team`) and seeds
   `todo_write` with one pending item per plan task (a whole-list
   replace; no reseed when the plan has no tasks). Both effects are non-fatal: a failure logs one line
@@ -901,8 +902,12 @@ agent_teams_task { "task_id": "T1", "action": "complete", "expected_revision": 2
 list_agents {}
 send_message { "agent_id": "senior-1", "message": "Land the README edit before the guide." }
 agent_teams_dispatch { "action": "run" }
-wait_agent { "timeout_ms": 60000 }
-interrupt_agent { "agent_id": "senior-1" }                               // Lead only; the inbox is kept
+agent_teams_control { "action": "wake", "wake": { "action": "arm", "task_ids": ["T2"], "mode": "all" } }
+# A waiting registration lets the captain end its turn. Read the task result when woken.
+# With an active GOAL, a nonblocking arm still allows independent goal rounds.
+# To stay in the current turn until the event, use this alternative instead of arming:
+# agent_teams_control { "action": "wake", "wake": { "action": "wait", "task_ids": ["T2"], "mode": "all" } }
+# To stop a worker explicitly: interrupt_agent { "agent_id": "senior-1" }
 
 # (e) finishing a wave
 mpd_team_compact_run {}
@@ -929,11 +934,10 @@ mpd_autoproject { "objective": "Rewrite the install chapter", "tier": "heavy", "
 /autoproject Make every documented command resolve to a real registration
 ```
 
-`mpd_autoproject` runs the whole discipline, and its `tier` picks the shape: `light` (no plan file) or `heavy`:
-the optional adversarial hyperplan wave, the **plan gate** (planner + plan review) when a plan file is
-used, execution rounds driven per criterion (PIN → RED → GREEN → SURFACE → CLEAN), the **verification
-gate** when a plan exists AND (`tier: "heavy"` or `strictReview`), then the **final quality gate** with a
-per-lane ledger. State, ledger and the escalation artifact live under `.mpd/autoproject/<runId>/`.
+`mpd_autoproject` runs the optional adversarial hyperplan wave, the plan gate when a plan file is
+used, and execution rounds driven per criterion (PIN → RED → GREEN → SURFACE → CLEAN). The light
+tier uses a plan when you pass `plan: true`. The heavy tier always uses one. Both tiers require a
+recorded verification PASS and final quality gate approval to finish. State, ledger and the escalation artifact live under `.mpd/autoproject/<runId>/`.
 
 **The run is autonomous but BOUNDED.** It stops for a human at exactly three decision points: the
 over-limit escalation fired while `autoproject.escalate.mode` is `ask`; a credential, a secret or an
@@ -1086,11 +1090,19 @@ mpd_goal_anchor { "objective": "ship the cordis-dev skill and its evidence", "ma
 mpd_goal_finish { "outcome": "complete" }
 ```
 
-**You rarely call these yourself.** With `goal.autoAnchor` on (the default), a heavy autoproject run
-(`mpd_autoproject` with `tier: "heavy"`, or `plan: true`) and a plan-bound `mpd_boulder_start` anchor a
-goal for their own objective before they start, so the run's objective (not the tool call) is the
-basis of continuous execution. A team-plan APPROVAL anchors one too, beside the todo seeding it does
-(§6): one approval bundles the team record, the goal and the todo list. When the run ends:
+With `goal.autoAnchor` on by default, planned Autoproject (`tier: "heavy"` or `plan: true`) and
+plan-bound `mpd_boulder_start` attempt to anchor a goal. Team-plan approval also attempts to anchor a
+goal when it creates the board and seeds the todo list (§6). The harness authorizes the creation on a
+direct human turn in the top-level session.
+
+`/autoproject <objective>` submits an activation directive on the invoking session. DSH 0.2.2-rc.5 can
+refuse GOAL creation on that submitted turn while Autoproject still finishes and records verification.
+Call `mpd_goal_status {}` to check whether a goal exists and what phase it is in. For a run that needs
+persistence, send a plain chat message in the top-level MPD session asking it to call
+`mpd_autoproject` with your objective and `plan: true`. Alternatively, use the host's `/goal` command
+to manage a goal yourself.
+
+When a run has anchored its own goal, its terminal result determines the transition.
 
 - `complete` → the goal is completed and the anchor record is dropped;
 - `blocked` → a blocked transition is attempted, and the harness may refuse it before its
@@ -1131,6 +1143,76 @@ mcp__grep_app__searchGitHub { "query": "registerTool({", "language": ["TypeScrip
 rewrites with `apply: false` first, read the diff, then apply. The `mcp-git` / `mcp-shell` rows ship
 disabled (§3). The two remote rows (`context7`, `grep_app`) are public HTTP services
 and need network access; the three local servers need their binary (§11).
+
+### 13.12 The local project team
+
+Open the MPD preset in the project directory and ask for ordinary work in chat. For a small solo run
+that needs structured verification, use [Autoproject](#132-the-autoproject-loop-and-its-gates).
+When work needs named owners, start with `/agent-teams <objective>` and approve the staged plan as
+in [§13.1](#131-teams), or use `/cellwork <objective>` for that workflow's requirements and dispatch
+steps. [Cellwork guide](./cellwork.md)
+
+The first required Team plan approval can establish the fixed roster. A cold Cellwork run can start
+with temporary seats and an empty fixed roster. After a Team or Cellwork run has been admitted, the
+recorded project captain can read and extend the roster through these calls.
+
+```text
+agent_teams_plan { "action": "roster" }
+agent_teams_plan { "action": "roster", "member": { "name": "build-writer", "role": "Senior Engineer" } }
+```
+
+The declaration uses the configured role route unless the captain provides `member.route`. A retry
+keeps the same member ID and pinned route. On later boards, use the declared name to reuse the
+identity without repeating a Workmate pin. Planning seats and one-shot helpers are scoped to the
+run. In established Cellwork projects use compatible fixed owners. Work queues when compatible
+fixed members are busy. A requirements update reuses an open splitter ticket or gives the same
+splitter one replacement. The captain dispatches it, then activates the new accepted split.
+
+Assign named owners and write paths on the board. The original writer owns delivery and a separate
+session verifies it. A fixed Cellwork writer with a current writable assignment can call
+`cellwork_delegate` with `tasks[].scope.read` or `tasks[].scope.write` for exact paths in the assigned
+checkout. Helper writes stay within the parent task's write scope. Omit `scope` for a text-only
+helper. The original writer collects the result and keeps the task.
+
+An assigned fixed writer can use `agent_teams_task { "action": "progress", "task_id": "T3", "expected_revision": 4, "content": "read archive/messages.csv" }`
+with the current task revision and an authorized target. An unperformed declared operation can
+receive one continuation in the original turn when the native host can admit it. Use `wait <reason>`
+for a real dependency or approval wait. At the hard context limit, the task stays open while the
+host attempts bounded maintenance.
+
+Linked worktrees of the same project share the project record, and file operations use the actual
+checkout. An unrelated clone starts with its own identity. The project admits one active primary
+Team or Cellwork run at a time. Continue on the existing board when another checkout reports a busy
+run. A clean Cellwork stop lets a later objective in the same project retire the completed board.
+
+The captain can register `wake.arm` for selected board rows and end the turn. An active goal may
+still run independent rounds while that notification is armed. Use `wake.wait` to stay in the
+current turn until its board condition resolves. [Team wake examples](#131-teams)
+
+Use the board for task status and evidence. Captains and members with an authenticated project seat
+use their own private `workspace` memory across authorized checkouts. Publish only
+project facts that teammates need to reuse in `shared` memory. Read facts by exact key, and check
+`revision` and `appliesTo` before relying on them. [Memory scopes and examples](../packages/mpd-memory-plugin/README.md#memory-scopes)
+
+On a host that supplies native project context, the model receives a `[mpd project context]` block
+with the current goal and board dependencies. The captain sees project and interface summaries. An assigned worker may also
+see an excerpt from a file in their own write scope. Put exact memory references on separate lines in
+the task description, for example `Context private: build-check` and
+`Context shared: {"key":"api","revision":2,"appliesTo":"v2"}`. The current view has a size bound, and
+the host can retain earlier views in conversation history.
+
+A linked worktree is the default for a writer. Use an independent Git copy when the task needs its
+own Git object store or branch refs. The assigned member requests it with the full committed base,
+board scope and an estimate in bytes. Use the public reply's `id` throughout. The captain can inspect
+the request with `mpd_worktree_copy { "action": "list", "id": "<request id>" }` and approve it with
+`mpd_worktree_copy { "action": "approve", "id": "<request id>" }`. Use `decline` to reject the request.
+A member's list shows their own requests.
+
+After approval, the original member calls `create`, uses the returned `path` as the working
+directory, and calls `submit` with the full candidate SHA. A separate verifier records a PASS for
+that SHA. The captain then integrates it on the checked-out integration branch. Dispose of the copy
+only after successful integration and task closure. Unmerged work, private refs and dirty files can
+block disposal. [Copy request, verification and disposal calls](../packages/mpd-worktree-plugin/README.md#independent-development-copies)
 
 ## 14. Where these capabilities come from
 
@@ -1221,10 +1303,10 @@ dispatch, context occupancy and depth budget included), with no cross-package im
 
 ### 15.3 Workmate auto-binding, optimization and persona overrides
 
-At team approval each staged member is bound DETERMINISTICALLY: an explicit name binds or REFUSES; else
-`mpd_workmate_match` (score ≥ 0.35 AND the name is free on the team) REUSES a workmate; else
-`workmates.autoInit` (default `true`) AND the library under `workmates.max` (default 12 per workspace)
-INITIALIZES one; otherwise the member stays plain with reason `cap`.
+With Workmate binding enabled, Team approval first checks the fixed member's existing binding or an
+explicit `workmate:` pin. A first binding can reuse a compatible, available Workmate at a match score
+of at least 0.35. A miss leaves a plain seat. To add a persistent Workmate to the HOME library,
+initialize it explicitly with `mpd_workmate_init`.
 
 `mpd_workmate_optimize {dryRun?, confirm?, pairs?, mergeThreshold?}` and `/workmate-optimize` merge
 workmates that are the same specialty grown apart: dry-run by default, mergeable only when both share the

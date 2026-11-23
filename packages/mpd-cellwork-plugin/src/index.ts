@@ -25,11 +25,12 @@ import { callerContext, sessionIdOf, type CallerContext, type TeamsServiceView }
 import { resolveCellworkConfig, type CellworkConfig } from "./config"
 import { installCellworkGuard } from "./guard"
 import { CELLWORK_USAGE } from "./prompts"
-import { openCell, type OpenCellOutcome } from "./open"
+import { openCell, type OpenCellInput, type OpenCellOutcome } from "./open"
 import { installCellworkFlow, type FlowCtx } from "./flow"
 import { installCellworkProtocol } from "./protocol"
 import { checkpointSinceOf, planeSeatOf, seatForceReadingOf, seatLivenessOf, type ProtocolCtx } from "./protocol-core"
 import { stagePlanningTeam } from "./staging"
+import { fixedRosterOf, type FixedSeat } from "./fixed-roster"
 import { roleKey } from "./split"
 import { cellDir, freeCellId, journalPath, newCellState, readActiveCell, readCell, recordTransition, requirementsPath, resolveCellTeam, statePath, writeCell, type CellReadFailure, type CellState } from "./state"
 import { isPlanningSeatName, seatProjectionOf } from "./elastic"
@@ -207,6 +208,14 @@ function teamsService(ctx: Ctx): TeamsServiceView | undefined {
   const service = ctx.get?.("mpdTeams", false)
   if (typeof service !== "object" || service === null) return undefined
   return service as TeamsServiceView
+}
+
+/** Resolve the optional cross-process admission seam at each open request. */
+function projectAdmission(ctx: Ctx): OpenCellInput["admission"] {
+  /** The service is registered by the Team plugin, which may be absent in an older composition. */
+  const service = ctx.get?.("mpdProjectIdentity", false)
+  if (typeof service !== "object" || service === null || !("admitCell" in service) || typeof service.admitCell !== "function") return undefined
+  return service as NonNullable<OpenCellInput["admission"]>
 }
 
 /**
@@ -691,7 +700,12 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
       // no record behind it. A retry is safe: staging is idempotent once `teamId` is recorded.
       /** The record after staging (identical when a team was already recorded). */
       let stagedState: CellState = next
-      if (next.teamId === "") {
+      if (next.teamId === "" || (next.phase === "requirements" && !next.splitTaskId && typeof teamRecordOf(ctx, caller.workspace, next.teamId)?.planId === "string")) {
+        /** The captain's fixed roster gives the temporary splitter valid owner choices. */
+        let fixedRoster: readonly FixedSeat[] | undefined
+        try { fixedRoster = fixedRosterOf(ctx, dsh.workspaceRoot(exec), caller.sessionId) } catch (error) {
+          return { ok: false, error: error instanceof Error ? error.message : String(error) }
+        }
         /** The staging outcome. */
         const staged = await stagePlanningTeam({
           dsh,
@@ -701,6 +715,7 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
           personaFor: (label) => personaOf(ctx, label),
           teams: () => teamsService(ctx),
           config: cfg,
+          ...(fixedRoster === undefined ? {} : { fixedRoster }),
           now,
         })
         if (!staged.ok) {
@@ -869,7 +884,7 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
   // the activation directive as TEXT because a tool call has no turn surface of its own.
   disposers.push(dsh.registerTool({
     name: "cellwork_open",
-    description: "The PROGRAMMATIC cell entry: create one cell for an objective and return its activation directive. CAPTAIN-ONLY (a member or a delegated child may not open a second front); reuses an active cell only for a matching mandate, captain and objective; a `mandate` is accepted only when `.mpd/autoproject/<runId>/escalation.json` exists. `/cellwork` is the same path with a live turn to submit into.",
+    description: "The PROGRAMMATIC cell entry: create one cell for an objective and return its activation directive. CAPTAIN-ONLY (a member or a delegated child may not open a second front); reuses an active cell when the captain, objective and mandate match, with project admission required for a replay without a mandate; a `mandate` is accepted only when `.mpd/autoproject/<runId>/escalation.json` exists. `/cellwork` is the same path with a live turn to submit into.",
     parameters: {
       type: "object",
       properties: {
@@ -913,6 +928,7 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
       /** The shared open outcome. */
       const outcome = openCell({
         workspace,
+        admission: projectAdmission(ctx),
         objective: String(argv.objective ?? ""),
         captainSessionId: sessionId,
         ...(argv.mandate === undefined ? {} : { mandate: argv.mandate }),
@@ -954,13 +970,14 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
     /** The shared open outcome. */
     const outcome: OpenCellOutcome = openCell({
       workspace,
+      admission: projectAdmission(ctx),
       objective,
       captainSessionId: sessionIdOf(invocation?.agent),
       now: new Date(),
       submit: (text: string): boolean => invocation?.submit?.(dsh.userMessage({ text, source: { kind: "mpd-cellwork", reason: "activation-directive" } })) === true,
     })
     return outcome.ok
-      ? { kind: "success", text: "cellwork active: " + outcome.cellId + " — the activation directive was submitted as this agent's next turn" }
+      ? { kind: "success", text: outcome.replayed === true ? "cellwork already active: " + outcome.cellId : "cellwork active: " + outcome.cellId + " — the activation directive was submitted as this agent's next turn" }
       : { kind: "error", text: outcome.error }
   }
   // ── the flow tools (B4–B7) from their own module ──────────────────────────

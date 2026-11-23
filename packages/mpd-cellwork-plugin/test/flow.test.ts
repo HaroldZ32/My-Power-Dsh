@@ -8,7 +8,7 @@
 // what the plugin wrote there.
 import { test, expect } from "bun:test"
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs"
-import { join } from "node:path"
+import { join, resolve } from "node:path"
 import { tmpdir } from "node:os"
 import { createTeamActionsDouble } from "./lib/team-actions-double.ts"
 import { apply } from "../src/index.ts"
@@ -858,6 +858,18 @@ test("activate: contracts → members → tasks → verify loop BEFORE dispatch,
   const review = record?.tasks.find((task: Record<string, any>) => task.subject === "Review the auth core")
   expect(work).toBeDefined()
   expect(review?.blockedBy).toEqual([work?.id])
+  /** The real dispatched review row has only the producer's frozen file, never a review-key guess. */
+  const reviewText = String(review?.description ?? "")
+  expect(reviewText.match(/^FROZEN CONTRACT: .+$/gm)).toEqual([`FROZEN CONTRACT: ${contract}`])
+  expect(reviewText).not.toContain("review-auth.md")
+  expect(reviewText).toContain("Review requirements:")
+  /** The actual native member declarations supplied by ordinary activation. */
+  const memberDrafts = harness.calls.filter((call) => call.name === "agent_teams_plan" && call.arguments.action === "add_member").map((call) => call.arguments.member as { name: string; prompt: string })
+  /** Only the work owner is offered scoped one-shot delegation. */
+  const writerPrompt = memberDrafts.find((member) => member.name === "Senior Engineer")?.prompt
+  expect(writerPrompt).toContain("use cellwork_delegate for a bounded subtask when useful without captain approval")
+  expect(writerPrompt).toContain("retain responsibility for the result")
+  expect(memberDrafts.find((member) => member.name === "Reviewer")?.prompt).not.toContain("use cellwork_delegate")
   // The verify loop was opened BEFORE the dispatch message went out.
   expect(harness.events.indexOf("verify-open")).toBeGreaterThanOrEqual(0)
   expect(harness.events.indexOf("verify-open")).toBeLessThan(harness.events.indexOf("send"))
@@ -968,6 +980,25 @@ test("Amendment 5a: a requirements update re-dispatches the SAME split task with
   const staleSubmit = await runTool(harness, "cellwork_split", { action: "submit", revision: 1, tasks: validTasks() }, splitterAgent(harness))
   expect(staleSubmit.ok).toBe(false)
   expect(String(staleSubmit.error)).toContain("revision")
+})
+
+test("a changed editable document cannot pass as the accepted revision of an open split", async () => {
+  /** Simulate a document rename interrupted before the requirements acceptance write. */
+  const harness = makeHarness()
+  /** Both public readers and the original planner operate on the same cell. */
+  const cellId = await startCell(harness)
+  await runTool(harness, "cellwork_requirements", { action: "finalize", content: COMPLETE_REQUIREMENTS }, plannerAgent(harness))
+  expect(await runTool(harness, "cellwork_split", { action: "submit", revision: 1, tasks: validTasks() }, splitterAgent(harness))).toMatchObject({ accepted: true })
+  /** The split row is already open under revision 1 when the newer bytes appear. */
+  const draft = COMPLETE_REQUIREMENTS + "\nScope change accepted by the owner.\n"
+  writeFileSync(requirementsPath(harness.workspace, cellId), draft, "utf8")
+  expect(await runTool(harness, "cellwork_split", { action: "submit", revision: 1, tasks: validTasks() }, splitterAgent(harness))).toMatchObject({ ok: false, error: expect.stringContaining("editable requirements differ") })
+  expect(await runTool(harness, "cellwork_activate", { revision: 1 }, harness.captain)).toMatchObject({ ok: false, error: expect.stringContaining("editable requirements differ") })
+  expect(readCell(harness.workspace, cellId)).toMatchObject({ ok: true, state: { requirementsRevision: 1, splitRevision: 1, activatedRevision: null } })
+  // The ordinary planner retry picks up the draft and every protected reader can use it after acceptance.
+  expect(await runTool(harness, "cellwork_requirements", { action: "update", content: draft }, plannerAgent(harness))).toMatchObject({ ok: true, revision: 2, redispatchable: true })
+  expect(await runTool(harness, "cellwork_split", { action: "submit", revision: 2, tasks: validTasks() }, splitterAgent(harness))).toMatchObject({ accepted: true })
+  expect(await runTool(harness, "cellwork_activate", {}, harness.captain)).toMatchObject({ ok: true, revision: 2 })
 })
 
 // ── Amendment 5, arm (b): recon refuses a stopped cell and journals the report ─
@@ -2133,18 +2164,22 @@ test("Amendment 6 R1: the dispatched message names the contract file the verify 
   /** The path the member is told to read. */
   const named = String(match?.[1] ?? "")
   // It is the SPLIT KEY's file, never the board id's (the defect this repair closes named contracts/T3.md).
-  expect(named).toBe(".mpd/cellwork/" + cellId + "/contracts/auth-core.md")
+  expect(named).toBe(join(harness.workspace, ".mpd", "cellwork", cellId, "contracts", "auth-core.md"))
   /** The board id the same task was minted as. */
   const boardId = String(harness.teamRecords.get("team-1")?.tasks.find((task: Record<string, any>) => task.subject === "Implement the auth core")?.id ?? "")
   expect(boardId).not.toBe("")
   expect(named).not.toContain(boardId + ".md")
   // THE FILE EXISTS: a dispatch cannot point a member at a document nobody wrote.
-  expect(existsSync(join(harness.workspace, named))).toBe(true)
+  expect(existsSync(named)).toBe(true)
+  /** A worker in this project subdirectory resolves the same absolute contract. */
+  const workerCwd = join(harness.workspace, "packages", "worker")
+  mkdirSync(workerCwd, { recursive: true })
+  expect(existsSync(resolve(workerCwd, named))).toBe(true)
   // ... and it is the SAME path the verify loop froze for that task's verifier.
   /** The verify-loop call the activation made. */
   const opened = harness.calls.find((call) => call.name === "mpd_verify_open")
   expect(opened).toBeDefined()
-  expect(String(opened?.arguments.contract)).toBe(named)
+  expect(resolve(harness.workspace, String(opened?.arguments.contract))).toBe(named)
 })
 
 test("Amendment 6 R2: an accepted verdict is SUPERSEDED by a newer revision and SURVIVES a refused resubmission", async () => {
