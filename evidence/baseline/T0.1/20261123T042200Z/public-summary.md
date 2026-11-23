@@ -26,10 +26,24 @@ python3 "$receipts/independent-controls.py.txt" "$scratch/cases"
 for arm in positive linked unknown malformed empty; do
   node scripts/baseline/collect.ts "$scratch/cases/$arm" > "$scratch/$arm.json"
 done
+node --input-type=module - "$scratch" <<'NODE'
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+const root = process.argv[2];
+const read = name => JSON.parse(readFileSync(`${root}/${name}.json`, 'utf8'));
+const linked = read('linked').workerLoss.assignments[0];
+assert.deepEqual([linked.lastSuccessfulAction.callId, linked.subsequentHandoffOrTerminal.callId,
+  linked.nextCaptainObservation.callId], ['matched', 'handoff', 'captain-status']);
+assert.equal(read('unknown').workerLoss.assignments[0].lastSuccessfulAction, 'unknown');
+assert.equal(read('malformed').checkpoints.complete, false);
+assert.deepEqual(read('empty').teamRecords, { observed: 0, complete: true });
+NODE
 .toolchain/node_modules/.bin/bun test ./scripts/baseline/collect.test.ts
 ```
 
 The linked control produced the successful worker result at 00:00:01Z, the handoff at 00:00:03Z and the first matching captain observation at 00:00:05Z. The negative control excluded a pre-claim result, another executor, another board or revision and a denied action with a positive watchdog marker. Truncated session data and external session symlinks yielded diagnostics and unknown progress. An empty workspace returned a single JSON report and exit 0.
+
+The fixture generator uses the same project-key encoding as the collector, including for paths containing spaces and Unicode. The suite also exercises a legacy v3 receipt whose typed result block follows unrelated content. The coverage replay verifies that an unverified activation fallback and a stale execution pointer remain candidate links unless independent receipts confirm them. The original verdict above describes the original capture. [Coverage replay](../../wave0-metrics/replay.md)
 
 ## Gate results
 

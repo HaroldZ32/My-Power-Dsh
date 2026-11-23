@@ -65,6 +65,15 @@ function structured(value: unknown): Row | undefined {
   }
 }
 
+/** Find the result envelope without attributing sibling content blocks to the tool. */
+function resultEnvelope(message: Row | undefined): Row | undefined {
+  if (message?.toolCallId !== undefined || message?.isError !== undefined) return message
+  if (!Array.isArray(message?.content)) return undefined
+  /** A legacy result event must carry exactly one typed tool result. */
+  const results = message.content.map(object).filter((block) => block?.type === "tool-result")
+  return results.length === 1 ? results[0] : undefined
+}
+
 /** Read exactly one session artifact from its native v3/v4 workspace-keyed directory. */
 function sessionReceipts(input: Inputs, root: string, session: string): ToolReceipt[] {
   if (!/^[a-zA-Z0-9_-]+$/.test(session)) return []
@@ -129,10 +138,8 @@ function sessionReceipts(input: Inputs, root: string, session: string): ToolRece
       calls.set(callId, { tool, at, args: structured(data?.arguments) })
     }
     if (row.type !== "tool/result") continue
-    /** v4 hoists the tool result. v3 wraps it as one tool-result content block. */
-    const message = object(data?.message)
-    /** The v3 block and the v4 message expose the same outcome fields. */
-    const result = key(message?.toolCallId) !== undefined ? message : Array.isArray(message?.content) ? object(message.content[0]) : undefined
+    /** v4 carries the result on the message and v3 carries it on a typed content block. */
+    const result = resultEnvelope(object(data?.message))
     /** A missing id or timestamp cannot prove success for a known call. */
     const callId = key(result?.toolCallId)
     if (callId === undefined || at === undefined || typeof result?.isError !== "boolean") {

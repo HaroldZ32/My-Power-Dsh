@@ -1,0 +1,274 @@
+{
+  "purpose": "Paired clean-development controls for V2 verification",
+  "observed_utc": "2026-11-23T05:50Z to 05:56Z",
+  "tools": {
+    "node": "24.21.0",
+    "bun": "1.4.0+34cbb9a40",
+    "bun_sha256_linux_x64": "33d56b070be6a9e3da0ab013038b43d1645d0534ca811ecdba4472599117eb4b",
+    "dsh": "0.2.2-rc.5",
+    "dsh_tui": "0.20.2",
+    "dsh_go_commit": "f36bf91b0736e81ef40c2a7040b2ec337ca1ab40",
+    "dsh_go_checker_sha256": "0a92e1902abd3d9b8b3d07adac21fff84bd98d0ff1bfc136f643295e81841565",
+    "bun_lock_sha256": "fb5843ee465c4657656c233365fcdf44b4c2eee10b62cb95327e5f675319553b"
+  },
+  "results": {
+    "dev": {
+      "commit": "e86764c0e09b14ba172839bc9671a2c8f3352c81",
+      "commands": {
+        "preflight": {
+          "exit": 0
+        },
+        "install": {
+          "exit": 0
+        },
+        "nested-path": {
+          "exit": 0
+        },
+        "dist": {
+          "exit": 0
+        },
+        "static": {
+          "exit": 0
+        },
+        "typecheck": {
+          "exit": 0
+        },
+        "package": {
+          "exit": 1,
+          "tests": 4186,
+          "files": 268,
+          "pass": 4177,
+          "skip": 6,
+          "fail": 3,
+          "file_roots": {
+            "packages": 268
+          }
+        },
+        "root": {
+          "exit": 1,
+          "tests": 4424,
+          "files": 320,
+          "pass": 4395,
+          "skip": 6,
+          "fail": 23,
+          "errors": 16,
+          "file_roots": {
+            "packages": 268,
+            "skills": 7,
+            "evidence": 45
+          }
+        },
+        "pack": {
+          "exit": 0
+        },
+        "closure": {
+          "exit": 0
+        },
+        "tracked-clean": {
+          "exit": 0
+        },
+        "root-active": {
+          "exit": 1,
+          "tests": 4224,
+          "files": 275,
+          "pass": 4214,
+          "skip": 6,
+          "fail": 4,
+          "error": 1,
+          "file_roots": {
+            "packages": 268,
+            "skills": 7
+          }
+        },
+        "tui-one": {
+          "exit": 1,
+          "tests": 1,
+          "files": 1,
+          "pass": 0,
+          "fail": 1,
+          "file_roots": {
+            "packages": 1
+          }
+        },
+        "tui-no-host": {
+          "exit": 1,
+          "tests": 1,
+          "files": 1,
+          "pass": 0,
+          "fail": 1,
+          "file_roots": {
+            "packages": 1
+          }
+        },
+        "executor-one": {
+          "exit": 0,
+          "tests": 1,
+          "files": 1,
+          "pass": 1,
+          "fail": 0,
+          "file_roots": {
+            "packages": 1
+          }
+        },
+        "codegraph-one": {
+          "exit": 0,
+          "tests": 1,
+          "files": 1,
+          "pass": 1,
+          "fail": 0,
+          "file_roots": {
+            "packages": 1
+          }
+        },
+        "root-active-isolate": {
+          "exit": 1,
+          "tests": 4224,
+          "files": 275,
+          "pass": 4216,
+          "skip": 6,
+          "fail": 2,
+          "error": 1,
+          "file_roots": {
+            "packages": 268,
+            "skills": 7
+          }
+        }
+      }
+    },
+    "baseline": {
+      "commit": "eeec38a9f76fbbae9cd4dcf8db9630f5ab80b0db",
+      "commands": {
+        "preflight": {
+          "exit": 0
+        },
+        "install": {
+          "exit": 0
+        },
+        "nested-path": {
+          "exit": 0
+        },
+        "dist": {
+          "exit": 0
+        },
+        "static": {
+          "exit": 0
+        },
+        "typecheck": {
+          "exit": 0
+        },
+        "package": {
+          "exit": 1,
+          "tests": 4186,
+          "files": 268,
+          "pass": 4177,
+          "skip": 6,
+          "fail": 3,
+          "file_roots": {
+            "packages": 268
+          }
+        },
+        "root": {
+          "exit": 1,
+          "tests": 4429,
+          "files": 321,
+          "pass": 4400,
+          "skip": 6,
+          "fail": 23,
+          "errors": 16,
+          "file_roots": {
+            "packages": 268,
+            "scripts": 1,
+            "skills": 7,
+            "evidence": 45
+          }
+        },
+        "pack": {
+          "exit": 0
+        },
+        "closure": {
+          "exit": 0
+        },
+        "tracked-clean": {
+          "exit": 0
+        },
+        "root-active": {
+          "exit": 1,
+          "tests": 4229,
+          "files": 276,
+          "pass": 4219,
+          "skip": 6,
+          "fail": 4,
+          "error": 1,
+          "file_roots": {
+            "packages": 268,
+            "scripts": 1,
+            "skills": 7
+          }
+        },
+        "tui-one": {
+          "exit": 1,
+          "tests": 1,
+          "files": 1,
+          "pass": 0,
+          "fail": 1,
+          "file_roots": {
+            "packages": 1
+          }
+        },
+        "tui-no-host": {
+          "exit": 1,
+          "tests": 1,
+          "files": 1,
+          "pass": 0,
+          "fail": 1,
+          "file_roots": {
+            "packages": 1
+          }
+        },
+        "executor-one": {
+          "exit": 0,
+          "tests": 1,
+          "files": 1,
+          "pass": 1,
+          "fail": 0,
+          "file_roots": {
+            "packages": 1
+          }
+        },
+        "codegraph-one": {
+          "exit": 0,
+          "tests": 1,
+          "files": 1,
+          "pass": 1,
+          "fail": 0,
+          "file_roots": {
+            "packages": 1
+          }
+        },
+        "root-active-isolate": {
+          "exit": 1,
+          "tests": 4229,
+          "files": 276,
+          "pass": 4221,
+          "skip": 6,
+          "fail": 2,
+          "error": 1,
+          "file_roots": {
+            "packages": 268,
+            "scripts": 1,
+            "skills": 7
+          }
+        }
+      }
+    }
+  },
+  "bounds": [
+    "Both checked-out revisions omit bunfig.toml. Default root discovery included 45 archived evidence tests.",
+    "A package-only run omits all skill tests and the additional candidate script test.",
+    "Reported errors are included in the Bun fail count. The six skipped tests cover one live team record, two SVN cases and three optional comment detector cases.",
+    "Dist rebuilds 35/35 source-backed targets twice. The prebuilt packages/mpd-mcp-codegraph/dist/serve.js is outside rebuild coverage; its SHA-256 was ab287cdc058f031cf59347e49dbeecdd2d7d3c08b206c33c13d69d14b0128375 on both.",
+    "Official DSH-Go checker exited 1. The local gate verified the array patch paths and expressly excluded the upstream string-only patch error. TUI admission reported 48 passing arms, one allowed deviation and six bounds.",
+    "Pack closure compared 672 files, all identical. The single declared exemption was packages/mpd-qa-roles-probe/dist/index.js.",
+    "The limited pair uses the first Wave 0 commit. Subsequent revisions require their own replay."
+  ]
+}

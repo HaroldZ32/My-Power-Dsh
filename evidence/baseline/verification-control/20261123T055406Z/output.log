@@ -1,0 +1,23 @@
+dev dist {"exit":0}
+dev static {"exit":0}
+dev package {"exit":1,"tests":4186,"files":268,"pass":4177,"skip":6,"fail":3,"file_roots":{"packages":268}}
+dev root {"exit":1,"tests":4424,"files":320,"pass":4395,"skip":6,"fail":23,"errors":16,"file_roots":{"packages":268,"skills":7,"evidence":45}}
+dev pack {"exit":0}
+dev closure {"exit":0}
+dev root-active {"exit":1,"tests":4224,"files":275,"pass":4214,"skip":6,"fail":4,"error":1,"file_roots":{"packages":268,"skills":7}}
+dev root-active-isolate {"exit":1,"tests":4224,"files":275,"pass":4216,"skip":6,"fail":2,"error":1,"file_roots":{"packages":268,"skills":7}}
+baseline dist {"exit":0}
+baseline static {"exit":0}
+baseline package {"exit":1,"tests":4186,"files":268,"pass":4177,"skip":6,"fail":3,"file_roots":{"packages":268}}
+baseline root {"exit":1,"tests":4429,"files":321,"pass":4400,"skip":6,"fail":23,"errors":16,"file_roots":{"packages":268,"scripts":1,"skills":7,"evidence":45}}
+baseline pack {"exit":0}
+baseline closure {"exit":0}
+baseline root-active {"exit":1,"tests":4229,"files":276,"pass":4219,"skip":6,"fail":4,"error":1,"file_roots":{"packages":268,"scripts":1,"skills":7}}
+baseline root-active-isolate {"exit":1,"tests":4229,"files":276,"pass":4221,"skip":6,"fail":2,"error":1,"file_roots":{"packages":268,"scripts":1,"skills":7}}
+Paired failure witnesses
+TUI late-kit fixture expected hostInput.kit=remembered and received undefined in the suite and single-case invocation with and without MPD_DSH_TUI_HOST.
+Team-executor full suite expected one fallback log line and observed zero. Both single-case invocations passed.
+CodeGraph first clean default/active corpus hit its 5000 ms timeout. Subsequent single-case invocations passed. The default root run followed the package run and did not time out.
+A live skill test could not resolve typescript/package.json after frozen install (typescript5@5.9.3 was installed). Archive exclusions retained this failure.
+Control and Wave 0 had identical failing test and import-error signatures in the package and default root runs. The candidate added five passing tests in scripts/baseline/collect.test.ts.
+Exact invocations are in replay.md.

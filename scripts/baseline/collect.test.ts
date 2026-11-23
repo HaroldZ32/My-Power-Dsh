@@ -155,6 +155,26 @@ test("links a worker action, later handoff and subsequent captain observation", 
   assert.doesNotMatch(JSON.stringify(result), /private (?:worker text|handoff body)/)
 })
 
+test("finds a typed v3 tool result after a non-result block", (context) => {
+  /** Exercise the canonical project key with Unicode and whitespace. */
+  const root = join(workspace(context), "legacy workspace 工作")
+  put(root, `.mpd/team/teams/${ids.board}.json`, board())
+  /** The legacy event wraps the typed result and precedes it with unrelated content. */
+  const offset = 1_000
+  put(root, `.dsh/sessions/${projectKey(root)}/${ids.executor}/session.v3.jsonl`, jsonl([
+    { type: "session", version: 3, id: ids.executor, cwd: root },
+    { type: "tool/call", time: begin + offset, data: { name: "read", callId: "legacy" } },
+    { type: "tool/result", time: begin + offset + 2, data: { message: { content: [
+      { type: "text", text: "unrelated block" },
+      { type: "tool-result", toolCallId: "legacy", isError: false, content: [{ type: "text", text: "synthetic result" }] },
+    ] } } },
+  ]))
+  put(root, ".mpd/team/watchdog/heartbeat/worker.jsonl", jsonl([stamp(root, "legacy", "read", offset)]))
+  /** The matching watchdog and session receipts prove the same action. */
+  const receipt = object(openAssignment(run(root)).lastSuccessfulAction)
+  assert.equal(receipt?.callId, "legacy")
+})
+
 test("refuses pre-assignment, wrong-revision, stale-executor and non-success receipts", (context) => {
   /** The missing dispatch file must not erase the board's own time floor. */
   const root = workspace(context)

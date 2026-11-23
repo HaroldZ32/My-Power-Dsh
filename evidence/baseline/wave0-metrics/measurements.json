@@ -1,0 +1,262 @@
+{
+  "schemaVersion": 1,
+  "stamp": "20261123T054041Z",
+  "historicalReference": {
+    "date": "2026-11-13",
+    "A": {
+      "ceremony": {
+        "teamRecords": 9,
+        "emptyShells": 0
+      },
+      "growth": {
+        "checkpointRows": 4,
+        "turnRange": [
+          4,
+          7
+        ]
+      }
+    },
+    "B": {
+      "ceremony": {
+        "teamRecords": 24,
+        "cells": 10,
+        "emptyShells": 1
+      },
+      "growth": {
+        "checkpointRows": 21,
+        "turnRange": [
+          2,
+          12
+        ],
+        "turnTwoRowsNear524To525k": 3,
+        "observedRatioRange": [
+          0.5,
+          0.506
+        ]
+      }
+    },
+    "integration": {
+      "ceremony": {
+        "emptyShells": 7
+      }
+    }
+  },
+  "snapshots": [
+    {
+      "workspace": "A",
+      "serial": {
+        "passes": 135,
+        "pairs": 112,
+        "attributed": {
+          "passes": 56,
+          "pairs": 70
+        },
+        "unattributed": {
+          "passes": 79,
+          "pairs": 42
+        },
+        "readySetPasses": 0,
+        "reasonPasses": 0,
+        "readyButUnpaired": "UNMEASURED"
+      },
+      "ceremony": {
+        "teamRecords": 9,
+        "cells": 4,
+        "archivedApprovedPlans": 9,
+        "unapprovedShells": 0,
+        "structurallyEmptyShells": 0,
+        "totalMembers": 66,
+        "totalTasks": 229,
+        "boardsWithApprovalTime": 9,
+        "approvalRangeMinutes": [
+          0.00023333333333333333,
+          0.09565
+        ]
+      },
+      "growth": {
+        "checkpointRows": 4,
+        "measuredRows": 4,
+        "skippedRows": 0,
+        "tokensPerTurn": {
+          "count": 4,
+          "min": 74991.71428571429,
+          "median": 106156.5,
+          "max": 131429
+        },
+        "observedRatio": {
+          "count": 4,
+          "min": 0.5006237030029297,
+          "median": 0.5024142265319824,
+          "max": 0.5089206695556641
+        },
+        "turn": {
+          "count": 4,
+          "min": 4,
+          "median": 5,
+          "max": 7
+        },
+        "hostComposition": "unknown",
+        "compactionThresholdRatio": "unknown"
+      },
+      "inputFingerprints": {
+        "serial": {
+          "first": "1f574bf3d5d1aff1ccaf860dd9123b01b3ba15cb35344a00bd2de366801f6b43",
+          "second": "1f574bf3d5d1aff1ccaf860dd9123b01b3ba15cb35344a00bd2de366801f6b43",
+          "firstFiles": 14,
+          "secondFiles": 14
+        },
+        "ceremony": {
+          "first": "9dbf5aa09a1bddc7a93ebd9c628f70dc0211a2a13d12ef7e0ba9e8e3f8afcb60",
+          "second": "9dbf5aa09a1bddc7a93ebd9c628f70dc0211a2a13d12ef7e0ba9e8e3f8afcb60",
+          "firstFiles": 26,
+          "secondFiles": 26
+        },
+        "growth": {
+          "first": "fd944b9877e2b5d635f956e5ed898b8ce04f45f76a4e5b55b0662bbb84405415",
+          "second": "fd944b9877e2b5d635f956e5ed898b8ce04f45f76a4e5b55b0662bbb84405415",
+          "firstFiles": 4,
+          "secondFiles": 4
+        }
+      }
+    },
+    {
+      "workspace": "B",
+      "serial": {
+        "passes": 374,
+        "pairs": 393,
+        "attributed": {
+          "passes": 70,
+          "pairs": 77
+        },
+        "unattributed": {
+          "passes": 304,
+          "pairs": 316
+        },
+        "readySetPasses": 0,
+        "reasonPasses": 0,
+        "readyButUnpaired": "UNMEASURED"
+      },
+      "ceremony": {
+        "teamRecords": 30,
+        "cells": 10,
+        "archivedApprovedPlans": 29,
+        "unapprovedShells": 4,
+        "structurallyEmptyShells": 3,
+        "totalMembers": 215,
+        "totalTasks": 745,
+        "boardsWithApprovalTime": 30,
+        "approvalRangeMinutes": [
+          0.0012666666666666666,
+          0.2693333333333333
+        ]
+      },
+      "growth": {
+        "checkpointRows": 21,
+        "measuredRows": 21,
+        "skippedRows": 0,
+        "tokensPerTurn": {
+          "count": 21,
+          "min": 43754.916666666664,
+          "median": 105188.4,
+          "max": 262532.5
+        },
+        "observedRatio": {
+          "count": 21,
+          "min": 0.5001192092895508,
+          "median": 0.5005807876586914,
+          "max": 0.5064382553100586
+        },
+        "turn": {
+          "count": 21,
+          "min": 2,
+          "median": 5,
+          "max": 12
+        },
+        "hostComposition": "unknown",
+        "compactionThresholdRatio": "unknown"
+      },
+      "inputFingerprints": {
+        "serial": {
+          "first": "130935efc8c3599691bb2173e81ccb4a37b25690f4fccca4d9dafa0bd0165a58",
+          "second": "130935efc8c3599691bb2173e81ccb4a37b25690f4fccca4d9dafa0bd0165a58",
+          "firstFiles": 41,
+          "secondFiles": 41
+        },
+        "ceremony": {
+          "first": "b1997d8c04099d2cc87fe501a6bfe36817f5ede06d2b4667d4e88d27267189e1",
+          "second": "b1997d8c04099d2cc87fe501a6bfe36817f5ede06d2b4667d4e88d27267189e1",
+          "firstFiles": 83,
+          "secondFiles": 83
+        },
+        "growth": {
+          "first": "799ae066e222dad6c9ffe83cda8a7a4cf03f228a3b28fc528e5c242434b116fa",
+          "second": "799ae066e222dad6c9ffe83cda8a7a4cf03f228a3b28fc528e5c242434b116fa",
+          "firstFiles": 10,
+          "secondFiles": 10
+        }
+      }
+    },
+    {
+      "workspace": "integration",
+      "serial": {
+        "passes": 0,
+        "pairs": 0,
+        "attributed": {
+          "passes": 0,
+          "pairs": 0
+        },
+        "unattributed": {
+          "passes": 0,
+          "pairs": 0
+        },
+        "readySetPasses": 0,
+        "reasonPasses": 0,
+        "readyButUnpaired": "UNMEASURED"
+      },
+      "ceremony": {
+        "teamRecords": 16,
+        "cells": 0,
+        "archivedApprovedPlans": 49,
+        "unapprovedShells": 9,
+        "structurallyEmptyShells": 8,
+        "totalMembers": 65,
+        "totalTasks": 166,
+        "boardsWithApprovalTime": 16,
+        "approvalRangeMinutes": [
+          0.0009833333333333332,
+          0.39443333333333336
+        ]
+      },
+      "growth": {
+        "checkpointRows": 0,
+        "measuredRows": 0,
+        "skippedRows": 0,
+        "tokensPerTurn": "UNMEASURED",
+        "observedRatio": "UNMEASURED",
+        "turn": "UNMEASURED",
+        "hostComposition": "unknown",
+        "compactionThresholdRatio": "unknown"
+      },
+      "inputFingerprints": {
+        "serial": {
+          "first": "7a0c1fac2d5071304708ee832aad79d06c2ffaf45c32d94f4b9afec2db9334a6",
+          "second": "7a0c1fac2d5071304708ee832aad79d06c2ffaf45c32d94f4b9afec2db9334a6",
+          "firstFiles": 17,
+          "secondFiles": 17
+        },
+        "ceremony": {
+          "first": "6d9092d6f8ead4ed1cdc105a60e193fb5683245cf03ca8a59911b71781b852ab",
+          "second": "6d9092d6f8ead4ed1cdc105a60e193fb5683245cf03ca8a59911b71781b852ab",
+          "firstFiles": 74,
+          "secondFiles": 74
+        },
+        "growth": {
+          "first": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "second": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "firstFiles": 0,
+          "secondFiles": 0
+        }
+      }
+    }
+  ]
+}

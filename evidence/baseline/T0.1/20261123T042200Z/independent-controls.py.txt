@@ -7,6 +7,11 @@ from datetime import datetime
 
 base = Path(sys.argv[1]).resolve()
 base.mkdir(parents=True, exist_ok=False)
+project_key_module = Path(__file__).resolve().parents[4] / 'skills/dsh-qa/scripts/lib/workspace-isolation.ts'
+
+def project_key(workspace):
+    script = 'const {projectKey}=await import(process.argv[1]);process.stdout.write(projectKey(process.argv[2]))'
+    return subprocess.check_output(['node', '--input-type=module', '-e', script, project_key_module.as_uri(), str(workspace)], text=True)
 team = 'team-20261123000000000-case-001'
 other = 'team-20261123000000000-case-002'
 cell = 'cell-20261123T000000000Z'
@@ -38,8 +43,7 @@ def result(cid, ms, attempt='5', bid=team, tid='T1'):
     return {'kind':'tool','ok':True,'member':'Alpha','memberKey':'Alpha','teamId':bid,'taskId':tid,'attemptId':attempt,'at':ms,'tool':'read','callId':cid,'turnId':'Alpha#1','workspace':str(current.resolve())}
 
 def session(actor, samples):
-    project_key = '--'+str(current).lstrip('/').replace('/','-')[:251]+'--'
-    path = current/'.dsh/sessions'/project_key/actor/'session.v4.jsonl.zstd'
+    path = current/'.dsh/sessions'/current_project_key/actor/'session.v4.jsonl.zstd'
     path.parent.mkdir(parents=True)
     header={'type':'session','version':4,'id':actor,'createdAt':start_ms-2000,'cwd':str(current),'isSeeded':actor!=captain,'delegationDepth':int(actor!=captain),'agentPreset':'mpd'}
     def frame(records):
@@ -72,6 +76,7 @@ for name in ['positive','linked','unknown','malformed','empty']:
     current.mkdir()
     if name == 'empty':
         continue
+    current_project_key = project_key(current)
     put('.mpd/team/teams/'+team+'.json',board(team,[member(1,'Alpha',alpha),member(2,'Beta',beta)],[task(1,alpha,'in_progress'),task(2,beta,'completed'),task(3,'Beta','in_progress')]))
     put('.mpd/team/teams/'+other+'.json',board(other,[],[]))
     put('.mpd/cellwork/'+cell+'/state.json',{'version':1,'cellId':cell,'captainSessionId':captain,'phase':'execution','teamId':team,'planningTeamId':team,'parentTeamId':'','members':{'Alpha':{'name':'Alpha','sessionId':alpha,'executorRef':alpha,'mode':'member'},'Beta':{'name':'Beta','sessionId':beta,'executorRef':beta,'mode':'member'}}})

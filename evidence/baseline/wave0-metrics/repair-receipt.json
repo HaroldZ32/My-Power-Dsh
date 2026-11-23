@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "runtime": "v24.21.0",
+  "fixtures": "Synthetic inputs from replay.ts --findings",
+  "before": {
+    "hashes": {
+      "scripts/baseline/serial.ts": "644002c0cb4b69a25fed987c5ab4055d55de0ccde2a5b38ffc17b07411b7b45c",
+      "scripts/baseline/ceremony.ts": "95ed6da084c3d1ee17844c394be11227aba9f35e0a349bc9dd5b7b82982c0b39",
+      "scripts/baseline/growth.ts": "387605191b564d7edca8a2c02dda02ce78cd5275332b65b113cafede3d149d32",
+      "scripts/baseline/input.ts": "c275710d9f686d24ad5fd82d9109282fc93451b9447a5d9db0dadb1caf4e8b32"
+    },
+    "fullReplayExit": 1,
+    "serial": {
+      "unexplainedReadyRows": 1,
+      "unknownReasonRows": 0
+    },
+    "ceremony": {
+      "malformedOnly": {
+        "teamRecords": 0,
+        "emptyShells": 0,
+        "structurallyEmptyShells": 0,
+        "unknownApprovalCandidates": 0
+      },
+      "mixed": {
+        "teamRecords": 1,
+        "emptyShells": 1,
+        "structurallyEmptyShells": 1,
+        "unknownApprovalCandidates": 0
+      }
+    }
+  },
+  "after": {
+    "hashes": {
+      "scripts/baseline/serial.ts": "43ecf9ce1da7a0cc87d657608ab1956a60f7b90f63c79b20bd801ffa52cae04e",
+      "scripts/baseline/ceremony.ts": "185a5571bbe72f2a47693f4931e5f46d8123c043440b89831bcb378e240c331a",
+      "scripts/baseline/growth.ts": "387605191b564d7edca8a2c02dda02ce78cd5275332b65b113cafede3d149d32",
+      "scripts/baseline/input.ts": "c275710d9f686d24ad5fd82d9109282fc93451b9447a5d9db0dadb1caf4e8b32"
+    },
+    "fullReplayExit": 0,
+    "serial": {
+      "unexplainedReadyRows": 1,
+      "unknownReasonRows": 1
+    },
+    "ceremony": {
+      "malformedOnly": {
+        "teamRecords": "unknown",
+        "emptyShells": "unknown",
+        "structurallyEmptyShells": "unknown",
+        "confirmedTeams": 0,
+        "confirmedShells": 0,
+        "unknownApprovalCandidates": 2
+      },
+      "mixed": {
+        "teamRecords": "unknown",
+        "emptyShells": "unknown",
+        "structurallyEmptyShells": "unknown",
+        "confirmedTeams": 1,
+        "confirmedShells": 1,
+        "unknownApprovalCandidates": 2
+      }
+    }
+  }
+}

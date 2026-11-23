@@ -1,3 +1,4 @@
+import { activationLinks } from "./activation-links.ts"
 import { Inputs, instant, key } from "./input.ts"
 import type { Line, Row } from "./input.ts"
 
@@ -11,6 +12,8 @@ interface CellTeams {
   readonly presentTeamIds: readonly string[]
   /** Explicit links whose board record could not be confirmed. */
   readonly missingTeamIds: readonly string[]
+  /** Activation candidates without independent evidence of association. */
+  readonly unverifiedTeamIds: readonly string[]
   /** True when both link sources were read and their explicit team references resolved. */
   readonly complete: boolean
 }
@@ -110,8 +113,10 @@ export function readCells(input: Inputs, teamIds: ReadonlySet<string>, empty: bo
     const lines = input.lines(journal)
     /** A Set keeps repeated state and journal evidence from increasing the reported relation count. */
     const links = new Set<string>()
+    /** An explicitly stale or unverified pointer only counts with corroborating evidence. */
+    const candidates = new Set<string>()
     if (valid) {
-      for (const value of [state.teamId, state.planningTeamId, state.mintedTeamId]) {
+      for (const value of [state.planningTeamId, state.mintedTeamId]) {
         /** Empty ids represent an as-yet unbound state. */
         const teamId = key(value)
         if (teamId !== undefined) links.add(teamId)
@@ -125,12 +130,19 @@ export function readCells(input: Inputs, teamIds: ReadonlySet<string>, empty: bo
       if (row.event === "checkpoint") checkpoints++
       if (row.event === "dispatch-reassign") dispatchReassignCalls++
       if (!teamLinkEvents.has(row.event)) continue
-      for (const value of [row.teamId, row.mintedTeamId, row.planningTeamId, row.resolvedTeamId, row.recordedTeamId]) {
+      if (row.event === "activate") {
+        for (const { teamId, confirmed } of activationLinks(row)) (confirmed ? links : candidates).add(teamId)
+        continue
+      }
+      for (const value of [row.teamId, row.mintedTeamId, row.planningTeamId]) {
         /** Some legacy dispatch summaries do not carry a board id. */
         const teamId = key(value)
         if (teamId !== undefined) links.add(teamId)
       }
     }
+    /** The state execution pointer corroborates an ordinary link but cannot verify a flagged candidate. */
+    const stateTeamId = valid ? key(state.teamId) : undefined
+    if (stateTeamId !== undefined && !candidates.has(stateTeamId)) links.add(stateTeamId)
     /** This journal's classified outcomes, with paired summaries removed. */
     const counts = reseedCounts(lines, input, journal)
     reseeds.reseeded += counts.reseeded
@@ -143,9 +155,12 @@ export function readCells(input: Inputs, teamIds: ReadonlySet<string>, empty: bo
     const presentTeamIds = [...links].filter((id) => teamIds.has(id)).sort()
     /** Missing and unreadable board records leave the count open-ended. */
     const missingTeamIds = [...links].filter((id) => !teamIds.has(id)).sort()
+    /** Candidates with separate affirmative receipts need no additional coverage gap. */
+    const unverifiedTeamIds = [...candidates].filter((id) => !links.has(id)).sort()
     /** A measured zero requires readable state/journal and resolution of any named boards. */
-    const complete = valid && input.complete(stateStart, true) && missingTeamIds.length === 0
-    teamsPerCell.push({ cellId: cell.name, count: complete || presentTeamIds.length > 0 ? presentTeamIds.length : null, presentTeamIds, missingTeamIds, complete })
+    const complete = valid && input.complete(stateStart, true) && missingTeamIds.length === 0 && unverifiedTeamIds.length === 0
+    teamsPerCell.push({ cellId: cell.name, count: complete || presentTeamIds.length > 0 ? presentTeamIds.length : null,
+      presentTeamIds, missingTeamIds, unverifiedTeamIds, complete })
   }
   /** Unclassifiable refusals could hide a launch, even with complete file reads. */
   const reseedsComplete = historyComplete && reseeds.unknown === 0

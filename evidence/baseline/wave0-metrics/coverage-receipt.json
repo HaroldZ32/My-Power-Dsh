@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "runtime": "v24.21.0",
+  "fixture": "coverage-replay.ts",
+  "before": {
+    "exit": 1,
+    "hashes": {
+      "scripts/baseline/input.ts": "c275710d9f686d24ad5fd82d9109282fc93451b9447a5d9db0dadb1caf4e8b32",
+      "scripts/baseline/cells.ts": "f5c12005fe005796842ef201f9a3ec3624ffe81a45721b5aef7982a1cde3e56d",
+      "scripts/baseline/collect.ts": "24c7a228ae6d5401f52a2ff2633ba3150020c44a2aef3a17086ebbe4410ef59d",
+      "scripts/baseline/receipts.ts": "6d4e9dec6930db0a7db594e56c384e543cacdc2ab779b4b2ebfc0452a31415ce",
+      "scripts/baseline/ceremony.ts": "185a5571bbe72f2a47693f4931e5f46d8123c043440b89831bcb378e240c331a",
+      "scripts/baseline/serial.ts": "43ecf9ce1da7a0cc87d657608ab1956a60f7b90f63c79b20bd801ffa52cae04e",
+      "scripts/baseline/growth.ts": "387605191b564d7edca8a2c02dda02ce78cd5275332b65b113cafede3d149d32"
+    },
+    "confirmationCounts": [
+      3,
+      3
+    ],
+    "completeAttribution": [
+      true,
+      true
+    ],
+    "repeatedJournalPasses": 2,
+    "repeatedJournalReads": 2,
+    "emptyCheckpoints": 0,
+    "cleanCheckpoints": 2,
+    "zeroTurnSkipped": [
+      "zero turn"
+    ],
+    "partialCheckpointTotal": 2,
+    "partialMeasured": 1
+  },
+  "after": {
+    "exit": 0,
+    "hashes": {
+      "scripts/baseline/input.ts": "c275710d9f686d24ad5fd82d9109282fc93451b9447a5d9db0dadb1caf4e8b32",
+      "scripts/baseline/activation-links.ts": "75869a9158888f0ca3cd58936e5245b3c2893a513c4ac89bd7576f52682ba95a",
+      "scripts/baseline/cells.ts": "ea1e9633b8f0be6b1354384369b19be03fb6fcd463cf991b823c33363dfc12ac",
+      "scripts/baseline/collect.ts": "24c7a228ae6d5401f52a2ff2633ba3150020c44a2aef3a17086ebbe4410ef59d",
+      "scripts/baseline/collect.test.ts": "2927eb88b1d1c6b681050e93e67d2d95e8dfbd1ce0ca3e95038bc22546f2b8ec",
+      "scripts/baseline/receipts.ts": "72c191db9e657a9cfdab3f384e18688f8f82be3e9bfeb7604d3aca33d17dadd5",
+      "scripts/baseline/ceremony.ts": "95a65924644233697c1ad8c62ff01110b6dbd9670ff6025ec6a32883e5dd91ba",
+      "scripts/baseline/serial.ts": "c3650c7168815914c76f09b2651e44d71b7be846483ed07fb1c0b2fcaf369a2e",
+      "scripts/baseline/growth.ts": "0bc825c03e88a360ab8d13f931cddbc9e171037d985e7b781f7156af88286b9b"
+    },
+    "confirmationCounts": [
+      1,
+      2
+    ],
+    "completeAttribution": [
+      false,
+      false
+    ],
+    "repeatedJournalPasses": 1,
+    "repeatedJournalReads": 1,
+    "emptyCheckpoints": 0,
+    "cleanCheckpoints": 2,
+    "zeroTurnSkipped": [
+      "zero turn"
+    ],
+    "partialCheckpointTotal": "UNMEASURED",
+    "partialObserved": 2,
+    "partialMeasured": 1,
+    "partialDistributionComplete": false,
+    "partialJournalGaps": [
+      "absent",
+      "malformed",
+      "unreadable"
+    ]
+  },
+  "legacy": {
+    "v3ResultAfterUnrelatedBlock": {
+      "beforeExit": 1,
+      "afterExit": 0
+    },
+    "compressedFixtureAtLongUnicodePath": {
+      "beforeExit": 1,
+      "afterExit": 0,
+      "linkedReceipts": 3
+    }
+  },
+  "healthyLocalComparison": {
+    "workspaceCount": 2,
+    "previouslyReportedLinkCountsAndBoardTotalsEqual": true
+  }
+}
