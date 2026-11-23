@@ -15,6 +15,7 @@
 // redact() first.
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
+import { COMMON_PACK_ASSERTIONS, SOURCE_PACK_ASSERTIONS } from "./pack-contract.ts"
 
 /** One sha256 anchor of the run, as parsed out of `hashes.tsv`. */
 interface HashRow {
@@ -186,15 +187,10 @@ const EXPECTED: readonly string[] = [
   "install.buildScripts",
   //   · the packed artifact: carried, licence-coherent, self-coherent, and FRESH (freshness is the
   //     claim `verify-pack-closure.ts` explicitly refuses to certify from its exit code).
-  "pack.present",
-  "pack.licenceCoherence",
-  "pack.declarationCoherence",
-  "pack.staticCoherence",
-  "pack.distFreshRebuild",
+  ...COMMON_PACK_ASSERTIONS,
   //   · the compiler that produced the rebuild the row above compares against, and the FALSIFIABILITY of
   //     that comparison: a mutated copy of the same artifact must flip the freshness row to FALSE.
-  "pack.rebuildToolchain",
-  "pack.distFreshRebuildControl",
+  ...SOURCE_PACK_ASSERTIONS,
   //   · the MCP surface: the naming convention, the exact enabled server set, and a live call.
   // ── THE USER-SURFACE ARMS (step 14b), and why they are named here rather than left dynamic ─────
   // Every one of these is written by `skills/dsh-qa/scripts/user-surface-mount.ts` from a REAL

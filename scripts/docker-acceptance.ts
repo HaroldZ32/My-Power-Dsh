@@ -1,6 +1,6 @@
 // The shared credential-free source acceptance lane for release operators and GitHub Actions.
 import { spawnSync } from "node:child_process"
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join, relative } from "node:path"
 import { evidenceDir } from "./docker-e2e.ts"
@@ -76,97 +76,187 @@ function selfTest(): number {
     return 1
   }
   console.log("[docker-acceptance self-test] PASS private HOME and Docker config, no credential or Compose env-file inheritance")
-  return 0
+  /** Only fixture programs run. Each failure must retain the current stamp outside the staged source. */
+  const fixture = mkdtempSync(join(tmpdir(), "mpd-docker-acceptance-selftest-"))
+  try {
+    /** Deterministic stand-in for the validated Git candidate. */
+    const sha = "a".repeat(40)
+    for (const [phase, status, exit] of [["archive", 19, 2], ["extract", 21, 2], ["pack", 23, 2], ["docker", 3, 3]] as const) {
+      /** Each fixture gets a fresh output file so an earlier stamp cannot satisfy the control. */
+      const checkout = join(fixture, phase)
+      mkdirSync(checkout)
+      /** The fake Git archive refuses to run until the workflow output is already visible. */
+      const output = join(checkout, "github-output")
+      writeFileSync(join(checkout, "git"), `#!/bin/sh\ncase "$1" in\n  rev-parse) printf '%s\\n' '${sha}';;\n  ls-tree) printf 'scripts\\000';;\n  archive) [ -s github-output ] || exit 99; exit ${phase === "archive" ? status : 0};;\nesac\n`, { mode: 0o755 })
+      writeFileSync(join(checkout, "tar"), `#!/bin/sh\n${phase === "extract" ? `exit ${status}` : `/bin/mkdir "$4/scripts" && printf 'process.exitCode = ${phase === "pack" ? status : 0}\\n' > "$4/scripts/pack-mpd.ts" && printf 'process.exitCode = 3\\n' > "$4/scripts/docker-e2e.ts"`}\n`, { mode: 0o755 })
+      /** This is the real entry point, with PATH limited to the fixture programs. */
+      const code = run([], checkout, { PATH: checkout, GITHUB_SHA: sha, GITHUB_OUTPUT: output })
+      /** Read back exactly the path the step exported for the upload action. */
+      const stamp = readFileSync(output, "utf8").trim().replace(/^stamp=/, "")
+      /** The fixture expects only the identity, phase and exit values from the durable receipt. */
+      const receipt: unknown = JSON.parse(readFileSync(join(checkout, stamp, "acceptance.json"), "utf8"))
+      if (typeof receipt !== "object" || receipt === null || !("phase" in receipt) || receipt.phase !== phase
+          || !("childExitCode" in receipt) || receipt.childExitCode !== status
+          || !("exitCode" in receipt) || receipt.exitCode !== exit || code !== exit) {
+        console.error(`[docker-acceptance self-test] FAIL ${phase} receipt or exit propagation`)
+        return 1
+      }
+      console.log(`[docker-acceptance self-test] PASS ${phase} failure publishes its stamp and preserves exit ${exit}`)
+    }
+    return 0
+  } finally {
+    rmSync(fixture, { recursive: true, force: true })
+  }
+}
+
+/**
+ * Reserve a stamp atomically so concurrent runs cannot overwrite evidence.
+ * @param checkout - The checkout that owns the evidence directory.
+ * @returns The new stamp's absolute path.
+ */
+function reserveStamp(checkout: string): string {
+  /** Start at the current second and advance only on a collision. */
+  let stampTime = Date.now()
+  for (;;) {
+    /** The next stamp available to try. */
+    const out = evidenceDir(checkout, new Date(stampTime))
+    mkdirSync(dirname(out), { recursive: true })
+    try {
+      mkdirSync(out)
+      return out
+    } catch (error) {
+      if (!(error instanceof Error) || !("code" in error) || error.code !== "EEXIST") throw error
+      stampTime += 1000
+    }
+  }
+}
+
+/**
+ * Write a receipt or workflow output without superseding the lane's verdict.
+ * @param file - The receipt or output path.
+ * @param text - Redacted evidence or the stamp path.
+ * @param append - Whether this is the GitHub step output, which may contain other keys.
+ */
+function writeEvidence(file: string, text: string, append: boolean = false): void {
+  try {
+    writeFileSync(file, text, { flag: append ? "a" : "w" })
+  } catch (error) {
+    if (!(error instanceof Error)) throw error
+    console.error(`[docker-acceptance] could not write ${append ? "GitHub stamp output" : "acceptance receipt"}`)
+  }
 }
 
 /**
  * Archive one checked-out commit, build its pack, then run the strict source lane.
  * @param argv - User options. Rootful Docker needs explicit approval from the caller.
+ * @param checkout - The candidate checkout and owner of the resulting evidence.
+ * @param base - Host variables, filtered for every staging and Docker child.
  * @returns The source lane's exit code, or a staging/identity failure.
  */
-function run(argv: readonly string[]): number {
+function run(argv: readonly string[], checkout: string = repo, base: NodeJS.ProcessEnv = process.env): number {
   if (argv.length === 1 && argv[0] === "--self-test") return selfTest()
   if (argv.length > 1 || (argv.length === 1 && argv[0] !== "--allow-rootful-docker")) {
     console.error("usage: node scripts/docker-acceptance.ts [--allow-rootful-docker | --self-test]")
     return 2
   }
-  for (const key of registries) {
-    if (!publicRegistry(process.env[key] ?? "")) {
-      console.error(`[docker-acceptance] ${key} must be a public HTTP(S) registry URL without credentials, query or fragment`)
-      return 2
-    }
+  /** This invocation owns the stamp before any fallible checkout or staging step. */
+  const out = reserveStamp(checkout)
+  /** A concise diagnostic even if the Docker reporter is never reached. */
+  const record = join(out, "acceptance.json")
+  /** Candidate metadata becomes available only after identifying the checkout. */
+  let candidateSha: string | null = null
+  /** Exact image also expected from the driver and container receipts. */
+  let image: string | null = null
+  /** Last phase entered, written before it can fail or time out. */
+  let phase = "checkout"
+  /** Staging failures retain exit 2, while the Docker driver's exit passes through. */
+  let exitCode = 2
+  /** Raw child result for the failed phase or the final Docker invocation. */
+  let childStatus: { status: number | null; signal: string | null } | undefined
+  /** Scratch is cleaned only when this run successfully allocated it. */
+  let scratch: string | undefined
+  /** Persist the current phase or its final outcome without disclosing subprocess output. */
+  const save = (finished: boolean): void => {
+    writeEvidence(record, JSON.stringify({
+      candidateSha, image, phase, mode: "source", credentialForwarded: false, browserEnabled: false,
+      exitCode: finished ? exitCode : null, childExitCode: childStatus?.status ?? null, signal: childStatus?.signal ?? null,
+    }, null, 2) + "\n")
   }
-  /** The archive, private home and temporary tar are all owned by this invocation. */
-  const scratch = mkdtempSync(join(tmpdir(), "mpd-docker-acceptance-"))
+  /** Start a new phase and clear the previous subprocess result. */
+  const begin = (name: string): void => { phase = name; childStatus = undefined; save(false) }
+  save(false)
+  if (base.GITHUB_OUTPUT) writeEvidence(base.GITHUB_OUTPUT, `stamp=${relative(checkout, out)}\n`, true)
   try {
+    for (const key of registries) {
+      if (!publicRegistry(base[key] ?? "")) {
+        console.error(`[docker-acceptance] ${key} must be a public HTTP(S) registry URL without credentials, query or fragment`)
+        return exitCode
+      }
+    }
+    scratch = mkdtempSync(join(tmpdir(), "mpd-docker-acceptance-"))
     /** Private root for process state, separate from the Docker build context. */
     const home = join(scratch, "home")
     mkdirSync(home)
     /** This environment is explicit for every child, including the metadata probes. */
-    const env = isolatedEnv(home, process.env)
+    const env = isolatedEnv(home, base)
     /** Resolve HEAD once, then use its object ID for every subsequent Git read. */
-    const revision = spawnSync("git", ["rev-parse", "--verify", "HEAD^{commit}"], { cwd: repo, env, encoding: "utf8" })
-    /** Full candidate object ID, reported before staging and in the driver evidence. */
-    const candidateSha = revision.stdout?.trim() ?? ""
-    if (revision.status !== 0 || !/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/.test(candidateSha)) {
+    const revision = spawnSync("git", ["rev-parse", "--verify", "HEAD^{commit}"], { cwd: checkout, env, encoding: "utf8" })
+    childStatus = revision
+    /** Full object ID, validated before recording or using it in arguments. */
+    const sha = revision.stdout?.trim() ?? ""
+    if (revision.status !== 0 || !/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/.test(sha)) {
       console.error("[docker-acceptance] cannot resolve checkout HEAD")
-      return 2
-    }
-    if (process.env.GITHUB_SHA !== undefined && candidateSha !== process.env.GITHUB_SHA) {
-      console.error(`[docker-acceptance] checkout ${candidateSha} differs from the GitHub event SHA`)
-      return 2
-    }
-    console.log(`[docker-acceptance] candidate=${candidateSha} source=git-archive credentialFree=true`)
-    /** Existing evidence and other Docker-excluded top-level paths need no archive or tar space. */
-    const rows = spawnSync("git", ["ls-tree", "-z", "--name-only", candidateSha], { cwd: repo, env, encoding: "utf8" })
-    if (rows.status !== 0) return 2
-    /** Historical evidence is deliberately outside the input snapshot. */
-    const paths = rows.stdout.split("\0").filter((path) => path !== "" && path !== "evidence")
-    /** The build context gets only tracked candidate bytes and the pack derived from them. */
-    const snapshot = join(scratch, "source")
-    mkdirSync(snapshot)
-    /** Temporary tar file for a bounded-memory transfer between Git and tar. */
-    const archive = join(scratch, "source.tar")
-    if (spawnSync("git", ["archive", "--format=tar", `--output=${archive}`, candidateSha, "--", ...paths], { cwd: repo, env, stdio: "inherit" }).status !== 0) return 2
-    if (spawnSync("tar", ["-xf", archive, "-C", snapshot], { env, stdio: "inherit" }).status !== 0) return 2
-    if (spawnSync(process.execPath, ["scripts/pack-mpd.ts"], { cwd: snapshot, env, stdio: "inherit" }).status !== 0) return 2
-    /** Reserve the first free stamp atomically so concurrent runs cannot overwrite evidence. */
-    let stampTime = Date.now()
-    for (;;) {
-      /** This run's stamp lives in the caller's checkout, outside the temporary candidate. */
-      const out = evidenceDir(repo, new Date(stampTime))
-      mkdirSync(dirname(out), { recursive: true })
-      try {
-        mkdirSync(out)
-      } catch (error) {
-        if (!(error instanceof Error) || !("code" in error) || error.code !== "EEXIST") throw error
-        stampTime += 1000
-        continue
-      }
-      /** Candidate and launch record survives even when Docker could not reach the reporter. */
-      const record = join(out, "acceptance.json")
-      /** This stamp belongs to one immutable product and the shared credential-free mode. */
-      const identity = { candidateSha, mode: "source", credentialForwarded: false, browserEnabled: false }
-      writeFileSync(record, JSON.stringify(identity, null, 2) + "\n")
-      if (process.env.GITHUB_OUTPUT) writeFileSync(process.env.GITHUB_OUTPUT, `stamp=${relative(repo, out)}\n`, { flag: "a" })
-      /** Strict options are fixed here for both callers. The sole extension opts in to rootful Docker. */
-      const args = ["scripts/docker-e2e.ts", "--mode", "source", "--require-docker", "--no-browser", ...argv]
-      /** Preserve the driver exit and signal in the stamp even on a missing daemon. */
-      const child = spawnSync(process.execPath, args, {
-        cwd: snapshot,
-        env: {
-          ...env, MPD_DOCKER_ACCEPTANCE_SHA: candidateSha, MPD_DOCKER_ACCEPTANCE_OUT: out,
-          MPD_DOCKER_IMAGE: `mpd-docker-e2e:acceptance-${candidateSha}`,
-        },
-        stdio: "inherit",
-      })
-      /** A missing process status is an execution failure. */
-      const exitCode = child.status ?? 2
-      writeFileSync(record, JSON.stringify({ ...identity, exitCode, signal: child.signal }, null, 2) + "\n")
       return exitCode
     }
+    candidateSha = sha
+    if (base.GITHUB_SHA !== undefined && candidateSha !== base.GITHUB_SHA) {
+      console.error(`[docker-acceptance] checkout ${candidateSha} differs from the GitHub event SHA`)
+      return exitCode
+    }
+    image = `mpd-docker-e2e:acceptance-${candidateSha}`
+    console.log(`[docker-acceptance] candidate=${candidateSha} source=git-archive credentialFree=true`)
+    begin("archive")
+    /** Historical evidence is deliberately outside the input snapshot. */
+    const rows = spawnSync("git", ["ls-tree", "-z", "--name-only", candidateSha], { cwd: checkout, env, encoding: "utf8" })
+    childStatus = rows
+    if (rows.status !== 0) return exitCode
+    /** Pass only tracked top-level paths, excluding historical evidence. */
+    const paths = rows.stdout.split("\0").filter((path) => path !== "" && path !== "evidence")
+    /** Temporary tar file for a bounded-memory transfer between Git and tar. */
+    const archive = join(scratch, "source.tar")
+    childStatus = spawnSync("git", ["archive", "--format=tar", `--output=${archive}`, candidateSha, "--", ...paths], { cwd: checkout, env, stdio: "inherit" })
+    if (childStatus.status !== 0) return exitCode
+    begin("extract")
+    /** The isolated Docker context will contain only that archive and the pack derived from it. */
+    const snapshot = join(scratch, "source")
+    mkdirSync(snapshot)
+    childStatus = spawnSync("tar", ["-xf", archive, "-C", snapshot], { env, stdio: "inherit" })
+    if (childStatus.status !== 0) return exitCode
+    begin("pack")
+    childStatus = spawnSync(process.execPath, ["scripts/pack-mpd.ts"], { cwd: snapshot, env, stdio: "inherit" })
+    if (childStatus.status !== 0) return exitCode
+    begin("docker")
+    /** Strict options are fixed here for both callers. The sole extension opts in to rootful Docker. */
+    const args = ["scripts/docker-e2e.ts", "--mode", "source", "--require-docker", "--no-browser", ...argv]
+    childStatus = spawnSync(process.execPath, args, {
+      cwd: snapshot,
+      env: { ...env, MPD_DOCKER_ACCEPTANCE_SHA: candidateSha, MPD_DOCKER_ACCEPTANCE_OUT: out, MPD_DOCKER_IMAGE: image },
+      stdio: "inherit",
+    })
+    exitCode = childStatus.status ?? 2
+    return exitCode
+  } catch (error) {
+    if (!(error instanceof Error)) throw error
+    return exitCode
   } finally {
-    rmSync(scratch, { recursive: true, force: true })
+    save(true)
+    if (exitCode !== 0) console.error(`[docker-acceptance] ${phase} phase exited ${exitCode}; receipt: ${relative(checkout, record)}`)
+    if (scratch) {
+      try { rmSync(scratch, { recursive: true, force: true }) } catch (error) {
+        if (!(error instanceof Error)) throw error
+        console.error("[docker-acceptance] could not clean the staging directory")
+      }
+    }
   }
 }
 
