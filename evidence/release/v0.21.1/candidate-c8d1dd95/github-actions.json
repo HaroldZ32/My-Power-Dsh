@@ -1,0 +1,18 @@
+{
+  "workflow": "docker-e2e",
+  "url": "https://github.com/HaroldZ32/My-Power-Dsh/actions/runs/45210679258",
+  "event": "pull_request",
+  "pullRequestHead": "c8d1dd9591040bb658c09f12ad20c02ef70b7f3c",
+  "testedMergeSha": "b7dfcefa188232e7e93218b542513180fcc84aec",
+  "artifactId": 14836087037,
+  "artifactSha256": "8170fc78507e3bc588bbbd98d81651cc848a268e76d0e3aacfc9ec6aa7e1d9bf",
+  "receiptAndContainerImage": "mpd-docker-e2e:acceptance-b7dfcefa188232e7e93218b542513180fcc84aec",
+  "mode": "source",
+  "credentialForwarded": false,
+  "browserEnabled": false,
+  "exitCode": 0,
+  "assertionsPassed": 163,
+  "assertionsFailed": 0,
+  "durationSeconds": 217,
+  "scope": "The hosted job exercised the credential-free source install on GitHub's synthetic PR merge. Live provider and browser checks belong to the separate release cases."
+}

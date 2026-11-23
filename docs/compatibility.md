@@ -2,7 +2,7 @@
 
 **English** | [中文](./compatibility.zh-CN.md)
 
-This page is the **three-plane compatibility matrix** of the `0.21.0` release: what each upstream plane
+This page is the **three-plane compatibility matrix** of the `0.21.1` release: what each upstream plane
 guarantees, what degrades on an older host, and what is **not available** there. Every line is traceable to
 a gate run, a mounted boot in an isolated `DSH_HOME`, or a source of the upstream package named beside it —
 never to a device, because this repository contains no Flutter host and no phone.
@@ -192,6 +192,11 @@ nine. The adapter therefore tests EXECUTABILITY — `spawnTeammate` AND `sendMes
 line when the official service cannot execute, and reports the new `teamExecutorOfficial` capability
 flag beside `teamExecutorNative`. `TEAM_TASK_METHODS` and the task-board paths are unchanged.
 
+**The activation spec is now sent in BOTH shapes.** `0.2.2-rc.2` flattened `SubagentActivationSpec` —
+request fields moved from `spec.request.*` to `spec.*` — while `0.2.2-rc.1` still reads the nested
+`request` mirror. The bundle now populates both, so either generation resolves the spec; the change was
+verified against the installed `0.2.2-rc.1` and `0.2.2-rc.3` runtimes and the release Docker live lane.
+
 **Bound.** What is recorded above is what the patch, the preset and the adapter DO. The duplicate
 registration is a MEASURED boot failure; a per-row activation measurement inside a full mount belongs to
 the wave's own mount lane under `evidence/`, not to this page.
@@ -326,9 +331,9 @@ bound is that the *page* is a markdown file the host renders, and its content is
 
 ## 7. Where the detail lives
 
-The release narrative is in [`../CHANGELOG.md`](../CHANGELOG.md) `## 0.21.0`. The two upstream adaptation
-sources this page rests on are the measured evidence bundle under
-`evidence/upstream/0.2.2/2026-11-07T05-45Z/` (mount, routing, row parity, the `0.19.0` negotiation probe and
+[`../CHANGELOG.md`](../CHANGELOG.md) covers the `0.21.1` changes and records the upstream host adaptation in
+its `0.21.0` entry. The two upstream adaptation sources this page rests on are the measured evidence bundle
+under `evidence/upstream/0.2.2/2026-11-07T05-45Z/` (mount, routing, row parity, the `0.19.0` negotiation probe and
 the batch-API finding) and the gate transcripts beside it. The DSH-Go standard is
 [`dsh-go-standard.md`](dsh-go-standard.md); the TUI lane is [`tui.md`](tui.md) and
 [`tui-admission.md`](tui-admission.md); the binding rules are [`../AGENTS.md`](../AGENTS.md) §2 and §4.

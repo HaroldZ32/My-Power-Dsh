@@ -46,12 +46,13 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    image: mpd-docker-e2e:local
+    image: ${MPD_DOCKER_IMAGE:-mpd-docker-e2e:local}
     # No init shim and no TTY: the entrypoint IS the process, and its exit code is the verdict.
     init: false
     tty: false
     environment:
       MPD_E2E_OUT: /out
+      MPD_E2E_IMAGE: ${MPD_DOCKER_IMAGE:-mpd-docker-e2e:local}
       # Which harness release the container installs (and asserts against). Exported by the driver.
       # 0.2.2-rc.5 is the pinned baseline; the older 0.2.2-rc releases and 0.2.1-rc.5 stay SUPPORTED, and
       # 0.2.2-rc.1 is what the separate backward-compatibility boot installs (AGENTS.md §7's
@@ -107,7 +108,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    image: mpd-docker-e2e:local
+    image: ${MPD_DOCKER_IMAGE:-mpd-docker-e2e:local}
     init: false
     tty: false
     environment:
@@ -117,6 +118,7 @@ services:
       # same assertions against the published repository.
       MPD_E2E_INSTALL_SPEC: ${MPD_ONECLICK_SPEC:-git+file:///opt/oneclick.git}
       MPD_E2E_OUT: /out
+      MPD_E2E_IMAGE: ${MPD_DOCKER_IMAGE:-mpd-docker-e2e:local}
       MPD_E2E_DSH_VERSION: ${MPD_E2E_DSH_VERSION:-0.2.2-rc.5}
       MPD_E2E_TUI_VERSION: ${MPD_E2E_TUI_VERSION:-0.20.2}
       # Same optional live-turn prompt as `mpd-client` (see the comment there): both services run the

@@ -2,21 +2,23 @@
 
 [中文](./README.zh-CN.md)
 
-One command, run from the repository root:
+Run the shared credential-free acceptance command from the repository root.
 
 ```bash
-node scripts/docker-e2e.ts
+node scripts/docker-acceptance.ts
 ```
 
-It builds `docker/Dockerfile` through `docker/docker-compose.yml` (a bare `ubuntu:24.04` with no
-node, no bun, no pnpm and no dsh), runs the `mpd-client` compose service, streams the container's
-console to the terminal, and writes the evidence to
-`evidence/docker/client-install/<UTC stamp>/{result.json, output.log, console.log, driver.json}`.
-Nothing is ever copied into the repository: the build context IS the repository root, filtered by
-`docker/Dockerfile.dockerignore`.
+It stages the pack from the committed `HEAD`, then installs and boots the bundle in the `mpd-client`
+Compose service on Ubuntu 24.04. The driver uses a private home and Docker configuration and checks
+installation, isolation and the mounted user surface with an empty model catalog. GitHub Actions uses
+this command with `--allow-rootful-docker` for its hosted daemon. On a local rootless setup the command
+automatically uses the standard socket or the Unix socket specified by `DOCKER_HOST`.
 
-Exit codes: `0` every assertion true or explicitly `null`, `1` at least one assertion FALSE, `2` the
-run produced no `result.json` at all, `3` the host has no usable docker.
+The run streams the console and writes its evidence under
+`evidence/docker/client-install/<UTC stamp>/`. `driver.json` records the candidate SHA, source mode and
+credential forwarding status. Exit `0` certifies the measured required witnesses, `1` reports a failed
+assertion, `2` indicates a staging or execution error, and `3` indicates a missing prerequisite or
+required measurement. Use `node scripts/docker-e2e.ts --help` for the underlying driver and live options.
 
 ## What it actually does inside the container
 

@@ -1,0 +1,23 @@
+{
+  "candidate": "c8d1dd9591040bb658c09f12ad20c02ef70b7f3c",
+  "tree": "ff919518c14c77bde4f887c93a6dc1bc03cbc6b7",
+  "checkout": "Independent detached ordinary clone candidate-c8d1dd95-native, confirmed by native DSH session header cwd and clean Git checks before and after",
+  "runtime": "Pinned DSH 0.2.2-rc.5, isolated HOME and DSH_HOME, synthetic credential and deterministic loopback Messages transport",
+  "reviewerSession": "f0aa7c4b-55cd-4f30-aa4e-932e80dace25",
+  "writerSession": "a917697a-a5b4-4219-88b1-54eb1828f71c",
+  "calls": ["mpd_verify_open", "mpd_verify_seat", "mpd_verify_evidence", "mpd_verify_record"],
+  "allNativeCallResultsSuccessful": true,
+  "loop": "loop-20261123T161057-ef112a",
+  "gateEvidence": "ev-20261123T161057-07c7f8",
+  "command": "bun run typecheck",
+  "gateExit": 0,
+  "gateFreeze": "frozen",
+  "gateLogSha256": "31aa95f9b94d79af83488016a558e42c4a5ce659fc228e1b43dc8a49bac95fa6",
+  "record": "rec-20261123T161058-e4f999",
+  "verdict": "PASS",
+  "basis": "blind",
+  "frozenContract": { "path": ".mpd/drafts/v0.21.1-acceptance.md", "sha256": "250fa2c1c8d8f5a6aa94d696b2296895419f3a25ebf0ae35e5dfe682e6cfdffb" },
+  "sources": [".mpd/drafts/v0.21.1-acceptance.md", "AGENTS.md", "docker/README.md"],
+  "nativeToolProofSha256": "440b7b7b577ac83052463cb19dbe632199e550fd2dbec7ea64639ee8fcf16658",
+  "bounds": "Native PASS covers the fixed typecheck gate. The static and real Docker measurements are separate receipts. The local fixture did not use a live or remote model."
+}

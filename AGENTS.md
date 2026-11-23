@@ -503,8 +503,8 @@ lane hold this line.
 ### Primary flow: ONE command, no extra step
 
 - **The USER-facing install is ONE command against the PUBLISHED package — no clone, no build:**
-  `dsh plugin --profile web add @mpd-dsh/mpd@0.21.0` (this release, named by explicit spec) or the
-  unversioned `@mpd-dsh/mpd`, which takes whatever `latest` the registry serves;
+  `dsh plugin --profile web add @mpd-dsh/mpd@0.21.1` pins this release once it is available on npm.
+  The unversioned `@mpd-dsh/mpd` takes whatever `latest` the registry serves.
   `dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh` is the same one
   command from the repository (and the Docker lane's proof spec, §4). pnpm packs it through the
   manifest's **`files` allowlist**, then `reconcile` reads the
@@ -589,11 +589,11 @@ lane hold this line.
    `bun run verify:vendor` after the wave's single
    `node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step` re-pin when `skills/**`
    changed.
-   - **LAST: the Docker real-machine lane, per §4's Docker row — BOTH runs, both stamps cited.** The
+   - **LAST: the Docker real-machine lane, per §4's Docker row — all three runs, all three stamps cited.** The
      credentialed `node scripts/docker-e2e.ts --mode source --require-docker --live` then `--mode
-     oneclick --require-docker --live`, AND the credential-free `--mode source --require-docker
-     --no-browser` regression run — a credentialed run cannot see a path that depends on an EMPTY model
-     catalog (measured 2026-10-23, PR #62). `--no-browser` IS the credential-free spelling: a
+     oneclick --require-docker --live`, AND the credential-free `node scripts/docker-acceptance.ts`
+     regression run shared with GitHub Actions — a credentialed run cannot see a path that depends on an EMPTY model
+     catalog (measured 2026-10-23, PR #62). The shared command sets `--no-browser`: a
      browser-enabled one records `ui.replyRendered` as a DECLARED BOUND that the required-arm gate turns
      into exit 3 by design, and `--live` with no key exits 3 before the build.
    - **Release-checklist line (VENDOR_LOCK pairing rule):** `VENDOR_LOCK.json` lands in the SAME commit

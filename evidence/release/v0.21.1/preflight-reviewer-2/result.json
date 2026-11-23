@@ -1,0 +1,50 @@
+{
+  "task": "T1 release verification prerequisites",
+  "measuredAtUtc": "2026-11-23T15:30:39Z",
+  "status": "ready for candidate",
+  "baseline": {
+    "ref": "refs/heads/dev",
+    "commit": "267c44a78a8f9c0437d6a7219b578a5cf827dc98",
+    "tree": "9211840d09e2f2214fe0d35ca98f625012e21a3c",
+    "publicRefMatchedWithoutCredentials": true
+  },
+  "runtime": {
+    "node": "24.21.0",
+    "npm": "11.19.0",
+    "pinnedBun": "1.4.0",
+    "pinnedDsh": "0.2.2-rc.5",
+    "compatibilityDsh": "0.2.2-rc.2",
+    "tuiHost": "0.20.2",
+    "tuiHostPeersAdmittingRc5": "37/37",
+    "dockerClient": "29.9.2",
+    "dockerServer": "29.9.2",
+    "dockerCompose": "5.7.0",
+    "dockerSecurity": "name=rootless",
+    "dockerPlatform": "linux/x86_64",
+    "ubuntuImage": "sha256:a853f94d226358a79c740cfc7bce0c289748f3fe3488d921d038ccd752c61b60",
+    "browserPreflightImage": "sha256:1a6816f1160d88869a9ee47aca16e2923b8727752e2a13aaa1c68552b4bd1019",
+    "playwright": "1.48.2",
+    "chromium": "130.0.6723.31",
+    "browserPreflight": "Fresh disposable rootless container launched headless Chromium and asserted the expected heading in a data URL."
+  },
+  "goKit": {
+    "localPath": ".qa-v0211-prereqs-reviewer-2/dsh-go",
+    "commit": "f36bf91b0736e81ef40c2a7040b2ec337ca1ab40",
+    "checkerSha256": "0a92e1902abd3d9b8b3d07adac21fff84bd98d0ff1bfc136f643295e81841565",
+    "probe": "The standalone Node checker returned parseable JSON, exit 1. The cross-check verdict belongs to the candidate gate."
+  },
+  "isolation": {
+    "reasonForWorkspaceScratch": "The daemon cannot see the tool-private /tmp namespace. A synthetic marker mounted successfully from ignored workspace scratch.",
+    "credentialFreeProbe": "An empty allowlisted environment and fresh HOME booted Ubuntu with --network none and no host mounts.",
+    "deepSeek": "The authorized DSH DeepSeek entry passed a presence-only check. No live request ran. The private launcher passed seven synthetic controls proving key forwarding by name is limited to docker compose run --rm for the two exact services.",
+    "hostSetup": "Pair DSH 0.2.2-rc.5 with TUI 0.20.2. Host pnpm uses a private, mode-700 XDG_RUNTIME_DIR. Docker keeps the verified explicit DOCKER_HOST in the allowlisted environment."
+  },
+  "candidatePlan": {
+    "snapshot": "Use an ordinary detached clone at the frozen SHA in private, daemon-visible workspace scratch. Verify the clone owns its .git directory, resolves its own worktree root, and matches the commit, tree and tracked product hashes before and after. Stage dist/mpd-package from that clone for the Docker source pack assertions. The public baseline clone passed all identity checks and a read-only Docker bind probe.",
+    "credentialFree": "Run the shared command node scripts/docker-acceptance.ts from the frozen snapshot once confirmed. Local requires rootless Docker and hosted adds the documented rootful opt-in. Check required user-surface and empty-credential witnesses.",
+    "sourceLive": "node scripts/docker-e2e.ts --mode source --require-docker --live",
+    "oneclickLive": "node scripts/docker-e2e.ts --mode oneclick --require-docker --live --spec github:HaroldZ32/My-Power-Dsh#<full-candidate-sha>",
+    "oneclickIdentity": "Verify the public branch or PR ref and fetch the full commit without credentials. The driver scratch commit is synthetic even with an explicit remote spec. Compare the version and the npm allowlisted file hashes from the candidate archive with an independent credential-free install of the same spec. Require the live driver install, mounted preset, user-surface witnesses and all requested arms.",
+    "bounds": "Candidate SHA, Docker install/live lanes and exact candidate verification are pending. This receipt records infrastructure readiness only."
+  }
+}

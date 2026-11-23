@@ -2,20 +2,21 @@
 
 [English](./README.md)
 
-在仓库根目录执行一条命令：
+在仓库根目录执行统一的无凭据验收命令。
 
 ```bash
-node scripts/docker-e2e.ts
+node scripts/docker-acceptance.ts
 ```
 
-它会通过 `docker/docker-compose.yml` 构建 `docker/Dockerfile`（一个纯净的 `ubuntu:24.04`，其中没有
-node、没有 bun、没有 pnpm、也没有 dsh），运行 `mpd-client` compose 服务，把容器控制台实时输出到终端，
-并把证据写入
-`evidence/docker/client-install/<UTC 时间戳>/{result.json, output.log, console.log, driver.json}`。
-仓库内不会产生任何副本：构建上下文就是仓库根目录，由 `docker/Dockerfile.dockerignore` 负责过滤。
+该命令从已提交的 `HEAD` 生成包，然后在 Ubuntu 24.04 上的 `mpd-client` Compose 服务中安装并启动此包。
+驱动程序使用独立的主目录和 Docker 配置，在模型列表为空的情况下验证安装、隔离及用户功能的加载。
+GitHub Actions 使用相同的命令，并为托管环境的守护进程加上 `--allow-rootful-docker`。在本地的无根环境中，
+命令会自动使用标准套接字或 `DOCKER_HOST` 指定的 Unix 套接字。
 
-退出码：`0` 表示每个断言都为真或显式为 `null`；`1` 表示至少有一个断言为假；`2` 表示本次运行完全没有产出
-`result.json`；`3` 表示宿主机上没有可用的 docker。
+运行时会实时输出控制台日志，并将证据写入 `evidence/docker/client-install/<UTC 时间戳>/`。
+`driver.json` 记录候选提交的 SHA、源码模式和凭据转发状态。退出码 `0` 表示必需的验证均已通过，
+`1` 表示断言失败，`2` 表示准备或执行出错，`3` 表示缺少前置条件或必需的测量。
+可使用 `node scripts/docker-e2e.ts --help` 查看底层驱动程序及真实模型运行的选项。
 
 ## 容器内实际执行的步骤
 
