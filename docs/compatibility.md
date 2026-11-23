@@ -2,7 +2,7 @@
 
 **English** | [中文](./compatibility.zh-CN.md)
 
-This page is the **three-plane compatibility matrix** of the `0.21.0` release: what each upstream plane
+This page is the **three-plane compatibility matrix** of the `0.21.1` release: what each upstream plane
 guarantees, what degrades on an older host, and what is **not available** there. Every line is traceable to
 a gate run, a mounted boot in an isolated `DSH_HOME`, or a source of the upstream package named beside it —
 never to a device, because this repository contains no Flutter host and no phone.
@@ -331,9 +331,9 @@ bound is that the *page* is a markdown file the host renders, and its content is
 
 ## 7. Where the detail lives
 
-The release narrative is in [`../CHANGELOG.md`](../CHANGELOG.md) `## 0.21.0`. The two upstream adaptation
-sources this page rests on are the measured evidence bundle under
-`evidence/upstream/0.2.2/2026-11-07T05-45Z/` (mount, routing, row parity, the `0.19.0` negotiation probe and
+[`../CHANGELOG.md`](../CHANGELOG.md) covers the `0.21.1` changes and records the upstream host adaptation in
+its `0.21.0` entry. The two upstream adaptation sources this page rests on are the measured evidence bundle
+under `evidence/upstream/0.2.2/2026-11-07T05-45Z/` (mount, routing, row parity, the `0.19.0` negotiation probe and
 the batch-API finding) and the gate transcripts beside it. The DSH-Go standard is
 [`dsh-go-standard.md`](dsh-go-standard.md); the TUI lane is [`tui.md`](tui.md) and
 [`tui-admission.md`](tui-admission.md); the binding rules are [`../AGENTS.md`](../AGENTS.md) §2 and §4.

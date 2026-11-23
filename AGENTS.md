@@ -503,8 +503,8 @@ lane hold this line.
 ### Primary flow: ONE command, no extra step
 
 - **The USER-facing install is ONE command against the PUBLISHED package — no clone, no build:**
-  `dsh plugin --profile web add @mpd-dsh/mpd@0.21.0` (this release, named by explicit spec) or the
-  unversioned `@mpd-dsh/mpd`, which takes whatever `latest` the registry serves;
+  `dsh plugin --profile web add @mpd-dsh/mpd@0.21.1` pins this release once it is available on npm.
+  The unversioned `@mpd-dsh/mpd` takes whatever `latest` the registry serves.
   `dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh` is the same one
   command from the repository (and the Docker lane's proof spec, §4). pnpm packs it through the
   manifest's **`files` allowlist**, then `reconcile` reads the

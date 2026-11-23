@@ -2,7 +2,7 @@
 
 [English](./README.md) | **中文**
 
-[![版本](https://img.shields.io/badge/version-0.21.0-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
+[![版本](https://img.shields.io/badge/version-0.21.1-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
 [![npm](https://img.shields.io/badge/npm-%40mpd--dsh%2Fmpd-CB3837.svg)](https://www.npmjs.com/package/@mpd-dsh/mpd)
 [![许可证：MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE.md)
 [![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.2--rc.5-4B32C3.svg)](#致谢)
@@ -104,6 +104,8 @@ dsh plugin --profile web add @mpd-dsh/mpd
 dsh plugin --profile dsh-tui add @mpd-dsh/mpd
 ```
 
+v0.21.1 在 npm 上可用后，可在上述任一命令中使用 `@mpd-dsh/mpd@0.21.1` 锁定此版本。
+
 然后重启 `dsh`，用 **MPD (Main Working Agent)** preset 开一个会话。卸载：
 
 ```bash
@@ -139,11 +141,12 @@ dsh plugin --profile web add .
 [`packages/mpd-tui-plugin/dsh-plugin.json`](./packages/mpd-tui-plugin/dsh-plugin.json)
 中的 `compat.hosts` 列出套件接纳的 TUI 宿主。请将两个宿主都钉定到对应发布行的版本。
 
-**最新一行是本包当前发布的版本（可从 registry 安装）；其下各行是更早版本钉定的组合，标注为 `previous`，作为历史保留。**
+**首行列出本次发布的宿主组合。其余各行保留早期版本的宿主版本记录。**
 
 | `@mpd-dsh/mpd` | DeepSeek Harness | DSH-TUI | 说明 |
 |---|---|---|---|
-| 0.21.0 | 0.2.2-rc.5 | 0.20.2 | 本次发布 |
+| 0.21.1 | 0.2.2-rc.5 | 0.20.2 | 本次发布 |
+| 0.21.0 | 0.2.2-rc.5 | 0.20.2 | 上一次发布 |
 | 0.20.0 | 0.2.2-rc.3 | 0.20.1 | 上一次发布 |
 | 0.19.0 | 0.2.2-rc.2 | 0.20.0 | 上一次发布 |
 | 0.18.1 | 0.2.2-rc.1 | 0.19.0 | 上一次发布 |
@@ -164,7 +167,7 @@ dsh plugin --profile web add .
 | 0.15.0 | 0.2.1-rc.2 | 0.16.1 | `previous` |
 | 0.14.0 | 0.2.1-rc.2 | 0.16.1 | `previous`（harness 0.2.1 适配发布） |
 
-`0.21.0` 搭配 harness `0.2.2-rc.5` 和 DSH-TUI `0.20.2`。在 harness `0.2.2-rc.5` 上使用 DSH-TUI 时，
+`0.21.1` 搭配 harness `0.2.2-rc.5` 和 DSH-TUI `0.20.2`。在 harness `0.2.2-rc.5` 上使用 DSH-TUI 时，
 请使用 TUI `0.20.2`。旧宿主在各自声明的 peer 依赖范围内仍受支持。
 `engines.dsh` 覆盖 `>=0.2.1-rc.5 <0.3.0-0`，harness `0.2.2-rc.3`、`0.2.2-rc.2`、`0.2.2-rc.1` 与 `0.2.1-rc.5` 仍可安装并运行，
 `compat.hosts` 波段在新宿主 `0.20.2` 之外保留 DSH-TUI `0.18.0`、`0.19.0`、`0.20.0` 与 `0.20.1`。harness `0.2.2-rc.4` 被该
@@ -278,7 +281,12 @@ dsh plugin --profile web add .
 
 ## 变更日志
 
-发布说明在 [`CHANGELOG.md`](./CHANGELOG.md)，最新的在前，每个已发布版本一节（当前版本是 **v0.21.0**）。
+**v0.21.1** 支持每个项目保留一个持久团队，名册和任务看板可跨会话继续使用（#122）。本版改进团队启动、
+审批和任务释放的恢复流程，保留工作区状态，并在将 npm 压缩包提交暂存前验证同一份文件（#119）。
+GitHub Actions 和本地都通过 `node scripts/docker-acceptance.ts` 在模型列表为空的情况下，验证候选版本的
+安装结果和必需的用户可见功能。
+
+发布详情见 [`CHANGELOG.md`](./CHANGELOG.md)。
 带注释的 tag 列在 [Releases](https://github.com/HaroldZ32/My-Power-Dsh/releases)。
 
 ## 致谢
