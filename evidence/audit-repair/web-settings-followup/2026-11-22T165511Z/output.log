@@ -1,0 +1,65 @@
+Mounted Web settings follow-up — frozen client c5be0607ff2dc360b52c5357fe0af3e3c473cf0c6c77d343481b1c0e220000cb
+
+Baseline on rc.5 (agent-22)
+  Candidate client 10715397155f0c1333b3716cf487c3d80fa64ca72fd1bb15d9f0fa5c9c071956.
+  Browser authority 127.0.0.1. No selected session. Card displayed “This page is not loopback”.
+  Inline diff limit 20000 → 21091. The isolated profile patch stored 21091. The UI read back 20000 immediately and after page reload.
+  A second boot loaded that patch (21091). POST /api/settings/mutate (21092) HTTP 200, ok=true, revision=1, base=20000, value=21091, user=21092. The isolated profile patch stored 21092.
+
+Host boundary
+  rc.5 ConfigForms.get(entryId) returns a shared form from the provider's own fiber. settings.section is a root-scoped list slot. The profile form needs no selected conversation. ConfigFormSnapshot has status, writable, revision, base, user and value. SettingsForms.describe projects value from the mounted fiber and base/user from the lower composition and profile override. A refused or skipped form mutation resolves false. A transport failure rejects.
+  Workspace route edits use the selected live session and the bundle's authenticated model-config endpoint. The profile form uses the host settings API and revision fence.
+
+Writer Chromium command and observations
+  npm pack --quiet --ignore-scripts --pack-destination <private-scratch>
+  dsh plugin --profile web add <private-scratch>/mpd-dsh-mpd-0.21.0.tgz
+  dsh --profile web --host 127.0.0.1 --port 0 --no-open
+  REVIEW_CLIENT_SHA=<frozen client> node <private-scratch>/browser-check.mjs --settings --save --require-ready
+  HOME, DSH_HOME, browser context, and server cwd were isolated. No session store was created. The browser obtained the native launch URL from private logs, dismissed onboarding, then opened Account menu → Settings → MPD. Mutator requests and profile contents below are limited to the exercised field.
+  dsh 0.2.2-rc.5, pnpm 11.23.0, Chromium 149.0.7827.55.
+  Archive SHA-256 9196adf49a7e1dd1c5efb0799fc10b67da3e31bbb956548d6367c4c8edeff75c.
+  MPD Settings rendered on 127.0.0.1; non-loopback warning=false, profile disabled=false.
+  Browser asset contains the byte-exact installed module=true (3020596 bytes, SHA-256 5bf5b60fdc432bd39243dab18d0b825e2d15d0380b4f9f70b53ffc0080e560c4).
+  Profile-only Save before=20000, submitted=21091, immediate=21091, separate mounted value=true.
+  Profile-only Save before=20000, submitted=21091, after page reload=21091, separate mounted value post-reload=true.
+  POST /api/settings/mutate HTTP 200, ok=true, revision=1, base=20000, value=20000, user=21091.
+  The mounted host entry reports 20000. The editable field is 21091.
+  Web shell HTTP 200, page errors 0. Private host profile persisted hashline.maxDiffChars=21091. Exit 0.
+
+Independent Chromium controls (agent-22, same exact installed client)
+  Loopback — warning=false, profile editable, 20000 → 21091 immediately and after reload, mounted 20000 shown both times. Private profile persisted 21091. Exit 0.
+  Explicitly trusted mpd-review.invalid — authenticated mutation HTTP 200, reloaded 21091, mounted 20000 shown. Fresh browser without authorization mutation HTTP 401, private profile bytes unchanged=true. Exit 0.
+
+Gates
+  .toolchain/node_modules/.bin/bun test ./packages/mpd-bundle-plugin/test/settings-card.test.ts ./packages/mpd-bundle-plugin/test/model-config-route.test.ts
+    Baseline: 73 pass, 0 fail (exit 0). After: 75 pass, 0 fail (exit 0).
+  .toolchain/node_modules/.bin/bun test ./packages/mpd-bundle-plugin/test/settings-card.test.ts -t 'profile edit reads back|false Host mutate'
+    Before: 0 pass, 2 fail (exit 1). Editable field expected 21091 and received 20000, and false acknowledgment cleared the draft without setting failed.
+    After: 2 pass, 0 fail (exit 0).
+  .toolchain/node_modules/.bin/bun test ./packages/mpd-bundle-plugin/test
+    339 pass, 0 fail, 16 files (exit 0).
+  .toolchain/node_modules/.bin/bun run typecheck
+    Baseline exit 1 due to Cellwork test use of findLast (TS2550, TS7006). After the concurrent Cellwork lane addressed it, typecheck exit 0.
+  .toolchain/node_modules/.bin/bun run verify:comments
+    VERDICT: PASS (exit 0).
+  .toolchain/node_modules/.bin/bun run verify:docs
+    pairs=61 failed=0 violations=0 dead=0 — PASS (exit 0).
+  .toolchain/node_modules/.bin/bun skills/dsh-qa/scripts/web-client-adapt.ts --self-test
+    ok: 14 checks (exit 0).
+  .toolchain/node_modules/.bin/bun run test:qa
+    56 passed, 2 skipped, 0 failed (58 total, exit 0). The two skips were the absent TUI distribution and conformance fixtures.
+  node scripts/verify-dist-fresh.ts
+    35/35 node targets fresh (exit 0). The gate declares the SHA-pinned prebuilt CodeGraph serve.js outside its node source coverage. Browser client identity was checked separately.
+  node --check packages/mpd-bundle-plugin/client.js
+    Exit 0.
+  git diff --check -- packages/mpd-bundle-plugin/src/settings-card.ts packages/mpd-bundle-plugin/test/settings-card.test.ts packages/mpd-bundle-plugin/test/client-harness.ts packages/mpd-bundle-plugin/README.md packages/mpd-bundle-plugin/README.zh-CN.md
+    Exit 0.
+
+Staged archive repeat on a fresh private profile
+  Archive SHA-256 5f45f20d1f424360ec2cf8b6f58f99aef8760116c02324aa82b7e33c5409a84f.
+  Tar member package/packages/mpd-bundle-plugin/client.js SHA-256 c5be0607ff2dc360b52c5357fe0af3e3c473cf0c6c77d343481b1c0e220000cb.
+  The browser repeated the same Settings flow using the staged archive. Composed response SHA-256 3c59100db2e8191bdf141345b1b74d8ef379c23a5d1fbe2c660fd69b0423c30c contained the exact client bytes.
+  Profile-only Save 20000 → 21091, immediate=21091, after reload=21091. Mounted 20000 shown after Save and reload. No false loopback warning and no session store.
+  POST /api/settings/mutate HTTP 200, ok=true, revision=1, base=20000, value=20000, user=21091.
+  Web shell HTTP 200, page errors 0. Private host profile persisted 21091. Exit 0.
+  Integration owns archive closure and release deployment.

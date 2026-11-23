@@ -1,6 +1,6 @@
 // packages/mpd-hashline-plugin/src/index.ts
 import { existsSync, mkdirSync as mkdirSync2, readFileSync, writeFileSync } from "node:fs";
-import { dirname, isAbsolute as isAbsolute2, join as join2, resolve as resolve3 } from "node:path";
+import { dirname as dirname2, isAbsolute as isAbsolute3, join as join2, resolve as resolve4 } from "node:path";
 
 // packages/mpd-hashline-plugin/src/vendor/constants.ts
 var NIBBLE_STR = "ZPMQVRWSNKTXJBYH";
@@ -476,14 +476,11 @@ function applySetLine(lines, anchor, newText) {
   result.splice(line - 1, 1, ...replacement);
   return { lines: result, repair: repaired.repair };
 }
-function applyReplaceLines(lines, startAnchor, endAnchor, newText) {
+function applyReplaceLines(lines, startAnchor, endAnchor, newText, original) {
   const { line: startLine } = parseLineRef(startAnchor);
   const { line: endLine } = parseLineRef(endAnchor);
-  if (startLine > endLine) {
-    throw new Error(`Invalid range: start line ${startLine} cannot be greater than end line ${endLine}`);
-  }
   const result = [...lines];
-  const stripped = stripRangeBoundaryEcho(lines, startLine, endLine, toNewLines(newText));
+  const stripped = stripRangeBoundaryEcho(original, startLine, endLine, toNewLines(newText));
   const range = lines.slice(startLine - 1, endLine);
   const repaired = repairReplacementBlock(stripped, range, startLine);
   const restored = repaired.lines.map((entry, index) => {
@@ -504,10 +501,10 @@ function applyInsertAfter(lines, anchor, text) {
   result.splice(line, 0, ...newLines);
   return result;
 }
-function applyInsertBefore(lines, anchor, text) {
+function applyInsertBefore(lines, anchor, text, original) {
   const { line } = parseLineRef(anchor);
   const result = [...lines];
-  const newLines = stripInsertBeforeEcho(lines[line - 1] ?? "", toNewLines(text));
+  const newLines = stripInsertBeforeEcho(original[line - 1] ?? "", toNewLines(text));
   if (newLines.length === 0) {
     throw new Error(`prepend (anchored) requires non-empty text for ${anchor}`);
   }
@@ -536,8 +533,7 @@ function applyPrepend(lines, text) {
   return [...normalized, ...lines];
 }
 function normalizeEditPayload(payload) {
-  return toNewLines(payload).join(`
-`);
+  return JSON.stringify(toNewLines(payload));
 }
 function canonicalAnchor(anchor) {
   if (!anchor)
@@ -596,24 +592,35 @@ function collectLineRefs(edits) {
     }
   });
 }
-function detectOverlappingRanges(edits) {
+function detectRangeConflicts(edits) {
   const ranges = [];
   for (let i = 0;i < edits.length; i++) {
     const edit = edits[i];
-    if (!edit || edit.op !== "replace" || !edit.end)
+    if (!edit || edit.op !== "replace")
       continue;
     const start = parseLineRef(edit.pos).line;
-    const end = parseLineRef(edit.end).line;
+    const end = edit.end ? parseLineRef(edit.end).line : start;
+    if (start > end)
+      return `Invalid range: start line ${start} cannot be greater than end line ${end}`;
     ranges.push({ start, end, idx: i });
   }
-  if (ranges.length < 2)
+  if (ranges.length === 0)
     return null;
   ranges.sort((a, b) => a.start - b.start || a.end - b.end);
   for (let i = 1;i < ranges.length; i++) {
     const prev = ranges[i - 1];
     const curr = ranges[i];
     if (prev && curr && curr.start <= prev.end) {
-      return "Overlapping range edits detected: " + `edit ${prev.idx + 1} (lines ${prev.start}-${prev.end}) overlaps with ` + `edit ${curr.idx + 1} (lines ${curr.start}-${curr.end}). ` + "Use pos-only replace for single-line edits.";
+      return "Overlapping range edits detected: " + `edit ${prev.idx + 1} (lines ${prev.start}-${prev.end}) overlaps with ` + `edit ${curr.idx + 1} (lines ${curr.start}-${curr.end}). ` + "Each original line may be replaced or deleted only once per batch.";
+    }
+  }
+  for (const [idx, edit] of edits.entries()) {
+    if (edit.op === "replace" || !edit.pos)
+      continue;
+    const seam = parseLineRef(edit.pos).line - (edit.op === "prepend" ? 1 : 0);
+    const range = ranges.find(({ start, end }) => start <= seam && seam < end);
+    if (range) {
+      return `Overlapping insertion seam: edit ${idx + 1} (${edit.op} ${edit.pos}) falls inside edit ${range.idx + 1} (lines ${range.start}-${range.end}).`;
     }
   }
   return null;
@@ -689,7 +696,7 @@ function applyHashlineEditsWithReport(content, edits) {
     return { content, noopEdits: 0, deduplicatedEdits: 0, repairs: [] };
   }
   const dedupeResult = dedupeEdits(edits);
-  const EDIT_PRECEDENCE = { replace: 0, append: 1, prepend: 2 };
+  const EDIT_PRECEDENCE = { append: 0, replace: 1, prepend: 2 };
   const sortedEdits = [...dedupeResult.edits].sort((a, b) => {
     const lineA = getEditLineNumber(a);
     const lineB = getEditLineNumber(b);
@@ -699,17 +706,18 @@ function applyHashlineEditsWithReport(content, edits) {
   });
   let noopEdits = 0;
   const repairs = [];
-  let lines = content.length === 0 ? [] : content.split(`
+  const original = content.length === 0 ? [] : content.split(`
 `);
+  let lines = original;
   const refs = collectLineRefs(sortedEdits);
-  validateLineRefs(lines, refs);
-  const overlapError = detectOverlappingRanges(sortedEdits);
-  if (overlapError)
-    throw new Error(overlapError);
+  validateLineRefs(original, refs);
+  const conflict = detectRangeConflicts(sortedEdits);
+  if (conflict)
+    throw new Error(conflict);
   for (const edit of sortedEdits) {
     switch (edit.op) {
       case "replace": {
-        const outcome = edit.end ? applyReplaceLines(lines, edit.pos, edit.end, edit.lines) : applySetLine(lines, edit.pos, edit.lines);
+        const outcome = edit.end ? applyReplaceLines(lines, edit.pos, edit.end, edit.lines, original) : applySetLine(lines, edit.pos, edit.lines);
         if (arraysEqual(outcome.lines, lines)) {
           noopEdits += 1;
           break;
@@ -729,7 +737,7 @@ function applyHashlineEditsWithReport(content, edits) {
         break;
       }
       case "prepend": {
-        const next = edit.pos ? applyInsertBefore(lines, edit.pos, edit.lines) : applyPrepend(lines, edit.lines);
+        const next = edit.pos ? applyInsertBefore(lines, edit.pos, edit.lines, original) : applyPrepend(lines, edit.lines);
         if (arraysEqual(next, lines)) {
           noopEdits += 1;
           break;
@@ -868,7 +876,46 @@ function generateUnifiedDiff(oldContent, newContent, filePath) {
 }
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
-import { resolve as resolve2, sep as sep2 } from "node:path";
+
+// packages/mpd-dsh-adapter-plugin/src/scoped-helper.ts
+import { realpathSync } from "node:fs";
+import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
+function helperTarget(checkout, value) {
+  try {
+    const root = realpathSync(checkout);
+    const path = resolve(root, value);
+    const local = relative(root, path);
+    if (local === "" || local === ".." || local.startsWith(`..${sep}`) || isAbsolute(local) || local.split(sep).some((item) => item === ".mpd" || item === ".git"))
+      return;
+    let probe = path;
+    while (probe !== root) {
+      try {
+        if (realpathSync(probe) !== probe)
+          return;
+      } catch (error) {
+        if (!(error instanceof Error) || !("code" in error) || error.code !== "ENOENT")
+          throw error;
+      }
+      probe = dirname(probe);
+    }
+    return local.split(sep).join("/");
+  } catch (error) {
+    if (error instanceof Error)
+      return;
+    throw error;
+  }
+}
+function helperFileRefusal(scope, name, args) {
+  if (name === "structured_output")
+    return;
+  if (scope.current?.() === false)
+    return "The original assignment no longer authorizes this helper.";
+  const path = typeof args === "object" && args !== null && "file_path" in args && typeof args.file_path === "string" ? helperTarget(scope.checkout, args.file_path) : undefined;
+  const allowed = path !== undefined && (name === "read" ? scope.read.includes(path) || scope.write.includes(path) : (name === "write" || name === "edit") && scope.write.includes(path));
+  return allowed ? undefined : "This one-shot can use only the exact file tools and paths its owner delegated.";
+}
+// packages/mpd-dsh-adapter-plugin/src/index.ts
+import { resolve as resolve3, sep as sep3 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
 function errorMessage(error) {
@@ -878,7 +925,7 @@ function errorMessage(error) {
 // packages/mpd-mcp-shared/log-sink.ts
 import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { isAbsolute as isAbsolute2, join, relative as relative2, resolve as resolve2, sep as sep2 } from "node:path";
 var LOG_SUBDIR = join(".mpd", "logs");
 var DEFAULT_MAX_BYTES = 1024 * 1024;
 var DEFAULT_MAX_LINE_BYTES = 8192;
@@ -903,7 +950,7 @@ function resolveLogRoots(env = process.env, cwd) {
       continue;
     let absolute;
     try {
-      absolute = resolve(candidate);
+      absolute = resolve2(candidate);
     } catch {
       continue;
     }
@@ -928,8 +975,8 @@ function owningRoot(roots, file) {
   for (const root of roots) {
     if (file === root)
       return root;
-    const rel = relative(root, file);
-    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel))
+    const rel = relative2(root, file);
+    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep2}`) && !isAbsolute2(rel))
       return root;
   }
   return null;
@@ -1238,10 +1285,10 @@ function sessionCwdOf(agent) {
 function workspaceRootOfAgent(agent) {
   const session = sessionCwdOf(agent);
   if (session !== undefined)
-    return resolve2(session);
+    return resolve3(session);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve2(override);
+    return resolve3(override);
   return process.cwd();
 }
 function workspaceRootOf(exec) {
@@ -1249,7 +1296,7 @@ function workspaceRootOf(exec) {
     return workspaceRootOfAgent(exec.agent);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve2(override);
+    return resolve3(override);
   return process.cwd();
 }
 var rowLogSinks = new Map;
@@ -1314,7 +1361,7 @@ function workspaceRootsOf(agents) {
     for (const agent of list) {
       const cwd = sessionCwdOf(agent);
       if (cwd !== undefined)
-        roots.add(resolve2(cwd));
+        roots.add(resolve3(cwd));
     }
     return [...roots];
   } catch {
@@ -1856,7 +1903,7 @@ function createDshAdapter(ctx, config = {}) {
     } catch {}
   };
   bindDshGoBridge();
-  const configAgentRouteResolver = () => {
+  const configAgentRouteResolver = (workspace) => {
     const config2 = service("mpdConfig");
     if (config2 === undefined || config2 === null)
       return;
@@ -1864,7 +1911,7 @@ function createDshAdapter(ctx, config = {}) {
       return;
     return (member) => {
       try {
-        const answer = config2.agentRouteResolutionOf.call(config2, member);
+        const answer = config2.agentRouteResolutionOf.call(config2, member, workspace);
         return answer !== null && typeof answer === "object" && typeof answer.ok === "boolean" ? answer : undefined;
       } catch {
         return;
@@ -2218,7 +2265,7 @@ function createDshAdapter(ctx, config = {}) {
         const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
         let agentOptions = request.agentOptions;
         if (agentOptions === undefined) {
-          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver());
+          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver(workspaceRootOfAgent(caller)));
           if (outcome.status === "routed") {
             const resolved = await resolveRunRoute({ llmCatalog }, outcome.route, outcome.fallbacks);
             agentOptions = resolved.route;
@@ -2234,8 +2281,13 @@ function createDshAdapter(ctx, config = {}) {
           ...agentOptions === undefined ? {} : { agentOptions },
           ...request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }
         };
+        const provider = typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn";
+        const childId = request.onOpening !== undefined && provider === "spawn" && typeof subagents.startActivation === "function" && typeof subagents.prompt === "function" ? randomUUID() : undefined;
+        if (childId !== undefined)
+          request.onOpening?.(childId);
         const spec = dualShapeActivationSpec({
-          provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
+          provider,
+          ...childId === undefined ? {} : { childId },
           label: `${request.name} · ${request.teamId}`,
           signal: request.signal ?? neverAborted()
         }, activationRequest);
@@ -2670,6 +2722,13 @@ function createDshAdapter(ctx, config = {}) {
       const registered = systemPrompt.section(section);
       return typeof registered === "function" ? registered : noop;
     },
+    registerPromptContext(context) {
+      const systemPrompt = service("systemPrompt");
+      if (typeof systemPrompt?.context !== "function")
+        return;
+      const registered = systemPrompt.context(context);
+      return typeof registered === "function" ? registered : noop;
+    },
     guardTool(guard) {
       const tools = requireService("tools", "cannot install a tool guard");
       if (typeof tools.guard !== "function")
@@ -2902,14 +2961,45 @@ function createDshAdapter(ctx, config = {}) {
           ...spec.outputSchema === undefined ? {} : { outputSchema: spec.outputSchema },
           ...spec.maxDepth === undefined ? {} : { maxDepth: spec.maxDepth }
         };
-        const activation = await subagents.startActivation.call(subagents, dualShapeActivationSpec({
-          provider,
-          label: spec.label,
-          signal,
-          delivery: "parent"
-        }, activationRequest));
-        return activationHandleOf(activation, subagents, spec.parent);
+        const files = spec.helperFiles;
+        if (files === undefined) {
+          const activation = await subagents.startActivation.call(subagents, dualShapeActivationSpec({ provider, label: spec.label, signal, delivery: "parent" }, activationRequest));
+          return activationHandleOf(activation, subagents, spec.parent);
+        }
+        if (provider !== "spawn" || typeof service("tools")?.guard !== "function")
+          throw new Error("scoped one-shot requires native child and tool-guard support");
+        if (files.current?.() === false)
+          throw new Error("the original helper assignment changed before admission");
+        const childId = randomUUID();
+        const offGuard = adapter.guardTool((exec) => sessionIdOfAgent(exec.agent) === childId ? helperFileRefusal(files, exec.name, exec.arguments) : undefined);
+        let installed = false;
+        const offCreated = onEvent("agent/created", (payload) => {
+          const child = payload?.agent;
+          if (sessionIdOfAgent(child) !== childId)
+            return;
+          const allow = files.write.length > 0 ? ["read", "write", "edit"] : files.read.length > 0 ? ["read"] : [];
+          applyScopedRestriction(child, { allow });
+          installed = true;
+        });
+        try {
+          if (offCreated === undefined)
+            throw new Error("scoped one-shot requires the native agent creation hook");
+          const activation = await subagents.startActivation.call(subagents, dualShapeActivationSpec({ provider, label: spec.label, signal, delivery: "caller", childId }, { ...activationRequest, cwd: files.checkout }));
+          if (!installed) {
+            await releaseActivation(activation);
+            throw new Error("the host did not publish the reserved scoped helper");
+          }
+          const handle = activationHandleOf(activation, subagents, spec.parent);
+          return { ...handle, result: handle.result.finally(offGuard) };
+        } catch (error) {
+          offGuard();
+          throw error;
+        } finally {
+          offCreated?.();
+        }
       }
+      if (spec.helperFiles !== undefined)
+        throw new Error("scoped one-shot requires native child start support");
       if (typeof subagents.start !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagent service exposes neither startActivation() nor start()");
       const run = await subagents.start(provider, {
@@ -3160,6 +3250,20 @@ function createDshAdapter(ctx, config = {}) {
       if (typeof skills.get !== "function")
         throw new Error("mpd-dsh-adapter: the harness skills service exposes no get()");
       return skills.get(skillName, options);
+    },
+    selectedAgentPreset(agent) {
+      const session = agent?.session;
+      if (session === undefined || session === null)
+        return;
+      try {
+        const presets = service("agentPresets");
+        if (typeof presets?.presetForSession !== "function")
+          return;
+        const selected = presets.presetForSession(session);
+        return selected === null || typeof selected === "string" && selected.length > 0 ? selected : undefined;
+      } catch {
+        return;
+      }
     },
     async resolvePreset(presetId) {
       const presets = requireService("agentPresets", 'cannot resolve preset "' + presetId + '"');
@@ -3438,10 +3542,10 @@ function mergedConfig(ctx, config) {
   };
 }
 function registryPath(config, dsh, exec) {
-  return config.registryFile ? resolve3(config.registryFile) : join2(dsh.workspaceRoot(exec), ".mpd", "hashline-files.json");
+  return config.registryFile ? resolve4(config.registryFile) : join2(dsh.workspaceRoot(exec), ".mpd", "hashline-files.json");
 }
 function sessionPath(target, dsh, exec) {
-  return isAbsolute2(target) ? resolve3(target) : resolve3(dsh.workspaceRoot(exec), target);
+  return isAbsolute3(target) ? resolve4(target) : resolve4(dsh.workspaceRoot(exec), target);
 }
 function readRegistry(p) {
   try {
@@ -3452,7 +3556,7 @@ function readRegistry(p) {
   }
 }
 function writeRegistry(p, files) {
-  mkdirSync2(dirname(p), { recursive: true });
+  mkdirSync2(dirname2(p), { recursive: true });
   writeFileSync(p, JSON.stringify([...new Set(files)], null, 2));
 }
 function registered(config, dsh, fp, exec) {
@@ -3568,7 +3672,7 @@ function apply(ctx, config = {}) {
     execute: async (args, exec) => {
       const fp = sessionPath(String(args?.path), dsh, exec);
       const rp = registryPath(cfg, dsh, exec);
-      writeRegistry(rp, readRegistry(rp).filter((x) => resolve3(x) !== fp));
+      writeRegistry(rp, readRegistry(rp).filter((x) => resolve4(x) !== fp));
       return { path: fp };
     }
   });

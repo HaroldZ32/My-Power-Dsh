@@ -110,6 +110,10 @@ export interface TeamContextCheckpoint {
 export interface TeamMemberRecord {
   /** mpd-minted, stable, short id (`M1`, `M2`, …); never reused inside a team. */
   id: string
+  /** Durable roster seat; legacy boards and board-local ids remain readable as written. */
+  projectMemberId?: string
+  /** Explicitly temporary seats do not inherit a fixed account by display name. */
+  projectScope?: "run"
   /** The display name the captain addresses; unique within the team. */
   name: string
   /** One-line role summary shown on the roster. */
@@ -151,6 +155,19 @@ export interface TeamMemberRecord {
   workmateReason?: string
 }
 
+/** A revisioned decision made by the exact assigned project worker. */
+export type ProjectTaskProgress = {
+  /** Original executor session owning this declaration. */
+  readonly by: string
+  /** Writing attempt for which the declaration is valid. */
+  readonly attempt: number
+  /** Board revision after publishing the declaration. */
+  readonly revision: number
+} & (
+  | { /** One executable operation authorized to continue once. */ readonly state: "ready"; /** Exact file verb, or a collection of a named owned consult. */ readonly operation: "read" | "write" | "edit" | "collect"; /** Workspace-relative path or consult id. */ readonly target: string }
+  | { /** No request is authorized while waiting. */ readonly state: "waiting"; /** Bounded reason from the owner. */ readonly reason: string }
+)
+
 /** One task of a team's board, as mpd records it. */
 export interface TeamTaskRecord {
   /** mpd-minted, stable, short id (`T1`, `T2`, …); this is the id the graph draws and tools take. */
@@ -185,6 +202,10 @@ export interface TeamTaskRecord {
   owner?: string
   /** Monotonic per task: the Nth time this task was claimed. Set by `agent_teams_task claim`. */
   attempt?: number
+  /** Exact owner-authored next operation or reason to wait, bound to this task revision. */
+  projectProgress?: ProjectTaskProgress
+  /** A replacement Cellwork split ticket waits for its exact revision and id to be accepted. */
+  resplit?: { readonly cellId: string; readonly revision: number }
   /** Review round, set by a review task's own lifecycle. */
   round?: number
   /** Review verdict (`pass`/`fail`/`changes`), set by a review task's own lifecycle. */
@@ -284,6 +305,8 @@ export interface TeamRecord {
    * record that predates the field is never archive-reaped (see `isLiveTeam`).
    */
   planId?: string
+  /** Staged task ids, in plan order, committed atomically with the board. Absent until publication or on older records. */
+  approvalTaskIds?: string[]
   /** ISO instant the team was explicitly ended; absent while it is live. */
   endedAt?: string
   /**
@@ -645,15 +668,17 @@ export function deleteTeam(workspace: string, teamId: string): boolean {
  * @param teamId - the team to end.
  * @param reason - why it ended; an empty sentence is replaced by the default below, never stored empty.
  * @param now - the instant stamped as `endedAt`.
- * @returns the record as stored and whether THIS call changed it; undefined when no such team exists.
+ * @param eligible - optional guard on the latest live record, used by clean project handover.
+ * @returns the stored record and whether it changed; undefined when missing or ineligible.
  */
-export function endTeamRecord(workspace: string, teamId: string, reason: string, now: Date): { record: TeamRecord; changed: boolean } | undefined {
+export function endTeamRecord(workspace: string, teamId: string, reason: string, now: Date, eligible?: (record: TeamRecord) => boolean): { record: TeamRecord; changed: boolean } | undefined {
   /** The record as it stands, or undefined for an unknown team. */
   const record = readTeam(workspace, teamId)
   if (record === undefined) return undefined
   // A REPEAT IS A REPORTED NO-OP, not a second ending: `endedAt` and `archivedReason` keep the values
   // the first call wrote, so a retry cannot quietly restamp the audit trail with a later clock.
   if (record.endedAt !== undefined) return { record, changed: false }
+  if (eligible?.(record) === false) return undefined
   /** The audit sentence: the caller's own, or the default that says the Lead ended it without one. */
   const archivedReason = reason.trim() === "" ? "ended by the team Lead" : reason.trim()
   /** The terminal record, assembled immutably so the stored one is only ever replaced whole. */
@@ -704,18 +729,17 @@ export interface NewTeamInput {
  * @returns the record as written.
  */
 export function createTeam(workspace: string, input: NewTeamInput, now: Date): TeamRecord {
-  /** The id this team is minted under: the caller's when given, else a fresh timestamp+suffix id. */
-  const teamId = input.teamId ?? newTeamId(now)
-  // F4 BACKSTOP: a second mint that lands on an existing id would OVERWRITE a live team's whole record
-  // (roster, board, verdicts). Refusing loudly is the difference between a silently lost team and a red
-  // gate; with the millisecond+suffix mint above this is unreachable in normal use, which is the point.
-  if (existsSync(teamRecordPath(workspace, teamId))) {
-    throw new Error(`team id "${teamId}" already exists in this workspace — refusing to overwrite a team record`)
-  }
-  /** The record, assembled before it is persisted. */
-  const record: TeamRecord = {
+  /** The new board before any file is written. */
+  const record = draftTeam(input, now)
+  publishTeam(workspace, record)
+  return record
+}
+
+/** Materialize a board in memory so admission can publish its original member and task ids at once. */
+export function draftTeam(input: NewTeamInput, now: Date): TeamRecord {
+  return {
     version: 1,
-    teamId,
+    teamId: input.teamId ?? newTeamId(now),
     name: input.name,
     description: input.description,
     leadSessionId: sessionKey(input.leadSessionId),
@@ -734,13 +758,23 @@ export function createTeam(workspace: string, input: NewTeamInput, now: Date): T
     nextMemberNumber: 1,
     nextTaskNumber: 1,
   }
+}
+
+/** Publish a new board and bind its captain after the record exists on disk. */
+export function publishTeam(workspace: string, record: TeamRecord): void {
+  if (existsSync(teamRecordPath(workspace, record.teamId))) {
+    throw new Error(`team id "${record.teamId}" already exists in this workspace — refusing to overwrite a team record`)
+  }
   writeTeam(workspace, record)
-  bindActiveTeam(workspace, input.leadSessionId, record.teamId)
-  return record
+  bindActiveTeam(workspace, record.leadSessionId, record.teamId)
 }
 
 /** What {@link addTeamMember} needs to append a member. */
 export interface NewMemberInput {
+  /** The durable roster seat that owns this board-local row. */
+  projectMemberId?: string
+  /** Explicitly temporary seats do not inherit a fixed account by display name. */
+  projectScope?: "run"
   /** The display name the captain addresses. */
   name: string
   /** One-line role summary. */
@@ -766,6 +800,7 @@ export function addTeamMember(record: TeamRecord, input: NewMemberInput, now: Da
   /** The appended member, carrying the record's own monotonic id. */
   const member: TeamMemberRecord = {
     id: "M" + record.nextMemberNumber,
+    ...(input.projectScope === "run" ? { projectScope: "run" as const } : input.projectMemberId === undefined ? {} : { projectMemberId: input.projectMemberId }),
     name,
     description: input.description,
     status: "provisioning",
@@ -1162,6 +1197,7 @@ export function casClaimTask(
   /** The task as it stands on disk, or undefined when it is gone. */
   const task = fresh.tasks.find((candidate) => candidate.id === taskId)
   if (task === undefined) return { applied: false, reason: `task ${taskId} is no longer on the board` }
+  if (fresh.phase === "ended") return { applied: false, reason: "the resolved team is no longer active" }
   if (task.revision !== expectedRevision) {
     return { applied: false, reason: `task ${taskId} changed while the pass was in flight (revision ${expectedRevision} -> ${task.revision})` }
   }
@@ -1169,7 +1205,9 @@ export function casClaimTask(
   // The OWNER is deliberately NOT a refusal: a plan may pre-assign one (`create_task owner=…`), and
   // that is a plan-time intent, not a claim. A concurrent CLAIM is still caught by the revision
   // above, because every mpd-side mutation — a claim included — bumps it.
-  return { applied: true, record: updateTeamTask(fresh, taskId, { owner, status: "in_progress" }, now) }
+  /** Drop a stale start on a legacy pending row before giving the new attempt its own clock. */
+  const pending = task.startedAt === undefined ? fresh : updateTeamTask(fresh, taskId, { resetStartedAt: true }, now)
+  return { applied: true, record: updateTeamTask(pending, taskId, { owner, status: "in_progress", attempt: (task.attempt ?? 0) + 1 }, now) }
 }
 
 /**
@@ -1196,12 +1234,12 @@ export function casClaimTask(
  * @param now - the instant to stamp as `updatedAt`.
  * @returns the record to persist, or the refusal with its reason.
  */
-export function casReleaseTask(fresh: TeamRecord, taskId: string, expectedRevision: number | undefined, now: Date): CasTaskOutcome {
+export function casReleaseTask(fresh: TeamRecord, taskId: string, expectedRevision: number | undefined, now: Date): CasTaskOutcome & { staleRevision?: true } {
   /** The task as it stands on disk, or undefined when it is gone. */
   const task = fresh.tasks.find((candidate) => candidate.id === taskId)
   if (task === undefined) return { applied: false, reason: `task ${taskId} is no longer on the board` }
   if (expectedRevision !== undefined && task.revision !== expectedRevision) {
-    return { applied: false, reason: `task ${taskId} changed under you (revision ${expectedRevision} -> ${task.revision}); re-read it and retry` }
+    return { applied: false, staleRevision: true, reason: `task ${taskId} changed under you (revision ${expectedRevision} -> ${task.revision}); re-read it and retry` }
   }
   if (task.status === "completed" || task.status === "failed" || task.status === "cancelled") {
     return { applied: false, reason: `task ${taskId} is already terminal ("${task.status}") and cannot be released` }
@@ -1242,7 +1280,7 @@ export function authorizeRelease(record: TeamRecord, taskId: string, caller: rea
   const isLead = lead || recordNamesLead(record, caller)
   if (task === undefined) return isLead ? undefined : `task ${taskId} is no longer on the board`
   /** Whether any of the caller's own spellings IS the recorded owner, through the ONE comparator. */
-  const isOwner = task.owner !== undefined && task.owner !== "" && caller.some((candidate) => nameMatches(candidate, String(task.owner)))
+  const isOwner = taskOwnerMatches(record, task.owner, caller)
   if (isOwner || isLead) return undefined
   return task.owner === undefined || task.owner === ""
     ? `task ${taskId} has no owner and this caller is not this team's lead`
@@ -1335,7 +1373,7 @@ export function casCloseTask(fresh: TeamRecord, input: {
     return { applied: false, reason: `task ${input.taskId} is already terminal ("${task.status}")` }
   }
   /** Whether any of the caller's own spellings IS the recorded owner. */
-  const isOwner = task.owner !== undefined && input.caller.some((candidate) => nameMatches(candidate, String(task.owner)))
+  const isOwner = taskOwnerMatches(fresh, task.owner, input.caller)
   // THE RECORD'S OWN LEAD (defect D5b, widened by C7-4 F5). `input.lead` is the OFFICIAL membership
   // read, and in a dsh-tui boot that service cannot mount — measured on a live session where the
   // captain's own close answered `... is owned by "Plan Reviewer" and this caller is neither that owner
@@ -1354,6 +1392,19 @@ export function casCloseTask(fresh: TeamRecord, input: {
       reason: task.owner === undefined
         ? `task ${input.taskId} has no owner to close it — claim it first`
         : `task ${input.taskId} is owned by "${String(task.owner)}" and this caller is neither that owner nor this team's lead`,
+    }
+  }
+  if (input.status === "completed") {
+    /** Failed blockers are deliberately absent from this set, preserving OPT-1. */
+    const { blocking } = blockingDependencies(fresh.tasks, task.blockedBy)
+    if (blocking.length > 0) return { applied: false, reason: `task ${task.id} is blocked by ${blocking.join(", ")} and cannot complete` }
+    if (task.kind === "review") {
+      /** Legacy stranded rows without a recorded reviewer activation retain the captain's close path. */
+      const assigned = fresh.members.some((member) => member.executorRef && taskOwnerMatches(fresh, task.owner, [member.id]))
+      /** A writer cannot declare success on a review of its own explicit upstream work. */
+      const ownWork = fresh.tasks.some((row) => task.blockedBy.includes(row.id) && (row.kind === "work" || row.kind === "repair" || row.kind === "integration") &&
+        taskOwnerMatches(fresh, row.owner, input.caller))
+      if ((!isOwner && assigned) || ownWork) return { applied: false, reason: `task ${task.id} must be completed by its assigned independent reviewer` }
     }
   }
   /** The patched record; `attempt` is deliberately absent from the patch, so it is carried unchanged. */
@@ -1404,6 +1455,16 @@ function nameMatches(a: string, b: string): boolean {
   /** The first spelling's normalised key. */
   const left = key(a)
   return left !== "" && left === key(b)
+}
+
+/** Compare a recorded task assignment against the caller's authenticated board spellings. */
+export function taskOwnerMatches(record: TeamRecord, owner: string | undefined, caller: readonly string[]): boolean {
+  if (owner === undefined || owner === "") return false
+  /** An older row can name its owner by display name, executor, or durable member identifier. */
+  const member = record.members.find((row) => row.id === owner || row.projectMemberId === owner) ?? memberNamedBy(record, [owner])
+  /** Exact ids and the existing roster normalization share one comparison across task verbs. */
+  const names = member === undefined ? [owner] : [member.id, member.projectMemberId ?? "", member.name, member.executorRef ?? ""]
+  return caller.some((candidate) => candidate !== "" && names.some((name) => name !== "" && nameMatches(candidate, name)))
 }
 
 /**

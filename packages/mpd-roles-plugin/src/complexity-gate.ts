@@ -456,6 +456,8 @@ export interface ComplexityGateInput {
    * producer than the one that was there. Passing `model` is what makes `strength: "ignore"` reachable.
    */
   source?: AdmissionSource
+  /** The step observed a direct commitment to repair the whole preceding set of work. */
+  repairFollowUp?: boolean
 }
 
 /** What one evaluation answered: whether it stages, which signals fired, and WHO admitted the work. */
@@ -526,6 +528,7 @@ export function evaluateComplexityGate(
   if (input.activeBoulder === true) signals.push("D")
   if (cjkCharCount(source) >= thresholds.cjkChars && actionVerbs >= thresholds.cjkVerbs) signals.push("E")
   if (thresholds.workspaceScale && input.workspaceScale === true) signals.push("F")
+  if (input.repairFollowUp === true) signals.push("whole-scope repair follow-up")
   // THE ADMISSION RUNG, decided from the SAME facts this evaluation just produced (the flag the caller
   // consumed and the signals above), so the two can never disagree about what the text carried.
   /** Who admitted this work, through the ladder. */
@@ -983,7 +986,7 @@ export function isConsultToolName(name: unknown): boolean {
 }
 
 /**
- * One session's persisted re-team record — D1 rule 5's four fields, exactly.
+ * One session's persisted re-team record. Older records may omit the follow-up receipt.
  *
  * It is ALSO the in-memory FIRE RECORD rule 4 asks for: `lastFiredAt` is that record's `firedAt`,
  * and `planId` / `teamIdAtFire` are its other two fields. The record lives in memory for the life of
@@ -999,6 +1002,8 @@ export interface ReTeamState {
   planId: string
   /** The team the settlement is bound to once the staged plan was seen approved; empty otherwise. */
   teamIdAtFire: string
+  /** A repair follow-up has already been routed for the current work. Cleared when its team ends. */
+  repairFollowUpRouted?: true
 }
 
 /**
@@ -1060,6 +1065,7 @@ export function parseReTeamState(raw: string): ReTeamState | undefined {
     }
     if (typeof fields.planId === "string") state.planId = fields.planId
     if (typeof fields.teamIdAtFire === "string") state.teamIdAtFire = fields.teamIdAtFire
+    if (fields.repairFollowUpRouted === true) state.repairFollowUpRouted = true
     return state
   } catch {
     return undefined
@@ -1106,7 +1112,7 @@ export async function readReTeamState(
  * so a read-only workspace degrades to a per-process counter instead of breaking the step.
  * @param workspace - the session workspace the `.mpd` root resolves from.
  * @param sessionId - the session key the state file is named after.
- * @param state - the record to store; the four fields are written as-is.
+ * @param state - the complete record to store, including any follow-up receipt.
  * @param opts - the injectable file writer.
  * @returns whether the file was written.
  */
@@ -1265,6 +1271,8 @@ export function gatePlanShell(input: {
   planPath?: string
   /** The mid-session trigger's volume, when the re-team gate (not the session-start row) stages. */
   reteam?: { count: number; threshold: number }
+  /** Number of outstanding public consults when dispatch deferred an overflow request. */
+  overlappingConsults?: number
 }): GatePlanShell {
   /** The goal text as given, coerced so a non-string can never throw here. */
   const goal = String(input.goal ?? "")
@@ -1274,22 +1282,26 @@ export function gatePlanShell(input: {
   const excerpt = collapseWhitespace(goal).slice(0, GATE_PLAN_EXCERPT_MAX)
   /** The fired signals as a readable list, or the generic wording when none is named. */
   const matched = input.signals.length === 0 ? "complexity signals" : "complexity signals " + input.signals.join("/")
-  /** The first description sentence: the session-start row's signals, or the re-team volume. */
-  const lead = input.reteam === undefined
-    ? "Staged mechanically by the mpd session-start complexity gate on " + matched + "."
-    : "Staged mechanically by the mpd re-team gate: " + String(input.reteam.count) + " completed consult calls since the last team fire"
-      + " (threshold " + String(input.reteam.threshold) + ") and no live team."
-  /** The plan name: the goal's first line for the session-start row, the fixed re-team name otherwise. */
-  const name = input.reteam === undefined
-    ? (firstLine === "" ? GATE_PLAN_NAME_FALLBACK : firstLine.slice(0, GATE_PLAN_NAME_MAX))
-    : RETEAM_PLAN_NAME.slice(0, GATE_PLAN_NAME_MAX)
+  /** The input that triggered routing: overlap, completed volume, or the user's goal. */
+  const lead = input.overlappingConsults !== undefined
+    ? `Staged mechanically with ${input.overlappingConsults} outstanding consults and no live team.`
+    : input.reteam === undefined
+      ? "Staged mechanically by the mpd session-start complexity gate on " + matched + "."
+      : "Staged mechanically by the mpd re-team gate: " + String(input.reteam.count) + " completed consult calls since the last team fire"
+        + " (threshold " + String(input.reteam.threshold) + ") and no live team."
+  /** Volume triggers stage a coordination shell. A human turn gives its first line. */
+  const name = input.reteam !== undefined || input.overlappingConsults !== undefined
+    ? RETEAM_PLAN_NAME.slice(0, GATE_PLAN_NAME_MAX)
+    : (firstLine === "" ? GATE_PLAN_NAME_FALLBACK : firstLine.slice(0, GATE_PLAN_NAME_MAX))
   return {
     name,
     description: lead
-      + "\nThis is a SHELL: 0 members and 0 tasks, because at the first pre-step there is no decomposition yet."
-      + (input.reteam === undefined
-        ? "\nGoal excerpt: " + (excerpt === "" ? "(empty)" : excerpt)
-        : "\nNo user turn was judged: the re-team trigger counts COMPLETED consults, not prompt text.")
+      + "\nThis is a SHELL: 0 members and 0 tasks."
+      + (input.overlappingConsults !== undefined
+        ? "\nSet the team's objective from the current human request before adding members and tasks."
+        : input.reteam === undefined
+          ? "\nGoal excerpt: " + (excerpt === "" ? "(empty)" : excerpt)
+          : "\nNo user turn was judged: the re-team trigger counts COMPLETED consults, not prompt text.")
       + "\nExtend it with `" + STAGING_TOOL_NAME + " {action:\"" + PLAN_EXTEND_ACTIONS[0] + "\"}` (each member's prompt comes from `mpd_role_persona`)"
       + " and `" + STAGING_TOOL_NAME + " {action:\"" + PLAN_EXTEND_ACTIONS[1] + "\"}`,"
       + " then approve it with `" + STAGING_TOOL_NAME + " {action:\"approve\"}` — approval is what spawns the members."
@@ -1513,11 +1525,12 @@ export function consumeFlagFromMessage(message: unknown, source: string): unknow
  * be on the list; one with NO preset at all (the headless direct driver, legacy installs) deploys
  * the bundle itself and stays covered.
  *
- * @param agent - the live agent handle whose session header decides the scope.
+ * @param agent - the live agent handle whose session header decides the delegation rank.
  * @param presets - the covered preset names; defaults to {@link DEFAULT_GATE_PRESETS}.
+ * @param selectedPreset - the committed selection, when the host can read its session projection.
  * @returns whether this agent's session carries a gate.
  */
-export function sessionQualifies(agent: unknown, presets: readonly string[] = DEFAULT_GATE_PRESETS): boolean {
+export function sessionQualifies(agent: unknown, presets: readonly string[] = DEFAULT_GATE_PRESETS, selectedPreset?: string | null): boolean {
   // THE CAPTAIN/CHILD HALF COMPOSES THE ONE CLASSIFICATION: `headerless` fails closed, a child is a
   // recorded subagent origin or a delegation depth of 1+, and everything else (a seeded fork included)
   // is the top-level session the gate is meant to arm on.
@@ -1525,8 +1538,8 @@ export function sessionQualifies(agent: unknown, presets: readonly string[] = DE
   /** The agent's session header, which carries the preset. */
   const header = (agent as { session?: { header?: Record<string, unknown> } } | undefined)?.session?.header
   if (header === undefined || header === null) return false
-  /** The session's preset name; absent OR explicitly null means a preset-less session, which still qualifies. */
-  const preset = header.agentPreset
+  /** A recorded null is preset-less. Only an unavailable selection read falls back to the creation header. */
+  const preset = selectedPreset === undefined ? header.agentPreset : selectedPreset
   if (preset === undefined || preset === null) return true
   return presets.includes(String(preset))
 }

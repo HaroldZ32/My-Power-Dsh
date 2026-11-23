@@ -1752,8 +1752,10 @@ export interface TeamFeedReactLike {
  *   this composition has no feed to offer.
  * @param onNotify - called after each notification, for a surface whose source read is not per-render;
  *   omitted by a per-render reader, where the state bump below already carries the re-read.
+ * @param sessionId - the session exposed by the mounted surface.
+ * @param cwd - the project directory of that session, when the host publishes it.
  */
-export function useTeamFeed(React: TeamFeedReactLike, feed: TeamFeedAccessor | undefined, onNotify?: () => void): void {
+export function useTeamFeed(React: TeamFeedReactLike, feed: TeamFeedAccessor | undefined, onNotify?: () => void, sessionId?: string, cwd?: string): void {
   /** The state cell whose UPDATE is the whole mechanism: nothing reads its value. */
   const tick = React.useState(0)
   /** The cell's setter, proved callable before the effect is built. */
@@ -1766,7 +1768,7 @@ export function useTeamFeed(React: TeamFeedReactLike, feed: TeamFeedAccessor | u
   /** The live subscription function for this render; undefined before the row binds or after a throw. */
   let subscribe: TeamFeedSubscribe | undefined
   try {
-    subscribe = feed === undefined ? undefined : feed()
+    subscribe = feed?.(sessionId, cwd)
   } catch {
     subscribe = undefined
   }

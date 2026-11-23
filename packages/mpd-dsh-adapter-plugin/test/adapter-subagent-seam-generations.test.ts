@@ -268,6 +268,23 @@ describe("the native team backend raises a member on the 0.2.1 seam", () => {
     expect(request.agentOptions).toEqual(agentOptions)
   })
 
+  test("the local reservation is published before startActivation admits its prompt", async () => {
+    /** The modern local service supports a reserved child identity. */
+    const h = harness({ generation: "activation", specShape: "flat" })
+    /** The handle published by the adapter before the host can execute the first step. */
+    let opening: string | undefined
+    h.subagents.prompt = (): void => {}
+    h.subagents.startActivation = (spec: { childId?: string; parent?: unknown }): Promise<{ childId?: string }> => {
+      expect(opening).toMatch(/^[0-9a-f-]{36}$/)
+      expect(spec.childId).toBe(opening)
+      expect(spec.parent).toBe(h.lead)
+      return Promise.resolve({ childId: spec.childId })
+    }
+    /** The host receipt and pre-start publication must address the very same child. */
+    const started = await h.dsh.teamExecutor().spawn(h.lead, { ...REQUEST, onOpening: (handle) => { opening = handle } })
+    expect(started.handle).toBe(opening ?? "")
+  })
+
   test("a backend that reports NO child id is refused rather than recorded as a member", async () => {
     /** A 0.2.1 service whose start resolves without an id — a backend contradiction. */
     const h = harness({ generation: "activation", childId: "" })

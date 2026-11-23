@@ -212,13 +212,12 @@ describe("a traversal-shaped id cannot escape .mpd/team", () => {
     // staging FILE (`stagePlan` → `readPlan` → `archivePlan` → `archivePathFor`), so a planted plan
     // whose `planId` carries `..` segments made the archive write `<workspace>/../../…/plan.json` —
     // OUTSIDE the workspace, with no throw. The id is now reduced and refused like the other two.
-    /** Where the planted id would land if the join were still taken verbatim. */
-    const escapeTarget = join(tmpdir(), "mpd-t5-planid-escape")
-    rmSync(escapeTarget, { recursive: true, force: true })
+    /** A target outside the team store but inside this test's unique sandbox. */
+    const escapeTarget = join(sandbox, "mpd-t5-planid-escape")
     mkdirSync(join(teamRoot(sandbox), "staging"), { recursive: true })
-    // FIVE `..` climb from `<ws>/.mpd/team/archive` to the filesystem root, then down into /tmp.
+    // Three `..` climb from `<ws>/.mpd/team/archive` to the sandbox root.
     writeFileSync(join(teamRoot(sandbox), "staging", "sess-1.json"), JSON.stringify({
-      version: 1, planId: "../../../../../" + escapeTarget.replace(/^\//, ""), sessionId: "sess-1",
+      version: 1, planId: "../../../mpd-t5-planid-escape", sessionId: "sess-1",
       name: "planted", description: "outside the root", approval: "required", members: [], tasks: [], stagedAt: NOW.toISOString(),
     }))
     // BOTH sites are pinned: the path builder itself, and the reachable `stagePlan` path through it.

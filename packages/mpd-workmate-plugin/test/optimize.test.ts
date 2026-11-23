@@ -11,7 +11,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import { MERGE_THRESHOLD, apply, optimizeWorkmates, planWorkmateMerges } from "../src/index.ts"
+import { MEMORY_CAP, MERGE_THRESHOLD, apply, optimizeWorkmates, planWorkmateMerges } from "../src/index.ts"
 
 /** The sandbox this file's cases run inside, replaced per test. */
 let sb: { home: string; cwd: string; restore: () => void }
@@ -239,6 +239,21 @@ describe("mpd_workmate_optimize — the merge itself", () => {
     // THE PATH CANNOT PURGE: the optimize surface has no purge parameter at all, and the archived bytes
     // are outside the library, so `mpd_workmate_delete` cannot reach them either.
     expect(Object.keys(optimizeWorkmates({ confirm: true }))).toEqual(["plan", "applied", "skipped"])
+  })
+
+  test("memory eviction keeps the newest dated entry even when it belongs to the survivor", () => {
+    /** Each entry fits alone, but the merged entries exceed the memory cap. */
+    const detail = "x".repeat(Math.floor(MEMORY_CAP * 0.6))
+    /** Explicit dates make the age independent of the merge direction. */
+    const newer = `## 2026-11-22T12:00:00.000Z — newest target entry\n${detail}`
+    /** The older source record remains available in the archive. */
+    const older = `## 2026-11-21T12:00:00.000Z — older source entry\n${detail}`
+    seedInstance("oracle-1", { uses: 3, memory: newer })
+    seedInstance("oracle-2", { uses: 2, memory: older })
+    /** Apply the merge with the older instance as its explicit source. */
+    const merged = optimizeWorkmates({ confirm: true, pairs: [{ from: "oracle-2", into: "oracle-1" }] })
+    expect(merged.applied).toHaveLength(1)
+    expect(readFileSync(join(root(), "oracle-1", "memory.md"), "utf8").trim()).toBe(newer)
   })
 
   test("(e2) the merge PRESERVES the evolved record: memory deduped, the longer persona, uses summed, history kept", () => {

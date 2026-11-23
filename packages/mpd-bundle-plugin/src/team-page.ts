@@ -59,6 +59,8 @@
     unread?: unknown[]
     /** Whether the activity rows are a replay of incidents nobody acknowledged yet. */
     replay?: boolean
+    /** Root-specific read failures can coexist with usable records from other roots. */
+    errors?: string[]
     /** The reader key the route answered for. */
     reader?: unknown
   }
@@ -97,6 +99,8 @@
     teamId: unknown
     /** Epoch milliseconds the incident was recorded at (also the acknowledge watermark). */
     at: number
+    /** The incident’s owning workspace, supplied by the route. */
+    workspace: string
     /** The rendered cause sentence the watchdog stored. */
     cause: unknown
     /** How long the watched condition lasted, or null when the incident carries no duration. */
@@ -252,10 +256,10 @@
   const listeners = new Set<() => void>();
   /** The interval handle of the running poller, or null while it is stopped. */
   let pollTimer: ReturnType<typeof setInterval> | null = null;
-  /** Whether a tick of the poller is currently awaiting the state route. */
-  let pollInFlight = false;
   /** Whether a watchdog refresh (tick or manual) is currently in flight. */
   let watchdogInFlight = false;
+  /** A forced post-ack read or a stopped poller supersedes earlier requests. */
+  let watchdogRequest = 0;
 
   /** Replace the store with `patch` merged over it, then wake every subscriber. */
   function publish(patch: Partial<WatchdogStore>): void {
@@ -295,41 +299,43 @@
   }
 
   /** One poll of the watchdog state route. Never throws into a render. */
-  async function refreshWatchdog(): Promise<WatchdogPayload | null> {
-    if (watchdogInFlight) return store.payload;
+  async function refreshWatchdog(force: boolean = false): Promise<WatchdogPayload | null> {
+    if (watchdogInFlight && !force) return store.payload;
+    /** The generation this request may publish into. */
+    const request = ++watchdogRequest;
     watchdogInFlight = true;
     try {
       // The route answers this page's payload shape, and the `ok` marker in the condition below is
       // the runtime check; the cast is how an untyped HTTP body enters the typed store.
       /** The route's answer, read as a maybe-payload so its `ok` marker can be probed. */
       const payload = await fetchJson(WATCHDOG_STATE_URL) as WatchdogPayload | null;
+      if (request !== watchdogRequest) return store.payload;
       if (payload !== null && typeof payload === "object" && payload.ok === true) {
         publish({ payload, error: undefined });
         return payload;
       }
       publish({ payload: null, error: new Error("the watchdog route answered a non-ok payload") });
     } catch (error) {
-      publish({ payload: null, error });
+      if (request === watchdogRequest) publish({ payload: null, error });
     } finally {
-      watchdogInFlight = false;
+      if (request === watchdogRequest) watchdogInFlight = false;
     }
     return store.payload;
   }
 
   /** Acknowledge the replay up to ONE incident timestamp through the ack route. */
-  async function acknowledgeIncident(incidentTs: number): Promise<boolean> {
+  async function acknowledgeIncident(incidentTs: number, workspace?: string): Promise<boolean> {
     try {
-      // Widened to null/undefined because the checks below are the original defensive ones.
-      /** The acknowledgement request's answer. */
-      const response: Response | null | undefined = await fetch(WATCHDOG_ACK_URL, {
+      /** The route's explicit acknowledgement receipt. */
+      const result = await fetchJson(WATCHDOG_ACK_URL, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ reader: WATCHDOG_WEB_READER, upTo: incidentTs })
+        body: JSON.stringify({ reader: WATCHDOG_WEB_READER, incidentTs, workspace })
       });
-      if (response === undefined || response === null || response.ok !== true) {
-        throw new Error("HTTP " + String(response === undefined || response === null ? "?" : response.status));
+      if (typeof result !== "object" || result === null || !("ok" in result) || result.ok !== true) {
+        throw new Error("the watchdog acknowledge route returned no receipt");
       }
-      await refreshWatchdog();
+      await refreshWatchdog(true);
       return true;
     } catch (error) {
       publish({ error });
@@ -342,13 +348,7 @@
     if (pollTimer !== null) return;
     void refreshWatchdog();
     try {
-      pollTimer = setInterval(() => {
-        if (pollInFlight) return;
-        pollInFlight = true;
-        void refreshWatchdog().finally(() => {
-          pollInFlight = false;
-        });
-      }, WATCHDOG_POLL_MS);
+      pollTimer = setInterval(() => { void refreshWatchdog(); }, WATCHDOG_POLL_MS);
     } catch {
       pollTimer = null;
     }
@@ -356,6 +356,8 @@
 
   /** Stop the poller, if one is running. */
   function stopPolling(): void {
+    watchdogRequest += 1;
+    watchdogInFlight = false;
     if (pollTimer === null) return;
     try {
       clearInterval(pollTimer);
@@ -418,17 +420,21 @@
     /** The panel's children, appended in render order. */
     const rows: unknown[] = [];
     rows.push(react.createElement("div", { key: "subtitle", style: MUTED_STYLE }, t("panel.subtitle")));
-    if (state.error !== undefined && payload === null) {
+    if (state.error !== undefined) {
       // The store keeps whatever was thrown, so its message is read through a structural cast
       // (the null/undefined guards in front of the cast are the original ones, kept as they were).
       rows.push(react.createElement("div", { key: "error", "data-watchdog-error": true },
         t("panel.error") + ": " + String((state.error !== null && state.error !== undefined && (state.error as { message?: unknown }).message !== undefined) ? (state.error as { message?: unknown }).message : state.error)));
-    } else if (payload === null) {
+    }
+    if (payload === null && state.error === undefined) {
       rows.push(react.createElement("div", { key: "loading", style: MUTED_STYLE }, t("panel.loading")));
-    } else {
+    } else if (payload !== null) {
+      /** A partial response can still draw its successful roots and report why others are missing. */
+      const failures = payload.errors ?? [];
+      if (failures.length > 0) rows.push(react.createElement("div", { key: "root-errors", "data-watchdog-error": true }, t("panel.error")));
       /** The banner to render, or null when the route reported no stuck team. */
       const banner = payload.banner !== null && payload.banner !== undefined ? payload.banner : null;
-      rows.push(react.createElement("div", {
+      if (banner !== null || failures.length === 0) rows.push(react.createElement("div", {
         key: "banner",
         style: BANNER_STYLE,
         "data-watchdog-banner": banner === null ? "none" : String(banner.kind)
@@ -457,7 +463,7 @@
               key: "ack",
               type: "button",
               "data-watchdog-ack": String(record.id),
-              onClick: (): void => { void acknowledgeIncident(record.at); }
+              onClick: (): void => { void acknowledgeIncident(record.at, record.workspace); }
             }, t("panel.ack"))));
         }
       }
@@ -561,11 +567,10 @@
   /** The test seam that runs one poll through the real route code. */
   exports.__watchdogPoll = () => refreshWatchdog();
   /** The test seam that acknowledges one incident timestamp. */
-  exports.__watchdogAck = (incidentTs: number) => acknowledgeIncident(incidentTs);
+  exports.__watchdogAck = (incidentTs: number, workspace?: string) => acknowledgeIncident(incidentTs, workspace);
   /** The test seam that returns the module to its just-loaded state (poller stopped, store empty). */
   exports.__resetTeamPageForTests = (): void => {
     stopPolling();
-    pollInFlight = false;
     watchdogInFlight = false;
     store = { payload: null, error: undefined };
     listeners.clear();

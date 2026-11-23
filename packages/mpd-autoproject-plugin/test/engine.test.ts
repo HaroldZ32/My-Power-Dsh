@@ -19,10 +19,12 @@
 // arms exercise the shipped code; the roster and verify tools are seam doubles because their bodies live
 // in other rows.
 import { test, expect } from "bun:test"
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs"
-import { dirname, join } from "node:path"
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { basename, dirname, join } from "node:path"
 import { tmpdir } from "node:os"
 import { apply } from "../src/index.ts"
+import { apply as applyCellwork } from "../../mpd-cellwork-plugin/src/index.ts"
+import { apply as applyGoal, anchorsPath, readAnchors } from "../../mpd-goal-plugin/src/index.ts"
 import { ESCALATION_DEFAULTS, evaluateEscalation, evidenceAttribution, recommendationStatus, recommendationVerdict, resolveEscalationMode, topLevelScope } from "../src/escalation.ts"
 // The HARNESS'S OWN output validator (vendored): the DECLARED output schema is checked exactly as the
 // harness checks a tool result at runtime, so a schema/result drift is a red arm.
@@ -81,6 +83,8 @@ interface HarnessOptions {
   unconfiguredRole?: string
   /** What the PLAN REVIEWER declares: the plan gate's own verdict. */
   planReviewVerdict?: "VERDICT: PASS" | "VERDICT: FAIL"
+  /** Observes dispatch inside the internal bounded consult scope when the roles service is mounted. */
+  consults?: { runBounded: <T>(dispatch: () => T) => T }
   /** The LIVE `autoproject.slots` value this arm sets, or undefined to leave the live layer silent. */
   slots?: number
   /** The LIVE `autoproject.slotBoundMs` value this arm sets, or undefined for the shipped default. */
@@ -106,13 +110,17 @@ interface Harness {
   /** Every `executeTool` call the engine made, in call order. */
   calls: ExecutedCall[]
   /** The one live agent, whose session cwd IS the sandbox workspace. */
-  agent: { session: { header: { cwd: string } } }
+  agent: { id: string; session: { id: string; header: { cwd: string } } }
   /** The sandbox workspace root. */
   workspace: string
   /** The objectives the goal bridge anchored, in call order. */
   goalAnchors: string[]
   /** The outcome words the goal bridge was asked to record, in call order. */
   goalFinishes: string[]
+  /** Dispatch a tool through the same registry used for nested calls. */
+  execute: (input: { name: string; arguments: Record<string, unknown>; agent: unknown }) => Promise<unknown>
+  /** Mandate artifacts observed before the registered cellwork tool executes. */
+  handoffInputs: Array<{ mandate: string; artifactPath: unknown }>
   /** The highest number of roster consults in flight at once, which is what the slot cap bounds. */
   peakInFlight: () => number
 }
@@ -145,7 +153,11 @@ function makeHarness(options: HarnessOptions = {}): Harness {
   /** The goal finishes the fake bridge received. */
   const goalFinishes: string[] = []
   /** The one live agent; its session cwd is the workspace the adapter resolves. */
-  const agent = { session: { header: { cwd: workspace } } }
+  const agent = { id: "captain", session: { id: "captain", header: { cwd: workspace } } }
+  /** The goal state owned by the host tool fixture. */
+  let goal: { id: string; revision: number; objective: string; phase: string } | undefined
+  /** Inputs and artifacts seen at the actual hand-off boundary. */
+  const handoffInputs: Harness["handoffInputs"] = []
   /** The criteria the planner reports; one criterion per entry. */
   const criteria = options.criteria ?? ["criterion one"]
   /** Roster consults currently in flight, and the high-water mark this arm asserts on. */
@@ -240,7 +252,21 @@ function makeHarness(options: HarnessOptions = {}): Harness {
   const seam = new Map<string, SeamTool>()
   seam.set("mpd_role_spawn", { execute: (args: any) => roleReport(args) })
   seam.set("mpd_verify_open", { execute: () => ({ loopId: LOOP_ID, writer: { kind: "delegate" }, verifier: { id: "unbound" }, scope: [], expiresAt: new Date().toISOString() }) })
-  if (options.cellwork === true) seam.set("cellwork_open", { execute: () => ({ cellId: "cell-test" }) })
+  if (options.goal === true) {
+    seam.set("get_goal", { execute: () => ({ goal: goal ?? null }) })
+    seam.set("create_goal", { execute: (args: { objective: string }) => {
+      if (goal !== undefined && goal.phase !== "complete") throw new Error("an unfinished goal is already current")
+      goalAnchors.push(args.objective)
+      goal = { id: goalAnchors.length === 1 ? "goal-test" : "goal-" + String(goalAnchors.length), revision: 1, objective: args.objective, phase: "active" }
+      return { goal }
+    } })
+    seam.set("update_goal", { execute: (args: { goal_id: string; revision: number; action: string }) => {
+      if (goal?.id !== args.goal_id || goal.revision !== args.revision) throw new Error("stale goal transition")
+      goalFinishes.push(args.action)
+      goal = { ...goal, phase: args.action, revision: goal.revision + 1 }
+      return { goal }
+    } })
+  }
   // THE SUPERVISOR'S LIVENESS READ (CR r1): the engine defers its backstop bound while this reports a
   // running consult — a child the roster's deadman is still supervising, e.g. an OPEN bash call it
   // exempts with no age bound. A run with no live supervision reads as an empty registry.
@@ -290,20 +316,24 @@ function makeHarness(options: HarnessOptions = {}): Harness {
         /** The package's own registered tool. */
         const registered = tools.find((tool) => tool.name === name)
         if (registered === undefined) return { isError: true, error: { message: "unknown tool " + name } }
-        return { value: await registered.execute(input?.arguments, { agent: input?.agent }) }
+        if (name === "cellwork_open" && registered.parameters !== undefined) {
+          validateJsonSchemaValue(registered.parameters, input.arguments)
+          /** Arguments narrowed by the registered schema. */
+          const { mandate } = input.arguments as { mandate?: string }
+          if (mandate !== undefined) {
+            /** The workspace artifact required by the registered receiver. */
+            const file = join(workspace, ".mpd", "autoproject", mandate, "escalation.json")
+            handoffInputs.push({ mandate, artifactPath: existsSync(file) ? JSON.parse(readFileSync(file, "utf8")).handoff.path : null })
+          }
+        }
+        /** The actual value returned by the registered tool. */
+        const value: unknown = await registered.execute(input?.arguments, { agent: input?.agent })
+        if (name === "cellwork_open" && registered.output !== undefined) validateJsonSchemaValue(registered.output.schema, value)
+        return { value }
       } catch (error) {
         return { isError: true, error: { message: error instanceof Error ? error.message : String(error) } }
       }
     },
-  }
-  /** The fake goal bridge: it records both anchor and finish, which the escalation arm asserts on. */
-  const goalService = {
-    /** Whether this arm's run holds a durable goal at all. */
-    autoAnchor: (): boolean => options.goal === true,
-    /** Record one anchor and answer the same goal id every time. */
-    anchor: async (_exec: unknown, input: { objective: string }): Promise<{ ok: boolean; created: boolean; goal: { id: string } }> => { goalAnchors.push(input.objective); return { ok: true, created: true, goal: { id: "goal-test" } } },
-    /** Record one finish request; the engine must never send one for an escalated run. */
-    finish: async (_exec: unknown, input: { outcome: string }): Promise<{ ok: boolean; outcome: string }> => { goalFinishes.push(input.outcome); return { ok: true, outcome: input.outcome } },
   }
   /** The services the adapter resolves by name. `subagents` THROWS on purpose: no child may use it. */
   const services: Record<string, unknown> = {
@@ -315,10 +345,10 @@ function makeHarness(options: HarnessOptions = {}): Harness {
         get: (key: string): unknown => (key === "autoproject.slots" ? options.slots : key === "autoproject.slotBoundMs" ? options.slotBoundMs : options.liveConfig?.[key])
       }
     }),
+    ...(options.consults === undefined ? {} : { mpdConsults: options.consults }),
     tools: toolsService,
     agents: { list: (): unknown[] => [agent] },
     commands: { register: (): (() => void) => () => {} },
-    mpdGoal: goalService,
     subagents: {
       start: (): never => { throw new Error("the fake subagent seam must never be reached: every child is a roster consult") },
       startActivation: (): never => { throw new Error("the fake subagent seam must never be reached: every child is a roster consult") },
@@ -334,10 +364,14 @@ function makeHarness(options: HarnessOptions = {}): Harness {
     effect(fn: () => unknown): void { fn() },
     /** Resolve one of the services the adapter asks for, from the table above. */
     get(service: string): unknown { return services[service] },
+    /** Expose row-owned services through the same lookup used by nested tools. */
+    provide(service: string, value: unknown): void { services[service] = value },
     /** Subscribe a listener; these arms install none, so the disposer is a no-op. */
     on(_event: string): () => void { return () => {} },
   }
-  return { ctx, tools, calls, agent, workspace, goalAnchors, goalFinishes, peakInFlight: () => peakInFlight }
+  if (options.cellwork === true) applyCellwork(ctx)
+  if (options.goal === true) applyGoal({ ...ctx, tools: toolsService })
+  return { ctx, tools, calls, agent, workspace, goalAnchors, goalFinishes, handoffInputs, execute: toolsService.execute, peakInFlight: () => peakInFlight }
 }
 
 /**
@@ -391,6 +425,57 @@ test("the run routes EVERY child through mpd_role_spawn and completes through th
   expect(ledger).toContain("quality-goal verification")
   expect(ledger).toContain('"lane":"verification","verdict":"approve"')
 })
+
+for (const fault of ["none", "write refusal", "semantic refusal", "wrong work id", "transport throw"] as const) {
+  test.skipIf(fault === "write refusal" && process.getuid?.() === 0)("boulder finalization: " + fault, async () => {
+    /** Each arm runs the real Boulder tool and the real goal bridge in a disposable workspace. */
+    const h = makeHarness({ recordPass: true, goal: true })
+    try {
+      /** The same tool-registry seam used for the package's nested calls. */
+      const registry = h.ctx.tools as { execute: Harness["execute"] }
+      /** The real registered tools are called through this delegate. */
+      const execute = registry.execute.bind(registry)
+      /** The active ledger written before the terminal call. */
+      const ledgerPath = join(h.workspace, ".mpd", "boulder.json")
+      /** Fail one attempt so the exact same Boulder work can be retried afterwards. */
+      let injectFault = fault !== "none"
+      registry.execute = async (input) => {
+        if (input.name !== "mpd_boulder_complete" || !injectFault) return execute(input)
+        injectFault = false
+        if (fault === "transport throw") throw new Error("completion transport disconnected")
+        if (fault === "semantic refusal") return { value: { ok: false, error: "terminal write refused" } }
+        if (fault === "wrong work id") return { value: { workId: "other-work", status: "completed" } }
+        chmodSync(ledgerPath, 0o400)
+        try { return await execute(input) } finally { chmodSync(ledgerPath, 0o600) }
+      }
+      apply(h.ctx, rowConfig(h.workspace))
+      /** The observable result of the original run. */
+      const raw = await h.execute({ name: "mpd_autoproject", arguments: { objective: "finish only after the Boulder ledger commits", plan: true }, agent: h.agent })
+      /** Reject a transport failure before looking at the returned run fields. */
+      const value = (raw as { value?: { status: string; stateFile: string; finalReport: string } }).value
+      expect(value?.status).toBe(fault === "none" ? "complete" : "boulder-pending")
+      if (value === undefined) throw new Error("the registry did not return a run value")
+      /** The reported state path and diagnostic come from the same completion attempt. */
+      const { stateFile, finalReport } = value
+      /** The run journal tracks the exact Boulder work id and run status. */
+      const state = JSON.parse(readFileSync(stateFile, "utf8")) as { status: string; boulderWorkId: string }
+      /** The actual on-disk ledger must precede the run's terminal claim. */
+      const ledger = JSON.parse(readFileSync(ledgerPath, "utf8")) as { works: Record<string, { status: string }> }
+      expect(state.status).toBe(fault === "none" ? "complete" : "boulder-pending")
+      expect(ledger.works[state.boulderWorkId]?.status).toBe(fault === "none" ? "completed" : "active")
+      expect(h.goalFinishes).toEqual(fault === "none" ? ["complete"] : [])
+      if (fault !== "none") expect(finalReport).toContain(state.boulderWorkId)
+      /** The normal public retry addresses the existing ledger work, retaining its completion instant. */
+      const retry = { name: "mpd_boulder_complete", arguments: { workId: state.boulderWorkId }, agent: h.agent }
+      /** The first successful acknowledgement, whether this call completes the row or replays it. */
+      const completed = await h.execute(retry)
+      expect(completed).toMatchObject({ value: { workId: state.boulderWorkId, status: "completed" } })
+      expect(await h.execute(retry)).toEqual(completed)
+    } finally {
+      rmSync(h.workspace, { recursive: true, force: true })
+    }
+  })
+}
 
 test("a run can NOT report complete when the verifier claims PASS but no record was written", async () => {
   // The child SAYS PASS and writes nothing: the exact second-verdict shape the wave deletes.
@@ -567,8 +652,97 @@ test("escalation: mode=auto hands off through cellwork_open when that tool exist
   expect(res.status).toBe("escalated")
   // The programmatic route is the one that was taken, and the artifact says so.
   const artifact = JSON.parse(readFileSync(join(dirname(res.stateFile), "escalation.json"), "utf8")) as any
+  /** The run id in the actual tool arguments and the configured state directory. */
+  const mandate = basename(dirname(res.stateFile))
+  expect(h.handoffInputs).toEqual([{ mandate, artifactPath: "instruction" }])
   expect(artifact.handoff.path).toBe("cellwork_open")
-  expect(h.calls.some((call) => call.name === "cellwork_open")).toBe(true)
+  expect(artifact.handoff.cellId).toBeString()
+  expect(existsSync(join(h.workspace, ".mpd", "cellwork", artifact.handoff.cellId, "state.json"))).toBe(true)
+  expect(String(res.finalReport)).toContain(artifact.handoff.cellId)
+  expect(String(res.finalReport)).toContain("cellwork_start")
+  /** The same mandate after a lost acknowledgement must recover the existing cell. */
+  const retry = await h.execute({ name: "cellwork_open", arguments: { objective: artifact.objective, mandate }, agent: h.agent })
+  expect(retry).toMatchObject({ value: { ok: true, cellId: artifact.handoff.cellId } })
+})
+
+test("auto hand-off records a registered cell's refusal and the exact retry", async () => {
+  /** A busy workspace exercising the receiver's actual business refusal. */
+  const h = makeHarness({ roundStatus: "STATUS: continue", cellwork: true })
+  apply(h.ctx, { escalate: { mode: "auto" } })
+  expect(await h.execute({ name: "cellwork_open", arguments: { objective: "unrelated cell" }, agent: h.agent })).toMatchObject({ value: { ok: true } })
+  /** The autoproject entry point. */
+  const tool = h.tools.find((entry) => entry.name === "mpd_autoproject")
+  if (tool === undefined) throw new Error("autoproject did not register its entry point")
+  /** The run whose automatic hand-off was refused. */
+  const res = await tool.execute({ objective: "retry this work", maxRounds: 1 }, { agent: h.agent }) as { status: string; finalReport: string; stateFile: string }
+  /** The durable mandate for a retry once the existing cell is stopped. */
+  const mandate = basename(dirname(res.stateFile))
+  /** The hand-off artifact is the source for the final report. */
+  const artifact = JSON.parse(readFileSync(join(dirname(res.stateFile), "escalation.json"), "utf8"))
+  expect(res.status).toBe("escalated")
+  expect(artifact.handoff).toMatchObject({ path: "instruction", error: expect.stringContaining("still active"), arguments: { objective: "retry this work", mandate } })
+  expect(res.finalReport).toContain(mandate)
+  expect(res.finalReport).not.toContain("handed off to cellwork")
+  expect(await h.execute({ name: "cellwork_stop", arguments: {}, agent: h.agent })).toMatchObject({ value: { ok: true } })
+  expect(await h.execute({ name: "cellwork_open", arguments: artifact.handoff.arguments, agent: h.agent })).toMatchObject({ value: { ok: true } })
+})
+
+test("a later light or planned run cannot finish a prior run's armed goal", async () => {
+  /** One session with the actual goal bridge and a deterministic host goal domain. */
+  const options: HarnessOptions = { recordPass: true, roundStatus: "STATUS: continue", goal: true }
+  /** All runs share this session and workspace. */
+  const h = makeHarness(options)
+  apply(h.ctx, { ...rowConfig(h.workspace), escalate: { mode: "off" } })
+  /** The registered entry point used by all runs in this session. */
+  const tool = h.tools.find((entry) => entry.name === "mpd_autoproject")
+  if (tool === undefined) throw new Error("autoproject did not register its entry point")
+  /** The owner run leaves its persisted goal armed at the round cap. */
+  const owner = await tool.execute({ objective: "the owner", plan: true, maxRounds: 1 }, { agent: h.agent }) as { status: string; stateFile: string }
+  expect(owner.status).toBe("max-rounds")
+  options.roundStatus = "STATUS: complete"
+  /** A light run never anchors and must never attempt a terminal goal transition. */
+  const light = await tool.execute({ objective: "light follower" }, { agent: h.agent })
+  expect(light).toMatchObject({ status: "complete" })
+  expect(h.goalFinishes).toEqual([])
+  /** A planned follower sees the owner's goal and likewise has no ownership. */
+  const planned = await tool.execute({ objective: "planned follower", plan: true }, { agent: h.agent }) as { status: string; stateFile: string }
+  expect(planned.status).toBe("complete")
+  expect(h.goalFinishes).toEqual([])
+  expect(h.goalAnchors).toEqual(["the owner"])
+  expect(readAnchors(anchorsPath(h.workspace)).captain).toMatchObject({ goalId: "goal-test", runId: basename(dirname(owner.stateFile)) })
+  expect(JSON.parse(readFileSync(planned.stateFile, "utf8"))).not.toHaveProperty("goalId")
+})
+
+test("a planned light run cannot finish a goal owned by a previous boulder work", async () => {
+  /** The actual boulder and goal rows running over the deterministic host registry. */
+  const h = makeHarness({ recordPass: true, goal: true })
+  apply(h.ctx, rowConfig(h.workspace))
+  /** The previous work anchors its own goal. */
+  const owner = await h.execute({ name: "mpd_boulder_start", arguments: { planPath: "owner-plan.md" }, agent: h.agent })
+  expect(owner).toMatchObject({ value: { status: "active" } })
+  /** The planned light run completes a distinct work in the same session. */
+  const follower = await h.execute({ name: "mpd_autoproject", arguments: { objective: "separate planned follower", plan: true }, agent: h.agent })
+  expect(follower).toMatchObject({ value: { status: "complete" } })
+  expect(h.goalFinishes).toEqual([])
+  expect(await h.execute({ name: "mpd_boulder_complete", arguments: { workId: readAnchors(anchorsPath(h.workspace)).captain?.runId }, agent: h.agent })).toMatchObject({ value: { status: "completed" } })
+  expect(h.goalFinishes).toEqual(["complete"])
+})
+
+test("a killed hyperplan child leaves the boulder active even when subsequent checks pass", async () => {
+  /** Architectural consults are interrupted while the remaining phases can report success. */
+  const h = makeHarness({ recordPass: true, goal: true, interruptRole: "Architect" })
+  apply(h.ctx, { ...rowConfig(h.workspace), escalate: { mode: "off" } })
+  /** The registered engine entry point. */
+  const tool = h.tools.find((entry) => entry.name === "mpd_autoproject")
+  if (tool === undefined) throw new Error("autoproject did not register its entry point")
+  /** The result after the run resolves its interrupted children. */
+  const res = await tool.execute({ objective: "check terminal ordering", plan: true, hyperplan: true }, { agent: h.agent }) as { status: string; stateFile: string }
+  expect(res.status).toBe("blocked")
+  expect(h.goalFinishes).toEqual(["blocked"])
+  expect(h.calls.filter((call) => call.name === "mpd_boulder_complete")).toEqual([])
+  /** The persisted run gives the id to look up in the actual boulder ledger. */
+  const state = JSON.parse(readFileSync(res.stateFile, "utf8"))
+  expect(await h.execute({ name: "mpd_boulder_status", arguments: {}, agent: h.agent })).toMatchObject({ value: { activeWorks: [expect.objectContaining({ work_id: state.boulderWorkId, status: "active" })] } })
 })
 
 test("a plan-less run still verifies through the plane, and its result matches the DECLARED schema", async () => {
@@ -825,8 +999,15 @@ test("(a) a child that NEVER settles is killed at the bound, its slot is release
 })
 
 test("(b) autoproject.slots REALLY caps concurrent children (observed high-water mark)", async () => {
+  /** Each supervised role dispatch must pass through the engine's internal bounded context once. */
+  let boundedDispatches = 0
   // The hyperplan wave raises FIVE Architects in parallel, so a cap of 2 must be visible.
-  const h = makeHarness({ slots: 2, slotBoundMs: 5_000, recordPass: true, criteria: ["create the file"] })
+  const h = makeHarness({ slots: 2, slotBoundMs: 5_000, recordPass: true, criteria: ["create the file"], consults: {
+    runBounded: <T>(dispatch: () => T): T => {
+      boundedDispatches += 1
+      return dispatch()
+    },
+  } })
   apply(h.ctx, rowConfig(h.workspace))
   /** The registered autoproject tool. */
   const tool = h.tools.find((entry) => entry.name === "mpd_autoproject")!
@@ -836,6 +1017,7 @@ test("(b) autoproject.slots REALLY caps concurrent children (observed high-water
   expect(h.calls.filter((call) => call.name === "mpd_role_spawn" && call.arguments?.role === "Architect").length).toBe(5)
   // … and never more than TWO were in flight at once.
   expect(h.peakInFlight()).toBe(2)
+  expect(boundedDispatches).toBe(h.calls.filter((call) => call.name === "mpd_role_spawn").length)
   expect(res.status).not.toBe("blocked")
 })
 

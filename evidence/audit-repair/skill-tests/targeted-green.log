@@ -1,0 +1,12 @@
+bun test v1.4.0 (34cbb9a40)
+
+skills/programming/scripts/typescript/check-no-excuse-rules.test.ts:
+(pass) #given the no-excuse script is executed from an installed ~/.codex-style skill cache > #when the caller provides the native preview #then the CLI resolves it and exits 0 [101.06ms]
+(pass) #given the no-excuse script is executed from an installed ~/.codex-style skill cache > #when a checked file violates the rules #then violations are still reported with exit 1 [103.65ms]
+(pass) #given the no-excuse script is executed from an installed ~/.codex-style skill cache > #when the caller has no TypeScript 7 API #then it explains how to fix resolution and exits 2 [10.41ms]
+
+ 3 pass
+ 0 fail
+ 11 expect() calls
+Ran 3 tests across 1 file. [224.00ms]
+suite exit=0

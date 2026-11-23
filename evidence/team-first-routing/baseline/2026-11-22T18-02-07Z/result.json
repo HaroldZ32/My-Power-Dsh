@@ -1,0 +1,301 @@
+{
+  "measuredAt": "2026-11-22T18:02:07Z",
+  "baselineCommit": "adf9a02b365f800b4d75a172ea8e8398d197055e",
+  "pinnedDsh": "0.2.2-rc.5",
+  "node": "v24.21.0",
+  "mountedThrough": "dsh plugin --profile web add link:<git archive checkout> --offline --store-dir <scratch store>",
+  "sha256": {
+    "packages/mpd-dsh-adapter-plugin/dist/index.js": "c75482821f254ac419ddddb0147e11dcc08ff26f65168457d83fe5e662c91699",
+    "packages/mpd-team-core-plugin/dist/index.js": "42082155f6d629e6be2542232318d33224b77eac3d5e8e8f76f9266b2752bb7f",
+    "packages/mpd-roles-plugin/dist/index.js": "179c9e46b31ef32594d86ff5892d8dd60c2b1ffc654e9cdf4d9b86816d6cc2fb",
+    "packages/mpd-workmate-plugin/dist/index.js": "4189e521e9b21c19a5177c699a7100f7ff2d5285cb9908c847f85b83d1f73ce3",
+    "presets/mpd.patch.yml": "e5220560847869dcdcb33877a1ce2da7c76eee50d2c58901b9f3959bb410a17a"
+  },
+  "isolation": {
+    "ok": true,
+    "scratchWorkspaceCount": 16,
+    "sandboxHome": true,
+    "sandboxDshHome": true,
+    "loopbackProvider": true
+  },
+  "starts": [
+    {
+      "mode": "mechanical",
+      "creationPreset": "cordis",
+      "selected": "mpd",
+      "header": "cordis",
+      "presetEvents": [
+        {
+          "agentPreset": "mpd"
+        }
+      ],
+      "notices": [],
+      "gateFiles": 0,
+      "planFiles": 0,
+      "small": [
+        {
+          "name": "mpd_role_spawn",
+          "id": "call_QaTurn-mechanical-small_0",
+          "error": false,
+          "text": "role Junior Engineer (complete)\nsummary: QA_FIXED_CHILD_RESULT"
+        }
+      ],
+      "followup": [
+        {
+          "name": "mpd_role_spawn",
+          "id": "call_QaTurn-mechanical-expand_0",
+          "error": false,
+          "text": "role Junior Engineer (complete)\nsummary: QA_FIXED_CHILD_RESULT"
+        }
+      ],
+      "burst": [
+        {
+          "name": "mpd_role_spawn_async",
+          "id": "call_QaTurn-mechanical-burst_0",
+          "error": false,
+          "text": "consult consult-mws5913h-3 (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws5913h-3\"}"
+        },
+        {
+          "name": "mpd_role_spawn_async",
+          "id": "call_QaTurn-mechanical-burst_1",
+          "error": false,
+          "text": "consult consult-mws5913q-4 (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws5913q-4\"}"
+        },
+        {
+          "name": "mpd_role_spawn_async",
+          "id": "call_QaTurn-mechanical-burst_2",
+          "error": false,
+          "text": "consult consult-mws5914j-5 (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws5914j-5\"}"
+        },
+        {
+          "name": "mpd_role_spawn_async",
+          "id": "call_QaTurn-mechanical-burst_3",
+          "error": false,
+          "text": "consult consult-mws5914q-6 (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws5914q-6\"}"
+        },
+        {
+          "name": "mpd_role_spawn_async",
+          "id": "call_QaTurn-mechanical-burst_4",
+          "error": false,
+          "text": "consult consult-mws5915d-7 (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws5915d-7\"}"
+        },
+        {
+          "name": "mpd_role_spawn_async",
+          "id": "call_QaTurn-mechanical-burst_5",
+          "error": false,
+          "text": "consult consult-mws59168-8 (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws59168-8\"}"
+        },
+        {
+          "name": "mpd_role_spawn_async",
+          "id": "call_QaTurn-mechanical-burst_6",
+          "error": false,
+          "text": "consult consult-mws5916f-9 (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws5916f-9\"}"
+        },
+        {
+          "name": "mpd_role_spawn_async",
+          "id": "call_QaTurn-mechanical-burst_7",
+          "error": false,
+          "text": "consult consult-mws5916o-a (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws5916o-a\"}"
+        }
+      ],
+      "burstChildCalls": 8,
+      "peak": 8
+    },
+    {
+      "mode": "advisory",
+      "creationPreset": "cordis",
+      "selected": "mpd",
+      "header": "cordis",
+      "presetEvents": [
+        {
+          "agentPreset": "mpd"
+        }
+      ],
+      "notices": [],
+      "gateFiles": 0,
+      "planFiles": 0,
+      "small": [
+        {
+          "name": "mpd_role_spawn",
+          "id": "call_QaTurn-advisory-small_0",
+          "error": false,
+          "text": "role Junior Engineer (complete)\nsummary: QA_FIXED_CHILD_RESULT"
+        }
+      ],
+      "followup": [
+        {
+          "name": "mpd_role_spawn",
+          "id": "call_QaTurn-advisory-expand_0",
+          "error": false,
+          "text": "role Junior Engineer (complete)\nsummary: QA_FIXED_CHILD_RESULT"
+        }
+      ],
+      "burst": [
+        {
+          "name": "mpd_role_spawn_async",
+          "id": "call_QaTurn-advisory-burst_0",
+          "error": false,
+          "text": "consult consult-mws59413-d (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws59413-d\"}"
+        },
+        {
+          "name": "mpd_role_spawn_async",
+          "id": "call_QaTurn-advisory-burst_1",
+          "error": false,
+          "text": "consult consult-mws59418-e (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws59418-e\"}"
+        },
+        {
+          "name": "mpd_role_spawn_async",
+          "id": "call_QaTurn-advisory-burst_2",
+          "error": false,
+          "text": "consult consult-mws5941e-f (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws5941e-f\"}"
+        },
+        {
+          "name": "mpd_role_spawn_async",
+          "id": "call_QaTurn-advisory-burst_3",
+          "error": false,
+          "text": "consult consult-mws5942c-g (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws5942c-g\"}"
+        },
+        {
+          "name": "mpd_role_spawn_async",
+          "id": "call_QaTurn-advisory-burst_4",
+          "error": false,
+          "text": "consult consult-mws5942j-h (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws5942j-h\"}"
+        },
+        {
+          "name": "mpd_role_spawn_async",
+          "id": "call_QaTurn-advisory-burst_5",
+          "error": false,
+          "text": "consult consult-mws5942q-i (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws5942q-i\"}"
+        },
+        {
+          "name": "mpd_role_spawn_async",
+          "id": "call_QaTurn-advisory-burst_6",
+          "error": false,
+          "text": "consult consult-mws5942x-j (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws5942x-j\"}"
+        },
+        {
+          "name": "mpd_role_spawn_async",
+          "id": "call_QaTurn-advisory-burst_7",
+          "error": false,
+          "text": "consult consult-mws5943g-k (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws5943g-k\"}"
+        }
+      ],
+      "burstChildCalls": 8,
+      "peak": 8
+    },
+    {
+      "mode": "off",
+      "creationPreset": "cordis",
+      "selected": "mpd",
+      "header": "cordis",
+      "presetEvents": [
+        {
+          "agentPreset": "mpd"
+        }
+      ],
+      "notices": [],
+      "gateFiles": 0,
+      "planFiles": 0,
+      "small": [
+        {
+          "name": "mpd_role_spawn",
+          "id": "call_QaTurn-off-small_0",
+          "error": false,
+          "text": "role Junior Engineer (complete)\nsummary: QA_FIXED_CHILD_RESULT"
+        }
+      ],
+      "followup": [
+        {
+          "name": "mpd_role_spawn",
+          "id": "call_QaTurn-off-expand_0",
+          "error": false,
+          "text": "role Junior Engineer (complete)\nsummary: QA_FIXED_CHILD_RESULT"
+        }
+      ],
+      "burst": [
+        {
+          "name": "mpd_role_spawn_async",
+          "id": "call_QaTurn-off-burst_0",
+          "error": false,
+          "text": "consult consult-mws596x2-n (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws596x2-n\"}"
+        },
+        {
+          "name": "mpd_role_spawn_async",
+          "id": "call_QaTurn-off-burst_1",
+          "error": false,
+          "text": "consult consult-mws596x8-o (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws596x8-o\"}"
+        },
+        {
+          "name": "mpd_role_spawn_async",
+          "id": "call_QaTurn-off-burst_2",
+          "error": false,
+          "text": "consult consult-mws596y6-p (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws596y6-p\"}"
+        },
+        {
+          "name": "mpd_role_spawn_async",
+          "id": "call_QaTurn-off-burst_3",
+          "error": false,
+          "text": "consult consult-mws596ye-q (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws596ye-q\"}"
+        },
+        {
+          "name": "mpd_role_spawn_async",
+          "id": "call_QaTurn-off-burst_4",
+          "error": false,
+          "text": "consult consult-mws596yw-r (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws596yw-r\"}"
+        },
+        {
+          "name": "mpd_role_spawn_async",
+          "id": "call_QaTurn-off-burst_5",
+          "error": false,
+          "text": "consult consult-mws596zn-s (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws596zn-s\"}"
+        },
+        {
+          "name": "mpd_role_spawn_async",
+          "id": "call_QaTurn-off-burst_6",
+          "error": false,
+          "text": "consult consult-mws596zu-t (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws596zu-t\"}"
+        },
+        {
+          "name": "mpd_role_spawn_async",
+          "id": "call_QaTurn-off-burst_7",
+          "error": false,
+          "text": "consult consult-mws59702-u (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws59702-u\"}"
+        }
+      ],
+      "burstChildCalls": 8,
+      "peak": 8
+    }
+  ],
+  "member": {
+    "depth": 1,
+    "dispatch": {
+      "name": "agent_teams_dispatch",
+      "id": "call_QaTurn-member-4_0",
+      "error": false,
+      "text": "QaTurn-member-serve -> probe-owner"
+    },
+    "call": {
+      "name": "mpd_role_spawn_async",
+      "id": "call_QaTurn-member-serve_0",
+      "error": false,
+      "state": "running"
+    }
+  },
+  "cell": {
+    "openCall": "call_QaTurn-cell-open_0",
+    "startCall": "call_QaTurn-cell-start_0",
+    "openSucceeded": true,
+    "startSucceeded": true,
+    "plannerConsult": "unmeasured after 45 seconds"
+  },
+  "redGreen": [
+    "The mechanical baseline used the switched preset on actual calls and still admitted all eight starts without a steering notice. A corrected variant must surface team routing during the expanded request or the batch before all eight starts, leaving at least one place for team execution.",
+    "The small blocking consult should still deliver the canned child result. Advisory and off should still admit the controlled fan-out. The routed member consult should still be admitted."
+  ],
+  "limits": [
+    "Deterministic Web RPC and provider, no real LLM or user-session load.",
+    "Path exercised async roles and blocking role calls. Workmate entry points and old hosts were outside this baseline.",
+    "Eight overlapping provider requests were observed. The host response to a ninth concurrent activation was outside this baseline.",
+    "The isolated rerun excluded injected instruction text from notice evidence and initialized a separate Git project to stop ancestor instruction lookup."
+  ]
+}

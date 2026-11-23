@@ -66,6 +66,7 @@ import { tmpdir } from "node:os"
 import { dirname, join, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { isDeepStrictEqual } from "node:util"
+import { isPrivatePackPath } from "./lib/pack-private-state.ts"
 import { readJson } from "./lib/repo.ts"
 
 /** This script's own absolute path — the child process every arm of `--self-test` re-invokes. */
@@ -571,8 +572,8 @@ function readPackageList(src: string, constName: string): string[] | null {
   return span.entries.filter((s: string): boolean => s.length > 0)
 }
 
-/** Every file below `root`, as sorted `/`-separated paths. Absent root = []. */
-function treeFiles(root: string): string[] {
+/** Sorted file paths under `root`, pruning any subtree the optional visitor rejects. */
+function treeFiles(root: string, visit?: (path: string) => boolean): string[] {
   /** Every file found, as a path relative to `root`. */
   const out: string[] = []
   /** Walk one directory, carrying the path prefix accumulated so far. */
@@ -580,12 +581,23 @@ function treeFiles(root: string): string[] {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       /** The child's path relative to `root`. */
       const child = prefix === "" ? entry.name : prefix + "/" + entry.name
+      if (visit && !visit(child)) continue
       if (entry.isDirectory()) walk(join(dir, entry.name), child)
       else if (entry.isFile()) out.push(child)
     }
   }
   if (existsSync(root)) walk(root, "")
   return out.sort()
+}
+
+/**
+ * List source files eligible for the packer's public copy.
+ * @param root Absolute path of the subtree being compared.
+ * @param prefix Package-relative directory of that subtree, with a trailing slash when supplied.
+ * @returns Sorted paths relative to the subtree.
+ */
+function publicSourceFiles(root: string, prefix: string = ""): string[] {
+  return treeFiles(root, (path): boolean => !isPrivatePackPath(prefix + path))
 }
 
 /**
@@ -618,6 +630,14 @@ function readRootManifest(root: string): unknown {
   } catch {
     return null
   }
+}
+
+/** A manifest dependency or compatibility field, treated as a map of its declared entries. */
+function manifestEntries(manifest: unknown, field: string): Record<string, unknown> {
+  if (typeof manifest !== "object" || manifest === null) return {}
+  /** Read the field only after narrowing the parsed document to an object. */
+  const value: unknown = (manifest as Record<string, unknown>)[field]
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? Object.fromEntries(Object.entries(value)) : {}
 }
 
 /**
@@ -855,7 +875,7 @@ function checkContentHalf(opts: Options, findings: Finding[], asked: AskedAssets
   for (const dir of asked.rootAssets) {
     /** The artifact's file set under this asset directory. */
     const shipped = new Set(treeFiles(join(packed, dir)))
-    for (const rel of treeFiles(join(opts.sourceRoot, dir))) {
+    for (const rel of publicSourceFiles(join(opts.sourceRoot, dir), dir + "/")) {
       /** The source file's packed-relative path. */
       const relPath = dir + "/" + rel
       /** The source file's absolute path. */
@@ -873,7 +893,7 @@ function checkContentHalf(opts: Options, findings: Finding[], asked: AskedAssets
   // (b) `packages/**`: BYTES only, and only where BOTH sides hold the file. Source-side absences in
   //     this tree are by design (src/, tests, the adopted plugin's filtered dirs), so completeness for
   //     packages is the `dist/**` contract below - never a bare tree comparison.
-  for (const rel of treeFiles(join(opts.sourceRoot, "packages"))) {
+  for (const rel of publicSourceFiles(join(opts.sourceRoot, "packages"))) {
     /** The source file's packed-relative path. */
     const relPath = "packages/" + rel
     /** The artifact file this source file must equal. */
@@ -885,7 +905,7 @@ function checkContentHalf(opts: Options, findings: Finding[], asked: AskedAssets
   // (c) the packer's dist contract - the direction T-65 is about: every `packages/<pkg>/dist/**` file
   //     in the tree must have an artifact counterpart, with the ONE declared exemption COUNTED.
   for (const pkg of listDirs(opts.packagesDir)) {
-    for (const rel of treeFiles(join(opts.packagesDir, pkg, "dist"))) {
+    for (const rel of publicSourceFiles(join(opts.packagesDir, pkg, "dist"))) {
       /** The built file's packed-relative path. */
       const relPath = "packages/" + pkg + "/dist/" + rel
       if (!existsSync(join(packed, relPath))) {
@@ -914,7 +934,7 @@ function checkContentHalf(opts: Options, findings: Finding[], asked: AskedAssets
     if (statSync(srcAbs).isDirectory()) {
       /** The artifact's files under this required directory entry. */
       const shipped = new Set(treeFiles(artAbs))
-      for (const rel of treeFiles(srcAbs)) {
+      for (const rel of publicSourceFiles(srcAbs)) {
         /** The inner file's packed-relative path, anchored at the required entry. */
         const relPath = file + "/" + rel
         if (!shipped.has(rel)) {
@@ -955,6 +975,15 @@ function checkPackedHalf(opts: Options, findings: Finding[], asked: AskedAssets)
   }
   stats.packed = "checked"
   stats.rootAssets = asked.rootAssets
+  // Stop before byte comparisons if private state was physically copied into the installable tree.
+  /** Finding count before checking for staged private paths. */
+  const priorFindings = findings.length
+  treeFiles(packed, (path): boolean => {
+    if (!isPrivatePackPath(path)) return true
+    findings.push({ kind: "PACK-PRIVATE-STATE", packages: [], detail: "staged tree carries local runtime or developer state: " + path })
+    return false
+  })
+  if (findings.length !== priorFindings) return stats
 
   // 1. every declared root asset really arrived — and arrived non-empty.
   for (const dir of asked.rootAssets) {
@@ -987,7 +1016,7 @@ function checkPackedHalf(opts: Options, findings: Finding[], asked: AskedAssets)
   //    reported as such, because that is the failure mode a selective copy produces (T-36/T-45).
   for (const rel of ["docs", "templates", "agent-references"]) {
     /** The asset files the source tree holds. */
-    const source = treeFiles(join(opts.sourceRoot, rel))
+    const source = publicSourceFiles(join(opts.sourceRoot, rel))
     /** The asset files the artifact holds. */
     const shipped = treeFiles(join(packed, rel))
     if (source.length === 0 && shipped.length === 0) continue
@@ -1033,8 +1062,8 @@ function checkPackedHalf(opts: Options, findings: Finding[], asked: AskedAssets)
     }
   }
   if (manifest !== null) {
-    /** The manifest's `files` entries that really are strings. */
-    const patterns: string[] = Array.isArray(manifest.files) ? manifest.files.filter((p: unknown): p is string => typeof p === "string") : []
+    /** The positive `files` patterns used for coverage. Exclusions and staged contents are checked separately. */
+    const patterns: string[] = Array.isArray(manifest.files) ? manifest.files.filter((p: unknown): p is string => typeof p === "string" && !p.startsWith("!")) : []
     if (patterns.length === 0) findings.push({ kind: "MANIFEST", packages: [], detail: "the packed manifest declares no `files` list — npm would publish whatever it defaults to, not what this checker verified" })
     /** A `files` pattern's top-level entry: the `<dir>/**` glob's directory or the first literal segment. */
     const topOf = (pattern: string): string => (pattern.endsWith("/**") ? pattern.slice(0, -3) : pattern).split("/")[0]
@@ -1105,6 +1134,15 @@ function checkPackedHalf(opts: Options, findings: Finding[], asked: AskedAssets)
   const packedManifest = readRootManifest(packed)
   /** The source tree's root manifest, the declaration the artifact must match. */
   const sourceManifest = readRootManifest(opts.sourceRoot)
+  for (const field of ["engines", "dependencies", "optionalDependencies", "peerDependencies", "peerDependenciesMeta"]) {
+    /** The packed field may add dependencies, but each declared source entry must keep its value. */
+    const shipped = manifestEntries(packedManifest, field)
+    for (const [name, expected] of Object.entries(manifestEntries(sourceManifest, field))) {
+      if (!isDeepStrictEqual(shipped[name], expected)) {
+        findings.push({ kind: "MANIFEST", packages: [], detail: `the packed manifest must preserve package.json ${field}.${name}` })
+      }
+    }
+  }
   /** The packed manifest's `dshGo` block, or undefined when the artifact carries none. */
   const packedGo = dshGoBlock(packedManifest)
   /** The source manifest's `dshGo` block, or undefined when the source carries none. */
@@ -1497,12 +1535,11 @@ function selfTest(): number {
     arms.push({ name, ok, exitCode: child.status, firstLine: first })
   }
 
-  // Arm 1 — positive control: the real tree is closed, and the checker runs ALONE.
-  arm("positive-control (real tree, exit 0)", runChecker([]), (c: ChildResult): boolean => c.status === 0 && /\[verify-pack-closure\] ok/.test(c.all))
-
   /** The temp directory every fixture of this run is built under. */
   const scratch = mkdtempSync(join(tmpdir(), "mpd-pack-closure-"))
   try {
+    // Arm 1 checks the source half with no artifact, as on a clean CI checkout.
+    arm("positive-control (real source without a staged pack, exit 0)", runChecker(["--packed", join(scratch, "unstaged")]), (c: ChildResult): boolean => c.status === 0 && /\[verify-pack-closure\] ok/.test(c.all))
     /** The packer's source, from which every mutation fixture below is derived. */
     const original = readFileSync(DEFAULT_PACKER, "utf8")
 
@@ -1642,6 +1679,14 @@ function selfTest(): number {
     }
     /** The fixture's `dshGo` declaration, re-stating the real one for BOTH fixture trees. */
     const fixtureDshGo = { contributes: { panels: declaredView === null ? [] : [{ view: "./" + declaredView }] } }
+    /** Runtime fields present in both the source and generated manifest controls. */
+    const fixtureRuntime = {
+      engines: { node: ">=24.9.0", dsh: ">=0.2.1-rc.5 <0.3.0-0" },
+      dependencies: { "fixture-dependency": "1.0.0" },
+      optionalDependencies: { "fixture-engine": "1.0.0" },
+      peerDependencies: { "fixture-peer": "^1.0.0" },
+      peerDependenciesMeta: { "fixture-peer": { optional: true } },
+    }
     /** The fixture manifest, built from the packer's own asset and root-file tables. */
     const manifestBody = (): string =>
       JSON.stringify(
@@ -1650,6 +1695,7 @@ function selfTest(): number {
           version: "0.0.0",
           type: "module",
           dshGo: fixtureDshGo,
+          ...fixtureRuntime,
           exports: { "./packages/*": "./packages/*", ...Object.fromEntries(assets.map((dir: string): [string, string] => ["./" + dir + "/*", "./" + dir + "/*"])) },
           files: [...assets.map((dir: string): string => dir + "/**"), "packages/**", ...rootFiles],
         },
@@ -1676,7 +1722,7 @@ function selfTest(): number {
     // The declared panel view is read from the manifest of the tree the packer copies FROM, so the
     // fixture source carries one that RE-STATES the real declaration (`./`-spelled, as the real one is)
     // instead of a hard-coded second copy of the path.
-    put(fxSource, "package.json", JSON.stringify({ name: "@mpd-dsh/mpd", version: "0.0.0", dshGo: fixtureDshGo }, null, 2))
+    put(fxSource, "package.json", JSON.stringify({ name: "@mpd-dsh/mpd", version: "0.0.0", dshGo: fixtureDshGo, ...fixtureRuntime }, null, 2))
     put(fxSource, "templates/mpd-extension/mpd-ext.json", "{}\n")
     put(fxSource, "templates/mpd-extension/README.md", "# fixture template\n")
     put(fxSource, "docs/guide.md", "# guide\n")
@@ -1692,6 +1738,15 @@ function selfTest(): number {
     const fixtureArgs = ["--source-root", fxSource, "--packages-dir", join(fxSource, "packages"), "--packed", fxPacked]
 
     arm("positive-control (fixture packed tree, exit 0)", runChecker(fixtureArgs), (c: ChildResult): boolean => c.status === 0 && /packed tree: .*fixture-packed/.test(c.all))
+
+    for (const field of Object.keys(fixtureRuntime)) {
+      /** The fixture manifest with exactly one inherited runtime field deleted. */
+      const omitted = JSON.parse(manifestBody()) as Record<string, unknown>
+      delete omitted[field]
+      put(fxPacked, "package.json", JSON.stringify(omitted, null, 2))
+      arm(`negative-control (packed manifest drops ${field}, exit 1)`, runChecker(fixtureArgs), (c: ChildResult): boolean => c.status === 1 && c.all.includes(`package.json ${field}.`))
+    }
+    put(fxPacked, "package.json", manifestBody())
 
     // Arm — negative control: the packed manifest DROPS the `dshGo` block the source declares. The
     // source declaration and the view file stay intact, so the packed manifest is the only reason this
@@ -1914,12 +1969,16 @@ function selfTest(): number {
       const scratchRef = join(scratchPack, "agent-references", "troubleshooting.md")
       /** The reference file's mtime, restored so the scratch pack's inferred stamp does not move. */
       const scratchMtime = statSync(scratchRef).mtime
-      /** The reference file's bytes, with one byte flipped below. */
-      const scratchMutated = Buffer.from(readFileSync(scratchRef))
+      /** The reference file's original bytes for the later clean-copy control. */
+      const scratchOriginal = readFileSync(scratchRef)
+      /** A copy with one byte flipped below. */
+      const scratchMutated = Buffer.from(scratchOriginal)
       scratchMutated[0] = scratchMutated[0] === 0x23 ? 0x20 : 0x23
       writeFileSync(scratchRef, scratchMutated)
       utimesSync(scratchRef, scratchMtime, scratchMtime)
       arm("negative-control (one byte changed in a real scratch pack, exit 1)", runChecker(["--packed", scratchPack, "--require-packed"]), (c: ChildResult): boolean => c.status === 1 && c.all.includes(CONTENT_KIND) && c.all.includes("agent-references/troubleshooting.md"))
+      writeFileSync(scratchRef, scratchOriginal)
+      utimesSync(scratchRef, scratchMtime, scratchMtime)
     }
     /** The canonical artifact's shape AFTER the scratch pack. */
     const canonicalAfter = canonicalStamp(DEFAULT_PACKED)
@@ -1999,16 +2058,12 @@ function selfTest(): number {
     arm("negative-control (the one declared exemption is exercised, not a silent skip)", runChecker(fixtureArgs), (c: ChildResult): boolean => c.status === 0 && c.all.includes("exemption exercised: packages/mpd-qa-roles-probe/dist/index.js"))
     rmSync(join(fxSource, "packages", "mpd-qa-roles-probe"), { recursive: true, force: true })
 
-    // Arm 20 (T-63 on the REAL artifact, the seeded mutation the evidence files) — a byte-copy of the
-    // canonical artifact is green; flipping ONE byte of one shipped file reddens at unchanged presence.
-    // The copy is only ever READ from: the canonical `dist/mpd-package` is never written here.
-    /** The byte-copy of the canonical artifact this arm mutates. */
+    // Arm 20 repeats the byte-mutation check on a copy of the just-produced release artifact.
+    // A fresh CI runner may have no canonical pack, and an older local pack can legitimately drift.
+    /** The byte-copy of the scratch pack this arm mutates. */
     const realCopy = join(scratch, "real-artifact-copy")
-    // preserveTimestamps: the copy must carry the REAL artifact's stamp, otherwise `cpSync`'s fresh
-    // mtimes would re-date the pack to "now" and every post-pack writer would read as a hard drift —
-    // measured: the first version of this arm reddened on exactly that artefact of the copy.
-    cpSync(DEFAULT_PACKED, realCopy, { recursive: true, preserveTimestamps: true })
-    arm("positive-control (byte-copy of the real artifact, exit 0)", runChecker(["--packed", realCopy, "--require-packed"]), (c: ChildResult): boolean => c.status === 0)
+    cpSync(scratchPack, realCopy, { recursive: true, preserveTimestamps: true })
+    arm("positive-control (byte-copy of the real scratch artifact, exit 0)", runChecker(["--packed", realCopy, "--require-packed"]), (c: ChildResult): boolean => c.status === 0)
     /** The shipped reference file this arm mutates inside the copy. */
     const realRef = join(realCopy, "agent-references", "troubleshooting.md")
     /** The reference file's mtime, restored so the copy keeps the artifact's inferred stamp. */

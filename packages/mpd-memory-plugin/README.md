@@ -19,25 +19,46 @@ upstream-attributable.
 `completeTransition` name in a tool description). **de-omo wave F replaced that vocabulary** with
 this package's own: `reflectionsCompleted`, `stepsSinceReflection`, `pendingReflection`.
 
-## Two stores: workspace (default) and global (wave W3-D)
+## Memory scopes
 
-The engine serves TWO stores with ONE data shape:
+`mpd_memory_write`, `mpd_memory_read` and `mpd_memory_status` default to `scope: "workspace"`.
+`mpd_memory_reflect` and `mpd_memory_reflect_complete` track the caller's own writes. Global and shared
+writes leave the private reflection counter unchanged. All VCS-backed collections support `git`
+(the default), `svn` and `both` through `memory.vcs`.
 
-- **workspace** — the default, and the pre-W3-D behaviour: per agent, at
-  `<workspace>/<memory.dir or ".mpd">/memory/agents/<slug>/{repo,runtime}`;
-- **global** — shared across every project, at
-  `<HOME>/.mpd/memory/{repo/memory/*.md, runtime/{journal.jsonl, index.json}}` (`memory.globalDir`
-  overrides the root).
+- **workspace** uses the authenticated member's private store in a project team, including the
+  captain's own store. The project and durable member identity select the same memory when an
+  authorized session starts from another checkout. A standalone session uses the existing
+  `<workspace>/<memory.dir or ".mpd">/memory/agents/<slug>/{repo,runtime}` store.
+- **shared** publishes and reads sourced project facts. This scope requires an authenticated
+  project member.
+- **legacy** gives `mpd_memory_read` explicit access to the calling checkout's old workspace
+  entries. These entries remain unattributed. `key` selects an exact entry filename inside the
+  chosen collection. Private member and explicit legacy pages report `truncated` on individual
+  entries and may return fewer than `limit`. Follow `next_offset` to continue.
+- **global** serves `<HOME>/.mpd/memory/{repo/memory/*.md,runtime/{journal.jsonl,index.json}}`
+  across projects. `memory.globalDir` overrides the root. Reads and status work before the store
+  exists.
 
-`mpd_memory_write`, `mpd_memory_read` and `mpd_memory_status` take `scope: "workspace" | "global"`,
-defaulting to `workspace`, so no existing call changes meaning. `mpd_memory_reflect` and
-`mpd_memory_reflect_complete` stay workspace-scoped — a reflection is a per-agent act, not a global one —
-so a GLOBAL write never advances the reflection counter (it reports the claim the caller already had).
-Both stores share the same VCS semantics (`memory.vcs`: `git` default, `svn`, `both`) through the same
-`ensureVcs`/`commitAll` pair, and a global write reports `committedTo`/`errors` exactly like a workspace
-write. A READ never creates a store: `mpd_memory_read`/`mpd_memory_status` with `scope:"global"` answer an
-empty/zero reading while `<HOME>/.mpd/memory` does not exist, because creating it would be a HOME
-mutation the guard deliberately does not cover.
+`committedTo` lists the backends that saved an entry in version history. `errors` and the text
+receipt show backend failures. The Markdown stays readable at the reported working-copy path when a
+backend fails. Global reads and status leave an absent store untouched.
+
+`mpd_memory_save` and `mpd_memory_recall` use the same member identity for private key/value notes.
+Use `mpd_memory_recall` with `scope: "legacy"` to read a key from the old workspace map explicitly.
+
+### Shared facts
+
+Publish with `mpd_memory_write` using `scope: "shared"`, `key`, `title`, `content`, `source` and
+`appliesTo`. Use an artifact path or interface revision for `source` and an exact task, version or
+interface label for `appliesTo`. The tool records the authenticated author. The first publication
+has revision 1. An update supplies `supersedes` equal to the current revision. The tool keeps each
+revision and reports a conflict if another author publishes first.
+
+Recall with `mpd_memory_read` using `scope: "shared"` and the exact, case-sensitive `key`. An optional
+`revision` or `appliesTo` checks whether the current fact fits the caller's task. A superseded,
+nonmatching or missing fact returns an empty page with a `validity` value. A current fact includes
+its source, author, applicability, revision and a bounded content preview.
 
 ### The HOME guard — containment in `$HOME` (wave W0's shared predicate)
 
@@ -111,7 +132,11 @@ counter `steps` alone.
   page's offset, or `null` at the end. Entries come back in **ascending entry-file-name order**, a stable
   order that never depends on directory enumeration, so walking `next_offset` reaches every match
   exactly once; a `scope` filter paginates over that store's filtered set.
-- `mpd_memory_reflect` / `mpd_memory_reflect_complete` — the reflection state machine (workspace only).
+- `mpd_memory_reflect` / `mpd_memory_reflect_complete` — inspect and settle the workspace reflection
+  claim. Completion settles the claim after every configured backend succeeds. If a backend fails,
+  resolve the reported error and submit the same title and content. The retry uses the original
+  file and resumes the unfinished backends. Replaying a settled submission while no reflection is
+  due returns its existing receipt.
 - `mpd_memory_status({scope?})` — vcs mode, store root, entry counts, reflection counters.
 
 ## Build / test

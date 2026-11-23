@@ -1,7 +1,6 @@
 // packages/mpd-better-sidebar-host/src/index.ts
 import { dirname, join as join2 } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { resolve as resolve2, sep as sep2 } from "node:path";
 

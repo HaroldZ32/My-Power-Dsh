@@ -20,11 +20,12 @@ the bundle installs its skills and removing the bundle removes them.
   row unloads — no version stamp, no stale copy.
 - Serves the `mpd` preset by the SAME rule: the bundle patch points the `agent-presets`
   roster at `<pkg-root>/presets` (see `cordis.patch.yml`).
-- Migrates legacy installs: the version-stamped copies that bundle `<= 0.2.6` wrote
-  into `$DSH_HOME/skills` and `$DSH_HOME/.agent-presets` are removed on the first boot
-  of `>= 0.3.0`. The stamp file is the ownership proof — unstamped content (for example
-  copies made by the legacy `scripts/install-profile.ts` flow) and user-authored
-  skills/presets are never touched.
+- On a stamped legacy install (`<= 0.2.6`), moves entries with shipped names out of
+  `$DSH_HOME/skills` and `$DSH_HOME/.agent-presets` into private directories named
+  `$DSH_HOME/.mpd-legacy-backup-*`. Each move preserves the entire entry, including edited and
+  added files. The boot log gives the recovery paths. Copy any custom files you want to keep
+  from those paths into your own skill or preset directory. A retry preserves earlier backups.
+  Unstamped installs and entries with other names stay in place.
 - Re-reads an edited skill on the next catalog read (`fs/observed` invalidation for
   model-facing `write`/`edit` inside the corpus).
 

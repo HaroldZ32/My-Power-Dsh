@@ -1,0 +1,6 @@
+Standalone project-team pilot on DSH 0.2.2-rc.5
+Result: PASS (rec-20261123T122355-42ed02)
+Package suite: 4261 passed, 6 skipped, 0 failed.
+Static gates: 11 passed. Distribution freshness: 35 mapped targets passed.
+Offline QA: 56 passed, 2 skipped, 0 failed.
+Two successive local objectives produced verified DELIVERY.csv and DELTA.csv without manual board cleanup.

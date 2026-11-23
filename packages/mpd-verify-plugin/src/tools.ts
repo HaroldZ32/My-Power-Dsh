@@ -28,7 +28,8 @@ import { GATE_TABLE, PROJECT_GATE_FILE, probeArtifacts, projectGateIdentity, res
 import type { ArtifactProbe, GateEvidence, HashedDoc, VerificationRecord, VerifyFinding } from "./record.ts"
 import { buildRecord, validateVerificationRecord } from "./record.ts"
 import type { VerifyRuntime } from "./observe.ts"
-import { isAbsolute, join } from "node:path"
+import { isAbsolute, join, resolve } from "node:path"
+import { authorizedCellworkContract, checkCellworkContract } from "./cellwork-contract.ts"
 
 /** The default loop lifetime: 24 hours, which is one working session and no longer. */
 export const DEFAULT_LOOP_TTL_MS = 24 * 60 * 60 * 1000
@@ -47,6 +48,8 @@ export interface VerifyToolDeps {
   configValue: (key: string) => unknown
   /** The adapter slice: the workspace root and the team membership (for the seat's display name). */
   dsh: Pick<DshAdapter, "workspaceRoot" | "teamMembership">
+  /** Lazy project identity authorizes the original active cell's canonical contract. */
+  projectIdentity?: () => unknown
   /** One-line reporter for the row log. */
   log: (line: string) => void
 }
@@ -151,7 +154,7 @@ function openTool(deps: VerifyToolDeps): DshToolDef {
         writer_id: { type: "string", description: "writer:\"delegate\" only: the loop's WRITER identity — the member's session id (an agent key, not a display name), trimmed to 1..200 characters. Absent records the `delegate:pending` placeholder. Refused with writer:\"self\"." },
         writer_reason: { type: "string", description: "writer:\"delegate\" only: text stored on the loop's `writer.reason`, e.g. `member: <name>` when `writer_id` is a session id; trimmed to 1..200 characters. Refused with writer:\"self\"." },
         scope: { type: "array", items: { type: "string" }, description: "The paths this loop covers, relative to the workspace. EMPTY means the whole workspace." },
-        contract: { type: "string", description: "The wave contract this loop freezes for its verifier: a workspace-relative path (e.g. `.mpd/plans/verify-law-defects.md`). `mpd_verify_seat` hands the seat exactly this document and `mpd_verify_record` hashes it as the record's `basis.frozenContract`. With none, the declared default `" + DEFAULT_CONTRACT_PATH + "` applies — never a previous wave's plan." },
+        contract: { type: "string", description: "Frozen document path relative to the caller's workspace. A native Cellwork captain can use its authorized canonical absolute contract. Omit for `" + DEFAULT_CONTRACT_PATH + "`." },
         task_id: { type: "string", description: "The board task this loop verifies, when it verifies one." },
         ttl_ms: { type: "number", description: "Loop lifetime in ms; defaults to 24h (verify.loopTtlMs)." },
       },
@@ -203,6 +206,19 @@ function openTool(deps: VerifyToolDeps): DshToolDef {
       const ttlMs = resolvePositiveInt(args?.ttl_ms, resolvePositiveInt(deps.configValue("verify.loopTtlMs"), DEFAULT_LOOP_TTL_MS))
       /** The wave contract this loop freezes, when the caller named one; `undefined` means the default. */
       const contract = normalizeContractPath(args?.contract)
+      /** A canonical path is legal only for the active originating Cellwork captain. */
+      const cellworkContract = contract !== undefined && isAbsolute(contract) ? authorizedCellworkContract(deps.projectIdentity?.(), { workspace, sessionId }, contract) : undefined
+      if (contract !== undefined && isAbsolute(contract) && cellworkContract === undefined) return { refused: "absolute contract is outside the calling captain's active Cellwork scope" }
+      if (cellworkContract !== undefined && (writerKind !== "delegate" || writerId === undefined || typeof args?.task_id !== "string" || args.task_id === "")) return { refused: "a Cellwork producer loop needs its actual delegated writer and board task" }
+      /** Resume a previously published Cellwork loop without minting another id or rewriting frozen bytes. */
+      const previous = cellworkContract === undefined ? undefined : readLoops(workspace).find((loop) => loop.cellworkContract?.path === cellworkContract.path && loop.cellworkContract.projectId === cellworkContract.projectId && loop.taskId === args?.task_id && loop.sessionId === sessionId && loop.status === "armed")
+      if (previous !== undefined) {
+        if (previous.writer.id !== writerId || (verifier !== "" && previous.verifier.id !== verifier)) return { refused: "the original Cellwork verification loop belongs to a different writer or verifier" }
+        /** Replaying a sealed loop checks its own original digest rather than freezing it again. */
+        const refusal = previous.cellworkContract?.sha256 === undefined ? undefined : checkCellworkContract(previous)
+        if (refusal !== undefined) return { refused: refusal.detail }
+        return openReply(previous)
+      }
       /** The instant the loop is opened. */
       const now = new Date()
       /** The minted loop id. */
@@ -213,6 +229,7 @@ function openTool(deps: VerifyToolDeps): DshToolDef {
         loopId,
         taskId: args?.task_id === undefined ? null : String(args.task_id),
         ...(contract === undefined ? {} : { contract }),
+        ...(cellworkContract === undefined ? {} : { cellworkContract }),
         // THE C3 FREEZE (CR #12): the project gate file's identity is captured HERE, at open time, so the
         // loop's own WRITER (who may edit the file, the write guard being withdrawn) cannot swap a gate
         // after the fact. Every gate run bound to this loop compares against it.
@@ -236,21 +253,16 @@ function openTool(deps: VerifyToolDeps): DshToolDef {
       }
       if (!writeLoop(workspace, loop)) return { refused: "the loop could not be written to " + join(loopsDir(workspace), loopId + ".json") }
       deps.log("opened loop " + loopId + " writer=" + loop.writer.kind + " verifier=" + loop.verifier.id + " contract=" + loopContractPath(loop))
-      // THE RESULT MUST BE PLAIN, LOSSLESS JSON — measured 2026-10-07, D1: the harness walks every own
-      // key of a tool result and refuses the WHOLE value when one of them is `undefined`
-      // (`tool "mpd_verify_open" returned invalid output: value is not lossless JSON`), so a
-      // `writer.reason` that exists only in the `self` branch used to throw the loop id away. A key whose
-      // value is absent is therefore OMITTED, never set to `undefined` — the same discipline the escape,
-      // evidence and record tools already follow with their conditional spreads.
-      /** The writer seat as the caller may read it: `reason` is present only when the loop carries one. */
-      const writerView: { kind: "self" | "delegate"; id: string; reason?: string } = {
-        kind: loop.writer.kind,
-        id: loop.writer.id,
-        ...(typeof loop.writer.reason === "string" ? { reason: loop.writer.reason } : {}),
-      }
-      return { loopId, writer: writerView, verifier: loop.verifier, scope: loop.scope, contract: loopContractPath(loop), gateFile: loop.gateFile, status: loop.status, expiresAt: loop.expiresAt }
+      return openReply(loop)
     },
   }
+}
+
+/** The public loop reply never serializes undefined or invents a sealed receipt. */
+function openReply(loop: VerifyLoop): Record<string, unknown> {
+  /** Show only present writer fields so the host's lossless JSON guard accepts the reply. */
+  const writer = { kind: loop.writer.kind, id: loop.writer.id, ...(loop.writer.reason === undefined ? {} : { reason: loop.writer.reason }) }
+  return { loopId: loop.loopId, writer, verifier: loop.verifier, scope: loop.scope, contract: loopContractPath(loop), gateFile: loop.gateFile ?? null, status: loop.status, expiresAt: loop.expiresAt, ...(loop.cellworkContract?.sha256 === undefined ? {} : { contractSha256: loop.cellworkContract.sha256 }) }
 }
 
 /** The `mpd_verify_escape` definition. */
@@ -314,7 +326,8 @@ function seatTool(deps: VerifyToolDeps): DshToolDef {
     output: {
       render: (_args: unknown, value: any) => textBlock(
         value?.refused !== undefined ? "refused: " + value.refused
-          : "seat bound: " + value.verifierId + " verifies loop " + value.loopId + " (" + value.docs.length + " frozen doc(s))",
+          : "seat bound: " + value.verifierId + " verifies loop " + value.loopId + " (" + value.docs.length + " frozen doc(s))"
+            + (value.contractSha256 === undefined ? "" : "\nFROZEN CONTRACT: " + value.docs[0] + "\nSHA-256: " + value.contractSha256),
       ),
     },
     execute: (args: any, exec: DshToolExec) => {
@@ -328,6 +341,10 @@ function seatTool(deps: VerifyToolDeps): DshToolDef {
       if (String(loop.writer?.id ?? "") === sessionId) {
         return { refused: "this session (" + sessionId + ") is loop " + loop.loopId + "'s WRITER — a writer cannot verify its own work. Ask a different agent to take the seat." }
       }
+      /** The canonical receipt must exist and still match before it can enter a blind seat. */
+      const contractFailure = checkCellworkContract(loop)
+      if (contractFailure !== undefined) return { refused: `${contractFailure.reason}: ${contractFailure.detail}` }
+      if (loop.cellworkContract !== undefined && loop.verifier.id !== "unbound" && loop.verifier.id !== sessionId) return { refused: "this Cellwork loop belongs to a different original verifier" }
       /** The seat file as it stands. */
       const seats = readSeats(workspace)
       // THE SEAT'S FROZEN DOCS COME FROM THE LOOP, NOT FROM THIS MODULE (D2, measured 2026-10-07): the
@@ -338,7 +355,7 @@ function seatTool(deps: VerifyToolDeps): DshToolDef {
       /** The loop's frozen docs: exactly the document THIS loop was opened against. */
       const docPaths = [...new Set([contract])]
       /** The seat to store. */
-      const seat: VerifySeat = { loopId: loop.loopId, verifierId: sessionId, unlocked: seats.seats?.[sessionId]?.unlocked === true, docPaths }
+      const seat: VerifySeat = { loopId: loop.loopId, verifierId: sessionId, unlocked: seats.seats?.[sessionId]?.unlocked === true, docPaths, ...(loop.cellworkContract === undefined ? {} : { canonicalCellworkDoc: contract }) }
       seats.version = 1
       seats.seats = { ...(seats.seats ?? {}), [sessionId]: seat }
       if (!writeSeats(workspace, seats)) return { refused: "the seat could not be written to " + seatsPath(workspace) }
@@ -350,7 +367,7 @@ function seatTool(deps: VerifyToolDeps): DshToolDef {
       deps.log("seat bound loop=" + loop.loopId + " verifier=" + sessionId)
       /** The caller's display name, when the team plane knows it. */
       const membership = deps.dsh.teamMembership((exec as { agent?: unknown })?.agent)
-      return { loopId: loop.loopId, verifierId: sessionId, role: "verifier", blind: !seat.unlocked, docs: docPaths, verifiedWriter: String(loop.writer?.id ?? ""), ...(membership === undefined ? {} : { teamName: membership.name }) }
+      return { loopId: loop.loopId, verifierId: sessionId, role: "verifier", blind: !seat.unlocked, docs: docPaths, verifiedWriter: String(loop.writer?.id ?? ""), ...(loop.cellworkContract?.sha256 === undefined ? {} : { contractSha256: loop.cellworkContract.sha256 }), ...(membership === undefined ? {} : { teamName: membership.name }) }
     },
   }
 }
@@ -542,7 +559,14 @@ function recordTool(deps: VerifyToolDeps): DshToolDef {
       // used, so the docPaths a seat was handed and the contract its record cites can never disagree.
       const contractPath = loopContractPath(loop)
       /** The contract as it is on disk right now, which is what an attestation is checked against. */
-      const contractSha = sha256File(join(workspace, contractPath))
+      const contractSha = loop?.cellworkContract?.sha256 ?? sha256File(resolve(workspace, contractPath))
+      if (loop?.cellworkContract !== undefined) {
+        /** The two-phase open and its real bytes are required for a new canonical project verdict. */
+        const refusal = checkCellworkContract(loop)
+        if (refusal !== undefined) return { refused: refusal }
+        if (loop.verifier.id !== sessionId || readSeats(workspace).seats?.[sessionId]?.loopId !== loopId) return { refused: { reason: "bind-unproven", detail: "bind this original Cellwork verifier to the sealed loop before recording a verdict" } }
+        if (args?.writer !== undefined && String(args.writer) !== loop.writer.id) return { refused: { reason: "writer-mismatch", detail: "the sealed Cellwork loop already records its original writer" } }
+      }
       /** The documents the verdict rests on, hashed. */
       const sources: HashedDoc[] = (Array.isArray(args?.sources) ? args.sources.map(String) : [])
         .map((path: string) => sourceDoc(workspace, path))
@@ -623,6 +647,12 @@ function recordTool(deps: VerifyToolDeps): DshToolDef {
       if (!outcome.ok) {
         deps.log("record refused reason=" + outcome.reason)
         return { refused: { reason: outcome.reason, detail: outcome.detail } }
+      }
+      if (loop?.cellworkContract !== undefined) {
+        /** Recheck immediately before the verdict lands and reject a changed citation during assembly. */
+        const refusal = checkCellworkContract(loop)
+        if (refusal !== undefined) return { refused: refusal }
+        if ([...sources, ...record.basis.docs].some((doc) => resolve(workspace, doc.path) === contractPath && doc.sha256 !== contractSha)) return { refused: { reason: "frozen-contract-drift", detail: "a producer contract citation changed during verification record assembly" } }
       }
       if (!writeRecord(workspace, record)) return { refused: { reason: "write-failed", detail: "the record could not be written under " + recordsDir(workspace) } }
       /** The repair a FAIL opened, when one did. */

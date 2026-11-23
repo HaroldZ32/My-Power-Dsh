@@ -90,7 +90,7 @@ export {
 } from "./subagent-rows.ts"
 export type { SubagentRowEntry, SubagentRowView, SubagentSectionRow, SubagentTeamScope } from "./subagent-rows.ts"
 import { layoutGraphNatural, legendLines, sliceSpans, type GraphView } from "./graph.ts"
-import { modelRanks, modelRows, NO_SESSION_TEAM_MARKER, sessionIdOf, teamWorkflowLines, WORKSPACE_SCOPE_MARKER, type TeamFeedAccessor, type TeamWorkflow } from "./team-state.ts"
+import { modelRanks, modelRows, NO_SESSION_TEAM_MARKER, sessionIdOf, workspaceCwdOf, teamWorkflowLines, WORKSPACE_SCOPE_MARKER, type TeamFeedAccessor, type TeamWorkflow } from "./team-state.ts"
 import { t } from "./i18n.ts"
 import { legendLinesFor, panelKit, panelSurfaceWidth, SURFACE_FRAME_PADDING_X, textRow, toneColor, usePanelViewport, useTeamFeed, viewportTrack, visualGlyph, type PanelKit } from "./panel-core.ts"
 import { DAG_ANIM, DAG_CHROME, DAG_TONE_GLYPH, type DagTone } from "./dag-theme.ts"
@@ -1033,7 +1033,7 @@ export function takeSubagentDetailRequest(nowMs: number = Date.now()): string | 
  * @returns a component matching the host's `TuiSceneProps` contract.
  */
 export function createSubagentSceneComponent(
-  readWorkflow: (sessionId?: string) => TeamWorkflow | undefined,
+  readWorkflow: (sessionId?: string, cwd?: string) => TeamWorkflow | undefined,
   onHostKit?: (ui: unknown) => unknown,
   takePendingDetail: () => string | undefined = takeSubagentDetailRequest,
   subscribeTeams?: TeamFeedAccessor,
@@ -1130,7 +1130,7 @@ export function createSubagentSceneComponent(
         // notification both reach this closure long after the render that defined it, and the channel
         // publishes its id later. This is the read that makes the merged panel draw ITS OWN session's
         // team, which is the defect the user reported (a new session showing the old session's DAG).
-        next = readWorkflow(sessionIdOf(channel))
+        next = readWorkflow(sessionIdOf(channel), workspaceCwdOf(channel))
       } catch {
         next = undefined
       }
@@ -1140,7 +1140,7 @@ export function createSubagentSceneComponent(
     // THE PUSH (PART P): this scene keeps its projection in a state cell, so a notification re-READS
     // it through `refresh` rather than merely re-rendering. The 2000 ms tick below stays as the
     // fallback for a composition without the feed or without `mpd-team-core`.
-    useTeamFeed(React, subscribeTeams, refresh)
+    useTeamFeed(React, subscribeTeams, refresh, sessionIdOf(channel), workspaceCwdOf(channel))
 
     React.useEffect(() => {
       refresh()
@@ -1160,7 +1160,7 @@ export function createSubagentSceneComponent(
           }
         }
       }
-    }, [])
+    }, [sessionIdOf(channel), workspaceCwdOf(channel)])
 
     // The channel subscription — the SAME two stable fallbacks `scenes.ts` installs, so the hook is
     // always called and the rows are re-read whenever the host bumps its version (a subagent

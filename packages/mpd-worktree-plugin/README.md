@@ -117,6 +117,54 @@ file reads as an EMPTY index instead of wedging every operation, and a malformed
 
 There is NO automatic merge queue and NO automatic gate run after a merge.
 
+## Independent development copies
+
+Use `mpd_worktree_copy` when the assigned work requires independent Git storage or refs. Linked
+worktrees are the default. The copy workflow uses the native project identity, team board, and
+verification ledger. A host without the native identity capability refuses the copy actions, and the
+linked worktree tools remain available.
+
+1. As the assigned member, send `request` with `taskId`, `source: "."`, the full committed `base`
+   SHA, a lowercase `destination` name, `scope` drawn from the task's write scopes, `reason`, `setup`,
+   and `estimatedBytes`. The estimate is peak bytes for Git objects, the working tree, temporary
+   packs and setup/build output. Identify any needed dirty or untracked inputs in `setup`. Supply
+   authorized inputs in a separately prepared committed base before requesting allocation.
+2. Give the captain the request `id` from the public tool reply through team mail. The captain can
+   use `list` with that `id` to inspect the request, then call `approve` or `decline` with the `id`
+   and an optional `reason`. Approval binds the active task
+   attempt, original member session, exact base, scope, destination and estimate. It reserves space
+   in the project until allocated, declined or expired. A pending approval expires 24 hours after
+   the request.
+3. The original member calls `create` with the `id`. It gets a checkout under
+   `.mpd/copies/checkouts/<destination>` on branch `development`. Use that path explicitly as your
+   workdir. The project and member identities and the original session stay attached. Git fetches the
+   exact committed base and its reachable history into its own object database, without a remote
+   config, hardlinks, or alternates. Uncommitted work, runtime `.mpd` state, and untracked secrets and
+   caches stay in the source. The member owns commits and local merges in the copy.
+4. The member calls `submit` with the `id` and the full `commit` SHA before closing the write task.
+   The tool checks the candidate history against the approved scope. The captain opens a delegated
+   verification loop for that task with `writer_id` set to the returned `writerSession`. An independent
+   verifier checks the exact candidate in its own verification checkout, records successful gate
+   evidence and a `PASS` in the project ledger, and includes `git-copy:<id>:<commit>` in the verdict's
+   `notes`. The note is the verifier's declaration about the checked commit. The tool validates the
+   recorded binding and gate result. It has no observation of the verifier's checkout or read order.
+5. The captain checks out the normal unprotected integration branch and calls `integrate` with the
+   `id`, `into` branch name and `verification` record ID. The merge uses the submitted object even
+   if the member branch has advanced. Git aborts on conflict and retains the member copy and its refs.
+   The captain can continue the repository's ordinary integration branch and PR workflow.
+6. After successful integration and task closure, the captain calls `dispose` with the `id`. The
+   tool checks the recorded branch still contains the candidate and preserves a dirty checkout,
+   ignored build files, unintegrated branch tips and reflog commits, and local refs without a durable
+   counterpart. The disposed record reports measured copy bytes and before/after filesystem free bytes.
+
+Reservations serialize across processes using the same project's copy ledger on one filesystem.
+They are based on the supplied estimate and filesystem free space, with no filesystem quota for later
+builds or other applications. An interrupted staging operation retains any ambiguous Git data. A
+leftover `.mpd/copies/lock` blocks further mutations. Establish that the holding process is gone and
+inspect the request and staging path before removing that lock. The tool authenticates DSH callers
+and checks canonical paths and filesystem identity. Protection against other OS processes editing the
+same files depends on the workspace's filesystem permissions.
+
 ## Bounds (declared)
 
 - The official-executor fallback cannot set a child's cwd (contract D7); such a member runs in the

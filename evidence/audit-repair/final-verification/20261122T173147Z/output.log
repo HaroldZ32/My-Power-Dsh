@@ -1,0 +1,35 @@
+Independent verification PASS
+Branch fix/team-and-audit-recovery, base commit b261da2ae5dff4c46fdd97c826a6441b303c6037
+UTC 2026-11-22T17:31:47Z to 2026-11-22T17:38:51Z, frozen snapshot SHA-256 843b3fe7135fba52df432a1787c1c66e7d54d8e7439bf5f0fe224329b7a24a04
+Pinned tools Bun 1.4.0, Node 24.21.0, DSH 0.2.2-rc.5, DSH-Go f36bf91b0736e81ef40c2a7040b2ec337ca1ab40, TUI 0.20.2, pnpm 11.23.0, SVN 1.14.5
+Bun root tests exit=0, 4290 pass, 4 skip, 0 fail, 280 files
+QA self-tests exit=0, 56 pass, 2 skip, 0 fail
+[verify-gates] member vendor: exit=0 PASS
+[verify-gates] member dist-fresh: exit=0 PASS
+[verify-gates] member rows-parity: exit=0 PASS
+[verify-gates] member docs-parity: exit=0 PASS
+[verify-gates] member preset-conformance: exit=0 PASS
+[verify-gates] member plugin-manifest: exit=0 PASS
+[verify-gates] member comment-coverage: exit=0 PASS
+[verify-gates] member graph-model: exit=0 PASS
+[verify-gates] member workflows: exit=0 PASS
+[verify-gates] member tui-admission: exit=0 PASS
+[verify-gates] member dshgo: exit=0 PASS
+typecheck-final exit=0
+docs-final exit=0
+manifest-final exit=0
+no-host-override-final exit=0
+manual-paths-final exit=0
+Git diff check source exit=0, unrestricted generated-browser whitespace check exit=2 (59 generated padding rows)
+Tracked-input tarball SHA-256 b04e85c0ea7cf4bdd6f6c27bfc878299063eda3961c17d89008e706a49383f03, 1272 names, 0 local runtime or credential paths
+Independent pack closure 672/672 identical, 30/30 packages, 0 drift or expected-after-pack, 1 declared QA-only exemption
+AST search on identical archive in fresh Web and TUI profiles returned one declaration and zero for the unused declaration
+Actual browser client SHA-256 c5be0607ff2dc360b52c5357fe0af3e3c473cf0c6c77d343481b1c0e220000cb; local and explicitly trusted alias rendered exact bytes with zero page errors
+Both profiles saved and reloaded 21091 while displaying mounted 20000 separately. Empty-authorization control returned HTTP 401 and left profile bytes identical.
+Before correction request persisted 21091, but the card displayed 20000 on save and reload and warned on loopback.
+Both ordinary pack modes excluded independent root and nested state sentinels. The two deliberately injected positives both failed their strict gate.
+Independent host records verified named child T1 claim through each host's paired call/result, a distinct idle denial and one sandbox workspace on rc.5 and rc.2.
+Team approval/release test 10 pass, 0 fail, 111 assertions. Both public release entry points return structured and rendered recovery.
+TUI late-kit baseline 44/1, repaired 45/0. Data suite with real Git and SVN 71/0. Automation suite 538/0.
+Rootless source Docker exit=0, 163 passed, 0 failed, 81 declared bounds, evidence evidence/docker/client-install/2026-11-22T17-33-58Z
+Verification record rec-20261122T173905-24ca97

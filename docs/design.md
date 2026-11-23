@@ -723,19 +723,26 @@ carried forward here instead of being dropped:
 
 ### Re-team
 
-A team is LIVE only until it ends: an explicit `agent_teams_control end`, or a clean-terminal board
-(≥ 1 task, every task completed/cancelled, none failed) which the complexity gate ends itself. A
-`failed` task blocks both the auto-end and any re-team and asks for a `kind=repair` row. With no live
-team and `team.reteam.afterConsults` (default 4) completed one-shot spawns by this session, the gate
-stages one empty plan shell under `[AgentTeams] Re-team rule`; `team.reteam.enabled` (default true)
-gates only this volume trigger. All three planes count: autoproject and cellwork spawn as the same
-session.
+An active team remains available until it ends through `agent_teams_control end` or the gate's
+attempt to end a clean-terminal board (≥ 1 task, every task completed or cancelled). A `failed`
+task blocks auto-end and calls for a `kind=repair` row. In mechanical mode with no live team, the
+gate can stage one empty plan shell under `[AgentTeams] Re-team rule` after
+`team.reteam.afterConsults` (default 4) completed public consult tool calls. An async start call can
+return while its child is still running. This completion count is separate from admission of
+concurrent consults.
 
 ### Async consults and the deadman
 
-`mpd_role_spawn_async` returns a `consultId` at once and `mpd_role_consult` lists/waits/collects/
-cancels; concurrency is capped by `MPD_DSH_CONSULT_MAX` (default 8, over-cap queues). Every consult,
-blocking or async, is armed with a deadman whose bound is read at every arm from
+`mpd_role_spawn_async` returns a `consultId` at once and `mpd_role_consult` lists, waits for,
+collects or cancels it. Admitted consults queue at the `MPD_DSH_CONSULT_MAX` supervisor cap (default 8).
+An eligible top-level MPD session in mechanical mode with a usable Team surface and no live team
+shares an earlier admission check across public role and workmate spawns. At the default, the fourth
+call overlapping three outstanding consults is redirected to the Team workflow before starting
+another child. The check counts reserved calls through their child lifetime, including queued starts.
+`team.reteam.enabled: false` disables this check and completed-call staging. In-team work, child
+sessions and internal cellwork or autoproject spawns keep their own execution paths.
+
+Every consult, blocking or async, is armed with a deadman whose bound is read at every arm from
 `consult.forceAfterMs` → `watchdog.forceAfterMs` → 900 000 ms (a declared `0` disables it). On expiry
 an OPEN `bash` is exempt at any age; any other open tool younger than `toolInFlightMaxMs` is activity;
 otherwise the supervisor writes the handoff (task, measured idle, the last assistant message when

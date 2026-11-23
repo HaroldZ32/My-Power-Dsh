@@ -50,10 +50,17 @@ type Config = { boulderDir?: string }
 type GoalBridge = {
   /** Whether long runs anchor a goal by themselves (`goal.autoAnchor` in mpd.jsonc). */
   autoAnchor(): boolean
+  /** The current goal identity used to close the goal for one finished work. */
+  status(exec: unknown): Promise<{ id: string } | null | undefined>
   /** Put a durable goal in place, keeping any unfinished goal already current. */
-  anchor(exec: unknown, input: { objective: string; source: string }): Promise<{ ok: boolean; created: boolean; goal?: { id?: string } | null; error?: string; note?: string }>
-  /** Finish a goal this plugin anchored; a goal it did not anchor is left to the model and the user. */
-  finish(exec: unknown, input: { outcome: "complete" | "blocked"; source: string }): Promise<{ ok: boolean; outcome: string; error?: string }>
+  anchor(exec: unknown, input: { objective: string; source: string; runId: string }): Promise<{ ok: boolean; created: boolean; goal?: { id?: string } | null; error?: string; note?: string }>
+  /** Finish a goal for one work, with source-only support for matching legacy anchors. */
+  finish(exec: unknown, input: { outcome: "complete"; source: string; runId: string; goalId: string; legacyObjective: string }): Promise<{ ok: boolean; outcome: string; error?: string }>
+}
+
+/** The durable objective identifies one work, including legacy anchors that predate run IDs. */
+function boulderObjective(planPath: string, workId: string): string {
+  return "Execute the plan " + planPath + " to completion (boulder work " + workId + ") with evidence."
 }
 
 /** Merge the row config with the mpdConfig runtime layer (mpd.jsonc wins per key). */
@@ -131,8 +138,8 @@ export function applyBoulder(ctx: Ctx, config: Config = {}): void {
       const bridge = goalBridge()
       if (bridge === undefined || bridge.autoAnchor?.() !== true) return null
       /** The anchor outcome; an unfinished goal already current is KEPT by the service. */
-      const outcome = await bridge.anchor(exec, { objective: "Execute the plan " + planPath + " to completion (boulder work " + workId + ") with evidence.", source: "boulder" })
-      if (outcome?.goal != null && typeof outcome.goal.id === "string") return outcome.goal.id
+      const outcome = await bridge.anchor(exec, { objective: boulderObjective(planPath, workId), source: "boulder", runId: workId })
+      if (outcome?.ok === true && outcome.created === true && typeof outcome.goal?.id === "string") return outcome.goal.id
       if (outcome?.ok === false) dsh.rowLog(ROW_LOG, "goal anchor refused: " + String(outcome.error ?? "unknown"))
       return null
     } catch (error: any) {
@@ -147,14 +154,19 @@ export function applyBoulder(ctx: Ctx, config: Config = {}): void {
    * left to the model and the user (the service enforces that, and reports the refusal).
    *
    * @param exec - the tool exec carrying the calling agent.
+   * @param workId - the exact completed work.
+   * @param planPath - the plan path embedded in the goal's durable objective.
    */
-  async function finishGoal(exec: any): Promise<void> {
-    /** The goal bridge, absent in a composition without the mpd-goal row. */
-    const bridge = goalBridge()
-    if (bridge === undefined) return
+  async function finishGoal(exec: unknown, workId: string, planPath: string): Promise<void> {
     try {
-      /** The finish outcome, reported in the row log when the harness refused the transition. */
-      const outcome = await bridge.finish(exec, { outcome: "complete", source: "boulder" })
+      /** The goal bridge, absent in a composition without the mpd-goal row. */
+      const bridge = goalBridge()
+      if (bridge === undefined) return
+      /** The bridge checks this snapshot against the anchor and the live harness revision. */
+      const goal = await bridge.status?.(exec)
+      if (goal == null) return
+      /** Legacy boulder anchors identify their work through the generated objective. */
+      const outcome = await bridge.finish(exec, { outcome: "complete", source: "boulder", runId: workId, goalId: goal.id, legacyObjective: boulderObjective(planPath, workId) })
       if (outcome?.ok === false && String(outcome.error ?? "").includes("not the one mpd-goal anchored") === false) {
         dsh.rowLog(ROW_LOG, "goal finish refused: " + String(outcome.error ?? "unknown"))
       }
@@ -240,17 +252,19 @@ export function applyBoulder(ctx: Ctx, config: Config = {}): void {
     execute: async (args: any, exec: any) => {
       // Per-call state root, resolved from the calling session rather than the process cwd.
       const dir = root(exec)
-      // Ledger after completion, or null when the workspace has none or no work matched (reported as an error below).
-      const state = completeBoulder(dir, args?.workId)
-      if (!state) throw new Error("mpd-boulder: no work to complete (start one first with mpd_boulder_start)")
-      // Work actually completed: the requested id, else whatever the mirror points at.
-      const workId = args?.workId ?? state.active_work_id ?? "?"
-      // Record re-read from disk, the source of the status and elapsed_ms reported back.
+      /** The target must be resolved before the transition so the acknowledgement names the same work. */
+      const workId: string | undefined = args?.workId ?? readBoulderState(dir)?.active_work_id
+      if (workId === undefined) throw new Error("mpd-boulder: no work to complete (start one first with mpd_boulder_start)")
+      /** The writer returns null both for a missing work and for a refused write. */
+      const state = completeBoulder(dir, workId)
+      /** Only the persisted work can acknowledge completion. */
       const work = getWorkById(dir, workId)
-      // The ledger is done, so the goal this row anchored for it is done too; a goal anchored by
-      // anyone else is left alone by the service, which is why this never "completes" a user's goal.
-      await finishGoal(exec)
-      return { workId, status: work?.status ?? "completed", elapsedMs: work?.elapsed_ms ?? 0 }
+      if (state === null && work === null) throw new Error("mpd-boulder: no readable work " + workId + " in " + join(dir, ".mpd", "boulder.json"))
+      if (state === null || work?.status !== "completed") {
+        throw new Error("mpd-boulder: could not persist or confirm completion for " + workId + " in " + join(dir, ".mpd", "boulder.json"))
+      }
+      await finishGoal(exec, workId, work.active_plan)
+      return { workId, status: work.status, elapsedMs: work.elapsed_ms ?? 0 }
     }
   })
 

@@ -1,0 +1,103 @@
+{
+  "case": "model-config-live-refresh",
+  "ok": true,
+  "exited": 0,
+  "phases": {
+    "baseline": {
+      "childModel": "deepseek-v4-flash",
+      "spawnCalledAndOk": true,
+      "stubModels": [
+        "deepseek-flash",
+        "deepseek-flash",
+        "deepseek-v4-flash",
+        "deepseek-flash"
+      ]
+    },
+    "afterSave": {
+      "childModel": "deepseek-v4-pro",
+      "spawnCalledAndOk": true,
+      "stubModels": [
+        "deepseek-flash",
+        "deepseek-flash",
+        "deepseek-v4-pro",
+        "deepseek-flash"
+      ]
+    },
+    "fileEdit": {
+      "childModel": "deepseek-v4-pro",
+      "spawnCalledAndOk": true,
+      "stubModels": [
+        "deepseek-flash",
+        "deepseek-flash",
+        "deepseek-v4-pro",
+        "deepseek-flash"
+      ]
+    }
+  },
+  "checks": [
+    {
+      "name": "baseline: the parent log carries the spawn call + non-error result",
+      "ok": true
+    },
+    {
+      "name": "baseline: the child log was found by its phase marker",
+      "ok": true
+    },
+    {
+      "name": "baseline (negative): the child ran on the spawned member's CONFIGURED agentRoutes model before any save",
+      "ok": true
+    },
+    {
+      "name": "save: the entry-config mutate was accepted",
+      "ok": true
+    },
+    {
+      "name": "save: the descriptor's SAVED OVERRIDE (user) carries the saved model — the layer the config row composes",
+      "ok": true
+    },
+    {
+      "name": "no restart: the boot pid is the SAME process across baseline and after-save",
+      "ok": true
+    },
+    {
+      "name": "after-save: the parent log carries the spawn call + non-error result",
+      "ok": true
+    },
+    {
+      "name": "after-save: the child log was found by its phase marker",
+      "ok": true
+    },
+    {
+      "name": "after-save: the child ran on the SAVED model, no restart",
+      "ok": true
+    },
+    {
+      "name": "after-save: the child's provider is the agent's configured provider",
+      "ok": true
+    },
+    {
+      "name": "isolation: every session-store key stayed inside the sandbox",
+      "ok": true
+    },
+    {
+      "name": "provider-side: the stub served a request for the saved model after the save",
+      "ok": true
+    },
+    {
+      "name": "file-edit (control): the child ran on the FILE-EDITED model, no restart",
+      "ok": true
+    },
+    {
+      "name": "no restart across every phase (baseline → save → file-edit)",
+      "ok": true
+    },
+    {
+      "name": "the entry-config subscription FIRED (its heartbeat is on the row log)",
+      "ok": true
+    }
+  ],
+  "isolation": {
+    "ok": true,
+    "checked": 1
+  }
+}

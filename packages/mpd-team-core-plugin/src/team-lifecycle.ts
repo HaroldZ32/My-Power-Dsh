@@ -22,7 +22,7 @@
 // — and only for the plan it IS, never for another plan that merely shares a Lead and a team name.
 import { readFileSync, readdirSync } from "node:fs"
 import { join } from "node:path"
-import { listTeams, recordNamesLead, recordNamesMember, teamRoot, writeTeam, type TeamRecord } from "./team-store"
+import { blockingDependencies, derivePhase, listTeams, recordNamesLead, recordNamesMember, teamRoot, writeTeam, type TeamRecord } from "./team-store"
 
 /** The phases a team can still be WORKED in — the only values a live record may carry. */
 export const LIVE_TEAM_PHASES: readonly string[] = ["staged", "active", "idle"]
@@ -37,6 +37,16 @@ export const LIVE_TEAM_PHASES: readonly string[] = ["staged", "active", "idle"]
  */
 export function isLiveTeamPhase(phase: string): boolean {
   return LIVE_TEAM_PHASES.includes(phase)
+}
+
+/** Require a clean nonempty idle board before handing its project slot to another objective. */
+export function isCleanTerminalRun(record: TeamRecord): boolean {
+  return derivePhase(record) === "idle" && record.tasks.length > 0
+    && !record.members.some((member) => member.fenced === true)
+    && !record.consults?.some((consult) => consult.state === "running")
+    && record.tasks.every((task) => (task.status === "completed" || task.status === "cancelled")
+      && (task.unresolvedBlockers?.length ?? 0) === 0
+      && blockingDependencies(record.tasks, task.blockedBy).blocking.length === 0)
 }
 
 /** What `.mpd/team/archive/` says, indexed by the PLAN IDENTITY a team record also carries. */

@@ -209,6 +209,8 @@ TWO MEASURED HOST CONSTRAINTS this contact obeys (dsh-tui 0.12.0, both establish
   host. `capabilities().hostInput` names which source armed, so QA can tell them apart. The practical
   consequence is one bootstrap: a take-over built on this contact works from the moment the session has
   rendered an MPD scene, and stays inert (host behaviour, nothing claimed) before that.
+  `whenHostInput(listener, { updates: true })` also reports the first remembered kit if the initial
+  probe already settled. A subscription releases future notifications when disposed.
 
 VERSION-GATED SINCE 0.13.0 (2026-10-06). The contact exists for exactly ONE host generation — a
 dsh-tui WITHOUT the panel seam, where the host's own `dashboard` action is the only way to reach the

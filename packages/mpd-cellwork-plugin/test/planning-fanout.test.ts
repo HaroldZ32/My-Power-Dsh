@@ -105,9 +105,10 @@ interface StagingHarness {
  * Build the staging double for one analyst count.
  *
  * @param analysts - the `cellwork.planning.analysts` value the deps carry.
+ * @param shell - whether a foreign automatic Team shell already occupies the slot.
  * @returns the harness whose `deps` drive the real `stagePlanningTeam`.
  */
-function makeStagingHarness(analysts: number): StagingHarness {
+function makeStagingHarness(analysts: number, shell: boolean = false): StagingHarness {
   /** The temp workspace staging writes its cell directory under. */
   const workspace = mkdtempSync(join(tmpdir(), "mpd-cellwork-fanout-"))
   /** The one instant every row is stamped with. */
@@ -116,8 +117,8 @@ function makeStagingHarness(analysts: number): StagingHarness {
   const cell = newCellState({ cellId: "cell-20261111T000000000Z", objective: "ship the widget", captainSessionId: "session-captain", now })
   /** Every captured call. */
   const calls: TeamCall[] = []
-  /** The plan slot, once created. */
-  let plan: Record<string, unknown> | undefined
+  /** The plan slot starts empty unless the host just staged an automatic shell. */
+  let plan: Record<string, unknown> | undefined = shell ? { planId: "automatic-shell", name: "automatic Team shell", members: [], tasks: [] } : undefined
   /** The approved team record, once approved. */
   let record: Record<string, unknown> | undefined
   /** The next board id number. */
@@ -274,6 +275,16 @@ function makeStagingHarness(analysts: number): StagingHarness {
 }
 
 // ── §5.4.1: the fan-out shape ───────────────────────────────────────────────
+
+test("an empty automatic Team shell is replaced by the exact Cellwork planning stage", async () => {
+  /** The native Team operation separately attests and replaces the same owner's shell. */
+  const harness = makeStagingHarness(0, true)
+  /** Cellwork must request a fresh slot, then fill and approve that slot once. */
+  const staged = await stagePlanningTeam(harness.deps)
+  expect(staged).toMatchObject({ ok: true, teamId: "team-1" })
+  expect(harness.calls.filter((call) => call.args.action === "create").map((call) => call.args.name)).toEqual([`cell ${harness.cell.cellId}`])
+  expect(harness.calls.filter((call) => call.args.action === "approve")).toHaveLength(1)
+})
 
 test("analysts=3 stages FIVE seats and FIVE tasks, alternating roles, with the split blocked by every lane", async () => {
   /** The staging double, at the contract's own example count. */

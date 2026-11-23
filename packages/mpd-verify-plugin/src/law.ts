@@ -434,8 +434,10 @@ export interface VerifierSeatView {
   verifierId: string
   /** True once a FAIL has unlocked implementation reading for this seat (the ratchet). */
   unlocked: boolean
-  /** The docs the loop froze, plus the loop's own basis; relative paths. */
+  /** The docs the loop froze, plus the loop's own basis. */
   docPaths: readonly string[]
+  /** Verified exact absolute producer document from a sealed Cellwork loop. */
+  canonicalCellworkDoc?: string
 }
 
 /** Everything {@link verifierEnvelopeDecision} needs, so the decision stays pure. */
@@ -505,6 +507,8 @@ export function verifierEnvelopeDecision(input: VerifierEnvelopeInput): Envelope
       + " path under " + VERIFIER_DOC_PREFIXES.map((prefix) => "`" + prefix + "`").join(", ") + ". After a recorded FAIL"
       + " the ratchet unlocks implementation reading for diagnosis only." }
   }
+  // A sealed Cellwork seat may read this exact document across its checkout boundary only.
+  if (tool === "read" && seat.canonicalCellworkDoc !== undefined && toPosix(raw) === toPosix(seat.canonicalCellworkDoc)) return {}
   /** The read target, classified. */
   const target = classifyWriteTarget(input.workspaceRoot, raw)
   if (target.kind === "pass") return {}

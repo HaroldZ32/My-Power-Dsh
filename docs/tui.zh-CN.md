@@ -176,24 +176,18 @@ agent）→ 提供商 → 模型 → 推理强度，写入 `agentRoutes.<Agent>.
 `ctx.slots.register({ name: "settings.section", id: "mpd", order: 20, label: () => t("nav"), locale, inject }, Section)`，
 形状取自 `dsh-client-ui-settings-models/lib/client.js:2936` 的实测）：设置外壳收集该列表槽位、按 `order`
 排序并渲染当前激活项，因此 `order: 20` 让 MPD 排在 `general`（0）、`models`（10）、`plugins`（15）之后，
-且不移动任何既有栏目。该栏原样渲染卡片，不声明任何嵌套 `children`；没有被注册的命名空间什么也不渲染——这
-正是此前可调项不可见的原因。写入走 harness 自己的 config-form（`ctx.configForms.get("mpd-config")`，
-即 `mpd-config` entry 文档），而不是 `settingsScope` 绑定；不可写的表单会带原因渲染为只读，并且绝不尝试写入。卡片的字段、
-标签与中文描述由它自己的测试与 TUI 区块的描述符逐一比对，因此两扇门不会各自漂移。
+且不移动任何既有栏目。该栏直接渲染卡片，不声明嵌套的 `children`。通用设置通过宿主的 `mpd-config` 条目表单保存，
+并应用到所有工作区。模型区块通过 `/plugins/mpd/model-config?sessionId=…` 读写选中的活动会话所属工作区。
+多个工作区同时活动时，读取生效配置需要指定会话。保存模型改动始终需要选中活动会话。
+宿主表单为只读时，卡片会显示无法写入的原因。测试将卡片的字段、标签和中文描述与 TUI 区块逐一比对。
 
-**证据级别——已见证：** **已构建且已服务**的客户端字节中的注册契约
-（`packages/mpd-bundle-plugin/client.js`；通道会重新哈希它所判定的那份产物，本次移动前后的大小与 sha256
-都记录在证据中）、**离线钩子测试台（offline hook harness）**在注册被**调用**时记录下的该栏描述符——id、
-order、label、locale、无 `children`、其字段与 TUI 描述符的一致性、以及模块行为——渲染、以正确的路径/值/
-revision 驱动 scope 写入、拒绝非法草稿、带原因渲染为只读——以及经由宿主自身带认证的 settings API 完成的
-**端到端写入路径**（`web-settings-bridge.ts` W1–W13）。
+客户端测试台验证了发布产物的注册行为、字段一致性、宿主表单的版本检查，以及会话切换时按工作区读写模型设置。
+服务端测试使用两个工作区验证了请求认证、未知会话的处理和 JSONC 无关字节的保留情况。
+`web-settings-bridge.ts` 验证宿主带认证的条目 API。这些检查未涵盖真实浏览器渲染或点击保存。
 
-**证据级别——本环境未见证：** **真实浏览器渲染**（宿主在真实页面中分发该 key）与**点击驱动的保存**。
-本环境没有浏览器可执行文件；通道以 `cardClaim.W3.witnessed === false` 记录这一点及原因，本页重复该结论，
-绝不暗示相反。要自己看到它：启动 `dsh web`，打开界面，进入 **设置 → MPD**，应看到带 schema 各项（每个
-agent 的路由叶子提供由目录驱动的选择）的
-`mpd` 栏，编辑一项并保存——恰好一个活动会话时，工作区的 `<workspace>/.mpd/mpd.jsonc` 会在保留注释的
-前提下改变；否则打通功能会大声拒绝（`no-live-session` / `ambiguous-multi-root`）并说明取值并未丢失。
+如需在界面中验证项目保存，请选中一个活动会话，在 **设置 → MPD** 中修改一个模型字段并保存。
+保存会更新该会话工作区的 `<workspace>/.mpd/mpd.jsonc`，并保留无关的 JSONC 内容。其他工作区可以保持打开。
+如果配置档案中的全局设置覆盖了该字段，卡片会报告冲突，项目文件保持原样。
 
 ### 3.2 团队工作流与计划界面（波次 `tui-team-surface`）
 
@@ -732,20 +726,10 @@ profile 安装的插件无法注册 `tui.dsh/v1alpha1#DecisionEvents`：在宿�
 `agentRoutes.<Agent>.{provider,model,reasoningEffort}` 叶子 —— 每个名册 agent 一行三片叶子），它们是**本行 config 的入口文档**
 （entry `mpd-config`）里的键，经 harness **自带的**表单编辑（entry 由 `packages/mpd-config-plugin` 拥有；
 本包只是纯消费者，只在没有配置插件参与组合时才注册一个带守卫的兜底）。
-**存在两条持久化路径，只有那条休眠的会写你的文件：**
+TUI 将设置保存到宿主的 `mpd-config` 条目文档。保存后，进程内会刷新最高优先级的配置层，并应用到所有工作区。
+Web 卡片的通用设置使用同一条目文档。Web 模型字段使用 §3.1 所述的工作区保存路径。
 
-- **entry-config 保存——本 harness 上两扇前门都走这条。** Web 卡片与本分区保存的是
-  `configForms.get("mpd-config")`；entry 文档是**宿主自己的**存储，因此持久化是宿主的事。保存下来的
-  override 就是最顶层配置层（L4，`readEntryConfig`），而 `onSettingsDocumentUpdated(ENTRY_CONFIG_ID)`
-  会在进程内重新加载它——**无需重启**——并且这条路径**不执行任何 `<workspace>/.mpd/mpd.jsonc` 写入**，
-  这是刻意的：该文档还承载着表单物化出的默认值，把它们投影进你的文件会污染它。
-- **旧 `mpd` 命名空间回写——在此休眠。** `packages/mpd-config-plugin` 仍实现它（锁 + compare-and-swap +
-  同目录临时文件 + 原子改名，保留注释/键顺序/尾随逗号，并带两个具名跳过情形）。在本 bundle 所固定的
-  harness 上，`settingsRegister` 会被拒绝（"the namespace-registry model is RETIRED in this harness"），
-  桥接只记录一次，其文件回写与 override 清理保持**休眠**。下文的全部内容——base 表、写回条目与工作区
-  目标条目——记录的都是**那条**路径；它不是对 entry 保存的承诺。
-
-一次保存如今会发生什么（entry 路径）：
+以下的 base 和回写规则描述旧版 `mpd` 设置命名空间。固定版本的宿主已停用这个命名空间，因此自动回写与覆盖值清理均处于休眠状态。
 
 **`base` 是一条规则，不是一次查表——而且它是「旧命名空间」的 base。** 提供该命名空间的包自行推导 base
 （`baseForNamespace()`，经适配器注册），规则按活动根的数量分档：
@@ -770,10 +754,8 @@ Ctrl+A 接管的前提下**双向**实时（保存的 `false` 之后再来 `true
 `apply()` 里被捕获 —— **需要重启**、捕获值保持到下一次 `dsh` 启动：`hashline.*`、`commentChecker.*`、
 `autoproject.*`、`memory.*`、`boulder.dir`、`goal.*` 与 `extensions.*`。本 bundle 自己的提示常量把两半都写了
 出来 —— `BRIDGE_DISCLOSURE`（实时条款，点名模型路由）与 `BRIDGE_RESTART_LIMIT`（边界），而**逐旋钮的
-权威表是 [`user-guide.zh-CN.md`](user-guide.zh-CN.md) §9.1**。插件真正使用的是**已解析的值
-（resolved value）**加上配置层的**逐次调用文件读取**：L1/L2 文件层在每次解析时都会被重新读取，因此即便
-base 被冻结，**按工作区读取仍然解析各自会话自己的文件**。本页没有任何句子承诺 **base** 会被实时刷新——
-只承诺**值**会被实时解析。
+权威表是 [`user-guide.zh-CN.md`](user-guide.zh-CN.md) §9.1**。配置服务为每个工作区保留独立的已解析快照。
+重载与文件监视事件会刷新对应项目，即使旧命名空间的 base 保持固定。
 
 - **读入优先级** —— L0 schema 默认值 < L1 `$DSH_HOME/mpd.jsonc` < L2 `<workspace>/.mpd/mpd.jsonc` <
   **L3 settings 用户区段**（运行期以其为准）；此后若**文件**被再次编辑，重叠的 settings 叶子会被
@@ -788,8 +770,7 @@ base 被冻结，**按工作区读取仍然解析各自会话自己的文件**�
 - **工作区目标（旧命名空间路径——此处已休眠）** —— 该路径不携带身份，因此目标集合是**事件时刻的实机会话
   工作区**：恰好一个 ⇒ 写入该文件；**零个 ⇒ `no-live-session`**；**多于一个 ⇒ `ambiguous-multi-root`**，
   并逐一列出候选。两种跳过情形下**都不改动任何文件**，而且这次编辑**没有丢失**：它已存入宿主全局 settings
-  文档，配置层会立刻对所有工作区生效——只有**文件写入**在等"恰好一个实机会话"。TUI 状态行与 Web 卡片都
-  写明了这一条，指的都是这条旧路径。
+  文档，配置层会立刻对所有工作区生效。旧版回写需要恰好一个活动工作区。
 - **生效时机** —— 模型配置的消费者通过实时 `mpdConfig` 服务按次解析（`mpd_modelchain_resolve`
   每次调用；agent 路由在 spawn 时），而该服务在每次设置保存时、以及监听到项目文件被编辑时
   都会重新解析，因此保存的编辑**在下一次解析或 spawn 时即生效，无需重启**（`mpd_config_reload`
@@ -812,8 +793,8 @@ wheelup/wheeldown 位推导出滚轮事件的 `deltaY` 的，因此滚轮上报�
 `<workspace>/.mpd/mpd.jsonc` 里写 `{ "tui": { "wheelInvert": true } }`，或把 `mpd-tui` 行自己的
 `wheelInvert` 设为 `true`，后者是该开关的**下限**（已保存的叶子只要是布尔值就优先；垃圾值永远无法把它打开）。
 插件是**每次滚轮手势**读取该叶子，而不是在挂载时采样，因此经 `/settings` 的保存**和**对**文件**的编辑都会
-在运行中的进程内到达它——配置服务在设置保存时、以及监听到项目文件被编辑时都会重新解析，且 L1/L2 层在每次
-解析时都会重读（见上文）——而挂载时采样会在任何"延迟的 `mpdConfig` 绑定晚于本行 apply"的启动上读到
+在运行进程内到达它。配置服务在保存设置和监听到项目文件改动时刷新已解析快照。
+如果在挂载时读取，延迟到本行 apply 之后才绑定的 `mpdConfig` 会让该次启动读到
 `undefined`。**诚实边界：** 与 `tui.dashboardKey` 不同，该叶子尚未被
 `packages/mpd-config-plugin/src/settings-schema.ts` 的 `SETTINGS_KNOBS` / `SettingsSchema` 收录，因此它在
 `/settings` 表单里**没有对应的行**；文件层之所以可用，是因为 `mpd-config` 的 `loadConfig` 返回的是**原始**

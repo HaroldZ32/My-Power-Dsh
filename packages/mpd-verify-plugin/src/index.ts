@@ -27,7 +27,9 @@ import { join } from "node:path"
 import type { DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 import { DSH_SEAM_TOOLS, createLazyDshAdapter, dshSeamInject, rowLogLine } from "../../mpd-dsh-adapter-plugin/src/index"
 import { VERIFY_SERVICE } from "./service.ts"
-import { resolveEvidenceBy, resolvePositiveInt, resolveVerifyMode } from "./law.ts"
+import { resolveEvidenceBy, resolvePositiveInt, resolveVerifyMode, sessionKeyOf } from "./law.ts"
+import { cellworkContractPending, sealCellworkContract, type CellworkSeal } from "./cellwork-contract.ts"
+import type { DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 import { createVerifyRuntime, installDelegationObserver } from "./observe.ts"
 import type { VerifyRuntime } from "./observe.ts"
 import { DEFAULT_GATE_TIMEOUT_MS, DEFAULT_LOOP_TTL_MS, registerVerifyTools, writeBootMarker } from "./tools.ts"
@@ -109,8 +111,12 @@ export function apply(ctx: Ctx, config: Config = {}): void {
 
   // THE SERVICE, published before anything else so the roles-row guard can resolve it on its first call
   // (that row applies first and resolves the law per call, never at apply time).
+  /** Complete a canonical producer's loop only under its original native Cellwork session. */
+  const seal = (exec: DshToolExec, loopId: string): ReturnType<CellworkSeal> => sealCellworkContract({ workspace: dsh.workspaceRoot(exec), sessionId: sessionKeyOf(exec.agent) }, loopId)
+  /** An interrupted publication remains eligible for completion of its original loop. */
+  const pending = (exec: DshToolExec, path: string): boolean => cellworkContractPending({ workspace: dsh.workspaceRoot(exec), sessionId: sessionKeyOf(exec.agent) }, path)
   try {
-    ctx.provide(VERIFY_SERVICE, runtime)
+    ctx.provide(VERIFY_SERVICE, { ...runtime, sealCellworkContract: seal, cellworkContractPending: pending })
   } catch (error) {
     log("could not publish the " + VERIFY_SERVICE + " service (" + (error instanceof Error ? error.message : String(error)) + ") — the guard will read an empty law")
   }
@@ -137,6 +143,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       runtime,
       configValue,
       dsh,
+      projectIdentity: () => ctx.get?.("mpdProjectIdentity", false),
       log: (line) => log(line),
     })
     outcome.push("tools=5")

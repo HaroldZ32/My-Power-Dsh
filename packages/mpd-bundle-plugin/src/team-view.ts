@@ -477,8 +477,12 @@
     plan: TeamPlan | null
     /** The FROZEN contracts by task id; empty until the task route answers. */
     contracts: Record<string, { description: string; claimedBy: string; claimedAt: string; attempt: number }>
-    /** The last failure, kept so the panel renders a reason instead of an empty box. */
+    /** The state route failed and could not rule out a team. */
     error?: unknown
+    /** The optional plan route failed. */
+    planUnavailable?: boolean
+    /** The optional contract route failed. */
+    contractsUnavailable?: boolean
   }
 
   /** One node's box inside its column, in pixels — the geometry the drawn edges are computed from. */
@@ -873,7 +877,9 @@
     "tally.blocked": "blocked",
     "tally.released": "released by a failed blocker",
     "state.reading": "Reading the team…",
-    "state.unavailable": "No team state is being served. The mpd team row may not be mounted in this profile.",
+    "state.unavailable": "The team state route could not be read.",
+    "state.planUnavailable": "The staged plan route could not be read.",
+    "task.contract.unavailable": "The frozen contract route could not be read.",
     "state.none": "No team in this workspace yet. Stage one with agent_teams_plan, then approve it.",
     // ── D2: the session-less workspace listing ────────────────────────────────
     // A session that approved nothing of its own still has a workspace, and a panel that answered it
@@ -1216,8 +1222,8 @@
         // approval had already replaced.
         const [state, plan, contracts] = await Promise.all([
           readOne<TeamState>(statePath, sessionId),
-          planPath === undefined ? Promise.resolve({ value: null as TeamPlan | null }) : readOne<TeamPlan>(planPath, sessionId),
-          taskPath === undefined ? Promise.resolve({ value: null as TeamTaskContracts | null }) : readOne<TeamTaskContracts>(taskPath, sessionId),
+          planPath === undefined ? Promise.resolve({ value: null as TeamPlan | null, error: undefined }) : readOne<TeamPlan>(planPath, sessionId),
+          taskPath === undefined ? Promise.resolve({ value: null as TeamTaskContracts | null, error: undefined }) : readOne<TeamTaskContracts>(taskPath, sessionId),
         ])
         /** The frozen contracts, keyed by task id, so the detail body is a lookup and not a scan. */
         const byTask: Record<string, { description: string; claimedBy: string; claimedAt: string; attempt: number }> = {}
@@ -1229,6 +1235,8 @@
           plan: plan.value === null ? null : plan.value.plan === null ? null : plan.value,
           contracts: byTask,
           error: state.error,
+          planUnavailable: plan.error !== undefined,
+          contractsUnavailable: contracts.error !== undefined,
         }
       }
 
@@ -1317,13 +1325,19 @@
       const start = (sessionId: string, publish: (next: TeamStore) => void): (() => void) => {
         /** Whether the caller still wants results; cleared by the returned stop function. */
         let live = true
-        /** One poll: read, then publish only when still live. */
+        /** Sequence assigned to each poll or stream response before it awaits the route. */
+        let issued = 0
+        /** Sequence of the latest published read. */
+        let applied = 0
+        /** A later result supersedes earlier reads from the same session. */
         const tick = async (): Promise<void> => {
-          /** This poll's outcome, published only if the panel is still mounted. */
+          /** This read's ordering against concurrent stream and timer requests. */
+          const sequence = ++issued
+          /** The read from this request. */
           const next = await read(sessionId)
-          // A poll that lands after the panel unmounted must not publish: React would warn, and the
-          // next mount would render a stale team for one frame.
-          if (live) publish(next)
+          if (!live || sequence < applied) return
+          applied = sequence
+          publish(next)
         }
         void tick()
         /** The interval the caller's effect stops; owned here, cleared on stop. */
@@ -3425,7 +3439,7 @@
        * @param edges - the edges the DRAWING routed (the served model's), when one arrived.
        * @returns the detail element.
        */
-      const detailSection = (task: TeamTask, tasks: TeamTask[], contract: { description: string; claimedBy: string; claimedAt: string; attempt: number } | undefined, edges?: ServedGraphModelEdge[]): unknown => {
+      const detailSection = (task: TeamTask, tasks: TeamTask[], contract: { description: string; claimedBy: string; claimedAt: string; attempt: number } | undefined, edges?: ServedGraphModelEdge[], contractUnavailable: boolean = false): unknown => {
         // A CONSULT IS NOT A TASK (consult DAG, contract §6): the task body's verdict, attempt, round,
         // blockers and acceptance contract are five rows of nothing on it. Its own four facts are the
         // ones a reader pinned it for.
@@ -3487,7 +3501,7 @@
         const recordedUnresolved = Array.isArray(task.unresolvedBlockers) ? task.unresolvedBlockers : []
         if (recordedUnresolved.length > 0) rows.push(detailRow("d-unresolved", "task.unresolved", recordedUnresolved.join(", ")))
         if (contract === undefined) {
-          rows.push(react.createElement("div", { key: "d-contract-none", style: { ...CSS.dim, marginTop: "4px" } }, t("task.contract.none")))
+          rows.push(react.createElement("div", { key: "d-contract-none", style: { ...CSS.dim, marginTop: "4px" } }, t(contractUnavailable ? "task.contract.unavailable" : "task.contract.none")))
         } else {
           rows.push(react.createElement("div", { key: "d-contract-head", style: CSS.subHead }, t("task.contract")))
           rows.push(react.createElement("div", { key: "d-contract", style: { ...CSS.card, marginTop: "2px", whiteSpace: "pre-wrap", wordBreak: "break-word" } }, contract.description))
@@ -3518,7 +3532,7 @@
        * @param activeId - the team bound to THIS session, when the index binds one.
        * @returns the section element.
        */
-      const workspaceSection = (records: WorkspaceTeam[], activeId: string | undefined): unknown => {
+      const workspaceSection = (records: WorkspaceTeam[], activeId: string | undefined, planUnavailable: boolean = false): unknown => {
         /** The section's rows, in render order. */
         const rows: unknown[] = [
           react.createElement("div", { key: "w-title", style: CSS.subHead }, t("workspace.title")),
@@ -3543,7 +3557,7 @@
             + (team.tasks.failed === 0 ? "" : " · " + team.tasks.failed + " ✗")
             + " · " + team.members + " " + t("workspace.members"))))
         }
-        rows.push(react.createElement("div", { key: "w-stage", style: { ...CSS.dim, marginTop: "6px" } }, t("workspace.stage")))
+        rows.push(react.createElement("div", { key: "w-stage", style: { ...CSS.dim, marginTop: "6px" } }, t(planUnavailable ? "state.planUnavailable" : "workspace.stage")))
         return react.createElement("div", { "data-mpd-team-tab": "", "data-mpd-workspace-teams": String(records.length), style: CSS.panel }, rows)
       }
 
@@ -3560,9 +3574,9 @@
         /** The session this panel addresses; empty asks the route for the workspace principal. */
         const sessionId = String(seat.sessionId ?? seat.scope?.sessionId ?? "") || sessionIdFromPane()
         /** The polled store and its setter. */
-        const [store, setStore] = react.useState({ state: null, plan: null, contracts: {}, error: undefined } as TeamStore)
+        const [store, setStore] = react.useState(null as { sessionId: string; value: TeamStore } | null)
         // One poller per session: the effect re-runs when the host hands this panel a different one.
-        react.useEffect(() => start(sessionId, setStore), [sessionId])
+        react.useEffect(() => start(sessionId, (value: TeamStore): void => setStore({ sessionId, value })), [sessionId])
         // HOVER AND PIN ARE DECLARED BEFORE EVERY EARLY RETURN on purpose: a hook's slot order must be
         // identical on every render path, or React's own state would shift the moment a team appears.
         /** The hovered task's id, which drives the focus chain; null when nothing is hovered. */
@@ -3578,7 +3592,9 @@
         setPinned = setPinnedState as (next: string | null) => void
         setHover = setHoverState as (next: string | null) => void
         /** The store, narrowed out of the tuple above. */
-        const current = store as TeamStore
+        const scoped = store as { sessionId: string; value: TeamStore } | null
+        /** Only a snapshot belonging to this session can draw its board. */
+        const current: TeamStore = scoped?.sessionId === sessionId ? scoped.value : { state: null, plan: null, contracts: {} }
         /** The last readable payload, or null while there is none. */
         const state = current.state
         // THE CLOCK RUNS ONLY WHILE A RUNNING TASK IS VISIBLE: the card's elapsed row is the only
@@ -3612,8 +3628,8 @@
           // answer; the sentence below stays for the workspace that genuinely has no team yet.
           /** The workspace listing this payload carries, when the route read one. */
           const listed = state.workspaceTeams?.records ?? []
-          if (listed.length > 0) return workspaceSection(listed, state.workspaceTeams?.activeId)
-          return react.createElement("div", { "data-mpd-team-tab": "", style: { ...CSS.panel, ...CSS.dim } }, t("state.none"))
+          if (listed.length > 0) return workspaceSection(listed, state.workspaceTeams?.activeId, current.planUnavailable)
+          return react.createElement("div", { "data-mpd-team-tab": "", style: { ...CSS.panel, ...CSS.dim } }, t(current.planUnavailable ? "state.planUnavailable" : "state.none"))
         }
         /** The team head; non-null past the guard above. */
         const team = state.team
@@ -4015,7 +4031,7 @@
         // way the raw subject it shows sits OUTSIDE the CJK-free drawing subtree, and the pinned task
         // makes the same card opaque (`data-pinned`) without a second component.
         if (tipTask !== undefined && tip !== null) children.push(tipCardOf(tipTask, tip, pinned === tipTask.id, clock))
-        if (pinnedTask !== undefined) children.push(detailSection(pinnedTask, tasks, current.contracts[pinnedTask.id], state.model?.edges))
+        if (pinnedTask !== undefined) children.push(detailSection(pinnedTask, tasks, current.contracts[pinnedTask.id], state.model?.edges, current.contractsUnavailable))
         for (const problem of state.problems) {
           children.push(react.createElement("div", { key: "p-" + problem, style: { ...CSS.dim, marginTop: "6px" } }, problem))
         }

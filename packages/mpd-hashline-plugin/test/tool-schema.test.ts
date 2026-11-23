@@ -173,6 +173,126 @@ test("read then edit works with lines as a single string AND as an array of stri
   }
 })
 
+test("rejects a position-only delete overlapping a range replace before writing", async () => {
+  /** Public read and edit registrations used for the entire round trip. */
+  const { byName } = mount()
+  /** The read tool supplies anchors for the original file. */
+  const read = byName("mpd_hashline_read") as HashlineTool<ReadResult>
+  /** The editor receives both operations through its public parameter parser. */
+  const edit = byName("mpd_hashline_edit") as HashlineTool<EditResult>
+  /** Throwaway workspace containing exactly one file. */
+  const dir = mkdtempSync(join(tmpdir(), "mpd-hashline-overlap-"))
+  /** The file whose unaddressed fifth line must survive. */
+  const path = join(dir, "sample.txt")
+  /** Original bytes to check after every refused batch. */
+  const original = "A\nB\nC\nD\nE\nF\n"
+  try {
+    writeFileSync(path, original)
+    /** Anchors for B, D, and E from the original document. */
+    const [, b, , d, e] = anchorsOf((await read.execute({ path })).view)
+    /** A one-line delete whose position is also the last line of the range. */
+    const remove = { op: "replace", pos: d, lines: [] }
+    /** The range covering the same original D. */
+    const range = { op: "replace", pos: b, end: d, lines: "X" }
+    for (const edits of [[remove, range], [range, remove]]) {
+      /** Capture the outcome so a destructive success prints the resulting bytes on failure. */
+      const message = await edit.execute({ path, edits }).then(
+        () => `unexpected write: ${JSON.stringify(readFileSync(path, "utf8"))}`,
+        (error: unknown) => String(error),
+      )
+      expect(message).toContain("Overlapping range edits detected")
+      expect(readFileSync(path, "utf8")).toBe(original)
+    }
+    await edit.execute({ path, edits: [range, { op: "replace", pos: e, lines: "KEPT" }] })
+    expect(readFileSync(path, "utf8")).toBe("A\nX\nKEPT\nF\n")
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test("refuses consumed insertion seams in both request orders", async () => {
+  /** The public registrations provide and consume original anchors. */
+  const { byName } = mount()
+  /** Read tool for the fixture's original anchors. */
+  const read = byName("mpd_hashline_read") as HashlineTool<ReadResult>
+  /** Edit tool under test. */
+  const edit = byName("mpd_hashline_edit") as HashlineTool<EditResult>
+  /** Disposable file containing the six-line audit fixture. */
+  const dir = mkdtempSync(join(tmpdir(), "mpd-hashline-seams-"))
+  /** The file must retain its exact contents on refusal. */
+  const path = join(dir, "sample.txt")
+  /** Original contents shared by each request permutation. */
+  const original = "A\nB\nC\nD\nE\nF\n"
+  try {
+    writeFileSync(path, original)
+    /** The inclusive replacement and both ambiguous insertion anchors. */
+    const [, b, c, d] = anchorsOf((await read.execute({ path })).view)
+    /** The deletion has an empty payload but consumes three original lines. */
+    const remove = { op: "replace", pos: b, end: d, lines: [] }
+    for (const insertion of [
+      { op: "append", pos: b, lines: "INSERTED" },
+      { op: "prepend", end: d, lines: "INSERTED" },
+      { op: "prepend", pos: c, lines: "INSERTED" },
+    ]) {
+      for (const edits of [[remove, insertion, insertion], [insertion, remove]]) {
+        /** Include the written bytes in the failure if the batch was accepted. */
+        const result = await edit.execute({ path, edits }).then(
+          () => `unexpected write: ${JSON.stringify(readFileSync(path, "utf8"))}`,
+          (error: unknown) => String(error),
+        )
+        expect(result).toContain("insertion seam")
+        expect(readFileSync(path, "utf8")).toBe(original)
+      }
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test("retains legal outer insertion seams and original anchor formatting", async () => {
+  /** The public registrations provide and consume original anchors. */
+  const { byName } = mount()
+  /** Read tool for the fixture's original anchors. */
+  const read = byName("mpd_hashline_read") as HashlineTool<ReadResult>
+  /** Edit tool under test. */
+  const edit = byName("mpd_hashline_edit") as HashlineTool<EditResult>
+  /** Disposable workspace shared by the ranged and single-line fixtures. */
+  const dir = mkdtempSync(join(tmpdir(), "mpd-hashline-boundaries-"))
+  /** A BOM and CRLF exercise the registered tool's envelope restoration. */
+  const path = join(dir, "sample.txt")
+  try {
+    writeFileSync(path, "\uFEFFA\r\nB\r\nC\r\nD\r\nE\r\nF\r\n")
+    /** Original anchors for the left seam, right seam and an adjacent line. */
+    const [, b, , d, e] = anchorsOf((await read.execute({ path })).view)
+    /** Same normalized append twice, with the original D echoed in the payload. */
+    const append = { op: "append", pos: d, lines: ["D", "AFTER"] }
+    expect(await edit.execute({ path, edits: [
+      { op: "prepend", pos: e, lines: "NEIGHBOR" }, append,
+      { op: "replace", pos: b, end: d, lines: ["X", "Y", "Z", "W", "E"] },
+      { op: "prepend", pos: b, lines: ["BEFORE", "B"] }, append,
+    ] })).toMatchObject({ deduplicatedEdits: 1 })
+    expect(readFileSync(path, "utf8")).toBe("\uFEFFA\r\nBEFORE\r\nX\r\nY\r\nZ\r\nW\r\nAFTER\r\nNEIGHBOR\r\nE\r\nF\r\n")
+
+    writeFileSync(path, "A\nB\nC\n")
+    /** A position-only replacement has distinct legal seams on each side. */
+    const [, single] = anchorsOf((await read.execute({ path })).view)
+    await expect(edit.execute({ path, edits: [{ op: "append", pos: single, lines: [] }] })).rejects.toThrow("non-empty text")
+    await expect(edit.execute({ path, edits: [
+      { op: "replace", pos: single, lines: [] },
+      { op: "replace", pos: single, lines: [""] },
+    ] })).rejects.toThrow("Overlapping range edits detected")
+    expect(readFileSync(path, "utf8")).toBe("A\nB\nC\n")
+    await edit.execute({ path, edits: [
+      { op: "prepend", pos: single, lines: ["BEFORE", "B"] },
+      { op: "replace", pos: single, lines: [] },
+      { op: "append", pos: single, lines: ["B", "AFTER"] },
+    ] })
+    expect(readFileSync(path, "utf8")).toBe("A\nBEFORE\nAFTER\nC\n")
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
 // ── E4: ONE source-line count for read / format / edit ───────────────────────────────────────────
 // `toHashlineContent` re-appends the final newline, so counting the VIEW with `split("\n")` counted
 // that terminator as an extra empty line: a 2-line file reported 3 while `#editFile` reported the

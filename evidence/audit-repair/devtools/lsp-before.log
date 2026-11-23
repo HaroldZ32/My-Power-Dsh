@@ -1,0 +1,36 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-mcp-lsp/test/launcher.test.ts:
+ 96 |   /** The remote client reaches tools/list even though the fixture config declares no servers. */
+ 97 |   const client = await connect(root, logs)
+ 98 |   expect((await client("tools/list")).tools).toHaveLength(12)
+ 99 |   /** Startup must report the workspace configuration in the log selected independently. */
+100 |   const log = readFileSync(join(logs, ".mpd", "logs", "mpd-mcp-lsp.log"), "utf8")
+101 |   expect(log).toContain(`Loading config from CCLSP_CONFIG_PATH: ${join(root, "cclsp.json")}`)
+                    ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "Loading config from CCLSP_CONFIG_PATH: /tmp/mpd-cclsp-wire-EfOavf/cclsp.json"
+Received: "[2026-11-22T16:02:06.457Z] [mpd-mcp-lsp] starting cclsp@0.7.0 from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/node_modules/.bun/cclsp@0.7.0+5b6b5129650ecc67/node_modules/cclsp/dist/index.js\n[2026-11-22T16:02:06.458Z] [mpd-mcp-lsp] cclsp config: /tmp/mpd-cclsp-wire-otTDFi/cclsp.json (workspace root, left untouched)\n[2026-11-22T16:02:06.477Z] Loading config from CCLSP_CONFIG_PATH: /tmp/mpd-cclsp-wire-otTDFi/cclsp.json\n[2026-11-22T16:02:06.477Z] Loaded 0 server configurations from env\n[2026-11-22T16:02:06.478Z] CCLSP Server running on stdio\n[2026-11-22T16:02:06.478Z] Scanning configured server directories for supported file types\n[2026-11-22T16:02:06.478Z] Starting 0 LSP servers...\n[2026-11-22T16:02:06.478Z] LSP server preloading completed\n"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-mcp-lsp/test/launcher.test.ts:101:15)
+(fail) an independent log directory cannot select the workspace cclsp configuration [92.42ms]
+116 |   for (let attempt = 0; attempt < 12; attempt++) {
+117 |     initial = await diagnostics(client, file)
+118 |     if (initial.includes("Type 'string' is not assignable to type 'number'")) break
+119 |     await Bun.sleep(200)
+120 |   }
+121 |   expect(initial).toContain("Type 'string' is not assignable to type 'number'")
+                        ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "Type 'string' is not assignable to type 'number'"
+Received: "No diagnostics found for /tmp/mpd-cclsp-wire-OO5Riw/diagnostic.ts. The file has no errors, warnings, or hints."
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-mcp-lsp/test/launcher.test.ts:121:19)
+(fail) the pinned cclsp diagnostics refresh after ordinary edits without restarting the MCP session [12856.39ms]
+
+ 0 pass
+ 2 fail
+ 48 expect() calls
+Ran 2 tests across 1 file. [12.96s]

@@ -1,0 +1,622 @@
+{
+  "verdict": "PASS",
+  "revision": "532520024568a3dcb56635d55576520c679078d5",
+  "pinnedDsh": "0.2.2-rc.5",
+  "pinnedBun": "1.4.0",
+  "node": "v24.21.0",
+  "sourceFreeze": {
+    "checkedAtUtc": [
+      "2026-11-22T18:18:49Z",
+      "2026-11-22T18:27:32Z",
+      "2026-11-22T18:31:25Z"
+    ],
+    "contract": ".mpd/plans/team-first-routing-followup.md",
+    "contractSha256": "146ca8b3b0185fbe71fed6341047c990d7d58bdef6fd2c5136a7c2cdcbeb5b1c"
+  },
+  "artifact": {
+    "path": ".mpd/artifacts/team-first-routing/532520024568/mpd-dsh-mpd-0.21.0.tgz",
+    "sha256": "ed7ff9d1fd49f7ddb6162a698ab618546a7410b0c5a079d1e00fe459201f9308",
+    "bytes": 7672140,
+    "installedMembers": 681,
+    "trackedByteMatches": 679,
+    "trackedExceptions": [
+      "package.json",
+      "packages/mpd-ext-plugin/dist/validator.js"
+    ],
+    "installation": "Fresh isolated DSH web profile, dsh plugin --profile web add <exact tgz> --prefer-offline --store-dir <sandbox store>",
+    "exit": 0
+  },
+  "mounted": {
+    "baseline": "evidence/team-first-routing/baseline/2026-11-22T18-02-07Z/result.json",
+    "paired": [
+      {
+        "mode": "mechanical",
+        "before": {
+          "starts": 8,
+          "peak": 8
+        },
+        "candidate": {
+          "creation": "cordis",
+          "immutable": "cordis",
+          "selection": [
+            {
+              "agentPreset": "mpd"
+            }
+          ],
+          "starts": 3,
+          "refused": 5,
+          "distinctProviderChildren": 3,
+          "peak": 3,
+          "stagedPlanFiles": 1,
+          "notices": [
+            "[AgentTeams] Session-start team rule: this session shows complexity signals B (admission inferred), and a team PLAN was STAGED — plan-20261122182150465-e6z3-001 (0 members, 0 tasks: a SHELL, not a team)."
+          ],
+          "small": {
+            "name": "mpd_role_spawn",
+            "id": "call_QaTurn-mechanical-small_0",
+            "error": false,
+            "text": "role Junior Engineer (complete)\nsummary: QA_FIXED_CHILD_RESULT"
+          },
+          "expanded": {
+            "name": "mpd_role_spawn",
+            "id": "call_QaTurn-mechanical-expand_0",
+            "error": false,
+            "text": "role Junior Engineer (complete)\nsummary: QA_FIXED_CHILD_RESULT"
+          },
+          "receipts": [
+            {
+              "name": "mpd_role_spawn_async",
+              "id": "call_QaTurn-mechanical-burst_0",
+              "error": false,
+              "text": "consult consult-mws5ylzx-3 (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws5ylzx-3\"}"
+            },
+            {
+              "name": "mpd_role_spawn_async",
+              "id": "call_QaTurn-mechanical-burst_1",
+              "error": false,
+              "text": "consult consult-mws5ym0h-4 (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws5ym0h-4\"}"
+            },
+            {
+              "name": "mpd_role_spawn_async",
+              "id": "call_QaTurn-mechanical-burst_2",
+              "error": false,
+              "text": "consult consult-mws5ym11-5 (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws5ym11-5\"}"
+            },
+            {
+              "name": "mpd_role_spawn_async",
+              "id": "call_QaTurn-mechanical-burst_3",
+              "error": true,
+              "text": "Error: TEAM_FIRST: This consult was deferred before dispatch. Inspect plan plan-20261122182150465-e6z3-001 with agent_teams_plan {action:\"status\"} and check it matches the current request before adding members and owner-bound tasks. Approve through the normal plan path before dispatch. For bounded work, wait for an outstanding consult to settle, then retry one call."
+            },
+            {
+              "name": "mpd_role_spawn_async",
+              "id": "call_QaTurn-mechanical-burst_4",
+              "error": true,
+              "text": "Error: TEAM_FIRST: This consult was deferred before dispatch. Inspect plan plan-20261122182150465-e6z3-001 with agent_teams_plan {action:\"status\"} and check it matches the current request before adding members and owner-bound tasks. Approve through the normal plan path before dispatch. For bounded work, wait for an outstanding consult to settle, then retry one call."
+            },
+            {
+              "name": "mpd_role_spawn_async",
+              "id": "call_QaTurn-mechanical-burst_5",
+              "error": true,
+              "text": "Error: TEAM_FIRST: This consult was deferred before dispatch. Inspect plan plan-20261122182150465-e6z3-001 with agent_teams_plan {action:\"status\"} and check it matches the current request before adding members and owner-bound tasks. Approve through the normal plan path before dispatch. For bounded work, wait for an outstanding consult to settle, then retry one call."
+            },
+            {
+              "name": "mpd_role_spawn_async",
+              "id": "call_QaTurn-mechanical-burst_6",
+              "error": true,
+              "text": "Error: TEAM_FIRST: This consult was deferred before dispatch. Inspect plan plan-20261122182150465-e6z3-001 with agent_teams_plan {action:\"status\"} and check it matches the current request before adding members and owner-bound tasks. Approve through the normal plan path before dispatch. For bounded work, wait for an outstanding consult to settle, then retry one call."
+            },
+            {
+              "name": "mpd_role_spawn_async",
+              "id": "call_QaTurn-mechanical-burst_7",
+              "error": true,
+              "text": "Error: TEAM_FIRST: This consult was deferred before dispatch. Inspect plan plan-20261122182150465-e6z3-001 with agent_teams_plan {action:\"status\"} and check it matches the current request before adding members and owner-bound tasks. Approve through the normal plan path before dispatch. For bounded work, wait for an outstanding consult to settle, then retry one call."
+            }
+          ]
+        }
+      },
+      {
+        "mode": "advisory",
+        "before": {
+          "starts": 8,
+          "peak": 8
+        },
+        "candidate": {
+          "creation": "cordis",
+          "immutable": "cordis",
+          "selection": [
+            {
+              "agentPreset": "mpd"
+            }
+          ],
+          "starts": 8,
+          "refused": 0,
+          "distinctProviderChildren": 8,
+          "peak": 8,
+          "stagedPlanFiles": 0,
+          "notices": [
+            "[AgentTeams] Session-start team rule: this session shows complexity signals B (admission inferred), and NO team was staged — the gate is ADVISORY and stages nothing while complexity is merely being judged."
+          ],
+          "small": {
+            "name": "mpd_role_spawn",
+            "id": "call_QaTurn-advisory-small_0",
+            "error": false,
+            "text": "role Junior Engineer (complete)\nsummary: QA_FIXED_CHILD_RESULT"
+          },
+          "expanded": {
+            "name": "mpd_role_spawn",
+            "id": "call_QaTurn-advisory-expand_0",
+            "error": false,
+            "text": "role Junior Engineer (complete)\nsummary: QA_FIXED_CHILD_RESULT"
+          },
+          "receipts": [
+            {
+              "name": "mpd_role_spawn_async",
+              "id": "call_QaTurn-advisory-burst_0",
+              "error": false,
+              "text": "consult consult-mws5yoxh-8 (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws5yoxh-8\"}"
+            },
+            {
+              "name": "mpd_role_spawn_async",
+              "id": "call_QaTurn-advisory-burst_1",
+              "error": false,
+              "text": "consult consult-mws5yoy4-9 (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws5yoy4-9\"}"
+            },
+            {
+              "name": "mpd_role_spawn_async",
+              "id": "call_QaTurn-advisory-burst_2",
+              "error": false,
+              "text": "consult consult-mws5yoyp-a (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws5yoyp-a\"}"
+            },
+            {
+              "name": "mpd_role_spawn_async",
+              "id": "call_QaTurn-advisory-burst_3",
+              "error": false,
+              "text": "consult consult-mws5yoz7-b (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws5yoz7-b\"}"
+            },
+            {
+              "name": "mpd_role_spawn_async",
+              "id": "call_QaTurn-advisory-burst_4",
+              "error": false,
+              "text": "consult consult-mws5yozz-c (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws5yozz-c\"}"
+            },
+            {
+              "name": "mpd_role_spawn_async",
+              "id": "call_QaTurn-advisory-burst_5",
+              "error": false,
+              "text": "consult consult-mws5yp0t-d (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws5yp0t-d\"}"
+            },
+            {
+              "name": "mpd_role_spawn_async",
+              "id": "call_QaTurn-advisory-burst_6",
+              "error": false,
+              "text": "consult consult-mws5yp1e-e (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws5yp1e-e\"}"
+            },
+            {
+              "name": "mpd_role_spawn_async",
+              "id": "call_QaTurn-advisory-burst_7",
+              "error": false,
+              "text": "consult consult-mws5yp2a-f (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws5yp2a-f\"}"
+            }
+          ]
+        }
+      },
+      {
+        "mode": "off",
+        "before": {
+          "starts": 8,
+          "peak": 8
+        },
+        "candidate": {
+          "creation": "cordis",
+          "immutable": "cordis",
+          "selection": [
+            {
+              "agentPreset": "mpd"
+            }
+          ],
+          "starts": 8,
+          "refused": 0,
+          "distinctProviderChildren": 8,
+          "peak": 8,
+          "stagedPlanFiles": 0,
+          "notices": [],
+          "small": {
+            "name": "mpd_role_spawn",
+            "id": "call_QaTurn-off-small_0",
+            "error": false,
+            "text": "role Junior Engineer (complete)\nsummary: QA_FIXED_CHILD_RESULT"
+          },
+          "expanded": {
+            "name": "mpd_role_spawn",
+            "id": "call_QaTurn-off-expand_0",
+            "error": false,
+            "text": "role Junior Engineer (complete)\nsummary: QA_FIXED_CHILD_RESULT"
+          },
+          "receipts": [
+            {
+              "name": "mpd_role_spawn_async",
+              "id": "call_QaTurn-off-burst_0",
+              "error": false,
+              "text": "consult consult-mws5yrxs-i (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws5yrxs-i\"}"
+            },
+            {
+              "name": "mpd_role_spawn_async",
+              "id": "call_QaTurn-off-burst_1",
+              "error": false,
+              "text": "consult consult-mws5yrxy-j (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws5yrxy-j\"}"
+            },
+            {
+              "name": "mpd_role_spawn_async",
+              "id": "call_QaTurn-off-burst_2",
+              "error": false,
+              "text": "consult consult-mws5yryf-k (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws5yryf-k\"}"
+            },
+            {
+              "name": "mpd_role_spawn_async",
+              "id": "call_QaTurn-off-burst_3",
+              "error": false,
+              "text": "consult consult-mws5yrz4-l (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws5yrz4-l\"}"
+            },
+            {
+              "name": "mpd_role_spawn_async",
+              "id": "call_QaTurn-off-burst_4",
+              "error": false,
+              "text": "consult consult-mws5yrzn-m (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws5yrzn-m\"}"
+            },
+            {
+              "name": "mpd_role_spawn_async",
+              "id": "call_QaTurn-off-burst_5",
+              "error": false,
+              "text": "consult consult-mws5ys07-n (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws5ys07-n\"}"
+            },
+            {
+              "name": "mpd_role_spawn_async",
+              "id": "call_QaTurn-off-burst_6",
+              "error": false,
+              "text": "consult consult-mws5ys0q-o (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws5ys0q-o\"}"
+            },
+            {
+              "name": "mpd_role_spawn_async",
+              "id": "call_QaTurn-off-burst_7",
+              "error": false,
+              "text": "consult consult-mws5ys0y-p (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws5ys0y-p\"}"
+            }
+          ]
+        }
+      }
+    ],
+    "delivery": {
+      "automatic": "One empty required plan staged by mechanical admission.",
+      "requested": "The simulated captain explicitly called status, add_member, create_task, approve and owner-only dispatch. The assigned depth-1 member explicitly completed its task.",
+      "planId": "plan-20261122182659506-3m5l-001",
+      "initialized": [
+        {
+          "name": "mpd_workmate_init",
+          "id": "call_QaTurn-mechanical-workmate-init_0",
+          "error": false,
+          "text": "workmate routing-probe initialized (base Junior Engineer, deepseek-official/deepseek-flash)\nnote: Junior Engineer-based workmate \"routing-probe\". No task history yet."
+        }
+      ],
+      "blocked": [
+        {
+          "name": "mpd_role_spawn",
+          "id": "call_QaTurn-mechanical-shared-guard_0",
+          "error": true,
+          "text": "Error: TEAM_FIRST: This consult was deferred before dispatch. Inspect plan plan-20261122182659506-3m5l-001 with agent_teams_plan {action:\"status\"} and check it matches the current request before adding members and owner-bound tasks. Approve through the normal plan path before dispatch. For bounded work, wait for an outstanding consult to settle, then retry one call."
+        },
+        {
+          "name": "mpd_workmate_spawn",
+          "id": "call_QaTurn-mechanical-shared-guard_1",
+          "error": true,
+          "text": "Error: TEAM_FIRST: This consult was deferred before dispatch. Inspect plan plan-20261122182659506-3m5l-001 with agent_teams_plan {action:\"status\"} and check it matches the current request before adding members and owner-bound tasks. Approve through the normal plan path before dispatch. For bounded work, wait for an outstanding consult to settle, then retry one call."
+        }
+      ],
+      "beforeApproval": 3,
+      "planReceipts": [
+        {
+          "name": "agent_teams_plan",
+          "id": "call_QaTurn-mechanical-route-0_0",
+          "error": false,
+          "text": "plan plan-20261122182659506-3m5l-001 · members 0 · tasks 0 · hold none\nthe roster part of the official team surface is unavailable: 0.2.2-rc.2 removed the roster/mailbox/spawn API (the service is task-board only) — roster reads answer [] with an `unsupported` marker; gate on capabilities().teamRoster, or use the NATIVE team executor (mpd's default) for member identity"
+        },
+        {
+          "name": "agent_teams_plan",
+          "id": "call_QaTurn-mechanical-route-1_0",
+          "error": false,
+          "text": "plan-20261122182659506-3m5l-001 (staged): 1 member(s), 0 task(s)"
+        },
+        {
+          "name": "agent_teams_plan",
+          "id": "call_QaTurn-mechanical-route-2_0",
+          "error": false,
+          "text": "plan-20261122182659506-3m5l-001 (staged): 1 member(s), 1 task(s)\nstaged task id=- owner=routing-probe blockedBy=- subject=\"QaTurn-mechanical-owner-receipt\""
+        },
+        {
+          "name": "agent_teams_plan",
+          "id": "call_QaTurn-mechanical-route-3_0",
+          "error": false,
+          "text": "approved plan-20261122182659506-3m5l-001: 1 member(s), 1 task(s)\n  routing-probe — reuse: routing-probe"
+        },
+        {
+          "name": "agent_teams_dispatch",
+          "id": "call_QaTurn-mechanical-route-4_0",
+          "error": false,
+          "text": "QaTurn-mechanical-owner-receipt -> routing-probe"
+        }
+      ],
+      "owner": {
+        "depth": 1,
+        "call": {
+          "name": "agent_teams_task",
+          "id": "call_QaTurn-mechanical-owner-receipt_0",
+          "error": false,
+          "text": "T1 -> completed (by owner, attempt 0)"
+        }
+      },
+      "atOwnerReceipt": 3,
+      "boardTask": {
+        "id": "T1",
+        "owner": "routing-probe",
+        "status": "completed"
+      }
+    },
+    "selections": [
+      {
+        "mode": "outside",
+        "creationPreset": "mpd",
+        "immutablePreset": "mpd",
+        "observed": [
+          "cordis"
+        ],
+        "started": 8,
+        "refused": 0,
+        "children": 8,
+        "burst": [
+          {
+            "name": "mpd_role_spawn_async",
+            "id": "call_QaTurn-outside-burst_0",
+            "error": false,
+            "text": "consult consult-mws67qyd-1 (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws67qyd-1\"}"
+          },
+          {
+            "name": "mpd_role_spawn_async",
+            "id": "call_QaTurn-outside-burst_1",
+            "error": false,
+            "text": "consult consult-mws67qyq-2 (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws67qyq-2\"}"
+          },
+          {
+            "name": "mpd_role_spawn_async",
+            "id": "call_QaTurn-outside-burst_2",
+            "error": false,
+            "text": "consult consult-mws67qzq-3 (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws67qzq-3\"}"
+          },
+          {
+            "name": "mpd_role_spawn_async",
+            "id": "call_QaTurn-outside-burst_3",
+            "error": false,
+            "text": "consult consult-mws67r01-4 (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws67r01-4\"}"
+          },
+          {
+            "name": "mpd_role_spawn_async",
+            "id": "call_QaTurn-outside-burst_4",
+            "error": false,
+            "text": "consult consult-mws67r0m-5 (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws67r0m-5\"}"
+          },
+          {
+            "name": "mpd_role_spawn_async",
+            "id": "call_QaTurn-outside-burst_5",
+            "error": false,
+            "text": "consult consult-mws67r1j-6 (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws67r1j-6\"}"
+          },
+          {
+            "name": "mpd_role_spawn_async",
+            "id": "call_QaTurn-outside-burst_6",
+            "error": false,
+            "text": "consult consult-mws67r1s-7 (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws67r1s-7\"}"
+          },
+          {
+            "name": "mpd_role_spawn_async",
+            "id": "call_QaTurn-outside-burst_7",
+            "error": false,
+            "text": "consult consult-mws67r24-8 (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws67r24-8\"}"
+          }
+        ]
+      },
+      {
+        "mode": "inside",
+        "creationPreset": "cordis",
+        "immutablePreset": "cordis",
+        "observed": [
+          "mpd",
+          "cordis",
+          "mpd"
+        ],
+        "started": 3,
+        "refused": 5,
+        "children": 3,
+        "burst": [
+          {
+            "name": "mpd_role_spawn_async",
+            "id": "call_QaTurn-inside-burst_0",
+            "error": false,
+            "text": "consult consult-mws67tou-9 (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws67tou-9\"}"
+          },
+          {
+            "name": "mpd_role_spawn_async",
+            "id": "call_QaTurn-inside-burst_1",
+            "error": false,
+            "text": "consult consult-mws67tp6-a (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws67tp6-a\"}"
+          },
+          {
+            "name": "mpd_role_spawn_async",
+            "id": "call_QaTurn-inside-burst_2",
+            "error": false,
+            "text": "consult consult-mws67tpk-b (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws67tpk-b\"}"
+          },
+          {
+            "name": "mpd_role_spawn_async",
+            "id": "call_QaTurn-inside-burst_3",
+            "error": true,
+            "text": "Error: TEAM_FIRST: This consult was deferred before dispatch. Inspect plan plan-20261122182900506-6c7j-001 with agent_teams_plan {action:\"status\"} and check it matches the current request before adding members and owner-bound tasks. Approve through the normal plan path before dispatch. For bounded work, wait for an outstanding consult to settle, then retry one call."
+          },
+          {
+            "name": "mpd_role_spawn_async",
+            "id": "call_QaTurn-inside-burst_4",
+            "error": true,
+            "text": "Error: TEAM_FIRST: This consult was deferred before dispatch. Inspect plan plan-20261122182900506-6c7j-001 with agent_teams_plan {action:\"status\"} and check it matches the current request before adding members and owner-bound tasks. Approve through the normal plan path before dispatch. For bounded work, wait for an outstanding consult to settle, then retry one call."
+          },
+          {
+            "name": "mpd_role_spawn_async",
+            "id": "call_QaTurn-inside-burst_5",
+            "error": true,
+            "text": "Error: TEAM_FIRST: This consult was deferred before dispatch. Inspect plan plan-20261122182900506-6c7j-001 with agent_teams_plan {action:\"status\"} and check it matches the current request before adding members and owner-bound tasks. Approve through the normal plan path before dispatch. For bounded work, wait for an outstanding consult to settle, then retry one call."
+          },
+          {
+            "name": "mpd_role_spawn_async",
+            "id": "call_QaTurn-inside-burst_6",
+            "error": true,
+            "text": "Error: TEAM_FIRST: This consult was deferred before dispatch. Inspect plan plan-20261122182900506-6c7j-001 with agent_teams_plan {action:\"status\"} and check it matches the current request before adding members and owner-bound tasks. Approve through the normal plan path before dispatch. For bounded work, wait for an outstanding consult to settle, then retry one call."
+          },
+          {
+            "name": "mpd_role_spawn_async",
+            "id": "call_QaTurn-inside-burst_7",
+            "error": true,
+            "text": "Error: TEAM_FIRST: This consult was deferred before dispatch. Inspect plan plan-20261122182900506-6c7j-001 with agent_teams_plan {action:\"status\"} and check it matches the current request before adding members and owner-bound tasks. Approve through the normal plan path before dispatch. For bounded work, wait for an outstanding consult to settle, then retry one call."
+          }
+        ]
+      }
+    ],
+    "startedSessionSelection": {
+      "error": "agent-preset/locked",
+      "message": "This session has already started"
+    },
+    "member": {
+      "depth": 1,
+      "call": {
+        "name": "mpd_role_spawn_async",
+        "id": "call_QaTurn-member-serve_0",
+        "error": false,
+        "text": "consult consult-mws682fl-1 (Junior Engineer) running — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"consult-mws682fl-1\"}"
+      }
+    },
+    "isolation": {
+      "checked": true,
+      "provider": "Loopback Messages SSE",
+      "credential": "Synthetic fixture only"
+    }
+  },
+  "gates": {
+    "staticAggregate": [
+      {
+        "id": "vendor",
+        "exit": 0,
+        "verdict": "PASS"
+      },
+      {
+        "id": "dist-fresh",
+        "exit": 0,
+        "verdict": "PASS"
+      },
+      {
+        "id": "rows-parity",
+        "exit": 0,
+        "verdict": "PASS"
+      },
+      {
+        "id": "docs-parity",
+        "exit": 0,
+        "verdict": "PASS"
+      },
+      {
+        "id": "preset-conformance",
+        "exit": 0,
+        "verdict": "PASS"
+      },
+      {
+        "id": "plugin-manifest",
+        "exit": 0,
+        "verdict": "PASS"
+      },
+      {
+        "id": "comment-coverage",
+        "exit": 0,
+        "verdict": "PASS"
+      },
+      {
+        "id": "graph-model",
+        "exit": 0,
+        "verdict": "PASS"
+      },
+      {
+        "id": "workflows",
+        "exit": 0,
+        "verdict": "PASS"
+      },
+      {
+        "id": "tui-admission",
+        "exit": 0,
+        "verdict": "PASS"
+      },
+      {
+        "id": "dshgo",
+        "exit": 0,
+        "verdict": "PASS"
+      }
+    ],
+    "typecheck": {
+      "exit": 0
+    },
+    "focused": {
+      "exit": 0,
+      "passed": 208
+    },
+    "unit": {
+      "exit": 0,
+      "passed": 4304,
+      "skipped": 6,
+      "failed": 0,
+      "fileCount": 281
+    },
+    "qaSelf": {
+      "exit": 0,
+      "passed": 56,
+      "skipped": 2,
+      "failed": 0
+    },
+    "distFresh": {
+      "exit": 0
+    },
+    "packClosureSelf": {
+      "exit": 0,
+      "arms": 43
+    },
+    "noHostOverride": {
+      "exit": 0
+    },
+    "manualPaths": {
+      "exit": 0
+    },
+    "boundEvidence": [
+      "ev-20261122T181922-76b09a",
+      "ev-20261122T182006-ea860c",
+      "ev-20261122T182039-202262",
+      "ev-20261122T182731-9d033e"
+    ]
+  },
+  "calibration": {
+    "initialUnit": {
+      "passed": 4303,
+      "failed": 1,
+      "failure": "The unchanged real sg wrapper test saw ast-grep 0.50.0 on PATH. The same failure reproduced on the baseline."
+    },
+    "passingUnit": "Absolute pinned Bun, pinned DSH first on PATH, .toolchain/node_modules/.bin removed from PATH, and scratch TMPDIR outside the checkout.",
+    "ownerAlias": "The first fixture expected the pre-binding name. Normal workmate binding assigned the row to routing-probe. The passing variant declared routing-probe explicitly and verified the final written owner."
+  },
+  "bounds": [
+    "The installed test used DSH rc.5 and a deterministic provider. Pinned unit tests cover an older registry seam, missing Team dispatch and internal engine scope.",
+    "On rc.5, repeated preset choices were exercised while the session was blank. The post-start public selection returned the host lock.",
+    "The baseline cell planner consult was unmeasured after 45 seconds. Candidate verification used the installed member control and the internal engine tests for adjacent behavior.",
+    "Docker was assigned to a different verifier. This bound verdict was made from the contract, documentation and black-box evidence."
+  ]
+}

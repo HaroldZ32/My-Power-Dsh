@@ -1,0 +1,61 @@
+{
+  "base": "e86764c0e09b14ba172839bc9671a2c8f3352c81",
+  "scopedSourceAndTestDiffSha256": "0319ae5c9422c933feba99196d5061e86ddc6df42a3efbe579e1b93eb7509db4",
+  "sampledAt": "2026-11-22T16:20:37Z",
+  "toolchain": {
+    "bun": "1.4.0",
+    "node": "24.21.0",
+    "dsh": "0.2.2-rc.5"
+  },
+  "checks": [
+    {
+      "command": ".toolchain/node_modules/.bin/bun test ./packages/mpd-autoproject-plugin ./packages/mpd-goal-plugin ./packages/mpd-cellwork-plugin",
+      "exit": 0,
+      "observed": "526 passed, 0 failed, 41 files. See output.log."
+    },
+    {
+      "command": "node scripts/verify-comment-coverage.ts --only packages/mpd-<autoproject|goal|cellwork>-plugin/",
+      "exit": 0,
+      "observed": "23, 2 and 58 files checked respectively. All three scoped checks passed."
+    },
+    {
+      "command": ".toolchain/node_modules/.bin/bun run verify:docs",
+      "exit": 0,
+      "observed": "61 pairs, 0 failed, 0 violations, 606 resolved relative links, 0 dead."
+    },
+    {
+      "command": ".toolchain/node_modules/.bin/bun skills/dsh-qa/scripts/cellwork-activate-mint.ts --out evidence/audit-repair/automation/activate-mint",
+      "exit": 0,
+      "observed": "Two arms passed against applied source plugins and the real team board. See activate-mint/result.json and output.log."
+    },
+    {
+      "command": "node skills/dsh-qa/scripts/autoproject-command.ts (pinned DSH and Bun on PATH; temporary MPD_QA_EVIDENCE_DIR)",
+      "exit": 0,
+      "observed": "Isolated headless boot mounted the shipped command and exercised the usage, prompt and gesture paths with a local provider stub. This check does not exercise escalation."
+    },
+    {
+      "command": ".toolchain/node_modules/.bin/bun run test:qa (pinned DSH and Bun on PATH)",
+      "exit": 1,
+      "observed": "55 passed, 2 skipped, 1 failed. goal-bridge passed; model-config-live-refresh failed its AgentRouteResolution/agentRouteOf source assertions in the shared checkout."
+    },
+    {
+      "command": ".toolchain/node_modules/.bin/bun run typecheck",
+      "exit": 0,
+      "observed": "Root tsgo --noEmit passed after the other integration lanes settled their earlier diagnostics."
+    },
+    {
+      "command": ".toolchain/node_modules/.bin/bun run verify:comments",
+      "exit": 0,
+      "observed": "Root gate passed, 655 files and 60,363 declarations checked."
+    },
+    {
+      "command": "node scripts/verify-dist-fresh.ts --only mpd-<autoproject|goal|cellwork>-plugin --quiet",
+      "observed": "Scratch rebuilds succeeded. Sampled statuses were autoproject stale (exit 1), goal fresh (exit 0), cellwork stale (exit 1). Derived output belongs to integration."
+    },
+    {
+      "command": "bun skills/programming/scripts/typescript/check-no-excuse-rules.ts <12 changed TypeScript files> (branch baseline and working tree)",
+      "exit": 1,
+      "observed": "139 baseline violations and 138 working-tree violations. Existing violations remain outside the repair. The repository declaration coverage gate passed."
+    }
+  ]
+}

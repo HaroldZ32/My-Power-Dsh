@@ -1,7 +1,7 @@
 // B4 mpd-modelchain-plugin: upstream fallback-chain resolution (DeepSeek-first) + workspace memory.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join, resolve } from "node:path"
-import { DSH_SEAM_TOOLS, dshSeamInject, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { DSH_SEAM_TOOLS, dshSeamInject, resolveDshAdapter, type DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The plugin id the bundle row mounts this module under. */
 export const name = "mpd-modelchain"
@@ -9,7 +9,7 @@ export const name = "mpd-modelchain"
 export const inject = dshSeamInject(DSH_SEAM_TOOLS)
 
 /** The slice of the row context this plugin reads: the tool registry plus the two lazily-read services. */
-type Ctx = { tools: any; get?: (k: string) => any; [k: string]: any }
+type Ctx = { tools: any; get?: (k: string, strict?: boolean) => any; [k: string]: any }
 /** The row's config keys: a memory-file override and a whole replacement chain table. */
 type Config = { memoryFile?: string; chains?: Record<string, Array<{ provider: string; model: string }>> }
 
@@ -111,9 +111,56 @@ function memoryPath(cwd: string, config: Config): string {
   return config.memoryFile ? resolve(cwd, config.memoryFile) : join(cwd, ".mpd", "memory.json")
 }
 
-/** Read the memory file as a flat key/value map; a missing or unparseable file reads as empty (never throws). */
-function loadMemory(p: string): Record<string, string> {
-  try { return JSON.parse(readFileSync(p, "utf8")) } catch { return {} }
+/** Parse the legacy flat map without treating prototype keys as stored entries. */
+function loadMemory(p: string): Map<string, string> {
+  try {
+    /** Old stores contain a JSON object whose values are strings. */
+    const parsed: unknown = JSON.parse(readFileSync(p, "utf8"))
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return new Map()
+    return new Map(Object.entries(parsed).filter((entry): entry is [string, string] => typeof entry[1] === "string"))
+  } catch (error) {
+    if (error instanceof Error) return new Map()
+    throw error
+  }
+}
+
+/** The memory note write answer shared by the member store and the original alias. */
+type SavedKey = { readonly ok: boolean; readonly key: string }
+
+/** A found or missing exact key, with optional preview metadata. */
+type RecalledKey = { readonly key: string; readonly found: boolean; readonly value: string; readonly truncated?: boolean; readonly scope?: "legacy" }
+
+/** The optional MPD-owned service for authenticated key-value access. */
+interface KeyMemoryService {
+  /** Save to the caller's member store, or defer to the standalone path. */
+  saveKey(exec: DshToolExec, key: string, value: string): SavedKey | undefined
+  /** Check access to either the private key or the explicitly requested legacy path. */
+  recallKey(exec: DshToolExec, key: string, scope?: "legacy"): RecalledKey | undefined
+}
+
+/** A mounted project with missing memory wiring must not fall through into the old map. */
+class MemoryServiceUnavailable extends Error {
+  /** This message identifies the missing dependency without opening any store. */
+  constructor() { super("mpd-memory: project memory service unavailable; legacy access refused") }
+}
+
+/** Probe the optional sibling service on every call so startup order cannot select a store. */
+function keyMemoryOf(ctx: Ctx): KeyMemoryService | undefined {
+  /** The service lookup deliberately uses the non-strict Cordis probe for standalone compositions. */
+  const service: unknown = ctx.get?.("mpdMemory", false)
+  if (service === undefined || service === null) {
+    if (ctx.get?.("mpdProjectIdentity", false) != null) throw new MemoryServiceUnavailable()
+    return undefined
+  }
+  if (!hasKeyMemory(service)) throw new MemoryServiceUnavailable()
+  return service
+}
+
+/** Check both service methods before invoking either through the sibling row. */
+function hasKeyMemory(service: unknown): service is KeyMemoryService {
+  return typeof service === "object" && service !== null &&
+    "saveKey" in service && typeof service.saveKey === "function" &&
+    "recallKey" in service && typeof service.recallKey === "function"
 }
 
 /**
@@ -128,9 +175,9 @@ function loadMemory(p: string): Record<string, string> {
  * @param ctx - the row context, whose `get` may throw on an uninjected service (agent-scoped ctx).
  * @returns the service double, or undefined when it is absent or refuses the lookup.
  */
-function configServiceOf(ctx: Ctx): { get?: (k?: string) => any } | undefined {
+function configServiceOf(ctx: Ctx): { get?: (key?: string, workspace?: string) => unknown } | undefined {
   try {
-    return ctx.get?.("mpdConfig") as { get?: (k?: string) => any } | undefined
+    return ctx.get?.("mpdConfig") as { get?: (key?: string, workspace?: string) => unknown } | undefined
   } catch {
     // An agent-scoped cordis ctx is a proxy that THROWS on any key missing from `inject`.
     return undefined
@@ -160,7 +207,7 @@ function isChainArray(value: unknown): value is Array<{ provider: string; model:
  * @param ctx - the row context, for the per-call `mpdConfig` service lookup.
  * @returns the overlay map; empty when no service is mounted or nothing usable is configured.
  */
-export function overlayNow(ctx: Ctx): Record<string, Array<{ provider: string; model: string }>> {
+export function overlayNow(ctx: Ctx, workspace?: string): Record<string, Array<{ provider: string; model: string }>> {
   /** The live config service, absent until the `mpd-config` row has applied. */
   const mpdConfig = configServiceOf(ctx)
   if (typeof mpdConfig?.get !== "function") return {}
@@ -170,7 +217,7 @@ export function overlayNow(ctx: Ctx): Record<string, Array<{ provider: string; m
     /** The legacy camelCase spelling of this role, if it ever had one. */
     const legacy = LEGACY_CHAIN_KEYS[key]
     /** The configured chain under either spelling; anything else is not a chain and is ignored. */
-    const v = mpdConfig.get("modelchain." + key) ?? (legacy ? mpdConfig.get("modelchain." + legacy) : undefined)
+    const v = mpdConfig.get("modelchain." + key, workspace) ?? (legacy ? mpdConfig.get("modelchain." + legacy, workspace) : undefined)
     if (isChainArray(v)) overlay[key] = v
   }
   return overlay
@@ -185,8 +232,8 @@ export function overlayNow(ctx: Ctx): Record<string, Array<{ provider: string; m
  * @param config - the row config, whose `chains` key is the whole-table replacement it always was.
  * @returns the merged table for this call.
  */
-export function chainsNow(ctx: Ctx, config: Config): Record<string, Array<{ provider: string; model: string }>> {
-  return { ...(config?.chains ?? DEFAULT_CHAINS), ...overlayNow(ctx) }
+export function chainsNow(ctx: Ctx, config: Config, workspace?: string): Record<string, Array<{ provider: string; model: string }>> {
+  return { ...(config?.chains ?? DEFAULT_CHAINS), ...overlayNow(ctx, workspace) }
 }
 
 /**
@@ -201,12 +248,12 @@ export function chainsNow(ctx: Ctx, config: Config): Record<string, Array<{ prov
  * @param member - the roster agent's functional name.
  * @returns the typed resolution, or undefined when no service answers.
  */
-function agentRouteResolutionIn(ctx: Ctx, member: string): unknown {
+function agentRouteResolutionIn(ctx: Ctx, member: string, workspace: string): unknown {
   try {
     /** The runtime config service, when the composition mounts one. */
-    const service = ctx.get?.("mpdConfig") as { agentRouteResolutionOf?: (m: string) => unknown } | undefined
+    const service = ctx.get?.("mpdConfig") as { agentRouteResolutionOf?: (member: string, workspace?: string) => unknown } | undefined
     if (typeof service?.agentRouteResolutionOf !== "function") return undefined
-    return service.agentRouteResolutionOf(member)
+    return service.agentRouteResolutionOf(member, workspace)
   } catch {
     // A service that refuses the lookup answers NOTHING; it never fails this tool.
     return undefined
@@ -234,19 +281,21 @@ export function apply(ctx: Ctx, config: Config = {}): void {
         ? "role=" + _args?.role + " -> <unconfigured> (missing " + (Array.isArray(value.missing) ? value.missing.join(", ") : "agentRoutes") + "; " + String(value.reason ?? "") + ")"
         : "role=" + _args?.role + " -> " + value.provider + "/" + value.model + " (chain " + value.chain.length + " entries)" + (value.status === undefined ? "" : " — " + value.status) }]
     },
-    execute: async (args: any) => {
+    execute: async (args: any, exec?: DshToolExec) => {
+      /** The workspace whose model routes the calling session uses. */
+      const workspace: string = dsh.workspaceRoot(exec)
       /** The role as the caller spelled it. There is NO default: an unnamed role is refused
        *  rather than silently answered with another role's route (the defect this replaces). */
       const role = String(args?.role ?? "").trim()
       // Source of truth: the mpd-roles roster chains (DEFAULT_CHAINS kept as fallback). The roster
       // is read per call — a sibling-provided service is only reliably visible after all rows apply.
-      const rolesService = ctx.get?.("mpdRoles") as { get?: (k: string) => any; list?: () => any[] } | undefined
+      const rolesService = ctx.get?.("mpdRoles") as { get?: (k: string, exec?: DshToolExec) => any; list?: (exec?: DshToolExec) => any[] } | undefined
       /** Every name the mounted roster answers to: the ONLY vocabulary this tool accepts, and the
        *  only thing a refusal names — built from the roster, never from the rejected argument. */
-      const names = (rolesService?.list?.() ?? []).map((r: any) => String(r?.name ?? "")).filter((n: string) => n !== "")
+      const names = (rolesService?.list?.(exec) ?? []).map((r: any) => String(r?.name ?? "")).filter((n: string) => n !== "")
       /** The role the roster resolves for this key. The service resolves the INTERNAL id and the
        *  legacy aliases too, so the key is accepted only when it spells the resolved role's NAME. */
-      const spec = rolesService?.get?.(role)
+      const spec = rolesService?.get?.(role, exec)
       if (spec === undefined || spec === null || roleNameKey(role) !== roleNameKey(String(spec.name ?? ""))) {
         throw new Error("mpd_modelchain_resolve: unknown role — use a roster NAME from mpd_roles_list" + (names.length > 0 ? " (" + names.join(", ") + ")" : " (the mpdRoles roster service answered no names — is the mpd-roles row mounted?)"))
       }
@@ -259,7 +308,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       // ONLY a role an EXTENSION contributed falls through below (overlay → its declared chain → the
       // merged table), because no `agentRoutes` entry decides an extension role at all.
       /** The typed agent-route resolution, or undefined when no service answers. */
-      const agentRoute = agentRouteResolutionIn(ctx, String(spec.name)) as
+      const agentRoute = agentRouteResolutionIn(ctx, String(spec.name), workspace) as
         | { ok: true; agent?: unknown; route?: { provider?: unknown; model?: unknown; fallbacks?: readonly unknown[] } }
         | { ok: false; reason?: unknown; agent?: unknown; missing?: readonly unknown[]; problem?: unknown }
         | undefined
@@ -320,7 +369,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
         )
       }
       /** The configured chain for THIS role's id, when the live config routes one (extension roles). */
-      const configured = overlayNow(ctx)[String(spec.id)]
+      const configured = overlayNow(ctx, workspace)[String(spec.id)]
       if (isChainArray(configured)) {
         return { provider: configured[0].provider, model: configured[0].model, chain: configured.map((c) => ({ ...c })) }
       }
@@ -329,38 +378,51 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       }
       // This role carries no chain of its own: fall back to the shipped/configured table, keyed by
       // the INTERNAL id (`resolveRole`'s keys and the `modelchain.<id>` config keys are ids).
-      return resolveRole(String(spec.id), chainsNow(ctx, config))
+      return resolveRole(String(spec.id), chainsNow(ctx, config, workspace))
     }
   })
 
   dsh.registerTool({
     name: "mpd_memory_save",
-    description: "Persist a key/value note in the workspace-scoped memory (.mpd/memory.json).",
-    parameters: { type: "object", properties: { key: { type: "string" }, value: { type: "string" } }, required: ["key", "value"] },
-    output: { schema: { type: "object", properties: { ok: { type: "boolean" }, key: { type: "string" } }, required: ["ok", "key"] }, render: (_a: unknown, v: any) => [{ type: "text", text: "saved " + v.key }] },
-    execute: async (args: any, exec: any) => {
-      // Root resolved PER CALL: the calling session's workspace (never the dsh process cwd).
+    description: "Save an exact key/value note. Project team sessions write to the authenticated member's private memory. Standalone sessions use the workspace's existing memory file.",
+    parameters: { type: "object", properties: { key: { type: "string" }, value: { type: "string" } }, required: ["key", "value"], additionalProperties: false },
+    output: { schema: { type: "object", properties: { ok: { type: "boolean" }, key: { type: "string" } }, required: ["ok", "key"] }, render: (_a: unknown, v: SavedKey) => [{ type: "text", text: "saved " + v.key }] },
+    execute: async (args: { key: string; value: string }, exec: DshToolExec) => {
+      /** The exact caller-provided key, normalized as on the existing tool path. */
+      const key = String(args.key)
+      /** The value retained verbatim in the selected store. */
+      const value = String(args.value)
+      /** A member save either succeeds in that scope or throws before the legacy path runs. */
+      const scoped = keyMemoryOf(ctx)?.saveKey(exec, key, value)
+      if (scoped !== undefined) return scoped
+      /** Standalone memory lives under the caller's execution root or its configured override. */
       const p = memoryPath(dsh.workspaceRoot(exec), config)
       if (!existsSync(p)) mkdirSync(join(p, ".."), { recursive: true })
-      /** The memory map read back from disk, so a save merges instead of replacing the file. */
+      /** Load existing standalone notes so this save replaces only the requested key. */
       const mem = loadMemory(p)
-      mem[String(args.key)] = String(args.value)
-      writeFileSync(p, JSON.stringify(mem, null, 2))
-      return { ok: true, key: String(args.key) }
+      mem.set(key, value)
+      writeFileSync(p, JSON.stringify(Object.fromEntries(mem), null, 2))
+      return { ok: true, key }
     }
   })
 
   dsh.registerTool({
     name: "mpd_memory_recall",
-    description: "Recall a key from the workspace-scoped memory.",
-    parameters: { type: "object", properties: { key: { type: "string" } }, required: ["key"] },
-    output: { schema: { type: "object", properties: { key: { type: "string" }, value: { type: "string" }, found: { type: "boolean" } }, required: ["key", "found"] }, render: (_a: unknown, v: any) => [{ type: "text", text: v.found ? v.key + " = " + v.value : "not found: " + v.key }] },
-    execute: async (args: any, exec: any) => {
-      /** The memory map of the calling session's workspace, read fresh on every recall. */
-      const mem = loadMemory(memoryPath(dsh.workspaceRoot(exec), config))
-      /** The requested key, stringified so a non-string argument cannot miss the map. */
-      const k = String(args.key)
-      return { key: k, value: mem[k] ?? "", found: Object.prototype.hasOwnProperty.call(mem, k) }
+    description: "Recall an exact, case-sensitive key from your private member memory or standalone workspace memory. Set scope to legacy to explicitly read old workspace notes. The tool flags clipped previews as truncated.",
+    parameters: { type: "object", properties: { key: { type: "string" }, scope: { type: "string", enum: ["legacy"], description: "Explicitly read the old unattributed workspace map." } }, required: ["key"], additionalProperties: false },
+    output: { schema: { type: "object", properties: { key: { type: "string" }, value: { type: "string" }, found: { type: "boolean" }, truncated: { type: "boolean" }, scope: { type: "string", enum: ["legacy"] } }, required: ["key", "found"] }, render: (_a: unknown, v: RecalledKey) => [{ type: "text", text: v.found ? v.key + " = " + v.value + (v.truncated ? "\n[preview truncated]" : "") : "not found: " + v.key }] },
+    execute: async (args: { key: string; scope?: "legacy" }, exec: DshToolExec) => {
+      /** Treat case-distinct keys as distinct notes. */
+      const key = String(args.key)
+      /** Resolve identity before reading the legacy map, even on an explicit request. */
+      const scoped = keyMemoryOf(ctx)?.recallKey(exec, key, args.scope)
+      if (scoped !== undefined) return scoped
+      /** Standalone memory or the legacy map explicitly selected by an authorized caller. */
+      const stored = loadMemory(memoryPath(dsh.workspaceRoot(exec), config)).get(key)
+      if (args.scope !== "legacy") return { key, value: stored ?? "", found: stored !== undefined }
+      /** Legacy previews accessed from a team run use the same bound as the private keys. */
+      const value = (stored ?? "").slice(0, 768).replace(/[\ud800-\udbff]$/u, "")
+      return { key, value, found: stored !== undefined, scope: "legacy", ...(stored !== undefined && value.length < stored.length ? { truncated: true } : {}) }
     }
   })
 }

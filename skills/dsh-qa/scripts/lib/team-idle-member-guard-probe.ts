@@ -67,6 +67,9 @@ export interface ProbeCtx {
   on?(event: string, handler: (payload: unknown) => unknown): (() => void) | undefined
 }
 
+/** Fixture role descriptions stay on the board when approval binds a different seat name. */
+export const SEAT_DESCRIPTIONS = { owner: "owns the one board task", idle: "a member with no board task" } as const
+
 /** The Lead's plan: TWO members and ONE ready task, approved at the end (contract §4). */
 const PLAN: ReadonlyArray<{ label: string; arguments: Record<string, unknown> }> = [
   { label: "create", arguments: { action: "create", name: "idle-guard-live", description: "P2a live QA: one task, two members", approval: "required" } },
@@ -76,7 +79,7 @@ const PLAN: ReadonlyArray<{ label: string; arguments: Record<string, unknown> }>
       action: "add_member",
       member: {
         name: "cell-owner",
-        description: "owns the one board task",
+        description: SEAT_DESCRIPTIONS.owner,
         role: "Senior Engineer",
         prompt: "IDLE-QA-OWNER: you own the one board task of this live QA team.",
       },
@@ -88,7 +91,7 @@ const PLAN: ReadonlyArray<{ label: string; arguments: Record<string, unknown> }>
       action: "add_member",
       member: {
         name: "cell-idle",
-        description: "a member with no board task",
+        description: SEAT_DESCRIPTIONS.idle,
         role: "Senior Engineer",
         prompt: "You are the taskless member of this live QA team.",
       },

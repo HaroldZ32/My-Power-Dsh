@@ -1,0 +1,9 @@
+# Automation recovery evidence
+
+The audit repair covers goal ownership, escalation hand-off, terminal boulder ordering, and same-revision task recovery. Regressions call the registered entry points in sandbox workspaces. See [result.json](./result.json) for commands and results and [output.log](./output.log) for the focused test output.
+
+Before the repair, the existing tests accepted a synthetic cell ID. With the actual receiver and its argument schema mounted, the new hand-off tests failed at argument validation and at the missing retry record. A later light run closed the prior run's goal, and a planned light run also closed a previous Boulder work's goal. Interrupting a hyperplan child left a blocked result paired with a completed boulder. The new regressions passed after the repair.
+
+The deterministic activation test runs the real team-core `create_task` tool, verifies the appended row on disk, and interrupts consumption of the append reply before activation records the ID. Before the fix, retry produced six rows where five were expected, and a duplicate identity still allowed activation. With the fix, retry adopts the exact committed ID for the review dependency and verify loop. Two matching rows cause a refusal with no new rows or loops. A same-title row without the identity is left alone. The existing first-pass fallback for an unreadable board remains covered.
+
+The recovery test injects the interruption at the append acknowledgement boundary in-process. It does not kill the harness process or run a remote model. Task identity recovery applies to the same accepted revision and an already-live board. The pending verify-loop ID remains a separate crash window, and the in-process guard serializes calls within one plugin instance. Generated distribution files belong to the integration lane.

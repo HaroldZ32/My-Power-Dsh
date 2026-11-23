@@ -1,0 +1,9 @@
+{
+  "profile": "web",
+  "control": "old launcher with new dependencies",
+  "results": [
+    "BINARY_NOT_FOUND",
+    "BINARY_NOT_FOUND"
+  ],
+  "exit": 1
+}

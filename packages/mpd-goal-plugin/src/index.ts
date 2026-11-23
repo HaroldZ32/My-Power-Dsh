@@ -62,6 +62,8 @@ export interface GoalAnchor {
   objective: string
   /** Which row asked for the anchor (`autoproject`, `boulder`, or `tool`). */
   source: string
+  /** The specific run that owns the goal, when the caller bound an identity at creation. */
+  runId?: string
   /** ISO timestamp of the creation, for the sidecar's own readability. */
   at: string
 }
@@ -101,9 +103,27 @@ export interface MpdGoalService {
   /** Read the calling session's current goal, or `undefined` when the composition cannot tell. */
   status(exec?: unknown): Promise<DshGoalSnapshot | null | undefined>
   /** Put a durable goal in place for a long run, keeping any unfinished goal already current. */
-  anchor(exec: unknown, input: { objective: string; source: string; maxRounds?: number }): Promise<GoalAnchorOutcome>
-  /** Finish a goal this plugin ANCHORED; a goal it did not anchor is left to the model and the user. */
-  finish(exec: unknown, input: { outcome: "complete" | "blocked"; source: string; reason?: string }): Promise<GoalFinishOutcome>
+  anchor(exec: unknown, input: { objective: string; source: string; maxRounds?: number; runId?: string }): Promise<GoalAnchorOutcome>
+  /** Finish a goal this plugin anchored, presenting both IDs when the anchor is bound to a run. */
+  finish(exec: unknown, input: GoalFinishInput): Promise<GoalFinishOutcome>
+}
+
+/** Terminal transition and the ownership evidence carried by the calling row. */
+interface GoalFinishInput {
+  /** The harness transition to request. */
+  outcome: "complete" | "blocked"
+  /** The row that owns the anchor. */
+  source: string
+  /** The concrete blocker for a blocked transition. */
+  reason?: string
+  /** The run that created this goal. */
+  runId?: string
+  /** The exact goal id returned at creation. */
+  goalId?: string
+  /** Exact objective generated for a legacy work before the sidecar stored run IDs. */
+  legacyObjective?: string
+  /** A direct tool call may close any current goal under the harness's own authorization. */
+  explicit?: boolean
 }
 
 /** Merge the row config with the mpd.jsonc runtime layer (mpd.jsonc wins per key). */
@@ -164,6 +184,7 @@ export function readAnchors(file: string): Record<string, GoalAnchor> {
         revision: typeof record.revision === "number" ? record.revision : 0,
         objective: typeof record.objective === "string" ? record.objective : "",
         source: typeof record.source === "string" ? record.source : "unknown",
+        ...(typeof record.runId === "string" && record.runId !== "" ? { runId: record.runId } : {}),
         at: typeof record.at === "string" ? record.at : "",
       }
     }
@@ -193,10 +214,12 @@ export function writeAnchors(file: string, anchors: Record<string, GoalAnchor>):
 }
 
 /** Remove one session's anchor record, returning the map that was written. */
-export function dropAnchor(file: string, sessionKey: string): Record<string, GoalAnchor> {
+export function dropAnchor(file: string, sessionKey: string, goalId?: string): Record<string, GoalAnchor> {
   /** The current map, re-read so a concurrent session's record is not clobbered. */
   const anchors = readAnchors(file)
-  if (!(sessionKey in anchors)) return anchors
+  /** The goal recorded now, which may have changed during the harness transition. */
+  const record = anchors[sessionKey]
+  if (record === undefined || (goalId !== undefined && record.goalId !== goalId)) return anchors
   delete anchors[sessionKey]
   writeAnchors(file, anchors)
   return anchors
@@ -244,7 +267,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
    * @param input - the objective, the requesting row, and an optional round cap.
    * @returns the outcome; an unfinished goal already current is KEPT, never replaced.
    */
-  async function anchor(exec: unknown, input: { objective: string; source: string; maxRounds?: number }): Promise<GoalAnchorOutcome> {
+  async function anchor(exec: unknown, input: Parameters<MpdGoalService["anchor"]>[1]): Promise<GoalAnchorOutcome> {
     if (!cfg.enabled) return { ok: false, created: false, error: "mpd-goal is disabled (goal.enabled=false)" }
     if (!dsh.capabilities().goalTools) return { ok: false, created: false, error: "the goal tools are not mounted in this composition" }
     /** The objective as given; an empty one is refused before any state is touched. */
@@ -279,7 +302,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       const file = anchorsPath(rootOf(exec))
       /** The sidecar with this session's record added. */
       const anchors = readAnchors(file)
-      anchors[sessionKeyOf(exec)] = { goalId: goal.id, revision: goal.revision, objective: goal.objective, source: String(input?.source ?? "unknown"), at: new Date().toISOString() }
+      anchors[sessionKeyOf(exec)] = { goalId: goal.id, revision: goal.revision, objective: goal.objective, source: String(input?.source ?? "unknown"), ...(input.runId === undefined ? {} : { runId: input.runId }), at: new Date().toISOString() }
       if (!writeAnchors(file, anchors)) {
         // LOUD, never silent: the goal EXISTS and must not be reported as a failure (a retry would be
         // refused with "a goal is already current"), but an anchor nobody recorded leaves a goal the
@@ -298,7 +321,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
    * @param input - the outcome, the requesting row, an optional blocked reason, and the ownership flag.
    * @returns the outcome; a harness policy refusal comes back as `ok:false` with the harness's own text.
    */
-  async function finish(exec: unknown, input: { outcome: "complete" | "blocked"; source: string; reason?: string; explicit?: boolean }): Promise<GoalFinishOutcome> {
+  async function finish(exec: unknown, input: GoalFinishInput): Promise<GoalFinishOutcome> {
     /** The transition requested; anything else is read as `complete`. */
     const outcome = input?.outcome === "blocked" ? "blocked" : "complete"
     if (!cfg.enabled) return { ok: false, outcome, error: "mpd-goal is disabled (goal.enabled=false)" }
@@ -317,12 +340,19 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     if (input?.explicit !== true && record !== undefined && record.goalId !== current.id) {
       return { ok: false, outcome, error: "the current goal is not the one mpd-goal anchored; leaving it in place" }
     }
-    // OWNERSHIP IS PER RUN, not merely per session: a boulder work must not complete the goal a ULW
-    // run anchored (the harness allows one goal per session, so the second run inherits the first's
-    // goal and would otherwise close an objective it never carried). The refusal is reported, and the
-    // owner's own finish still works.
+    // Keep source-only anchors readable for older callers. A run-scoped anchor also requires the
+    // ownership evidence returned to the creating invocation.
     if (input?.explicit !== true && record !== undefined && record.source !== input.source) {
       return { ok: false, outcome, error: "the current goal is anchored by \"" + record.source + "\", not \"" + String(input.source) + "\"; leaving it to its owner" }
+    }
+    if (input.explicit !== true) {
+      /** Legacy boulder anchors embedded their work id in the original objective. */
+      const legacyMatch = record?.runId === undefined && input.legacyObjective !== undefined
+        && input.legacyObjective === record?.objective && input.goalId === current.id
+      if (!legacyMatch && (input.runId !== record?.runId || (record?.runId !== undefined && input.goalId !== current.id))) {
+        return { ok: false, outcome, error: "the run and goal IDs do not match the current anchor; leaving it to its owner" }
+      }
+      if (input.goalId !== undefined && input.goalId !== current.id) return { ok: false, outcome, error: "the goal ID does not match the current anchor" }
     }
     /** The harness's answer for the terminal transition. */
     const done = await dsh.goalControl({
@@ -336,7 +366,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     if (!done.ok) return { ok: false, outcome, error: String(done.error ?? "the goal could not be finished") }
     // The anchor is spent once the goal is terminal: dropping it is what keeps a LATER run free to
     // anchor a new goal, and it is why `dropAnchor` re-reads the map before writing.
-    dropAnchor(file, sessionKeyOf(exec))
+    dropAnchor(file, sessionKeyOf(exec), current.id)
     return { ok: true, outcome, goal: done.goal ?? null }
   }
 

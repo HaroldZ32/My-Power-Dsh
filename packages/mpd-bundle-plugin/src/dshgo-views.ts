@@ -72,6 +72,8 @@ export interface TeamPanelMember {
   readonly mode: string
   /** The handoff state when the member is in its handoff window; empty otherwise. */
   readonly handoff: string
+  /** Tasks this member owns across the whole board, including rows beyond the preview. */
+  readonly taskCount?: number
 }
 
 /** The watchdog's contribution to the team panel: the predicate in force, the hold and the incidents. */
@@ -79,7 +81,7 @@ export interface TeamWatchdogSnapshot {
   /** The predicate the watchdog is running (`channel`, `heartbeat`, or `absent`). */
   readonly predicate: string
   /** Whether a preserving hold is recorded for this team. */
-  readonly held: boolean
+  readonly held: boolean | null
   /** The hold's recorded reason, or an empty string when the team is not held. */
   readonly reason: string
   /** The task whose silence raised the hold, or an empty string when none was named. */
@@ -215,7 +217,7 @@ function taskRow(task: TeamPanelTask): { title: string; subtitle: string; traili
     // DENSER ROW (repair T12): the kind left the subtitle (the Detail tab carries it) and the status
     // became a short word, so the subject keeps the width the trailing column used to take.
     subtitle: [task.owner === "" ? "—" : task.owner, task.blockedBy === 0 ? "" : "blocked " + String(task.blockedBy)].filter((part) => part !== "").join(" · "),
-    trailing: statusWordOf(task.status),
+    trailing: statusWordOf(task.blockedBy > 0 ? "blocked" : task.status),
     action: { id: "select", args: { task: task.id } },
   }
 }
@@ -233,7 +235,7 @@ function taskRow(task: TeamPanelTask): { title: string; subtitle: string; traili
 function memberChartOf(snapshot: TeamPanelSnapshot, copy: DshGoCopy): DshGoView | null {
   if (snapshot.members.length === 0) return null
   /** How many board rows each member owns, in roster order. */
-  const values = snapshot.members.map((member) => snapshot.tasks.filter((task) => task.owner === member.name).length)
+  const values = snapshot.members.map((member) => member.taskCount ?? snapshot.tasks.filter((task) => task.owner === member.name).length)
   return chart({
     kind: "bar",
     categories: snapshot.members.map((member) => member.name),
@@ -368,6 +370,7 @@ function questionsTab(snapshot: PanelSnapshot, copy: DshGoCopy): DshGoView[] {
   /** The question this tab renders, or null when nothing is parked. */
   const question = snapshot.question
   if (question === null) return [head, empty(copy.emptyQuestion)]
+  if (question.answerElsewhere === true) return [head, callout(bind("question.question"), { tone: "info" }), callout(copy.answerElsewhere)]
   /** The option buttons: one per option, capped at the per-node button budget. */
   const options = question.options.slice(0, 4).map((option, index) => ({ label: option.label, action: "answer:" + String(index) }))
   /** The tab's content: the parked text, its options and the free-text escape hatch. */
@@ -468,7 +471,9 @@ function boardTab(snapshot: TeamPanelSnapshot, copy: DshGoCopy, v2: boolean): Ds
     children.push(empty(copy.emptyTeam))
     return children
   }
-  children.push(section(copy.boardCaption, snapshot.tasks.length === 0 ? [empty(copy.emptyBoard)] : [list(snapshot.tasks.map(taskRow))]))
+  /** The preview label sits next to the rows while the header counts the entire board. */
+  const boardTitle = snapshot.tasks.length < snapshot.counts.total ? copy.boardPreview.replace("{shown}", String(snapshot.tasks.length)).replace("{total}", String(snapshot.counts.total)) : copy.boardCaption
+  children.push(section(boardTitle, snapshot.tasks.length === 0 ? [empty(copy.emptyBoard)] : [list(snapshot.tasks.map(taskRow))]))
   // THE DEPENDENCY GRAPH (task T20): the same board, laid out in dependency layers. v2 gets a fold
   // around a monospace block; an older app gets one `steps` entry per layer, because `codeBlock` and
   // `collapsible` are v2-only components.
@@ -554,7 +559,7 @@ function watchdogTab(snapshot: TeamPanelSnapshot, copy: DshGoCopy): DshGoView[] 
   /** The watchdog state this tab renders. */
   const watchdog = snapshot.watchdog
   /** The hold line: the state word plus the reason it was raised. */
-  const holdLine = watchdog.held ? copy.held + (watchdog.reason === "" ? "" : " · " + watchdog.reason) : copy.notHeld
+  const holdLine = watchdog.held === null ? copy.watchdogUnknown : watchdog.held ? copy.held + (watchdog.reason === "" ? "" : " · " + watchdog.reason) : copy.notHeld
   /** The incident rows, one per recorded incident. */
   const rows = watchdog.incidents.map((incident) => ({ title: incident.kind, subtitle: incident.at, trailing: incident.detail }))
   return [
@@ -563,7 +568,7 @@ function watchdogTab(snapshot: TeamPanelSnapshot, copy: DshGoCopy): DshGoView[] 
     // phone, and only the panel's own width clears the app's grid threshold (see `overviewTab`).
     tiles([
       { label: copy.predicate, value: watchdog.predicate },
-      { label: copy.tabsBoard[2], value: holdLine, tone: watchdog.held ? "warn" : "good" },
+      { label: copy.tabsBoard[2], value: holdLine, tone: watchdog.held === null ? "muted" : watchdog.held ? "warn" : "good" },
     ], 2),
     section(copy.incidents, rows.length === 0 ? [empty(copy.emptyIncidents)] : [list(rows)]),
     // NO hold/resume button (repair T8/M3): the watchdog tools resolve their workspace from the

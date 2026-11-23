@@ -9,6 +9,7 @@ import { callerContext, type CallerContext, type TeamActionsServiceView, type Te
 import type { CellworkConfig } from "./config"
 import { fenceReasonOf, nameKey, resolveMemberName, sendThroughExecutor } from "./dispatch"
 import { validateHandoffText, writeHandoff } from "./handoff"
+import { fixedRosterOf, type FixedSeat } from "./fixed-roster"
 import { growExecutionSeats, lastSeatGrowthRefusalOf, seatProjectionOf, type SeatGrowthResult } from "./elastic"
 import { acknowledgeCellMail, appendCellMail, deliverCellMail, findWorkspaceMailById, foldCellMail, nextCellMailId, pageCellMail, readCellMail, truncateCellMailBody, unreadFor, wakeFailures, type CellMailMessage } from "./mail"
 import { mailMaxUndeliveredOf, sendMany } from "../../mpd-team-core-plugin/src/mailbox-store"
@@ -41,8 +42,9 @@ import {
 import { readFileSync, statSync } from "node:fs"
 import { createHash } from "node:crypto"
 import { join } from "node:path"
-import type { DshAdapter, DshContextPressure, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
+import type { DshAdapter, DshAgentPreStep, DshContextPressure, DshPreStepDecision, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 import type { ProtocolCtx, ProtocolDeps } from "./protocol-core"
+import { installWorkerPressure } from "./worker-pressure"
 
 /**
  * The workspace config reader one send binds: `mpdConfig.get(<dotted key>)`, tolerant of absence.
@@ -657,6 +659,13 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
    */
   const boardOf = (workspace: string, cell: CellState): ReturnType<typeof resolveCellTeam> =>
     resolveCellTeam({ workspace, cell, teams: teams(), recordFor: (teamId) => recordOf(workspace, teamId) })
+  /** The project writer's maintenance path never closes or reassigns its seat. */
+  const workerPressure = installWorkerPressure({ dsh, ctx: deps.ctx, config, warn: deps.warn, inspect: (agent) => {
+    /** Recheck current ownership without mutating the cell during asynchronous maintenance. */
+    const caller = callerContext(dsh, { agent } as DshToolExec, { teams, adopt: false })
+    return { caller, board: caller.cell === null ? undefined : boardOf(caller.workspace, caller.cell).record }
+  } })
+  disposers.push(workerPressure.dispose)
   /**
    * The roster role names, or [] when the roster service cannot answer.
    *
@@ -1931,6 +1940,11 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       const unfenced = applied.outcomes
       /** The record the growth and the pass report against — the reopened one, carrying the RESOLVED board id. */
       current = applied.cell.teamId === resolvedTeamId ? applied.cell : { ...applied.cell, teamId: resolvedTeamId }
+      /** An existing fixed pool constrains any automatic hand-over to compatible existing seats. */
+      let fixedRoster: readonly FixedSeat[] | undefined
+      try { fixedRoster = fixedRosterOf(deps.ctx, dsh.workspaceRoot(exec), caller.sessionId) } catch (error) {
+        return { ok: false, error: error instanceof Error ? error.message : String(error) }
+      }
       /** The raw `reassign` argument, forwarded untouched. */
       const rawReassign = readArgs(args)["reassign"]
       // RUNTIME SEAT GROWTH, BEFORE THE PASS PAIRS (§4.1). The board was resolved through the ONE resolver
@@ -1948,6 +1962,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         rosterRoles: rosterRoles(),
         personaFor: rosterPersona,
         excludeTaskIds: reassignedTaskIds(rawReassign),
+        ...(fixedRoster === undefined ? {} : { fixedRoster }),
         now,
       })
       // THE GROWN SEATS ARE PERSISTED ON THE CELL RECORD before the pass, so the guard and every later
@@ -2390,6 +2405,8 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       const pressure = plane ?? dsh.contextPressure(exec.agent)
       /** The checkpoint decision this reading would produce. */
       const plan: CheckpointPlan = planCheckpoint(caller.cell, caller.member, pressure, config, null)
+      /** The latest admitted native-worker policy, when this activation has reached it. */
+      const workerBudget = workerPressure.latest(exec.agent)
       return {
         ok: true,
         member: caller.member,
@@ -2405,8 +2422,8 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         ratio: pressure.ratio,
         provenance: pressure.provenance,
         checkpointRatio: config.checkpointRatio,
-        willCheckpoint: plan.inject,
-        reason: plan.reason,
+        willCheckpoint: workerBudget === undefined && plan.inject,
+        reason: workerBudget?.kind === "defer" ? "original worker stays open and maintenance waits for natural idle" : workerBudget?.kind === "hard" ? "another request needs more observed context headroom" : plan.reason,
       }
     },
   }))
@@ -2999,17 +3016,20 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
 
   // ── the checkpoint listener (agent/pre-step) ─────────────────────────────
   /** The pre-step listener: detect, inject ONE message, flip the seat. Contained on every path. */
-  const onPreStep = (payload: { agent?: unknown; turn?: number; messages?: readonly unknown[] }, decision: { kind?: string; messages?: readonly unknown[] } | undefined): { kind: "enter"; messages: readonly unknown[] } | undefined => {
+  const onPreStep = (payload: DshAgentPreStep, decision: DshPreStepDecision | undefined): DshPreStepDecision | undefined | Promise<DshPreStepDecision | undefined> => {
     try {
       /** The step's agent, when the dispatcher fused it in. */
       const agent = payload?.agent
-      if (agent === undefined || agent === null) return undefined
+      if (typeof agent !== "object" || agent === null || decision?.kind === "reject") return undefined
       /** The caller's context. */
       const caller = callerContext(dsh, { agent } as DshToolExec, { teams })
       if (caller.cell === null || caller.member === "" || caller.member === "captain") return undefined
       /** The live reading for this agent. */
       const pressure = dsh.contextPressure(agent)
-      /** The decision, computed before anything is written. */
+      /** The fixed writer can keep its role when the next request still fits. */
+      const native = workerPressure.check(agent, payload, pressure)
+      if (native !== undefined) return native.then((answer) => answer?.kind === "hard" ? { kind: "reject" } : undefined)
+      /** The older checkpoint and explicit handoff surface for other seats. */
       const plan = planCheckpoint(caller.cell, caller.member, pressure, config, typeof payload.turn === "number" ? payload.turn : null)
       if (!plan.inject) return undefined
       /** The instant of the injection. */

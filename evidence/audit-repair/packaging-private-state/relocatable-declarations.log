@@ -1,0 +1,23 @@
+5869d1c5f86cf1655d8f43dfc80368530d3f1ee2caca5e451211684431315a04  scripts/pack-mpd.ts
+301b9708f9b174f9bf5ff71162fab9d3e25163c343805b337eb510c3b0a1a614  scripts/lib/pack-private-state.ts
+0153d310e34b6f4076bfa31237ebda56953ff1de0e774794d6d9a0a4c78c6d65  scripts/verify-pack-closure.ts
+4901fad047d8fd2c1c740bc3d14860a2936a3cbb7b75531a823f51d0d5066787  package.json
+[pack-mpd] validator: generated packages/mpd-ext-plugin/dist/validator.js (9 exports) from the shipped bundle
+[pack-mpd] staged 2 patch file(s): cordis.patch.yml, presets/mpd.patch.yml
+[pack-mpd] launcher dependencies: 4 shipped launcher(s) resolve 11 npm package(s), every one declared in the packed manifest
+[pack-mpd] modes normalized: 685 files (644: 669, 755: 16)
+[pack-mpd] staged package -> /tmp/mpd-reloc-declaration-proof.6Rs1m09c/reloc  (out-dir source: command line (--out /tmp/mpd-reloc-declaration-proof.6Rs1m09c/reloc))
+[verify-pack-closure] ok: 25 dist/index.js row(s) + 0 adopted lib/index.ts row(s) + 4 mcp row(s) of the bundle patch all resolve; 26 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references/specs declared and present; CLI validator surface 9 exports in step; packed tree: /tmp/mpd-reloc-declaration-proof.6Rs1m09c/reloc (524 asset files); agent references 2/2; root files 9/9; declared packages 30/30 present in the artifact; content bytes: 672 file(s) compared, 672 identical, 0 drift, 0 expected-after-pack; completeness: 562 declared source file(s) compared, 561 present, 1 declared exemption(s), 0 absent; pack stamp 2026-11-22T17:16:25.588Z (inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)); exemption exercised: packages/mpd-qa-roles-probe/dist/index.js
+[owed-pack] pack.present=true — the packed artifact travelled into the container and is graded below
+[owed-pack] artifact files=685 bytes=20420796
+[owed-pack] pack.licenceCoherence=true — the packed artifact carries LICENSE.md + LICENSE-NOTICES.md byte-identical to the tree it was cut from, and declares license=MIT as the source manifest does
+[owed-pack] pack.declarationCoherence=true — every declaration the artifact makes about itself holds: 680 files entries resolve, its 2 bundle-patch layers exist, all 29 row module paths its own patch names resolve inside it, and no host tree (evidence/.git/docker/.toolchain/node_modules) travelled along
+[owed-pack] pack.staticCoherence=true — the artifact agrees with the tree it was cut from: 683 carried file(s) byte-identical, 2 generated path(s) exempted (package.json, packages/mpd-ext-plugin/dist/validator.js), none missing
+[owed-pack] pack.distFreshRebuild=null — not measured in this mode: no from-source rebuild of the tree was produced here, so there is nothing to compare the artifact against. A comparison against an un-rebuilt copy would be a second byte-coherence check wearing freshness's name — the source lane carries this measurement
+[owed-pack] pack.rebuildToolchain=null — not measured in this mode: no from-source rebuild was produced, so no compiler produced the bytes this row would match against the artifact's declared buildToolchain
+Missing positive declaration control: grader records ok=false, names exactly packages/mpd-team-core-plugin/absent-public-control.js.
+Legacy, literal and late-sentinel npm packlists: exactly 681 paths, 0 missing, 0 extra. Relocatable staged-state control exit 1.
+5869d1c5f86cf1655d8f43dfc80368530d3f1ee2caca5e451211684431315a04  scripts/pack-mpd.ts
+301b9708f9b174f9bf5ff71162fab9d3e25163c343805b337eb510c3b0a1a614  scripts/lib/pack-private-state.ts
+0153d310e34b6f4076bfa31237ebda56953ff1de0e774794d6d9a0a4c78c6d65  scripts/verify-pack-closure.ts
+4901fad047d8fd2c1c740bc3d14860a2936a3cbb7b75531a823f51d0d5066787  package.json

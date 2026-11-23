@@ -1,10 +1,49 @@
 // packages/mpd-modelchain-plugin/src/index.ts
 import { existsSync, mkdirSync as mkdirSync2, readFileSync, writeFileSync } from "node:fs";
-import { join as join2, resolve as resolve3 } from "node:path";
+import { join as join2, resolve as resolve4 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
-import { resolve as resolve2, sep as sep2 } from "node:path";
+
+// packages/mpd-dsh-adapter-plugin/src/scoped-helper.ts
+import { realpathSync } from "node:fs";
+import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
+function helperTarget(checkout, value) {
+  try {
+    const root = realpathSync(checkout);
+    const path = resolve(root, value);
+    const local = relative(root, path);
+    if (local === "" || local === ".." || local.startsWith(`..${sep}`) || isAbsolute(local) || local.split(sep).some((item) => item === ".mpd" || item === ".git"))
+      return;
+    let probe = path;
+    while (probe !== root) {
+      try {
+        if (realpathSync(probe) !== probe)
+          return;
+      } catch (error) {
+        if (!(error instanceof Error) || !("code" in error) || error.code !== "ENOENT")
+          throw error;
+      }
+      probe = dirname(probe);
+    }
+    return local.split(sep).join("/");
+  } catch (error) {
+    if (error instanceof Error)
+      return;
+    throw error;
+  }
+}
+function helperFileRefusal(scope, name, args) {
+  if (name === "structured_output")
+    return;
+  if (scope.current?.() === false)
+    return "The original assignment no longer authorizes this helper.";
+  const path = typeof args === "object" && args !== null && "file_path" in args && typeof args.file_path === "string" ? helperTarget(scope.checkout, args.file_path) : undefined;
+  const allowed = path !== undefined && (name === "read" ? scope.read.includes(path) || scope.write.includes(path) : (name === "write" || name === "edit") && scope.write.includes(path));
+  return allowed ? undefined : "This one-shot can use only the exact file tools and paths its owner delegated.";
+}
+// packages/mpd-dsh-adapter-plugin/src/index.ts
+import { resolve as resolve3, sep as sep3 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
 function errorMessage(error) {
@@ -14,7 +53,7 @@ function errorMessage(error) {
 // packages/mpd-mcp-shared/log-sink.ts
 import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { isAbsolute as isAbsolute2, join, relative as relative2, resolve as resolve2, sep as sep2 } from "node:path";
 var LOG_SUBDIR = join(".mpd", "logs");
 var DEFAULT_MAX_BYTES = 1024 * 1024;
 var DEFAULT_MAX_LINE_BYTES = 8192;
@@ -39,7 +78,7 @@ function resolveLogRoots(env = process.env, cwd) {
       continue;
     let absolute;
     try {
-      absolute = resolve(candidate);
+      absolute = resolve2(candidate);
     } catch {
       continue;
     }
@@ -64,8 +103,8 @@ function owningRoot(roots, file) {
   for (const root of roots) {
     if (file === root)
       return root;
-    const rel = relative(root, file);
-    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel))
+    const rel = relative2(root, file);
+    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep2}`) && !isAbsolute2(rel))
       return root;
   }
   return null;
@@ -374,10 +413,10 @@ function sessionCwdOf(agent) {
 function workspaceRootOfAgent(agent) {
   const session = sessionCwdOf(agent);
   if (session !== undefined)
-    return resolve2(session);
+    return resolve3(session);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve2(override);
+    return resolve3(override);
   return process.cwd();
 }
 function workspaceRootOf(exec) {
@@ -385,7 +424,7 @@ function workspaceRootOf(exec) {
     return workspaceRootOfAgent(exec.agent);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve2(override);
+    return resolve3(override);
   return process.cwd();
 }
 var rowLogSinks = new Map;
@@ -450,7 +489,7 @@ function workspaceRootsOf(agents) {
     for (const agent of list) {
       const cwd = sessionCwdOf(agent);
       if (cwd !== undefined)
-        roots.add(resolve2(cwd));
+        roots.add(resolve3(cwd));
     }
     return [...roots];
   } catch {
@@ -992,7 +1031,7 @@ function createDshAdapter(ctx, config = {}) {
     } catch {}
   };
   bindDshGoBridge();
-  const configAgentRouteResolver = () => {
+  const configAgentRouteResolver = (workspace) => {
     const config2 = service("mpdConfig");
     if (config2 === undefined || config2 === null)
       return;
@@ -1000,7 +1039,7 @@ function createDshAdapter(ctx, config = {}) {
       return;
     return (member) => {
       try {
-        const answer = config2.agentRouteResolutionOf.call(config2, member);
+        const answer = config2.agentRouteResolutionOf.call(config2, member, workspace);
         return answer !== null && typeof answer === "object" && typeof answer.ok === "boolean" ? answer : undefined;
       } catch {
         return;
@@ -1354,7 +1393,7 @@ function createDshAdapter(ctx, config = {}) {
         const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
         let agentOptions = request.agentOptions;
         if (agentOptions === undefined) {
-          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver());
+          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver(workspaceRootOfAgent(caller)));
           if (outcome.status === "routed") {
             const resolved = await resolveRunRoute({ llmCatalog }, outcome.route, outcome.fallbacks);
             agentOptions = resolved.route;
@@ -1370,8 +1409,13 @@ function createDshAdapter(ctx, config = {}) {
           ...agentOptions === undefined ? {} : { agentOptions },
           ...request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }
         };
+        const provider = typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn";
+        const childId = request.onOpening !== undefined && provider === "spawn" && typeof subagents.startActivation === "function" && typeof subagents.prompt === "function" ? randomUUID() : undefined;
+        if (childId !== undefined)
+          request.onOpening?.(childId);
         const spec = dualShapeActivationSpec({
-          provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
+          provider,
+          ...childId === undefined ? {} : { childId },
           label: `${request.name} · ${request.teamId}`,
           signal: request.signal ?? neverAborted()
         }, activationRequest);
@@ -1806,6 +1850,13 @@ function createDshAdapter(ctx, config = {}) {
       const registered = systemPrompt.section(section);
       return typeof registered === "function" ? registered : noop;
     },
+    registerPromptContext(context) {
+      const systemPrompt = service("systemPrompt");
+      if (typeof systemPrompt?.context !== "function")
+        return;
+      const registered = systemPrompt.context(context);
+      return typeof registered === "function" ? registered : noop;
+    },
     guardTool(guard) {
       const tools = requireService("tools", "cannot install a tool guard");
       if (typeof tools.guard !== "function")
@@ -2038,14 +2089,45 @@ function createDshAdapter(ctx, config = {}) {
           ...spec.outputSchema === undefined ? {} : { outputSchema: spec.outputSchema },
           ...spec.maxDepth === undefined ? {} : { maxDepth: spec.maxDepth }
         };
-        const activation = await subagents.startActivation.call(subagents, dualShapeActivationSpec({
-          provider,
-          label: spec.label,
-          signal,
-          delivery: "parent"
-        }, activationRequest));
-        return activationHandleOf(activation, subagents, spec.parent);
+        const files = spec.helperFiles;
+        if (files === undefined) {
+          const activation = await subagents.startActivation.call(subagents, dualShapeActivationSpec({ provider, label: spec.label, signal, delivery: "parent" }, activationRequest));
+          return activationHandleOf(activation, subagents, spec.parent);
+        }
+        if (provider !== "spawn" || typeof service("tools")?.guard !== "function")
+          throw new Error("scoped one-shot requires native child and tool-guard support");
+        if (files.current?.() === false)
+          throw new Error("the original helper assignment changed before admission");
+        const childId = randomUUID();
+        const offGuard = adapter.guardTool((exec) => sessionIdOfAgent(exec.agent) === childId ? helperFileRefusal(files, exec.name, exec.arguments) : undefined);
+        let installed = false;
+        const offCreated = onEvent("agent/created", (payload) => {
+          const child = payload?.agent;
+          if (sessionIdOfAgent(child) !== childId)
+            return;
+          const allow = files.write.length > 0 ? ["read", "write", "edit"] : files.read.length > 0 ? ["read"] : [];
+          applyScopedRestriction(child, { allow });
+          installed = true;
+        });
+        try {
+          if (offCreated === undefined)
+            throw new Error("scoped one-shot requires the native agent creation hook");
+          const activation = await subagents.startActivation.call(subagents, dualShapeActivationSpec({ provider, label: spec.label, signal, delivery: "caller", childId }, { ...activationRequest, cwd: files.checkout }));
+          if (!installed) {
+            await releaseActivation(activation);
+            throw new Error("the host did not publish the reserved scoped helper");
+          }
+          const handle = activationHandleOf(activation, subagents, spec.parent);
+          return { ...handle, result: handle.result.finally(offGuard) };
+        } catch (error) {
+          offGuard();
+          throw error;
+        } finally {
+          offCreated?.();
+        }
       }
+      if (spec.helperFiles !== undefined)
+        throw new Error("scoped one-shot requires native child start support");
       if (typeof subagents.start !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagent service exposes neither startActivation() nor start()");
       const run = await subagents.start(provider, {
@@ -2296,6 +2378,20 @@ function createDshAdapter(ctx, config = {}) {
       if (typeof skills.get !== "function")
         throw new Error("mpd-dsh-adapter: the harness skills service exposes no get()");
       return skills.get(skillName, options);
+    },
+    selectedAgentPreset(agent) {
+      const session = agent?.session;
+      if (session === undefined || session === null)
+        return;
+      try {
+        const presets = service("agentPresets");
+        if (typeof presets?.presetForSession !== "function")
+          return;
+        const selected = presets.presetForSession(session);
+        return selected === null || typeof selected === "string" && selected.length > 0 ? selected : undefined;
+      } catch {
+        return;
+      }
     },
     async resolvePreset(presetId) {
       const presets = requireService("agentPresets", 'cannot resolve preset "' + presetId + '"');
@@ -2626,14 +2722,39 @@ function resolveRole(role, chains) {
   return { provider: primary.provider, model: primary.model, chain };
 }
 function memoryPath(cwd, config) {
-  return config.memoryFile ? resolve3(cwd, config.memoryFile) : join2(cwd, ".mpd", "memory.json");
+  return config.memoryFile ? resolve4(cwd, config.memoryFile) : join2(cwd, ".mpd", "memory.json");
 }
 function loadMemory(p) {
   try {
-    return JSON.parse(readFileSync(p, "utf8"));
-  } catch {
-    return {};
+    const parsed = JSON.parse(readFileSync(p, "utf8"));
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed))
+      return new Map;
+    return new Map(Object.entries(parsed).filter((entry) => typeof entry[1] === "string"));
+  } catch (error) {
+    if (error instanceof Error)
+      return new Map;
+    throw error;
   }
+}
+
+class MemoryServiceUnavailable extends Error {
+  constructor() {
+    super("mpd-memory: project memory service unavailable; legacy access refused");
+  }
+}
+function keyMemoryOf(ctx) {
+  const service = ctx.get?.("mpdMemory", false);
+  if (service === undefined || service === null) {
+    if (ctx.get?.("mpdProjectIdentity", false) != null)
+      throw new MemoryServiceUnavailable;
+    return;
+  }
+  if (!hasKeyMemory(service))
+    throw new MemoryServiceUnavailable;
+  return service;
+}
+function hasKeyMemory(service) {
+  return typeof service === "object" && service !== null && "saveKey" in service && typeof service.saveKey === "function" && "recallKey" in service && typeof service.recallKey === "function";
 }
 function configServiceOf(ctx) {
   try {
@@ -2645,28 +2766,28 @@ function configServiceOf(ctx) {
 function isChainArray(value) {
   return Array.isArray(value) && value.length > 0 && value.every((c) => c && typeof c.provider === "string" && typeof c.model === "string");
 }
-function overlayNow(ctx) {
+function overlayNow(ctx, workspace) {
   const mpdConfig = configServiceOf(ctx);
   if (typeof mpdConfig?.get !== "function")
     return {};
   const overlay = {};
   for (const key of Object.keys(DEFAULT_CHAINS)) {
     const legacy = LEGACY_CHAIN_KEYS[key];
-    const v = mpdConfig.get("modelchain." + key) ?? (legacy ? mpdConfig.get("modelchain." + legacy) : undefined);
+    const v = mpdConfig.get("modelchain." + key, workspace) ?? (legacy ? mpdConfig.get("modelchain." + legacy, workspace) : undefined);
     if (isChainArray(v))
       overlay[key] = v;
   }
   return overlay;
 }
-function chainsNow(ctx, config) {
-  return { ...config?.chains ?? DEFAULT_CHAINS, ...overlayNow(ctx) };
+function chainsNow(ctx, config, workspace) {
+  return { ...config?.chains ?? DEFAULT_CHAINS, ...overlayNow(ctx, workspace) };
 }
-function agentRouteResolutionIn(ctx, member) {
+function agentRouteResolutionIn(ctx, member, workspace) {
   try {
     const service = ctx.get?.("mpdConfig");
     if (typeof service?.agentRouteResolutionOf !== "function")
       return;
-    return service.agentRouteResolutionOf(member);
+    return service.agentRouteResolutionOf(member, workspace);
   } catch {
     return;
   }
@@ -2681,15 +2802,16 @@ function apply(ctx, config = {}) {
       schema: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" }, chain: { type: "array", items: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" } }, required: [] } }, status: { type: "string" }, missing: { type: "array", items: { type: "string" } }, reason: { type: "string" } }, required: ["provider", "model"] },
       render: (_args, value) => [{ type: "text", text: value.status === "unconfigured" ? "role=" + _args?.role + " -> <unconfigured> (missing " + (Array.isArray(value.missing) ? value.missing.join(", ") : "agentRoutes") + "; " + String(value.reason ?? "") + ")" : "role=" + _args?.role + " -> " + value.provider + "/" + value.model + " (chain " + value.chain.length + " entries)" + (value.status === undefined ? "" : " — " + value.status) }]
     },
-    execute: async (args) => {
+    execute: async (args, exec) => {
+      const workspace = dsh.workspaceRoot(exec);
       const role = String(args?.role ?? "").trim();
       const rolesService = ctx.get?.("mpdRoles");
-      const names = (rolesService?.list?.() ?? []).map((r) => String(r?.name ?? "")).filter((n) => n !== "");
-      const spec = rolesService?.get?.(role);
+      const names = (rolesService?.list?.(exec) ?? []).map((r) => String(r?.name ?? "")).filter((n) => n !== "");
+      const spec = rolesService?.get?.(role, exec);
       if (spec === undefined || spec === null || roleNameKey(role) !== roleNameKey(String(spec.name ?? ""))) {
         throw new Error("mpd_modelchain_resolve: unknown role — use a roster NAME from mpd_roles_list" + (names.length > 0 ? " (" + names.join(", ") + ")" : " (the mpdRoles roster service answered no names — is the mpd-roles row mounted?)"));
       }
-      const agentRoute = agentRouteResolutionIn(ctx, String(spec.name));
+      const agentRoute = agentRouteResolutionIn(ctx, String(spec.name), workspace);
       const unconfiguredAnswer = (agent, missing, reason) => ({
         provider: "",
         model: "",
@@ -2720,40 +2842,52 @@ function apply(ctx, config = {}) {
         const agent = String(spec.name);
         return unconfiguredAnswer(agent, ["agentRoutes." + agent + ".provider", "agentRoutes." + agent + ".model"], "agentRoutes." + agent + " is not readable — no usable mpdConfig answer; configure it with /mpd-model");
       }
-      const configured = overlayNow(ctx)[String(spec.id)];
+      const configured = overlayNow(ctx, workspace)[String(spec.id)];
       if (isChainArray(configured)) {
         return { provider: configured[0].provider, model: configured[0].model, chain: configured.map((c) => ({ ...c })) };
       }
       if (Array.isArray(spec.chain) && spec.chain.length > 0) {
         return { provider: spec.chain[0].provider, model: spec.chain[0].model, chain: spec.chain.map((c) => ({ ...c })) };
       }
-      return resolveRole(String(spec.id), chainsNow(ctx, config));
+      return resolveRole(String(spec.id), chainsNow(ctx, config, workspace));
     }
   });
   dsh.registerTool({
     name: "mpd_memory_save",
-    description: "Persist a key/value note in the workspace-scoped memory (.mpd/memory.json).",
-    parameters: { type: "object", properties: { key: { type: "string" }, value: { type: "string" } }, required: ["key", "value"] },
+    description: "Save an exact key/value note. Project team sessions write to the authenticated member's private memory. Standalone sessions use the workspace's existing memory file.",
+    parameters: { type: "object", properties: { key: { type: "string" }, value: { type: "string" } }, required: ["key", "value"], additionalProperties: false },
     output: { schema: { type: "object", properties: { ok: { type: "boolean" }, key: { type: "string" } }, required: ["ok", "key"] }, render: (_a, v) => [{ type: "text", text: "saved " + v.key }] },
     execute: async (args, exec) => {
+      const key = String(args.key);
+      const value = String(args.value);
+      const scoped = keyMemoryOf(ctx)?.saveKey(exec, key, value);
+      if (scoped !== undefined)
+        return scoped;
       const p = memoryPath(dsh.workspaceRoot(exec), config);
       if (!existsSync(p))
         mkdirSync2(join2(p, ".."), { recursive: true });
       const mem = loadMemory(p);
-      mem[String(args.key)] = String(args.value);
-      writeFileSync(p, JSON.stringify(mem, null, 2));
-      return { ok: true, key: String(args.key) };
+      mem.set(key, value);
+      writeFileSync(p, JSON.stringify(Object.fromEntries(mem), null, 2));
+      return { ok: true, key };
     }
   });
   dsh.registerTool({
     name: "mpd_memory_recall",
-    description: "Recall a key from the workspace-scoped memory.",
-    parameters: { type: "object", properties: { key: { type: "string" } }, required: ["key"] },
-    output: { schema: { type: "object", properties: { key: { type: "string" }, value: { type: "string" }, found: { type: "boolean" } }, required: ["key", "found"] }, render: (_a, v) => [{ type: "text", text: v.found ? v.key + " = " + v.value : "not found: " + v.key }] },
+    description: "Recall an exact, case-sensitive key from your private member memory or standalone workspace memory. Set scope to legacy to explicitly read old workspace notes. The tool flags clipped previews as truncated.",
+    parameters: { type: "object", properties: { key: { type: "string" }, scope: { type: "string", enum: ["legacy"], description: "Explicitly read the old unattributed workspace map." } }, required: ["key"], additionalProperties: false },
+    output: { schema: { type: "object", properties: { key: { type: "string" }, value: { type: "string" }, found: { type: "boolean" }, truncated: { type: "boolean" }, scope: { type: "string", enum: ["legacy"] } }, required: ["key", "found"] }, render: (_a, v) => [{ type: "text", text: v.found ? v.key + " = " + v.value + (v.truncated ? `
+[preview truncated]` : "") : "not found: " + v.key }] },
     execute: async (args, exec) => {
-      const mem = loadMemory(memoryPath(dsh.workspaceRoot(exec), config));
-      const k = String(args.key);
-      return { key: k, value: mem[k] ?? "", found: Object.prototype.hasOwnProperty.call(mem, k) };
+      const key = String(args.key);
+      const scoped = keyMemoryOf(ctx)?.recallKey(exec, key, args.scope);
+      if (scoped !== undefined)
+        return scoped;
+      const stored = loadMemory(memoryPath(dsh.workspaceRoot(exec), config)).get(key);
+      if (args.scope !== "legacy")
+        return { key, value: stored ?? "", found: stored !== undefined };
+      const value = (stored ?? "").slice(0, 768).replace(/[\ud800-\udbff]$/u, "");
+      return { key, value, found: stored !== undefined, scope: "legacy", ...stored !== undefined && value.length < stored.length ? { truncated: true } : {} };
     }
   });
 }

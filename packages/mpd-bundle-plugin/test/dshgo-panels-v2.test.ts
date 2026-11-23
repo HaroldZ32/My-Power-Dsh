@@ -362,21 +362,41 @@ describe("the menu handlers", () => {
     expect(await actions["mpd-copy-reply"]?.({ sessionId: "s1" }, {})).toEqual({ toast: "Nothing to copy" })
   })
 
-  test("save-memory writes ONE entry through the memory tool, description first line", async () => {
-    /** Every tool call the fake runtime saw. */
-    const calls: Array<{ name: string; arguments?: unknown }> = []
-    /** The action map over a fake tool runtime. */
-    const actions = createSurfaceActions({
-      dsh: { dshGoPresent: () => true, dshGoPanel: () => false, dshGoRefresh: () => {}, onServiceBound: () => () => {}, executeTool: async (input: { name: string; arguments?: unknown }) => { calls.push(input); return { ok: true } } },
+  test("save-memory writes once as the selected conversation's live agent", async () => {
+    /** The first root is deliberately unrelated to the message the user selected. */
+    const first = { id: "agent-a", session: { id: "s1", header: { cwd: "/root-a" } } }
+    /** The registry keys this agent differently from the session the bridge publishes. */
+    const selected = { id: "agent-b", session: { id: "s2", header: { cwd: "/root-b" } } }
+    /** Capture the complete execution request, including the agent's identity. */
+    const calls: Array<{ name: string; arguments?: unknown; agent?: unknown }> = []
+    /** The bridge receives a public handler for each declared menu action. */
+    const actions = new Map<string, (scope: unknown, event: unknown) => unknown>()
+    /** Register the normal surfaces over a scope-aware tool runtime. */
+    const registration = registerDshGoSurfaces({
+      dsh: {
+        dshGoPresent: () => true, dshGoPanel: () => false, dshGoRefresh: () => {}, onServiceBound: () => () => {},
+        liveAgents: () => [first, selected],
+        dshGoOn: (id, handler) => { actions.set(id, handler); return true },
+        executeTool: async (input) => { calls.push(input); return { ok: true, isError: false, value: { scope: "workspace", file: "/root-b/.mpd/memory/note.md", vcs: "none" } } },
+      },
       ctx: {},
+      log: () => {},
     })
-    /** The reply the action was invoked on. */
-    const reply = "first line here\nsecond line"
-    expect(await actions["mpd-save-memory"]?.({ sessionId: "s1" }, { text: reply })).toEqual({ toast: "Saved to memory" })
-    expect(calls).toHaveLength(1)
-    expect(calls[0]?.name).toBe("mpd_memory_write")
-    expect((calls[0]?.arguments as { description?: string }).description).toBe("first line here")
-    expect((calls[0]?.arguments as { content?: string }).content).toBe(reply)
+    try {
+      /** The selected reply and a realistic message-action invocation with body in `value`. */
+      const reply = "first line here\nsecond line"
+      /** The handler published through the Go bridge. */
+      const save = actions.get("mpd-save-memory")
+      expect(await save?.({ sessionId: "unknown" }, { value: { text: reply } })).toEqual({ toast: "Open a live conversation to save" })
+      expect(await save?.({ sessionId: "s2" }, { value: { text: reply } })).toEqual({ toast: "Saved to memory" })
+      expect(calls).toHaveLength(1)
+      expect(calls[0]?.agent).toBe(selected)
+      expect(calls[0]?.name).toBe("mpd_memory_write")
+      expect((calls[0]?.arguments as { description?: string }).description).toBe("first line here")
+      expect((calls[0]?.arguments as { content?: string }).content).toBe(reply)
+    } finally {
+      registration.dispose()
+    }
   })
 
   test("dispatch answers a toast when the service is absent, never a throw", async () => {

@@ -1,0 +1,9 @@
+bun test v1.4.0 (34cbb9a40)
+(pass) the fourth overlapping public consult stages one required plan before dispatching a fourth child [11.67ms]
+(pass) live limits share role and workmate reservations while the internal engine scope stays isolated [3.31ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > a blank top-level session uses the selected preset on the first real step [1.62ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > whole-scope repair confirmation after consults uses durable work evidence without matching a local fix [1.05ms]
+ 998 pass
+ 0 fail
+ 6043 expect() calls
+Ran 998 tests across 66 files. [4.46s]

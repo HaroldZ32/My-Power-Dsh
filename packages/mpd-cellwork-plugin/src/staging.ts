@@ -1,3 +1,4 @@
+import type { FixedSeat } from "./fixed-roster"
 // CELLWORK STAGING — the planning team `cellwork_start` stages and approves (contract B4, Amendment 3).
 //
 // WHAT IS STAGED: TWO members and TWO tasks at the minimum, not one. `cell-planner` runs the Socratic
@@ -132,6 +133,8 @@ export interface StageDeps {
   teams: () => TeamsServiceView | undefined
   /** The resolved knobs (the contract gate list travels into the splitter's instructions). */
   config: CellworkConfig
+  /** Names and roles an established project makes available to its temporary splitter. */
+  fixedRoster?: readonly FixedSeat[]
   /** The instant to stamp the member rows with. */
   now: Date
 }
@@ -307,7 +310,7 @@ export function plannerPrompt(deps: Pick<StageDeps, "cell" | "personaFor"> & { p
  * @param deps - the cell, the persona reader and the knobs.
  * @returns the prompt text.
  */
-export function splitterPrompt(deps: Pick<StageDeps, "cell" | "personaFor" | "config">): string {
+export function splitterPrompt(deps: Pick<StageDeps, "cell" | "personaFor" | "config" | "fixedRoster">): string {
   /** The persona text, when the roster service answered. */
   const persona = deps.personaFor(SPLITTER_ROLE)
   /** The gate commands the frozen contracts will list, when configured. */
@@ -332,6 +335,11 @@ export function splitterPrompt(deps: Pick<StageDeps, "cell" | "personaFor" | "co
     "  · kind: requirement | work | review | repair | integration (omitted means work).",
     "  · ownerRole: a ROSTER role name (Senior Engineer, Deep Worker, Junior Engineer, Reviewer, …) or a cell",
     "    role (cell-planner, cell-splitter). It is the role the executor routes the member by.",
+    ...(deps.fixedRoster && deps.fixedRoster.length > 0 ? [
+      "FIXED EXECUTION MEMBERS: choose a compatible name from this list. Busy members queue tasks; do not invent extra names:",
+      ...deps.fixedRoster.map((seat) => `  ${JSON.stringify(seat.name)} (${seat.role ?? "role unpinned"})`),
+      "  Ask the project captain for an explicit roster change if no compatible member is available.",
+    ] : []),
     "  · member: the BOARD MEMBER the task is raised for — THE PARALLELISM SWITCH. Omit it and the role",
     "    spelling IS the member, so that role runs ONE seat and its tasks queue behind one another. Name it",
     "    (`Reviewer-2`, `Reviewer-3`, …) and THAT NAME is a separate seat, so several seats may share one",
@@ -622,9 +630,22 @@ function planningSeats(deps: StageDeps, lanes: readonly number[]): PlanningSeat[
  * @returns the approved team id, the member rows and the two task ids, or the refusal sentence.
  */
 export async function stagePlanningTeam(deps: StageDeps): Promise<StageResult> {
+  /** One team-plane call; the value is the tool's structured answer. */
+  const call = async (arguments_: Record<string, unknown>): Promise<{ ok: true; value: ToolValue } | { ok: false; error: string }> => {
+    /** The adapter's normalized answer. */
+    const result = await deps.dsh.executeTool({ name: "agent_teams_plan", arguments: arguments_, agent: deps.captainAgent })
+    if (!result.ok) return { ok: false, error: typeof result.error === "string" ? result.error : "the agent_teams_plan call failed" }
+    return { ok: true, value: typeof result.value === "object" && result.value !== null ? result.value as ToolValue : {} }
+  }
   /** The team id already recorded on the cell, which makes this call idempotent. */
   const existingTeamId = deps.cell.teamId
-  if (existingTeamId !== "") {
+  /** The exact previous checkpoint, when a planning approval paused before its split ticket. */
+  const retryStatus = existingTeamId === "" || deps.cell.splitTaskId ? undefined : await call({ action: "status" })
+  /** A plan checkpoint means this board still belongs to `approve`, even if a member has started. */
+  const retryPlan = retryStatus?.ok === true && typeof retryStatus.value.plan === "object" && retryStatus.value.plan !== null ? retryStatus.value.plan as ToolValue : undefined
+  /** Read only the activation tied to this cell's named planning plan. */
+  const retryActivation = textField(retryPlan, "name") === "cell " + deps.cell.cellId && typeof retryPlan?.activation === "object" && retryPlan.activation !== null ? retryPlan.activation as ToolValue : undefined
+  if (existingTeamId !== "" && textField(retryActivation, "teamId") !== existingTeamId) {
     /** The live record, when the team service can read it. */
     const record = deps.teams()?.get?.(deps.workspace, existingTeamId)
     // THE SPLIT TICKET IS RESOLVED ON THE IDEMPOTENT PATH TOO (contract C11): a retry that takes this
@@ -649,17 +670,10 @@ export async function stagePlanningTeam(deps: StageDeps): Promise<StageResult> {
       }),
     }
   }
-  /** One team-plane call; the value is the tool's structured answer. */
-  const call = async (arguments_: Record<string, unknown>): Promise<{ ok: true; value: ToolValue } | { ok: false; error: string }> => {
-    /** The adapter's normalized answer. */
-    const result = await deps.dsh.executeTool({ name: "agent_teams_plan", arguments: arguments_, agent: deps.captainAgent })
-    if (!result.ok) return { ok: false, error: typeof result.error === "string" ? result.error : "the agent_teams_plan call failed" }
-    return { ok: true, value: typeof result.value === "object" && result.value !== null ? result.value as ToolValue : {} }
-  }
   /** THE NAME THIS CELL ALWAYS STAGES UNDER, and the key a retry recognizes its own slot by. */
   const planName = "cell " + deps.cell.cellId
   /** The session's current plan/team state, read before anything is staged. */
-  const status = await call({ action: "status" })
+  const status = retryStatus ?? await call({ action: "status" })
   if (!status.ok) return { ok: false, error: "cellwork could not read the session's team state: " + status.error }
   /** The plan already staged for this session, when one exists. */
   const staged = status.value.plan
@@ -668,7 +682,7 @@ export async function stagePlanningTeam(deps: StageDeps): Promise<StageResult> {
   /** Whether the plan in the slot is THIS cell's, so it may be RESUMED instead of refused. */
   const resumable = plan !== undefined && textField(plan, "name") === planName
   /** Whether that plan is already approved, which means the TEAM exists and only a record may be missing. */
-  const approvedAlready = resumable && textField(plan, "approvedAt") !== ""
+  const approvedAlready = resumable && plan?.activation === undefined && textField(plan, "approvedAt") !== ""
   // A PLAN THAT IS NOT OURS STILL REFUSES, exactly as before: cellwork needs a free slot, and resuming
   // somebody else's plan would stage this cell's members onto another cell's board.
   if (plan !== undefined && !resumable) {
@@ -710,7 +724,7 @@ export async function stagePlanningTeam(deps: StageDeps): Promise<StageResult> {
       // THE REPAIR THE FINDING ASKS FOR: the approval stopped before raising this member. A live team's
       // Lead may append it, so the failed row is repaired instead of re-approving the whole plan.
       /** That repair append. */
-      const appended = await call({ action: "add_member", member: { name: seat.name, role: seat.role, description: seat.name + " (" + seat.role + ")", prompt: seat.prompt } })
+      const appended = await call({ action: "add_member", member: { name: seat.name, role: seat.role, scope: "run", description: seat.name + " (" + seat.role + ")", prompt: seat.prompt } })
       if (!appended.ok) {
         return { ok: false, error: "the planning team " + recoveredId + " is approved but " + seat.name + " could not be raised: " + appended.error, planName, teamId: recoveredId, partial: true }
       }
@@ -738,9 +752,9 @@ export async function stagePlanningTeam(deps: StageDeps): Promise<StageResult> {
     if (recoveredTicket.boardReadable && recoveredTicket.splitTaskId === "") return { ok: false, error: "the planning team " + recoveredId + " is approved but " + recoveredTicket.repairError, teamId: recoveredId, members: recovered, planName, partial: true }
     return { ok: true, alreadyStaged: true, teamId: recoveredId, members: recovered, tasks: { splitId: recoveredTicket.splitTaskId }, planName, ...(recoveredTicket.ownerRepaired ? { ownerRepaired: true } : {}), ...(recoveredTicket.repairError === "" ? {} : { ownerRepairError: recoveredTicket.repairError }) }
   }
-  // No usable plan of ours is staged: create one and fill it. `approval:"required"` is the default, and
-  // the explicit approve call below is what executes it (nothing is spawned before that).
-  if (plan === undefined) {
+  // An empty automatic Team shell is not a resumable Cellwork plan. Replace it only after the
+  // checks above have kept any approved or populated plan intact.
+  if (!resumable) {
     if (typeof status.value.team === "object" && status.value.team !== null) {
       return { ok: false, error: "this session already drives team " + textField(status.value.team as ToolValue, "teamId") + "; cellwork requires its own fresh team" }
     }
@@ -781,7 +795,7 @@ export async function stagePlanningTeam(deps: StageDeps): Promise<StageResult> {
   for (const seat of seats) {
     if (presentMembers.has(seat.name)) continue
     /** One member append. */
-    const appended = await call({ action: "add_member", member: { name: seat.name, role: seat.role, description: seat.name + " (" + seat.role + ")", prompt: seat.prompt } })
+    const appended = await call({ action: "add_member", member: { name: seat.name, role: seat.role, scope: "run", description: seat.name + " (" + seat.role + ")", prompt: seat.prompt } })
     if (!appended.ok) return { ok: false, error: "cellwork could not stage " + seat.name + ": " + appended.error, planName, partial: true }
   }
   /** The task subjects the slot ALREADY carries, for the same resume reason. */

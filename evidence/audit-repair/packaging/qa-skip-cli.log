@@ -1,0 +1,15 @@
+[test:qa] fixture.ts
+[mpd-qa] SKIP case=fixture lane=self-test reason=absent-fixture prereq=probe remedy="-"
+[test:qa] scripts/mpd-ext.ts --self-test
+extension fixture passed
+[test:qa] scripts/mpd-ext.ts validate extensions/mpd-ext-example
+extension fixture passed
+[test:qa] COMPLETE WITH SKIPS - 2 passed, 1 skipped, 0 failed (3 total)
+normal exit=0
+[test:qa:strict] fixture.ts
+[mpd-qa] SKIP case=fixture lane=self-test reason=absent-fixture prereq=probe remedy="-"
+[test:qa:strict] scripts/mpd-ext.ts --self-test
+extension fixture passed
+[test:qa:strict] FAILED: fixture.ts (unexpected QA marker)
+[test:qa:strict] FAIL - 1 passed, 0 skipped, 1 failed (2 total)
+strict exit=1

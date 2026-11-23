@@ -1,12 +1,53 @@
 // packages/mpd-memory-plugin/src/index.ts
-import { existsSync as existsSync3, readFileSync as readFileSync4, readdirSync as readdirSync2, writeFileSync as writeFileSync2 } from "node:fs";
-import { basename as basename2, join as join4 } from "node:path";
+import { createHash as createHash3, randomUUID as randomUUID3 } from "node:crypto";
+import { closeSync as closeSync3, existsSync as existsSync3, fsyncSync, openSync as openSync3, readFileSync as readFileSync5, readdirSync as readdirSync3, renameSync as renameSync3, rmSync as rmSync2, writeFileSync as writeFileSync3 } from "node:fs";
+import { basename as basename2, dirname as dirname5, join as join6 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
+
+// packages/mpd-dsh-adapter-plugin/src/scoped-helper.ts
+import { realpathSync } from "node:fs";
+import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
+function helperTarget(checkout, value) {
+  try {
+    const root = realpathSync(checkout);
+    const path = resolve(root, value);
+    const local = relative(root, path);
+    if (local === "" || local === ".." || local.startsWith(`..${sep}`) || isAbsolute(local) || local.split(sep).some((item) => item === ".mpd" || item === ".git"))
+      return;
+    let probe = path;
+    while (probe !== root) {
+      try {
+        if (realpathSync(probe) !== probe)
+          return;
+      } catch (error) {
+        if (!(error instanceof Error) || !("code" in error) || error.code !== "ENOENT")
+          throw error;
+      }
+      probe = dirname(probe);
+    }
+    return local.split(sep).join("/");
+  } catch (error) {
+    if (error instanceof Error)
+      return;
+    throw error;
+  }
+}
+function helperFileRefusal(scope, name, args) {
+  if (name === "structured_output")
+    return;
+  if (scope.current?.() === false)
+    return "The original assignment no longer authorizes this helper.";
+  const path = typeof args === "object" && args !== null && "file_path" in args && typeof args.file_path === "string" ? helperTarget(scope.checkout, args.file_path) : undefined;
+  const allowed = path !== undefined && (name === "read" ? scope.read.includes(path) || scope.write.includes(path) : (name === "write" || name === "edit") && scope.write.includes(path));
+  return allowed ? undefined : "This one-shot can use only the exact file tools and paths its owner delegated.";
+}
+
+// packages/mpd-dsh-adapter-plugin/src/index.ts
 import { readFileSync } from "node:fs";
 import { userInfo } from "node:os";
-import { resolve as resolve2, sep as sep2 } from "node:path";
+import { resolve as resolve3, sep as sep3 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
 function errorMessage(error) {
@@ -16,7 +57,7 @@ function errorMessage(error) {
 // packages/mpd-mcp-shared/log-sink.ts
 import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { isAbsolute as isAbsolute2, join, relative as relative2, resolve as resolve2, sep as sep2 } from "node:path";
 var LOG_SUBDIR = join(".mpd", "logs");
 var DEFAULT_MAX_BYTES = 1024 * 1024;
 var DEFAULT_MAX_LINE_BYTES = 8192;
@@ -41,7 +82,7 @@ function resolveLogRoots(env = process.env, cwd) {
       continue;
     let absolute;
     try {
-      absolute = resolve(candidate);
+      absolute = resolve2(candidate);
     } catch {
       continue;
     }
@@ -66,8 +107,8 @@ function owningRoot(roots, file) {
   for (const root of roots) {
     if (file === root)
       return root;
-    const rel = relative(root, file);
-    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel))
+    const rel = relative2(root, file);
+    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep2}`) && !isAbsolute2(rel))
       return root;
   }
   return null;
@@ -376,10 +417,10 @@ function sessionCwdOf(agent) {
 function workspaceRootOfAgent(agent) {
   const session = sessionCwdOf(agent);
   if (session !== undefined)
-    return resolve2(session);
+    return resolve3(session);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve2(override);
+    return resolve3(override);
   return process.cwd();
 }
 function workspaceRootOf(exec) {
@@ -387,7 +428,7 @@ function workspaceRootOf(exec) {
     return workspaceRootOfAgent(exec.agent);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve2(override);
+    return resolve3(override);
   return process.cwd();
 }
 
@@ -419,7 +460,7 @@ function realUserHome() {
   } catch {}
   try {
     const api = userInfo().homedir;
-    if (api !== "" && resolve2(api) !== resolve2(process.env.HOME ?? api))
+    if (api !== "" && resolve3(api) !== resolve3(process.env.HOME ?? api))
       return api;
   } catch {}
   return;
@@ -432,8 +473,8 @@ function assertHomeMutationSandboxed(guard) {
     return;
   const home = process.env.HOME;
   const realHome = realUserHome();
-  const inside = (h) => guard.root === h || guard.root.startsWith(h.endsWith(sep2) ? h : h + sep2);
-  if (home !== undefined && home !== "" && realHome !== undefined && resolve2(home) !== resolve2(realHome) && inside(resolve2(home)))
+  const inside = (h) => guard.root === h || guard.root.startsWith(h.endsWith(sep3) ? h : h + sep3);
+  if (home !== undefined && home !== "" && realHome !== undefined && resolve3(home) !== resolve3(realHome) && inside(resolve3(home)))
     return;
   throw new HomeGuardRefusal("real-home-refused", guard.label + ": refusing to " + guard.operation + " inside the REAL library " + guard.root + " while DSH_HOME=" + dshHome + " marks an isolated/QA boot — set HOME=<sandbox> (T-43), or set " + guard.allowEnv + "=1 to override deliberately" + (realHome === undefined ? " (the real home could not be determined on this host)" : ""), 403);
 }
@@ -499,7 +540,7 @@ function workspaceRootsOf(agents) {
     for (const agent of list) {
       const cwd = sessionCwdOf(agent);
       if (cwd !== undefined)
-        roots.add(resolve2(cwd));
+        roots.add(resolve3(cwd));
     }
     return [...roots];
   } catch {
@@ -1041,7 +1082,7 @@ function createDshAdapter(ctx, config = {}) {
     } catch {}
   };
   bindDshGoBridge();
-  const configAgentRouteResolver = () => {
+  const configAgentRouteResolver = (workspace) => {
     const config2 = service("mpdConfig");
     if (config2 === undefined || config2 === null)
       return;
@@ -1049,7 +1090,7 @@ function createDshAdapter(ctx, config = {}) {
       return;
     return (member) => {
       try {
-        const answer = config2.agentRouteResolutionOf.call(config2, member);
+        const answer = config2.agentRouteResolutionOf.call(config2, member, workspace);
         return answer !== null && typeof answer === "object" && typeof answer.ok === "boolean" ? answer : undefined;
       } catch {
         return;
@@ -1403,7 +1444,7 @@ function createDshAdapter(ctx, config = {}) {
         const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
         let agentOptions = request.agentOptions;
         if (agentOptions === undefined) {
-          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver());
+          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver(workspaceRootOfAgent(caller)));
           if (outcome.status === "routed") {
             const resolved = await resolveRunRoute({ llmCatalog }, outcome.route, outcome.fallbacks);
             agentOptions = resolved.route;
@@ -1419,8 +1460,13 @@ function createDshAdapter(ctx, config = {}) {
           ...agentOptions === undefined ? {} : { agentOptions },
           ...request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }
         };
+        const provider = typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn";
+        const childId = request.onOpening !== undefined && provider === "spawn" && typeof subagents.startActivation === "function" && typeof subagents.prompt === "function" ? randomUUID() : undefined;
+        if (childId !== undefined)
+          request.onOpening?.(childId);
         const spec = dualShapeActivationSpec({
-          provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
+          provider,
+          ...childId === undefined ? {} : { childId },
           label: `${request.name} · ${request.teamId}`,
           signal: request.signal ?? neverAborted()
         }, activationRequest);
@@ -1855,6 +1901,13 @@ function createDshAdapter(ctx, config = {}) {
       const registered = systemPrompt.section(section);
       return typeof registered === "function" ? registered : noop;
     },
+    registerPromptContext(context) {
+      const systemPrompt = service("systemPrompt");
+      if (typeof systemPrompt?.context !== "function")
+        return;
+      const registered = systemPrompt.context(context);
+      return typeof registered === "function" ? registered : noop;
+    },
     guardTool(guard) {
       const tools = requireService("tools", "cannot install a tool guard");
       if (typeof tools.guard !== "function")
@@ -2087,14 +2140,45 @@ function createDshAdapter(ctx, config = {}) {
           ...spec.outputSchema === undefined ? {} : { outputSchema: spec.outputSchema },
           ...spec.maxDepth === undefined ? {} : { maxDepth: spec.maxDepth }
         };
-        const activation = await subagents.startActivation.call(subagents, dualShapeActivationSpec({
-          provider,
-          label: spec.label,
-          signal,
-          delivery: "parent"
-        }, activationRequest));
-        return activationHandleOf(activation, subagents, spec.parent);
+        const files = spec.helperFiles;
+        if (files === undefined) {
+          const activation = await subagents.startActivation.call(subagents, dualShapeActivationSpec({ provider, label: spec.label, signal, delivery: "parent" }, activationRequest));
+          return activationHandleOf(activation, subagents, spec.parent);
+        }
+        if (provider !== "spawn" || typeof service("tools")?.guard !== "function")
+          throw new Error("scoped one-shot requires native child and tool-guard support");
+        if (files.current?.() === false)
+          throw new Error("the original helper assignment changed before admission");
+        const childId = randomUUID();
+        const offGuard = adapter.guardTool((exec) => sessionIdOfAgent(exec.agent) === childId ? helperFileRefusal(files, exec.name, exec.arguments) : undefined);
+        let installed = false;
+        const offCreated = onEvent("agent/created", (payload) => {
+          const child = payload?.agent;
+          if (sessionIdOfAgent(child) !== childId)
+            return;
+          const allow = files.write.length > 0 ? ["read", "write", "edit"] : files.read.length > 0 ? ["read"] : [];
+          applyScopedRestriction(child, { allow });
+          installed = true;
+        });
+        try {
+          if (offCreated === undefined)
+            throw new Error("scoped one-shot requires the native agent creation hook");
+          const activation = await subagents.startActivation.call(subagents, dualShapeActivationSpec({ provider, label: spec.label, signal, delivery: "caller", childId }, { ...activationRequest, cwd: files.checkout }));
+          if (!installed) {
+            await releaseActivation(activation);
+            throw new Error("the host did not publish the reserved scoped helper");
+          }
+          const handle = activationHandleOf(activation, subagents, spec.parent);
+          return { ...handle, result: handle.result.finally(offGuard) };
+        } catch (error) {
+          offGuard();
+          throw error;
+        } finally {
+          offCreated?.();
+        }
       }
+      if (spec.helperFiles !== undefined)
+        throw new Error("scoped one-shot requires native child start support");
       if (typeof subagents.start !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagent service exposes neither startActivation() nor start()");
       const run = await subagents.start(provider, {
@@ -2345,6 +2429,20 @@ function createDshAdapter(ctx, config = {}) {
       if (typeof skills.get !== "function")
         throw new Error("mpd-dsh-adapter: the harness skills service exposes no get()");
       return skills.get(skillName, options);
+    },
+    selectedAgentPreset(agent) {
+      const session = agent?.session;
+      if (session === undefined || session === null)
+        return;
+      try {
+        const presets = service("agentPresets");
+        if (typeof presets?.presetForSession !== "function")
+          return;
+        const selected = presets.presetForSession(session);
+        return selected === null || typeof selected === "string" && selected.length > 0 ? selected : undefined;
+      } catch {
+        return;
+      }
     },
     async resolvePreset(presetId) {
       const presets = requireService("agentPresets", 'cannot resolve preset "' + presetId + '"');
@@ -2607,6 +2705,440 @@ function probeMpdDsh(ctx, strict) {
   }
 }
 
+// packages/mpd-memory-plugin/src/project-scope.ts
+import { createHash, randomUUID as randomUUID2 } from "node:crypto";
+import { linkSync, mkdirSync as mkdirSync3, readFileSync as readFileSync3, renameSync as renameSync2, unlinkSync, writeFileSync } from "node:fs";
+import { dirname as dirname3, isAbsolute as isAbsolute3, join as join3 } from "node:path";
+
+// packages/mpd-memory-plugin/src/store.ts
+import { appendFileSync, closeSync as closeSync2, existsSync, fstatSync, mkdirSync as mkdirSync2, openSync as openSync2, readFileSync as readFileSync2, readSync } from "node:fs";
+import { homedir } from "node:os";
+import { basename, dirname as dirname2, join as join2, relative as relative3, resolve as resolve4, sep as sep4 } from "node:path";
+import { spawnSync } from "node:child_process";
+function homeDir() {
+  return process.env.HOME || homedir();
+}
+function globalRoot(config) {
+  return config.globalDir ?? join2(homeDir(), ".mpd", "memory");
+}
+function globalDirs(config) {
+  const root = globalRoot(config);
+  const repo = join2(root, "repo");
+  const runtime = join2(root, "runtime");
+  const memoryDir = join2(repo, "memory");
+  return { root, repo, runtime, memoryDir };
+}
+function ensureGlobalDirs(config) {
+  const d = globalDirs(config);
+  mkdirSync2(d.memoryDir, { recursive: true });
+  mkdirSync2(d.runtime, { recursive: true });
+  return d;
+}
+var MEMORY_ALLOW_REAL_HOME_ENV = "MPD_DSH_MEMORY_ALLOW_REAL_HOME";
+function assertMemoryMutationSandboxed(root, operation) {
+  assertHomeMutationSandboxed({ root, operation, label: "mpd_memory", allowEnv: MEMORY_ALLOW_REAL_HOME_ENV });
+}
+function slugOf(config, workspace) {
+  if (config.agentSlug)
+    return config.agentSlug;
+  const base = basename(workspace);
+  return "agent-" + base.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 24) || "agent";
+}
+function agentPaths(config, workspace) {
+  const slug = slugOf(config, workspace);
+  const root = join2(workspace, config.dir ?? ".mpd", "memory", "agents", slug);
+  return { ...storePaths(root), slug };
+}
+function storePaths(root) {
+  const repo = join2(root, "repo");
+  return { root, repo, runtime: join2(root, "runtime"), memoryDir: join2(repo, "memory") };
+}
+function ensureStoreDirs(d) {
+  mkdirSync2(d.memoryDir, { recursive: true });
+  mkdirSync2(d.runtime, { recursive: true });
+  return d;
+}
+function scopeOf(args) {
+  if (args === null || typeof args !== "object" || !("scope" in args))
+    return "workspace";
+  return args.scope === "global" || args.scope === "shared" || args.scope === "legacy" ? args.scope : "workspace";
+}
+function journalPath(d) {
+  return join2(d.runtime, "journal.jsonl");
+}
+function appendJournalLine(d, kind, detail) {
+  const fd = openSync2(journalPath(d), "a+");
+  try {
+    const size = fstatSync(fd).size;
+    const tail = Buffer.alloc(1);
+    const needsSeparator = size > 0 && readSync(fd, tail, 0, 1, size - 1) === 1 && tail[0] !== 10;
+    appendFileSync(fd, (needsSeparator ? `
+` : "") + JSON.stringify({ at: new Date().toISOString(), kind, ...detail }) + `
+`);
+  } finally {
+    closeSync2(fd);
+  }
+}
+function run(cmd, args, cwdDir) {
+  const r = spawnSync(cmd, args, { cwd: cwdDir, encoding: "utf8", timeout: 60000, maxBuffer: 8 * 1024 * 1024, env: process.env });
+  const out = (r.stdout ?? "") + (r.stderr ?? "");
+  if (r.error)
+    return { ok: false, out: "spawn error: " + String(r.error.message ?? r.error) };
+  return { ok: r.status === 0, out };
+}
+function gitEnsure(repo) {
+  if (!existsSync(join2(repo, ".git"))) {
+    const r = run("git", ["init", "-q"], repo);
+    if (!r.ok)
+      return "git init failed: " + r.out;
+    for (const [key, value] of [["user.name", "mpd-memory"], ["user.email", "mpd-memory@local"]]) {
+      const identity = run("git", ["config", key, value], repo);
+      if (!identity.ok)
+        return "git config failed: " + identity.out;
+    }
+  }
+  return "";
+}
+function svnEnsure(root, repo) {
+  const svnRepo = join2(root, "svn-repo");
+  const url = "file://" + svnRepo;
+  if (!existsSync(join2(svnRepo, "db"))) {
+    const r = run("svnadmin", ["create", svnRepo], root);
+    if (!r.ok)
+      return "svnadmin create failed: " + r.out;
+  }
+  if (!existsSync(join2(repo, ".svn"))) {
+    const r = run("svn", ["checkout", url, repo], dirname2(repo));
+    if (!r.ok)
+      return "svn checkout failed: " + r.out;
+  }
+  return "";
+}
+function gitCommit(repo, entry, msg) {
+  const add = run("git", ["add", "-A", "--", "memory"], repo);
+  if (!add.ok)
+    return "git add failed: " + add.out;
+  const tracked = run("git", ["ls-files", "--error-unmatch", "--", entry], repo);
+  if (!tracked.ok)
+    return "git add failed for " + entry + ": " + tracked.out;
+  if (run("git", ["diff", "--cached", "--quiet", "--", "memory"], repo).ok)
+    return "";
+  const commit = run("git", ["commit", "--quiet", "--only", "-m", msg, "--", "memory"], repo);
+  return commit.ok ? "" : "git commit failed: " + commit.out;
+}
+function svnCommit(repo, entry, msg) {
+  const add = run("svn", ["add", "--force", "--quiet", "memory"], repo);
+  if (!add.ok)
+    return "svn add failed: " + add.out;
+  const tracked = run("svn", ["info", "--show-item", "kind", entry], repo);
+  if (!tracked.ok)
+    return "svn add failed for " + entry + ": " + tracked.out;
+  const commit = run("svn", ["commit", "-m", msg, "memory"], repo);
+  return commit.ok ? "" : "svn commit failed: " + commit.out;
+}
+function commitAll(config, d, file, msg, previous = []) {
+  const configured = config.vcs === "both" ? ["git", "svn"] : [config.vcs ?? "git"];
+  const entry = relative3(d.repo, file);
+  const committedTo = [];
+  const errors = [];
+  for (const backend of configured) {
+    const failure = previous.includes(backend) ? "" : backend === "git" ? gitEnsure(d.repo) || gitCommit(d.repo, entry, msg) : svnEnsure(d.root, d.repo) || svnCommit(d.repo, entry, msg);
+    if (failure)
+      errors.push(failure);
+    else
+      committedTo.push(backend);
+  }
+  return { committedTo, errors };
+}
+function parseFrontmatter(file) {
+  const raw = readFileSync2(file, "utf8");
+  if (!raw.startsWith(`---
+`))
+    return { meta: {}, body: raw };
+  const end = raw.indexOf(`
+---
+`, 4);
+  if (end < 0)
+    return { meta: {}, body: raw };
+  const body = raw.slice(end + 5);
+  try {
+    const parsed = JSON.parse(raw.slice(4, end));
+    return { meta: isFrontmatter(parsed) ? parsed : {}, body };
+  } catch (error) {
+    if (error instanceof SyntaxError)
+      return { meta: {}, body };
+    throw error;
+  }
+}
+function isFrontmatter(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function normalizeLogEntry(meta, file, body) {
+  return { ...meta, description: meta.description ?? "", content: body.trim(), file: basename(file) };
+}
+function safeMemoryPath(memoryDir, name) {
+  const base = resolve4(memoryDir);
+  const target = resolve4(base, name);
+  if (!target.startsWith(base + sep4))
+    throw new Error("mpd-memory: path escapes memory dir: " + name);
+  return target;
+}
+
+// packages/mpd-memory-plugin/src/project-scope.ts
+class ProjectMemoryError extends Error {
+  constructor(message) {
+    super("mpd-memory: " + message);
+  }
+}
+function resolveWorkspaceMemory(dsh, exec, identity) {
+  const checkoutRoot = dsh.workspaceRoot(exec);
+  if (identity === undefined || identity === null)
+    return { kind: "unbound", checkoutRoot };
+  if (typeof identity !== "object" || !("resolveSeat" in identity) || typeof identity.resolveSeat !== "function") {
+    throw new ProjectMemoryError("project identity service is unavailable");
+  }
+  const agent = exec?.agent;
+  const session = typeof agent === "object" && agent !== null && "session" in agent ? agent.session : undefined;
+  const sessionId = typeof session === "object" && session !== null && "id" in session && typeof session.id === "string" ? session.id : "";
+  const seat = identity.resolveSeat({ checkoutRoot, sessionId });
+  if (typeof seat === "object" && seat !== null && "kind" in seat) {
+    if (seat.kind === "unbound")
+      return { kind: "unbound", checkoutRoot };
+    if (seat.kind === "member" && sessionId !== "" && "projectId" in seat && typeof seat.projectId === "string" && seat.projectId !== "" && "projectRoot" in seat && typeof seat.projectRoot === "string" && isAbsolute3(seat.projectRoot) && "memberId" in seat && typeof seat.memberId === "string" && seat.memberId !== "") {
+      return { kind: "member", projectId: seat.projectId, projectRoot: seat.projectRoot, memberId: seat.memberId, checkoutRoot };
+    }
+  }
+  throw new ProjectMemoryError("no authorized project memory seat for this caller and checkout");
+}
+function memoryKeyPart(key) {
+  return createHash("sha256").update(key, "utf8").digest("hex");
+}
+function projectRoot(config, seat) {
+  return join3(seat.projectRoot, config.dir ?? ".mpd", "memory", "projects", memoryKeyPart(seat.projectId));
+}
+function privatePaths(config, scope) {
+  if (scope.kind === "unbound")
+    return agentPaths(config, scope.checkoutRoot);
+  return storePaths(join3(projectRoot(config, scope), "members", memoryKeyPart(scope.memberId)));
+}
+function sharedPaths(config, scope) {
+  if (scope.kind === "unbound")
+    throw new ProjectMemoryError("shared facts require an authorized project seat");
+  return storePaths(join3(projectRoot(config, scope), "shared"));
+}
+function publishMemory(path, content, exclusive, stagingDir = dirname3(path)) {
+  const staged = join3(stagingDir, ".pending-" + randomUUID2());
+  try {
+    writeFileSync(staged, content, { flag: "wx", mode: 384 });
+    if (exclusive)
+      linkSync(staged, path);
+    else
+      renameSync2(staged, path);
+  } catch (error) {
+    if (exclusive && hasFsCode(error, "EEXIST")) {
+      throw new ProjectMemoryError("another writer published this fact revision; recall before retrying");
+    }
+    throw error;
+  } finally {
+    discardPending(staged);
+  }
+}
+function hasFsCode(error, code) {
+  return error instanceof Error && "code" in error && error.code === code;
+}
+function discardPending(path) {
+  try {
+    unlinkSync(path);
+  } catch (error) {
+    if (!hasFsCode(error, "ENOENT"))
+      throw error;
+  }
+}
+function previewText(value, units) {
+  if (value.length <= units)
+    return value;
+  const last = value.charCodeAt(units - 1);
+  return value.slice(0, last >= 55296 && last <= 56319 ? units - 1 : units);
+}
+function exactMemoryKey(value) {
+  if (typeof value !== "string" || value.trim() === "" || value.length > 120 || /[\u0000-\u001f\u007f]/u.test(value) || /[\ud800-\udfff]/u.test(value)) {
+    throw new ProjectMemoryError("key must be 1–120 characters of well-formed text without control characters");
+  }
+  return value;
+}
+function privateKeyDir(config, seat) {
+  return join3(privatePaths(config, seat).runtime, "keys");
+}
+function saveMemberKey(config, scope, key, value) {
+  if (scope.kind === "unbound")
+    return;
+  const id = exactMemoryKey(key);
+  const dir = privateKeyDir(config, scope);
+  mkdirSync3(dir, { recursive: true, mode: 448 });
+  publishMemory(join3(dir, memoryKeyPart(id)), value, false);
+  return { ok: true, key: id };
+}
+function recallMemberKey(config, scope, key) {
+  if (scope.kind === "unbound")
+    return;
+  const id = exactMemoryKey(key);
+  try {
+    const stored = readFileSync3(join3(privateKeyDir(config, scope), memoryKeyPart(id)), "utf8");
+    const value = previewText(stored, 768);
+    return { key: id, value, found: true, ...value.length < stored.length ? { truncated: true } : {} };
+  } catch (error) {
+    if (hasFsCode(error, "ENOENT"))
+      return { key: id, value: "", found: false };
+    throw error;
+  }
+}
+
+// packages/mpd-memory-plugin/src/shared-facts.ts
+import { mkdirSync as mkdirSync4, readdirSync } from "node:fs";
+import { join as join4 } from "node:path";
+function field(value, name, max) {
+  if (typeof value !== "string" || value.trim() === "" || value.length > max || /[\u0000-\u001f\u007f]/u.test(value)) {
+    throw new ProjectMemoryError(name + " must be nonblank single-line text of at most " + max + " characters");
+  }
+  return value;
+}
+function revisionOf(value, name) {
+  if (value === undefined)
+    return;
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 1) {
+    throw new ProjectMemoryError(name + " must be a positive safe integer");
+  }
+  return value;
+}
+function revisionFile(revision) {
+  return String(revision).padStart(16, "0") + ".md";
+}
+function latestRevision(dir) {
+  try {
+    const names = readdirSync(dir, { withFileTypes: true }).filter((entry) => entry.isFile() && /^[0-9]{16}\.md$/u.test(entry.name)).map((entry) => entry.name).sort();
+    const latest = names.at(-1);
+    if (latest === undefined)
+      return 0;
+    return revisionOf(Number(latest.slice(0, -3)), "stored revision") ?? 0;
+  } catch (error) {
+    if (hasFsCode(error, "ENOENT"))
+      return 0;
+    throw error;
+  }
+}
+function writeSharedFact(config, d, author, args) {
+  const key = exactMemoryKey(args.key);
+  const supersedes = revisionOf(args.supersedes, "supersedes");
+  if (args.kind !== undefined && args.kind !== "fact")
+    throw new ProjectMemoryError("shared memory accepts only kind fact");
+  if (typeof args.content !== "string" || args.content.trim() === "")
+    throw new ProjectMemoryError("shared fact content is required");
+  const dir = join4(d.memoryDir, memoryKeyPart(key));
+  const current = latestRevision(dir);
+  if ((supersedes ?? 0) !== current || current === Number.MAX_SAFE_INTEGER) {
+    throw new ProjectMemoryError("shared fact revision conflict: current revision is " + (current || "absent"));
+  }
+  const fact = {
+    key,
+    description: field(args.description ?? args.title, "title", 160),
+    kind: "fact",
+    source: field(args.source, "source", 256),
+    appliesTo: field(args.appliesTo, "appliesTo", 160),
+    revision: current + 1,
+    supersedes: supersedes ?? null,
+    author,
+    recordedAt: new Date().toISOString()
+  };
+  ensureStoreDirs(d);
+  mkdirSync4(dir, { recursive: true });
+  const file = join4(dir, revisionFile(fact.revision));
+  publishMemory(file, `---
+` + JSON.stringify(fact) + `
+---
+` + args.content, true, d.runtime);
+  const receipt = commitAll(config, d, file, "memory: project fact " + memoryKeyPart(key).slice(0, 12) + " r" + fact.revision);
+  appendJournalLine(d, "shared-fact", { key, revision: fact.revision, supersedes: fact.supersedes, author });
+  const vcs = config.vcs ?? "git";
+  return { file, scope: "shared", vcs, ...receipt, reflectionDue: false, revision: fact.revision };
+}
+function readSharedFact(d, args) {
+  const key = exactMemoryKey(args.key);
+  const expected = revisionOf(args.revision, "revision");
+  const appliesTo = args.appliesTo === undefined ? undefined : field(args.appliesTo, "appliesTo", 160);
+  const dir = join4(d.memoryDir, memoryKeyPart(key));
+  const current = latestRevision(dir);
+  const empty = { scope: "shared", entries: [], count: 0, offset: 0, returned: 0, next_offset: null };
+  if (current === 0)
+    return { ...empty, validity: "missing" };
+  if (expected !== undefined && expected !== current) {
+    return { ...empty, validity: expected < current ? "superseded" : "revision-mismatch", revision: current };
+  }
+  const { meta, body } = parseFrontmatter(join4(dir, revisionFile(current)));
+  if (meta?.key !== key || meta.kind !== "fact" || meta.revision !== current || meta.supersedes !== (current === 1 ? null : current - 1)) {
+    throw new ProjectMemoryError("shared fact revision metadata is invalid");
+  }
+  const fact = {
+    key,
+    kind: "fact",
+    revision: current,
+    supersedes: current === 1 ? null : current - 1,
+    description: field(meta.description, "stored title", 160),
+    source: field(meta.source, "stored source", 256),
+    appliesTo: field(meta.appliesTo, "stored applicability", 160),
+    author: field(meta.author, "stored author", 120),
+    recordedAt: field(meta.recordedAt, "stored time", 40)
+  };
+  if (appliesTo !== undefined && fact.appliesTo !== appliesTo)
+    return { ...empty, validity: "not-applicable", revision: current };
+  const content = previewText(body, 768);
+  return { ...empty, validity: "current", revision: current, count: 1, returned: 1, entries: [{ ...fact, content, truncated: content.length !== body.length }] };
+}
+
+// packages/mpd-memory-plugin/src/preview.ts
+var PAGE_BYTES = 7 * 1024;
+function previewEntries(entries, limit) {
+  const page = [];
+  let bytes = 2;
+  for (const entry of entries.slice(0, limit)) {
+    const preview = entryPreview(entry);
+    const size = Buffer.byteLength(JSON.stringify(preview)) + (page.length > 0 ? 1 : 0);
+    if (bytes + size > PAGE_BYTES)
+      break;
+    page.push(preview);
+    bytes += size;
+  }
+  return page;
+}
+function entryPreview(entry) {
+  let truncated = false;
+  function text(value, max) {
+    if (typeof value !== "string")
+      return;
+    const result = previewText(value, max);
+    truncated ||= result.length !== value.length;
+    return result;
+  }
+  function list(value) {
+    if (!Array.isArray(value))
+      return;
+    truncated ||= value.length > 3;
+    return value.slice(0, 3).flatMap((item) => text(item, 24) ?? []);
+  }
+  const kind = text(entry.kind, 24);
+  const tags = list(entry.tags);
+  const aliases = list(entry.aliases);
+  return {
+    file: text(entry.file, 255) ?? "",
+    description: text(entry.description, 160) ?? "",
+    ...kind === undefined ? {} : { kind },
+    content: text(entry.content, 512) ?? "",
+    ...tags === undefined ? {} : { tags },
+    ...aliases === undefined ? {} : { aliases },
+    ...typeof entry.read_only === "boolean" ? { read_only: entry.read_only } : {},
+    truncated
+  };
+}
+
 // packages/mpd-dsh-adapter-plugin/src/dshgo-view.ts
 var V1_COMPONENTS = Object.freeze([
   "stack",
@@ -2675,17 +3207,17 @@ function isNode(value) {
 function refuse(builder, detail) {
   throw new RangeError(`dsh-go view: ${builder} ${detail}`);
 }
-function choice(builder, field, value, allowed) {
+function choice(builder, field2, value, allowed) {
   if (typeof value !== "string" || !allowed.includes(value)) {
-    refuse(builder, `needs ${field} to be one of ${allowed.join(" / ")}, got ${JSON.stringify(value)}`);
+    refuse(builder, `needs ${field2} to be one of ${allowed.join(" / ")}, got ${JSON.stringify(value)}`);
   }
   return value;
 }
-function assertList(builder, field, value, max) {
+function assertList(builder, field2, value, max) {
   if (!Array.isArray(value))
-    refuse(builder, `needs ${field} to be an array`);
+    refuse(builder, `needs ${field2} to be an array`);
   if (value.length > max)
-    refuse(builder, `accepts at most ${max} ${field}, got ${value.length}`);
+    refuse(builder, `accepts at most ${max} ${field2}, got ${value.length}`);
   return value;
 }
 var MAX_CHILDREN = 32;
@@ -2992,165 +3524,10 @@ var MEMORY_WRITE_CARD = toolCard(buildMemoryWriteCard);
 var MEMORY_READ_CARD = toolCard(buildMemoryReadCard);
 var MEMORY_STATUS_CARD = toolCard(buildMemoryStatusCard);
 
-// packages/mpd-memory-plugin/src/store.ts
-import { existsSync, mkdirSync as mkdirSync2, readFileSync as readFileSync2, appendFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { basename, dirname, join as join2, resolve as resolve3, sep as sep3 } from "node:path";
-import { spawnSync } from "node:child_process";
-function homeDir() {
-  return process.env.HOME || homedir();
-}
-function globalRoot(config) {
-  return config.globalDir ?? join2(homeDir(), ".mpd", "memory");
-}
-function globalDirs(config) {
-  const root = globalRoot(config);
-  const repo = join2(root, "repo");
-  const runtime = join2(root, "runtime");
-  const memoryDir = join2(repo, "memory");
-  return { root, repo, runtime, memoryDir };
-}
-function ensureGlobalDirs(config) {
-  const d = globalDirs(config);
-  mkdirSync2(d.memoryDir, { recursive: true });
-  mkdirSync2(d.runtime, { recursive: true });
-  return d;
-}
-var MEMORY_ALLOW_REAL_HOME_ENV = "MPD_DSH_MEMORY_ALLOW_REAL_HOME";
-function assertMemoryMutationSandboxed(root, operation) {
-  assertHomeMutationSandboxed({ root, operation, label: "mpd_memory", allowEnv: MEMORY_ALLOW_REAL_HOME_ENV });
-}
-function slugOf(config, workspace) {
-  if (config.agentSlug)
-    return config.agentSlug;
-  const base = basename(workspace);
-  return "agent-" + base.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 24) || "agent";
-}
-function agentPaths(config, workspace) {
-  const slug = slugOf(config, workspace);
-  const root = join2(workspace, config.dir ?? ".mpd", "memory", "agents", slug);
-  const repo = join2(root, "repo");
-  const runtime = join2(root, "runtime");
-  const memoryDir = join2(repo, "memory");
-  return { root, repo, runtime, memoryDir, slug };
-}
-function ensureDirs(config, workspace) {
-  const d = agentPaths(config, workspace);
-  mkdirSync2(d.memoryDir, { recursive: true });
-  mkdirSync2(d.runtime, { recursive: true });
-  return d;
-}
-function scopeOf(args) {
-  const a = args !== null && typeof args === "object" ? args : undefined;
-  return a?.scope === "global" ? "global" : "workspace";
-}
-function journalPath(d) {
-  return join2(d.runtime, "journal.jsonl");
-}
-function appendJournalLine(d, kind, detail) {
-  appendFileSync(journalPath(d), JSON.stringify({ at: new Date().toISOString(), kind, ...detail }) + `
-`);
-}
-function run(cmd, args, cwdDir) {
-  const r = spawnSync(cmd, args, { cwd: cwdDir, encoding: "utf8", timeout: 60000, maxBuffer: 8 * 1024 * 1024, env: process.env });
-  const out = (r.stdout ?? "") + (r.stderr ?? "");
-  if (r.error)
-    return { ok: false, out: "spawn error: " + String(r.error.message ?? r.error) };
-  return { ok: r.status === 0, out };
-}
-function gitEnsure(repo) {
-  if (!existsSync(join2(repo, ".git"))) {
-    const r = run("git", ["init", "-q"], repo);
-    if (!r.ok)
-      throw new Error("mpd-memory: git init failed: " + r.out);
-    run("git", ["config", "user.name", "mpd-memory"], repo);
-    run("git", ["config", "user.email", "mpd-memory@local"], repo);
-  }
-  return "git";
-}
-function svnEnsure(root, repo) {
-  const svnRepo = join2(root, "svn-repo");
-  const url = "file://" + svnRepo;
-  if (!existsSync(join2(svnRepo, "db"))) {
-    const r = run("svnadmin", ["create", svnRepo], root);
-    if (!r.ok)
-      throw new Error("mpd-memory: svnadmin create failed: " + r.out);
-  }
-  if (!existsSync(join2(repo, ".svn"))) {
-    mkdirSync2(dirname(repo), { recursive: true });
-    const r = run("svn", ["checkout", url, repo], dirname(repo));
-    if (!r.ok)
-      throw new Error("mpd-memory: svn checkout failed: " + r.out);
-  }
-  return "svn";
-}
-function ensureVcs(config, d) {
-  const vcs = config.vcs ?? "git";
-  if (vcs === "git" || vcs === "both")
-    gitEnsure(d.repo);
-  if (vcs === "svn" || vcs === "both")
-    svnEnsure(d.root, d.repo);
-}
-function gitCommit(repo, msg) {
-  const a = run("git", ["add", "-A"], repo);
-  if (!a.ok)
-    return "git add failed: " + a.out;
-  const c = run("git", ["commit", "-q", "-m", msg], repo);
-  return c.ok ? "" : c.out.includes("nothing to commit") ? "" : "git commit failed: " + c.out;
-}
-function svnCommit(repo, msg) {
-  const a = run("svn", ["add", "--force", "--quiet", "."], repo);
-  const c = run("svn", ["commit", "-m", msg], repo);
-  return c.ok ? "" : "svn commit failed: " + c.out;
-}
-function commitAll(config, d, msg) {
-  const errs = [];
-  const vcs = config.vcs ?? "git";
-  if (vcs === "git" || vcs === "both") {
-    const e = gitCommit(d.repo, msg);
-    if (e)
-      errs.push(e);
-  }
-  if (vcs === "svn" || vcs === "both") {
-    const e = svnCommit(d.repo, msg);
-    if (e)
-      errs.push(e);
-  }
-  return errs;
-}
-function parseFrontmatter(file) {
-  const raw = readFileSync2(file, "utf8");
-  if (!raw.startsWith(`---
-`))
-    return { meta: {}, body: raw };
-  const end = raw.indexOf(`
----
-`, 4);
-  if (end < 0)
-    return { meta: {}, body: raw };
-  let meta = {};
-  try {
-    meta = JSON.parse(raw.slice(4, end));
-  } catch {
-    meta = {};
-  }
-  return { meta, body: raw.slice(end + 5) };
-}
-function normalizeLogEntry(meta, file, body) {
-  return { ...meta, description: meta.description ?? "", content: body.trim(), file: basename(file) };
-}
-function safeMemoryPath(memoryDir, name) {
-  const base = resolve3(memoryDir);
-  const target = resolve3(base, name);
-  if (!target.startsWith(base + sep3))
-    throw new Error("mpd-memory: path escapes memory dir: " + name);
-  return target;
-}
-
 // packages/mpd-memory-plugin/src/archive.ts
-import { createHash } from "node:crypto";
-import { existsSync as existsSync2, readFileSync as readFileSync3, readdirSync, writeFileSync } from "node:fs";
-import { dirname as dirname2, join as join3, resolve as resolve4 } from "node:path";
+import { createHash as createHash2 } from "node:crypto";
+import { existsSync as existsSync2, readFileSync as readFileSync4, readdirSync as readdirSync2, writeFileSync as writeFileSync2 } from "node:fs";
+import { dirname as dirname4, join as join5, resolve as resolve5 } from "node:path";
 var TODO_HEADING = /^##[ \t]+TODOs(?:[ \t]+#+)?[ \t]*$/i;
 var FINAL_WAVE_HEADING = /^##[ \t]+Final Verification Wave(?:[ \t]+#+)?[ \t]*$/i;
 var SECTION_BOUNDARY = /^#{1,2}(?:[ \t]+|$)/;
@@ -3227,21 +3604,20 @@ function matchArchiveEvent(context, toolName, args, result, log) {
 function writeArchiveEntry(context, event) {
   assertMemoryMutationSandboxed(globalRoot(context.config), "record a global project-archive memory");
   const d = ensureGlobalDirs(context.config);
-  ensureVcs(context.config, d);
   const at = new Date().toISOString();
-  const key = resolve4(context.workspace) + ":" + event.projectKey;
+  const key = resolve5(context.workspace) + ":" + event.projectKey;
   const index = readIndex(d);
   const previous = Object.prototype.hasOwnProperty.call(index.entries, key) ? index.entries[key] : undefined;
-  const fileName = "project-" + slugForFile(event.projectKey) + "-" + shortHash(resolve4(context.workspace)) + ".md";
+  const fileName = "project-" + slugForFile(event.projectKey) + "-" + shortHash(resolve5(context.workspace)) + ".md";
   const file = safeMemoryPath(d.memoryDir, fileName);
   const digest = digestFor(context, event);
-  writeFileSync(file, frontmatterFor(event) + renderDigest(event, context.workspace, at, digest));
+  writeFileSync2(file, frontmatterFor(event) + renderDigest(event, context.workspace, at, digest));
   appendJournalLine(d, "archive", { eventKind: event.kind, projectKey: event.projectKey, key, file: fileName });
   if (previous !== undefined)
     appendJournalLine(d, "superseded", { by: event.kind, key, file: fileName, previous: previous.eventKind });
-  index.entries[key] = { key, workspace: resolve4(context.workspace), projectKey: event.projectKey, eventKind: event.kind, file: fileName, at, superseded: (previous?.superseded ?? 0) + (previous === undefined ? 0 : 1) };
+  index.entries[key] = { key, workspace: resolve5(context.workspace), projectKey: event.projectKey, eventKind: event.kind, file: fileName, at, superseded: (previous?.superseded ?? 0) + (previous === undefined ? 0 : 1) };
   writeIndex(d, index);
-  const errors = commitAll(context.config, d, "memory: project archive " + event.projectKey + " (" + event.kind + ")");
+  const { errors } = commitAll(context.config, d, file, "memory: project archive " + event.projectKey + " (" + event.kind + ")");
   return { key, file, superseded: previous !== undefined, errors };
 }
 function digestFor(context, event) {
@@ -3253,7 +3629,7 @@ function digestFor(context, event) {
 }
 function boulderDigest(workspace, workId) {
   const digest = { objective: "boulder work " + workId, tasks: [], scopes: [], open: [], proof: [], unreadable: [] };
-  const ledger = readJsonFile(join3(workspace, ".mpd", "boulder.json"));
+  const ledger = readJsonFile(join5(workspace, ".mpd", "boulder.json"));
   if (ledger.problem !== undefined) {
     digest.unreadable.push(".mpd/boulder.json (" + ledger.problem + ")");
     return digest;
@@ -3268,7 +3644,7 @@ function boulderDigest(workspace, workId) {
   const planName = textOf(work.plan_name);
   const elapsed = typeof work.elapsed_ms === "number" ? work.elapsed_ms : undefined;
   digest.objective = "boulder work " + workId + (planName === "" ? "" : ' ("' + planName + '")') + " completed" + (elapsed === undefined ? "" : " after " + String(elapsed) + "ms");
-  const items = planPath === "" ? undefined : planItems(join3(workspace, planPath));
+  const items = planPath === "" ? undefined : planItems(join5(workspace, planPath));
   if (items === undefined) {
     digest.unreadable.push(planPath === "" ? "the boulder work names no plan file" : planPath + " (unreadable)");
   } else {
@@ -3291,7 +3667,7 @@ function boulderDigest(workspace, workId) {
 }
 function cellDigest(context, cellId) {
   const digest = { objective: "cell " + cellId, tasks: [], scopes: [], open: [], proof: [], unreadable: [] };
-  const cell = readJsonFile(join3(context.workspace, ".mpd", "cellwork", cellId, "state.json"));
+  const cell = readJsonFile(join5(context.workspace, ".mpd", "cellwork", cellId, "state.json"));
   if (cell.problem !== undefined) {
     digest.unreadable.push(".mpd/cellwork/" + cellId + "/state.json (" + cell.problem + ")");
     return digest;
@@ -3310,7 +3686,7 @@ function cellDigest(context, cellId) {
     else
       mergeTeamRecord(digest, record);
   } else if (splitRevision !== undefined) {
-    const split = readJsonFile(join3(context.workspace, ".mpd", "cellwork", cellId, "split", String(splitRevision) + ".json"));
+    const split = readJsonFile(join5(context.workspace, ".mpd", "cellwork", cellId, "split", String(splitRevision) + ".json"));
     if (split.problem !== undefined)
       digest.unreadable.push(".mpd/cellwork/" + cellId + "/split/" + String(splitRevision) + ".json (" + split.problem + ")");
     else
@@ -3384,41 +3760,41 @@ function mergeSplit(digest, split) {
 function proofLines(workspace) {
   const lines = [];
   const unreadable = [];
-  const verify = join3(workspace, ".mpd", "verify");
-  const loops = newestJsonFiles(join3(verify, "loops")).slice(0, 5);
+  const verify = join5(workspace, ".mpd", "verify");
+  const loops = newestJsonFiles(join5(verify, "loops")).slice(0, 5);
   if (loops.length === 0)
     lines.push("no verify loops recorded under .mpd/verify/loops");
   for (const name of loops) {
-    const loop = readJsonFile(join3(verify, "loops", name));
+    const loop = readJsonFile(join5(verify, "loops", name));
     if (loop.problem !== undefined) {
       unreadable.push(".mpd/verify/loops/" + name + " (" + loop.problem + ")");
       continue;
     }
     lines.push("verify loop " + textOf(loop.value?.loopId) + " status=" + (textOf(loop.value?.status) || "unknown") + (textOf(loop.value?.verifier?.id) === "" ? "" : " verifier=" + textOf(loop.value?.verifier?.id)));
   }
-  const records = newestJsonFiles(join3(verify, "records")).slice(0, 5);
+  const records = newestJsonFiles(join5(verify, "records")).slice(0, 5);
   if (records.length === 0)
     lines.push("no verdict records under .mpd/verify/records");
   for (const name of records) {
-    const record = readJsonFile(join3(verify, "records", name));
+    const record = readJsonFile(join5(verify, "records", name));
     if (record.problem !== undefined) {
       unreadable.push(".mpd/verify/records/" + name + " (" + record.problem + ")");
       continue;
     }
     lines.push("verdict " + textOf(record.value?.recordId) + " " + (textOf(record.value?.verdict) || "unknown") + (textOf(record.value?.loopId) === "" ? "" : " on " + textOf(record.value?.loopId)));
   }
-  const evidence = newestJsonFiles(join3(verify, "evidence")).slice(0, 5);
+  const evidence = newestJsonFiles(join5(verify, "evidence")).slice(0, 5);
   if (evidence.length === 0)
     lines.push("no evidence rows under .mpd/verify/evidence");
   for (const name of evidence)
     lines.push("evidence .mpd/verify/evidence/" + name);
-  const gatesPath = join3(workspace, "mpd-gates.json");
+  const gatesPath = join5(workspace, "mpd-gates.json");
   if (!existsSync2(gatesPath))
     lines.push("gate table mpd-gates.json absent (the built-in gate table applies)");
   else {
     try {
-      const bytes = readFileSync3(gatesPath);
-      lines.push("gate table mpd-gates.json sha256=" + createHash("sha256").update(bytes).digest("hex") + " bytes=" + String(bytes.length));
+      const bytes = readFileSync4(gatesPath);
+      lines.push("gate table mpd-gates.json sha256=" + createHash2("sha256").update(bytes).digest("hex") + " bytes=" + String(bytes.length));
     } catch (error) {
       unreadable.push("mpd-gates.json (" + String(error?.message ?? error) + ")");
     }
@@ -3428,7 +3804,7 @@ function proofLines(workspace) {
 function planItems(planPath) {
   let text2;
   try {
-    text2 = readFileSync3(planPath, "utf8");
+    text2 = readFileSync4(planPath, "utf8");
   } catch {
     return;
   }
@@ -3478,14 +3854,14 @@ function planItems(planPath) {
   return { titles, remaining };
 }
 function findArchivedPlan(context, archivedTo, log) {
-  const dir = resolve4(archivedTo);
+  const dir = resolve5(archivedTo);
   let plans = [];
   try {
     plans = context.teams?.archivedPlans(context.workspace) ?? [];
   } catch {
     plans = [];
   }
-  const match = plans.find((plan) => dirname2(resolve4(plan.path)) === dir);
+  const match = plans.find((plan) => dirname4(resolve5(plan.path)) === dir);
   if (match === undefined)
     log("agent_teams_plan reported archive " + dir + " but the mpdTeams listing does not contain it — no project memory was written");
   return match;
@@ -3495,7 +3871,7 @@ function renderDigest(event, workspace, at, digest) {
   lines.push("# " + event.projectKey);
   lines.push("");
   lines.push("event: " + event.kind);
-  lines.push("workspace: " + resolve4(workspace));
+  lines.push("workspace: " + resolve5(workspace));
   lines.push("archived: " + at);
   lines.push("");
   lines.push("## What was built");
@@ -3538,18 +3914,18 @@ function frontmatterFor(event) {
 `;
 }
 function readIndex(d) {
-  const reading = readJsonFile(join3(d.runtime, "index.json"));
+  const reading = readJsonFile(join5(d.runtime, "index.json"));
   if (reading.problem !== undefined || reading.value?.version !== 1 || reading.value?.entries === null || typeof reading.value?.entries !== "object") {
     return { version: 1, entries: {} };
   }
   return { version: 1, entries: reading.value.entries };
 }
 function writeIndex(d, index) {
-  writeFileSync(join3(d.runtime, "index.json"), JSON.stringify(index, null, 2));
+  writeFileSync2(join5(d.runtime, "index.json"), JSON.stringify(index, null, 2));
 }
 function readJsonFile(path) {
   try {
-    return { value: JSON.parse(readFileSync3(path, "utf8")) };
+    return { value: JSON.parse(readFileSync4(path, "utf8")) };
   } catch (error) {
     const message = String(error?.message ?? error);
     return { problem: message.includes("ENOENT") ? "absent" : message };
@@ -3557,7 +3933,7 @@ function readJsonFile(path) {
 }
 function newestJsonFiles(dir) {
   try {
-    return readdirSync(dir).filter((name) => name.endsWith(".json")).sort().reverse();
+    return readdirSync2(dir).filter((name) => name.endsWith(".json")).sort().reverse();
   } catch {
     return [];
   }
@@ -3575,7 +3951,7 @@ function slugForFile(key) {
   return key.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "project";
 }
 function shortHash(text2) {
-  return createHash("sha1").update(text2).digest("hex").slice(0, 8);
+  return createHash2("sha1").update(text2).digest("hex").slice(0, 8);
 }
 
 // packages/mpd-memory-plugin/src/index.ts
@@ -3596,6 +3972,56 @@ function mergedConfig(ctx, config) {
     globalDir: typeof v("memory.globalDir") === "string" ? v("memory.globalDir") : config.globalDir
   };
 }
+function renderCommitReceipt(receipt) {
+  return "committed=" + (receipt.committedTo.join(",") || "none") + (receipt.errors.length === 0 ? "" : `
+` + receipt.errors.join(`
+`));
+}
+function writeAtomically(file, stagingDir, content) {
+  const staging = join6(stagingDir, ".mpd-memory-" + randomUUID3() + ".tmp");
+  try {
+    writeFileSync3(staging, content, { flag: "wx", mode: 384 });
+    renameSync3(staging, file);
+  } finally {
+    rmSync2(staging, { force: true });
+  }
+}
+function reflectionJournaled(d, file) {
+  const journal = journalPath(d);
+  if (!existsSync3(journal))
+    return false;
+  const fd = openSync3(journal, "r+");
+  try {
+    const recorded = readFileSync5(fd, "utf8").split(`
+`).some((line) => {
+      if (!line.includes(file))
+        return false;
+      try {
+        const record = JSON.parse(line);
+        return record !== null && typeof record === "object" && "kind" in record && record.kind === "reflection" && "file" in record && record.file === file;
+      } catch (error) {
+        if (error instanceof SyntaxError)
+          return false;
+        throw error;
+      }
+    });
+    if (recorded)
+      fsyncSync(fd);
+    return recorded;
+  } finally {
+    closeSync3(fd);
+  }
+}
+function ensureReflectionJournaled(d, file, body) {
+  const name2 = basename2(file);
+  if (reflectionJournaled(d, name2))
+    return;
+  if (readFileSync5(file, "utf8") !== body)
+    throw new Error(`mpd-memory: ${file} has changed. Restore the original bytes before retrying.`);
+  appendJournalLine(d, "reflection", { file: name2 });
+  if (!reflectionJournaled(d, name2))
+    throw new Error(`mpd-memory: reflection journal record for ${name2} could not be verified; retry with the original title and content.`);
+}
 function initialState() {
   return { steps: 0, reflectionsCompleted: 0, stepsSinceReflection: 0, pendingReflection: null, triggered: false };
 }
@@ -3615,18 +4041,40 @@ function apply(ctx, config = {}) {
   const cfg = mergedConfig(ctx, config);
   const reflectionEvery = cfg.reflectionEvery ?? 10;
   const disposers = [];
+  function workspaceMemory(exec) {
+    return resolveWorkspaceMemory(dsh, exec, ctx.get?.("mpdProjectIdentity", false));
+  }
+  ctx.provide?.("mpdMemory", {
+    saveKey(exec, key, value) {
+      return saveMemberKey(cfg, workspaceMemory(exec), key, value);
+    },
+    recallKey(exec, key, scope) {
+      const workspace = workspaceMemory(exec);
+      return scope === "legacy" ? undefined : recallMemberKey(cfg, workspace, key);
+    },
+    contextFact(exec, reference) {
+      const workspace = workspaceMemory(exec);
+      if (workspace.kind === "unbound")
+        return;
+      const page = readSharedFact(sharedPaths(cfg, workspace), reference);
+      const current = page.validity === "current" ? page.entries[0] : undefined;
+      return current === undefined ? undefined : { source: current.source, revision: current.revision, appliesTo: current.appliesTo, text: current.content };
+    }
+  });
   function statePath(d) {
-    return join4(d.runtime, "reflection.json");
+    return join6(d.runtime, "reflection.json");
   }
   function readReflection(d) {
     try {
-      return adoptLegacyState(JSON.parse(readFileSync4(statePath(d), "utf8")));
-    } catch {
-      return initialState();
+      return adoptLegacyState(JSON.parse(readFileSync5(statePath(d), "utf8")));
+    } catch (error) {
+      if (error instanceof SyntaxError || error instanceof Error && "code" in error && error.code === "ENOENT")
+        return initialState();
+      throw error;
     }
   }
   function writeReflection(d, s) {
-    writeFileSync2(statePath(d), JSON.stringify(s, null, 2));
+    writeAtomically(statePath(d), d.runtime, JSON.stringify(s, null, 2));
   }
   function teamsService() {
     const svc = ctx.get?.("mpdTeams");
@@ -3641,79 +4089,101 @@ function apply(ctx, config = {}) {
   }
   dsh.registerTool({
     name: "mpd_memory_write",
-    description: `Persist a memory entry (markdown file with frontmatter description/kind/aliases/read_only) into the VCS-backed memory store and commit. scope:"workspace" (default, this agent's store) or "global" (the shared ~/.mpd/memory store, guarded: a global write is refused when its root is not inside the sandbox $HOME of an isolated boot, and it never advances the per-agent reflection counter). A workspace write increments the reflection step counter; when the reflection threshold is crossed the result announces a reflection is due. kind: note | fact | reflection.`,
-    parameters: { type: "object", properties: { title: { type: "string" }, description: { type: "string" }, content: { type: "string" }, kind: { type: "string", enum: ["note", "fact", "reflection"] }, tags: { type: "array", items: { type: "string" } }, readOnly: { type: "boolean" }, scope: { type: "string", enum: ["workspace", "global"], description: "Which store this entry belongs to; workspace is the default." } }, required: ["title", "content"], additionalProperties: false },
-    output: { schema: { type: "object", properties: { file: { type: "string" }, committedTo: { type: "array", items: { type: "string" } }, reflectionDue: { type: "boolean" }, vcs: { type: "string" }, errors: { type: "array", items: { type: "string" } }, scope: { type: "string" } }, required: ["file", "vcs"] }, render: (_a, v) => textBlock("memory written: " + v.file + " (vcs=" + v.vcs + " committed=" + v.committedTo.join(",") + " reflectionDue=" + v.reflectionDue + ")"), presentationMeta: MEMORY_WRITE_CARD },
+    description: "Save a VCS-backed memory entry. Workspace (default) writes to your private member store in a project team and advances your reflection counter. Global uses the home-scoped store and requires the sandboxed HOME guard. Shared explicitly publishes a project fact by exact key and requires source and appliesTo. To update a shared fact supply supersedes with its current revision.",
+    parameters: { type: "object", properties: { title: { type: "string" }, description: { type: "string" }, content: { type: "string" }, kind: { type: "string", enum: ["note", "fact", "reflection"] }, tags: { type: "array", items: { type: "string" } }, readOnly: { type: "boolean" }, scope: { type: "string", enum: ["workspace", "global", "shared"] }, key: { type: "string", description: "Exact, case-sensitive shared fact key." }, source: { type: "string", description: "Artifact, interface revision or other source of a shared fact." }, appliesTo: { type: "string", description: "Exact version, task or interface label for the shared fact." }, supersedes: { type: "integer", minimum: 1, description: "Current shared fact revision acknowledged by an update." } }, required: ["title", "content"], additionalProperties: false },
+    output: { schema: { type: "object", properties: { file: { type: "string" }, committedTo: { type: "array", items: { type: "string" } }, reflectionDue: { type: "boolean" }, vcs: { type: "string" }, errors: { type: "array", items: { type: "string" } }, scope: { type: "string" }, revision: { type: "integer" } }, required: ["file", "vcs"] }, render: (_a, value) => {
+      const v = value;
+      return textBlock("memory written: " + v.file + " (vcs=" + v.vcs + ", reflectionDue=" + v.reflectionDue + (v.revision === undefined ? "" : ", revision=" + v.revision) + `)
+` + renderCommitReceipt(v));
+    }, presentationMeta: MEMORY_WRITE_CARD },
     execute: async (args, exec) => {
       const scope = scopeOf(args);
-      const name2 = String(args?.title).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48) + "-" + Date.now().toString(36);
+      if (scope === "legacy")
+        throw new ProjectMemoryError("legacy memory is read-only through this scope");
+      const workspace = workspaceMemory(exec);
+      if (scope === "shared") {
+        if (workspace.kind === "unbound")
+          throw new ProjectMemoryError("shared facts require an authorized project seat");
+        return writeSharedFact(cfg, sharedPaths(cfg, workspace), workspace.memberId, args);
+      }
+      if (args?.key !== undefined || args?.source !== undefined || args?.appliesTo !== undefined || args?.supersedes !== undefined) {
+        throw new ProjectMemoryError("key, source, appliesTo and supersedes require shared scope");
+      }
+      const name2 = String(args?.title).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48) + "-" + Date.now().toString(36) + "-" + randomUUID3();
       const meta = { description: String(args?.description ?? args?.title ?? name2), kind: String(args?.kind ?? "note"), tags: Array.isArray(args?.tags) ? args.tags : [] };
       if (args?.readOnly === true)
         meta.read_only = true;
       if (scope === "global") {
         assertMemoryMutationSandboxed(globalDirs(cfg).root, "write a global memory entry");
         const g = ensureGlobalDirs(cfg);
-        ensureVcs(cfg, g);
         const globalMeta = { ...meta, scope: "global" };
         const globalFile = safeMemoryPath(g.memoryDir, name2 + ".md");
         const globalFront = `---
 ` + JSON.stringify(globalMeta) + `
 ---
 `;
-        writeFileSync2(globalFile, globalFront + String(args?.content) + (String(args?.content).endsWith(`
+        writeFileSync3(globalFile, globalFront + String(args?.content) + (String(args?.content).endsWith(`
 `) ? "" : `
 `));
-        const globalErrs = commitAll(cfg, g, "memory: " + name2 + " (" + globalMeta.kind + ")");
+        const globalCommit = commitAll(cfg, g, globalFile, "memory: " + name2 + " (" + globalMeta.kind + ")");
         appendJournalLine(g, "write", { file: basename2(globalFile), kind: globalMeta.kind, vcs: cfg.vcs ?? "git", scope: "global" });
-        const wsDirs = agentPaths(cfg, dsh.workspaceRoot(exec));
+        const wsDirs = privatePaths(cfg, workspace);
         const wsState = readReflection(wsDirs);
-        return { file: globalFile, committedTo: (cfg.vcs ?? "git") === "both" ? ["git", "svn"] : [cfg.vcs ?? "git"], reflectionDue: wsState.triggered === true || wsState.pendingReflection?.due === true, vcs: cfg.vcs ?? "git", errors: globalErrs, scope };
+        return { file: globalFile, ...globalCommit, reflectionDue: wsState.triggered === true || wsState.pendingReflection?.due === true, vcs: cfg.vcs ?? "git", scope };
       }
-      const d = ensureDirs(cfg, dsh.workspaceRoot(exec));
-      ensureVcs(cfg, d);
+      const d = ensureStoreDirs(privatePaths(cfg, workspace));
       const file = safeMemoryPath(d.memoryDir, name2 + ".md");
       const front = `---
 ` + JSON.stringify(meta) + `
 ---
 `;
-      writeFileSync2(file, front + String(args?.content) + (String(args?.content).endsWith(`
+      writeFileSync3(file, front + String(args?.content) + (String(args?.content).endsWith(`
 `) ? "" : `
 `));
-      const errs = commitAll(cfg, d, "memory: " + name2 + " (" + meta.kind + ")");
+      const commit = commitAll(cfg, d, file, "memory: " + name2 + " (" + meta.kind + ")");
       const ref = readReflection(d);
       ref.steps = (ref.steps ?? 0) + 1;
       ref.stepsSinceReflection = (ref.stepsSinceReflection ?? 0) + 1;
-      if ((ref.stepsSinceReflection ?? 0) >= reflectionEvery) {
+      if (ref.stepsSinceReflection >= reflectionEvery && ref.pendingReflection?.due !== true) {
         ref.triggered = true;
         ref.pendingReflection = { due: true, at: new Date().toISOString() };
       }
       writeReflection(d, ref);
       appendJournalLine(d, "write", { file: basename2(file), kind: meta.kind, vcs: cfg.vcs ?? "git" });
-      return { file, committedTo: (cfg.vcs ?? "git") === "both" ? ["git", "svn"] : [cfg.vcs ?? "git"], reflectionDue: ref.triggered === true, vcs: cfg.vcs ?? "git", errors: errs, scope };
+      return { file, ...commit, reflectionDue: ref.triggered === true || ref.pendingReflection?.due === true, vcs: cfg.vcs ?? "git", scope };
     }
   });
   dsh.registerTool({
     name: "mpd_memory_read",
-    description: 'Read memory entries by optional kind filter and/or a substring query (matched against description/content/tags/aliases), PAGINATED: pass `offset` (default 0) and `limit` (default 20, max 50); the answer carries `count` (the TOTAL matched, not the page), `offset`, `returned` and `next_offset` (the next page\'s offset, or null at the end). Entries come back in a STABLE order: the entry FILE NAME ascending, so successive calls walk every match exactly once. scope:"workspace" (default) reads this agent\'s store, "global" the shared ~/.mpd/memory store; a global read never creates the store.',
-    parameters: { type: "object", properties: { query: { type: "string" }, kind: { type: "string" }, limit: { type: "integer", minimum: 1, maximum: 50, description: "Page size; clamped to 1..50, default 20." }, offset: { type: "integer", minimum: 0, description: "Page start in the matched set; default 0. Pass the previous answer's next_offset to continue." }, scope: { type: "string", enum: ["workspace", "global"], description: "Which store to read; workspace is the default." } }, additionalProperties: false },
-    output: { schema: { type: "object", properties: { entries: { type: "array", items: { type: "object" } }, count: { type: "integer" }, offset: { type: "integer" }, returned: { type: "integer" }, next_offset: { oneOf: [{ type: "integer" }, { type: "null" }] }, scope: { type: "string" } }, required: ["entries", "count"] }, render: (_a, v) => textBlock("memory entries: " + v.count + " total, offset=" + v.offset + " returned=" + v.returned + " next=" + (v.next_offset === null ? "end" : v.next_offset) + `
+    description: "Read memory in ascending filename order. Workspace (default) shows your project member's private entries or the standalone workspace store. Legacy explicitly reads the current checkout's old unattributed entries. Global reads the home store. Use key for an exact filename in these scopes. Shared requires an exact project fact key and supports revision and appliesTo checks. Follow next_offset for bounded pages and use count for the total matched.",
+    parameters: { type: "object", properties: { query: { type: "string", description: "Substring across description, content, tags and aliases." }, kind: { type: "string" }, limit: { type: "integer", minimum: 1, maximum: 50, description: "Page size; clamped to 1..50, default 20." }, offset: { type: "integer", minimum: 0, description: "Pass the previous answer's next_offset to continue." }, scope: { type: "string", enum: ["workspace", "global", "shared", "legacy"] }, key: { type: "string", description: "Exact filename or shared fact key." }, revision: { type: "integer", minimum: 1, description: "Expected shared fact revision." }, appliesTo: { type: "string", description: "Expected shared fact version, task or interface label." } }, additionalProperties: false },
+    output: { schema: { type: "object", properties: { entries: { type: "array", items: { type: "object" } }, count: { type: "integer" }, offset: { type: "integer" }, returned: { type: "integer" }, next_offset: { oneOf: [{ type: "integer" }, { type: "null" }] }, scope: { type: "string" }, revision: { type: "integer" }, validity: { type: "string", enum: ["current", "missing", "superseded", "not-applicable", "revision-mismatch"] } }, required: ["entries", "count"] }, render: (_a, v) => v.scope === "shared" || v.entries.some((entry) => typeof entry.truncated === "boolean") ? textBlock(JSON.stringify(v)) : textBlock("memory entries: " + v.count + " total, offset=" + v.offset + " returned=" + v.returned + " next=" + (v.next_offset === null ? "end" : v.next_offset) + `
 ` + v.entries.map((e) => "- [" + (e.kind ?? "note") + "] " + e.description + ": " + e.content.slice(0, 200)).join(`
 `)), presentationMeta: MEMORY_READ_CARD },
     execute: async (args, exec) => {
       const scope = scopeOf(args);
-      const memoryDir = scope === "global" ? globalDirs(cfg).memoryDir : ensureDirs(cfg, dsh.workspaceRoot(exec)).memoryDir;
-      const files = (existsSync3(memoryDir) ? readdirSync2(memoryDir).filter((f) => f.endsWith(".md")) : []).sort();
-      let entries = [];
+      const workspace = scope === "global" ? undefined : workspaceMemory(exec);
+      if (scope === "shared" && workspace !== undefined)
+        return readSharedFact(sharedPaths(cfg, workspace), args);
+      if (args?.revision !== undefined || args?.appliesTo !== undefined)
+        throw new ProjectMemoryError("revision and appliesTo require shared scope");
+      const bounded = workspace?.kind === "member" || scope === "legacy";
+      const memoryDir = workspace === undefined ? globalDirs(cfg).memoryDir : scope === "legacy" ? agentPaths(cfg, workspace.checkoutRoot).memoryDir : (bounded ? privatePaths(cfg, workspace) : ensureStoreDirs(privatePaths(cfg, workspace))).memoryDir;
+      const files = existsSync3(memoryDir) ? readdirSync3(memoryDir, { withFileTypes: true }).filter((entry) => entry.isFile() && entry.name.endsWith(".md")).map((entry) => entry.name).sort() : [];
+      const entries = [];
+      const key = typeof args?.key === "string" ? args.key : undefined;
       const kind = args?.kind ? String(args.kind) : null;
       const query = args?.query ? String(args.query).toLowerCase() : null;
       for (const f of files) {
-        const p = join4(memoryDir, f);
+        if (key !== undefined && f !== key)
+          continue;
+        const p = join6(memoryDir, f);
         const { meta, body } = parseFrontmatter(p);
         const e = normalizeLogEntry(meta, f, body);
         if (kind && e.kind !== kind)
           continue;
         if (query) {
-          const hay = (e.description + " " + e.content + " " + (e.tags ?? []).join(" ") + " " + (e.aliases ?? []).join(" ")).toLowerCase();
+          const hay = [e.description, e.content, Array.isArray(e.tags) ? e.tags.join(" ") : "", Array.isArray(e.aliases) ? e.aliases.join(" ") : ""].join(" ").toLowerCase();
           if (!hay.includes(query))
             continue;
         }
@@ -3721,7 +4191,8 @@ function apply(ctx, config = {}) {
       }
       const limit = Math.min(Math.max(Number(args?.limit ?? 20) || 20, 1), 50);
       const offset = Math.max(Math.floor(Number(args?.offset ?? 0)) || 0, 0);
-      const page = entries.slice(offset, offset + limit);
+      const candidates = entries.slice(offset, offset + limit);
+      const page = bounded ? previewEntries(candidates, limit) : candidates;
       const nextOffset = offset + page.length < entries.length ? offset + page.length : null;
       return { entries: page, count: entries.length, offset, returned: page.length, next_offset: nextOffset, scope };
     }
@@ -3733,39 +4204,67 @@ function apply(ctx, config = {}) {
     output: { schema: { type: "object", properties: { state: { type: "object" }, due: { type: "boolean" } }, required: ["state", "due"] }, render: (_a, v) => textBlock("reflection state: " + JSON.stringify(v.state, null, 1) + (v.due ? `
 REFLECTION DUE` : "")) },
     execute: async (_args, exec) => {
-      const d = ensureDirs(cfg, dsh.workspaceRoot(exec));
+      const d = privatePaths(cfg, workspaceMemory(exec));
       const s = readReflection(d);
       return { state: s, due: s.triggered === true || s.pendingReflection?.due === true };
     }
   });
   dsh.registerTool({
     name: "mpd_memory_reflect_complete",
-    description: "Complete the reflection this agent owes: writes the reflection content as a memory entry (kind=reflection), advances reflectionsCompleted, resets stepsSinceReflection, settles the pending claim and commits.",
+    description: "Save the reflection and settle the workspace claim once all configured backends succeed. If a backend fails, fix it and retry with the same title and content.",
     parameters: { type: "object", properties: { content: { type: "string" }, title: { type: "string" } }, required: ["content"], additionalProperties: false },
-    output: { schema: { type: "object", properties: { completed: { type: "boolean" }, file: { type: "string" } }, required: ["completed", "file"] }, render: (_a, v) => textBlock("reflection completed: " + (v.completed ? "yes" : "no") + " " + v.file) },
-    execute: async (args, exec) => {
-      const d = ensureDirs(cfg, dsh.workspaceRoot(exec));
-      const s = readReflection(d);
-      if (s.triggered !== true && s.pendingReflection?.due !== true) {
-        throw new Error("mpd-memory: no reflection is due — refusing to complete (triggered=" + String(s.triggered) + ", pendingReflection=" + (s.pendingReflection?.due === false ? "settled" : "none") + ", stepsSinceReflection=" + String(s.stepsSinceReflection ?? 0) + "); call mpd_memory_reflect to inspect the state machine.");
+    output: {
+      schema: { type: "object", properties: { completed: { type: "boolean" }, file: { type: "string" }, committedTo: { type: "array", items: { type: "string" } }, errors: { type: "array", items: { type: "string" } } }, required: ["completed", "file"] },
+      render: (_a, value) => {
+        const v = value;
+        return textBlock("reflection completed: " + (v.completed ? "yes" : "no (saved locally; retry with the same title and content)") + " " + v.file + `
+` + renderCommitReceipt(v));
       }
-      ensureVcs(cfg, d);
-      const name2 = "reflection-" + Date.now().toString(36);
-      const file = safeMemoryPath(d.memoryDir, name2 + ".md");
-      const meta = { description: String(args?.title ?? "reflection"), kind: "reflection" };
-      writeFileSync2(file, `---
-` + JSON.stringify(meta) + `
+    },
+    execute: async (args, exec) => {
+      const d = privatePaths(cfg, workspaceMemory(exec));
+      const s = readReflection(d);
+      const body = `---
+` + JSON.stringify({ description: args.title ?? "reflection", kind: "reflection" }) + `
 ---
-` + String(args?.content) + `
-`);
-      commitAll(cfg, d, "memory: reflection " + name2);
-      s.reflectionsCompleted = (s.reflectionsCompleted ?? 0) + 1;
+` + args.content + `
+`;
+      const digest = createHash3("sha256").update(body).digest("hex");
+      const claim = s.pendingReflection;
+      if (s.triggered !== true && claim?.due !== true) {
+        if (claim?.attempt?.digest === digest) {
+          const file2 = safeMemoryPath(d.memoryDir, claim.attempt.name);
+          ensureReflectionJournaled(d, file2, body);
+          return { completed: true, file: file2, committedTo: claim.attempt.committedTo, errors: [] };
+        }
+        throw new Error("mpd-memory: no reflection is due — refusing to complete; call mpd_memory_reflect to inspect the state machine.");
+      }
+      ensureStoreDirs(d);
+      const attempt = claim?.attempt ?? { name: `reflection-${randomUUID3()}.md`, digest, committedTo: [] };
+      if (attempt.digest !== digest)
+        throw new Error(`mpd-memory: retry ${attempt.name} with its original title and content.`);
+      if (claim?.attempt === undefined) {
+        s.pendingReflection = { due: true, at: claim?.at ?? new Date().toISOString(), attempt };
+        writeReflection(d, s);
+      }
+      const file = safeMemoryPath(d.memoryDir, attempt.name);
+      if (!existsSync3(file))
+        writeAtomically(file, dirname5(d.memoryDir), body);
+      else if (readFileSync5(file, "utf8") !== body)
+        throw new Error(`mpd-memory: ${file} has changed. Restore the original bytes before retrying.`);
+      const receipt = commitAll(cfg, d, file, "memory: reflection " + basename2(file, ".md"), attempt.committedTo);
+      const progress = { ...attempt, committedTo: receipt.committedTo };
+      s.pendingReflection = { due: true, at: s.pendingReflection?.at ?? new Date().toISOString(), attempt: progress };
+      writeReflection(d, s);
+      if (receipt.errors.length > 0)
+        return { completed: false, file, ...receipt };
+      ensureReflectionJournaled(d, file, body);
+      s.reflectionsCompleted += 1;
       s.stepsSinceReflection = 0;
       s.triggered = false;
-      s.pendingReflection = { due: false, at: new Date().toISOString() };
+      s.pendingReflection = { due: false, at: new Date().toISOString(), attempt: progress };
       writeReflection(d, s);
-      appendJournalLine(d, "reflection", { file: basename2(file) });
-      return { completed: true, file };
+      return { completed: true, file, ...receipt };
     }
   });
   dsh.registerTool({
@@ -3776,17 +4275,19 @@ REFLECTION DUE` : "")) },
 reflection: ` + JSON.stringify(v.reflection)), presentationMeta: MEMORY_STATUS_CARD },
     execute: async (args, exec) => {
       const scope = scopeOf(args);
+      if (scope === "shared" || scope === "legacy")
+        throw new ProjectMemoryError("status accepts workspace or global scope");
+      const d = privatePaths(cfg, workspaceMemory(exec));
       if (scope === "global") {
         const g = globalDirs(cfg);
-        const globalFiles = existsSync3(g.memoryDir) ? readdirSync2(g.memoryDir).filter((f) => f.endsWith(".md")) : [];
-        const globalJournalLines = existsSync3(journalPath(g)) ? readFileSync4(journalPath(g), "utf8").split(`
+        const globalFiles = existsSync3(g.memoryDir) ? readdirSync3(g.memoryDir).filter((f) => f.endsWith(".md")) : [];
+        const globalJournalLines = existsSync3(journalPath(g)) ? readFileSync5(journalPath(g), "utf8").split(`
 `).filter(Boolean).length : 0;
-        const reflection = readReflection(agentPaths(cfg, dsh.workspaceRoot(exec)));
+        const reflection = readReflection(d);
         return { vcs: cfg.vcs ?? "git", root: g.root, entries: globalFiles.length, journalLines: globalJournalLines, reflection, scope };
       }
-      const d = ensureDirs(cfg, dsh.workspaceRoot(exec));
-      const files = existsSync3(d.memoryDir) ? readdirSync2(d.memoryDir).filter((f) => f.endsWith(".md")) : [];
-      const journalLines = existsSync3(journalPath(d)) ? readFileSync4(journalPath(d), "utf8").split(`
+      const files = existsSync3(d.memoryDir) ? readdirSync3(d.memoryDir).filter((f) => f.endsWith(".md")) : [];
+      const journalLines = existsSync3(journalPath(d)) ? readFileSync5(journalPath(d), "utf8").split(`
 `).filter(Boolean).length : 0;
       return { vcs: cfg.vcs ?? "git", root: d.root, entries: files.length, journalLines, reflection: readReflection(d), scope };
     }

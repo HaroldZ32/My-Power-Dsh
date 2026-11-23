@@ -26,6 +26,8 @@ import { appendJournal, cellDir, listCellIds, readCell, resolveCellTeam, statePa
  * declaration is `TeamRecord` in `packages/mpd-team-core-plugin/src/team-store.ts`.
  */
 export interface TeamsServiceView {
+  /** Resolve structured state without changing the caller's checkout or filesystem cwd. */
+  stateWorkspace?: (workspace: string, sessionId: string) => string
   /** One team by id; undefined for an unknown id or an unreadable record. */
   get?: (workspace: string, teamId: string) => unknown
   /**
@@ -54,6 +56,9 @@ export interface TeamsServiceView {
  * `packages/mpd-team-core-plugin/src/team-actions.ts`.
  */
 export interface TeamActionsServiceView {
+  /** Commit a requirements revision with its exact existing or newly reserved splitter ticket. */
+  commitResplit?: (agent: unknown, input: { cellId: string; teamId: string; previousRevision: number; revision: number },
+    publish: (ticket: { id: string; status: string; replacement: boolean }) => void) => { ok: true } | { ok: false; error: string }
   /** One dispatch pass, owner-only by default; `reassign` is validated by the PLANE. */
   dispatch?: (input: { sessionId: string; limit?: number; dryRun?: boolean; mode?: string; reassign?: unknown }) => Promise<unknown>
   /** Fence one seat (Lead-only on the plane). */
@@ -175,15 +180,17 @@ export function callerContext(
   exec: DshToolExec | undefined,
   deps: CallerDeps = {},
 ): CallerContext {
-  /** The workspace root, resolved per call and total on failure. */
+  /** The caller's session id, from the fused agent handle. */
+  const sessionId = sessionIdOf(exec?.agent)
+  /** The structured state root, resolved per call and total on failure. */
   let workspace = ""
   try {
-    workspace = dsh.workspaceRoot(exec)
+    /** The adapter's checkout remains the authority for source-file operations. */
+    const checkout = dsh.workspaceRoot(exec)
+    workspace = deps.teams?.()?.stateWorkspace?.(checkout, sessionId) ?? checkout
   } catch {
     workspace = ""
   }
-  /** The caller's session id, from the fused agent handle. */
-  const sessionId = sessionIdOf(exec?.agent)
   if (workspace === "") return { workspace, sessionId, member: "", seat: undefined, cell: null, refusal: null }
   /** Every live cell of the workspace, with its nesting depth — or the refusal that replaced the scan. */
   const scan = liveTree(workspace)

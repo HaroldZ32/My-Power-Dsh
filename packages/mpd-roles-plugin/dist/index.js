@@ -1,6 +1,7 @@
 // packages/mpd-roles-plugin/src/index.ts
+import { AsyncLocalStorage } from "node:async_hooks";
 import { existsSync as existsSync2, readFileSync } from "node:fs";
-import { join as join5, resolve as resolve3 } from "node:path";
+import { join as join5, resolve as resolve4 } from "node:path";
 
 // packages/mpd-roles-plugin/src/roles.data.ts
 var ROLES = [
@@ -440,6 +441,8 @@ function evaluateComplexityGate(text, input = {}) {
     signals.push("E");
   if (thresholds.workspaceScale && input.workspaceScale === true)
     signals.push("F");
+  if (input.repairFollowUp === true)
+    signals.push("whole-scope repair follow-up");
   const strength = admissionOf(input.source ?? "human", source, { explicitFlag: input.explicitFlag === true, matchedSignals: signals.length });
   return {
     trigger: strength !== "ignore" && (input.explicitFlag === true || signals.length >= 1),
@@ -661,6 +664,8 @@ function parseReTeamState(raw) {
       state.planId = fields.planId;
     if (typeof fields.teamIdAtFire === "string")
       state.teamIdAtFire = fields.teamIdAtFire;
+    if (fields.repairFollowUpRouted === true)
+      state.repairFollowUpRouted = true;
     return state;
   } catch {
     return;
@@ -725,12 +730,13 @@ function gatePlanShell(input) {
   const firstLine = collapseWhitespace(goal.split(/\r?\n/u)[0] ?? "");
   const excerpt = collapseWhitespace(goal).slice(0, GATE_PLAN_EXCERPT_MAX);
   const matched = input.signals.length === 0 ? "complexity signals" : "complexity signals " + input.signals.join("/");
-  const lead = input.reteam === undefined ? "Staged mechanically by the mpd session-start complexity gate on " + matched + "." : "Staged mechanically by the mpd re-team gate: " + String(input.reteam.count) + " completed consult calls since the last team fire" + " (threshold " + String(input.reteam.threshold) + ") and no live team.";
-  const name = input.reteam === undefined ? firstLine === "" ? GATE_PLAN_NAME_FALLBACK : firstLine.slice(0, GATE_PLAN_NAME_MAX) : RETEAM_PLAN_NAME.slice(0, GATE_PLAN_NAME_MAX);
+  const lead = input.overlappingConsults !== undefined ? `Staged mechanically with ${input.overlappingConsults} outstanding consults and no live team.` : input.reteam === undefined ? "Staged mechanically by the mpd session-start complexity gate on " + matched + "." : "Staged mechanically by the mpd re-team gate: " + String(input.reteam.count) + " completed consult calls since the last team fire" + " (threshold " + String(input.reteam.threshold) + ") and no live team.";
+  const name = input.reteam !== undefined || input.overlappingConsults !== undefined ? RETEAM_PLAN_NAME.slice(0, GATE_PLAN_NAME_MAX) : firstLine === "" ? GATE_PLAN_NAME_FALLBACK : firstLine.slice(0, GATE_PLAN_NAME_MAX);
   return {
     name,
     description: lead + `
-This is a SHELL: 0 members and 0 tasks, because at the first pre-step there is no decomposition yet.` + (input.reteam === undefined ? `
+This is a SHELL: 0 members and 0 tasks.` + (input.overlappingConsults !== undefined ? `
+Set the team's objective from the current human request before adding members and tasks.` : input.reteam === undefined ? `
 Goal excerpt: ` + (excerpt === "" ? "(empty)" : excerpt) : `
 No user turn was judged: the re-team trigger counts COMPLETED consults, not prompt text.`) + "\nExtend it with `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[0] + "\"}` (each member's prompt comes from `mpd_role_persona`)" + " and `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[1] + '"}`,' + " then approve it with `" + STAGING_TOOL_NAME + ' {action:"approve"}` — approval is what spawns the members.' + `
 ` + INERT_PLAN_PHRASE + "." + (input.planPath === undefined ? "" : `
@@ -800,13 +806,13 @@ function consumeFlagFromMessage(message, source) {
   });
   return changed ? { ...message, content } : message;
 }
-function sessionQualifies(agent, presets = DEFAULT_GATE_PRESETS) {
+function sessionQualifies(agent, presets = DEFAULT_GATE_PRESETS, selectedPreset) {
   if (sessionRank(agent) !== "captain")
     return false;
   const header = agent?.session?.header;
   if (header === undefined || header === null)
     return false;
-  const preset = header.agentPreset;
+  const preset = selectedPreset === undefined ? header.agentPreset : selectedPreset;
   if (preset === undefined || preset === null)
     return true;
   return presets.includes(String(preset));
@@ -2181,22 +2187,61 @@ function installRosterSection(dsh, options) {
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID as randomUUID2 } from "node:crypto";
-import { resolve as resolve2, sep as sep2 } from "node:path";
+
+// packages/mpd-dsh-adapter-plugin/src/scoped-helper.ts
+import { realpathSync } from "node:fs";
+import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
+function helperTarget(checkout, value) {
+  try {
+    const root = realpathSync(checkout);
+    const path = resolve(root, value);
+    const local = relative(root, path);
+    if (local === "" || local === ".." || local.startsWith(`..${sep}`) || isAbsolute(local) || local.split(sep).some((item) => item === ".mpd" || item === ".git"))
+      return;
+    let probe = path;
+    while (probe !== root) {
+      try {
+        if (realpathSync(probe) !== probe)
+          return;
+      } catch (error) {
+        if (!(error instanceof Error) || !("code" in error) || error.code !== "ENOENT")
+          throw error;
+      }
+      probe = dirname(probe);
+    }
+    return local.split(sep).join("/");
+  } catch (error) {
+    if (error instanceof Error)
+      return;
+    throw error;
+  }
+}
+function helperFileRefusal(scope, name, args) {
+  if (name === "structured_output")
+    return;
+  if (scope.current?.() === false)
+    return "The original assignment no longer authorizes this helper.";
+  const path = typeof args === "object" && args !== null && "file_path" in args && typeof args.file_path === "string" ? helperTarget(scope.checkout, args.file_path) : undefined;
+  const allowed = path !== undefined && (name === "read" ? scope.read.includes(path) || scope.write.includes(path) : (name === "write" || name === "edit") && scope.write.includes(path));
+  return allowed ? undefined : "This one-shot can use only the exact file tools and paths its owner delegated.";
+}
+// packages/mpd-dsh-adapter-plugin/src/index.ts
+import { resolve as resolve3, sep as sep3 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
-import { dirname } from "node:path";
+import { dirname as dirname2 } from "node:path";
 import { fileURLToPath } from "node:url";
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
 }
 function bundleRootOf(moduleUrl) {
-  return dirname(dirname(dirname(dirname(fileURLToPath(moduleUrl)))));
+  return dirname2(dirname2(dirname2(dirname2(fileURLToPath(moduleUrl)))));
 }
 
 // packages/mpd-mcp-shared/log-sink.ts
 import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { isAbsolute, join as join3, relative, resolve, sep } from "node:path";
+import { isAbsolute as isAbsolute2, join as join3, relative as relative2, resolve as resolve2, sep as sep2 } from "node:path";
 var LOG_SUBDIR = join3(".mpd", "logs");
 var DEFAULT_MAX_BYTES = 1024 * 1024;
 var DEFAULT_MAX_LINE_BYTES = 8192;
@@ -2221,7 +2266,7 @@ function resolveLogRoots(env = process.env, cwd) {
       continue;
     let absolute;
     try {
-      absolute = resolve(candidate);
+      absolute = resolve2(candidate);
     } catch {
       continue;
     }
@@ -2246,8 +2291,8 @@ function owningRoot(roots, file) {
   for (const root of roots) {
     if (file === root)
       return root;
-    const rel = relative(root, file);
-    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel))
+    const rel = relative2(root, file);
+    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep2}`) && !isAbsolute2(rel))
       return root;
   }
   return null;
@@ -2562,10 +2607,10 @@ function sessionCwdOf(agent) {
 function workspaceRootOfAgent(agent) {
   const session = sessionCwdOf(agent);
   if (session !== undefined)
-    return resolve2(session);
+    return resolve3(session);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve2(override);
+    return resolve3(override);
   return process.cwd();
 }
 function workspaceRootOf(exec) {
@@ -2573,7 +2618,7 @@ function workspaceRootOf(exec) {
     return workspaceRootOfAgent(exec.agent);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve2(override);
+    return resolve3(override);
   return process.cwd();
 }
 var rowLogSinks = new Map;
@@ -2694,7 +2739,7 @@ function workspaceRootsOf(agents) {
     for (const agent of list) {
       const cwd = sessionCwdOf(agent);
       if (cwd !== undefined)
-        roots.add(resolve2(cwd));
+        roots.add(resolve3(cwd));
     }
     return [...roots];
   } catch {
@@ -3236,7 +3281,7 @@ function createDshAdapter(ctx, config = {}) {
     } catch {}
   };
   bindDshGoBridge();
-  const configAgentRouteResolver = () => {
+  const configAgentRouteResolver = (workspace) => {
     const config2 = service("mpdConfig");
     if (config2 === undefined || config2 === null)
       return;
@@ -3244,7 +3289,7 @@ function createDshAdapter(ctx, config = {}) {
       return;
     return (member) => {
       try {
-        const answer = config2.agentRouteResolutionOf.call(config2, member);
+        const answer = config2.agentRouteResolutionOf.call(config2, member, workspace);
         return answer !== null && typeof answer === "object" && typeof answer.ok === "boolean" ? answer : undefined;
       } catch {
         return;
@@ -3598,7 +3643,7 @@ function createDshAdapter(ctx, config = {}) {
         const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
         let agentOptions = request.agentOptions;
         if (agentOptions === undefined) {
-          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver());
+          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver(workspaceRootOfAgent(caller)));
           if (outcome.status === "routed") {
             const resolved = await resolveRunRoute({ llmCatalog }, outcome.route, outcome.fallbacks);
             agentOptions = resolved.route;
@@ -3614,8 +3659,13 @@ function createDshAdapter(ctx, config = {}) {
           ...agentOptions === undefined ? {} : { agentOptions },
           ...request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }
         };
+        const provider = typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn";
+        const childId = request.onOpening !== undefined && provider === "spawn" && typeof subagents.startActivation === "function" && typeof subagents.prompt === "function" ? randomUUID2() : undefined;
+        if (childId !== undefined)
+          request.onOpening?.(childId);
         const spec = dualShapeActivationSpec({
-          provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
+          provider,
+          ...childId === undefined ? {} : { childId },
           label: `${request.name} · ${request.teamId}`,
           signal: request.signal ?? neverAborted()
         }, activationRequest);
@@ -4050,6 +4100,13 @@ function createDshAdapter(ctx, config = {}) {
       const registered = systemPrompt.section(section);
       return typeof registered === "function" ? registered : noop;
     },
+    registerPromptContext(context) {
+      const systemPrompt = service("systemPrompt");
+      if (typeof systemPrompt?.context !== "function")
+        return;
+      const registered = systemPrompt.context(context);
+      return typeof registered === "function" ? registered : noop;
+    },
     guardTool(guard) {
       const tools = requireService("tools", "cannot install a tool guard");
       if (typeof tools.guard !== "function")
@@ -4282,14 +4339,45 @@ function createDshAdapter(ctx, config = {}) {
           ...spec.outputSchema === undefined ? {} : { outputSchema: spec.outputSchema },
           ...spec.maxDepth === undefined ? {} : { maxDepth: spec.maxDepth }
         };
-        const activation = await subagents.startActivation.call(subagents, dualShapeActivationSpec({
-          provider,
-          label: spec.label,
-          signal,
-          delivery: "parent"
-        }, activationRequest));
-        return activationHandleOf(activation, subagents, spec.parent);
+        const files = spec.helperFiles;
+        if (files === undefined) {
+          const activation = await subagents.startActivation.call(subagents, dualShapeActivationSpec({ provider, label: spec.label, signal, delivery: "parent" }, activationRequest));
+          return activationHandleOf(activation, subagents, spec.parent);
+        }
+        if (provider !== "spawn" || typeof service("tools")?.guard !== "function")
+          throw new Error("scoped one-shot requires native child and tool-guard support");
+        if (files.current?.() === false)
+          throw new Error("the original helper assignment changed before admission");
+        const childId = randomUUID2();
+        const offGuard = adapter.guardTool((exec) => sessionIdOfAgent(exec.agent) === childId ? helperFileRefusal(files, exec.name, exec.arguments) : undefined);
+        let installed = false;
+        const offCreated = onEvent("agent/created", (payload) => {
+          const child = payload?.agent;
+          if (sessionIdOfAgent(child) !== childId)
+            return;
+          const allow = files.write.length > 0 ? ["read", "write", "edit"] : files.read.length > 0 ? ["read"] : [];
+          applyScopedRestriction(child, { allow });
+          installed = true;
+        });
+        try {
+          if (offCreated === undefined)
+            throw new Error("scoped one-shot requires the native agent creation hook");
+          const activation = await subagents.startActivation.call(subagents, dualShapeActivationSpec({ provider, label: spec.label, signal, delivery: "caller", childId }, { ...activationRequest, cwd: files.checkout }));
+          if (!installed) {
+            await releaseActivation(activation);
+            throw new Error("the host did not publish the reserved scoped helper");
+          }
+          const handle = activationHandleOf(activation, subagents, spec.parent);
+          return { ...handle, result: handle.result.finally(offGuard) };
+        } catch (error) {
+          offGuard();
+          throw error;
+        } finally {
+          offCreated?.();
+        }
       }
+      if (spec.helperFiles !== undefined)
+        throw new Error("scoped one-shot requires native child start support");
       if (typeof subagents.start !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagent service exposes neither startActivation() nor start()");
       const run = await subagents.start(provider, {
@@ -4540,6 +4628,20 @@ function createDshAdapter(ctx, config = {}) {
       if (typeof skills.get !== "function")
         throw new Error("mpd-dsh-adapter: the harness skills service exposes no get()");
       return skills.get(skillName, options);
+    },
+    selectedAgentPreset(agent) {
+      const session = agent?.session;
+      if (session === undefined || session === null)
+        return;
+      try {
+        const presets = service("agentPresets");
+        if (typeof presets?.presetForSession !== "function")
+          return;
+        const selected = presets.presetForSession(session);
+        return selected === null || typeof selected === "string" && selected.length > 0 ? selected : undefined;
+      } catch {
+        return;
+      }
     },
     async resolvePreset(presetId) {
       const presets = requireService("agentPresets", 'cannot resolve preset "' + presetId + '"');
@@ -4812,7 +4914,7 @@ function createLazyDshAdapter(ctx, options) {
   let temporary;
   let warnedPending = false;
   let warnedMissing = false;
-  const resolve3 = () => {
+  const resolve4 = () => {
     if (mounted !== undefined)
       return mounted;
     const active = probeMpdDsh(ctx, true);
@@ -4836,18 +4938,27 @@ function createLazyDshAdapter(ctx, options) {
   };
   return new Proxy({}, {
     get(_target, property) {
-      const impl = resolve3();
+      const impl = resolve4();
       const value = impl[property];
       return typeof value === "function" ? value.bind(impl) : value;
     },
     has(_target, property) {
-      return property in resolve3();
+      return property in resolve4();
     }
   });
 }
 
 // packages/mpd-roles-plugin/src/session-gate.ts
 var STAGING_TIMEOUT_MS = 5000;
+var WHOLE_REPAIR_FOLLOW_UP = /^(?:(?:please\s+)?(?:fix|resolve|address)\s+(?:all of (?:them|these|those)|(?:them|these|those) all|all (?:the )?(?:findings|issues))\b|(?:一起|全部|一并|都)(?:修复|修好|解决)(?:掉|一下)?(?:吧|了)?(?=$|[\s，。！、,.!]))/iu;
+
+class TeamFirstConsultError extends Error {
+  code = "TEAM_FIRST";
+  constructor(message) {
+    super(`TEAM_FIRST: ${message}`);
+    this.name = "TeamFirstConsultError";
+  }
+}
 function gateTrace(line) {
   try {
     if (process.env.MPD_ROLES_GATE_TRACE === "1")
@@ -4885,6 +4996,8 @@ function installSessionGate(dsh, options) {
     } catch {}
   };
   const reTeamStates = new Map;
+  const stateWrites = new Map;
+  const consultWindows = new Map;
   const firing = new Set;
   const repairNoticed = new Set;
   const autoEndAttempted = new Set;
@@ -4903,23 +5016,28 @@ function installSessionGate(dsh, options) {
     return pending;
   }
   async function saveReTeamState(workspace, sessionId, state) {
-    reTeamStates.set(reTeamKeyOf(workspace, sessionId), Promise.resolve(state));
-    await writeReTeamState(workspace, sessionId, state, {
+    const key = reTeamKeyOf(workspace, sessionId);
+    reTeamStates.set(key, Promise.resolve(state));
+    const write = Promise.resolve(stateWrites.get(key)).then(() => writeReTeamState(workspace, sessionId, state, {
       ...options.stateWriteFile === undefined ? {} : { writeFile: options.stateWriteFile }
-    });
+    }));
+    stateWrites.set(key, write);
+    await write;
+    if (stateWrites.get(key) === write)
+      stateWrites.delete(key);
   }
-  function configValue(key) {
+  function configValue(key, workspace) {
     try {
-      return options.configValue?.(key);
+      return options.configValue?.(key, workspace);
     } catch {
       return;
     }
   }
-  function hasStagingTool(agent) {
+  function hasTeamTool(agent, name = STAGING_TOOL_NAME) {
     if (typeof dsh.hasTool !== "function")
       return false;
     try {
-      return dsh.hasTool(STAGING_TOOL_NAME, agent) === true;
+      return dsh.hasTool(name, agent) === true;
     } catch {
       return false;
     }
@@ -4937,19 +5055,28 @@ function installSessionGate(dsh, options) {
   }
   async function stagePlan(input) {
     const probe = probeStagedPlan(input.workspace, input.sessionId);
-    if (probe.verdict === "staged")
+    if (probe.verdict === "staged") {
+      const plan = probe.plan;
+      if (plan.approved === true || plan.discarded === true) {
+        return { ok: false, planId: "", alreadyStaged: false, error: "the current plan record is already approved or discarded" };
+      }
       return { ok: true, planId: planIdOf(probe.plan), alreadyStaged: true };
+    }
     if (probe.verdict === "unknown") {
+      if (input.overlappingConsults !== undefined) {
+        return { ok: false, planId: "", alreadyStaged: false, error: "the current plan could not be inspected" };
+      }
       warn('session-start gate: the staged-plan probe could not answer for session "' + input.sessionId + '" (' + String(probe.reason) + ") — staging anyway, so an existing UN-APPROVED plan for this session may have been ARCHIVED into .mpd/team/archive/ (an APPROVED plan is never replaced without replace:true)");
     }
-    if (!hasStagingTool(input.agent))
+    if (!hasTeamTool(input.agent))
       return { ok: false, planId: "", alreadyStaged: false, error: "tool " + STAGING_TOOL_NAME + " is not registered in this agent's view" };
     try {
       const shell = gatePlanShell({
         signals: input.signals,
         goal: input.goal,
         ...input.planPath === undefined ? {} : { planPath: input.planPath },
-        ...input.reteam === undefined ? {} : { reteam: input.reteam }
+        ...input.reteam === undefined ? {} : { reteam: input.reteam },
+        ...input.overlappingConsults === undefined ? {} : { overlappingConsults: input.overlappingConsults }
       });
       const result = await dsh.executeTool({
         name: STAGING_TOOL_NAME,
@@ -4965,6 +5092,69 @@ function installSessionGate(dsh, options) {
       return { ok: false, planId: "", alreadyStaged: false, error: errorText(error) };
     }
   }
+  function qualifies(agent) {
+    return sessionQualifies(agent, presets, dsh.selectedAgentPreset?.(agent));
+  }
+  function leadingTeamOf(workspace, sessionId) {
+    return readLeadingTeam(workspace, sessionId, {
+      ...options.readFile === undefined ? {} : { readFile: options.readFile },
+      ...options.readDir === undefined ? {} : { readDir: options.readDir }
+    });
+  }
+  async function routeOverlappingConsults(agent, workspace, sessionId, key, count) {
+    if (firing.has(key))
+      return { ok: false, planId: "", alreadyStaged: false, error: "a team routing decision is in progress" };
+    firing.add(key);
+    try {
+      const outcome = await stagePlan({ agent, workspace, sessionId, goal: "", signals: [], overlappingConsults: count });
+      if (outcome.ok && outcome.planId !== "") {
+        const state = await loadReTeamState(workspace, sessionId);
+        if (state.planId !== outcome.planId)
+          await recordFire(workspace, sessionId, state, outcome.planId);
+      }
+      return outcome;
+    } finally {
+      firing.delete(key);
+    }
+  }
+  async function reserveConsult(exec) {
+    const agent = exec?.agent;
+    if (!qualifies(agent))
+      return;
+    const workspace = dsh.workspaceRoot(exec);
+    if (resolveGateMode(configValue(GATE_CONFIG_KEY, workspace)) !== GATE_MODE_MECHANICAL || !resolveReTeamEnabled(configValue(RETEAM_ENABLED_CONFIG_KEY, workspace)))
+      return;
+    if (!hasTeamTool(agent) || !hasTeamTool(agent, BOARD_TOOL_NAME) || !hasTeamTool(agent, DISPATCH_TOOL_NAME))
+      return;
+    const sessionId = sessionIdOf2(agent);
+    if (sessionId === "workspace")
+      return;
+    const limit = Math.max(1, Math.min(resolveReTeamAfterConsults(configValue(RETEAM_AFTER_CONSULTS_CONFIG_KEY, workspace)), options.consultMax?.() ?? Infinity) - 1);
+    const key = reTeamKeyOf(workspace, sessionId);
+    const window = consultWindows.get(key) ?? { count: 0 };
+    if (window.count < limit) {
+      window.count += 1;
+      consultWindows.set(key, window);
+      let released = false;
+      return () => {
+        if (released)
+          return;
+        released = true;
+        window.count -= 1;
+        delete window.routing;
+        if (window.count === 0)
+          consultWindows.delete(key);
+      };
+    }
+    if ((await leadingTeamOf(workspace, sessionId)).leading)
+      return;
+    if (window.count < limit)
+      return reserveConsult(exec);
+    const attempt = window.routing ??= routeOverlappingConsults(agent, workspace, sessionId, key, window.count);
+    const outcome = await attempt;
+    const plan = outcome.ok && outcome.planId !== "" ? `Inspect plan ${outcome.planId} with agent_teams_plan {action:"status"} and check it matches the current request before adding members and owner-bound tasks. Approve through the normal plan path before dispatch.` : `No usable plan was confirmed (${outcome.error ?? "missing plan id"}). Check agent_teams_plan {action:"status"} and stage the current work explicitly when available.`;
+    throw new TeamFirstConsultError(`This consult was deferred before dispatch. ${plan} For bounded work, wait for an outstanding consult to settle, then retry one call.`);
+  }
   async function countCompletedConsult(exec, result) {
     try {
       if (exec === undefined || exec === null || !isConsultToolName(exec.name))
@@ -4974,7 +5164,7 @@ function installSessionGate(dsh, options) {
       const agent = exec.agent;
       if (agent === undefined || agent === null)
         return;
-      if (!sessionQualifies(agent, presets))
+      if (!qualifies(agent))
         return;
       const workspace = dsh.workspaceRoot({ agent });
       const sessionId = sessionIdOf2(agent);
@@ -5083,29 +5273,26 @@ function installSessionGate(dsh, options) {
       const agent = bound ?? payload?.agent;
       if (agent === undefined || agent === null)
         return;
-      if (!sessionQualifies(agent, presets)) {
+      if (!qualifies(agent)) {
         gateTrace("not qualified agent=" + String(agent.id ?? "?"));
         return;
       }
       const agentId = String(agent.id ?? "");
-      const mode = resolveGateMode(configValue(GATE_CONFIG_KEY));
+      const workspace = dsh.workspaceRoot({ agent });
+      const mode = resolveGateMode(configValue(GATE_CONFIG_KEY, workspace));
       if (mode === GATE_MODE_OFF) {
         gateTrace("mode off agent=" + agentId);
         return;
       }
       const decisionMessages = Array.isArray(decision?.messages) ? decision.messages : [];
       const rawClaimed = Array.isArray(payload?.messages) && payload.messages.length > 0 ? payload.messages : decisionMessages;
-      const workspace = dsh.workspaceRoot({ agent });
       const sessionId = sessionIdOf2(agent);
       const stateKey = reTeamKeyOf(workspace, sessionId);
       if (firing.has(stateKey)) {
         gateTrace("fire in flight agent=" + agentId);
         return;
       }
-      const leading = await readLeadingTeam(workspace, sessionId, {
-        ...options.readFile === undefined ? {} : { readFile: options.readFile },
-        ...options.readDir === undefined ? {} : { readDir: options.readDir }
-      });
+      const leading = await leadingTeamOf(workspace, sessionId);
       const state = await loadReTeamState(workspace, sessionId);
       if (leading.leading) {
         if (state.lastFiredAt !== 0 || state.planId !== "" || state.teamIdAtFire !== (leading.teamId ?? "")) {
@@ -5140,41 +5327,43 @@ function installSessionGate(dsh, options) {
           state.lastFiredAt = 0;
           state.planId = "";
           state.teamIdAtFire = "";
+          delete state.repairFollowUpRouted;
           await saveReTeamState(workspace, sessionId, state);
           if (agentId !== "")
             acted.delete(agentId);
           report('re-team gate: re-armed after team "' + String(leading.teamId ?? "(id not read)") + '" ended');
         }
       }
-      if (state.lastFiredAt !== 0 || state.planId !== "") {
+      const user = latestUserMessage(rawClaimed) ?? latestUserMessage(decisionMessages);
+      const repairFollowUp = user !== undefined && (payload?.turn ?? 0) > 1 && state.repairFollowUpRouted !== true && (state.consultCount >= 2 || state.planId !== "") && WHOLE_REPAIR_FOLLOW_UP.test(user.text.trim());
+      if (!repairFollowUp && (state.lastFiredAt !== 0 || state.planId !== "")) {
         gateTrace("re-team settled agent=" + agentId + " plan=" + String(state.planId));
         return;
       }
-      if (resolveReTeamEnabled(configValue(RETEAM_ENABLED_CONFIG_KEY))) {
-        const afterConsults = resolveReTeamAfterConsults(configValue(RETEAM_AFTER_CONSULTS_CONFIG_KEY));
+      if (!repairFollowUp && resolveReTeamEnabled(configValue(RETEAM_ENABLED_CONFIG_KEY, workspace))) {
+        const afterConsults = resolveReTeamAfterConsults(configValue(RETEAM_AFTER_CONSULTS_CONFIG_KEY, workspace));
         if (state.consultCount >= afterConsults) {
-          const noticeText = await fireReTeam({ agent, agentId, workspace, sessionId, mode, count: state.consultCount, threshold: afterConsults });
-          if (noticeText === undefined)
+          const noticeText2 = await fireReTeam({ agent, agentId, workspace, sessionId, mode, count: state.consultCount, threshold: afterConsults });
+          if (noticeText2 === undefined)
             return;
           return spliceNotice(decision, decisionMessages, rawClaimed, dsh.userMessage({
-            text: noticeText,
+            text: noticeText2,
             source: { kind: "mpd-roles", reason: "re-team-trigger" }
           }));
         }
       }
-      const user = latestUserMessage(rawClaimed) ?? latestUserMessage(decisionMessages);
       if (user === undefined) {
         gateTrace("no user text yet agent=" + agentId);
         return;
       }
       const consumed = consumeExplicitFlag(user.text);
-      const boulderDir = resolveBoulderDir(configValue(BOULDER_DIR_CONFIG_KEY));
+      const boulderDir = resolveBoulderDir(configValue(BOULDER_DIR_CONFIG_KEY, workspace));
       const boulder = await readBoulderGate(workspace, {
         ...options.readFile === undefined ? {} : { readFile: options.readFile },
         ...boulderDir === undefined ? {} : { boulderDir }
       });
-      const sensitivity = resolveSensitivity(configValue(SENSITIVITY_CONFIG_KEY));
-      const wantsWorkspaceScale = SENSITIVITY_THRESHOLDS[sensitivity].workspaceScale;
+      const sensitivity = resolveSensitivity(configValue(SENSITIVITY_CONFIG_KEY, workspace));
+      const wantsWorkspaceScale = SENSITIVITY_THRESHOLDS[sensitivity].workspaceScale && (payload?.turn ?? 1) === 1;
       const workspaceScale = wantsWorkspaceScale ? await readWorkspaceScale(workspace, {
         ...options.readDir === undefined ? {} : { readDir: options.readDir }
       }) : false;
@@ -5182,16 +5371,15 @@ function installSessionGate(dsh, options) {
         explicitFlag: consumed.flagged,
         activeBoulder: boulder.active,
         sensitivity,
-        workspaceScale
+        workspaceScale,
+        repairFollowUp
       });
       if (verdict.trigger !== true) {
         gateTrace("predicate false agent=" + agentId + " text=" + JSON.stringify(user.text.slice(0, 60)));
         return;
       }
-      if (firing.has(stateKey)) {
-        gateTrace("fire in flight agent=" + agentId);
+      if (firing.has(stateKey) || (repairFollowUp ? state.repairFollowUpRouted === true : state.lastFiredAt !== 0 || state.planId !== ""))
         return;
-      }
       firing.add(stateKey);
       let outcome = { ok: false, planId: "", alreadyStaged: false };
       try {
@@ -5208,6 +5396,9 @@ function installSessionGate(dsh, options) {
             warn('session-start gate: staging degraded to the advisory notice for agent "' + agentId + '" (' + String(outcome.error) + ")");
           }
         }
+        if (repairFollowUp)
+          state.repairFollowUpRouted = true;
+        await recordFire(workspace, sessionId, state, mode === GATE_MODE_MECHANICAL && outcome.ok ? outcome.planId : "");
       } finally {
         firing.delete(stateKey);
       }
@@ -5217,11 +5408,13 @@ function installSessionGate(dsh, options) {
         warn("session-start gate: " + MISSING_PLAN_ID_PHRASE + ' for agent "' + agentId + '" — the shell is staged but cannot be approved');
       }
       gateTrace("FIRING agent=" + agentId + " signals=" + verdict.signals.join("/") + " mode=" + mode + " staged=" + String(staged) + " sensitivity=" + sensitivity);
-      await recordFire(workspace, sessionId, state, staged ? outcome.planId : "");
       if (agentId !== "")
         acted.add(agentId);
+      const noticeText = staged ? mechanicalNoticeText({ planId: outcome.planId, signals: verdict.signals, explicit: consumed.flagged, alreadyStaged: outcome.alreadyStaged, strength: verdict.strength }) : advisoryNoticeText(verdict.signals, consumed.flagged, verdict.strength);
+      const reuseNote = repairFollowUp && outcome.alreadyStaged ? `
+Check the existing plan against this follow-up before adding repair and independent review tasks.` : "";
       const notice = dsh.userMessage({
-        text: staged ? mechanicalNoticeText({ planId: outcome.planId, signals: verdict.signals, explicit: consumed.flagged, alreadyStaged: outcome.alreadyStaged, strength: verdict.strength }) : advisoryNoticeText(verdict.signals, consumed.flagged, verdict.strength),
+        text: noticeText + reuseNote,
         source: { kind: "mpd-roles", reason: "session-start-advisory" }
       });
       return spliceNotice(decision, decisionMessages, rawClaimed, notice, (message) => message === user.message ? consumeFlagFromMessage(message, user.text) : message);
@@ -5243,12 +5436,13 @@ function installSessionGate(dsh, options) {
     if (agent === undefined || agent === null || disposers.has(agent))
       return;
     try {
-      if (!sessionQualifies(agent, presets))
+      if (sessionRank(agent) !== "captain" || dsh.selectedAgentPreset === undefined && !qualifies(agent))
         return;
       const dispose = dsh.registerAgentPreStep(agent, stepHandler(agent));
       disposers.set(agent, typeof dispose === "function" ? dispose : () => {});
-      const preset = agent?.session?.header?.agentPreset;
-      report('session gate listener registered for agent "' + String(agent.id ?? "?") + '" agentPreset=' + (preset === undefined ? "none" : String(preset)));
+      const selectedPreset = dsh.selectedAgentPreset?.(agent);
+      const preset = selectedPreset === undefined ? agent.session?.header?.agentPreset : selectedPreset;
+      report('session gate listener registered for agent "' + String(agent.id ?? "?") + '" agentPreset=' + (preset === undefined ? "none" : String(preset)) + (sessionQualifies(agent, presets, selectedPreset) ? "" : " (waiting for an eligible selected preset)"));
       gateTrace("registered agent=" + String(agent.id ?? "?"));
     } catch (error) {
       warn('session-start gate not registered for agent "' + String(agent?.id ?? "?") + '" (' + errorText(error) + ")");
@@ -5266,6 +5460,7 @@ function installSessionGate(dsh, options) {
   subscribe("agent/disposed", (payload) => release(payload?.agent ?? payload));
   return {
     installed: true,
+    reserveConsult,
     acted,
     disposers,
     mode: resolveGateMode(configValue(GATE_CONFIG_KEY)),
@@ -5720,10 +5915,10 @@ function createConsultSupervisor(deps) {
       active += 1;
       return Promise.resolve();
     }
-    return new Promise((resolve3) => {
+    return new Promise((resolve4) => {
       queue.push(() => {
         active += 1;
-        resolve3();
+        resolve4();
       });
     });
   };
@@ -5733,15 +5928,15 @@ function createConsultSupervisor(deps) {
       active += 1;
       return Promise.resolve();
     }
-    return new Promise((resolve3) => {
+    return new Promise((resolve4) => {
       queue.unshift(() => {
         active += 1;
-        resolve3();
+        resolve4();
       });
     });
   };
-  const sleep = (ms) => new Promise((resolve3) => {
-    setTimer(resolve3, ms);
+  const sleep = (ms) => new Promise((resolve4) => {
+    setTimer(resolve4, ms);
   });
   const release = () => {
     active = Math.max(0, active - 1);
@@ -5758,8 +5953,8 @@ function createConsultSupervisor(deps) {
     let fail = () => {
       return;
     };
-    const done = new Promise((resolve3, reject) => {
-      settle2 = resolve3;
+    const done = new Promise((resolve4, reject) => {
+      settle2 = resolve4;
       fail = reject;
     });
     done.catch(() => {
@@ -6049,22 +6244,22 @@ function createConsultSupervisor(deps) {
     if (record.reported)
       return record.report ?? { ...viewOf(record), ...record.failure === undefined ? {} : { error: record.failure } };
     const bound = Math.min(CONSULT_WAIT_MAX_MS, Math.max(1, Math.trunc(Number(timeoutMs)) || CONSULT_WAIT_DEFAULT_MS));
-    return await new Promise((resolve3) => {
+    return await new Promise((resolve4) => {
       let timer;
       const timedOut = () => {
         if (timer !== undefined)
           clearTimer(timer);
-        resolve3(viewOf(record));
+        resolve4(viewOf(record));
       };
       timer = setTimer(timedOut, bound);
       record.done.then((report) => {
         if (timer !== undefined)
           clearTimer(timer);
-        resolve3(report);
+        resolve4(report);
       }, () => {
         if (timer !== undefined)
           clearTimer(timer);
-        resolve3({ ...viewOf(record), ...record.failure === undefined ? {} : { error: record.failure } });
+        resolve4({ ...viewOf(record), ...record.failure === undefined ? {} : { error: record.failure } });
       });
     });
   };
@@ -6117,6 +6312,7 @@ function createMpConsults(deps) {
     return view;
   };
   return {
+    scopedFiles: true,
     canonicalRole: (role, exec) => {
       const canonical = deps.canonicalRole(String(role ?? ""), exec);
       return canonical === null ? undefined : canonical;
@@ -6137,6 +6333,8 @@ function createMpConsults(deps) {
         raise: () => deps.raise({ ...spec, role, task }),
         ...spec.onSettled === undefined ? {} : { onSettled: spec.onSettled }
       });
+      if (spec.helperFiles !== undefined)
+        deps.scopedHandle?.(view.consultId, true);
       return { consultId: view.consultId, role, state: "running", startedAt: view.startedAt };
     },
     list: () => deps.supervisor.list(),
@@ -6152,7 +6350,10 @@ function createMpConsults(deps) {
     },
     collect: (consultId) => {
       try {
-        return deps.supervisor.collect(consultId);
+        const result = deps.supervisor.collect(consultId);
+        if (result.state !== "running")
+          deps.scopedHandle?.(consultId, false);
+        return result;
       } catch {
         return;
       }
@@ -6238,7 +6439,7 @@ function roleOfToolInput(surface, key) {
   return surface.roles.find((role) => role.extension !== null && (role.id === raw || normalizeRoleNameKey(role.name) === nameKey)) ?? null;
 }
 function personaPath(config, spec) {
-  return config.personasDir ? join5(resolve3(config.personasDir), spec.id + ".md") : join5(pkgRoot(), "packages", "mpd-roles-plugin", "personas", spec.id + ".md");
+  return config.personasDir ? join5(resolve4(config.personasDir), spec.id + ".md") : join5(pkgRoot(), "packages", "mpd-roles-plugin", "personas", spec.id + ".md");
 }
 function readPersona(config, spec) {
   const p = personaPath(config, spec);
@@ -6293,7 +6494,7 @@ function readExtensionPersona(root, file) {
   if (!root || !file)
     return null;
   try {
-    const path = resolve3(root, file);
+    const path = resolve4(root, file);
     if (existsSync2(path)) {
       const body = readFileSync(path, "utf8").trim();
       if (body)
@@ -6363,7 +6564,7 @@ function extensionRoles(ctx, exec, warn) {
         refuse2('role id "' + id + '" collides with the base roster — this extension role is not exposed');
         return;
       }
-      const personaFile = root === "" ? text2(item?.persona) : resolve3(root, text2(item?.persona));
+      const personaFile = root === "" ? text2(item?.persona) : resolve4(root, text2(item?.persona));
       const persona = readExtensionPersona(root, text2(item?.persona));
       if (persona === null) {
         refuse2("persona file is not readable: " + personaFile);
@@ -6438,7 +6639,7 @@ function apply(ctx, config = {}) {
     }
     return [...outcome.applied];
   };
-  const agentRouteResolution = (member) => {
+  const agentRouteResolution = (member, workspace) => {
     const live = (() => {
       try {
         return ctx.get?.(CONFIG_SERVICE, false);
@@ -6447,7 +6648,7 @@ function apply(ctx, config = {}) {
       }
     })();
     if (typeof live?.agentRouteResolutionOf === "function") {
-      const value = live.agentRouteResolutionOf(member);
+      const value = live.agentRouteResolutionOf(member, workspace);
       if (value !== undefined && value !== null && typeof value === "object" && typeof value.ok === "boolean")
         return value;
     }
@@ -6466,9 +6667,10 @@ function apply(ctx, config = {}) {
     throw agentUnconfiguredRefusal(resolution.agent, detail);
   };
   const roleSurface = (exec) => {
+    const workspace = exec === undefined ? undefined : dsh.workspaceRoot(exec);
     const base = ROLES.map((r) => {
       const chain = r.chain.map((c) => ({ ...c }));
-      const resolution = agentRouteResolution(r.name);
+      const resolution = agentRouteResolution(r.name, workspace);
       if (resolution.ok)
         chain.splice(0, chain.length, { provider: resolution.route.provider, model: resolution.route.model });
       else if (resolution.reason !== "unrouted")
@@ -6552,9 +6754,9 @@ function apply(ctx, config = {}) {
   }
   ctx.provide("mpdRoles", {
     adapterIdentity: dshAdapterIdentity(ctx),
-    list: () => roleSurface(undefined).roles.map((r) => ({ id: r.id, name: r.name, description: r.description, readonly: r.readonly, chain: r.chain.map((c) => ({ ...c })), personaFile: r.personaFile, persona: r.persona, extension: r.extension })),
-    get: (key) => {
-      const spec = roleOf(roleSurface(undefined), key);
+    list: (exec) => roleSurface(exec).roles.map((r) => ({ id: r.id, name: r.name, description: r.description, readonly: r.readonly, chain: r.chain.map((c) => ({ ...c })), personaFile: r.personaFile, persona: r.persona, extension: r.extension })),
+    get: (key, exec) => {
+      const spec = roleOf(roleSurface(exec), key);
       return spec === null ? null : { id: spec.id, name: spec.name, description: spec.description, readonly: spec.readonly, chain: spec.chain.map((c) => ({ ...c })), persona: spec.persona, extension: spec.extension };
     }
   });
@@ -6627,15 +6829,44 @@ function apply(ctx, config = {}) {
     forceAfterMs: () => consultDeadmanBound(),
     toolInFlightMaxMs: () => consultInFlightBound()
   });
-  ctx.provide("mpdConsults", createMpConsults({
+  let reserveTeamConsult;
+  const boundedConsult = new AsyncLocalStorage;
+  async function reservePublicConsult(exec) {
+    if (boundedConsult.getStore() === true)
+      return;
+    return reserveTeamConsult?.(exec);
+  }
+  async function startPublicConsult(input) {
+    const release = await reservePublicConsult(input.exec);
+    try {
+      input.exec?.signal?.throwIfAborted();
+      return consultSupervisor.start({ ...input, ...release === undefined ? {} : { onSettled: release } });
+    } catch (error) {
+      release?.();
+      throw error;
+    }
+  }
+  const scopedConsults = new Set;
+  const consults = createMpConsults({
     supervisor: consultSupervisor,
+    scopedHandle: (id, active) => {
+      if (active)
+        scopedConsults.add(id);
+      else
+        scopedConsults.delete(id);
+    },
     raise: (spec) => raiseConsultAsync(spec, spec.exec, spec.maxDepth),
     canonicalRole: (role, exec) => {
       const surface = roleSurface(exec);
       const spec = roleOfToolInput(surface, String(role ?? ""));
       return spec === null ? null : spec.name;
     }
-  }));
+  });
+  ctx.provide("mpdConsults", {
+    ...consults,
+    reservePublicConsult,
+    runBounded: (dispatch) => boundedConsult.run(true, dispatch)
+  });
   dsh.registerTool({
     name: "mpd_roles_list",
     description: "List the specialist roster — the SAME normal-named specialists team mode stages as teammates, each named for what it does: " + rosterFunctionList() + ". Address a role by that name (any case, space or hyphen spelling). Use this before mpd_role_spawn; for team work stage the roster with `agent_teams_plan` (add_member with the persona text from mpd_role_persona → create_task with its dependency answer → approve) instead of repeated single-call consults.",
@@ -6677,7 +6908,7 @@ last activity: ` + v.lastActivity : "")) },
       if (!task)
         throw new Error("mpd_role_spawn: task required");
       const persona = spec.persona;
-      const resolution = agentRouteResolution(spec.name);
+      const resolution = agentRouteResolution(spec.name, dsh.workspaceRoot(exec));
       if (!resolution.ok && resolution.reason !== "unrouted")
         throwAgentUnconfigured(resolution);
       const primary = resolution.ok ? resolution.route : spec.chain[0] === undefined ? undefined : { provider: spec.chain[0].provider, model: spec.chain[0].model };
@@ -6695,7 +6926,7 @@ Context:
 ` + String(args.context) : "") + `
 
 Work with the tools your role requires (read-only roles must never modify anything). End with ONLY the structured report (role/summary/recommendation/details/evidence).`;
-      const view = consultSupervisor.start({
+      const view = await startPublicConsult({
         role: spec.name,
         task,
         exec,
@@ -6730,7 +6961,7 @@ Work with the tools your role requires (read-only roles must never modify anythi
     const task = String(args?.task ?? "").trim();
     if (!task)
       throw new Error("mpd_role_spawn_async: task required");
-    const resolution = agentRouteResolution(spec.name);
+    const resolution = agentRouteResolution(spec.name, dsh.workspaceRoot(exec));
     if (!resolution.ok && resolution.reason !== "unrouted")
       throwAgentUnconfigured(resolution);
     const primary = resolution.ok ? resolution.route : spec.chain[0] === undefined ? undefined : { provider: spec.chain[0].provider, model: spec.chain[0].model };
@@ -6738,6 +6969,10 @@ Work with the tools your role requires (read-only roles must never modify anythi
       throw new Error("mpd_role_spawn_async: " + spec.name + " has no configured route — an extension role must declare provider+model, and a roster agent needs its agentRoutes entry configured (/mpd-model)");
     }
     const run = await resolveRunRoute(dsh, primary, resolution.ok ? resolution.route.fallbacks ?? [] : []);
+    const helperFiles = args?.helperFiles;
+    if (helperFiles !== undefined && spec.readonly && helperFiles.write.length > 0)
+      throw new Error("a read-only helper role cannot accept writable paths");
+    const scopeHint = helperFiles === undefined ? "Work with the tools your role requires (read-only roles must never modify anything)." : `Use only these delegated paths. Read ${[...helperFiles.read, ...helperFiles.write].join(", ") || "none"}. Write ${helperFiles.write.join(", ") || "none"}.`;
     const prompt = spec.persona + `
 
 Task: ` + task + (args?.context ? `
@@ -6745,7 +6980,7 @@ Task: ` + task + (args?.context ? `
 Context:
 ` + String(args.context) : "") + `
 
-Work with the tools your role requires (read-only roles must never modify anything). End with ONLY the structured report (role/summary/recommendation/details/evidence).`;
+` + scopeHint + " End with ONLY the structured report (role/summary/recommendation/details/evidence).";
     const depthCap = typeof maxDepth === "number" && Number.isFinite(maxDepth) && maxDepth >= 1 ? Math.floor(maxDepth) : spawnMaxDepthOf(exec.agent);
     return dsh.spawnAgentAsync({
       label: spec.name,
@@ -6758,19 +6993,19 @@ Work with the tools your role requires (read-only roles must never modify anythi
       outputSchema: REPORT_SCHEMA,
       maxDepth: depthCap,
       ...run.route.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: run.route.reasoningEffort } },
-      ...spec.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {}
+      ...helperFiles === undefined ? spec.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {} : { helperFiles }
     });
   }
   dsh.registerTool({
     name: "mpd_role_spawn_async",
-    description: "Start ONE bounded delegation WITHOUT waiting for its report — the BACKGROUND form of mpd_role_spawn. It returns a stable consultId immediately (peak in-flight consults overlap, so several questions run at once), rides the SAME adapter activation seam and read-only discipline as the blocking tool, and carries the SAME SILENCE deadman: the bound resolves per arm from `consult.forceAfterMs` → `watchdog.forceAfterMs` → 900000 ms (a declared `0` disables it), and a child with no observable activity for that long is interrupted with a handoff document written under .mpd/handoff/. Any in-flight tool younger than `watchdog.toolInFlightMaxMs` counts as activity, and an OPEN `bash` call is exempt at any age. Read the result with mpd_role_consult (wait / collect); a consult is still a ONE-SHOT and a LEAF. Concurrency is capped by MPD_DSH_CONSULT_MAX (default 8): over the cap a consult QUEUES, it never throws.",
+    description: "Start ONE bounded delegation WITHOUT waiting for its report — the BACKGROUND form of mpd_role_spawn. It returns a stable consultId immediately (peak in-flight consults overlap, so several questions run at once), rides the SAME adapter activation seam and read-only discipline as the blocking tool, and carries the SAME SILENCE deadman: the bound resolves per arm from `consult.forceAfterMs` → `watchdog.forceAfterMs` → 900000 ms (a declared `0` disables it), and a child with no observable activity for that long is interrupted with a handoff document written under .mpd/handoff/. Any in-flight tool younger than `watchdog.toolInFlightMaxMs` counts as activity, and an OPEN `bash` call is exempt at any age. Read the result with mpd_role_consult (wait / collect); a consult is still a ONE-SHOT and a LEAF. Admitted consults queue at MPD_DSH_CONSULT_MAX (default 8). An overlapping top-level batch in mechanical Team mode can be deferred before dispatch with plan or retry guidance.",
     parameters: { type: "object", properties: { role: { type: "string", description: 'role name (see mpd_roles_list), e.g. "Architect" or "Deep Worker"' }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" } }, required: ["role", "task"], additionalProperties: false },
     output: { schema: { type: "object", properties: { consultId: { type: "string" }, role: { type: "string" }, state: { type: "string", enum: ["running"] }, startedAt: { type: "integer" } }, required: ["consultId", "role", "state"] }, render: (_a, v) => textBlock("consult " + v.consultId + " (" + v.role + ") " + v.state + ' — read it with mpd_role_consult {action:"wait"|"collect", consultId:"' + v.consultId + '"}') },
     execute: async (args, exec) => {
       const tooDeep = consultDepthRefusal(exec?.agent);
       if (tooDeep !== undefined)
         throw new Error(tooDeep);
-      const view = consultSupervisor.start({ role: String(args?.role ?? ""), task: String(args?.task ?? ""), ...args?.context === undefined ? {} : { context: String(args.context) }, exec, raise: () => raiseConsultAsync(args, exec) });
+      const view = await startPublicConsult({ role: String(args?.role ?? ""), task: String(args?.task ?? ""), ...args?.context === undefined ? {} : { context: String(args.context) }, exec, raise: () => raiseConsultAsync(args, exec) });
       return { consultId: view.consultId, role: view.role, state: "running", startedAt: view.startedAt };
     }
   });
@@ -6788,10 +7023,12 @@ state: ` + v.state + " elapsed: " + v.elapsedMs + "ms" : "")) },
     execute: async (args, _exec) => {
       const action = String(args?.action ?? "").trim();
       if (action === "list")
-        return { action, consults: consultSupervisor.list() };
+        return { action, consults: consultSupervisor.list().filter((entry) => !scopedConsults.has(entry.consultId)) };
       const consultId = String(args?.consultId ?? "").trim();
       if (consultId === "")
         throw new Error('mpd_role_consult: consultId required for action "' + action + '"');
+      if (scopedConsults.has(consultId))
+        throw new Error("project helpers are collected by the owning assignment via cellwork_consult");
       if (action === "wait") {
         const timeoutMs = Number(args?.timeoutMs ?? 30000);
         return { action, ...await consultSupervisor.wait(consultId, timeoutMs) };
@@ -6818,7 +7055,7 @@ state: ` + v.state + " elapsed: " + v.elapsedMs + "ms" : "")) },
     }
   });
   const teamMembers = () => ROLES.map((role) => ({ name: role.name, description: role.description, readonly: role.readonly }));
-  const configValue = (key) => {
+  const configValue = (key, workspace) => {
     const live = (() => {
       try {
         return ctx.get?.(CONFIG_SERVICE, false);
@@ -6828,7 +7065,7 @@ state: ` + v.state + " elapsed: " + v.elapsedMs + "ms" : "")) },
     })();
     const value = (() => {
       try {
-        return live?.get?.(key);
+        return live?.get?.(key, workspace);
       } catch {
         return;
       }
@@ -6987,8 +7224,10 @@ state: ` + v.state + " elapsed: " + v.elapsedMs + "ms" : "")) },
       warn: (line) => warn(line),
       log: (line) => rowLogLine("mpd-roles", "[mpd-roles] " + line),
       configValue,
+      consultMax: consultSupervisor.effectiveBudgetOf,
       stagedPlan: stagedPlanProbe(ctx)
     });
+    reserveTeamConsult = gate.reserveConsult;
     guardOutcome.push("sessionGate=" + gate.mode + " sensitivity=" + gate.sensitivity);
   } catch (error) {
     guardOutcome.push("sessionGate=absent");

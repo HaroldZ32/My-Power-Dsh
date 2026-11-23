@@ -1,0 +1,30 @@
+# verify-comment-coverage
+
+scanned 9 TypeScript file(s) of 9 in the source set; inspected 247 declaration(s); skipped 95 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+# verify-comment-coverage
+
+scanned 4 TypeScript file(s) of 4 in the source set; inspected 74 declaration(s); skipped 21 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+# verify-comment-coverage
+
+scanned 2 TypeScript file(s) of 2 in the source set; inspected 102 declaration(s); skipped 74 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+# verify-comment-coverage
+
+scanned 14 TypeScript file(s) of 14 in the source set; inspected 1370 declaration(s); skipped 764 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+# verify-comment-coverage
+
+scanned 1 TypeScript file(s) of 1 in the source set; inspected 104 declaration(s); skipped 4 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+# verify-comment-coverage
+
+scanned 1 TypeScript file(s) of 1 in the source set; inspected 127 declaration(s); skipped 33 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.

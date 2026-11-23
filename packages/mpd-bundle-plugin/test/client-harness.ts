@@ -4,6 +4,7 @@
 // exercised without a browser. Not a shipped artifact — QA reads it.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import ts from "typescript5";
 
 /** One rendered element's prop bag: children, handlers, styles, data attributes and callbacks. */
 export interface ElementProps {
@@ -220,8 +221,6 @@ export interface CardFace {
 export interface CardState {
   /** Whether the scope accepts writes. */
   writable: boolean
-  /** The mode the scope reports, e.g. host or memory. */
-  mode: string
   /** Whether the current draft fails its field's validation. */
   invalid?: boolean
   /** The catalog projection the picker rows render from. */
@@ -1219,10 +1218,20 @@ export function createHarness(options: HarnessOptions = {}): Harness {
   };
 }
 
+/** Source factories an arm can verify before the central rebuild refreshes the artifacts. */
+const WEB_SOURCE_FACTORIES = { "@mpd-dsh/mpd": "web-client", "@mpd-dsh/team-page": "team-page", "@mpd-dsh/team-view": "team-view" } as const;
+
 /** Load the bundle client and return its `@mpd-dsh/mpd` factory exports. */
-export function loadMpdClient(options: HarnessOptions = {}): LoadedMpdClient {
+export function loadMpdClient(options: HarnessOptions = {}, sourceModules: readonly (keyof typeof WEB_SOURCE_FACTORIES)[] = []): LoadedMpdClient {
   /** The factories the artifact registered. */
   const { factories } = loadBundleClient();
+  for (const id of sourceModules) {
+    /** Erase the types from the editable factory without rebuilding the committed client. */
+    const source = readFileSync(join(import.meta.dir, "..", "src", WEB_SOURCE_FACTORIES[id] + ".ts"), "utf8");
+    /** The build's factory body is a single expression. */
+    const stripped = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText;
+    factories.set(id, new Function("return (" + stripped.trim().replace(/;$/, "") + ")")());
+  }
   if (!factories.has("@mpd-dsh/team-page")) {
     throw new Error("harness: bundle client did not register @mpd-dsh/team-page (rebuild with node scripts/build-mpd-client.ts)");
   }

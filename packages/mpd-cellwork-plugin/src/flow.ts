@@ -13,8 +13,9 @@
 // two new tools and `cellwork_recon` go through `mpdConsults`, which is the roles row's ONE supervisor.
 import { appendJournal, listCellIds, readCell, writeCell, requirementsPath, resolveCellTeam, type CellReadFailure, type CellState, type CellMemberRecord, type CellTeamResolution } from "./state"
 import { callerContext, type TeamActionsServiceView, sessionIdOf, type CallerContext, type TeamsServiceView } from "./caller"
+import { helperAssignment } from "./project-helper"
 import { liveNumericKnob, type CellworkConfig } from "./config"
-import { readRequirements, storedRequirementsText, validateRequirementsText, writeRequirements } from "./requirements"
+import { acceptedRequirementsMatch, readRequirements, requirementsHash, storedRequirementsText, validateRequirementsText, writeRequirements } from "./requirements"
 import { latestSplit, readSplit, submitSplit, type SplitSubmission, type SplitTaskInput, type SplitVerdict } from "./split"
 import { resolveTaskWindow, type RouteResolutionView, type WindowReading } from "./budget"
 import { runRecon } from "./recon"
@@ -29,6 +30,7 @@ import {
   startDelegation,
   type ConsultServiceView,
 } from "./consults"
+import { fixedRosterOf, type FixedSeat } from "./fixed-roster"
 import { materializeSplit, type ActivatePartial, type ActivateProgress, type ActivateResult } from "./activate"
 import { PLANNER_MEMBER, SPLITTER_MEMBER, findSplitTicket } from "./staging"
 import type { DshAdapter, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
@@ -193,6 +195,17 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
   const config = deps.config
   /** Every registration's disposer. */
   const disposers: Array<() => void> = []
+  /** Workspaces with an active pass, covering the board append and final cell checkpoint. */
+  const activating = new Set<string>()
+  /** Refuse overlapping passes through this row so a second call cannot race recovery. */
+  const serializeActivation = (execute: (args: unknown, exec: DshToolExec) => Promise<FlowResult>): typeof execute => async (args: unknown, exec: DshToolExec): Promise<FlowResult> => {
+    /** One workspace runs one active cell. */
+    const workspace = dsh.workspaceRoot(exec)
+    if (activating.has(workspace)) return { ok: false, error: "cellwork_activate: an activation is already running in this workspace; retry after it settles" }
+    activating.add(workspace)
+    try { return await execute(args, exec) } finally { activating.delete(workspace) }
+  }
+
   /** The team service, probed per call (the team row may activate after this one). */
   const teams = (): TeamsServiceView | undefined => {
     /** The service object, or undefined. */
@@ -220,6 +233,12 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
    */
   const boardOf = (workspace: string, cell: CellState): CellTeamResolution =>
     resolveCellTeam({ workspace, cell, teams: teams(), recordFor: (teamId: string) => recordOf(teams(), workspace, teamId) })
+  /** Resolve the same owned attempt for both starting and collecting a scoped one-shot. */
+  const assignmentOf = (agent: unknown, caller: CallerContext): ReturnType<typeof helperAssignment> => helperAssignment({ dsh, ctx: deps.ctx, inspect: (actual) => {
+    /** Reauthenticate a queued helper against its originating live assignment instead of a cached mirror. */
+    const fresh = callerContext(dsh, { agent: actual }, { teams, adopt: false })
+    return { caller: fresh, board: fresh.cell === null ? undefined : boardOf(fresh.workspace, fresh.cell).record }
+  } }, agent, caller)
   /** The roster service, probed per call. */
   const roster = (): RosterServiceView | undefined => {
     /** The service object, or undefined. */
@@ -377,7 +396,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
     note: string,
   ): Promise<string | undefined> => {
     /** The live record. */
-    const record = recordOf(teams(), dsh.workspaceRoot(exec), teamId)
+    const record = recordOf(teams(), callerFor(exec).workspace, teamId)
     /** The first non-terminal task matching the predicate. */
     const row = boardTasksOf(record).find((candidate) => predicate(candidate) && candidate.status !== "completed" && candidate.status !== "failed" && candidate.status !== "cancelled")
     if (row === undefined) return undefined
@@ -398,6 +417,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
       properties: {
         action: { type: "string", enum: ["finalize", "update"], description: "finalize the agreed document, or update it (bumps the revision, marks the split stale)." },
         content: { type: "string", description: "The full markdown document. Omit to validate the file already at <cell>/requirements.md." },
+        expected_revision: { type: "integer", description: "update: the currently accepted requirements revision. Repeating it with the same content replays the previous acceptance." },
       },
       required: ["action"],
       additionalProperties: false,
@@ -413,6 +433,8 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
           revision: { type: "number" },
           splitStale: { type: "boolean" },
           alreadyFinalized: { type: "boolean" },
+          replayed: { type: "boolean" },
+          message: { type: "string" },
           missing: { type: "array", items: { type: "string" } },
           sections: { type: "array", items: { type: "object" } },
           requirementsPath: { type: "string" },
@@ -430,7 +452,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         /** The result as a record. */
         const result = typeof value === "object" && value !== null ? value as Record<string, unknown> : {}
         if (result.ok === false) return text("cellwork_requirements refused: " + String(result.error ?? "unknown refusal") + (Array.isArray(result.missing) && result.missing.length > 0 ? "\nmissing sections: " + result.missing.join(", ") : ""))
-        return text("requirements " + String(result.action ?? "") + ": revision " + String(result.revision ?? "?") + (result.alreadyFinalized === true ? " (already finalized)" : "") + (result.splitStale === true ? " — the accepted split is STALE and must be re-submitted" : "") + (typeof result.closedTaskId === "string" ? " · requirements task " + result.closedTaskId + " completed" : "") + (typeof result.boardNote === "string" ? "\nBOARD: " + result.boardNote : ""))
+        return text("requirements " + String(result.action ?? "") + ": revision " + String(result.revision ?? "?") + (result.alreadyFinalized === true ? " (already finalized)" : result.replayed === true ? " (already accepted)" : "") + (result.splitStale === true ? " — the accepted split is STALE and must be re-submitted" : "") + (typeof result.closedTaskId === "string" ? " · requirements task " + result.closedTaskId + " completed" : "") + (typeof result.boardNote === "string" ? "\nBOARD: " + result.boardNote : "") + (result.redispatchable === true && typeof result.recordedSplitTaskId === "string" ? "\nSplit ticket " + result.recordedSplitTaskId + " · " + String(result.splitTaskStatus) + "; use `cellwork_dispatch` for the original splitter." : ""))
       },
     },
     execute: async (args: unknown, exec: DshToolExec): Promise<FlowResult> => {
@@ -494,16 +516,73 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         /** The requirements task this finalize closes, when the board still holds it open. */
         const closed = await completeCellTask(exec, board.teamId, (row) => String(row.kind ?? "") === "requirement" && String(row.owner ?? "") === PLANNER_MEMBER, "requirements revision 1 finalized")
         /** The record after the transition. */
-        const next: CellState = { ...state, requirementsRevision: 1, phase: state.phase === "requirements" ? "split" : state.phase }
+        const next: CellState = { ...state, requirementsRevision: 1, requirementsBaseHash: requirementsHash(storedRequirementsText(text_)), phase: state.phase === "requirements" ? "split" : state.phase }
         transition(caller.workspace, next, { event: "requirements-finalize", revision: 1, sections: validation.sections.map((section) => section.key), closedTaskId: closed ?? null, boardTeamId: board.teamId, recordedTeamId: board.recordedTeamId, ...(board.note === undefined ? {} : { boardNote: board.note }) }, now)
         return { ok: true, action, revision: 1, splitStale: next.splitStale, alreadyFinalized: false, sections: validation.sections, requirementsPath: path, ...(closed === undefined ? {} : { closedTaskId: closed }), ...(board.note === undefined ? {} : { boardNote: board.note }) }
       }
-      // UPDATE: a new revision, any accepted split is now stale, and the SAME split task is re-dispatched.
-      writeRequirements(caller.workspace, state.cellId, text_)
-      /** The new revision: one past the accepted one, or the first revision. */
-      const revision = Math.max(1, state.requirementsRevision) + 1
-      /** The board the cell is actually working on (§7.1a): the re-split ticket lives HERE, not on the stale id. */
+      /** The board the cell is actually working on (§7.1a). */
       const board = boardOf(caller.workspace, state)
+      /** The native Team plane owns the scoped write under the project lock. */
+      const commit = teamActions()?.commitResplit
+      if (commit !== undefined && state.teamId !== "") {
+        /** Digest the stored bytes consistently across tool retries. */
+        const hash = requirementsHash(storedRequirementsText(text_))
+        /** Older callers may omit the explicit compare-and-set. */
+        const expected = argv.expected_revision ?? state.requirementsRevision
+        if (typeof expected !== "number" || !Number.isSafeInteger(expected) || expected < 1) return { ok: false, error: "cellwork_requirements: update requires a finalized revision and a positive expected_revision" }
+        /** An exact retry preserves the previous revision and ticket even after it closes. An explicit current revision can start a new update. */
+        const replayed = hash === state.requirementsUpdateHash && (expected === state.requirementsRevision - 1 || argv.expected_revision === undefined)
+        if (!replayed && expected !== state.requirementsRevision) return { ok: false, error: "cellwork_requirements: expected revision " + String(expected) + ", found " + String(state.requirementsRevision) + " — re-read the accepted requirements and retry" }
+        if (replayed && !acceptedRequirementsMatch(caller.workspace, state)) return { ok: false, error: "cellwork_requirements: editable requirements have changed since the last acceptance; update against the current revision" }
+        if (board.teamId !== state.teamId) return { ok: false, error: "cellwork_requirements: the exact recorded board could not be verified; requirements were kept" }
+        /** The actual board row dispatch will see after publication. */
+        let ticket = boardTasksOf(recordOf(teams(), caller.workspace, board.teamId)).find((task) => task.id === state.splitTaskId)
+        /** A replay continues to refer to the same committed revision. */
+        const revision = replayed ? state.requirementsRevision : expected + 1
+        /** A replacement has a new id; a reused row keeps its owner and contract. */
+        let replacementSplitTaskId = ""
+        /** Preserve the validated text inside the synchronous Team callback. */
+        const document = text_
+        if (!replayed) {
+          /** Publish only after Team authorized and reserved the exact ticket. */
+          const result = commit(exec.agent, { cellId: state.cellId, teamId: board.teamId, previousRevision: expected, revision }, (chosen) => {
+            /** Preserve unrelated cell changes that landed before the lock was acquired. */
+            const fresh = readCell(caller.workspace, state.cellId)
+            if (!fresh.ok || fresh.state.phase === "stopped" || fresh.state.requirementsRevision !== expected) throw new Error("the Cellwork revision changed before publication")
+            /** Retain the original document if its Cellwork state fails to publish. */
+            const previous = readRequirements(caller.workspace, state.cellId)
+            if (fresh.state.requirementsUpdateHash === undefined && fresh.state.requirementsBaseHash === undefined) {
+              // Pin the pre-upgrade accepted bytes before exposing a new editable document.
+              writeCell(caller.workspace, { ...fresh.state, requirementsBaseHash: requirementsHash(previous ?? "") })
+            }
+            writeRequirements(caller.workspace, state.cellId, document)
+            try {
+              /** An accepted older split is stale until the original splitter submits the new revision. */
+              const splitStale = fresh.state.splitRevision !== null || fresh.state.splitStale
+              transition(caller.workspace, { ...fresh.state, requirementsRevision: revision, requirementsUpdateHash: hash,
+                splitTaskId: chosen.id, splitStale },
+              { event: "requirements-update", revision, previousRevision: expected, splitStale,
+                splitTaskId: chosen.id, splitTaskStatus: chosen.status, redispatchable: true, recordedSplitTaskId: chosen.id,
+                boardTeamId: board.teamId, recordedTeamId: state.teamId, ...(chosen.replacement ? { replacementSplitTaskId: chosen.id } : {}) }, now)
+            } catch (error) {
+              if (previous !== null) writeRequirements(caller.workspace, state.cellId, previous)
+              throw error
+            }
+            ticket = chosen
+            if (chosen.replacement) replacementSplitTaskId = chosen.id
+          })
+          if (!result.ok) return { ok: false, error: "cellwork_requirements: " + result.error + " — re-read the current revision and retry the update" }
+        }
+        /** Replay reports the existing row even after it closes. */
+        const status = String(ticket?.status ?? "")
+        return { ok: true, action, revision, replayed, splitStale: replayed ? state.splitStale : state.splitRevision !== null || state.splitStale,
+          sections: validation.sections, requirementsPath: path, splitTaskId: ticket?.id ?? "", splitTaskStatus: status,
+          redispatchable: status === "pending" || status === "claimed" || status === "in_progress", replacementSplitTaskId,
+          recordedSplitTaskId: ticket?.id ?? state.splitTaskId }
+      }
+      // Keep using the established tool forwarding path in older compositions.
+      /** The next revision in the legacy update path. */
+      const revision = Math.max(1, state.requirementsRevision) + 1
       /** The live board, read to find the splitter's task. */
       const record = recordOf(teams(), caller.workspace, board.teamId)
       // THE LOOKUP READS THE RECORDED BOARD ID FIRST (contract C11, defect D3): a staged ticket whose
@@ -526,7 +605,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
       // splitter needs one open row to claim, exactly as it had on the first pass.
       /** The replacement row this update appended, when the original row was terminal. */
       let replacementSplitTaskId = ""
-      if (!redispatchable && board.teamId !== "") {
+      if (!redispatchable && board.teamId !== "" && splitTaskId !== "") {
         /** The append onto the LIVE team (spawns nobody; the splitter already exists). */
         const appended = await dsh.executeTool({
           name: "agent_teams_plan",
@@ -549,14 +628,16 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
           const task = typeof row.task === "object" && row.task !== null ? row.task as Record<string, unknown> : undefined
           replacementSplitTaskId = typeof task?.id === "string" ? task.id : ""
         }
+        if (replacementSplitTaskId === "") return { ok: false, error: "cellwork_requirements: the Team plane did not reserve a split ticket for revision " + String(revision) + " — requirements were kept (" + String(appended.error ?? "the append returned no task id") + ")" }
       }
+      writeRequirements(caller.workspace, state.cellId, text_)
       // THE RECORD MUST NAME THE ROW THE NEXT UPDATE REUSES (CR #3): a replacement id is written back, so
       // a second bump finds the LIVE replacement instead of the closed original and appends nothing. An
       // update that found no row at all keeps whatever id the record already carried.
       /** The split ticket id the cell record carries after this update. */
       const recordedSplitTaskId = replacementSplitTaskId !== "" ? replacementSplitTaskId : (splitTaskId !== "" ? splitTaskId : (state.splitTaskId ?? ""))
       /** The record after the transition. */
-      const next: CellState = { ...state, requirementsRevision: revision, splitTaskId: recordedSplitTaskId, splitStale: state.splitRevision !== null ? true : state.splitStale }
+      const next: CellState = { ...state, requirementsRevision: revision, requirementsUpdateHash: requirementsHash(storedRequirementsText(text_)), splitTaskId: recordedSplitTaskId, splitStale: state.splitRevision !== null ? true : state.splitStale }
       transition(caller.workspace, next, { event: "requirements-update", revision, previousRevision: state.requirementsRevision, splitStale: next.splitStale, splitTaskId, splitTaskStatus, redispatchable, recordedSplitTaskId, boardTeamId: board.teamId, recordedTeamId: board.recordedTeamId, ...(board.note === undefined ? {} : { boardNote: board.note }), ...(replacementSplitTaskId === "" ? {} : { replacementSplitTaskId }) }, now)
       if (replacementSplitTaskId !== "") {
         appendJournal(caller.workspace, caller.cell.cellId, { event: "split-task-replaced", previousTaskId: splitTaskId, replacementTaskId: replacementSplitTaskId, revision }, now)
@@ -690,7 +771,8 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
             properties: {
               role: { type: "string", description: "A roster role NAME (any case, space, hyphen or underscore spelling; see `mpd_roles_list`)." },
               task: { type: "string", description: "The assignment / question this consult answers." },
-              context: { type: "string", description: "Optional extra prompt block (why the consult exists)." },
+              context: { type: "string", description: "Supporting text for the subproblem." },
+              scope: { type: "object", description: "Project helper: explicit read/write path lists. Omit for a text-only helper." },
             },
             required: ["role", "task"],
             additionalProperties: false,
@@ -748,8 +830,14 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
       /** The running cell; the refusals above already proved one exists. */
       const cell = caller.cell
       if (cell === null) return { ok: false, error: "cellwork_delegate: no active cell in this workspace" }
+      /** Only a current, exact project attempt can authorize a scoped helper. */
+      let assignment: ReturnType<typeof helperAssignment>
+      try { assignment = assignmentOf(exec.agent, caller) } catch (error) {
+        return { ok: false, error: `cellwork_delegate: ${error instanceof Error ? error.message : String(error)}` }
+      }
       /** The delegation outcome. */
       const result = await startDelegation({
+        ...(assignment === undefined ? {} : { owner: assignment.owner, helperFiles: assignment.helperFiles }),
         service: consults,
         rosterNames,
         cellId: cell.cellId,
@@ -759,7 +847,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         book: consultBook,
         // THE PLANE ADDRESS (consult DAG, contract §3): a cell that never approved a team records
         // nothing, and the writer journals that instead of failing the call.
-        teamId: cell.teamId,
+        teamId: assignment?.teamId ?? cell.teamId,
         teamActions,
         // READ PER CALL (§6.2): the per-call bound and the budget this delegation asks the ONE supervisor.
         maxTasks: knobOf("delegateMaxTasks"),
@@ -865,8 +953,14 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
       /** The running cell; the refusals above already proved one exists. */
       const cell = caller.cell
       if (cell === null) return { ok: false, error: "cellwork_consult: no active cell in this workspace" }
+      /** The current authenticated assignment is required to collect its scoped helper. */
+      let assignment: ReturnType<typeof helperAssignment>
+      try { assignment = assignmentOf(exec.agent, caller) } catch (error) {
+        return { ok: false, error: `cellwork_consult: ${error instanceof Error ? error.message : String(error)}` }
+      }
       /** The action outcome. */
       const result = await runConsultAction({
+        ...(assignment === undefined ? {} : { owner: assignment.owner }),
         service: consults,
         rosterNames,
         cellId: cell.cellId,
@@ -874,7 +968,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         exec,
         now: new Date(),
         book: consultBook,
-        teamId: cell.teamId,
+        teamId: assignment?.teamId ?? cell.teamId,
         teamActions,
       }, { action: argString(argv, "action"), consultId: argString(argv, "consultId"), timeoutMs: argv.timeoutMs })
       return result
@@ -991,6 +1085,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         return { ok: false, error: "cellwork_split submit is SPLITTER-ONLY: this session is " + JSON.stringify(caller.member === "" ? "not a cell member" : caller.member) + ". The split is requirement reasoning (clause 1) and belongs to cell-splitter, not the captain." }
       }
       if (state.requirementsRevision === 0) return { ok: false, error: "cellwork_split: the requirements document has not been FINALIZED yet (revision 0) — wait for the planner to close the interview and the captain to dispatch you" }
+      if (!acceptedRequirementsMatch(caller.workspace, state)) return { ok: false, error: "cellwork_split: editable requirements differ from the accepted revision — retry the planner update before splitting" }
       /** The revision this submission targets. */
       const asked = typeof argv.revision === "number" ? argv.revision : state.requirementsRevision
       if (asked !== state.requirementsRevision) {
@@ -1026,16 +1121,20 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         }),
       }
       /** The measured verdict (already persisted to split/<revision>.json). */
-      const verdict: SplitVerdict = await submitSplit({ workspace: caller.workspace, cellId: state.cellId, config, roster, window: windowFor, now: new Date() }, submission)
+      const verdict: SplitVerdict = await submitSplit({ workspace: caller.workspace, checkout: dsh.workspaceRoot(exec), cellId: state.cellId, config, roster, window: windowFor, now: new Date() }, submission)
       /** The verdict path for the render/report, read from the verdict (a refusal may sit beside the canonical file). */
       const splitPath = splitPathFor(caller.workspace, verdict)
       if (verdict.accepted) {
+        /** Measurement can await a model window while the original planner accepts a newer revision. */
+        const fresh = readCell(caller.workspace, state.cellId)
+        if (!fresh.ok || fresh.state.phase === "stopped" || fresh.state.requirementsRevision !== asked
+          || !acceptedRequirementsMatch(caller.workspace, fresh.state)) return { ok: false, error: "cellwork_split: the requirements changed during measurement — re-read `cellwork_status` and submit against the current revision" }
         // THE SPLIT TASK STAYS OPEN (Amendment 5, arm a): it is the vehicle a requirements `update`
         // re-dispatches with the new revision, and it is closed by `cellwork_activate` once the work is
         // materialised. Closing it here would leave a re-split with no same-task row to reopen.
         /** The revision this one supersedes, when an accepted split already existed and differs. */
-        const supersededRevision = state.splitRevision !== null && state.splitRevision !== verdict.revision ? state.splitRevision : null
-        transition(caller.workspace, { ...state, splitRevision: verdict.revision, splitStale: false }, { event: "split-accepted", revision: verdict.revision, totals: verdict.totals, ...(supersededRevision === null ? {} : { supersededRevision }) }, new Date())
+        const supersededRevision = fresh.state.splitRevision !== null && fresh.state.splitRevision !== verdict.revision ? fresh.state.splitRevision : null
+        transition(caller.workspace, { ...fresh.state, splitRevision: verdict.revision, splitStale: false }, { event: "split-accepted", revision: verdict.revision, totals: verdict.totals, ...(supersededRevision === null ? {} : { supersededRevision }) }, new Date())
         if (supersededRevision !== null) {
           // The PREVIOUS accepted revision is superseded, recorded where a reader of the history finds it.
           appendJournal(caller.workspace, state.cellId, { event: "split-superseded", revision: supersededRevision, by: verdict.revision, activated: state.activatedRevision }, new Date())
@@ -1103,7 +1202,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         return text("cell activated on split revision " + String(result.revision ?? "?") + (result.mode === "resplit" ? " (re-split: " + String(Array.isArray(result.kept) ? result.kept.length : 0) + " kept, " + String(Array.isArray(result.cancelled) ? result.cancelled.length : 0) + " cancelled)" : "") + ": " + String(Array.isArray(result.tasks) ? result.tasks.length : 0) + " task(s), " + String(Array.isArray(result.loops) ? result.loops.length : 0) + " verify loop(s), " + pairs.length + " dispatched" + (skipped.length === 0 ? "" : ", " + skipped.length + " reported: " + skipped.map((row) => String(row.subject ?? row.taskId) + ": " + String(row.reason)).join("; ")) + (typeof result.notice === "string" ? "\nNOTICE: " + result.notice : "") + (typeof result.boardNote === "string" ? "\nBOARD: " + result.boardNote : ""))
       },
     },
-    execute: async (args: unknown, exec: DshToolExec): Promise<FlowResult> => {
+    execute: serializeActivation(async (args: unknown, exec: DshToolExec): Promise<FlowResult> => {
       /** The argument record. */
       const argv = readArgs(args)
       /** The caller's context. */
@@ -1119,6 +1218,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
       }
       if (caller.sessionId === "" || caller.sessionId !== state.captainSessionId) return { ok: false, error: "cellwork_activate is CAPTAIN-ONLY: the captain of " + state.cellId + " is session " + state.captainSessionId + ", which is not this caller" }
       if (state.phase === "stopped") return { ok: false, error: "cellwork_activate: cell " + state.cellId + " is stopped and archived" }
+      if (!acceptedRequirementsMatch(caller.workspace, state)) return { ok: false, error: "cellwork_activate: editable requirements differ from the accepted revision — retry the planner update before activating" }
       if (state.teamId === "") return { ok: false, error: "cellwork_activate: no planning team is recorded on " + state.cellId + " — run `cellwork_start` first" }
       /** The accepted split revision, or the refusal when nothing was accepted. */
       const acceptedRevision = state.splitRevision
@@ -1185,13 +1285,23 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
             teamId: partial.mintedTeamId,
             planningTeamId: state.planningTeamId === "" ? state.teamId : state.planningTeamId,
           }
+        /** The old task and loop mappings must stop authorising work once its board row is retired. */
+        const taskTable = { ...state.activatedTasks }
+        /** Loops already opened for this pass are added below after the old mappings are invalidated. */
+        const loopTable = { ...(state.activatedLoops ?? {}) }
+        for (const [key, id] of Object.entries(partial.retired ?? {})) {
+          if (taskTable[key] !== id) continue
+          delete taskTable[key]
+          delete loopTable[key]
+        }
         /** The record after the partial checkpoint. */
         const next: CellState = {
           ...state,
           activationInFlight: acceptedRevision,
           members: { ...state.members, ...partial.members },
-          activatedTasks: { ...state.activatedTasks, ...partial.boardIds },
-          activatedLoops: { ...(state.activatedLoops ?? {}), ...partial.loopIds },
+          activatedTasks: { ...taskTable, ...partial.boardIds },
+          activatedLoops: { ...loopTable, ...partial.loopIds },
+          cancelledTasks: { ...state.cancelledTasks, ...partial.retired },
           ...mintRecord,
         }
         transition(caller.workspace, next, {
@@ -1207,14 +1317,38 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
           ...(error === undefined ? {} : { error }),
         }, activatedAt)
       }
+      /** Use canonical sealing only in the real project plane; legacy mounts keep their relative loop contract. */
+      const verifier = readArgs(deps.ctx.get?.("mpdVerify", false))
+      /** The existing authenticated caller validates the canonical state root for this invocation. */
+      const project = readArgs(deps.ctx.get?.("mpdProjectIdentity", false))
+      /** The identity result narrows the public native verification permission for this exact session. */
+      const binding = typeof project.resolveSeat === "function" ? readArgs(project.resolveSeat({ checkoutRoot: dsh.workspaceRoot(exec), sessionId: caller.sessionId })) : {}
+      /** Capture receiver-bound established service functions, not model-authored arguments. */
+      const seal = verifier.sealCellworkContract
+      /** This plane can recognize a publication interrupted after writing the final producer file. */
+      const pending = verifier.cellworkContractPending
+      /** Check the authority before writing execution seats or their contracts. */
+      let fixedRoster: readonly FixedSeat[] | undefined
+      try { fixedRoster = fixedRosterOf(deps.ctx, dsh.workspaceRoot(exec), caller.sessionId) } catch (error) {
+        return { ok: false, error: error instanceof Error ? error.message : String(error) }
+      }
       /** The materialisation. */
       const activated: ActivateResult = await materializeSplit({
+        ...(binding.kind !== "member" || binding.projectRoot !== caller.workspace || typeof seal !== "function" ? {} : {
+          sealContract: (loopId: string): { sha256: string } | { refused: string } => {
+            /** Accept only a real nonempty persistent contract digest from the named tool plane. */
+            const result = readArgs(seal.call(verifier, exec, loopId))
+            return typeof result.sha256 === "string" && /^[a-f0-9]{64}$/.test(result.sha256) ? { sha256: result.sha256 } : { refused: typeof result.refused === "string" ? result.refused : "the verify plane returned no sealed contract digest" }
+          },
+          ...(typeof pending !== "function" ? {} : { contractPending: (path: string): boolean => pending.call(verifier, exec, path) === true }),
+        }),
         dsh: dsh as unknown as Parameters<typeof materializeSplit>[0]["dsh"],
         workspace: caller.workspace,
         cell: state,
         config,
         captainAgent: exec.agent,
         split: stored.verdict,
+        ...(fixedRoster === undefined ? {} : { fixedRoster }),
         personaFor,
         // §7.1: the board resolution sees the captain's LIVE team, and seat growth gets canonical roles.
         teams,
@@ -1243,10 +1377,9 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
       /** The cancellations this activation recorded, keyed by split key for the cell record. */
       const cancelledNow: Record<string, string> = {}
       for (const entry of activated.outcome.cancelled) cancelledNow[entry.key] = entry.boardId
-      // THE LOOP TABLE IS MERGED, NEVER REPLACED: a re-split keeps the loops an earlier revision armed,
-      // while this pass's (and a resumed pass's) ids are recorded by split key.
-      /** The verify-loop ids the cell records after this activation. */
-      const loopTable: Record<string, string> = { ...(state.activatedLoops ?? {}) }
+      /** Keep previous verify loops only while the same task id serves this key. */
+      const loopTable = Object.fromEntries(Object.entries(state.activatedLoops ?? {}).filter(([key]) =>
+        state.activatedTasks[key] !== undefined && state.activatedTasks[key] === activated.outcome.boardIds[key]))
       for (const loop of activated.outcome.loops) loopTable[loop.taskKey] = loop.loopId
       /** The record after activation: the raised members, the live board mapping and the executing phase. */
       const next: CellState = {
@@ -1292,7 +1425,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         // from an append to a live board without reading the journal.
         ...(activated.outcome.mintedTeamId === undefined ? {} : { mintedTeamId: activated.outcome.mintedTeamId, ...(activated.outcome.mintTrigger === undefined ? {} : { mintTrigger: activated.outcome.mintTrigger }) }),
       }
-    },
+    }),
   }))
 
   return disposers

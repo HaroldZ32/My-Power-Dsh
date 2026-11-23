@@ -19,7 +19,7 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { apply, TEAMS_SERVICE, type MpdTeamsService } from "../src/index"
-import { addTeamTask, createTeam, listTeams, readTeam, writeTeam, type TeamRecord } from "../src/team-store"
+import { addTeamMember, addTeamTask, createTeam, endTeamRecord, listTeams, readTeam, updateTeamMember, writeTeam, type TeamRecord } from "../src/team-store"
 import { buildTeamState } from "../src/team-web"
 import type { GraphModel } from "../../mpd-graph-core/src/index.ts"
 
@@ -212,6 +212,7 @@ describe("the parent link is additive and derived from the records", () => {
     const h = harness()
     /** The Lead's first team. */
     const first = await approveTeam(h, "sess-lead", "wave one", "worker")
+    endTeamRecord(h.workspace, first.teamId, "first wave ended", NOW)
     /** The same session's second team, staged after the first landed. */
     const second = await approveTeam(h, "sess-lead", "wave two", "worker")
     expect(second.teamId).not.toBe(first.teamId)
@@ -250,8 +251,9 @@ describe("the parent link is additive and derived from the records", () => {
     const h = harness()
     /** The first team that records the shared member. */
     const one = await approveTeam(h, "sess-a", "cell one", "shared")
-    /** The second team that records the same member. */
-    const two = await approveTeam(h, "sess-b", "cell two", "shared")
+    /** A pre-project-policy second team that already records the same executor handle. */
+    const two = createTeam(h.workspace, { name: "cell two", description: "legacy concurrent board", leadSessionId: "sess-b" }, NOW)
+    writeTeam(h.workspace, updateTeamMember(addTeamMember(two, { name: "shared", description: "legacy duplicate" }, NOW), "M1", { status: "running", executorRef: "child-shared" }))
     await h.call("agent_teams_plan", { action: "create", name: "ambiguous", description: "which box?" }, "child-shared")
     await h.call("agent_teams_plan", { action: "add_member", member: { name: "worker", prompt: "You work." } }, "child-shared")
     await h.call("agent_teams_plan", { action: "create_task", task: { subject: "one row", description: "one row", blocked_by: [] } }, "child-shared")

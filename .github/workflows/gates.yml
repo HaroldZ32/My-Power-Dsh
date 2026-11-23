@@ -1,14 +1,10 @@
 name: gates
 
-# The repository's static gates, run on every push and pull request against the integration and
-# release lines. They are the fast half of AGENTS.md §4: no dsh BOOT, no credentials and no plugin
-# execution — exactly the checks a reviewer can reproduce on a fresh clone. One of them reads state a
-# bare runner does not carry (the installed harness), so the setup step below provides it; nothing
-# here starts a session or applies a patch.
+# Static checks and a credential-free tarball install on the integration and release lines.
+# The static checks use the installed harness to validate its schemas. The smoke step boots Web and
+# TUI in fresh profiles and calls the installed AST tool without changing a registry release.
 #
-# WHY NODE 24 AND NOT 20: every gate is a TypeScript entry point (`scripts/*.ts`) executed directly
-# by Node's type stripping, which is on by default from Node 22.18 on. The package's own `engines`
-# field states the same floor; a runner below it cannot start the checkers at all.
+# The package's Node floor is defined by `package.json`'s `engines.node`.
 #
 # WHY THE HARNESS IS SET UP FIRST — it was MEASURED red on 2026-10-02 while the code under test was
 # correct:
@@ -58,7 +54,7 @@ permissions:
 
 jobs:
   gates:
-    name: Static gates
+    name: Static gates and tarball smoke
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repository
@@ -95,7 +91,7 @@ jobs:
             exit 1
           fi
           echo "installing @deepseek-ai/dsh@${HARNESS_VERSION} (the harness release this bundle distributes)"
-          npm i -g "@deepseek-ai/dsh@${HARNESS_VERSION}"
+          npm i -g "@deepseek-ai/dsh@${HARNESS_VERSION}" pnpm@11.23.0
           dsh --version
 
       # The dsh-TUI HOST the admission gate negotiates against (`tui-admission`, AGENTS.md §4).
@@ -156,3 +152,28 @@ jobs:
 
       - name: Declaration comments and explicit signatures
         run: node scripts/verify-comment-coverage.ts
+
+      - name: Exercise packaging regression controls
+        run: |
+          set -euo pipefail
+          node scripts/verify-plugin-manifest.ts --self-test
+          node scripts/verify-pack-closure.ts --self-test
+          node scripts/verify-workflows.ts --self-test
+          node scripts/run-qa-selftests.ts --self-test
+          bash docker/lib/tui-team-edges.sh --self-test
+          bash docker/verify-release-tarball.sh --self-test
+
+      - name: Install one tarball in fresh Web and TUI profiles and call AST search
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/npm-pack"
+          filename="$(npm pack --quiet --ignore-scripts --pack-destination "$RUNNER_TEMP/npm-pack")"
+          bash docker/verify-release-tarball.sh "$RUNNER_TEMP/npm-pack/$filename" "$RUNNER_TEMP/npm-pack/smoke"
+
+      - name: Upload tarball smoke logs and digest
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: tarball-smoke-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/npm-pack/smoke/
+          if-no-files-found: ignore

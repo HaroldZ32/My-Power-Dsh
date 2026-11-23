@@ -353,8 +353,12 @@ function resolveAstGrepBinary(launcherUrl, opts = {}) {
         for (const s of spellings(n))
           candidates.push({ path: join2(binDir, s), source: "bin-dir" });
     }
-    const pkgJson = packageJsonFor(launcherUrl, "@ast-grep/cli/package.json", opts);
-    if (pkgJson) {
+    const platformSuffix = platform === "linux" ? "-gnu" : platform === "win32" ? "-msvc" : "";
+    const packages = [`@ast-grep/cli-${platform}-${opts.arch ?? process.arch}${platformSuffix}`, "@ast-grep/cli"];
+    for (const name of packages) {
+      const pkgJson = packageJsonFor(launcherUrl, `${name}/package.json`, opts);
+      if (!pkgJson)
+        continue;
       const pkgDir = dirname(pkgJson);
       for (const n of AST_GREP_NAMES)
         for (const s of spellings(n))

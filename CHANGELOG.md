@@ -14,6 +14,27 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
+## 0.21.1
+
+### Added
+
+- A durable team per project keeps the team roster and task board available across sessions (#122).
+
+### Changed
+
+- GitHub Actions and local operators use `node scripts/docker-acceptance.ts` to exercise the
+  checked-out candidate without credentials. The command requires Docker and checks the user surface
+  with an empty model catalog. Skipping a required assertion fails the run.
+- The release targets DeepSeek Harness `0.2.2-rc.5` and DSH-TUI `0.20.2`.
+
+### Fixed
+
+- Team activation and dispatch recover from interruptions. Approval and task release can be retried,
+  and workspace state is preserved (#119).
+- The release workflow installs the exact npm tarball in isolated Web and TUI profiles and checks
+  its SHA-256 before staging it. The relocatable pack also excludes private references and runtime
+  state (#119).
+
 ## 0.21.0 — packaging/compat hop: DSH 0.2.2-rc.5 and DSH-TUI 0.20.2 join the admitted band, with no plugin, patch-row or adapter change
 
 **Added — two newly supported hosts, and a band that keeps every older host.** DeepSeek Harness

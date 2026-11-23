@@ -9,17 +9,38 @@ or when you need to know whether a step may be skipped.
 A verification pass runs cheapest-and-most-falsifiable first, so a broken tree is caught before an
 expensive step can hide it behind unrelated noise:
 
-1. **Static gates** — `bun run verify:gates` runs its nine static members, seconds each: vendor,
-   dist-fresh, rows-parity, docs-parity, preset-conformance, plugin-manifest, comment-coverage,
-   graph-model and workflows (the membership is proven by `node scripts/verify-gates.ts --list`).
+1. **Static gates** — `bun run verify:gates`. Run `node scripts/verify-gates.ts --list` to print
+   the current count, member IDs and commands from the executable table, including `tui-admission`
+   and `dshgo`. Use the pinned host and Go kit from AGENTS.md §4 for execution.
 2. **The two standing user-mandated gates** — `bun run verify:manifest` (no `cordis` in any dependency
    field by NAME, no `preinstall` / `install` / `postinstall` / `prepare` script name, and the packaging
    contract a one-command install rests on) and `bun run verify:comments` (every declaration carries a
    precise comment and every named function writes down its parameter and return types).
-3. **Correctness suites** — `bun run typecheck` (root `tsgo --noEmit`), `bun test packages` (the
-   repo-root `bun test` also scans the historical `evidence/**` fixtures and reddens on them), `bun run test:qa`.
+3. **Correctness suites** — `bun run typecheck` (root `tsgo --noEmit`), the pinned Bun test command
+   below, and `bun run test:qa`.
 4. **Packaging** — `node scripts/pack-mpd.ts`, then `node scripts/verify-pack-closure.ts`.
 5. **Docker real-machine lane — THE LAST STEP.** `bun run verify:docker` (see below).
+
+## Test discovery
+
+From the repository root, run `.toolchain/node_modules/.bin/bun test` for the default suite with
+`package.json`'s `buildToolchain` pin. The root `bunfig.toml` excludes `evidence/**` snapshots and
+`dist/**` build output from discovery. The default suite still includes tests in `packages/` and
+`skills/`. Use `bun test packages/<pkg>` for one package or `bun run test` for the package suite.
+A CLI `--path-ignore-patterns` flag replaces the configured patterns, so include both patterns
+when supplying custom exclusions from the root.
+
+## Evidence retention for new runs
+
+Keep the result and the decisive, redacted output under the timestamped path in AGENTS.md §7. Record
+revision and toolchain, command, exit status, limits, and the observations needed to establish the
+verdict. Before staging evidence for a PR, inspect the proposed paths and sizes. Keep generated
+checkouts, copied dependencies, raw session stores and large logs in scratch space while diagnosing.
+When a reviewer needs one of those artifacts, upload the redacted archive to a team-accessible
+artifact store and record its download link, SHA-256, byte count and expiry in the committed result.
+Give the summary enough detail to stand after expiry. Keep small, necessary repro fixtures in Git
+when the result depends on them. This practice applies to new runs. Historical evidence stays at
+its original paths.
 
 ## The Docker lane is the last step, and it may SKIP
 
@@ -28,7 +49,13 @@ the question no static gate can: **does a fresh machine install this bundle with
 really MOUNT it?** It asserts rows activating, tools registering, the real TUI booting on a real PTY,
 and the harness's own session store recording `agentPreset=mpd` — never just "the install exited 0".
 
-Two lanes, one flag apart:
+The credential-free release and hosted acceptance command is `node scripts/docker-acceptance.ts`.
+It archives the checkout's HEAD, stages the pack from that snapshot, and runs source mode with
+`--require-docker --no-browser`. The packer and driver run with a private home and Docker config.
+The stamp's `driver.json` identifies the candidate SHA, mode and credential forwarding status.
+GitHub Actions adds `--allow-rootful-docker` for its runner and checks HEAD against the event SHA.
+
+The lower-level driver also supports the live and one-click lanes:
 
 | Command | Lane | What it proves |
 |---|---|---|
@@ -229,9 +256,10 @@ as "working solo" — sizing decides WHICH executor, never whether to delegate.
 
 **The captain's TOOL PACK — what is direct, and what is delegated.** The WRITE path is DIRECT:
 `write`/`edit`/`mpd_hashline_edit` stay direct, `bash` stays direct for git/filesystem/bookkeeping but is
-GATE-DENIED for the captain (`captain.shell`, default `deny`), and `mpd_verify_evidence {kind:"gate"}` is
-refused for the captain (`verify.evidenceBy`, default `verifier`) while `kind:"probe"` stays open; no loop
-is armed, no band is reserved, and `verify.mode` stays withdrawn. RECONNAISSANCE is DELEGATED, again
+GATE-DENIED for the captain (`captain.shell`, default `deny`). Examples include `bun test`,
+`bun run verify:*`, `node scripts/verify-*`, QA cases, `bun build packages/*` and `docker`.
+The captain can use `mpd_verify_evidence {kind:"probe"}`. The default `verify.evidenceBy: "verifier"`
+reserves `mpd_verify_evidence {kind:"gate"}` for the verifier. `verify.mode` stays withdrawn. RECONNAISSANCE is DELEGATED, again
 MECHANICALLY (2026-10-20) and CLOSED FURTHER on 2026-11-09 (`.mpd/plans/captain-recon-fence.md`): on the `mpd`
 preset's top-level session `read`/`grep`/`glob`, `mpd_hashline_read`, the MCP recon tools
 (`codegraph_explore`, `ast_grep_search`, the `lsp` readers) and the shell read-verbs (file readers and

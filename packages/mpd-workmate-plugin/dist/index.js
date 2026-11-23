@@ -6,9 +6,49 @@ import { createHash } from "node:crypto";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
+
+// packages/mpd-dsh-adapter-plugin/src/scoped-helper.ts
+import { realpathSync } from "node:fs";
+import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
+function helperTarget(checkout, value) {
+  try {
+    const root = realpathSync(checkout);
+    const path = resolve(root, value);
+    const local = relative(root, path);
+    if (local === "" || local === ".." || local.startsWith(`..${sep}`) || isAbsolute(local) || local.split(sep).some((item) => item === ".mpd" || item === ".git"))
+      return;
+    let probe = path;
+    while (probe !== root) {
+      try {
+        if (realpathSync(probe) !== probe)
+          return;
+      } catch (error) {
+        if (!(error instanceof Error) || !("code" in error) || error.code !== "ENOENT")
+          throw error;
+      }
+      probe = dirname(probe);
+    }
+    return local.split(sep).join("/");
+  } catch (error) {
+    if (error instanceof Error)
+      return;
+    throw error;
+  }
+}
+function helperFileRefusal(scope, name, args) {
+  if (name === "structured_output")
+    return;
+  if (scope.current?.() === false)
+    return "The original assignment no longer authorizes this helper.";
+  const path = typeof args === "object" && args !== null && "file_path" in args && typeof args.file_path === "string" ? helperTarget(scope.checkout, args.file_path) : undefined;
+  const allowed = path !== undefined && (name === "read" ? scope.read.includes(path) || scope.write.includes(path) : (name === "write" || name === "edit") && scope.write.includes(path));
+  return allowed ? undefined : "This one-shot can use only the exact file tools and paths its owner delegated.";
+}
+
+// packages/mpd-dsh-adapter-plugin/src/index.ts
 import { readFileSync } from "node:fs";
 import { userInfo } from "node:os";
-import { resolve as resolve2, sep as sep2 } from "node:path";
+import { resolve as resolve3, sep as sep3 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
 function errorMessage(error) {
@@ -18,7 +58,7 @@ function errorMessage(error) {
 // packages/mpd-mcp-shared/log-sink.ts
 import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { isAbsolute as isAbsolute2, join, relative as relative2, resolve as resolve2, sep as sep2 } from "node:path";
 var LOG_SUBDIR = join(".mpd", "logs");
 var DEFAULT_MAX_BYTES = 1024 * 1024;
 var DEFAULT_MAX_LINE_BYTES = 8192;
@@ -43,7 +83,7 @@ function resolveLogRoots(env = process.env, cwd) {
       continue;
     let absolute;
     try {
-      absolute = resolve(candidate);
+      absolute = resolve2(candidate);
     } catch {
       continue;
     }
@@ -68,8 +108,8 @@ function owningRoot(roots, file) {
   for (const root of roots) {
     if (file === root)
       return root;
-    const rel = relative(root, file);
-    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel))
+    const rel = relative2(root, file);
+    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep2}`) && !isAbsolute2(rel))
       return root;
   }
   return null;
@@ -384,10 +424,10 @@ function sessionCwdOf(agent) {
 function workspaceRootOfAgent(agent) {
   const session = sessionCwdOf(agent);
   if (session !== undefined)
-    return resolve2(session);
+    return resolve3(session);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve2(override);
+    return resolve3(override);
   return process.cwd();
 }
 function workspaceRootOf(exec) {
@@ -395,7 +435,7 @@ function workspaceRootOf(exec) {
     return workspaceRootOfAgent(exec.agent);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve2(override);
+    return resolve3(override);
   return process.cwd();
 }
 
@@ -427,7 +467,7 @@ function realUserHome() {
   } catch {}
   try {
     const api = userInfo().homedir;
-    if (api !== "" && resolve2(api) !== resolve2(process.env.HOME ?? api))
+    if (api !== "" && resolve3(api) !== resolve3(process.env.HOME ?? api))
       return api;
   } catch {}
   return;
@@ -440,8 +480,8 @@ function assertHomeMutationSandboxed(guard) {
     return;
   const home = process.env.HOME;
   const realHome = realUserHome();
-  const inside = (h) => guard.root === h || guard.root.startsWith(h.endsWith(sep2) ? h : h + sep2);
-  if (home !== undefined && home !== "" && realHome !== undefined && resolve2(home) !== resolve2(realHome) && inside(resolve2(home)))
+  const inside = (h) => guard.root === h || guard.root.startsWith(h.endsWith(sep3) ? h : h + sep3);
+  if (home !== undefined && home !== "" && realHome !== undefined && resolve3(home) !== resolve3(realHome) && inside(resolve3(home)))
     return;
   throw new HomeGuardRefusal("real-home-refused", guard.label + ": refusing to " + guard.operation + " inside the REAL library " + guard.root + " while DSH_HOME=" + dshHome + " marks an isolated/QA boot — set HOME=<sandbox> (T-43), or set " + guard.allowEnv + "=1 to override deliberately" + (realHome === undefined ? " (the real home could not be determined on this host)" : ""), 403);
 }
@@ -563,7 +603,7 @@ function workspaceRootsOf(agents) {
     for (const agent of list) {
       const cwd = sessionCwdOf(agent);
       if (cwd !== undefined)
-        roots.add(resolve2(cwd));
+        roots.add(resolve3(cwd));
     }
     return [...roots];
   } catch {
@@ -1105,7 +1145,7 @@ function createDshAdapter(ctx, config = {}) {
     } catch {}
   };
   bindDshGoBridge();
-  const configAgentRouteResolver = () => {
+  const configAgentRouteResolver = (workspace) => {
     const config2 = service("mpdConfig");
     if (config2 === undefined || config2 === null)
       return;
@@ -1113,7 +1153,7 @@ function createDshAdapter(ctx, config = {}) {
       return;
     return (member) => {
       try {
-        const answer = config2.agentRouteResolutionOf.call(config2, member);
+        const answer = config2.agentRouteResolutionOf.call(config2, member, workspace);
         return answer !== null && typeof answer === "object" && typeof answer.ok === "boolean" ? answer : undefined;
       } catch {
         return;
@@ -1467,7 +1507,7 @@ function createDshAdapter(ctx, config = {}) {
         const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
         let agentOptions = request.agentOptions;
         if (agentOptions === undefined) {
-          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver());
+          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver(workspaceRootOfAgent(caller)));
           if (outcome.status === "routed") {
             const resolved = await resolveRunRoute({ llmCatalog }, outcome.route, outcome.fallbacks);
             agentOptions = resolved.route;
@@ -1483,8 +1523,13 @@ function createDshAdapter(ctx, config = {}) {
           ...agentOptions === undefined ? {} : { agentOptions },
           ...request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }
         };
+        const provider = typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn";
+        const childId = request.onOpening !== undefined && provider === "spawn" && typeof subagents.startActivation === "function" && typeof subagents.prompt === "function" ? randomUUID() : undefined;
+        if (childId !== undefined)
+          request.onOpening?.(childId);
         const spec = dualShapeActivationSpec({
-          provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
+          provider,
+          ...childId === undefined ? {} : { childId },
           label: `${request.name} · ${request.teamId}`,
           signal: request.signal ?? neverAborted()
         }, activationRequest);
@@ -1919,6 +1964,13 @@ function createDshAdapter(ctx, config = {}) {
       const registered = systemPrompt.section(section);
       return typeof registered === "function" ? registered : noop;
     },
+    registerPromptContext(context) {
+      const systemPrompt = service("systemPrompt");
+      if (typeof systemPrompt?.context !== "function")
+        return;
+      const registered = systemPrompt.context(context);
+      return typeof registered === "function" ? registered : noop;
+    },
     guardTool(guard) {
       const tools = requireService("tools", "cannot install a tool guard");
       if (typeof tools.guard !== "function")
@@ -2151,14 +2203,45 @@ function createDshAdapter(ctx, config = {}) {
           ...spec.outputSchema === undefined ? {} : { outputSchema: spec.outputSchema },
           ...spec.maxDepth === undefined ? {} : { maxDepth: spec.maxDepth }
         };
-        const activation = await subagents.startActivation.call(subagents, dualShapeActivationSpec({
-          provider,
-          label: spec.label,
-          signal,
-          delivery: "parent"
-        }, activationRequest));
-        return activationHandleOf(activation, subagents, spec.parent);
+        const files = spec.helperFiles;
+        if (files === undefined) {
+          const activation = await subagents.startActivation.call(subagents, dualShapeActivationSpec({ provider, label: spec.label, signal, delivery: "parent" }, activationRequest));
+          return activationHandleOf(activation, subagents, spec.parent);
+        }
+        if (provider !== "spawn" || typeof service("tools")?.guard !== "function")
+          throw new Error("scoped one-shot requires native child and tool-guard support");
+        if (files.current?.() === false)
+          throw new Error("the original helper assignment changed before admission");
+        const childId = randomUUID();
+        const offGuard = adapter.guardTool((exec) => sessionIdOfAgent(exec.agent) === childId ? helperFileRefusal(files, exec.name, exec.arguments) : undefined);
+        let installed = false;
+        const offCreated = onEvent("agent/created", (payload) => {
+          const child = payload?.agent;
+          if (sessionIdOfAgent(child) !== childId)
+            return;
+          const allow = files.write.length > 0 ? ["read", "write", "edit"] : files.read.length > 0 ? ["read"] : [];
+          applyScopedRestriction(child, { allow });
+          installed = true;
+        });
+        try {
+          if (offCreated === undefined)
+            throw new Error("scoped one-shot requires the native agent creation hook");
+          const activation = await subagents.startActivation.call(subagents, dualShapeActivationSpec({ provider, label: spec.label, signal, delivery: "caller", childId }, { ...activationRequest, cwd: files.checkout }));
+          if (!installed) {
+            await releaseActivation(activation);
+            throw new Error("the host did not publish the reserved scoped helper");
+          }
+          const handle = activationHandleOf(activation, subagents, spec.parent);
+          return { ...handle, result: handle.result.finally(offGuard) };
+        } catch (error) {
+          offGuard();
+          throw error;
+        } finally {
+          offCreated?.();
+        }
       }
+      if (spec.helperFiles !== undefined)
+        throw new Error("scoped one-shot requires native child start support");
       if (typeof subagents.start !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagent service exposes neither startActivation() nor start()");
       const run = await subagents.start(provider, {
@@ -2409,6 +2492,20 @@ function createDshAdapter(ctx, config = {}) {
       if (typeof skills.get !== "function")
         throw new Error("mpd-dsh-adapter: the harness skills service exposes no get()");
       return skills.get(skillName, options);
+    },
+    selectedAgentPreset(agent) {
+      const session = agent?.session;
+      if (session === undefined || session === null)
+        return;
+      try {
+        const presets = service("agentPresets");
+        if (typeof presets?.presetForSession !== "function")
+          return;
+        const selected = presets.presetForSession(session);
+        return selected === null || typeof selected === "string" && selected.length > 0 ? selected : undefined;
+      } catch {
+        return;
+      }
     },
     async resolvePreset(presetId) {
       const presets = requireService("agentPresets", 'cannot resolve preset "' + presetId + '"');
@@ -3657,6 +3754,9 @@ function sha256Of(text2) {
 function memoryBlocksOf(text2) {
   return String(text2 ?? "").split(/\n## /).map((block, index) => index === 0 ? block : "## " + block).map((block) => block.trim()).filter((block) => block !== "");
 }
+function memoryTimestampOf(block) {
+  return /^## (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z) — /.exec(block)?.[1] ?? "";
+}
 function tagsOf(note, baseName) {
   return new Set(unique(tokenize(note + " " + baseName)));
 }
@@ -3746,6 +3846,7 @@ merged-from: ` + fromKey, PERSONA_CAP);
     seen.add(sha);
     blocks.push(block);
   }
+  blocks.sort((left, right) => memoryTimestampOf(left).localeCompare(memoryTimestampOf(right)));
   let memory = "";
   for (let index = blocks.length - 1;index >= 0; index--) {
     const candidate = blocks[index] + (memory === "" ? "" : `
@@ -3839,24 +3940,24 @@ function apply(ctx) {
       return;
     }
   }
-  function spawnRouteOf(meta) {
+  function spawnRouteOf(meta, exec) {
     const live = configService();
     if (typeof live?.agentRouteResolutionOf === "function") {
-      const resolution = live.agentRouteResolutionOf(meta.baseName);
+      const resolution = live.agentRouteResolutionOf(meta.baseName, dsh.workspaceRoot(exec));
       if (resolution !== null && typeof resolution === "object" && typeof resolution.ok === "boolean") {
         if (resolution.ok)
           return { route: resolution.route, fallbacks: resolution.route.fallbacks ?? [] };
         if (resolution.reason === "unrouted")
-          return { route: declaredRouteOfBase(meta), fallbacks: [] };
+          return { route: declaredRouteOfBase(meta, exec), fallbacks: [] };
         const detail = resolution.reason === "invalid" ? resolution.problem + " must be a string" : "missing " + resolution.missing.join(", ");
         throw agentUnconfiguredRefusal(resolution.agent, detail);
       }
     }
-    return { route: declaredRouteOfBase(meta), fallbacks: [] };
+    return { route: declaredRouteOfBase(meta, exec), fallbacks: [] };
   }
-  function declaredRouteOfBase(meta) {
+  function declaredRouteOfBase(meta, exec) {
     try {
-      const base = resolveBase(meta.baseName);
+      const base = resolveBase(meta.baseName, exec);
       if (base.provider !== "" && base.model !== "")
         return { provider: base.provider, model: base.model };
     } catch {}
@@ -3938,14 +4039,14 @@ function apply(ctx) {
   function normalizeBaseKey(s) {
     return String(s ?? "").trim().toLowerCase().replace(/[\s_-]+/g, "");
   }
-  function resolveBase(key) {
+  function resolveBase(key, exec) {
     const roles = rolesService();
     if (!roles)
       throw new Error("mpd_workmate: mpdRoles service unavailable (mpd-roles-plugin not mounted)");
     const k = String(key ?? "").trim();
     if (!k)
       throw new Error(`mpd_workmate: base required (the specialist's functional name, e.g. "Deep Worker")`);
-    const all = typeof roles.list === "function" ? roles.list() : [];
+    const all = typeof roles.list === "function" ? roles.list(exec) : [];
     const wanted = normalizeBaseKey(k);
     const base = all.find((r) => normalizeBaseKey(String(r?.name ?? "")) === wanted);
     if (!base) {
@@ -3968,9 +4069,10 @@ function apply(ctx) {
       return null;
     }
   }
-  function initWorkmate(baseKey, nameArg, noteArg, workspace) {
+  function initWorkmate(baseKey, nameArg, noteArg, exec) {
     assertMutationSandboxed("initialize a workmate");
-    const base = resolveBase(baseKey);
+    const workspace = exec === undefined ? undefined : dsh.workspaceRoot(exec);
+    const base = resolveBase(baseKey, exec);
     const given = sanitizeName(nameArg);
     let name2 = given;
     if (!name2) {
@@ -3988,7 +4090,7 @@ function apply(ctx) {
     const born = (() => {
       const live = configService();
       if (typeof live?.agentRouteResolutionOf === "function") {
-        const resolution = live.agentRouteResolutionOf(base.name);
+        const resolution = live.agentRouteResolutionOf(base.name, workspace);
         if (resolution !== undefined && resolution !== null && resolution.ok === true)
           return { provider: resolution.route.provider, model: resolution.route.model };
       }
@@ -3996,7 +4098,7 @@ function apply(ctx) {
     })();
     const bornPersona = capText(base.persona, PERSONA_CAP).trim();
     const bornBase = String(base.persona ?? "").trim();
-    const meta = { name: name2, baseId: base.id, baseName: base.name, description: base.description, provider: born.provider, model: born.model, readonly: base.readonly, createdAt: now(), updatedAt: now(), uses: 0, lastTask: null, renamedFrom: [], personaRevision: 1, personaHash: sha256Of(bornPersona), baseRevision: bornBase === "" ? UNKNOWN_HASH : sha256Of(bornBase), workspaces: attuneWorkspaces([], workspace) };
+    const meta = { name: name2, baseId: base.id, baseName: base.name, description: base.description, provider: born.provider, model: born.model, readonly: base.readonly, createdAt: now(), updatedAt: now(), uses: 0, lastTask: null, renamedFrom: [], personaRevision: 1, personaHash: sha256Of(bornPersona), baseRevision: bornBase === "" ? UNKNOWN_HASH : sha256Of(bornBase), workspaces: attuneWorkspaces([], workspace ?? "") };
     writeFileSync(join2(dir, "meta.json"), JSON.stringify(meta, null, 2) + `
 `);
     writeFileSync(join2(dir, "persona.md"), bornPersona + `
@@ -4009,7 +4111,7 @@ function apply(ctx) {
     writeFileSync(join2(dir, "note.md"), note + `
 `);
     writeIndexEntry(name2, meta);
-    return { name: name2, baseName: base.name, readonly: base.readonly, provider: base.provider, model: base.model, path: dir, note };
+    return { name: name2, baseName: base.name, readonly: base.readonly, provider: born.provider, model: born.model, path: dir, note };
   }
   const workmateLibrary = {
     list: () => listInstances().map(({ name: name2, meta, note }) => ({ name: name2, baseName: meta.baseName, readonly: meta.readonly, uses: meta.uses, updatedAt: meta.updatedAt, renamedFrom: meta.renamedFrom, note })),
@@ -4074,7 +4176,7 @@ function apply(ctx) {
     parameters: { type: "object", properties: { base: { type: "string", description: `the specialist's functional name (e.g. "Deep Worker")` }, name: { type: "string", description: "independent workmate name (lowercase kebab; auto-generated from the functional name if omitted)" }, note: { type: "string", description: "optional initial note card" } }, required: ["base"], additionalProperties: false },
     output: { schema: { type: "object", properties: { name: { type: "string" }, baseName: { type: "string" }, readonly: { type: "boolean" }, provider: { type: "string" }, model: { type: "string" }, path: { type: "string" }, note: { type: "string" } }, required: ["name", "baseName"], additionalProperties: false }, render: (_a, v) => textBlock("workmate " + v.name + " initialized (base " + v.baseName + (v.readonly ? ", readonly" : "") + ", " + v.provider + "/" + v.model + `)
 note: ` + v.note) },
-    execute: async (args, exec) => initWorkmate(String(args?.base ?? ""), String(args?.name ?? ""), String(args?.note ?? ""), workspaceOf(dsh, exec))
+    execute: async (args, exec) => initWorkmate(String(args?.base ?? ""), String(args?.name ?? ""), String(args?.note ?? ""), exec)
   });
   dsh.registerTool({
     name: "mpd_workmate_spawn",
@@ -4089,20 +4191,34 @@ details: ` + v.details : "")) },
       if (tooDeep !== undefined)
         throw new Error(tooDeep);
       const { meta, key } = ensureInstance(String(args?.name ?? ""));
-      const attributed = attuneWorkspaces(meta.workspaces, workspaceOf(dsh, exec));
-      if (attributed.join("\x00") !== meta.workspaces.join("\x00")) {
-        meta.workspaces = attributed;
-        writeFileSync(join2(wmDir(key), "meta.json"), JSON.stringify(meta, null, 2) + `
-`);
-        writeIndexEntry(key, meta);
-      }
       const task = String(args?.task ?? "").trim();
       if (!task)
         throw new Error("mpd_workmate_spawn: task required");
-      const persona = readPersona(key);
-      const memory = readMemory(key);
-      const note = readNote(key);
-      const prompt = persona + `
+      const decided = spawnRouteOf(meta, exec);
+      const admission = (() => {
+        try {
+          return ctx.get?.("mpdConsults");
+        } catch {
+          return;
+        }
+      })();
+      noteSpawnStart(key);
+      let release;
+      try {
+        release = await admission?.reservePublicConsult?.(exec);
+        exec?.signal?.throwIfAborted();
+        const { meta: currentMeta, dir } = ensureInstance(key);
+        const attributed = attuneWorkspaces(currentMeta.workspaces, workspaceOf(dsh, exec));
+        if (attributed.join("\x00") !== currentMeta.workspaces.join("\x00")) {
+          currentMeta.workspaces = attributed;
+          writeFileSync(join2(dir, "meta.json"), JSON.stringify(currentMeta, null, 2) + `
+`);
+          writeIndexEntry(key, currentMeta);
+        }
+        const persona = readPersona(key);
+        const memory = readMemory(key);
+        const note = readNote(key);
+        const prompt = persona + `
 
 Your independent memory (bounded, latest first):
 ` + (memory || "(empty — you are a fresh workmate)") + `
@@ -4116,9 +4232,6 @@ Context:
 ` + String(args.context) : "") + `
 
 Work with the tools your role requires (read-only workmates must never modify anything).` + " BEFORE your final report, call mpd_workmate_reflect with a concise self-summary (task / outcome / what you learned / optional persona_delta / optional new note) so your workmate persona and memory evolve. Then end with ONLY the structured report (name/summary/recommendation/details/evidence).";
-      noteSpawnStart(key);
-      try {
-        const decided = spawnRouteOf(meta);
         const run = await resolveRunRoute(dsh, decided.route, decided.fallbacks);
         const route = run.route;
         const result = await dsh.spawnAgent({
@@ -4132,12 +4245,13 @@ Work with the tools your role requires (read-only workmates must never modify an
           outputSchema: REPORT_SCHEMA,
           maxDepth: spawnMaxDepthOf(exec.agent),
           ...route.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: route.reasoningEffort } },
-          ...meta.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {}
+          ...currentMeta.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {}
         });
         const st = result.structured ?? {};
         return { name: key, status: "complete", summary: String(st.summary ?? ""), recommendation: String(st.recommendation ?? ""), details: String(st.details ?? ""), evidence: Array.isArray(st.evidence) ? st.evidence.map(String) : [], stopReason: result.stopReason ?? null };
       } finally {
         noteSpawnEnd(key);
+        release?.();
       }
     }
   });
@@ -4377,7 +4491,7 @@ previous names: ` + v.renamedFrom.join(", ") : "")) },
           return;
         }
         try {
-          const created = initWorkmate(String(body?.base ?? ""), String(body?.name ?? ""), String(body?.note ?? ""), "");
+          const created = initWorkmate(String(body?.base ?? ""), String(body?.name ?? ""), String(body?.note ?? ""));
           res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
           res.end(JSON.stringify(created));
         } catch (e) {

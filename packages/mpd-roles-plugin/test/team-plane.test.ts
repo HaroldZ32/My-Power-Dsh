@@ -607,6 +607,66 @@ describe("readBoulderGate: signal D's only input, repaired to an ACTIVE work", (
 })
 
 describe("session-start gate: scope, one-shot settlement and the advisory injection", () => {
+  test("a blank top-level session uses the selected preset on the first real step", async () => {
+    /** Creation facts stay frozen while the blank session chooses its actual composition. */
+    const agent = mpdAgent("switched", { agentPreset: "cordis", delegationDepth: 0 })
+    /** The recorded selection can change independently of the header. */
+    let selected = "cordis"
+    /** The host starts with the alternate preset and keeps the same Agent across selection. */
+    const harness = planeHarness({ agents: [agent], tools: [STAGING_TOOL_NAME] })
+    installSessionGate({ ...harness.dsh as object, selectedAgentPreset: () => selected } as never, {
+      warn: () => {},
+      stagedPlan: () => null,
+    })
+    /** A second session that leaves MPD keeps its creation header. */
+    const inverse = mpdAgent("left", { agentPreset: "mpd" })
+    /** Explicit requests in that session must be ignored after the selection changes. */
+    const reverse = planeHarness({ agents: [inverse], tools: [STAGING_TOOL_NAME] })
+    installSessionGate({ ...reverse.dsh as object, selectedAgentPreset: () => "cordis" } as never, { warn: () => {}, stagedPlan: () => null })
+    /** Leaving the preset disables admission even if the creation header still says MPD. */
+    const inverseClaim = userMessage("team: audit the adapter")
+    expect(await reverse.steps[0]?.listener({ messages: [inverseClaim], turn: 1 }, { kind: "enter", messages: [inverseClaim] })).toBeUndefined()
+    expect(reverse.toolCalls).toEqual([])
+    selected = "mpd"
+    /** The user's multi-stage request is evaluated using the new composition. */
+    const claimed = userMessage("team: audit the adapter, implement repairs and independently verify them")
+    await harness.steps[0]?.listener({ messages: [claimed], turn: 1 }, { kind: "enter", messages: [claimed] })
+    expect(harness.toolCalls).toHaveLength(1)
+    expect(harness.toolCalls[0]?.arguments).toMatchObject({ action: "create", approval: "required" })
+  })
+
+  test("whole-scope repair confirmation after consults uses durable work evidence without matching a local fix", async () => {
+    /** Two bounded consults precede a later repair authorization, below the ordinary volume trigger. */
+    let persisted = ""
+    /** Share only the serialized record between the two gate installations. */
+    const stateReadFile = async (): Promise<string> => persisted
+    /** Writes emulate the same session file reopened by a resumed process. */
+    const stateWriteFile = async (_path: string, value: string): Promise<void> => { persisted = value }
+    /** The first process ends before the human follow-up. */
+    const first = planeHarness({ tools: [STAGING_TOOL_NAME] })
+    installSessionGate(first.dsh as never, { warn: () => {}, stateReadFile, stateWriteFile })
+    await first.emitToolResult({ name: "mpd_role_spawn", agent: first.agents[0] }, { isError: false })
+    await first.emitToolResult({ name: "mpd_role_spawn", agent: first.agents[0] }, { isError: false })
+    /** The same session is restored into a new gate with the persisted state. */
+    const resumed = planeHarness({ tools: [STAGING_TOOL_NAME], workspace: first.workspace })
+    installSessionGate(resumed.dsh as never, {
+      warn: () => {},
+      stagedPlan: () => null,
+      stateReadFile,
+      stateWriteFile,
+    })
+    /** A singular request and a synthetic repair directive both stay out of the new route. */
+    const local = userMessage("就修这个吧")
+    /** A relayed teammate message carries the same wording without human authority. */
+    const relay = { ...userMessage("一起解决掉吧"), source: { kind: "agent-message" } }
+    expect(await resumed.steps[0].listener({ messages: [local, relay], turn: 2 }, { kind: "enter", messages: [local, relay] })).toBeUndefined()
+    /** The direct human now authorizes the entire set. */
+    const repair = { ...userMessage("一起解决掉吧"), id: "follow-up" }
+    expect(await resumed.steps[0].listener({ messages: [repair], turn: 3 }, { kind: "enter", messages: [repair] })).toBeDefined()
+    expect(resumed.toolCalls).toHaveLength(1)
+    expect(await resumed.steps[0].listener({ messages: [repair], turn: 3 }, { kind: "enter", messages: [repair] })).toBeUndefined()
+  })
+
   test("the MECHANICAL route stages a SHELL through the tool and injects the notice naming its id", async () => {
     /** A double whose composition REGISTERS the staging tool (mpd-team-core is mounted). */
     const harness = planeHarness({ tools: [STAGING_TOOL_NAME] })

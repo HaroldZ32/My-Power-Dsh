@@ -1,0 +1,33 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-mcp-shared/bin-resolve.test.ts:
+(pass) ast-grep: $MPD_AST_GREP_BIN_DIR tier wins and prefers ast-grep over sg [0.58ms]
+(pass) ast-grep: a candidate that fails the ast-grep probe is skipped, never accepted by name [0.12ms]
+(pass) ast-grep: native package supplies the engine with no wrapper or toolchain [0.64ms]
+(pass) ast-grep: createRequire tier still resolves the legacy wrapper [0.23ms]
+(pass) ast-grep: <bundle>/.toolchain tier resolves the link: checkout layout [0.11ms]
+(pass) ast-grep: precedence is bin-dir > require > toolchain [0.20ms]
+(pass) ast-grep: nothing resolvable returns null and never throws [0.09ms]
+(pass) codegraph: <bundle>/.toolchain tier resolves the link: checkout layout [0.23ms]
+(pass) codegraph: createRequire tier reads the package's own bin entry [0.23ms]
+(pass) codegraph: a shim whose per-platform bundle is missing is skipped, never pinned (the D-3 state) [0.59ms]
+(pass) codegraph platform bundle: win32 needs BOTH the runtime and the app entry [0.08ms]
+(pass) codegraph platform bundle: the .bin symlink is anchored at its REAL location (nested layout) [0.28ms]
+(pass) codegraph: an unusable first candidate falls THROUGH to the next usable tier [0.18ms]
+(pass) codegraph platform bundle: the package name and the per-platform file are upstream's own [0.12ms]
+(pass) ast-grep: win32 resolves the .exe spelling of a candidate [0.24ms]
+(pass) ast-grep: win32 honours the caller's own PATHEXT order [0.14ms]
+(pass) ast-grep: win32 never offers a .cmd/.bat candidate (a shell-less spawn cannot start one) [0.16ms]
+(pass) ast-grep: POSIX keeps the bare name as the only spelling [0.13ms]
+(pass) ast-grep: <bundle>/node_modules/.bin tier resolves a bundle-root install [0.15ms]
+(pass) ast-grep: .toolchain still wins over the bundle-root tier [0.12ms]
+(pass) bundleRootFrom: the BUILT <bundle>/packages/<pkg>/dist/launch.js -> <bundle> [0.13ms]
+(pass) bundleRootFrom: the older <bundle>/packages/<pkg>/launch.ts depth still answers <bundle> [0.12ms]
+(pass) bundleRootFrom: a launcher outside any bundle falls back to two hops [0.03ms]
+(pass) REAL toolchain probe: ast-grep passes, the deprecated sg wrapper fails [3.98ms]
+
+ 24 pass
+ 0 fail
+ 55 expect() calls
+Ran 24 tests across 1 file. [18.00ms]
+exit=0

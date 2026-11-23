@@ -206,13 +206,13 @@ function stripInsertBeforeEcho(anchorLine: string, newLines: string[]): string[]
 /**
  * Remove replacement lines that exactly echo the lines just OUTSIDE the replaced range.
  *
- * @param lines - the current file lines.
+ * @param lines - the original file lines, so neighboring edits cannot change an echo match.
  * @param startLine - 1-based first line of the replaced range.
  * @param endLine - 1-based last line of the replaced range.
  * @param newLines - the replacement lines.
  * @returns `newLines` without a leading echo of the line before the range or a trailing echo of the line after it.
  */
-function stripRangeBoundaryEcho(lines: string[], startLine: number, endLine: number, newLines: string[]): string[] {
+function stripRangeBoundaryEcho(lines: readonly string[], startLine: number, endLine: number, newLines: string[]): string[] {
   /** How many existing lines the range covers; a replacement no longer than this cannot echo them. */
   const replacedCount = endLine - startLine + 1
   if (newLines.length <= 1 || newLines.length <= replacedCount) {
@@ -508,23 +508,19 @@ function applySetLine(lines: string[], anchor: string, newText: string | string[
  * @param startAnchor - `LINE#HASH` anchor of the first line of the range.
  * @param endAnchor - `LINE#HASH` anchor of the last line of the range.
  * @param newText - the replacement, one line or a block.
+ * @param original - the immutable file lines used to detect echoed neighbors.
  * @returns a NEW line array plus any repair the block needed.
- * @throws Error when the start line is after the end line.
  */
-function applyReplaceLines(lines: string[], startAnchor: string, endAnchor: string, newText: string | string[]): RepairOutcome {
+function applyReplaceLines(lines: string[], startAnchor: string, endAnchor: string, newText: string | string[], original: readonly string[]): RepairOutcome {
   /** 1-based first line of the range, parsed out of the start anchor. */
   const { line: startLine } = parseLineRef(startAnchor)
   /** 1-based last line of the range, parsed out of the end anchor. */
   const { line: endLine } = parseLineRef(endAnchor)
 
-  if (startLine > endLine) {
-    throw new Error(`Invalid range: start line ${startLine} cannot be greater than end line ${endLine}`)
-  }
-
   /** Copy of the caller's lines. */
   const result = [...lines]
   /** Replacement lines with any echoed range boundaries removed, before the indent is restored. */
-  const stripped = stripRangeBoundaryEcho(lines, startLine, endLine, toNewLines(newText))
+  const stripped = stripRangeBoundaryEcho(original, startLine, endLine, toNewLines(newText))
   /** The replaced lines themselves, which are the repair pass's only ground truth. */
   const range = lines.slice(startLine - 1, endLine)
   /** The stripped block, with a mangled wrap or a lost block indent undone when it names one. */
@@ -567,16 +563,17 @@ function applyInsertAfter(lines: string[], anchor: string, text: string | string
  * @param lines - the current file lines.
  * @param anchor - `LINE#HASH` anchor of the line to insert before.
  * @param text - the lines to insert.
+ * @param original - the immutable file lines, including a preceding seam's replaced anchor.
  * @returns a NEW line array.
  * @throws Error when nothing is left to insert.
  */
-function applyInsertBefore(lines: string[], anchor: string, text: string | string[]): string[] {
-  /** Zero-based index of the anchor line; the insertion lands directly before it. */
+function applyInsertBefore(lines: string[], anchor: string, text: string | string[], original: readonly string[]): string[] {
+  /** One-based anchor line; its preceding seam survives a replacement starting there. */
   const { line } = parseLineRef(anchor)
   /** Copy of the caller's lines. */
   const result = [...lines]
-  /** Text to insert, minus a trailing echoed copy of the anchor line. */
-  const newLines = stripInsertBeforeEcho(lines[line - 1] ?? "", toNewLines(text))
+  /** Text to insert, minus a trailing echoed copy of the original anchor line. */
+  const newLines = stripInsertBeforeEcho(original[line - 1] ?? "", toNewLines(text))
   if (newLines.length === 0) {
     throw new Error(`prepend (anchored) requires non-empty text for ${anchor}`)
   }
@@ -632,10 +629,10 @@ function applyPrepend(lines: string[], text: string | string[]): string[] {
  * Payload text in its canonical form, so two spellings of one edit share a dedupe key.
  *
  * @param payload - the edit's `lines`, as the caller supplied them.
- * @returns the prefix-stripped lines rejoined by `\n`.
+ * @returns the serialized prefix-stripped lines, distinguishing no lines from one blank line.
  */
 function normalizeEditPayload(payload: string | string[]): string {
-  return toNewLines(payload).join("\n")
+  return JSON.stringify(toNewLines(payload))
 }
 
 /**
@@ -739,28 +736,26 @@ function collectLineRefs(edits: HashlineEdit[]): string[] {
 }
 
 /**
- * Message naming the first pair of overlapping multi-line replace ranges.
- *
- * Only a replace carrying an explicit `end` is a range; two ranges that share a line overlap, while
- * merely abutting ones do not.
+ * Find replacements that overlap or consume an insertion seam between two of their lines.
  *
  * @param edits - the batch, in its application order; edits are named by 1-based position.
- * @returns the message, or null when no two ranges overlap.
+ * @returns a conflict diagnostic, or null for a batch with disjoint spans and surviving seams.
  */
-function detectOverlappingRanges(edits: HashlineEdit[]): string | null {
-  /** Inclusive line span of every range replace, with its index in `edits` for the message. */
+function detectRangeConflicts(edits: HashlineEdit[]): string | null {
+  /** Inclusive line span of every replacement, with its index in `edits` for the message. */
   const ranges: { start: number; end: number; idx: number }[] = []
   for (let i = 0; i < edits.length; i++) {
-    /** The edit under inspection; only a range replace contributes a span. */
+    /** The edit under inspection; insertions consume no original lines. */
     const edit = edits[i]
-    if (!edit || edit.op !== "replace" || !edit.end) continue
+    if (!edit || edit.op !== "replace") continue
     /** First line of the range, parsed out of the `pos` anchor. */
     const start = parseLineRef(edit.pos).line
-    /** Last line of the range, parsed out of the `end` anchor. */
-    const end = parseLineRef(edit.end).line
+    /** Last line of the range, or the same line for a position-only edit. */
+    const end = edit.end ? parseLineRef(edit.end).line : start
+    if (start > end) return `Invalid range: start line ${start} cannot be greater than end line ${end}`
     ranges.push({ start, end, idx: i })
   }
-  if (ranges.length < 2) return null
+  if (ranges.length === 0) return null
 
   ranges.sort((a, b) => a.start - b.start || a.end - b.end)
   for (let i = 1; i < ranges.length; i++) {
@@ -773,8 +768,18 @@ function detectOverlappingRanges(edits: HashlineEdit[]): string | null {
         "Overlapping range edits detected: " +
         `edit ${prev.idx + 1} (lines ${prev.start}-${prev.end}) overlaps with ` +
         `edit ${curr.idx + 1} (lines ${curr.start}-${curr.end}). ` +
-        "Use pos-only replace for single-line edits."
+        "Each original line may be replaced or deleted only once per batch."
       )
+    }
+  }
+  for (const [idx, edit] of edits.entries()) {
+    if (edit.op === "replace" || !edit.pos) continue
+    /** Index of the original gap, measured as the number of lines to its left. */
+    const seam = parseLineRef(edit.pos).line - (edit.op === "prepend" ? 1 : 0)
+    /** A replacement consumes only the gaps strictly between its two outside boundaries. */
+    const range = ranges.find(({ start, end }) => start <= seam && seam < end)
+    if (range) {
+      return `Overlapping insertion seam: edit ${idx + 1} (${edit.op} ${edit.pos}) falls inside edit ${range.idx + 1} (lines ${range.start}-${range.end}).`
     }
   }
   return null
@@ -941,8 +946,8 @@ export function applyHashlineEditsWithReport(content: string, edits: HashlineEdi
 
   /** Deduplicated edit list, plus the number of duplicates it dropped. */
   const dedupeResult = dedupeEdits(edits)
-  /** Tie-break order for edits anchored on the same line: replace, then append, then prepend. */
-  const EDIT_PRECEDENCE: Record<string, number> = { replace: 0, append: 1, prepend: 2 }
+  /** At a replacement's last line, insert on its right before the splice, and on its left after it. */
+  const EDIT_PRECEDENCE: Record<string, number> = { append: 0, replace: 1, prepend: 2 }
   /** Edits applied bottom-up (highest line first); an op missing from the table sinks to the end. */
   const sortedEdits = [...dedupeResult.edits].sort((a, b) => {
     /** Line number of the first edit under comparison. */
@@ -959,23 +964,25 @@ export function applyHashlineEditsWithReport(content: string, edits: HashlineEdi
   /** Repairs the conservative pass applied, in application order, for the tool result to report. */
   const repairs: HashlineRepairReport[] = []
 
-  /** Working line buffer; an empty file is zero lines, so a lone "" is not invented for it. */
-  let lines = content.length === 0 ? [] : content.split("\n")
+  /** Original line text supplies validated anchors and echo checks throughout the batch. */
+  const original = content.length === 0 ? [] : content.split("\n")
+  /** The splice helpers return fresh arrays, so the original stays available for validation. */
+  let lines = original
 
   /** Every anchor the batch references, validated once before any edit is applied. */
   const refs = collectLineRefs(sortedEdits)
-  validateLineRefs(lines, refs)
+  validateLineRefs(original, refs)
 
-  /** Message naming the first pair of overlapping multi-line replace ranges, or null when none do. */
-  const overlapError = detectOverlappingRanges(sortedEdits)
-  if (overlapError) throw new Error(overlapError)
+  /** First conflict between replacement spans and other edits, if any. */
+  const conflict = detectRangeConflicts(sortedEdits)
+  if (conflict) throw new Error(conflict)
 
   for (const edit of sortedEdits) {
     switch (edit.op) {
       case "replace": {
         /** Lines after this replace, plus any repair the replacement block needed to produce them. */
         const outcome = edit.end
-          ? applyReplaceLines(lines, edit.pos, edit.end, edit.lines)
+          ? applyReplaceLines(lines, edit.pos, edit.end, edit.lines, original)
           : applySetLine(lines, edit.pos, edit.lines)
         if (arraysEqual(outcome.lines, lines)) {
           noopEdits += 1
@@ -997,7 +1004,7 @@ export function applyHashlineEditsWithReport(content: string, edits: HashlineEdi
       }
       case "prepend": {
         /** Lines after this anchored insert or file-start prepend. */
-        const next = edit.pos ? applyInsertBefore(lines, edit.pos, edit.lines) : applyPrepend(lines, edit.lines)
+        const next = edit.pos ? applyInsertBefore(lines, edit.pos, edit.lines, original) : applyPrepend(lines, edit.lines)
         if (arraysEqual(next, lines)) {
           noopEdits += 1
           break

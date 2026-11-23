@@ -25,14 +25,14 @@ export const name = "@mpd-dsh/mpd"
 export const inject: string[] = []
 
 /** The adapter's agentless workspace resolver, probed PER REQUEST (this row's order is not ours). */
-function workspaceResolver(ctx: any): { workspaceRootsAll: () => string[]; workspaceRoot: () => string } {
+function workspaceResolver(ctx: any, fallback: ReturnType<typeof resolveDshAdapter>): { workspaceRootsAll: () => string[]; workspaceRoot: () => string } {
   /** Every live session workspace, with an env/cwd fallback when the adapter cannot answer. */
   const rootsAll = (): string[] => {
     try {
       /** The adapter's agentless resolver, read per request because this row's order is not ours. */
-      const adapter = typeof ctx?.get === "function" ? ctx.get("mpdDsh", false) : undefined
-      /** What the resolver answered; anything that is not a non-empty string array falls through. */
-      const roots = typeof adapter?.workspaceRootsAll === "function" ? adapter.workspaceRootsAll() : undefined
+      const mounted = typeof ctx?.get === "function" ? ctx.get("mpdDsh", false) : undefined
+      /** A standalone composition still has a local adapter to read the same agent registry. */
+      const roots = typeof mounted?.workspaceRootsAll === "function" ? mounted.workspaceRootsAll() : fallback.workspaceRootsAll()
       if (Array.isArray(roots) && roots.length > 0) {
         return roots.filter((root: unknown) => typeof root === "string" && root !== "")
       }
@@ -127,10 +127,11 @@ function apply(ctx: any): void {
     const webServer = webServerOf(dsh, ctx)
     if (webServer === undefined || typeof webServer.register !== "function") return false
     /** The workspace resolver this registration hands the routes; it is read freshly per request. */
-    const workspace = workspaceResolver(ctx)
+    const workspace = workspaceResolver(ctx, dsh)
     /** What the registration reported, i.e. which of the two routes this server accepted. */
     const result = registerWatchdogRoutes(webServer, {
       roots: () => workspace.workspaceRootsAll(),
+      workspaceForSession: (sessionId: string): string | undefined => dsh.workspaceRootForSession?.(sessionId),
       stateDir: stateDirResolver(ctx),
       effect: (fn: () => unknown, label: string) => ctx.effect(fn, label),
     })
@@ -139,11 +140,11 @@ function apply(ctx: any): void {
       rowLogLine("mpd-bundle", "[mpd] the web server refused the watchdog routes — the stuck-team banner has no data source")
       return false
     }
-    // The effective model-config route (R3, lane L4): the Web settings card's live read of the
-    // slot blocks and modelchain tables. Registered beside the watchdog routes on the SAME
-    // rebind-retried path; a refusal costs the card its live half (it degrades to a notice) and
-    // never the section, so it does not gate `registered`.
+    /** Model settings follow the named session through the harness registry. */
     const modelConfig = registerModelConfigRoute(webServer, {
+      workspace: (sessionId: string): string | undefined => dsh.workspaceRootForSession?.(sessionId),
+      roots: () => workspace.workspaceRootsAll(),
+      authorize: (request: unknown): 401 | 403 | undefined => typeof dsh.webRequestRejection === "function" ? dsh.webRequestRejection(request) : 401,
       config: (): ConfigServiceLike | undefined => {
         try {
           // The service double, probed per request because the config row's fiber is not ours.

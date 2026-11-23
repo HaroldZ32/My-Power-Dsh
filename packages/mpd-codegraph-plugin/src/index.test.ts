@@ -115,7 +115,7 @@ afterEach(() => {
 describe("O-1 apply-time project root", () => {
   test("no session and no override falls back to process.cwd()", () => {
     /** The root the plugin resolved for this arm, read off its status line. */
-    const observed = captureCwd(process.cwd(), () => apply({ get: () => undefined }))
+    const observed = captureCwd(process.cwd(), () => apply({ get: () => undefined }, { autoInit: false }))
     expect(observed).toBe(process.cwd())
   })
 

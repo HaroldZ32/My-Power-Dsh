@@ -20,19 +20,19 @@ Harness 本身已经交付了完整的 goal 域：`@deepseek-ai/dsh-goal`（每�
 | `mpd_goal_anchor` | 为长目标建立持久化 goal。若已有未完成的 goal，则**保留它**，绝不替换。 |
 | `mpd_goal_finish` | 将当前 goal 标记完成（或尝试标记阻塞）并停用自动续行。 |
 
-## `mpdGoal` 服务（由 `mpd-autoproject` 与 `mpd-autoproject` 消费）
+## `mpdGoal` 服务（由 autoproject 与 boulder 使用）
 
-`available()` / `autoAnchor()` / `status(exec)` / `anchor(exec, {objective, source, maxRounds?})` /
-`finish(exec, {outcome, source, reason?})`。两个消费方都用 `ctx.get("mpdGoal")` 惰性解析，因此
+`available()` / `autoAnchor()` / `status(exec)` / `anchor(exec, {objective, source, maxRounds?, runId?})` /
+`finish(exec, {outcome, source, reason?, runId?, goalId?, legacyObjective?})`。两个消费方都用 `ctx.get("mpdGoal")` 惰性解析，因此
 没有本行的组合只是"没有持久 goal"，其余功能照常。
 
 ## 自动 anchor 契约
 
 | 触发 | 行为 |
 |---|---|
-| `mpd_autoproject` 且 `tier=heavy` 或 `plan=true` | 为该次运行的目标 anchor 一个 goal；goal id 写入本次运行的 `state.json`。 |
-| `mpd_boulder_start`（绑定 plan 的工作） | anchor 一个以 plan 与 work id 命名的 goal。 |
-| 运行以 `complete` 结束 | 完成该 goal（anchor 记录随即删除）。 |
+| `mpd_autoproject` 且 `tier=heavy` 或 `plan=true` | 创建 goal 时，goal ID 写入本次运行的 `state.json`，anchor 记录创建者的运行 ID。已有 goal 的归属保持不变。 |
+| `mpd_boulder_start`（绑定 plan 的工作） | anchor 一个以计划和工作 ID 命名的 goal。旧版 boulder goal 也能按原先记录的目标匹配其所属工作。 |
+| 运行以 `complete` 结束 | 拥有该 goal 的运行可凭运行 ID 和 goal ID 完成它，并移除 anchor 记录。 |
 | 运行以 `blocked` 结束 | **尝试** `blocked`；harness 可能因其连续轮次阈值而拒绝，拒绝只记日志、绝不致命。 |
 | 运行以 `max-rounds` 结束 | goal **故意保持启用**：这正是 goal 存在的场景 —— turn 内的引擎停了，由轮次 driver 接着推进。 |
 | 不是本行 anchor 的 goal | 永不 complete、永不 block：归属按会话记录在 `<workspace>/.mpd/goal/anchors.json`。 |

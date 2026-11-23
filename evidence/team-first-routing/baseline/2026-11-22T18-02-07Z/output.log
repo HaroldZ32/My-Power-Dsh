@@ -1,0 +1,8 @@
+Baseline adf9a02b on DSH 0.2.2-rc.5. Fixture self-test PASS.
+session/create omitted preset and returned cordis. Immutable host session header cordis. Public agentPresets/select selected mpd before the first user turn.
+mechanical: small and expanded blocking consults returned the canned child result. 8/8 async admissions, 8 distinct loopback children, peak 8. 0 runtime team notices.
+advisory: small and expanded blocking consults returned the canned child result. 8/8 async admissions, 8 distinct loopback children, peak 8. 0 runtime team notices.
+off: small and expanded blocking consults returned the canned child result. 8/8 async admissions, 8 distinct loopback children, peak 8. 0 runtime team notices.
+Owner dispatch selected probe-owner. A depth-1 member obtained a non-error async role consult result.
+Cell open/start returned non-error receipts. No planner consult was recorded within the 45-second window.
+Reproduce: create a scratch root with a linked isolated web profile and an adf9a02b git archive at ./bundle. Copy this directory’s probe.ts to the scratch root. From that root run node ./probe.ts --self-test and node ./probe.ts <absolute pinned dsh>. QA_ONLY_MODE=mechanical selects the paired core case. QA_DSH_HOME may name a different isolated pinned profile under the scratch root. QA_SEATS_ONLY=1 selects the optional member/cell cases.

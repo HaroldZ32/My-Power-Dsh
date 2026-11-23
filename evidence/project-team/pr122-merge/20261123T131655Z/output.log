@@ -1,0 +1,11 @@
+PASS eb8338b3f123b286fb2381225ea827f24ae22db2
+Tree d4115842c5f97307e3c7160b1593ce6aef9fa7bf. Both integration parents retained. Zero new conflict markers or unmerged entries.
+Pinned root bun test exited 0. 4,390 passed, 6 skipped, 0 failed across 294 files, including skills.
+Both produce.md and produce@r2.md seal and reject changed, missing or unsealed contracts in the root suite.
+Typecheck exited 0. All 11 static members passed. All 35 mapped distributions rebuilt twice identically. The vendor gate verified the separately shipped prebuilt.
+Offline QA exited 0. 56 passed, 2 skipped, 0 failed. The two external TUI fixtures were absent.
+Mount proved a successful owner claim and an idle-member denial in three session logs.
+Two distinct linked worktrees retained the original captain. Partial completion produced zero captain requests; matching completion woke it once. Cancellation produced zero wakes.
+Dispatch controls passed 21/21. Pack closure compared 672 identical files. No-host-override and manual paths exited 0.
+A separate mounted verifier recorded rec-20261123T131845-f4e57c against candidate-running typecheck gate ev-20261123T131843-3d3dd2.
+Root-suite skips cover two Subversion cases, one live team projection and three optional native comment-detector cases.

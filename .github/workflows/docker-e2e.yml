@@ -1,23 +1,12 @@
 name: docker-e2e
 
-# THE REAL-MACHINE ACCEPTANCE LANE ON A GITHUB-HOSTED RUNNER, WITH NO API KEY AND NO PUSHED REF.
+# Credential-free real-machine acceptance on GitHub-hosted Docker.
 #
-# WHAT THIS RUNS: `node scripts/docker-e2e.ts --mode source` — the SAME lane AGENTS.md §4 lists LAST in
-# the verification flow (`bun run verify:docker`). It builds a real `ubuntu:24.04`, installs this
-# bundle from the checkout INSIDE it, boots it, and grades ~118 named rows written to a stamp directory
-# under `evidence/docker/client-install/<UTC stamp>/`. It is the only check this repository has that
-# proves the INSTALL and the MOUNT on a machine nobody configured. `--mode source` builds from the
-# checkout, so the job needs the commit it was dispatched on and nothing pushed anywhere else.
-#
-# WHY IT IS *NOT* ON push/pull_request — the measured cost decides it. A full source run took 16.1 min
-# on this project's own machine WITH the docker layer cache warm
-# (`evidence/docker/client-install/2026-10-09T14-53-52Z/driver.json`: 14:53:52Z → 15:09:57Z), and a
-# hosted runner starts with NO cache, so `docker compose build` (ubuntu:24.04 + its apt layer + the
-# `node:24-bookworm` stage) is paid in full on every run. Add the 23-minute stall measured against the
-# default npm registry's scoped endpoint (docker/entrypoint.sh step 01b) and this job's honest floor
-# sits far above the budget of a per-push check. So it runs NIGHTLY and ON DEMAND. The fast static half
-# (`gates.yml`) stays on every push and PR and is what should block a merge; this lane is the release
-# sweep's LAST step, re-measured continuously without anybody's key.
+# This runs the same `node scripts/docker-acceptance.ts` command as the local release checklist,
+# with rootful Docker explicitly enabled on the hosted runner. It stages the pack from the checked-out
+# event SHA, then installs and boots it on Ubuntu 24.04. A run publishes its own stamped evidence.
+# PR and dev push events exclude evidence-only changes. All inputs to the packed artifact and its
+# Docker apparatus can affect acceptance, so the workflow does not enumerate their paths.
 #
 # WHY --require-docker AND --allow-rootful-docker TRAVEL TOGETHER. A green job that measured nothing is
 # the exact failure mode this pair exists to prevent, and both halves are measured:
@@ -71,44 +60,24 @@ on:
     # queue is most congested, and a congested schedule is delayed or dropped rather than queued.
     - cron: "41 3 * * *"
 
-  # WHY A pull_request TRIGGER EXISTS HERE AT ALL — WITHOUT IT THIS FILE WAS INERT WHERE IT SITS. A
-  # `schedule` fires only from the DEFAULT branch's latest commit, and the dispatch button likewise
-  # requires the workflow to exist on the default branch; `master` in this repository takes release
-  # merges only (AGENTS.md §5), so the lane could not run — and did not — until a release carried the
-  # file there, which is how it was first shipped. A `pull_request` event runs the workflow file AS IT
-  # EXISTS IN THE PR'S HEAD BRANCH, and that is the ONE trigger that makes this lane runnable before
-  # the file reaches the default branch.
-  #
-  # WHY IT IS `dev`-ONLY AND PATH-FILTERED: a full source run is 16.1 min WITH a warm docker cache and
-  # a hosted runner starts cold (see the header above), so this cannot fire on every PR. `branches:
-  # [dev]` follows AGENTS.md §5 (PRs target `dev`). `paths:` names only what this lane GRADES — the
-  # packed bundle it installs and the skills corpus that bundle carries — so a PR touching none of it
-  # pays nothing:
-  #   * `docker/**`                        — the image, compose file and entrypoint the install runs;
-  #   * `scripts/docker-e2e.ts`            — the driver: the runner, the grading and the exit codes;
-  #   * `.github/workflows/docker-e2e.yml` — this file, so a trigger or filter edit re-tests itself;
-  #   * `skills/**`                        — the served skill corpus the packed bundle carries;
-  #   * `packages/**`                      — every plugin row (and committed `dist/`) the mount applies;
-  #   * `presets/**`                       — the `mpd` preset row the mount applies;
-  #   * `cordis.patch.yml`                 — the host-plane patch rows the mount applies;
-  #   * `package.json`                     — the manifest whose `files` allowlist and `dsh.bundle.patch`
-  #                                          decide what the packed install actually contains.
+  # Test the proposed merge candidate before it lands on dev.
   pull_request:
     branches: [dev]
-    paths:
-      - "docker/**"
-      - "scripts/docker-e2e.ts"
-      - ".github/workflows/docker-e2e.yml"
-      - "skills/**"
-      - "packages/**"
-      - "presets/**"
-      - "cordis.patch.yml"
-      - "package.json"
+    paths-ignore: &acceptance-exclusions
+      - "evidence/**"
+  # A PR run grades the proposed merge. The matching dev push grades the resulting commit.
+  push:
+    branches: [dev]
+    paths-ignore: *acceptance-exclusions
 
 # The lane reads the repository and nothing else — no push, no release, no secret. Same floor as
 # `gates.yml`.
 permissions:
   contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   docker-e2e:
@@ -128,8 +97,11 @@ jobs:
       # interpolates this for BOTH services, so this is the value the container reads.
       MPD_E2E_NPM_REGISTRY: ${{ inputs.npm_registry }}
     steps:
-      - name: Check out the repository
+      - name: Check out the event candidate
         uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
 
       # NODE IS THE ONLY HOST-SIDE RUNTIME THIS LANE NEEDS. The driver is a TypeScript entry point run
       # directly by Node's type stripping (on by default from 22.18), and every other tool it drives —
@@ -140,106 +112,56 @@ jobs:
         with:
           node-version: "24"
 
-      # THE ARTIFACT THE LANE GRADES IS NOT IN THE CHECKOUT, SO IT MUST BE STAGED HERE. The `pack.*`
-      # rows read `dist/mpd-package` (`docker/lib/owed-pack.ts`, which takes `--artifact`), and
-      # `.gitignore` line 12 excludes that path — so `actions/checkout` stages a tree WITHOUT it and
-      # every one of those rows fails at once with its own stated cause, "the packed artifact is not
-      # carried into this run at /src/dist/mpd-package — run `node scripts/pack-mpd.ts` before the
-      # acceptance lane". Measured on the FIRST real execution of this lane (run 37955257566, job
-      # 113904031165): `rows: total=118 passed=70 failed=7 null=41`, and all SEVEN failures name that
-      # ONE cause — pack.present, pack.licenceCoherence, pack.declarationCoherence,
-      # pack.staticCoherence, pack.distFreshRebuild, pack.rebuildToolchain and
-      # pack.distFreshRebuildControl ("the artifact carries no packages/*/dist/*.js file to mutate, so
-      # the freshness arm's falsifiability was never exercised"). This is the step the landing
-      # checklist performs by hand (`.mpd/plans/restore-acceptance-fix.md` §7b step 7) and the ONE
-      # `docker/entrypoint.sh` re-runs INSIDE the container as `16b-pack-refresh`; the HOST side never
-      # did it, and that gap is the whole defect this step closes.
-      #
-      # NODE IS THE ENTIRE TOOLCHAIN IT NEEDS — deliberately no `setup-bun`, which this job does not
-      # want anyway (see the `setup-node` step above). `scripts/pack-mpd.ts` spawns exactly ONE child
-      # process, `process.execPath`, to import the validator it emitted; that sidecar is GENERATED by
-      # reading the committed `packages/mpd-ext-plugin/dist/index.js` and appending the re-export
-      # block, never by a `bun build`. Measured on a `git archive HEAD` extraction of this commit (no
-      # `dist/mpd-package`, bun scrubbed from PATH): exit 0, `[pack-mpd] validator: generated
-      # packages/mpd-ext-plugin/dist/validator.js (9 exports) from the shipped bundle`, `[pack-mpd]
-      # modes normalized: 606 files`.
-      - name: Stage the packed bundle the acceptance rows grade
-        run: node scripts/pack-mpd.ts
-
-      # THE LANE ITSELF. Exit 0 means every row it could evaluate passed; exit 3 means it was required
-      # to run and could not (no daemon, or an arm a flag made mandatory) — a skip can never green it.
-      - name: "Docker real-machine acceptance (source mode, no API key, no browser)"
+      # The entry point owns staging, isolation and strict arm selection for both CI and local use.
+      - name: Docker real-machine acceptance (source mode, no API key, no browser)
+        id: acceptance
         timeout-minutes: 50
-        run: node scripts/docker-e2e.ts --mode source --require-docker --allow-rootful-docker --no-browser
+        run: node scripts/docker-acceptance.ts --allow-rootful-docker
 
-      # THE STAMP DIRECTORY IS THE EVIDENCE, AND IT IS UPLOADED EVEN WHEN THE LANE IS RED — that is what
-      # makes a failed night diagnosable from the run page instead of from somebody's laptop. The
-      # `client-install*` glob covers both case slugs; a run that skipped before creating a stamp warns
-      # instead of reddening a second time over an absent artifact.
-      #
-      # THE NAME CARRIES `run_attempt` ON PURPOSE: artifacts are IMMUTABLE per workflow run in the
-      # upload-artifact generation this repository pins, so a static name makes "Re-run failed jobs"
-      # collide with the previous attempt's upload — and the artifact is the whole diagnostic value of a
-      # red night. The first attempt reads `docker-e2e-stamp-1`.
+      # Retain evidence from this invocation even on failure. Each attempt gets an immutable name.
       - name: Upload the acceptance stamp directory
-        if: always()
+        if: always() && steps.acceptance.outputs.stamp != ''
         uses: actions/upload-artifact@v7
         with:
           name: docker-e2e-stamp-${{ github.run_attempt }}
-          path: evidence/docker/client-install*/
+          path: ${{ steps.acceptance.outputs.stamp }}
           if-no-files-found: warn
           retention-days: 14
 
-      # THE READABLE VERDICT: the stamp path, the driver's own flags, and every row that FAILED or came
-      # back NULL with the lane's reason. Written to the log AND to the run's step summary.
-      #
-      # THE GLOB IS `client-install*/*/` — the STAMP directories themselves, not the two case directories
-      # above them. Measured while rehearsing this step against the real evidence tree: the one-level glob
-      # resolves to the case directory whose mtime is newest, and an INTERRUPTED run leaves a perfectly
-      # EMPTY stamp directory that then wins the sort — the summary printed "no readable result.json"
-      # while the run's actual 118 rows sat one level down.
-      #
-      # `|| true` IS LOAD-BEARING, and it is a MEASURED trap rather than a precaution. A `run:` step on a
-      # Linux runner executes as `bash -e {0}`, and under `set -e` a bare `VAR="$(cmd)"` assignment takes
-      # the substitution's exit status — so with no matching stamp directory `ls` exits 2, the assignment
-      # KILLS the step, and the guard below never prints its message. Rehearsed both ways on this tree:
-      # `bash script.sh` (no -e) printed the guard and exited 0; `bash -e script.sh` exited 2 with NO
-      # output at all. The failure returned, not swallowed: `node` stays the step's exit status.
-      - name: "Print the stamp path and the row summary"
+      - name: Print the stamp path and the row summary
         if: always()
+        env:
+          STAMP: ${{ steps.acceptance.outputs.stamp }}
         run: |
-          STAMPS="$(ls -1dt evidence/docker/client-install*/*/ 2>/dev/null || true)"
-          if [ -z "$STAMPS" ]; then
-            echo "no stamp directory under evidence/docker/client-install*/*/ — this run wrote no evidence (a lane that skips exits before creating one)"
-            exit 0
-          fi
-          # UNQUOTED on purpose: one stamp directory per argv entry, newest first. Every entry is a UTC
-          # timestamp under a fixed prefix, so none can contain whitespace.
           node -e '
             const fs = require("node:fs")
-            const dirs = process.argv.slice(1)
-            const read = (dir, name) => { try { return JSON.parse(fs.readFileSync(dir + name, "utf8")) } catch { return null } }
-            const lines = ["stamp directories found (newest first): " + dirs.map((d) => d.replace(/\/$/, "")).join(" ")]
-            const graded = dirs.find((d) => read(d, "result.json") !== null)
-            if (graded === undefined) {
-              lines.push("no readable result.json in any of them — a run killed before the reporter published leaves exactly this shape")
-            } else {
-              for (const skipped of dirs.slice(0, dirs.indexOf(graded))) lines.push("SKIPPED (no readable result.json): " + skipped)
-              lines.push("stamp directory: " + graded)
-              const driver = read(graded, "driver.json")
-              if (driver) {
-                const required = driver.requiredPrefixes || []
-                lines.push("driver: exit=" + driver.exitCode + " liveRequested=" + driver.liveRequested
-                  + " browserEnabled=" + driver.browserEnabled + " requiredPrefixes=[" + required.join(",") + "]"
-                  + " containerExit=" + driver.containerExit + " imageMiB=" + driver.imageMiB)
-              }
-              const rows = read(graded, "result.json").assertions || []
+            const path = require("node:path")
+            const dir = process.env.STAMP
+            const lines = ["candidate: " + process.env.GITHUB_SHA, "stamp: " + (dir || "none")]
+            const read = (file) => { try { return JSON.parse(fs.readFileSync(path.join(dir, file), "utf8")) } catch { return null } }
+            const acceptance = dir ? read("acceptance.json") : null
+            if (acceptance) lines.push("receipt: phase=" + acceptance.phase + " exit=" + acceptance.exitCode
+              + " childExit=" + acceptance.childExitCode + " image=" + acceptance.image)
+            const driver = dir ? read("driver.json") : null
+            if (driver) {
+              lines.push("driver: candidate=" + driver.candidateSha + " mode=" + driver.mode + " exit=" + driver.exitCode
+                + " credentialForwarded=" + driver.credentialForwarded + " browserEnabled=" + driver.browserEnabled
+                + " requiredPrefixes=[" + (driver.requiredPrefixes || []).join(",") + "]"
+                + " containerExit=" + driver.containerExit + " image=" + driver.image + " containerImage=" + driver.containerImage
+                + " imageMiB=" + driver.imageMiB)
+              for (const name of driver.missingRequired || []) lines.push("MISSING " + name)
+            }
+            const result = dir ? read("result.json") : null
+            if (result) {
+              const rows = result.assertions || []
               const count = (ok) => rows.filter((row) => row.ok === ok).length
               lines.push("rows: total=" + rows.length + " passed=" + count(true) + " failed=" + count(false) + " null=" + count(null))
               for (const row of rows.filter((r) => r.ok === false)) lines.push("FAIL " + row.name + " — " + row.reason)
               for (const row of rows.filter((r) => r.ok === null)) lines.push("NULL " + row.name + " — " + row.reason)
+            } else {
+              lines.push("no readable result.json for this invocation")
             }
             const text = lines.join("\n")
             console.log(text)
             if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, "### Docker acceptance\n\n```\n" + text + "\n```\n")
-          ' $STAMPS
+          '

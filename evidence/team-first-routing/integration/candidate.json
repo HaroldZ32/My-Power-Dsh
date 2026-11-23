@@ -1,0 +1,28 @@
+{
+  "commit": "532520024568a3dcb56635d55576520c679078d5",
+  "packStamp": "2026-11-22T18:16:33.801288172Z",
+  "artifact": ".mpd/artifacts/team-first-routing/532520024568/mpd-dsh-mpd-0.21.0.tgz",
+  "name": "@mpd-dsh/mpd",
+  "version": "0.21.0",
+  "sha256": "ed7ff9d1fd49f7ddb6162a698ab618546a7410b0c5a079d1e00fe459201f9308",
+  "integrity": "sha512-43OZGP4GIu1XFfPv/LzCNcAxb1sf+6Q/kh6znv5/jT88YGdKpQSHYUqgXqW6Cr61f0HQ3da3HcLQrT4T1KX25w==",
+  "bytes": 7672140,
+  "unpackedBytes": 20451392,
+  "members": 681,
+  "trackedByteIdentical": 679,
+  "generated": [
+    "packages/mpd-ext-plugin/dist/validator.js"
+  ],
+  "transformed": [
+    "package.json"
+  ],
+  "stagedOnlyNpmMetadata": [
+    "skills/ast-grep/.gitignore",
+    "skills/frontend/.gitignore",
+    "skills/frontend/.npmignore",
+    "skills/ultimate-browsing/.gitignore"
+  ],
+  "memberManifestSha256": "f47dc2e1477a1a2651e65525daed37133e1c5e8091601edb6302bd7bbce0856f",
+  "priorRepairArtifactSha256": "b04e85c0ea7cf4bdd6f6c27bfc878299063eda3961c17d89008e706a49383f03",
+  "strictClosureExit": 0
+}

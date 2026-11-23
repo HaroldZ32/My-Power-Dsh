@@ -18,7 +18,8 @@ import type { GraphModel } from "../../mpd-graph-core/src/index.ts"
 import type { TeamRecord, TaskStatus, TaskVisual } from "./team-store"
 import { blockingDependencies, cycleIds, derivePhase, idleMembers, listTeams, memberIsCheckpoint, memberProgress, readyTasks, summariseTeam, taskVisual, activeTeamId } from "./team-store"
 import { stageLabel, teamStage } from "./stage"
-import { listContracts, readHold, readPlan, type StagedPlan } from "./plan-store"
+import { listContracts, readHold, type StagedPlan } from "./plan-store"
+import { readProjectStage } from "./project-staging"
 import { readMailbox, readRecords } from "./mailbox-store"
 import type { MailAnswer, MailQuestion } from "../../mpd-mail-protocol/src/index"
 // TYPE ONLY: the mutations are EXECUTED by the row (which owns the service); this module only shapes
@@ -698,18 +699,22 @@ export function buildTeamPlan(plan: StagedPlan | undefined, workspace: string, s
       // SERVED, NOT RE-DERIVED. Every consumer that computed this itself would be a second
       // implementation of the gate, free to drift from this one.
       phrase: approvalPhraseFor(plan.planId),
-      approved: plan.approvedAt !== undefined,
+      approved: plan.approvedAt !== undefined && plan.activation === undefined,
       discarded: plan.discardedAt !== undefined,
       // The stage's OWN fields only. A staged plan carries no `provider`/`model`/`kind` — routing is
       // resolved at approval by the roster slot, and a task's kind is chosen then too — so projecting
       // them here would invent columns the stage does not have. What it does carry is what the
       // approval gate must show: who, what, and which subjects must close first.
-      members: plan.members.map((member) => ({
-        name: member.name,
-        description: member.description,
-        ...(member.role === undefined ? {} : { role: member.role }),
-        ...(memberIds.has(member.name) ? { id: memberIds.get(member.name) as string } : {}),
-      })),
+      members: plan.members.map((member, index) => {
+        /** The frozen binding points to the actual started seat even after a workmate rename. */
+        const id = memberIds.get(plan.activation?.bindings[index]?.member ?? member.name)
+        return {
+          name: member.name,
+          description: member.description,
+          ...(member.role === undefined ? {} : { role: member.role }),
+          ...(id === undefined ? {} : { id }),
+        }
+      }),
       tasks: plan.tasks.map((task) => ({
         subject: task.subject,
         description: task.description,
@@ -803,7 +808,7 @@ export function buildTeamMail(workspace: string): TeamWebMail {
  * @returns the payload.
  */
 export function planForSession(workspace: string, sessionId: string): TeamWebPlan {
-  return buildTeamPlan(readPlan(workspace, sessionId), workspace, sessionId)
+  return buildTeamPlan(readProjectStage(workspace, sessionId).plan, workspace, sessionId)
 }
 
 /** The response surface a route handler may rely on, structurally typed. */
@@ -1272,6 +1277,8 @@ export function registerTeamRoutes(
       },
       // WHAT APPROVAL CREATED, by id: the executor's handle per member, then the board id per task.
       created: [...payload.created.members.map((member) => member.id), ...payload.created.tasks.map((task) => task.id)],
+      // The internal refusal can contain a local path. The retry instruction is safe for this view.
+      ...(payload.stoppedAt === undefined ? {} : { activationPending: true, retry: "After the startup issue clears, approve the same plan again to start the remaining members." }),
     })) && all
     all = mountAction(TEAM_DISPATCH_PATH, parseDispatchInput, (sessionId: string, body: { limit?: number; dryRun?: boolean }) => actions.dispatch(sessionId, body), (payload: TeamDispatchPayload) => ({
       pairs: payload.pairs.map((pair) => ({ taskId: pair.taskId, memberId: pair.memberId, memberName: pair.memberName })),

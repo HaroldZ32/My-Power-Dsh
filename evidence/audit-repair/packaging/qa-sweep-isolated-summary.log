@@ -1,0 +1,5 @@
+[mpd-qa] SKIP case=tui-distribution lane=real reason=absent-fixture prereq=vendor/meta-protocols/dsh-distribution in a mounted dsh-ecosystem-spec checkout remedy="check out the host repo with its submodules initialised, or set MPD_TUI_SPEC_ROOT"
+[mpd-qa] SKIP case=tui-spec-conformance lane=real reason=absent-fixture prereq=dsh-ecosystem-spec with conformance/requirements-v0.15.json remedy="check out the host repo with its submodules initialised, or set MPD_TUI_SPEC_ROOT"
+[test:qa] FAILED: install-dependencies.ts (exit 1)
+[test:qa] FAIL - 55 passed, 2 skipped, 1 failed (58 total)
+exit=1

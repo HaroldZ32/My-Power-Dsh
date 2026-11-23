@@ -1,0 +1,130 @@
+{
+  "scope": "Frozen repair plan acceptance 4, lost append acknowledgement on revision supersession and actual Boulder completion refusal",
+  "verdict": "approve",
+  "branch": "fix/team-and-audit-recovery",
+  "base": "e86764c0e09b14ba172839bc9671a2c8f3352c81",
+  "contracts": [
+    ".mpd/plans/repair-team-audit-124d4591.md",
+    "evidence/audit-repair/independent/2026-11-22T162729Z/observations.md"
+  ],
+  "runtime": {
+    "bun": "1.4.0",
+    "node": "24.21.0",
+    "testUid": 1000
+  },
+  "candidate": {
+    "copiedAt": "2026-11-22T16:49:46Z",
+    "sourceAndTests": {
+      "packages/mpd-cellwork-plugin/src/activate.ts": "efe39efb55dffb5bce981c035074304e16e8591ae07a8b53f95ffacbe83906e4",
+      "packages/mpd-cellwork-plugin/src/flow.ts": "14de792c0015ffd4f7d7c8b5299cfb467b8cc92fed231250b3a437fdfddff784",
+      "packages/mpd-cellwork-plugin/test/activate-resume-e2e.test.ts": "a22b676399ba58d248f1399f842efbe86f9b99be20ba67729aac7eb47411ec9c",
+      "packages/mpd-autoproject-plugin/src/engine.ts": "5900aeb2994465f4f050793ffa19a134d10c0a20c7f66d39f5e704d7f07ffac2",
+      "packages/mpd-autoproject-plugin/src/boulder/index.ts": "b0c908ce71dc3fdaf725d3680a7f65b24e9ecc18711d58508abdda098bb14044",
+      "packages/mpd-autoproject-plugin/test/engine.test.ts": "e433fff42c261ec7d415e1d44591bce1a2168b890e62086ad59d21d34683a080"
+    },
+    "distributions": {
+      "packages/mpd-autoproject-plugin/dist/index.js": "fe516bb048f44c3d494f4f9a8724f35c62c0f68b388f06a92573fe90e1f65c3a",
+      "packages/mpd-cellwork-plugin/dist/index.js": "b3217ff6db47246c99ccf279f8007c5fad38d673d735584892ee4f6b9fadc4ec",
+      "packages/mpd-team-core-plugin/dist/index.js": "89eae476e47e55cbdb4f5eedc88c007b716a4211c5a69e1c1444aeb938297832",
+      "packages/mpd-goal-plugin/dist/index.js": "afe025323a29f2aa6406510d2f611928e4bfa1e9d1fe5ea3004730b60584d23a"
+    },
+    "checkedAfterRuns": {
+      "time": "2026-11-22T16:50:37.172Z",
+      "dependencyModules": 76,
+      "dependencySetSha256": "887b174bad0c9a38f83fb746eb4f9fef6c4f768388c4a259ceb09c23651f2101",
+      "changed": []
+    },
+    "checkoutDistributionsByteIdentical": true
+  },
+  "earlierRepair": {
+    "copiedAt": "2026-11-22T16:41:43Z",
+    "inputs": {
+      "packages/mpd-cellwork-plugin/src/activate.ts": "ad1be72d621319d4cd171d917c9c3cde5a36571be3cb0aa06a9a7c8086ad4fb2",
+      "packages/mpd-cellwork-plugin/src/flow.ts": "e3a6d9fc55c22448151863a5c95a047eb9ff0b17f12899ed4f30d119e64f922d",
+      "packages/mpd-autoproject-plugin/src/engine.ts": "6a4c91c45725dfc98eac1e46ad246368e4d3f05fe991b034430f0f2dd4133026",
+      "packages/mpd-autoproject-plugin/src/boulder/index.ts": "4792ff941dd535a532423d2b580d9fab714109b09ad7dd0d672176e3596ef959",
+      "packages/mpd-cellwork-plugin/test/independent-followup.test.ts": "80e3c19d46a3f69e80ded0cd3cfb050eba45be7a26e760caf4030dcaf4d54958",
+      "packages/mpd-autoproject-plugin/test/independent-followup.test.ts": "f973af0ada0cc9728c20837505f4a5710c2e29427c4b73e5ec11028cef05af80"
+    },
+    "distributions": {
+      "packages/mpd-autoproject-plugin/dist/index.js": "a9e2442d159795a0b89bef20ea4ecfdd32a315d419fc64de2a19a3db4991a264",
+      "packages/mpd-cellwork-plugin/dist/index.js": "c632e8b15a19f9ed1d12449605468045d305294ee6094c8a8c05b3b563156780",
+      "packages/mpd-team-core-plugin/dist/index.js": "97370ba6a7b84571a4ee4704e6b49f25c9dffcf7aea7d9dd7fec5f51b095d910",
+      "packages/mpd-goal-plugin/dist/index.js": "afe025323a29f2aa6406510d2f611928e4bfa1e9d1fe5ea3004730b60584d23a"
+    }
+  },
+  "commands": {
+    "build": ".toolchain/node_modules/.bin/bun build packages/<plugin>/src/index.ts --target node --format esm --metafile=<private-file> --outfile packages/<plugin>/dist/index.js",
+    "exact": "bun test ./packages/mpd-cellwork-plugin/test/review-exact-{source|dist}.test.ts ./packages/mpd-autoproject-plugin/test/review-exact-{source|dist}.test.ts -t \"independent QA:\"",
+    "matched": "bun test ./packages/mpd-cellwork-plugin/test/review-board-{source|dist}.test.ts ./packages/mpd-autoproject-plugin/test/review-boulder-{source|dist}.test.ts -t \"append supersession|review observation:\"",
+    "controls": "bun test ./packages/mpd-cellwork-plugin/test/activate-resume-e2e.test.ts ./packages/mpd-cellwork-plugin/test/activate-resume.test.ts ./packages/mpd-cellwork-plugin/test/flow.test.ts ./packages/mpd-autoproject-plugin/test/engine.test.ts ./packages/mpd-autoproject-plugin/test/boulder.test.ts ./packages/mpd-goal-plugin/test/goal.test.ts",
+    "notes": "Pinned Bun for all tests. Private copies of the prior independent fixtures retained the public cases. For the matched suite, the same instrumented disposable fixtures ran against both builds. The distribution copies changed entry-module imports to rebuilt public entries."
+  },
+  "runs": {
+    "earlierExactSourceAndDistEach": {
+      "exit": 1,
+      "pass": 1,
+      "fail": 2
+    },
+    "earlierMatchedDist": {
+      "exit": 1,
+      "pass": 1,
+      "fail": 7
+    },
+    "firstFreezeCellworkControls": {
+      "exit": 1,
+      "pass": 68,
+      "fail": 1
+    },
+    "finalExactSourceAndDistEach": {
+      "exit": 0,
+      "pass": 3,
+      "fail": 0
+    },
+    "finalMatchedSourceAndDistEach": {
+      "exit": 0,
+      "pass": 8,
+      "fail": 0
+    },
+    "finalSourceControls": {
+      "exit": 0,
+      "pass": 138,
+      "fail": 0
+    }
+  },
+  "observations": {
+    "packages/mpd-cellwork-plugin/src/activate.ts materializeSplit": "After durable append then lost acknowledgement, old revision 2 left the unchanged T1 and T2 pending and left removed T1 pending. Final revision 2 kept only T1 with its review dependency and verify loop. The removed T1 was cancelled and remained in board history. Changed work, active or ambiguous rows, terminal history, consecutive lost acknowledgements, same-revision retry and ordinary re-split passed their controls.",
+    "packages/mpd-autoproject-plugin/src/engine.ts runAutoproject": "chmod(0400) on the actual Boulder ledger produced EACCES and the registered completion tool refused with ledger bytes intact. Earlier run response, state and owning goal reported complete while the ledger stayed active. Final response and saved run were boulder-pending, the ledger and owning goal active, with zero goal mutations and zero public result-schema issues. Success, semantic refusal, wrong work ID, transport throw and foreign-goal controls passed.",
+    "packages/mpd-autoproject-plugin/src/boulder/index.ts mpd_boulder_complete": "Restoring permissions and retrying the same work persisted one completion and replay preserved identical bytes and receipt. The prior run stayed boulder-pending and its goal stayed active after this standalone ledger retry."
+  },
+  "preflight": {
+    "time": "2026-11-22T16:51:57.037Z",
+    "candidates": {
+      "worktree": 180,
+      "staged": 0,
+      "untracked": 4946
+    },
+    "contentsChecked": 5126,
+    "evidencePaths": 4935,
+    "unreadable": 0,
+    "repairCandidateCredentialHits": [],
+    "repairCandidateArchives": [],
+    "repairCandidateBinaries": [],
+    "allCandidatesAtLeast5MiB": 0,
+    "largestCandidateBytes": 1044618,
+    "outsideRepair": {
+      "untrackedBinaries": 194,
+      "compressedSessionLogs": 12,
+      "credentialShapedLoopbackTokenFiles": 4,
+      "excerptsOmitted": true
+    },
+    "controls": "synthetic format detected, dummy fixture ignored",
+    "method": "Local Git worktree, index and nonignored additions. Pattern and filename scan plus archive and binary size/magic. No secret values or raw archived contents retained."
+  },
+  "bounds": [
+    "Public registered plugins, real durable Team/Boulder stores, actual non-root permission failure, and disposable HOME, DSH_HOME and workspace. Host registry, goal driver, consults and transport interruption were deterministic fixtures.",
+    "Live DSH, provider, concurrent processes, power loss, whole-repository gates and unrelated audit lanes were outside the run. The manual public retry covered the same Boulder ledger row.",
+    "The preflight was a local heuristic snapshot of changed and addable files. Unchanged historical blobs and compressed contents were outside credential scanning."
+  ],
+  "evidence": "output.log"
+}

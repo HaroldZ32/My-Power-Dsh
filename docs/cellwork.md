@@ -177,7 +177,9 @@ A revision is not a rewrite of the team; it is a delta applied to the live recor
   recorded row is terminal and
   no live row exists does the update APPEND a replacement row (same cell role, the new revision in its
   subject): the board has no reopen verb, and appending on every bump would pile up un-cancellable
-  tasks. The split graph itself is never duplicated.
+  tasks. With `expected_revision`, retrying the same accepted text returns the existing revision.
+  Different text with that prior revision is refused. The captain dispatches the returned ticket
+  before activating the newly accepted split.
 - **The split ticket is found by its recorded id, and a lost owner is repaired.** Staging records the
   staged split ticket's BOARD id on the cell record (`splitTaskId`) and every later lookup tries that
   id first, the owner second: a requirements bump can therefore mark the split stale and re-dispatch
@@ -237,9 +239,13 @@ is genuinely absent (a member key whose spelling disagrees with the recorded `na
 or older record). The bound: adoption covers members the TEAM record already knows; a session the team
 record does not carry still has no channel, by design.
 
-**Elastic execution seats (the elastic-planning wave).** On every dispatch pass — `cellwork_dispatch`
-and the activation's initial pass — a READY task whose declared owner names a LIVE member that is not
-idle (BUSY, or holding another claim) may GROW a seat instead of waiting:
+**Fixed and elastic execution seats.** With a fixed project roster, a split must resolve its owners
+against that roster. A ready work task with a busy owner may use a compatible idle fixed member
+already on the board. If none is available, the task queues. To add durable capacity, the project
+captain must declare a member explicitly. [Roster calls](./user-guide.md#1312-the-local-project-team)
+
+In a cold project with an empty fixed roster, `cellwork_dispatch` and the activation's initial pass
+can grow a temporary execution seat when a ready task's declared owner already holds a claim:
 
 - the owner's BASE is its name with a trailing `-<n>` (`n >= 2`) removed, and its ROLE is the roster
   role whose spelling matches that base (case/space/hyphen-insensitive). When the base names no roster

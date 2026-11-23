@@ -1,0 +1,34 @@
+{
+  "subject": "Release and install fixes for the 2026-11-22 audit",
+  "localOnly": true,
+  "runtime": {
+    "node": "24.21.0",
+    "npm": "11.19.0",
+    "pnpm": "11.23.0",
+    "dsh": "0.2.2-rc.5",
+    "tui": "0.20.2",
+    "bun": "1.4.0",
+    "platform": "Linux x64 glibc"
+  },
+  "results": {
+    "unreadableNpmPacklist": { "beforeExit": 0, "afterExit": 1, "completePacklistExit": 0 },
+    "supersededTarball": { "smokeExit": 0, "releaseStatus": "rejected", "sha256": "5f5dbbafb5cf0bb198026ba4d834813392ea24b4135b4e1a6dc1f9023cd50039", "reason": "Three package-local runtime state files in archive" },
+    "diagnosticRuntimeStateFreeTarball": { "exit": 0, "releaseStatus": "scratch verification only", "sha256": "bf70c34fc9adc821c47b17d76bf6f6d3e131be30ca6bab8a9622d6e84df6f94a", "webMatches": [1, 0], "tuiMatches": [1, 0], "archiveRehashed": true, "installedLauncherBytesCompared": true },
+    "relocatableTarball": { "exit": 0, "webMatches": [1, 0], "tuiMatches": [1, 0], "manifestFilesWithMatchingBytes": 675 },
+    "runtimeStateArchiveControl": { "exit": 0, "beforeLeakedMembers": 3, "afterLeakedMembers": 0 },
+    "oldLauncherControl": { "exit": 1, "firstCall": "BINARY_NOT_FOUND" },
+    "offlineStageControl": { "matchingArchiveExit": 0, "changedArchiveExit": 1, "registryMode": "local npm stub" },
+    "packClosureSelfTest": { "exit": 0, "passed": 43, "total": 43 },
+    "workflowSelfTest": { "exit": 0, "passed": 8, "total": 8 },
+    "graphControls": { "exit": 0, "connectedEdges": 1, "frameOnlyEdges": 0, "disconnectedEdges": 0 },
+    "qaSummary": { "exit": 0, "passed": 56, "skipped": 2, "failed": 0, "credentialSource": "synthetic fixture for an offline prerequisite" },
+    "preliminaryDockerSource": { "exit": 1, "firstAstSearch": "pass", "tuiGraphEdges": "pass", "fullVerdictBound": "Pre-wave relocatable pack drift" },
+    "refreshedDockerSource": { "exit": 0, "passed": 163, "failed": 0, "unmeasured": 81, "rebuildMatches": 35, "firstAstSearch": "pass", "tuiGraphEdges": "pass" },
+    "dockerOneClickLocalGit": { "exit": 0, "passed": 162, "failed": 0, "unmeasured": 82, "installedDistMatches": 36, "firstAstSearch": "pass", "tuiGraphEdges": "pass" },
+    "credentialedOneClickPreflight": { "exit": 3, "reason": "No authorized provider credential in the isolated environment" }
+  },
+  "bounds": [
+    "The smoke tests used clean Linux x64 glibc profiles and made no model calls. Other native packages were checked through npm metadata.",
+    "The release staging shell was exercised against a local stub. No GitHub release job, registry staging, registry publication, or real profile installation occurred."
+  ]
+}

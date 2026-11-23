@@ -30,12 +30,14 @@
 //
 // CAPABILITY DELTAS against the retired server are stated in `packages/mpd-mcp-lsp/README.md`; the
 // three that have no cclsp counterpart are `status`, `prepare_rename` and `install_decision`.
+import { resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 import { resolveDependencyEntry } from "../../mpd-mcp-shared/dependency-entry.ts"
-import { installTerminalSilence, resolveLogRoots } from "../../mpd-mcp-shared/log-sink.ts"
+import { installTerminalSilence } from "../../mpd-mcp-shared/log-sink.ts"
 import type { LogSink } from "../../mpd-mcp-shared/log-sink.ts"
 import { serveUnavailable } from "../../mpd-mcp-shared/unavailable-server.ts"
 import { buildConfigDocument, ensureConfigPath } from "./cclsp-config.ts"
+import { startCclsp } from "./cclsp-diagnostics.ts"
 import type { CclspConfigDocument, ConfigOutcome } from "./cclsp-config.ts"
 
 /** The npm package this launcher starts; the version is pinned in the bundle's `optionalDependencies`. */
@@ -132,8 +134,8 @@ if (dependency === null) {
   process.exitCode = 0
 } else {
   sink.write("[mpd-mcp-lsp] starting " + DEPENDENCY + "@" + dependency.version + " from " + dependency.entry)
-  /** The workspace root the config is anchored at: the highest-precedence log root is the session's own. */
-  const root = resolveLogRoots()[0] ?? process.cwd()
+  /** The analysis root follows the child workspace, independently of the log sink. */
+  const root = resolve(process.env.DSH_WORKSPACE_ROOT?.trim() || process.cwd())
   publishConfigPath(root, dependency.packageJson)
   // The specifier is a RUNTIME VALUE on purpose: a literal one would make `bun build` inline the whole
   // third-party server into this launcher (measured on the ast-grep twin).
@@ -148,5 +150,5 @@ if (dependency === null) {
   // the LSP server was simply UNAVAILABLE on Windows. The two relative-specifier twins (ast-grep's
   // `./cli.js`, codegraph's `./serve.js`) never needed this conversion; this one does, because its
   // specifier is an absolute path.
-  await import(pathToFileURL(entry).href)
+  await startCclsp(pathToFileURL(entry), dependency.version, (line) => sink.write(line))
 }

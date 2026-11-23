@@ -37,6 +37,8 @@ import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSyn
 import { tmpdir } from "node:os"
 import { dirname, join, relative } from "node:path"
 import { fileURLToPath } from "node:url"
+import { COMMON_PACK_ASSERTIONS, SOURCE_PACK_ASSERTIONS } from "../docker/lib/pack-contract.ts"
+import { CONTRIBUTED_COMMANDS, NON_GATING_COMMANDS } from "../skills/dsh-qa/scripts/lib/user-surface-eval.ts"
 import { readJson } from "./lib/repo.ts"
 
 /** This file's own absolute path, the anchor every sibling path below is derived from. */
@@ -94,6 +96,8 @@ interface ResultSummary {
 interface ResultBody {
   /** Case id the reporter stamps (`docker-client-install`). */
   readonly case?: string
+  /** The Compose image tag recorded by the container's reporter. */
+  readonly image?: string
   /** Overall verdict; the process exit code is derived from it. */
   readonly ok?: boolean
   /** True when every assertion was evaluated. */
@@ -290,6 +294,17 @@ const USER_SURFACE_ROW_PREFIX = "userSurface.row."
 /** The name shape of the companion marker a declared bound writes: `userSurface.bound.<id>`, verdict TRUE. */
 const DECLARED_BOUND_PREFIX = "userSurface.bound."
 
+/** Installation, isolation and installed user-surface witnesses that every completed lane owes. */
+const REQUIRED_DOCKER_WITNESSES: readonly string[] = [
+  "install.exit", "install.profileDep", "boot.presetMount",
+  "isolation.home", "isolation.realHome", "isolation.noCredentials",
+  "userSurface.probe", "userSurface.bundleResolution", "userSurface.profileRowListWins",
+  "userSurface.rowsEnumerated", "userSurface.rowsWitness", "userSurface.rowsDeclaredBound",
+  "userSurface.negativeControl", "userSurface.isolation", "userSurface.commandCorpus", "userSurface.findings",
+  ...CONTRIBUTED_COMMANDS.filter((command) => !NON_GATING_COMMANDS.includes(command))
+    .map((command) => `userSurface.command.${command}`),
+]
+
 /**
  * The ids a user-surface run DECLARED as composed-but-not-individually-proven on this plane.
  *
@@ -339,6 +354,19 @@ export function requiredArmExit(result: ResultBody | null | undefined, unmeasure
   return unmeasured.length > 0 || missingRequired.length > 0 ? 3 : decideExit(result)
 }
 
+/**
+ * Preserve a red report and require an image identity match before accepting a green one.
+ * @param reportExit - Exit from the report and its required witnesses.
+ * @param status - Docker Compose process status.
+ * @param image - The reported container image tag.
+ * @param expected - The image tag the driver built and selected in Compose.
+ * @returns The final acceptance exit code.
+ */
+function finishedDockerExit(reportExit: number, status: number | null, image: string | undefined, expected: string): number {
+  if (reportExit !== 0) return reportExit
+  return status === 0 && image === expected ? 0 : 2
+}
+
 /** The rows a TEAM-PROJECT run must RECORD, per plane, in the order a reader checks them. */
 export function requiredTeamNames(): readonly string[] {
   /** The fixed row suffixes every plane's verdict writes. */
@@ -366,7 +394,22 @@ export function missingOrNull(result: ResultBody | null | undefined, names: read
   if (names.length === 0) return []
   /** The body's rows by name, or an empty map when no body was produced. */
   const byName = new Map((result?.assertions ?? []).map((assertion) => [assertion.name, assertion.ok]))
-  return names.filter((name) => !byName.has(name) || byName.get(name) === null)
+  return names.filter((name) => typeof byName.get(name) !== "boolean")
+}
+
+/**
+ * Grade absent evidence under the same contract in the live driver and the offline fixture.
+ * @param result - Evidence published by the container.
+ * @param mode - Source rebuilds dist. Oneclick uses the dist already shipped in the artifact.
+ * @param team - Whether the optional team project arm was requested.
+ * @returns Required names absent or unmeasured, with false rows left to the ordinary verdict.
+ */
+function missingDockerWitnesses(result: ResultBody | null | undefined, mode: "source" | "oneclick", team: boolean): string[] {
+  return missingOrNull(result, [
+    ...REQUIRED_DOCKER_WITNESSES, ...COMMON_PACK_ASSERTIONS,
+    ...(mode === "source" ? SOURCE_PACK_ASSERTIONS : []),
+    ...(team ? requiredTeamNames() : []),
+  ])
 }
 
 /**
@@ -622,6 +665,9 @@ function selfTest(): void {
   check("decideExit(ok) === 0", decideExit({ ok: true }) === 0)
   check("decideExit(failed) === 1", decideExit({ ok: false }) === 1)
   check("decideExit(null) === 2", decideExit(null) === 2)
+  check("a green report must agree with the selected image", finishedDockerExit(0, 0, "candidate", "candidate") === 0
+    && finishedDockerExit(0, 0, "local", "candidate") === 2 && finishedDockerExit(0, 0, undefined, "candidate") === 2)
+  check("an image mismatch does not mask a required-arm failure", finishedDockerExit(3, 0, "local", "candidate") === 3)
   check("summarize names the failed assertion", summarize({ ok: false, complete: false, summary: {}, assertions: [{ name: "boot.x", ok: false }, { name: "y", ok: null }] }).includes("FAILED=[boot.x]"))
 
   // 3b. the REQUIRED-ARM gate: an arm the caller asked for must never green by not running.
@@ -649,7 +695,39 @@ function selfTest(): void {
   // is "no assertion failed") then read the ABSENCE as a pass.
   /** A body that ran every arm except the user-surface one. */
   const noUserSurface: ResultBody = { ok: true, assertions: [{ name: "boot.rows", ok: true, reason: "ok" }] }
-  check("a body with no userSurface rows is missing them", missingOrNull(noUserSurface, ["userSurface.rowsWitness", "userSurface.command.autoproject"]).join(",") === "userSurface.rowsWitness,userSurface.command.autoproject")
+  check("an otherwise green report missing the user surface exits 3",
+    missingDockerWitnesses(noUserSurface, "source", false).includes("userSurface.probe")
+      && requiredArmExit(noUserSurface, [], missingDockerWitnesses(noUserSurface, "source", false)) === 3)
+  /** All required witnesses pass and the intentionally disabled browser arm remains null. */
+  const credentialFreeReport: ResultBody = { ok: true, assertions: [
+    ...[...REQUIRED_DOCKER_WITNESSES, ...COMMON_PACK_ASSERTIONS, ...SOURCE_PACK_ASSERTIONS].map((name) => ({ name, ok: true })),
+    { name: "ui.replyRendered", ok: null },
+  ] }
+  /** The prefixes the shared source lane owes, without the browser, team or live arms. */
+  const credentialFreeRequirements = requiredPrefixesFor({ live: false, browser: false, team: false })
+  check("credential-free acceptance keeps an optional browser row null",
+    requiredArmExit(credentialFreeReport,
+      unmeasuredRequired(credentialFreeReport, credentialFreeRequirements.prefixes, credentialFreeRequirements.excluded),
+      missingDockerWitnesses(credentialFreeReport, "source", false)) === 0)
+  /** Remove a graded command that the reporter's static spine does not backfill. */
+  const missingCommand: ResultBody = { ...credentialFreeReport,
+    assertions: credentialFreeReport.assertions?.filter(({ name }) => name !== "userSurface.command.mpd-codegraph") }
+  check("a single absent contributed command exits 3",
+    missingDockerWitnesses(missingCommand, "source", false).join(",") === "userSurface.command.mpd-codegraph"
+      && requiredArmExit(missingCommand, [], missingDockerWitnesses(missingCommand, "source", false)) === 3)
+  /** Model the reporter's null backfill for the rebuild steps oneclick omits by design. */
+  const withoutRebuild: ResultBody = { ...credentialFreeReport, assertions: credentialFreeReport.assertions?.map((row) =>
+    SOURCE_PACK_ASSERTIONS.some((name) => name === row.name) ? { ...row, ok: null } : row) }
+  check("source requires all three rebuilt pack measurements, oneclick allows their nulls",
+    missingDockerWitnesses(withoutRebuild, "source", false).join(",") === SOURCE_PACK_ASSERTIONS.join(",")
+      && requiredArmExit(withoutRebuild, [], missingDockerWitnesses(withoutRebuild, "source", false)) === 3
+      && requiredArmExit(withoutRebuild, [], missingDockerWitnesses(withoutRebuild, "oneclick", false)) === 0)
+  /** Model an absent common pack witness while the rest of oneclick is green. */
+  const withoutPackPresence: ResultBody = { ...withoutRebuild,
+    assertions: withoutRebuild.assertions?.filter(({ name }) => name !== "pack.present") }
+  check("oneclick still requires common pack measurements",
+    missingDockerWitnesses(withoutPackPresence, "oneclick", false).join(",") === "pack.present"
+      && requiredArmExit(withoutPackPresence, [], missingDockerWitnesses(withoutPackPresence, "oneclick", false)) === 3)
   /** A body whose user-surface step ran but could not evaluate its aggregate. */
   const nullUserSurface: ResultBody = { ok: true, assertions: [{ name: "userSurface.rowsWitness", ok: null, reason: "not reached" }, { name: "userSurface.command.autoproject", ok: true, reason: "ok" }] }
   check("a null userSurface row is an unmeasured required arm", unmeasuredRequired(nullUserSurface, ["userSurface."]).join(",") === "userSurface.rowsWitness")
@@ -860,7 +938,9 @@ function selfTest(): void {
   check("every bind mount is the evidence /out mount", volumeLines.length > 0 && volumeLines.every((line: string) => line.includes(":/out")), JSON.stringify(volumeLines))
   check("compose builds from the REPOSITORY ROOT context", /^\s*context:\s*\.\.\s*$/m.test(compose))
   check("compose points at docker/Dockerfile", /^\s*dockerfile:\s*docker\/Dockerfile\s*$/m.test(compose))
-  check("compose names the image", /^\s*image:\s*\S+/m.test(compose))
+  check("both compose services select and report the image tag recorded by the driver",
+    (compose.match(/^\s*image:\s*\$\{MPD_DOCKER_IMAGE:-mpd-docker-e2e:local\}\s*$/gm) ?? []).length === composeServices.length
+    && (compose.match(/^\s*MPD_E2E_IMAGE:\s*\$\{MPD_DOCKER_IMAGE:-mpd-docker-e2e:local\}\s*$/gm) ?? []).length === composeServices.length)
   // The two services are the wave's two acceptance questions: the checkout install (`source`) and
   // the published-package install with no build (`oneclick`). Naming them exactly means a third
   // service cannot appear unnoticed — and a missing one cannot silently reduce the evidence.
@@ -997,10 +1077,6 @@ function selfTest(): void {
   const reported = readFileSync(join(DOCKER_DIR, "lib", "report.ts"), "utf8")
   for (const name of [
     "install.buildScripts",
-    "pack.licenceCoherence",
-    "pack.declarationCoherence",
-    "pack.staticCoherence",
-    "pack.distFreshRebuild",
     "boot.mcpToolNaming",
     "boot.mcpLiveSearch",
     "restore.reviewPanelSelfTest",
@@ -1012,7 +1088,11 @@ function selfTest(): void {
   ]) {
     check(`report.ts declares the §7 assertion ${name}`, reported.includes(`"${name}"`))
   }
-  check("pack.present is declared too (a missing artifact is a FAIL, never a skip)", reported.includes('"pack.present"'))
+  /** Run the actual reporter with no pack measurements to check its backfill against the contract. */
+  const noPackReplay = replayThroughReporter("no-pack", fixtureReplayRows.filter((row) => !row.name.startsWith("pack.")))
+  check("the reporter backfills every shared pack witness as null, never true",
+    [...COMMON_PACK_ASSERTIONS, ...SOURCE_PACK_ASSERTIONS].every((name) =>
+      noPackReplay?.assertions?.some((row) => row.name === name && row.ok === null)))
 
   // 8c. THE S-B ARMS (§4 S-B, 2026-10-09). Every arm below RUNS the real apparatus module it grades
   //     against PLANTED fixtures, and every one of them has a planted NEGATIVE control. A self-test that
@@ -1263,7 +1343,7 @@ function selfTest(): void {
     "oneclick.scratchRepo", "oneclick.requiredPaths", "oneclick.filesAllowlist", "oneclick.distByteIdentical",
   ]
   for (const name of unionRequired) check(`the EXPECTED spine declares the union row ${name}`, reported.includes(`"${name}"`))
-  for (const name of ["toolchain.bunPinned", "pack.rebuildToolchain", "pack.distFreshRebuildControl", "qa.mcpCallEngine"]) {
+  for (const name of ["toolchain.bunPinned", "qa.mcpCallEngine"]) {
     check(`the EXPECTED spine declares the new S-B row ${name}`, reported.includes(`"${name}"`))
   }
   /** The declared spine, parsed so a duplicate can be caught (the reporter keys rows by NAME). */
@@ -1573,8 +1653,12 @@ async function main(): Promise<void> {
   const buildx = buildxEnv()
   console.log(`[driver] BUILDX_CONFIG=${buildx.env.BUILDX_CONFIG}${buildx.owned ? " (private, writable: the sandbox denies ~/.docker/buildx)" : " (caller-provided)"}`)
 
-  /** Evidence directory for this run (UTC-stamped), filed under the mode's case slug. */
-  const evidence = evidenceDir(REPO, new Date(), caseSlug)
+  /** The pinned commit identifier and stamp reserved by the shared acceptance entry point. */
+  const candidateSha = process.env.MPD_DOCKER_ACCEPTANCE_SHA ?? null
+  /** Evidence stays in the operator's checkout when the build context is a temporary archive. */
+  const evidence = process.env.MPD_DOCKER_ACCEPTANCE_OUT ?? evidenceDir(REPO, new Date(), caseSlug)
+  /** Fixed lane settings recorded on any outcome once the build has started. */
+  const lane = { candidateSha, image: IMAGE, mode, liveRequested, credentialForwarded: liveRequested && keyPresent, browserEnabled }
   mkdirSync(evidence, { recursive: true })
   /** Append-only copy of everything the docker children printed. */
   const consoleLog = join(evidence, "console.log")
@@ -1597,7 +1681,7 @@ async function main(): Promise<void> {
     if (built.status !== 0) {
       writeSyntheticResult(evidence, `docker compose build exited ${built.status}`)
       writeFileSync(join(evidence, "output.log"), readFileSync(consoleLog, "utf8"))
-      writeFileSync(driverLog, JSON.stringify({ startedAt, finishedAt: new Date().toISOString(), docker: docker.version, compose: docker.compose, steps, exitCode: 2 }, null, 2) + "\n")
+      writeFileSync(driverLog, JSON.stringify({ ...lane, startedAt, finishedAt: new Date().toISOString(), docker: docker.version, compose: docker.compose, steps, exitCode: 2 }, null, 2) + "\n")
       console.error(`[driver] docker compose build failed (exit ${built.status}) — see ${relative(REPO, consoleLog)}`)
       cleanup()
       process.exitCode = 2
@@ -1615,7 +1699,7 @@ async function main(): Promise<void> {
   /** The container run's outcome; its status is quoted even when a result.json exists. */
   const ran = await runStreaming(docker.docker, runArgs, {
     cwd: REPO,
-    env: { ...buildx.env, MPD_DOCKER_OUT: evidence, MPD_E2E_IMAGE: IMAGE },
+    env: { ...buildx.env, MPD_DOCKER_OUT: evidence },
     logFile: consoleLog,
   })
   steps.push({ id: "driver-run", cmd: `docker ${runArgs.join(" ")}`, status: ran.status, signal: ran.signal })
@@ -1657,26 +1741,25 @@ async function main(): Promise<void> {
   })
   /** The unevaluated assertions inside those arms. */
   const unmeasured = unmeasuredRequired(result, requiredPrefixes, excludedRequired)
-  // PRESENCE, NOT JUST NON-NULLNESS, for the team rows: a verdict that wrote nothing is invisible to
-  // `unmeasuredRequired` and to `ok`, so the required names are checked against the body directly.
-  /** The required team rows absent or null in this run's result. */
-  const teamRowsMissing = teamProjectRequested ? missingOrNull(result, requiredTeamNames()) : []
-  /** The verdict after the requirement gate (3 when a required arm is missing, else the run's own code). */
-  const finalExit = requiredArmExit(result, unmeasured, teamRowsMissing)
+  /** The required witnesses absent or unmeasured, including team rows only when requested. */
+  const missingRequired = missingDockerWitnesses(result, mode, teamProjectRequested)
+  /** The report's verdict after grading the required witnesses. */
+  const reportExit = requiredArmExit(result, unmeasured, missingRequired)
+  /** A green report also needs a successful container exit and a matching image tag. */
+  const finalExit = finishedDockerExit(reportExit, ran.status, result.image, IMAGE)
   writeFileSync(driverLog, JSON.stringify({
+    ...lane,
     startedAt,
     finishedAt: new Date().toISOString(),
     docker: docker.version,
     compose: docker.compose,
-    image: IMAGE,
+    containerImage: result.image ?? null,
     imageMiB: sizeMiB,
     buildxConfig: buildx.env.BUILDX_CONFIG,
-    liveRequested,
-    browserEnabled,
     requiredPrefixes,
     excludedRequired,
     unmeasured,
-    teamRowsMissing,
+    missingRequired,
     steps,
     containerExit: ran.status,
     verdict: summarize(result),
@@ -1697,12 +1780,13 @@ async function main(): Promise<void> {
   for (const name of unmeasured) {
     console.log(`[driver] UNMEASURED ${name} — this arm was required by the flags of this invocation, so a null is a MISSING PREREQUISITE (exit 3), not a pass`)
   }
-  // A team-mode run needs its verdict rows PRESENT: an absent row is a verdict that never ran, which
-  // neither `ok` nor the null reader can see. Named here for the same reason as the unmeasured arms.
-  for (const name of teamRowsMissing) {
-    console.log(`[driver] MISSING ${name} — a team-project run must RECORD this row; absent or null means the verdict did not run (exit 3)`)
+  for (const name of missingRequired) {
+    console.log(`[driver] MISSING ${name} — required witness absent or unmeasured (exit 3)`)
   }
-  console.log(`[driver] evidence -> ${relative(REPO, evidence)}`)
+  if (reportExit === 0 && ran.status !== 0) console.error(`[driver] container did not complete successfully (status ${ran.status}, signal ${ran.signal})`)
+  if (result.image !== undefined && result.image !== IMAGE) console.error(`[driver] image mismatch: expected ${IMAGE}, got ${redact(result.image)}`)
+  if (reportExit === 0 && result.image === undefined) console.error("[driver] container report did not identify its image")
+  console.log(`[driver] evidence -> ${candidateSha === null ? relative(REPO, evidence) : evidence}`)
   cleanup()
   process.exitCode = finalExit
 }

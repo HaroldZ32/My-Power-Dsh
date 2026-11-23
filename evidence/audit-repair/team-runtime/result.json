@@ -1,0 +1,393 @@
+{
+  "case": "team-runtime",
+  "environment": "Source-built TEAM and adapter rows mounted in the pinned headless host with a deterministic loopback DeepSeek Messages provider and three-way isolation.",
+  "artifactScope": "The pinned-host comparison precedes the legacy zero-start recovery and Web projection. Their code is covered by package tests.",
+  "expectedRedObserved": true,
+  "nativeRetryPassed": true,
+  "olderHostPassed": true,
+  "dispatchGuard": {
+    "exit": 0,
+    "total": 21,
+    "passed": 21
+  },
+  "arms": [
+    {
+      "arm": "red",
+      "version": "0.2.2-rc.5",
+      "hostExit": 0,
+      "isolatedStore": true,
+      "artifactSha256": "1b729632eeb3660846607b185b66ce373d050e41e541b1e69125defaf7da68fa",
+      "captainId": "session-5a70cf86-4512-46b5-84cb-11b2b8deeb9c",
+      "teamId": "team-20261122161317407-9xxh-002",
+      "seats": [
+        {
+          "name": "qa-worker",
+          "id": "M1",
+          "ref": "6bd1aec4-128c-48c3-ab2a-e067b103c18d",
+          "status": "inactive"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "T1",
+          "owner": "6bd1aec4-128c-48c3-ab2a-e067b103c18d",
+          "status": "completed"
+        }
+      ],
+      "partial": {
+        "id": "team-20261122161317407-9xxh-002",
+        "approved": true,
+        "phase": "active",
+        "members": [
+          {
+            "name": "qa-worker",
+            "id": "M1",
+            "ref": "6bd1aec4-128c-48c3-ab2a-e067b103c18d",
+            "status": "running"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "owner": "qa-worker",
+            "status": "pending"
+          }
+        ]
+      },
+      "sameTeam": true,
+      "sameFirstChild": true,
+      "distinctChildIds": true,
+      "childModels": [
+        "deepseek-flash"
+      ],
+      "toolResults": {
+        "status": {
+          "sessionId": "session-5a70cf86-4512-46b5-84cb-11b2b8deeb9c",
+          "tool": "agent_teams_plan",
+          "callId": "call_team_1",
+          "action": "status",
+          "error": true,
+          "text": "Error: tool \"agent_teams_plan\" returned invalid output: value is not lossless JSON"
+        },
+        "refusal": {
+          "sessionId": "session-5a70cf86-4512-46b5-84cb-11b2b8deeb9c",
+          "tool": "agent_teams_plan",
+          "callId": "call_team_7",
+          "action": "approve",
+          "error": false,
+          "text": "approved plan-20261122161317312-9xxh-001: 1 member(s), 0 task(s) — STOPPED at member qa-idler: subagent limit reached (active child limit: 1); wait for an existing child to finish or complete this work with the current agents\n  qa-worker — none (no-library)\n  qa-idler — none (no-library)"
+        },
+        "retry": {
+          "sessionId": "session-5a70cf86-4512-46b5-84cb-11b2b8deeb9c",
+          "tool": "agent_teams_plan",
+          "callId": "call_team_11",
+          "action": "approve",
+          "error": true,
+          "text": "Error: plan plan-20261122161317312-9xxh-001 is already approved"
+        },
+        "opening": {
+          "sessionId": "6bd1aec4-128c-48c3-ab2a-e067b103c18d",
+          "tool": "agent_teams_task",
+          "callId": "call_team_9",
+          "action": "context",
+          "error": false,
+          "text": "qa-worker used 18 / 1048576 (observed) = 0%"
+        },
+        "dispatch": {
+          "sessionId": "session-5a70cf86-4512-46b5-84cb-11b2b8deeb9c",
+          "tool": "agent_teams_dispatch",
+          "callId": "call_team_12",
+          "action": "run",
+          "error": false,
+          "text": "QA_WORK_MARKER -> qa-worker"
+        },
+        "claimed": {
+          "sessionId": "6bd1aec4-128c-48c3-ab2a-e067b103c18d",
+          "tool": "agent_teams_task",
+          "callId": "call_team_14",
+          "action": "claim",
+          "taskId": "T1",
+          "error": false,
+          "text": "attempt 1 of T1 by 6bd1aec4-128c-48c3-ab2a-e067b103c18d"
+        },
+        "completed": {
+          "sessionId": "6bd1aec4-128c-48c3-ab2a-e067b103c18d",
+          "tool": "agent_teams_task",
+          "callId": "call_team_15",
+          "action": "complete",
+          "taskId": "T1",
+          "error": false,
+          "text": "T1 -> completed (by owner, attempt 1)"
+        }
+      }
+    },
+    {
+      "arm": "green",
+      "version": "0.2.2-rc.5",
+      "hostExit": 0,
+      "isolatedStore": true,
+      "artifactSha256": "14828ccfd8dd4509696f28526959d3dac2f3432dddeb46bd134f3485a2386e5c",
+      "captainId": "session-646841d8-525e-4eaf-b744-f4995fefb157",
+      "teamId": "team-20261122161320205-ualp-002",
+      "seats": [
+        {
+          "name": "qa-worker",
+          "id": "M1",
+          "ref": "6c7f2555-75e9-43b5-829d-3d0f5cfd54cd",
+          "status": "inactive"
+        },
+        {
+          "name": "qa-idler",
+          "id": "M2",
+          "ref": "49fc2493-b342-48bf-add7-f7bee92017c8",
+          "status": "inactive"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "T1",
+          "owner": "6c7f2555-75e9-43b5-829d-3d0f5cfd54cd",
+          "status": "completed"
+        }
+      ],
+      "partial": {
+        "id": "team-20261122161320205-ualp-002",
+        "approved": true,
+        "phase": "active",
+        "members": [
+          {
+            "name": "qa-worker",
+            "id": "M1",
+            "ref": "6c7f2555-75e9-43b5-829d-3d0f5cfd54cd",
+            "status": "running"
+          }
+        ],
+        "tasks": []
+      },
+      "sameTeam": true,
+      "sameFirstChild": true,
+      "distinctChildIds": true,
+      "childModels": [
+        "deepseek-flash"
+      ],
+      "toolResults": {
+        "status": {
+          "sessionId": "session-646841d8-525e-4eaf-b744-f4995fefb157",
+          "tool": "agent_teams_plan",
+          "callId": "call_team_1",
+          "action": "status",
+          "error": false,
+          "text": "plan (none) · members 0 · tasks 0 · hold none\nthe roster part of the official team surface is unavailable: 0.2.2-rc.2 removed the roster/mailbox/spawn API (the service is task-board only) — roster reads answer [] with an `unsupported` marker; gate on capabilities().teamRoster, or use the NATIVE team executor (mpd's default) for member identity"
+        },
+        "refusal": {
+          "sessionId": "session-646841d8-525e-4eaf-b744-f4995fefb157",
+          "tool": "agent_teams_plan",
+          "callId": "call_team_7",
+          "action": "approve",
+          "error": false,
+          "text": "activation paused for plan-20261122161320112-ualp-001: 1 member(s), 0 task(s) — member qa-idler: subagent limit reached (active child limit: 1); wait for an existing child to finish or complete this work with the current agents. Once the cause clears, retry agent_teams_plan {action:\"approve\"} to continue this plan.\n  qa-worker — none (no-library)\n  qa-idler — none (no-library)"
+        },
+        "retry": {
+          "sessionId": "session-646841d8-525e-4eaf-b744-f4995fefb157",
+          "tool": "agent_teams_plan",
+          "callId": "call_team_11",
+          "action": "approve",
+          "error": false,
+          "text": "approved plan-20261122161320112-ualp-001: 2 member(s), 1 task(s)\n  qa-worker — none (no-library)\n  qa-idler — none (no-library)"
+        },
+        "opening": {
+          "sessionId": "6c7f2555-75e9-43b5-829d-3d0f5cfd54cd",
+          "tool": "agent_teams_task",
+          "callId": "call_team_9",
+          "action": "context",
+          "error": true,
+          "text": "Error: [mpd-team] no board task is assigned to you; end your turn and wait for a dispatch"
+        },
+        "idleDenial": {
+          "sessionId": "6c7f2555-75e9-43b5-829d-3d0f5cfd54cd",
+          "tool": "agent_teams_task",
+          "callId": "call_team_9",
+          "action": "context",
+          "error": true,
+          "text": "Error: [mpd-team] no board task is assigned to you; end your turn and wait for a dispatch"
+        },
+        "dispatch": {
+          "sessionId": "session-646841d8-525e-4eaf-b744-f4995fefb157",
+          "tool": "agent_teams_dispatch",
+          "callId": "call_team_14",
+          "action": "run",
+          "error": false,
+          "text": "QA_WORK_MARKER -> qa-worker"
+        },
+        "claimed": {
+          "sessionId": "6c7f2555-75e9-43b5-829d-3d0f5cfd54cd",
+          "tool": "agent_teams_task",
+          "callId": "call_team_16",
+          "action": "claim",
+          "taskId": "T1",
+          "error": false,
+          "text": "attempt 1 of T1 by 6c7f2555-75e9-43b5-829d-3d0f5cfd54cd"
+        },
+        "completed": {
+          "sessionId": "6c7f2555-75e9-43b5-829d-3d0f5cfd54cd",
+          "tool": "agent_teams_task",
+          "callId": "call_team_17",
+          "action": "complete",
+          "taskId": "T1",
+          "error": false,
+          "text": "T1 -> completed (by owner, attempt 1)"
+        }
+      }
+    },
+    {
+      "arm": "older",
+      "version": "0.2.2-rc.2",
+      "hostExit": 0,
+      "isolatedStore": true,
+      "artifactSha256": "14828ccfd8dd4509696f28526959d3dac2f3432dddeb46bd134f3485a2386e5c",
+      "captainId": "session-02f4b434-b47f-4216-b955-631a822a4aeb",
+      "teamId": "team-20261122161323536-8yrr-002",
+      "seats": [
+        {
+          "name": "qa-worker",
+          "id": "M1",
+          "ref": "3b945fcd-66d6-4e13-a714-de6e2441f8ca",
+          "status": "inactive"
+        },
+        {
+          "name": "qa-idler",
+          "id": "M2",
+          "ref": "c6141160-d269-4953-ad5a-cee89ee99f54",
+          "status": "inactive"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "T1",
+          "owner": "3b945fcd-66d6-4e13-a714-de6e2441f8ca",
+          "status": "completed"
+        }
+      ],
+      "distinctChildIds": true,
+      "childModels": [
+        "deepseek-flash"
+      ],
+      "toolResults": {
+        "status": {
+          "sessionId": "session-02f4b434-b47f-4216-b955-631a822a4aeb",
+          "tool": "agent_teams_plan",
+          "callId": "call_team_1",
+          "action": "status",
+          "error": false,
+          "text": "plan (none) · members 0 · tasks 0 · hold none\nthe roster part of the official team surface is unavailable: 0.2.2-rc.2 removed the roster/mailbox/spawn API (the service is task-board only) — roster reads answer [] with an `unsupported` marker; gate on capabilities().teamRoster, or use the NATIVE team executor (mpd's default) for member identity"
+        },
+        "retry": {
+          "sessionId": "session-02f4b434-b47f-4216-b955-631a822a4aeb",
+          "tool": "agent_teams_plan",
+          "callId": "call_team_7",
+          "action": "approve",
+          "error": false,
+          "text": "approved plan-20261122161323443-8yrr-001: 2 member(s), 1 task(s)\n  qa-worker — none (no-library)\n  qa-idler — none (no-library)"
+        },
+        "opening": {
+          "sessionId": "3b945fcd-66d6-4e13-a714-de6e2441f8ca",
+          "tool": "agent_teams_task",
+          "callId": "call_team_9",
+          "action": "context",
+          "error": false,
+          "text": "qa-worker used 18 / 1048576 (observed) = 0%"
+        },
+        "idleDenial": {
+          "sessionId": "c6141160-d269-4953-ad5a-cee89ee99f54",
+          "tool": "agent_teams_task",
+          "callId": "call_team_11",
+          "action": "context",
+          "error": true,
+          "text": "Error: [mpd-team] no board task is assigned to you; end your turn and wait for a dispatch"
+        },
+        "dispatch": {
+          "sessionId": "session-02f4b434-b47f-4216-b955-631a822a4aeb",
+          "tool": "agent_teams_dispatch",
+          "callId": "call_team_8",
+          "action": "run",
+          "error": false,
+          "text": "QA_WORK_MARKER -> qa-worker"
+        },
+        "claimed": {
+          "sessionId": "3b945fcd-66d6-4e13-a714-de6e2441f8ca",
+          "tool": "agent_teams_task",
+          "callId": "call_team_13",
+          "action": "claim",
+          "taskId": "T1",
+          "error": false,
+          "text": "attempt 1 of T1 by 3b945fcd-66d6-4e13-a714-de6e2441f8ca"
+        },
+        "completed": {
+          "sessionId": "3b945fcd-66d6-4e13-a714-de6e2441f8ca",
+          "tool": "agent_teams_task",
+          "callId": "call_team_14",
+          "action": "complete",
+          "taskId": "T1",
+          "error": false,
+          "text": "T1 -> completed (by owner, attempt 1)"
+        }
+      }
+    }
+  ],
+  "gates": {
+    "packageTests": {
+      "command": ".toolchain/node_modules/.bin/bun test ./packages/mpd-team-core-plugin ./packages/mpd-dsh-adapter-plugin ./packages/mpd-team-watchdog-plugin --only-failures",
+      "exit": 0,
+      "passed": 1262,
+      "failed": 0,
+      "files": 92
+    },
+    "typecheck": {
+      "command": "bun run typecheck",
+      "exit": 0,
+      "output": "$ tsgo --noEmit"
+    },
+    "comments": {
+      "command": "bun run verify:comments",
+      "exit": 0,
+      "output": "VERDICT: PASS — every declaration in the family carries a precise comment and a full signature."
+    },
+    "qaSelfTests": {
+      "command": "PATH=\"$PWD/.qa-tmp/dsh-022/bin:$PATH\" bun run test:qa",
+      "exit": 0,
+      "passed": 56,
+      "skipped": 2,
+      "failed": 0,
+      "skipReason": "The TUI distribution and TUI spec cases require an unmounted dsh-ecosystem-spec fixture."
+    },
+    "dispatchGuard": {
+      "command": ".toolchain/node_modules/.bin/bun skills/dsh-qa/scripts/team-dispatch-guard.ts --out <scratch>",
+      "exit": 0,
+      "passed": 21
+    },
+    "rootTests": {
+      "command": ".toolchain/node_modules/.bin/bun test --only-failures",
+      "exit": 1,
+      "passed": 4250,
+      "skipped": 6,
+      "failed": 9,
+      "files": 279,
+      "blockedBy": "All 9 failures were in the concurrently edited Web settings-card and disclosure tests."
+    }
+  },
+  "independentVerification": {
+    "version": "0.2.2-rc.5",
+    "teamCoreDistSha256": "89eae476e47e55cbdb4f5eedc88c007b716a4211c5a69e1c1444aeb938297832",
+    "sameBeforeAndAfter": true,
+    "case": "team-idle-member-guard",
+    "exit": 0,
+    "verified": "Distinct workmate-bound seats, matching executor handles and child session ids, successful owner T1 claim, denied taskless seat tool call",
+    "evidence": "evidence/audit-repair/skill-tests/team-final.log"
+  },
+  "unitRedGreen": {
+    "initial": "99 pass, 8 fail across six regression files with the previous production code",
+    "after": "107 pass, 0 fail on the same files",
+    "legacyZeroStart": "pre-upgrade fixture rejected with already approved before recovery, then passed with one team and two correctly owned rows",
+    "latest": "1262 pass, 0 fail across the three TEAM packages"
+  }
+}

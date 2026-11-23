@@ -1,0 +1,2 @@
+[model-config-live-refresh self-test] ok: 37 checks (naive zstd read on this runtime decoded 4/4 — informational, the T-25 trap is runtime-bound)
+self-test exit=0

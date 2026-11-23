@@ -440,6 +440,11 @@ function applyDaemonPolicy(env, { log } = {}) {
 
 // packages/mpd-mcp-codegraph/src/launch.ts
 installTerminalSilence("mpd-mcp-codegraph");
+if (!process.env.MPD_CODEGRAPH_PROJECT_CWD?.trim()) {
+  const projectAlias = process.env.MPD_DSH_CODEGRAPH_PROJECT_CWD?.trim();
+  if (projectAlias)
+    process.env.MPD_CODEGRAPH_PROJECT_CWD = projectAlias;
+}
 if ((process.env.MPD_CODEGRAPH_BIN ?? "").trim().length === 0) {
   try {
     const resolved = resolveCodegraphBinary(import.meta.url);

@@ -65,10 +65,7 @@ describe("the row config is an EFFECTIVE layer", () => {
       // The resolved config: the row layer's knob on top of the file's untouched siblings.
       const out = loadConfig({ autoproject: { maxRounds: 7 } } as never, box)
       // the row layer WINS over the file for the knob it carries...
-      expect(out.config.autoproject.maxRounds).toBe(7)
-      // ...and touches nothing it does not carry
-      expect(out.config.watchdog.enabled).toBe(false)
-      expect(out.config.watchdog.warnStreakToEscalate).toBe(9)
+      expect(out.config).toMatchObject({ autoproject: { maxRounds: 7 }, watchdog: { enabled: false, warnStreakToEscalate: 9 } })
       expect(out.files.some((file: string) => file.endsWith("mpd.jsonc"))).toBe(true)
     } finally {
       if (previous === undefined) delete process.env.DSH_HOME
