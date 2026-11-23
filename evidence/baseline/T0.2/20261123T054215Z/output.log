@@ -1,0 +1,14 @@
+Mounted driver defaults exit 0 on DSH 0.2.2-rc.5, Bun 1.4.0, Node v24.21.0.
+Source and distribution snapshots match.
+Two isolated working member requests offered byte-identical definitions.
+node scripts/baseline/tool-surface.ts evidence/baseline/T0.2/20261123T054215Z/member-request-header.json evidence/cellwork/diag-mount/2026-10-27T02-01Z/registration/request-header-record.json 4
+Comparison exit 0. Saved comparison replay byte-identical.
+fresh 125 tools, 127489 UTF-8 bytes, 31872.25 estimated tokens; sums reconcile
+historical 117 tools, 93189 UTF-8 bytes, 23297.25 estimated tokens; sums reconcile
+missing exit 3: UNMEASURED; fresh reason absent; historical 117
+invalid-json exit 3: UNMEASURED; fresh reason invalid JSON; historical 117
+invalid-header exit 3: UNMEASURED; fresh reason expected a timestamped request/header with a nonempty array of unique tool definitions; historical 117
+Pinned Bun run typecheck exit 0 ($ tsgo --noEmit).
+node scripts/verify-comment-coverage.ts --file scripts/baseline/tool-surface.ts exit 0.
+scanned 1 TypeScript file(s) of 1 in the source set; inspected 36 declaration(s); skipped 23 inline callback(s) as out of family
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.

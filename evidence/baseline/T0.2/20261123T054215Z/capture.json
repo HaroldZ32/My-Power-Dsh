@@ -1,0 +1,50 @@
+{
+  "host": {
+    "dsh": "0.2.2-rc.5",
+    "bun": "1.4.0",
+    "node": "v24.21.0",
+    "profile": "mpd-headless",
+    "declaredAgentPreset": "mpd",
+    "presetMount": "pending: agentPresets service unavailable",
+    "provider": "local loopback fixture"
+  },
+  "command": [
+    "dsh",
+    "--profile",
+    "mpd-headless",
+    "--patch",
+    "<sandbox>/overlay.yml",
+    "QA-BOOT-CAPTAIN"
+  ],
+  "sandbox": {
+    "isolated": true,
+    "workspaceKeys": 1
+  },
+  "seat": {
+    "teamId": "team-20261123054215040-7pci-002",
+    "memberId": "M5",
+    "sessionId": "cac52150-d1ad-41ae-87f0-5bb95efb1cb2",
+    "role": "Senior Engineer",
+    "taskId": "T5",
+    "status": "completed"
+  },
+  "request": {
+    "seq": 13,
+    "at": "2026-11-23T05:42:15.996Z",
+    "turn": 1,
+    "toolCount": 125
+  },
+  "action": {
+    "tool": "agent_teams_task",
+    "action": "complete",
+    "taskId": "T5",
+    "callId": "qa_call_20",
+    "callSeq": 24,
+    "resultSeq": 25,
+    "isError": false
+  },
+  "sessionLog": {
+    "file": "session.v4.jsonl.zstd",
+    "sha256": "e439a29680adbab33fe38c59f60c204fa9277106c33ab96d0e0a58dbe96a3bc0"
+  }
+}
