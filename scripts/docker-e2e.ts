@@ -296,8 +296,8 @@ const REQUIRED_DOCKER_WITNESSES: readonly string[] = [
   "install.exit", "install.profileDep", "boot.presetMount",
   "isolation.home", "isolation.realHome", "isolation.noCredentials",
   "userSurface.probe", "userSurface.bundleResolution", "userSurface.profileRowListWins",
-  "userSurface.rowsEnumerated", "userSurface.rowsWitness", "userSurface.negativeControl",
-  "userSurface.isolation", "userSurface.commandCorpus",
+  "userSurface.rowsEnumerated", "userSurface.rowsWitness", "userSurface.rowsDeclaredBound",
+  "userSurface.negativeControl", "userSurface.isolation", "userSurface.commandCorpus", "userSurface.findings",
   ...CONTRIBUTED_COMMANDS.filter((command) => !NON_GATING_COMMANDS.includes(command))
     .map((command) => `userSurface.command.${command}`),
 ]
@@ -685,11 +685,11 @@ function selfTest(): void {
     requiredArmExit(credentialFreeReport,
       unmeasuredRequired(credentialFreeReport, credentialFreeRequirements.prefixes, credentialFreeRequirements.excluded),
       missingDockerWitnesses(credentialFreeReport, false)) === 0)
-  /** Remove just one graded command while every other required row still passes. */
+  /** Remove a graded command that the reporter's static spine does not backfill. */
   const missingCommand: ResultBody = { ...credentialFreeReport,
-    assertions: credentialFreeReport.assertions?.filter(({ name }) => name !== "userSurface.command.autoproject") }
+    assertions: credentialFreeReport.assertions?.filter(({ name }) => name !== "userSurface.command.mpd-codegraph") }
   check("a single absent contributed command exits 3",
-    missingDockerWitnesses(missingCommand, false).join(",") === "userSurface.command.autoproject"
+    missingDockerWitnesses(missingCommand, false).join(",") === "userSurface.command.mpd-codegraph"
       && requiredArmExit(missingCommand, [], missingDockerWitnesses(missingCommand, false)) === 3)
   /** A body whose user-surface step ran but could not evaluate its aggregate. */
   const nullUserSurface: ResultBody = { ok: true, assertions: [{ name: "userSurface.rowsWitness", ok: null, reason: "not reached" }, { name: "userSurface.command.autoproject", ok: true, reason: "ok" }] }

@@ -46,7 +46,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    image: mpd-docker-e2e:local
+    image: ${MPD_DOCKER_IMAGE:-mpd-docker-e2e:local}
     # No init shim and no TTY: the entrypoint IS the process, and its exit code is the verdict.
     init: false
     tty: false
@@ -107,7 +107,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    image: mpd-docker-e2e:local
+    image: ${MPD_DOCKER_IMAGE:-mpd-docker-e2e:local}
     init: false
     tty: false
     environment:
