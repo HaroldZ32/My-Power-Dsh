@@ -1,0 +1,102 @@
+"""Materialize synthetic verification inputs under a new scratch path. No input or product output is read."""
+from pathlib import Path
+import json
+import subprocess
+import sys
+from datetime import datetime
+
+base = Path(sys.argv[1]).resolve()
+base.mkdir(parents=True, exist_ok=False)
+team = 'team-20261123000000000-case-001'
+other = 'team-20261123000000000-case-002'
+cell = 'cell-20261123T000000000Z'
+alpha = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+beta = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+captain = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
+timestamp = '2026-11-23T00:00:00.000Z'
+start_ms = int(datetime.fromisoformat(timestamp.replace('Z','+00:00')).timestamp()*1000)
+
+def put(relative, value, jsonl=False):
+    path = current / relative
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if jsonl:
+        value = ''.join(json.dumps(row) + '\n' for row in value)
+    elif not isinstance(value, str):
+        value = json.dumps(value) + '\n'
+    path.write_text(value)
+
+def board(bid, members, tasks):
+    return {'version':1, 'teamId':bid, 'leadSessionId':captain, 'phase':'active','name':bid,'members':members,'tasks':tasks,'createdAt':timestamp}
+
+def member(num, name, handle):
+    return {'id':f'M{num}','name':name,'status':'active','executorRef':handle,'spawnedAt':timestamp}
+
+def task(num, owner, status):
+    return {'id':f'T{num}','subject':'fixture','kind':'work','status':status,'owner':owner,'attempt':2,'revision':5,'createdAt':timestamp,'startedAt':timestamp,'updatedAt':timestamp,'blockedBy':[],'writeScopes':[]}
+
+def result(cid, ms, attempt='5', bid=team, tid='T1'):
+    return {'kind':'tool','ok':True,'member':'Alpha','memberKey':'Alpha','teamId':bid,'taskId':tid,'attemptId':attempt,'at':ms,'tool':'read','callId':cid,'turnId':'Alpha#1','workspace':str(current.resolve())}
+
+def session(actor, samples):
+    project_key = '--'+str(current).lstrip('/').replace('/','-')[:251]+'--'
+    path = current/'.dsh/sessions'/project_key/actor/'session.v4.jsonl.zstd'
+    path.parent.mkdir(parents=True)
+    header={'type':'session','version':4,'id':actor,'createdAt':start_ms-2000,'cwd':str(current),'isSeeded':actor!=captain,'delegationDepth':int(actor!=captain),'agentPreset':'mpd'}
+    def frame(records):
+        data=''.join(json.dumps(row)+'\n' for row in records).encode()
+        return subprocess.run(['zstd','-cq'],input=data,stdout=subprocess.PIPE,check=True).stdout
+    with path.open('xb') as out:
+        out.write(frame([header]))
+        for i,s in enumerate(samples):
+            cid = s['callId']
+            at = s['at']
+            seq=2*i+1
+            arg=s.get('arguments',{'file_path':'example.txt'})
+            call={'type':'tool/call','seq':seq,'time':at-2,'data':{'turn':1,'step':i+1,'callId':cid,'name':s.get('tool','read'),'arguments':json.dumps(arg)}}
+            payload=json.dumps(s['result']) if 'result' in s else 'private-control-marker'
+            msg={'role':'tool','source':'dsh','toolCallId':cid,'content':[{'type':'text','text':payload}],'isError':cid=='failed','id':'r-'+cid}
+            post={'type':'tool/result','seq':seq+1,'time':at,'data':{'turn':1,'step':i+1,'message':msg},'sourceEventSeqs':[seq]}
+            out.write(frame([call,post]))
+
+def receipts(items):
+    records=[]
+    for item in items:
+        receipt={k:v for k,v in item.items() if k not in {'arguments','result'}}
+        pair=dict(receipt,kind='tool-start',at=receipt['at']-1)
+        del pair['ok']
+        records.extend([pair,receipt])
+    return records
+
+for name in ['positive','linked','unknown','malformed','empty']:
+    current = base / name
+    current.mkdir()
+    if name == 'empty':
+        continue
+    put('.mpd/team/teams/'+team+'.json',board(team,[member(1,'Alpha',alpha),member(2,'Beta',beta)],[task(1,alpha,'in_progress'),task(2,beta,'completed'),task(3,'Beta','in_progress')]))
+    put('.mpd/team/teams/'+other+'.json',board(other,[],[]))
+    put('.mpd/cellwork/'+cell+'/state.json',{'version':1,'cellId':cell,'captainSessionId':captain,'phase':'execution','teamId':team,'planningTeamId':team,'parentTeamId':'','members':{'Alpha':{'name':'Alpha','sessionId':alpha,'executorRef':alpha,'mode':'member'},'Beta':{'name':'Beta','sessionId':beta,'executorRef':beta,'mode':'member'}}})
+    lifecycle=[{'event':'checkpoint','at':timestamp,'member':'Alpha'}, {'event':'member-reseeded','at':timestamp,'member':'Alpha','newSessionId':alpha}, {'event':'reseed-parent','at':timestamp,'member':'Alpha','newHandle':alpha}, {'event':'compaction','at':timestamp,'member':'Alpha','attempts':3,'outcome':'reseeded','newHandle':alpha}, {'event':'dispatch-reassign','at':timestamp,'claimed':2,'delivered':2,'rejected':0}]
+    if name == 'linked':
+        lifecycle.append({'event':'handoff','at':'2026-11-23T00:00:03.000Z','member':'Alpha','ordinal':1,'path':'handoff/Alpha-1.md','nextStep':'resume'})
+    put('.mpd/cellwork/'+cell+'/journal.jsonl',lifecycle,True)
+    put('.mpd/team/journal.jsonl',[{'event':'task-reassigned','at':timestamp,'teamId':team,'taskId':tid,'member':'Alpha'} for tid in ['T1','T2']],True)
+    put('.mpd/team/dispatch.json',{team+'::T1':{'teamId':team,'taskId':'T1','memberName':'Alpha','memberId':'M1','assignedAt':timestamp}})
+    put('.mpd/team/watchdog/incidents.jsonl',[],True)
+    alternatives=[result('before-assignment',start_ms-1000),result('wrong-revision',start_ms+9000,attempt='2'),result('wrong-executor',start_ms+10000),result('wrong-board',start_ms+11000,bid=other),result('failed',start_ms+12000),result('wrong-task',start_ms+13000,tid='T9')]
+    if name in {'positive','linked'}:
+        alternatives.insert(1,result('matched',start_ms+1000))
+    if name=='linked':
+        h=dict(result('handoff',start_ms+3000),tool='cellwork_handoff',arguments={'content':'synthetic handoff'},result={'ok':True,'member':'Alpha','ordinal':1,'path':'handoff/Alpha-1.md'})
+        alternatives.insert(2,h)
+        b=board(team,[member(1,'Alpha',alpha),member(2,'Beta',beta)],[task(1,alpha,'in_progress'),task(3,'Beta','in_progress')])
+        session(captain,[{'callId':'captain-status','at':start_ms+5000,'tool':'agent_teams_plan','arguments':{'action':'status'},'result':{'team':b}}])
+    session(alpha,[item for item in alternatives if item['callId']!='wrong-executor'])
+    session(beta,[item for item in alternatives if item['callId']=='wrong-executor'])
+    heartbeat=receipts(alternatives)+[{'kind':'step','at':start_ms+15000,'member':'Alpha','memberKey':'Alpha','taskId':'T1','teamId':team,'attemptId':'5','turnId':'Alpha#1'}]
+    put('.mpd/team/watchdog/heartbeat/alpha.jsonl',heartbeat,True)
+    if name=='malformed':
+        put('.mpd/team/teams/broken.json','{')
+        with (current/'.mpd/cellwork'/cell/'journal.jsonl').open('a') as target:
+            target.write('{\n')
+        put('.mpd/team/teams/bad-shape.json',{'teamId':'bad-shape','members':{},'tasks':[]})
+print(base)

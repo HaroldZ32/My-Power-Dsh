@@ -1,0 +1,107 @@
+"""Reviewer oracle. Run with python3 and pass one existing experiment workspace. Writes only stdout."""
+from collections import Counter, defaultdict
+from datetime import datetime, timezone
+from hashlib import sha256
+from pathlib import Path
+import json
+import re
+import sys
+
+root = Path(sys.argv[1]).resolve(strict=True)
+patterns = ['.mpd/team/teams/*.json', '.mpd/cellwork/*/state.json', '.mpd/cellwork/*/journal.jsonl', '.mpd/team/dispatch.json', '.mpd/team/journal.jsonl', '.mpd/team/watchdog/incidents.jsonl', '.mpd/team/watchdog/heartbeat/*.jsonl']
+started = datetime.now(timezone.utc).isoformat()
+
+def capture():
+    return {p.relative_to(root).as_posix(): p.read_bytes() for pattern in patterns for p in sorted(root.glob(pattern))}
+
+inputs = capture()
+
+def rows(path):
+    return [json.loads(line) for line in inputs[path].splitlines() if line.strip()]
+
+def json_value(path):
+    return json.loads(inputs[path])
+
+def digest(data):
+    return sha256(data).hexdigest()
+
+def manifest(entries):
+    listing = ''.join(f'{digest(entries[path])}  {path}\n' for path in sorted(entries))
+    return {'files': len(entries), 'bytes': sum(map(len, entries.values())), 'sha256': digest(listing.encode())}
+
+boards = {}
+assignments = {}
+row_statuses = Counter()
+for path in sorted(p for p in inputs if p.startswith('.mpd/team/teams/')):
+    board = json_value(path)
+    bid = board['teamId']
+    assert bid not in boards
+    members = board['members']
+    handles = {m['executorRef'] for m in members if m.get('executorRef')}
+    status = Counter(t['status'] for t in board['tasks'])
+    row_statuses.update(status)
+    open_rows = [t for t in board['tasks'] if t['status'] not in {'completed', 'failed', 'cancelled'}]
+    owners = [t['id'] for t in open_rows if t.get('owner') in handles]
+    boards[bid] = {'members': len(members), 'tasks': len(board['tasks']), 'nonTerminalHandleOwnedRowIds': owners, 'phase': board['phase']}
+    for t in open_rows:
+        if t['status'] not in {'claimed', 'in_progress'}:
+            continue
+        matches = [m for m in members if t.get('owner') and t['owner'] in {m.get('name'), m.get('executorRef')}]
+        member = matches[0] if len(matches) == 1 else {}
+        assignments[(bid,t['id'])] = {'board':bid,'task':t['id'],'phase':board['phase'],'status':t['status'],'attempt':t.get('attempt'),'owner':t.get('owner'),'seat':member.get('name'),'executor':member.get('executorRef'),'start':t.get('startedAt'),'revision':t.get('revision'),'matchingRevisionSeatPostMarkers':0,'lastProvenTaskAction':None,'subsequentLinkedHandoffOrTerminal':None,'nextLinkedCaptainObservation':None}
+
+cells = {}
+explicit_boards = set()
+all_events = Counter()
+compactions = Counter()
+refusal_causes = Counter()
+episodes = Counter()
+for path in sorted(p for p in inputs if p.endswith('/state.json')):
+    state = json_value(path)
+    cid = state['cellId']
+    journal = rows(path.rsplit('/',1)[0]+'/journal.jsonl')
+    state_ids = {state[k] for k in ('teamId','planningTeamId','mintedTeamId') if state.get(k)}
+    lifecycle_ids = set()
+    operated = set()
+    for event in journal:
+        key = event['event']
+        all_events[key] += 1
+        for k in ('teamId','resolvedTeamId','mintedTeamId','planningTeamId'):
+            if event.get(k) and key in {'planning-team-staged','planning-team-partial','activate','cell-activation','cell-activation-partial'}:
+                lifecycle_ids.add(event[k])
+        if key.startswith('dispatch') and event.get('teamId'):
+            operated.add(event['teamId'])
+        if key == 'compaction':
+            compactions[event['outcome']] += 1
+            if event['outcome'] == 'refused':
+                reason = event.get('reason','').lower()
+                cls = 'parent requirement' if 'parent' in reason else 'seat bind' if 'bind' in reason else 'active-child limit' if 'active' in reason else 'unclassified'
+                refusal_causes[cls] += 1
+            if event['outcome'] in {'reseeded','refused'}:
+                episodes[(cid,event['member'],event['at'])] += 1
+    named = {b for b in boards if re.search(r'(?<![A-Za-z0-9])'+re.escape(cid)+r'(?![A-Za-z0-9])', json_value('.mpd/team/teams/'+b+'.json').get('name',''))}
+    attributed = state_ids | lifecycle_ids | named
+    cells[cid]={'state':sorted(state_ids),'lifecycle':sorted(lifecycle_ids),'boardNameContainsCellId':sorted(named),'distinctExplicitOrNamed':sorted(attributed),'observedDispatchBoards':sorted(operated),'parentBoard':state.get('parentTeamId') or None}
+    explicit_boards |= attributed
+
+for path in sorted(p for p in inputs if '/heartbeat/' in p):
+    for sample in rows(path):
+        if sample.get('kind') != 'tool' or sample.get('ok') is not True or not sample.get('callId'):
+            continue
+        a = assignments.get((sample.get('teamId'),sample.get('taskId')))
+        if not a or a['revision'] is None or str(sample.get('attemptId')) != str(a['revision']):
+            continue
+        at = sample.get('at')
+        if not isinstance(at,(int,float)) or not a['start'] or at < 1000 * datetime.fromisoformat(a['start'].replace('Z','+00:00')).timestamp():
+            continue
+        actors = {sample.get('member'),sample.get('memberKey'),sample.get('executorRef')}
+        if a['seat'] and a['seat'] in actors:
+            a['matchingRevisionSeatPostMarkers'] += 1
+
+stats = {'teamFiles': len(boards),'cellStates':len(cells),'members':sum(x['members'] for x in boards.values()),'tasks':sum(x['tasks'] for x in boards.values()),'rowStatuses':row_statuses,'nonTerminalHandleOwnedRows':sum(len(x['nonTerminalHandleOwnedRowIds']) for x in boards.values()),'claimedOrInProgressAllPhases':len(assignments),'missingAttemptInOpenClaims':sum(a['attempt'] is None for a in assignments.values()),'checkpoints':all_events['checkpoint'],'compactionOutcomes':compactions,'refusedReasons':refusal_causes,'distinctTimestampedReseedDecisions':len(episodes),'unrecoverableMarkers':all_events['checkpoint-unrecoverable'],'actualSpawnCalls':None,'dispatchReassignCalls':all_events['dispatch-reassign'],'cellPerRowReassignMarkers':all_events['task-reassigned'],'teamPerRowReassignMarkers':sum(x['event']=='task-reassigned' for x in rows('.mpd/team/journal.jsonl'))}
+stats['workspaceLocalSessionStorePresent'] = (root/'.dsh/sessions').is_dir()
+assert not stats['workspaceLocalSessionStorePresent'], 'Inspect this new retained store before concluding that assignment actions are unknown.'
+second = capture()
+assert manifest(inputs) == manifest(second), 'Input changed during the reference scan; rerun and retain both manifests.'
+parts = {pattern:manifest({p:v for p,v in inputs.items() if Path(p).match(pattern)}) for pattern in patterns}
+print(json.dumps({'workspace':str(root),'beganUtc':started,'endedUtc':datetime.now(timezone.utc).isoformat(),'twiceReadSameInventory':True,'manifest':manifest(inputs),'manifestByPattern':parts,'summary':stats,'cells':cells,'boardsWithoutExplicitOrNamedCell':sorted(set(boards)-explicit_boards),'boards':boards,'openAssignments':list(assignments.values())},indent=2))
