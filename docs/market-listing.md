@@ -119,8 +119,8 @@ closes it now exists.
 
 ## What we still owe before submitting
 
-1. The checked-in DSH Go entry now names `0.18.1` (bumped in the same change that publishes this release).
-   Submit only after `0.18.1` is actually on npm: the directory's scan blocks a submission whose exact
+1. The checked-in DSH Go entry now names `0.18.2` (bumped in the same change that publishes this release).
+   Submit only after `0.18.2` is actually on npm: the directory's scan blocks a submission whose exact
    version is missing, and never ship an entry whose version is not published.
 2. Carry the README backlink to `master`. The dsh-TUI validator reads the README from the default
    branch, so a backlink merged only to `dev` leaves check 5 failing; the release that carries this

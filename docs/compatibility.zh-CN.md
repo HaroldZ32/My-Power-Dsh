@@ -166,6 +166,11 @@ bundle 行就是**重复注册**——实测启动报 `service "agentTeams" has 
 无法执行时，它记一行日志并回落到 native 执行器，同时在 `teamExecutorNative` 旁报告新的
 `teamExecutorOfficial` 能力标志。`TEAM_TASK_METHODS` 与任务看板路径保持不变。
 
+**激活规格现在两种形状都发送。** `0.2.2-rc.2` 把 `SubagentActivationSpec` 拍平了——request 字段从
+`spec.request.*` 移到 `spec.*`——而 `0.2.2-rc.1` 仍读取嵌套的 `request` 镜像。本 bundle 现在两种形状都填，
+因此两代宿主都能解析该规格；这一改动已在已安装的 `0.2.2-rc.1` 与 `0.2.2-rc.3` 运行时以及发布用 Docker
+实机车道上验证。
+
 **边界。** 以上记录的是 patch、preset 与适配器**实际做什么**；重复注册是**实测的启动失败**，而完整
 挂载中的逐行激活测量属于本波自己的挂载车道（`evidence/` 下），不在本页。
 

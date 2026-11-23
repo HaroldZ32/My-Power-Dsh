@@ -192,6 +192,11 @@ nine. The adapter therefore tests EXECUTABILITY — `spawnTeammate` AND `sendMes
 line when the official service cannot execute, and reports the new `teamExecutorOfficial` capability
 flag beside `teamExecutorNative`. `TEAM_TASK_METHODS` and the task-board paths are unchanged.
 
+**The activation spec is now sent in BOTH shapes.** `0.2.2-rc.2` flattened `SubagentActivationSpec` —
+request fields moved from `spec.request.*` to `spec.*` — while `0.2.2-rc.1` still reads the nested
+`request` mirror. The bundle now populates both, so either generation resolves the spec; the change was
+verified against the installed `0.2.2-rc.1` and `0.2.2-rc.3` runtimes and the release Docker live lane.
+
 **Bound.** What is recorded above is what the patch, the preset and the adapter DO. The duplicate
 registration is a MEASURED boot failure; a per-row activation measurement inside a full mount belongs to
 the wave's own mount lane under `evidence/`, not to this page.
