@@ -1032,7 +1032,7 @@ function createDshAdapter(ctx, config = {}) {
     } catch {}
   };
   bindDshGoBridge();
-  const configAgentRouteResolver = () => {
+  const configAgentRouteResolver = (workspace) => {
     const config2 = service("mpdConfig");
     if (config2 === undefined || config2 === null)
       return;
@@ -1040,7 +1040,7 @@ function createDshAdapter(ctx, config = {}) {
       return;
     return (member) => {
       try {
-        const answer = config2.agentRouteResolutionOf.call(config2, member);
+        const answer = config2.agentRouteResolutionOf.call(config2, member, workspace);
         return answer !== null && typeof answer === "object" && typeof answer.ok === "boolean" ? answer : undefined;
       } catch {
         return;
@@ -1394,7 +1394,7 @@ function createDshAdapter(ctx, config = {}) {
         const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
         let agentOptions = request.agentOptions;
         if (agentOptions === undefined) {
-          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver());
+          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver(workspaceRootOfAgent(caller)));
           if (outcome.status === "routed") {
             const resolved = await resolveRunRoute({ llmCatalog }, outcome.route, outcome.fallbacks);
             agentOptions = resolved.route;
@@ -1410,8 +1410,13 @@ function createDshAdapter(ctx, config = {}) {
           ...agentOptions === undefined ? {} : { agentOptions },
           ...request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }
         };
+        const provider = typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn";
+        const childId = request.onOpening !== undefined && provider === "spawn" && typeof subagents.startActivation === "function" && typeof subagents.prompt === "function" ? randomUUID() : undefined;
+        if (childId !== undefined)
+          request.onOpening?.(childId);
         const spec = dualShapeActivationSpec({
-          provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
+          provider,
+          ...childId === undefined ? {} : { childId },
           label: `${request.name} · ${request.teamId}`,
           signal: request.signal ?? neverAborted()
         }, activationRequest);
@@ -2374,6 +2379,20 @@ function createDshAdapter(ctx, config = {}) {
       if (typeof skills.get !== "function")
         throw new Error("mpd-dsh-adapter: the harness skills service exposes no get()");
       return skills.get(skillName, options);
+    },
+    selectedAgentPreset(agent) {
+      const session = agent?.session;
+      if (session === undefined || session === null)
+        return;
+      try {
+        const presets = service("agentPresets");
+        if (typeof presets?.presetForSession !== "function")
+          return;
+        const selected = presets.presetForSession(session);
+        return selected === null || typeof selected === "string" && selected.length > 0 ? selected : undefined;
+      } catch {
+        return;
+      }
     },
     async resolvePreset(presetId) {
       const presets = requireService("agentPresets", 'cannot resolve preset "' + presetId + '"');
@@ -4143,7 +4162,7 @@ function readJsonc(raw) {
 }
 
 // packages/mpd-config-plugin/src/bridge.ts
-import { existsSync, mkdirSync as mkdirSync2, readFileSync, renameSync as renameSync2, statSync as statSync2, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, linkSync, mkdirSync as mkdirSync2, readFileSync, renameSync as renameSync2, statSync as statSync2, unlinkSync, writeFileSync } from "node:fs";
 import { dirname as dirname2, join as join2 } from "node:path";
 var DEFAULT_BRIDGE_OPTIONS = { writeBack: true, retries: 3 };
 function createdFileHeader(now = new Date) {
@@ -4262,6 +4281,10 @@ function writeBackLeaves(targets, leaves, options = DEFAULT_BRIDGE_OPTIONS) {
 }
 `;
       }
+      if (options.expectedText !== undefined && options.expectedText !== (existed ? raw : null)) {
+        results.push({ root: target.root, file: target.file, outcome: "conflict", reason: "conflict", detail: "the project file changed before the edit" });
+        break;
+      }
       let text = raw;
       let refused;
       const notes = [];
@@ -4306,22 +4329,28 @@ function writeBackLeaves(targets, leaves, options = DEFAULT_BRIDGE_OPTIONS) {
       const temp = `${target.file}.mpd-bridge-${process.pid}-${attempt}.tmp`;
       try {
         writeFileSync(temp, text, "utf8");
-        renameSync2(temp, target.file);
+        if (existed)
+          renameSync2(temp, target.file);
+        else
+          linkSync(temp, target.file);
       } catch (error) {
-        try {
-          if (existsSync(temp))
-            unlinkSync(temp);
-        } catch {}
         const code = errnoOf(error);
+        if (!existed && code === "EEXIST" && attempt <= options.retries)
+          continue;
         results.push({
           root: target.root,
           file: target.file,
-          outcome: code === "EACCES" || code === "EPERM" ? "denied" : "refused",
-          reason: code ?? "unwritable",
+          outcome: code === "EEXIST" ? "conflict" : code === "EACCES" || code === "EPERM" ? "denied" : "refused",
+          reason: code === "EEXIST" ? "conflict" : code ?? "unwritable",
           detail: String(error?.message ?? error)
         });
         settled = true;
         break;
+      } finally {
+        try {
+          if (existsSync(temp))
+            unlinkSync(temp);
+        } catch {}
       }
       results.push({ root: target.root, file: target.file, outcome: existed ? "written" : "created", ...notes.length === 0 ? {} : { notes } });
       writtenTo.push(target.file);
@@ -4481,14 +4510,18 @@ function loadConfig(config, root, settingsSection, rowKnobsOverride) {
   const projectFile = config.projectFile ? resolve5(config.projectFile) : join3(root, ".mpd", "mpd.jsonc");
   const files = [userFile, projectFile];
   let merged = {};
+  let project;
   const errors = [];
   for (const f of files) {
     if (!existsSync2(f))
       continue;
     try {
-      merged = deepMerge(merged, parseJsonc(readFileSync2(f, "utf8")));
-    } catch (e) {
-      errors.push(f + ": " + String(e?.message ?? e));
+      const layer = parseJsonc(readFileSync2(f, "utf8"));
+      if (f === projectFile)
+        project = layer;
+      merged = deepMerge(merged, layer);
+    } catch (error) {
+      errors.push(f + ": " + (error instanceof Error ? error.message : String(error)));
     }
   }
   const section = withoutMarker(settingsSection);
@@ -4498,9 +4531,28 @@ function loadConfig(config, root, settingsSection, rowKnobsOverride) {
   const rowKnobs = rowKnobsOverride ?? rowKnobLayer(config);
   if (Object.keys(rowKnobs).length > 0)
     merged = deepMerge(merged, rowKnobs);
-  return { config: merged, files: files.filter((f) => existsSync2(f)), errors, settingsApplied };
+  return { config: merged, project, files: files.filter((f) => existsSync2(f)), errors, settingsApplied };
+}
+function configValueAt(value, path) {
+  return path.reduce((current, key) => current !== null && typeof current === "object" && Object.hasOwn(current, key) ? current[key] : undefined, value);
 }
 var AGENT_UNCONFIGURED_CODE2 = "AGENT_UNCONFIGURED";
+var ROUTE_FORM_LEAVES = ["provider", "model", "reasoningEffort"];
+function routeFormValuesOf(config) {
+  const values = {};
+  for (const agent of ROSTER_AGENT_NAMES) {
+    const entry = agentRouteEntryOfMember(agent, config);
+    if (!isPlainObject2(entry))
+      continue;
+    const fields = {};
+    for (const leaf of ROUTE_FORM_LEAVES) {
+      if (typeof entry[leaf] === "string")
+        fields[leaf] = entry[leaf];
+    }
+    values[agent] = fields;
+  }
+  return values;
+}
 function missingLeavesOf(declared) {
   const missing = [];
   for (const leaf of ["provider", "model"]) {
@@ -4766,7 +4818,7 @@ function apply(ctx, config = {}) {
     baseReason: undefined,
     baseCandidates: undefined,
     cleared: [],
-    recorded: new Map
+    recorded: undefined
   };
   const pathKey = (path) => path.join("\x00");
   const isMarker = (path) => path[0] === MARKER_PATH[0];
@@ -4807,7 +4859,8 @@ function apply(ctx, config = {}) {
     bridge.section = described.user;
     return described.user;
   };
-  let state = loadConfig(config, dsh.workspaceRoot(), readSection());
+  const snapshots = new Map;
+  readSection();
   let entryKnobs;
   const readEntryConfig = () => {
     if (typeof dsh.settingsReader !== "function")
@@ -4817,14 +4870,33 @@ function apply(ctx, config = {}) {
       return;
     return isPlainObject2(described.user) ? described.user : undefined;
   };
+  const stateFor = (workspace) => {
+    const root = resolve5(workspace ?? readRoot());
+    watchRoot(root);
+    const cached = watchers.has(projectFileFor(root)) ? snapshots.get(root) : undefined;
+    if (cached !== undefined)
+      return cached;
+    const loaded = loadConfig(config, root, bridge.section, entryKnobs);
+    snapshots.set(root, loaded);
+    return loaded;
+  };
+  const invalidateProjectFile = (root) => {
+    if (projectFileOverride() !== undefined)
+      snapshots.clear();
+    else
+      snapshots.delete(resolve5(root));
+  };
   const reloadAt = (root) => {
-    state = loadConfig(config, root, readSection(), entryKnobs);
+    const previous = bridge.section;
+    if (readSection() !== previous)
+      snapshots.clear();
+    invalidateProjectFile(root);
     reconcile(root);
     seedRoots([root]);
-    return state.config;
+    return stateFor(root);
   };
   function reload(exec) {
-    return reloadAt(dsh.workspaceRoot(exec));
+    return reloadAt(dsh.workspaceRoot(exec)).config;
   }
   const reportLine = (report, note) => `[mpd-config] settings bridge${note ? " " + note : ""}: ` + JSON.stringify({ writtenTo: report.writtenTo, skipped: report.skipped ?? null, candidates: report.candidates ?? [], results: report.results, applies: report.applies, source: report.source ?? null, revision: report.revision ?? null });
   const warnRefusal = (reason, candidates) => {
@@ -4843,10 +4915,12 @@ function apply(ctx, config = {}) {
     warn(`[mpd-config] settings bridge: no file written (${reason}).`);
   };
   const reconcile = (root) => {
-    if (bridge.recorded.size === 0)
+    const baseline = bridge.recorded;
+    const target = resolveTargets(dsh.workspaceRootsAll(), projectFileOverride());
+    if (baseline === undefined || target.kind !== "write" || target.targets[0]?.file !== baseline.file)
       return;
     const file = projectFileFor(root);
-    if (!existsSync2(file))
+    if (baseline.file !== file || !existsSync2(file))
       return;
     let leaves;
     try {
@@ -4858,11 +4932,11 @@ function apply(ctx, config = {}) {
     const section = bridge.section;
     const sectionKeys = new Set(sectionLeaves(section).map((leaf) => pathKey(leaf.path)));
     const unsetPaths = [];
-    for (const [key, recorded] of [...bridge.recorded]) {
+    for (const [key, recorded] of baseline.leaves) {
       const current = onDisk.get(key);
       if (JSON.stringify(current) === JSON.stringify(recorded))
         continue;
-      bridge.recorded.set(key, current);
+      baseline.leaves.set(key, current);
       if (current === undefined)
         continue;
       if (!sectionKeys.has(key))
@@ -4884,11 +4958,8 @@ function apply(ctx, config = {}) {
   };
   const rememberFileValues = (file) => {
     try {
-      for (const leaf of sectionLeaves(parseJsonc(readFileSync2(file, "utf8")))) {
-        if (isMarker(leaf.path))
-          continue;
-        bridge.recorded.set(pathKey(leaf.path), leaf.value);
-      }
+      const leaves = new Map(sectionLeaves(parseJsonc(readFileSync2(file, "utf8"))).filter((leaf) => !isMarker(leaf.path)).map((leaf) => [pathKey(leaf.path), leaf.value]));
+      bridge.recorded = { file, leaves };
     } catch {}
   };
   const writeBack = (leaves, source, revision) => {
@@ -5026,7 +5097,7 @@ function apply(ctx, config = {}) {
       if (doc === undefined)
         return;
       entryKnobs = rowKnobLayer(doc);
-      state = loadConfig(config, readRoot(), bridge.section, entryKnobs);
+      snapshots.clear();
       warn(`[mpd-config] entry-config update: state re-loaded from the "${ENTRY_CONFIG_ID}" document (${Object.keys(entryKnobs).length} knob(s) in force) — no restart needed`);
     });
   if (typeof dsh.onSettingsDocumentUpdated !== "function") {
@@ -5035,7 +5106,7 @@ function apply(ctx, config = {}) {
     dsh.onSettingsDocumentUpdated(SETTINGS_NS, (revision, source) => {
       const previous = bridge.section;
       const next = readSection();
-      state = loadConfig(config, readRoot(), next, entryKnobs);
+      snapshots.clear();
       if (source === "provider")
         return;
       const delta = changedLeaves(previous, next);
@@ -5086,30 +5157,89 @@ function apply(ctx, config = {}) {
   migrate();
   if (bridge.degraded !== undefined)
     warn("[mpd-config] settings bridge: degraded — " + bridge.degraded);
+  const editWorkspaceAgentRoutes = (workspace, edits) => {
+    if (projectFileOverride() !== undefined)
+      return { ok: false, reason: "This profile points to a shared projectFile. Edit the shared file to change its routes." };
+    const file = projectFileFor(workspace);
+    try {
+      const expectedText = existsSync2(file) ? readFileSync2(file, "utf8") : null;
+      const parsed = readJsonc(expectedText ?? "{}");
+      if (!parsed.ok)
+        return { ok: false, reason: "The workspace's mpd.jsonc could not be parsed." };
+      const table = configValueAt(parsed.value, ["agentRoutes"]);
+      const globalRoutes = configValueAt(deepMerge(withoutMarker(bridge.section), entryKnobs ?? rowKnobLayer(config)), ["agentRoutes"]);
+      const effectiveRoutes = loadConfig(config, workspace, bridge.section, entryKnobs).config.agentRoutes;
+      const changes = [];
+      for (const { agent, leaf, value } of edits) {
+        if (rosterAgentNameOf(agent) !== agent || !ROUTE_FORM_LEAVES.includes(leaf))
+          return { ok: false, reason: "Unknown roster route field." };
+        const isAgentKey = (key2) => agentNameKey(key2) === agentNameKey(agent);
+        const matches = isPlainObject2(table) ? Object.keys(table).filter(isAgentKey) : [];
+        if (matches.length > 1)
+          return { ok: false, reason: `The workspace declares multiple spellings of ${agent}. Keep one entry before editing its route.` };
+        const active = isPlainObject2(effectiveRoutes) ? Object.keys(effectiveRoutes).find(isAgentKey) : undefined;
+        if (value !== undefined && matches[0] !== undefined && active !== undefined && matches[0] !== active) {
+          return { ok: false, reason: `The workspace uses ${matches[0]} but an inherited route uses ${active}. Use the same spelling before editing this field.` };
+        }
+        const key = matches[0] ?? active ?? agent;
+        const globalEntry = configValueAt(globalRoutes, [key]);
+        const shared = configValueAt(globalEntry, [leaf]);
+        if (value !== undefined && (globalRoutes !== undefined && !isPlainObject2(globalRoutes) || globalEntry !== undefined && !isPlainObject2(globalEntry) || shared !== undefined && shared !== value)) {
+          return { ok: false, reason: `A profile-wide setting overrides ${agentRoutePath(agent, leaf)}. Clear that setting before saving a different workspace value.` };
+        }
+        const path = ["agentRoutes", key, leaf];
+        if (value === undefined && configValueAt(parsed.value, path) === undefined)
+          continue;
+        changes.push({ path, value: value === undefined ? DELETE : value });
+      }
+      if (changes.length === 0)
+        return { ok: true };
+      mkdirSync3(dirname3(file), { recursive: true });
+      const [result] = writeBackLeaves([{ root: workspace, file }], changes, { ...DEFAULT_BRIDGE_OPTIONS, expectedText }).results;
+      if (result === undefined || !["written", "created", "unchanged"].includes(result.outcome)) {
+        return { ok: false, reason: `Could not save the workspace's mpd.jsonc (${result?.reason ?? result?.outcome ?? "no result"}).` };
+      }
+      for (const note of result.notes ?? [])
+        warn(`[mpd-config] ${note.detail} [${file}]`);
+      invalidateProjectFile(workspace);
+      return { ok: true };
+    } catch (error) {
+      warn(`[mpd-config] workspace route edit failed for ${file}: ${error instanceof Error ? error.message : String(error)}`);
+      return { ok: false, reason: "Could not read or write the workspace's mpd.jsonc." };
+    }
+  };
   ctx.provide("mpdConfig", {
-    get: (key) => {
-      if (key === undefined)
-        return state.config;
-      return key.split(".").reduce((acc, part) => acc == null ? undefined : acc[part], state.config);
+    get: (key, workspace) => {
+      const resolved = stateFor(workspace).config;
+      return key === undefined ? resolved : configValueAt(resolved, key.split("."));
     },
-    agentRouteResolutionOf: (member) => {
-      const resolution = resolveAgentRoute(member, state.config);
-      const dropped = droppedFallbacksOf(member, state.config);
+    agentRouteResolutionOf: (member, workspace) => {
+      const resolved = stateFor(workspace).config;
+      const resolution = resolveAgentRoute(member, resolved);
+      const dropped = droppedFallbacksOf(member, resolved);
       if (dropped > 0)
         warn("[mpd-config] agentRoutes for " + (resolution.ok ? resolution.agent : member) + ": dropped " + dropped + " malformed fallback entr" + (dropped === 1 ? "y" : "ies"));
       return resolution;
     },
-    agentRouteOf: (member) => agentRouteOfMember(member, state.config),
+    agentRouteOf: (member, workspace) => agentRouteOfMember(member, stateFor(workspace).config),
+    workspaceAgentRoutes: (workspace) => {
+      const state = stateFor(workspace);
+      return { values: routeFormValuesOf(state.config), local: routeFormValuesOf(state.project) };
+    },
+    editWorkspaceAgentRoutes,
     reload,
-    states: () => ({
-      files: state.files,
-      errors: state.errors,
-      settings: { namespace: SETTINGS_NS, serviceReady: bridge.serviceReady, served: bridge.served, revision: bridge.revision ?? null, applied: state.settingsApplied, degraded: bridge.degraded ?? null, writeBackEnabled: bridgeOptions().writeBack, registration: bridge.namespaceRegistration ?? null, baseFromFiles: bridge.baseReason === "one-live-root" || bridge.baseReason === "mount-time-root", baseReason: bridge.baseReason ?? null, baseCandidates: bridge.baseCandidates ?? [] },
-      writeback: bridge.report ?? null,
-      migration: bridge.migration,
-      cleared: bridge.cleared,
-      applies: "restart"
-    })
+    states: (workspace) => {
+      const state = stateFor(workspace);
+      return {
+        files: state.files,
+        errors: state.errors,
+        settings: { namespace: SETTINGS_NS, serviceReady: bridge.serviceReady, served: bridge.served, revision: bridge.revision ?? null, applied: state.settingsApplied, degraded: bridge.degraded ?? null, writeBackEnabled: bridgeOptions().writeBack, registration: bridge.namespaceRegistration ?? null, baseFromFiles: bridge.baseReason === "one-live-root" || bridge.baseReason === "mount-time-root", baseReason: bridge.baseReason ?? null, baseCandidates: bridge.baseCandidates ?? [] },
+        writeback: bridge.report ?? null,
+        migration: bridge.migration,
+        cleared: bridge.cleared,
+        applies: "restart"
+      };
+    }
   });
   dsh.registerTool({
     name: "mpd_config_get",
@@ -5117,10 +5247,9 @@ function apply(ctx, config = {}) {
     parameters: { type: "object", properties: { key: { type: "string", description: "Optional dot-path to a single key, e.g. memory.vcs" } }, additionalProperties: false },
     output: { schema: { type: "object", properties: { config: { type: "object" }, key: { type: "string" }, value: {} }, required: ["config"] }, render: (_a, v) => textBlock(v.key ? "mpd config " + v.key + ": " + JSON.stringify(v.value, null, 1) : "mpd config: " + JSON.stringify(v.config, null, 1)) },
     execute: async (args, exec) => {
-      reload(exec);
-      const resolved = state.config;
+      const resolved = reload(exec);
       const key = args?.key ? String(args.key) : undefined;
-      const value = key ? key.split(".").reduce((acc, part) => acc == null ? undefined : acc[part], resolved) ?? null : null;
+      const value = key ? configValueAt(resolved, key.split(".")) ?? null : null;
       return key === undefined ? { config: resolved } : { config: resolved, key, value };
     }
   });
@@ -5130,8 +5259,8 @@ function apply(ctx, config = {}) {
     parameters: { type: "object", properties: {} },
     output: { schema: { type: "object", properties: { files: { type: "array", items: { type: "string" } }, errors: { type: "array", items: { type: "string" } } }, required: ["files", "errors"] }, render: (_a, v) => textBlock("mpd config reloaded: " + v.files.join(", ") + (v.errors.length ? " ERRORS: " + v.errors.join("; ") : "")) },
     execute: async (_args, exec) => {
-      const cfg = reload(exec);
-      return { files: state.files, errors: state.errors, config: cfg };
+      const { files, errors, config: resolved } = reloadAt(dsh.workspaceRoot(exec));
+      return { files, errors, config: resolved };
     }
   });
   const seedStates = new Map;

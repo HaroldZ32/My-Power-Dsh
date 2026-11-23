@@ -20,6 +20,8 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { DshTeamExecutor } from "../../mpd-dsh-adapter-plugin/src/index.ts"
 import { forceWedgedTask, graceWedgedTask, type TeamActionCaller, type TeamActionDeps } from "../src/team-actions"
+import { assign, ledgerKey } from "../src/dispatch.ts"
+import { readLedger, writeLedger } from "../src/dispatch-ledger.ts"
 import { writeHandoffDocument } from "../src/team-handoff"
 import { readTeamJournal } from "../src/team-journal"
 import { fold, readRecords } from "../src/mailbox-store"
@@ -144,6 +146,10 @@ describe("D3.4 — the force action", () => {
     // watchdog's `attemptId` IS the row's `revision`, which the claim above bumped to 2.
     /** The row's own generation token, exactly as the watchdog projects it. */
     const generation = String(created.tasks.find((task) => task.id === "T1")?.revision ?? "")
+    // The watchdog's board row came from a real dispatch and holds a busy pairing until recovery.
+    /** A different task's pairing must survive a requeue of T1. */
+    const otherTeam = { teamId: "other-team", taskId: "T1", memberId: "other-member", memberName: "other" }
+    writeLedger(box.workspace, assign(assign({}, otherTeam, NOW), { teamId: created.teamId, taskId: "T1", memberId: MEMBER, memberName: MEMBER_NAME }, NOW))
     /** What the force answered. */
     const outcome = await forceWedgedTask(box.deps, box.caller, {
       teamId: created.teamId,
@@ -184,6 +190,8 @@ describe("D3.4 — the force action", () => {
     expect(row.status).toBe("pending")
     expect(row.owner).toBeUndefined()
     expect(row.attempt).toBe(2)
+    expect(Object.keys(readLedger(box.workspace))).toEqual([ledgerKey(otherTeam.teamId, otherTeam.taskId)])
+    expect(after.members.find((seat) => seat.executorRef === MEMBER)?.status).toBe("inactive")
     expect(row.note).toContain(outcome.handoff)
     // The started clock is DELETED: the next claim is a new attempt whose clock starts then.
     expect(row.startedAt).toBeUndefined()

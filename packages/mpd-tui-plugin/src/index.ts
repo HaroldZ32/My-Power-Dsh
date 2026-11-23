@@ -68,7 +68,7 @@ import { registerWatchdogPanel } from "./panel-watchdog.js"
 import { registerWatchdogScene } from "./scene-watchdog.js"
 import { boardSummary, registerScene, type PlanActionOutcome, type PlanActions } from "./scenes.js"
 import { readPlanView, type MpdPlanView, type TeamWorkflow } from "./team-state.js"
-import { liveTeamViews, mpdTeamRecords, type MpdTeamsLike, type TeamFeedAccessor, type TeamFeedSubscribe, type TeamFeedSubscribeMember, type TeamSourceDeps } from "./team-state.js"
+import { liveTeamViews, mpdTeamRecords, type MpdTeamsLike, type TeamFeedAccessor, type TeamFeedSubscribe, type TeamSourceDeps } from "./team-state.js"
 import type { TeamRecord } from "../../mpd-team-core-plugin/src/team-store.js"
 import type { DshLiveAgent, DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import { registerCommandTrees } from "./command-trees.js"
@@ -305,38 +305,26 @@ function resolveAdapter(ctx: PluginContextLike): ReturnType<typeof createDshAdap
 }
 
 /**
- * Resolve the workspace root per call, never cached.
- *
- * The live session cwd is the authoritative workspace (AGENTS.md §6). This row is
- * agentless (a TUI surface, no tool exec), so it asks the adapter for the union
- * of live session workspaces and falls back to the adapter's exec-less
- * resolution (`DSH_WORKSPACE_ROOT` → process cwd).
+ * Resolve a surface's workspace per call using the host snapshot or the live session registry.
  * @param ctx - the plugin context.
- * @param adapter - the resolved adapter (created here when omitted, for standalone use).
- * @returns the per-call workspace resolver.
+ * @param adapter - the resolved adapter (created here for standalone use).
+ * @returns the workspace lookup, with an unambiguous fallback for agentless surfaces.
  */
-export function workspaceResolver(ctx: PluginContextLike, adapter?: ReturnType<typeof createDshAdapter>): () => string {
-  /** The adapter this resolver reads, undefined until one is supplied or created. */
-  let resolved = adapter
-  if (resolved === undefined) {
+export function workspaceResolver(ctx: PluginContextLike, adapter?: ReturnType<typeof createDshAdapter>): (sessionId?: string, cwd?: string) => string {
+  /** The workspace of the named session comes from the harness adapter when available. */
+  const resolved = adapter ?? resolveAdapter(ctx)
+  return (sessionId?: string, cwd?: string): string => {
+    if (cwd !== undefined && cwd !== "") return cwd
     try {
-      resolved = resolveAdapter(ctx)
+      /** Older TUI hosts may carry only a session id. */
+      const sessionRoot = sessionId === undefined ? undefined : resolved.workspaceRootForSession?.(sessionId)
+      if (sessionRoot !== undefined) return sessionRoot
+      /** An agentless surface can use a registered root only when it is unambiguous. */
+      const roots = resolved.workspaceRootsAll() ?? []
+      if (sessionId && roots.length > 1) return ""
+      return roots.length === 1 ? roots[0] ?? resolved.workspaceRoot() : resolved.workspaceRoot()
     } catch {
-      resolved = undefined
-    }
-  }
-  return () => {
-    try {
-      /** The union of live session workspaces; empty when no session is live. */
-      const roots = resolved?.workspaceRootsAll() ?? []
-      if (roots.length > 0) return roots[0]
-    } catch {
-      // fall through to the exec-less resolution
-    }
-    try {
-      return resolved?.workspaceRoot() ?? process.cwd()
-    } catch {
-      return process.cwd()
+      return createDshAdapter(ctx).workspaceRoot()
     }
   }
 }
@@ -522,7 +510,7 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   // (never cached: one host serves many sessions with different workspaces). Every team surface —
   // the board, the status line, the workflow scene and the plan scene — reads it through this ONE
   // provider, so a missing seam degrades them together (`[]`) instead of one at a time.
-  const teamViews = (): readonly DshTeamView[] => liveTeamViews(adapter, workspaceRoot())
+  const teamViews = (workspace: string = workspaceRoot()): readonly DshTeamView[] => liveTeamViews(adapter, workspace)
   // ── THE PRIMARY TEAM SOURCE: the mpd-owned record ────────────────────────
   // `mpdTeams` is another plugin's service, so it is reached with the deferred inject form (a
   // one-shot probe cannot see it, and a declared dependency would park this entry). It is read PER
@@ -561,49 +549,36 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
     }
   })
   /** The mpd team records for the CURRENT workspace, resolved per call; `[]` when the row is absent. */
-  const teamRecords = (): readonly TeamRecord[] => mpdTeamRecords(teamsService, workspaceRoot())
+  const teamRecords = (workspace: string = workspaceRoot()): readonly TeamRecord[] => mpdTeamRecords(teamsService, workspace)
   // ── THE PUBLISHED FEED, and the ONE subtlety that makes it work (PART P) ────
   // A surface subscribes from an EFFECT, so the accessor it is handed must return a STABLE function
   // while the service is bound: a closure rebuilt on every render would re-subscribe on every frame —
   // tearing down and rebuilding the subscription the watcher counts its lifetime by. The service binds
   // ASYNCHRONOUSLY (the deferred `onService` above), so the accessor is asked again on every render and
   // must start answering `undefined` and then flip to the same function for the rest of the session.
-  /** The subscribe function this row published, kept for the whole binding. */
-  let feedClosure: TeamFeedSubscribe | undefined
-  /** The service object `feedClosure` was minted against, so a REBOUND service mints a new one. */
-  let feedClosureFor: MpdTeamsLike | undefined
-  /**
-   * Resolve the live team feed for the CALLING session's workspace, per call.
-   * @returns the stable subscribe function while `mpdTeams` is bound, else undefined.
-   */
-  const teamFeed: TeamFeedAccessor = (): TeamFeedSubscribe | undefined => {
-    /** Whether the team row is bound AND carries the feed member (the Lane S interface). */
-    const bound = teamsService !== undefined && typeof teamsService.subscribe === "function"
-    if (!bound) {
-      // A service that went away (or never arrived) releases the closure, so a later re-bind mints a
-      // fresh one instead of handing out a function that would subscribe to nothing.
-      feedClosure = undefined
-      feedClosureFor = undefined
-      return undefined
+  /** A mounted surface keeps the same effect dependency until its workspace or service changes. */
+  const feeds = new Map<string, TeamFeedSubscribe>()
+  /** The service that owns the closures in the map. */
+  let feedService: MpdTeamsLike | undefined
+  /** Bind the feed to this surface's workspace, per render. */
+  const teamFeed: TeamFeedAccessor = (sessionId?: string, cwd?: string): TeamFeedSubscribe | undefined => {
+    /** The latest service binding and the subscription hook it owns. */
+    const service = teamsService
+    if (feedService !== service) {
+      feeds.clear()
+      feedService = service
     }
-    // THE IDENTITY IS PART OF THE KEY: a re-bound service object must not be handed a closure that
-    // still calls the OLD instance's `subscribe` — the workspace would be watched on a dead writer.
-    if (feedClosure === undefined || feedClosureFor !== teamsService) {
-      /** The bound service, narrowed once so the closure below cannot read a rebound variable. */
-      const service = teamsService as MpdTeamsLike & { subscribe: TeamFeedSubscribeMember }
-      feedClosure = (listener: () => void): (() => void) => {
-        try {
-          // THE WORKSPACE IS RESOLVED AT SUBSCRIBE TIME (inside this call), never at apply: one host
-          // serves many sessions with different workspaces, and §6 forbids caching the root.
-          return service.subscribe(workspaceRoot(), listener) ?? ((): void => {})
-        } catch {
-          // A feed that throws costs the push, never the surface: the caller gets a dead disposer.
-          return (): void => {}
-        }
-      }
-      feedClosureFor = teamsService
-    }
-    return feedClosure
+    if (typeof service?.subscribe !== "function") return undefined
+    /** The active workspace, which selects both the watcher and the React effect's identity. */
+    const workspace = workspaceRoot(sessionId, cwd)
+    if (workspace === "") return undefined
+    /** Return the existing closure for steady renders in this workspace. */
+    const existing = feeds.get(workspace)
+    if (existing !== undefined) return existing
+    /** A subscriber watches only this root and releases its own registration on unmount. */
+    const subscribe: TeamFeedSubscribe = (listener: () => void): (() => void) => service.subscribe?.(workspace, listener) ?? ((): void => {})
+    feeds.set(workspace, subscribe)
+    return subscribe
   }
   /** The session-scoped team reads every scene needs, resolved per call. */
   const sceneTeamDeps: TeamSourceDeps = {
@@ -617,7 +592,11 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   // `teamsService` is a LATE-BOUND variable, not a function: the service arrives after apply, so it
   // is read at call time and may still be undefined — which `readPlanView` handles by returning
   // undefined rather than throwing.
-  const planReader = (sessionId: string): MpdPlanView["plan"] | undefined => readPlanView(teamsService, workspaceRoot(), sessionId)
+  const planReader = (sessionId: string, cwd?: string): MpdPlanView["plan"] | undefined => {
+    /** A visible plan must be tied to a known project. */
+    const workspace = workspaceRoot(sessionId, cwd)
+    return workspace === "" ? undefined : readPlanView(teamsService, workspace, sessionId)
+  }
 
   // Measured once, at apply: an append is only safe when the event type is known
   // to a reachable dsh-session copy (iron rule 2).
@@ -715,7 +694,7 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
         log,
         workspaceRoot,
         home,
-        () => watchdogFrontDoor.view().holds,
+        (workspace?: string) => watchdogFrontDoor.view(workspace).holds,
         createPlanActions(adapter, log),
         planReader,
         teamViews,
@@ -763,7 +742,7 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
     // describe one team differently. IT TAKES A SESSION ID (PART D): the DAG page reads its own
     // session off `host.snapshot().sessionId` and passes it here, which is what stops a NEW session
     // from drawing the OLD session's board. A call with no id is the marked workspace-level fallback.
-    readWorkflow: (sessionId?: string) => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords, () => teamsService, sessionId),
+    readWorkflow: (sessionId?: string, cwd?: string) => readDashboardWorkflow(workspaceRoot, (workspace?: string) => watchdogFrontDoor.view(workspace).holds, teamViews, teamRecords, () => teamsService, sessionId, cwd),
     // THE PUSH (PART P): the page subscribes while mounted and re-reads the new record; the tick stays.
     subscribeTeams: teamFeed,
     // THE FALLBACK IS THE EXISTING SURFACE, never a silent no-op: every refusal lands on the scene
@@ -828,17 +807,17 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   // Gated on the `scene` knob like every other scene, and the page's control is wired only while this
   // seam is composed — a `⤢` with no scene behind it is the dead control the clause exists to remove.
   /** The phase half of a team row: the same projection the other MPD pages read, per call. */
-  const watchdogTeamHead = (): { id: string; phase: string } | undefined => {
+  const watchdogTeamHead = (sessionId?: string, cwd?: string): { id: string; phase: string } | undefined => {
     /** The current projection for this workspace. */
-    const workflow = readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords, () => teamsService)
+    const workflow = readDashboardWorkflow(workspaceRoot, () => [], teamViews, teamRecords, () => teamsService, sessionId, cwd)
     return workflow?.team === undefined ? undefined : { id: workflow.team.id, phase: workflow.team.phase }
   }
   /** The watchdog page's full-screen surface: the registered scene its `⤢` and the route fall back to. */
   const watchdogScene = registerWatchdogScene(tui, ctx, {
     enabled: resolved.scene,
     available: () => watchdogFrontDoor.available(),
-    read: () => watchdogFrontDoor.view(),
-    acknowledge: (upTo: number) => watchdogFrontDoor.acknowledge(upTo),
+    read: (sessionId?: string, cwd?: string) => watchdogFrontDoor.view(workspaceRoot(sessionId, cwd)),
+    acknowledge: (upTo: number, sessionId?: string, cwd?: string) => watchdogFrontDoor.acknowledge(upTo, workspaceRoot(sessionId, cwd)),
     readTeam: watchdogTeamHead,
     log,
   })
@@ -857,8 +836,8 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
     // ITS OWN KNOB, independent of the other two pages (see `watchdog` in the row config).
     enabled: resolved.watchdog,
     available: () => watchdogFrontDoor.available(),
-    read: () => watchdogFrontDoor.view(),
-    acknowledge: (upTo: number) => watchdogFrontDoor.acknowledge(upTo),
+    read: (sessionId?: string, cwd?: string) => watchdogFrontDoor.view(workspaceRoot(sessionId, cwd)),
+    acknowledge: (upTo: number, sessionId?: string, cwd?: string) => watchdogFrontDoor.acknowledge(upTo, workspaceRoot(sessionId, cwd)),
     // The PHASE half of a held team's row: the same team projection the other MPD pages draw, read per
     // render. A composition without the team reader still gets every watchdog fact; the phase cell
     // prints `?` rather than inventing a word.
@@ -921,7 +900,7 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
             return false
           }
         },
-        readWorkflow: (): TeamWorkflow | undefined => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords, () => teamsService),
+        readWorkflow: (): TeamWorkflow | undefined => readDashboardWorkflow(workspaceRoot, (workspace?: string) => watchdogFrontDoor.view(workspace).holds, teamViews, teamRecords, () => teamsService),
         // THE WATCHDOG PAGE'S OWN BADGE (contract §7): the same durable view the page renders, so the
         // tab chip and the page can never disagree. The id is read per pass — the page's registration
         // may settle after this surface arms.
@@ -977,7 +956,7 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
         ? registerDashboardKey(ctx, tui, {
             enabled: dashboardKeyEnabled,
             mergedSceneAvailable: () => resolved.scene && tui.scenes() !== undefined,
-            readWorkflow: () => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords),
+            readWorkflow: () => readDashboardWorkflow(workspaceRoot, (workspace?: string) => watchdogFrontDoor.view(workspace).holds, teamViews, teamRecords),
             openMergedScene: () => scene.openSubagents(),
             log,
           })

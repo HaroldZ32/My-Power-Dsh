@@ -104,7 +104,7 @@ function retireCopies(lookup: StageLookup, destination: string): void {
 }
 
 /** A stage mutation uses the same inter-process critical section as approval. */
-export function withProjectStage<T>(workspace: string, sessionId: string, mutate: (stage: ProjectStage) => T): T {
+export function withProjectStage<T>(workspace: string, sessionId: string, mutate: (stage: ProjectStage) => T, replacePaused: boolean = false): T {
   /** The staged-plan path cannot enlist an admission lock outside the declared Git root. */
   const project = locateProject(workspace)
   assertInside(project.primaryRoot, join(project.primaryRoot, ".mpd", "project-team"))
@@ -112,8 +112,10 @@ export function withProjectStage<T>(workspace: string, sessionId: string, mutate
     /** Re-resolve staging from the winner's current project root without discarding the losing draft. */
     const lookup = lookupStage(location, workspace, sessionId)
     /** No edit may supersede the frozen plan after its board was published but spawn is still in progress. */
-    const active = lookup.plan === undefined ? undefined : listTeams(location.record?.projectRoot ?? workspace).find((board) => board.planId === lookup.plan?.planId && board.leadSessionId === sessionId && board.approvedAt === undefined && board.endedAt === undefined && board.phase !== "ended")
-    if (active !== undefined) throw new ProjectAdmissionError(`plan ${active.planId} is frozen by approval of board ${active.teamId}`)
+    const active = lookup.plan === undefined ? undefined : listTeams(location.record?.projectRoot ?? workspace).find((board) => board.planId === lookup.plan?.planId && board.leadSessionId === sessionId && (lookup.plan?.activation !== undefined || board.approvedAt === undefined) && board.endedAt === undefined && board.phase !== "ended")
+    /** Only an explicit replacement may supersede a recorded pause with no opening child. */
+    const paused = replacePaused && lookup.plan?.activation?.stoppedAt !== undefined && !active?.members.some((member) => member.status === "provisioning")
+    if (active !== undefined && !paused) throw new ProjectAdmissionError(`plan ${active.planId} is frozen by approval of board ${active.teamId}`)
     /** Complete a previous byte-identical adoption before this mutation can make versions differ. */
     const destination = stagingPath(lookup.workspace, sessionId)
     assertInside(lookup.workspace, destination)

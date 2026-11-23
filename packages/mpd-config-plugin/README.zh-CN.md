@@ -19,12 +19,13 @@
 - `team.stateDir`、`hashline.guardEditTools/maxDiffChars/registryFile`、
   `commentChecker.autoCheck/bin`、`modelchain.<role>`、`boulder.dir`、
   `autoproject.maxRounds`。
-- `team.reteam.enabled`（默认 `true`）：只控制**会话中途的 volume 触发器**；感知 ended 与
-  clean-terminal 的自动结束规则始终有效。
-- `team.reteam.afterConsults`（默认 `4`）：自上次触发以来，本 agent **已完成**的
-  `mpd_role_spawn` / `mpd_role_spawn_async` / `mpd_workmate_spawn` 调用数达到该值后，gate 会在
-  `[AgentTeams] Re-team rule` 标记下 stage 一个新的空 plan shell。失败的或
-  `AGENT_UNCONFIGURED` 的 spawn 不计入；计数持久化在 `<ws>/.mpd/session-gate/<sessionId>.json`。
+- `team.reteam.enabled`（默认 `true`）控制按已完成调用数暂存计划，以及并发 consult 的准入检查。
+  团队结案和任务板全部结案后的自动结束规则独立生效。
+- `team.reteam.afterConsults`（默认 `4`）是按已完成调用数触发 `[AgentTeams] Re-team rule` 暂存空计划的阈值。
+  自上次触发以来，此 agent 成功完成的 `mpd_role_spawn`、`mpd_role_spawn_async` 和 `mpd_workmate_spawn`
+  调用均会计数，计数保存在 `<ws>/.mpd/session-gate/<sessionId>.json`。机械模式下，该设置也约束具备资格且
+  没有运行中团队的顶层 captain 对这些工具的并发调用。默认情况下，第四个重叠的调用会在启动新子 agent 前被
+  引导至团队流程。
 
 ## Agent 路由（`agentRoutes`）
 
@@ -81,19 +82,27 @@ ModelRoute = { provider: string, model: string, reasoningEffort?: string }
 
 ## 服务 / 工具
 
-- 为其他 mpd 插件提供 `mpdConfig` 服务（`inject: ["mpdConfig"]`）：
-  `get(key?)`、`reload()`、`states()`、`agentRouteResolutionOf(member)`、`agentRouteOf(member)`。
-- `agentRouteResolutionOf(member)` / `agentRouteOf(member)` 是让**已保存**的 `agentRoutes` 条目
-  真正生效的那两次读取。前者返回有类型、永不抛错的联合（`ok` / `unconfigured` / `invalid` /
-  `unrouted`），供展示面渲染；后者在 `ok` 时返回 `{ provider, model, reasoningEffort?, fallbacks? }`，
-  否则返回 `undefined`。花名册的一次性路径（`mpd_role_spawn`、`mpd_roles_list`、workmate 库与
-  `mpd_modelchain_resolve`）都经此服务读取，因此保存的路由无需第二条跨包 import 即可抵达它们。
-  已移除的名字 `slotResolutionOf` / `teamModelRouteOf` 不得回归。
-- `mpd_config_get` / `mpd_config_reload` 工具。
+- 其他 MPD 插件可以调用 `mpdConfig` 的 `get(key?, workspace?)`、`states(workspace?)`、
+  `agentRouteResolutionOf(member, workspace?)` 和 `agentRouteOf(member, workspace?)`。
+  调用方有会话时应传入工作区的绝对路径。每个工作区都有自己的实时配置快照。
+  未传入工作区时，只有一个活动工作区就读取该工作区，否则采用适配器的进程级默认路径。
+  最近一次调用或重载不会改变此默认路径。
+- `agentRouteResolutionOf` 返回 `ok`、`unconfigured`、`invalid` 或 `unrouted`。
+  路由可用时，`agentRouteOf` 返回 `{ provider, model, reasoningEffort?, fallbacks? }`。
+  单次委派、workmate 和模型链查询使用调用会话的工作区。团队成员使用筹建团队的会话工作区，
+  即使成员在独立的 worktree 中运行。
+- `mpd_config_get`、`mpd_config_reload` 和 `reload(exec?)` 均重新读取调用会话的项目配置层。
 
 ## `/settings` 打通
 
-本包承担 harness settings 打通中配置这一侧。**在用的保存路径是 ENTRY 文档；`mpd.jsonc` 回写是已退役的 legacy 路径。** TUI 的 `/settings` 区块与 Web 界面卡片都保存本行的 `mpd-config` ENTRY 文档（`ENTRY_CONFIG_ID`、`configForms.get("mpd-config")`），而该存储归**宿主**所有：本行的 `onSettingsDocumentUpdated(ENTRY_CONFIG_ID, …)` 监听器从中重新加载 `state`，并刻意**不写任何工作区文件**。`<workspace>/.mpd/mpd.jsonc` 的写入只存在于 **LEGACY** 的 `mpd` 命名空间（`SETTINGS_NS`），而钉住的 harness **拒绝**它的注册 —— `settingsModelRetired`，启动时只有一行警告："the legacy file write-back and override clearing are dormant" —— 因此在钉住的宿主上这条路径从不运行。对 `<workspace>/.mpd/mpd.jsonc` 的**手工编辑仍然会被读到**：文件层在每次解析时都会重新读取，挂载时安装的 `watchRoot` 监视器也会经同一个 150 毫秒防抖把这次编辑送进 `state`。
+Web 设置卡片按选中的活动会话读取并保存模型路由字段。保存会更新
+`<workspace>/.mpd/mpd.jsonc`，并保留无关的 JSONC 内容。清除字段会移除项目层的值，从其余配置层继承。
+配置档案中的全局覆盖仍具更高优先级。如果全局配置阻止了某个字段的保存，卡片会明确指出该字段。
+配置行指定的 `projectFile` 由多个工作区共享，需要单独编辑。不存在的会话，以及多工作区环境下未指定会话的读取请求，均会收到可见的错误。
+
+TUI 的 `/settings` 区块以及 Web 卡片的其他字段使用宿主的 `mpd-config` 条目文档。
+保存后，每个工作区都会重新应用这一设置层。在仍支持旧版 `mpd` 命名空间的宿主上，只有一个活动工作区时，桥接层还可将这些值回写到项目文件。
+固定版本的宿主已停用该命名空间。手工编辑项目配置文件后，相关工作区的配置快照会在监视器的 150 毫秒防抖期结束后刷新。
 
 **读回（READ-BACK）是实时的；生效（EFFECT）按旋钮而异。** `mpd_config_get` / `mpd_config_reload` 每次调用都重读各层并立刻报告新值，但在 `apply()` 时已捕获配置的消费方仍旧按旧值行事。两组加一个特例都在此写明 —— 绝不只写好看的那一半（逐旋钮的表是 `docs/user-guide.md` §9.1）：
 
@@ -112,8 +121,7 @@ ModelRoute = { provider: string, model: string, reasoningEffort?: string }
   （`DSH_WORKSPACE_ROOT` 或进程 cwd），那里文件缺失即得到空 base（schema 默认值）——这是常规启动
   路径；多于一个根 ⇒ **不虚构任何文件 base**（`base: undefined`、原因 `ambiguous-multi-root`，
   逐一点名全部候选并由 `states()` 暴露），且该状态下的保存会被拒绝。base 在**进程生命周期内
-  固定**（宿主对一次活动注册不提供注销句柄）；消费方使用的是**已解析的值**加上配置层的
-  **逐次调用文件读取**，因此每个会话仍然解析自己的文件。
+  固定**，因为宿主不提供注销句柄。按会话读取的插件会使用该会话所属工作区的已解析快照。
 - **读入优先级（LEGACY 命名空间层）：** L0 schema 默认值 < L1 `$DSH_HOME/mpd.jsonc` < L2
   `<workspace>/.mpd/mpd.jsonc` < **L3 settings 用户区段**（运行期以其为准）；此后若
   文件被再次编辑，重叠的 settings 叶子会被**取消设置**，因此两个方向都不会静默丢失。

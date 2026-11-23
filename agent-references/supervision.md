@@ -9,6 +9,31 @@ Three planes (Agent Teams, cellwork, autoproject) converge on ONE adapter file,
 `packages/mpd-dsh-adapter-plugin/src/index.ts`. Every mechanism below is placed on that shared base, so
 a plane inherits it instead of re-implementing it.
 
+## Choosing the route before consulting
+
+On an initial request or a follow-up that expands the work, use the conversation to identify planned
+owners, dependencies, write scopes, integration and independent verification before the first
+consult. Use a team for substantial work with several owners, shared implementation or a build/test
+handoff. A brief follow-up in any language can carry forward the earlier scope. An isolated task or
+one bounded reconnaissance question can use a one-shot consult. Reassess before starting writers.
+
+Check `agent_teams_plan {action:"status"}`. Use a suitable live board. Otherwise reuse or stage a
+plan, add members and owner-bound tasks, and approve it. Dispatch ready rows to declared owners.
+A shell starts no child. Approval can return with a partial roster or a pending row, so confirm
+member activation and actual delivery before reporting progress. Approval can
+also anchor a persisted goal from the description or plan name and seed `todo_write` with one pending
+item per task. The two side effects are non-fatal and log one line on failure.
+
+The startup gate can stage a shell based on the latest human text before settlement using
+`team.sensitivity` (see `overview-and-provenance.md`, "Gate default"). It uses the workspace-size
+hint only on the first turn under `easy`. A later direct request to repair the whole preceding set
+has a separate signal after two completed consult calls or a gate-recorded staged plan. The gate
+records that signal's use once per wave and retains that state across restarts. A missed trigger
+leaves route selection to the captain. `team.gate: "mechanical"` is the default. `"advisory"` leaves staging to
+the captain, and `"off"` disables automatic routing. Honor a user's explicit choice about team use.
+If planning or activation is unavailable, name the blocker and use bounded serial consults where
+feasible. Report the resulting coverage and any missing owners or independent verification.
+
 ## 1. Re-team: a session that has finished a team must be able to build the next one
 
 Owner: `packages/mpd-roles-plugin/src/complexity-gate.ts` (pure) + `session-gate.ts` (wiring).
@@ -48,10 +73,11 @@ the tool, `exec.agent` attributes it). A failed or `AGENT_UNCONFIGURED` spawn do
 persists in `<ws>/.mpd/session-gate/<sessionId>.json`, so a restart neither loses the count nor
 re-nags.
 
-On a fire the gate stages ONE empty plan shell through the existing `stagePlan()` ladder and injects ONE
-notice marked `[AgentTeams] Re-team rule`. It creates no member and no task: the shell is INERT until
-the captain extends and approves it. `team.reteam.enabled` (default true) gates only this volume
-trigger; the ended-aware and auto-end rules stay in force regardless.
+On a fire the gate stages one empty plan shell through `stagePlan()` and injects one notice marked
+`[AgentTeams] Re-team rule`. The shell is inert until the captain extends and approves it. This
+completed-call trigger shares `team.reteam.enabled` (default true) with concurrent consult admission.
+The ended-aware and auto-end rules stay in force independently. Completion of the async start tool
+can be counted before its child finishes.
 
 Because autoproject and cellwork execute their spawns AS THE SAME SESSION (`agent: exec?.agent`), their
 work counts toward the same threshold — the trigger covers all three planes with no per-plane hook.
@@ -77,8 +103,17 @@ Surface:
 | `mpd_role_spawn_async` | returns `{consultId, role, state:"running"}` immediately |
 | `mpd_role_consult` | `list` / `wait` (bounded ≤ 60 s) / `collect` (returns and releases) / `cancel` |
 
-Concurrency is capped by `MPD_DSH_CONSULT_MAX` (default 8, the host's active-child limit); an over-cap
-request queues rather than throwing.
+**Admission before a public tool starts a consult.** In mechanical mode, the eligible top-level
+captain with the plan, board and dispatch tools present and no live team shares the same reservations
+across `mpd_role_spawn`, `mpd_role_spawn_async` and `mpd_workmate_spawn`. Reservations span queued
+and active children. At the default `team.reteam.afterConsults` of 4, the fourth overlapping request
+returns `TEAM_FIRST` before another child starts. The effective threshold may be lower with a smaller supervisor
+limit. One bounded consult remains possible. The gate reads the caller's configuration and current
+preset, with the creation header as the preset fallback on older hosts. `advisory`, `off`,
+`team.reteam.enabled: false`, in-team use, child sessions and internal cellwork/autoproject spawns
+stay outside this admission check. An absent Team tool also bypasses it. Use the plan status, then
+extend and approve a suitable plan. If plan inspection or staging fails, wait for outstanding work
+and retry one bounded consult at a time. Admitted consults queue at `MPD_DSH_CONSULT_MAX` (default 8).
 
 **Deadman.** Every consult — blocking or async — is armed with a bound read at every arm from
 `consult.forceAfterMs`, falling back to `watchdog.forceAfterMs`, then 900 000 ms (contract §S9). A

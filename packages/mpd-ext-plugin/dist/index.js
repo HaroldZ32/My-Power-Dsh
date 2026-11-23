@@ -1033,7 +1033,7 @@ function createDshAdapter(ctx, config = {}) {
     } catch {}
   };
   bindDshGoBridge();
-  const configAgentRouteResolver = () => {
+  const configAgentRouteResolver = (workspace) => {
     const config2 = service("mpdConfig");
     if (config2 === undefined || config2 === null)
       return;
@@ -1041,7 +1041,7 @@ function createDshAdapter(ctx, config = {}) {
       return;
     return (member) => {
       try {
-        const answer = config2.agentRouteResolutionOf.call(config2, member);
+        const answer = config2.agentRouteResolutionOf.call(config2, member, workspace);
         return answer !== null && typeof answer === "object" && typeof answer.ok === "boolean" ? answer : undefined;
       } catch {
         return;
@@ -1395,7 +1395,7 @@ function createDshAdapter(ctx, config = {}) {
         const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
         let agentOptions = request.agentOptions;
         if (agentOptions === undefined) {
-          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver());
+          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver(workspaceRootOfAgent(caller)));
           if (outcome.status === "routed") {
             const resolved = await resolveRunRoute({ llmCatalog }, outcome.route, outcome.fallbacks);
             agentOptions = resolved.route;
@@ -1411,8 +1411,13 @@ function createDshAdapter(ctx, config = {}) {
           ...agentOptions === undefined ? {} : { agentOptions },
           ...request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }
         };
+        const provider = typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn";
+        const childId = request.onOpening !== undefined && provider === "spawn" && typeof subagents.startActivation === "function" && typeof subagents.prompt === "function" ? randomUUID() : undefined;
+        if (childId !== undefined)
+          request.onOpening?.(childId);
         const spec = dualShapeActivationSpec({
-          provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
+          provider,
+          ...childId === undefined ? {} : { childId },
           label: `${request.name} · ${request.teamId}`,
           signal: request.signal ?? neverAborted()
         }, activationRequest);
@@ -2375,6 +2380,20 @@ function createDshAdapter(ctx, config = {}) {
       if (typeof skills.get !== "function")
         throw new Error("mpd-dsh-adapter: the harness skills service exposes no get()");
       return skills.get(skillName, options);
+    },
+    selectedAgentPreset(agent) {
+      const session = agent?.session;
+      if (session === undefined || session === null)
+        return;
+      try {
+        const presets = service("agentPresets");
+        if (typeof presets?.presetForSession !== "function")
+          return;
+        const selected = presets.presetForSession(session);
+        return selected === null || typeof selected === "string" && selected.length > 0 ? selected : undefined;
+      } catch {
+        return;
+      }
     },
     async resolvePreset(presetId) {
       const presets = requireService("agentPresets", 'cannot resolve preset "' + presetId + '"');
@@ -4067,10 +4086,11 @@ function projectExtensionIds(workspaceRoot) {
   for (const name of names) {
     const manifestPath = join4(dir, name, MPD_EXT_CONTRACT.manifestFile);
     try {
-      const parsed = JSON.parse(readFileSync4(manifestPath, "utf8"));
-      ids.add(typeof parsed?.id === "string" && parsed.id.length > 0 ? parsed.id : name);
+      const { descriptor, rejected } = validateDescriptor(JSON.parse(readFileSync4(manifestPath, "utf8")));
+      if (!rejected && descriptor !== undefined)
+        ids.add(descriptor.id);
     } catch {
-      ids.add(name);
+      continue;
     }
   }
   return ids;
@@ -4109,8 +4129,69 @@ function extensionConfig(ctx) {
   };
 }
 
+// packages/mpd-ext-plugin/src/project-watch.ts
+import { statSync as statSync2, watch } from "node:fs";
+import { dirname as dirname4, resolve as resolve5 } from "node:path";
+function projectSkillWatcher(control, warn) {
+  const { signal, invalidate } = control ?? {};
+  if (!signal || !invalidate || signal.aborted)
+    return () => {};
+  const workspaces = new Map;
+  signal.addEventListener("abort", () => {
+    for (const watchers of workspaces.values())
+      for (const watcher of watchers)
+        watcher.close();
+    workspaces.clear();
+  }, { once: true });
+  const observe = (cwd) => {
+    if (signal.aborted || workspaces.has(cwd))
+      return;
+    const root = projectExtensionsDir(cwd);
+    const mpd = dirname4(root);
+    const watchers = [];
+    workspaces.set(cwd, watchers);
+    const stop = () => {
+      if (workspaces.get(cwd) !== watchers)
+        return;
+      workspaces.delete(cwd);
+      for (const watcher of watchers)
+        watcher.close();
+    };
+    for (const [path, child] of [[cwd, ".mpd"], [mpd, "extensions"], [root, undefined]]) {
+      try {
+        if (!statSync2(path, { throwIfNoEntry: false })?.isDirectory())
+          continue;
+        const watcher = watch(path, { recursive: child === undefined, persistent: false }, (_event, filename) => {
+          if (signal.aborted || workspaces.get(cwd) !== watchers)
+            return;
+          if (child !== undefined) {
+            if (filename !== null && filename !== child)
+              return;
+            stop();
+            observe(cwd);
+          }
+          invalidate();
+        });
+        watchers.push(watcher);
+        watcher.on("error", (error) => {
+          if (workspaces.get(cwd) !== watchers)
+            return;
+          stop();
+          warn(`project extension watch failed for ${path}: ${error.message}`);
+          invalidate();
+        });
+      } catch (error) {
+        warn(`project extension watch unavailable for ${path}: ${String(error)}`);
+      }
+    }
+  };
+  return (cwd) => {
+    observe(resolve5(cwd));
+  };
+}
+
 // packages/mpd-ext-plugin/src/mcp.ts
-import { resolve as resolve5 } from "node:path";
+import { resolve as resolve6 } from "node:path";
 
 // packages/mpd-ext-plugin/src/mcp-client.ts
 import { createHash } from "node:crypto";
@@ -4179,8 +4260,8 @@ class McpProtocolError extends Error {
 var EXIT_FLUSH_MS = 25;
 async function raceWithTimer(work, ms) {
   let timer;
-  const timeout = new Promise((resolve5) => {
-    timer = setTimeout(() => resolve5({ timedOut: true }), ms);
+  const timeout = new Promise((resolve6) => {
+    timer = setTimeout(() => resolve6({ timedOut: true }), ms);
   });
   const done = await Promise.race([work.then(() => ({ timedOut: false })), timeout]);
   if (timer !== undefined)
@@ -4359,7 +4440,7 @@ class McpStdioClient {
       return Promise.reject(new Error(`mcp-client(${this.serverName}): the server process is not running`));
     }
     const id = this.nextId++;
-    return new Promise((resolve5, reject) => {
+    return new Promise((resolve6, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
         reject(new Error(`mcp-client(${this.serverName}): ${method} timed out after ${timeoutMs}ms`));
@@ -4384,7 +4465,7 @@ class McpStdioClient {
         resolve: (value) => {
           if (signal !== undefined)
             signal.removeEventListener("abort", onAbort);
-          resolve5(value);
+          resolve6(value);
         },
         reject: (error) => {
           if (signal !== undefined)
@@ -4988,7 +5069,7 @@ class ServerRuntime {
     this.dsh = options.dsh;
     this.warn = options.warn;
     this.timeouts = resolveTimeouts(options.item, options.config);
-    this.cwd = options.entry.root === "" ? process.cwd() : resolve5(options.entry.root, options.item.cwd === "" ? "." : options.item.cwd);
+    this.cwd = options.entry.root === "" ? process.cwd() : resolve6(options.entry.root, options.item.cwd === "" ? "." : options.item.cwd);
     if (options.disabled === true)
       this.state = "disabled";
     this.record();
@@ -5470,7 +5551,18 @@ async function mount(ctx, config = {}) {
         return documents;
       }
     });
-    dsh.registerSkillProvider(() => projectProvider);
+    dsh.registerSkillProvider((control) => {
+      const observe = projectSkillWatcher(control, warn);
+      return {
+        ...projectProvider,
+        list(options) {
+          const cwd = cwdOf(options);
+          if (cwd !== undefined)
+            observe(cwd);
+          return projectProvider.list(options);
+        }
+      };
+    });
     registeredProviderNames.push(projectProviderName);
   } catch (error) {
     warn("project-plane skill provider not registered: " + errorMessage(error));

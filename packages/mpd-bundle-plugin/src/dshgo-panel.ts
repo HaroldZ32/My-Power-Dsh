@@ -238,6 +238,8 @@ export interface PanelQuestionSnapshot {
   question: string
   /** The answer choices in the order the asker gave them; labels only, never indices. */
   options: Array<{ label: string }>
+  /** The first parked entry needs a client that can answer the complete selection. */
+  answerElsewhere?: true
 }
 
 /**
@@ -251,10 +253,12 @@ export interface PanelQuestionSnapshot {
 export interface PanelQuestionBinding {
   /** The relay's parked id this view was rendered from. */
   parkedId: string
-  /** Every question item id of that parking entry, in the asker's order; the answer batch carries the first. */
+  /** The item ids of that entry, in the asker’s order. A local answer requires exactly one. */
   itemIds: string[]
   /** The option labels the view's buttons show, in render order, exactly as the asker gave them. */
   labels: string[]
+  /** A local tap cannot satisfy the requested batch or selection. */
+  answerElsewhere?: true
 }
 
 /** What one built view captured for its taps: the question it rendered, or null when it rendered none. */
@@ -361,7 +365,11 @@ export interface PanelBridge {
    * The team panel's settle/hold verbs and the save-memory menu action drive the SAME tools a person
    * would call, so their refusals reach the toast verbatim instead of being re-derived here.
    */
-  executeTool?: (input: { name: string; arguments?: unknown }) => Promise<unknown>
+  executeTool?: (input: { name: string; arguments?: unknown; agent?: unknown }) => Promise<unknown>
+  /** A registered agent looked up by id, when the host exposes that seam. */
+  liveAgent?: (agentId: string) => { session?: unknown } | undefined
+  /** Live registry entries for hosts whose agent key differs from the conversation id. */
+  liveAgents?: () => readonly { session?: unknown }[]
 }
 
 /** What one registration needs: the bridge, the service registry and its injectable sinks. */
@@ -519,6 +527,15 @@ export function sessionIdOfScope(scope: unknown): string {
   return record === undefined ? "" : stringOf(record.sessionId)
 }
 
+/** Resolve a conversation to the registry's own live agent before a scoped tool call. */
+export function panelAgentOf(dsh: Pick<PanelBridge, "liveAgent" | "liveAgents">, sessionId: string): { session?: unknown } | undefined {
+  if (sessionId === "") return undefined
+  /** A registry lookup commonly names the same object by its agent id. */
+  const direct = probe(() => dsh.liveAgent?.(sessionId), undefined)
+  if (recordOf(direct?.session)?.id === sessionId) return direct
+  return probe(() => dsh.liveAgents?.().find((agent) => recordOf(agent.session)?.id === sessionId), undefined)
+}
+
 /** The map key one scope's panel state is held under: the session id, or `""` for a session-less panel. */
 function scopeKeyOf(scope: unknown): string {
   return sessionIdOfScope(scope)
@@ -533,31 +550,33 @@ function teamStatusOf(record: Record<string, unknown>): string {
 /** The board statuses that no longer block a dependent task (completed and cancelled release it). */
 const RELEASING_STATUSES = new Set(["completed", "cancelled", "failed"])
 
+/** Index the complete board before deriving blockers, including rows outside the display cap. */
+export function boardStatuses(tasks: readonly Record<string, unknown>[]): ReadonlyMap<string, string> {
+  return new Map(tasks.map((task) => [stringOf(task.id), stringOf(task.status)]))
+}
+
+/** Count the outstanding dependencies on a pending row. Unresolved ids still block dispatch. */
+export function pendingBlockerCount(task: Record<string, unknown>, statuses: ReadonlyMap<string, string>): number {
+  return task.status === "pending" ? arrayOf(task.blockedBy).filter((id) => !RELEASING_STATUSES.has(statuses.get(stringOf(id)) ?? "")).length : 0
+}
+
 /**
  * The board's ready tasks, by the OPT-1 reading the team store's own `readyTasks` implements.
  *
  * A task is ready when it is `pending` and every `blockedBy` entry names a task that is completed,
- * cancelled or failed — a blocker naming nothing blocks nothing, and a FAILED blocker deliberately
- * releases its dependents. This is a READ-side projection for a summary list; the authoritative
+ * cancelled or failed. A missing blocker still blocks, and a failed blocker releases its dependents. This is a READ-side projection for a summary list; the authoritative
  * derivation stays in `mpd-team-core-plugin`, which this module must not import.
  * @param tasks - the record's task rows, already narrowed to records.
  * @returns up to {@link DSHGO_MAX_READY_ROWS} rows in board order.
  */
 function readyRowsOf(tasks: readonly Record<string, unknown>[]): PanelReadyRow[] {
   /** The status of every task on the board, which is what a blocker is resolved against. */
-  const statusById = new Map<string, string>()
-  for (const task of tasks) statusById.set(stringOf(task.id), stringOf(task.status))
+  const statusById = boardStatuses(tasks)
   /** The rows this projection answers with; filled in board order. */
   const rows: PanelReadyRow[] = []
   for (const task of tasks) {
     if (stringOf(task.status) !== "pending") continue
-    /** Whether some blocker is still unfinished, which keeps this task out of the list. */
-    const blocked = arrayOf(task.blockedBy).some((entry) => {
-      /** The blocker's own status, or undefined when the entry names no task on this board. */
-      const status = statusById.get(stringOf(entry))
-      return status !== undefined && !RELEASING_STATUSES.has(status)
-    })
-    if (blocked) continue
+    if (pendingBlockerCount(task, statusById) > 0) continue
     /** The row's caption: the task's kind and owner, both optional. */
     const caption = [stringOf(task.kind), stringOf(task.owner)].filter((part) => part !== "").join(" · ")
     rows.push({
@@ -580,8 +599,7 @@ function readyRowsOf(tasks: readonly Record<string, unknown>[]): PanelReadyRow[]
  */
 function countsOf(tasks: readonly Record<string, unknown>[]): PanelCounts {
   /** The status of every task on the board. */
-  const statusById = new Map<string, string>()
-  for (const task of tasks) statusById.set(stringOf(task.id), stringOf(task.status))
+  const statusById = boardStatuses(tasks)
   /** Rows in flight. */
   let active = 0
   /** Rows in a terminal status. */
@@ -591,16 +609,12 @@ function countsOf(tasks: readonly Record<string, unknown>[]): PanelCounts {
   for (const task of tasks) {
     /** This row's status word. */
     const status = stringOf(task.status)
-    if (RELEASING_STATUSES.has(status)) {
+    if (status === "completed") {
       done += 1
       continue
     }
-    if (status === "in_progress") active += 1
-    if (status === "pending" && !arrayOf(task.blockedBy).some((entry) => {
-      /** The blocker's own status, when it names a row on this board. */
-      const blockedStatus = statusById.get(stringOf(entry))
-      return blockedStatus !== undefined && !RELEASING_STATUSES.has(blockedStatus)
-    })) ready += 1
+    if (status === "in_progress" || status === "claimed") active += 1
+    if (status === "pending" && pendingBlockerCount(task, statusById) === 0) ready += 1
   }
   return {
     ready,
@@ -664,9 +678,11 @@ function questionReadOf(value: unknown): { snapshot: PanelQuestionSnapshot; bind
   if (entry === undefined) return null
   /** Every question item of that parking entry, in the asker's order. */
   const items = arrayOf(entry.questions).map((question) => recordOf(question)).filter((question): question is Record<string, unknown> => question !== undefined)
-  /** The first item, which is the one the panel shows and answers. */
+  /** The first item gives the user context when the complete answer needs another client. */
   const item = items[0]
   if (item === undefined) return null
+  /** A single-select, single-item entry is the only kind this panel can answer in full. */
+  const answerElsewhere = items.length !== 1 || item.multiSelect === true
   /** The option labels as PAIRS, so the display copy and the raw answer copy cannot drift apart. */
   const options = arrayOf(item.options)
     .map((option) => recordOf(option))
@@ -677,12 +693,14 @@ function questionReadOf(value: unknown): { snapshot: PanelQuestionSnapshot; bind
     snapshot: {
       id: stringOf(entry.id),
       question: clip(stringOf(item.question), MAX_QUESTION_CHARS),
-      options: options.map((option) => ({ label: option.display })),
+      options: answerElsewhere ? [] : options.map((option) => ({ label: option.display })),
+      ...(answerElsewhere ? { answerElsewhere: true } : {}),
     },
     binding: {
       parkedId: stringOf(entry.id),
       itemIds: items.map((question) => stringOf(question.id)).filter((id) => id !== ""),
       labels: options.map((option) => option.raw),
+      ...(answerElsewhere ? { answerElsewhere: true } : {}),
     },
   }
 }
@@ -852,19 +870,19 @@ export function readMemoryStore(workspace: string, now: number, scope?: PanelMem
  * @returns one string that changes exactly when the view's structure must be rebuilt.
  */
 export function refreshKeyOf(snapshot: PanelSnapshot): string {
-  /** The parked question's identity: its id and the labels the buttons render. */
-  const question = snapshot.question === null ? "" : snapshot.question.id + "|" + snapshot.question.options.map((option) => option.label).join("|")
-  /** The ready rows, by id: the list is literal, so a new row means a new tree. */
-  const ready = snapshot.readyTasks.map((task) => task.id).join(",")
-  /** Whether the approve button exists (a staged plan) and whether dispatch does (a ready row). */
-  const plan = snapshot.plan?.ready === true ? "plan" : ""
-  /** The alert callout, which is literal text. */
-  const alert = snapshot.alert ?? ""
-  /** The workmate rows, by name: a rename or a new instance rebuilds the list. */
-  const workmates = snapshot.workmates.map((mate) => mate.name).join(",")
-  /** The memory rows and the reflection counters, which the tab renders as literals. */
-  const memory = snapshot.memory === null ? "" : snapshot.memory.entries.map((entry) => entry.kind + ":" + entry.description).join("|") + "@" + String(snapshot.memory.reflections) + "/" + String(snapshot.memory.steps)
-  return [question, ready, plan, alert, workmates, memory].join("#")
+  /** Question text is bound; action visibility and option labels are literals. */
+  const question = snapshot.question === null ? null : [snapshot.question.id, snapshot.question.options, snapshot.question.answerElsewhere]
+  return JSON.stringify([
+    question,
+    snapshot.readyTasks,
+    snapshot.counts.ready,
+    snapshot.counts.active,
+    snapshot.team?.members,
+    snapshot.plan?.ready,
+    snapshot.alert,
+    snapshot.workmates,
+    snapshot.memory,
+  ])
 }
 
 /**
@@ -1144,6 +1162,7 @@ export function createPanelActions(
     /** The identity the view captured when it was rendered; a tap never re-derives it from the lot. */
     const captured = bindingOf(scope)?.question
     if (captured === undefined || captured === null) return { toast: TOAST_NO_QUESTION }
+    if (captured.answerElsewhere === true || captured.itemIds.length !== 1) return { toast: "Answer this question in another client" }
     /** The label the answer carries: an offered one, or the typed answer clipped to the relay's bound. */
     const label = custom === "" ? captured.labels[index ?? -1] : clip(custom, MAX_ANSWER_CHARS)
     /** The item id the answer batch must carry: the first question item of the captured parked entry. */
@@ -1224,8 +1243,6 @@ export function registerDshGoPanel(options: PanelOptions): PanelRegistration {
   /** Read one scope's snapshot and view binding, through the three services, in ONE live read. */
   const stateOf = (scope: unknown): PanelReadState =>
     readPanelState({ services: options.ctx, workspace: workspaceOf(sessionIdOfScope(scope)), sessionId: sessionIdOfScope(scope), memory: options.memory })
-  /** Read the snapshot for one scope, which is the push path's model. */
-  const snapshotOf = (scope: unknown): PanelSnapshot => stateOf(scope).snapshot
   /** The scopes whose first emit already happened, so a steady tick emits nothing. */
   const published = new Set<string>()
   /** Whether the over-budget token was already written, so one condition logs one line. */
@@ -1254,9 +1271,9 @@ export function registerDshGoPanel(options: PanelOptions): PanelRegistration {
    * instead, so no re-fetch is spent on it. The subscription's own seed is not a change: the app has
    * just fetched the view before subscribing.
    */
-  const announceRefreshState = (key: string, snapshot: PanelSnapshot, seed: boolean): void => {
+  const announceRefreshState = (key: string, state: PanelReadState, seed: boolean): void => {
     /** The structural signature this snapshot shows. */
-    const signature = refreshKeyOf(snapshot)
+    const signature = JSON.stringify([refreshKeyOf(state.snapshot), state.binding.question])
     if (refreshKeys.get(key) === signature) return
     /** Whether this is a real change rather than the subscription's first reading. */
     const changed = !seed && refreshKeys.has(key)
@@ -1264,9 +1281,9 @@ export function registerDshGoPanel(options: PanelOptions): PanelRegistration {
     if (changed) probe(() => options.dsh.dshGoRefresh(DSHGO_PANEL_ID), undefined)
   }
   /** Push one snapshot when it differs from the last one emitted for its scope, then track the question set. */
-  const publishInto = (key: string, snapshot: PanelSnapshot, send: ((value: PanelSnapshot) => void) | undefined, seed: boolean): void => {
+  const publishInto = (key: string, state: PanelReadState, send: ((value: PanelSnapshot) => void) | undefined, seed: boolean): void => {
     /** The snapshot's serialized form, which is what "unchanged" and the byte budget are measured on. */
-    const serialized = JSON.stringify(snapshot)
+    const serialized = JSON.stringify(state.snapshot)
     if (seed || !published.has(key) || emitted.get(key) !== serialized) {
       emitted.set(key, serialized)
       published.add(key)
@@ -1276,9 +1293,9 @@ export function registerDshGoPanel(options: PanelOptions): PanelRegistration {
         overBudget = true
         log("[mpd] dshGo=snapshot-over-budget")
       }
-      probe(() => send?.(snapshot), undefined)
+      probe(() => send?.(state.snapshot), undefined)
     }
-    announceRefreshState(key, snapshot, seed)
+    announceRefreshState(key, state, seed)
   }
   /** The `data` function: seed, poll, emit on change, refresh on a question-set change, cancel cleanly. */
   const data = (scope: unknown, emit: unknown): (() => void) => {
@@ -1288,9 +1305,9 @@ export function registerDshGoPanel(options: PanelOptions): PanelRegistration {
     const key = scopeKeyOf(scope)
     // The seed runs BEFORE the interval exists, so the app has a complete model on its first frame
     // and the cancel below owns exactly one interval per subscription.
-    publishInto(key, snapshotOf(scope), send, true)
+    publishInto(key, stateOf(scope), send, true)
     /** The interval this subscription owns; the cancel below must leave none behind. */
-    const timer = setInterval(() => { publishInto(key, snapshotOf(scope), send, false) }, pollMs)
+    const timer = setInterval(() => { publishInto(key, stateOf(scope), send, false) }, pollMs)
     timers.add(timer)
     return (): void => {
       clearInterval(timer)

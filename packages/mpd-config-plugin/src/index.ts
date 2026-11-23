@@ -8,10 +8,10 @@
 import { existsSync, mkdirSync, readFileSync, watch, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { basename, dirname, join, resolve } from "node:path"
-import { rowLogLine, DSH_SEAM_TOOLS, dshSeamInject, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { rowLogLine, DSH_SEAM_TOOLS, dshSeamInject, textBlock, resolveDshAdapter, type DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 import { SettingsSchema, SETTINGS_NS, TEAM_MODEL_SLOTS, ROSTER_AGENT_NAMES, agentNameKey, rosterAgentNameOf, teamModelSlotOfMember, type AgentRouteConfig, type ModelRoute } from "./settings-schema"
 import { markVolatile } from "./settings-schema"
-import { surgicalEdit } from "./jsonc-edit"
+import { DELETE, readJsonc, surgicalEdit } from "./jsonc-edit"
 import z from "../../mpd-schemastery"
 import {
   DEFAULT_BRIDGE_OPTIONS,
@@ -269,7 +269,7 @@ export function userFileFor(config: Config): string {
  *   instead of the apply-time row config after a settings save made that document newer.
  * @returns the merged config plus the file/error state consumers assert on.
  */
-function loadConfig(config: Config, root: string, settingsSection?: unknown, rowKnobsOverride?: Record<string, unknown>): { config: any; files: string[]; errors: string[]; settingsApplied: boolean } {
+function loadConfig(config: Config, root: string, settingsSection?: unknown, rowKnobsOverride?: Record<string, unknown>): { config: Record<string, unknown>; project: unknown; files: string[]; errors: string[]; settingsApplied: boolean } {
   // User layer file: the ONE resolver the seed's higher-layer guard also reads.
   const userFile = userFileFor(config)
   // Project layer file: an explicit row override wins, else `<root>/.mpd/mpd.jsonc`.
@@ -277,13 +277,21 @@ function loadConfig(config: Config, root: string, settingsSection?: unknown, row
   // Layer order: user first, then project — `deepMerge` lets the LATER layer win.
   const files = [userFile, projectFile]
   // The merged result, accumulated layer by layer; starts empty (schema defaults apply later).
-  let merged: any = {}
+  let merged: Record<string, unknown> = {}
+  /** Raw project layer, so workspace settings can distinguish saved values from inherited ones. */
+  let project: unknown
   // Per-file parse failures, named by path; reported through `states()` and the reload tool.
   const errors: string[] = []
   for (const f of files) {
     if (!existsSync(f)) continue
-    try { merged = deepMerge(merged, parseJsonc(readFileSync(f, "utf8"))) }
-    catch (e: any) { errors.push(f + ": " + String(e?.message ?? e)) }
+    try {
+      /** Raw file contents after JSONC parsing, before merging any other layer. */
+      const layer: unknown = parseJsonc(readFileSync(f, "utf8"))
+      if (f === projectFile) project = layer
+      merged = deepMerge(merged, layer)
+    } catch (error) {
+      errors.push(f + ": " + (error instanceof Error ? error.message : String(error)))
+    }
   }
   // L3 verbatim, with the in-namespace marker stripped — never the RESOLVED section.
   const section = withoutMarker(settingsSection)
@@ -297,10 +305,16 @@ function loadConfig(config: Config, root: string, settingsSection?: unknown, row
   // the apply-time behaviour every pre-existing caller relies on.
   const rowKnobs = rowKnobsOverride ?? rowKnobLayer(config)
   if (Object.keys(rowKnobs).length > 0) merged = deepMerge(merged, rowKnobs)
-  return { config: merged, files: files.filter((f) => existsSync(f)), errors, settingsApplied }
+  return { config: merged, project, files: files.filter((f) => existsSync(f)), errors, settingsApplied }
 }
 
 export { stripJsonc, parseJsonc, deepMerge, loadConfig }
+
+/** Read a config path using only values declared by its layers. */
+function configValueAt(value: unknown, path: readonly string[]): unknown {
+  return path.reduce<unknown>((current, key) => current !== null && typeof current === "object" && Object.hasOwn(current, key)
+    ? (current as Record<string, unknown>)[key] : undefined, value)
+}
 
 /**
  * The display group that renders one roster agent — re-exported from the schema, where the groups
@@ -333,6 +347,37 @@ export const AGENT_UNCONFIGURED_CODE = "AGENT_UNCONFIGURED"
 
 /** The leaves a route may carry; the subset the resolver reports as MISSING or malformed. */
 export type AgentRouteLeaf = "provider" | "model" | "reasoningEffort"
+
+/** An edit of one workspace-owned route field; omitting its value removes that field. */
+interface WorkspaceRouteEdit {
+  /** Canonical roster display name from the Web settings form. */
+  readonly agent: string
+  /** The field this edit changes. */
+  readonly leaf: AgentRouteLeaf
+  /** A selected catalog value, or undefined to inherit from another config layer. */
+  readonly value?: string
+}
+
+/** The form's route field names, distinct from the read-only fallback chain display. */
+const ROUTE_FORM_LEAVES = ["provider", "model", "reasoningEffort"] as const
+
+/** The route controls' string values, keyed by the roster's display names. */
+function routeFormValuesOf(config: unknown): Record<string, Partial<Record<AgentRouteLeaf, string>>> {
+  /** The values to return, excluding fields the file never declared or whose shape is invalid. */
+  const values: Record<string, Partial<Record<AgentRouteLeaf, string>>> = {}
+  for (const agent of ROSTER_AGENT_NAMES) {
+    /** The route entry, allowing the same case and separator spellings as the route resolver. */
+    const entry = agentRouteEntryOfMember(agent, config)
+    if (!isPlainObject(entry)) continue
+    /** The values relevant to this agent's controls. */
+    const fields: Partial<Record<AgentRouteLeaf, string>> = {}
+    for (const leaf of ROUTE_FORM_LEAVES) {
+      if (typeof entry[leaf] === "string") fields[leaf] = entry[leaf]
+    }
+    values[agent] = fields
+  }
+  return values
+}
 
 /** The resolution of a route that IS configured and usable: the agent it belongs to and its route. */
 export interface AgentRouteResolved {
@@ -998,8 +1043,8 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     baseCandidates: undefined as readonly string[] | undefined,
     /** Leaves whose L3 override a fresh FILE edit cleared (design §1.2/D-2). */
     cleared: [] as string[],
-    /** File-derived values the bridge recorded, keyed by encoded path (the D-2 baseline). */
-    recorded: new Map<string, unknown>(),
+    /** The legacy bridge's last write-back file and its leaf values, used for D-2 reconciliation. */
+    recorded: undefined as { file: string; leaves: Map<string, unknown> } | undefined,
   }
 
   /** Map a leaf path to one map key: the NUL join cannot collide with a real dot-path segment. */
@@ -1077,8 +1122,9 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     return described.user
   }
 
-  // The resolved config for the LAST root read, refreshed by every reload and watcher tick.
-  let state = loadConfig(config, dsh.workspaceRoot(), readSection())
+  /** Resolved layers keyed by absolute workspace, never by the last caller to reload. */
+  const snapshots = new Map<string, ReturnType<typeof loadConfig>>()
+  readSection()
   /**
    * The FRESH row-knob layer from the ENTRY-CONFIG document (L4), or undefined until a settings
    * save has made that document newer than the apply-time row config.
@@ -1120,14 +1166,36 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     return isPlainObject(described.user) ? described.user : undefined
   }
 
-  /** Re-read every layer for ONE workspace root (used by the tools and by the file watcher). */
-  const reloadAt = (root: string): any => {
-    state = loadConfig(config, root, readSection(), entryKnobs)
+  /** Return one workspace snapshot, arming its watcher lazily as sessions arrive after mount. */
+  const stateFor = (workspace?: string): ReturnType<typeof loadConfig> => {
+    /** Canonical key for this project's file layers. */
+    const root = resolve(workspace ?? readRoot())
+    watchRoot(root)
+    /** An unwatched file is read through, including a project directory that did not exist earlier. */
+    const cached = watchers.has(projectFileFor(root)) ? snapshots.get(root) : undefined
+    if (cached !== undefined) return cached
+    /** The file layers and the latest shared settings, merged for this root only. */
+    const loaded = loadConfig(config, root, bridge.section, entryKnobs)
+    snapshots.set(root, loaded)
+    return loaded
+  }
+
+  /** Invalidate cached per-root reads of one file, including a configured shared project file. */
+  const invalidateProjectFile = (root: string): void => {
+    if (projectFileOverride() !== undefined) snapshots.clear()
+    else snapshots.delete(resolve(root))
+  }
+
+  /** Re-read one workspace and reconcile only the matching legacy write-back file. */
+  const reloadAt = (root: string): ReturnType<typeof loadConfig> => {
+    /** The raw section previously used by already-resolved workspaces. */
+    const previous = bridge.section
+    if (readSection() !== previous) snapshots.clear()
+    invalidateProjectFile(root)
     reconcile(root)
-    // The one-time seed retries here ONLY while it still owes an attempt (the llm registry mounts
-    // after this row in a real boot); a workspace that already declares the block is left alone.
+    // A catalog that mounted late can now complete this workspace's one-time seed.
     seedRoots([root])
-    return state.config
+    return stateFor(root)
   }
 
   /**
@@ -1136,8 +1204,8 @@ export function apply(ctx: Ctx, config: Config = {}): void {
    * config at apply() needs a restart before its behaviour changes (design §D.1).
    * Reconciliation rides along so a file edit is never swallowed by a stale override (§1.2/D-2).
    */
-  function reload(exec?: any): any {
-    return reloadAt(dsh.workspaceRoot(exec))
+  function reload(exec?: DshToolExec): Record<string, unknown> {
+    return reloadAt(dsh.workspaceRoot(exec)).config
   }
 
   /** One diagnostic line per write-back, carrying the per-target result and the revision fence. */
@@ -1167,10 +1235,14 @@ export function apply(ctx: Ctx, config: Config = {}): void {
    * since changed is UNSET from the user section under the revision fence.
    */
   const reconcile = (root: string): void => {
-    if (bridge.recorded.size === 0) return
-    // The project file of the root being reconciled; without one there is nothing to compare.
+    /** The legacy write-back baseline, tied to the file that established it. */
+    const baseline = bridge.recorded
+    /** Only the current sole legacy write-back target can clear a host-global setting. */
+    const target = resolveTargets(dsh.workspaceRootsAll(), projectFileOverride())
+    if (baseline === undefined || target.kind !== "write" || target.targets[0]?.file !== baseline.file) return
+    /** The file of this reload, which must match the legacy write-back target. */
     const file = projectFileFor(root)
-    if (!existsSync(file)) return
+    if (baseline.file !== file || !existsSync(file)) return
     // The file's leaves, or nothing when the file is absent or unparsable (nothing to clear).
     let leaves: BridgeLeaf[]
     try {
@@ -1186,11 +1258,11 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     const sectionKeys = new Set(sectionLeaves(section).map((leaf) => pathKey(leaf.path)))
     // Dot-path arrays to unset, in the order the recorded leaves were walked.
     const unsetPaths: string[][] = []
-    for (const [key, recorded] of [...bridge.recorded]) {
+    for (const [key, recorded] of baseline.leaves) {
       // The file value now: differs from the recorded one exactly when the file moved.
       const current = onDisk.get(key)
       if (JSON.stringify(current) === JSON.stringify(recorded)) continue
-      bridge.recorded.set(key, current)
+      baseline.leaves.set(key, current)
       if (current === undefined) continue
       if (!sectionKeys.has(key)) continue
       unsetPaths.push(key.split("\u0000"))
@@ -1214,10 +1286,10 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   /** Record the file's current leaves as the baseline a later edit is compared against. */
   const rememberFileValues = (file: string): void => {
     try {
-      for (const leaf of sectionLeaves(parseJsonc(readFileSync(file, "utf8")))) {
-        if (isMarker(leaf.path)) continue
-        bridge.recorded.set(pathKey(leaf.path), leaf.value)
-      }
+      /** Leaf values from this file only, replacing the baseline for any earlier write target. */
+      const leaves = new Map(sectionLeaves(parseJsonc(readFileSync(file, "utf8")))
+        .filter((leaf) => !isMarker(leaf.path)).map((leaf) => [pathKey(leaf.path), leaf.value]))
+      bridge.recorded = { file, leaves }
     } catch {
       // an unreadable/unparsable file has nothing to record
     }
@@ -1423,7 +1495,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     // a legacy save that lands in the same tick look unchanged and silently skip its file
     // write-back (measured by the coexistence case of the live-refresh lane). The last-read
     // section is exactly what L3 was when nothing about that document changed.
-    state = loadConfig(config, readRoot(), bridge.section, entryKnobs)
+    snapshots.clear()
     warn(`[mpd-config] entry-config update: state re-loaded from the "${ENTRY_CONFIG_ID}" document (${Object.keys(entryKnobs).length} knob(s) in force) — no restart needed`)
   })
 
@@ -1434,10 +1506,9 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   } else dsh.onSettingsDocumentUpdated(SETTINGS_NS, (revision: number | undefined, source: string | undefined) => {
     // L3 as of BEFORE this event: the diff below is what the event actually changed.
     const previous = bridge.section
-    // L3 as of now; also the section the config is re-resolved against. The FRESH entry knobs
-    // thread through here too: a legacy-namespace save must never revert an entry-config save.
+    /** The refreshed L3 layer. Every root will merge it with its own project file on the next read. */
     const next = readSection()
-    state = loadConfig(config, readRoot(), next, entryKnobs)
+    snapshots.clear()
     // The bridge's OWN namespace writes need no guard here: the marker leaf is filtered
     // out below, and an UNSET (the §1.2 clearing rule) never produces a written leaf — so a
     // self-echo writes nothing by construction, while a real edit is never swallowed.
@@ -1553,16 +1624,74 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   // registers nothing without any other symptom.
   if (bridge.degraded !== undefined) warn("[mpd-config] settings bridge: degraded — " + bridge.degraded)
 
+  /** Persist only the inspected project's route fields, preserving the other JSONC bytes. */
+  const editWorkspaceAgentRoutes = (workspace: string, edits: readonly WorkspaceRouteEdit[]): { ok: true } | { ok: false; reason: string } => {
+    if (projectFileOverride() !== undefined) return { ok: false, reason: "This profile points to a shared projectFile. Edit the shared file to change its routes." }
+    /** The project file identified by the caller's session. */
+    const file = projectFileFor(workspace)
+    try {
+      /** The exact text used to locate the project's current route keys. */
+      const expectedText = existsSync(file) ? readFileSync(file, "utf8") : null
+      /** The raw project layer. Malformed JSONC must stay byte-untouched. */
+      const parsed = readJsonc(expectedText ?? "{}")
+      if (!parsed.ok) return { ok: false, reason: "The workspace's mpd.jsonc could not be parsed." }
+      /** The project's entries with their exact key spelling. */
+      const table = configValueAt(parsed.value, ["agentRoutes"])
+      /** The profile-wide route table, whose active overrides outrank this file. */
+      const globalRoutes = configValueAt(deepMerge(withoutMarker(bridge.section), entryKnobs ?? rowKnobLayer(config)), ["agentRoutes"])
+      /** The effective table, including aliases inherited from another config layer. */
+      const effectiveRoutes = loadConfig(config, workspace, bridge.section, entryKnobs).config.agentRoutes
+      /** All supported leaves are applied to the file in one operation. */
+      const changes: BridgeLeaf[] = []
+      for (const { agent, leaf, value } of edits) {
+        if (rosterAgentNameOf(agent) !== agent || !ROUTE_FORM_LEAVES.includes(leaf)) return { ok: false, reason: "Unknown roster route field." }
+        /** Compare spellings the same way as the route resolver. */
+        const isAgentKey = (key: string): boolean => agentNameKey(key) === agentNameKey(agent)
+        /** Existing workspace keys that identify the same agent. */
+        const matches = isPlainObject(table) ? Object.keys(table).filter(isAgentKey) : []
+        if (matches.length > 1) return { ok: false, reason: `The workspace declares multiple spellings of ${agent}. Keep one entry before editing its route.` }
+        /** The first declared spelling selected by the effective resolver. */
+        const active = isPlainObject(effectiveRoutes) ? Object.keys(effectiveRoutes).find(isAgentKey) : undefined
+        if (value !== undefined && matches[0] !== undefined && active !== undefined && matches[0] !== active) {
+          return { ok: false, reason: `The workspace uses ${matches[0]} but an inherited route uses ${active}. Use the same spelling before editing this field.` }
+        }
+        /** Use the inherited key when the project has no entry of its own. */
+        const key = matches[0] ?? active ?? agent
+        /** A profile-wide value or malformed container that would shadow a workspace edit. */
+        const globalEntry = configValueAt(globalRoutes, [key])
+        /** The exact leaf a higher settings layer supplies, when present. */
+        const shared = configValueAt(globalEntry, [leaf])
+        if (value !== undefined && ((globalRoutes !== undefined && !isPlainObject(globalRoutes))
+          || (globalEntry !== undefined && !isPlainObject(globalEntry)) || (shared !== undefined && shared !== value))) {
+          return { ok: false, reason: `A profile-wide setting overrides ${agentRoutePath(agent, leaf)}. Clear that setting before saving a different workspace value.` }
+        }
+        /** The exact path the surgical editor will inspect. */
+        const path = ["agentRoutes", key, leaf]
+        if (value === undefined && configValueAt(parsed.value, path) === undefined) continue
+        changes.push({ path, value: value === undefined ? DELETE : value })
+      }
+      if (changes.length === 0) return { ok: true }
+      mkdirSync(dirname(file), { recursive: true })
+      /** The write compares with the same bytes used to select each route key. */
+      const [result] = writeBackLeaves([{ root: workspace, file }], changes, { ...DEFAULT_BRIDGE_OPTIONS, expectedText }).results
+      if (result === undefined || !["written", "created", "unchanged"].includes(result.outcome)) {
+        return { ok: false, reason: `Could not save the workspace's mpd.jsonc (${result?.reason ?? result?.outcome ?? "no result"}).` }
+      }
+      for (const note of result.notes ?? []) warn(`[mpd-config] ${note.detail} [${file}]`)
+      invalidateProjectFile(workspace)
+      return { ok: true }
+    } catch (error) {
+      warn(`[mpd-config] workspace route edit failed for ${file}: ${error instanceof Error ? error.message : String(error)}`)
+      return { ok: false, reason: "Could not read or write the workspace's mpd.jsonc." }
+    }
+  }
+
   ctx.provide("mpdConfig", {
-    get: (key?: string) => {
-      // No key keeps the RAW merged file layers — the documented shape the settings namespace base
-      // mirrors (and an existing wiring test pins it). A KEYED read walks the SAME raw layers: the
-      // `agentRoutes` subtree answers with exactly what the workspace declares, so an absent block
-      // reads as ABSENT (contract §1/§2) instead of being filled in by a default layer. The tolerated
-      // legacy `teamModels` block is answered verbatim here (the raw pass-through) and is never read
-      // for routing.
-      if (key === undefined) return state.config
-      return key.split(".").reduce((acc: any, part: string) => (acc == null ? undefined : acc[part]), state.config)
+    /** Read one key, or the raw merged layers, for the caller's workspace when supplied. */
+    get: (key?: string, workspace?: string): unknown => {
+      /** One root's raw merged config, with no materialized schema defaults. */
+      const resolved = stateFor(workspace).config
+      return key === undefined ? resolved : configValueAt(resolved, key.split("."))
     },
     /**
      * The TOTAL resolution of one roster member's OWN `agentRoutes` entry, read PER CALL from the live
@@ -1575,15 +1704,18 @@ export function apply(ctx: Ctx, config: Config = {}): void {
      * NOT a refusal: it belongs to an EXTENSION-contributed role, whose spawn proceeds on its own
      * chain (amendment 2 §3).
      * @param member - the roster member's functional name.
+     * @param workspace - the resolved workspace of the caller, when the surface knows it.
      * @returns the typed resolution: the agent plus its route and fallbacks, or the reason it is unusable.
      */
-    agentRouteResolutionOf: (member: string): AgentRouteResolution => {
-      /** The typed resolution this call answers with. */
-      const resolution = resolveAgentRoute(member, state.config)
+    agentRouteResolutionOf: (member: string, workspace?: string): AgentRouteResolution => {
+      /** The merged config belonging to this call's workspace. */
+      const resolved = stateFor(workspace).config
+      /** The typed result for the requested roster member. */
+      const resolution = resolveAgentRoute(member, resolved)
       // ONE line per resolution that actually dropped a malformed fallback entry (contract §2): the
       // drop is tolerated, never silent. Logged here, never inside the pure resolver.
       /** How many declared fallback entries were malformed and dropped. */
-      const dropped = droppedFallbacksOf(member, state.config)
+      const dropped = droppedFallbacksOf(member, resolved)
       if (dropped > 0) warn("[mpd-config] agentRoutes for " + (resolution.ok ? resolution.agent : member) + ": dropped " + dropped + " malformed fallback entr" + (dropped === 1 ? "y" : "ies"))
       return resolution
     },
@@ -1593,30 +1725,33 @@ export function apply(ctx: Ctx, config: Config = {}): void {
      * Kept beside {@link agentRouteResolutionOf} because most callers only need the primary route and
      * must not care WHY an agent has none; `undefined` covers unconfigured, invalid and unrouted alike.
      * @param member - the roster member's functional name.
+     * @param workspace - the resolved caller's workspace, when known.
      * @returns the configured route, or `undefined` when this member has no usable agent route.
      */
-    agentRouteOf: (member: string): AgentRoute | undefined => agentRouteOfMember(member, state.config),
+    agentRouteOf: (member: string, workspace?: string): AgentRoute | undefined => agentRouteOfMember(member, stateFor(workspace).config),
+    /** Read the form's values and which ones the selected workspace itself stores. */
+    workspaceAgentRoutes: (workspace: string) => {
+      /** The effective and project-only layers from the same snapshot. */
+      const state = stateFor(workspace)
+      return { values: routeFormValuesOf(state.config), local: routeFormValuesOf(state.project) }
+    },
+    editWorkspaceAgentRoutes,
     reload,
-    states: () => ({
-      files: state.files,
-      errors: state.errors,
-      // The bridge surface (design §2.2/§10.3): per-root outcomes, the named refusal reason
-      // and its candidates, the migration outcome and the cleared overrides. A lane asserts
-      // on these fields (and on the matching `[mpd-config] settings bridge` log lines).
-      settings: { namespace: SETTINGS_NS, serviceReady: bridge.serviceReady, served: bridge.served, revision: bridge.revision ?? null, applied: state.settingsApplied, degraded: bridge.degraded ?? null, writeBackEnabled: bridgeOptions().writeBack, registration: bridge.namespaceRegistration ?? null, baseFromFiles: bridge.baseReason === "one-live-root" || bridge.baseReason === "mount-time-root", baseReason: bridge.baseReason ?? null, baseCandidates: bridge.baseCandidates ?? [] },
-      writeback: bridge.report ?? null,
-      migration: bridge.migration,
-      cleared: bridge.cleared,
-      // THE NAMESPACE-LEVEL ANSWER IS "restart", not "live" (D-18). The RESOLVED value does reach the
-      // running process (`BridgeReport.applies` records that per save), but the namespace as a whole
-      // is NOT fully live: the plugins listed in `BRIDGE_RESTART_LIMIT` capture their knobs inside
-      // their own `apply()`. Both registrations already say `restart` —
-      // `settingsRegister(SETTINGS_NS, …, { applies: "restart" })` here and
-      // `tui.registerSettingsNamespace(…, { applies: "restart" })` in mpd-tui — and the host's schema
-      // option is PER NAMESPACE (one `applies` word, no per-knob channel), so "live" here was the one
-      // answer no consumer supports.
-      applies: "restart",
-    }),
+    /** Report the inspected workspace's files alongside shared settings bridge diagnostics. */
+    states: (workspace?: string) => {
+      /** The one workspace whose files and parse state the caller requested. */
+      const state = stateFor(workspace)
+      return {
+        files: state.files,
+        errors: state.errors,
+        settings: { namespace: SETTINGS_NS, serviceReady: bridge.serviceReady, served: bridge.served, revision: bridge.revision ?? null, applied: state.settingsApplied, degraded: bridge.degraded ?? null, writeBackEnabled: bridgeOptions().writeBack, registration: bridge.namespaceRegistration ?? null, baseFromFiles: bridge.baseReason === "one-live-root" || bridge.baseReason === "mount-time-root", baseReason: bridge.baseReason ?? null, baseCandidates: bridge.baseCandidates ?? [] },
+        writeback: bridge.report ?? null,
+        migration: bridge.migration,
+        cleared: bridge.cleared,
+        // The host can express one applicability flag per namespace. Some consumers capture knobs at mount.
+        applies: "restart",
+      }
+    },
   })
 
   dsh.registerTool({
@@ -1627,17 +1762,13 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     execute: async (args: any, exec: any) => {
       // Re-read with the CALLING SESSION's workspace so a project layer in the session
       // workspace is visible even when it differs from the dsh process cwd.
-      reload(exec)
-      // The diagnostic dump is the RAW resolved config (contract §9): an absent `teamModels` block
-      // stays absent here — a display/tool read must show what the workspace declares, never a
-      // materialised default layer. A caller that wants the typed slot state asks the service.
-      const resolved = state.config
+      const resolved = reload(exec)
       // The dot-path argument, or undefined for a whole-config read.
       const key = args?.key ? String(args.key) : undefined
       // `value` is a raw JSON value: an undefined field is dropped by JSON
       // serialization, which breaks the host's lossless round-trip check
       // ("value is not lossless JSON"). Missing keys resolve to null instead.
-      const value = key ? (key.split(".").reduce((acc: any, part: string) => (acc == null ? undefined : acc[part]), resolved) ?? null) : null
+      const value = key ? configValueAt(resolved, key.split(".")) ?? null : null
       return key === undefined ? { config: resolved } : { config: resolved, key, value }
     }
   })
@@ -1647,10 +1778,10 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     description: "Re-read the mpd.jsonc layers and refresh the resolved config (returns files found and any parse errors).",
     parameters: { type: "object", properties: {} },
     output: { schema: { type: "object", properties: { files: { type: "array", items: { type: "string" } }, errors: { type: "array", items: { type: "string" } } }, required: ["files", "errors"] }, render: (_a: unknown, v: any) => textBlock("mpd config reloaded: " + v.files.join(", ") + (v.errors.length ? " ERRORS: " + v.errors.join("; ") : "")) },
-    execute: async (_args: any, exec: any) => {
-      // The freshly resolved config, returned beside the file/error state consumers assert on.
-      const cfg = reload(exec)
-      return { files: state.files, errors: state.errors, config: cfg }
+    execute: async (_args: unknown, exec: DshToolExec) => {
+      /** The config and its diagnostics came from the same workspace reload. */
+      const { files, errors, config: resolved } = reloadAt(dsh.workspaceRoot(exec))
+      return { files, errors, config: resolved }
     }
   })
 

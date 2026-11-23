@@ -98,8 +98,10 @@ declaring `mcp` or `roles` is rejected loudly for that item** with the reason:
 > project-level extensions may contribute skills and flows only: tool and provider registration is
 > process-global and cannot be scoped to a session
 
-Discovery precedence for equal ids is **project → user → bundle** (first wins). The shadowed entry is
-reported by `mpd_ext_list` — never fatal, never silent.
+Discovery precedence for equal ids is **project → user → bundle** among accepted descriptors.
+`mpd_ext_list` reports shadowed entries and rejected manifests. After a workspace's skill catalog is
+first read, filesystem notifications for project extension manifests, skills, and flows invalidate
+its cached catalog. Changes appear on the next lookup after the notification.
 
 ## The tools
 

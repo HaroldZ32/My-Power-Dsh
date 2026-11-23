@@ -25,6 +25,9 @@
 - **global** 在项目之间共享 `<HOME>/.mpd/memory/{repo/memory/*.md,runtime/{journal.jsonl,index.json}}`。
   `memory.globalDir` 可以覆盖根目录。存储尚未创建时也可以查询内容和状态。
 
+`committedTo` 列出已将条目写入版本历史的后端。`errors` 和文本回执会显示后端错误。后端失败时，仍可在回执
+所示的工作副本路径读取 Markdown。全局读取和状态查询不会创建缺失的存储。
+
 `mpd_memory_save` 和 `mpd_memory_recall` 使用同一成员身份读写专属键值笔记。
 需要从旧工作区映射显式读取某个键时，可在 `mpd_memory_recall` 中指定 `scope: "legacy"`。
 
@@ -95,7 +98,9 @@
   `limit` 限制在 1..50（默认 20），`offset` 指定页起点（默认 0），返回值带 `count`（**匹配总数**）、`offset`、
   `returned` 与 `next_offset`（下一页起点，到尾时为 `null`）。条目按**条目文件名升序**返回——一个不依赖目录枚举
   顺序的稳定顺序——因此沿 `next_offset` 走能恰好一次覆盖每个匹配；`scope` 过滤后在该存储的匹配集上分页。
-- `mpd_memory_reflect` / `mpd_memory_reflect_complete` — reflection 状态机（仅 workspace）。
+- `mpd_memory_reflect` / `mpd_memory_reflect_complete` 用于查看及完成工作区反思。所有配置的后端成功后才结清待办。
+  如果后端失败，先解决回执中的错误，再用相同标题和内容重试。重试会复用原文件，并继续处理未成功的后端。
+  当前没有待完成的反思时，重复提交已结清的内容会返回原回执。
 - `mpd_memory_status({scope?})` — vcs 模式、存储根、条目计数、reflection 计数器。
 
 ## 构建 / 测试

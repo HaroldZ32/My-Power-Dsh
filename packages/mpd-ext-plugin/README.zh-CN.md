@@ -71,7 +71,8 @@ YAML 子集（顶层标量、一层嵌套映射、可选块标量）以及 `stri
 
 > project-level extensions may contribute skills and flows only: tool and provider registration is process-global and cannot be scoped to a session
 
-同 id 的发现优先级为 **project → user → bundle**（先到者胜）。被遮蔽的条目由 `mpd_ext_list` 报告——既不致命，也不静默。
+通过验证的描述符若有相同 id，发现优先级为 **project → user → bundle**。`mpd_ext_list` 会报告被遮蔽的条目和被拒绝的清单。
+工作区的技能目录首次读取后，项目扩展清单、技能或流程的文件系统变更通知会使目录缓存失效。收到通知后的下一次查询会显示变更。
 
 ## 工具
 

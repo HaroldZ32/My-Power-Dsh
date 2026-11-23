@@ -19,7 +19,7 @@ The contract, in order:
 2. **Read its real source** through the recipe (section 2). Never guess spring values, exit orchestration, or gesture thresholds from a preview description.
 3. **Extract the mechanism**, not the pixels: the spring config, the layout strategy (`layoutId` shared layout vs height morph vs clip-path), what animates in what order on enter/exit, where blur crossfades sit, and what the reduced-motion path swaps to.
 4. **Adapt to the project.** Concrete durations, easings, and spring params come from the project `DESIGN.md` Motion & Interaction section. Where beui.dev and `DESIGN.md` disagree, `DESIGN.md` wins. A value that is not in `DESIGN.md` gets added there first, then used.
-5. **No matching pattern?** Run `component-catalogs.md` section 3. If nothing fits there either, compose from the nearest two, or state explicitly that the interaction is novel and record its mechanism in `DESIGN.md` before building it.
+5. **No matching pattern?** Use section 3 of the local `component-catalogs.md` if available. Otherwise use `lazyweb.md` to research comparable product patterns. Check the licence and terms before adapting external component source. If nothing fits, compose from the nearest two, or state explicitly that the interaction is novel and record its mechanism in `DESIGN.md` before building it.
 
 ## 2. Consultation recipe (curl-only, verified 2026-07)
 
@@ -119,7 +119,7 @@ Categories are `motion` (primitives) and `blocks` (composed patterns). When the 
 | `shader-background` | Canvas shader variants (mesh gradient, grain, warp, waves…); reduced motion freezes them | Atmospheric backgrounds with dimension |
 | `scroll-animation` | Lenis smooth-scroll provider plus a reading-progress indicator | Scroll-driven storytelling |
 
-This table is the edge of this catalog. Hero atmospheres, animated or shader backgrounds, typographic reveals, scroll chapters, and card surface effects route to `ambience-skill.md`, whose react-bits map and retrofit checklist own that quadrant.
+For hero atmospheres, animated or shader backgrounds, typographic reveals, scroll chapters, and card surface effects, follow the retrofit checklist in `README.md` Step 10. Use the local `ambience-skill.md` if available. Otherwise use the nearest pattern in this section and the consultation recipe in section 2.
 
 ## 4. Mechanics rules
 

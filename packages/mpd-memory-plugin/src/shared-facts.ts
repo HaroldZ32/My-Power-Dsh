@@ -1,7 +1,7 @@
 import { mkdirSync, readdirSync } from "node:fs"
 import { join } from "node:path"
 import { exactMemoryKey, hasFsCode, memoryKeyPart, previewText, ProjectMemoryError, publishMemory } from "./project-scope.ts"
-import { appendJournalLine, commitAll, ensureStoreDirs, ensureVcs, parseFrontmatter, type Config, type StoreDirs } from "./store"
+import { appendJournalLine, commitAll, ensureStoreDirs, parseFrontmatter, type CommitReceipt, type Config, type StoreDirs } from "./store"
 
 /** One persisted shared project fact and the provenance needed to decide whether it applies. */
 interface SharedFact {
@@ -65,8 +65,8 @@ function latestRevision(dir: string): number {
 }
 
 /** Publish a sourced fact only when the writer acknowledges the current revision of its exact key. */
-export function writeSharedFact(config: Config, d: StoreDirs, author: string, args: Readonly<Record<string, unknown>>): {
-  file: string; scope: "shared"; vcs: string; committedTo: string[]; errors: string[]; reflectionDue: false; revision: number
+export function writeSharedFact(config: Config, d: StoreDirs, author: string, args: Readonly<Record<string, unknown>>): CommitReceipt & {
+  file: string; scope: "shared"; vcs: string; reflectionDue: false; revision: number
 } {
   /** One exact key, used only through its digest as a directory component. */
   const key = exactMemoryKey(args.key)
@@ -88,17 +88,16 @@ export function writeSharedFact(config: Config, d: StoreDirs, author: string, ar
     revision: current + 1, supersedes: supersedes ?? null, author, recordedAt: new Date().toISOString(),
   }
   ensureStoreDirs(d)
-  ensureVcs(config, d)
   mkdirSync(dir, { recursive: true })
   /** The immutable fact revision, staged outside the VCS work tree until it is complete. */
   const file = join(dir, revisionFile(fact.revision))
   publishMemory(file, "---\n" + JSON.stringify(fact) + "\n---\n" + args.content, true, d.runtime)
   /** Each backend's status stays visible as in the existing memory write tool. */
-  const errors = commitAll(config, d, "memory: project fact " + memoryKeyPart(key).slice(0, 12) + " r" + fact.revision)
+  const receipt = commitAll(config, d, file, "memory: project fact " + memoryKeyPart(key).slice(0, 12) + " r" + fact.revision)
   appendJournalLine(d, "shared-fact", { key, revision: fact.revision, supersedes: fact.supersedes, author })
   /** Active VCS mode, with the corresponding backend names. */
   const vcs = config.vcs ?? "git"
-  return { file, scope: "shared", vcs, committedTo: vcs === "both" ? ["git", "svn"] : [vcs], errors, reflectionDue: false, revision: fact.revision }
+  return { file, scope: "shared", vcs, ...receipt, reflectionDue: false, revision: fact.revision }
 }
 
 /** Read status describes why a shared fact is usable or why its content was withheld. */

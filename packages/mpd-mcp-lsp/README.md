@@ -38,6 +38,11 @@ The launcher sets `CCLSP_CONFIG_PATH` only when the caller left it unset, and in
    launcher detects it and never reads, merges or rewrites it;
 3. `<workspace>/.mpd/lsp/cclsp.json` — generated, rewritten only when its bytes would change.
 
+The workspace comes from `DSH_WORKSPACE_ROOT` or the launcher's working directory. `MPD_MCP_LOG_DIR`
+selects the log destination independently. The launcher refreshes cclsp 0.7.0's open document before
+answering diagnostics after a disk edit. If the dependency version or its layout changes, the launcher
+logs that the adaptation is unavailable and starts the dependency normally.
+
 The generated document names the TS/JS family plus every catalog language whose server is actually
 installed (see below). cclsp starts a server lazily, per extension group, so a config with rows for
 languages you do not use costs nothing until a file of that language is queried.

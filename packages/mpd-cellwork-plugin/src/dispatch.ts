@@ -80,6 +80,10 @@ interface FenceableView {
 
 /** The team record slice this pass reads. */
 export interface DispatchRecordView {
+  /** An execution board can still belong to an unfinished Team approval. */
+  name?: string
+  /** Staged plan identity, absent on older fixture and service records. */
+  planId?: string
   /** The team id (journaled on each delivery). */
   teamId?: string
   /** The roster. */

@@ -16,7 +16,7 @@
 //   node scripts/run-qa-selftests.ts --strict    # == `bun run test:qa:strict` (`--no-skip`)
 //   node scripts/run-qa-selftests.ts --root <dir>
 //
-// Exit codes: 0 every case passed · 1 at least one case failed or discovery found nothing.
+// Exit codes: 0 no failures (non-strict runs may report SKIP) · 1 failure, strict SKIP or no cases.
 import { spawnSync } from "node:child_process"
 import { readdirSync } from "node:fs"
 import type { Dirent } from "node:fs"
@@ -29,6 +29,31 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 const CASE_DIR = "skills/dsh-qa/scripts"
 /** This process's arguments, without the node executable and script path. */
 const argv = process.argv.slice(2)
+/** Result type used by the sweep and the marker controls. */
+type CaseOutcome = "pass" | "skip" | "fail"
+
+/** Grade a case from its exit status and first stdout line, per the QA marker contract. */
+function caseOutcome(status: number | null, stdout: string, strict: boolean): CaseOutcome {
+  if (status !== 0) return "fail"
+  /** The prerequisite marker must head stdout, independently of stderr diagnostics. */
+  const firstLine = stdout.split(/\r?\n/, 1)[0]
+  if (firstLine.startsWith("[mpd-qa] FAIL ")) return "fail"
+  if (firstLine.startsWith("[mpd-qa] SKIP ")) return strict ? "fail" : "skip"
+  return "pass"
+}
+
+if (argv.includes("--self-test")) {
+  /** A fixture using the same first-line format the cases emit. */
+  const skip = '[mpd-qa] SKIP case=fixture lane=self-test reason=absent-fixture prereq=probe remedy="-"'
+  if (caseOutcome(0, "case passed\n", false) !== "pass" ||
+      caseOutcome(0, `${skip}\n`, false) !== "skip" ||
+      caseOutcome(0, `${skip}\n`, true) !== "fail" ||
+      caseOutcome(1, `${skip}\n`, false) !== "fail" ||
+      caseOutcome(0, skip.replace(" SKIP ", " FAIL "), false) !== "fail") process.exit(1)
+  console.log("PASS: clean, skip, strict skip, nonzero skip and inconsistent failure marker")
+  process.exit(0)
+}
+
 /** The `--root` flag's index, or -1 when it was not given. */
 const rootFlag = argv.indexOf("--root")
 /** The sweep root: the `--root` value when given, else this script's parent (the repository root). */
@@ -77,13 +102,27 @@ interface CaseFailure {
 
 /** Every failure collected by this run, in run order. */
 const failures: CaseFailure[] = []
-/** Runs one case through `bun` in the sweep root and pushes a failure; it never exits early. */
+/** Number of exit-zero cases with a prerequisite skip marker. */
+let skipped = 0
+/** Runs one case through `bun` and preserves the child's stdout marker in the transcript. */
 const runCase = (label: string, argv2: readonly string[]): void => {
   say(label)
-  /** The spawned case; `stdio: "inherit"` streams its output straight to this run's console. */
-  const result = spawnSync("bun", argv2, { cwd: ROOT, stdio: "inherit" })
-  if (result.error) failures.push({ label, note: String(result.error.message ?? result.error) })
-  else if ((result.status ?? 1) !== 0) failures.push({ label, note: "exit " + String(result.status) })
+  /** Capture stdout separately to classify its first line while keeping stderr live. */
+  const result = spawnSync("bun", argv2, { cwd: ROOT, stdio: ["ignore", "pipe", "inherit"], encoding: "utf8", maxBuffer: 32 * 1024 * 1024 })
+  /** The child's original stdout, which may be absent after a spawn failure. */
+  const stdout = result.stdout ?? ""
+  process.stdout.write(stdout)
+  if (result.error) {
+    failures.push({ label, note: result.error.message })
+    return
+  }
+  switch (caseOutcome(result.status, stdout, STRICT)) {
+    case "pass": break
+    case "skip": skipped += 1; break
+    case "fail":
+      failures.push({ label, note: result.status === 0 ? stdout.split(/\r?\n/, 1)[0] : `exit ${result.status ?? result.signal}` })
+      break
+  }
 }
 
 // Every discovered case runs first, in sorted order, then the mpd-ext rows — the same order the
@@ -93,9 +132,8 @@ for (const argv2 of MPD_EXT) runCase(argv2.join(" "), argv2)
 
 /** The number of subjects this run was supposed to execute: every case plus every mpd-ext row. */
 const total = cases.length + MPD_EXT.length
-if (failures.length > 0) {
-  for (const failure of failures) say("FAILED: " + failure.label + " (" + failure.note + ")")
-  console.error("[" + LABEL + "] FAIL - " + failures.length + " of " + total + " case(s) failed")
-  process.exit(1)
-}
-say("all self-tests passed" + (STRICT ? " with no skips" : ""))
+for (const failure of failures) say("FAILED: " + failure.label + " (" + failure.note + ")")
+/** The mutually exclusive pass, skip and fail census, including strict-mode failures. */
+const passed = total - skipped - failures.length
+say(`${failures.length > 0 ? "FAIL" : skipped > 0 ? "COMPLETE WITH SKIPS" : "PASS"} - ${passed} passed, ${skipped} skipped, ${failures.length} failed (${total} total)`)
+process.exitCode = failures.length > 0 ? 1 : 0

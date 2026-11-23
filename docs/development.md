@@ -106,9 +106,13 @@ harness, which is the fastest way to add a seam.
 
 ```bash
 bun run typecheck                        # root tsgo --noEmit (covers all packages)
-bun test packages                        # per-package unit tests (mock ctx drives tools)
+.toolchain/node_modules/.bin/bun test   # default suite with the repository's Bun pin
+bun run test                             # package tests only
 bun test packages/<pkg>                  # one package
 ```
+
+Run these commands from the repository root. The default suite includes tests in `packages/` and
+`skills/`. The root `bunfig.toml` excludes historical `evidence/` and generated root `dist/` output.
 
 Test convention (see `packages/mpd-roles-plugin/test/roles.test.ts`,
 `packages/mpd-workmate-plugin/test/workmate.test.ts`): a `makePlugin()` builds a mock
@@ -121,7 +125,9 @@ temp dir (bun caches `os.homedir()`, so plugins read `$HOME` directly).
 
 The QA skill is `skills/dsh-qa` (`SKILL.md`). Every case script ships `--self-test`
 (offline) plus a real isolated boot; evidence goes to
-`evidence/<domain>/<slug>/<timestamp>/`.
+`evidence/<domain>/<slug>/<timestamp>/`. Keep the result and decisive, redacted output in Git. For
+new runs, keep generated checkouts and bulk output in scratch space, and add an artifact download
+link, SHA-256, size and expiry to the result when reviewers need the raw files.
 
 | Case | Proves | How to run (from an approved permission context) |
 |---|---|---|
@@ -195,14 +201,14 @@ profile `node_modules/@mpd-dsh/mpd`) when pnpm store access is unavailable; the 
 | Gate | Command |
 |---|---|
 | Vendor | `node scripts/verify-vendor.ts` (fingerprints the assets this repo ships; resolves NO upstream checkout) |
-| Tests | `bun test packages` + `bun run typecheck` |
+| Tests | `.toolchain/node_modules/.bin/bun test` + `bun run typecheck` |
 | QA self-tests | `bun run test:qa` + each case `--self-test` |
 | QA real cases | `node skills/dsh-qa/scripts/<case>.mjs` |
 | Installer | `node scripts/install-profile.ts --dry-run` / `--self-test` |
-| DSH-Go conformance (standing) | `node scripts/verify-dshgo-standard.ts` — five lanes (MANIFEST / VIEW / COMPAT / HOST / CROSS-CHECK); exit 3 when `MPD_DSHGO_KIT` supplies no checkout is NOT-PASSED, never a green; the eleventh member of `bun run verify:gates` and a `publish.yml` pre-pack step |
+| DSH-Go conformance (standing) | `node scripts/verify-dshgo-standard.ts` — five lanes (MANIFEST / VIEW / COMPAT / HOST / CROSS-CHECK); exit 3 when `MPD_DSHGO_KIT` supplies no checkout is NOT-PASSED, never a green; a member of `bun run verify:gates` and a `publish.yml` pre-pack step |
 | Boot check (MOUNT) | a boot that really applies the rows in an isolated `DSH_HOME` + sandbox `HOME`: `bun skills/dsh-qa/scripts/bundle-lifecycle.ts` (host rows) / `node skills/dsh-qa/scripts/preset-conformance.ts` (the `mpd` preset's standing mount). `node scripts/dump-config.ts --profile <p>` (the repo wrapper, which prints that warning itself) composes rows only and is NOT this gate (AGENTS.md §4) |
 | Extension CLI | `bun scripts/mpd-ext.ts --self-test` (offline) + `bun scripts/mpd-ext.ts validate extensions/mpd-ext-example` (exit 0; a deliberately broken extension must exit 1 with per-item errors) |
-| Static aggregate (11 members) | `bun run verify:gates` — vendor, dist freshness, row parity, doc pairs, preset conformance, plugin manifest, comment coverage, graph model, workflows, tui admission, dsh-go; run it from the repo root with BOTH env inputs below |
+| Static aggregate | List the current members with `node scripts/verify-gates.ts --list`. Run `bun run verify:gates` from the repo root with both environment inputs below. |
 
 No evidence on disk for a gate = the change is not complete.
 
@@ -227,7 +233,7 @@ In a sandbox whose system tempdir is read-only, add `TMPDIR="$PWD/.qa-tmp/tmp"` 
 2. Branch `release/vX.Y.Z` from `dev`; bump the version in `package.json` (and any version
    reference in this documentation set) and write the changelog note.
 3. Full gate sweep, all green and on disk: `node scripts/verify-vendor.ts`, `bun run typecheck`,
-   `bun test packages`, `bun run test:qa` (every case's offline `--self-test`), the real-lane
+   `.toolchain/node_modules/.bin/bun test`, `bun run test:qa` (every case's offline `--self-test`), the real-lane
    subset `bun run test:qa:all`, and the boot check (§5: `preset-conformance` plus the mount
    proof: never `--dump-config` alone).
 4. **`VENDOR_LOCK.json` pairing rule**: a `skills/**` change invalidates the corpus `treeSha`, and

@@ -1,0 +1,47 @@
+{
+  "case": "team-approval-finalize",
+  "baseline": "90d52e530282bccf3c4b54a27be6737bcb02f969",
+  "verifiedSourceCommit": "b261da2ae5dff4c46fdd97c826a6441b303c6037",
+  "bun": "1.4.0 (34cbb9a40)",
+  "frozenAt": "2026-11-22T17:29:30Z",
+  "recheckedAt": "2026-11-22T17:32:48Z",
+  "sha256": {
+    "packages/mpd-team-core-plugin/src/index.ts": "5e83b9a86793a18a974417ec2b0e8a755356abe0e1d1bfbc1d1cc5c4a3c2c082",
+    "packages/mpd-team-core-plugin/src/team-actions.ts": "571a0010ab318540749ef3cb556178d8dc44864308cce362e9812ee4c602d4b0",
+    "packages/mpd-team-core-plugin/src/team-store.ts": "4973f098b990a3a9ff483a20bfbafe6ccbbb666a9a6b7c48eea0022b015c3add",
+    "packages/mpd-team-core-plugin/src/plan-store.ts": "e578399b8be124c7580ebd22c137ac14ee2b7693f796fa910ebce868222133e9",
+    "packages/mpd-team-core-plugin/test/team-record.test.ts": "86be117cc51e7e9396b5db7059cbffd0d140fabc99cb338fc5c273123bca7e1d",
+    "packages/mpd-team-core-plugin/dist/index.js": "42082155f6d629e6be2542232318d33224b77eac3d5e8e8f76f9266b2752bb7f"
+  },
+  "red": {
+    "baselineTests": { "exit": 1, "pass": 1, "fail": 2, "assertions": 22 },
+    "observed": [
+      "Failure before board rename left the board empty and retried successfully.",
+      "Failure after board rename left the activation checkpoint. Retrying added T4 and T5 and removed the T2 dependency on T3.",
+      "A stale authorized release refused the task update but deleted the pairing."
+    ],
+    "pendingReplyTests": { "baseline": "4ff9cde05e566559cd98be3948d48fad0c0e9e26", "exit": 1, "pass": 0, "fail": 2, "assertions": 14, "observed": "Both public release tools rendered a refusal after clearing the pending pairing." }
+  },
+  "green": {
+    "focused": { "exit": 0, "pass": 10, "fail": 0, "assertions": 111 },
+    "packageTests": { "exit": 0, "pass": 1269, "fail": 0, "files": 92 },
+    "rootTests": { "exit": 0, "pass": 4288, "skip": 6, "fail": 0, "files": 280 },
+    "typecheck": { "exit": 0 },
+    "comments": { "exit": 0, "files": 657, "declarations": 60610 },
+    "dispatchGuard": { "exit": 0, "pass": 21 },
+    "qaSelfTests": { "exit": 0, "pass": 56, "skip": 2, "fail": 0, "skipReason": "TUI distribution and TUI spec conformance lack the dsh-ecosystem-spec fixture." },
+    "distFreshness": { "exit": 0, "fresh": 35, "targets": 35 }
+  },
+  "independent": {
+    "agent": "agent-22",
+    "basis": "Exact final test and artifact hashes",
+    "focused": { "exit": 0, "pass": 10, "fail": 0, "assertions": 111 },
+    "exactInterruption": "The post-board rename before checkpoint cleanup passed, including stable original IDs, no reactivation, and preservation of intervening writes. The before-board, legacy-board and post-archive controls passed.",
+    "release": "Both registered release entry points returned and rendered success when they recovered a pending pairing. Stale revision and empty-pairing controls passed."
+  },
+  "mounted": [
+    { "host": "0.2.2-rc.5", "exit": 0, "isolation": true, "approvalCall": "qa_5", "dispatchCall": "qa_6", "claimCall": "qa_7", "completeCall": "qa_8", "task": "T1", "attempt": 1, "status": "completed", "ownerMatchesExecutor": true },
+    { "host": "0.2.2-rc.2", "exit": 0, "isolation": true, "approvalCall": "qa_5", "dispatchCall": "qa_6", "claimCall": "qa_7", "completeCall": "qa_8", "task": "T1", "attempt": 1, "status": "completed", "ownerMatchesExecutor": true }
+  ],
+  "measurementBoundary": "The filesystem interruption ran through the registered tool and actual persistence in-process. The two isolated host runs exercised normal approval, dispatch, claim and completion with the final build. They used a loopback model stub."
+}

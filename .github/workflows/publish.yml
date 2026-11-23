@@ -22,9 +22,8 @@ name: publish
 # `npm stage approve <stage-id>` performs it. That split is what lets an automated, secret-free
 # workflow stage a release while a human still approves what becomes public. The mode is chosen by the
 # `stage_id` input and by nothing else:
-#   * `stage_id` EMPTY  -> STAGE this release: `npm pack` into /tmp/npm-pack, then
-#                          `npm stage publish --access public --tag <dist_tag>`, then a notice naming
-#                          the second dispatch that approves it.
+#   * `stage_id` EMPTY  -> STAGE this release: pack once, install the tarball in Web and TUI,
+#                          then pass the tested tarball to `npm stage publish`.
 #   * `stage_id` FILLED -> APPROVE that existing stage: `npm stage approve <stage_id>`.
 #
 # APPROVE IN ASCENDING VERSION ORDER — THAT IS WHAT KEEPS `latest` POINTING AT THE NEWEST RELEASE.
@@ -160,20 +159,41 @@ jobs:
             exit 1
           fi
 
-      # STAGE MODE. The tarball is packed FIRST and kept at a stable path, so the exact bytes this run
-      # offered to the registry are the bytes the artifact step uploads for inspection. NOTE: the
-      # destination directory must exist — measured on npm 11.19.0, `npm pack --pack-destination` does
-      # NOT create it and fails with ENOENT ("no such file or directory … <name>.tgz"), so the mkdir
-      # is load-bearing, not cosmetic. The `npm stage publish` call then packs the same tree again
-      # itself (npm's default package-spec is the working directory) and uploads it in a NOT-yet-public
-      # state; `--access public` is explicit because this package is scoped.
-      - name: Stage the release (npm pack, then npm stage publish)
+      - name: Pack the release candidate once
+        id: release-pack
         if: ${{ env.STAGE_ID == '' }}
         run: |
           set -euo pipefail
-          mkdir -p /tmp/npm-pack
-          npm pack --pack-destination /tmp/npm-pack
-          npm stage publish --access public --tag "$DIST_TAG"
+          node scripts/verify-plugin-manifest.ts --pack
+          mkdir -p "$RUNNER_TEMP/npm-pack"
+          filename="$(npm pack --quiet --ignore-scripts --pack-destination "$RUNNER_TEMP/npm-pack")"
+          tarball="$RUNNER_TEMP/npm-pack/$filename"
+          test -f "$tarball"
+          echo "tarball=$tarball" >> "$GITHUB_OUTPUT"
+
+      - name: Install the release tarball in isolated Web and TUI profiles and call AST search
+        id: release-smoke
+        if: ${{ env.STAGE_ID == '' }}
+        env:
+          RELEASE_TARBALL: ${{ steps.release-pack.outputs.tarball }}
+        run: |
+          set -euo pipefail
+          host_version="$(node -p 'require("./dsh-distribution.json").protocols.flatMap(p => p.spec?.components ?? []).find(c => c.id === "host-base").ref.split("@").at(-1)')"
+          npm install --prefix "$RUNNER_TEMP/release-host" --no-save --no-package-lock "@deepseek-ai/dsh@$host_version" pnpm@11.23.0
+          export PATH="$RUNNER_TEMP/release-host/node_modules/.bin:$PATH"
+          bash docker/verify-release-tarball.sh "$RELEASE_TARBALL" "$RUNNER_TEMP/npm-pack/smoke"
+
+      - name: Stage the tested release tarball
+        if: ${{ success() && env.STAGE_ID == '' && steps.release-smoke.outcome == 'success' }}
+        env:
+          RELEASE_TARBALL: ${{ steps.release-pack.outputs.tarball }}
+        run: |
+          set -euo pipefail
+          expected="$(cut -d ' ' -f1 "$RUNNER_TEMP/npm-pack/smoke/tarball.sha256")"
+          actual="$(sha256sum -- "$RELEASE_TARBALL" | cut -d ' ' -f1)"
+          test "$actual" = "$expected"
+          echo "Tested release tarball SHA-256: \`$actual\`" >> "$GITHUB_STEP_SUMMARY"
+          npm stage publish --access public --tag "$DIST_TAG" "$RELEASE_TARBALL"
           echo "::notice title=Staged $TAG — one more dispatch approves it::Copy the stage id from the 'npm stage list' output below, then dispatch this workflow again with the SAME tag and 'stage_id' set to that id. Nothing is public until that approval, and approving in ascending version order is what keeps 'latest' on the newest release."
           {
             echo "### Staged \`$TAG\` (dist-tag \`$DIST_TAG\`) — not public yet"
@@ -226,6 +246,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: npm-pack-${{ github.run_attempt }}
-          path: /tmp/npm-pack/*.tgz
+          path: |
+            ${{ steps.release-pack.outputs.tarball }}
+            ${{ runner.temp }}/npm-pack/smoke/
           if-no-files-found: ignore
           retention-days: 14

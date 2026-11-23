@@ -1,0 +1,7 @@
+positive installed toolchain: exit=0 MPD_AST_GREP_SG_PATH=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/ast-grep --> ast-grep 0.50.0
+positive installed toolchain: exit=0 MPD_CODEGRAPH_BIN=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/codegraph --> 1.5.0
+negative incomplete optional engine: exit=1; npm returned 0; no activation file or exports
+fresh toolchain: exit=0 signal=null error=-
+added 5 packages in 4s
+[install-mcp] written -> /tmp/mpd-install-after-7rGTza/fresh/mcp.env
+

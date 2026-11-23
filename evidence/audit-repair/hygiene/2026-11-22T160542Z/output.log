@@ -1,0 +1,72 @@
+Hygiene writer evidence, fix/team-and-audit-recovery at HEAD e86764c0.
+Node v24.21.0. Bun 1.4.0 (34cbb9a40), repository buildToolchain pin.
+
+Reproduce the discovery control from the repository root:
+
+  bun_bin="$PWD/.toolchain/node_modules/.bin/bun"
+  probe_dir=$(mktemp -d /tmp/mpd-bun-final.XXXXXX)
+  for mode in control configured; do
+    for test_case in packages/unit skills/unit evidence/archive/packages/unit dist/mpd-package/skills/unit .qa-tmp/copy/packages/unit .mpd/worktrees/copy/packages/unit; do
+      mkdir -p "$probe_dir/$mode/$test_case"
+      case "$test_case" in packages/*|skills/*) outcome=1 ;; *) outcome=2 ;; esac
+      printf 'import { expect, test } from "bun:test"; test("%s", () => expect(1).toBe(%s));\n' "$test_case" "$outcome" > "$probe_dir/$mode/$test_case/shared.test.ts"
+    done
+  done
+  cp bunfig.toml "$probe_dir/configured/bunfig.toml"
+  (cd "$probe_dir/control" && "$bun_bin" test)
+  (cd "$probe_dir/configured" && "$bun_bin" test)
+  (cd "$probe_dir/configured" && "$bun_bin" test packages)
+
+Control exit 1: 2 pass, 2 fail, 4 files. The failures came from
+  dist/mpd-package/skills/unit/shared.test.ts
+  evidence/archive/packages/unit/shared.test.ts
+Configured exit 0: 2 pass, 0 fail, 2 files.
+  packages/unit/shared.test.ts
+  skills/unit/shared.test.ts
+Configured with packages filter exit 0: 1 pass, 0 fail, 1 file.
+  packages/unit/shared.test.ts
+Pinned Bun skipped .qa-tmp and .mpd/worktrees in both arms with no extra patterns.
+Bun configuration reference: https://github.com/oven-sh/bun/blob/bun-v1.4.0/docs/test/configuration.mdx
+
+Checkout root test with evidence-only exclusion, before adding the dist exclusion:
+  Exit 1. 269 packages files, 7 skills files, 7 duplicate dist files, 0 evidence files.
+  The packed output contained the same seven skill test names as the active skill tree.
+
+Checkout runs with the final config and distinct TMPDIRs outside the checkout:
+  bun test                         # 1.4.0 first on PATH
+  Exit 1. 4216 pass, 6 skip, 13 fail, 1 error, 277 files. 270 packages, 7 skills.
+  bun run test                     # runs bun test packages with 1.4.0 first on PATH
+  Exit 1. 4129 pass, 6 skip, 62 fail, 270 files. All 270 under packages.
+  Both commands discovered zero files under evidence or dist. Comparing the distinct
+  packages/ file headers yielded zero root-only and zero package-only files.
+  The root run included an unhandled import error for typescript/package.json in the
+  programming skill's test. The package run encountered ReferenceError: state is not
+  defined in the config plugin during parallel source changes. These are discovery
+  measurements from a changing checkout. Integration must verify a settled suite.
+  Full local logs were kept in .mpd/hygiene-tests.O9MLvC/ outside the committed evidence.
+
+Gates from repository root:
+  node scripts/verify-manual-paths.ts
+  Exit 0. PASS resolved=165 over-report=70 under-report=81 declared=2.
+  .toolchain/node_modules/.bin/bun run verify:docs
+  Exit 0. pairs=61 failed=0 violations=0 exempt=24 derived=3 links=644 dead=0 — PASS.
+  .toolchain/node_modules/.bin/bun run verify:docs --self-test
+  Exit 0. 34/34 checks passed — PASS.
+  node scripts/verify-gates.ts --list
+  Exit 0. list OK: 11 member gate(s) resolved, 0 spawned.
+  Members: vendor, dist-fresh, rows-parity, docs-parity, preset-conformance,
+  plugin-manifest, comment-coverage, graph-model, workflows, tui-admission, dshgo.
+  git diff --check -- <scoped tracked files>
+  Exit 0. No output.
+
+Evidence preservation:
+  Enumerate git ls-files -z evidence in its observed order. For each path, hash
+  the path then NUL then its raw 32-byte SHA-256 into a SHA-256 accumulator.
+  Hash regular file contents and raw symlink target bytes, without following links.
+  The prior and subsequent measurements both returned 39,577 paths (24 symlinks),
+  1,559,203,237 bytes, SHA-256 8af82be1af9d5ebeacfb24d3eaee39ce1cef20f7ec52d15adf4efe334d4c7dd7.
+  git diff --name-only -- evidence returned no tracked historical changes.
+
+Manual byte census: 62,911 before, 61,750 after, 3,786 below the preset's 65,536-byte cut.
+The current root package manifest exposes no Agent Teams package in any dependency field.
+Compatibility §2.1 records the modern host-owned rows and the guarded legacy rows.

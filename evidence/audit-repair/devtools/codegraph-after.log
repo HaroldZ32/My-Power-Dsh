@@ -1,0 +1,5 @@
+(pass) O-1 apply-time project root > no session and no override falls back to process.cwd() [1.37ms]
+(pass) the adopted CodeGraph server uses the project alias, with the canonical override winning [136.02ms]
+ 25 pass
+ 0 fail
+Ran 25 tests across 3 files. [160.00ms]

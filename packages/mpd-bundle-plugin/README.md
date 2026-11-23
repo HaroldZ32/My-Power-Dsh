@@ -56,26 +56,20 @@ transport error is `EventSource`'s own retry (the route sends `retry: 1000`) —
 loop of ours. Because both hosts render this one component and the effect is per mount, two mounted
 panels hold two streams.
 
-**TUI counterpart.** The settings card this client registers is the browser half of the same
-`mpd-config` ENTRY document the TUI edition renders as its `/settings` section
-(`packages/mpd-tui-plugin/src/settings.ts`; the card mounts through `configForms.get(CONFIG_ENTRY)`,
-`CONFIG_ENTRY = "mpd-config"` — the legacy `mpd` namespace is retired): labels, hints and zh
-descriptions are mirrored
-between the two front doors, a test asserts the two lists stay identical, and both state the same
-bridge disclosure — a save from this card is persisted by the HOST as the `mpd-config` ENTRY document
-and writes NO workspace `<workspace>/.mpd/mpd.jsonc` (the only writer of that file is the RETIRED
-legacy `mpd`-namespace write-back, dormant on the pinned harness, while a hand edit of the file is
-still read on every resolution), and the disclosure is SCOPED per knob instead of promising a blanket
-restart: the model routes, the team-gate knobs, the `team.stateDir` reader and the two guards act in
-the RUNNING process, while `hashline.*`, `commentChecker.*`, `autoproject.*`, `memory.*`, `boulder.dir` and
-`goal.*` are captured at `apply()` and need the next `dsh` boot — and `watchdog.*` is NEITHER half: its
-own row reads `settingsReader("mpd")` (refused here) and parses `<workspace>/.mpd/mpd.jsonc` itself, so
-a hand edit of that file is live while a form save never reaches those knobs (`docs/user-guide.md` §9.1
-is the per-knob authority; the same declaration in `settings-schema.ts` and in `settings-card.ts`). The browser
-reaches the bridge only through the
-public settings seam; the PERSISTENCE belongs to the host and the entry-document re-read to
-`packages/mpd-config-plugin` (the legacy write-back lives there too, dormant). Rebuild the
-combined client (`node scripts/build-mpd-client.ts`) after touching either half.
+**Settings persistence.** The Web card and TUI `/settings` share field labels and hints. The TUI form
+and the Web card's general settings save to the host's `mpd-config` entry document. Web profile saves
+work with no session selected when the host allows writes. They apply across workspaces. The Web
+fields show the saved profile values or the inherited values. When the mounted entry reports a
+different value, the card shows that value alongside the field. The Web card reads and edits model
+routes through `/plugins/mpd/model-config?sessionId=…`. The host authenticates named requests and resolves the selected
+live session's workspace. A save changes just the selected route fields in that workspace's
+`.mpd/mpd.jsonc`. An unknown session or an unscoped read with multiple live workspaces produces an
+error. The card reports a conflict if a profile-wide override would mask the new value.
+
+The next model resolve or spawn reads the new route. Settings a plugin captures at mount still take
+effect on the next `dsh` boot. The watchdog reads its knobs from the project file and its row config.
+See the per-setting table in [the user guide](../../docs/user-guide.md#91-when-a-saved-knob-takes-effect).
+Rebuild the combined client with `node scripts/build-mpd-client.ts` after changing its source.
 
 **The Web card's per-agent route rows.** The card mirrors the ONE knob declaration of
 `packages/mpd-config-plugin` (the original 13 knobs, one three-leaf row per roster agent —
@@ -102,13 +96,8 @@ group heading and its own human sentence, and a group heading with a one-line im
 agent's three leaves. Both doors name the
 dotted `mpd.jsonc` key through ONE helper — the hint is `<human sentence> (mpd.jsonc <key>)`, and a
 knob with no human sentence keeps the pointer alone (`knobHint` in the TUI, `hintOf` on the card) —
-while the bridge disclosure and the not-lost clause are stated ONCE per SECTION, never per row: the
-TUI carries `SECTION_NOTICE` in the section's own description, and the card renders its disclosure
-block once at the top (`data-mpd-disclosure`). **Both halves are rendered, not just the promising
-one**: the LIVE half (the knobs whose behaviour a save changes in the running process) AND the
-mount-captured exception (the knobs that need the next `dsh` boot) — the card's block carries the
-scoped statement, and its copy in `settings-card.ts` stays byte-identical to the TUI's, so a reader
-of either front door learns that the EFFECT is per knob (`docs/user-guide.md` §9.1).
+and each settings section discloses where its own fields are saved and which need a restart. The Web
+card renders this information once at the top (`data-mpd-disclosure`).
 
 ## Nested groups: a subcell is a frame
 

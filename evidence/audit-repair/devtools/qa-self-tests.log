@@ -1,0 +1,110 @@
+$ node scripts/run-qa-selftests.ts
+[ask-user-question-audit self-test] ok: 4 concatenated zstd frame(s), 19 record(s), 12 occurrence(s), every rule of the local restatement, both answer pairings, the CLI exit codes and the repair arms (R2 wrong-type detail, R3 array line, R4 mixed-arg usage, D5 options MANDATORY) are verified offline
+[autoproject-command self-test] ok: registry listing + usage + activation + directive order/objective + command lifecycle predicates, each with a negative control; shipped directive literal and SKILL.md row verified
+[autoproject-smoke self-test] ok: engine symbols + bundle row verified
+[cellwork-command] self-test PASS — 7 arms incl. negative controls
+[cellwork-mount] self-test PASS — 21 arms incl. negative controls
+[codegraph-smoke self-test] ok: project-path precondition + composed codegraph server name (mcp__codegraph__codegraph_explore) + sink marker contract verified on fixtures
+[llm-dual-track self-test] ok: track fixture assertions + devPatch boot operand + the staged deepseek route verified
+[extension-isolation self-test] ok: stub protocol in DeepSeek Messages frames (tool call as input_json_delta, advance on a tool_result block, child marker, no-tools text, legacy OpenAI request still read) + descriptor contract + shipped example + boot recipe verified
+[extension-lifecycle self-test] ok: composed row + validator rejections (incl. NaN rank via the code plane) + CLI oracle + seam regression (inject declared, failure LOUD in the row's OWN log, terminal SILENT, no false success; four mutants redden) + packed predicate falsifiable (closed vs. three broken fixture trees) + T-85 scratch-pack patcher (two anchors rewritten, a drifted packer REFUSED) + fixtures verified
+[extension-mcp-bridge self-test] ok: lsp server + row + public-name collision premise + fixture scenarios (incl. the stderr flood and the cap it must exceed) + example server verified
+[install-dependencies self-test] ok: sidebar-row parsing (0/1/2 rows, raw !!js guard, decoys), F1-F3 signature scanning, two-sided route + served-client verdicts, the hand-built profile recipe, the hermetic ARM-5 stage, the pre-fix RED anchor and the cases.json/SKILL.md wiring are verified offline
+[mcp-call self-test] ok: tool-name detection + composed ast_grep server name + fixture content + the declared LSP dependency (0.7.0) verified on fixtures
+[memory-smoke self-test] ok: bundle row + dist symbols + unit suite verified
+[mount-assert self-test] ok: presence/absence detection verified on fixture
+[plan-c-smoke self-test] ok: rows + unit suites verified
+[preset-conformance self-test] PASS - (i) retired `text:` persona form -> problems name the persona row :: /tmp/mpd-preset-conformance-q3HmfE/persona-text.patch.yml :: persona (@deepseek-ai/dsh-persona): $.prefix missing required value | /tmp/mpd-preset-conformance-q3HmfE/persona-text.patch.yml :: the persona row has no `pref
+[preset-conformance self-test] PASS - (ii) renamed required row -> the unmutated copy is clean and the mutated one names tool-fs AND tool-fs-renamed :: control problems=0; mutated: the mpd preset does not mount active row(s) the installed standard preset mounts: tool-fs | the mpd preset declares row(s) the installed standard preset does not declare at all: tool-fs-renam
+[preset-conformance self-test] PASS - (iii) the renamed copy really changed the document it audits :: bytes differ
+[preset-conformance self-test] PASS - (iv) GUARDED host-optional extra row -> no parity problem, and a NOTE names it :: problems=none; notes=the mpd preset declares GUARDED host-optional row(s) the installed standard preset does not ship: self-test-guarded-extra — each carries a `!!js` mount guard, so the capability is decided at LOAD (on
+[preset-conformance self-test] PASS - (v) UNGUARDED extra row still FAILS and the problem names it :: problems=the mpd preset declares row(s) the installed standard preset does not declare at all: self-test-unguarded-extra
+[preset-conformance self-test] PASS - (vi) hermetic: temp fixtures only; the live preset patch bytes + mtime are unchanged :: fixture root /tmp/mpd-preset-conformance-q3HmfE (temp); live mtime 1795338347928.9946 -> 1795338347928.9946
+[skill-catalog-probe self-test] ok: staged skill corpus present + provider wiring verified
+[self-test] PASS owner positive
+[self-test] PASS owner negative: errored result
+[self-test] PASS owner negative: prose only
+[self-test] PASS idle positive: one directive + a refused attempt
+[self-test] PASS idle negative: no tool attempt (the guard could be absent)
+[self-test] PASS idle negative: the attempt SUCCEEDED
+[self-test] PASS idle negative: the denial text is not the guard's
+[self-test] PASS idle negative: no directive
+[self-test] PASS idle negative: two directives
+[self-test] PASS pin: the directive is the plugin's literal
+[self-test] PASS pin: the denial is the plugin's literal
+[self-test] PASS overlay names the probe and its record file
+[self-test] PASS bound seats match the claimed board row and separate session logs
+[self-test] PASS ambiguous fixture role is refused
+[self-test] PASS duplicate executor handle is refused
+[self-test] PASS a claim by the idle seat is refused
+[self-test] PASS swapped harness logs are refused
+[team-idle-member-guard] self-test PASS — 17 arms incl. negative controls
+[self-test] ok   C3: the veto signature FAILS as `veto` (veto)
+[self-test] ok   C4: an empty session log FAILS as `no-turn`
+[self-test] ok   C5: a boot without the row's apply line FAILS
+[self-test] ok   C6: a session not created on `mpd` FAILS
+[self-test] PASS — team-watchdog-boot (17 checks, 0 failed)
+[self-test] ok   negative:missing-knob: the mutated observation FAILED its own check(s) ["C4"] — a knob missing from one front door
+[self-test] ok   negative:two-declarations: the mutated observation FAILED its own check(s) ["C2"] — a second declaration (the doors would drift)
+[self-test] ok   negative:row-ignored: the mutated observation FAILED its own check(s) ["C6"] — a row config that is not the effective default
+[self-test] ok   negative:namespace-loses: the mutated observation FAILED its own check(s) ["C7"] — a namespace that does not outrank the row config
+[self-test] ok   negative:restart-needed: the mutated observation FAILED its own check(s) ["C8"] — a re-read that only a restart could deliver
+[self-test] ok   negative:no-clamp: the mutated observation FAILED its own check(s) ["C9"] — an unclamped cadence beyond the silence threshold
+[self-test] ok   negative:halt-action: the mutated observation FAILED its own check(s) ["C10"] — an escalation wired to the halt path
+[self-test] PASS — team-watchdog-config (8 checks, 0 failed)
+[self-test] ok   negative:install: the mutated observation FAILED its own check(s) ["H1"] — a row that installed no writers
+[self-test] ok   negative:event: the mutated observation FAILED its own check(s) ["H2:tools/post-execute"] — a missing tool hook
+[self-test] ok   negative:tool-stamp: the mutated observation FAILED its own check(s) ["H4"] — a tool stamp that is not post-completion-success
+[self-test] ok   negative:captain: the mutated observation FAILED its own check(s) ["H8"] — no captain stamp (AC-2 needs both)
+[self-test] ok   negative:fresh-read: the mutated observation FAILED its own check(s) ["H9"] — a read that did not come from a fresh process
+[self-test] ok   negative:pre-hook-absent: the mutated observation FAILED its own check(s) ["H5"] — the built bytes lost the pre-dispatch hook
+[self-test] ok   negative:pre-hook-not-subscribed: the mutated observation FAILED its own check(s) ["H5"] — the row never subscribed tools/pre-execute
+[self-test] ok   negative:observe-only-veto: the mutated observation FAILED its own check(s) ["H5"] — a hook that REPLACES the gate decision (veto)
+[self-test] ok   negative:observe-only-mutates: the mutated observation FAILED its own check(s) ["H5"] — a live execution object handed to the listener (it could mutate the call)
+[self-test] ok   negative:observe-only-write-lands: the mutated observation FAILED its own check(s) ["H5"] — a listener write that was not rejected by the frozen copy
+[self-test] ok   negative:observe-only-throws: the mutated observation FAILED its own check(s) ["H5"] — a throwing listener that breaks the call it observes
+[self-test] ok   negative:observe-only-after-body: the mutated observation FAILED its own check(s) ["H5"] — a pre stamp that arrived after the tool body started
+[self-test] PASS — team-watchdog-heartbeat (13 checks, 0 failed)
+[self-test] ok   negative:web-record-missing: the mutated observation FAILED its own check(s) ["W2"] — a payload with no activity record
+[self-test] ok   negative:web-not-top: the mutated observation FAILED its own check(s) ["W4"] — a banner that is not the panel's first child
+[self-test] ok   negative:web-no-first-poll: the mutated observation FAILED its own check(s) ["W3"] — a replay that needed a user action
+[self-test] ok   negative:web-ack-other-reader: the mutated observation FAILED its own check(s) ["W6"] — an acknowledge that clobbered the OTHER reader's key
+[self-test] ok   negative:web-replay-continues: the mutated observation FAILED its own check(s) ["W7"] — a replay that survived the acknowledge
+[self-test] ok   negative:tui-reader: the mutated observation FAILED its own check(s) ["T1","T5"] — a TUI front door using the web reader key
+[self-test] ok   negative:tui-dialog: the mutated observation FAILED its own check(s) ["T4"] — a dialog with no acknowledge action
+[self-test] ok   negative:tui-compose: the mutated observation FAILED its own check(s) ["T3"] — a notice that never reaches the status line
+[self-test] ok   negative:tui-ack: the mutated observation FAILED its own check(s) ["T5"] — a TUI acknowledge that did not advance its watermark
+[self-test] ok   negative:tui-ack-other: the mutated observation FAILED its own check(s) ["T5"] — a TUI acknowledge that clobbered the web reader's key
+[self-test] ok   negative:tui-replay-continues: the mutated observation FAILED its own check(s) ["T6"] — a TUI replay that survived the acknowledge
+[self-test] ok   negative:bytes: the mutated observation FAILED its own check(s) ["T7"] — built TUI bytes with no notice/dialog wiring
+[self-test] ok   negative:bytes-unchanged: the mutated observation FAILED its own check(s) ["N1"] — a watermark file whose bytes never changed
+[self-test] ok   negative:fallback-hidden: the mutated observation FAILED its own check(s) ["N2"] — a lane that hides the permanent-redisplay fallback
+[self-test] PASS — team-watchdog-notify (15 checks, 0 failed)
+[tool-output-validation self-test] ok: bundle rows + dist symbols + unit suites verified
+[mpd-qa] SKIP case=tui-distribution lane=real reason=absent-fixture prereq=vendor/meta-protocols/dsh-distribution in a mounted dsh-ecosystem-spec checkout remedy="check out the host repo with its submodules initialised, or set MPD_TUI_SPEC_ROOT"
+[mpd-qa] SKIP case=tui-spec-conformance lane=real reason=absent-fixture prereq=dsh-ecosystem-spec with conformance/requirements-v0.15.json remedy="check out the host repo with its submodules initialised, or set MPD_TUI_SPEC_ROOT"
+[tui-spec-conformance self-test] ok: the pinned suite checkout is absent on this host; the local arms were verified (see the SKIP marker)
+[user-surface self-test] ok  rows.missingIsRed — a row the loader never composed FAILS
+[user-surface self-test] ok  rows.inactiveIsRed — a composed row that never activated FAILS
+[user-surface self-test] ok  rows.deadFibreSinkReddens — a FAILED (3) fiber that WROTE A LOG SINK is not a pass: ok=false witness=none
+[user-surface self-test] ok  rows.disabledCameUpEnabled — a disabled row that came up ENABLED FAILS
+[user-surface self-test] ok  bound.noMarkerOnFailed — a FAILED row carries no marker: it must redden on its own row
+[user-surface self-test] ok  command.fabricatedReddens — asserting a nonexistent command FAILS
+[user-surface self-test] ok  command.codegraphUnreachableGates — an unreachable /mpd-codegraph FAILS on a complete composition AND gates
+[vision-e2e self-test] ok: fixture generator verified (155 bytes)
+[self-test] ok   negative:row-silent-on-red: the mutated observation FAILED its own check(s) ["R-a"] — a RED row that reproduced nothing (the contrast is the contract's whole point)
+[self-test] ok   negative:green-warns: the mutated observation FAILED its own check(s) ["G-d"] — a GREEN ladder that warns below 600 000 and holds
+[self-test] ok   negative:early-warn: the mutated observation FAILED its own check(s) ["G-d"] — a first WARN before the frozen threshold
+[self-test] ok   negative:guard-read-from-tools: the mutated observation FAILED its own check(s) ["G-c"] — a tool-boundary hold read that survived the redesign
+[self-test] ok   negative:pin-broken: the mutated observation FAILED its own check(s) ["G-e"] — the r6 pin repeating the tool-expired bound or applying a hold
+[self-test] ok   negative:red-drifted: the mutated observation FAILED its own check(s) ["PIN-RED"] — a RED tree that no longer matches the contract's frozen hashes
+[self-test] ok   negative:settle-moved: the mutated observation FAILED its own check(s) ["SETTLED"] — a tree that changed under the run
+[self-test] ok   negative:fold-not-authoritative: the mutated observation FAILED its own check(s) ["FOLD-AUTHORITY"] — a GREEN reading whose suppression came from the §4 fallback, not the fold
+[self-test] ok   negative:knobs-drifted: the mutated observation FAILED its own check(s) ["KNOBS"] — a working tree still carrying the legacy tuple
+[self-test] ok   negative:replay-missing: the mutated observation FAILED its own check(s) ["REPLAY"] — no incident replay (contract §9 item 3)
+[self-test] ok   negative:replay-regression: the mutated observation FAILED its own check(s) ["REPLAY"] — a fold predicate that would have reproduced every historical hold
+[self-test] ok   negative:report-only-escalates: the mutated observation FAILED its own check(s) ["REPLAY"] — a §4 report-only replay that escalates (the fallback is not permitted to)
+[self-test] ok   negative:replay-unfaithful: the mutated observation FAILED its own check(s) ["REPLAY"] — a reconstruction that cannot even reproduce the recorded escalations
+[self-test] ok   negative:row-missing: the mutated observation FAILED its own check(s) ["CLEAN","R-b","G-b","FOLD-AUTHORITY"] — a contract row that never ran
+[self-test] PASS — watchdog-redesign (15 checks, 0 failed)
+[self-test] PASS — wave2b-lane-d (8/8 arms)

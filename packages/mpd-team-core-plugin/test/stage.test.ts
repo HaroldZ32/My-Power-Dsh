@@ -7,10 +7,7 @@
 // seat rendered as idle).
 import { describe, expect, test } from "bun:test"
 import { stageLabel, teamStage } from "../src/stage.ts"
-import { createTeam, idleMembers, type TeamMemberRecord, type TeamRecord, type TeamTaskRecord } from "../src/team-store.ts"
-
-/** A workspace path no arm writes to: `createTeam` only mints an id and shapes a record here. */
-const WORKSPACE = "/tmp/mpd-stage-arms"
+import { idleMembers, type TeamMemberRecord, type TeamRecord, type TeamTaskRecord } from "../src/team-store.ts"
 
 /**
  * One task row with the fields the classifier reads.
@@ -47,9 +44,11 @@ function memberOf(name: string, over: Partial<TeamMemberRecord> = {}): TeamMembe
  * @returns the record (approved, so `derivePhase` calls it live).
  */
 function teamOf(tasks: TeamTaskRecord[], members: TeamMemberRecord[] = [memberOf("alice")]): TeamRecord {
-  /** The freshly minted record, then the arm's own board and roster. */
-  const record = createTeam(WORKSPACE, { name: "the wave", description: "the wave", leadSessionId: "sess-1" }, new Date("2026-11-02T00:00:00.000Z"))
-  return { ...record, approvedAt: "2026-11-02T00:00:00.000Z", tasks, members }
+  return {
+    version: 1, teamId: "team-stage", name: "the wave", description: "the wave", leadSessionId: "sess-1",
+    phase: "active", createdAt: "2026-11-02T00:00:00.000Z", approvedAt: "2026-11-02T00:00:00.000Z",
+    nextMemberNumber: members.length + 1, nextTaskNumber: tasks.length + 1, tasks, members,
+  }
 }
 
 describe("the first-match order", () => {

@@ -1031,7 +1031,7 @@ function createDshAdapter(ctx, config = {}) {
     } catch {}
   };
   bindDshGoBridge();
-  const configAgentRouteResolver = () => {
+  const configAgentRouteResolver = (workspace) => {
     const config2 = service("mpdConfig");
     if (config2 === undefined || config2 === null)
       return;
@@ -1039,7 +1039,7 @@ function createDshAdapter(ctx, config = {}) {
       return;
     return (member) => {
       try {
-        const answer = config2.agentRouteResolutionOf.call(config2, member);
+        const answer = config2.agentRouteResolutionOf.call(config2, member, workspace);
         return answer !== null && typeof answer === "object" && typeof answer.ok === "boolean" ? answer : undefined;
       } catch {
         return;
@@ -1393,7 +1393,7 @@ function createDshAdapter(ctx, config = {}) {
         const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
         let agentOptions = request.agentOptions;
         if (agentOptions === undefined) {
-          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver());
+          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver(workspaceRootOfAgent(caller)));
           if (outcome.status === "routed") {
             const resolved = await resolveRunRoute({ llmCatalog }, outcome.route, outcome.fallbacks);
             agentOptions = resolved.route;
@@ -1409,8 +1409,13 @@ function createDshAdapter(ctx, config = {}) {
           ...agentOptions === undefined ? {} : { agentOptions },
           ...request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }
         };
+        const provider = typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn";
+        const childId = request.onOpening !== undefined && provider === "spawn" && typeof subagents.startActivation === "function" && typeof subagents.prompt === "function" ? randomUUID() : undefined;
+        if (childId !== undefined)
+          request.onOpening?.(childId);
         const spec = dualShapeActivationSpec({
-          provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
+          provider,
+          ...childId === undefined ? {} : { childId },
           label: `${request.name} · ${request.teamId}`,
           signal: request.signal ?? neverAborted()
         }, activationRequest);
@@ -2374,6 +2379,20 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the harness skills service exposes no get()");
       return skills.get(skillName, options);
     },
+    selectedAgentPreset(agent) {
+      const session = agent?.session;
+      if (session === undefined || session === null)
+        return;
+      try {
+        const presets = service("agentPresets");
+        if (typeof presets?.presetForSession !== "function")
+          return;
+        const selected = presets.presetForSession(session);
+        return selected === null || typeof selected === "string" && selected.length > 0 ? selected : undefined;
+      } catch {
+        return;
+      }
+    },
     async resolvePreset(presetId) {
       const presets = requireService("agentPresets", 'cannot resolve preset "' + presetId + '"');
       if (typeof presets.resolve !== "function")
@@ -2747,28 +2766,28 @@ function configServiceOf(ctx) {
 function isChainArray(value) {
   return Array.isArray(value) && value.length > 0 && value.every((c) => c && typeof c.provider === "string" && typeof c.model === "string");
 }
-function overlayNow(ctx) {
+function overlayNow(ctx, workspace) {
   const mpdConfig = configServiceOf(ctx);
   if (typeof mpdConfig?.get !== "function")
     return {};
   const overlay = {};
   for (const key of Object.keys(DEFAULT_CHAINS)) {
     const legacy = LEGACY_CHAIN_KEYS[key];
-    const v = mpdConfig.get("modelchain." + key) ?? (legacy ? mpdConfig.get("modelchain." + legacy) : undefined);
+    const v = mpdConfig.get("modelchain." + key, workspace) ?? (legacy ? mpdConfig.get("modelchain." + legacy, workspace) : undefined);
     if (isChainArray(v))
       overlay[key] = v;
   }
   return overlay;
 }
-function chainsNow(ctx, config) {
-  return { ...config?.chains ?? DEFAULT_CHAINS, ...overlayNow(ctx) };
+function chainsNow(ctx, config, workspace) {
+  return { ...config?.chains ?? DEFAULT_CHAINS, ...overlayNow(ctx, workspace) };
 }
-function agentRouteResolutionIn(ctx, member) {
+function agentRouteResolutionIn(ctx, member, workspace) {
   try {
     const service = ctx.get?.("mpdConfig");
     if (typeof service?.agentRouteResolutionOf !== "function")
       return;
-    return service.agentRouteResolutionOf(member);
+    return service.agentRouteResolutionOf(member, workspace);
   } catch {
     return;
   }
@@ -2783,15 +2802,16 @@ function apply(ctx, config = {}) {
       schema: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" }, chain: { type: "array", items: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" } }, required: [] } }, status: { type: "string" }, missing: { type: "array", items: { type: "string" } }, reason: { type: "string" } }, required: ["provider", "model"] },
       render: (_args, value) => [{ type: "text", text: value.status === "unconfigured" ? "role=" + _args?.role + " -> <unconfigured> (missing " + (Array.isArray(value.missing) ? value.missing.join(", ") : "agentRoutes") + "; " + String(value.reason ?? "") + ")" : "role=" + _args?.role + " -> " + value.provider + "/" + value.model + " (chain " + value.chain.length + " entries)" + (value.status === undefined ? "" : " — " + value.status) }]
     },
-    execute: async (args) => {
+    execute: async (args, exec) => {
+      const workspace = dsh.workspaceRoot(exec);
       const role = String(args?.role ?? "").trim();
       const rolesService = ctx.get?.("mpdRoles");
-      const names = (rolesService?.list?.() ?? []).map((r) => String(r?.name ?? "")).filter((n) => n !== "");
-      const spec = rolesService?.get?.(role);
+      const names = (rolesService?.list?.(exec) ?? []).map((r) => String(r?.name ?? "")).filter((n) => n !== "");
+      const spec = rolesService?.get?.(role, exec);
       if (spec === undefined || spec === null || roleNameKey(role) !== roleNameKey(String(spec.name ?? ""))) {
         throw new Error("mpd_modelchain_resolve: unknown role — use a roster NAME from mpd_roles_list" + (names.length > 0 ? " (" + names.join(", ") + ")" : " (the mpdRoles roster service answered no names — is the mpd-roles row mounted?)"));
       }
-      const agentRoute = agentRouteResolutionIn(ctx, String(spec.name));
+      const agentRoute = agentRouteResolutionIn(ctx, String(spec.name), workspace);
       const unconfiguredAnswer = (agent, missing, reason) => ({
         provider: "",
         model: "",
@@ -2822,14 +2842,14 @@ function apply(ctx, config = {}) {
         const agent = String(spec.name);
         return unconfiguredAnswer(agent, ["agentRoutes." + agent + ".provider", "agentRoutes." + agent + ".model"], "agentRoutes." + agent + " is not readable — no usable mpdConfig answer; configure it with /mpd-model");
       }
-      const configured = overlayNow(ctx)[String(spec.id)];
+      const configured = overlayNow(ctx, workspace)[String(spec.id)];
       if (isChainArray(configured)) {
         return { provider: configured[0].provider, model: configured[0].model, chain: configured.map((c) => ({ ...c })) };
       }
       if (Array.isArray(spec.chain) && spec.chain.length > 0) {
         return { provider: spec.chain[0].provider, model: spec.chain[0].model, chain: spec.chain.map((c) => ({ ...c })) };
       }
-      return resolveRole(String(spec.id), chainsNow(ctx, config));
+      return resolveRole(String(spec.id), chainsNow(ctx, config, workspace));
     }
   });
   dsh.registerTool({

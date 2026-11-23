@@ -1,0 +1,59 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-roles-plugin/test/team-first-consult.test.ts:
+88 |     /** Wait for the third activation itself before asserting that the next two cannot launch. */
+89 |     for (let attempt = 0; attempt < 100 && host.started.length < 3; attempt += 1) await Bun.sleep(1)
+90 |     expect(host.started).toHaveLength(3)
+91 |     /** Both the extra concurrent calls must observe the same staged plan. */
+92 |     const overflow = await Promise.allSettled([4, 5].map((item) => host.call("mpd_role_spawn_async", { role: "Deep Worker", task: `lane ${item}` })))
+93 |     expect(overflow.map((result) => result.status === "rejected" ? String(result.reason) : result.status)).toEqual([
+                                                                                                                ^
+error: expect(received).toEqual(expected)
+
+  [
+-   StringContaining "TEAM_FIRST",
+-   StringContaining "plan-overlap",
++   "fulfilled",
++   "fulfilled",
+  ]
+
+- Expected  - 2
++ Received  + 2
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-roles-plugin/test/team-first-consult.test.ts:93:108)
+(fail) the fourth overlapping public consult stages one required plan before dispatching a fourth child [8.71ms]
+
+packages/mpd-roles-plugin/test/team-plane.test.ts:
+620 |     })
+621 |     selected = "mpd"
+622 |     /** The user's multi-stage request is evaluated using the new composition. */
+623 |     const claimed = userMessage("team: audit the adapter, implement repairs and independently verify them")
+624 |     await harness.steps[0]?.listener({ messages: [claimed], turn: 1 }, { kind: "enter", messages: [claimed] })
+625 |     expect(harness.toolCalls).toHaveLength(1)
+                                    ^
+error: expect(received).toHaveLength(expected)
+
+Expected length: 1
+Received length: 0
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-roles-plugin/test/team-plane.test.ts:625:31)
+(fail) session-start gate: scope, one-shot settlement and the advisory injection > a blank top-level session uses the selected preset on the first real step [0.50ms]
+650 |     const local = userMessage("就修这个吧")
+651 |     const relay = { ...userMessage("一起解决掉吧"), source: { kind: "agent-message" } }
+652 |     expect(await resumed.steps[0].listener({ messages: [local, relay], turn: 2 }, { kind: "enter", messages: [local, relay] })).toBeUndefined()
+653 |     /** The direct human now authorizes the entire set. */
+654 |     const repair = { ...userMessage("一起解决掉吧"), id: "follow-up" }
+655 |     expect(await resumed.steps[0].listener({ messages: [repair], turn: 3 }, { kind: "enter", messages: [repair] })).toBeDefined()
+                                                                                                                          ^
+error: expect(received).toBeDefined()
+
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-roles-plugin/test/team-plane.test.ts:655:117)
+(fail) session-start gate: scope, one-shot settlement and the advisory injection > whole-scope repair confirmation after consults uses durable work evidence without matching a local fix [3.03ms]
+
+ 0 pass
+ 86 filtered out
+ 3 fail
+ 5 expect() calls
+Ran 3 tests across 2 files. [33.00ms]

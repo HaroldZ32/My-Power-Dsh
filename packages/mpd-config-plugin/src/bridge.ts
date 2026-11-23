@@ -13,7 +13,7 @@
 // REFUSE-FIRST (design §B): a target the editor cannot prove is left
 // BYTE-UNTOUCHED and reported with a named reason; the settings write is never
 // rolled back or blocked by a file problem.
-import { existsSync, mkdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs"
+import { existsSync, linkSync, mkdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { readJsonc, surgicalEdit, type JsoncEditFailure } from "./jsonc-edit"
 
@@ -92,6 +92,8 @@ export interface BridgeOptions {
   readonly writeBack: boolean
   /** Compare-and-swap retries before reporting `conflict` (design §B.2/E8). */
   readonly retries: number
+  /** When supplied, exact bytes the caller inspected to identify the paths, or null for no file. */
+  readonly expectedText?: string | null
   /**
    * Test-only observation hook, fired between the in-memory edit and the
    * compare-and-swap re-read — it exists so a unit test can prove the conflict path
@@ -280,6 +282,10 @@ export function writeBackLeaves(
         raw = createdFileHeader() + "{\n}\n"
       }
 
+      if (options.expectedText !== undefined && options.expectedText !== (existed ? raw : null)) {
+        results.push({ root: target.root, file: target.file, outcome: "conflict", reason: "conflict", detail: "the project file changed before the edit" })
+        break
+      }
       // Apply every leaf to the in-memory text; the FIRST refusal aborts this root.
       let text = raw
       // The first leaf the editor could not prove; undefined means every leaf applied in memory.
@@ -334,24 +340,27 @@ export function writeBackLeaves(
       const temp = `${target.file}.mpd-bridge-${process.pid}-${attempt}.tmp`
       try {
         writeFileSync(temp, text, "utf8")
-        renameSync(temp, target.file)
+        if (existed) renameSync(temp, target.file)
+        else linkSync(temp, target.file)
       } catch (error) {
-        try {
-          if (existsSync(temp)) unlinkSync(temp)
-        } catch {
-          // best effort
-        }
-        // The errno of the failed temp write or rename decides `denied` vs `refused` just below.
+        /** A file created by another writer is a conflict, never an overwrite. */
         const code = errnoOf(error)
+        if (!existed && code === "EEXIST" && attempt <= options.retries) continue
         results.push({
           root: target.root,
           file: target.file,
-          outcome: code === "EACCES" || code === "EPERM" ? "denied" : "refused",
-          reason: code ?? "unwritable",
+          outcome: code === "EEXIST" ? "conflict" : code === "EACCES" || code === "EPERM" ? "denied" : "refused",
+          reason: code === "EEXIST" ? "conflict" : code ?? "unwritable",
           detail: String((error as Error)?.message ?? error),
         })
         settled = true
         break
+      } finally {
+        try {
+          if (existsSync(temp)) unlinkSync(temp)
+        } catch {
+          // The publication outcome is independent of temporary-file cleanup.
+        }
       }
       results.push({ root: target.root, file: target.file, outcome: existed ? "written" : "created", ...(notes.length === 0 ? {} : { notes }) })
       writtenTo.push(target.file)

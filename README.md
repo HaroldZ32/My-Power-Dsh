@@ -109,8 +109,8 @@ capability.
 
 ## Install
 
-Requires **Node.js ≥ 22.18** and `pnpm` on `PATH`, and a **DSH** install with a `web` or `headless`
-profile. The bundle never configures model keys for you.
+Requires **Node.js ≥ 24.9.0**, `pnpm` on `PATH`, and a compatible **DSH** install. The TUI profile
+also requires the [DSH-TUI host](./docs/tui.md). Configure model credentials in DSH.
 
 ```bash
 # Web GUI profile
@@ -140,6 +140,11 @@ git clone https://github.com/HaroldZ32/My-Power-Dsh.git && cd My-Power-Dsh
 bun install                                       # materialize the declared runtime dependencies
 dsh plugin --profile web add .
 ```
+
+The one-command install includes a prebuilt AST engine on glibc Linux and macOS (x64 and arm64)
+and Windows (x64, arm64 and ia32) when optional dependencies are enabled. If the engine was omitted,
+install a compatible `ast-grep` executable and set `MPD_AST_GREP_SG_PATH` to its absolute path before
+starting DSH.
 
 The [user guide](./docs/user-guide.md#1-install) covers the packed artifact, the `dsh-tui` launcher,
 the dependency closure and what the install mounts.

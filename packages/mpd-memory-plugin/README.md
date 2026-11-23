@@ -40,6 +40,10 @@ writes leave the private reflection counter unchanged. All VCS-backed collection
   across projects. `memory.globalDir` overrides the root. Reads and status work before the store
   exists.
 
+`committedTo` lists the backends that saved an entry in version history. `errors` and the text
+receipt show backend failures. The Markdown stays readable at the reported working-copy path when a
+backend fails. Global reads and status leave an absent store untouched.
+
 `mpd_memory_save` and `mpd_memory_recall` use the same member identity for private key/value notes.
 Use `mpd_memory_recall` with `scope: "legacy"` to read a key from the old workspace map explicitly.
 
@@ -128,7 +132,11 @@ counter `steps` alone.
   page's offset, or `null` at the end. Entries come back in **ascending entry-file-name order**, a stable
   order that never depends on directory enumeration, so walking `next_offset` reaches every match
   exactly once; a `scope` filter paginates over that store's filtered set.
-- `mpd_memory_reflect` / `mpd_memory_reflect_complete` — the reflection state machine (workspace only).
+- `mpd_memory_reflect` / `mpd_memory_reflect_complete` — inspect and settle the workspace reflection
+  claim. Completion settles the claim after every configured backend succeeds. If a backend fails,
+  resolve the reported error and submit the same title and content. The retry uses the original
+  file and resumes the unfinished backends. Replaying a settled submission while no reflection is
+  due returns its existing receipt.
 - `mpd_memory_status({scope?})` — vcs mode, store root, entry counts, reflection counters.
 
 ## Build / test

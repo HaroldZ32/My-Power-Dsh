@@ -620,17 +620,22 @@ fallback），宿主把这次注册绑定到它自己的 `/settings` 界面，�
 
 ### Re-team
 
-一个团队只有在**结束**之前才算 LIVE：显式 `agent_teams_control end`，或者复杂度 gate 自行结束的
-clean-terminal 板（≥ 1 个任务、全部 completed/cancelled、没有 failed）。`failed` 任务会同时阻止
-自动结束与任何 re-team，并要求一条 `kind=repair` 任务。当没有 live 团队、且本会话已完成
-`team.reteam.afterConsults`（默认 4）次单次 spawn 时，gate 会在 `[AgentTeams] Re-team rule` 标记下
-stage 一个空 plan shell；`team.reteam.enabled`（默认 true）只控制这一 volume 触发器。三个平面都计入：
-autoproject 与 cellwork 都以同一 session 执行 spawn。
+运行中的团队持续可用，直到通过 `agent_teams_control end` 结束，或闸门尝试自动结束已全部结案的任务板
+（至少一个任务，且所有任务均已完成或取消）。`failed` 任务会阻止自动结束，需要新增一条 `kind=repair`
+任务。在机械模式下，如果没有运行中的团队，完成 `team.reteam.afterConsults`（默认 4）次公开 consult
+工具调用后，闸门可以在 `[AgentTeams] Re-team rule` 标记下暂存一个空计划。异步启动工具返回时，子 agent
+可能仍在运行。这里的调用完成计数与并发 consult 的准入检查分别统计。
 
 ### 异步 consult 与 deadman
 
-`mpd_role_spawn_async` 立即返回 `consultId`，`mpd_role_consult` 提供 list/wait/collect/cancel；
-并发由 `MPD_DSH_CONSULT_MAX`（默认 8，超限排队）限制。每个 consult（阻塞或异步）的 deadman 在每次武装时
+`mpd_role_spawn_async` 立即返回 `consultId`，`mpd_role_consult` 可以列出、等待、收取或取消调用。
+已准入的 consult 达到监督器上限 `MPD_DSH_CONSULT_MAX`（默认 8）后会排队。对于具备资格、可以使用团队
+工具且没有运行中团队的顶层 MPD 会话，机械模式下的公开角色与 workmate 调用共用一层更早的准入检查。
+默认已有三个未结束的 consult 时，第四个重叠调用会在启动新子 agent 前被引导到团队流程。该检查在子 agent
+的整个生命周期内保留名额，也计入排队等待启动的调用。`team.reteam.enabled: false` 同时关闭这层检查和
+按已完成调用数暂存计划的机制。团队内工作、子会话以及 cellwork 或 autoproject 的内部启动沿用各自的执行路径。
+
+每个 consult（阻塞或异步）的 deadman 在每次武装时
 读取上限：`consult.forceAfterMs` → `watchdog.forceAfterMs` → 900 000 ms（显式声明 `0` 即关闭）。到期时，
 正在执行的 `bash` 无论多久都豁免；其他任何在飞工具只要年轻于 `toolInFlightMaxMs` 就算活动；否则监督器
 写入 handoff（任务、实测空闲时长、观测到的最后一条 assistant 消息、带参数摘录的最后几次工具调用）并中断

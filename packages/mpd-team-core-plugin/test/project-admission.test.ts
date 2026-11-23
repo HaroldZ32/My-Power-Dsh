@@ -7,7 +7,7 @@ import { openCell } from "../../mpd-cellwork-plugin/src/open"
 import { readCell, recordTransition } from "../../mpd-cellwork-plugin/src/state"
 import { createWake, readWakeHistory, readWakeMatch, rememberWakeMatch } from "../src/captain-wake-store"
 import { placeHold } from "../src/plan-store"
-import { projectIdentity, projectStateWorkspace } from "../src/project-admission"
+import { fixedProjectRoster, projectIdentity, projectStateWorkspace } from "../src/project-admission"
 import { addTeamTask, createTeam, endTeamRecord, listTeams, readTeam, updateTeamTask, writeTeam, type TaskStatus, type TeamRecord } from "../src/team-store"
 
 /** Every operation in these arms is confined to a synthetic Git project. */
@@ -48,6 +48,8 @@ const [cwd, id, action, readyA, readyB] = process.argv.slice(1);
 const services = new Map();
 const tools = new Map();
 let raises = 0;
+let spawnedRoute;
+let refusedPlanningSeat = false;
 const adapter = new Proxy({}, { get: (_, key) => ({
   registerTool: (tool) => (tools.set(tool.name, tool), () => {}),
   workspaceRoot: (exec) => exec?.agent?.session?.header?.cwd ?? cwd,
@@ -59,17 +61,22 @@ const adapter = new Proxy({}, { get: (_, key) => ({
     try { return {ok:true, isError:false, value:await tools.get(name).execute(input,{agent})}; }
     catch (error) { return {ok:false,isError:true,error:error.message}; }
   },
-  teamExecutor: () => ({ kind: "native", spawn: async () => {
+  teamExecutor: () => ({ kind: "native", spawn: async (_agent, input) => {
+    spawnedRoute = input.agentOptions;
     if (action === "team-crash") process.exit(75);
+    if (action === "planning-retry" && input.name === "cell-splitter" && !refusedPlanningSeat) {
+      refusedPlanningSeat = true;
+      throw new Error("fixture child quota");
+    }
     return { handle: id + "-worker-" + ++raises };
   }, members: () => [] }),
   llmCatalog: async () => ({ providers: [], degraded: false }),
 })[key] ?? (() => () => {}) });
-services.set("mpdConfig", { agentRouteResolutionOf: (name) => ({ ok: true, agent: name, route: { provider: "test-provider", model: id } }) });
+services.set("mpdConfig", { agentRouteResolutionOf: (name, root) => ({ ok: true, agent: name, route: { provider: "test-provider", model: action === "team-scoped" || action === "roster-scoped" ? root === cwd ? "route-a" : "route-b" : id } }) });
 const ctx = { get: (key) => key === "mpdDsh" ? adapter : services.get(key), provide: (key, value) => services.set(key, value) };
 team(ctx); cell(ctx);
 const call = (name, args) => tools.get(name).execute(args, { agent: { session: { id, header: { cwd } } } });
-if (action === "team" || action === "team-crash") {
+if (action === "team" || action === "team-crash" || action === "team-scoped") {
   await call("agent_teams_plan", { action: "create", name: id });
   await call("agent_teams_plan", { action: "add_member", member: { name: "Worker", role: "Senior Engineer", prompt: "fixture" } });
   await call("agent_teams_plan", { action: "create_task", task: { subject: "work", description: "fixture", blocked_by: [], owner: "Worker" } });
@@ -86,7 +93,7 @@ try {
     const original = await call("cellwork_open", { objective: id });
     if (!original.ok) throw new Error(original.error);
     let previous;
-    if (action !== "planning-none") {
+    if (action !== "planning-none" && action !== "planning-retry") {
       const automatic = action !== "planning-manual";
       previous = (await call("agent_teams_plan", { action: "create", name: "original draft", description: automatic ? "Staged mechanically by the mpd session-start complexity gate on B." : "the user's empty draft" })).plan;
       if (automatic) {
@@ -97,12 +104,15 @@ try {
       if (action === "planning-edited") await call("agent_teams_plan", { action: "edit", description: "user edited the shell" });
     }
     const first = await call("cellwork_start", {});
-    const second = first.ok ? await call("cellwork_start", {}) : undefined;
+    const second = first.ok || action === "planning-retry" ? await call("cellwork_start", {}) : undefined;
     const status = await call("agent_teams_plan", { action: "status" });
     console.log(JSON.stringify({ ...first, second, status, previous, raises }));
+  } else if (action === "roster-scoped") {
+    const result = await call("agent_teams_plan", { action: "roster", member: { name: "Additional reviewer", role: "Reviewer" } });
+    console.log(JSON.stringify({ ...result, raises }));
   } else {
     const result = action.startsWith("cell") ? await call("cellwork_open", { objective: id }) : await call("agent_teams_plan", { action: "approve" });
-    console.log(JSON.stringify({ ...result, raises }));
+    console.log(JSON.stringify({ ...result, raises, spawnedRoute }));
   }
 } catch (error) {
   console.log(JSON.stringify({ ok: false, error: error.message, raises }));
@@ -129,6 +139,8 @@ interface Outcome {
   status?: { plan?: { planId: string; name: string } }
   /** Number of calls into this process's synthetic executor. */
   raises: number
+  /** Route options actually passed to the native executor. */
+  spawnedRoute?: { provider: string; model: string }
 }
 
 /** Run one independent local process with its actual checkout provided by the host session seam. */
@@ -170,13 +182,14 @@ test("processes racing Team approvals converge on one board and an attributable 
   expect(replay.raises).toBe(0)
 })
 
-test("a terminated approval process leaves its original unpublished handles and board IDs on replay", async () => {
+test("a terminated approval process leaves its original board and unconfirmed seat on replay", async () => {
   /** Use a different process for replay, since the previous executor exited during spawn. */
   const f = fixture()
   await run(f.left, "captain", "team-crash")
   /** Read the write that happened before the first call to the executor. */
   const [interrupted] = listTeams(f.top)
-  expect(interrupted?.tasks[0]?.id).toBe("T1")
+  expect(interrupted?.tasks).toEqual([])
+  expect(interrupted?.members[0]?.id).toBe("M1")
   expect(interrupted?.members[0]?.executorRef).toBeUndefined()
   /** A retry retains the stage and does not confidently spawn an unconfirmed activation again. */
   const replay = await run(f.right, "captain", "replay")
@@ -250,6 +263,33 @@ test("successive waves keep member IDs, role and effective route across distinct
   expect(projectIdentity.resolveSeat({ checkoutRoot: f.right, sessionId: "first-captain" })).toEqual({ kind: "denied" })
   if (captain.kind !== "member") throw new Error("first captain was not authorized")
   expect(projectIdentity.resolveSeat({ checkoutRoot: f.right, sessionId: "second-captain" })).toMatchObject({ memberId: captain.memberId, projectId: captain.projectId })
+})
+
+test("new durable routes use the staging session checkout for approval and explicit roster declarations", async () => {
+  /** Canonical state and the session's configuration are deliberately in distinct checkouts. */
+  const f = fixture()
+  /** Approval binds the project at its main path and must still use the staging session's route. */
+  const opened = await run(f.left, "captain", "team-scoped")
+  expect(opened.team?.members[0]?.route).toBe("test-provider/route-a")
+  expect(opened.spawnedRoute).toMatchObject({ provider: "test-provider", model: "route-a" })
+  await run(f.right, "captain", "roster-scoped")
+  expect(fixedProjectRoster({ checkoutRoot: f.top, sessionId: "captain" }).members).toEqual(expect.arrayContaining([
+    expect.objectContaining({ name: "Additional reviewer", route: expect.objectContaining({ provider: "test-provider", model: "route-a" }) }),
+  ]))
+})
+
+test("Cellwork start resumes a paused planning approval without restaging either board or seats", async () => {
+  /** Both attempts run the mounted tools against the same durable Team and Cellwork records. */
+  const f = fixture()
+  /** The synthetic host rejects the splitter once, after the planner has started. */
+  const result = await run(f.left, "captain", "planning-retry")
+  expect(result).toMatchObject({ ok: false, error: expect.stringContaining("fixture child quota"), second: { ok: true }, raises: 4 })
+  /** The retry's board is the one left by the first attempt and all planning tasks are published once. */
+  const boards = listTeams(f.top)
+  expect(boards).toHaveLength(1)
+  expect(boards[0]).toMatchObject({ teamId: result.second?.teamId })
+  expect(boards[0]?.members.map((seat) => seat.id)).toEqual(["M1", "M2", "M3", "M4"])
+  expect(boards[0]?.approvalTaskIds).toEqual(["T1", "T2", "T3", "T4"])
 })
 
 /** Archive one fixture cell through its genuine persisted stop/state format. */

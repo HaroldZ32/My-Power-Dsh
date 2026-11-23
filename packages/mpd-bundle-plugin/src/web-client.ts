@@ -38,6 +38,8 @@
     useState: <S>(initial: S) => [S, (next: S | ((prev: S) => S)) => void]
     /** Run an effect after render; a returned function becomes its cleanup. */
     useEffect: (effect: () => unknown, deps: unknown[]) => unknown
+    /** Retains a reference to the active workbench effect across renders. */
+    useRef: <T>(initial: T) => { current: T }
     /** A memoized callback, stable while its dependencies do not change. */
     useCallback: <F extends (...args: never[]) => unknown>(callback: F, deps: unknown[]) => F
   }
@@ -240,7 +242,7 @@
      * reader the card's effective-value block reads the live `/plugins/mpd/model-config` route
      * through (the card itself does no I/O; this module is the one allowed to reach the network).
      */
-    mountSettingsCard: (ctx: ClientContext, options?: { fetchJson?: (url: string) => Promise<unknown> }) => unknown
+    mountSettingsCard: (ctx: ClientContext, options?: { fetchJson?: (url: string) => Promise<unknown>; postJson?: (url: string, body: unknown) => Promise<unknown> }) => unknown
   }
 
   /** One teammate row of the shared board. */
@@ -2028,7 +2030,7 @@
   }
 
   /** The snapshot before the first read answers: nothing known, and nothing claimed. */
-  const EMPTY_WORKBENCH: WorkbenchData = { team: null, tasks: [], workspace: [], staged: false, hold: null, holdKnown: false, loaded: false }
+  const EMPTY_WORKBENCH: WorkbenchData = { team: null, tasks: [], workspace: [], staged: null, hold: null, holdKnown: false, loaded: false }
 
   /** One task row as `/plugins/mpd-team/state` serves it (only the three cells this page renders). */
   interface WorkbenchTaskPayload {
@@ -2130,8 +2132,8 @@
     tasks: WorkbenchTask[]
     /** The workspace's OTHER teams, named by the empty state instead of a blank page. */
     workspace: WorkbenchTeam[]
-    /** Whether a plan is staged for this session (the empty state names the next step after it). */
-    staged: boolean
+    /** Whether a plan is staged, or null when the plan route could not answer. */
+    staged: boolean | null
     /** The live hold on {@link WorkbenchData.team}, or null when the team is not held. */
     hold: WorkbenchHold | null
     /**
@@ -2269,11 +2271,12 @@
    * @returns the hold, or null when this team is not held (or the payload names no hold for it).
    */
   function workbenchHoldOf(payload: WorkbenchWatchdogPayload | null, teamId: string): WorkbenchHold | null {
-    for (const sidecar of payload?.held ?? []) {
-      if (workbenchText(sidecar?.teamId) !== teamId) continue
-      return { cause: workbenchText(sidecar?.cause), since: workbenchCount(sidecar?.since) }
+    if (Array.isArray(payload?.held)) {
+      /** The current hold for this team, separate from unread escalation records. */
+      const sidecar = payload.held.find((entry) => workbenchText(entry?.teamId) === teamId)
+      return sidecar === undefined ? null : { cause: workbenchText(sidecar.cause), since: workbenchCount(sidecar.since) }
     }
-    /** The panel banner, which a host that serves no `held` list still answers for the held team. */
+    /** Older routes can identify the team's hold only through their banner. */
     const banner = payload?.banner ?? null
     if (banner !== null && workbenchText(banner.kind) === "held" && workbenchText(banner.teamId) === teamId) {
       return { cause: workbenchText(banner.cause), since: workbenchCount(banner.since) }
@@ -2342,7 +2345,7 @@
         team,
         tasks,
         workspace,
-        staged: (plan.value?.plan ?? null) !== null,
+        staged: plan.value === null ? null : (plan.value.plan ?? null) !== null,
         hold: team === null ? null : workbenchHoldOf(watchdog.value, team.id),
         // THE WATCHDOG READ'S OWN ANSWER, not a reading of `hold`: the reader above returns a value
         // ONLY for an `ok: true` payload, so null here means the route failed and the page knows
@@ -2404,32 +2407,43 @@
     const say = workbenchSay(props)
     /** The session addressed by every read; "" reads the workspace principal (the query is omitted). */
     const sessionId = sessionIdOfSeat(props)
-    /** The last snapshot; the empty value until the first read answers. */
-    const [data, setData] = react.useState<WorkbenchData>(EMPTY_WORKBENCH)
-    /** Which write is in flight, or "" when none is: BOTH buttons are disabled while it is set. */
+    /** Published reads carry the session they belong to during a conversation switch. */
+    const [reading, setReading] = react.useState<{ sessionId: string; data: WorkbenchData; error: string } | null>(null)
+    /** The latest snapshot for this conversation, or the initial loading state. */
+    const data = reading?.sessionId === sessionId ? reading.data : EMPTY_WORKBENCH
+    /** The failure for this conversation's latest read. */
+    const readError = reading?.sessionId === sessionId ? reading.error : ""
+    /** Which write is in flight, so both buttons can be disabled together. */
     const [busy, setBusy] = react.useState<"" | "hold" | "resume">("")
-    /** The last READ failure, cleared by the next successful read. */
-    const [readError, setReadError] = react.useState<string>("")
-    /** The last WRITE failure, cleared when the next write starts — a poll must never erase it. */
-    const [writeError, setWriteError] = react.useState<string>("")
-    // ONE READ PATH AND ONE CLOCK. The effect owns the first read and the interval, and its disposer
-    // stops both, so an unmounted page leaves no timer and no reader behind.
+    /** The last write failure remains visible through subsequent polls. */
+    const [writeError, setWriteError] = react.useState("")
+    /** The active read effect, shared with a write's post-action refresh. */
+    const refresh = react.useRef<{ sessionId: string; tick: () => Promise<void> } | null>(null)
     react.useEffect(() => {
-      /** Set once the effect is disposed, so a late answer never writes state into a dead component. */
-      let stopped = false
-      /** One poll pass: read every route, then publish the whole snapshot at once. */
+      /** Request sequence and most recently published sequence within this conversation. */
+      let issued = 0
+      /** Older responses cannot replace a newer completed read. */
+      let applied = 0
+      /** Polls and post-action refreshes publish through the same ordering guard. */
       const tick = async (): Promise<void> => {
+        /** This request's order is fixed before waiting on the routes. */
+        const sequence = ++issued
         /** This pass's answer, failures included. */
         const read = await readWorkbench(sessionId)
-        if (stopped) return
-        setData(read.data)
-        setReadError(read.failure === null ? "" : interpolate(say("error.read"), { path: read.failure.path, message: workbenchFailureText(read.failure.cause) }))
+        if (refresh.current !== current || sequence < applied) return
+        applied = sequence
+        setReading({ sessionId, data: read.data, error: read.failure === null ? "" : interpolate(say("error.read"), { path: read.failure.path, message: workbenchFailureText(read.failure.cause) }) })
       }
+      /** This effect's identity also guards a pending write when the conversation changes. */
+      const current = { sessionId, tick }
+      refresh.current = current
+      setBusy("")
+      setWriteError("")
       void tick()
-      /** The interval, cleared by the disposer below. */
+      /** The effect owns this timer and releases it on session change or unmount. */
       const timer = setInterval(() => { void tick() }, WORKBENCH_POLL_MS)
       return () => {
-        stopped = true
+        refresh.current = null
         clearInterval(timer)
       }
     }, [sessionId])
@@ -2451,7 +2465,9 @@
     const act = (kind: "hold" | "resume"): void => {
       /** The team the write addresses; a page with no team has nothing to hold. */
       const team = data.team
-      if (team === null || busy !== "") return
+      /** The effect that owns this write's refresh and errors. */
+      const current = refresh.current
+      if (team === null || busy !== "" || current?.sessionId !== sessionId) return
       // THE GUARD THE BUTTON ALSO CARRIES, repeated HERE so a programmatic call cannot slip past it:
       // with the watchdog route unread, an absent hold may be a hold this page simply cannot see, so
       // Pause is refused.
@@ -2472,13 +2488,11 @@
             kind === "hold" ? WORKBENCH_HOLD_PATH : WORKBENCH_RESUME_PATH,
             kind === "hold" ? { teamId: team.id, reason: WORKBENCH_HOLD_CAUSE } : { teamId: team.id },
           )
-          /** The answer the page re-renders with: the read is the truth, not the POST's echo. */
-          const read = await readWorkbench(sessionId)
-          setData(read.data)
+          if (refresh.current === current) await current.tick()
         } catch (error) {
-          setWriteError(workbenchWriteFailure(error, kind, say))
+          if (refresh.current === current) setWriteError(workbenchWriteFailure(error, kind, say))
         } finally {
-          setBusy("")
+          if (refresh.current === current) setBusy("")
         }
       })()
     }
@@ -2527,7 +2541,7 @@
       team === null
         ? h("div", { style: { ...dim, padding: "10px 0", fontSize: "12px", lineHeight: "18px", display: "flex", flexDirection: "column", gap: "4px" } },
             h("div", { style: { fontWeight: 600, color: "inherit" } }, emptyTitle),
-            data.loaded ? h("div", null, data.staged ? say("empty.staged") : say("empty.nothing")) : null,
+            data.loaded && data.staged !== null ? h("div", null, data.staged ? say("empty.staged") : say("empty.nothing")) : null,
             data.workspace.length === 0 ? null : h("div", null, interpolate(say("empty.workspace"), {
               count: String(data.workspace.length),
               // The phase is omitted rather than invented when the record carried none: `x (…)` with
@@ -2673,6 +2687,7 @@
     try {
       loadSettingsCard().mountSettingsCard(ctx, {
         fetchJson: (url: string): Promise<unknown> => request(url, { headers: { accept: "application/json" } }),
+        postJson: (url: string, body: unknown): Promise<unknown> => request(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }),
       });
     } catch (error) {
       console.warn("[mpd] settings card mount failed: " + String(error));

@@ -7,7 +7,7 @@ You are an elite frontend design engineer. Your only job in this skill is to **r
 
 You are not done when it is clean and correct. You are done when a senior product designer at Linear, Stripe, or Supabase would ship it: surfaces read as real materials (depth, light, layering), color carries a story and a ramp, type has personality, and motion has intent. **Correct-but-flat is a failure, not a finish.** The most common way this skill fails is effort drain: the build, lint, file-size, and test gates eat all the attention and the surface ships at the floor. Spend on the surface like it is the deliverable, because for an expressive brief it is. When you render and find only bug-level issues, you are not done — you are at the start of the part that separates good from generic.
 
-Two things ship flat most often, and both read as "clean but generic": the **hero's focal object** and the **atmosphere**. Render the focal object as a real, lit, dimensional thing — a generated bitmap (imagegen) for a product/brand/object hero, or CSS/SVG art that carries light, shadow, gradient, and depth. Flat geometric primitives (plain circles and rounded rects) for a brand hero are the flat trap. Give the background depth too — gradient, glow, layered light, an atmospheric band, or a real image — not one flat fill. Glass is only one material: a dark glossy brand wants tint+blur+rim+sheen+glow, a bright playful brand wants gradient fills+soft depth shadows+a lit focal object. Pick what the brand calls for, but it must have dimension. The mechanisms for that atmosphere and for how the headline arrives come from `ambience-skill.md` (Step 10), not from memory.
+Two things ship flat most often, and both read as "clean but generic": the **hero's focal object** and the **atmosphere**. Render the focal object as a real, lit, dimensional thing — a generated bitmap (imagegen) for a product/brand/object hero, or CSS/SVG art that carries light, shadow, gradient, and depth. Flat geometric primitives (plain circles and rounded rects) for a brand hero are the flat trap. Give the background depth too — gradient, glow, layered light, an atmospheric band, or a real image — not one flat fill. Glass is only one material: a dark glossy brand wants tint+blur+rim+sheen+glow, a bright playful brand wants gradient fills+soft depth shadows+a lit focal object. Pick what the brand calls for, but it must have dimension. Use Step 10 to find reference mechanisms for the atmosphere and headline reveal.
 
 ## Why route at all
 
@@ -120,7 +120,7 @@ Do NOT let an expressive brief fall through to `taste-skill`. Then map the phras
 | "minimal", "clean", "Notion-like", "Linear-like", "editorial", "boring is good" | `minimalist-skill.md` |
 | "brutalist", "raw", "Swiss", "experimental", "industrial", "anti-design", "unstyled" | `brutalist-skill.md` |
 | "premium", "luxury", "calm", "expensive", "elegant", "spa", "boutique", "glossy", "glassy", "liquid glass", "startup-grade", "make it beautiful/pretty" | `soft-skill.md`, plus a high-craft Layer B (`supabase` / `linear.app` / `vercel` / `stripe`) ONLY when the user named NO brand (greenfield). A brand the user NAMED that this catalogue lacks keeps `soft-skill.md` as a Layer A mood match ALONE — never another brand's tokens. |
-| "Awwwards-level", "wow factor", "magnetic", "scroll-triggered", "high-variance", "cinematic", "make it crazy" | `gpt-tasteskill.md` + `ambience-skill.md` for the backgrounds and scroll scenes its sections 5 and 7 demand |
+| "Awwwards-level", "wow factor", "magnetic", "scroll-triggered", "high-variance", "cinematic", "make it crazy" | `gpt-tasteskill.md` + Step 10 for the backgrounds and scroll scenes its sections 5 and 7 demand |
 | Neutral or operational — internal tool, dashboard, admin, "just make it usable" with no surface ambition | `taste-skill.md` as Layer A, plus the greenfield `_INDEX.md` shortlist → exactly one Layer B reference |
 
 You may also load a brand DESIGN.md from Layer B as a *concrete reference* — source material whose tokens you extract — only when the user named NO brand and the mood maps cleanly (see the "Mood-based shortcuts" section in `_INDEX.md`). That latitude never covers a brand the user NAMED: a named brand's OWN catalogue file is the only Layer B token source, and when the catalogue lacks it the output is a Layer A mood match alone, never another brand's tokens.
@@ -185,7 +185,7 @@ Triggers: micro-interactions, animated components, transitions, gestures, hover/
 
 Triggers: an animated, shader, particle, or grid background; a hero that must feel atmospheric or dimensional; text that splits, blurs, shimmers, types, counts, scrambles, or loops; scroll-triggered chapters; spotlight / tilt / glare / glowing-border cards — or "make the hero stunning", "add a living background", "animate the headline".
 
-**Action:** Add `ambience-skill.md` on top of whatever style skill you selected. It anchors ambience to the react-bits catalog: find the nearest pattern in its intent map, read its real source through the file's curl recipe, extract the mechanism (render loop and its driver, shader uniforms or split strategy, sizing, dependencies), then run its retrofit checklist — reduced-motion static state, off-screen pause, no scroll listeners, compositor-only properties, `DESIGN.md` tokens, lazy-loaded budget. One atmosphere per hero; cursor effects stay quarantined to `gpt-tasteskill.md` briefs. It owns ambience mechanics only — no visual direction — and never vendors react-bits code.
+**Action:** If the local `ambience-skill.md` is available, use its react-bits intent map and curl recipe alongside your style skill. Otherwise use `interaction-skill.md` sections 2–4 for the nearest beui.dev pattern, such as shader backgrounds, tilt cards, or scroll animation, and read its source. Extract the mechanism (render loop and its driver, shader uniforms or split strategy, sizing, dependencies). Apply the same retrofit checklist in either case: reduced-motion static state, off-screen pause, no scroll listeners, compositor-only properties, `DESIGN.md` tokens, and a lazy-loaded budget. One atmosphere per hero. Cursor effects stay quarantined to `gpt-tasteskill.md` briefs. Keep the selected style skill for visual direction and do not vendor react-bits code.
 
 ## Stacking rules (read this once, internalize it)
 
@@ -197,7 +197,7 @@ Triggers: an animated, shader, particle, or grid background; a hero that must fe
 6. **Layer B (brand DESIGN.md) is orthogonal to Layer A.** You can pair any Layer A skill with any Layer B brand. Use Layer B as the source of color/type/component tokens; let Layer A drive the execution discipline.
 7. **`layout-skill.md` stacks on top of any style skill** for app-shell / dashboard / split-pane work. It owns spatial structure and scroll ownership only — no visual direction — so it never conflicts with the style skill you picked.
 8. **`interaction-skill.md` stacks on top of any style skill** for interaction/motion work. It owns interaction mechanics — springs, layout morphs, enter/exit orchestration, reduced motion — and no visual direction, so it never conflicts with the style skill either.
-9. **`ambience-skill.md` stacks on top of any style skill** for hero atmosphere, backgrounds, typographic reveals, scroll chapters, and card surface effects. It owns ambience mechanics and their retrofit contract — no visual direction — so it stacks with the style skill and with `interaction-skill.md` at the same time.
+9. **Step 10 stacks on top of any style skill** for hero atmosphere, backgrounds, typographic reveals, scroll chapters, and card surface effects. It covers ambience mechanics and their retrofit checklist.
 
 ## Anti-patterns — do not do these
 
@@ -242,7 +242,7 @@ Once references are loaded, before writing any UI code:
 | "Build a dashboard / settings / inbox / app shell" | one style skill (usually `taste-skill.md`) + `layout-skill.md` |
 | "Panel won't scroll / footer pushed off-screen / mobile overflow" | Add `layout-skill.md` to current stack |
 | "Add micro-interactions / animate this / make it feel alive" | Add `interaction-skill.md` to current stack |
-| "Make the hero stunning / add an animated background / animate the headline / spotlight cards" | Add `ambience-skill.md` to current stack |
+| "Make the hero stunning / add an animated background / animate the headline / spotlight cards" | Add Step 10 to the current stack |
 
 ## Phase Final — Design QA (MANDATORY, runs after implementation)
 

@@ -1,0 +1,9 @@
+v24.21.0
+11.19.0
+1.4.0
+0.2.2-rc.5
+31021c6161806c880f5d39421c215950f9ff173837121c73e1534f6b8f2ebc16  package.json
+ac8e225b55ea0af01839dcad5017ff3d4336b5ea8c563fab799e03775675c086  scripts/pack-mpd.ts
+7c99afa55195907439225456d3ce10ddf9c63c44cfff9a4095985e8e8de4558c  scripts/verify-plugin-manifest.ts
+05d75f2126c2474ab0eb99a20dec1e78d8e6e28dba974d5f8e36d6036ca919df  scripts/verify-pack-closure.ts
+cf7e0234d363ddb422f1e9a42f56baad802a6fe3d9dab6c9346f14bc07371565  scripts/lib/pack-private-state.ts

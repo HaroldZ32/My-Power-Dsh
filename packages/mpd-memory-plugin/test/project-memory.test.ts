@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
-import { basename, join } from "node:path"
+import { basename, join, resolve } from "node:path"
 import { expect, test } from "bun:test"
 import { enterSandboxHome, mount, sandbox, toolOf, type MountedPlugin } from "./support.ts"
 
@@ -94,6 +94,8 @@ interface WriteResult {
   readonly file: string
   /** Backend errors, empty on successful commitment. */
   readonly errors: readonly string[]
+  /** Only backends that wrote the entry to history. */
+  readonly committedTo: readonly string[]
   /** Current shared fact revision, only present for shared writes. */
   readonly revision?: number
 }
@@ -125,6 +127,25 @@ test("separates member and captain canaries and reopens a durable member across 
     expect((await reflect.execute({}, caller("original-B", root))).due).toBe(false)
     expect((await reflect.execute({}, caller("captain", root))).due).toBe(false)
     await expect(reflect.execute({}, caller("helper", root))).rejects.toThrow("no authorized project memory seat")
+  })
+})
+
+test("shared facts stay readable and report only successful VCS backends", async () => {
+  await fixture(async ({ root, plugin }) => {
+    /** The registered tool owns shared publication and authenticated receipts. */
+    const write = toolOf<WriteResult>(plugin, "mpd_memory_write")
+    /** An initial revision creates the shared store and the Git metadata. */
+    const fact = { scope: "shared", key: "receipt", source: "src/rpc.ts@base", appliesTo: "api-v1", title: "Receipt", content: "first" }
+    /** The first commit identifies the exact shared Git working copy. */
+    const first = await write.execute(fact, caller("original-A", root))
+    expect(first.committedTo).toEqual(["git"])
+    /** Refuse the next commit through Git while leaving its working-copy bytes available. */
+    const repoPath = resolve(first.file, "../../..")
+    writeFileSync(join(repoPath, ".git", "hooks", "pre-commit"), "#!/bin/sh\necho 'shared fixture rejected commit' >&2\nexit 1\n", { mode: 0o755 })
+    /** Another authorized member can publish and read the new local revision. */
+    const next = await write.execute({ ...fact, supersedes: 1, content: "second" }, caller("original-B", root))
+    expect(next).toMatchObject({ revision: 2, committedTo: [], errors: [expect.stringContaining("shared fixture rejected commit")] })
+    expect(readFileSync(next.file, "utf8")).toContain("second")
   })
 })
 

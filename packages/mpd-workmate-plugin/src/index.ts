@@ -16,7 +16,7 @@ import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync
 import { homedir } from "node:os"
 import { join } from "node:path"
 import { createHash } from "node:crypto"
-import { DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, HomeGuardRefusal, assertHomeMutationSandboxed, dshSeamInject, installChildPersonaSeam, restrictToolsTolerant, rowLogLine, resolveRunRoute, workspaceRootOf, agentUnconfiguredRefusal, type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, HomeGuardRefusal, assertHomeMutationSandboxed, dshSeamInject, installChildPersonaSeam, restrictToolsTolerant, rowLogLine, resolveRunRoute, workspaceRootOf, agentUnconfiguredRefusal, type DshAdapter, type DshToolExec, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 import { WORKMATE_LIST_CARD, WORKMATE_MATCH_CARD } from "./dshgo-cards.ts"
 
 /** The cordis plugin name, matched against this row's id in the bundle patch. */
@@ -1080,6 +1080,11 @@ function memoryBlocksOf(text: string): string[] {
   return String(text ?? "").split(/\n## /).map((block, index) => (index === 0 ? block : "## " + block)).map((block) => block.trim()).filter((block) => block !== "")
 }
 
+/** Read the ISO heading written by reflect. Untimed legacy blocks keep their order before dated entries. */
+function memoryTimestampOf(block: string): string {
+  return /^## (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z) — /.exec(block)?.[1] ?? ""
+}
+
 /**
  * The tag set a note card contributes to the Jaccard test.
  *
@@ -1258,9 +1263,9 @@ function mergeOneWorkmate(fromKey: string, intoKey: string): string {
   const longerPersona = sourcePersona.length > targetPersona.length ? sourcePersona : targetPersona
   /** The merged persona: the longer body plus ONE provenance line, capped. */
   const persona = capText(longerPersona === "" ? "" : longerPersona + "\n\nmerged-from: " + fromKey, PERSONA_CAP)
-  /** The merged memory blocks, deduplicated by sha256, target blocks first. */
+  /** Memory identities shared across the target and source. */
   const seen = new Set<string>()
-  /** The blocks that survive the dedup, oldest first. */
+  /** The deduplicated blocks, in source order until sorted by their recorded dates. */
   const blocks: string[] = []
   for (const block of [...memoryBlocksOf(readMemory(intoKey, Number.MAX_SAFE_INTEGER)), ...memoryBlocksOf(readMemory(fromKey, Number.MAX_SAFE_INTEGER))]) {
     /** This block's content identity. */
@@ -1269,6 +1274,7 @@ function mergeOneWorkmate(fromKey: string, intoKey: string): string {
     seen.add(sha)
     blocks.push(block)
   }
+  blocks.sort((left, right) => memoryTimestampOf(left).localeCompare(memoryTimestampOf(right)))
   /** The memory kept under the cap, newest last: the OLDEST entries are evicted first. */
   let memory = ""
   for (let index = blocks.length - 1; index >= 0; index--) {
@@ -1462,9 +1468,9 @@ export function apply(ctx: Ctx): void {
    *
    * @returns the service double, or undefined when it is absent or refuses the lookup.
    */
-  function configService(): { agentRouteResolutionOf?: (m: string) => unknown } | undefined {
+  function configService(): { agentRouteResolutionOf?: (member: string, workspace?: string) => unknown } | undefined {
     try {
-      return ctx.get ? (ctx.get("mpdConfig") as { agentRouteResolutionOf?: (m: string) => unknown } | undefined) : undefined
+      return ctx.get ? (ctx.get("mpdConfig") as { agentRouteResolutionOf?: (member: string, workspace?: string) => unknown } | undefined) : undefined
     } catch {
       // An agent-scoped cordis ctx is a proxy that THROWS on any key missing from `inject`.
       return undefined
@@ -1487,15 +1493,16 @@ export function apply(ctx: Ctx): void {
    *     the canonical `AGENT_UNCONFIGURED` sentence and NOTHING is started.
    *
    * @param meta - the instance's metadata, whose `baseName` addresses the base.
+   * @param exec - the spawning session, which supplies the workspace and extension visibility.
    * @returns the primary route plus the agent's own fallback chain (empty when the route is not one).
    * @throws the structured `AGENT_UNCONFIGURED` failure when a roster agent's route is unusable.
    */
-  function spawnRouteOf(meta: Meta): { route: { provider: string; model: string; reasoningEffort?: string }; fallbacks: readonly unknown[] } {
+  function spawnRouteOf(meta: Meta, exec?: DshToolExec): { route: { provider: string; model: string; reasoningEffort?: string }; fallbacks: readonly unknown[] } {
     /** The live config service, absent until the `mpd-config` row has applied. */
     const live = configService()
     if (typeof live?.agentRouteResolutionOf === "function") {
       /** The service's TOTAL resolution, never an exception (contract §2). */
-      const resolution = live.agentRouteResolutionOf(meta.baseName) as
+      const resolution = live.agentRouteResolutionOf(meta.baseName, dsh.workspaceRoot(exec)) as
         | { ok: true; agent: string; route: { provider: string; model: string; reasoningEffort?: string; fallbacks?: readonly unknown[] } }
         | { ok: false; reason: "unconfigured"; agent: string; missing: readonly string[] }
         | { ok: false; reason: "invalid"; agent: string; problem: string }
@@ -1504,14 +1511,14 @@ export function apply(ctx: Ctx): void {
       if (resolution !== null && typeof resolution === "object" && typeof resolution.ok === "boolean") {
         if (resolution.ok) return { route: resolution.route, fallbacks: resolution.route.fallbacks ?? [] }
         // NOT routed by `agentRoutes` (an extension base): its own declared chain below is the route.
-        if (resolution.reason === "unrouted") return { route: declaredRouteOfBase(meta), fallbacks: [] }
+        if (resolution.reason === "unrouted") return { route: declaredRouteOfBase(meta, exec), fallbacks: [] }
         // Routed but unusable: the ONE structured failure every spawn applier reports.
         /** The detail the canonical sentence names: the missing leaves, or the malformed path. */
         const detail = resolution.reason === "invalid" ? resolution.problem + " must be a string" : "missing " + resolution.missing.join(", ")
         throw agentUnconfiguredRefusal(resolution.agent, detail)
       }
     }
-    return { route: declaredRouteOfBase(meta), fallbacks: [] }
+    return { route: declaredRouteOfBase(meta, exec), fallbacks: [] }
   }
 
   /**
@@ -1521,13 +1528,14 @@ export function apply(ctx: Ctx): void {
    * the roster service reports as the base's chain head. A base with no declared route is an ERROR —
    * the frozen `meta` values are provenance and must never silently become a route (§5).
    * @param meta - the instance's metadata.
+   * @param exec - the invoking session, whose roster may have workspace extensions.
    * @returns the base's own declared route.
    * @throws when the mounted roster reports no route for this base.
    */
-  function declaredRouteOfBase(meta: Meta): { provider: string; model: string; reasoningEffort?: string } {
+  function declaredRouteOfBase(meta: Meta, exec?: DshToolExec): { provider: string; model: string; reasoningEffort?: string } {
     try {
       /** The base as the roster sees it NOW — an extension base carries its declared route here. */
-      const base = resolveBase(meta.baseName)
+      const base = resolveBase(meta.baseName, exec)
       if (base.provider !== "" && base.model !== "") return { provider: base.provider, model: base.model }
     } catch {
       // No roster row (or an unreadable one): the error below names the missing route.
@@ -1705,7 +1713,7 @@ export function apply(ctx: Ctx): void {
   }
 
   /** Resolve a base by its functional NAME; a roster `id` is refused exactly like any unknown key. */
-  function resolveBase(key: string): { id: string; name: string; description: string; readonly: boolean; provider: string; model: string; persona: string } {
+  function resolveBase(key: string, exec?: DshToolExec): { id: string; name: string; description: string; readonly: boolean; provider: string; model: string; persona: string } {
     /** The mpdRoles service, or undefined when the roles plugin is not mounted. */
     const roles = rolesService()
     if (!roles) throw new Error("mpd_workmate: mpdRoles service unavailable (mpd-roles-plugin not mounted)")
@@ -1715,7 +1723,7 @@ export function apply(ctx: Ctx): void {
     // The functional NAME is the ONLY base key. The roster's stable `id` is INTERNAL provenance:
     // it is never accepted here, so an omo/legacy roster id is refused exactly like any other
     // unknown key — and the refusal lists the valid NAMES, never an id.
-    const all: any[] = typeof roles.list === "function" ? roles.list() : []
+    const all: any[] = typeof roles.list === "function" ? roles.list(exec) : []
     /** The comparison form of that key: case, spaces and hyphens are all insignificant. */
     const wanted = normalizeBaseKey(k)
     /** The matched roster entry, or undefined — in which case the refusal lists NAMES only. */
@@ -1758,10 +1766,12 @@ export function apply(ctx: Ctx): void {
   }
 
   /** Create one instance directory from a base template, under an independent name. */
-  function initWorkmate(baseKey: string, nameArg: string, noteArg: string, workspace: string): { name: string; baseName: string; readonly: boolean; provider: string; model: string; path: string; note: string } {
+  function initWorkmate(baseKey: string, nameArg: string, noteArg: string, exec?: DshToolExec): { name: string; baseName: string; readonly: boolean; provider: string; model: string; path: string; note: string } {
     assertMutationSandboxed("initialize a workmate")
+    /** The workspace used both for its route and for attribution. */
+    const workspace = exec === undefined ? undefined : dsh.workspaceRoot(exec)
     /** The resolved base template this instance copies. */
-    const base = resolveBase(baseKey)
+    const base = resolveBase(baseKey, exec)
     /** The caller's name, sanitized; empty asks for an auto-generated one. */
     const given = sanitizeName(nameArg)
     /** The instance key: the caller's name, or the auto-generated `<base-slug>-<n>`. */
@@ -1789,7 +1799,7 @@ export function apply(ctx: Ctx): void {
       const live = configService()
       if (typeof live?.agentRouteResolutionOf === "function") {
         /** The total resolution; only a usable route names one here. */
-        const resolution = live.agentRouteResolutionOf(base.name) as { ok: true; route: { provider: string; model: string } } | { ok: false } | undefined
+        const resolution = live.agentRouteResolutionOf(base.name, workspace) as { ok: true; route: { provider: string; model: string } } | { ok: false } | undefined
         if (resolution !== undefined && resolution !== null && resolution.ok === true) return { provider: resolution.route.provider, model: resolution.route.model }
       }
       return { provider: base.provider, model: base.model }
@@ -1802,7 +1812,7 @@ export function apply(ctx: Ctx): void {
     /** The base text as the baseline is computed over. */
     const bornBase = String(base.persona ?? "").trim()
     /** The fresh metadata; `baseId` is recorded here as INTERNAL provenance and never leaves disk. */
-    const meta: Meta = { name, baseId: base.id, baseName: base.name, description: base.description, provider: born.provider, model: born.model, readonly: base.readonly, createdAt: now(), updatedAt: now(), uses: 0, lastTask: null, renamedFrom: [], personaRevision: 1, personaHash: sha256Of(bornPersona), baseRevision: bornBase === "" ? UNKNOWN_HASH : sha256Of(bornBase), workspaces: attuneWorkspaces([], workspace) }
+    const meta: Meta = { name, baseId: base.id, baseName: base.name, description: base.description, provider: born.provider, model: born.model, readonly: base.readonly, createdAt: now(), updatedAt: now(), uses: 0, lastTask: null, renamedFrom: [], personaRevision: 1, personaHash: sha256Of(bornPersona), baseRevision: bornBase === "" ? UNKNOWN_HASH : sha256Of(bornBase), workspaces: attuneWorkspaces([], workspace ?? "") }
     writeFileSync(join(dir, "meta.json"), JSON.stringify(meta, null, 2) + "\n")
     writeFileSync(join(dir, "persona.md"), bornPersona + "\n")
     // The versioned history starts AT BIRTH, and the base snapshot is what a later drift diff reads.
@@ -1813,7 +1823,7 @@ export function apply(ctx: Ctx): void {
     const note = capText(String(noteArg ?? "").trim() || autoNote(meta, base.persona, ""), NOTE_CAP)
     writeFileSync(join(dir, "note.md"), note + "\n")
     writeIndexEntry(name, meta)
-    return { name, baseName: base.name, readonly: base.readonly, provider: base.provider, model: base.model, path: dir, note }
+    return { name, baseName: base.name, readonly: base.readonly, provider: born.provider, model: born.model, path: dir, note }
   }
 
   /** The `mpdWorkmate` service: the same operations the tools expose, for route and plugin callers. */
@@ -1886,7 +1896,7 @@ export function apply(ctx: Ctx): void {
     description: "Instantiate a roster BASE specialist into a durable, evolving workmate copy under ~/.mpd/workmate/<name>/ (independent name). base = the specialist's functional NAME (mpd_roles_list), e.g. \"Deep Worker\". The base template stays pristine; the workmate gets its own persona.md, memory.md and a short note.md. Use when creating a team or pulling up a specialist you will reuse across sessions.",
     parameters: { type: "object", properties: { base: { type: "string", description: "the specialist's functional name (e.g. \"Deep Worker\")" }, name: { type: "string", description: "independent workmate name (lowercase kebab; auto-generated from the functional name if omitted)" }, note: { type: "string", description: "optional initial note card" } }, required: ["base"], additionalProperties: false },
     output: { schema: { type: "object", properties: { name: { type: "string" }, baseName: { type: "string" }, readonly: { type: "boolean" }, provider: { type: "string" }, model: { type: "string" }, path: { type: "string" }, note: { type: "string" } }, required: ["name", "baseName"], additionalProperties: false }, render: (_a: unknown, v: any) => textBlock("workmate " + v.name + " initialized (base " + v.baseName + (v.readonly ? ", readonly" : "") + ", " + v.provider + "/" + v.model + ")\nnote: " + v.note) },
-    execute: async (args: any, exec: any) => initWorkmate(String(args?.base ?? ""), String(args?.name ?? ""), String(args?.note ?? ""), workspaceOf(dsh, exec))
+    execute: async (args: any, exec: DshToolExec) => initWorkmate(String(args?.base ?? ""), String(args?.name ?? ""), String(args?.note ?? ""), exec)
   })
 
   dsh.registerTool({
@@ -1904,43 +1914,49 @@ export function apply(ctx: Ctx): void {
       if (tooDeep !== undefined) throw new Error(tooDeep)
       /** The instance being spawned, resolved by key. */
       const { meta, key } = ensureInstance(String(args?.name ?? ""))
-      // A REUSE ATTRIBUTES THE INSTANCE to the workspace using it (R-W3C B2), which is what makes
-      // `workmates.max` a per-workspace budget. Written only when the list actually changed, so a repeat
-      // spawn from the same project touches no byte.
-      /** The attribution list after this reuse. */
-      const attributed = attuneWorkspaces(meta.workspaces, workspaceOf(dsh, exec))
-      if (attributed.join("\u0000") !== meta.workspaces.join("\u0000")) {
-        meta.workspaces = attributed
-        writeFileSync(join(wmDir(key), "meta.json"), JSON.stringify(meta, null, 2) + "\n")
-        writeIndexEntry(key, meta)
-      }
-      /** The task text; empty is a caller error and must never spawn an empty prompt. */
+      /** The task text, validated before recording a reuse. */
       const task = String(args?.task ?? "").trim()
       if (!task) throw new Error("mpd_workmate_spawn: task required")
-      /** The evolved persona, sent both inside the prompt and as the subagent's persona. */
-      const persona = readPersona(key)
-      /** The bounded independent memory, newest last. */
-      const memory = readMemory(key)
-      /** The note card, included so the workmate sees its own matching summary. */
-      const note = readNote(key)
-      /** The assembled prompt: persona, memory, note, task, optional context and the reflect instruction. */
-      const prompt = persona
-        + "\n\nYour independent memory (bounded, latest first):\n" + (memory || "(empty — you are a fresh workmate)")
-        + "\n\nWorkmate note:\n" + (note || "(none)")
-        + "\n\nTask: " + task
-        + (args?.context ? "\n\nContext:\n" + String(args.context) : "")
-        + "\n\nWork with the tools your role requires (read-only workmates must never modify anything)."
-        + " BEFORE your final report, call mpd_workmate_reflect with a concise self-summary (task / outcome / what you learned / optional persona_delta / optional new note) so your workmate persona and memory evolve. Then end with ONLY the structured report (name/summary/recommendation/details/evidence)."
-      // §E(a): hold the in-use gate for the whole spawn so a rename/delete cannot land mid-flight.
-      // The counter is released in `finally`, so even a THROWING spawn cannot leave a permanent
-      // mutation block on this workmate.
+      /** Resolve the route for this spawn before writing attribution. */
+      const decided = spawnRouteOf(meta, exec)
+      /** The roles service stays optional when Workmates is mounted on its own. */
+      const admission = (() => {
+        try {
+          return ctx.get?.("mpdConsults") as { reservePublicConsult?: (caller: DshToolExec) => Promise<(() => void) | undefined> } | undefined
+        } catch {
+          return undefined
+        }
+      })()
+      // Hold the workmate's identity across the reservation and child lifetime.
       noteSpawnStart(key)
+      /** Release the shared public allowance on settlement or any local failure. */
+      let release: (() => void) | undefined
       try {
-        // THE AGENT'S OWN ROUTE IS THE ONLY ROUTE SOURCE (contract §5), resolved PER SPAWN, so a
-        // config saved between two spawns is what the SECOND spawn runs on — an in-flight task keeps
-        // its route. The frozen `meta.provider`/`meta.model` are provenance and never decide a route.
-        /** The primary route plus the agent's own fallback chain, or the structured refusal. */
-        const decided = spawnRouteOf(meta)
+        release = await admission?.reservePublicConsult?.(exec)
+        exec?.signal?.throwIfAborted()
+        /** Another workspace or a reflect may have updated metadata while admission was pending. */
+        const { meta: currentMeta, dir } = ensureInstance(key)
+        /** Merge attribution into the latest record and update its index without yielding. */
+        const attributed = attuneWorkspaces(currentMeta.workspaces, workspaceOf(dsh, exec))
+        if (attributed.join("\u0000") !== currentMeta.workspaces.join("\u0000")) {
+          currentMeta.workspaces = attributed
+          writeFileSync(join(dir, "meta.json"), JSON.stringify(currentMeta, null, 2) + "\n")
+          writeIndexEntry(key, currentMeta)
+        }
+        /** The evolved persona, sent both inside the prompt and as the subagent's persona. */
+        const persona = readPersona(key)
+        /** The bounded independent memory, newest last. */
+        const memory = readMemory(key)
+        /** The note card, included so the workmate sees its own matching summary. */
+        const note = readNote(key)
+        /** The assembled prompt: persona, memory, note, task, optional context and the reflect instruction. */
+        const prompt = persona
+          + "\n\nYour independent memory (bounded, latest first):\n" + (memory || "(empty — you are a fresh workmate)")
+          + "\n\nWorkmate note:\n" + (note || "(none)")
+          + "\n\nTask: " + task
+          + (args?.context ? "\n\nContext:\n" + String(args.context) : "")
+          + "\n\nWork with the tools your role requires (read-only workmates must never modify anything)."
+          + " BEFORE your final report, call mpd_workmate_reflect with a concise self-summary (task / outcome / what you learned / optional persona_delta / optional new note) so your workmate persona and memory evolve. Then end with ONLY the structured report (name/summary/recommendation/details/evidence)."
         /** The route this spawn actually sends: the winning candidate after the ONE pre-spawn
          *  consumption of the fallback chain and the effort adaptation (contract §8). */
         const run = await resolveRunRoute(dsh, decided.route, decided.fallbacks)
@@ -1968,13 +1984,14 @@ export function apply(ctx: Ctx): void {
           // The route's OWN effort keyword rides along when it states one — AFTER the catalog
           // adaptation above. An absent keyword passes nothing and the harness keeps its resolution.
           ...(route.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: route.reasoningEffort } }),
-          ...(meta.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {})
+          ...(currentMeta.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {})
         })
         /** The structured report, or an empty object when the subagent answered none. */
         const st = result.structured ?? {}
         return { name: key, status: "complete", summary: String(st.summary ?? ""), recommendation: String(st.recommendation ?? ""), details: String(st.details ?? ""), evidence: Array.isArray(st.evidence) ? st.evidence.map(String) : [], stopReason: result.stopReason ?? null }
       } finally {
         noteSpawnEnd(key)
+        release?.()
       }
     }
   })
@@ -2287,7 +2304,7 @@ export function apply(ctx: Ctx): void {
           /** The created instance, reported exactly as the init tool would report it. */
           // AN AGENTLESS ROUTE ATTRIBUTES NOTHING: there is no session to resolve a workspace from, and a
           // process cwd would name whichever directory the server was started in, not a project.
-          const created = initWorkmate(String(body?.base ?? ""), String(body?.name ?? ""), String(body?.note ?? ""), "")
+          const created = initWorkmate(String(body?.base ?? ""), String(body?.name ?? ""), String(body?.note ?? ""))
           res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" })
           res.end(JSON.stringify(created))
         } catch (e: any) {

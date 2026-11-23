@@ -154,14 +154,14 @@ export interface WatchdogFrontDoor {
   /** The current notice for the status line (a live read; undefined when there is nothing to say). */
   notice(): string | undefined
   /** The current durable view (read-only). */
-  view(): WatchdogView
+  view(workspace?: string): WatchdogView
   /**
    * Show the replay dialog when there is something unread, and acknowledge on request.
    * @returns the option id the user chose, or undefined when nothing was unread / no service / no dialog.
    */
   offer(): Promise<string | undefined>
   /** Advance this reader's watermark up to an incident timestamp (through the service). */
-  acknowledge(upTo: number): { ok: boolean; watermark: number; error?: string }
+  acknowledge(upTo: number, workspace?: string): { ok: boolean; watermark: number; error?: string }
 }
 
 /**
@@ -197,9 +197,10 @@ export function attachWatchdogFrontDoor(
   const available = (): boolean => service !== undefined && service !== null
 
   /** Reads the durable view, degrading to the empty view on any failure. */
-  const read = (): WatchdogView => {
+  const read = (workspace: string = options.workspaceRoot()): WatchdogView => {
+    if (workspace === "") return EMPTY_WATCHDOG_VIEW
     try {
-      return readWatchdogView(service, WATCHDOG_READER, options.workspaceRoot())
+      return readWatchdogView(service, WATCHDOG_READER, workspace)
     } catch (error) {
       log.debug(`watchdog read failed: ${String((error as Error)?.message ?? error)}`)
       return EMPTY_WATCHDOG_VIEW
@@ -207,14 +208,15 @@ export function attachWatchdogFrontDoor(
   }
 
   /** Advances the reader's watermark through the service; never claims a write that did not land. */
-  const acknowledge: WatchdogFrontDoor["acknowledge"] = (upTo: number): { ok: boolean; watermark: number; error?: string } => {
+  const acknowledge: WatchdogFrontDoor["acknowledge"] = (upTo: number, workspace: string = options.workspaceRoot()): { ok: boolean; watermark: number; error?: string } => {
+    if (workspace === "") return { ok: false, watermark: 0, error: "The workspace for this session is unavailable" }
     if (!available() || typeof service?.acknowledge !== "function") {
       // Never pretend an acknowledge landed: the caller and the user are told it did not.
       return { ok: false, watermark: 0, error: `the ${WATCHDOG_SERVICE} service is not mounted — the watchdog store was not written` }
     }
     try {
       /** The service's own answer, which decides whether the post-ack hook runs. */
-      const result = service.acknowledge(WATCHDOG_READER, upTo, options.workspaceRoot())
+      const result = service.acknowledge(WATCHDOG_READER, upTo, workspace)
       if (result !== undefined && result !== null && result.ok === true) options.onAcknowledged?.()
       return result ?? { ok: false, watermark: 0, error: "the acknowledge returned nothing" }
     } catch (error) {
@@ -236,7 +238,10 @@ export function attachWatchdogFrontDoor(
       return undefined
     }
     /** The durable view this offer is based on. */
-    const view = read()
+    /** Keep an asynchronous dialog tied to the workspace it displayed. */
+    const workspace: string = options.workspaceRoot()
+    /** The durable view presented in the dialog. */
+    const view = read(workspace)
     if (view.unread.length === 0) return undefined
     if (!options.dialogs.available()) return undefined
     /** The dialog request, built from that same view. */
@@ -246,7 +251,7 @@ export function attachWatchdogFrontDoor(
     if (choice === ACKNOWLEDGE_OPTION) {
       /** The newest incident timestamp, i.e. the watermark an acknowledge advances to. */
       const upTo = view.unread.reduce((max, record) => Math.max(max, record.at), 0)
-      acknowledge(upTo)
+      acknowledge(upTo, workspace)
     }
     return choice
   }

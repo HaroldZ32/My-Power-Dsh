@@ -209,30 +209,23 @@ host's own sections do (`ctx.slots.inject("settings.section", …)` →
 the shape measured from `dsh-client-ui-settings-models/lib/client.js:2936`): the settings shell
 collects that list slot, sorts it by `order` and renders the active one, so `order: 20` places MPD
 after `general` (0), `models` (10) and `plugins` (15) and moves no existing section. The section
-renders the card as-is, declares no nested `children`, and a namespace with no registration renders
-nothing — which is why the knobs were invisible before. Writes go through the harness's own config
-form for the `mpd-config` entry document (`ctx.configForms.get("mpd-config")`), not a
-`settingsScope` binding, and an unwritable form renders read-only with the reason and never attempts a
-write. The card's fields, labels and zh descriptions are asserted against the TUI section's descriptor
-by its own test, so the two front doors cannot drift.
+renders the card directly and declares no nested `children`. General settings save through the host's
+`mpd-config` entry form and apply across workspaces. The model section reads and writes the selected
+live session's workspace through `/plugins/mpd/model-config?sessionId=…`. A host with multiple live
+workspaces requires a session for the effective read. A model save always requires a live selection.
+The card shows why a write is unavailable when the host form is read-only. Its fields, labels and
+Chinese descriptions are tested against the TUI section's descriptor.
 
-**Evidence level — witnessed:** the registration contract in the **built and served** client bytes
-(`packages/mpd-bundle-plugin/client.js`; the lane re-hashes the artifact it judged and the evidence
-records the size + sha256 before and after this move), the section's descriptor — id, order, label,
-locale, no `children` — recorded by the **offline hook harness** when the registration is CALLED, the
-card's field parity with the TUI descriptor in its own test suite, the module's behaviour — render,
-scope write with the right path/value/revision, refusal of an invalid draft, and read-only rendering
-with its reason — in the same harness, and the **write path end to end** through the host's own
-authenticated settings API (`web-settings-bridge.ts` W1–W13).
+The client harness exercises the shipped registration, field parity, the host form's revision checks,
+and scoped model reads and saves across session switches. Server tests cover authorization, unknown
+sessions and JSONC byte preservation with two workspace fixtures. The `web-settings-bridge.ts` lane
+covers the host's authenticated entry API. A rendered browser and click-driven save are outside those
+checks.
 
-**Evidence level — NOT witnessed here:** a **real browser render** (the host dispatching this key in a
-live page) and a **click-driven save**. No browser binary exists in this environment; the lane records
-`cardClaim.W3.witnessed === false` with the reason, and this page repeats that instead of implying
-otherwise. To see it yourself: start `dsh web`, open the GUI, go to **Settings → MPD**, expect the
-`mpd` section with the schema's knobs (each agent's route leaves offer catalog-derived selections), change
-one and Save — with exactly one live
-session the workspace's `<workspace>/.mpd/mpd.jsonc` changes with comments intact; otherwise the bridge
-refuses loudly (`no-live-session` / `ambiguous-multi-root`) and states that the value is not lost.
+To verify a project save in the GUI, select a live session and change a model field under
+**Settings → MPD**. The save updates that session's `<workspace>/.mpd/mpd.jsonc`, preserving unrelated
+JSONC content. Other live workspaces can stay open. If a profile-wide setting overrides the field, the
+card reports the conflict and leaves the project file intact.
 
 ### 3.2 The team-workflow and plan surfaces (wave `tui-team-surface`)
 
@@ -923,23 +916,12 @@ The section declares the real mpd.jsonc knobs (`hashline.maxDiffChars`, `comment
 config, through the
 harness's own form for the config ENTRY `mpd-config` (`packages/mpd-config-plugin` owns the entry; this
 package is a pure consumer and registers only a guarded fallback when no config plugin is composed).
-**TWO persistence paths exist, and only the dormant one writes your file:**
+The TUI saves to the host's `mpd-config` entry document. A save refreshes the top configuration layer in
+process and applies across workspaces. The Web card uses the same entry document for general settings.
+Web model fields have their own workspace save path described in §3.1.
 
-- **Entry-config save — what both front doors do on this harness.** The Web card and this section save
-  `configForms.get("mpd-config")`; the entry document is the HOST's own store, so persistence is the
-  host's. The saved override is the top config layer (L4, `readEntryConfig`) and
-  `onSettingsDocumentUpdated(ENTRY_CONFIG_ID)` re-loads it in-process — **no restart** — and this path
-  performs **NO `<workspace>/.mpd/mpd.jsonc` write**, deliberately: the document also carries the
-  form's materialised defaults, so projecting them into your file would pollute it.
-- **Legacy `mpd`-NAMESPACE write-back — dormant here.** `packages/mpd-config-plugin` still implements
-  it (lock + compare-and-swap + sibling temp file + atomic rename, comments/key order/trailing commas
-  preserved, with the two named skip cases). On the harness this bundle pins, `settingsRegister` is
-  refused ("the namespace-registry model is RETIRED in this harness"), the bridge records that once,
-  and its file write-back and override clearing stay **dormant**. Everything below — the base table, the
-  write-back bullet and the workspace-target bullet — documents THAT path; it is not a promise about an
-  entry save.
-
-What a save does today (the entry path):
+The remaining base and write-back rules describe the legacy `mpd` settings namespace. The pinned host
+has retired this namespace, so automatic write-back and override clearing are dormant there.
 
 **The base is a rule, not a lookup — and it is the LEGACY namespace's base.** The serving package
 derives the namespace base itself (`baseForNamespace()`, registered through the adapter)
@@ -969,10 +951,9 @@ does. Captured inside a row's own
 `commentChecker.*`, `autoproject.*`, `memory.*`, `boulder.dir`, `goal.*` and `extensions.*`. The bundle's own
 hint constants state both halves — `BRIDGE_DISCLOSURE` (the live clause, naming the model routes) and
 `BRIDGE_RESTART_LIMIT` (the bound) — and the **canonical per-knob table is
-[`user-guide.md`](user-guide.md) §9.1**. What the plugins actually use is the **resolved value** plus
-the config layer's **per-call file reads**: the L1/L2 file layers are re-read on every resolution, so
-the **per-workspace read-in still resolves each session's own file** even while the base is frozen. No
-sentence on this page promises a live-refreshed **base** — only a live-resolved **value**.
+[`user-guide.md`](user-guide.md) §9.1**. The config service keeps a separate resolved snapshot per
+workspace. Reloads and file watcher changes refresh the corresponding project even while the legacy
+namespace base stays fixed.
 
 - **Read-in precedence** — L0 schema defaults < L1 `$DSH_HOME/mpd.jsonc` < L2
   `<workspace>/.mpd/mpd.jsonc` < **L3 the settings user section**, which is authoritative at runtime; a
@@ -992,11 +973,9 @@ sentence on this page promises a live-refreshed **base** — only a live-resolve
   workspaces at event time**: exactly one ⇒ that file is written; **zero ⇒ `no-live-session`**; **more
   than one ⇒ `ambiguous-multi-root`**, with every candidate named. In both skip cases **no file is
   changed** and the edit is **not lost**: it is stored in the host-global settings document and the
-  config layer applies it to every workspace immediately — only the FILE WRITE waits for exactly one
-  live session. The TUI status line and the Web card both carry that clause, where they mean the
-  legacy path.
+  config layer applies it to every workspace immediately. Legacy file writes require one live workspace.
 - **Timing** — the model-config consumers resolve through the live `mpdConfig` service per use
-  (`mpd_modelchain_resolve` per call; slot routing at spawn), and the service re-resolves
+  (`mpd_modelchain_resolve` per call and agent routing at spawn), and the service re-resolves
   on every settings save and on a watched edit of the project file, so a saved edit **reaches the next
   resolve or spawn with no restart** (`mpd_config_reload` forces a re-read). Two different `applies`
   answers exist and must not be conflated: `BridgeReport.applies`
@@ -1024,8 +1003,8 @@ there was no single place to correct and no user-facing answer. The value is rea
 `wheelInvert: true`, which is the **floor** of the toggle (a saved leaf wins when it is a boolean; a junk
 value can never arm it). The plugin reads the leaf **per wheel gesture** rather than sampling it at
 mount, so a save through `/settings` **and** a FILE edit both reach it in the running process — the
-config service re-resolves on a settings save and on a watched edit of the project file, and the L1/L2
-layers are re-read on every resolution (above) — while a mount-time sample would have read `undefined`
+config service refreshes the resolved snapshot on a settings save and on a watched edit of the project
+file — while a mount-time sample would have read `undefined`
 on any boot where the deferred `mpdConfig` binding lands after this row applies. **Honest bound:** unlike `tui.dashboardKey` this leaf is
 not yet carried by `SETTINGS_KNOBS` / `SettingsSchema` in
 `packages/mpd-config-plugin/src/settings-schema.ts`, so it has **no row in the `/settings` form**; the file

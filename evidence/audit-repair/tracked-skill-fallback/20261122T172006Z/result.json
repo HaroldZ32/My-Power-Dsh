@@ -1,0 +1,48 @@
+{
+  "subject": "Tracked frontend skill fallback and exact operator-reference package exclusions",
+  "baseline": "90d52e530282bccf3c4b54a27be6737bcb02f969",
+  "toolchain": { "node": "24.21.0", "npm": "11.19.0", "bun": "1.4.0" },
+  "frozenInputsSha256": {
+    "package.json": "4901fad047d8fd2c1c740bc3d14860a2936a3cbb7b75531a823f51d0d5066787",
+    "scripts/lib/pack-private-state.ts": "1430ca3890a80d6e6fd9813800d8b4cbde2315337ae58f99f21116710fa602fe",
+    "scripts/verify-pack-closure.ts": "13d983099ce5eb2a720268b7ab0bdbabd96745ed3b4e114d77c97e6842794ba9",
+    "scripts/verify-plugin-manifest.ts": "55887fe359e9df8736b1448626a56ad2d7c6c843096bcef4b263d276805af247",
+    "scripts/pack-mpd.ts": "5869d1c5f86cf1655d8f43dfc80368530d3f1ee2caca5e451211684431315a04",
+    "skills/frontend/SKILL.md": "fa40b0e8fbd72a1b21da959c28488278c4a8077117b533d13fd734f5328f1b5c",
+    "skills/frontend/references/design/README.md": "3482585eb4b76c71bf520a5b1619230a44c930de19a04b89888a6f71b9298d22",
+    "skills/frontend/references/design/_INDEX.md": "4cd31acafc1086f66eb7d40d72d3aef83a41fa20679fba3c7bc0dcc5550e4096",
+    "skills/frontend/references/design/interaction-skill.md": "d2152c5d94a683e406a779d7d09dbffcf66843e51cf9fd89b847b3c7aa9b60c5"
+  },
+  "guidance": {
+    "directMentionsBefore": 13,
+    "conditionalMentionsAfter": 7,
+    "ambienceFallback": "skills/frontend/references/design/interaction-skill.md",
+    "catalogResearchFallback": "skills/frontend/references/design/lazyweb.md"
+  },
+  "inventory": [
+    { "input": "baseline clean export", "rootNpmPaths": 1272, "rootOperatorPaths": 0 },
+    { "input": "baseline export with inert fixtures", "rootNpmPaths": 1274, "rootOperatorPaths": 2, "relocatableNpmPaths": 683, "relocatableOperatorPaths": 2, "relocatableStagedOperatorPaths": 2 },
+    { "input": "candidate clean export", "rootNpmPaths": 1272, "rootOperatorPaths": 0, "relocatableNpmPaths": 681, "relocatableOperatorPaths": 0, "relocatableStagedOperatorPaths": 0 },
+    { "input": "candidate export with inert fixtures", "rootNpmPaths": 1272, "rootOperatorPaths": 0, "relocatableNpmPaths": 681, "relocatableOperatorPaths": 0, "relocatableStagedOperatorPaths": 0 },
+    { "input": "candidate stage with inert fixtures inserted after staging", "relocatableNpmPaths": 681, "relocatableOperatorPaths": 0, "relocatableStagedOperatorPaths": 2, "packClosureExit": 1 },
+    { "input": "current workspace, names only", "rootNpmPaths": 1272, "operatorPathsPresentOnDisk": 2, "rootOperatorPaths": 0, "relocatableCopyFilterRejections": 2 }
+  ],
+  "publicPathSetsPreserved": true,
+  "bothFallbacksPresentInBothCandidateProducts": true,
+  "gates": {
+    "gitDiffCheckExit": 0,
+    "manifestSelfTestExit": 0,
+    "manifestPackExitCleanAndSentinel": [0, 0],
+    "packClosureExitCleanAndSentinel": [0, 0],
+    "packClosureSelfTestExit": 0,
+    "packClosureSelfTestArmsPassed": 43,
+    "isolatedTypecheckExit": 0,
+    "isolatedCommentCoverageExit": 0,
+    "isolatedDocsParityExitWithTrackedTargets": 0
+  },
+  "bounds": [
+    "Npm dry runs and relocatable copies used tracked exports and inert fixtures. Current workspace checks used only path existence, Git ignore rules, the npm-packlist path API, and the copy predicate for the two operator references.",
+    "The isolated source omitted concurrent changes and retained the baseline vendor lock. Agent 31 handled the single vendor refresh separately. Live install and Docker verification belong to release integration.",
+    "Workspace-wide typecheck and declaration comment coverage returned exit 1 during concurrent edits to packages/mpd-team-core-plugin/test/team-record.test.ts. Both passed on the isolated candidate. An initial docs-parity run on the archive lacked six Git export-ignore targets. Restoring those tracked targets into the scratch copy yielded exit 0."
+  ]
+}

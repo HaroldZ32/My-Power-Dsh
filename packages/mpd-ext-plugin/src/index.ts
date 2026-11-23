@@ -37,7 +37,8 @@ import {
   projectExtensionsDir,
   userExtensionsDir,
 } from "./manifest"
-import { allocateProviderName, createSkillProvider, type SkillDocumentEntry } from "./skills"
+import { allocateProviderName, createSkillProvider, type SkillDocumentEntry, type SkillCandidate, type SkillObservation } from "./skills"
+import { projectSkillWatcher, type ProjectSkillControl } from "./project-watch"
 import { connectExtensionMcpServers, type McpBridge } from "./mcp"
 
 /** The loader row id this plugin registers under (`mpd-ext` in the bundle patch). */
@@ -471,7 +472,20 @@ async function mount(ctx: any, config: MpdExtPluginConfig = {}): Promise<void> {
         return documents
       },
     })
-    dsh.registerSkillProvider(() => projectProvider)
+    dsh.registerSkillProvider((control?: ProjectSkillControl) => {
+      /** Watch the path before the first enumeration can be cached by the host. */
+      const observe = projectSkillWatcher(control, warn)
+      return {
+        ...projectProvider,
+        /** Watch the observed workspace and delegate candidate validation to the project provider. */
+        list(options?: unknown): Promise<SkillCandidate[] | SkillObservation> {
+          /** Missing cwd stays host-wide and claims no project watch. */
+          const cwd = cwdOf(options)
+          if (cwd !== undefined) observe(cwd)
+          return projectProvider.list(options)
+        },
+      }
+    })
     registeredProviderNames.push(projectProviderName)
   } catch (error) {
     warn("project-plane skill provider not registered: " + message(error))

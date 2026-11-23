@@ -17,9 +17,9 @@
 // GLOBAL store (wave W3-D) is `<HOME>/.mpd/memory/{repo, runtime/{journal.jsonl, index.json}}`.
 // THIS FILE owns the five tools and the reflection machine; the store layer lives in `store.ts` and
 // the project-archive hook in `archive.ts`, so neither module has to import the other.
-import { randomUUID } from "node:crypto"
-import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
-import { basename, join } from "node:path"
+import { createHash, randomUUID } from "node:crypto"
+import { closeSync, existsSync, fsyncSync, openSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs"
+import { basename, dirname, join } from "node:path"
 import { DSH_SEAM_TOOLS, dshSeamInject, textBlock, resolveDshAdapter, type DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 import { privatePaths, ProjectMemoryError, recallMemberKey, resolveWorkspaceMemory, saveMemberKey, sharedPaths, type WorkspaceMemory } from "./project-scope.ts"
 import { readSharedFact, writeSharedFact } from "./shared-facts.ts"
@@ -32,14 +32,16 @@ import {
   commitAll,
   ensureGlobalDirs,
   ensureStoreDirs,
-  ensureVcs,
   globalDirs,
   journalPath,
   normalizeLogEntry,
   parseFrontmatter,
   safeMemoryPath,
   scopeOf,
+  type CommitReceipt,
   type Config,
+  type MemoryBackend,
+  type StoreDirs,
 } from "./store"
 import { installArchiveHook, type ArchiveCallContext, type TeamsServiceView } from "./archive"
 
@@ -81,7 +83,80 @@ function mergedConfig(ctx: Ctx, config: Config): Config {
 }
 
 /** One reflection claim: `due` while the completion is still owed, and `at` the instant it was raised or settled. */
-type PendingReflection = { due: boolean; at: string }
+type PendingReflection = {
+  /** Whether this claim still requires completion. */
+  readonly due: boolean
+  /** Time the claim was raised or settled. */
+  readonly at: string
+  /** Stable identity and backend progress of the completion, once attempted. */
+  readonly attempt?: ReflectionAttempt
+}
+
+/** Persisted before writing or committing a reflection, so it can resume using the same entry. */
+interface ReflectionAttempt {
+  /** Unique basename of the one reflection file for this claim. */
+  readonly name: string
+  /** Digest of the submitted markdown, which must stay unchanged across retries. */
+  readonly digest: string
+  /** Backends already confirmed for these exact bytes. */
+  readonly committedTo: readonly MemoryBackend[]
+}
+
+/** Human-readable commit receipt shared by the ordinary write and reflection tools. */
+function renderCommitReceipt(receipt: CommitReceipt): string {
+  return "committed=" + (receipt.committedTo.join(",") || "none")
+    + (receipt.errors.length === 0 ? "" : "\n" + receipt.errors.join("\n"))
+}
+
+/** Publish complete file bytes by rename, keeping intermediate files out of the memory directory. */
+function writeAtomically(file: string, stagingDir: string, content: string): void {
+  /** Unique private file on the same filesystem as the destination. */
+  const staging = join(stagingDir, ".mpd-memory-" + randomUUID() + ".tmp")
+  try {
+    writeFileSync(staging, content, { flag: "wx", mode: 0o600 })
+    renameSync(staging, file)
+  } finally {
+    rmSync(staging, { force: true })
+  }
+}
+
+/** Check whether an interrupted settlement already appended the journal entry for this file. */
+function reflectionJournaled(d: StoreDirs, file: string): boolean {
+  /** The agent journal, which may not exist on a legacy store. */
+  const journal = journalPath(d)
+  if (!existsSync(journal)) return false
+  /** Check and flush the same open file before crediting a record, including one from a prior attempt. */
+  const fd = openSync(journal, "r+")
+  try {
+    /** Match independently parseable JSON records, including complete legacy rows at EOF. */
+    const recorded = readFileSync(fd, "utf8").split("\n").some((line): boolean => {
+      if (!line.includes(file)) return false
+      try {
+        /** Ignore any malformed record from an interrupted or older append. */
+        const record: unknown = JSON.parse(line)
+        return record !== null && typeof record === "object" && "kind" in record && record.kind === "reflection"
+          && "file" in record && record.file === file
+      } catch (error) {
+        if (error instanceof SyntaxError) return false
+        throw error
+      }
+    })
+    if (recorded) fsyncSync(fd)
+    return recorded
+  } finally {
+    closeSync(fd)
+  }
+}
+
+/** Ensure the claim has a readable, flushed journal record before reporting it settled. */
+function ensureReflectionJournaled(d: StoreDirs, file: string, body: string): void {
+  /** Journal records identify the entry by its basename within the store. */
+  const name = basename(file)
+  if (reflectionJournaled(d, name)) return
+  if (readFileSync(file, "utf8") !== body) throw new Error(`mpd-memory: ${file} has changed. Restore the original bytes before retrying.`)
+  appendJournalLine(d, "reflection", { file: name })
+  if (!reflectionJournaled(d, name)) throw new Error(`mpd-memory: reflection journal record for ${name} could not be verified; retry with the original title and content.`)
+}
 
 /** The reflection state persisted at `<runtime>/reflection.json`: the write counter, the completion counter and the claim. */
 type ReflectionState = {
@@ -181,14 +256,19 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   })
 
   /** Path of the reflection state file inside the agent's runtime directory. */
-  function statePath(d: any): string { return join(d.runtime, "reflection.json") }
+  function statePath(d: StoreDirs): string { return join(d.runtime, "reflection.json") }
 
-  /** Read the reflection state, adopting a record persisted under the pre-wave-F names; a missing or unparseable file reads as the initial state, so the machine can always be driven. */
-  function readReflection(d: any): ReflectionState {
-    try { return adoptLegacyState(JSON.parse(readFileSync(statePath(d), "utf8"))) } catch { return initialState() }
+  /** Read the current or legacy state; propagate I/O errors rather than overwriting state we could not read. */
+  function readReflection(d: StoreDirs): ReflectionState {
+    try {
+      return adoptLegacyState(JSON.parse(readFileSync(statePath(d), "utf8")))
+    } catch (error) {
+      if (error instanceof SyntaxError || (error instanceof Error && "code" in error && error.code === "ENOENT")) return initialState()
+      throw error
+    }
   }
   /** Persist the reflection state, pretty-printed so a human can read the counters. */
-  function writeReflection(d: any, s: any): void { writeFileSync(statePath(d), JSON.stringify(s, null, 2)) }
+  function writeReflection(d: StoreDirs, s: ReflectionState): void { writeAtomically(statePath(d), d.runtime, JSON.stringify(s, null, 2)) }
 
   /**
    * The mounted `mpdTeams` read service, probed on EVERY call so a late mount is honoured; `undefined`
@@ -220,9 +300,13 @@ export function apply(ctx: Ctx, config: Config = {}): void {
 
   dsh.registerTool({
     name: "mpd_memory_write",
-    description: "Save a VCS-backed memory entry. Workspace (default) writes to your private member store in a project team and advances your reflection counter. Global is the existing home-scoped store. Shared explicitly publishes a project fact by exact key and requires source and appliesTo. To update a shared fact supply supersedes with its current revision.",
+    description: "Save a VCS-backed memory entry. Workspace (default) writes to your private member store in a project team and advances your reflection counter. Global uses the home-scoped store and requires the sandboxed HOME guard. Shared explicitly publishes a project fact by exact key and requires source and appliesTo. To update a shared fact supply supersedes with its current revision.",
     parameters: { type: "object", properties: { title: { type: "string" }, description: { type: "string" }, content: { type: "string" }, kind: { type: "string", enum: ["note", "fact", "reflection"] }, tags: { type: "array", items: { type: "string" } }, readOnly: { type: "boolean" }, scope: { type: "string", enum: ["workspace", "global", "shared"] }, key: { type: "string", description: "Exact, case-sensitive shared fact key." }, source: { type: "string", description: "Artifact, interface revision or other source of a shared fact." }, appliesTo: { type: "string", description: "Exact version, task or interface label for the shared fact." }, supersedes: { type: "integer", minimum: 1, description: "Current shared fact revision acknowledged by an update." } }, required: ["title", "content"], additionalProperties: false },
-    output: { schema: { type: "object", properties: { file: { type: "string" }, committedTo: { type: "array", items: { type: "string" } }, reflectionDue: { type: "boolean" }, vcs: { type: "string" }, errors: { type: "array", items: { type: "string" } }, scope: { type: "string" }, revision: { type: "integer" } }, required: ["file", "vcs"] }, render: (_a: unknown, v: any) => textBlock("memory written: " + v.file + " (vcs=" + v.vcs + " committed=" + v.committedTo.join(",") + " reflectionDue=" + v.reflectionDue + (v.revision === undefined ? "" : " revision=" + v.revision) + ")"), presentationMeta: MEMORY_WRITE_CARD },
+    output: { schema: { type: "object", properties: { file: { type: "string" }, committedTo: { type: "array", items: { type: "string" } }, reflectionDue: { type: "boolean" }, vcs: { type: "string" }, errors: { type: "array", items: { type: "string" } }, scope: { type: "string" }, revision: { type: "integer" } }, required: ["file", "vcs"] }, render: (_a: unknown, value: unknown) => {
+      /** The adapter gives the renderer the validated output of this tool. */
+      const v = value as CommitReceipt & { file: string; vcs: string; reflectionDue: boolean; revision?: number }
+      return textBlock("memory written: " + v.file + " (vcs=" + v.vcs + ", reflectionDue=" + v.reflectionDue + (v.revision === undefined ? "" : ", revision=" + v.revision) + ")\n" + renderCommitReceipt(v))
+    }, presentationMeta: MEMORY_WRITE_CARD },
     execute: async (args: any, exec: DshToolExec) => {
       /** The store explicitly selected by the caller. */
       const scope = scopeOf(args)
@@ -249,7 +333,6 @@ export function apply(ctx: Ctx, config: Config = {}): void {
         assertMemoryMutationSandboxed(globalDirs(cfg).root, "write a global memory entry")
         /** The shared store's directories, created on demand (the first global write bootstraps it). */
         const g = ensureGlobalDirs(cfg)
-        ensureVcs(cfg, g)
         /** The global entry's frontmatter: the shared fields plus the scope this store gives the entry. */
         const globalMeta: any = { ...meta, scope: "global" }
         /** The entry's absolute path, containment-checked against the global memory directory. */
@@ -258,7 +341,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
         const globalFront = "---\n" + JSON.stringify(globalMeta) + "\n---\n"
         writeFileSync(globalFile, globalFront + String(args?.content) + (String(args?.content).endsWith("\n") ? "" : "\n"))
         /** The error lines of the backends that failed to commit this entry; a commit failure never fails the write. */
-        const globalErrs = commitAll(cfg, g, "memory: " + name + " (" + globalMeta.kind + ")")
+        const globalCommit = commitAll(cfg, g, globalFile, "memory: " + name + " (" + globalMeta.kind + ")")
         appendJournalLine(g, "write", { file: basename(globalFile), kind: globalMeta.kind, vcs: cfg.vcs ?? "git", scope: "global" })
         // A global write is NOT an agent step: reflection is per agent and stays workspace-scoped, so the
         // claim is READ (never advanced) from the workspace store's paths — computed WITHOUT creating
@@ -267,26 +350,28 @@ export function apply(ctx: Ctx, config: Config = {}): void {
         const wsDirs = privatePaths(cfg, workspace)
         /** The workspace reflection state as it already stands. */
         const wsState = readReflection(wsDirs)
-        return { file: globalFile, committedTo: (cfg.vcs ?? "git") === "both" ? ["git", "svn"] : [cfg.vcs ?? "git"], reflectionDue: wsState.triggered === true || wsState.pendingReflection?.due === true, vcs: cfg.vcs ?? "git", errors: globalErrs, scope }
+        return { file: globalFile, ...globalCommit, reflectionDue: wsState.triggered === true || wsState.pendingReflection?.due === true, vcs: cfg.vcs ?? "git", scope }
       }
       /** Create only the directory authorized by the resolution above. */
       const d = ensureStoreDirs(privatePaths(cfg, workspace))
-      ensureVcs(cfg, d)
       /** The entry's absolute path, containment-checked against the memory directory. */
       const file = safeMemoryPath(d.memoryDir, name + ".md")
       /** The serialized frontmatter block the file starts with. */
       const front = "---\n" + JSON.stringify(meta) + "\n---\n"
       writeFileSync(file, front + String(args?.content) + (String(args?.content).endsWith("\n") ? "" : "\n"))
       /** The error lines of the backends that failed to commit this entry; a commit failure never fails the write. */
-      const errs = commitAll(cfg, d, "memory: " + name + " (" + meta.kind + ")")
+      const commit = commitAll(cfg, d, file, "memory: " + name + " (" + meta.kind + ")")
       /** The reflection state after this write's step increment. */
       const ref = readReflection(d)
       ref.steps = (ref.steps ?? 0) + 1
       ref.stepsSinceReflection = (ref.stepsSinceReflection ?? 0) + 1
-      if ((ref.stepsSinceReflection ?? 0) >= reflectionEvery) { ref.triggered = true; ref.pendingReflection = { due: true, at: new Date().toISOString() } }
+      if (ref.stepsSinceReflection >= reflectionEvery && ref.pendingReflection?.due !== true) {
+        ref.triggered = true
+        ref.pendingReflection = { due: true, at: new Date().toISOString() }
+      }
       writeReflection(d, ref)
       appendJournalLine(d, "write", { file: basename(file), kind: meta.kind, vcs: cfg.vcs ?? "git" })
-      return { file, committedTo: (cfg.vcs ?? "git") === "both" ? ["git", "svn"] : [cfg.vcs ?? "git"], reflectionDue: ref.triggered === true, vcs: cfg.vcs ?? "git", errors: errs, scope }
+      return { file, ...commit, reflectionDue: ref.triggered === true || ref.pendingReflection?.due === true, vcs: cfg.vcs ?? "git", scope }
     }
   })
 
@@ -373,42 +458,63 @@ export function apply(ctx: Ctx, config: Config = {}): void {
 
   dsh.registerTool({
     name: "mpd_memory_reflect_complete",
-    description: "Complete the reflection this agent owes: writes the reflection content as a memory entry (kind=reflection), advances reflectionsCompleted, resets stepsSinceReflection, settles the pending claim and commits.",
+    description: "Save the reflection and settle the workspace claim once all configured backends succeed. If a backend fails, fix it and retry with the same title and content.",
     parameters: { type: "object", properties: { content: { type: "string" }, title: { type: "string" } }, required: ["content"], additionalProperties: false },
-    output: { schema: { type: "object", properties: { completed: { type: "boolean" }, file: { type: "string" } }, required: ["completed", "file"] }, render: (_a: unknown, v: any) => textBlock("reflection completed: " + (v.completed ? "yes" : "no") + " " + v.file) },
-    execute: async (args: any, exec: any) => {
-      /** A reflection completes only in the authorized member's store. */
+    output: {
+      schema: { type: "object", properties: { completed: { type: "boolean" }, file: { type: "string" }, committedTo: { type: "array", items: { type: "string" } }, errors: { type: "array", items: { type: "string" } } }, required: ["completed", "file"] },
+      render: (_a: unknown, value: unknown) => {
+        /** The adapter gives the renderer the validated output of this tool. */
+        const v = value as CommitReceipt & { completed: boolean; file: string }
+        return textBlock("reflection completed: " + (v.completed ? "yes" : "no (saved locally; retry with the same title and content)") + " " + v.file + "\n" + renderCommitReceipt(v))
+      },
+    },
+    execute: async (args: { content: string; title?: string }, exec: DshToolExec) => {
+      /** Authenticate before reading the reflection claim in the member’s own store. */
       const d = privatePaths(cfg, workspaceMemory(exec))
-      /** The reflection state as persisted, and the value this transition mutates when it is legal. */
+      /** Counters and progress as persisted by the previous write or completion attempt. */
       const s = readReflection(d)
-      // THE PRECONDITION: `mpd_memory_reflect` reports `due` under exactly this predicate. Without it a
-      // completion ran with nothing owed: it wrote a reflection entry, bumped
-      // `reflectionsCompleted`, zeroed `stepsSinceReflection` and stamped
-      // `pendingReflection: {due:false}`, stranding the counters of a machine that never triggered.
-      if (s.triggered !== true && s.pendingReflection?.due !== true) {
-        // The message renders what the predicate above has already established: `triggered` is exactly
-        // false here, so the only distinction left is "a claim exists but is settled" vs "no claim".
-        throw new Error("mpd-memory: no reflection is due — refusing to complete (triggered=" + String(s.triggered) + ", pendingReflection=" + (s.pendingReflection?.due === false ? "settled" : "none") + ", stepsSinceReflection=" + String(s.stepsSinceReflection ?? 0) + "); call mpd_memory_reflect to inspect the state machine.")
+      /** Canonical bytes submitted for this reflection. */
+      const body = "---\n" + JSON.stringify({ description: args.title ?? "reflection", kind: "reflection" }) + "\n---\n" + args.content + "\n"
+      /** The caller must submit these same bytes to resume or replay the completion. */
+      const digest = createHash("sha256").update(body).digest("hex")
+      /** The existing claim, possibly with an in-progress or completed attempt. */
+      const claim = s.pendingReflection
+      if (s.triggered !== true && claim?.due !== true) {
+        if (claim?.attempt?.digest === digest) {
+          /** Resolve the stored entry before recovering any missing journal record from an older completion. */
+          const file = safeMemoryPath(d.memoryDir, claim.attempt.name)
+          ensureReflectionJournaled(d, file, body)
+          return { completed: true, file, committedTo: claim.attempt.committedTo, errors: [] }
+        }
+        throw new Error("mpd-memory: no reflection is due — refusing to complete; call mpd_memory_reflect to inspect the state machine.")
       }
       ensureStoreDirs(d)
-      ensureVcs(cfg, d)
-      /** The reflection entry's file stem: a fixed prefix plus a base-36 timestamp. */
-      const name = "reflection-" + Date.now().toString(36)
-      /** The reflection entry's absolute path, containment-checked against the memory directory. */
-      const file = safeMemoryPath(d.memoryDir, name + ".md")
-      /** The reflection entry's frontmatter: the caller's title, or the generic `reflection`. */
-      const meta = { description: String(args?.title ?? "reflection"), kind: "reflection" }
-      writeFileSync(file, "---\n" + JSON.stringify(meta) + "\n---\n" + String(args?.content) + "\n")
-      commitAll(cfg, d, "memory: reflection " + name)
-      // The state read at the top of this call, advanced by one completed reflection: the claim is
-      // settled and the step counter re-armed for the next threshold.
-      s.reflectionsCompleted = (s.reflectionsCompleted ?? 0) + 1
+      /** Reserve one unique entry name before touching the working copy or either VCS backend. */
+      const attempt: ReflectionAttempt = claim?.attempt ?? { name: `reflection-${randomUUID()}.md`, digest, committedTo: [] }
+      if (attempt.digest !== digest) throw new Error(`mpd-memory: retry ${attempt.name} with its original title and content.`)
+      if (claim?.attempt === undefined) {
+        s.pendingReflection = { due: true, at: claim?.at ?? new Date().toISOString(), attempt }
+        writeReflection(d, s)
+      }
+      /** The reserved reflection path, reused after a partial backend failure or interruption. */
+      const file = safeMemoryPath(d.memoryDir, attempt.name)
+      if (!existsSync(file)) writeAtomically(file, dirname(d.memoryDir), body)
+      else if (readFileSync(file, "utf8") !== body) throw new Error(`mpd-memory: ${file} has changed. Restore the original bytes before retrying.`)
+      /** Receipt for the same entry, carrying forward the backends that already succeeded. */
+      const receipt = commitAll(cfg, d, file, "memory: reflection " + basename(file, ".md"), attempt.committedTo)
+      /** Backend progress survives remount and journal errors. */
+      const progress = { ...attempt, committedTo: receipt.committedTo }
+      s.pendingReflection = { due: true, at: s.pendingReflection?.at ?? new Date().toISOString(), attempt: progress }
+      writeReflection(d, s)
+      if (receipt.errors.length > 0) return { completed: false, file, ...receipt }
+
+      ensureReflectionJournaled(d, file, body)
+      s.reflectionsCompleted += 1
       s.stepsSinceReflection = 0
       s.triggered = false
-      s.pendingReflection = { due: false, at: new Date().toISOString() }
+      s.pendingReflection = { due: false, at: new Date().toISOString(), attempt: progress }
       writeReflection(d, s)
-      appendJournalLine(d, "reflection", { file: basename(file) })
-      return { completed: true, file }
+      return { completed: true, file, ...receipt }
     }
   })
 

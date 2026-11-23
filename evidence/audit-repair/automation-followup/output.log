@@ -1,0 +1,39 @@
+Baseline
+$ .toolchain/node_modules/.bin/bun test ./packages/mpd-cellwork-plugin/test ./packages/mpd-autoproject-plugin/test
+514 pass, 0 fail, 40 files. Exit 0.
+
+Red, new regressions before source repair
+$ .toolchain/node_modules/.bin/bun test ./packages/mpd-cellwork-plugin/test/activate-resume-e2e.test.ts ./packages/mpd-autoproject-plugin/test/engine.test.ts -t 'append supersession|boulder finalization'
+Unchanged alpha: expected ["T1"], received ["T1", "T2"].
+Removed alpha: expected T1 status "cancelled", received "pending".
+Boulder refusal/throw: expected "boulder-pending", received "complete".
+Exit 1. The first fixture run also exposed an ambiguous-append selector that included a planning call and a Bun asymmetric class matcher that interfered with the positive fixture's state read. Both fixture issues were corrected before the final run.
+
+Green, frozen source
+$ .toolchain/node_modules/.bin/bun test ./packages/mpd-cellwork-plugin/test/flow.test.ts ./packages/mpd-cellwork-plugin/test/activate-resume-e2e.test.ts ./packages/mpd-autoproject-plugin/test/engine.test.ts -t 'append supersession|boulder finalization|work a later revision drops'
+13 pass, 0 fail, 147 expect() calls. Exit 0.
+$ .toolchain/node_modules/.bin/bun test ./packages/mpd-cellwork-plugin/test ./packages/mpd-autoproject-plugin/test
+526 pass, 0 fail, 5073 expect() calls, 40 files. Exit 0.
+$ .toolchain/node_modules/.bin/bun test
+4279 pass, 6 skip, 0 fail, 55057 expect() calls, 280 files. Exit 0.
+$ .toolchain/node_modules/.bin/bun run typecheck
+$ tsgo --noEmit
+Exit 0.
+$ .toolchain/node_modules/.bin/bun run verify:comments
+VERDICT: PASS. Scanned 656 files and inspected 60520 declarations. Exit 0.
+$ .toolchain/node_modules/.bin/bun run test:qa
+COMPLETE WITH SKIPS - 56 passed, 2 skipped, 0 failed (58 total). Exit 0.
+$ .toolchain/node_modules/.bin/bun skills/dsh-qa/scripts/cellwork-activate-mint.ts --out evidence/audit-repair/automation-followup/cellwork-mint
+[cellwork-activate-mint] PASS. Exit 0.
+$ node scripts/verify-dist-fresh.ts --only mpd-autoproject-plugin
+FRESH, sha fe516bb048f4. Exit 0 after integration.
+$ node scripts/verify-dist-fresh.ts --only mpd-cellwork-plugin
+FRESH, sha b3217ff6db47. Exit 0 after integration.
+$ sha256sum -c evidence/audit-repair/automation-followup/source.sha256
+Six files OK. Exit 0.
+
+Independent confirmation on the same source freeze
+See ../automation-followup-check/output.log for exact commands and observations.
+Original public fixtures: 1 pass and 2 failures before. Final source and rebuilt distribution each 3 pass, 0 fail.
+Extended public fixtures: 1 pass and 7 failures before. Final source and rebuilt distribution each 8 pass, 0 fail.
+Verdict: approve.

@@ -1050,7 +1050,7 @@ function createDshAdapter(ctx, config = {}) {
     } catch {}
   };
   bindDshGoBridge();
-  const configAgentRouteResolver = () => {
+  const configAgentRouteResolver = (workspace) => {
     const config2 = service("mpdConfig");
     if (config2 === undefined || config2 === null)
       return;
@@ -1058,7 +1058,7 @@ function createDshAdapter(ctx, config = {}) {
       return;
     return (member) => {
       try {
-        const answer = config2.agentRouteResolutionOf.call(config2, member);
+        const answer = config2.agentRouteResolutionOf.call(config2, member, workspace);
         return answer !== null && typeof answer === "object" && typeof answer.ok === "boolean" ? answer : undefined;
       } catch {
         return;
@@ -1412,7 +1412,7 @@ function createDshAdapter(ctx, config = {}) {
         const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
         let agentOptions = request.agentOptions;
         if (agentOptions === undefined) {
-          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver());
+          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver(workspaceRootOfAgent(caller)));
           if (outcome.status === "routed") {
             const resolved = await resolveRunRoute({ llmCatalog }, outcome.route, outcome.fallbacks);
             agentOptions = resolved.route;
@@ -1428,8 +1428,13 @@ function createDshAdapter(ctx, config = {}) {
           ...agentOptions === undefined ? {} : { agentOptions },
           ...request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }
         };
+        const provider = typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn";
+        const childId = request.onOpening !== undefined && provider === "spawn" && typeof subagents.startActivation === "function" && typeof subagents.prompt === "function" ? randomUUID() : undefined;
+        if (childId !== undefined)
+          request.onOpening?.(childId);
         const spec = dualShapeActivationSpec({
-          provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
+          provider,
+          ...childId === undefined ? {} : { childId },
           label: `${request.name} · ${request.teamId}`,
           signal: request.signal ?? neverAborted()
         }, activationRequest);
@@ -2392,6 +2397,20 @@ function createDshAdapter(ctx, config = {}) {
       if (typeof skills.get !== "function")
         throw new Error("mpd-dsh-adapter: the harness skills service exposes no get()");
       return skills.get(skillName, options);
+    },
+    selectedAgentPreset(agent) {
+      const session = agent?.session;
+      if (session === undefined || session === null)
+        return;
+      try {
+        const presets = service("agentPresets");
+        if (typeof presets?.presetForSession !== "function")
+          return;
+        const selected = presets.presetForSession(session);
+        return selected === null || typeof selected === "string" && selected.length > 0 ? selected : undefined;
+      } catch {
+        return;
+      }
     },
     async resolvePreset(presetId) {
       const presets = requireService("agentPresets", 'cannot resolve preset "' + presetId + '"');
@@ -4590,7 +4609,7 @@ function casReleaseTask(fresh, taskId, expectedRevision, now) {
   if (task === undefined)
     return { applied: false, reason: `task ${taskId} is no longer on the board` };
   if (expectedRevision !== undefined && task.revision !== expectedRevision) {
-    return { applied: false, reason: `task ${taskId} changed under you (revision ${expectedRevision} -> ${task.revision}); re-read it and retry` };
+    return { applied: false, staleRevision: true, reason: `task ${taskId} changed under you (revision ${expectedRevision} -> ${task.revision}); re-read it and retry` };
   }
   if (task.status === "completed" || task.status === "failed" || task.status === "cancelled") {
     return { applied: false, reason: `task ${taskId} is already terminal ("${task.status}") and cannot be released` };
@@ -5000,16 +5019,18 @@ function decodeStagedPlan(text2) {
     throw error;
   }
 }
-function writePlan(workspace, plan) {
-  const path = stagingPath(workspace, plan.sessionId);
+function writePlanFile(path, plan) {
   const temp = `${path}.${randomUUID3()}.tmp`;
-  writeJson2(temp, plan);
   try {
+    writeJson2(temp, plan);
     renameSync3(temp, path);
   } finally {
     if (existsSync4(temp))
       rmSync3(temp, { force: true });
   }
+}
+function writePlan(workspace, plan) {
+  writePlanFile(stagingPath(workspace, plan.sessionId), plan);
 }
 function stagePlan(workspace, sessionId, input, now) {
   const existing = readPlan(workspace, sessionId);
@@ -5050,15 +5071,19 @@ function classifyBlocker(plan, reference) {
     return "position";
   return plan.tasks.some((task) => task.subject === reference) ? "subject" : "unknown";
 }
-function archivePlan(workspace, plan) {
+function archivePlan(workspace, plan, retryApproval = false) {
   const target = archivePathFor(workspace, plan.planId);
-  if (existsSync4(join5(target, "plan.json"))) {
-    throw new Error(`plan id "${plan.planId}" is already archived in this workspace — refusing to overwrite an archived plan`);
+  const path = join5(target, "plan.json");
+  if (existsSync4(path)) {
+    const archived = retryApproval ? readJson2(path) : undefined;
+    if (archived?.planId !== plan.planId || archived.sessionId !== plan.sessionId || archived.approvedAt === undefined || archived.approvedAt !== plan.approvedAt || JSON.stringify(archived.created?.tasks.map((task) => task.id)) !== JSON.stringify(plan.created?.tasks.map((task) => task.id))) {
+      throw new Error(`plan id "${plan.planId}" is already archived in this workspace — refusing to overwrite an archived plan`);
+    }
+  } else {
+    writePlanFile(path, plan);
   }
-  mkdirSync5(target, { recursive: true });
-  writeJson2(join5(target, "plan.json"), plan);
   const staged = stagingPath(workspace, plan.sessionId);
-  if (existsSync4(staged))
+  if (readPlan(workspace, plan.sessionId)?.planId === plan.planId)
     rmSync3(staged, { force: true });
   return target;
 }
@@ -5615,13 +5640,14 @@ function retireCopies(lookup, destination) {
     if (path !== destination)
       rmSync4(path, { force: true });
 }
-function withProjectStage(workspace, sessionId, mutate) {
+function withProjectStage(workspace, sessionId, mutate, replacePaused = false) {
   const project = locateProject(workspace);
   assertInside(project.primaryRoot, join7(project.primaryRoot, ".mpd", "project-team"));
   return withProjectLock(project, (location) => {
     const lookup = lookupStage(location, workspace, sessionId);
-    const active = lookup.plan === undefined ? undefined : listTeams(location.record?.projectRoot ?? workspace).find((board) => board.planId === lookup.plan?.planId && board.leadSessionId === sessionId && board.approvedAt === undefined && board.endedAt === undefined && board.phase !== "ended");
-    if (active !== undefined)
+    const active = lookup.plan === undefined ? undefined : listTeams(location.record?.projectRoot ?? workspace).find((board) => board.planId === lookup.plan?.planId && board.leadSessionId === sessionId && (lookup.plan?.activation !== undefined || board.approvedAt === undefined) && board.endedAt === undefined && board.phase !== "ended");
+    const paused = replacePaused && lookup.plan?.activation?.stoppedAt !== undefined && !active?.members.some((member) => member.status === "provisioning");
+    if (active !== undefined && !paused)
       throw new ProjectAdmissionError(`plan ${active.planId} is frozen by approval of board ${active.teamId}`);
     const destination = stagingPath(lookup.workspace, sessionId);
     assertInside(lookup.workspace, destination);
@@ -5853,14 +5879,17 @@ function buildTeamPlan(plan, workspace, sessionId) {
       approval: plan.approval,
       stagedAt: plan.stagedAt,
       phrase: approvalPhraseFor(plan.planId),
-      approved: plan.approvedAt !== undefined,
+      approved: plan.approvedAt !== undefined && plan.activation === undefined,
       discarded: plan.discardedAt !== undefined,
-      members: plan.members.map((member) => ({
-        name: member.name,
-        description: member.description,
-        ...member.role === undefined ? {} : { role: member.role },
-        ...memberIds.has(member.name) ? { id: memberIds.get(member.name) } : {}
-      })),
+      members: plan.members.map((member, index) => {
+        const id = memberIds.get(plan.activation?.bindings[index]?.member ?? member.name);
+        return {
+          name: member.name,
+          description: member.description,
+          ...member.role === undefined ? {} : { role: member.role },
+          ...id === undefined ? {} : { id }
+        };
+      }),
       tasks: plan.tasks.map((task) => ({
         subject: task.subject,
         description: task.description,
@@ -6154,7 +6183,8 @@ data: ${JSON.stringify({ rev: revisionNow() })}
         memberCount: payload.team?.members.length ?? 0,
         taskCount: payload.team?.tasks.length ?? 0
       },
-      created: [...payload.created.members.map((member) => member.id), ...payload.created.tasks.map((task) => task.id)]
+      created: [...payload.created.members.map((member) => member.id), ...payload.created.tasks.map((task) => task.id)],
+      ...payload.stoppedAt === undefined ? {} : { activationPending: true, retry: "After the startup issue clears, approve the same plan again to start the remaining members." }
     })) && all;
     all = mountAction(TEAM_DISPATCH_PATH, parseDispatchInput, (sessionId, body) => actions.dispatch(sessionId, body), (payload) => ({
       pairs: payload.pairs.map((pair) => ({ taskId: pair.taskId, memberId: pair.memberId, memberName: pair.memberName })),
@@ -6712,7 +6742,7 @@ function memberForSession(record, sessionId) {
 }
 function memberHasOpenTask(record, sessionId) {
   const member = memberForSession(record, sessionId);
-  if (member === undefined)
+  if (member === undefined || member.status === "provisioning")
     return false;
   return record.tasks.some((task) => OPEN_TASK_STATUSES.includes(task.status) && (task.owner === member.name || member.executorRef !== undefined && task.owner === member.executorRef));
 }
@@ -7142,7 +7172,7 @@ function workmateHeadOf(deps, key) {
 async function bindStagedWorkmates(deps, plan, agent, roster2, fixed) {
   const plain = (reason) => {
     const members = plan.members.map((member) => ({ ...member, name: (fixed.has(member.name) ? roster2.byLogicalName.get(member.name)?.name : undefined) ?? member.name }));
-    return { members, tasks: tasksWithBoundOwners(plan, members), bindings: members.map((member, index) => ({ member: member.name, mode: "none", reason: fixed.has(plan.members[index].name) ? reason : "run-only" })) };
+    return { members, bindings: members.map((member, index) => ({ member: member.name, mode: "none", reason: fixed.has(plan.members[index].name) ? reason : "run-only" })) };
   };
   const config = workmateBindingConfigOf(deps);
   if (fixed.size === 0)
@@ -7179,7 +7209,7 @@ async function bindStagedWorkmates(deps, plan, agent, roster2, fixed) {
       const explicit = explicitWorkmateOf(member);
       if (previous !== undefined && explicit === undefined) {
         if (takenByOthers.has(previous.name))
-          return { error: `roster alias ${JSON.stringify(previous.name)} conflicts with another staged member`, members, tasks: plan.tasks, bindings };
+          return { error: `roster alias ${JSON.stringify(previous.name)} conflicts with another staged member`, members, bindings };
         const available = previous.workmate !== undefined && listing.rows.some((row) => row.name === previous.workmate);
         members[index] = { ...member, name: previous.name, prompt: available && previous.workmate !== undefined ? joinWorkmatePrompt(workmateHeadOf(deps, previous.workmate), member.prompt) : member.prompt };
         taken.delete(original);
@@ -7189,10 +7219,10 @@ async function bindStagedWorkmates(deps, plan, agent, roster2, fixed) {
       }
       if (explicit !== undefined) {
         if (!listing.rows.some((row) => row.name === explicit)) {
-          return { error: `staged member "${original}" explicitly names workmate "${explicit}", which does not exist in the library — the approval is refused rather than downgrading the seat to a plain member; initialize it with mpd_workmate_init or remove the workmate: line`, members, tasks: plan.tasks, bindings };
+          return { error: `staged member "${original}" explicitly names workmate "${explicit}", which does not exist in the library — the approval is refused rather than downgrading the seat to a plain member; initialize it with mpd_workmate_init or remove the workmate: line`, members, bindings };
         }
         if (takenByOthers.has(explicit)) {
-          return { error: `staged member "${original}" explicitly names workmate "${explicit}", which another member of this team already takes — a member NAME is seat identity, so two seats may not share one workmate`, members, tasks: plan.tasks, bindings };
+          return { error: `staged member "${original}" explicitly names workmate "${explicit}", which another member of this team already takes — a member NAME is seat identity, so two seats may not share one workmate`, members, bindings };
         }
         members[index] = { ...member, name: explicit, prompt: joinWorkmatePrompt(workmateHeadOf(deps, explicit), member.prompt) };
         taken.delete(original);
@@ -7219,20 +7249,70 @@ async function bindStagedWorkmates(deps, plan, agent, roster2, fixed) {
       }
       bindings.push({ member: original, mode: "none", reason: "no-match" });
     }
-    return { members, tasks: tasksWithBoundOwners(plan, members), bindings };
+    return { members, bindings };
   } catch (error) {
     deps.log("workmate binding failed (" + String(error?.message ?? error) + ") — every seat stays plain");
     return plain("binding-failed");
   }
 }
-function tasksWithBoundOwners(plan, members) {
-  const aliases = new Map(plan.members.map((member, index) => [member.name, members[index]?.name ?? member.name]));
-  return plan.tasks.map((task) => task.owner === undefined ? task : { ...task, owner: aliases.get(task.owner) ?? task.owner });
+function boundTaskOwners(plan, members) {
+  return plan.tasks.map((task) => {
+    if (task.owner === undefined)
+      return task;
+    const matches = plan.members.flatMap((member, index) => dispatchNameKey(member.name) === dispatchNameKey(task.owner ?? "") ? [index] : []);
+    const exact = plan.members.findIndex((member) => member.name === task.owner);
+    const owner = members[exact >= 0 ? exact : matches.length === 1 ? matches[0] : -1]?.name;
+    return owner === undefined || owner === task.owner ? task : { ...task, owner };
+  });
 }
 function joinWorkmatePrompt(head, prompt) {
   return head === "" ? prompt : head + `
 
 ` + prompt;
+}
+function committedApprovalTasks(plan, record) {
+  if (plan.activation === undefined || record.approvedAt === undefined)
+    return;
+  if (record.approvalTaskIds !== undefined)
+    return record.approvalTaskIds;
+  if (plan.activation.stoppedAt !== undefined || plan.tasks.length === 0 || record.nextTaskNumber <= plan.tasks.length)
+    return;
+  const bindings = plan.activation.bindings;
+  if (!plan.members.every((staged, index) => record.members.some((member) => member.name === (bindings[index]?.member ?? staged.name) && member.executorRef !== undefined && member.status !== "provisioning" && member.status !== "failed")))
+    return;
+  const ids = plan.tasks.map((_task, index) => `T${index + 1}`);
+  return ids.every((id) => record.tasks.some((task) => task.id === id)) ? ids : undefined;
+}
+async function finalizeTeamApproval(deps, caller, plan, record, taskIds, bindings) {
+  const tasksById = new Map(record.tasks.map((task) => [task.id, task]));
+  const unresolved = taskIds.flatMap((id) => {
+    const references = tasksById.get(id)?.unresolvedBlockers;
+    return references === undefined || references.length === 0 ? [] : [{ taskId: id, references: [...references] }];
+  });
+  const created = {
+    members: plan.members.flatMap((staged, index) => {
+      const member = record.members.find((candidate) => candidate.name === (bindings[index]?.member ?? staged.name));
+      return member?.executorRef === undefined ? [] : [{ name: member.name, id: member.executorRef }];
+    }),
+    tasks: taskIds.map((id, index) => ({ id, subject: tasksById.get(id)?.subject ?? plan.tasks[index]?.subject.trim() ?? id })),
+    ...unresolved.length === 0 ? {} : { unresolved }
+  };
+  const { activation: _activation, ...completedPlan } = plan;
+  const approved = { ...completedPlan, approvedAt: record.approvedAt, created };
+  const finalized = withProjectLock(locateProject(caller.workspace), () => {
+    if (readPlan(caller.workspace, caller.sessionId)?.planId !== plan.planId)
+      return false;
+    archivePlan(caller.workspace, approved, true);
+    return true;
+  });
+  if (!finalized) {
+    const archived = readArchivedPlan(caller.workspace, plan.planId);
+    if (archived?.approvedAt !== undefined && archived.sessionId === caller.sessionId)
+      return replayApproval(archived, record);
+    return { ok: false, error: `plan ${plan.planId} was replaced or discarded during activation` };
+  }
+  await deps.bundleApprovalEffects(plan, caller);
+  return { ok: true, plan: approved, team: record, created, bindings };
 }
 async function approveTeam(deps, caller, input = {}) {
   const slot = actionSlotKey(caller);
@@ -7245,10 +7325,10 @@ async function approveTeam(deps, caller, input = {}) {
     approvalsInFlight.delete(slot);
   }
 }
-async function projectMemberDeclaration(deps, identity) {
+async function projectMemberDeclaration(deps, identity, stagingWorkspace) {
   const config = deps.service("mpdConfig");
   const reader = typeof config === "object" && config !== null && "agentRouteResolutionOf" in config ? config.agentRouteResolutionOf : undefined;
-  const configured = resolveTeamMemberRoute(identity, typeof reader === "function" ? (member) => reader.call(config, member) : undefined);
+  const configured = resolveTeamMemberRoute(identity, typeof reader === "function" ? (member) => reader.call(config, member, stagingWorkspace) : undefined);
   const route = configured.status === "routed" ? deps.routeCatalog === undefined ? configured.route : (await resolveRunRoute(deps.routeCatalog, configured.route, configured.fallbacks)).route : null;
   return { name: identity.name, ...identity.role === undefined ? {} : { role: identity.role }, route };
 }
@@ -7257,7 +7337,7 @@ function replayApproval(plan, team) {
     members: team.members.flatMap((member) => member.executorRef === undefined ? [] : [{ name: member.name, id: member.executorRef }]),
     tasks: team.tasks.map((task) => ({ subject: task.subject, id: task.id }))
   };
-  return { ok: true, plan, team, created, ...team.approvedAt === undefined ? { stoppedAt: `approval recovery reused ${team.teamId}; inspect unconfirmed seats before dispatch` } : {} };
+  return { ok: true, plan, team, created, ...team.approvalTaskIds === undefined && (team.approvedAt === undefined || team.members.some((member) => member.status === "provisioning")) ? { stoppedAt: `approval recovery reused ${team.teamId}; inspect unconfirmed seats before dispatch` } : {} };
 }
 async function approveTeamBody(deps, caller, input) {
   if (caller.agent === undefined)
@@ -7265,14 +7345,17 @@ async function approveTeamBody(deps, caller, input) {
   const { sessionId, lineage } = caller;
   let workspace = caller.workspace;
   try {
-    const stagedPlan = readProjectStage(workspace, sessionId).plan;
-    if (input.dryRun !== true) {
-      const previous = listTeams(workspace).find((team) => team.leadSessionId === sessionId && team.planId !== undefined && (stagedPlan === undefined ? isLiveTeam(team, readArchivedPlanIndex(workspace)) : team.planId === stagedPlan.planId));
-      if (previous?.planId !== undefined) {
-        const original = stagedPlan ?? readArchivedPlan(workspace, previous.planId);
+    const stage = readProjectStage(workspace, sessionId);
+    const stagedPlan = stage.plan;
+    if (stagedPlan?.activation !== undefined || stagedPlan?.approvedAt !== undefined)
+      workspace = stage.workspace;
+    if (input.dryRun !== true && stagedPlan === undefined) {
+      const previous2 = listTeams(workspace).find((team) => team.leadSessionId === sessionId && team.planId !== undefined && isLiveTeam(team, readArchivedPlanIndex(workspace)));
+      if (previous2?.planId !== undefined) {
+        const original = readArchivedPlan(workspace, previous2.planId);
         if (original !== undefined) {
-          const replay = admitTeam({ workspace, sessionId, planId: previous.planId, planName: original.name, members: [] }, () => {
-            throw new ProjectAdmissionError(`original board ${previous.teamId} changed before approval replay`);
+          const replay = admitTeam({ workspace, sessionId, planId: previous2.planId, planName: original.name, members: [] }, () => {
+            throw new ProjectAdmissionError(`original board ${previous2.teamId} changed before approval replay`);
           });
           if ("existing" in replay)
             return replayApproval(original, replay.existing);
@@ -7282,8 +7365,15 @@ async function approveTeamBody(deps, caller, input) {
     const plan = stagedPlan;
     if (plan === undefined)
       return { ok: false, error: 'no team is staged in this session — use action:"create" first' };
-    if (plan.approvedAt !== undefined)
+    const legacyRefusal = plan.approvedAt !== undefined && plan.activation === undefined && plan.members.length > 0 && plan.created?.members.length === 0 && plan.created.tasks.length === 0;
+    const previousId = plan.activation?.teamId ?? (legacyRefusal ? activeTeamId(workspace, sessionId) : undefined);
+    const previous = previousId === undefined ? undefined : readTeam(workspace, previousId);
+    const legacy = legacyRefusal && previous?.planId === plan.planId && previous.leadSessionId === sessionId && previous.endedAt === undefined && previous.members.length === 0 && previous.tasks.length === plan.tasks.length && previous.tasks.every((task, index) => task.id === `T${index + 1}` && task.status === "pending" && (task.attempt ?? 0) === 0 && task.startedAt === undefined && task.note === undefined && task.subject === plan.tasks[index]?.subject.trim());
+    if (plan.approvedAt !== undefined && plan.activation === undefined && !legacy)
       return { ok: false, error: `plan ${plan.planId} is already approved` };
+    if (plan.activation !== undefined && (previous?.planId !== plan.planId || previous.leadSessionId !== sessionId || previous.endedAt !== undefined)) {
+      return { ok: false, error: `activation record for plan ${plan.planId} is missing or ended; stage a new plan to continue` };
+    }
     const staged = plan.members.length + plan.tasks.length;
     if (staged === 0) {
       return { ok: false, error: `plan ${plan.planId} is EMPTY — it has 0 members and 0 tasks, and approving it would create a team with nothing in it; add a member with agent_teams_plan {action:"add_member", member:{name, prompt}} and/or a task with {action:"create_task", task:{subject, description}} first — a task added there must also declare its dependency answer with blocked_by: [...] (possibly []) or independent: true` };
@@ -7298,6 +7388,11 @@ async function approveTeamBody(deps, caller, input) {
     if (input.dryRun === true) {
       return { ok: true, plan, created: { members: plan.members.map((m) => ({ name: m.name, id: "" })), tasks: plan.tasks.map((t) => ({ subject: t.subject, id: "" })) } };
     }
+    if (previous !== undefined && plan.activation !== undefined) {
+      const committed = committedApprovalTasks(plan, previous);
+      if (committed !== undefined)
+        return await finalizeTeamApproval(deps, { ...caller, workspace }, plan, previous, committed, plan.activation.bindings);
+    }
     const cellRun = projectCellRun(workspace, sessionId, plan.name);
     const eligible = cellRun === "planning" ? [] : plan.members.filter((member) => member.scope !== "run");
     const roster2 = readProjectRosterBindings(workspace, eligible, cellRun === "execution");
@@ -7307,83 +7402,48 @@ async function approveTeamBody(deps, caller, input) {
     if (cellRun === "execution" && roster2.members.length > 0 && unresolved.length > 0) {
       return { ok: false, error: `unresolved fixed owner(s) ${unresolved.map((member) => JSON.stringify(member.name)).join(", ")}; name a declared member or use agent_teams_plan action roster explicitly` };
     }
-    const bound = await bindStagedWorkmates(deps, plan, caller.agent, roster2, fixed);
+    const frozenBindings = plan.activation?.bindings;
+    const bound = frozenBindings === undefined ? await bindStagedWorkmates(deps, plan, caller.agent, roster2, fixed) : {
+      bindings: frozenBindings,
+      members: plan.members.map((member, index) => {
+        const binding = frozenBindings[index];
+        return binding === undefined ? member : {
+          ...member,
+          name: binding.member,
+          prompt: binding.workmate === undefined ? member.prompt : joinWorkmatePrompt(workmateHeadOf(deps, binding.workmate), member.prompt)
+        };
+      })
+    };
     if (bound.error !== undefined)
       return { ok: false, error: bound.error };
     if (new Set(bound.members.map((member) => member.name)).size !== plan.members.length) {
       return { ok: false, error: "logical roster declarations have conflicting board aliases; no member was assigned" };
     }
-    const buildPlan = { ...plan, members: bound.members, tasks: bound.tasks };
-    let record = draftTeam({
+    const buildPlan = { members: bound.members, tasks: boundTaskOwners(plan, bound.members) };
+    let record = previous ?? draftTeam({
       name: plan.name,
       description: plan.description,
       leadSessionId: sessionId,
       planId: plan.planId,
       ...parent === undefined ? {} : { parentTeamId: parent.teamId }
     }, deps.now());
-    for (const [index, member] of buildPlan.members.entries()) {
-      record = addTeamMember(record, {
-        name: member.name,
-        description: member.description,
-        ...fixed.has(plan.members[index].name) ? {} : { projectScope: "run" },
-        ...member.role === undefined ? {} : { role: member.role }
-      }, deps.now());
-    }
-    for (const binding of bound.bindings) {
-      record = updateTeamMember(record, binding.member, {
-        workmateMode: binding.mode,
-        ...binding.workmate === undefined ? {} : { workmate: binding.workmate },
-        ...binding.reason === undefined ? {} : { workmateReason: binding.reason }
-      });
-    }
-    for (const task of buildPlan.tasks) {
-      record = addTeamTask(record, {
-        subject: task.subject,
-        description: task.description,
-        kind: task.kind ?? "work",
-        ...task.blockedBy === undefined ? {} : { blockedBy: task.blockedBy },
-        ...task.writeScopes === undefined ? {} : { writeScopes: task.writeScopes },
-        ...task.owner === undefined ? {} : { owner: task.owner },
-        ...task.coverageOf === undefined ? {} : { coverageOf: task.coverageOf },
-        ...task.sourceTaskId === undefined ? {} : { sourceTaskId: task.sourceTaskId }
-      }, deps.now());
-    }
-    const planAlias = new Map;
-    buildPlan.tasks.forEach((task, index) => {
-      const minted = record.tasks[index];
-      if (minted === undefined)
-        return;
-      planAlias.set(String(index + 1), minted.id);
-      if (!planAlias.has(task.subject))
-        planAlias.set(task.subject, minted.id);
-    });
-    for (const [index, task] of buildPlan.tasks.entries()) {
-      const minted = record.tasks[index];
-      if (minted === undefined || (task.blockedBy ?? []).length === 0)
-        continue;
-      const mapped = (task.blockedBy ?? []).map((reference) => planAlias.get(reference) ?? reference);
-      if (mapped.length === minted.blockedBy.length && mapped.every((id, at) => minted.blockedBy[at] === id))
-        continue;
-      record = updateTeamTask(record, minted.id, { blockedBy: mapped }, deps.now());
-    }
-    const declarations = (await Promise.all(buildPlan.members.map(async (member, index) => {
+    const declarations = previous !== undefined && !legacy ? [] : (await Promise.all(buildPlan.members.map(async (member, index) => {
       const original = plan.members[index].name;
       if (!fixed.has(original))
         return;
-      const previous = roster2.byLogicalName.get(original);
-      const logicalName = previous?.logicalName ?? original;
-      const workmate = bound.bindings[index]?.workmate ?? previous?.workmate;
-      const selected = previous ?? await projectMemberDeclaration(deps, { ...member, name: logicalName });
+      const previous2 = roster2.byLogicalName.get(original);
+      const logicalName = previous2?.logicalName ?? original;
+      const workmate = bound.bindings[index]?.workmate ?? previous2?.workmate;
+      const selected = previous2 ?? await projectMemberDeclaration(deps, { ...member, name: logicalName }, caller.checkoutRoot ?? stage.workspace);
       return {
         name: member.name,
         logicalName,
         route: selected.route,
         ...selected.role === undefined ? {} : { role: selected.role },
         ...workmate === undefined ? {} : { workmate },
-        ...previous === undefined ? {} : { previous: { memberId: previous.memberId, name: previous.name, logicalName: previous.logicalName } }
+        ...previous2 === undefined ? {} : { previous: { memberId: previous2.memberId, name: previous2.name, logicalName: previous2.logicalName } }
       };
     }))).filter((member) => member !== undefined);
-    const logicalByDisplay = new Map(declarations.map((member) => [member.name, member.logicalName]));
     const admission = admitTeam({
       workspace,
       sessionId,
@@ -7404,53 +7464,119 @@ async function approveTeamBody(deps, caller, input) {
       },
       ...parent === undefined ? {} : { parentTeamId: parent.teamId }
     }, (target, project) => {
-      const projected = record.members.map((member) => {
-        if (member.projectScope === "run")
-          return member;
-        const seat = project.members.find((candidate) => candidate.logicalName === logicalByDisplay.get(member.name));
-        if (seat === undefined)
-          throw new ProjectAdmissionError(`admitted logical identity for ${JSON.stringify(member.name)} is missing`);
-        const { role: _stagedRole, ...row } = member;
-        return { ...row, ...seat.role === undefined ? {} : { role: seat.role }, projectMemberId: seat.memberId, ...seat.route === null ? {} : { route: `${seat.route.provider}/${seat.route.model}` } };
-      });
-      record = { ...record, members: projected };
       publishTeam(target, record);
+      writePlan(target, { ...plan, activation: { teamId: record.teamId, bindings: bound.bindings } });
       return { target, roster: project.members };
     });
-    if ("existing" in admission)
-      return replayApproval(plan, admission.existing);
-    workspace = admission.created.target;
+    if ("existing" in admission) {
+      record = admission.existing;
+      workspace = locateProject(workspace).record?.projectRoot ?? workspace;
+      if (previous?.teamId !== record.teamId) {
+        const recovered = withProjectLock(locateProject(workspace), () => {
+          const staged2 = readPlan(workspace, sessionId);
+          const fresh = readTeam(workspace, record.teamId);
+          if (fresh === undefined || fresh.endedAt !== undefined || fresh.approvedAt !== undefined || fresh.members.length !== 0 || fresh.tasks.length !== 0 || staged2 === undefined || staged2.activation !== undefined || JSON.stringify(staged2) !== JSON.stringify(plan))
+            return false;
+          writePlan(workspace, { ...plan, activation: { teamId: record.teamId, bindings: bound.bindings } });
+          return true;
+        });
+        if (!recovered)
+          return replayApproval(plan, readTeam(workspace, record.teamId) ?? record);
+      }
+    } else
+      workspace = admission.created.target;
+    const projectRoster = "created" in admission ? admission.created.roster : locateProject(workspace).record?.members ?? [];
+    if (legacy) {
+      const { approvedAt: _approvedAt, ...unapproved } = record;
+      record = withDerivedPhase({ ...unapproved, tasks: [], nextTaskNumber: 1, nextMemberNumber: 1 });
+      writeTeam(workspace, record);
+    }
+    const activation = { teamId: record.teamId, bindings: bound.bindings };
+    const currentPlan = () => readPlan(workspace, sessionId)?.planId === plan.planId;
+    if (legacy && currentPlan())
+      writePlan(workspace, { ...plan, activation });
     const created = { members: [], tasks: [] };
-    const unresolvedBlockers = record.tasks.filter((task) => (task.unresolvedBlockers ?? []).length > 0).map((task) => ({ taskId: task.id, references: [...task.unresolvedBlockers ?? []] }));
-    if (unresolvedBlockers.length > 0)
-      created.unresolved = unresolvedBlockers;
     let stoppedAt;
     const backend = deps.executor();
     const worktreeOf = backend.kind === "native" ? memberWorktreeLookup(deps.service, deps.log) : undefined;
     if (worktreeOf === undefined)
       deps.log("[mpd-team-core] the " + backend.kind + " executor cannot set cwd — team members spawn in the shared checkout (no per-member worktree)");
-    for (const member of record.members) {
+    for (const [index, staged2] of buildPlan.members.entries()) {
+      if (!currentPlan())
+        return { ok: false, error: `plan ${plan.planId} was replaced or discarded during activation` };
+      record = readTeam(workspace, record.teamId) ?? record;
+      const priorSeat = record.members.find((member2) => member2.name === staged2.name);
+      if (priorSeat?.executorRef !== undefined && priorSeat.status !== "provisioning") {
+        created.members.push({ name: priorSeat.name, id: priorSeat.executorRef });
+        continue;
+      }
+      if (priorSeat !== undefined)
+        return replayApproval(plan, record);
+      const original = plan.members[index].name;
+      const seat = fixed.has(original) ? projectRoster.find((candidate) => candidate.name === staged2.name) : undefined;
+      const binding = bound.bindings[index];
+      const reserved = withProjectLock(locateProject(workspace), () => {
+        const fresh = readTeam(workspace, record.teamId);
+        if (fresh === undefined || fresh.endedAt !== undefined || !currentPlan() || fresh.members.some((member2) => member2.name === staged2.name))
+          return;
+        const added = addTeamMember(fresh, seat === undefined ? { ...staged2, projectScope: "run" } : {
+          ...staged2,
+          role: seat.role,
+          projectMemberId: seat.memberId,
+          ...seat.route === null ? {} : { route: `${seat.route.provider}/${seat.route.model}` }
+        }, deps.now());
+        const next = binding === undefined ? added : updateTeamMember(added, staged2.name, {
+          workmateMode: binding.mode,
+          ...binding.workmate === undefined ? {} : { workmate: binding.workmate },
+          ...binding.reason === undefined ? {} : { workmateReason: binding.reason }
+        });
+        writeTeam(workspace, withDerivedPhase(next));
+        return { record: next, nextMemberNumber: fresh.nextMemberNumber };
+      });
+      if (reserved === undefined) {
+        const fresh = readTeam(workspace, record.teamId);
+        if (fresh !== undefined && fresh.endedAt === undefined && currentPlan())
+          return replayApproval(plan, fresh);
+        return { ok: false, error: `plan ${plan.planId} or team ${record.teamId} changed during activation` };
+      }
+      record = reserved.record;
+      const member = record.members.find((candidate) => candidate.name === staged2.name);
+      if (member === undefined)
+        continue;
       let assignment;
       try {
         assignment = worktreeOf?.({ exec: { agent: caller.agent, signal: caller.signal }, teamId: record.teamId, member: member.name, ...member.role === undefined ? {} : { role: member.role } });
         const cwd = assignment?.path;
-        const route = admission.created.roster.find((seat) => seat.memberId === member.projectMemberId)?.route;
+        const route = seat?.route;
         const spawned = await backend.spawn(caller.agent, {
           teamId: record.teamId,
           memberId: member.id,
           name: member.name,
           description: member.description === "" ? member.name : member.description,
-          prompt: withIdlePreamble(buildPlan.members.find((staged2) => staged2.name === member.name)?.prompt ?? member.description),
+          prompt: withIdlePreamble(staged2.prompt),
           ...member.role === undefined ? {} : { role: member.role },
           ...route == null ? {} : { agentOptions: route },
           ...cwd === undefined ? {} : { cwd },
+          onOpening: (handle) => {
+            const fresh2 = readTeam(workspace, activation.teamId);
+            if (fresh2 === undefined || fresh2.endedAt !== undefined)
+              throw new Error(`team ${activation.teamId} is no longer available`);
+            writeTeam(workspace, updateTeamMember(fresh2, member.id, { executorRef: handle }));
+          },
           ...caller.signal === undefined ? {} : { signal: caller.signal }
         });
+        const fresh = readTeam(workspace, record.teamId);
+        if (fresh === undefined || fresh.endedAt !== undefined) {
+          await backend.interrupt(caller.agent, spawned.handle);
+          return { ok: false, error: `team ${record.teamId} is no longer available for activation` };
+        }
         created.members.push({ name: member.name, id: spawned.handle });
-        record = updateTeamMember(readTeam(workspace, record.teamId) ?? record, member.id, { executorRef: spawned.handle, status: "running" });
+        record = withDerivedPhase(updateTeamMember({ ...fresh, approvedAt: fresh.approvedAt ?? deps.now().toISOString() }, member.id, { executorRef: spawned.handle, status: "running" }));
         writeTeam(workspace, record);
       } catch (error) {
-        record = removeTeamMember(record, member.id);
+        const fresh = readTeam(workspace, record.teamId) ?? record;
+        record = withDerivedPhase({ ...removeTeamMember(fresh, member.id), nextMemberNumber: reserved.nextMemberNumber });
+        writeTeam(workspace, record);
         if (assignment?.created === true && deps.releaseWorktree !== undefined) {
           try {
             await deps.releaseWorktree(caller.agent, { teamId: record.teamId, member: member.name });
@@ -7458,24 +7584,68 @@ async function approveTeamBody(deps, caller, input) {
             deps.log("[mpd-team-core] the failed-spawn worktree " + record.teamId + "/" + member.name + " could not be released: " + String(releaseError?.message ?? releaseError));
           }
         }
-        stoppedAt = `member ${member.name}: ${String(error?.message ?? error)}`;
+        stoppedAt = `member ${member.name}: ${refusalOf(error)}. Once the cause clears, retry agent_teams_plan {action:"approve"} to continue this plan.`;
         break;
       }
     }
-    if (stoppedAt === undefined)
-      for (const task of record.tasks) {
-        created.tasks.push({ subject: task.subject, id: task.id });
+    if (!currentPlan())
+      return { ok: false, error: `plan ${plan.planId} was replaced or discarded during activation` };
+    if (stoppedAt !== undefined) {
+      const { approvedAt: _previousApproval, ...staging } = plan;
+      const paused = { ...staging, ...record.approvedAt === undefined ? {} : { approvedAt: record.approvedAt }, activation: { ...activation, stoppedAt }, created };
+      writePlan(workspace, paused);
+      return { ok: true, plan: paused, team: record, created, bindings: bound.bindings, stoppedAt };
+    }
+    const published = withProjectLock(locateProject(workspace), () => {
+      record = readTeam(workspace, record.teamId) ?? record;
+      if (record.endedAt !== undefined || !currentPlan())
+        return;
+      const committed = committedApprovalTasks({ ...plan, activation }, record);
+      if (committed !== undefined)
+        return { record, taskIds: committed };
+      const firstTask = record.tasks.length;
+      for (const task of buildPlan.tasks) {
+        record = addTeamTask(record, {
+          subject: task.subject,
+          description: task.description,
+          kind: task.kind ?? "work",
+          ...task.blockedBy === undefined ? {} : { blockedBy: task.blockedBy },
+          ...task.writeScopes === undefined ? {} : { writeScopes: task.writeScopes },
+          ...task.owner === undefined ? {} : { owner: task.owner },
+          ...task.coverageOf === undefined ? {} : { coverageOf: task.coverageOf },
+          ...task.sourceTaskId === undefined ? {} : { sourceTaskId: task.sourceTaskId }
+        }, deps.now());
       }
-    const approvedRecord = withDerivedPhase({ ...record, approvedAt: deps.now().toISOString() });
-    const approved = { ...plan, approvedAt: deps.now().toISOString(), created };
-    withProjectLock(locateProject(workspace), () => {
+      const planAlias = new Map;
+      buildPlan.tasks.forEach((task, index) => {
+        const minted = record.tasks[firstTask + index];
+        if (minted === undefined)
+          return;
+        planAlias.set(String(index + 1), minted.id);
+        if (!planAlias.has(task.subject))
+          planAlias.set(task.subject, minted.id);
+      });
+      for (const [index, task] of buildPlan.tasks.entries()) {
+        const minted = record.tasks[firstTask + index];
+        if (minted === undefined || (task.blockedBy ?? []).length === 0)
+          continue;
+        const mapped = (task.blockedBy ?? []).map((reference) => planAlias.get(reference) ?? reference);
+        if (mapped.length === minted.blockedBy.length && mapped.every((id, at) => minted.blockedBy[at] === id))
+          continue;
+        record = updateTeamTask(record, minted.id, { blockedBy: mapped }, deps.now());
+      }
+      const approvalTaskIds = record.tasks.slice(firstTask).map((task) => task.id);
+      const approvedRecord = withDerivedPhase({ ...record, approvedAt: record.approvedAt ?? deps.now().toISOString(), approvalTaskIds });
       writeTeam(workspace, approvedRecord);
-      writePlan(workspace, approved);
-      if (stoppedAt === undefined)
-        archivePlan(workspace, approved);
+      return { record: approvedRecord, taskIds: approvalTaskIds };
     });
-    await deps.bundleApprovalEffects(plan, caller);
-    return { ok: true, plan: approved, team: approvedRecord, created, bindings: bound.bindings, ...stoppedAt === undefined ? {} : { stoppedAt } };
+    if (published === undefined) {
+      const archived = readArchivedPlan(workspace, plan.planId);
+      if (archived?.approvedAt !== undefined && record.endedAt === undefined)
+        return replayApproval(archived, record);
+      return { ok: false, error: `plan ${plan.planId} or team ${record.teamId} changed during activation` };
+    }
+    return await finalizeTeamApproval(deps, { ...caller, workspace }, plan, published.record, published.taskIds, bound.bindings);
   } catch (error) {
     if (error instanceof ProjectAdmissionError)
       return { ok: false, error: error.message };
@@ -7612,18 +7782,26 @@ async function runDispatchBody(deps, caller, input) {
             if (expected === undefined)
               return { applied: false, reason: `task ${pair.taskId} is no longer on the pass's board` };
             const decision = casClaimTask(onDisk, pair.taskId, pair.memberName, expected, deps.now());
-            if (!decision.applied)
+            if (!decision.applied) {
+              if (current !== undefined && (current.owner === pair.memberId || current.owner === pair.memberName)) {
+                if (current.status === "claimed" || current.status === "in_progress")
+                  return { applied: true, record: onDisk, assigned: true };
+                if (current.status === "completed" || current.status === "failed")
+                  return { applied: true, record: onDisk, assigned: false };
+              }
               return decision;
+            }
             const updated = withDerivedPhase(updateTeamMember(decision.record, pair.memberName, { status: "running" }));
             writeTeam(workspace, updated);
-            return { applied: true, record: updated };
+            return { applied: true, record: updated, assigned: true };
           });
           if (!claimed.applied) {
-            skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `the board refused the claim: ${claimed.reason}` });
+            skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `the message was delivered but the board refused the claim: ${claimed.reason}` });
             continue;
           }
           record = claimed.record;
-          ledger = assign(ledger, { teamId: opened.teamId, taskId: pair.taskId, memberId: pair.memberId, memberName: pair.memberName }, deps.now());
+          if (claimed.assigned)
+            ledger = assign(ledger, { teamId: opened.teamId, taskId: pair.taskId, memberId: pair.memberId, memberName: pair.memberName }, deps.now());
           sent.push(pair);
         } catch (error) {
           skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `the message to ${pair.memberName} failed: ${String(error?.message ?? error)}` });
@@ -7632,10 +7810,15 @@ async function runDispatchBody(deps, caller, input) {
         endDispatchWindow();
       }
     }
-    const fresh = reconcile(readLedger(workspace), opened.teamId, tasks);
+    const latest = readTeam(workspace, opened.teamId) ?? record;
+    const fresh = reconcile(readLedger(workspace), opened.teamId, latest.tasks);
     const merged = { ...fresh.ledger };
-    for (const pair of sent)
-      merged[ledgerKey(opened.teamId, pair.taskId)] = ledger[ledgerKey(opened.teamId, pair.taskId)];
+    for (const pair of sent) {
+      const key = ledgerKey(opened.teamId, pair.taskId);
+      const task = latest.tasks.find((candidate) => candidate.id === pair.taskId);
+      if (task !== undefined && (task.status === "claimed" || task.status === "in_progress") && (task.owner === pair.memberId || task.owner === pair.memberName) && ledger[key] !== undefined)
+        merged[key] = ledger[key];
+    }
     writeLedger(workspace, merged);
     return { ok: true, pairs: sent, skipped, forgotten, ...holdNote === undefined ? {} : { holdRead: holdNote }, ...reaped.length === 0 ? {} : { reaped }, ...reassigned.length === 0 ? {} : { reassigned } };
   } catch (error) {
@@ -8245,7 +8428,10 @@ async function forceWedgedTask(deps, caller, input) {
       next = addTeamTask(next, { subject, description: `${continuation} The original row declared no split-able write scope, so NARROW THE SCOPE FIRST (name the files this row touches) before editing anything.`, writeScopes: [], owner: member.name, blockedBy: [], sourceTaskId: task.id, ...task.coverageOf === undefined ? {} : { coverageOf: task.coverageOf } }, now);
       split.push(next.tasks[next.tasks.length - 1]?.id ?? "");
     }
-    writeTeam(caller.workspace, next);
+    writeTeam(caller.workspace, withDerivedPhase(settleMember(next, handle, now)));
+    const freed = release(readLedger(caller.workspace), record.teamId, task.id);
+    if (freed.released)
+      writeLedger(caller.workspace, freed.ledger);
     if (handoffSource === "supervisor")
       appendContinuationRows(handoff, task.id, attempt, split);
     let mail;
@@ -10801,7 +10987,7 @@ var text2 = (value2) => [{ type: "text", text: typeof value2 === "string" ? valu
 function describePlan(plan) {
   if (plan === undefined)
     return "no staged plan";
-  const state = plan.approvedAt !== undefined ? "approved" : plan.discardedAt !== undefined ? "discarded" : "staged";
+  const state = plan.activation !== undefined ? "activation pending" : plan.approvedAt !== undefined ? "approved" : plan.discardedAt !== undefined ? "discarded" : "staged";
   return `${plan.planId} (${state}): ${plan.members.length} member(s), ${plan.tasks.length} task(s)`;
 }
 function fieldText(value2) {
@@ -10825,6 +11011,8 @@ function describeStatus(value2) {
   const lines = [summary];
   if (isRecord(board.rosterUnsupported) && typeof board.rosterUnsupported.reason === "string")
     lines.push(board.rosterUnsupported.reason);
+  if (isRecord(plan.activation) && typeof plan.activation.stoppedAt === "string")
+    lines.push(plan.activation.stoppedAt);
   for (const member of members) {
     const row = member ?? {};
     lines.push(`member id=${fieldText(row.id)} name=${fieldText(row.name)} status=${fieldText(row.status)}`);
@@ -11209,6 +11397,8 @@ function apply(ctx) {
     lineage: sessionIsDelegatedChild(exec) ? [] : sessionLineageOf(exec)
   });
   const stagedPlan = (plan) => {
+    if (plan?.activation !== undefined)
+      throw new Error(`plan ${plan.planId} has begun activation; retry approve before changing the team`);
     if (plan !== undefined && plan.approvedAt !== undefined)
       throw new Error(`plan ${plan.planId} is already approved; stage a new one to change the team`);
     return plan;
@@ -11298,13 +11488,20 @@ function apply(ctx) {
     const refusal = authorizeRelease(fresh, taskId, caller, lead);
     if (refusal !== undefined)
       return { released: false, taskId, refused: refusal };
+    const outcome = casReleaseTask(fresh, taskId, expectedRevision, now());
+    if (!outcome.applied && outcome.staleRevision === true)
+      return { released: false, taskId, refused: outcome.reason };
+    if (outcome.applied)
+      writeTeam(workspace, withDerivedPhase(outcome.record));
     const freed = release(readLedger(workspace), record.teamId, taskId);
     if (freed.released)
       writeLedger(workspace, freed.ledger);
-    const outcome = casReleaseTask(fresh, taskId, expectedRevision, now());
-    if (!outcome.applied)
+    if (!outcome.applied) {
+      const pending2 = freed.released ? fresh.tasks.find((candidate) => candidate.id === taskId && candidate.status === "pending") : undefined;
+      if (pending2 !== undefined)
+        return { released: true, taskId, status: pending2.status, revision: pending2.revision };
       return { released: freed.released, taskId, refused: outcome.reason };
-    writeTeam(workspace, withDerivedPhase(outcome.record));
+    }
     const view2 = outcome.record.tasks.find((candidate) => candidate.id === taskId);
     return { released: freed.released, taskId, status: view2?.status, revision: view2?.revision };
   });
@@ -11382,7 +11579,7 @@ function apply(ctx) {
     const lineage = sessionIsDelegatedChild({ agent }) ? [] : sessionLineageOf({ agent });
     const title = sessionTitleOf({ agent });
     try {
-      return { ok: true, caller: { workspace: where({ agent }).workspace, sessionId, lineage, agent, ...title === "" ? {} : { title }, ...signal === undefined ? {} : { signal } } };
+      return { ok: true, caller: { workspace: where({ agent }).workspace, checkoutRoot: dsh.workspaceRoot({ agent }), sessionId, lineage, agent, ...title === "" ? {} : { title }, ...signal === undefined ? {} : { signal } } };
     } catch (error) {
       return { ok: false, error: String(error?.message ?? error) };
     }
@@ -11621,7 +11818,7 @@ function apply(ctx) {
       },
       render: (_args, value2) => {
         const painted = value2?.projectRoster !== undefined ? `fixed project roster
-${JSON.stringify(value2.projectRoster)}` : value2?.archivedTo !== undefined ? `archived to ${value2.archivedTo}` : value2?.created !== undefined ? `approved ${value2.plan?.planId ?? ""}: ${value2.created.members?.length ?? 0} member(s), ${value2.created.tasks?.length ?? 0} task(s)` + (value2.stoppedAt === undefined ? "" : ` — STOPPED at ${value2.stoppedAt}`) + (Array.isArray(value2.bindings) && value2.bindings.length > 0 ? `
+${JSON.stringify(value2.projectRoster)}` : value2?.archivedTo !== undefined ? `archived to ${value2.archivedTo}` : value2?.created !== undefined ? `${value2.stoppedAt === undefined ? "approved" : "activation paused for"} ${value2.plan?.planId ?? ""}: ${value2.created.members?.length ?? 0} member(s), ${value2.created.tasks?.length ?? 0} task(s)` + (value2.stoppedAt === undefined ? "" : ` — ${value2.stoppedAt}`) + (Array.isArray(value2.bindings) && value2.bindings.length > 0 ? `
 ` + value2.bindings.map((binding) => "  " + String(binding.member ?? "?") + " — " + String(binding.mode ?? "?") + (binding.workmate === undefined ? "" : ": " + binding.workmate) + (binding.reason === undefined ? "" : " (" + binding.reason + ")")).join(`
 `) : "") + (Array.isArray(value2.created.unresolved) && value2.created.unresolved.length > 0 ? ` — WARNING: ${value2.created.unresolved.length} task(s) carry blockers that name no task (${value2.created.unresolved.map((entry) => `${entry.taskId ?? "?"}:[${(entry.references ?? []).join(",")}]`).join(" ")}); they draw no edge` : "") : value2?.members !== undefined ? describeStatus(value2) : typeof value2?.appended === "string" ? value2.appended : Array.isArray(value2?.blockers) && value2.blockers.length > 0 ? `task "${value2.plan?.tasks?.at?.(-1)?.subject ?? ""}" staged${blockerSentence(value2.blockers)}` : describeStagedPlan(value2?.plan);
         const warning = typeof value2?.warning === "string" && value2.warning !== "" ? `
@@ -11649,7 +11846,7 @@ WARNING: ${value2.warning}` : "";
         const route = raw.route;
         if (route !== undefined && (!routeValue(route) || route === null || route.provider.trim() === "" || route.model.trim() === ""))
           throw new Error("member.route must specify provider and model");
-        const declaration = route === undefined ? await projectMemberDeclaration(teamActionsDeps, { name: name2, description: name2, ...role ? { role } : {} }) : { name: name2, ...role ? { role } : {}, route };
+        const declaration = route === undefined ? await projectMemberDeclaration(teamActionsDeps, { name: name2, description: name2, ...role ? { role } : {} }, scope.checkoutRoot) : { name: name2, ...role ? { role } : {}, route };
         return { projectRoster: addFixedProjectMember(scope, declaration) };
       }
       if (action === "status") {
@@ -11676,6 +11873,8 @@ WARNING: ${value2.warning}` : "";
       }
       if (action === "create") {
         return withProjectStage(workspace, sessionId, (stage) => {
+          if (stage.plan?.activation !== undefined && args?.replace !== true)
+            throw new Error(`plan ${stage.plan.planId} has begun activation; retry approve or pass replace:true`);
           if (stage.plan?.approvedAt !== undefined && args?.replace !== true) {
             throw new Error(`plan ${stage.plan.planId} is already approved; pass replace:true to stage a different team`);
           }
@@ -11686,7 +11885,7 @@ WARNING: ${value2.warning}` : "";
             description: String(args?.description ?? ""),
             approval: args?.approval === "automatic" ? "automatic" : "required"
           }, now()) };
-        });
+        }, args?.replace === true);
       }
       if (action === "add_member") {
         const raw = args?.member ?? {};
@@ -11757,6 +11956,12 @@ WARNING: ${value2.warning}` : "";
             ...added.role === undefined ? {} : { role: added.role },
             ...seat?.route == null ? {} : { agentOptions: seat.route },
             ...cwd === undefined ? {} : { cwd },
+            onOpening: (handle) => {
+              const fresh = readTeam(workspace, roster2.teamId);
+              if (fresh === undefined || fresh.endedAt !== undefined)
+                throw new Error(`team ${roster2.teamId} is no longer available`);
+              writeTeam(workspace, updateTeamMember(fresh, added.id, { executorRef: handle }));
+            },
             ...exec.signal === undefined ? {} : { signal: exec.signal }
           });
           const running = updateTeamMember(readTeam(workspace, roster2.teamId) ?? roster2, added.id, { executorRef: spawned.handle, status: "running" });
@@ -11846,6 +12051,8 @@ WARNING: ${value2.warning}` : "";
         return withProjectStage(workspace, sessionId, ({ workspace: stageRoot, plan }) => {
           if (plan === undefined)
             throw new Error('no team is staged in this session — use action:"create" first');
+          if (plan.activation !== undefined)
+            throw new Error(`plan ${plan.planId} has begun activation; retry approve before changing the team`);
           if (plan.approvedAt !== undefined)
             throw new Error(`plan ${plan.planId} is already approved and cannot be edited`);
           const next = {
@@ -11885,6 +12092,7 @@ WARNING: ${value2.warning}` : "";
       if (action === "approve") {
         const outcome = await approveTeam(teamActionsDeps, {
           workspace,
+          checkoutRoot: dsh.workspaceRoot(exec),
           sessionId,
           lineage,
           ...exec.agent === undefined ? {} : { agent: exec.agent },

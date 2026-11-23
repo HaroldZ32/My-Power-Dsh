@@ -1,0 +1,101 @@
+Bun 1.4.0, Node 24.21.0. Selected result lines and fixture observations, with no raw session logs.
+
+Earlier repair source, original independent probes [exit 1]
+{"activationOk":true,"activatedRevision":2,"committedId":"T1","mappedId":"T2","alphaRows":[{"id":"T1","status":"pending"},{"id":"T2","status":"pending"}]}
+{"distinctGoalIds":2,"goalFinishes":["complete","complete"],"boulderCompletions":2}
+{"boulderWriteFault":true,"toolStatus":"complete","storedRunStatus":"complete","boulderStatus":"active","goalFinishes":["complete"]}
+ 1 pass
+ 38 filtered out
+ 2 fail
+Ran 3 tests across 2 files. [87.00ms]
+
+Earlier repair rebuilt bytes, original independent probes [exit 1]
+{"activationOk":true,"activatedRevision":2,"committedId":"T1","mappedId":"T2","alphaRows":[{"id":"T1","status":"pending"},{"id":"T2","status":"pending"}]}
+{"distinctGoalIds":2,"goalFinishes":["complete","complete"],"boulderCompletions":2}
+{"boulderWriteFault":true,"toolStatus":"complete","storedRunStatus":"complete","boulderStatus":"active","goalFinishes":["complete"]}
+ 1 pass
+ 38 filtered out
+ 2 fail
+Ran 3 tests across 2 files. [90.00ms]
+
+Earlier repair rebuilt bytes, matched extended probes [exit 1]
+CHECK {"case":"supersession","change":"unchanged","accepted":true,"revision":2,"originalId":"T1","mappedId":"T2","rows":[{"id":"T1","status":"pending"},{"id":"T2","status":"pending"}],"reviewerBlocks":["T2"],"verificationTaskIds":["T2","T4"]}
+CHECK {"case":"supersession","change":"removed","accepted":true,"revision":2,"originalId":"T1","mappedId":null,"rows":[{"id":"T1","status":"pending"}],"reviewerBlocks":[],"verificationTaskIds":["T2"]}
+CHECK {"case":"supersession","change":"changed","accepted":true,"revision":2,"originalId":"T1","mappedId":"T2","rows":[{"id":"T1","status":"pending"},{"id":"T2","status":"pending"}],"reviewerBlocks":["T2"],"verificationTaskIds":["T2","T4"]}
+CHECK {"case":"supersession","change":"active","accepted":true,"revision":2,"originalId":"T1","mappedId":"T2","rows":[{"id":"T1","status":"in_progress"},{"id":"T2","status":"pending"}],"reviewerBlocks":["T2"],"verificationTaskIds":["T2","T4"]}
+CHECK {"case":"supersession","change":"terminal","accepted":true,"revision":2,"originalId":"T1","mappedId":"T2","rows":[{"id":"T1","status":"completed"},{"id":"T2","status":"pending"}],"reviewerBlocks":["T2"],"verificationTaskIds":["T2","T4"]}
+CHECK {"case":"supersession","change":"ambiguous","accepted":true,"revision":2,"originalId":"T1","mappedId":"T3","rows":[{"id":"T1","status":"pending"},{"id":"T2","status":"pending"},{"id":"T3","status":"pending"}],"reviewerBlocks":["T3"],"verificationTaskIds":["T3","T5"]}
+(fail) append supersession: a second interruption keeps the replacement on the next revision [9.35ms]
+CHECK {"case":"real Boulder refusal and retry","osDenial":"EACCES","toolRefusal":true,"bytesIntact":true,"schemaIssues":0,"refused":{"responseStatus":"complete","storedRunStatus":"complete","ledgerStatus":"active","ownGoal":true,"goalPhase":"complete","goalTransitions":["complete"]},"retry":{"sameWorkReceipt":true,"ledgerStatus":"completed","completionPersisted":true,"workCount":1,"replayStable":true,"runStatus":"complete","goalPhase":"complete"}}
+ 1 pass
+ 40 filtered out
+ 7 fail
+Ran 8 tests across 2 files. [143.00ms]
+
+First cellwork freeze, ordinary re-split compatibility [exit 1]
+(fail) C1: work a later revision drops is marked cancelled, never deleted, and never dispatched [6.25ms]
+ 68 pass
+ 1 fail
+Ran 69 tests across 2 files. [270.00ms]
+
+Final source, original independent probes [exit 0]
+{"activationOk":true,"activatedRevision":2,"committedId":"T1","mappedId":"T1","alphaRows":[{"id":"T1","status":"pending"}]}
+{"distinctGoalIds":2,"goalFinishes":["complete","complete"],"boulderCompletions":2}
+{"boulderWriteFault":true,"toolStatus":"boulder-pending","storedRunStatus":"boulder-pending","boulderStatus":"active","goalFinishes":[]}
+ 3 pass
+ 38 filtered out
+ 0 fail
+Ran 3 tests across 2 files. [85.00ms]
+
+Final rebuilt bytes, original independent probes [exit 0]
+{"activationOk":true,"activatedRevision":2,"committedId":"T1","mappedId":"T1","alphaRows":[{"id":"T1","status":"pending"}]}
+{"distinctGoalIds":2,"goalFinishes":["complete","complete"],"boulderCompletions":2}
+{"boulderWriteFault":true,"toolStatus":"boulder-pending","storedRunStatus":"boulder-pending","boulderStatus":"active","goalFinishes":[]}
+ 3 pass
+ 38 filtered out
+ 0 fail
+Ran 3 tests across 2 files. [96.00ms]
+
+Final source, matched extended probes [exit 0]
+CHECK {"case":"supersession","change":"unchanged","accepted":true,"revision":2,"originalId":"T1","mappedId":"T1","rows":[{"id":"T1","status":"pending"}],"reviewerBlocks":["T1"],"verificationTaskIds":["T1","T3"]}
+CHECK {"case":"supersession","change":"removed","accepted":true,"revision":2,"originalId":"T1","mappedId":null,"rows":[{"id":"T1","status":"cancelled"}],"reviewerBlocks":[],"verificationTaskIds":["T2"]}
+CHECK {"case":"supersession","change":"changed","accepted":true,"revision":2,"originalId":"T1","mappedId":"T2","rows":[{"id":"T1","status":"cancelled"},{"id":"T2","status":"pending"}],"reviewerBlocks":["T2"],"verificationTaskIds":["T2","T4"]}
+CHECK {"case":"supersession","change":"active","accepted":false,"revision":null,"originalId":"T1","mappedId":null,"rows":[{"id":"T1","status":"in_progress"}],"reviewerBlocks":[],"verificationTaskIds":[]}
+CHECK {"case":"supersession","change":"terminal","accepted":true,"revision":2,"originalId":"T1","mappedId":"T2","rows":[{"id":"T1","status":"completed"},{"id":"T2","status":"pending"}],"reviewerBlocks":["T2"],"verificationTaskIds":["T2","T4"]}
+CHECK {"case":"supersession","change":"ambiguous","accepted":false,"revision":null,"originalId":"T1","mappedId":null,"rows":[{"id":"T1","status":"pending"},{"id":"T2","status":"pending"}],"reviewerBlocks":[],"verificationTaskIds":[]}
+(pass) append supersession: a second interruption keeps the replacement on the next revision [17.14ms]
+CHECK {"case":"real Boulder refusal and retry","osDenial":"EACCES","toolRefusal":true,"bytesIntact":true,"schemaIssues":0,"refused":{"responseStatus":"boulder-pending","storedRunStatus":"boulder-pending","ledgerStatus":"active","ownGoal":true,"goalPhase":"active","goalTransitions":[]},"retry":{"sameWorkReceipt":true,"ledgerStatus":"completed","completionPersisted":true,"workCount":1,"replayStable":true,"runStatus":"boulder-pending","goalPhase":"active"}}
+ 8 pass
+ 40 filtered out
+ 0 fail
+Ran 8 tests across 2 files. [135.00ms]
+
+Final rebuilt bytes, matched extended probes [exit 0]
+CHECK {"case":"supersession","change":"unchanged","accepted":true,"revision":2,"originalId":"T1","mappedId":"T1","rows":[{"id":"T1","status":"pending"}],"reviewerBlocks":["T1"],"verificationTaskIds":["T1","T3"]}
+CHECK {"case":"supersession","change":"removed","accepted":true,"revision":2,"originalId":"T1","mappedId":null,"rows":[{"id":"T1","status":"cancelled"}],"reviewerBlocks":[],"verificationTaskIds":["T2"]}
+CHECK {"case":"supersession","change":"changed","accepted":true,"revision":2,"originalId":"T1","mappedId":"T2","rows":[{"id":"T1","status":"cancelled"},{"id":"T2","status":"pending"}],"reviewerBlocks":["T2"],"verificationTaskIds":["T2","T4"]}
+CHECK {"case":"supersession","change":"active","accepted":false,"revision":null,"originalId":"T1","mappedId":null,"rows":[{"id":"T1","status":"in_progress"}],"reviewerBlocks":[],"verificationTaskIds":[]}
+CHECK {"case":"supersession","change":"terminal","accepted":true,"revision":2,"originalId":"T1","mappedId":"T2","rows":[{"id":"T1","status":"completed"},{"id":"T2","status":"pending"}],"reviewerBlocks":["T2"],"verificationTaskIds":["T2","T4"]}
+CHECK {"case":"supersession","change":"ambiguous","accepted":false,"revision":null,"originalId":"T1","mappedId":null,"rows":[{"id":"T1","status":"pending"},{"id":"T2","status":"pending"}],"reviewerBlocks":[],"verificationTaskIds":[]}
+(pass) append supersession: a second interruption keeps the replacement on the next revision [9.23ms]
+CHECK {"case":"real Boulder refusal and retry","osDenial":"EACCES","toolRefusal":true,"bytesIntact":true,"schemaIssues":0,"refused":{"responseStatus":"boulder-pending","storedRunStatus":"boulder-pending","ledgerStatus":"active","ownGoal":true,"goalPhase":"active","goalTransitions":[]},"retry":{"sameWorkReceipt":true,"ledgerStatus":"completed","completionPersisted":true,"workCount":1,"replayStable":true,"runStatus":"boulder-pending","goalPhase":"active"}}
+ 8 pass
+ 40 filtered out
+ 0 fail
+Ran 8 tests across 2 files. [147.00ms]
+
+Final source, six focused files and compatibility controls [exit 0]
+(pass) append supersession: a second interruption keeps the replacement on the next revision [15.24ms]
+(pass) activation adopts a committed row when its checkpoint was interrupted [6.94ms]
+(pass) activation refuses two durable rows claiming the same split task [5.14ms]
+(pass) C1: work a later revision drops is marked cancelled, never deleted, and never dispatched [6.94ms]
+(pass) boulder finalization: none [14.76ms]
+(pass) boulder finalization: write refusal [2.55ms]
+(pass) boulder finalization: semantic refusal [1.69ms]
+(pass) boulder finalization: wrong work id [1.60ms]
+(pass) boulder finalization: transport throw [1.65ms]
+(pass) a later light or planned run cannot finish a prior run's armed goal [2.63ms]
+(pass) a planned light run cannot finish a goal owned by a previous boulder work [1.77ms]
+ 138 pass
+ 0 fail
+Ran 138 tests across 6 files. [642.00ms]

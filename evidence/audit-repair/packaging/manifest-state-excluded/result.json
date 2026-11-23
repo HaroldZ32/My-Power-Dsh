@@ -1,0 +1,67 @@
+{
+  "subject": "package.json",
+  "checks": [
+    {
+      "id": "cordis-dependency",
+      "ok": true,
+      "detail": "13 declared dependency name(s) across dependencies/peerDependencies/optionalDependencies, none of them cordis"
+    },
+    {
+      "id": "cordis-devDependency-note",
+      "ok": true,
+      "detail": "devDependencies declare no cordis package"
+    },
+    {
+      "id": "lifecycle-script",
+      "ok": true,
+      "detail": "22 script name(s), none carrying preinstall/install/postinstall/prepare"
+    },
+    {
+      "id": "version:dsh-plugin.json",
+      "ok": true,
+      "detail": "version = 0.21.0"
+    },
+    {
+      "id": "version:dsh-distribution.json",
+      "ok": true,
+      "detail": "distribution.version = 0.21.0"
+    },
+    {
+      "id": "component-ref-version",
+      "ok": true,
+      "detail": "6 self-urn ref(s) compared against distribution.version 0.21.0, 0 stale"
+    },
+    {
+      "id": "component-ref-dependencies",
+      "ok": true,
+      "detail": "8 declared component id(s), 0 dangling dependsOn edge(s)"
+    },
+    {
+      "id": "bundle-patch-files",
+      "ok": true,
+      "detail": "2 patch file(s) declared, 0 missing"
+    },
+    {
+      "id": "row-module-paths",
+      "ok": true,
+      "detail": "29 module path(s) named by the patch files, 0 missing, 0 patch file(s) unreadable"
+    },
+    {
+      "id": "files-allowlist",
+      "ok": true,
+      "detail": "28 pattern(s); 0 required path(s) not admitted"
+    },
+    {
+      "id": "evidence-excluded",
+      "ok": true,
+      "detail": "the frozen evidence/ tree stays out of the published package"
+    },
+    {
+      "id": "packed-content",
+      "ok": true,
+      "detail": "npm pack --dry-run lists 1273 file(s); 0 required path(s) absent; 0 runtime state file(s) leaked"
+    }
+  ],
+  "violations": [],
+  "verdict": "pass"
+}

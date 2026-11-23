@@ -879,7 +879,7 @@ describe("team-view panels", () => {
   test("renders the reason instead of an empty box when the route is unreadable", async () => {
     /** The settled render of a failing state route. */
     const { tree } = await renderView({ routes: { [STATE_PATH]: UNAVAILABLE } })
-    expect(flatText(tree)).toContain("No team state is being served. The mpd team row may not be mounted in this profile.")
+    expect(flatText(tree)).toContain("The team state route could not be read.")
   })
 })
 

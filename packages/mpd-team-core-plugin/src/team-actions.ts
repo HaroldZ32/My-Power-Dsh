@@ -60,6 +60,7 @@ import {
   recordNamesLead,
   removeTeamMember,
   sanitizeId,
+  settleMember,
   updateTeamMember,
   updateTeamTask,
   withDerivedPhase,
@@ -69,10 +70,11 @@ import {
   type TeamConsultUpsertInput,
   type TeamMemberMode,
 } from "./team-store"
-import { readHold, readArchivedPlan, writePlan, archivePlan, type StagedMember, type StagedPlan } from "./plan-store"
+import { readHold, readArchivedPlan, readPlan, writePlan, archivePlan, type StagedMember, type StagedPlan } from "./plan-store"
 import {
   assign,
   dispatchMessage,
+  dispatchNameKey,
   forgetTeam,
   isReadonlyMemberName,
   ledgerKey,
@@ -83,6 +85,7 @@ import {
   readReassign,
   readonlyMemberKeys,
   reconcile,
+  release,
   type DispatchLedger,
   type DispatchMember,
   type DispatchMode,
@@ -127,6 +130,8 @@ const FORCE_SENDER_NAME = "mpd force supervisor"
 export interface TeamActionCaller {
   /** The workspace root the stores read and write. */
   workspace: string
+  /** The staging session’s physical checkout, when distinct from the canonical state root. */
+  checkoutRoot?: string
   /** The calling session, which owns the staged plan and the team binding. */
   sessionId: string
   /** The recorded ancestors a forked/resumed session may resolve its team through; empty when none. */
@@ -195,7 +200,7 @@ export interface TeamActionDeps {
 
 /** What one approval produced, in the shape the tool reply and the route projection both read. */
 export interface TeamApprovePayload {
-  /** The plan as it was persisted after approval (marked approved, carrying what was created). */
+  /** The completed plan or the checkpoint for an activation that can be tried again. */
   plan: StagedPlan
   /** The mpd record this approval built and wrote; absent ONLY on the `dryRun` preview path. */
   team?: TeamRecord
@@ -666,8 +671,6 @@ interface WorkmateBindingOutcome {
   error?: string
   /** The plan's members with their final names and prompts. */
   members: StagedMember[]
-  /** The plan's tasks, with any `owner` that named a renamed member following it. */
-  tasks: StagedPlan["tasks"]
   /** One row per staged member, in plan order. */
   bindings: TeamWorkmateBinding[]
 }
@@ -830,7 +833,7 @@ async function bindStagedWorkmates(deps: TeamActionDeps, plan: StagedPlan, agent
   const plain = (reason: string): WorkmateBindingOutcome => {
     /** Known logical seats keep their account and display alias without a library read. */
     const members = plan.members.map((member) => ({ ...member, name: (fixed.has(member.name) ? roster.byLogicalName.get(member.name)?.name : undefined) ?? member.name }))
-    return { members, tasks: tasksWithBoundOwners(plan, members), bindings: members.map((member, index) => ({ member: member.name, mode: "none" as const, reason: fixed.has(plan.members[index].name) ? reason : "run-only" })) }
+    return { members, bindings: members.map((member, index) => ({ member: member.name, mode: "none" as const, reason: fixed.has(plan.members[index].name) ? reason : "run-only" })) }
   }
   /** The knobs; `mode:"none"` short-circuits before any seam is resolved. */
   const config = workmateBindingConfigOf(deps)
@@ -872,7 +875,7 @@ async function bindStagedWorkmates(deps: TeamActionDeps, plan: StagedPlan, agent
       /** The workmate this member explicitly names, if any. */
       const explicit = explicitWorkmateOf(member)
       if (previous !== undefined && explicit === undefined) {
-        if (takenByOthers.has(previous.name)) return { error: `roster alias ${JSON.stringify(previous.name)} conflicts with another staged member`, members, tasks: plan.tasks, bindings }
+        if (takenByOthers.has(previous.name)) return { error: `roster alias ${JSON.stringify(previous.name)} conflicts with another staged member`, members, bindings }
         /** Reuse a known note only while the exact saved Workmate still exists. */
         const available = previous.workmate !== undefined && listing.rows.some((row) => row.name === previous.workmate)
         members[index] = { ...member, name: previous.name, prompt: available && previous.workmate !== undefined ? joinWorkmatePrompt(workmateHeadOf(deps, previous.workmate), member.prompt) : member.prompt }
@@ -885,10 +888,10 @@ async function bindStagedWorkmates(deps: TeamActionDeps, plan: StagedPlan, agent
       }
       if (explicit !== undefined) {
         if (!listing.rows.some((row) => row.name === explicit)) {
-          return { error: `staged member "${original}" explicitly names workmate "${explicit}", which does not exist in the library — the approval is refused rather than downgrading the seat to a plain member; initialize it with mpd_workmate_init or remove the workmate: line`, members, tasks: plan.tasks, bindings }
+          return { error: `staged member "${original}" explicitly names workmate "${explicit}", which does not exist in the library — the approval is refused rather than downgrading the seat to a plain member; initialize it with mpd_workmate_init or remove the workmate: line`, members, bindings }
         }
         if (takenByOthers.has(explicit)) {
-          return { error: `staged member "${original}" explicitly names workmate "${explicit}", which another member of this team already takes — a member NAME is seat identity, so two seats may not share one workmate`, members, tasks: plan.tasks, bindings }
+          return { error: `staged member "${original}" explicitly names workmate "${explicit}", which another member of this team already takes — a member NAME is seat identity, so two seats may not share one workmate`, members, bindings }
         }
         members[index] = { ...member, name: explicit, prompt: joinWorkmatePrompt(workmateHeadOf(deps, explicit), member.prompt) }
         taken.delete(original)
@@ -921,18 +924,25 @@ async function bindStagedWorkmates(deps: TeamActionDeps, plan: StagedPlan, agent
       // A missing match stays plain; only explicit Workmate tools may create HOME instances.
       bindings.push({ member: original, mode: "none", reason: "no-match" })
     }
-    return { members, tasks: tasksWithBoundOwners(plan, members), bindings }
+    return { members, bindings }
   } catch (error) {
     deps.log("workmate binding failed (" + String((error as Error)?.message ?? error) + ") — every seat stays plain")
     return plain("binding-failed")
   }
 }
 
-/** Project each authored owner to the bound alias within the same staging pass. */
-function tasksWithBoundOwners(plan: StagedPlan, members: readonly StagedMember[]): StagedPlan["tasks"] {
-  /** Rows at the same staging index describe one declaration only in this single binding pass. */
-  const aliases = new Map(plan.members.map((member, index) => [member.name, members[index]?.name ?? member.name]))
-  return plan.tasks.map((task) => task.owner === undefined ? task : { ...task, owner: aliases.get(task.owner) ?? task.owner })
+/** Keep a declared owner attached to its staged seat through a workmate rename. */
+function boundTaskOwners(plan: StagedPlan, members: readonly StagedMember[]): StagedPlan["tasks"] {
+  return plan.tasks.map((task) => {
+    if (task.owner === undefined) return task
+    /** Staged positions whose names match the same normalized owner accepted by dispatch. */
+    const matches = plan.members.flatMap((member, index) => dispatchNameKey(member.name) === dispatchNameKey(task.owner ?? "") ? [index] : [])
+    /** An exact name takes precedence; an ambiguous normalized spelling is left for the captain. */
+    const exact = plan.members.findIndex((member) => member.name === task.owner)
+    /** The original seat's final bound name, when the task identified a unique seat. */
+    const owner = members[exact >= 0 ? exact : matches.length === 1 ? matches[0] : -1]?.name
+    return owner === undefined || owner === task.owner ? task : { ...task, owner }
+  })
 }
 
 /**
@@ -943,6 +953,84 @@ function tasksWithBoundOwners(plan: StagedPlan, members: readonly StagedMember[]
  */
 function joinWorkmatePrompt(head: string, prompt: string): string {
   return head === "" ? prompt : head + "\n\n" + prompt
+}
+
+/**
+ * Recover the task ids from the board linked by this plan's validated activation checkpoint.
+ * @param plan - the staged plan carrying the checkpoint.
+ * @param record - the checkpoint's record, after checking the plan id and Lead.
+ * @returns committed task ids, or undefined while tasks still need to be published.
+ */
+function committedApprovalTasks(plan: StagedPlan, record: TeamRecord): readonly string[] | undefined {
+  if (plan.activation === undefined || record.approvedAt === undefined) return undefined
+  if (record.approvalTaskIds !== undefined) return record.approvalTaskIds
+  // Older approvals published all tasks in one write, starting at T1. A stopped or incomplete roster
+  // never reached that write. Check the ordinal allocation and seat receipts even if a row was edited.
+  if (plan.activation.stoppedAt !== undefined || plan.tasks.length === 0 || record.nextTaskNumber <= plan.tasks.length) return undefined
+  /** The bound roster names as they appeared on the board when approval opened. */
+  const bindings = plan.activation.bindings
+  if (!plan.members.every((staged, index) => record.members.some((member) =>
+    member.name === (bindings[index]?.member ?? staged.name) && member.executorRef !== undefined
+      && member.status !== "provisioning" && member.status !== "failed"))) return undefined
+  /** Legacy approvals used plan positions as board ordinals. */
+  const ids = plan.tasks.map((_task, index) => `T${index + 1}`)
+  return ids.every((id) => record.tasks.some((task) => task.id === id)) ? ids : undefined
+}
+
+/**
+ * Finalize a published approval using only the live board and the checkpoint's bindings.
+ * @param deps - the seams for bundled approval effects.
+ * @param caller - the session that owns the staging slot.
+ * @param plan - the plan being finalized.
+ * @param record - the published team record, including intervening edits on a retry.
+ * @param taskIds - the ids allocated by this approval, in plan order.
+ * @param bindings - the frozen seat names, in staged member order.
+ * @returns the approved plan and its receipts, without rewriting the board.
+ */
+async function finalizeTeamApproval(
+  deps: TeamActionDeps,
+  caller: TeamActionCaller,
+  plan: StagedPlan,
+  record: TeamRecord,
+  taskIds: readonly string[],
+  bindings: TeamWorkmateBinding[],
+): Promise<TeamActionResult<TeamApprovePayload>> {
+  /** Read each receipt by identity so live edits or new rows cannot change its membership. */
+  const tasksById = new Map(record.tasks.map((task) => [task.id, task]))
+  /** The unresolved references on the plan's own rows. */
+  const unresolved = taskIds.flatMap((id) => {
+    /** The current references, if the task carries any. */
+    const references = tasksById.get(id)?.unresolvedBlockers
+    return references === undefined || references.length === 0 ? [] : [{ taskId: id, references: [...references] }]
+  })
+  /** The board's published receipts, limited to the staged roster and allocated task ids. */
+  const created: NonNullable<StagedPlan["created"]> = {
+    members: plan.members.flatMap((staged, index) => {
+      /** The published seat, which may have settled since the board commit. */
+      const member = record.members.find((candidate) => candidate.name === (bindings[index]?.member ?? staged.name))
+      return member?.executorRef === undefined ? [] : [{ name: member.name, id: member.executorRef }]
+    }),
+    tasks: taskIds.map((id, index) => ({ id, subject: tasksById.get(id)?.subject ?? plan.tasks[index]?.subject.trim() ?? id })),
+    ...(unresolved.length === 0 ? {} : { unresolved }),
+  }
+  /** The archive represents a finished approval while the staging slot retains the retry checkpoint. */
+  const { activation: _activation, ...completedPlan } = plan
+  /** The immutable staging contract and its approval receipts. */
+  const approved: StagedPlan = { ...completedPlan, approvedAt: record.approvedAt, created }
+  /** Publish the archive and clear this exact stage before launching bundled effects. */
+  const finalized = withProjectLock(locateProject(caller.workspace), () => {
+    if (readPlan(caller.workspace, caller.sessionId)?.planId !== plan.planId) return false
+    archivePlan(caller.workspace, approved, true)
+    return true
+  })
+  if (!finalized) {
+    /** A parallel retry may have finalized the same board while this caller was reading it. */
+    const archived = readArchivedPlan(caller.workspace, plan.planId)
+    if (archived?.approvedAt !== undefined && archived.sessionId === caller.sessionId) return replayApproval(archived, record)
+    return { ok: false, error: `plan ${plan.planId} was replaced or discarded during activation` }
+  }
+  await deps.bundleApprovalEffects(plan, caller)
+  return { ok: true, plan: approved, team: record, created, bindings }
 }
 
 /**
@@ -981,13 +1069,13 @@ export async function approveTeam(
 }
 
 /** Settle the role's configured route once before its durable project roster declaration. */
-export async function projectMemberDeclaration(deps: Pick<TeamActionDeps, "service" | "routeCatalog">, identity: DshTeamMemberIdentity): Promise<MemberDeclaration> {
+export async function projectMemberDeclaration(deps: Pick<TeamActionDeps, "service" | "routeCatalog">, identity: DshTeamMemberIdentity, stagingWorkspace: string): Promise<MemberDeclaration> {
   /** The same configured identity channels the native executor already knows. */
   const config = deps.service("mpdConfig")
   /** Route selection uses the adapter's existing compatibility and fallback policy. */
   const reader = typeof config === "object" && config !== null && "agentRouteResolutionOf" in config ? config.agentRouteResolutionOf : undefined
   /** Keep the service receiver for methods that reference local row state. */
-  const configured = resolveTeamMemberRoute(identity, typeof reader === "function" ? (member: string): unknown => reader.call(config, member) : undefined)
+  const configured = resolveTeamMemberRoute(identity, typeof reader === "function" ? (member: string): unknown => reader.call(config, member, stagingWorkspace) : undefined)
   /** An unmatched seat retains the executor's existing route inheritance. */
   const route: ProjectRoute = configured.status === "routed"
     ? (deps.routeCatalog === undefined ? configured.route : (await resolveRunRoute(deps.routeCatalog, configured.route, configured.fallbacks)).route)
@@ -1002,7 +1090,7 @@ function replayApproval(plan: StagedPlan, team: TeamRecord): TeamActionResult<Te
     members: team.members.flatMap((member) => member.executorRef === undefined ? [] : [{ name: member.name, id: member.executorRef }]),
     tasks: team.tasks.map((task) => ({ subject: task.subject, id: task.id })),
   }
-  return { ok: true, plan, team, created, ...(team.approvedAt === undefined ? { stoppedAt: `approval recovery reused ${team.teamId}; inspect unconfirmed seats before dispatch` } : {}) }
+  return { ok: true, plan, team, created, ...(team.approvalTaskIds === undefined && (team.approvedAt === undefined || team.members.some((member) => member.status === "provisioning")) ? { stoppedAt: `approval recovery reused ${team.teamId}; inspect unconfirmed seats before dispatch` } : {}) }
 }
 
 /** Approve or replay the one body shared by tools, services, and web routes. */
@@ -1020,13 +1108,16 @@ async function approveTeamBody(
   let workspace = caller.workspace
   try {
     /** Forward to the original owner stage even when a different caller bound the project. */
-    const stagedPlan = readProjectStage(workspace, sessionId).plan
-    if (input.dryRun !== true) {
+    const stage = readProjectStage(workspace, sessionId)
+    /** Once an activation was adopted, its plan and board use the same canonical root. */
+    const stagedPlan = stage.plan
+    if (stagedPlan?.activation !== undefined || stagedPlan?.approvedAt !== undefined) workspace = stage.workspace
+    if (input.dryRun !== true && stagedPlan === undefined) {
       /** Replays bypass workmate binding and the backend entirely. */
-      const previous = listTeams(workspace).find((team) => team.leadSessionId === sessionId && team.planId !== undefined && (stagedPlan === undefined ? isLiveTeam(team, readArchivedPlanIndex(workspace)) : team.planId === stagedPlan.planId))
+      const previous = listTeams(workspace).find((team) => team.leadSessionId === sessionId && team.planId !== undefined && isLiveTeam(team, readArchivedPlanIndex(workspace)))
       if (previous?.planId !== undefined) {
-        /** Staging is still present after a partial approval. */
-        const original = stagedPlan ?? readArchivedPlan(workspace, previous.planId)
+        /** A finalized approval may have cleared its stage before returning. */
+        const original = readArchivedPlan(workspace, previous.planId)
         if (original !== undefined) {
           /** A legacy replay must still check for conflicts and commit its one recognized binding. */
           const replay = admitTeam({ workspace, sessionId, planId: previous.planId, planName: original.name, members: [] }, () => {
@@ -1039,7 +1130,23 @@ async function approveTeamBody(
     /** A fresh approval requires the current unapproved stage. */
     const plan = stagedPlan
     if (plan === undefined) return { ok: false, error: "no team is staged in this session — use action:\"create\" first" }
-    if (plan.approvedAt !== undefined) return { ok: false, error: `plan ${plan.planId} is already approved` }
+    /** An old activation could stamp approval even though its first member never started. */
+    const legacyRefusal = plan.approvedAt !== undefined && plan.activation === undefined
+      && plan.members.length > 0 && plan.created?.members.length === 0 && plan.created.tasks.length === 0
+    /** The record a prior activation opened. The old format only kept the active binding. */
+    const previousId = plan.activation?.teamId ?? (legacyRefusal ? activeTeamId(workspace, sessionId) : undefined)
+    /** The checkpoint must belong to this plan and this lead. */
+    const previous = previousId === undefined ? undefined : readTeam(workspace, previousId)
+    /** An untouched legacy board can be reconstructed with its original ids and newly bound owners. */
+    const legacy = legacyRefusal && previous?.planId === plan.planId && previous.leadSessionId === sessionId
+      && previous.endedAt === undefined && previous.members.length === 0 && previous.tasks.length === plan.tasks.length
+      && previous.tasks.every((task, index) => task.id === `T${index + 1}` && task.status === "pending"
+        && (task.attempt ?? 0) === 0 && task.startedAt === undefined && task.note === undefined
+        && task.subject === plan.tasks[index]?.subject.trim())
+    if (plan.approvedAt !== undefined && plan.activation === undefined && !legacy) return { ok: false, error: `plan ${plan.planId} is already approved` }
+    if (plan.activation !== undefined && (previous?.planId !== plan.planId || previous.leadSessionId !== sessionId || previous.endedAt !== undefined)) {
+      return { ok: false, error: `activation record for plan ${plan.planId} is missing or ended; stage a new plan to continue` }
+    }
     // ── AN EMPTY SHELL IS NOT A TEAM (D4a) ────────────────────────────────
     // A plan can be staged mechanically — the session-start gate (D5) does exactly that, with
     // `approval:"required"` and nothing in it — and approving one used to MINT A TEAM RECORD with
@@ -1091,6 +1198,11 @@ async function approveTeamBody(
     if (input.dryRun === true) {
       return { ok: true, plan, created: { members: plan.members.map((m) => ({ name: m.name, id: "" })), tasks: plan.tasks.map((t) => ({ subject: t.subject, id: "" })) } }
     }
+    if (previous !== undefined && plan.activation !== undefined) {
+      /** The committed board wins over an interrupted staging or archive write. */
+      const committed = committedApprovalTasks(plan, previous)
+      if (committed !== undefined) return await finalizeTeamApproval(deps, { ...caller, workspace }, plan, previous, committed, plan.activation.bindings)
+    }
     // ── WORKMATE BINDING, BEFORE THE FIRST RECORD WRITE (W3-C, plan §4.6) ──
     // A REUSE gives the seat the workmate's OWN name, and a member name is seat identity here, so the
     // decision must be made while the plan is still the only truth about the team. A dry run never
@@ -1110,92 +1222,39 @@ async function approveTeamBody(
     if (cellRun === "execution" && roster.members.length > 0 && unresolved.length > 0) {
       return { ok: false, error: `unresolved fixed owner(s) ${unresolved.map((member) => JSON.stringify(member.name)).join(", ")}; name a declared member or use agent_teams_plan action roster explicitly` }
     }
-    /** Workmate selection is read-only and does not apply to temporary workflow seats. */
-    const bound = await bindStagedWorkmates(deps, plan, caller.agent, roster, fixed)
+    /** The bindings already committed by a prior attempt, if this call is a retry. */
+    const frozenBindings = plan.activation?.bindings
+    /** The final seat names and prompts, with binding choices fixed across retries. */
+    const bound: WorkmateBindingOutcome = frozenBindings === undefined
+      ? await bindStagedWorkmates(deps, plan, caller.agent, roster, fixed)
+      : {
+          bindings: frozenBindings,
+          members: plan.members.map((member, index) => {
+            /** The durable binding for this staged position. */
+            const binding = frozenBindings[index]
+            return binding === undefined ? member : {
+              ...member,
+              name: binding.member,
+              prompt: binding.workmate === undefined ? member.prompt : joinWorkmatePrompt(workmateHeadOf(deps, binding.workmate), member.prompt),
+            }
+          }),
+        }
     if (bound.error !== undefined) return { ok: false, error: bound.error }
     if (new Set(bound.members.map((member) => member.name)).size !== plan.members.length) {
       return { ok: false, error: "logical roster declarations have conflicting board aliases; no member was assigned" }
     }
-    /** The plan this approval BUILDS: the staged plan with each seat's final name and prompt. */
-    const buildPlan: StagedPlan = { ...plan, members: bound.members, tasks: bound.tasks }
-    // ── the separation, at the one moment it matters ──────────────────────
-    // The mpd record is materialised BEFORE anything is spawned and carries its OWN ids, so
-    // the team exists as mpd data from the first instant. Everything below only fills in
-    // `executorRef` — the backend's handle — which is why a crash mid-approval leaves a record
-    // naming exactly what was attempted instead of nothing at all, and why an executor swap
-    // (W2) changes no id any surface has already shown.
-    /** The mpd record this approval builds; persisted at the end, and on failure too. */
-    let record = draftTeam({
+    /** Seat aliases are applied to the same normalized owner keys understood by dispatch. */
+    const buildPlan = { members: bound.members, tasks: boundTaskOwners(plan, bound.members) }
+    /** Draft only the board; seats are reserved one at a time before their executor call. */
+    let record = previous ?? draftTeam({
       name: plan.name,
       description: plan.description,
       leadSessionId: sessionId,
       planId: plan.planId,
-      // THE SEAM MADE DURABLE: the derived parent becomes the record's `parentTeamId`, and a root
-      // team writes no key at all (so its record carries the exact field set it always had).
       ...(parent === undefined ? {} : { parentTeamId: parent.teamId }),
     }, deps.now())
-    for (const [index, member] of buildPlan.members.entries()) {
-      record = addTeamMember(record, { name: member.name, description: member.description,
-        ...(fixed.has(plan.members[index].name) ? {} : { projectScope: "run" as const }),
-        ...(member.role === undefined ? {} : { role: member.role }) }, deps.now())
-    }
-    // THE BINDING IS DURABLE, not just reported: the record names the instance each seat took AND how
-    // that decision was reached, so a later reader (the merge gate, the panels, `status`) can tell a
-    // reused seat from an initialized one from a plain one, and can quote WHY a seat is plain.
-    for (const binding of bound.bindings) {
-      record = updateTeamMember(record, binding.member, {
-        workmateMode: binding.mode,
-        ...(binding.workmate === undefined ? {} : { workmate: binding.workmate }),
-        ...(binding.reason === undefined ? {} : { workmateReason: binding.reason })
-      })
-    }
-    // THE ORDER IS THE FIX (defect 2026-10-06). Every staged task is minted FIRST and the blockers
-    // are resolved afterwards, against the COMPLETE board: a plan may legitimately name a task that
-    // comes LATER (a forward reference), and resolving per insert could only ever see the tasks
-    // before it — which is how a plan written in its own POSITIONS (`["2"]`, `["7","8","9"]`) used to
-    // reach the board as references no task answered, flattening the whole DAG to one column with no
-    // warning anywhere. `blockedBy` is therefore added in a second pass, through `updateTeamTask`,
-    // once the plan's own namespace can be mapped to real board ids.
-    for (const task of buildPlan.tasks) {
-      record = addTeamTask(record, {
-        subject: task.subject,
-        description: task.description,
-        // THE STAGED KIND IS THE BOARD KIND (PR #42 review F-J): `work` remains the default for a
-        // plan that never named one, which is exactly what every staged task used to become.
-        kind: task.kind ?? "work",
-        ...(task.blockedBy === undefined ? {} : { blockedBy: task.blockedBy }),
-        ...(task.writeScopes === undefined ? {} : { writeScopes: task.writeScopes }),
-        ...(task.owner === undefined ? {} : { owner: task.owner }),
-        ...(task.coverageOf === undefined ? {} : { coverageOf: task.coverageOf }),
-        ...(task.sourceTaskId === undefined ? {} : { sourceTaskId: task.sourceTaskId }),
-      }, deps.now())
-    }
-    /** The plan's own references → the board ids this approval minted, in plan order. */
-    const planAlias = new Map<string, string>()
-    buildPlan.tasks.forEach((task, index) => {
-      /** The board task the staged task at this position was minted as; absent for an empty subject. */
-      const minted = record.tasks[index]
-      if (minted === undefined) return
-      // BOTH FORMS THE PLAN CAN MEAN are mapped, position first: `"2"` is the second staged task,
-      // and the subject is what the plan-store's own documentation has always promised.
-      planAlias.set(String(index + 1), minted.id)
-      if (!planAlias.has(task.subject)) planAlias.set(task.subject, minted.id)
-    })
-    for (const [index, task] of buildPlan.tasks.entries()) {
-      /** The board task this staged task became. */
-      const minted = record.tasks[index]
-      if (minted === undefined || (task.blockedBy ?? []).length === 0) continue
-      /** What this task's references resolve to now that the whole plan is on the board. */
-      const mapped = (task.blockedBy ?? []).map((reference) => planAlias.get(reference) ?? reference)
-      // UNCHANGED MEANS ALREADY RIGHT. A subject or a backward id was resolved when the task was
-      // minted, so re-writing it would only move the task's own revision for nothing; only a
-      // reference the first pass could NOT resolve (a plan position, a forward reference) is
-      // rewritten — and a rewrite is what turns that dangling entry into a real edge.
-      if (mapped.length === minted.blockedBy.length && mapped.every((id, at) => minted.blockedBy[at] === id)) continue
-      record = updateTeamTask(record, minted.id, { blockedBy: mapped }, deps.now())
-    }
     /** Primary and fallback routes are settled before entering the short cross-process lock. */
-    const declarations = (await Promise.all(buildPlan.members.map(async (member, index): Promise<MemberDeclaration | undefined> => {
+    const declarations = previous !== undefined && !legacy ? [] : (await Promise.all(buildPlan.members.map(async (member, index): Promise<MemberDeclaration | undefined> => {
       /** The authored name is stable even when Cellwork uses the displayed board spelling. */
       const original = plan.members[index].name
       if (!fixed.has(original)) return undefined
@@ -1206,7 +1265,7 @@ async function approveTeamBody(
       /** Restore the original Workmate when injection was temporarily unavailable in this host. */
       const workmate = bound.bindings[index]?.workmate ?? previous?.workmate
       /** Routes need catalog resolution only for newly declared identities. */
-      const selected = previous ?? await projectMemberDeclaration(deps, { ...member, name: logicalName })
+      const selected = previous ?? await projectMemberDeclaration(deps, { ...member, name: logicalName }, caller.checkoutRoot ?? stage.workspace)
       return {
         name: member.name, logicalName, route: selected.route,
         ...(selected.role === undefined ? {} : { role: selected.role }),
@@ -1214,8 +1273,6 @@ async function approveTeamBody(
         ...(previous === undefined ? {} : { previous: { memberId: previous.memberId, name: previous.name, logicalName: previous.logicalName } }),
       }
     }))).filter((member): member is MemberDeclaration => member !== undefined)
-    /** Join the final board aliases to this pass's exact logical declarations. */
-    const logicalByDisplay = new Map(declarations.map((member) => [member.name, member.logicalName]))
     /** Admit the run and publish all board-local identities before starting a member. */
     const admission = admitTeam({
       workspace, sessionId, planId: plan.planId, planName: plan.name, members: declarations, allowInitialRoster: bootstrap,
@@ -1234,33 +1291,43 @@ async function approveTeamBody(
       },
       ...(parent === undefined ? {} : { parentTeamId: parent.teamId }),
     }, (target, project) => {
-      /** Existing seat ids and pinned routes always take precedence over this wave's defaults. */
-      const projected = record.members.map((member) => {
-        if (member.projectScope === "run") return member
-        /** An admitted declaration has a stable roster row. */
-        const seat = project.members.find((candidate) => candidate.logicalName === logicalByDisplay.get(member.name))
-        if (seat === undefined) throw new ProjectAdmissionError(`admitted logical identity for ${JSON.stringify(member.name)} is missing`)
-        /** Discard the staged role when the durable seat was declared with no role. */
-        const { role: _stagedRole, ...row } = member
-        return { ...row, ...(seat.role === undefined ? {} : { role: seat.role }), projectMemberId: seat.memberId, ...(seat.route === null ? {} : { route: `${seat.route.provider}/${seat.route.model}` }) }
-      })
-      record = { ...record, members: projected }
       publishTeam(target, record)
+      writePlan(target, { ...plan, activation: { teamId: record.teamId, bindings: bound.bindings } })
       return { target, roster: project.members }
     })
-    if ("existing" in admission) return replayApproval(plan, admission.existing)
-    workspace = admission.created.target
-    /** What approval actually created, recorded onto the plan so a reader can reconcile plan with reality. */
+    if ("existing" in admission) {
+      record = admission.existing
+      workspace = locateProject(workspace).record?.projectRoot ?? workspace
+      if (previous?.teamId !== record.teamId) {
+        /** Recover an empty board whose reservation was written before its activation checkpoint. */
+        const recovered = withProjectLock(locateProject(workspace), () => {
+          /** A concurrent starter's checkpoint always takes precedence. */
+          const staged = readPlan(workspace, sessionId)
+          /** Seat reservations and tasks would make a missing checkpoint ambiguous. */
+          const fresh = readTeam(workspace, record.teamId)
+          if (fresh === undefined || fresh.endedAt !== undefined || fresh.approvedAt !== undefined || fresh.members.length !== 0 || fresh.tasks.length !== 0
+            || staged === undefined || staged.activation !== undefined || JSON.stringify(staged) !== JSON.stringify(plan)) return false
+          writePlan(workspace, { ...plan, activation: { teamId: record.teamId, bindings: bound.bindings } })
+          return true
+        })
+        if (!recovered) return replayApproval(plan, readTeam(workspace, record.teamId) ?? record)
+      }
+    } else workspace = admission.created.target
+    /** Successful initial admission already persisted these stable role and route selections. */
+    const projectRoster = "created" in admission ? admission.created.roster : locateProject(workspace).record?.members ?? []
+    if (legacy) {
+      /** Old zero-start approvals already had ordinal task rows; rebuild them with the same ids. */
+      const { approvedAt: _approvedAt, ...unapproved } = record
+      record = withDerivedPhase({ ...unapproved, tasks: [], nextTaskNumber: 1, nextMemberNumber: 1 })
+      writeTeam(workspace, record)
+    }
+    /** The checkpoint freezes seat aliases independently of later library rankings. */
+    const activation = { teamId: record.teamId, bindings: bound.bindings }
+    /** Keep one exact stage throughout activation, including across linked checkouts. */
+    const currentPlan = (): boolean => readPlan(workspace, sessionId)?.planId === plan.planId
+    if (legacy && currentPlan()) writePlan(workspace, { ...plan, activation })
+    /** Receipts shown when a clean host refusal pauses the approval. */
     const created: NonNullable<StagedPlan["created"]> = { members: [], tasks: [] }
-    // THE REPORT A CAPTAIN SEES AT APPROVAL TIME, not three layers downstream: every staged blocker
-    // that named no task is named HERE, with the board task it landed on. It travels in the
-    // approval ANSWER (rendered by the tool) and into the archived plan's `created.unresolved`, and
-    // the same list is on each board task as `unresolvedBlockers` for every later reader.
-    /** The board tasks carrying a blocker nothing answered, in board order. */
-    const unresolvedBlockers = record.tasks
-      .filter((task) => (task.unresolvedBlockers ?? []).length > 0)
-      .map((task) => ({ taskId: task.id, references: [...(task.unresolvedBlockers ?? [])] }))
-    if (unresolvedBlockers.length > 0) created.unresolved = unresolvedBlockers
     /** The first failure's description; set means approval stopped rather than half-build the team. */
     let stoppedAt: string | undefined
     // THE EXECUTOR IS SELECTED BEFORE ANY WORKTREE (CodeRabbit round 1): the official backend has no
@@ -1275,7 +1342,53 @@ async function approveTeamBody(
     /** Where each member of this approval should work, if its own worktree is available. */
     const worktreeOf = backend.kind === "native" ? memberWorktreeLookup(deps.service, deps.log) : undefined
     if (worktreeOf === undefined) deps.log("[mpd-team-core] the " + backend.kind + " executor cannot set cwd — team members spawn in the shared checkout (no per-member worktree)")
-    for (const member of record.members) {
+    for (const [index, staged] of buildPlan.members.entries()) {
+      if (!currentPlan()) return { ok: false, error: `plan ${plan.planId} was replaced or discarded during activation` }
+      /** A receipt already persisted by an earlier call must never start a duplicate child. */
+      record = readTeam(workspace, record.teamId) ?? record
+      /** The preceding call may have confirmed or reserved this exact seat. */
+      const priorSeat = record.members.find((member) => member.name === staged.name)
+      if (priorSeat?.executorRef !== undefined && priorSeat.status !== "provisioning") {
+        created.members.push({ name: priorSeat.name, id: priorSeat.executorRef })
+        continue
+      }
+      /** A process stopped during a reserved activation may have a cataloged child already. */
+      if (priorSeat !== undefined) return replayApproval(plan, record)
+      /** The exact durable seat pins the role and route even when the display alias changed. */
+      const original = plan.members[index].name
+      /** The frozen binding names the admitted project seat, while temporary seats remain run-only. */
+      const seat = fixed.has(original) ? projectRoster.find((candidate) => candidate.name === staged.name) : undefined
+      /** The binding for this staged seat, absent only from legacy or malformed checkpoints. */
+      const binding = bound.bindings[index]
+      /** Reserve the next board-local seat before calling the executor, across approving processes. */
+      const reserved = withProjectLock(locateProject(workspace), () => {
+        /** Re-read under the lock before publishing a seat another process could see. */
+        const fresh = readTeam(workspace, record.teamId)
+        if (fresh === undefined || fresh.endedAt !== undefined || !currentPlan() || fresh.members.some((member) => member.name === staged.name)) return undefined
+        /** Pin the authorized account and route before the host can run the child's first step. */
+        const added = addTeamMember(fresh, seat === undefined ? { ...staged, projectScope: "run" } : {
+          ...staged, role: seat.role, projectMemberId: seat.memberId,
+          ...(seat.route === null ? {} : { route: `${seat.route.provider}/${seat.route.model}` }),
+        }, deps.now())
+        /** Keep the binding reason beside the new seat and expose them in one write. */
+        const next = binding === undefined ? added : updateTeamMember(added, staged.name, {
+          workmateMode: binding.mode,
+          ...(binding.workmate === undefined ? {} : { workmate: binding.workmate }),
+          ...(binding.reason === undefined ? {} : { workmateReason: binding.reason }),
+        })
+        writeTeam(workspace, withDerivedPhase(next))
+        return { record: next, nextMemberNumber: fresh.nextMemberNumber }
+      })
+      if (reserved === undefined) {
+        /** A concurrent opener may already own the seat the retry was about to reserve. */
+        const fresh = readTeam(workspace, record.teamId)
+        if (fresh !== undefined && fresh.endedAt === undefined && currentPlan()) return replayApproval(plan, fresh)
+        return { ok: false, error: `plan ${plan.planId} or team ${record.teamId} changed during activation` }
+      }
+      record = reserved.record
+      /** The board's own reserved seat and its monotonic id. */
+      const member = record.members.find((candidate) => candidate.name === staged.name)
+      if (member === undefined) continue
       /** This member's worktree, and whether this attempt CREATED it (absent on any degrade). */
       let assignment: MemberWorktreeAssignment | undefined
       try {
@@ -1289,7 +1402,7 @@ async function approveTeamBody(
         /** This member's worktree path, or undefined when the spawn keeps today's shared checkout. */
         const cwd = assignment?.path
         /** The effective route is pinned separately from this activation's host handle. */
-        const route = admission.created.roster.find((seat) => seat.memberId === member.projectMemberId)?.route
+        const route = seat?.route
         /** The backend's answer, whose handle the record keeps BESIDE our own member id. */
         const spawned = await backend.spawn(caller.agent, {
           teamId: record.teamId,
@@ -1298,23 +1411,38 @@ async function approveTeamBody(
           description: member.description === "" ? member.name : member.description,
           // THE SPAWN PREAMBLE (§3.3), applied where the prompt is HANDED TO THE EXECUTOR (Amendment
           // A6), never where `add_member` stores the row: the member's first turn must carry it.
-          prompt: withIdlePreamble(buildPlan.members.find((staged) => staged.name === member.name)?.prompt ?? member.description),
+          prompt: withIdlePreamble(staged.prompt),
           ...(member.role === undefined ? {} : { role: member.role }),
           ...(route == null ? {} : { agentOptions: route }),
           // The member's OWN git worktree, or no key at all: an absent path must let the host
           // inherit the Lead's directory rather than receive a written `cwd: undefined`.
           ...(cwd === undefined ? {} : { cwd }),
+          onOpening: (handle: string): void => {
+            /** Read the same record the guard will consult before the first host step. */
+            const fresh = readTeam(workspace, activation.teamId)
+            if (fresh === undefined || fresh.endedAt !== undefined) throw new Error(`team ${activation.teamId} is no longer available`)
+            writeTeam(workspace, updateTeamMember(fresh, member.id, { executorRef: handle }))
+          },
           ...(caller.signal === undefined ? {} : { signal: caller.signal }),
         })
+        /** Merge only this receipt; another member may have settled during the host call. */
+        const fresh = readTeam(workspace, record.teamId)
+        if (fresh === undefined || fresh.endedAt !== undefined) {
+          await backend.interrupt(caller.agent, spawned.handle)
+          return { ok: false, error: `team ${record.teamId} is no longer available for activation` }
+        }
         created.members.push({ name: member.name, id: spawned.handle })
-        record = updateTeamMember(readTeam(workspace, record.teamId) ?? record, member.id, { executorRef: spawned.handle, status: "running" })
+        record = withDerivedPhase(updateTeamMember({ ...fresh, approvedAt: fresh.approvedAt ?? deps.now().toISOString() }, member.id, { executorRef: spawned.handle, status: "running" }))
         writeTeam(workspace, record)
       } catch (error) {
         // THE SAME RULE AS THE LIVE APPEND (contract `.mpd/plans/agent-slot-hygiene.md`): a member
         // the harness never raised is DROPPED rather than kept as a `failed` row, because a partial
         // approval would otherwise hand the roster — and the capacity — a teammate that does not
         // exist, and a repaired approval could never reuse the name.
-        record = removeTeamMember(record, member.id)
+        /** Remove the reservation from the latest record, leaving any concurrent settlement intact. */
+        const fresh = readTeam(workspace, record.teamId) ?? record
+        record = withDerivedPhase({ ...removeTeamMember(fresh, member.id), nextMemberNumber: reserved.nextMemberNumber })
+        writeTeam(workspace, record)
         // A FAILED SPAWN RELEASES ONLY WHAT IT CREATED (CodeRabbit round 1): a reused worktree may
         // carry an earlier attempt's branch, so only `created` is removed. A removal that refuses is
         // LOGGED, never allowed to hide the spawn failure or resurrect the member row.
@@ -1325,36 +1453,89 @@ async function approveTeamBody(
             deps.log("[mpd-team-core] the failed-spawn worktree " + record.teamId + "/" + member.name + " could not be released: " + String((releaseError as Error)?.message ?? releaseError))
           }
         }
-        stoppedAt = `member ${member.name}: ${String((error as Error)?.message ?? error)}`
+        stoppedAt = `member ${member.name}: ${refusalOf(error)}. Once the cause clears, retry agent_teams_plan {action:"approve"} to continue this plan.`
         break
       }
     }
-    // THE TASKS ARE NOT POSTED TO A BACKEND BOARD. The mpd record IS the board — the dependency
-    // edges, the attempts, the review fields and the executor handles are all here, and a
-    // second board would be a second source of truth for the same team. The official backend's
-    // `executorRef` is filled in only where a backend actually minted something to point at.
-    if (stoppedAt === undefined) for (const task of record.tasks) {
-      created.tasks.push({ subject: task.subject, id: task.id })
+    if (!currentPlan()) return { ok: false, error: `plan ${plan.planId} was replaced or discarded during activation` }
+    if (stoppedAt !== undefined) {
+      // Keep the legacy replace/read behaviour for a team with accepted members. A refusal at the
+      // first seat leaves only an unapproved staged record and no live board rows.
+      /** The same staged plan, carrying the reason a later approve can resume. */
+      const { approvedAt: _previousApproval, ...staging } = plan
+      /** Publish the partial state without claiming an approval when no starts have landed. */
+      const paused: StagedPlan = { ...staging, ...(record.approvedAt === undefined ? {} : { approvedAt: record.approvedAt }), activation: { ...activation, stoppedAt }, created }
+      writePlan(workspace, paused)
+      return { ok: true, plan: paused, team: record, created, bindings: bound.bindings, stoppedAt }
     }
-    /** The record stamped approved, its phase brought in line with what actually happened. */
-    const approvedRecord = withDerivedPhase({ ...record, approvedAt: deps.now().toISOString() })
-    /** The plan marked approved, carrying what was created. */
-    const approved: StagedPlan = { ...plan, approvedAt: deps.now().toISOString(), created }
-    withProjectLock(locateProject(workspace), () => {
+    /** Serialize final task publication with competing approvals and task ownership writes. */
+    const published = withProjectLock(locateProject(workspace), () => {
+      record = readTeam(workspace, record.teamId) ?? record
+      if (record.endedAt !== undefined || !currentPlan()) return undefined
+      /** A competing finalization that won the lock already owns the plan's task ids. */
+      const committed = committedApprovalTasks({ ...plan, activation }, record)
+      if (committed !== undefined) return { record, taskIds: committed }
+      // THE ORDER IS THE FIX (defect 2026-10-06). Every staged task is minted FIRST and the blockers
+      // are resolved afterwards, against the COMPLETE board: a plan may legitimately name a task that
+      // comes LATER (a forward reference), and resolving per insert could only ever see the tasks
+      // before it — which is how a plan written in its own POSITIONS (`["2"]`, `["7","8","9"]`) used to
+      // reach the board as references no task answered, flattening the whole DAG to one column with no
+      // warning anywhere. `blockedBy` is therefore added in a second pass, through `updateTeamTask`,
+      // once the plan's own namespace can be mapped to real board ids.
+      /** The first board position allocated by this approval. */
+      const firstTask = record.tasks.length
+      for (const task of buildPlan.tasks) {
+        record = addTeamTask(record, {
+          subject: task.subject,
+          description: task.description,
+          // THE STAGED KIND IS THE BOARD KIND (PR #42 review F-J): `work` remains the default for a
+          // plan that never named one, which is exactly what every staged task used to become.
+          kind: task.kind ?? "work",
+          ...(task.blockedBy === undefined ? {} : { blockedBy: task.blockedBy }),
+          ...(task.writeScopes === undefined ? {} : { writeScopes: task.writeScopes }),
+          ...(task.owner === undefined ? {} : { owner: task.owner }),
+          ...(task.coverageOf === undefined ? {} : { coverageOf: task.coverageOf }),
+          ...(task.sourceTaskId === undefined ? {} : { sourceTaskId: task.sourceTaskId }),
+        }, deps.now())
+      }
+      /** The plan's own references → the board ids this approval minted, in plan order. */
+      const planAlias = new Map<string, string>()
+      buildPlan.tasks.forEach((task, index) => {
+        /** The board task the staged task at this position was minted as; absent for an empty subject. */
+        const minted = record.tasks[firstTask + index]
+        if (minted === undefined) return
+        // BOTH FORMS THE PLAN CAN MEAN are mapped, position first: `"2"` is the second staged task,
+        // and the subject is what the plan-store's own documentation has always promised.
+        planAlias.set(String(index + 1), minted.id)
+        if (!planAlias.has(task.subject)) planAlias.set(task.subject, minted.id)
+      })
+      for (const [index, task] of buildPlan.tasks.entries()) {
+        /** The board task this staged task became. */
+        const minted = record.tasks[firstTask + index]
+        if (minted === undefined || (task.blockedBy ?? []).length === 0) continue
+        /** What this task's references resolve to now that the whole plan is on the board. */
+        const mapped = (task.blockedBy ?? []).map((reference) => planAlias.get(reference) ?? reference)
+        // UNCHANGED MEANS ALREADY RIGHT. A subject or a backward id was resolved when the task was
+        // minted, so re-writing it would only move the task's own revision for nothing; only a
+        // reference the first pass could NOT resolve (a plan position, a forward reference) is
+        // rewritten — and a rewrite is what turns that dangling entry into a real edge.
+        if (mapped.length === minted.blockedBy.length && mapped.every((id, at) => minted.blockedBy[at] === id)) continue
+        record = updateTeamTask(record, minted.id, { blockedBy: mapped }, deps.now())
+      }
+      /** The receipts distinguish the committed board from the earlier member-by-member writes. */
+      const approvalTaskIds = record.tasks.slice(firstTask).map((task) => task.id)
+      /** Publish tasks and their commit proof in the same atomic team record write. */
+      const approvedRecord = withDerivedPhase({ ...record, approvedAt: record.approvedAt ?? deps.now().toISOString(), approvalTaskIds })
       writeTeam(workspace, approvedRecord)
-      writePlan(workspace, approved)
-      // The adopted stage and the board's approval archive share their canonical lookup root.
-      if (stoppedAt === undefined) archivePlan(workspace, approved)
+      return { record: approvedRecord, taskIds: approvalTaskIds }
     })
-    // ── WAVE REQUIREMENT 4: ONE APPROVAL, THREE MECHANISMS ────────────────
-    // The team RECORD exists (it is written above even when a spawn stopped the sequence), so
-    // this is the moment the wave's durable GOAL and its TODO checklist start too — bundled
-    // here instead of left to the captain's next turn. The effects are deliberately AFTER the
-    // persistence: `dry_run` returned earlier, `create`/`add_member`/`edit` never reach this
-    // line, and an approval that throws (empty shell, already approved, executor refusal) does
-    // not leak a goal or a checklist. NON-FATAL by contract: see the row's `bundleApprovalEffects`.
-    await deps.bundleApprovalEffects(plan, caller)
-    return { ok: true, plan: approved, team: approvedRecord, created, bindings: bound.bindings, ...(stoppedAt === undefined ? {} : { stoppedAt }) }
+    if (published === undefined) {
+      /** A parallel caller may already have cleared the stage after publishing. */
+      const archived = readArchivedPlan(workspace, plan.planId)
+      if (archived?.approvedAt !== undefined && record.endedAt === undefined) return replayApproval(archived, record)
+      return { ok: false, error: `plan ${plan.planId} or team ${record.teamId} changed during activation` }
+    }
+    return await finalizeTeamApproval(deps, { ...caller, workspace }, plan, published.record, published.taskIds, bound.bindings)
   } catch (error) {
     // A THROW HERE IS UNEXPECTED — a store write, a broken record, a failed archive — because every
     // POLICY refusal above (the empty shell, the graph, the scopes) is returned or converted before it
@@ -1648,18 +1829,25 @@ async function runDispatchBody(
             if (expected === undefined) return { applied: false as const, reason: `task ${pair.taskId} is no longer on the pass's board` }
             /** A lost revision must not displace the owner who actually obtained the assignment. */
             const decision = casClaimTask(onDisk, pair.taskId, pair.memberName, expected, deps.now())
-            if (!decision.applied) return decision
+            if (!decision.applied) {
+              // A recipient can claim or settle its row before the executor send returns.
+              if (current !== undefined && (current.owner === pair.memberId || current.owner === pair.memberName)) {
+                if (current.status === "claimed" || current.status === "in_progress") return { applied: true as const, record: onDisk, assigned: true }
+                if (current.status === "completed" || current.status === "failed") return { applied: true as const, record: onDisk, assigned: false }
+              }
+              return decision
+            }
             /** A dispatch starts the recorded seat again if previously settled. */
             const updated = withDerivedPhase(updateTeamMember(decision.record, pair.memberName, { status: "running" }))
             writeTeam(workspace, updated)
-            return { applied: true as const, record: updated }
+            return { applied: true as const, record: updated, assigned: true }
           })
           if (!claimed.applied) {
-            skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `the board refused the claim: ${claimed.reason}` })
+            skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `the message was delivered but the board refused the claim: ${claimed.reason}` })
             continue
           }
           record = claimed.record
-          ledger = assign(ledger, { teamId: opened.teamId, taskId: pair.taskId, memberId: pair.memberId, memberName: pair.memberName }, deps.now())
+          if (claimed.assigned) ledger = assign(ledger, { teamId: opened.teamId, taskId: pair.taskId, memberId: pair.memberId, memberName: pair.memberName }, deps.now())
           sent.push(pair)
         } catch (error) {
           skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `the message to ${pair.memberName} failed: ${String((error as Error)?.message ?? error)}` })
@@ -1674,15 +1862,20 @@ async function runDispatchBody(
     // this pass's whole pre-await map back erased that release: the member stayed recorded as busy
     // and the freed task could never be dispatched again. So the map is re-read, re-pruned against
     // the SAME board this pass decided on, and only this pass's OWN accepted operations are applied.
-    /** The ledger as it stands on disk right now, pruned by the rule `pruned` was built with. */
-    const fresh = reconcile(readLedger(workspace), opened.teamId, tasks)
-    /** The merged ledger: everything a concurrent writer left, plus this pass's own pairings. */
+    /** The current board, which may have closed or released an earlier pair during a later send. */
+    const latest = readTeam(workspace, opened.teamId) ?? record
+    /** The ledger as it stands on disk right now, pruned against the current board. */
+    const fresh = reconcile(readLedger(workspace), opened.teamId, latest.tasks)
+    /** The merged ledger carries this pass's accepted pairings only while the board books the seat. */
     const merged: DispatchLedger = { ...fresh.ledger }
-    // DELIBERATE CONFLICT RULE: when the fresh read shows that a task THIS PASS ASSIGNED was
-    // meanwhile released, the pass's assignment still wins — the send really went out, so recording
-    // it is the honest outcome, and dropping it would leave a delivered task unowned on the board.
-    // Only `sent` is re-applied; an entry this pass merely inherited is never resurrected.
-    for (const pair of sent) merged[ledgerKey(opened.teamId, pair.taskId)] = ledger[ledgerKey(opened.teamId, pair.taskId)]
+    for (const pair of sent) {
+      /** The pairing key and the board row it addresses. */
+      const key = ledgerKey(opened.teamId, pair.taskId)
+      /** The task as the last writer left it. */
+      const task = latest.tasks.find((candidate) => candidate.id === pair.taskId)
+      if (task !== undefined && (task.status === "claimed" || task.status === "in_progress")
+        && (task.owner === pair.memberId || task.owner === pair.memberName) && ledger[key] !== undefined) merged[key] = ledger[key]
+    }
     writeLedger(workspace, merged)
     return { ok: true, pairs: sent, skipped, forgotten, ...(holdNote === undefined ? {} : { holdRead: holdNote }), ...(reaped.length === 0 ? {} : { reaped }), ...(reassigned.length === 0 ? {} : { reassigned }) }
   } catch (error) {
@@ -2872,8 +3065,11 @@ export async function forceWedgedTask(
       next = addTeamTask(next, { subject, description: `${continuation} The original row declared no split-able write scope, so NARROW THE SCOPE FIRST (name the files this row touches) before editing anything.`, writeScopes: [], owner: member.name, blockedBy: [], sourceTaskId: task.id, ...(task.coverageOf === undefined ? {} : { coverageOf: task.coverageOf }) }, now)
       split.push(next.tasks[next.tasks.length - 1]?.id ?? "")
     }
-    // ONE write for the requeue AND the split rows, so two ids can never race each other's snapshot.
-    writeTeam(caller.workspace, next)
+    // Releasing the wedged row frees its former seat unless it still has another in-flight task.
+    writeTeam(caller.workspace, withDerivedPhase(settleMember(next, handle, now)))
+    /** Keep other teams' and tasks' pairings while freeing the requeued attempt's old seat. */
+    const freed = release(readLedger(caller.workspace), record.teamId, task.id)
+    if (freed.released) writeLedger(caller.workspace, freed.ledger)
     // S5/AC7: the supervisor document names the REAL continuation rows, appended after the split wrote
     // them (the document itself was rendered before the interrupt, when these ids did not exist).
     if (handoffSource === "supervisor") appendContinuationRows(handoff, task.id, attempt, split)

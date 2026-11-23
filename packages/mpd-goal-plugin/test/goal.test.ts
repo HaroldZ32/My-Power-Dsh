@@ -279,6 +279,36 @@ test("auto-finish refuses a goal another row anchored (ownership is per run, not
   expect(owner.ok).toBe(true)
 })
 
+test("a run-bound goal requires the creating run and exact goal id", async () => {
+  /** A real bridge over the fixture's harness goal tools. */
+  const m = mount()
+  /** The same service autoproject resolves at runtime. */
+  const bridge = m.provided.get("mpdGoal")
+  /** Ownership returned to the first run. */
+  const anchored = await bridge.anchor(m.exec, { objective: "finish the first run", source: "autoproject", runId: "run-a" })
+  expect(anchored).toMatchObject({ ok: true, created: true, goal: { id: "goal-1" } })
+  /** The common source alone conveys no authority over this anchor. */
+  const requested = { outcome: "complete", source: "autoproject", goalId: anchored.goal.id }
+  expect(await bridge.finish(m.exec, requested)).toMatchObject({ ok: false })
+  expect(await bridge.finish(m.exec, { ...requested, runId: "run-b" })).toMatchObject({ ok: false })
+  expect(await bridge.finish(m.exec, { ...requested, runId: "run-a", goalId: "stale" })).toMatchObject({ ok: false })
+  expect(m.domain.calls).not.toContain("update_goal")
+  expect(await bridge.finish(m.exec, { ...requested, runId: "run-a" })).toMatchObject({ ok: true, goal: { phase: "complete" } })
+})
+
+test("legacy boulder ownership requires the original objective for a run-bound finish", async () => {
+  /** The bridge with a source-only anchor created by the previous calling convention. */
+  const m = mount()
+  /** The same service the boulder row uses. */
+  const bridge = m.provided.get("mpdGoal")
+  await bridge.anchor(m.exec, { objective: "legacy boulder work", source: "boulder" })
+  /** The current goal id and the newly supplied work identity. */
+  const requested = { outcome: "complete", source: "boulder", runId: "work-a", goalId: "goal-1" }
+  expect(await bridge.finish(m.exec, { ...requested, legacyObjective: "different work" })).toMatchObject({ ok: false })
+  expect(m.domain.calls).not.toContain("update_goal")
+  expect(await bridge.finish(m.exec, { ...requested, legacyObjective: "legacy boulder work" })).toMatchObject({ ok: true, goal: { phase: "complete" } })
+})
+
 test("an unrecordable ownership sidecar is reported, never swallowed", async () => {
   /** The mounted row under test. */
   const m = mount()

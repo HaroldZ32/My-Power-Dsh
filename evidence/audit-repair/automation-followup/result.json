@@ -1,0 +1,39 @@
+{
+  "branch": "fix/team-and-audit-recovery",
+  "baseCommit": "e86764c0e09b14ba172839bc9671a2c8f3352c81",
+  "sourceManifest": "source.sha256",
+  "originalIndependentReproduction": "../independent/2026-11-22T162729Z/observations.md",
+  "recordedAt": "2026-11-22T16:49:54Z",
+  "toolchain": { "bun": "1.4.0", "node": "24.21.0", "uid": 1000 },
+  "cellwork": {
+    "before": "A committed T1 with a lost reply was absent from the cell checkpoint. Revision 2 added T2 for the unchanged key and left a dropped T1 pending.",
+    "after": "The same board row is adopted for an unchanged freeze. A removed pending row is cancelled. A changed row is replaced with a distinct contract after its predecessor is closed. Running and ambiguous predecessor rows block supersession. A second lost reply converges through revision 3."
+  },
+  "autoproject": {
+    "before": "The real Boulder completion call failed when the ledger was read-only. The persisted work remained active while the run and its own goal reported completion.",
+    "after": "The run requires a successful transport and a completed payload for its own Boulder work ID. A rejected or thrown acknowledgement leaves the run boulder-pending and its goal armed. The exact ledger work can be retried and acknowledges the same terminal result on replay.",
+    "retryBound": "The named mpd_boulder_complete retry completes the ledger work. The original autoproject run and its goal retain their recorded state."
+  },
+  "verification": {
+    "packageBaseline": { "passed": 514, "failed": 0, "exit": 0 },
+    "finalFocusedIncludingCompatibility": { "passed": 13, "failed": 0, "exit": 0 },
+    "finalAffectedPackages": { "passed": 526, "failed": 0, "files": 40, "exit": 0 },
+    "finalFullSuite": { "passed": 4279, "skipped": 6, "failed": 0, "files": 280, "exit": 0 },
+    "typecheckExit": 0,
+    "declarationCoverageExit": 0,
+    "qaSelfTests": { "passed": 56, "skipped": 2, "failed": 0, "exit": 0 },
+    "cellworkMint": { "exit": 0, "evidence": "cellwork-mint/result.json" },
+    "distAfterIntegration": {
+      "cellwork": { "exit": 0, "sha256": "b3217ff6db47246c99ccf279f8007c5fad38d673d735584892ee4f6b9fadc4ec" },
+      "autoproject": { "exit": 0, "sha256": "fe516bb048f44c3d494f4f9a8724f35c62c0f68b388f06a92573fe90e1f65c3a" }
+    }
+  },
+  "independentVerification": {
+    "reviewer": "agent-25",
+    "verdict": "approve",
+    "evidence": "../automation-followup-check/result.json",
+    "exactRedToGreen": "1 pass, 2 failures before; 3 pass, 0 failures each on final source and rebuilt distribution",
+    "extendedRedToGreen": "1 pass, 7 failures before; 8 pass, 0 failures each on final source and rebuilt distribution"
+  },
+  "verificationBound": "The regressions invoke registered tools in process with the real durable Team and Boulder stores, a real goal bridge, and a fixture host transport."
+}

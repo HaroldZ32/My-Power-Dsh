@@ -305,6 +305,8 @@ export interface TeamRecord {
    * record that predates the field is never archive-reaped (see `isLiveTeam`).
    */
   planId?: string
+  /** Staged task ids, in plan order, committed atomically with the board. Absent until publication or on older records. */
+  approvalTaskIds?: string[]
   /** ISO instant the team was explicitly ended; absent while it is live. */
   endedAt?: string
   /**
@@ -1232,12 +1234,12 @@ export function casClaimTask(
  * @param now - the instant to stamp as `updatedAt`.
  * @returns the record to persist, or the refusal with its reason.
  */
-export function casReleaseTask(fresh: TeamRecord, taskId: string, expectedRevision: number | undefined, now: Date): CasTaskOutcome {
+export function casReleaseTask(fresh: TeamRecord, taskId: string, expectedRevision: number | undefined, now: Date): CasTaskOutcome & { staleRevision?: true } {
   /** The task as it stands on disk, or undefined when it is gone. */
   const task = fresh.tasks.find((candidate) => candidate.id === taskId)
   if (task === undefined) return { applied: false, reason: `task ${taskId} is no longer on the board` }
   if (expectedRevision !== undefined && task.revision !== expectedRevision) {
-    return { applied: false, reason: `task ${taskId} changed under you (revision ${expectedRevision} -> ${task.revision}); re-read it and retry` }
+    return { applied: false, staleRevision: true, reason: `task ${taskId} changed under you (revision ${expectedRevision} -> ${task.revision}); re-read it and retry` }
   }
   if (task.status === "completed" || task.status === "failed" || task.status === "cancelled") {
     return { applied: false, reason: `task ${taskId} is already terminal ("${task.status}") and cannot be released` }

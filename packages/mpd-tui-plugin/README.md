@@ -277,6 +277,11 @@ merged scene it opens draws `scope workspace-level (no session id on this surfac
 that finds NO team is not marked: a workspace-level read that resolves nothing means the workspace holds no
 team at all, so there is nothing that could belong to another session.
 
+Mounted panels and scenes take the workspace cwd from the active host snapshot or channel. An older
+host that publishes only a session ID resolves it through the live-agent registry. Team reads, staged
+plans, watchdog incidents and acknowledgements use that workspace. A mounted team feed releases its
+old watcher when the workspace changes.
+
 **Two clocks, and a push on top of them.** Every surface that draws team state SUBSCRIBES to the
 workspace's team feed (`mpdTeams.subscribe(workspace, listener)`, resolved per call through the
 composition root's ONE accessor) in a host effect and disposes it on unmount; a notification re-reads the

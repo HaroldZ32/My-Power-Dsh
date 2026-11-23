@@ -364,6 +364,20 @@ describe("every action's value satisfies its declared output contract", () => {
     }
   })
 
+  test("status keeps official fallback rows and their diagnostic across the lossless JSON boundary", async () => {
+    /** The host composition with a mounted, board-only official service. */
+    const f = fixture([], { listTasks: (): unknown[] => [] })
+    try {
+      /** The status payload after the same lossless check the harness runs before rendering. */
+      const status = await f.call("agent_teams_plan", { action: "status" })
+      expect(status.members).toEqual([])
+      expect(status.rosterUnsupported).toMatchObject({ unsupported: true, capability: "roster", generation: "partial" })
+      expect(Reflect.ownKeys(status.members)).toEqual(["length"])
+    } finally {
+      rmSync(f.workspace, { recursive: true, force: true })
+    }
+  })
+
   test("status answers null plan/hold, the record and a LOSSLESS summary — and the harness accepts it", async () => {
     /** The harness under test. */
     const f = fixture()

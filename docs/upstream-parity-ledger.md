@@ -97,7 +97,8 @@ least two of its three sub-signals hold, so `C1`/`C2`/`C3` are never top-level s
 > `team.gate: "advisory"` fallback. Authority: AGENTS.md §1, `presets/mpd.patch.yml` and
 > `packages/mpd-roles-plugin/README.md`.
 
-> **CURRENT THRESHOLDS: 2026-10-22 (`team-gate-wave`).** The shipped gate reads `team.sensitivity`
+> **Thresholds from the 2026-10-22 team-gate wave.** For current session routing, including F's
+> first-turn limit, see [Team mode](./user-guide.md#6-team-mode). The gate reads `team.sensitivity`
 > from `mpd.jsonc` (live `mpdConfig` first, row config second; an unknown or missing value resolves to
 > `easy`, never throws). `easy` is the DEFAULT, `normal` reproduces the pre-wave five-signal behaviour
 > exactly, and `strict` tightens every threshold:

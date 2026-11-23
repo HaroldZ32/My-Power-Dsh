@@ -1294,42 +1294,10 @@ record boot.workspaceRegistered "$([ -f "$DSH_HOME/storages/workspace.json" ] &&
   "the scratch workspace was registered in the harness's own store BEFORE the boot, so the Web GUI renders a usable composer instead of the disabled landing state" \
   "id=$MPD_UI_WS_ID path=$WORK_DIR/ws"
 
-# ── 09d. THE AST-GREP ENGINE, and the source the live search runs over ────────
-# WHY A STEP AND NOT AN ASSUMPTION (§7 item 5): the ast-grep MCP server resolves its `sg` engine PER
-# CALL from an env pin, the `@ast-grep/cli` package, `<bundle>/.toolchain/node_modules/.bin` or
-# `<bundle>/node_modules/.bin`, and its decision is a `--version` probe whose output must contain
-# `ast-grep`. `@ast-grep/cli` is NOT in this bundle's `dependencies` any more (wave B2 turned the MCP
-# servers into thin launchers), so a fresh checkout has no engine and the live search would answer
-# `BINARY_NOT_FOUND` — the exact class the developer host cannot close. The repository's OWN installer
-# (`scripts/install-mcp.ts`) is what stages it, so the lane runs that, then lets the probe's live arm
-# grade the result. A failure here is NOT silenced: the arm records `boot.mcpLiveSearch=false` with the
-# server's classified error quoted.
-# PATH SHADOWING is part of the reason the engine is staged rather than borrowed: on many Linux hosts
-# `/usr/bin/sg` is util-linux's `setgroups` helper, not ast-grep (measured on the developer host), so a
-# lane that trusted PATH would grade the wrong binary — the server's own `--version` probe is stricter,
-# and this step gives it the real one.
+# ── 09d. The fixture for the first AST search ────────────────────────────────
+# The mounted tool must resolve its engine from the install itself. The separate
+# legacy QA toolchain is exercised only after this boot.
 export MPD_E2E_PROBE_SEARCH_DIR="${MPD_E2E_PROBE_SEARCH_DIR:-$APP_DIR/packages/mpd-mcp-astgrep/src}"
-# WHICH TREE THE ENGINE IS STAGED INTO, and this is a MEASURED correction, not a preference. The MCP
-# launcher resolves its `sg` engine bundle-relatively, from ITS OWN location — `<bundle>/.toolchain/…` —
-# and in one-click mode the rows run from the INSTALLED copy in the profile, not from the checkout. The
-# first version staged into `$APP_DIR` only, so the one-click run's live search answered
-# `fail:unreadable-result` for a tree whose engine simply sat in the other copy. The script itself may
-# come from either tree (it is the repository's own installer); the TOOLCHAIN must land in the tree that
-# runs the rows.
-ENGINE_TREE="$APP_DIR"
-if [ -f "$PROFILE_DIR/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-astgrep/dist/launch.js" ] && [ "$INSTALL_MODE" = "oneclick" ]; then
-  ENGINE_TREE="$PROFILE_DIR/node_modules/@mpd-dsh/mpd"
-fi
-# THE INSTALLER SCRIPT MUST COME FROM THE CHECKOUT, and this is a MEASURED constraint rather than a
-# preference: the installed copy lives UNDER node_modules, and Node REFUSES to type-strip a `.ts` file
-# on such a path — `ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`, which is the same measured reason
-# AGENTS.md §6 records for the 32 JavaScript files this repository still ships. The first version of
-# this step preferred the installed tree's copy and died in zero seconds with exactly that error, so the
-# TOOLCHAIN is what gets redirected into the installed tree and the SCRIPT stays in the checkout.
-ENGINE_SCRIPT="$APP_DIR/scripts/install-mcp.ts"
-fact obs.astgrepEngineTree "$ENGINE_TREE (the tree whose bundle-relative .toolchain the MCP launcher reads; the installer SCRIPT runs from $ENGINE_SCRIPT because node_modules paths refuse type stripping)"
-run_step 09d-astgrep-engine node "$ENGINE_SCRIPT" --toolchain "$ENGINE_TREE/.toolchain"
-fact obs.astgrepToolchain "$(ls "$ENGINE_TREE/.toolchain/node_modules/.bin" 2>/dev/null | tr '\n' ',' || echo none)"
 
 # ── 10. MOUNT: boot the installed profile with registration instrumentation ────
 log ""
@@ -2372,24 +2340,14 @@ run_step 16-owed-lsp node "$LIB_DIR/owed-cases.ts" \
 fact obs.mcpCclspConfigAtBoot "$(find "$WORK_DIR" -path '*/.mpd/lsp/cclsp.json' -type f 2>/dev/null | tr '\n' ',' | sed 's/,$//' || true)"
 run_step 16b-pack-refresh node "$APP_DIR/scripts/pack-mpd.ts"
 # ── 16b2. THE ENGINE THE `qa.mcpCall` LAUNCHER ACTUALLY READS (§4 S-B criterion 8) ──
-# WHY A SECOND STAGING SITE, and this is a MEASURED correction of the previous wave's repair rather
-# than a repetition of it. Step 09d stages the engine into the tree the MCP ROWS run from, which is what
-# `boot.mcpLiveSearch` grades. The QA case does not run from that tree: `skills/dsh-qa/scripts/
-# mcp-call.ts` stages the PACKED artifact (`<repo>/dist/mpd-package`) into a sandbox profile with
-# `npm install file:` and then boots the harness against it, and the MCP launcher resolves `sg`
-# BUNDLE-RELATIVELY — from the launcher's own location. So the engine has to be at
-# `<repo>/dist/mpd-package/.toolchain/node_modules/.bin/`, one level BELOW the repo-root toolchain step
-# 09d populates. Without this the call arm boots a profile whose ast-grep server answers
-# `BINARY_NOT_FOUND`, and `qa.mcpCall` records a red that is the apparatus's, not the bundle's.
-# IT RUNS AFTER 16b ON PURPOSE: that step RE-PACKS `dist/mpd-package`, which removes any `.toolchain`
-# staged inside it earlier. Both container modes reach this line, so the call arm is exercised for real
-# in BOTH (in one-click mode `$APP_DIR` is the checkout copy the case is run from, exactly as above).
+# This separate arm exercises the optional developer toolchain after the clean installed
+# AST search. It stages into the legacy QA pack, which is rebuilt in step 16b.
 CASE_ENGINE_TREE="$APP_DIR/dist/mpd-package"
 # THE SAME DEFECT CLASS AS `obs.npmrc` ABOVE, found by scanning this file for backticks in EXECUTABLE
 # lines (2026-10-14): `file:` was a command substitution too, so this row printed
 # `file:: command not found` and lost the words. Escaped the same way.
 fact obs.caseEngineTree "$CASE_ENGINE_TREE (the bundle root the mcp-call launcher resolves bundle-relatively: the case installs that packed tree with npm \`file:\` into its sandbox profile)"
-run_step 16b2-case-engine node "$ENGINE_SCRIPT" --toolchain "$CASE_ENGINE_TREE/.toolchain"
+run_step 16b2-case-engine node "$APP_DIR/scripts/install-mcp.ts" --toolchain "$CASE_ENGINE_TREE/.toolchain"
 # THE PROBE IS THE RESOLVER'S OWN, and getting it wrong cost a false red once (measured 2026-10-09):
 # the engine is staged as BOTH `ast-grep` and `sg`, but the `sg` shim prints a deprecation WARNING to
 # stderr and NOTHING to stdout — so a stdout-only `grep ast-grep` on `sg` reported a correctly staged
@@ -2420,7 +2378,7 @@ fi
 # default while its own case carried 1800 s (measured 2026-10-15). The case is
 # `skills/dsh-qa/scripts/mcp-call.ts`, whose staged pack install is deliberately NON-LINKED
 # (`npm install --install-links`): a linked `file:` pack never materializes its OWN dependencies, so
-# `@ast-grep/cli` — declared by the PACK's manifest, not the root's — stayed unresolved and the call
+# the pack's AST engine stayed unresolved and the call
 # arm's launcher answered BINARY_NOT_FOUND. THAT closure install is the SLOW-LINK case: it MEASURED
 # 1037 s on this box's DEFAULT registry link
 # (evidence/tui/dsh-tui-015/coderabbit/skills/install-links-duration.log), which is why the case's own

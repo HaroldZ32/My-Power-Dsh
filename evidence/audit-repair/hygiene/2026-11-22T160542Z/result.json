@@ -1,0 +1,61 @@
+{
+  "recordedAt": "2026-11-22T16:05:42Z",
+  "branch": "fix/team-and-audit-recovery",
+  "head": "e86764c0",
+  "toolchain": {
+    "bun": "1.4.0 (34cbb9a40)",
+    "node": "v24.21.0"
+  },
+  "discovery": {
+    "excludedRootGlobs": ["evidence/**", "dist/**"],
+    "bunfigSha256": "0a409a7a3bb9ec5afadb3c689aa75c8108e0a04827cdf040fd2ffb02ccf798b9",
+    "syntheticWithoutConfig": { "exit": 1, "files": 4, "pass": 2, "fail": 2 },
+    "syntheticWithConfig": { "exit": 0, "files": 2, "pass": 2, "fail": 0 },
+    "syntheticWithConfigAndPackagesFilter": { "exit": 0, "files": 1, "pass": 1, "fail": 0 },
+    "rootCheckout": {
+      "command": ".toolchain/node_modules/.bin/bun test",
+      "exit": 1,
+      "files": 277,
+      "filesByRoot": { "packages": 270, "skills": 7, "evidence": 0, "dist": 0 },
+      "pass": 4216,
+      "skip": 6,
+      "fail": 13,
+      "error": 1
+    },
+    "packageCheckout": {
+      "command": "bun run test (Bun 1.4.0 first on PATH)",
+      "exit": 1,
+      "files": 270,
+      "pass": 4129,
+      "skip": 6,
+      "fail": 62,
+      "packageFileSetMatchesRoot": true
+    }
+  },
+  "manual": {
+    "beforeBytes": 62911,
+    "afterBytes": 61750,
+    "removedBytes": 1161,
+    "limitBytes": 65536,
+    "remainingBytes": 3786,
+    "afterSha256": "09b3b1a9416c83900b5c6dbcb3d3be97c78cb5a9094334a878bc3473abacc8d4"
+  },
+  "gates": [
+    { "command": "node scripts/verify-manual-paths.ts", "exit": 0, "resolvedPaths": 165 },
+    { "command": "bun run verify:docs", "exit": 0, "pairs": 61, "violations": 0, "deadLinks": 0 },
+    { "command": "bun run verify:docs --self-test", "exit": 0, "passedChecks": 34 },
+    { "command": "node scripts/verify-gates.ts --list", "exit": 0, "gatesListed": 11, "gatesRun": 0 },
+    { "command": "git diff --check -- <scoped tracked files>", "exit": 0 }
+  ],
+  "historicalEvidence": {
+    "trackedPaths": 39577,
+    "bytes": 1559203237,
+    "symlinks": 24,
+    "beforeAndAfterManifestSha256": "8af82be1af9d5ebeacfb24d3eaee39ce1cef20f7ec52d15adf4efe334d4c7dd7"
+  },
+  "bounds": [
+    "The live checkout suites measured discovery while other repair lanes edited product code. Their exits do not certify a green suite or a settled revision.",
+    "Root skill tests also reported an unhandled missing typescript/package.json import. The package-only command does not load that file.",
+    "The gate list check executed no aggregate members. A full release sweep and independent verifier verdict are outside this writer's record."
+  ]
+}

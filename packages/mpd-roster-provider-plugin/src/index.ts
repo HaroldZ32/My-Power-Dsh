@@ -122,7 +122,7 @@ export function apply(ctx: any, config: RosterProviderConfig = {}): void {
   /** The config service surface this row reads; TOTAL by contract (contract §2). */
   interface ConfigServiceLike {
     /** The typed total agent-route resolution the per-agent routes wave exposes. */
-    agentRouteResolutionOf?: (member: string) => unknown
+    agentRouteResolutionOf?: (member: string, workspace?: string) => unknown
   }
 
   /** The live config service, or undefined when the composition mounts none (or refuses the lookup). */
@@ -158,8 +158,13 @@ export function apply(ctx: any, config: RosterProviderConfig = {}): void {
     /** The live config service, absent under a degraded composition. */
     const live = configService()
     if (typeof live?.agentRouteResolutionOf === "function") {
+      if (request.parent == null && (dsh.workspaceRootsAll?.().length ?? 0) > 1) {
+        throw agentUnconfiguredRefusal(member, "no spawning session identifies a workspace for this teammate")
+      }
+      /** The parent's root, which can differ from a child's explicitly selected worktree. */
+      const workspace = request.parent == null ? undefined : dsh.workspaceRoot({ agent: request.parent })
       /** The service's TOTAL resolution; a malformed answer is treated as "no service". */
-      const resolution = live.agentRouteResolutionOf(member) as
+      const resolution = live.agentRouteResolutionOf(member, workspace) as
         | { ok: true; agent: string; route: AgentRoute & { fallbacks?: readonly unknown[] } }
         | { ok: false; reason: "unconfigured"; agent: string; missing: readonly string[] }
         | { ok: false; reason: "invalid"; agent: string; problem: string }

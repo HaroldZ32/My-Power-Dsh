@@ -1,0 +1,56 @@
+Workspace model routing and workmate memory retention
+
+Baseline before implementation
+$ bun test --reporter=dots ./packages/mpd-config-plugin ./packages/mpd-roles-plugin ./packages/mpd-workmate-plugin ./packages/mpd-roster-provider-plugin ./packages/mpd-bundle-plugin
+995 pass, 0 fail. Ran 995 tests across 59 files. Exit 0.
+$ bun run typecheck && bun run verify:comments
+scanned 648 TypeScript file(s) of 648 in the source set
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+Exit 0.
+
+Observed workspace reproduction
+$ bun test ./packages/mpd-config-plugin/test/live-refresh.test.ts -t 'reloading workspace B'
+(fail) reloading workspace B preserves workspace A's routes and scoped file diagnostics
+-     "model": "route-a",
++     "model": "route-b",
+0 pass, 1 fail. Exit 1.
+The same regression passes in routing-tests.log after the implementation.
+
+Observed workmate retention reproduction
+$ bun test ./packages/mpd-workmate-plugin/test/optimize.test.ts -t 'memory eviction'
+(fail) memory eviction keeps the newest dated entry even when it belongs to the survivor
+- "## 2026-11-22T12:00:00.000Z — newest target entry
++ "## 2026-11-21T12:00:00.000Z — older source entry
+0 pass, 1 fail. Exit 1.
+$ bun test ./packages/mpd-roles-plugin/test/workspace-model-routing.test.ts ./packages/mpd-workmate-plugin/test/optimize.test.ts
+9 pass, 0 fail. Ran 9 tests across 2 files. Exit 0.
+
+Final package and type checks
+$ .toolchain/node_modules/.bin/bun test --reporter=dots ./packages/mpd-config-plugin ./packages/mpd-roles-plugin ./packages/mpd-modelchain-plugin ./packages/mpd-workmate-plugin ./packages/mpd-roster-provider-plugin ./packages/mpd-bundle-plugin
+1015 pass, 0 fail. 22,625 assertions ran across 62 files. Exit 0. Full command output in routing-tests.log.
+$ bun run typecheck && bun run verify:comments && bun run verify:docs
+TypeScript check exited 0. Declaration check printed PASS. Documentation check reported 61 pairs and zero violations. Exit 0. Full command output in gates.log.
+$ .toolchain/node_modules/.bin/bun test ./packages/mpd-dsh-adapter-plugin/test/team-executor.test.ts -t 'native TEAM resolves each caller workspace'
+1 pass, 0 fail. Exit 0. The primary team writer owns the adapter change and its regression.
+$ git diff --check -- packages/mpd-config-plugin packages/mpd-roles-plugin packages/mpd-modelchain-plugin packages/mpd-workmate-plugin packages/mpd-roster-provider-plugin packages/mpd-bundle-plugin/src/model-config-web.ts packages/mpd-bundle-plugin/src/settings-card.ts packages/mpd-bundle-plugin/test/model-config-route.test.ts packages/mpd-bundle-plugin/test/settings-card.test.ts
+Exit 0.
+
+Final alias and profile-override regression
+$ .toolchain/node_modules/.bin/bun test ./packages/mpd-config-plugin/test/live-refresh.test.ts -t 'inherited aliases'
+1 pass, 0 fail. The writer uses an inherited alias when the workspace has no entry and leaves the file byte-identical on a shadowed edit. Exit 0.
+$ .toolchain/node_modules/.bin/bun test --reporter=dots ./packages/mpd-config-plugin ./packages/mpd-roles-plugin ./packages/mpd-modelchain-plugin ./packages/mpd-workmate-plugin ./packages/mpd-roster-provider-plugin ./packages/mpd-bundle-plugin ./packages/mpd-dsh-adapter-plugin/test/team-executor.test.ts
+1046 pass, 0 fail. 22,744 assertions ran across 63 files. Exit 0. Full command output in final-routing-tests.log.
+$ bun run typecheck && bun run verify:comments
+TypeScript check exited 0. Declaration check inspected 60,463 declarations across 656 TypeScript files and printed PASS. Exit 0.
+Config source SHA-256: 1b9d6e5c221aa0ec228e4667421a9aee802384d17ab6a697b6aee5912d90fc41 (packages/mpd-config-plugin/src/index.ts).
+$ node scripts/verify-dist-fresh.ts --quiet
+35/35 targets fresh, each rebuilt twice and byte-identical. The existing prebuilt CodeGraph server is listed as the one uncovered file. Exit 0. The captain performed the distribution rebuild.
+Independent QA self-tests completed 56 passed, 2 skipped, 0 failed (58 total), including 37 checks from model-config-live-refresh. See ../../skill-tests/qa-selftests.log.
+
+Runtime coverage
+The two-workspace package fixtures mount production plugin entry points over harness seams. They verify model options received by the spawn adapter, host-authenticated HTTP routing, the target JSONC bytes, and the rebuilt Web client's request and form behavior. The separately run pinned DSH model-config-live-refresh case is recorded at ../../skill-tests/model-config-live.json. It records a genuine child moving from deepseek-v4-flash to deepseek-v4-pro on the same boot after a host settings save. The isolated runtime case uses one workspace. The package tests exercise two workspaces and run the card without a rendered browser.
+
+Documentation follow-up
+The user guide §7.2, TUI guide §3.1/§6.2 and bundle/config package READMEs now describe the same distinction as the rebuilt Web disclosure. Web model fields save to the selected session's project, while general Web settings and the TUI's entry form save profile-wide values. The earlier mounted host-entry experiment demonstrates the latter path. Both language editions were updated without changing runtime sources.
+$ bun run verify:docs
+61 pairs, 0 failures, 0 violations, 648 links, 0 dead links. PASS, exit 0. See docs-final.log for the gate and the whitespace check.

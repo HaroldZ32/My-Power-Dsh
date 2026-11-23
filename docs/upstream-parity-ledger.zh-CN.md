@@ -86,7 +86,8 @@
 > 及其 `NO team was staged` 文案，作为 `team.gate: "advisory"` 的降级路径保留下来。权威来源：AGENTS.md §1、
 > `presets/mpd.patch.yml` 与 `packages/mpd-roles-plugin/README.md`。
 
-> **当前阈值： 2026-10-22（`team-gate-wave`）。** 发布版门从 `mpd.jsonc` 读取 `team.sensitivity`
+> **2026-10-22 团队闸门波次的阈值。** 现行会话路由（包括 F 只在第一轮生效）见[团队模式](./user-guide.zh-CN.md#6-团队模式)。
+> 闸门从 `mpd.jsonc` 读取 `team.sensitivity`
 >（先读 live `mpdConfig`，再读行配置；未知或缺失一律解析为 `easy`，绝不抛错）。`easy` 是**默认**，
 > `normal` 精确复现本波次之前的五信号行为，`strict` 收紧每一项阈值：
 >

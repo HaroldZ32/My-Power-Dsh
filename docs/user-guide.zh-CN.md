@@ -245,16 +245,24 @@ UI 上是刻意的单向操作，恢复就是上面那条 `mv`。
 
 ## 6. 团队模式
 
-**团队平面是 mpd 的 RECORD**，而不是官方插件：成员名册、任务板与每个任务都存放在
-`.mpd/team/teams/<id>.json`，由 `mpdTeams` 提供。本 bundle 的 `mpd-agent-team` /
-`mpd-tool-agent-team` / `mpd-ui-agent-team` 三行提供队友的**执行**与 **UI** 面：官方服务及其
-九个面向模型的工具，以及 Web 端的名册/任务板面板，其中两个执行行在 TUI 组合里被**禁用**：
-dsh-tui 宿主拒绝团队服务那个绑定在 root 上的投影（行清单见 [`design.md`](design.md)）。五个官方
+**mpd 团队记录**将成员名册、任务板和任务保存在 `.mpd/team/teams/<id>.json`，由 `mpdTeams` 提供。
+MPD 默认使用自己的原生执行器。DSH 提供官方团队服务、工具和 Web 名册及任务板面板。从 0.2.2-rc.2
+起，宿主挂载自己的团队行。在较旧的受支持宿主中，本 bundle 通过受守卫控制的 `mpd-agent-team`、
+`mpd-tool-agent-team` 和 `mpd-ui-agent-team` 行解析宿主安装中的实验版包。守卫还会在 TUI 组合中禁用
+两个旧版执行行，因为宿主拒绝团队服务绑定在 root 上的投影。详见[兼容性 §2.1](./compatibility.zh-CN.md)。五个官方
 撰写动词： `spawn_teammate`、`team_task_create`、`team_task_list`、`team_task_get`、
 `team_task_update`：在工具边界被**拒绝**，所以下面的计划是唯一的门。这个闭合止步于**工具**
 边界：某一行直接调用团队**服务**（官方执行器回退路径）不构成工具调用，因此**不受**门禁，这是
 唯一声明的边界。你的会话智能体就是 **Lead**（captain）：它 stage 计划、spawn 具名队友、把任务
 开在 mpd 任务板上，并亲自整合结果。
+
+在第一次 consult 之前，先根据对话梳理负责人、依赖关系和整合工作。需要多位负责人协作、涉及共享实现，
+或需要交接构建与测试的大项工作使用团队。例如，审计后的「一起解决掉吧」可以要求修复前面审计发现的所有
+问题，工作范围由前文决定。单个明确的问题或边界清晰的任务可以使用一次性 consult。
+
+先查看任务板，使用合适的运行中团队。如果没有合适的团队，复用或暂存一份计划，添加成员及任务，声明负责人
+和依赖后批准计划。将任务派给指定负责人，确认成员已激活、任务已送达。如果团队工具不可用或激活失败，说明
+具体阻碍。有条件时可以串行执行范围明确的 consult，并说明仍缺哪些负责人或独立验证。
 
 ```text
 agent_teams_plan { action }                                                # 仅 Lead：create | add_member | create_task | edit | approve | delete | status
@@ -274,8 +282,9 @@ interrupt_agent { agent_id }                                              # 仅 
   平面是**我们的**（`mpd-team-core`），而 mpd RECORD 是唯一的任务板：`agent_teams_task` 驱动它，
   `agent_teams_plan {action:"status"}` 把它读回来。五个官方撰写动词： `spawn_teammate`、
   `team_task_create`、`team_task_list`、`team_task_get`、`team_task_update`：在工具边界被
-  **拒绝**，所以上面的计划是唯一的门。若 `team.gate: "advisory"`，或 `agent_teams_plan`
-  没有挂载，门就不会 stage 任何东西，只用一条通知说明，并由 captain 在工作确需团队时自行建队。
+  **拒绝**，所以上面的计划是唯一的入口。若 `team.gate: "advisory"`，通知会把是否暂存计划的决定交给
+  captain。`team.gate: "off"` 关闭自动路由。计划工具未挂载时无法暂存计划。没有命中信号时，仍由
+  captain 根据工作范围选择执行方式。
 - **敏感度决定阈值。** `mpd.jsonc` 里的 `team.sensitivity` 取 `easy`（**默认**）| `normal` | `strict`；
   未知或缺失的值一律解析为 `easy`。`easy` 保留工作区规模信号 F 并更早触发；`normal` 精确复现
   2026-10-22 之前的五信号行为；`strict` 收紧每一项阈值：
@@ -287,8 +296,16 @@ interrupt_agent { agent_id }                                              # 仅 
   | `strict` | ≥ 6 | ≥ 4 / ≥ 4 / ≥ 4（三取三） | ≥ 80 / ≥ 3 | 关 |
 
   信号 F 是一次**有界**的根目录 `readdir`（绝不递归）：存在一个项目清单**且**存在一个项目目录**且**
-  至少有 8 个可见条目。它只在 `easy` 下评估，而且刻意粗糙：在大工作区里，仅 F 一项就会让 `hello`
-  也触发。因此静默的负向对照放在**很小的**工作区里（空提示或 `hello`、以及 `验证一下` 都不会 stage）。
+  至少有 8 个可见条目。会话闸门仅在 `easy` 模式的第一轮使用 F。大工作区里，开头只说 `hello` 也可能触发。
+  后续针对局部工作的请求需要命中其他信号才会触发。
+- **后续请求可以重新审视计划。** 当用户要求修复前面发现的全部问题，例如「一起解决掉吧」或 “fix all of
+  these”，如果已完成两次 consult 工具调用，或闸门已记录暂存计划，则每个工作波次可触发一次。这条范围明确的
+  规则独立于敏感度的动词匹配，也独立于 captain 根据完整对话对工作范围的判断。
+- **机械闸门也限制重叠的 consult。** 当计划、任务板和派发工具已挂载且没有运行中的团队时，
+  `team.reteam.afterConsults` 默认值 4 会让符合条件的 captain 的第四个重叠公开角色或 workmate 调用返回
+  `TEAM_FIRST`。返回结果可以指向空计划，供 captain 审查和批准。如果无法检查或暂存计划，先等待已有
+  consult 结束，再一次重试一个范围明确的调用。如果缺少团队工具，consult 仍由原有监督器处理。
+  `team.reteam.enabled: false` 同时关闭并发检查和按已完成调用数暂存计划的机制。
 - **一次批准启动三套机制。** 在 `agent_teams_plan` 批准**成功**路径上，团队真正激活之后，同一次批准还会
   尝试创建持久化 goal（目标取计划描述，描述为空时使用计划名称，来源为 `team`），并用 `todo_write` 按计划任务写入待办
 （每个任务一条 pending；整表替换；计划没有任务时不写入）。两个副作用都是非致命的：失败只记一行日志，
@@ -420,16 +437,15 @@ host，直到你选择 `mpd` 为止（TUI 的 `/preset mpd`、Web Settings 的 `
 
 ### 7.2 `/settings` 界面与 `mpd.jsonc` 桥接
 
-`/settings` 编辑真实的 `mpd.jsonc` 旋钮：原有 13 个、按名册 agent 各一行三片叶子
-（三十三个 `agentRoutes.<Agent>.{provider,model,reasoningEffort}` 叶子；每片叶子是只可选择字段，选项
-来自实时模型目录，回退到声明列表）、再加 TUI 界面自身的一个旋钮，其中包括 `hashline.maxDiffChars`、
-`commentChecker.autoCheck`、`autoproject.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir`：通过
-harness **自带的**表单编辑这一行的 config entry（`configForms.get("mpd-config")`；Web GUI 卡片用的是
-同一个 entry）。**在本 bundle 所固定的这个 harness 上，entry 保存由宿主持久化，且不会执行任何
-`<workspace>/.mpd/mpd.jsonc` 写入**：保存下来的 override 就是最顶层的配置层，并在进程内生效；而把表单
-物化出的默认值投影进你的文件会污染它。文件回写属于**已退役**的 settings 命名空间路径：
-`packages/mpd-config-plugin` 仍实现它，但该 harness 上 `settingsRegister` 会被拒绝，因此这条路径处于
-**休眠**状态。
+TUI 的 `/settings` 表单将设置保存到宿主的 `mpd-config` 条目文档。这些设置作为最高优先级的覆盖值应用到所有工作区，
+包括 TUI 模型路由字段和 `/mpd-model` 保存的路由。Web 卡片的通用设置（如 `team.stateDir` 和 `boulder.dir`）
+也保存在同一条目文档中。
+
+如需在 Web 的 **设置 → MPD** 中编辑某个工作区的模型路由，请先选中该工作区的一个活动会话。卡片读取工作区的实际生效模型，
+并将代理的提供商、模型和推理强度改动保存到 `<workspace>/.mpd/mpd.jsonc`。清除字段会恢复继承值。
+无法识别会话时会显示错误，多个工作区同时活动且读取请求未指定会话时会提示选择会话。
+配置档案中的全局覆盖仍有更高优先级。工作区编辑发生冲突时，卡片会指出被覆盖的字段。
+固定版本的宿主已停用旧设置命名空间的回写功能。
 
 在依赖它之前需要知道两件事：
 
@@ -466,16 +482,16 @@ harness **自带的**表单编辑这一行的 config entry（`configForms.get("m
   每人任务数的名册、任务板的任务 DAG（§8.1），以及批准前的待批计划。它从不读官方服务的投影，而 TUI
   渲染的是同一份记录（§7.1）。它会注册进当前组合所提供的那个侧边栏宿主（见下文）。
 - **Agent Teams**（另一块界面，只读： harness 自己的，不是团队界面）：官方客户端插件
-  `@deepseek-ai/dsh-experimental-client-ui-agent-team`（由本 bundle 的 `mpd-ui-agent-team` 行挂载）
-  在会话头部增加一个 **Agent Teams** 动作。它读的是共享会话存储里 Lead 会话的 `agentTeam` 投影：
+  在会话头部增加一个 **Agent Teams** 动作。从 DSH 0.2.2-rc.2 起，宿主挂载 `ui-agent-team`。
+  较旧的宿主由本 bundle 中受守卫控制的 `mpd-ui-agent-team` 行处理。它读取共享会话存储中 Lead 会话的
+  `agentTeam` 投影：
   那是**官方服务**的投影，不是 mpd RECORD，所以面板打开期间名册或任务变化就会刷新。它列出名册
 （持久名字与阶段：`running`、`inactive`、`provisioning`、`failed`）与共享任务板（任务标识、归属、
   前置、就绪状态、提示性写入范围与重叠警告，那是官方（OFFICIAL）平面的读法，重叠在那里只是
   提示，而 Team 页面所渲染的 mpd RECORD 任务板会**拒绝**无序重叠，见 §6），并能跳进某位队友的
   会话。它是**只读**的：面板不能创建、改名、删除或中断队友，也没有任务修改控件，那些属于
   §6 里的工具。它不展示点对点消息，只展示名册与任务。如果插件是在一个已经
-  打开的会话里才启用的，刷新一次页面以接收投影。在 TUI 组合里官方服务那两行
-（`mpd-agent-team`、`mpd-tool-agent-team`）被禁用，因此这块面板没有 TUI 对应物。
+  打开的会话里才启用的，刷新一次页面以接收投影。官方面板属于 Web 界面。
 - **Workmates 侧边栏标签页**：workmate 库作为标签页贡献给 **DSH-better-sidebar**
 （社区侧边栏 bundle，存在时才挂载的可选 peer），因此它和该侧边栏
   自己的页面在一起：标签条、`+` 菜单，以及侧边栏自己的启用/禁用开关。页面列出
@@ -680,9 +696,8 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # 从一个可工作的骨�
   `dsh-better-sidebar` 低于 `0.28.0`，那就在受支持的 peer 范围（`>=0.28.0 <0.29.0`）之外：本行重述
   的是 0.28 的 `["webServer","sessions","connection","tools"]` 注入列表，底部工作台孪生也需要
   0.28 的 `bottomOnly` 描述符字段。
-- 会话头部缺少 Agent Teams 面板 → 它的行是 `mpd-ui-agent-team`
-（`@deepseek-ai/dsh-experimental-client-ui-agent-team`，已声明依赖）；重新安装 bundle 并刷新一次
-  页面。只有当会话真的有 Team 投影可展示时它才会出现。
+- 如果会话头部缺少 Agent Teams 面板，请检查宿主的 `ui-agent-team` 行（较旧宿主使用
+  `mpd-ui-agent-team`），然后刷新页面。面板需要会话中有官方 Agent Teams 投影才会显示。
 - GUI 中完全没有客户端界面 → `mpd-web-compat` 自引用行必须存在，并且需要重新安装 bundle
 （`dsh plugin --profile <p> add <repo-or-package>`）。
 - `MISSING_CREDENTIAL` → 该 provider 路由需要在你的 DSH 凭据中有密钥；本 bundle 从不配置密钥。
@@ -1061,7 +1076,7 @@ checkout 间延续它。只将队友需要复用的项目事实发布到 `shared
 
 | 你使用的功能 | 来源 | 许可 / 版本 | 记录位置 |
 |---|---|---|---|
-| 团队模式：队友执行平面、`send_message`、`list_agents`、`wait_agent`、`interrupt_agent` 与 Web 面板 | **官方** `@deepseek-ai/dsh-experimental-agent-team` / `-tool-agent-team` / `-client-ui-agent-team` 三个包，由本 bundle 的 `mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` 行挂载 | MIT（harness 包组）；声明在 `package.json` 的 `dependencies` | `cordis.patch.yml`；`README.md`（*这次安装挂载了哪些插件*） |
+| 官方团队服务、`send_message`、`list_agents`、`wait_agent`、`interrupt_agent` 和 Web 面板 | 软件包由 DSH 提供。从 0.2.2-rc.2 起由宿主层挂载。较旧宿主通过本 bundle 中受守卫控制的旧版行挂载实验版包。 | MIT（harness 包组） | [兼容性 §2.1](./compatibility.zh-CN.md) |
 | 迁移过来、由测试套件驱动的 `schemastery` 校验器、它的 `cosmokit` 依赖与 DSH 框架模块 | 上游的 `schemastery` / `cosmokit` / `cordis`，作者 Shigma；以及来自 DeepSeek Harness 的 `@deepseek-ai/dsh-*` 模块 | MIT：`Copyright (c) 2021-present Shigma` 与 `Copyright (c) 2026 DeepSeek`，全文收录在 `packages/mpd-schemastery/LICENSE` | `LICENSE-NOTICES.md` 的 *schemastery* 一节 |
 | AgentTeams 侧边栏客户端 bundle | **dsh-agent-teams** 的构建产物浏览器客户端（<https://github.com/NanmiCoder/dsh-agent-teams>），被逐字嵌入随包的 `client.js` | MIT；上游构建不携带版权行 | `LICENSE-NOTICES.md` 的 *adopted* 一节 |
 | 十一份名册 persona 文本 | 宽松许可的公开 agent 提示词（一份 Apache-2.0，其余 MIT）；Vision Analyst 与 Junior Engineer 由本仓库撰写 | MIT（本仓库自己的作品） | `LICENSE-NOTICES.md` 的 *Roster persona texts* 一节；`packages/mpd-roles-plugin/personas/ATTRIBUTION.md` |
@@ -1073,7 +1088,7 @@ checkout 间延续它。只将队友需要复用的项目事实发布到 `shared
 | `mpd_comment_check` | **comment-checker**，作者 code-yeongyu（`@code-yeongyu/comment-checker`） | MIT；**不**随包分发：按需安装到 `.toolchain`（`--with-comment-checker`） | `LICENSE-NOTICES.md`；`MPD_DSH_COMMENT_CHECKER_BIN` |
 | DSH-STD 协议族： `@dsh-std/sdk`，本 bundle 唯一一个 DSH-STD **依赖**（adapter 属于可选的自装插件，见下文） | **dsh-std**（https://github.com/T-Auto/dsh-std）：声明式 npm 依赖，绝非搬运进来的代码 | MIT： `Copyright (c) 2026 DSH Standard contributors`；安装时解析，不再分发 | `package.json` 的 `dependencies`；`LICENSE-NOTICES.md` |
 | 插件系统、工具 / 技能 / preset / agent 接缝、模型 provider、Web 外壳 | DeepSeek Harness： **`@deepseek-ai/*`** 包 | MIT；`Copyright (c) 2026 DeepSeek`；仅作为依赖引用 | `LICENSE-NOTICES.md` |
-| Agent Teams Web 面板 | 官方客户端插件 `@deepseek-ai/dsh-experimental-client-ui-agent-team` | MIT（harness 包组） | 见上文 §8；patch 行 `mpd-ui-agent-team` |
+| Agent Teams Web 面板 | 宿主的 `@deepseek-ai/dsh-client-ui-agent-team` 客户端插件，在较旧的宿主中名为 `@deepseek-ai/dsh-experimental-client-ui-agent-team` | MIT（harness 包组） | 见上文 §8 |
 | Workmates 侧边栏标签页 | 由社区 bundle **`dsh-better-sidebar`** 承载，它是本 bundle 的**可选 peer**（外加一个 `devDependency`）：bundle 从不安装它，带守卫的 `mpd-better-sidebar` 行在它可解析时挂载它 | — | 见上文 §8；`package.json` 的 `peerDependencies` / `peerDependenciesMeta`；patch 行 `mpd-better-sidebar` |
 | DSH 接线（adapter、运行时插件、`mpd` preset、合并后的 Web 客户端）、TUI 版本、QA 套件、文档、扩展接口 | 本项目自己编写 | MIT | `README.md`（鸣谢）；`LICENSE.md` |
 

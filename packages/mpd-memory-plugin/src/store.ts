@@ -8,9 +8,9 @@
 // the root). Both keep markdown entries under `repo/memory/` and one journal at
 // `runtime/journal.jsonl`; the global store also carries `runtime/index.json`, the project-archive
 // index that `archive.ts` owns.
-import { existsSync, mkdirSync, readFileSync, appendFileSync } from "node:fs"
+import { appendFileSync, closeSync, existsSync, fstatSync, mkdirSync, openSync, readFileSync, readSync } from "node:fs"
 import { homedir } from "node:os"
-import { basename, dirname, join, resolve, sep } from "node:path"
+import { basename, dirname, join, relative, resolve, sep } from "node:path"
 import { spawnSync } from "node:child_process"
 import { assertHomeMutationSandboxed } from "../../mpd-dsh-adapter-plugin/src/index"
 
@@ -218,15 +218,27 @@ export function scopeOf(args: unknown): MemoryScope {
 export function journalPath(d: StoreDirs): string { return join(d.runtime, "journal.jsonl") }
 
 /**
- * Append one journal record to a store's journal, stamped with the instant it was written.
+ * Append one journal record, isolating any unterminated tail without changing its bytes.
  *
  * @param d - the store whose journal receives the record.
  * @param kind - the record kind (`write`, `archive`, `superseded`, `reflection`, …).
  * @param detail - the record's own fields, merged beside `at` and `kind`.
- * @returns nothing; a write failure propagates like any other IO error of the tool that caused it.
+ * @returns nothing; a write failure propagates to the calling tool.
  */
 export function appendJournalLine(d: StoreDirs, kind: string, detail: Record<string, unknown>): void {
-  appendFileSync(journalPath(d), JSON.stringify({ at: new Date().toISOString(), kind, ...detail }) + "\n")
+  /** The same descriptor probes the trailing byte and appends at EOF. */
+  const fd = openSync(journalPath(d), "a+")
+  try {
+    /** The journal size when its tail is inspected. */
+    const size = fstatSync(fd).size
+    /** Only the final byte matters, even when prior user bytes are invalid UTF-8. */
+    const tail = Buffer.alloc(1)
+    /** Existing non-empty journals need a separator whenever the tail is missing its LF. */
+    const needsSeparator = size > 0 && readSync(fd, tail, 0, 1, size - 1) === 1 && tail[0] !== 0x0a
+    appendFileSync(fd, (needsSeparator ? "\n" : "") + JSON.stringify({ at: new Date().toISOString(), kind, ...detail }) + "\n")
+  } finally {
+    closeSync(fd)
+  }
 }
 
 /** Run one VCS command synchronously; a spawn failure is reported as a failure, never thrown. */
@@ -244,11 +256,14 @@ function gitEnsure(repo: string): string {
   if (!existsSync(join(repo, ".git"))) {
     /** The `git init` result; a failure here is fatal because the later commits would have no repository. */
     const r = run("git", ["init", "-q"], repo)
-    if (!r.ok) throw new Error("mpd-memory: git init failed: " + r.out)
-    run("git", ["config", "user.name", "mpd-memory"], repo)
-    run("git", ["config", "user.email", "mpd-memory@local"], repo)
+    if (!r.ok) return "git init failed: " + r.out
+    for (const [key, value] of [["user.name", "mpd-memory"], ["user.email", "mpd-memory@local"]]) {
+      /** Failure to configure the newly created store must be visible to the caller. */
+      const identity = run("git", ["config", key, value], repo)
+      if (!identity.ok) return "git config failed: " + identity.out
+    }
   }
-  return "git"
+  return ""
 }
 
 /** Create the agent's `svn-repo` and check it out into `repo/`, skipping whichever half already exists. */
@@ -260,61 +275,73 @@ function svnEnsure(root: string, repo: string): string {
   if (!existsSync(join(svnRepo, "db"))) {
     /** The `svnadmin create` result; a failure here is fatal because the checkout below would fail anyway. */
     const r = run("svnadmin", ["create", svnRepo], root)
-    if (!r.ok) throw new Error("mpd-memory: svnadmin create failed: " + r.out)
+    if (!r.ok) return "svnadmin create failed: " + r.out
   }
   if (!existsSync(join(repo, ".svn"))) {
-    mkdirSync(dirname(repo), { recursive: true })
-    /** The `svn checkout` result; a failure here is fatal because later commits need a working copy. */
+    /** The `svn checkout` result; a failure prevents this backend from committing. */
     const r = run("svn", ["checkout", url, repo], dirname(repo))
-    if (!r.ok) throw new Error("mpd-memory: svn checkout failed: " + r.out)
+    if (!r.ok) return "svn checkout failed: " + r.out
   }
-  return "svn"
+  return ""
 }
 
-/** Initialize whichever VCS backends the configured mode names. */
-export function ensureVcs(config: Config, d: { root: string; repo: string }): void {
-  /** The effective mode; a row that names none gets git only. */
-  const vcs = config.vcs ?? "git"
-  if (vcs === "git" || vcs === "both") gitEnsure(d.repo)
-  if (vcs === "svn" || vcs === "both") svnEnsure(d.root, d.repo)
+/** Git and SVN are the two concrete VCS backends a receipt can name. */
+export type MemoryBackend = "git" | "svn"
+
+/** The per-backend outcome of keeping an entry in VCS history. */
+export interface CommitReceipt {
+  /** Backends that accepted the commit or already contain the saved entry. */
+  readonly committedTo: readonly MemoryBackend[]
+  /** Diagnostics for every configured backend that failed. */
+  readonly errors: readonly string[]
 }
 
-/** Stage and commit everything in `repo`; returns an error line, or "" when there was nothing to commit. */
-function gitCommit(repo: string, msg: string): string {
-  /** The `git add -A` result; a failure aborts before the commit is attempted. */
-  const a = run("git", ["add", "-A"], repo)
-  if (!a.ok) return "git add failed: " + a.out
-  /** The commit result; "nothing to commit" is success, because an idempotent write leaves no change. */
-  const c = run("git", ["commit", "-q", "-m", msg], repo)
-  return c.ok ? "" : (c.out.includes("nothing to commit") ? "" : "git commit failed: " + c.out)
+/** Stage and commit memory entries, keeping the other backend's administrative files out. */
+function gitCommit(repo: string, entry: string, msg: string): string {
+  /** Stage memory paths only, including plaintext left by an earlier failed write. */
+  const add = run("git", ["add", "-A", "--", "memory"], repo)
+  if (!add.ok) return "git add failed: " + add.out
+  /** Refuse a success receipt if the requested file was ignored by the working copy. */
+  const tracked = run("git", ["ls-files", "--error-unmatch", "--", entry], repo)
+  if (!tracked.ok) return "git add failed for " + entry + ": " + tracked.out
+  if (run("git", ["diff", "--cached", "--quiet", "--", "memory"], repo).ok) return ""
+  /** Limit the commit to memory even when unrelated paths already exist in the Git index. */
+  const commit = run("git", ["commit", "--quiet", "--only", "-m", msg, "--", "memory"], repo)
+  return commit.ok ? "" : "git commit failed: " + commit.out
 }
 
-/** Add any new working-copy files and commit them; returns an error line, or "" on success. */
-function svnCommit(repo: string, msg: string): string {
-  /** The `svn add --force` result, deliberately not inspected: the commit below reports the real error. */
-  const a = run("svn", ["add", "--force", "--quiet", "."], repo)
-  /** The commit result, whose combined output becomes the returned error line when it failed. */
-  const c = run("svn", ["commit", "-m", msg], repo)
-  return c.ok ? "" : ("svn commit failed: " + c.out)
+/** Add and commit memory entries through SVN, stopping on an add or tracking failure. */
+function svnCommit(repo: string, entry: string, msg: string): string {
+  /** Add the memory directory and its unversioned entries, never the Git metadata. */
+  const add = run("svn", ["add", "--force", "--quiet", "memory"], repo)
+  if (!add.ok) return "svn add failed: " + add.out
+  /** An ignored entry cannot be credited merely because committing another file succeeded. */
+  const tracked = run("svn", ["info", "--show-item", "kind", entry], repo)
+  if (!tracked.ok) return "svn add failed for " + entry + ": " + tracked.out
+  /** SVN treats an unchanged working copy as a successful no-op. */
+  const commit = run("svn", ["commit", "-m", msg, "memory"], repo)
+  return commit.ok ? "" : "svn commit failed: " + commit.out
 }
 
-/** Commit through every backend the configured mode names, and collect one error line per backend that failed. */
-export function commitAll(config: Config, d: { root: string; repo: string }, msg: string): string[] {
-  /** The error lines of the backends that failed; empty means every configured backend committed. */
-  const errs: string[] = []
-  /** The effective mode; a row that names none gets git only. */
-  const vcs = config.vcs ?? "git"
-  if (vcs === "git" || vcs === "both") {
-    /** The git backend's error line, kept only when it failed. */
-    const e = gitCommit(d.repo, msg)
-    if (e) errs.push(e)
+/** Independently initialize and commit through each configured backend that still owes this entry. */
+export function commitAll(config: Config, d: StoreDirs, file: string, msg: string, previous: readonly MemoryBackend[] = []): CommitReceipt {
+  /** Configured backends in stable receipt order. */
+  const configured: readonly MemoryBackend[] = config.vcs === "both" ? ["git", "svn"] : [config.vcs ?? "git"]
+  /** Path understood by both VCS commands, relative to their working copy. */
+  const entry = relative(d.repo, file)
+  /** Successful backends for this entry, including recorded successes from earlier attempts. */
+  const committedTo: MemoryBackend[] = []
+  /** One diagnostic for each unsuccessful backend. */
+  const errors: string[] = []
+  for (const backend of configured) {
+    /** A backend is credited only after successful initialization and commit or a tracked no-op. */
+    const failure = previous.includes(backend) ? "" : backend === "git"
+      ? gitEnsure(d.repo) || gitCommit(d.repo, entry, msg)
+      : svnEnsure(d.root, d.repo) || svnCommit(d.repo, entry, msg)
+    if (failure) errors.push(failure)
+    else committedTo.push(backend)
   }
-  if (vcs === "svn" || vcs === "both") {
-    /** The svn backend's error line, kept only when it failed. */
-    const e = svnCommit(d.repo, msg)
-    if (e) errs.push(e)
-  }
-  return errs
+  return { committedTo, errors }
 }
 
 /** Split a memory file into its JSON frontmatter and its body, tolerating old or invalid headers. */

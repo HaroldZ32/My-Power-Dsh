@@ -274,18 +274,30 @@ spawn (or clear those legacy records), then repeat the mutation. The same gate c
 
 ## 6. Team mode
 
-**The team plane is the mpd RECORD**, not the official plugin: the roster, the board and every task
-live in `.mpd/team/teams/<id>.json`, served as `mpdTeams`. This bundle's rows `mpd-agent-team` /
-`mpd-tool-agent-team` / `mpd-ui-agent-team` provide the teammate **execution** and **UI** surface:
-the official service with its nine model-facing tools, and the Web roster/board panel, and the two
-execution rows are **disabled** in a TUI composition, where the dsh-tui host refuses the team
-service's root-bound projection (see [`design.md`](design.md) for the row inventory). The five
+The **mpd team record** stores the roster, board and tasks in `.mpd/team/teams/<id>.json` and serves
+it through `mpdTeams`. MPD uses its native executor by default. DSH supplies the official team
+service, tools and Web roster/board panel. Starting with 0.2.2-rc.2, the host mounts its own rows.
+On older supported hosts the bundle's guarded `mpd-agent-team`, `mpd-tool-agent-team` and
+`mpd-ui-agent-team` rows resolve experimental packages from the host installation. The guards
+also disable the two legacy execution rows in TUI compositions, where the host refuses the
+service's root-bound projection. See [compatibility §2.1](./compatibility.md). The five
 official authoring verbs: `spawn_teammate`, `team_task_create`, `team_task_list`, `team_task_get`,
 `team_task_update`: are **REFUSED at the tool boundary**, so the plan below is the only door. The
 closure stops at the TOOL boundary: a ROW that calls the team SERVICE directly (the official-executor
 fallback) is not a tool call and is NOT gated, that is the one declared bound. Your session agent is
 the **Lead** (the captain): it stages the plan, spawns named teammates, opens tasks on the mpd board
 and integrates the results.
+
+Assess the planned owners, dependencies and integration before the first consult. Use a team for
+substantial work with several owners, shared implementation or a build/test handoff. For example,
+a follow-up like “一起解决掉吧” can ask for the repair of a whole preceding audit. Its scope comes
+from the conversation. Use a one-shot consult for an isolated question or bounded task.
+
+Check the board first. Use a suitable live team, or reuse or stage a plan, add members and tasks
+with declared owners and dependencies, and approve it. Dispatch to the declared owners and confirm
+member activation and delivery. If the team surface is unavailable or activation fails, report the
+concrete blocker. Bounded serial consults can cover part of the work when feasible. Report any
+remaining ownership or verification gaps.
 
 ```text
 agent_teams_plan { action }                                                # Lead only: create | add_member | create_task | edit | approve | delete | status
@@ -306,9 +318,9 @@ interrupt_agent { agent_id }                                              # Lead
   only board: `agent_teams_task` drives it and `agent_teams_plan {action:"status"}` reads it back. The
   five official authoring verbs: `spawn_teammate`, `team_task_create`, `team_task_list`,
   `team_task_get`, `team_task_update`: are REFUSED at the tool boundary, so the plan above is the only
-  door. Under `team.gate: "advisory"`, or with `agent_teams_plan`
-  unmounted, the gate stages nothing and says so in one notice, and the captain stages a team itself
-  when the work warrants one.
+  door. Under `team.gate: "advisory"`, the notice leaves staging to the captain. With
+  `team.gate: "off"`, automatic routing is disabled. An unmounted plan tool prevents staging.
+  A missed signal leaves the captain's assessment of the work in force.
 - **Sensitivity selects the thresholds.** `team.sensitivity` in `mpd.jsonc` is `easy` (the DEFAULT) |
   `normal` | `strict`, and an unknown or missing value resolves to `easy`. `easy` keeps the
   workspace-scale signal F and fires early; `normal` reproduces the pre-2026-10-22 five-signal
@@ -321,10 +333,20 @@ interrupt_agent { agent_id }                                              # Lead
   | `strict` | ≥ 6 | ≥ 4 / ≥ 4 / ≥ 4 (3-of-3) | ≥ 80 / ≥ 3 | off |
 
   Signal F is a bounded root `readdir` (never recursive): a project manifest **and** a project
-  directory **and** at least 8 visible entries. It is evaluated only under `easy`, and it is
-  deliberately coarse, in a large workspace F alone fires even for `hello`. The silent negative
-  controls therefore live in a TINY workspace (an empty or `hello` prompt and `验证一下` stage
-  nothing).
+  directory **and** at least 8 visible entries. The session gate uses F under `easy` on the first
+  turn only. A large workspace can therefore trigger on an opening `hello`. Later local requests
+  need another signal to trigger.
+- **A follow-up can revisit the plan.** A later human request to repair the whole preceding set, such
+  as “fix all of these” or “一起解决掉吧”, can trigger once per wave after two completed consult calls
+  or when the gate recorded a staged plan. This narrow rule is separate from the sensitivity verbs
+  and from the captain's assessment of the broader conversation.
+- **The mechanical gate also limits overlapping consults.** With the plan, board and dispatch tools
+  present and no live team, the default `team.reteam.afterConsults` of 4 defers an eligible captain's
+  fourth overlapping public role or workmate call with `TEAM_FIRST`. The response can point to an
+  inert plan shell for review and approval. If plan inspection or staging fails, let outstanding
+  consults settle and retry one bounded call at a time. If a Team tool is absent, consults use their
+  ordinary supervisor. `team.reteam.enabled: false` disables both the concurrent check and the
+  completed-call staging trigger.
 - **One approval starts three mechanisms.** On the `agent_teams_plan` approve SUCCESS path, after the
   team is activated, the same approval attempts to anchor a persisted goal (objective = the plan
   description, falling back to the plan NAME when the description is empty, source `team`) and seeds
@@ -478,17 +500,18 @@ transcript line is claimed. The full list is §10 NOT-CLAIMED of [`tui.md`](tui.
 
 ### 7.2 The `/settings` screen and the `mpd.jsonc` bridge
 
-`/settings` edits the real `mpd.jsonc` knobs: the original 13, one three-leaf row per roster agent
-(the thirty-three `agentRoutes.<Agent>.{provider,model,reasoningEffort}` leaves; each leaf is a
-selection-only field whose options come from the live model catalog, with the declared lists as
-fallback) and the TUI surface's own knob: among them `hashline.maxDiffChars`,
-`commentChecker.autoCheck`, `autoproject.maxRounds`, `memory.vcs`, `team.stateDir` and `boulder.dir`: through
-the harness's OWN form for this row's config entry (`configForms.get("mpd-config")`; the Web GUI card
-uses the same entry). **On the harness this bundle pins, an entry save is persisted by the HOST and
-performs NO `<workspace>/.mpd/mpd.jsonc` write**: the saved override is the top config layer and takes
-effect in-process, and projecting the form's materialised defaults into your file would pollute it. The
-file write-back is the retired settings-NAMESPACE path: `packages/mpd-config-plugin` still implements
-it, but `settingsRegister` is refused on this harness and that path is **dormant**.
+The TUI `/settings` form saves to the host's `mpd-config` entry document. These settings apply across
+all workspaces as top-layer overrides. This includes the TUI model route fields and the routes saved by
+`/mpd-model`. The Web card uses the same entry document for general settings such as `team.stateDir`
+and `boulder.dir`.
+
+To edit a workspace's model routes in **Settings → MPD** on the Web, select one of its live sessions
+first. The card reads the workspace's effective models and saves changes to the agent's provider, model,
+and reasoning effort in `<workspace>/.mpd/mpd.jsonc`. Clearing a field restores its inherited value.
+An unknown session produces a visible error, and an unscoped read on a host with multiple live roots
+asks you to select a session. An active profile-wide override still takes precedence, and a conflicting
+workspace edit reports the overridden field. The older settings namespace write-back is dormant on the
+pinned host.
 
 Two things to know before you rely on it:
 
@@ -529,8 +552,8 @@ strings, the state scopes and the explicit NOT-CLAIMED list, read [`tui.md`](tui
   renders the same record (§7.1). It registers in whichever sidebar host the composition provides
   (below).
 - **Agent Teams** (a different, read-only surface: the harness's own, not the team surface): the
-  official client plugin `@deepseek-ai/dsh-experimental-client-ui-agent-team`, mounted by this
-  bundle's `mpd-ui-agent-team` row, adds an **Agent Teams** action to the conversation header. It
+  official client plugin adds an **Agent Teams** action to the conversation header. The host mounts
+  `ui-agent-team` from DSH 0.2.2-rc.2. The guarded bundle row `mpd-ui-agent-team` handles older hosts. It
   reads the Lead session's `agentTeam` projection from the shared session store: the OFFICIAL
   service's projection, not the mpd record, so updates appear while the panel stays open.
   It lists the roster (durable names and phases: `running`, `inactive`, `provisioning`, `failed`) and
@@ -540,9 +563,8 @@ strings, the state scopes and the explicit NOT-CLAIMED list, read [`tui.md`](tui
   conversation. It is **read-only**: the panel cannot
   spawn, rename, delete or interrupt a teammate and offers no task-mutation control: those belong to
   the tools in §6. Peer messages are not shown; the panel shows roster and tasks only. If the plugin
-  was enabled in an already-open conversation, reload the page once to receive the projection. In a
-  TUI composition the official service rows (`mpd-agent-team`, `mpd-tool-agent-team`) are disabled,
-  so this panel has no TUI counterpart.
+  was enabled in an already-open conversation, reload the page once to receive the projection. The
+  official panel is a Web surface.
 - **Workmates sidebar tab**: the workmate library is contributed as a tab to **DSH-better-sidebar**
   (the community sidebar bundle, an optional peer mounted when it is present), so it lives where that
   sidebar's own pages do: tab strip, `+` menu, and the sidebar's own enable/disable switch. The page
@@ -777,10 +799,9 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # start from a working skele
   `dsh-better-sidebar` is older than `0.28.0` is **outside** the supported peer range
   (`>=0.28.0 <0.29.0`): the row restates 0.28's `["webServer","sessions","connection","tools"]` inject
   list, and the bottom-workbench twins need 0.28's `bottomOnly` descriptor field.
-- The Agent Teams panel is missing from the conversation header → its row is
-  `mpd-ui-agent-team` (`@deepseek-ai/dsh-experimental-client-ui-agent-team`, a declared dependency);
-  reinstall the bundle and reload the page once. It appears only when the session really has a Team
-  projection to show.
+- If the Agent Teams panel is missing from the conversation header, check the host's `ui-agent-team`
+  row (`mpd-ui-agent-team` on older hosts) and reload the page. It needs an official Agent Teams
+  session projection to show.
 - Client surface missing entirely in the GUI → the `mpd-web-compat` self-row must exist and the
   bundle must be reinstalled (`dsh plugin --profile <p> add <repo-or-package>`).
 - `MISSING_CREDENTIAL` → the provider route needs a key in your DSH credentials; keys are never
@@ -1201,7 +1222,7 @@ other people's. The authoritative record, with the full licence texts, is
 
 | What you use | Where it comes from | Licence / version | Recorded in |
 |---|---|---|---|
-| Team mode: the teammate execution plane, `send_message`, `list_agents`, `wait_agent`, `interrupt_agent` and the Web panel | the **official** `@deepseek-ai/dsh-experimental-agent-team` / `-tool-agent-team` / `-client-ui-agent-team` packages, mounted by this bundle's `mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` rows | MIT (harness package set); declared in `package.json` `dependencies` | `cordis.patch.yml`; `README.md` (*What the install mounts*) |
+| The official team service, `send_message`, `list_agents`, `wait_agent`, `interrupt_agent` and Web panel | DSH supplies the packages. Its host layers mount them from 0.2.2-rc.2. The bundle's guarded legacy rows mount the experimental generation on older hosts. | MIT (harness package set) | [Compatibility §2.1](./compatibility.md) |
 | The relocated `schemastery` validator, its `cosmokit` dependency and the DSH framework modules the test suite drives | upstream `schemastery` / `cosmokit` / `cordis` by Shigma, and the `@deepseek-ai/dsh-*` modules from the DeepSeek Harness | MIT: `Copyright (c) 2021-present Shigma` and `Copyright (c) 2026 DeepSeek`, reproduced in full in `packages/mpd-schemastery/LICENSE` | `LICENSE-NOTICES.md` §*schemastery* |
 | The AgentTeams sidebar client bundle | the built browser client of **dsh-agent-teams** (<https://github.com/NanmiCoder/dsh-agent-teams>), embedded verbatim into the shipped `client.js` | MIT; the upstream build carries no copyright line | `LICENSE-NOTICES.md` §*adopted* |
 | The eleven roster persona texts | permissively licensed public agent prompts (one Apache-2.0, the rest MIT); Vision Analyst and Junior Engineer are written here | MIT: this repository's own work | `LICENSE-NOTICES.md` §*Roster persona texts*; `packages/mpd-roles-plugin/personas/ATTRIBUTION.md` |
@@ -1213,7 +1234,7 @@ other people's. The authoritative record, with the full licence texts, is
 | `mpd_comment_check` | **comment-checker** by code-yeongyu (`@code-yeongyu/comment-checker`) | MIT; **not** redistributed: installed on demand into `.toolchain` (`--with-comment-checker`) | `LICENSE-NOTICES.md`; `MPD_DSH_COMMENT_CHECKER_BIN` |
 | The DSH-STD protocol family: `@dsh-std/sdk`, the one DSH-STD **dependency** of this bundle (the adapter is an optional self-install, below) | **dsh-std** (https://github.com/T-Auto/dsh-std): a declared npm dependency, never a vendored body | MIT: `Copyright (c) 2026 DSH Standard contributors`; resolved at install time, not redistributed | `package.json` `dependencies`; `LICENSE-NOTICES.md` |
 | The plugin system, the tool / skill / preset / agent seams, the model providers, the Web shell | DeepSeek Harness: the **`@deepseek-ai/*`** packages | MIT; `Copyright (c) 2026 DeepSeek`; referenced as dependencies only | `LICENSE-NOTICES.md` |
-| The Agent Teams Web panel | the official `@deepseek-ai/dsh-experimental-client-ui-agent-team` client plugin | MIT (harness package set) | §8 above; patch row `mpd-ui-agent-team` |
+| The Agent Teams Web panel | the host's `@deepseek-ai/dsh-client-ui-agent-team` client plugin, named `@deepseek-ai/dsh-experimental-client-ui-agent-team` on older hosts | MIT (harness package set) | §8 above |
 | The Workmates sidebar tab | hosted by the community bundle **`dsh-better-sidebar`**, an **optional peer** of this bundle (+ a `devDependency`): the bundle never installs it, and the guarded `mpd-better-sidebar` row mounts it when it is resolvable | MIT; `Copyright (c) 2026 dsh-external` | §8 above; `package.json` `peerDependencies` / `peerDependenciesMeta`; patch row `mpd-better-sidebar` |
 | The DSH plumbing (adapter, runtime plugins, `mpd` preset, combined web client), the TUI edition, the QA suite, the documentation, the extension interface | written here | MIT | `README.md` (Acknowledgements); `LICENSE.md` |
 

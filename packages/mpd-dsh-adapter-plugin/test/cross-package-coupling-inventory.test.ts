@@ -206,12 +206,12 @@ export const FROZEN_COUPLINGS: readonly string[] = [
   "packages/mpd-mcp-codegraph/src/launch.ts :: import { installTerminalSilence } from \"../../mpd-mcp-shared/log-sink.ts\"",
   "packages/mpd-mcp-codegraph/src/launch.ts :: import { resolveCodegraphBinary } from \"../../mpd-mcp-shared/bin-resolve.ts\"",
   "packages/mpd-mcp-gitbash/src/launch.ts :: import { installTerminalSilence } from \"../../mpd-mcp-shared/log-sink.ts\"",
-  "packages/mpd-mcp-lsp/src/launch.ts :: import { installTerminalSilence, resolveLogRoots } from \"../../mpd-mcp-shared/log-sink.ts\"",
+  "packages/mpd-mcp-lsp/src/launch.ts :: import { installTerminalSilence } from \"../../mpd-mcp-shared/log-sink.ts\"",
   // THE TWO LAUNCHERS BECAME REAL THIN LAUNCHERS (de-omo wave B2, 2026-10-08): they no longer import
   // a vendored `./cli.js` beside them, so they resolve their server through the SHARED dependency
   // resolver, type their diagnostics channel on the SHARED sink interface, and degrade through the
-  // SHARED unavailable-server fallback. Six NEW edges, frozen here rather than discovered later —
-  // the R5 sink edge above was re-spelled in the same edit (it now also imports `resolveLogRoots`).
+  // SHARED unavailable-server fallback. The sink edge stays on the same module; project selection
+  // no longer consumes the sink's log-root resolver.
   "packages/mpd-mcp-gitbash/src/launch.ts :: import { resolveDependencyEntry } from \"../../mpd-mcp-shared/dependency-entry.ts\"",
   "packages/mpd-mcp-gitbash/src/launch.ts :: import type { LogSink } from \"../../mpd-mcp-shared/log-sink.ts\"",
   "packages/mpd-mcp-gitbash/src/launch.ts :: import { serveUnavailable } from \"../../mpd-mcp-shared/unavailable-server.ts\"",

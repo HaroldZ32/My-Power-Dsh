@@ -273,6 +273,61 @@ describe("AC1 — an entry-config save refreshes state with NO reload call (R1)"
   })
 })
 
+test("reloading workspace B preserves workspace A's routes and scoped file diagnostics", () => {
+  /** The two sessions share a config service and each workspace declares a different route. */
+  const a = sandbox()
+  /** Workspace B, whose reload used to replace the route for both sessions. */
+  const b = sandbox()
+  writeFileSync(a.file, '{ "agentRoutes": { "Deep Worker": { "provider": "gateway", "model": "route-a" } } }')
+  writeFileSync(b.file, '{ "agentRoutes": { "Deep Worker": { "provider": "gateway", "model": "route-b" } } }')
+  /** Both roots reported by one adapter, with an explicitly isolated user layer. */
+  const h = harness({ roots: [a.root, b.root] })
+  apply(h.ctx, { userFile: join(a.root, "absent-user.jsonc") })
+  /** The real config service under test. */
+  const service = h.provided.mpdConfig
+  try {
+    service.reload({ agent: { session: { header: { cwd: b.root } } } })
+    expect(service.agentRouteResolutionOf("Deep Worker", a.root)).toMatchObject({ ok: true, route: { model: "route-a" } })
+    expect(service.agentRouteOf("Deep Worker", b.root)).toMatchObject({ model: "route-b" })
+    expect(service.get("agentRoutes.Deep Worker.model", a.root)).toBe("route-a")
+    expect(service.states(a.root).files).toEqual([a.file])
+    expect(service.states(b.root).files).toEqual([b.file])
+  } finally {
+    for (const effect of h.effects) effect.dispose()
+  }
+})
+
+test("workspace route edits honor inherited aliases and refuse a shadowed value byte-untouched", () => {
+  /** Distinct disposable projects sharing one config service. */
+  const a = sandbox()
+  /** B stays on its inherited route for the whole operation. */
+  const b = sandbox()
+  /** The lower user layer uses a valid alternate spelling for the same roster member. */
+  const userFile = join(a.root, "user.jsonc")
+  writeFileSync(userFile, '{ "agentRoutes": { "deep-worker": { "provider": "gateway", "model": "inherited" } } }')
+  /** Both workspaces share one mount and the inherited route. */
+  const h = harness({ roots: [a.root, b.root] })
+  apply(h.ctx, { userFile })
+  /** Model form operations exposed by the mounted config service. */
+  const service = h.provided.mpdConfig
+  try {
+    expect(service.editWorkspaceAgentRoutes(a.root, [{ agent: "Deep Worker", leaf: "model", value: "edited-a" }])).toEqual({ ok: true })
+    expect(service.agentRouteOf("Deep Worker", a.root)).toMatchObject({ model: "edited-a" })
+    expect(service.agentRouteOf("Deep Worker", b.root)).toMatchObject({ model: "inherited" })
+    /** Preserve exactly the project bytes when a profile-wide override would shadow the edit. */
+    const saved = readFileSync(a.file, "utf8")
+    expect(saved).toContain('"deep-worker"')
+    h.saveEntry({ agentRoutes: { "deep-worker": { model: "profile-override" } } })
+    h.emitEntry()
+    expect(service.editWorkspaceAgentRoutes(a.root, [{ agent: "Deep Worker", leaf: "model", value: "shadowed" }])).toMatchObject({ ok: false })
+    expect(readFileSync(a.file, "utf8")).toBe(saved)
+    expect(service.agentRouteOf("Deep Worker", a.root)).toMatchObject({ model: "profile-override" })
+    expect(service.agentRouteOf("Deep Worker", b.root)).toMatchObject({ model: "profile-override" })
+  } finally {
+    for (const effect of h.effects) effect.dispose()
+  }
+})
+
 describe("AC3 — ONE route per AGENT; the retired slot tree decides nothing (contract §1-§2, amendment 2 §3)", () => {
   test("a configured agent resolves to exactly its own route, and its group sibling stays unconfigured", () => {
     /** One fully configured agent, the unit the contract configures. */

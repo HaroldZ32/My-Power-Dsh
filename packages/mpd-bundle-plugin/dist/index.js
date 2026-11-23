@@ -1,4 +1,5 @@
 // packages/mpd-bundle-plugin/src/model-config-web.ts
+import { Buffer as Buffer2 } from "node:buffer";
 var MODEL_CONFIG_PATH = "/plugins/mpd/model-config";
 var ROSTER_MEMBERS = [
   "Architect",
@@ -13,42 +14,123 @@ var ROSTER_MEMBERS = [
   "Junior Engineer",
   "Vision Analyst"
 ];
-function buildModelConfigBody(config) {
+var EDITABLE_LEAVES = ["provider", "model", "reasoningEffort"];
+function buildModelConfigBody(config, workspace) {
   if (config === undefined || config === null) {
     return { ok: false, reason: "the mpdConfig service is not composed in this profile" };
   }
   if (typeof config.agentRouteResolutionOf !== "function") {
     return { ok: false, reason: "the mpdConfig service exposes no per-agent route resolver (agentRouteResolutionOf)" };
   }
+  if (workspace !== undefined && typeof config.workspaceAgentRoutes !== "function") {
+    return { ok: false, reason: "the config service cannot read a specific workspace" };
+  }
   try {
     const agents = {};
     for (const member of ROSTER_MEMBERS)
-      agents[member] = config.agentRouteResolutionOf(member);
+      agents[member] = config.agentRouteResolutionOf(member, workspace);
     return {
       ok: true,
       agents,
-      modelchain: typeof config.get === "function" ? config.get("modelchain") ?? {} : {}
+      modelchain: config.get?.("modelchain", workspace) ?? {},
+      ...workspace === undefined ? {} : { workspaceRoutes: config.workspaceAgentRoutes?.(workspace) }
     };
   } catch (error) {
     return { ok: false, reason: `the config read threw (${String(error?.message ?? error)})` };
   }
 }
+async function readEdits(request) {
+  const bad = { ok: false, status: 400, reason: "Expected JSON edits for roster provider, model or reasoning effort fields." };
+  if (typeof request[Symbol.asyncIterator] !== "function")
+    return bad;
+  const parts = [];
+  let size = 0;
+  for await (const chunk of request) {
+    if (typeof chunk !== "string" && !(chunk instanceof Uint8Array))
+      return bad;
+    const bytes = Buffer2.from(chunk);
+    size += bytes.length;
+    if (size > 16 * 1024)
+      return { ok: false, status: 413, reason: "The route edit request exceeds 16 KiB." };
+    parts.push(bytes);
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(Buffer2.concat(parts).toString("utf8"));
+  } catch (error) {
+    if (error instanceof SyntaxError)
+      return bad;
+    throw error;
+  }
+  if (!Array.isArray(parsed) || parsed.length === 0 || parsed.length > ROSTER_MEMBERS.length * EDITABLE_LEAVES.length)
+    return bad;
+  const edits = [];
+  for (const raw of parsed) {
+    if (raw === null || typeof raw !== "object" || Array.isArray(raw))
+      return bad;
+    const { agent, leaf, value } = raw;
+    const field = EDITABLE_LEAVES.find((candidate) => candidate === leaf);
+    if (typeof agent !== "string" || !ROSTER_MEMBERS.includes(agent) || field === undefined || value !== undefined && (typeof value !== "string" || value.trim() === ""))
+      return bad;
+    edits.push({ agent, leaf: field, value });
+  }
+  return { ok: true, edits };
+}
 function registerModelConfigRoute(webServer, deps) {
-  let registered = false;
   try {
     deps.effect(() => webServer.register({
       kind: "exact",
       path: MODEL_CONFIG_PATH,
-      handler: (_req, res) => {
-        const out = res;
-        const body = buildModelConfigBody(deps.config());
-        out.writeHead(body.ok ? 200 : 503, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
-        out.end(JSON.stringify(body));
+      handler: async (request, response) => {
+        const out = response;
+        const send = (status, body) => {
+          out.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...status === 405 ? { allow: "GET, POST" } : {} });
+          out.end(JSON.stringify(body));
+        };
+        try {
+          const req = request;
+          const method = req?.method ?? "GET";
+          if (method !== "GET" && method !== "POST")
+            return send(405, { ok: false, reason: "Use GET to read or POST to edit model config." });
+          const sessions = new URL(req?.url ?? MODEL_CONFIG_PATH, "http://localhost").searchParams.getAll("sessionId");
+          if (sessions.length > 1 || sessions[0]?.trim() === "")
+            return send(400, { ok: false, reason: "The request must name one valid session." });
+          const session = sessions[0];
+          if (method === "POST" || session !== undefined) {
+            const rejection = deps.authorize === undefined ? 401 : deps.authorize(request);
+            if (rejection !== undefined)
+              return send(rejection, { ok: false, reason: "The host did not authorize access to the session's model config." });
+          }
+          if (session === undefined && (method === "POST" || new Set(deps.roots?.()).size > 1)) {
+            return send(409, { ok: false, reason: "Select a live session to identify the workspace." });
+          }
+          const workspace = session === undefined ? undefined : deps.workspace?.(session);
+          if (session !== undefined && !workspace)
+            return send(409, { ok: false, reason: "The named session has no live workspace." });
+          const config = deps.config();
+          if (method === "POST" && req !== undefined && session !== undefined && workspace !== undefined) {
+            if (typeof config?.editWorkspaceAgentRoutes !== "function")
+              return send(503, { ok: false, reason: "The config service cannot edit workspace model routes." });
+            const body2 = await readEdits(req);
+            if (!body2.ok)
+              return send(body2.status, { ok: false, reason: body2.reason });
+            if (deps.workspace?.(session) !== workspace)
+              return send(409, { ok: false, reason: "The session's workspace changed while reading the edit." });
+            const result = config.editWorkspaceAgentRoutes(workspace, body2.edits);
+            if (!result.ok)
+              return send(409, result);
+          }
+          const body = buildModelConfigBody(config, workspace);
+          send(body.ok ? 200 : 503, body);
+        } catch {
+          send(500, { ok: false, reason: "Could not complete the model config request." });
+        }
       }
     }), "mpd-bundle: model-config web route");
-    registered = true;
-  } catch {}
-  return registered;
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // packages/mpd-bundle-plugin/src/watchdog-web.ts
@@ -1080,7 +1162,7 @@ function createDshAdapter(ctx, config = {}) {
     } catch {}
   };
   bindDshGoBridge();
-  const configAgentRouteResolver = () => {
+  const configAgentRouteResolver = (workspace) => {
     const config2 = service("mpdConfig");
     if (config2 === undefined || config2 === null)
       return;
@@ -1088,7 +1170,7 @@ function createDshAdapter(ctx, config = {}) {
       return;
     return (member) => {
       try {
-        const answer = config2.agentRouteResolutionOf.call(config2, member);
+        const answer = config2.agentRouteResolutionOf.call(config2, member, workspace);
         return answer !== null && typeof answer === "object" && typeof answer.ok === "boolean" ? answer : undefined;
       } catch {
         return;
@@ -1442,7 +1524,7 @@ function createDshAdapter(ctx, config = {}) {
         const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
         let agentOptions = request.agentOptions;
         if (agentOptions === undefined) {
-          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver());
+          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver(workspaceRootOfAgent(caller)));
           if (outcome.status === "routed") {
             const resolved = await resolveRunRoute({ llmCatalog }, outcome.route, outcome.fallbacks);
             agentOptions = resolved.route;
@@ -1458,8 +1540,13 @@ function createDshAdapter(ctx, config = {}) {
           ...agentOptions === undefined ? {} : { agentOptions },
           ...request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }
         };
+        const provider = typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn";
+        const childId = request.onOpening !== undefined && provider === "spawn" && typeof subagents.startActivation === "function" && typeof subagents.prompt === "function" ? randomUUID() : undefined;
+        if (childId !== undefined)
+          request.onOpening?.(childId);
         const spec = dualShapeActivationSpec({
-          provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
+          provider,
+          ...childId === undefined ? {} : { childId },
           label: `${request.name} · ${request.teamId}`,
           signal: request.signal ?? neverAborted()
         }, activationRequest);
@@ -2423,6 +2510,20 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the harness skills service exposes no get()");
       return skills.get(skillName, options);
     },
+    selectedAgentPreset(agent) {
+      const session = agent?.session;
+      if (session === undefined || session === null)
+        return;
+      try {
+        const presets = service("agentPresets");
+        if (typeof presets?.presetForSession !== "function")
+          return;
+        const selected = presets.presetForSession(session);
+        return selected === null || typeof selected === "string" && selected.length > 0 ? selected : undefined;
+      } catch {
+        return;
+      }
+    },
     async resolvePreset(presetId) {
       const presets = requireService("agentPresets", 'cannot resolve preset "' + presetId + '"');
       if (typeof presets.resolve !== "function")
@@ -2698,6 +2799,9 @@ function readJson(path) {
     return;
   }
 }
+function missingSidecar(error) {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT";
+}
 function watchdogDir(workspace, stateDir) {
   return join2(workspace, stateDir, "watchdog");
 }
@@ -2706,7 +2810,9 @@ function readHolds(workspace, stateDir) {
   let names;
   try {
     names = readdirSync(dir);
-  } catch {
+  } catch (error) {
+    if (!missingSidecar(error))
+      throw error;
     return [];
   }
   const holds = [];
@@ -2723,7 +2829,9 @@ function readIncidents(workspace, stateDir) {
   let text;
   try {
     text = readFileSync(join2(watchdogDir(workspace, stateDir), "incidents.jsonl"), "utf8");
-  } catch {
+  } catch (error) {
+    if (!missingSidecar(error))
+      throw error;
     return [];
   }
   const out = [];
@@ -2762,34 +2870,35 @@ function describeCause(incident) {
 function buildWatchdogState(options) {
   const { roots, stateDir, reader } = options;
   const errors = [];
-  let held = [];
-  let incidents = [];
-  let watermarks = {};
+  const held = [];
+  const unreadIncidents = [];
+  const watermarksByWorkspace = Object.create(null);
   let home = null;
-  for (const root of roots) {
+  for (const root of new Set(roots)) {
     try {
       const rootHolds = readHolds(root, stateDir);
       const rootIncidents = readIncidents(root, stateDir);
       const rootWatermarks = readWatermarks(root, stateDir);
-      if (rootHolds.length > 0 || rootIncidents.length > 0) {
-        held = held.concat(rootHolds);
-        incidents = incidents.concat(rootIncidents);
-        watermarks = { ...rootWatermarks, ...watermarks };
-        if (home === null)
-          home = root;
+      watermarksByWorkspace[root] = rootWatermarks;
+      if (home === null && (rootHolds.length > 0 || rootIncidents.length > 0))
+        home = root;
+      held.push(...rootHolds.map((hold) => ({ ...hold, workspace: root })));
+      for (const incident of rootIncidents) {
+        if (incident.at > (rootWatermarks[reader] ?? 0))
+          unreadIncidents.push({ ...incident, workspace: root });
       }
     } catch (error) {
       errors.push(`${root}: ${errorMessage(error)}`);
     }
   }
-  const watermark = typeof watermarks[reader] === "number" ? watermarks[reader] : 0;
-  const unreadIncidents = incidents.filter((incident) => incident.at > watermark).sort((a, b) => b.at - a.at);
+  unreadIncidents.sort((a, b) => b.at - a.at);
+  const workspace = home ?? roots[0] ?? null;
   const activity = unreadIncidents.slice(0, MAX_ACTIVITY_RECORDS).map((incident) => ({
     id: incident.id,
     teamId: incident.teamId,
     kind: incident.kind,
     at: incident.at,
-    label: incident.kind === "escalate" ? "escalated" : "warned",
+    label: incident.kind === "escalate" ? "escalated" : incident.kind === "warn" ? "warned" : incident.kind,
     cause: describeCause(incident),
     ms: incident.cause !== null && typeof incident.cause === "object" && typeof incident.cause.ms === "number" ? incident.cause.ms : null,
     taskId: incident.taskId,
@@ -2798,23 +2907,25 @@ function buildWatchdogState(options) {
     hold: incident.hold,
     acknowledgedBy: Array.isArray(incident.acknowledgedBy) ? incident.acknowledgedBy : [],
     ackRequired: true,
-    workspace: home ?? roots[0] ?? ""
+    workspace: incident.workspace
   }));
-  const newestHold = [...held].sort((a, b) => b.since - a.since)[0];
+  const sortedHolds = [...held].sort((a, b) => b.since - a.since);
+  const newestHold = sortedHolds[0];
   const newestIncident = unreadIncidents[0];
   let banner = null;
   if (newestIncident !== undefined) {
+    const matchingHold = sortedHolds.find((hold) => hold.teamId === newestIncident.teamId && hold.workspace === newestIncident.workspace);
     banner = {
-      kind: newestIncident.kind === "escalate" ? "held" : "warned",
+      kind: newestIncident.kind === "escalate" ? matchingHold === undefined ? "escalated" : "held" : "warned",
       teamId: newestIncident.teamId,
-      holdId: newestHold !== undefined && newestHold.teamId === newestIncident.teamId ? newestHold.id : null,
+      holdId: matchingHold?.id ?? null,
       incidentId: newestIncident.id,
       cause: describeCause(newestIncident),
       since: newestIncident.at,
       taskId: newestIncident.taskId,
       attemptId: newestIncident.attemptId,
       scene: newestIncident.scene,
-      workspace: home ?? roots[0] ?? ""
+      workspace: newestIncident.workspace
     };
   } else if (newestHold !== undefined) {
     banner = {
@@ -2826,8 +2937,8 @@ function buildWatchdogState(options) {
       since: newestHold.since,
       taskId: newestHold.taskId,
       attemptId: newestHold.attemptId,
-      scene: readScenePointer(home ?? roots[0] ?? "", stateDir, newestHold.teamId),
-      workspace: home ?? roots[0] ?? ""
+      scene: readScenePointer(newestHold.workspace, stateDir, newestHold.teamId),
+      workspace: newestHold.workspace
     };
   }
   return {
@@ -2836,13 +2947,14 @@ function buildWatchdogState(options) {
     generatedAt: new Date(options.now === undefined ? Date.now() : options.now()).toISOString(),
     stateDir,
     workspaces: [...roots],
-    workspace: home ?? roots[0] ?? null,
+    workspace,
     stuck: held.length > 0 || unreadIncidents.length > 0,
     held,
     banner,
     activity,
     unread: unreadIncidents.map((incident) => incident.id),
-    watermarks,
+    watermarks: workspace === null ? {} : watermarksByWorkspace[workspace] ?? {},
+    watermarksByWorkspace,
     replay: unreadIncidents.length > 0,
     errors
   };
@@ -2888,15 +3000,12 @@ function registerWatchdogRoutes(webServer, deps) {
       return {};
     }
   };
-  const readerOf = (req, fallback) => {
+  const queryOf = (req) => {
     const url = String(req.url ?? "");
     const at = url.indexOf("?");
-    if (at < 0)
-      return fallback;
-    const query = new URLSearchParams(url.slice(at + 1));
-    const value = query.get("reader");
-    return value !== null && value.trim() !== "" ? value.trim() : fallback;
+    return new URLSearchParams(at < 0 ? "" : url.slice(at + 1));
   };
+  const readerOf = (req) => queryOf(req).get("reader")?.trim() || WATCHDOG_WEB_READER;
   let state = false;
   let ack = false;
   try {
@@ -2905,11 +3014,21 @@ function registerWatchdogRoutes(webServer, deps) {
       path: WATCHDOG_STATE_PATH,
       handler: (req, res) => {
         try {
+          const sessionId = queryOf(req).get("sessionId")?.trim();
+          const sessionRoot = sessionId ? deps.workspaceForSession?.(sessionId) : undefined;
+          if (sessionId && sessionRoot === undefined) {
+            json(res, 404, { ok: false, error: "The watchdog workspace for this session is unavailable" });
+            return;
+          }
           const payload = buildWatchdogState({
-            roots: deps.roots(),
+            roots: sessionRoot === undefined ? deps.roots() : [sessionRoot],
             stateDir: deps.stateDir(),
-            reader: readerOf(req, WATCHDOG_WEB_READER)
+            reader: readerOf(req)
           });
+          if (payload.errors.length > 0 && payload.errors.length === payload.workspaces.length) {
+            json(res, 500, { ok: false, error: "The watchdog store could not be read", errors: payload.errors });
+            return;
+          }
           json(res, 200, payload);
         } catch (error) {
           json(res, 500, { ok: false, error: `mpd-team-watchdog: internal error (${errorMessage(error)})` });
@@ -2922,13 +3041,26 @@ function registerWatchdogRoutes(webServer, deps) {
       path: WATCHDOG_ACK_PATH,
       handler: async (req, res) => {
         try {
+          const method = req.method;
+          if (method !== undefined && method !== "POST") {
+            json(res, 405, { ok: false, error: "Acknowledging a watchdog incident requires POST" });
+            return;
+          }
           const body = await readBody(req);
-          const reader = typeof body.reader === "string" && body.reader.trim() !== "" ? body.reader.trim() : readerOf(req, WATCHDOG_WEB_READER);
+          const reader = typeof body.reader === "string" && body.reader.trim() !== "" ? body.reader.trim() : readerOf(req);
           const roots = deps.roots();
           const stateDir = deps.stateDir();
-          const requested = typeof body.incidentTs === "number" ? body.incidentTs : undefined;
-          const upTo = requested ?? Math.max(0, ...roots.flatMap((root) => readIncidents(root, stateDir).map((incident) => incident.at)));
-          const target = typeof body.workspace === "string" && body.workspace !== "" ? String(body.workspace) : roots[0] ?? "";
+          const target = body.workspace === undefined && roots.length === 1 ? roots[0] : body.workspace;
+          if (typeof target !== "string" || target === "" || !roots.includes(target)) {
+            json(res, 400, { ok: false, error: "Select a watchdog incident in a known workspace" });
+            return;
+          }
+          const requested = body.incidentTs ?? body.upTo;
+          if (requested !== undefined && (typeof requested !== "number" || !Number.isSafeInteger(requested) || requested < 0)) {
+            json(res, 400, { ok: false, error: "The incident timestamp is invalid" });
+            return;
+          }
+          const upTo = requested ?? readIncidents(target, stateDir).reduce((latest, incident) => Math.max(latest, incident.at), 0);
           const result = acknowledge({ workspace: target, stateDir, reader, upTo });
           json(res, result.ok ? 200 : 500, result);
         } catch (error) {
@@ -3521,14 +3653,17 @@ var EN = {
   predicate: "Predicate",
   incidents: "Incidents",
   held: "Held",
-  notHeld: "Running",
+  notHeld: "No hold",
   watchdogReadOnly: "Pause and resume run from the captain's console, not from a tap.",
   hold: "Hold",
   resume: "Resume",
   emptyIncidents: ["No incident recorded", "A silence, a fence or a hold is recorded here when it happens."],
   emptyTeam: ["No team in this conversation", "Ask for a team, approve its plan, and its board appears here."],
   emptyBoard: ["The board is empty", "Tasks appear here as soon as a plan is approved."],
-  moreOptions: "Only the first four options are shown; answer the rest from another client."
+  moreOptions: "Only the first four options are shown; answer the rest from another client.",
+  answerElsewhere: "Open this conversation in the Web client to answer the full question.",
+  boardPreview: "Showing {shown} of {total} tasks",
+  watchdogUnknown: "Hold status unavailable"
 };
 var ZH = {
   workbench: "MPD 工作台",
@@ -3583,14 +3718,17 @@ var ZH = {
   predicate: "判据",
   incidents: "事件",
   held: "已暂停",
-  notHeld: "运行中",
+  notHeld: "未暂停",
   watchdogReadOnly: "暂停与继续要从队长的控制台执行，不能靠点击。",
   hold: "暂停",
   resume: "继续",
   emptyIncidents: ["暂无事件", "静默、围栏或暂停发生时，会记录在这里。"],
   emptyTeam: ["这个会话还没有团队", "申请一个团队并审批计划后，看板会出现在这里。"],
   emptyBoard: ["看板是空的", "计划审批通过后，任务会出现在这里。"],
-  moreOptions: "只显示前四个选项；其余的请在另一个客户端回答。"
+  moreOptions: "只显示前四个选项；其余的请在另一个客户端回答。",
+  answerElsewhere: "请在网页端打开此会话，提交完整回答。",
+  boardPreview: "显示 {total} 项任务中的 {shown} 项",
+  watchdogUnknown: "无法读取暂停状态"
 };
 function copyFor(caps) {
   const tag = typeof caps?.locale === "string" ? caps.locale.toLowerCase() : "";
@@ -3661,6 +3799,8 @@ function graphStepsOf(layers) {
 }
 
 // packages/mpd-bundle-plugin/src/dshgo-views.ts
+var TEAM_PANEL_MAX_MEMBERS = 6;
+var TEAM_PANEL_MAX_INCIDENTS = 5;
 function fold(label, children) {
   return { type: "collapsible", label, children };
 }
@@ -3693,14 +3833,14 @@ function taskRow(task) {
   return {
     title: task.id + " " + task.subject,
     subtitle: [task.owner === "" ? "—" : task.owner, task.blockedBy === 0 ? "" : "blocked " + String(task.blockedBy)].filter((part) => part !== "").join(" · "),
-    trailing: statusWordOf(task.status),
+    trailing: statusWordOf(task.blockedBy > 0 ? "blocked" : task.status),
     action: { id: "select", args: { task: task.id } }
   };
 }
 function memberChartOf(snapshot, copy) {
   if (snapshot.members.length === 0)
     return null;
-  const values = snapshot.members.map((member) => snapshot.tasks.filter((task) => task.owner === member.name).length);
+  const values = snapshot.members.map((member) => member.taskCount ?? snapshot.tasks.filter((task) => task.owner === member.name).length);
   return chart({
     kind: "bar",
     categories: snapshot.members.map((member) => member.name),
@@ -3778,6 +3918,8 @@ function questionsTab(snapshot, copy) {
   const question = snapshot.question;
   if (question === null)
     return [head, empty(copy.emptyQuestion)];
+  if (question.answerElsewhere === true)
+    return [head, callout(bind("question.question"), { tone: "info" }), callout(copy.answerElsewhere)];
   const options = question.options.slice(0, 4).map((option, index) => ({ label: option.label, action: "answer:" + String(index) }));
   const content = [callout(bind("question.question"), { tone: "info" })];
   if (options.length > 0)
@@ -3830,7 +3972,8 @@ function boardTab(snapshot, copy, v2) {
     children.push(empty(copy.emptyTeam));
     return children;
   }
-  children.push(section(copy.boardCaption, snapshot.tasks.length === 0 ? [empty(copy.emptyBoard)] : [list(snapshot.tasks.map(taskRow))]));
+  const boardTitle = snapshot.tasks.length < snapshot.counts.total ? copy.boardPreview.replace("{shown}", String(snapshot.tasks.length)).replace("{total}", String(snapshot.counts.total)) : copy.boardCaption;
+  children.push(section(boardTitle, snapshot.tasks.length === 0 ? [empty(copy.emptyBoard)] : [list(snapshot.tasks.map(taskRow))]));
   const chartNode = memberChartOf(snapshot, copy);
   if (chartNode !== null)
     children.push(section(copy.memberChartHeading, [chartNode]));
@@ -3870,13 +4013,13 @@ function detailTab(snapshot, copy) {
 }
 function watchdogTab(snapshot, copy) {
   const watchdog = snapshot.watchdog;
-  const holdLine = watchdog.held ? copy.held + (watchdog.reason === "" ? "" : " · " + watchdog.reason) : copy.notHeld;
+  const holdLine = watchdog.held === null ? copy.watchdogUnknown : watchdog.held ? copy.held + (watchdog.reason === "" ? "" : " · " + watchdog.reason) : copy.notHeld;
   const rows = watchdog.incidents.map((incident) => ({ title: incident.kind, subtitle: incident.at, trailing: incident.detail }));
   return [
     hero(copy.tabsBoard[2], copy.watchdogCaption),
     tiles([
       { label: copy.predicate, value: watchdog.predicate },
-      { label: copy.tabsBoard[2], value: holdLine, tone: watchdog.held ? "warn" : "good" }
+      { label: copy.tabsBoard[2], value: holdLine, tone: watchdog.held === null ? "muted" : watchdog.held ? "warn" : "good" }
     ], 2),
     section(copy.incidents, rows.length === 0 ? [empty(copy.emptyIncidents)] : [list(rows)]),
     callout(copy.watchdogReadOnly)
@@ -3958,6 +4101,14 @@ function sessionIdOfScope(scope) {
   const record = recordOf(scope);
   return record === undefined ? "" : stringOf(record.sessionId);
 }
+function panelAgentOf(dsh, sessionId) {
+  if (sessionId === "")
+    return;
+  const direct = probe(() => dsh.liveAgent?.(sessionId), undefined);
+  if (recordOf(direct?.session)?.id === sessionId)
+    return direct;
+  return probe(() => dsh.liveAgents?.().find((agent) => recordOf(agent.session)?.id === sessionId), undefined);
+}
 function scopeKeyOf(scope) {
   return sessionIdOfScope(scope);
 }
@@ -3967,19 +4118,19 @@ function teamStatusOf2(record) {
   return stringOf(record.approvedAt) !== "" ? "approved" : "staged";
 }
 var RELEASING_STATUSES = new Set(["completed", "cancelled", "failed"]);
+function boardStatuses(tasks) {
+  return new Map(tasks.map((task) => [stringOf(task.id), stringOf(task.status)]));
+}
+function pendingBlockerCount(task, statuses) {
+  return task.status === "pending" ? arrayOf(task.blockedBy).filter((id) => !RELEASING_STATUSES.has(statuses.get(stringOf(id)) ?? "")).length : 0;
+}
 function readyRowsOf(tasks) {
-  const statusById = new Map;
-  for (const task of tasks)
-    statusById.set(stringOf(task.id), stringOf(task.status));
+  const statusById = boardStatuses(tasks);
   const rows = [];
   for (const task of tasks) {
     if (stringOf(task.status) !== "pending")
       continue;
-    const blocked = arrayOf(task.blockedBy).some((entry) => {
-      const status = statusById.get(stringOf(entry));
-      return status !== undefined && !RELEASING_STATUSES.has(status);
-    });
-    if (blocked)
+    if (pendingBlockerCount(task, statusById) > 0)
       continue;
     const caption = [stringOf(task.kind), stringOf(task.owner)].filter((part) => part !== "").join(" · ");
     rows.push({
@@ -3993,24 +4144,19 @@ function readyRowsOf(tasks) {
   return rows;
 }
 function countsOf(tasks) {
-  const statusById = new Map;
-  for (const task of tasks)
-    statusById.set(stringOf(task.id), stringOf(task.status));
+  const statusById = boardStatuses(tasks);
   let active = 0;
   let done = 0;
   let ready = 0;
   for (const task of tasks) {
     const status = stringOf(task.status);
-    if (RELEASING_STATUSES.has(status)) {
+    if (status === "completed") {
       done += 1;
       continue;
     }
-    if (status === "in_progress")
+    if (status === "in_progress" || status === "claimed")
       active += 1;
-    if (status === "pending" && !arrayOf(task.blockedBy).some((entry) => {
-      const blockedStatus = statusById.get(stringOf(entry));
-      return blockedStatus !== undefined && !RELEASING_STATUSES.has(blockedStatus);
-    }))
+    if (status === "pending" && pendingBlockerCount(task, statusById) === 0)
       ready += 1;
   }
   return {
@@ -4056,17 +4202,20 @@ function questionReadOf(value) {
   const item = items[0];
   if (item === undefined)
     return null;
+  const answerElsewhere = items.length !== 1 || item.multiSelect === true;
   const options = arrayOf(item.options).map((option) => recordOf(option)).filter((option) => option !== undefined).map((option) => ({ raw: stringOf(option.label), display: clip(stringOf(option.label), MAX_LABEL_CHARS) })).filter((option) => option.raw !== "" && option.display !== "");
   return {
     snapshot: {
       id: stringOf(entry.id),
       question: clip(stringOf(item.question), MAX_QUESTION_CHARS),
-      options: options.map((option) => ({ label: option.display }))
+      options: answerElsewhere ? [] : options.map((option) => ({ label: option.display })),
+      ...answerElsewhere ? { answerElsewhere: true } : {}
     },
     binding: {
       parkedId: stringOf(entry.id),
       itemIds: items.map((question) => stringOf(question.id)).filter((id) => id !== ""),
-      labels: options.map((option) => option.raw)
+      labels: options.map((option) => option.raw),
+      ...answerElsewhere ? { answerElsewhere: true } : {}
     }
   };
 }
@@ -4135,13 +4284,18 @@ function readMemoryStore(workspace, now, scope) {
   };
 }
 function refreshKeyOf(snapshot) {
-  const question = snapshot.question === null ? "" : snapshot.question.id + "|" + snapshot.question.options.map((option) => option.label).join("|");
-  const ready = snapshot.readyTasks.map((task) => task.id).join(",");
-  const plan = snapshot.plan?.ready === true ? "plan" : "";
-  const alert = snapshot.alert ?? "";
-  const workmates = snapshot.workmates.map((mate) => mate.name).join(",");
-  const memory = snapshot.memory === null ? "" : snapshot.memory.entries.map((entry) => entry.kind + ":" + entry.description).join("|") + "@" + String(snapshot.memory.reflections) + "/" + String(snapshot.memory.steps);
-  return [question, ready, plan, alert, workmates, memory].join("#");
+  const question = snapshot.question === null ? null : [snapshot.question.id, snapshot.question.options, snapshot.question.answerElsewhere];
+  return JSON.stringify([
+    question,
+    snapshot.readyTasks,
+    snapshot.counts.ready,
+    snapshot.counts.active,
+    snapshot.team?.members,
+    snapshot.plan?.ready,
+    snapshot.alert,
+    snapshot.workmates,
+    snapshot.memory
+  ]);
 }
 function readPanelState(read, options = {}) {
   const sessionId = read.sessionId;
@@ -4290,6 +4444,8 @@ function createPanelActions(options, bindingOf = () => {
     const captured2 = bindingOf(scope)?.question;
     if (captured2 === undefined || captured2 === null)
       return { toast: TOAST_NO_QUESTION };
+    if (captured2.answerElsewhere === true || captured2.itemIds.length !== 1)
+      return { toast: "Answer this question in another client" };
     const label = custom === "" ? captured2.labels[index ?? -1] : clip(custom, MAX_ANSWER_CHARS);
     const itemId = captured2.itemIds[0];
     if (label === undefined || itemId === undefined || label === "")
@@ -4336,7 +4492,6 @@ function registerDshGoPanel(options) {
     return probe(() => options.workspace?.(sessionId), undefined);
   };
   const stateOf = (scope) => readPanelState({ services: options.ctx, workspace: workspaceOf(sessionIdOfScope(scope)), sessionId: sessionIdOfScope(scope), memory: options.memory });
-  const snapshotOf = (scope) => stateOf(scope).snapshot;
   const published = new Set;
   let overBudget = false;
   const viewFor = (scope, caps) => {
@@ -4344,8 +4499,8 @@ function registerDshGoPanel(options) {
     viewBindings.set(scopeKeyOf(scope), state.binding);
     return buildPanelView(state.snapshot, caps);
   };
-  const announceRefreshState = (key, snapshot, seed) => {
-    const signature = refreshKeyOf(snapshot);
+  const announceRefreshState = (key, state, seed) => {
+    const signature = JSON.stringify([refreshKeyOf(state.snapshot), state.binding.question]);
     if (refreshKeys.get(key) === signature)
       return;
     const changed = !seed && refreshKeys.has(key);
@@ -4353,8 +4508,8 @@ function registerDshGoPanel(options) {
     if (changed)
       probe(() => options.dsh.dshGoRefresh(DSHGO_PANEL_ID), undefined);
   };
-  const publishInto = (key, snapshot, send, seed) => {
-    const serialized = JSON.stringify(snapshot);
+  const publishInto = (key, state, send, seed) => {
+    const serialized = JSON.stringify(state.snapshot);
     if (seed || !published.has(key) || emitted.get(key) !== serialized) {
       emitted.set(key, serialized);
       published.add(key);
@@ -4362,16 +4517,16 @@ function registerDshGoPanel(options) {
         overBudget = true;
         log("[mpd] dshGo=snapshot-over-budget");
       }
-      probe(() => send?.(snapshot), undefined);
+      probe(() => send?.(state.snapshot), undefined);
     }
-    announceRefreshState(key, snapshot, seed);
+    announceRefreshState(key, state, seed);
   };
   const data = (scope, emit) => {
     const send = typeof emit === "function" ? emit : undefined;
     const key = scopeKeyOf(scope);
-    publishInto(key, snapshotOf(scope), send, true);
+    publishInto(key, stateOf(scope), send, true);
     const timer = setInterval(() => {
-      publishInto(key, snapshotOf(scope), send, false);
+      publishInto(key, stateOf(scope), send, false);
     }, pollMs);
     timers.add(timer);
     return () => {
@@ -4458,15 +4613,14 @@ function probe2(read, fallback) {
     return fallback;
   }
 }
-function taskOf(value) {
-  const task = recordOf2(value) ?? {};
+function taskOf(task, statuses) {
   return {
     id: stringOf2(task.id),
     subject: clip2(stringOf2(task.subject), 120),
     owner: clip2(stringOf2(task.owner), 60),
     status: clip2(stringOf2(task.status), 40),
     kind: clip2(stringOf2(task.kind), 40),
-    blockedBy: arrayOf2(task.blockedBy).length,
+    blockedBy: pendingBlockerCount(task, statuses),
     description: clip2(stringOf2(task.description) || stringOf2(task.acceptance), MAX_DESCRIPTION_CHARS),
     dependencies: arrayOf2(task.blockedBy).map((id) => stringOf2(id)).filter((id) => id !== "").join(", "),
     verdict: clip2(stringOf2(recordOf2(task.verdict)?.verdict) || stringOf2(task.verdict), 40)
@@ -4481,13 +4635,13 @@ function memberOf(value) {
   };
 }
 function countsOf2(tasks) {
-  const done = tasks.filter((task) => task.status === "completed" || task.status === "cancelled" || task.status === "failed").length;
-  const active = tasks.filter((task) => task.status === "in_progress").length;
+  const done = tasks.filter((task) => task.status === "completed").length;
+  const active = tasks.filter((task) => task.status === "in_progress" || task.status === "claimed").length;
   const blocked = tasks.filter((task) => task.blockedBy > 0).length;
   return { total: tasks.length, done, active, blocked, completion: tasks.length === 0 ? 0 : Math.round(done / tasks.length * 100) };
 }
 function readTeamSnapshot(services, workspace, sessionId) {
-  const empty2 = { team: null, tasks: [], counts: { total: 0, done: 0, active: 0, blocked: 0, completion: 0 }, members: [], selected: null, watchdog: { predicate: "unknown", held: false, reason: "", taskId: "", incidents: [] } };
+  const empty2 = { team: null, tasks: [], counts: { total: 0, done: 0, active: 0, blocked: 0, completion: 0 }, members: [], selected: null, watchdog: { predicate: "unknown", held: null, reason: "", taskId: "", incidents: [] } };
   if (workspace === undefined || workspace === "" || sessionId === "")
     return empty2;
   const face = probe2(() => services.get?.("mpdTeams", false), undefined);
@@ -4496,31 +4650,47 @@ function readTeamSnapshot(services, workspace, sessionId) {
   const record = recordOf2(probe2(() => face.active?.(workspace, sessionId), undefined));
   if (record === undefined)
     return empty2;
-  const tasks = arrayOf2(record.tasks).map(taskOf).slice(0, TEAM_MAX_ROWS);
+  const rawTasks = arrayOf2(record.tasks).map(recordOf2).filter((row2) => row2 !== undefined);
+  const statuses = boardStatuses(rawTasks);
+  const tasks = rawTasks.map((row2) => taskOf(row2, statuses));
+  const taskCounts = new Map;
+  for (const task of rawTasks)
+    taskCounts.set(task.owner, (taskCounts.get(task.owner) ?? 0) + 1);
+  const members = arrayOf2(record.members).slice(0, TEAM_PANEL_MAX_MEMBERS).map((value) => {
+    const member = recordOf2(value);
+    return { ...memberOf(value), taskCount: (taskCounts.get(member?.name) ?? 0) + (typeof member?.executorRef === "string" && member.executorRef !== member.name ? taskCounts.get(member.executorRef) ?? 0 : 0) };
+  });
   return {
     team: { id: stringOf2(record.id) || stringOf2(record.teamId), name: clip2(stringOf2(record.name) || "team", 60), status: clip2(stringOf2(record.status), 40), phase: clip2(stringOf2(record.phase), 40) },
-    tasks,
+    tasks: tasks.slice(0, TEAM_MAX_ROWS),
     counts: countsOf2(tasks),
-    members: arrayOf2(record.members).map(memberOf).slice(0, 6),
+    members,
     selected: null,
     watchdog: empty2.watchdog
   };
 }
-async function readWatchdog(services, tools, teamId, workspace) {
+async function readWatchdog(services, tools, teamId, workspace, sessionId) {
   const registry = probe2(() => services.get?.("mpdWatchdog", false), undefined);
-  const hold = recordOf2(probe2(() => registry?.isHeld?.(teamId, workspace), undefined));
-  const call = tools?.executeTool === undefined ? undefined : recordOf2(await Promise.resolve().then(() => tools?.executeTool?.({ name: STATUS_TOOL, arguments: {} })).then((value) => value, () => {
+  const current = recordOf2(probe2(() => registry?.isHeld?.(teamId, workspace), undefined));
+  const agent = tools === undefined ? undefined : panelAgentOf(tools, sessionId);
+  const call = agent === undefined || tools?.executeTool === undefined ? undefined : recordOf2(await Promise.resolve().then(() => tools.executeTool?.({ name: STATUS_TOOL, arguments: { team_id: teamId }, agent })).catch(() => {
     return;
   }));
-  const status = call?.ok === false ? undefined : call?.value;
-  const record = recordOf2(status);
-  const row2 = record === undefined ? undefined : arrayOf2(record.teams).map((entry) => recordOf2(entry)).find((entry) => entry !== undefined && (stringOf2(entry.teamId) === teamId || entry.teamId === undefined));
-  const predicate = clip2(stringOf2(recordOf2(record?.predicate)?.source) || "channel", 20);
-  const incidents = arrayOf2(record?.incidents).map((entry) => recordOf2(entry)).filter((entry) => entry !== undefined).slice(0, 5).map((entry) => ({ at: clip2(stringOf2(entry.ts) || stringOf2(entry.at), 24), kind: clip2(stringOf2(entry.kind) || "incident", 30), detail: clip2(stringOf2(entry.detail) || stringOf2(entry.reason), 80) }));
+  const status = call?.ok === true ? recordOf2(call.value) : undefined;
+  const row2 = status?.workspace !== workspace ? undefined : arrayOf2(status?.teams).map(recordOf2).find((entry) => entry?.teamId === teamId);
+  const hold = recordOf2(row2?.hold) ?? (row2 === undefined ? current : undefined);
+  const predicate = row2 === undefined ? "unknown" : clip2(stringOf2(recordOf2(status?.predicate)?.source) || "unknown", 20);
+  const incidents = arrayOf2(row2?.incidents).map(recordOf2).filter((entry) => entry !== undefined).map((entry) => {
+    const instant = new Date(typeof entry.at === "number" ? entry.at : Number.NaN);
+    const at = Number.isFinite(instant.getTime()) ? instant.toISOString() : stringOf2(entry.ts);
+    const cause = recordOf2(entry.cause);
+    const detail = typeof cause?.ms === "number" ? `${stringOf2(cause.kind)} · ${cause.ms} ms` : stringOf2(cause?.kind) || stringOf2(entry.detail) || stringOf2(entry.reason);
+    return { at: clip2(at, 24), kind: clip2(stringOf2(entry.kind) || "incident", 30), detail: clip2(detail, 80) };
+  }).sort((a, b) => b.at.localeCompare(a.at)).slice(0, TEAM_PANEL_MAX_INCIDENTS);
   return {
     predicate,
-    held: hold?.held === true || row2?.held === true,
-    reason: clip2(stringOf2(hold?.reason) || stringOf2(hold?.cause), 60),
+    held: typeof row2?.held === "boolean" ? row2.held : typeof current?.held === "boolean" ? current.held : null,
+    reason: clip2(stringOf2(hold?.cause) || stringOf2(hold?.reason), 60),
     taskId: clip2(stringOf2(hold?.taskId), 20),
     incidents
   };
@@ -4530,8 +4700,8 @@ async function buildTeamPanelFor(services, tools, workspaceOf, selection, scope,
   const workspace = workspaceOf(sessionId);
   const snapshot = readTeamSnapshot(services, workspace, sessionId);
   const selectedId = selection.get(scope);
-  const selected = snapshot.tasks.find((task) => task.id === selectedId) ?? snapshot.tasks.find((task) => task.status === "in_progress") ?? snapshot.tasks[0] ?? null;
-  const watchdog = snapshot.team === null ? snapshot.watchdog : await readWatchdog(services, tools, snapshot.team.id, workspace ?? "");
+  const selected = snapshot.tasks.find((task) => task.id === selectedId) ?? snapshot.tasks.find((task) => task.status === "in_progress" || task.status === "claimed") ?? snapshot.tasks[0] ?? null;
+  const watchdog = snapshot.team === null ? snapshot.watchdog : await readWatchdog(services, tools, snapshot.team.id, workspace ?? "", sessionId);
   return buildTeamView({ ...snapshot, selected, watchdog }, caps);
 }
 function createTeamPanelActions(options, selection) {
@@ -4569,8 +4739,6 @@ function registerDshGoTeamPanel(options) {
     }
   };
   const timers = new Set;
-  const emitted = new Map;
-  const signatures = new Map;
   const workspaceOf = (sessionId) => {
     const fromBridge = probe2(() => typeof options.dsh.workspaceRootForSession === "function" ? options.dsh.workspaceRootForSession(sessionId) : undefined, undefined);
     if (typeof fromBridge === "string" && fromBridge !== "")
@@ -4582,32 +4750,52 @@ function registerDshGoTeamPanel(options) {
     const team = readTeamSnapshot(options.ctx, sessionId === "" ? undefined : workspaceOf(sessionId), sessionId);
     return { team: team.team, counts: team.counts, members: team.members, tasks: team.tasks };
   };
-  const signatureOf = (snapshot) => snapshot.team === null ? "" : [snapshot.team.id, snapshot.team.status, snapshot.team.phase, snapshot.tasks.map((task) => task.id + ":" + task.status).join(","), snapshot.members.map((member) => member.name + "/" + member.mode).join(",")].join("|");
-  const publishInto = (key, snapshot, send, seed) => {
-    const serialized = JSON.stringify(snapshot);
-    if (seed || emitted.get(key) !== serialized) {
-      emitted.set(key, serialized);
-      probe2(() => send?.(snapshot), undefined);
-    }
-    const signature = signatureOf(snapshot);
-    const changed = !seed && signatures.has(key) && signatures.get(key) !== signature;
-    signatures.set(key, signature);
-    if (changed)
-      probe2(() => options.dsh.dshGoRefresh(DSHGO_TEAM_PANEL_ID), undefined);
-  };
   const data = (scope, emit) => {
     const send = typeof emit === "function" ? emit : undefined;
     const key = scopeKeyOf2(scope);
-    publishInto(key, snapshotOf(scope), send, true);
+    let boardSignature;
+    const publish = (snapshot) => {
+      const signature = JSON.stringify(snapshot);
+      if (signature === boardSignature)
+        return;
+      const changed = boardSignature !== undefined;
+      boardSignature = signature;
+      probe2(() => send?.(snapshot), undefined);
+      if (changed)
+        probe2(() => options.dsh.dshGoRefresh(DSHGO_TEAM_PANEL_ID), undefined);
+    };
+    const initial = snapshotOf(scope);
+    publish(initial);
+    let watchdogSignature;
+    let readingWatchdog = false;
+    const observeWatchdog = async (team) => {
+      if (team === null || readingWatchdog)
+        return;
+      const workspace = workspaceOf(key);
+      if (workspace === undefined)
+        return;
+      readingWatchdog = true;
+      try {
+        const signature = JSON.stringify(await readWatchdog(options.ctx, options.dsh, team.id, workspace, key));
+        if (!timers.has(timer))
+          return;
+        if (watchdogSignature !== undefined && signature !== watchdogSignature)
+          probe2(() => options.dsh.dshGoRefresh(DSHGO_TEAM_PANEL_ID), undefined);
+        watchdogSignature = signature;
+      } finally {
+        readingWatchdog = false;
+      }
+    };
     const timer = setInterval(() => {
-      publishInto(key, snapshotOf(scope), send, false);
+      const snapshot = snapshotOf(scope);
+      publish(snapshot);
+      observeWatchdog(snapshot.team);
     }, pollMs);
     timers.add(timer);
+    observeWatchdog(initial.team);
     return () => {
       clearInterval(timer);
       timers.delete(timer);
-      emitted.delete(key);
-      signatures.delete(key);
     };
   };
   const view = async (scope, caps) => buildTeamPanelFor(options.ctx, options.dsh, workspaceOf, selection, scope, caps);
@@ -4648,8 +4836,6 @@ function registerDshGoTeamPanel(options) {
       for (const timer of timers)
         clearInterval(timer);
       timers.clear();
-      emitted.clear();
-      signatures.clear();
       selections.clear();
       probe2(() => offBound?.(), undefined);
       offBound = undefined;
@@ -4708,17 +4894,16 @@ function replyTextOf(event) {
   return stringOf3(record.text) || stringOf3(value?.text) || stringOf3(value?.reply) || stringOf3(recordOf3(record.message)?.text) || stringOf3(record.reply);
 }
 function createSurfaceActions(options) {
-  const tools = () => options.dsh;
-  const callTool = async (name, args, success) => {
-    const runtime = tools();
+  const callTool = async (name, args, agent, success) => {
+    const runtime = options.dsh;
     if (runtime?.executeTool === undefined)
       return { toast: "Unavailable here" };
-    const outcome = await Promise.resolve().then(() => runtime.executeTool?.({ name, arguments: args })).then((value) => ({ ok: true, value }), (error) => ({ ok: false, value: error }));
+    const outcome = await Promise.resolve().then(() => runtime.executeTool?.({ name, arguments: args, agent })).then((value) => ({ ok: true, value }), (error) => ({ ok: false, value: error }));
     if (outcome.ok === false)
       return { toast: clip3(outcome.value instanceof Error ? outcome.value.message : "The action was refused", MAX_TOAST_CHARS2) };
     const record = recordOf3(outcome.value);
-    if (record !== undefined && (record.ok === false || stringOf3(record.error) !== ""))
-      return { toast: clip3(stringOf3(record.error) || "The action was refused", MAX_TOAST_CHARS2) };
+    if (record?.ok !== true)
+      return { toast: clip3(stringOf3(record?.error) || "The action was refused", MAX_TOAST_CHARS2) };
     return { toast: clip3(success, MAX_TOAST_CHARS2) };
   };
   const dispatch = async (scope) => {
@@ -4731,13 +4916,16 @@ function createSurfaceActions(options) {
     const running = Promise.resolve().then(() => face.dispatch?.({ sessionId })).then((value) => recordOf3(value)?.ok === false ? { toast: clip3(stringOf3(recordOf3(value)?.error) || "The action was refused", MAX_TOAST_CHARS2) } : { toast: "Dispatched" }, (error) => ({ toast: clip3(error instanceof Error ? error.message : "The action was refused", MAX_TOAST_CHARS2) }));
     return orDeferred(running, "Dispatching…");
   };
-  const saveMemory = async (_scope, event) => {
+  const saveMemory = async (scope, event) => {
     const reply = replyTextOf(event);
     if (reply.trim() === "")
       return { toast: "Nothing to save" };
+    const agent = panelAgentOf(options.dsh, sessionIdOfScope(scope));
+    if (agent === undefined)
+      return { toast: "Open a live conversation to save" };
     const description = clip3(reply.split(`
 `).map((line) => line.trim()).find((line) => line !== "") ?? reply, MAX_MEMORY_DESCRIPTION_CHARS);
-    return callTool(MEMORY_WRITE_TOOL, { title: description, description, content: reply.slice(0, MAX_MEMORY_CONTENT_CHARS), kind: "note" }, "Saved to memory");
+    return callTool(MEMORY_WRITE_TOOL, { title: description, description, content: reply.slice(0, MAX_MEMORY_CONTENT_CHARS), kind: "note" }, agent, "Saved to memory");
   };
   const copyReply = async (_scope, event) => {
     const reply = replyTextOf(event);
@@ -4821,11 +5009,11 @@ function registerDshGoSurfaces(options) {
 // packages/mpd-bundle-plugin/src/index.ts
 var name = "@mpd-dsh/mpd";
 var inject = [];
-function workspaceResolver(ctx) {
+function workspaceResolver(ctx, fallback) {
   const rootsAll = () => {
     try {
-      const adapter = typeof ctx?.get === "function" ? ctx.get("mpdDsh", false) : undefined;
-      const roots = typeof adapter?.workspaceRootsAll === "function" ? adapter.workspaceRootsAll() : undefined;
+      const mounted = typeof ctx?.get === "function" ? ctx.get("mpdDsh", false) : undefined;
+      const roots = typeof mounted?.workspaceRootsAll === "function" ? mounted.workspaceRootsAll() : fallback.workspaceRootsAll();
       if (Array.isArray(roots) && roots.length > 0) {
         return roots.filter((root2) => typeof root2 === "string" && root2 !== "");
       }
@@ -4876,9 +5064,10 @@ function apply(ctx) {
     const webServer = webServerOf(dsh, ctx);
     if (webServer === undefined || typeof webServer.register !== "function")
       return false;
-    const workspace = workspaceResolver(ctx);
+    const workspace = workspaceResolver(ctx, dsh);
     const result = registerWatchdogRoutes(webServer, {
       roots: () => workspace.workspaceRootsAll(),
+      workspaceForSession: (sessionId) => dsh.workspaceRootForSession?.(sessionId),
       stateDir: stateDirResolver(ctx),
       effect: (fn, label) => ctx.effect(fn, label)
     });
@@ -4887,6 +5076,9 @@ function apply(ctx) {
       return false;
     }
     const modelConfig = registerModelConfigRoute(webServer, {
+      workspace: (sessionId) => dsh.workspaceRootForSession?.(sessionId),
+      roots: () => workspace.workspaceRootsAll(),
+      authorize: (request) => typeof dsh.webRequestRejection === "function" ? dsh.webRequestRejection(request) : 401,
       config: () => {
         try {
           const service = typeof ctx?.get === "function" ? ctx.get("mpdConfig", false) : undefined;

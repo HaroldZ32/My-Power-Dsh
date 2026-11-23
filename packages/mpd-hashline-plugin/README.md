@@ -37,6 +37,10 @@ line, including a hunk that starts at line 1. `mpd_hashline_edit` reads and writ
 vendored canonicalization (`canonicalizeFileText` / `restoreFileText`), so an anchored edit
 preserves a CRLF- or BOM-carrying file's envelope while the anchors stay CR-insensitive.
 
+A batch can replace or delete each original line once. A position-only replacement or deletion
+consumes a one-line span. If two replacement spans overlap, the tool refuses the batch before
+writing the file.
+
 ## Guard
 
 `config.guardEditTools` (default true) warns through `tools/post-execute` when a

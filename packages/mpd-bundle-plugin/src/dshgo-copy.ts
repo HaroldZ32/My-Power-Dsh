@@ -133,6 +133,12 @@ export interface DshGoCopy {
   emptyBoard: [string, string]
   /** The note shown when a question offers more options than one button row can carry. */
   moreOptions: string
+  /** Where to answer a batch or a question that permits multiple selections. */
+  answerElsewhere: string
+  /** The number of table rows currently shown out of the whole board. */
+  boardPreview: string
+  /** The diagnostics and hold registry could not answer. */
+  watchdogUnknown: string
 }
 
 /** The English record; the app's own fallback language for an unknown tag. */
@@ -194,7 +200,7 @@ const EN: DshGoCopy = {
   predicate: "Predicate",
   incidents: "Incidents",
   held: "Held",
-  notHeld: "Running",
+  notHeld: "No hold",
   watchdogReadOnly: "Pause and resume run from the captain's console, not from a tap.",
   hold: "Hold",
   resume: "Resume",
@@ -202,6 +208,9 @@ const EN: DshGoCopy = {
   emptyTeam: ["No team in this conversation", "Ask for a team, approve its plan, and its board appears here."],
   emptyBoard: ["The board is empty", "Tasks appear here as soon as a plan is approved."],
   moreOptions: "Only the first four options are shown; answer the rest from another client.",
+  answerElsewhere: "Open this conversation in the Web client to answer the full question.",
+  boardPreview: "Showing {shown} of {total} tasks",
+  watchdogUnknown: "Hold status unavailable",
 }
 
 /** The Chinese record: the manifest declares `zh`, so the panel speaks it when the app asks for it. */
@@ -258,7 +267,7 @@ const ZH: DshGoCopy = {
   predicate: "判据",
   incidents: "事件",
   held: "已暂停",
-  notHeld: "运行中",
+  notHeld: "未暂停",
   watchdogReadOnly: "暂停与继续要从队长的控制台执行，不能靠点击。",
   hold: "暂停",
   resume: "继续",
@@ -266,6 +275,9 @@ const ZH: DshGoCopy = {
   emptyTeam: ["这个会话还没有团队", "申请一个团队并审批计划后，看板会出现在这里。"],
   emptyBoard: ["看板是空的", "计划审批通过后，任务会出现在这里。"],
   moreOptions: "只显示前四个选项；其余的请在另一个客户端回答。",
+  answerElsewhere: "请在网页端打开此会话，提交完整回答。",
+  boardPreview: "显示 {total} 项任务中的 {shown} 项",
+  watchdogUnknown: "无法读取暂停状态",
 }
 
 /**

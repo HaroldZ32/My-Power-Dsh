@@ -1,0 +1,25 @@
+Commit b261da2ae5dff4c46fdd97c826a6441b303c6037
+Baseline 90d52e530282bccf3c4b54a27be6737bcb02f969
+
+$ node scripts/verify-vendor.ts (exit 0)
+[verify-vendor] PASS - 8 shipped asset(s) fingerprinted, upstream identity not checked
+$ node scripts/repin-vendor.ts --check (exit 0)
+[repin-vendor] CHECK     : GREEN - lock matches the working tree (drift=0, problems=0)
+$ bun run verify:docs (exit 0)
+[verify-docs-parity] root=<clean-checkout> pairs=61 failed=0 violations=0 exempt=24 derived=3 links=648 dead=0 — PASS
+$ node scripts/verify-dist-fresh.ts (exit 0)
+[verify-dist-fresh] ok: 35/35 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 832ms
+$ node scripts/verify-plugin-manifest.ts --pack (exit 0)
+ok    packed-content: npm pack --dry-run lists 1272 file(s); 0 required path(s) absent; 0 runtime state file(s) leaked
+$ bash docker/verify-release-tarball.sh <tarball> <fresh-output-dir> (exit 0)
+web: exact archive installed; AST launcher bytes match; matches 1 positive / 0 negative
+dsh-tui: exact archive installed; AST launcher bytes match; matches 1 positive / 0 negative
+
+Installed baseline and candidate @mpd-dsh/mpd@0.21.0 in the same isolated Web profile. Both dsh plugin add calls exited 0.
+Baseline team-core SHA-256 89eae476e47e55cbdb4f5eedc88c007b716a4211c5a69e1c1444aeb938297832
+Candidate team-core SHA-256 42082155f6d629e6be2542232318d33224b77eac3d5e8e8f76f9266b2752bb7f
+
+1272 npm entries, an exact match to the clean baseline path set.
+All archive files match their Git blobs; 0 untracked entries and 0 private runtime paths.
+b04e85c0ea7cf4bdd6f6c27bfc878299063eda3961c17d89008e706a49383f03  .mpd/artifacts/team-and-audit-recovery/tracked/mpd-dsh-mpd-0.21.0.tgz
+12464507 bytes

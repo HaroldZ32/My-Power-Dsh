@@ -1,0 +1,72 @@
+bun test v1.4.0 (34cbb9a40)
+skills/programming/scripts/typescript/check-no-excuse-rules.test.ts:
+68 | 		// when no-excuse runs from the cache copy against the caller project
+69 | 		const result = runNoExcuse(callerDir, "clean.ts")
+70 | 
+71 | 		// then the caller's own typescript is used and the clean file passes
+72 | 		expect(result.error).toBeUndefined()
+73 | 		expect(result.status).toBe(0)
+                             ^
+error: expect(received).toBe(expected)
+
+Expected: 0
+Received: 2
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/skills/programming/scripts/typescript/check-no-excuse-rules.test.ts:73:25)
+(fail) #given the no-excuse script is executed from an installed ~/.codex-style skill cache > #when the caller project provides typescript #then it resolves the caller's typescript and exits 0 [12.37ms]
+78 | 		// when no-excuse runs against a file containing `as any`
+79 | 		const result = runNoExcuse(callerDir, "violating.ts")
+80 | 
+81 | 		// then the existing CLI behavior is unchanged
+82 | 		expect(result.error).toBeUndefined()
+83 | 		expect(result.status).toBe(1)
+                             ^
+error: expect(received).toBe(expected)
+
+Expected: 1
+Received: 2
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/skills/programming/scripts/typescript/check-no-excuse-rules.test.ts:83:25)
+(fail) #given the no-excuse script is executed from an installed ~/.codex-style skill cache > #when a checked file violates the rules #then violations are still reported with exit 1 [11.44ms]
+89 | 		const result = runNoExcuse(callerWithoutTypescriptDir, "clean.ts")
+90 | 
+91 | 		// then it reports the resolution problem instead of crashing mid-analysis
+92 | 		expect(result.error).toBeUndefined()
+93 | 		expect(result.status).toBe(2)
+94 | 		expect(result.stderr).toContain('cannot resolve "typescript" from the caller project')
+                             ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "cannot resolve \"typescript\" from the caller project"
+Received: "error: cannot resolve the TypeScript 7 API from the caller project (/tmp/no-excuse-cache-repro-iypWgK/caller-without-typescript). Tried: typescript (not resolvable from the caller), @typescript/native-preview (not resolvable from the caller). Install it in the project being checked (e.g. `bun add -d typescript` or `bun add -d @typescript/native-preview`) and re-run.\n"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/skills/programming/scripts/typescript/check-no-excuse-rules.test.ts:94:25)
+(fail) #given the no-excuse script is executed from an installed ~/.codex-style skill cache > #when the caller project genuinely lacks typescript #then it fails with a clear error and exit 2 [10.44ms]
+
+6 tests skipped:
+(skip) svn backend REAL svn CLI: repo create, checkout, commit, log (svn/svnadmin not installed; the real-CLI arms need the Subversion toolchain)
+(skip) both vcs: commits to git and svn (svn/svnadmin not installed; the real-CLI arms need the Subversion toolchain)
+(skip) team-workflow projection (read-only, from the OFFICIAL live readout) > the REAL record of this session's own team projects without a hand-built object
+(skip) binary resolves from toolchain (skipped: detector binary absent — run the installer with --with-comment-checker or set MPD_DSH_COMMENT_CHECKER_BIN)
+(skip) comment file triggers detection (exit 2) (skipped: detector binary absent — run the installer with --with-comment-checker or set MPD_DSH_COMMENT_CHECKER_BIN)
+(skip) clean file passes (exit 0) (skipped: detector binary absent — run the installer with --with-comment-checker or set MPD_DSH_COMMENT_CHECKER_BIN)
+
+
+10 tests failed:
+(fail) F1 shipped artifact > the committed dists are the byte-identical products of a canonical build (T-62) [113.19ms]
+(fail) no new terminal writes in an MPD runtime path (R5) [123.33ms]
+(fail) the cross-package coupling inventory is exactly the frozen set (independence gate) [126.96ms]
+(fail) the menu handlers > save-memory writes ONE entry through the memory tool, description first line [0.34ms]
+(fail) the emitted snapshot is narrow, bounded and change-driven > T2 is not ready (T1 runs) and T3 is ready (its blocker names nothing) [0.26ms]
+(fail) the view tree is v1-only and inside the panel budget > every component is from the v1 catalog, the budget holds, and the action ids exist [0.76ms]
+(fail) the watchdog read unwraps the tool envelope (repair T10 #8) > the predicate and the incidents come from `value`, and a failure falls back [1.12ms]
+(fail) #given the no-excuse script is executed from an installed ~/.codex-style skill cache > #when the caller project provides typescript #then it resolves the caller's typescript and exits 0 [12.37ms]
+(fail) #given the no-excuse script is executed from an installed ~/.codex-style skill cache > #when a checked file violates the rules #then violations are still reported with exit 1 [11.44ms]
+(fail) #given the no-excuse script is executed from an installed ~/.codex-style skill cache > #when the caller project genuinely lacks typescript #then it fails with a clear error and exit 2 [10.44ms]
+
+ 4239 pass
+ 6 skip
+ 10 fail
+ 54721 expect() calls
+Ran 4255 tests across 278 files. [44.61s]
+suite exit=1
