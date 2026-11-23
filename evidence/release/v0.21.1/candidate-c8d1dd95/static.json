@@ -1,0 +1,48 @@
+{
+  "candidate": "c8d1dd9591040bb658c09f12ad20c02ef70b7f3c",
+  "tree": "ff919518c14c77bde4f887c93a6dc1bc03cbc6b7",
+  "gitTreeListingSha256": "4e46aaf27d5d2c5546292812983884b1e15d5af2d2997c3e7df84da0c340320b",
+  "remoteRefsMatched": ["refs/heads/release/v0.21.1", "refs/pull/123/head"],
+  "checkout": "Detached ordinary clone with its own .git, no alternates, and a clean tracked tree before and after the non-Docker checks. The QA-generated dual-track index was removed from the measurement checkout by restoring its committed bytes.",
+  "measuredUtc": { "start": "2026-11-23T15:56:40Z", "end": "2026-11-23T15:58:06Z" },
+  "toolchain": { "node": "24.21.0", "bun": "1.4.0", "npm": "11.19.0", "dsh": "0.2.2-rc.5", "dshTui": "0.20.2", "dshGoKit": "f36bf91b0736e81ef40c2a7040b2ec337ca1ab40" },
+  "checks": [
+    { "command": "bun run verify:gates", "exit": 0, "witness": "11/11, including DSH-Go cross-check, eight vendored asset fingerprints and dist freshness" },
+    { "command": "bun run verify:manifest", "exit": 0 },
+    { "command": "bun run verify:comments", "exit": 0 },
+    { "command": "node scripts/verify-no-host-override.ts", "exit": 0 },
+    { "command": "node scripts/verify-manual-paths.ts", "exit": 0 },
+    { "command": "node scripts/install-profile.ts --dry-run", "exit": 0 },
+    { "command": "node skills/dsh-qa/scripts/preset-conformance.ts --self-test", "exit": 0 },
+    { "command": "bun run typecheck", "exit": 0 },
+    { "command": ".toolchain/node_modules/.bin/bun test", "exit": 0, "pass": 4389, "fail": 0, "skip": 3, "files": 294 },
+    { "command": "bun run test:qa", "exit": 0, "pass": 56, "fail": 0, "skip": 2 },
+    { "command": "node scripts/pack-mpd.ts", "exit": 0 },
+    { "command": "node scripts/verify-pack-closure.ts", "exit": 0, "witness": "672 files matched byte for byte, 561/562 declared sources present and one exercised exemption" },
+    { "command": "node scripts/verify-pack-closure.ts --self-test", "exit": 0 },
+    { "command": "npm pack --ignore-scripts --json", "exit": 0, "version": "0.21.1", "files": 1319 },
+    { "command": "bun skills/dsh-qa/scripts/bundle-lifecycle.ts", "exit": 0, "stamp": "2026-11-23T15-56-57.907Z" },
+    { "command": "node skills/dsh-qa/scripts/dual-track-smoke.ts", "exit": 0, "witness": "official and DeepSeek tracks passed", "stamps": ["2026-11-23T15-57-15.616Z", "2026-11-23T15-57-24.586Z"] },
+    { "command": "node skills/dsh-qa/scripts/mcp-call.ts", "exit": 0, "witness": "126 tools recorded, natively registered AST-grep and LSP, and a recorded AST-grep call result contained the fixture line", "stamp": "2026-11-23T15-58-04.140Z" }
+  ],
+  "oneclickIdentity": {
+    "command": "dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh#c8d1dd9591040bb658c09f12ad20c02ef70b7f3c",
+    "exit": 0,
+    "package": "@mpd-dsh/mpd@0.21.1",
+    "expectedFiles": 1319,
+    "installedFiles": 1319,
+    "missing": 0,
+    "extra": 0,
+    "byteMismatch": 0,
+    "privatePaths": 0,
+    "npmTarballSha256": "19515f70088f0900d467edb268fca66d26500bb1e6163558b9437b95039548e0",
+    "sortedPathAndContentSha256": "d3a8be0533825b2a02dbb7b172eda273a00a10540fef216782a9fb8ed3647079"
+  },
+  "bounds": {
+    "unitSkips": ["Two real SVN CLI checks under the sanitized PATH", "Real official team projection fixture"],
+    "offlineQaSkips": ["tui-distribution absent ecosystem fixture", "tui-spec-conformance absent ecosystem fixture"],
+    "offlineQaEnvironment": "Empty sandbox DSH credential-store fixture, without provider entries or a real host store",
+    "liveSmokeEnvironment": "Only the authorized DeepSeek entry in disposable mode-0600 sandbox input. Exact-key scan found zero occurrences in captured output and newly generated evidence.",
+    "dockerEvidence": "Recorded separately, after the real lanes."
+  }
+}
