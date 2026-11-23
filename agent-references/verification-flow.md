@@ -49,7 +49,13 @@ the question no static gate can: **does a fresh machine install this bundle with
 really MOUNT it?** It asserts rows activating, tools registering, the real TUI booting on a real PTY,
 and the harness's own session store recording `agentPreset=mpd` — never just "the install exited 0".
 
-Two lanes, one flag apart:
+The credential-free release and hosted acceptance command is `node scripts/docker-acceptance.ts`.
+It archives the checkout's HEAD, stages the pack from that snapshot, and runs source mode with
+`--require-docker --no-browser`. The packer and driver run with a private home and Docker config.
+The stamp's `driver.json` identifies the candidate SHA, mode and credential forwarding status.
+GitHub Actions adds `--allow-rootful-docker` for its runner and checks HEAD against the event SHA.
+
+The lower-level driver also supports the live and one-click lanes:
 
 | Command | Lane | What it proves |
 |---|---|---|

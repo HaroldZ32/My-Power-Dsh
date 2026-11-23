@@ -589,11 +589,11 @@ lane hold this line.
    `bun run verify:vendor` after the wave's single
    `node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step` re-pin when `skills/**`
    changed.
-   - **LAST: the Docker real-machine lane, per §4's Docker row — BOTH runs, both stamps cited.** The
+   - **LAST: the Docker real-machine lane, per §4's Docker row — all three runs, all three stamps cited.** The
      credentialed `node scripts/docker-e2e.ts --mode source --require-docker --live` then `--mode
-     oneclick --require-docker --live`, AND the credential-free `--mode source --require-docker
-     --no-browser` regression run — a credentialed run cannot see a path that depends on an EMPTY model
-     catalog (measured 2026-10-23, PR #62). `--no-browser` IS the credential-free spelling: a
+     oneclick --require-docker --live`, AND the credential-free `node scripts/docker-acceptance.ts`
+     regression run shared with GitHub Actions — a credentialed run cannot see a path that depends on an EMPTY model
+     catalog (measured 2026-10-23, PR #62). The shared command sets `--no-browser`: a
      browser-enabled one records `ui.replyRendered` as a DECLARED BOUND that the required-arm gate turns
      into exit 3 by design, and `--live` with no key exits 3 before the build.
    - **Release-checklist line (VENDOR_LOCK pairing rule):** `VENDOR_LOCK.json` lands in the SAME commit
