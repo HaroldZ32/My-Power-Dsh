@@ -17,7 +17,7 @@
 // `.mpd/autoproject/<runId>/escalation.json`. Nothing is written before every check has passed.
 import { existsSync } from "node:fs"
 import { join } from "node:path"
-import { freeCellId, newCellState, readActiveCell, recordTransition, writeCell, type CellReadFailure, type CellState } from "./state"
+import { freeCellId, listCellIds, newCellState, readActiveCell, readCell, recordTransition, writeCell, type CellReadFailure, type CellState } from "./state"
 import { activationDirective } from "./prompts"
 
 /**
@@ -38,6 +38,8 @@ export type OpenCellOutcome =
     statePath: string
     /** The activation directive text the caller relays (or the command submitted). */
     directive: string
+    /** Whether this cell still needs its requirements entry directive injected. */
+    needsDirective: boolean
   }
   | {
     /** False for every refusal. */
@@ -109,39 +111,72 @@ export function openCell(input: OpenCellInput): OpenCellOutcome {
   // call can read — and every later call would refuse with "cannot be read", leaving a cell only a hand
   // edit could clear.
   if (input.captainSessionId === "") return { ok: false, error: "cellwork_open refused: the caller carries no session id, so no captain can be recorded — nothing was written" }
-  /** The mandate check, when one was claimed. */
-  if (input.mandate !== undefined) {
+  /** The normalized run identity, absent for ordinary command and tool calls. */
+  const runId = input.mandate?.trim()
+  if (runId !== undefined) {
     /** The artifact path or the refusal. */
-    const mandate = mandateArtifact(input.workspace, input.mandate)
+    const mandate = mandateArtifact(input.workspace, runId)
     if ("refusal" in mandate) return { ok: false, error: mandate.refusal }
   }
   /** The workspace's current cell scan. */
   const active = readActiveCell(input.workspace)
   if (!active.ok) return { ok: false, error: "cellwork_open refused: " + readFailureText(active), path: active.path }
   if (active.cell !== null) {
+    /** The active cell can acknowledge a retry after the original tool reply was lost. */
+    const state = active.cell.state
+    if (runId !== undefined && state.mandateRunId === runId && state.captainSessionId === input.captainSessionId && state.objective === objective) {
+      return openOutcome(input.workspace, state)
+    }
     return {
       ok: false,
       error: "cellwork_open refused: cell " + active.cell.state.cellId + " is still active in this workspace (phase " + active.cell.state.phase + ") — one cell at a time, and a second one would fight the first for the same team board. Read it with `cellwork_status`, finish it, or end it with `cellwork_stop` first.",
     }
   }
-  /** The fresh record, phase `requirements`, capturing the captain session. */
-  const created: CellState = newCellState({ cellId: freeCellId(input.workspace, input.now), objective, captainSessionId: input.captainSessionId, now: input.now })
+  if (runId !== undefined) {
+    for (const cellId of listCellIds(input.workspace)) {
+      /** A stopped cell still consumes the mandate that originally opened it. */
+      const previous = readCell(input.workspace, cellId)
+      if (!previous.ok) return { ok: false, error: "cellwork_open refused: " + readFailureText(previous), path: previous.path }
+      if (previous.state.mandateRunId === runId) {
+        return { ok: false, error: "cellwork_open refused: mandate " + runId + " already opened archived cell " + cellId + ". Use a new escalation or `/cellwork` to start new work." }
+      }
+    }
+  }
+  /** The fresh record captures the captain and mandate in the same write. */
+  const created: CellState = {
+    ...newCellState({ cellId: freeCellId(input.workspace, input.now), objective, captainSessionId: input.captainSessionId, now: input.now }),
+    ...(runId === undefined ? {} : { mandateRunId: runId }),
+  }
   writeCell(input.workspace, created)
   recordTransition(input.workspace, created, { event: "start", phase: created.phase, objective, captainSessionId: created.captainSessionId }, input.now)
-  /** The activation directive, as the text a command submits and a tool returns. */
-  const directive = activationDirective({ state: created, workspace: input.workspace })
+  /** The cell details returned by the tool or submitted by the command. */
+  const outcome = openOutcome(input.workspace, created)
   // A TOOL CALLER RECEIVES THE TEXT. It has no turn surface of its own, so there is nothing to roll back
   // — the caller (an autoproject run, or the model) injects or relays it.
   if (input.submit === undefined) {
-    return { ok: true, cellId: created.cellId, phase: created.phase, statePath: join(input.workspace, ".mpd", "cellwork", created.cellId, "state.json"), directive }
+    return outcome
   }
-  if (input.submit(directive) !== true) {
+  if (input.submit(outcome.directive) !== true) {
     // NOTHING RUNS IF NOTHING WAS INJECTED. Leaving the record active would fence a captain whose turn
     // never received the directive, so the just-created cell is archived with the reason.
     recordTransition(input.workspace, { ...created, phase: "stopped", archived: true, stopReason: "no-live-turn-surface" }, { event: "stop", reason: "no-live-turn-surface", forced: false }, input.now)
     return { ok: false, error: "cellwork could not start: no live agent turn surface to submit the activation directive, so cell " + created.cellId + " was archived immediately and no mode is active" }
   }
-  return { ok: true, cellId: created.cellId, phase: created.phase, statePath: join(input.workspace, ".mpd", "cellwork", created.cellId, "state.json"), directive }
+  return outcome
+}
+
+/** Return the active cell's entry directive, or its current status instruction once started. */
+function openOutcome(workspace: string, state: CellState): Extract<OpenCellOutcome, { ok: true }> {
+  /** The requirements directive may be retried until the cell records its start. */
+  const needsDirective = state.phase === "requirements" && state.startedAt === ""
+  return {
+    ok: true,
+    cellId: state.cellId,
+    phase: state.phase,
+    statePath: join(workspace, ".mpd", "cellwork", state.cellId, "state.json"),
+    directive: needsDirective ? activationDirective({ state, workspace }) : "Cell " + state.cellId + " is already running. Use `cellwork_status` to continue from its current phase.",
+    needsDirective,
+  }
 }
 
 /**

@@ -93,8 +93,8 @@ Chromium 驱动真实应用截取；终端图把**真实 TUI 在真实 PTY 上�
 
 ## 安装
 
-需要 **Node.js ≥ 22.18** 与 `PATH` 上的 `pnpm`，以及一份带 `web` 或 `headless` profile 的 **DSH**。
-套件从不替你配置模型密钥。
+需要 **Node.js ≥ 24.9.0**、`PATH` 上的 `pnpm`，以及兼容的 **DSH**。TUI profile 还需要
+[DSH-TUI 宿主](./docs/tui.zh-CN.md)。请在 DSH 中配置模型凭据。
 
 ```bash
 # Web GUI profile
@@ -123,6 +123,10 @@ git clone https://github.com/HaroldZ32/My-Power-Dsh.git && cd My-Power-Dsh
 bun install                                       # 先把声明的运行时依赖实体化
 dsh plugin --profile web add .
 ```
+
+启用可选依赖时，一键安装会在使用 glibc 的 Linux 和 macOS（x64、arm64）以及 Windows
+（x64、arm64、ia32）上安装预编译 AST 引擎。若安装时未包含该引擎，请安装兼容的 `ast-grep` 可执行文件，
+并在启动 DSH 前将 `MPD_AST_GREP_SG_PATH` 设为其绝对路径。
 
 [使用者指南](./docs/user-guide.zh-CN.md#1-安装) 讲了打包产物、`dsh-tui` 启动器、依赖闭包，以及安装到底挂了什么。
 

@@ -1,0 +1,6 @@
+[install-mcp self-test] ok: executable probes, toolchain packages, wave rows, env lines, and overlay verified
+# verify-comment-coverage
+
+scanned 1 TypeScript file(s) of 1 in the source set; inspected 112 declaration(s); skipped 5 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.

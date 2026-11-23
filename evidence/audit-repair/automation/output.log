@@ -1,0 +1,15 @@
+Bun 1.4.0: three automation plugin suites
+(pass) escalation: mode=auto hands off through cellwork_open when that tool exists [3.89ms]
+(pass) auto hand-off records a registered cell's refusal and the exact retry [2.28ms]
+(pass) a later light or planned run cannot finish a prior run's armed goal [2.32ms]
+(pass) a planned light run cannot finish a goal owned by a previous boulder work [1.41ms]
+(pass) a killed hyperplan child leaves the boulder active even when subsequent checks pass [1.55ms]
+(pass) a run-bound goal requires the creating run and exact goal id [0.41ms]
+(pass) legacy boulder ownership requires the original objective for a run-bound finish [0.34ms]
+(pass) activation adopts a committed row when its checkpoint was interrupted [18.22ms]
+(pass) activation refuses two durable rows claiming the same split task [3.59ms]
+(pass) H1-2 NEGATIVE CONTROL: an UNREADABLE recorded team still takes the documented fifth state [4.23ms]
+ 526 pass
+ 0 fail
+Ran 526 tests across 41 files. [904.00ms]
+exit=0

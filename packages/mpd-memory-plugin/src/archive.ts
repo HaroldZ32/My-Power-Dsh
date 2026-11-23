@@ -23,7 +23,6 @@ import {
   assertMemoryMutationSandboxed,
   commitAll,
   ensureGlobalDirs,
-  ensureVcs,
   globalRoot,
   safeMemoryPath,
   type Config,
@@ -132,7 +131,7 @@ export interface ArchiveWriteOutcome {
   /** True when this write REPLACED an earlier entry for the same key. */
   superseded: boolean
   /** The commit backends' error lines; empty means every configured backend committed. */
-  errors: string[]
+  errors: readonly string[]
 }
 
 /** Everything one digest renders; every field is read from disk, and `unreadable` names what was not. */
@@ -323,7 +322,6 @@ export function writeArchiveEntry(context: ArchiveCallContext, event: ArchiveEve
   assertMemoryMutationSandboxed(globalRoot(context.config), "record a global project-archive memory")
   /** The global store's directories, created on demand (the first archive bootstraps the store). */
   const d = ensureGlobalDirs(context.config)
-  ensureVcs(context.config, d)
   /** The instant this digest is recorded, stamped in both the body and the index row. */
   const at = new Date().toISOString()
   /** The namespaced key: two workspaces never collide inside the shared store. */
@@ -346,7 +344,7 @@ export function writeArchiveEntry(context: ArchiveCallContext, event: ArchiveEve
   index.entries[key] = { key, workspace: resolve(context.workspace), projectKey: event.projectKey, eventKind: event.kind, file: fileName, at, superseded: (previous?.superseded ?? 0) + (previous === undefined ? 0 : 1) }
   writeIndex(d, index)
   /** The commit backends' error lines; a commit failure is reported, never thrown away silently. */
-  const errors = commitAll(context.config, d, "memory: project archive " + event.projectKey + " (" + event.kind + ")")
+  const { errors } = commitAll(context.config, d, file, "memory: project archive " + event.projectKey + " (" + event.kind + ")")
   return { key, file, superseded: previous !== undefined, errors }
 }
 

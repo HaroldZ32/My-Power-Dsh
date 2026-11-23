@@ -1,0 +1,3 @@
+# verify-comment-coverage
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+comments gate exit=0

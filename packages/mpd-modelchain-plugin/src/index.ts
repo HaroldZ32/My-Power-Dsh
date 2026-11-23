@@ -1,7 +1,7 @@
 // B4 mpd-modelchain-plugin: upstream fallback-chain resolution (DeepSeek-first) + workspace memory.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join, resolve } from "node:path"
-import { DSH_SEAM_TOOLS, dshSeamInject, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { DSH_SEAM_TOOLS, dshSeamInject, resolveDshAdapter, type DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The plugin id the bundle row mounts this module under. */
 export const name = "mpd-modelchain"
@@ -128,9 +128,9 @@ function loadMemory(p: string): Record<string, string> {
  * @param ctx - the row context, whose `get` may throw on an uninjected service (agent-scoped ctx).
  * @returns the service double, or undefined when it is absent or refuses the lookup.
  */
-function configServiceOf(ctx: Ctx): { get?: (k?: string) => any } | undefined {
+function configServiceOf(ctx: Ctx): { get?: (key?: string, workspace?: string) => unknown } | undefined {
   try {
-    return ctx.get?.("mpdConfig") as { get?: (k?: string) => any } | undefined
+    return ctx.get?.("mpdConfig") as { get?: (key?: string, workspace?: string) => unknown } | undefined
   } catch {
     // An agent-scoped cordis ctx is a proxy that THROWS on any key missing from `inject`.
     return undefined
@@ -160,7 +160,7 @@ function isChainArray(value: unknown): value is Array<{ provider: string; model:
  * @param ctx - the row context, for the per-call `mpdConfig` service lookup.
  * @returns the overlay map; empty when no service is mounted or nothing usable is configured.
  */
-export function overlayNow(ctx: Ctx): Record<string, Array<{ provider: string; model: string }>> {
+export function overlayNow(ctx: Ctx, workspace?: string): Record<string, Array<{ provider: string; model: string }>> {
   /** The live config service, absent until the `mpd-config` row has applied. */
   const mpdConfig = configServiceOf(ctx)
   if (typeof mpdConfig?.get !== "function") return {}
@@ -170,7 +170,7 @@ export function overlayNow(ctx: Ctx): Record<string, Array<{ provider: string; m
     /** The legacy camelCase spelling of this role, if it ever had one. */
     const legacy = LEGACY_CHAIN_KEYS[key]
     /** The configured chain under either spelling; anything else is not a chain and is ignored. */
-    const v = mpdConfig.get("modelchain." + key) ?? (legacy ? mpdConfig.get("modelchain." + legacy) : undefined)
+    const v = mpdConfig.get("modelchain." + key, workspace) ?? (legacy ? mpdConfig.get("modelchain." + legacy, workspace) : undefined)
     if (isChainArray(v)) overlay[key] = v
   }
   return overlay
@@ -185,8 +185,8 @@ export function overlayNow(ctx: Ctx): Record<string, Array<{ provider: string; m
  * @param config - the row config, whose `chains` key is the whole-table replacement it always was.
  * @returns the merged table for this call.
  */
-export function chainsNow(ctx: Ctx, config: Config): Record<string, Array<{ provider: string; model: string }>> {
-  return { ...(config?.chains ?? DEFAULT_CHAINS), ...overlayNow(ctx) }
+export function chainsNow(ctx: Ctx, config: Config, workspace?: string): Record<string, Array<{ provider: string; model: string }>> {
+  return { ...(config?.chains ?? DEFAULT_CHAINS), ...overlayNow(ctx, workspace) }
 }
 
 /**
@@ -201,12 +201,12 @@ export function chainsNow(ctx: Ctx, config: Config): Record<string, Array<{ prov
  * @param member - the roster agent's functional name.
  * @returns the typed resolution, or undefined when no service answers.
  */
-function agentRouteResolutionIn(ctx: Ctx, member: string): unknown {
+function agentRouteResolutionIn(ctx: Ctx, member: string, workspace: string): unknown {
   try {
     /** The runtime config service, when the composition mounts one. */
-    const service = ctx.get?.("mpdConfig") as { agentRouteResolutionOf?: (m: string) => unknown } | undefined
+    const service = ctx.get?.("mpdConfig") as { agentRouteResolutionOf?: (member: string, workspace?: string) => unknown } | undefined
     if (typeof service?.agentRouteResolutionOf !== "function") return undefined
-    return service.agentRouteResolutionOf(member)
+    return service.agentRouteResolutionOf(member, workspace)
   } catch {
     // A service that refuses the lookup answers NOTHING; it never fails this tool.
     return undefined
@@ -234,19 +234,21 @@ export function apply(ctx: Ctx, config: Config = {}): void {
         ? "role=" + _args?.role + " -> <unconfigured> (missing " + (Array.isArray(value.missing) ? value.missing.join(", ") : "agentRoutes") + "; " + String(value.reason ?? "") + ")"
         : "role=" + _args?.role + " -> " + value.provider + "/" + value.model + " (chain " + value.chain.length + " entries)" + (value.status === undefined ? "" : " — " + value.status) }]
     },
-    execute: async (args: any) => {
+    execute: async (args: any, exec?: DshToolExec) => {
+      /** The workspace whose model routes the calling session uses. */
+      const workspace: string = dsh.workspaceRoot(exec)
       /** The role as the caller spelled it. There is NO default: an unnamed role is refused
        *  rather than silently answered with another role's route (the defect this replaces). */
       const role = String(args?.role ?? "").trim()
       // Source of truth: the mpd-roles roster chains (DEFAULT_CHAINS kept as fallback). The roster
       // is read per call — a sibling-provided service is only reliably visible after all rows apply.
-      const rolesService = ctx.get?.("mpdRoles") as { get?: (k: string) => any; list?: () => any[] } | undefined
+      const rolesService = ctx.get?.("mpdRoles") as { get?: (k: string, exec?: DshToolExec) => any; list?: (exec?: DshToolExec) => any[] } | undefined
       /** Every name the mounted roster answers to: the ONLY vocabulary this tool accepts, and the
        *  only thing a refusal names — built from the roster, never from the rejected argument. */
-      const names = (rolesService?.list?.() ?? []).map((r: any) => String(r?.name ?? "")).filter((n: string) => n !== "")
+      const names = (rolesService?.list?.(exec) ?? []).map((r: any) => String(r?.name ?? "")).filter((n: string) => n !== "")
       /** The role the roster resolves for this key. The service resolves the INTERNAL id and the
        *  legacy aliases too, so the key is accepted only when it spells the resolved role's NAME. */
-      const spec = rolesService?.get?.(role)
+      const spec = rolesService?.get?.(role, exec)
       if (spec === undefined || spec === null || roleNameKey(role) !== roleNameKey(String(spec.name ?? ""))) {
         throw new Error("mpd_modelchain_resolve: unknown role — use a roster NAME from mpd_roles_list" + (names.length > 0 ? " (" + names.join(", ") + ")" : " (the mpdRoles roster service answered no names — is the mpd-roles row mounted?)"))
       }
@@ -259,7 +261,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       // ONLY a role an EXTENSION contributed falls through below (overlay → its declared chain → the
       // merged table), because no `agentRoutes` entry decides an extension role at all.
       /** The typed agent-route resolution, or undefined when no service answers. */
-      const agentRoute = agentRouteResolutionIn(ctx, String(spec.name)) as
+      const agentRoute = agentRouteResolutionIn(ctx, String(spec.name), workspace) as
         | { ok: true; agent?: unknown; route?: { provider?: unknown; model?: unknown; fallbacks?: readonly unknown[] } }
         | { ok: false; reason?: unknown; agent?: unknown; missing?: readonly unknown[]; problem?: unknown }
         | undefined
@@ -320,7 +322,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
         )
       }
       /** The configured chain for THIS role's id, when the live config routes one (extension roles). */
-      const configured = overlayNow(ctx)[String(spec.id)]
+      const configured = overlayNow(ctx, workspace)[String(spec.id)]
       if (isChainArray(configured)) {
         return { provider: configured[0].provider, model: configured[0].model, chain: configured.map((c) => ({ ...c })) }
       }
@@ -329,7 +331,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       }
       // This role carries no chain of its own: fall back to the shipped/configured table, keyed by
       // the INTERNAL id (`resolveRole`'s keys and the `modelchain.<id>` config keys are ids).
-      return resolveRole(String(spec.id), chainsNow(ctx, config))
+      return resolveRole(String(spec.id), chainsNow(ctx, config, workspace))
     }
   })
 

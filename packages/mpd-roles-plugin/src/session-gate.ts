@@ -31,11 +31,13 @@ import type { DshAdapter, DshAgentPreStep, DshPostResult, DshPreStepDecision, Ds
 import { rowLogLine } from "../../mpd-dsh-adapter-plugin/src/index"
 import {
   advisoryNoticeText,
+  BOARD_TOOL_NAME,
   BOULDER_DIR_CONFIG_KEY,
   consumeExplicitFlag,
   consumeFlagFromMessage,
   CONTROL_TOOL_NAME,
   DEFAULT_GATE_PRESETS,
+  DISPATCH_TOOL_NAME,
   emptyReTeamState,
   evaluateComplexityGate,
   GATE_CONFIG_KEY,
@@ -63,6 +65,7 @@ import {
   SENSITIVITY_CONFIG_KEY,
   SENSITIVITY_THRESHOLDS,
   sessionQualifies,
+  sessionRank,
   STAGING_TOOL_NAME,
   writeReTeamState,
   type GateMode,
@@ -72,6 +75,29 @@ import {
 
 /** How long ONE staging call may take before the mechanical route degrades, in milliseconds. */
 const STAGING_TIMEOUT_MS = 5000
+
+/** An affirmative request to repair the whole preceding set, at the start of a human follow-up. */
+const WHOLE_REPAIR_FOLLOW_UP = /^(?:(?:please\s+)?(?:fix|resolve|address)\s+(?:all of (?:them|these|those)|(?:them|these|those) all|all (?:the )?(?:findings|issues))\b|(?:一起|全部|一并|都)(?:修复|修好|解决)(?:掉|一下)?(?:吧|了)?(?=$|[\s，。！、,.!]))/iu
+
+/** An overlapping consult reservation and the one routing decision shared by its excess calls. */
+interface ConsultWindow {
+  /** Public consult requests still waiting for dispatch, retrying, or awaiting a child result. */
+  count: number
+  /** The shared staging attempt, reused while the same overlapping batch stays full. */
+  routing?: Promise<StageOutcome>
+}
+
+/** The public tool result for an overlapping request held before any child is dispatched. */
+class TeamFirstConsultError extends Error {
+  /** Stable code for tool clients as well as the model-visible message. */
+  readonly code = "TEAM_FIRST"
+
+  /** Include the recovery text after the stable public error code. */
+  constructor(message: string) {
+    super(`TEAM_FIRST: ${message}`)
+    this.name = "TeamFirstConsultError"
+  }
+}
 
 /** One-line diagnostics for a live boot, enabled with `MPD_ROLES_GATE_TRACE=1`. */
 function gateTrace(line: string): void {
@@ -154,7 +180,9 @@ export interface SessionGateOptions {
    * first, this row's own config second; `undefined` here means "declared nowhere", so the
    * mode default applies.
    */
-  configValue?: (key: string) => unknown
+  configValue?: (key: string, workspace?: string) => unknown
+  /** The supervisor's effective concurrency budget, probed live for overlap admission only. */
+  consultMax?: () => number
   /** The boulder-state READER seam (`node:fs/promises` by default), for tests and the QA case. */
   readFile?: (path: string) => Promise<string>
   /**
@@ -194,6 +222,8 @@ export interface SessionGateOptions {
 export interface SessionGateInstall {
   /** Always true: the gate degrades per agent rather than failing as a whole. */
   installed: boolean
+  /** Reserve one public one-shot consult, or reject an overlapping request before it starts. */
+  reserveConsult: (exec: DshToolExec | undefined) => Promise<(() => void) | undefined>
   /**
    * Agent ids whose re-team settlement is ARMED (a fire happened since the last re-arm). An id is
    * written IMMEDIATELY BEFORE the async staging call, so a re-entrant step can never stage a second
@@ -261,7 +291,7 @@ interface StageOutcome {
  * @returns the install outcome: the settled registry, the disposers and the resolved mode.
  */
 export function installSessionGate(
-  dsh: Pick<DshAdapter, "registerAgentPreStep" | "liveAgents" | "onEvent" | "userMessage" | "workspaceRoot" | "hasTool" | "executeTool" | "onPostToolExecute">,
+  dsh: Pick<DshAdapter, "registerAgentPreStep" | "liveAgents" | "onEvent" | "userMessage" | "workspaceRoot" | "hasTool" | "executeTool" | "onPostToolExecute" | "selectedAgentPreset">,
   options: SessionGateOptions,
 ): SessionGateInstall {
   /** The presets whose top-level sessions are covered. */
@@ -292,6 +322,10 @@ export function installSessionGate(
    * increment is never lost to a second, rival load whose `set` would replace it.
    */
   const reTeamStates = new Map<string, Promise<ReTeamState>>()
+  /** The last queued record write per session, so older snapshots cannot overwrite newer settlement. */
+  const stateWrites = new Map<string, Promise<boolean>>()
+  /** Outstanding public consults by the same workspace/session identity as the team gate. */
+  const consultWindows = new Map<string, ConsultWindow>()
   /** Sessions whose staging call is IN FLIGHT — the synchronous guard against a second stage. */
   const firing = new Set<string>()
   /** Team ids whose failed-task notice was already injected (ONE notice per team per process). */
@@ -342,23 +376,28 @@ export function installSessionGate(
    * @returns nothing; a failed write leaves the in-memory count in force (never a throw).
    */
   async function saveReTeamState(workspace: string, sessionId: string, state: ReTeamState): Promise<void> {
-    // The cache stores LOADS only (CR r1 [7]): persisting the live record wraps it in the SAME
-    // representation, so a later load answers exactly this record instead of bypassing the share.
-    reTeamStates.set(reTeamKeyOf(workspace, sessionId), Promise.resolve(state))
-    await writeReTeamState(workspace, sessionId, state, {
+    /** Both the shared record and its pending writes use the durable file's identity. */
+    const key = reTeamKeyOf(workspace, sessionId)
+    reTeamStates.set(key, Promise.resolve(state))
+    /** Preserve the order of whole-record replacements even during a concurrent consult batch. */
+    const write = Promise.resolve(stateWrites.get(key)).then(() => writeReTeamState(workspace, sessionId, state, {
       ...(options.stateWriteFile === undefined ? {} : { writeFile: options.stateWriteFile }),
-    })
+    }))
+    stateWrites.set(key, write)
+    await write
+    if (stateWrites.get(key) === write) stateWrites.delete(key)
   }
 
   /**
    * ONE config value for ONE key: the live layer (the mounted `mpdConfig` service) first, this
    * row's own config second, `undefined` last so the caller's default applies. Resolved PER CALL.
    * @param key - the dot-path key, e.g. `team.gate`.
+   * @param workspace - the calling session's root, omitted for the boot snapshot.
    * @returns the raw value, or `undefined` when neither layer declares it.
    */
-  function configValue(key: string): unknown {
+  function configValue(key: string, workspace?: string): unknown {
     try {
-      return options.configValue?.(key)
+      return options.configValue?.(key, workspace)
     } catch {
       // A throwing config layer reads as ABSENT, which keeps the gate's own default in force.
       return undefined
@@ -381,12 +420,13 @@ export function installSessionGate(
    * A missing `hasTool` seam (a partial adapter double) reads FALSE — the ladder's advisory step,
    * never a throw. Nothing here is cached: the probe runs per fire.
    * @param agent - the LIVE bound agent whose view is probed.
+   * @param name - the Team tool to probe, defaulting to the plan tool.
    * @returns true only when the adapter answered positively for that agent's view.
    */
-  function hasStagingTool(agent: unknown): boolean {
+  function hasTeamTool(agent: unknown, name: string = STAGING_TOOL_NAME): boolean {
     if (typeof dsh.hasTool !== "function") return false
     try {
-      return dsh.hasTool(STAGING_TOOL_NAME, agent) === true
+      return dsh.hasTool(name, agent) === true
     } catch {
       return false
     }
@@ -446,6 +486,8 @@ export function installSessionGate(
     planPath?: string
     /** The mid-session trigger's volume, when the RE-TEAM gate (not the session-start row) stages. */
     reteam?: { count: number; threshold: number }
+    /** Outstanding consults when staging from dispatch, which requires a known empty plan slot. */
+    overlappingConsults?: number
   }): Promise<StageOutcome> {
     // (b) A plan is ALREADY staged for this session: the tool's `create` ARCHIVES it — the plan is
     // copied to `.mpd/team/archive/<planId>/plan.json` BEFORE the staging slot is cleared — so the
@@ -458,8 +500,18 @@ export function installSessionGate(
     // what would make a claim of "never re-stage" dishonest.
     /** The probe's three-valued answer, whose "unknown" arm is the one that must be loud. */
     const probe = probeStagedPlan(input.workspace, input.sessionId)
-    if (probe.verdict === "staged") return { ok: true, planId: planIdOf(probe.plan), alreadyStaged: true }
+    if (probe.verdict === "staged") {
+      /** The plan view distinguishes a reusable staged slot from a historical record. */
+      const plan = probe.plan as { approved?: boolean; discarded?: boolean }
+      if (plan.approved === true || plan.discarded === true) {
+        return { ok: false, planId: "", alreadyStaged: false, error: "the current plan record is already approved or discarded" }
+      }
+      return { ok: true, planId: planIdOf(probe.plan), alreadyStaged: true }
+    }
     if (probe.verdict === "unknown") {
+      if (input.overlappingConsults !== undefined) {
+        return { ok: false, planId: "", alreadyStaged: false, error: "the current plan could not be inspected" }
+      }
       // STAGING IS THE MISSION, so an unanswerable probe does NOT block it — it is REPORTED. The
       // consequence is named exactly: staging MOVES an existing un-approved plan for this session
       // out of its slot into the archive, where it stays readable.
@@ -468,7 +520,7 @@ export function installSessionGate(
     // (a) The tool is not registered in this composition (another preset, a boot without
     //     mpd-team-core): the mechanical route is impossible, so the advisory notice is the honest one.
     // Probed in the SAME agent view the call below executes against, so the two cannot disagree.
-    if (!hasStagingTool(input.agent)) return { ok: false, planId: "", alreadyStaged: false, error: "tool " + STAGING_TOOL_NAME + " is not registered in this agent's view" }
+    if (!hasTeamTool(input.agent)) return { ok: false, planId: "", alreadyStaged: false, error: "tool " + STAGING_TOOL_NAME + " is not registered in this agent's view" }
     try {
       /** The three fields the gate can fill — a SHELL, never a decomposed team. */
       const shell = gatePlanShell({
@@ -476,6 +528,7 @@ export function installSessionGate(
         goal: input.goal,
         ...(input.planPath === undefined ? {} : { planPath: input.planPath }),
         ...(input.reteam === undefined ? {} : { reteam: input.reteam }),
+        ...(input.overlappingConsults === undefined ? {} : { overlappingConsults: input.overlappingConsults }),
       })
       /** The tool result, normalized by the adapter (`{ok, isError, value, error}`). */
       const result = await dsh.executeTool({
@@ -493,6 +546,83 @@ export function installSessionGate(
     } catch (error) {
       return { ok: false, planId: "", alreadyStaged: false, error: errorText(error) }
     }
+  }
+
+  /** Whether this Agent's current selected preset and delegation rank admit the gate. */
+  function qualifies(agent: unknown): boolean {
+    return sessionQualifies(agent, presets, dsh.selectedAgentPreset?.(agent))
+  }
+
+  /** Read the lead's current team state from its own workspace records. */
+  function leadingTeamOf(workspace: string, sessionId: string): ReturnType<typeof readLeadingTeam> {
+    return readLeadingTeam(workspace, sessionId, {
+      ...(options.readFile === undefined ? {} : { readFile: options.readFile }),
+      ...(options.readDir === undefined ? {} : { readDir: options.readDir }),
+    })
+  }
+
+  /** Obtain a staged plan without replacing one or racing a pre-step staging call. */
+  async function routeOverlappingConsults(agent: unknown, workspace: string, sessionId: string, key: string, count: number): Promise<StageOutcome> {
+    if (firing.has(key)) return { ok: false, planId: "", alreadyStaged: false, error: "a team routing decision is in progress" }
+    firing.add(key)
+    try {
+      /** The same plan store and approval policy used by the pre-step gate. */
+      const outcome = await stagePlan({ agent, workspace, sessionId, goal: "", signals: [], overlappingConsults: count })
+      if (outcome.ok && outcome.planId !== "") {
+        /** Persist the fire so successful async-handle counters cannot nag about the same batch next step. */
+        const state = await loadReTeamState(workspace, sessionId)
+        if (state.planId !== outcome.planId) await recordFire(workspace, sessionId, state, outcome.planId)
+      }
+      return outcome
+    } finally {
+      firing.delete(key)
+    }
+  }
+
+  /** Reserve immediately below the threshold. The release follows the supervisor or workmate lifetime. */
+  async function reserveConsult(exec: DshToolExec | undefined): Promise<(() => void) | undefined> {
+    /** The caller's live scoped agent, not the persona of the child being raised. */
+    const agent = exec?.agent
+    if (!qualifies(agent)) return undefined
+    /** Use the actual caller's workspace for scope and live policy. */
+    const workspace = dsh.workspaceRoot(exec)
+    if (resolveGateMode(configValue(GATE_CONFIG_KEY, workspace)) !== GATE_MODE_MECHANICAL
+      || !resolveReTeamEnabled(configValue(RETEAM_ENABLED_CONFIG_KEY, workspace))) return undefined
+    if (!hasTeamTool(agent) || !hasTeamTool(agent, BOARD_TOOL_NAME) || !hasTeamTool(agent, DISPATCH_TOOL_NAME)) return undefined
+    /** Anonymous callers cannot share trustworthy ownership. */
+    const sessionId = sessionIdOf(agent)
+    if (sessionId === "workspace") return undefined
+    /** Reuse the volume knob and keep one bounded call available even at a declared limit of one. */
+    const limit = Math.max(1, Math.min(resolveReTeamAfterConsults(configValue(RETEAM_AFTER_CONSULTS_CONFIG_KEY, workspace)), options.consultMax?.() ?? Infinity) - 1)
+    /** The session's own window. No other captain's reservations can raise its count. */
+    const key = reTeamKeyOf(workspace, sessionId)
+    /** This count is incremented before yielding to the first tool's actual dispatch. */
+    const window: ConsultWindow = consultWindows.get(key) ?? { count: 0 }
+    if (window.count < limit) {
+      window.count += 1
+      consultWindows.set(key, window)
+      /** Settlement or a failed dispatch can each request cleanup safely. */
+      let released = false
+      return (): void => {
+        if (released) return
+        released = true
+        window.count -= 1
+        delete window.routing
+        if (window.count === 0) consultWindows.delete(key)
+      }
+    }
+    if ((await leadingTeamOf(workspace, sessionId)).leading) return undefined
+    // A child may settle while reading the team. Re-enter the synchronous reservation if room opened.
+    if (window.count < limit) return reserveConsult(exec)
+    /** Concurrent excess calls share the same stage decision and cannot race to archive its plan. */
+    const attempt = window.routing ??= routeOverlappingConsults(agent, workspace, sessionId, key, window.count)
+    /** Stage failure still leaves the first bounded call, and retry after its settlement, available. */
+    const outcome = await attempt
+    /** Advice for a team we could actually stage or inspect in this session. */
+    const plan = outcome.ok && outcome.planId !== ""
+      ? `Inspect plan ${outcome.planId} with agent_teams_plan {action:"status"} and check it matches the current request before adding members and owner-bound tasks. Approve through the normal plan path before dispatch.`
+      : `No usable plan was confirmed (${outcome.error ?? "missing plan id"}). Check agent_teams_plan {action:"status"} and stage the current work explicitly when available.`
+    throw new TeamFirstConsultError(`This consult was deferred before dispatch. ${plan} For bounded work, wait for an outstanding consult to settle, then retry one call.`)
   }
 
   /**
@@ -513,7 +643,7 @@ export function installSessionGate(
       /** The agent the call ran as; a call with no agent cannot be attributed to a session. */
       const agent = exec.agent
       if (agent === undefined || agent === null) return
-      if (!sessionQualifies(agent, presets)) return
+      if (!qualifies(agent)) return
       /** The session workspace the counter file resolves under. */
       const workspace = dsh.workspaceRoot({ agent } as never)
       /** The session key the counter is filed under. */
@@ -717,12 +847,14 @@ export function installSessionGate(
       // payload shape is not guaranteed to carry it, and the registration IS the authority.
       const agent = bound ?? payload?.agent
       if (agent === undefined || agent === null) return undefined
-      if (!sessionQualifies(agent, presets)) { gateTrace("not qualified agent=" + String((agent as { id?: unknown }).id ?? "?")); return undefined }
+      if (!qualifies(agent)) { gateTrace("not qualified agent=" + String((agent as { id?: unknown }).id ?? "?")); return undefined }
       /** The bound agent's id; an empty one cannot be marked acted and is judged on every step. */
       const agentId = String((agent as { id?: unknown }).id ?? "")
+      /** The caller's root supplies both live config and record identity. */
+      const workspace = dsh.workspaceRoot({ agent } as never)
       // THE MODE IS RESOLVED PER CALL (never cached): a `.mpd/mpd.jsonc` edit takes effect on the
       // next step, and `off` returns BEFORE any record is read.
-      const mode: GateMode = resolveGateMode(configValue(GATE_CONFIG_KEY))
+      const mode: GateMode = resolveGateMode(configValue(GATE_CONFIG_KEY, workspace))
       if (mode === GATE_MODE_OFF) { gateTrace("mode off agent=" + agentId); return undefined }
       // THE GOAL COMES FROM THE RAW CLAIMED LIST (the payload), never from the decision:
       // the decision also carries the harness's injected runtime-context turn (measured), and
@@ -730,8 +862,6 @@ export function installSessionGate(
       const decisionMessages = Array.isArray(decision?.messages) ? decision.messages : []
       /** The step's raw claimed messages, or the decision's list when the payload carries none. */
       const rawClaimed = Array.isArray(payload?.messages) && payload.messages.length > 0 ? payload.messages : decisionMessages
-      /** The workspace every probe below reads and every staged plan is written under. */
-      const workspace = dsh.workspaceRoot({ agent } as never)
       /** The session key the team records are read by, the sticky probe mirrors and the counter files under. */
       const sessionId = sessionIdOf(agent)
       /** The in-memory key of this session's re-team record. */
@@ -746,10 +876,7 @@ export function installSessionGate(
       // flag: MEASURED 2026-10-07, an inbound teammate report fired the gate on a session already
       // leading a team and staged a spurious 0-member shell (plan-20261007102357, archived).
       /** What THIS session's own team records say, read fresh on every step. */
-      const leading = await readLeadingTeam(workspace, sessionId, {
-        ...(options.readFile === undefined ? {} : { readFile: options.readFile }),
-        ...(options.readDir === undefined ? {} : { readDir: options.readDir }),
-      })
+      const leading = await leadingTeamOf(workspace, sessionId)
       /** This session's re-team record, loaded once per process and mutated in place (rules 4–5). */
       const state = await loadReTeamState(workspace, sessionId)
       if (leading.leading) {
@@ -802,23 +929,26 @@ export function installSessionGate(
           state.lastFiredAt = 0
           state.planId = ""
           state.teamIdAtFire = ""
+          delete state.repairFollowUpRouted
           await saveReTeamState(workspace, sessionId, state)
           if (agentId !== "") acted.delete(agentId)
           report('re-team gate: re-armed after team "' + String(leading.teamId ?? "(id not read)") + '" ended')
         }
       }
-      // RULE 4, THE SETTLEMENT: a fire happened since the last re-arm, and nothing fires until the
-      // team it produced ends (or its plan is seen approved above). The counter keeps accruing.
-      if (state.lastFiredAt !== 0 || state.planId !== "") {
+      /** The human message actually claimed for this step, excluding goal and teammate messages. */
+      const user = latestUserMessage(rawClaimed) ?? latestUserMessage(decisionMessages)
+      /** A later whole-set commitment needs preceding multi-consult work or an already staged plan. */
+      const repairFollowUp = user !== undefined && (payload?.turn ?? 0) > 1 && state.repairFollowUpRouted !== true
+        && (state.consultCount >= 2 || state.planId !== "") && WHOLE_REPAIR_FOLLOW_UP.test(user.text.trim())
+      // Settlement suppresses repeat volume notices. A direct human expansion can revisit a shell once.
+      if (!repairFollowUp && (state.lastFiredAt !== 0 || state.planId !== "")) {
         gateTrace("re-team settled agent=" + agentId + " plan=" + String(state.planId))
         return undefined
       }
-      // RULES 5/6 — THE MID-SESSION VOLUME TRIGGER, evaluated on EVERY pre-step (no user turn is
-      // needed: the subject is the session's own consult volume). `team.reteam.enabled` gates ONLY
-      // this trigger; the ended-aware leading check and the auto-end above stay in force regardless.
-      if (resolveReTeamEnabled(configValue(RETEAM_ENABLED_CONFIG_KEY))) {
+      // The completed-volume trigger still runs even with no claimed human message.
+      if (!repairFollowUp && resolveReTeamEnabled(configValue(RETEAM_ENABLED_CONFIG_KEY, workspace))) {
         /** The completed-consult volume this trigger needs, resolved PER CALL from the config layer. */
-        const afterConsults = resolveReTeamAfterConsults(configValue(RETEAM_AFTER_CONSULTS_CONFIG_KEY))
+        const afterConsults = resolveReTeamAfterConsults(configValue(RETEAM_AFTER_CONSULTS_CONFIG_KEY, workspace))
         if (state.consultCount >= afterConsults) {
           /** The notice text the fire produced; `undefined` means a concurrent step already owned the staging call. */
           const noticeText = await fireReTeam({ agent, agentId, workspace, sessionId, mode, count: state.consultCount, threshold: afterConsults })
@@ -829,12 +959,7 @@ export function installSessionGate(
           }))
         }
       }
-      // THE SESSION-START COMPLEXITY TRIGGER (unchanged below): it judges the user's own turn, so it
-      // needs one, and a step with no user text leaves the session judged again next turn.
-      /** The user's own turn, preferring the payload's raw list over the spliced decision. */
-      const user = latestUserMessage(rawClaimed) ?? latestUserMessage(decisionMessages)
-      // NOTHING TO JUDGE YET: the session stays unregistered, so the first REAL user turn is still
-      // evaluated instead of a pre-step with no user text spending the one evaluation.
+      // An unset or non-human step leaves the next real turn eligible for complexity routing.
       if (user === undefined) { gateTrace("no user text yet agent=" + agentId); return undefined }
       /** The goal text with the explicit marker removed, plus whether it was there. */
       const consumed = consumeExplicitFlag(user.text)
@@ -843,7 +968,7 @@ export function installSessionGate(
       // means "the session workspace", never a directory literally named `.mpd` under the workspace —
       // that reading is what double-nested the ledger path and left signal D unable to fire.
       /** The state-root override, or undefined when the session workspace is the right root. */
-      const boulderDir = resolveBoulderDir(configValue(BOULDER_DIR_CONFIG_KEY))
+      const boulderDir = resolveBoulderDir(configValue(BOULDER_DIR_CONFIG_KEY, workspace))
       /** What the workspace's boulder ledger says about an ACTIVE work (never throws). */
       const boulder = await readBoulderGate(workspace, {
         ...(options.readFile === undefined ? {} : { readFile: options.readFile }),
@@ -853,9 +978,9 @@ export function installSessionGate(
       // reads `easy`, the eager default). Signal F is probed ONLY on a row that evaluates it, so
       // `normal`/`strict` never pay for the listing and never gain a sixth signal.
       /** The threshold row this fire reads. */
-      const sensitivity = resolveSensitivity(configValue(SENSITIVITY_CONFIG_KEY))
-      /** Whether this row evaluates signal F at all (only `easy` does). */
-      const wantsWorkspaceScale = SENSITIVITY_THRESHOLDS[sensitivity].workspaceScale
+      const sensitivity = resolveSensitivity(configValue(SENSITIVITY_CONFIG_KEY, workspace))
+      /** Workspace size alone is a startup hint. Later turns must contribute new evidence. */
+      const wantsWorkspaceScale = SENSITIVITY_THRESHOLDS[sensitivity].workspaceScale && (payload?.turn ?? 1) === 1
       /** Whether the workspace looks like a large project — signal F's input, bounded and non-throwing. */
       const workspaceScale = wantsWorkspaceScale
         ? await readWorkspaceScale(workspace, {
@@ -868,6 +993,7 @@ export function installSessionGate(
         activeBoulder: boulder.active,
         sensitivity,
         workspaceScale,
+        repairFollowUp,
       })
       // NO TRIGGER = NO SETTLEMENT: the session is judged again on its next user turn, so a trivial
       // first turn can never spend the one evaluation on the complex turn that follows it.
@@ -878,7 +1004,8 @@ export function installSessionGate(
       // the entry check above; the winner is decided SYNCHRONOUSLY at this `add`, so exactly one step
       // stages. The guard is released in `finally`; the SETTLEMENT written below (`acted` +
       // `state.lastFiredAt`) is what keeps the session quiet afterwards (rule 4).
-      if (firing.has(stateKey)) { gateTrace("fire in flight agent=" + agentId); return undefined }
+      if (firing.has(stateKey)
+        || (repairFollowUp ? state.repairFollowUpRouted === true : state.lastFiredAt !== 0 || state.planId !== "")) return undefined
       firing.add(stateKey)
       /** What the mechanical route did; the advisory route leaves it at this degraded default. */
       let outcome: StageOutcome = { ok: false, planId: "", alreadyStaged: false }
@@ -898,6 +1025,8 @@ export function installSessionGate(
             warn("session-start gate: staging degraded to the advisory notice for agent \"" + agentId + "\" (" + String(outcome.error) + ")")
           }
         }
+        if (repairFollowUp) state.repairFollowUpRouted = true
+        await recordFire(workspace, sessionId, state, mode === GATE_MODE_MECHANICAL && outcome.ok ? outcome.planId : "")
       } finally {
         firing.delete(stateKey)
       }
@@ -913,18 +1042,18 @@ export function installSessionGate(
         warn("session-start gate: " + MISSING_PLAN_ID_PHRASE + " for agent \"" + agentId + "\" — the shell is staged but cannot be approved")
       }
       gateTrace("FIRING agent=" + agentId + " signals=" + verdict.signals.join("/") + " mode=" + mode + " staged=" + String(staged) + " sensitivity=" + sensitivity)
-      // THE SETTLEMENT (rule 4): the counter resets, the instant is stamped and a really staged plan
-      // is remembered, so a restart neither re-nags nor loses the volume. `acted` is the settled VIEW
-      // the install outcome exposes; `state.lastFiredAt` is what the gate itself reads.
-      await recordFire(workspace, sessionId, state, staged ? outcome.planId : "")
       if (agentId !== "") acted.add(agentId)
       /** The ONE notice: the mechanical text only when a plan is really staged, else the advisory one. */
+      const noticeText = staged
+        ? mechanicalNoticeText({ planId: outcome.planId, signals: verdict.signals, explicit: consumed.flagged, alreadyStaged: outcome.alreadyStaged, strength: verdict.strength })
+        : advisoryNoticeText(verdict.signals, consumed.flagged, verdict.strength)
+      /** The existing plan may cover earlier work, so its current scope needs explicit review. */
+      const reuseNote = repairFollowUp && outcome.alreadyStaged
+        ? '\nCheck the existing plan against this follow-up before adding repair and independent review tasks.'
+        : ''
+      /** Inject the notice once while retaining the original human follow-up. */
       const notice = dsh.userMessage({
-        text: staged
-          ? mechanicalNoticeText({ planId: outcome.planId, signals: verdict.signals, explicit: consumed.flagged, alreadyStaged: outcome.alreadyStaged, strength: verdict.strength })
-          // THE RUNG TRAVELS WITH THE NOTICE (contract §10 A4): one short clause, no new line, so the
-          // reader learns WHO admitted the work beside the signals that fired.
-          : advisoryNoticeText(verdict.signals, consumed.flagged, verdict.strength),
+        text: noticeText + reuseNote,
         // A PRODUCER-OWNED source kind, never the retired `{kind:"plugin"}` wrapper: the
         // 0.1.7 session format (v4) REJECTS that kind at append time —
         // `dsh-session-format-v3-to-v4` `source()` throws "format v4 message requires a
@@ -962,15 +1091,21 @@ export function installSessionGate(
     // per step: the agent HANDLE itself is the key, exactly as the roster section's name is.
     if (agent === undefined || agent === null || disposers.has(agent)) return
     try {
-      // Scope first: another preset's session and a subagent/member session never get a gate.
-      if (!sessionQualifies(agent, presets)) return
+      // A blank top-level session can change preset before its first human turn. The step checks
+      // the live selection. A legacy adapter without that read can filter at registration instead.
+      if (sessionRank(agent) !== "captain" || (dsh.selectedAgentPreset === undefined && !qualifies(agent))) return
       /** The scope's own disposer, or a no-op when it returned none. */
       const dispose = dsh.registerAgentPreStep(agent, stepHandler(agent))
       disposers.set(agent, typeof dispose === "function" ? dispose : () => { /* no-op */ })
-      /** The preset this agent's session was created under, quoted in the registration line. */
-      const preset = (agent as { session?: { header?: { agentPreset?: unknown } } } | undefined)?.session?.header?.agentPreset
+      /** A projected null is authoritative. Only an absent read falls back to creation metadata. */
+      const selectedPreset = dsh.selectedAgentPreset?.(agent)
+      /** The effective preset at registration, which may change before the first turn. */
+      const preset = selectedPreset === undefined
+        ? (agent as { session?: { header?: { agentPreset?: unknown } } }).session?.header?.agentPreset
+        : selectedPreset
       report('session gate listener registered for agent "' + String((agent as { id?: unknown }).id ?? "?")
-        + '" agentPreset=' + (preset === undefined ? "none" : String(preset)))
+        + '" agentPreset=' + (preset === undefined ? "none" : String(preset))
+        + (sessionQualifies(agent, presets, selectedPreset) ? "" : " (waiting for an eligible selected preset)"))
       gateTrace("registered agent=" + String((agent as { id?: unknown }).id ?? "?"))
     } catch (error) {
       // A scope that refuses the listener degrades with ONE warning per agent; the boot and
@@ -997,6 +1132,7 @@ export function installSessionGate(
   // is a synchronous installer, and every fire re-resolves both through `configValue` (never cached).
   return {
     installed: true,
+    reserveConsult,
     acted,
     disposers,
     mode: resolveGateMode(configValue(GATE_CONFIG_KEY)),

@@ -1,0 +1,49 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-workmate-plugin/test/workspace-attribution.test.ts:
+184 |     await byName("mpd_workmate_reflect").execute({ name: "alice", task: "recent reflect", outcome: "kept observation" }, execFrom(sb.home))
+185 |     admissions[0].resolve()
+186 |     await fromA
+187 |     admissions[1].resolve()
+188 |     await fromB
+189 |     expect(JSON.parse(readFileSync(metaPath, "utf8"))).toMatchObject({ workspaces: [sb.b, sb.a, sb.home], uses: 1, lastTask: "recent reflect" })
+                                                             ^
+error: expect(received).toMatchObject(expected)
+
+  {
+-   "lastTask": "recent reflect",
+-   "uses": 1,
++   "baseId": "hephaestus",
++   "baseName": "Deep Worker",
++   "baseRevision": "",
++   "createdAt": "2026-11-01T00:00:00.000Z",
++   "description": "autonomous goal-driven implementation",
++   "lastTask": "ship the wave",
++   "model": "deepseek-v4-flash",
++   "name": "alice",
++   "personaHash": "",
++   "personaRevision": 1,
++   "provider": "deepseek-official",
++   "readonly": false,
++   "renamedFrom": [],
++   "updatedAt": "2026-11-02T00:00:00.000Z",
++   "uses": 0,
+    "workspaces": [
+      "/tmp/mpd-wm-attrib-b-Finy7K",
+-     "/tmp/mpd-wm-attrib-a-8iGAUq",
+-     "/tmp/mpd-wm-attrib-home-vRC2a4",
+    ],
+  }
+
+- Expected  - 4
++ Received  + 15
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-workmate-plugin/test/workspace-attribution.test.ts:189:56)
+(fail) simultaneous workmate spawns keep both workspace attributions and a reflect made during admission [4.71ms]
+(pass) a TEAM_FIRST workmate refusal leaves metadata unchanged and releases the in-use guard [2.07ms]
+
+ 1 pass
+ 3 filtered out
+ 1 fail
+ 5 expect() calls
+Ran 2 tests across 1 file. [25.00ms]

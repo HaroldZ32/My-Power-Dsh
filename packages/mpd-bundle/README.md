@@ -29,9 +29,8 @@ specialists exist as a subagent roster (`mpd-roles-plugin`), not as presets.
 
 ## Session-start team gate (binding, ON by default)
 
-A session starts with **NO team** — a team is not a precondition of a session. The frozen predicate is
-evaluated at the session's first pre-step and carried by `mpd-roles-plugin` on the
-official plugin's seams:
+A session starts without an active team. `mpd-roles-plugin` evaluates the latest human request on
+eligible pre-steps before the gate settles.
 
 ```
 trigger = explicit flag OR (matchedSignals >= 1)
@@ -47,11 +46,13 @@ trigger = explicit flag OR (matchedSignals >= 1)
   alone is NOT a signal — the retired plan-file probe fired in every session of this workspace),
   (**E**) ≥ 24 Han characters AND ≥ 2 distinct action verbs, and (**F**) workspace scale — ONE bounded
   root listing carrying at least one project manifest, at least one conventional project directory and
-  ≥ 8 visible entries (`readWorkspaceScale`; dotfiles never count). F is evaluated on the `easy` row
-  only; `normal` (`B`=4, C 2-of-3 with each sub-signal at 3, `E`=60, `F` off) reproduces the
+  ≥ 8 visible entries (`readWorkspaceScale`, excluding dotfiles). The session gate evaluates F on the
+  first turn under `easy` only. `normal` (`B`=4, C 2-of-3 with each sub-signal at 3, `E`=60, `F` off) reproduces the
   pre-2026-10-22 five-signal predicate and `strict` (`B`=6, C 3-of-3 with each sub-signal at 4, `E`=80,
   `F` off) tightens it — all three rows live in `SENSITIVITY_THRESHOLDS`.
-- **Not triggered** → the session runs solo; no team, no notice.
+- **A missed trigger** leaves the captain to choose the route from the planned owners and task
+  dependencies. A later direct request to repair the whole preceding set can also trigger a
+  separate signal. See [Team mode](../../docs/user-guide.md#6-team-mode).
 
 `team.gate` in `mpd.jsonc` selects what a TRIGGER does, resolved PER CALL by `resolveGateMode`:
 `mechanical` (**the DEFAULT since the 2026-10-20 restore** — an ABSENT key and every UNKNOWN value,

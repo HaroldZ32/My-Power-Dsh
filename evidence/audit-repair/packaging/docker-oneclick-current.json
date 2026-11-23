@@ -1,0 +1,15 @@
+{
+  "command": "node scripts/docker-e2e.ts --mode oneclick --no-build --require-docker --no-browser",
+  "evidence": "evidence/docker/client-install-oneclick/2026-11-22T16-25-31Z",
+  "installSpec": "git+file:///opt/oneclick.git",
+  "exit": 0,
+  "runtime": {
+    "install": "[record] install.exit=true — one command installed the bundle into the profile",
+    "ast": "[owed-mcp] boot.mcpLiveSearch=true — a REAL mcp__ast_grep__search call through the mounted adapter matched 1 site(s) in /opt/mpd/packages/mpd-mcp-astgrep/src, and the negative control matched 0 — the search engine ran, so the registered name is backed by a working server on this machine",
+    "graph": "[record] tui.teamGraphEdges=true — the dependency graph contains connector arrowheads between rendered node boxes",
+    "tools": "[record] qa.mcpCallEngine=true — the ast-grep engine the call arm's launcher resolves (bundle-relative, inside the packed tree the case installs) is staged and its own --version probe reports ast-grep, so qa.mcpCall below measures the CASE rather than a missing binary"
+  },
+  "bytes": "[record] oneclick.distByteIdentical=true — 36 committed dist entry/entries landed byte-identical, so the install ran no build and shipped what the source tree builds",
+  "verdict": "[report] ok=true complete=false passed=162 failed=0 null=82 scrubbed=true -> /out/result.json",
+  "bounds": "Local scratch Git install, not the release .tgz. Browser and model calls were not measured."
+}

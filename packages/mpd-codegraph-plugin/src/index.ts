@@ -120,10 +120,8 @@ function resolveBinary(config?: Config): string | null {
 // the adapter's workspace plane instead of a bare `process.cwd()` chain. Order,
 // highest first:
 //   1. `MPD_CODEGRAPH_PROJECT_CWD` / `MPD_DSH_CODEGRAPH_PROJECT_CWD` — explicit
-//      override. It is ALSO the adopted MCP child's project-cwd env (serve.js
-//      projectCwd precedence: MPD_CODEGRAPH_PROJECT_CWD -> session-start cwd ->
-//      PWD), and the child's env is frozen when the row spawns it, so this stays
-//      the documented escape hatch for the child;
+//      override. The MCP launcher preserves this precedence by promoting the alias
+//      to the canonical key consumed by the adopted server when the key is blank;
 //   2. `dsh.workspaceRoot(exec)` — the calling session's workspace when a
 //      command invocation supplies one; its exec-less form (apply time) resolves
 //      DSH_WORKSPACE_ROOT -> process.cwd(), which is why the operator/QA override

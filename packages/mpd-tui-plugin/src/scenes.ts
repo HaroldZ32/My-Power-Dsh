@@ -42,6 +42,7 @@ import {
   planProjectionLines,
   readScopedWorkflow,
   sessionIdOf,
+  workspaceCwdOf,
   sessionRecord,
   sessionViewsOf,
   teamWorkflowLines,
@@ -304,26 +305,29 @@ function scopedRecordsFor(teamDeps: TeamSourceDeps | undefined, workspace: strin
  * @param sessionId - the calling session's id, or undefined when this surface cannot read one.
  * @returns the projection, or undefined when the read could not even be attempted; never throws.
  */
-function readWorkflow(workspaceRoot: () => string, holds: () => readonly string[], teamViews?: () => readonly DshTeamView[], teamRecords?: () => readonly TeamRecord[], teams?: () => MpdTeamsLike | undefined, sessionId?: string): TeamWorkflow | undefined {
+function readWorkflow(workspaceRoot: (sessionId?: string, cwd?: string) => string, holds: (workspace?: string) => readonly string[], teamViews?: (workspace?: string) => readonly DshTeamView[], teamRecords?: (workspace?: string) => readonly TeamRecord[], teams?: () => MpdTeamsLike | undefined, sessionId?: string, cwd?: string): TeamWorkflow | undefined {
   try {
+    /** The project shared by the watchdog and team projections. */
+    const workspace = workspaceRoot(sessionId, cwd)
+    if (workspace === "") return undefined
     /** The watchdog's held team ids; empty when that read fails. */
     let holdIds: readonly string[] = []
     try {
-      holdIds = holds() ?? []
+      holdIds = holds(workspace) ?? []
     } catch {
       holdIds = []
     }
     /** The live team views for this workspace; empty when that read fails. */
     let views: readonly DshTeamView[] = []
     try {
-      views = teamViews?.() ?? []
+      views = teamViews?.(workspace) ?? []
     } catch {
       views = []
     }
     /** The mpd-owned team records for this workspace; empty when that read fails. */
     let records: readonly TeamRecord[] = []
     try {
-      records = teamRecords?.() ?? []
+      records = teamRecords?.(workspace) ?? []
     } catch {
       records = []
     }
@@ -337,7 +341,7 @@ function readWorkflow(workspaceRoot: () => string, holds: () => readonly string[
     // THE WORKSPACE IS RESOLVED PER CALL (§6), and the SESSION is what selects the team: with an id the
     // read can only ever answer with THIS session's board, and with none it runs the marked fallback.
     return readScopedWorkflow({
-      workspace: workspaceRoot(),
+      workspace,
       ...(sessionId === undefined || sessionId === "" ? {} : { sessionId }),
       holds: holdIds,
       ...(service === undefined ? {} : { teams: service }),
@@ -533,13 +537,13 @@ function windowedBody(
  * @returns a component matching the host's `TuiSceneProps` contract.
  */
 function createBoardComponent(
-  workspaceRoot: () => string,
+  workspaceRoot: (sessionId?: string, cwd?: string) => string,
   home: () => string,
-  holds: () => readonly string[],
+  holds: (workspace?: string) => readonly string[],
   nav: SceneNav,
   openScene: (id: string) => boolean,
-  teamViews?: () => readonly DshTeamView[],
-  teamRecords?: () => readonly TeamRecord[],
+  teamViews?: (workspace?: string) => readonly DshTeamView[],
+  teamRecords?: (workspace?: string) => readonly TeamRecord[],
   onHostKit?: (ui: unknown) => unknown,
   teamDeps?: TeamSourceDeps,
 ): unknown {
@@ -572,13 +576,18 @@ function createBoardComponent(
         // session's views makes its existing rule session-scoped without a second copy of it.
         /** The calling session's id, read off the live channel at call time. */
         const sessionId = channelSessionOf(props)
-        /** This session's own record, or none: never another session's. */
-        const scopedRecords = sessionId === undefined ? (teamRecords?.() ?? []) : scopedRecordsFor(teamDeps, workspaceRoot(), sessionId, teamRecords?.() ?? [])
+        /** The project shared by all workspace reads in this frame. */
+        const workspace = workspaceRoot(sessionId, workspaceCwdOf(props?.channel))
+        if (workspace === "") return { rows: ["workspace unavailable for this session"] }
+        /** The records visible in this project. */
+        const records = teamRecords?.(workspace) ?? []
+        /** This session's own record, or none when it has no team. */
+        const scopedRecords = sessionId === undefined ? records : scopedRecordsFor(teamDeps, workspace, sessionId, records)
         /** The official views this session owns; every view when no id is readable. */
-        const scopedViews = teamViews?.() ?? []
+        const scopedViews = teamViews?.(workspace) ?? []
         /** This read's projection, which carries the tally the surface's own tone reports. */
-        const state = readBoardState(workspaceRoot(), home(), sessionId === undefined ? scopedViews : sessionViewsOf(scopedViews, sessionId), scopedRecords)
-        return { rows: boardLines(state, holds()), state }
+        const state = readBoardState(workspace, home(), sessionId === undefined ? scopedViews : sessionViewsOf(scopedViews, sessionId), scopedRecords)
+        return { rows: boardLines(state, holds(workspace)), state }
       } catch {
         return { rows: ["board state unreadable"] }
       }
@@ -601,7 +610,7 @@ function createBoardComponent(
 
     // THE PUSH (PART P): a team-state change re-reads this page instead of waiting up to 2000 ms for
     // the tick below, which STAYS as the fallback for a composition with no feed.
-    useTeamFeed(React, teamDeps?.subscribeTeams, () => setBoard(read()))
+    useTeamFeed(React, teamDeps?.subscribeTeams, () => setBoard(read()), channelSessionOf(props), workspaceCwdOf(props?.channel))
 
     React.useEffect(() => {
       // Initial read is deferred to the effect: the render path stays free of
@@ -623,7 +632,7 @@ function createBoardComponent(
           }
         }
       }
-    }, [])
+    }, [channelSessionOf(props), workspaceCwdOf(props?.channel)])
 
     // The shared clock, taken at a FIXED hook position (see `subagent-scene.ts`): a host with no timer
     // answers 0, and every animated cell then draws the frozen static frame.
@@ -795,12 +804,12 @@ function createBoardComponent(
  * @returns a component matching the host's `TuiSceneProps` contract.
  */
 function createTeamComponent(
-  workspaceRoot: () => string,
-  holds: () => readonly string[],
+  workspaceRoot: (sessionId?: string, cwd?: string) => string,
+  holds: (workspace?: string) => readonly string[],
   nav: SceneNav,
   openScene: (id: string) => boolean,
-  teamViews?: () => readonly DshTeamView[],
-  teamRecords?: () => readonly TeamRecord[],
+  teamViews?: (workspace?: string) => readonly DshTeamView[],
+  teamRecords?: (workspace?: string) => readonly TeamRecord[],
   onHostKit?: (ui: unknown) => unknown,
   teamDeps?: TeamSourceDeps,
 ): unknown {
@@ -875,7 +884,7 @@ function createTeamComponent(
         // THE SESSION ID IS READ AT CALL TIME, never captured: the timer and the feed notification both
         // reach this closure long after the render that defined it, and the channel publishes its id
         // later. This is the read that makes the scene draw ITS OWN session's board.
-        next = readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSessionOf(props))
+        next = readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSessionOf(props), workspaceCwdOf(props?.channel))
       } catch {
         next = undefined
       }
@@ -890,7 +899,7 @@ function createTeamComponent(
     // THE PUSH (PART P): this scene's projection lives in a state cell, so the notification re-READS
     // it through `refresh` rather than merely re-rendering. The 2000 ms tick below stays as the
     // fallback for a composition without the feed.
-    useTeamFeed(React, teamDeps?.subscribeTeams, refresh)
+    useTeamFeed(React, teamDeps?.subscribeTeams, refresh, channelSessionOf(props), workspaceCwdOf(props?.channel))
 
     React.useEffect(() => {
       refresh()
@@ -910,7 +919,7 @@ function createTeamComponent(
           }
         }
       }
-    }, [])
+    }, [channelSessionOf(props), workspaceCwdOf(props?.channel)])
 
     // THE ROW TYPE IS THE JOINED ONE, not the drawing's narrower `GraphTask`: the detail pane below
     // reads `description`-class fields and the graph-derived `dependencies`, and a PLAN-ONLY ghost has
@@ -1393,14 +1402,14 @@ export function planActionLines(workflow: TeamWorkflow | undefined, echo: string
  * @returns a component matching the host's `TuiSceneProps` contract.
  */
 function createPlanComponent(
-  workspaceRoot: () => string,
-  holds: () => readonly string[],
+  workspaceRoot: (sessionId?: string, cwd?: string) => string,
+  holds: (workspace?: string) => readonly string[],
   nav: SceneNav,
   openScene: (id: string) => boolean,
   actions: PlanActions,
-  planFor?: (sessionId: string) => MpdPlanView["plan"] | undefined,
-  teamViews?: () => readonly DshTeamView[],
-  teamRecords?: () => readonly TeamRecord[],
+  planFor?: (sessionId: string, cwd?: string) => MpdPlanView["plan"] | undefined,
+  teamViews?: (workspace?: string) => readonly DshTeamView[],
+  teamRecords?: (workspace?: string) => readonly TeamRecord[],
   onHostKit?: (ui: unknown) => unknown,
   teamDeps?: TeamSourceDeps,
 ): unknown {
@@ -1497,7 +1506,7 @@ function createPlanComponent(
 
     /** Re-reads the record and resets the consent echo, the arm and the scroll. */
     const refresh = (): void => {
-      setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession()))
+      setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession(), workspaceCwdOf(props?.channel)))
       // Barrier 3: the echo is EMPTY on every entry and on every explicit refresh.
       setEcho("")
       setArmedAt(0)
@@ -1507,7 +1516,7 @@ function createPlanComponent(
     // THE PUSH (PART P): a team-state change re-reads the FACTS here, exactly as the periodic read
     // below does — the consent echo and the discard arm are NOT touched, because barrier 3 reserves
     // those for the explicit `r` key, and a remote change must never re-arm the approval gate.
-    useTeamFeed(React, teamDeps?.subscribeTeams, () => setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession())))
+    useTeamFeed(React, teamDeps?.subscribeTeams, () => setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession(), workspaceCwdOf(props?.channel))), channelSession(), workspaceCwdOf(props?.channel))
 
     React.useEffect(() => {
       // Initial read in the effect (never in the render path).
@@ -1518,7 +1527,7 @@ function createPlanComponent(
         timer = setInterval(() => {
           // The automatic re-read refreshes the FACTS only: the consent echo and the 10 s
           // discard arm are cleared by the explicit `r` key (frozen §4.2 barrier 3 / §4.3).
-          setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession()))
+          setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession(), workspaceCwdOf(props?.channel)))
         }, BOARD_REFRESH_MS)
       } catch {
         timer = undefined
@@ -1532,7 +1541,7 @@ function createPlanComponent(
           }
         }
       }
-    }, [])
+    }, [channelSessionOf(props), workspaceCwdOf(props?.channel)])
 
     // The discard arm expires on its own after the frozen 10 s window.
     React.useEffect(() => {
@@ -1564,7 +1573,7 @@ function createPlanComponent(
     /** The plan this session has staged, or undefined when there is none to approve. */
     /** The plan this session has staged, or undefined when there is none to approve. */
     /** What the reader answered: the plan, or null when the session has none staged. */
-    const rawPlan = planFor === undefined ? undefined : planFor(channelSession() ?? "")
+    const rawPlan = planFor === undefined ? undefined : planFor(channelSession() ?? "", workspaceCwdOf(props?.channel))
     /** The plan to render, with the reader's own null normalised to undefined. */
     const stagedPlan = rawPlan ?? undefined
     /** The exact approval phrase: SERVED when there is a plan, else the record-derived fallback. */
@@ -1637,7 +1646,7 @@ function createPlanComponent(
         // Barrier 5: the record is re-read after the call settles, then keys are live again.
         // The echo is NOT cleared here: §4.5 keeps it on every refused outcome.
         setBusy(false)
-        setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession()))
+        setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession(), workspaceCwdOf(props?.channel)))
       }
     }
 
@@ -1671,7 +1680,7 @@ function createPlanComponent(
         setMessage(`discard failed: ${String((error as Error)?.message ?? error)}`)
       } finally {
         setBusy(false)
-        setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession()))
+        setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession(), workspaceCwdOf(props?.channel)))
       }
     }
 
@@ -1881,13 +1890,13 @@ export function registerScene(
   ctx: PluginContextLike,
   tui: TuiAdapter,
   log: Log,
-  workspaceRoot: () => string,
+  workspaceRoot: (sessionId?: string, cwd?: string) => string,
   home: () => string,
-  holds: () => readonly string[] = () => [],
+  holds: (workspace?: string) => readonly string[] = () => [],
   planActions: PlanActions = UNAVAILABLE_PLAN_ACTIONS,
-  planReader?: (sessionId: string) => MpdPlanView["plan"] | undefined,
-  teamViews?: () => readonly DshTeamView[],
-  teamRecords?: () => readonly TeamRecord[],
+  planReader?: (sessionId: string, cwd?: string) => MpdPlanView["plan"] | undefined,
+  teamViews?: (workspace?: string) => readonly DshTeamView[],
+  teamRecords?: (workspace?: string) => readonly TeamRecord[],
   onHostKit?: (ui: unknown) => unknown,
   teamDeps?: TeamSourceDeps,
 ): SceneSeam {
@@ -1931,7 +1940,7 @@ export function registerScene(
           // The descriptor's title is localized at registration; inside the scene the component
           // renders its own body header from the same dictionary, so the two agree per render.
           title: t("scene.subagents"),
-          component: createSubagentSceneComponent((sessionId?: string) => readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, sessionId), onHostKit, undefined, teamDeps?.subscribeTeams),
+          component: createSubagentSceneComponent((sessionId?: string, cwd?: string) => readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, sessionId, cwd), onHostKit, undefined, teamDeps?.subscribeTeams),
         },
         ctx,
       )

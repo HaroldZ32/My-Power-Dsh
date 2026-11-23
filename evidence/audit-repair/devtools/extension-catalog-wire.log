@@ -1,0 +1,1 @@
+Pinned DSH 0.2.2-rc.5 SkillRegistry + rebuilt extension: cached user skill -> new same-id project skill -> malformed manifest restores user skill, in one registry and cwd

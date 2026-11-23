@@ -1,0 +1,23 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-mcp-lsp/test/launcher.test.ts:
+(pass) an independent log directory cannot select the workspace cclsp configuration [92.55ms]
+117 |   /** The same MCP connection observes both edits and can still list all tools. */
+118 |   const client = await connect(root, root)
+119 |   expect(await diagnostics(client, file)).toContain("string type mismatch")
+120 |   expect(await diagnostics(client, file)).toContain("string type mismatch")
+121 |   writeFileSync(file, "answer = 42\n")
+122 |   expect(await diagnostics(client, file)).toContain("No diagnostics found")
+                                                ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "No diagnostics found"
+Received: "Found 1 diagnostic in /tmp/mpd-cclsp-wire-eoig7X/diagnostic.sample:\n\n• Error: string type mismatch\n  Location: Line 1, Column 1 to Line 1, Column 2"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-mcp-lsp/test/launcher.test.ts:122:43)
+(fail) the pinned cclsp diagnostics refresh after ordinary edits without restarting the MCP session [740.37ms]
+
+ 1 pass
+ 1 fail
+ 24 expect() calls
+Ran 2 tests across 1 file. [845.00ms]

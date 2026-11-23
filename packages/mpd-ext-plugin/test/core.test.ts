@@ -644,6 +644,65 @@ test("discovery precedence is project > user > bundle and shadowing is recorded,
   expect(listed.warnings.some((line: string) => line.includes("shadowed"))).toBe(true)
 })
 
+test("a missing or rejected project manifest cannot shadow a valid user extension", async () => {
+  /** User skill that must remain visible in each invalid project fixture. */
+  const root = userExtensionsDir()
+  writeExtension(root, "shared", extensionManifest("shared", { skills: [{ root: "skills" }] }), { skills: { "style-check": GOOD_SKILL } })
+  /** A separate workspace gives each broken descriptor its own catalog key. */
+  const missing = makeDir("mpd-ext-missing-")
+  mkdirSync(join(projectExtensionsDir(missing), "shared"), { recursive: true })
+  /** A directory with a manifest whose JSON cannot be read. */
+  const malformed = makeDir("mpd-ext-malformed-")
+  writeExtension(projectExtensionsDir(malformed), "shared", "{")
+  /** A well-formed JSON manifest that the descriptor validator rejects. */
+  const unsupported = makeDir("mpd-ext-unsupported-")
+  writeExtension(projectExtensionsDir(unsupported), "other-directory", extensionManifest("shared", {}, { apiVersion: 99 }))
+  /** Use the same provider API the host catalog calls. */
+  const { ctx, providers } = makeCtx()
+  await apply(ctx, { quiet: true })
+  /** The same host-wide provider must remain eligible in all three cases. */
+  const provider = providerNamed(providers, "mpd-ext:shared")
+  for (const cwd of [missing, malformed, unsupported]) {
+    expect((await observedNames(provider, { cwd })).names).toEqual(["style-check"])
+  }
+})
+
+test("project skill changes invalidate completed catalogs without re-registering providers", async () => {
+  /** Start with no .mpd directory, as in a previously observed clean workspace. */
+  const workspace = makeDir("mpd-ext-live-catalog-")
+  /** The provider factories and their registration-scoped lifecycle. */
+  const { ctx, providers } = makeCtx()
+  await apply(ctx, { quiet: true })
+  /** Abort when the registration is disposed, including on an assertion failure. */
+  const scope = new AbortController()
+  try {
+    /** The catalog revision invalidation count, reset only by registering a new factory. */
+    let revision = 0
+    /** The harness caches complete observations until a provider advances the revision. */
+    const provider = providers.map((create) => create({ signal: scope.signal, invalidate: () => { revision++ } }))
+      .find((candidate) => candidate.name === "mpd-ext:project-plane")
+    /** Yield for the host filesystem notification and bound failure if invalidation is absent. */
+    const expectNewRevision = async (previous: number): Promise<void> => {
+      /** A host notification generally arrives on the next event-loop turn. */
+      const deadline = Date.now() + 2_000
+      while (revision <= previous && Date.now() < deadline) await Bun.sleep(10)
+      expect(revision).toBeGreaterThan(previous)
+    }
+    expect(provider).toBeDefined()
+    expect((await observedNames(provider, { cwd: workspace })).names).toEqual([])
+    writeExtension(projectExtensionsDir(workspace), "new-project", extensionManifest("new-project", { skills: [{ root: "skills" }] }), { skills: { "style-check": GOOD_SKILL } })
+    await expectNewRevision(0)
+    expect((await observedNames(provider, { cwd: workspace })).names).toEqual(["style-check"])
+    /** Capture the completed catalog's current revision before editing the skill. */
+    const beforeEdit = revision
+    writeFileSync(join(projectExtensionsDir(workspace), "new-project", "skills", "style-check", "SKILL.md"), SECOND_SKILL)
+    await expectNewRevision(beforeEdit)
+    expect((await observedNames(provider, { cwd: workspace })).names).toEqual(["lint-mcp"])
+  } finally {
+    scope.abort()
+  }
+})
+
 test("a malformed manifest is reported per item and never aborts apply or another extension", async () => {
   // The workspace whose project plane holds four manifests, one broken per failure class.
   const workspace = makeDir("mpd-ext-ws-")

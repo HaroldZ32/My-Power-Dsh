@@ -26,7 +26,7 @@
 // what makes a migration unreadable.
 import { existsSync, readdirSync } from "node:fs"
 import { join } from "node:path"
-import { rowLogLine, createLazyDshAdapter, dshSeamInject, DSH_SEAM_COMMANDS, DSH_SEAM_TOOLS, type DshAdapter, type DshContextPressure, type DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
+import { rowLogLine, isRecord, createLazyDshAdapter, dshSeamInject, DSH_SEAM_COMMANDS, DSH_SEAM_TOOLS, type DshAdapter, type DshContextPressure, type DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 import { toolCard } from "../../mpd-dsh-adapter-plugin/src/dshgo-view.ts"
 import { agentTeamsDispatchCard, agentTeamsPlanCard, agentTeamsTaskCard } from "./tool-cards.ts"
 import {
@@ -347,9 +347,9 @@ export interface TaskReleaseResult {
   released: boolean
   /** The task the call named. */
   taskId: string
-  /** The task's status AFTER the reset (`pending` on success); absent when the row refused. */
+  /** The task's status when release or pending pairing recovery succeeds. */
   status?: string
-  /** The task's revision after the reset, so a caller can chain a claim against it. */
+  /** The task's current revision, so a caller can chain a claim against it. */
   revision?: number
   /** Why the TASK row would not reset; the ledger half is still reported beside it. */
   refused?: string
@@ -367,8 +367,8 @@ import { readLedger, writeLedger } from "./dispatch-ledger"
 /** The rendered one-line summary of a staged plan. */
 function describePlan(plan: StagedPlan | undefined): string {
   if (plan === undefined) return "no staged plan"
-  /** The plan's lifecycle word, derived in approval-before-discard order so it cannot be both. */
-  const state = plan.approvedAt !== undefined ? "approved" : plan.discardedAt !== undefined ? "discarded" : "staged"
+  /** The plan's lifecycle word, including a partial activation that still has staged work. */
+  const state = plan.activation !== undefined ? "activation pending" : plan.approvedAt !== undefined ? "approved" : plan.discardedAt !== undefined ? "discarded" : "staged"
   return `${plan.planId} (${state}): ${plan.members.length} member(s), ${plan.tasks.length} task(s)`
 }
 
@@ -425,6 +425,8 @@ function describeStatus(value: unknown): string {
   const summary = `plan ${planId} · members ${members.length} · tasks ${tasks.length} · hold ${board.hold === null || board.hold === undefined ? "none" : "held"}`
   /** The heading followed by one line per member and one per task. */
   const lines = [summary]
+  if (isRecord(board.rosterUnsupported) && typeof board.rosterUnsupported.reason === "string") lines.push(board.rosterUnsupported.reason)
+  if (isRecord(plan.activation) && typeof plan.activation.stoppedAt === "string") lines.push(plan.activation.stoppedAt)
   for (const member of members) {
     /** One member row read as a record. */
     const row = (member ?? {}) as Record<string, unknown>
@@ -1351,6 +1353,7 @@ export function apply(ctx: any): void {
   const stagedPlan = (workspace: string, sessionId: string): StagedPlan | undefined => {
     /** The session's staged plan, or undefined when nothing is staged yet. */
     const plan = readPlan(workspace, sessionId)
+    if (plan?.activation !== undefined) throw new Error(`plan ${plan.planId} has begun activation; retry approve before changing the team`)
     if (plan !== undefined && plan.approvedAt !== undefined) throw new Error(`plan ${plan.planId} is already approved; stage a new one to change the team`)
     return plan
   }
@@ -1577,10 +1580,9 @@ export function apply(ctx: any): void {
    *
    * WHY BOTH (R3). `release` used to delete only the ledger pairing, leaving the task `in_progress`;
    * `readyTasks`/`casClaimTask` are pending-only, so a released task could never be dispatched again.
-   * The task row now returns to `pending` through `casReleaseTask` (CAS on the caller's revision when
-   * one is supplied), and the LEDGER row is freed first — a ledger row is a cache of "in flight" and a
-   * terminal or missing task row makes it stale by definition, so the ledger half is repaired even
-   * when the task half refuses.
+   * The task row returns to `pending` through `casReleaseTask` before the pairing is removed. An
+   * authorized retry can clean up the pairing for a pending, terminal or missing task. A stale
+   * revision leaves both files untouched.
    *
    * WHO MAY RELEASE (PR #60 review F1/CWE-862) is decided BEFORE either half writes: this team's Lead
    * or the task's own owner, through the store's own {@link authorizeRelease}. An unauthorized caller
@@ -1606,14 +1608,20 @@ export function apply(ctx: any): void {
     /** Why this caller may not release the task, or undefined when it may. */
     const refusal = authorizeRelease(fresh, taskId, caller, lead)
     if (refusal !== undefined) return { released: false, taskId, refused: refusal }
+    /** The task half's decision, based on the same revision used to authorize release. */
+    const outcome = casReleaseTask(fresh, taskId, expectedRevision, now())
+    if (!outcome.applied && outcome.staleRevision === true) return { released: false, taskId, refused: outcome.reason }
+    // Publish the board first. If the ledger write fails, release can clean up the pending pairing.
+    if (outcome.applied) writeTeam(workspace, withDerivedPhase(outcome.record))
     /** The ledger half: only THIS team's pairing is freed. */
     const freed = release(readLedger(workspace), record.teamId, taskId)
     if (freed.released) writeLedger(workspace, freed.ledger)
-    /** The task half's decision, or the refusal and its reason. */
-    const outcome = casReleaseTask(fresh, taskId, expectedRevision, now())
-    if (!outcome.applied) return { released: freed.released, taskId, refused: outcome.reason }
-    // The phase is re-derived on the write: reopening the last open task takes a team out of `idle`.
-    writeTeam(workspace, withDerivedPhase(outcome.record))
+    if (!outcome.applied) {
+      /** A stranded pairing can be cleared without changing the task that is already pending. */
+      const pending = freed.released ? fresh.tasks.find((candidate) => candidate.id === taskId && candidate.status === "pending") : undefined
+      if (pending !== undefined) return { released: true, taskId, status: pending.status, revision: pending.revision }
+      return { released: freed.released, taskId, refused: outcome.reason }
+    }
     /** The reopened task as the record now holds it. */
     const view = outcome.record.tasks.find((candidate) => candidate.id === taskId)
     return { released: freed.released, taskId, status: view?.status, revision: view?.revision }
@@ -2036,6 +2044,7 @@ export function apply(ctx: any): void {
           team: { oneOf: [{ type: "object" }, { type: "null" }] },
           summary: { oneOf: [{ type: "object" }, { type: "null" }] },
           members: { type: "array", items: { type: "object" } },
+          rosterUnsupported: { type: "object" },
           tasks: { type: "array", items: { type: "object" } },
           contracts: { type: "array", items: { type: "object" } },
           created: { type: "object" },
@@ -2062,7 +2071,7 @@ export function apply(ctx: any): void {
       render: (_args: any, value: any) => {
         /** The sentence this branch paints, before any write-time warning rides below it. */
         const painted = value?.archivedTo !== undefined ? `archived to ${value.archivedTo}`
-            : value?.created !== undefined ? `approved ${value.plan?.planId ?? ""}: ${value.created.members?.length ?? 0} member(s), ${value.created.tasks?.length ?? 0} task(s)` + (value.stoppedAt === undefined ? "" : ` — STOPPED at ${value.stoppedAt}`)
+            : value?.created !== undefined ? `${value.stoppedAt === undefined ? "approved" : "activation paused for"} ${value.plan?.planId ?? ""}: ${value.created.members?.length ?? 0} member(s), ${value.created.tasks?.length ?? 0} task(s)` + (value.stoppedAt === undefined ? "" : ` — ${value.stoppedAt}`)
               // THE LOUD HALF. An approval that carried a blocker naming no task says so HERE, in the
               // answer the captain reads, with the board task and the exact text — because the whole
               // defect was a plan whose dangling references were accepted, stored and never mentioned.
@@ -2100,6 +2109,10 @@ export function apply(ctx: any): void {
         const read = <T,>(fn: () => T, fallback: T): T => { try { return fn() } catch { return fallback } }
         /** The mpd record bound to this session — the team, when one was ever approved here. */
         const record = recordFor(workspace, sessionId)
+        /** The adapter's compatibility array may carry a non-JSON capability marker. */
+        const officialMembers = record === undefined ? read(() => dsh.teamListMembers(exec.agent), []) : undefined
+        /** Preserve the marker beside the rows, where the host can snapshot it. */
+        const rosterUnsupported = officialMembers?.unsupported
         // THE AUTHORITATIVE HALF: with a record present, the roster and the board are MPD's. The
         // official readout is still reported, but BESIDE it and under its own key, so a reader can
         // see the executor's view without confusing it for the team.
@@ -2110,7 +2123,8 @@ export function apply(ctx: any): void {
           // A `failed` row is a raise that never happened: the live append and the approval REMOVE it, and
           // a legacy record may still carry one — rendering it as a live roster row is exactly the defect
           // this contract closes, so the status answer names only the members the team actually has.
-          members: record === undefined ? read(() => dsh.teamListMembers(exec.agent), []) : record.members.filter((member) => member.status !== "failed"),
+          members: record === undefined ? [...(officialMembers ?? [])] : record.members.filter((member) => member.status !== "failed"),
+          ...(rosterUnsupported === undefined ? {} : { rosterUnsupported }),
           tasks: record === undefined ? read(() => dsh.teamListTasks(exec.agent), []) : record.tasks,
           // The summary crosses a TOOL boundary, so it is projected to lossless JSON here: the store's
           // own `depths` is a Map and a Map cannot survive the harness's snapshot (defect 1).
@@ -2122,6 +2136,7 @@ export function apply(ctx: any): void {
       if (action === "create") {
         /** The plan already staged here, whose approval state decides whether this create may replace it. */
         const existing = readPlan(workspace, sessionId)
+        if (existing?.activation !== undefined && args?.replace !== true) throw new Error(`plan ${existing.planId} has begun activation; retry approve or pass replace:true`)
         if (existing?.approvedAt !== undefined && args?.replace !== true) {
           throw new Error(`plan ${existing.planId} is already approved; pass replace:true to stage a different team`)
         }
@@ -2235,6 +2250,12 @@ export function apply(ctx: any): void {
             // The member's OWN git worktree, or no key at all: an absent path must let the host
             // inherit the Lead's directory rather than receive a written `cwd: undefined`.
             ...(cwd === undefined ? {} : { cwd }),
+            onOpening: (handle: string): void => {
+              /** The roster as it stands immediately before the native host starts the seat. */
+              const fresh = readTeam(workspace, roster.teamId)
+              if (fresh === undefined || fresh.endedAt !== undefined) throw new Error(`team ${roster.teamId} is no longer available`)
+              writeTeam(workspace, updateTeamMember(fresh, added.id, { executorRef: handle }))
+            },
             ...(exec.signal === undefined ? {} : { signal: exec.signal }),
           })
           /** The record re-read immediately before the handle is written, so the raise cannot clobber a concurrent write. */
@@ -2394,6 +2415,7 @@ export function apply(ctx: any): void {
         const plan = readPlan(workspace, sessionId)
         if (plan === undefined) throw new Error("no team is staged in this session — use action:\"create\" first")
         if (args?.members === undefined && args?.tasks === undefined && args?.description === undefined) return { plan }
+        if (plan.activation !== undefined) throw new Error(`plan ${plan.planId} has begun activation; retry approve before changing the team`)
         if (plan.approvedAt !== undefined) throw new Error(`plan ${plan.planId} is already approved and cannot be edited`)
         /** The replacement plan, assembled immutably so a rejected edit leaves the stored one untouched. */
         const next: StagedPlan = {

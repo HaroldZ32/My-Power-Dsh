@@ -1,15 +1,13 @@
 #!/usr/bin/env node
-// Case team-idle-member-guard (P2a): on a REAL boot, a team member with NO board task performs ZERO
-// tool calls and receives ONE idle directive, while the task's owner works.
+// Case team-idle-member-guard (P2a): on a real boot, the intended owner claims T1 while the
+// taskless member receives one idle directive and a tool denial.
 //
 // WHAT IT PROVES (contract `.mpd/plans/team-idle-member-guard.md` §4, "Live QA case"):
-//   1. the task owner's session records a `tool/call` to `agent_teams_task` WITH a non-error
-//      `tool/result` — the member really works;
-//   2. the taskless member's session records ZERO `tool/call` rows and EXACTLY ONE idle directive
-//      (the user-role message the guard injects);
-//   3. two members were really raised (both carry an executor handle in the team record), so the
-//      "zero calls" verdict is about a spawned member, not an absent one;
-//   4. the harness session log is the only witness — model prose is never read as tool evidence.
+//   1. the task owner's session records an `agent_teams_task` call with a non-error result;
+//   2. the taskless member's session records one idle directive and a tool attempt the guard denies;
+//   3. the board records distinct executor handles matching those sessions and T1's claimant is
+//      the intended owner, including when workmate binding changes the staged names;
+//   4. the harness session log is the tool witness.
 //
 // §3.4 LAZY SPAWN IS NOT CLAIMED HERE: this case does not prove that no session exists before the first
 // task dispatch, so the one-turn bound (§6.1) is declared instead.
@@ -28,10 +26,10 @@
 // Evidence -> evidence/team/idle-member-guard/live/<timestamp>/{result.json,output.log}
 // PREREQ: absent-dsh-binary dsh install @deepseek-ai/dsh so the real harness binary is on PATH
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs"
-import { join } from "node:path"
+import { basename, dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { decodeSessionLog, findToolCall, type SessionRecord } from "./lib/session-evidence.ts"
-import type { ProbeRecord } from "./lib/team-idle-member-guard-probe.ts"
+import { SEAT_DESCRIPTIONS, type ProbeRecord } from "./lib/team-idle-member-guard-probe.ts"
 import {
   REPO, binaryPresent, bootSession, cleanup, createSandbox, installProfile, isolationStep,
   makeStubModel, timestamp, useStubRoute, writeEvidence,
@@ -64,10 +62,50 @@ type Problems = string[]
 
 /** One decoded session log: its file and records. */
 export interface SessionLog {
-  /** The absolute log file. */
+  /** The absolute log file, inside the harness directory for this session id. */
   readonly file: string
   /** Every decoded record, in file order. */
   readonly records: readonly SessionRecord[]
+}
+
+/** Verify the board and the corresponding session identities after the owner has claimed T1. */
+function evaluateSeats(
+  members: readonly Record<string, unknown>[],
+  tasks: readonly Record<string, unknown>[],
+  ownerLog?: SessionLog,
+  idleLog?: SessionLog,
+): Problems {
+  /** Fixture descriptions survive approval's workmate binding and identify the intended roles. */
+  const owners = members.filter((member) => member.description === SEAT_DESCRIPTIONS.owner)
+  /** The intended idle seat independently of its final display name. */
+  const idle = members.filter((member) => member.description === SEAT_DESCRIPTIONS.idle)
+  if (members.length !== 2 || owners.length !== 1 || idle.length !== 1) {
+    return ["the team record must identify exactly one intended owner and one intended idle member"]
+  }
+  /** The owner seat (the only row matching its fixture role). */
+  const owner = owners[0]
+  /** The idle seat (the only row matching its fixture role). */
+  const taskless = idle[0]
+  if (typeof owner.id !== "string" || owner.id === "" || typeof taskless.id !== "string" || taskless.id === "" || owner.id === taskless.id) {
+    return ["the intended seats must have distinct board member ids"]
+  }
+  /** The owner session handle written by the real executor. */
+  const ownerRef = owner.executorRef
+  /** The idle session handle written by the real executor. */
+  const idleRef = taskless.executorRef
+  if (typeof ownerRef !== "string" || ownerRef === "" || typeof idleRef !== "string" || idleRef === "" || ownerRef === idleRef) {
+    return ["the intended seats must have distinct executor handles"]
+  }
+  /** The sole board row given to the intended owner. */
+  const task = tasks[0]
+  if (tasks.length !== 1 || task?.id !== "T1" || task.status !== "in_progress" || task.owner !== ownerRef) {
+    return ["T1 must be in progress and claimed by the intended owner's executor handle"]
+  }
+  /** The failures that tie each witness to its intended seat. */
+  const problems: Problems = []
+  if (ownerLog === undefined || basename(dirname(ownerLog.file)) !== ownerRef) problems.push("the successful claim did not come from the intended owner's session")
+  if (idleLog === undefined || basename(dirname(idleLog.file)) !== idleRef) problems.push("the idle directive did not reach the intended idle member's session")
+  return problems
 }
 
 /**
@@ -256,7 +294,23 @@ export function selfTest(): void {
   /** The overlay the case writes. */
   const overlay = buildOverlay("/abs/probe.ts", "/abs/out.json")
   arm("overlay names the probe and its record file", overlay.includes("/abs/probe.ts") && overlay.includes("/abs/out.json"))
-  console.log("[team-idle-member-guard] self-test PASS — 12 arms incl. negative controls")
+  /** The persisted seats after workmate binding changed both staged names. */
+  const seats = [
+    { id: "M1", name: "bound-owner", description: SEAT_DESCRIPTIONS.owner, executorRef: "owner-session" },
+    { id: "M2", name: "bound-idle", description: SEAT_DESCRIPTIONS.idle, executorRef: "idle-session" },
+  ]
+  /** The claim is visible on the real board by executor handle. */
+  const claim = [{ id: "T1", status: "in_progress", owner: "owner-session" }]
+  /** The owner's harness log, identified by its parent directory. */
+  const ownerLog = { file: join("sessions", "owner-session", "session.v4.jsonl"), records: [] }
+  /** The idle member's distinct harness log. */
+  const idleLog = { file: join("sessions", "idle-session", "session.v4.jsonl"), records: [] }
+  arm("bound seats match the claimed board row and separate session logs", evaluateSeats(seats, claim, ownerLog, idleLog).length === 0)
+  arm("ambiguous fixture role is refused", evaluateSeats([seats[0], { ...seats[1], description: SEAT_DESCRIPTIONS.owner }], claim, ownerLog, idleLog).length > 0)
+  arm("duplicate executor handle is refused", evaluateSeats([seats[0], { ...seats[1], executorRef: "owner-session" }], claim, ownerLog, idleLog).length > 0)
+  arm("a claim by the idle seat is refused", evaluateSeats(seats, [{ ...claim[0], owner: "idle-session" }], ownerLog, idleLog).length > 0)
+  arm("swapped harness logs are refused", evaluateSeats(seats, claim, idleLog, ownerLog).length === 2)
+  console.log("[team-idle-member-guard] self-test PASS — 17 arms incl. negative controls")
 }
 
 /**
@@ -347,7 +401,11 @@ async function live(): Promise<void> {
     const ownerLogs = logs.filter((entry) => findToolCall(entry.records, OWNER_TOOL).called)
     /** The taskless member's log, when exactly one session carries the directive. */
     const idleLogs = logs.filter((entry) => userTexts(entry.records).some((text) => text.includes(DIRECTIVE_TEXT)))
-    steps.sessions = { logs: logs.length, owners: ownerLogs.length, idle: idleLogs.length }
+    steps.sessions = {
+      logs: logs.length,
+      ownerSessionIds: ownerLogs.map((entry) => basename(dirname(entry.file))),
+      idleSessionIds: idleLogs.map((entry) => basename(dirname(entry.file))),
+    }
     /** The problems every verdict contributes. */
     const problems: Problems = []
     if (probe === null) problems.push("the probe row did not mount (no record file was written)")
@@ -364,22 +422,17 @@ async function live(): Promise<void> {
     // 6. Two members were really raised (so "zero calls" is about a spawned member, not an absent one).
     /** The team record, or null. */
     const record = teamRecordOf(sandbox.ws)
+    /** The member rows persisted by approval and executor binding. */
+    const members = (Array.isArray(record?.members) ? record.members : []) as Array<Record<string, unknown>>
+    /** The task row persisted by the dispatch and claim. */
+    const tasks = (Array.isArray(record?.tasks) ? record.tasks : []) as Array<Record<string, unknown>>
     steps.team = record === null ? null : {
       teamId: record.teamId,
-      members: (Array.isArray(record.members) ? record.members as Array<Record<string, unknown>> : []).map((member) => ({ name: member.name, status: member.status, spawned: typeof member.executorRef === "string" && member.executorRef !== "" })),
-      tasks: (Array.isArray(record.tasks) ? record.tasks as Array<Record<string, unknown>> : []).map((task) => ({ id: task.id, owner: task.owner, status: task.status })),
+      members: members.map(({ id, name, description, status, executorRef }) => ({ id, name, description, status, executorRef })),
+      tasks: tasks.map(({ id, owner, status }) => ({ id, owner, status })),
     }
-    /** The two members the plan named. */
-    const members = (Array.isArray(record?.members) ? record.members : []) as Array<Record<string, unknown>>
     if (record === null) problems.push("no team record was written to the sandbox workspace")
-    else {
-      for (const name of ["cell-owner", "cell-idle"]) {
-        /** The member row the plan named. */
-        const member = members.find((candidate) => candidate.name === name)
-        if (member === undefined) problems.push("the team record has no member " + JSON.stringify(name))
-        else if (typeof member.executorRef !== "string" || member.executorRef === "") problems.push("member " + JSON.stringify(name) + " was never raised (no executor handle)")
-      }
-    }
+    else problems.push(...evaluateSeats(members, tasks, ownerLogs[0], idleLogs[0]))
     // 7. Isolation, then the evidence.
     /** The workspace-isolation assertion. */
     const isolation = isolationStep(sandbox.dshHome, sandbox.sandbox, SLUG)
@@ -389,7 +442,7 @@ async function live(): Promise<void> {
     /** The case verdict. */
     const ok = writeEvidence(outDir, SLUG, {
       ok: problems.length === 0,
-      subject: "on a real boot, a taskless team member records ZERO tool calls and one idle directive while the task owner works",
+      subject: "on a real boot, the intended owner claims T1 while the idle member receives one directive and a tool denial",
       case: SLUG,
       wave: "P2a/idle-member-guard",
       prompt: PROMPT,
@@ -399,8 +452,8 @@ async function live(): Promise<void> {
       problems,
       proves: [
         "The Lead's plan (two members, one task) was staged and approved through the REAL agent_teams_plan tool (the probe's own recorded answers).",
-        "Both members were raised: the team record carries an executor handle for cell-owner and cell-idle.",
-        "The task owner's session log records an `agent_teams_task` call with a non-error result.",
+        "The intended seats have distinct board and executor ids. Their executor ids match the two session logs.",
+        "The board records T1 claimed by the intended owner, whose session log records a non-error `agent_teams_task` result.",
         "The taskless member's session log records exactly ONE idle directive and ONE tool attempt whose paired result is an ERROR carrying the guard's one-line denial (harness session log, never model prose).",
       ],
       doesNotProve: [

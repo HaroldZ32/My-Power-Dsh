@@ -1,0 +1,7 @@
+mcp__ast_grep__search matched one fixture declaration and zero for the negative control
+Expected the mounted AST tool to find one match and then zero: [{"count":1},{"count":1}]
+Expected the mounted AST tool to find one match and then zero: [{"failure":"BINARY_NOT_FOUND"},{"count":0}]
+PASS: the result gate rejected an echoed answer and a missing engine
+PASS: connected nodes count one edge, frame-only and disconnected nodes both count zero
+PASS: clean, skip, strict skip, nonzero skip and inconsistent failure marker
+exit=0

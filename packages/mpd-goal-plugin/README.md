@@ -21,19 +21,19 @@ the harness's job rather than a second human instruction.
 | `mpd_goal_anchor` | Put a persisted goal in place for a long objective. An unfinished goal already current is KEPT, never replaced. |
 | `mpd_goal_finish` | Complete (or attempt to block) the current goal and disarm continuation. |
 
-## The `mpdGoal` service (consumed by `mpd-autoproject` and `mpd-autoproject`)
+## The `mpdGoal` service (used by autoproject and boulder)
 
-`available()` / `autoAnchor()` / `status(exec)` / `anchor(exec, {objective, source, maxRounds?})` /
-`finish(exec, {outcome, source, reason?})`. Both consumers resolve it lazily with
+`available()` / `autoAnchor()` / `status(exec)` / `anchor(exec, {objective, source, maxRounds?, runId?})` /
+`finish(exec, {outcome, source, reason?, runId?, goalId?, legacyObjective?})`. Both consumers resolve it lazily with
 `ctx.get("mpdGoal")`, so a composition without this row keeps working with no durable goal.
 
 ## The auto-anchor contract
 
 | Trigger | What happens |
 |---|---|
-| `mpd_autoproject` with `tier=heavy` or `plan=true` | Anchors a goal for the run's objective; the goal id lands in the run's `state.json`. |
-| `mpd_boulder_start` (plan-bound work) | Anchors a goal named after the plan and the work id. |
-| Run ends `complete` | The goal is completed (the anchor record is dropped). |
+| `mpd_autoproject` with `tier=heavy` or `plan=true` | When it creates a goal, the goal ID lands in the run's `state.json` and the anchor records the creating run ID. An existing goal stays with its owner. |
+| `mpd_boulder_start` (plan-bound work) | Anchors a goal named after the plan and work ID. It can finish a legacy boulder goal using the original objective recorded for that work. |
+| Run ends `complete` | The owning run can complete its goal and drop the anchor by passing both IDs. |
 | Run ends `blocked` | A `blocked` transition is ATTEMPTED; the harness may refuse it before its consecutive-round threshold, and the refusal is logged, never fatal. |
 | Run ends `max-rounds` | The goal STAYS ARMED on purpose: that is the case the goal exists for — the in-turn engine stopped, the round driver carries the objective on. |
 | A goal this row did not anchor | Never completed, never blocked: ownership is recorded per session in `<workspace>/.mpd/goal/anchors.json`. |

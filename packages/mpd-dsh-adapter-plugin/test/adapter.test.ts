@@ -900,6 +900,28 @@ describe("skill + preset plane", () => {
     await expect(adapter.listSkills()).rejects.toThrow(/harness service "skills" is unavailable/)
   })
 
+  test("selectedAgentPreset reads the committed session selection and detects an older registry", () => {
+    /** The immutable creation header deliberately carries a different preset. */
+    const session = { header: Object.freeze({ agentPreset: "cordis" }) }
+    /** The committed selection is read on every call. */
+    let selection: string | null = "mpd"
+    /** The host can back the seam with its exact presetForSession method. */
+    const adapter = createDshAdapter({ get: (name: string) => name === "agentPresets" ? {
+      presetForSession: (actual: unknown): string | null => {
+        expect(actual).toBe(session)
+        return selection
+      },
+    } : undefined })
+    expect(adapter.selectedAgentPreset?.({ session })).toBe("mpd")
+    selection = "standard"
+    expect(adapter.selectedAgentPreset?.({ session })).toBe("standard")
+    selection = null
+    expect(adapter.selectedAgentPreset?.({ session })).toBeNull()
+    /** An old host still resolves named presets but lacks the session projection API. */
+    const older = createDshAdapter({ get: () => ({ resolve: () => ({ id: "mpd" }) }) })
+    expect(older.selectedAgentPreset?.({ session })).toBeUndefined()
+  })
+
   test("resolvePreset returns a normalized preset record", async () => {
     /** The full fixture's ctx. */
     const { ctx } = fakeHarness()

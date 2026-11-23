@@ -1,0 +1,67 @@
+Selected observations from the pre-edit controls and the final writer checks.
+
+$ bun test ./packages/mpd-tui-plugin/test ./packages/mpd-tui-adapter-plugin/test ./packages/mpd-bundle-plugin/test --reporter=dots
+1120 pass
+1 skip
+0 fail
+Ran 1121 tests across 49 files. [22.45s]
+Exit 0
+
+$ .toolchain/node_modules/.bin/bun test ./packages/mpd-tui-plugin/test/session-scope-and-push.test.ts -t 'active panel snapshot'
+Expected to contain: "workspace B board"
+Received board marker: no team in this session — `agent_teams_plan` binds one here
+Exit 1 before the scope fix
+
+$ bun test ./packages/mpd-tui-plugin/test/session-scope-and-push.test.ts ./packages/mpd-tui-adapter-plugin/test/adapter-hosts.test.ts -t 'active panel snapshot|kit arriving AFTER'
+The original test did not wait for settlement. The strengthened control saw only the initial undefined contact after the remembered kit arrived.
+Exit 1 before the subscription upgrade fix
+
+$ .toolchain/node_modules/.bin/bun test ./packages/mpd-tui-plugin/test ./packages/mpd-tui-adapter-plugin/test ./packages/mpd-bundle-plugin/test/watchdog-web-scope.test.ts ./packages/mpd-bundle-plugin/test/watchdog-routes-boot.test.ts ./packages/mpd-bundle-plugin/test/team-page.test.ts ./packages/mpd-bundle-plugin/test/team-view.test.ts ./packages/mpd-bundle-plugin/test/team-view-push.test.ts ./packages/mpd-bundle-plugin/test/workbench-view.test.ts ./packages/mpd-bundle-plugin/test/dshgo-panel.test.ts ./packages/mpd-bundle-plugin/test/dshgo-team-panel.test.ts ./packages/mpd-bundle-plugin/test/dshgo-panels-v2.test.ts --reporter=dots
+995 pass
+1 skip
+0 fail
+Ran 996 tests across 43 files. [22.11s]
+Exit 0
+
+$ .toolchain/node_modules/.bin/bun skills/dsh-qa/scripts/team-watchdog-notify.ts --surface both --out .qa-audit-surfaces-notify-accepted
+[team-watchdog-notify] web: rendered and clicked first incident; watermark=1789400000000 remaining=["inc-2"]
+[team-watchdog-notify] tui: replay dialog selected acknowledge; watermark=1789400000000 remaining=[1789400060000]
+[team-watchdog-notify] PASS — 22 checks, 0 failed
+Exit 0
+
+$ .toolchain/node_modules/.bin/bun skills/dsh-qa/scripts/team-watchdog-notify.ts --self-test
+[self-test] PASS — team-watchdog-notify (19 checks, 0 failed)
+Exit 0
+
+$ bun run typecheck && bun run verify:comments
+$ tsgo --noEmit
+$ node scripts/verify-comment-coverage.ts
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+Exit 0
+
+$ bun run verify:docs
+pairs=61 failed=0 violations=0 exempt=24 derived=3 links=646 dead=0 — PASS
+Exit 0
+
+$ MPD_DSHGO_KIT="$PWD/.mpd/tmp-dshgo/kit" node scripts/verify-dshgo-standard.ts --require-dshgo-kit
+[dshgo-standard] MANIFEST: PASS (0 error(s), 0 note(s))
+[dshgo-standard] VIEW: PASS (0 error(s), 0 note(s))
+[dshgo-standard] COMPAT: PASS (0 error(s), 0 note(s))
+[dshgo-standard] HOST: PASS (0 error(s), 0 note(s))
+[dshgo-standard] RESULT: LEGAL — manifest, views, compatibility, host half and the official cross-check all agree
+Exit 0. The cross-check normalized the official checker's string-only patch assumption against the bundle's valid patch array.
+
+$ node scripts/verify-dshgo-standard.ts --self-test
+[dshgo-standard] SELF-TEST PASS — 46 arms (1 clean control + 45 negative controls)
+Exit 0
+
+$ PATH="$PWD/.qa-tmp/dsh-022/bin:$PWD/.toolchain/node_modules/.bin:$PATH" MPD_DSHGO_KIT="$PWD/.mpd/tmp-dshgo/kit" bun run test:qa
+[test:qa] COMPLETE WITH SKIPS - 56 passed, 2 skipped, 0 failed (58 total)
+Exit 0
+
+$ .toolchain/node_modules/.bin/bun test --reporter=dots
+4268 pass
+6 skip
+10 fail
+Ran 4284 tests across 280 files. [50.33s]
+Exit 1. Five append supersession cases and five boulder finalization cases failed. The scoped surface run above was green.

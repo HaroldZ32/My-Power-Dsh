@@ -806,22 +806,30 @@ describe("the status identity rule and the remembered host kit", () => {
     // module), the take-over is inert, and a later scene render hands over the kit that arms it.
     /** The kit a scene render would hand over. */
     const kit = { useStdin: () => ({ internal_querier: {}, internal_eventEmitter: {} }) }
-    /** The adapter whose probe is expected to come up empty. */
-    const adapter = createTuiAdapter({}, { probeHostContact: true, hostInputLog: () => {} })
-    /** Every value the subscriber saw, in call order. */
-    const seen: unknown[] = []
-    adapter.whenHostInput((input) => seen.push(input?.useStdin()))
-    expect(seen).toEqual([])
-    // The wake is deferred by one microtask (it runs inside a scene's React render); drain it first.
-    expect(adapter.rememberHostKit(kit)).toBe(true)
-    await Promise.resolve()
-    await Promise.resolve()
-    expect(seen).toHaveLength(1)
-    expect(adapter.capabilities().hostInput.kit).toBe("remembered")
-    // ONE wake only: every scene render reports a kit, and that must not re-fire the subscriber.
-    adapter.rememberHostKit(kit)
-    await Promise.resolve()
-    expect(seen).toHaveLength(1)
+    /** The sandbox confines discovery to an installation with no host module. */
+    const sandbox = tempRoot("mpd-adapter-late-kit-")
+    try {
+      await withEnv({ [HOST_ROOT_ENV]: join(sandbox, "nothing-here"), DSH_HOME: sandbox, HOME: sandbox }, async () => {
+        /** The adapter whose probe finds no usable input hook. */
+        const adapter = createTuiAdapter({}, { probeHostContact: true, hostInputLog: () => {} })
+        /** Contacts emitted to the mounted view, in call order. */
+        const seen: unknown[] = []
+        adapter.whenHostInput((input) => seen.push(input?.useStdin()), { updates: true })
+        await waitForHostSettle(adapter)
+        expect(adapter.capabilities().hostInput.state).toBe("absent")
+        expect(seen).toEqual([undefined])
+        expect(adapter.rememberHostKit(kit)).toBe(true)
+        expect(seen).toEqual([undefined])
+        await Promise.resolve()
+        expect(seen).toEqual([undefined, kit.useStdin()])
+        expect(adapter.capabilities().hostInput.kit).toBe("remembered")
+        adapter.rememberHostKit(kit)
+        await Promise.resolve()
+        expect(seen).toHaveLength(2)
+      })
+    } finally {
+      rmSync(sandbox, { recursive: true, force: true })
+    }
   })
 })
 

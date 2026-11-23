@@ -1,0 +1,25 @@
+{
+  "task": "T8",
+  "subject": "Concurrent attribution by public workmate spawns during asynchronous Team admission",
+  "red": {
+    "log": "red.log",
+    "testsPassed": 1,
+    "testsFailed": 1,
+    "observation": "Two workspace sessions paused in admission before a reflect from a third workspace. Releasing both spawns left only the last workspace, changed uses from 1 back to 0 and restored the older lastTask. The TEAM_FIRST refusal control already passed."
+  },
+  "repair": "After admission and the abort check, reload the live instance metadata. Apply workspace attribution and update the index in the same synchronous segment, under the existing in-use protection.",
+  "green": {
+    "log": "green.log",
+    "testsPassed": 97,
+    "testsFailed": 0,
+    "typecheckExit": 0,
+    "declarationCommentsExit": 0,
+    "build": { "bun": "1.4.0", "entry": "packages/mpd-workmate-plugin/dist/index.js", "exit": 0 },
+    "assertions": [
+      "Both successful spawn associations and the intervening reflect's workspace survive with the newest first.",
+      "The intervening reflect's metadata and index use count survive.",
+      "Both successful reservations release, and a TEAM_FIRST refusal preserves metadata and index bytes and clears the in-use protection."
+    ]
+  },
+  "bound": "The test controls two sessions in one host process. It does not exercise writes by separate host processes."
+}

@@ -577,6 +577,53 @@ describe("the two fenced writes degrade to a message, never a crash", () => {
   });
 });
 
+test("the workbench keeps the latest completed poll and distinguishes a failed plan read", async () => {
+  /** Load the affected conversation factory without rewriting the shared client artifact. */
+  const client = loadMpdClient({ responses: READS }, ["@mpd-dsh/mpd"]);
+  /** Preserve the timers the hook host delegates to. */
+  const savedInterval = globalThis.setInterval;
+  /** Hold only the workbench's periodic callback for deterministic out-of-order delivery. */
+  let poll: (() => void) | undefined;
+  globalThis.setInterval = ((fn: () => void, ms?: number) => {
+    if (ms !== 3000) return savedInterval(fn, ms);
+    poll = fn;
+    return savedInterval(() => {}, 60000);
+  }) as typeof setInterval;
+  try {
+    /** The normal mounted conversation view. */
+    const entry = workbenchOf(client);
+    await client.hooks.render(entry.component, {});
+    expect(typeof poll).toBe("function");
+    /** The first state response is delayed until the next poll has finished. */
+    const older = Promise.withResolvers<Response>();
+    /** Two later responses show an empty team and a plan route that failed to answer. */
+    let stateCalls = 0;
+    globalThis.fetch = (async (url) => {
+      if (String(url) === "/plugins/mpd-team/state") {
+        stateCalls += 1;
+        return stateCalls === 1 ? older.promise : Response.json(STATE_NONE);
+      }
+      if (String(url) === "/plugins/mpd-team/plan") return Response.json({ ok: false }, { status: 503 });
+      return client.fetchImpl(url) as unknown as Response;
+    }) as typeof fetch;
+    poll?.();
+    poll?.();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    /** Assert the later response is drawn before the old one is released. */
+    const latest = textOf(await client.hooks.act(entry.component, {}));
+    expect(latest).toContain("No team in this session.");
+    expect(latest).toContain("Could not read /plugins/mpd-team/plan");
+    expect(latest).not.toContain("Nothing is staged here");
+    older.resolve(Response.json(STATE_TEAM));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(textOf(await client.hooks.act(entry.component, {}))).toBe(latest);
+  } finally {
+    client.hooks.runCleanups();
+    globalThis.setInterval = savedInterval;
+    restore(client);
+  }
+});
+
 describe("the session id comes from the slot's session kit", () => {
   test("a sessionId prop addresses every read with ?sessionId=", async () => {
     /** The client under test, canned for the session-scoped spelling. */

@@ -1,0 +1,11 @@
+0.2.2-rc.5
+89eae476e47e55cbdb4f5eedc88c007b716a4211c5a69e1c1444aeb938297832  packages/mpd-team-core-plugin/dist/index.js
+[team-idle-member-guard] ok=true -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/audit-repair/skill-tests/team-idle-member-guard-2026-11-22T16-23-04.473Z
+  install: {"ok":true,"exit":0}
+  boot: {"ok":true,"exit":0,"stubRequests":9}
+  probe: {"lead":"session-a75a81eb-81cd-40fc-89a2-13870d589657","calls":[{"label":"create","ok":true,"value":{"plan":{"version":2,"planId":"plan-20261122162313267-usc1-001","sessionId":"session-a75a81eb-81cd-40fc-89a2-13870d589657","name":"idle-guard-live","description":"P2a live QA: one task, two members","
+  sessions: {"logs":3,"ownerSessionIds":["154fcd41-a969-4489-a8b6-a28bacb98d6a"],"idleSessionIds":["38c16ae0-08d1-40ce-bdfb-53965d3e4fb5"]}
+  team: {"teamId":"team-20261122162313289-usc1-002","members":[{"id":"M1","name":"senior-engineer-1","description":"owns the one board task","status":"running","executorRef":"154fcd41-a969-4489-a8b6-a28bacb98d6a"},{"id":"M2","name":"senior-engineer-2","description":"a member with no board task","status":"in
+  isolation: {"ok":true,"checked":1,"keys":["--tmp-mpd-team-idle-member-guard-pofv7D-ws--"]}
+89eae476e47e55cbdb4f5eedc88c007b716a4211c5a69e1c1444aeb938297832  packages/mpd-team-core-plugin/dist/index.js
+real case exit=0

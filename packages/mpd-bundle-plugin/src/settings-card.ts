@@ -90,10 +90,16 @@
   const BRIDGE_RESTART_LIMIT = "the other half of that list, so nobody reads it as a blanket: hashline.*, commentChecker.*, autoproject.*, memory.*, boulder.dir and goal.* are captured by their plugins at mount instead of reading the live config service per use, so a new value for any of them waits for the next dsh boot (the settings document receives it at once, and the file does too only on a host that still serves the legacy `mpd` namespace; each row names the key it writes)"
   /** The third disclosure paragraph: what a save means when no session is live. */
   const NO_WORKSPACE_NOTICE = "if no session is live, the save stays in settings — not written to any .mpd/mpd.jsonc"
+  /** The data ownership split for the shipped card, which supplies a workspace writer. */
+  const WORKSPACE_DISCLOSURE = "Model route edits update .mpd/mpd.jsonc in the selected session's workspace. The host settings document stores the other fields."
+  /** Model saves require a live selection, while profile-wide settings still work without one. */
+  const WORKSPACE_SELECTION_NOTICE = "Select a live session to save its workspace model routes."
   // The clause that keeps a settings-only save from reading as a lost one (same sentence the TUI
   // hint and the status line carry).
   /** The not-lost clause rendered under the two disclosures. */
   const NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — and because this path writes no file, it never waits for a live session"
+  /** Profile-wide edits keep their existing persistence independently of the selected session. */
+  const WORKSPACE_GLOBAL_NOTICE = "Profile-wide settings apply across workspaces and can be saved without a live session."
 
   // ── types for the seams this factory crosses ────────────────────────────────
   /** The subset of React this card uses; the host injects the real module at boot. */
@@ -286,6 +292,8 @@
     text: string
     /** Whether the value is staged over the file/namespace value. */
     overridden?: boolean
+    /** The mounted entry value when it differs from the profile field. */
+    mountedText?: string
     /** Whether the staged text is not a valid value for this knob. */
     invalid?: boolean
   }
@@ -362,42 +370,38 @@
     notice: string
   }
 
-  /** The settings form's snapshot, as this card reads it. */
+  /** The host's entry-config form snapshot, as this card reads it. */
   interface ScopeSnapshot {
-    /** The namespace's namespaced values. */
+    /** The effective config of the mounted host entry. */
     value?: unknown
-    /** The namespace's user-set values. */
+    /** The composition inherited when a profile override is cleared. */
+    base?: unknown
+    /** The saved overrides from the active profile document. */
     user?: unknown
     /** `ready` once the form has loaded. */
     status?: string
-    /** Whether this page may write at all (false on a non-loopback page). */
+    /** Whether the host document accepts writes. */
     writable?: boolean
-    /** The storage mode (`memory` on a non-loopback page). */
-    mode?: string
     /** The revision the snapshot was read at (the mutate fence). */
     revision?: number
   }
 
-  /** The per-namespace settings form this card drives. */
+  /** The host-owned form shared by editors of one configurable entry. */
   interface SettingsScope {
     /** The form's current snapshot. */
     getSnapshot: () => ScopeSnapshot | undefined
-    /** Subscribe to form changes (a scope without one throws, which the caller catches). */
-    subscribe: (listener: () => void) => unknown
-    /** Write staged ops with the revision fence. */
-    mutate: (ops: WriteOp[], expectedRevision?: number) => unknown
-    /** Release the form (a scope without one throws, which the caller catches). */
-    dispose: () => void
+    /** Subscribe to form changes and release the listener when this card unmounts. */
+    subscribe: (listener: () => void) => () => void
+    /** Write staged ops with a revision fence and acknowledge host acceptance. */
+    mutate: (ops: readonly WriteOp[], expectedRevision?: number) => Promise<boolean>
   }
 
   /** The state the card component renders, published through its own store. */
   interface CardState {
     /** Whether the form has loaded. */
     available: boolean
-    /** Whether this page may write. */
+    /** Whether the host allows writes to the loaded form. */
     writable: boolean
-    /** The storage mode of the bound form. */
-    mode: string
     /** Whether any row is staged. */
     dirty: boolean
     /** Whether any staged draft is invalid. */
@@ -455,7 +459,9 @@
      * the read is not behind the projection. Stored and re-projected; never throws.
      */
     setLiveService: (body: unknown, notice: string) => void
-    /** Release the bound scope. */
+    /** Switch workspace context and discard drafts bound to the previous session. */
+    setWorkspaceSession: (sessionId: string | undefined) => void
+    /** Release the card's subscription to the shared form. */
     dispose: () => void
   }
 
@@ -511,6 +517,8 @@
      * webless embedder), the block degrades to the settings-document branch and says so.
      */
     fetchJson?: (url: string) => Promise<unknown>
+    /** JSON mutation transport supplied by the client entry for scoped route saves. */
+    postJson?: (url: string, body: unknown) => Promise<unknown>
   }
 
   /**
@@ -694,6 +702,13 @@
   const fieldKey = (field: FieldDescriptor): string => field.path.join(".")
   /** Walk a nested path into an untyped settings value (a missing or non-object step answers undefined). */
   const leafOf = (value: unknown, path: string[]): unknown => path.reduce<unknown>((acc, part) => (acc === null || acc === undefined ? undefined : (acc as Record<string, unknown>)[part]), value)
+
+  /** Read the editable profile layer. Older forms without a base fall back to their value. */
+  function profileValueOf(snapshot: ScopeSnapshot | undefined, path: string[]): unknown {
+    /** A stored override can be present even when its value is null or equals the base. */
+    const saved = leafOf(snapshot?.user, path)
+    return saved === undefined ? leafOf(snapshot?.base ?? snapshot?.value, path) : saved
+  }
 
   /** Whether a value is a non-null, non-array object — the only shape a route table can be. */
   const isTable = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value)
@@ -1532,7 +1547,7 @@
    * `scope.mutate(ops, revision)` — nested paths included, which `scope.set(field, …)` cannot
    * express (it writes top-level fields only).
    */
-  function createMpdCardController(scope: SettingsScope, fields: FieldDescriptor[] = FIELDS, disclosure: Disclosure = { BRIDGE_DISCLOSURE, BRIDGE_RESTART_LIMIT, NO_WORKSPACE_NOTICE }, catalogInfo: () => CatalogInfo = () => FALLBACK_CATALOG, afterSave: () => void = () => {}): CardController {
+  function createMpdCardController(scope: SettingsScope, fields: FieldDescriptor[] = FIELDS, disclosure: Disclosure = { BRIDGE_DISCLOSURE, BRIDGE_RESTART_LIMIT, NO_WORKSPACE_NOTICE }, catalogInfo: () => CatalogInfo = () => FALLBACK_CATALOG, afterSave: () => void = () => {}, saveWorkspaceRoutes?: (sessionId: string, edits: readonly WriteOp[]) => Promise<void>): CardController {
     /** Every staged edit, keyed by the row's dotted knob key. */
     const staged = new Map<string, StagedEdit>()
     // Declared BEFORE the first projection: `project()` reads all three, and a `let` below the
@@ -1549,20 +1564,17 @@
      * the settings document and says so through its `notice`).
      */
     let liveService: { body: unknown; notice: string } = { body: undefined, notice: "" }
+    /** The selected session for workspace edits and their read-back. */
+    let workspaceSession: string | undefined
     /** The card's own store, whose first projection is built from the bound scope. */
     const store = createStore(project())
 
-    /** The bound form's snapshot and the namespace sub-tree this card reads values from. */
-    function readScope(): { snapshot: ScopeSnapshot | undefined; section: unknown } {
-      /** The form's current snapshot. */
-      const snapshot = scope.getSnapshot()
-      return { snapshot, section: snapshot?.value ?? snapshot?.user }
-    }
-
     /** Project the whole card state (rows, flags, disclosures and catalog state). */
     function project(): CardState {
-      /** The form snapshot and the namespace sub-tree of this projection. */
-      const { snapshot, section } = readScope()
+      /** The profile and mounted entry values are distinct views of the same form revision. */
+      const snapshot = scope.getSnapshot()
+      /** The selected session's model field values, separate from the global form. */
+      const workspaceRoutes = workspaceSession !== undefined && isTable(liveService.body) ? liveService.body.workspaceRoutes : undefined
       /** Every row's control, keyed by the row's dotted knob key. */
       const controls: Record<string, RowControl> = {}
       /** Whether any row carries a staged edit. */
@@ -1584,12 +1596,26 @@
           dirty = true
           continue
         }
-        controls[key] = { text: format(field.kind, leafOf(section, field.path)), overridden: leafOf(snapshot?.user, field.path) !== undefined, invalid: false }
+        if (field.path[0] === AGENT_ROUTES && workspaceSession !== undefined) {
+          /** Agent and leaf below the route table. */
+          const path = field.path.slice(1)
+          controls[key] = { text: format(field.kind, leafOf(workspaceRoutes, ["values", ...path])), overridden: leafOf(workspaceRoutes, ["local", ...path]) !== undefined, invalid: false }
+        } else {
+          /** The saved profile value or the value it inherits. */
+          const text = format(field.kind, profileValueOf(snapshot, field.path))
+          /** The mounted entry can still report a different value after a profile write. */
+          const mountedText = format(field.kind, leafOf(snapshot?.value, field.path))
+          controls[key] = {
+            text,
+            overridden: leafOf(snapshot?.user, field.path) !== undefined,
+            invalid: false,
+            ...(snapshot?.value !== undefined && mountedText !== text ? { mountedText } : {}),
+          }
+        }
       }
       return {
         available: snapshot?.status === "ready",
-        writable: snapshot?.writable === true,
-        mode: snapshot?.mode ?? "memory",
+        writable: snapshot?.status === "ready" && snapshot.writable === true,
         dirty,
         invalid,
         saving,
@@ -1602,7 +1628,7 @@
         catalog: catalogInfo() ?? FALLBACK_CATALOG,
         // R3: the effective model config projected from the bound document plus the live-service
         // read — rides the SAME store, so a save or a service refresh re-projects the block.
-        effective: effectiveModelConfigOf(section, liveService),
+        effective: effectiveModelConfigOf(snapshot?.value ?? snapshot?.user, liveService),
       }
     }
 
@@ -1610,14 +1636,16 @@
     function publish(): void {
       store.set(project())
     }
+    /** The subscription owned by the card, independent of the shared form lifetime. */
+    let unsubscribe: (() => void) | undefined
     try {
-      scope.subscribe(publish)
+      unsubscribe = scope.subscribe(publish)
     } catch {
       /* a scope without subscribe still renders its first snapshot */
     }
 
-    /** Every staged edit a save would write (an unparsable draft contributes no write). */
-    function plan(): WriteOp[] {
+    /** Every staged edit a save would write against this snapshot. */
+    function plan(snapshot: ScopeSnapshot): WriteOp[] {
       /** The ops a save would send. */
       const writes: WriteOp[] = []
       for (const field of fields) {
@@ -1633,7 +1661,11 @@
         /** The staged draft's parsed value (an unparsable one contributes no write). */
         const parsed = parse(field.kind, stagedEdit.text)
         if (parsed === undefined) continue
-        if (format(field.kind, leafOf(readScope().section, field.path)) === format(field.kind, parsed)) continue
+        /** Compare a profile edit against the document the input displays. */
+        const current = field.path[0] === AGENT_ROUTES && saveWorkspaceRoutes !== undefined
+          ? leafOf(snapshot.value ?? snapshot.user, field.path)
+          : profileValueOf(snapshot, field.path)
+        if (format(field.kind, current) === format(field.kind, parsed)) continue
         writes.push({ op: "set", path: [...field.path], value: parsed })
       }
       return writes
@@ -1641,30 +1673,55 @@
 
     /** Write every staged edit through the scope's mutate, with the revision fence. */
     async function save(): Promise<void> {
+      /** The snapshot that authorizes and fences this batch. */
+      const snapshot = scope.getSnapshot()
+      if (saving || snapshot?.status !== "ready" || snapshot.writable !== true) return
       /** The ops this save would send. */
-      const writes = plan()
-      // A scope that is not writable (a non-loopback page keeps its snapshot in memory) must not
-      // even ATTEMPT a write: the card renders the reason, and the edit stays staged for the user
-      // rather than being silently dropped on the wire.
-      if (saving || writes.length === 0 || readScope().snapshot?.writable !== true) return
+      const writes = plan(snapshot)
+      if (writes.length === 0) return
+      /** Route drafts go to the workspace when the client supports it. */
+      const local = saveWorkspaceRoutes === undefined ? [] : writes.filter((op) => op.path[0] === AGENT_ROUTES)
+      /** Global settings keep the host form's revision and persistence. */
+      const global = writes.filter((op) => !local.includes(op))
+      /** Capture workspace identity before either request can yield. */
+      const session = workspaceSession
+      /** Draft instances included in this save, to keep edits staged after it began. */
+      const submitted = new Map(staged)
+      /** Remove only the unchanged drafts from a successful batch. */
+      const finish = (batch: readonly WriteOp[]): void => {
+        for (const op of batch) {
+          /** The same dotted key `stage()` indexed. */
+          const key = op.path.join(".")
+          if (staged.get(key) === submitted.get(key)) staged.delete(key)
+        }
+      }
+      /** Whether any batch was persisted before a later one failed. */
+      let changed = false
       saving = true
       failed = false
       lastError = ""
       publish()
       try {
-        // The revision fence: the scope reports the revision it read, so a concurrent change is a
-        // conflict the user can retry rather than a silent overwrite.
-        await scope.mutate(writes, scope.getSnapshot()?.revision)
-        staged.clear()
+        if (local.length > 0 && saveWorkspaceRoutes !== undefined) {
+          if (session === undefined) throw new Error("Select a live session before saving workspace model routes.")
+          await saveWorkspaceRoutes(session, local)
+          finish(local)
+          changed = true
+        }
+        if (global.length > 0) {
+          if (await scope.mutate(global, snapshot.revision) === false) {
+            throw new Error("The host refused to save the profile settings.")
+          }
+          finish(global)
+          changed = true
+        }
       } catch (error) {
         failed = true
-        lastError = String((error as { message?: unknown })?.message ?? error)
+        lastError = isTable(error) && typeof error.reason === "string" ? error.reason : String((error as { message?: unknown })?.message ?? error)
       }
       saving = false
       publish()
-      // R3: a successful save is exactly when the effective model config CHANGED, so the mount
-      // re-reads the live service here (a failed save changes nothing and skips the read).
-      if (!failed) afterSave()
+      if (changed) afterSave()
     }
 
     /** Stage one row's edit, clear the last failure and re-project. */
@@ -1707,13 +1764,19 @@
         liveService = { body, notice }
         publish()
       },
-      /** Release the bound scope. */
-      dispose: (): void => {
-        try {
-          scope.dispose()
-        } catch {
-          /* already disposed */
+      /** A route draft can only be saved to the session it was edited for. */
+      setWorkspaceSession: (sessionId: string | undefined): void => {
+        if (sessionId === workspaceSession) return
+        workspaceSession = sessionId
+        liveService = { body: undefined, notice: "" }
+        for (const key of staged.keys()) {
+          if (key.startsWith(AGENT_ROUTES + ".")) staged.delete(key)
         }
+        publish()
+      },
+      /** The settings provider owns the shared form. */
+      dispose: (): void => {
+        unsubscribe?.()
       },
     }
   }
@@ -1988,6 +2051,11 @@
           createElement("span", { style: SKIN.label }, label),
           hintNode,
           input,
+          control.mountedText === undefined ? null : createElement(
+            "span",
+            { style: SKIN.hint },
+            t("mountedValue").replace("{value}", () => control.mountedText || "—"),
+          ),
           createElement(
             "span",
             { style: SKIN.resetNote },
@@ -2097,7 +2165,7 @@
             state.disclosure?.BRIDGE_RESTART_LIMIT ?? ""),
           // The not-lost clause belongs to the same statement; it used to ride every row's hint.
           createElement("p", { style: SKIN.helpText, "data-mpd-disclosure": "not-lost" },
-            NOT_LOST),
+            state.disclosure?.BRIDGE_DISCLOSURE === WORKSPACE_DISCLOSURE ? WORKSPACE_GLOBAL_NOTICE : NOT_LOST),
           createElement("p", { style: SKIN.helpText, "data-mpd-disclosure": "workspace" },
             state.disclosure?.NO_WORKSPACE_NOTICE ?? ""),
         ),
@@ -2121,9 +2189,6 @@
           createElement("button", { type: "button", disabled: !state.dirty, onClick: () => props.discard(), style: SKIN.discard, ...BUTTON_HOVER }, t("discard")),
           createElement("span", { style: SKIN.status }, state.saving ? t("saving") : state.failed ? state.error : state.dirty ? t("unsaved") : ""),
         ),
-        state.mode === "memory"
-          ? createElement("p", { style: SKIN.note }, t("memoryMode"))
-          : null,
       )
     }
   }
@@ -2151,8 +2216,8 @@
       reset: "Reset to the file value",
       saving: "Saving…",
       unsaved: "Unsaved",
-      readOnly: "This deployment stores settings read-only (a non-loopback page never reaches the host document).",
-      memoryMode: "This page is not loopback: settings writes stay process-local and never reach the host document.",
+      readOnly: "The host settings form is unavailable or read-only.",
+      mountedValue: "The mounted host entry reports {value}.",
     }
     /** The Simplified-Chinese dictionary, extended below with one entry per field. */
     const zh: Record<string, string> = {
@@ -2167,8 +2232,8 @@
       reset: "重置为文件值",
       saving: "保存中…",
       unsaved: "未保存",
-      readOnly: "当前部署以只读方式存储设置（非回环页面无法写入宿主文档）。",
-      memoryMode: "该页面不是回环地址：设置写入仅保留在进程内，不会写入宿主文档。",
+      readOnly: "宿主设置表单不可用或处于只读状态。",
+      mountedValue: "已挂载的宿主条目报告的值为 {value}。",
     }
     for (const field of fields) {
       /** The row's dotted knob key, which is also its dictionary key. */
@@ -2281,8 +2346,11 @@
               console.warn("[mpd] settings section: this harness exposes no configForms service — the mpd section is not registered")
               return
             }
-            /** The form of this section's own configurable entry. */
+            /** The profile's root-scoped entry form, shared with other host settings editors. */
             const scope = forms.get(CONFIG_ENTRY)
+            if (scope === undefined) return
+            /** The card's diagnostic and live-model refresh subscription. */
+            let unsubscribeScope: (() => void) | undefined
             // ONE diagnostic line, and it is load-bearing: "the section renders but every input is
             // empty" has three possible causes that look identical on screen — the form lookup threw
             // (warned above), the store never fills, or it fills with a shape this card does not read.
@@ -2290,11 +2358,11 @@
             // capture, without a debugger.
             try {
               /** The form's first snapshot, printed so an empty card is diagnosable. */
-              const first = scope?.getSnapshot?.()
-              console.log("[mpd] settings section: form status=" + String(first?.status) + " value=" + (first?.value === undefined ? "absent" : "present") + " writable=" + String(first?.writable) + " mode=" + String(first?.mode))
-              if (typeof scope?.subscribe === "function") scope.subscribe(() => {
+              const first = scope.getSnapshot()
+              console.log("[mpd] settings section: form status=" + String(first?.status) + " value=" + (first?.value === undefined ? "absent" : "present") + " writable=" + String(first?.writable))
+              if (typeof scope.subscribe === "function") unsubscribeScope = scope.subscribe(() => {
                 /** The form's snapshot after the change that fired this line. */
-                const now = scope.getSnapshot?.()
+                const now = scope.getSnapshot()
                 console.log("[mpd] settings section: form updated status=" + String(now?.status) + " value=" + (now?.value === undefined ? "absent" : "present"))
                 // A settings-document change can come from ANOTHER front door (a TUI save, a hand
                 // edit), not only from this card's own save, so the live-service read is re-run on
@@ -2321,6 +2389,12 @@
              */
             /** The entry's JSON reader, when this client provides one. */
             const fetchJson = options.fetchJson
+            /** The optional client transport for workspace route mutations. */
+            const postJson = options.postJson
+            /** The session the card reads and writes, independent of catalog fallback selection. */
+            let sessionId: string | undefined
+            /** The exact route URL addressed by the selected session or the legacy read. */
+            const routePath = (session: string | undefined): string => session === undefined ? MODEL_CONFIG_PATH : `${MODEL_CONFIG_PATH}?sessionId=${encodeURIComponent(session)}`
             /** The live-service re-reader; assigned right below, once the controller it calls exists. */
             let readLiveService: () => void = (): void => {}
             /**
@@ -2330,10 +2404,22 @@
              * must not clobber a fresher projection.
              */
             let liveReadSeq = 0
-            // An absent form is the probe path above (it renders its warning); the controller's own
-            // guarded calls keep the same behaviour the untyped original had for that case.
-            /** The card's form controller, bound to the resolved scope and the save hook. */
-            const controller = createMpdCardController(scope as SettingsScope, fields, undefined, () => catalog.info(), () => { readLiveService() })
+            /** Send only route leaf edits to the session that owned the draft at save time. */
+            const saveWorkspace = postJson === undefined ? undefined : async (session: string, writes: readonly WriteOp[]): Promise<void> => {
+              /** The file writer accepts controlled fields and an omitted value for inheritance. */
+              const edits = writes.map(({ op, path, value }) => ({ agent: path[1], leaf: path[2], ...(op === "set" ? { value } : {}) }))
+              /** The model config response acknowledges the scoped save. */
+              const body = await postJson(routePath(session), edits)
+              if (!isTable(body) || body.ok !== true) {
+                throw new Error(isTable(body) && typeof body.reason === "string" ? body.reason : "Could not save the workspace's model routes.")
+              }
+            }
+            /** The card's form controller, with separate global and workspace save paths. */
+            const controller = createMpdCardController(scope, fields, saveWorkspace === undefined ? undefined : {
+              BRIDGE_DISCLOSURE: WORKSPACE_DISCLOSURE,
+              BRIDGE_RESTART_LIMIT,
+              NO_WORKSPACE_NOTICE: WORKSPACE_SELECTION_NOTICE,
+            }, () => catalog.info(), () => { readLiveService() }, saveWorkspace)
             readLiveService = (): void => {
               if (typeof fetchJson !== "function") {
                 controller.setLiveService(undefined, "this runtime provides no reader for the live config route")
@@ -2341,7 +2427,7 @@
               }
               /** This read's ticket: its answer applies only while it is still the newest read. */
               const seq = ++liveReadSeq
-              fetchJson(MODEL_CONFIG_PATH)
+              fetchJson(routePath(sessionId))
                 .then((body: unknown) => {
                   if (seq !== liveReadSeq) return
                   /** The body narrowed to the two fields the route serves. */
@@ -2351,10 +2437,26 @@
                 })
                 .catch((error: unknown) => {
                   if (seq !== liveReadSeq) return
-                  controller.setLiveService(undefined, String((error as { message?: unknown })?.message ?? error))
+                  controller.setLiveService(undefined, isTable(error) && typeof error.reason === "string" ? error.reason : String((error as { message?: unknown })?.message ?? error))
                 })
             }
-            readLiveService()
+            /** Bind model config to the selected session, even if the model catalog is unavailable. */
+            const modelSessions = ctx.inject(["sessions"], (scoped) => {
+              /** The session list supplied by this injected client scope. */
+              const sessions = readService(scoped, "sessions") as SessionsService | undefined
+              /** Switch requests only when the selected session changes. */
+              const sync = (): void => {
+                /** Use the current session only. A listed session is not a selected workspace. */
+                const next = currentSessionIdOf(sessions)
+                if (next === sessionId) return
+                sessionId = next
+                controller.setWorkspaceSession(next)
+                readLiveService()
+              }
+              sync()
+              return sessions?.list?.subscribe?.(sync)
+            })
+            if (liveReadSeq === 0) readLiveService()
             /** The catalog subscription that re-projects the card. */
             const unsubscribeCatalog = catalog.subscribe(() => {
               controller.refresh()
@@ -2373,6 +2475,9 @@
               Section,
             )
             return () => {
+              ++liveReadSeq
+              unsubscribeScope?.()
+              modelSessions?.dispose?.()
               try {
                 unregister()
               } catch {

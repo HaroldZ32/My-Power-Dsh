@@ -27,6 +27,8 @@ export interface AgentRoute {
 
 /** The shape this module needs from a request; the rest is forwarded untouched. */
 export interface RoutableRequest {
+  /** The spawning agent, whose workspace owns the configuration for this teammate. */
+  parent?: unknown
   /** The resolved child options the harness hands the provider; the three route fields live here. */
   agentOptions?: Record<string, unknown>
   /** The teammate descriptor, whose `label` is the one identity channel the team service forwards. */

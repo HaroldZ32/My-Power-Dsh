@@ -136,7 +136,7 @@ export function memberForSession(record: TeamRecord, sessionId: string): TeamMem
 export function memberHasOpenTask(record: TeamRecord, sessionId: string): boolean {
   /** The member row, when this record holds it. */
   const member = memberForSession(record, sessionId)
-  if (member === undefined) return false
+  if (member === undefined || member.status === "provisioning") return false
   return record.tasks.some((task) => OPEN_TASK_STATUSES.includes(task.status)
     && (task.owner === member.name || (member.executorRef !== undefined && task.owner === member.executorRef)))
 }

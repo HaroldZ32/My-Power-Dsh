@@ -169,7 +169,8 @@ React context 对象（`StdinContext`）。若拿到的是第二份副本，`use
   而 `hostInput()` 优先使用这份记忆中的钩子、而不是自行 import 到的那份——因为后者是另一份模块实例，在本
   宿主上 `useStdin()` 什么也不返回。`capabilities().hostInput` 会写明最终是哪一路就绪的，QA 可据此区分。
   由此带来的实际后果是一次 bootstrap：基于本接触面的接管在"本次会话渲染过任一 MPD 场景"之后就绪，在那之前
-  保持惰性（宿主原有行为，不做任何声明）。
+  保持惰性（宿主原有行为，不做任何声明）。`whenHostInput(listener, { updates: true })` 在初次探测已结束时，
+  仍会通知订阅者首次收到的 kit。释放订阅会取消后续通知。
 
 **自 0.13.0 起按版本设闸（2026-10-06）。** 该接触面只服务于**一代**宿主——没有面板接缝的 dsh-tui，那时宿主
 自带的 `dashboard` 动作是触达合并视图的唯一途径。在**提供** `tuiPanels` 的宿主上，`panelSeamBound()` 为真，

@@ -12,7 +12,9 @@
 
 **团队 Tab 走**推送**刷新，同时保留轮询。** 共享的团队视图（`src/team-view.ts`，两个侧边栏宿主渲染的同一个主体）既按自身的 `pollMs` 间隔（2000 ms）读取 `/plugins/mpd-team/{state,plan,task}`，**也**订阅 `/plugins/mpd-team/events` —— 由 `mpd-team-core-plugin` 提供的 Server-Sent-Events 路由 —— 通过**每次挂载**为当前面板所显示会话（携带与 state 读取相同的 `?sessionId=`）打开一个 `EventSource`。每一个 `data:` 帧都调用与定时器**完全相同**的 `tick`，因此推送帧与轮询帧不可能不一致。定时器保留为**回退**：没有 `EventSource` 的宿主（`node` 与 `bun` 都未定义该全局量，离线测试夹具正走这条路径）、切断流的代理，或未提供 `eventsPath` 的组合，行为与之前完全一致。面板卸载或席位会话变更时关闭该流；传输错误后的重连由 `EventSource` 自身负责（路由发送 `retry: 1000`），我们**没有**自己的重连循环。由于两个宿主渲染同一个组件、而 effect 按挂载执行，两个已挂载面板就持有两条流。
 
-**TUI 对应面。** 本客户端注册的设置卡片，与 TUI 版本渲染的 `/settings` 区块是**同一个** `mpd-config` ENTRY 文档的两半（`packages/mpd-tui-plugin/src/settings.ts`；卡片经 `configForms.get(CONFIG_ENTRY)` 挂载，`CONFIG_ENTRY = "mpd-config"` —— 旧 `mpd` 命名空间已退役）：两个前门的标签、提示与中文描述互为镜像，并有测试断言两份列表保持一致；两者也陈述同一句桥接披露——卡片上的保存由**宿主**持久化为 `mpd-config` 这个 ENTRY 文档，**不写任何工作区的 `<workspace>/.mpd/mpd.jsonc`**（该文件唯一的写入方是**已退役**的旧 `mpd` 命名空间回写，在被钉住的 harness 上处于休眠；而手工编辑该文件仍会在每次解析时被读取），且披露是**逐开关限定**的、并非笼统承诺重启与否：模型路由、团队闸门开关、`team.stateDir` 读取方与两个守卫在**运行中的进程**里生效，而 `hashline.*`、`commentChecker.*`、`autoproject.*`、`memory.*`、`boulder.dir`、`goal.*` 是 `apply()` 时捕获的、需等下一次 `dsh` 启动 —— 而 `watchdog.*` **两边都不属于**：看门狗那一行读的是 `settingsReader("mpd")`（在此被拒绝）并**自己**解析 `<workspace>/.mpd/mpd.jsonc`，因此手工编辑该文件即时生效，而表单保存永远到不了这些旋钮（逐开关的权威是 `docs/user-guide.md` §9.1；`settings-schema.ts` 与 `settings-card.ts` 里是同一份声明）。浏览器只通过公开的 settings 接缝抵达该桥；**持久化属于宿主**，ENTRY 文档的重新读取属于 `packages/mpd-config-plugin`（旧的回写也在那里，处于休眠）。改动任一半后请重建合并客户端（`node scripts/build-mpd-client.ts`）。
+**设置保存。** Web 卡片和 TUI 的 `/settings` 使用相同的字段标签和提示。TUI 表单与 Web 卡片的通用设置写入宿主的 `mpd-config` 条目文档。宿主允许写入时，即使未选中会话，也可以在 Web 端保存配置档案设置。这些设置应用到所有工作区。Web 字段显示配置档案中已保存的值或继承的值。如果已挂载的宿主条目报告了不同的值，卡片会在对应字段旁显示该值。Web 卡片通过 `/plugins/mpd/model-config?sessionId=…` 读取和编辑模型路由。宿主验证指定会话的请求，并查找选中的活动会话所属的工作区。保存只修改该工作区 `.mpd/mpd.jsonc` 中选中的路由字段。无法识别会话时会显示错误，多个工作区同时活动且读取请求未指定会话时也会显示错误。如果配置档案中的全局覆盖会遮蔽新值，卡片会报告冲突。
+
+下一次模型查询或启动子会话时会读取新路由。插件在挂载时读取的设置会在下次 `dsh` 启动时生效。看门狗从项目文件和其配置行读取设置。各字段的生效时机见[用户指南](../../docs/user-guide.zh-CN.md) §9.1。更改客户端源代码后，请用 `node scripts/build-mpd-client.ts` 重建合并客户端。
 
 **Web 卡片的逐 agent 路由行。** 卡片镜像 `packages/mpd-config-plugin` 中**唯一**的 knob 声明（原有 13 个 knob、每个名册 agent 一行三片叶子 —— `agentRoutes.<Agent>.{provider,model,reasoningEffort}` —— 再加 TUI 界面自身的一个 knob），并把每个 agent 的行渲染为**联动的、只可选择**的选择器：模型控件的选项是目录中的 provider/model 组合（provider 作为分组显示），推理强度控件的选项是**所选模型自身**的 effort，并在模型变化时重新推导。目录通过**受保护的探针** `ctx.get("sessions")` + `ctx.get("modelDirectories")` 获取 —— 沿用 `team-page.ts` 的既有模式，绝不新增必需注入 —— 当探针缺失、没有绑定会话，或 `directoryFor` 抛错时，卡片回退到**声明**的选项列表，区块照常渲染。任何一片叶子都不能只靠输入来设置。「当前生效」块会显示每个 agent 的**状态**：工作区未配置时渲染 `<unconfigured>`（并列出仍缺的叶子）——
 不再有任何默认层去凭空造一条路由——而**无效（invalid）**条目（叶子存在但格式不对，例如不是字符串，
@@ -20,7 +22,7 @@
 点出有问题的那个叶子（`agentRoutes.<Agent>.leaf is not a string`，或 `agentRoutes.<Agent> is not an object`），
 `missing` 判定会先 **trim** 每个叶子，因此只有空白的叶子算**缺失**而不是"已配置"——格式错误的条目绝不能
 读成未配置。遗留的 `teamModels` 块永不渲染：不存在持久化的槽位，四个分组只是 `/mpd-model` 的
-批量编辑快捷方式，旧文件里残留的块会被忽略且永不改写。浏览器模块无法 import TS 声明，因此卡片镜像它，并由测试逐项固定声明元数据（path、label、zh、kind、声明选项、人类语句）。每一行**以所属分组标题和自身的人类语句开头**，每个 agent 的三片叶子上方有一行分组标题与一句影响说明。两个前门经**同一个**助手写出点号形式的 `mpd.jsonc` key —— 提示是 `<人类语句> (mpd.jsonc <key>)`，没有人类语句的开关只保留这个指针（TUI 用 `knobHint`，卡片用 `hintOf`）—— 而桥接披露与「不会丢失」条款只在**每个区块**陈述一次，绝不逐行：TUI 把 `SECTION_NOTICE` 放进区块自己的描述，卡片则在顶部渲染它那一个披露块（`data-mpd-disclosure`）。**两半都会被渲染，而不只是好看的那一半**：即时生效的一半（保存在运行进程里就改变其行为的开关）**和**挂载捕获的例外（需等下一次 `dsh` 启动的开关）—— 卡片的披露块携带限定后的表述，它在 `settings-card.ts` 里的副本与 TUI 的保持逐字节相同，因此无论读哪个前门，读者都会知道**生效是逐开关的**（`docs/user-guide.md` §9.1）。
+批量编辑快捷方式，旧文件里残留的块会被忽略且永不改写。浏览器模块无法 import TS 声明，因此卡片镜像它，并由测试逐项固定声明元数据（path、label、zh、kind、声明选项、人类语句）。每一行**以所属分组标题和自身的人类语句开头**，每个 agent 的三片叶子上方有一行分组标题与一句影响说明。TUI 与 Web 的提示都使用 `<说明> (mpd.jsonc <key>)`，没有说明的字段只显示键。每个设置区块都说明其字段保存在哪里以及哪些字段需要重启。Web 卡片在顶部集中显示一次（`data-mpd-disclosure`）。
 
 ## 嵌套分组：子单元画成帧框
 

@@ -1,0 +1,29 @@
+{
+  "baseRevision": "e86764c0e09b",
+  "branch": "fix/team-and-audit-recovery",
+  "scope": ["mpd-hashline-plugin", "mpd-bootstrap-plugin", "mpd-memory-plugin"],
+  "toolchain": { "bun": "1.4.0", "node": "24.21.0", "git": "2.53.0", "svn": "1.14.5" },
+  "red": {
+    "command": ".toolchain/node_modules/.bin/bun test ./packages/mpd-hashline-plugin/test/tool-schema.test.ts ./packages/mpd-bootstrap-plugin/test/bootstrap.test.ts ./packages/mpd-memory-plugin/test/backend-recovery.test.ts -t 'overlapping a range|archives edited|reports Git failure|reflection stays due'",
+    "exit": 1,
+    "failed": 5,
+    "observations": ["The editor wrote A/X/F and lost E.", "Legacy migration removed the active files without creating a recoverable backup.", "Both ordinary writes returned committedTo=[git] after Git failed.", "Reflection completion returned completed=true after Git failed."]
+  },
+  "green": {
+    "command": ".toolchain/node_modules/.bin/bun test ./packages/mpd-hashline-plugin ./packages/mpd-bootstrap-plugin ./packages/mpd-memory-plugin",
+    "exit": 0,
+    "passed": 67,
+    "skipped": 0,
+    "failed": 0,
+    "assertions": 554,
+    "files": 10,
+    "observations": ["Both input orders reject the overlapping hashline batch before writing. A disjoint batch still edits the file.", "Stamped skill and preset recovery paths contain the edited bytes and extra files after a retry. Clean and unstamped homes retain their layout.", "Git stage and commit failures appear in the structured and rendered receipts while plaintext survives.", "Reflection keeps its claim open across a failed backend and a failed journal write. Recovery and replay preserve one file, one commit, one journal record and one counter advance.", "A simulated SVN staging failure leaves a partial Git receipt. After remount, retry resumes the same entry without revisiting Git.", "The actual SVN-only and Git-plus-SVN success paths passed with Subversion extracted to a temporary directory before the test run."]
+  },
+  "additionalChecks": [
+    { "command": ".toolchain/node_modules/.bin/bun run verify:docs", "exit": 0, "observation": "61 pairs passed; no dead links." },
+    { "command": "git diff --check -- packages/mpd-hashline-plugin packages/mpd-bootstrap-plugin packages/mpd-memory-plugin", "exit": 0 },
+    { "command": ".toolchain/node_modules/.bin/bun run typecheck", "exit": 1, "observation": "Latest concurrent-checkout run reported only roles and team-core diagnostics, outside this lane." },
+    { "command": "node scripts/verify-comment-coverage.ts", "exit": 1, "observation": "Latest concurrent-checkout run reported 27 violations in seven files outside this lane." }
+  ],
+  "limits": ["The registered tool handlers and Cordis bootstrap apply were exercised through local test hosts. The full harness boot, dist rebuild, full gated suite and independent verdict are integrated centrally.", "Backend failures and interrupted migration/settlement were injected in throwaway fixtures. Power-loss and multiprocess fault testing were outside this run."]
+}

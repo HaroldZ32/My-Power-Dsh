@@ -1656,7 +1656,7 @@ function createDshAdapter(ctx, config = {}) {
     } catch {}
   };
   bindDshGoBridge();
-  const configAgentRouteResolver = () => {
+  const configAgentRouteResolver = (workspace) => {
     const config2 = service("mpdConfig");
     if (config2 === undefined || config2 === null)
       return;
@@ -1664,7 +1664,7 @@ function createDshAdapter(ctx, config = {}) {
       return;
     return (member) => {
       try {
-        const answer = config2.agentRouteResolutionOf.call(config2, member);
+        const answer = config2.agentRouteResolutionOf.call(config2, member, workspace);
         return answer !== null && typeof answer === "object" && typeof answer.ok === "boolean" ? answer : undefined;
       } catch {
         return;
@@ -2018,7 +2018,7 @@ function createDshAdapter(ctx, config = {}) {
         const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
         let agentOptions = request.agentOptions;
         if (agentOptions === undefined) {
-          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver());
+          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver(workspaceRootOfAgent(caller)));
           if (outcome.status === "routed") {
             const resolved = await resolveRunRoute({ llmCatalog }, outcome.route, outcome.fallbacks);
             agentOptions = resolved.route;
@@ -2034,8 +2034,13 @@ function createDshAdapter(ctx, config = {}) {
           ...agentOptions === undefined ? {} : { agentOptions },
           ...request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }
         };
+        const provider = typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn";
+        const childId = request.onOpening !== undefined && provider === "spawn" && typeof subagents.startActivation === "function" && typeof subagents.prompt === "function" ? randomUUID() : undefined;
+        if (childId !== undefined)
+          request.onOpening?.(childId);
         const spec = dualShapeActivationSpec({
-          provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
+          provider,
+          ...childId === undefined ? {} : { childId },
           label: `${request.name} · ${request.teamId}`,
           signal: request.signal ?? neverAborted()
         }, activationRequest);
@@ -2961,6 +2966,20 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the harness skills service exposes no get()");
       return skills.get(skillName, options);
     },
+    selectedAgentPreset(agent) {
+      const session = agent?.session;
+      if (session === undefined || session === null)
+        return;
+      try {
+        const presets = service("agentPresets");
+        if (typeof presets?.presetForSession !== "function")
+          return;
+        const selected = presets.presetForSession(session);
+        return selected === null || typeof selected === "string" && selected.length > 0 ? selected : undefined;
+      } catch {
+        return;
+      }
+    },
     async resolvePreset(presetId) {
       const presets = requireService("agentPresets", 'cannot resolve preset "' + presetId + '"');
       if (typeof presets.resolve !== "function")
@@ -3755,6 +3774,8 @@ function evaluateComplexityGate(text2, input = {}) {
     signals.push("E");
   if (thresholds.workspaceScale && input.workspaceScale === true)
     signals.push("F");
+  if (input.repairFollowUp === true)
+    signals.push("whole-scope repair follow-up");
   const strength = admissionOf(input.source ?? "human", source, { explicitFlag: input.explicitFlag === true, matchedSignals: signals.length });
   return {
     trigger: strength !== "ignore" && (input.explicitFlag === true || signals.length >= 1),
@@ -3843,12 +3864,13 @@ function gatePlanShell(input) {
   const firstLine = collapseWhitespace(goal.split(/\r?\n/u)[0] ?? "");
   const excerpt = collapseWhitespace(goal).slice(0, GATE_PLAN_EXCERPT_MAX);
   const matched = input.signals.length === 0 ? "complexity signals" : "complexity signals " + input.signals.join("/");
-  const lead = input.reteam === undefined ? "Staged mechanically by the mpd session-start complexity gate on " + matched + "." : "Staged mechanically by the mpd re-team gate: " + String(input.reteam.count) + " completed consult calls since the last team fire" + " (threshold " + String(input.reteam.threshold) + ") and no live team.";
-  const name = input.reteam === undefined ? firstLine === "" ? GATE_PLAN_NAME_FALLBACK : firstLine.slice(0, GATE_PLAN_NAME_MAX) : RETEAM_PLAN_NAME.slice(0, GATE_PLAN_NAME_MAX);
+  const lead = input.overlappingConsults !== undefined ? `Staged mechanically with ${input.overlappingConsults} outstanding consults and no live team.` : input.reteam === undefined ? "Staged mechanically by the mpd session-start complexity gate on " + matched + "." : "Staged mechanically by the mpd re-team gate: " + String(input.reteam.count) + " completed consult calls since the last team fire" + " (threshold " + String(input.reteam.threshold) + ") and no live team.";
+  const name = input.reteam !== undefined || input.overlappingConsults !== undefined ? RETEAM_PLAN_NAME.slice(0, GATE_PLAN_NAME_MAX) : firstLine === "" ? GATE_PLAN_NAME_FALLBACK : firstLine.slice(0, GATE_PLAN_NAME_MAX);
   return {
     name,
     description: lead + `
-This is a SHELL: 0 members and 0 tasks, because at the first pre-step there is no decomposition yet.` + (input.reteam === undefined ? `
+This is a SHELL: 0 members and 0 tasks.` + (input.overlappingConsults !== undefined ? `
+Set the team's objective from the current human request before adding members and tasks.` : input.reteam === undefined ? `
 Goal excerpt: ` + (excerpt === "" ? "(empty)" : excerpt) : `
 No user turn was judged: the re-team trigger counts COMPLETED consults, not prompt text.`) + "\nExtend it with `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[0] + "\"}` (each member's prompt comes from `mpd_role_persona`)" + " and `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[1] + '"}`,' + " then approve it with `" + STAGING_TOOL_NAME + ' {action:"approve"}` — approval is what spawns the members.' + `
 ` + INERT_PLAN_PHRASE + "." + (input.planPath === undefined ? "" : `
@@ -3859,6 +3881,9 @@ Active plan artifact (signal D): ` + input.planPath),
 
 // packages/mpd-autoproject-plugin/src/boulder/index.ts
 var ROW_LOG = "mpd-autoproject";
+function boulderObjective(planPath, workId) {
+  return "Execute the plan " + planPath + " to completion (boulder work " + workId + ") with evidence.";
+}
 function mergedConfig(ctx, config) {
   const svc = ctx.get?.("mpdConfig");
   if (!svc?.get)
@@ -3884,8 +3909,8 @@ function applyBoulder(ctx, config = {}) {
       const bridge = goalBridge();
       if (bridge === undefined || bridge.autoAnchor?.() !== true)
         return null;
-      const outcome = await bridge.anchor(exec, { objective: "Execute the plan " + planPath + " to completion (boulder work " + workId + ") with evidence.", source: "boulder" });
-      if (outcome?.goal != null && typeof outcome.goal.id === "string")
+      const outcome = await bridge.anchor(exec, { objective: boulderObjective(planPath, workId), source: "boulder", runId: workId });
+      if (outcome?.ok === true && outcome.created === true && typeof outcome.goal?.id === "string")
         return outcome.goal.id;
       if (outcome?.ok === false)
         dsh.rowLog(ROW_LOG, "goal anchor refused: " + String(outcome.error ?? "unknown"));
@@ -3895,12 +3920,15 @@ function applyBoulder(ctx, config = {}) {
       return null;
     }
   }
-  async function finishGoal(exec) {
-    const bridge = goalBridge();
-    if (bridge === undefined)
-      return;
+  async function finishGoal(exec, workId, planPath) {
     try {
-      const outcome = await bridge.finish(exec, { outcome: "complete", source: "boulder" });
+      const bridge = goalBridge();
+      if (bridge === undefined)
+        return;
+      const goal = await bridge.status?.(exec);
+      if (goal == null)
+        return;
+      const outcome = await bridge.finish(exec, { outcome: "complete", source: "boulder", runId: workId, goalId: goal.id, legacyObjective: boulderObjective(planPath, workId) });
       if (outcome?.ok === false && String(outcome.error ?? "").includes("not the one mpd-goal anchored") === false) {
         dsh.rowLog(ROW_LOG, "goal finish refused: " + String(outcome.error ?? "unknown"));
       }
@@ -3969,13 +3997,18 @@ plan: ` + JSON.stringify(v.planProgress) : "")), presentationMeta: BOULDER_STATU
     output: { schema: { type: "object", properties: { workId: { type: "string" }, status: { type: "string" }, elapsedMs: { type: "integer" } }, required: ["workId", "status"] }, render: (_a, v) => textBlock("boulder completed: " + v.workId + " status=" + v.status + " elapsedMs=" + v.elapsedMs) },
     execute: async (args, exec) => {
       const dir = root(exec);
-      const state = completeBoulder(dir, args?.workId);
-      if (!state)
+      const workId = args?.workId ?? readBoulderState(dir)?.active_work_id;
+      if (workId === undefined)
         throw new Error("mpd-boulder: no work to complete (start one first with mpd_boulder_start)");
-      const workId = args?.workId ?? state.active_work_id ?? "?";
+      const state = completeBoulder(dir, workId);
       const work = getWorkById(dir, workId);
-      await finishGoal(exec);
-      return { workId, status: work?.status ?? "completed", elapsedMs: work?.elapsed_ms ?? 0 };
+      if (state === null && work === null)
+        throw new Error("mpd-boulder: no readable work " + workId + " in " + join6(dir, ".mpd", "boulder.json"));
+      if (state === null || work?.status !== "completed") {
+        throw new Error("mpd-boulder: could not persist or confirm completion for " + workId + " in " + join6(dir, ".mpd", "boulder.json"));
+      }
+      await finishGoal(exec, workId, work.active_plan);
+      return { workId, status: work.status, elapsedMs: work.elapsed_ms ?? 0 };
     }
   });
   dsh.registerTool({
@@ -4058,8 +4091,8 @@ var AUTOPROJECT_ACTIVATION_DIRECTIVE = [
 `);
 
 // packages/mpd-autoproject-plugin/src/engine.ts
-import { appendFileSync, existsSync as existsSync6, mkdirSync as mkdirSync3, readdirSync as readdirSync2, readFileSync as readFileSync3, statSync as statSync3, writeFileSync as writeFileSync2 } from "node:fs";
-import { join as join7, relative as relative3 } from "node:path";
+import { appendFileSync, existsSync as existsSync6, mkdirSync as mkdirSync3, readdirSync as readdirSync2, readFileSync as readFileSync3, renameSync as renameSync2, statSync as statSync3, unlinkSync as unlinkSync2, writeFileSync as writeFileSync2 } from "node:fs";
+import { dirname as dirname2, join as join7, relative as relative3, resolve as resolve5 } from "node:path";
 import { randomUUID as randomUUID2 } from "node:crypto";
 
 // packages/mpd-autoproject-plugin/src/escalation.ts
@@ -4231,6 +4264,23 @@ function stateRoot(config, dsh, exec) {
 function writeJson(path, value) {
   writeFileSync2(path, JSON.stringify(value, null, 2));
 }
+function writeEscalation(path, value) {
+  mkdirSync3(dirname2(path), { recursive: true });
+  const scratch = path + "." + randomUUID2() + ".tmp";
+  try {
+    writeJson(scratch, value);
+    renameSync2(scratch, path);
+  } catch (error) {
+    try {
+      unlinkSync2(scratch);
+    } catch (cleanup) {
+      if (!(cleanup instanceof Error && ("code" in cleanup) && cleanup.code === "ENOENT")) {
+        throw new AggregateError([error, cleanup], "could not write or clean up the escalation artifact at " + path);
+      }
+    }
+    throw error;
+  }
+}
 function errorTextOf2(error) {
   if (typeof error === "string")
     return error;
@@ -4261,13 +4311,13 @@ function isRouteUnconfigured(text2) {
 function goalBridgeOf(ctx) {
   return ctx.get?.("mpdGoal");
 }
-async function anchorGoal(deps, exec, objective) {
+async function anchorGoal(deps, exec, objective, runId) {
   try {
     const bridge = goalBridgeOf(deps.ctx);
     if (bridge === undefined || bridge.autoAnchor?.() !== true)
       return null;
-    const outcome = await bridge.anchor(exec, { objective, source: "autoproject" });
-    if (outcome?.goal != null && typeof outcome.goal.id === "string")
+    const outcome = await bridge.anchor(exec, { objective, source: "autoproject", runId });
+    if (outcome?.ok === true && outcome.created === true && typeof outcome.goal?.id === "string" && outcome.goal.id !== "")
       return outcome.goal.id;
     if (outcome?.ok === false)
       deps.dsh.rowLog?.(ROW_LOG2, "goal anchor refused: " + String(outcome.error ?? "unknown"));
@@ -4277,14 +4327,14 @@ async function anchorGoal(deps, exec, objective) {
     return null;
   }
 }
-async function finishGoal(deps, exec, status, reason) {
-  if (status !== "complete" && status !== "blocked")
+async function finishGoal(deps, exec, run, status, reason) {
+  if (run.goalId === undefined || status !== "complete" && status !== "blocked")
     return;
   const bridge = goalBridgeOf(deps.ctx);
   if (bridge === undefined)
     return;
   try {
-    const outcome = await bridge.finish(exec, { outcome: status === "blocked" ? "blocked" : "complete", source: "autoproject", ...status === "blocked" ? { reason } : {} });
+    const outcome = await bridge.finish(exec, { outcome: status, source: "autoproject", runId: run.id, goalId: run.goalId, ...status === "blocked" ? { reason } : {} });
     if (outcome?.ok === false)
       deps.dsh.rowLog?.(ROW_LOG2, "goal finish (" + status + ") refused: " + String(outcome.error ?? "unknown"));
   } catch (error) {
@@ -4310,9 +4360,21 @@ async function boulderTimer(dsh, exec, workId, taskKey, action, label) {
     dsh.rowLog?.(ROW_LOG2, "boulder timer " + action + " degraded for " + taskKey + ": " + errorTextOf2(result?.error ?? "the call did not report ok"));
 }
 async function boulderComplete(dsh, exec, workId) {
-  const result = await dsh.executeTool({ name: BOULDER_COMPLETE_TOOL, arguments: { workId }, agent: exec?.agent });
-  if (result?.ok !== true || result.isError === true)
-    dsh.rowLog?.(ROW_LOG2, "boulder complete degraded: " + errorTextOf2(result?.error ?? "the call did not report ok"));
+  try {
+    const result = await dsh.executeTool({ name: BOULDER_COMPLETE_TOOL, arguments: { workId }, agent: exec?.agent });
+    if (result?.ok !== true || result.isError === true)
+      return errorTextOf2(result?.error ?? "the completion call failed");
+    const value = result.value;
+    if (typeof value === "object" && value !== null) {
+      if ("ok" in value && value.ok === false)
+        return errorTextOf2("error" in value ? value.error ?? "the Boulder tool refused completion" : "the Boulder tool refused completion");
+      if ("workId" in value && value.workId === workId && "status" in value && value.status === "completed")
+        return null;
+    }
+    return "the Boulder tool did not acknowledge this work as completed";
+  } catch (error) {
+    return errorTextOf2(error);
+  }
 }
 function verifyPassRecorded(workspace, loopId) {
   const dir = join7(workspace, ".mpd", "verify", "records");
@@ -4414,8 +4476,8 @@ async function runAutoproject(args, exec, deps) {
       }
       return;
     }
-    await new Promise((resolve5) => {
-      slotWaiters.push(resolve5);
+    await new Promise((resolve6) => {
+      slotWaiters.push(resolve6);
     });
     slotsHeld += 1;
     if (slotsHeld > slotsPeak) {
@@ -4470,8 +4532,8 @@ async function runAutoproject(args, exec, deps) {
     const child = consultOnce(role, task, context, signal);
     try {
       for (;; ) {
-        const expired = new Promise((resolve5) => {
-          timer = setTimeout(() => resolve5("timeout"), slotBoundMs);
+        const expired = new Promise((resolve6) => {
+          timer = setTimeout(() => resolve6("timeout"), slotBoundMs);
         });
         const raced = await Promise.race([child, expired]);
         if (raced !== "timeout")
@@ -4505,7 +4567,9 @@ async function runAutoproject(args, exec, deps) {
     }
   }
   async function consultOnce(role, task, context, signal) {
-    const result = await dsh.executeTool({ name: ROLE_SPAWN_TOOL, arguments: { role, task, ...context === undefined || context === "" ? {} : { context } }, agent: exec?.agent, signal });
+    const dispatch = () => dsh.executeTool({ name: ROLE_SPAWN_TOOL, arguments: { role, task, ...context === undefined || context === "" ? {} : { context } }, agent: exec?.agent, signal });
+    const consults = ctx.get?.("mpdConsults", false);
+    const result = await (typeof consults?.runBounded === "function" ? consults.runBounded(dispatch) : dispatch());
     if (result?.ok !== true || result.isError === true) {
       const text2 = errorTextOf2(result?.error ?? "the role-spawn call did not report ok");
       stamp(isRouteUnconfigured(text2) ? "route-unconfigured:" + role : "child-degraded:" + role, "skipped", text2);
@@ -4595,14 +4659,10 @@ async function runAutoproject(args, exec, deps) {
     if (escalation.mode === "off")
       return false;
     escalated = true;
-    let handoff = "instruction";
-    if (escalation.mode === "auto" && dsh.hasTool(CELLWORK_OPEN_TOOL, exec?.agent)) {
-      const opened = await dsh.executeTool({ name: CELLWORK_OPEN_TOOL, arguments: { objective, mandate: { source: "autoproject", runId: id, planFile }, planFile, scope }, agent: exec?.agent });
-      if (opened?.ok === true && opened.isError !== true)
-        handoff = CELLWORK_OPEN_TOOL;
-      else
-        dsh.rowLog?.(ROW_LOG2, "cellwork hand-off degraded: " + errorTextOf2(opened?.error ?? "the call did not report ok"));
-    }
+    const openArgs = { objective, mandate: id };
+    const mandateFile = join7(workspace, ".mpd", "autoproject", id, "escalation.json");
+    const mirror = resolve5(mandateFile) !== resolve5(escalationFile);
+    const instruction = { path: "instruction", arguments: openArgs };
     const artifact = {
       version: 1,
       at: new Date().toISOString(),
@@ -4617,18 +4677,55 @@ async function runAutoproject(args, exec, deps) {
       writer: { id: roundRole + " · " + id, role: roundRole, runId: id, bound: "label-not-agent-key" },
       roundsUsed: used,
       mandate: { source: "autoproject", runId: id, planFile },
-      handoff: { path: handoff }
+      handoff: instruction
     };
+    writeEscalation(escalationFile, artifact);
     state.status = "escalated";
     writeJson(stateFile, state);
-    writeJson(escalationFile, artifact);
-    stamp("handoff", handoff, handoff === CELLWORK_OPEN_TOOL ? "cellwork opened" : "run `/cellwork " + objective + "`");
+    let authorized = !mirror;
+    let error;
+    let opened;
+    const mounted = dsh.hasTool(CELLWORK_OPEN_TOOL, exec?.agent);
+    try {
+      if (mirror) {
+        writeEscalation(mandateFile, artifact);
+        authorized = true;
+      }
+      if (escalation.mode === "auto" && mounted) {
+        const reply = await dsh.executeTool({ name: CELLWORK_OPEN_TOOL, arguments: openArgs, agent: exec?.agent });
+        const value = reply?.value;
+        if (reply?.ok === true && reply.isError !== true && value?.ok === true && typeof value.cellId === "string" && value.cellId.trim() !== "") {
+          opened = { cellId: value.cellId, ...value.injected !== true && typeof value.directive === "string" ? { directive: value.directive } : {} };
+        } else {
+          error = errorTextOf2(reply?.error ?? value?.error ?? "cellwork_open did not confirm a cell id");
+        }
+      }
+    } catch (failure) {
+      error = failure instanceof Error ? failure.message : errorTextOf2(failure);
+    }
+    if (error !== undefined)
+      dsh.rowLog?.(ROW_LOG2, "cellwork hand-off degraded: " + error);
+    const retry = mounted ? "call `cellwork_open " + JSON.stringify(openArgs) + "` to continue" + (authorized ? "" : " after restoring " + mandateFile) : "run `/cellwork " + objective + "` to continue the project there";
+    const handoff = opened === undefined ? { ...instruction, ...error === undefined ? {} : { error } } : { ...instruction, path: CELLWORK_OPEN_TOOL, cellId: opened.cellId };
+    if (opened !== undefined || error !== undefined) {
+      try {
+        writeEscalation(escalationFile, { ...artifact, handoff });
+        if (mirror && authorized)
+          writeEscalation(mandateFile, { ...artifact, handoff });
+      } catch (failure) {
+        const detail = failure instanceof Error ? failure.message : errorTextOf2(failure);
+        stamp("handoff-receipt", "degraded", detail);
+        dsh.rowLog?.(ROW_LOG2, "cellwork hand-off receipt could not be persisted: " + detail);
+      }
+    }
+    stamp("handoff", handoff.path, opened === undefined ? retry : "cellwork opened " + opened.cellId);
     finalReport += (finalReport === "" ? "" : `
-`) + "escalated [" + fired.map((signal) => signal.id).join("/") + "] mode=" + escalation.mode + ": " + (handoff === CELLWORK_OPEN_TOOL ? "handed off to cellwork" : "run `/cellwork " + objective + "` to continue the project there");
+`) + "escalated [" + fired.map((signal) => signal.id).join("/") + "] mode=" + escalation.mode + ": " + (opened === undefined ? (error === undefined ? "" : error + "; ") + retry : "handed off to cellwork " + opened.cellId + (opened.directive === undefined ? "" : `
+` + opened.directive));
     return true;
   }
   if (plan) {
-    const goalId = await anchorGoal(deps, exec, objective);
+    const goalId = await anchorGoal(deps, exec, objective, id);
     if (goalId !== null) {
       state.goalId = goalId;
       writeJson(stateFile, state);
@@ -4860,13 +4957,20 @@ verify: ` + refusal + " — no PASS record exists for " + verifyLoopId + ", so t
 quality gate: a lane FAILED`;
     }
   }
-  if (boulderWorkId !== null && status === "complete")
-    await boulderComplete(dsh, exec, boulderWorkId);
   if (killed.length > 0) {
     finalReport += `
 slots: ` + String(killed.length) + " child(ren) killed at the " + String(slotBoundMs) + " ms bound (" + killed.map((kill) => kill.role + "@" + String(kill.elapsedMs) + "ms round " + String(kill.round)).join(", ") + ")";
     if (status !== "escalated")
       status = "blocked";
+  }
+  if (boulderWorkId !== null && status === "complete") {
+    const completionError = await boulderComplete(dsh, exec, boulderWorkId);
+    if (completionError !== null) {
+      status = "boulder-pending";
+      stamp("boulder-completion", "pending", completionError);
+      finalReport += `
+Boulder completion for ` + boulderWorkId + " could not be confirmed. " + completionError + " Resolve the error and retry the ledger with `mpd_boulder_complete {workId:" + JSON.stringify(boulderWorkId) + "}`.";
+    }
   }
   state.status = status;
   state.verdict = verdict;
@@ -4874,7 +4978,7 @@ slots: ` + String(killed.length) + " child(ren) killed at the " + String(slotBou
   writeJson(stateFile, state);
   if (finalReport === "")
     finalReport = status;
-  await finishGoal(deps, exec, status, finalReport.trim().slice(-400));
+  await finishGoal(deps, exec, state, status, finalReport.trim().slice(-400));
   return { status, rounds: used, ...planFile === null ? {} : { planFile }, verdict, ledger: gateLedger, finalReport, stateFile };
 }
 function allClean(criteria) {

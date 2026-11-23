@@ -15,7 +15,8 @@
 //     on the roster that no later call could reach;
 //   * when NEITHER backend serves, every call refuses with a sentence instead of a TypeError.
 import { afterEach, describe, expect, test } from "bun:test"
-import { existsSync, mkdtempSync, readFileSync } from "node:fs"
+import { spawnSync } from "node:child_process"
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -42,7 +43,7 @@ interface DoubleOptions {
   /** The handle an official spawn answers with; `""` models the same contradiction there. */
   memberId?: string
   /** The `mpdConfig` service double the spawn resolves the agent's route through, when one exists. */
-  config?: { agentRouteResolutionOf?: (member: string) => unknown }
+  config?: { agentRouteResolutionOf?: (member: string, workspace: string) => unknown }
   /** How many times the activation double's `dispose()` was called — the slot-release witness. */
   disposals?: { count: number }
   /** Which OFFICIAL executor seams exist; the default is the full quartet. The task board always does. */
@@ -65,6 +66,10 @@ interface Harness {
 
 /** The env override key this seam reads. */
 const OVERRIDE = "MPD_DSH_TEAM_EXECUTOR"
+/** Select the isolated process that has not already emitted the process-wide fallback warning. */
+const WARNING_PROBE = "MPD_TEST_TEAM_EXECUTOR_WARNING"
+/** The exact arm the isolated Bun process runs. */
+const FALLBACK_TEST = "a TASK-BOARD-ONLY official service is not servable: NATIVE is chosen and ONE line says why"
 
 /**
  * Build the harness: a real adapter against two recording doubles.
@@ -268,7 +273,16 @@ describe("which backend is chosen", () => {
     expect(h.capabilities.teamExecutorOfficial).toBe(true)
   })
 
-  test("a TASK-BOARD-ONLY official service is not servable: NATIVE is chosen and ONE line says why", () => {
+  test(FALLBACK_TEST, () => {
+    if (process.env[WARNING_PROBE] !== "1") {
+      /** A separate Bun process owns the one-per-process warning independently of suite order. */
+      const run = spawnSync(process.execPath, ["test", import.meta.path, "-t", FALLBACK_TEST], {
+        env: { ...process.env, [WARNING_PROBE]: "1" }, encoding: "utf8", timeout: 4_000,
+      })
+      expect(run.error).toBeUndefined()
+      expect({ status: run.status, passed: /1 pass/.test(run.stderr) }).toEqual({ status: 0, passed: true })
+      return
+    }
     /** A fresh workspace root, so the row log starts empty for this arm. */
     const root = freshLogRoot()
     process.env.DSH_WORKSPACE_ROOT = root
@@ -291,6 +305,7 @@ describe("which backend is chosen", () => {
     } finally {
       // The env is restored whatever the assertions do, so the next arm starts clean.
       delete process.env.DSH_WORKSPACE_ROOT
+      rmSync(root, { recursive: true, force: true })
     }
   })
 
@@ -494,6 +509,30 @@ describe("the native member route (agentRoutes -> agentOptions)", () => {
     const request = recordedSpec(h.calls[0]).request as Record<string, unknown>
     // OMITTED, not `agentOptions: undefined`: today's inheritance must arrive as no key at all.
     expect("agentOptions" in request).toBe(false)
+  })
+
+  test("native TEAM resolves each caller workspace independently from its member worktree", async () => {
+    /** Two leads in one host, each with a different route for the same roster role. */
+    const roots = [freshLogRoot(), freshLogRoot()]
+    try {
+      /** The route service double returns one model per workspace and records its actual receiver. */
+      const config = {
+        /** Resolve the route by the supplied staging workspace. */
+        agentRouteResolutionOf(member: string, workspace: string): unknown {
+          expect(this).toBe(config)
+          expect(member).toBe("Senior Engineer")
+          return { ok: true, agent: member, route: workspace === roots[0] ? AGENT_ROUTE_ONE : AGENT_ROUTE_TWO }
+        },
+      }
+      /** One adapter, so the second spawn must re-resolve the caller's workspace. */
+      const h = harness({ config })
+      for (const cwd of roots) {
+        await h.executor.spawn({ session: { header: { cwd } } }, { ...REQUEST, role: "Senior Engineer", cwd: join(cwd, ".mpd", "worktrees", "worker") })
+      }
+      expect(h.calls.filter((call) => call.seam === "startContinuable").map((call) => recordedSpec(call).request.agentOptions)).toEqual([AGENT_ROUTE_ONE, AGENT_ROUTE_TWO])
+    } finally {
+      for (const root of roots) rmSync(root, { recursive: true, force: true })
+    }
   })
 
   test("an unconfigured route still raises the member and writes exactly ONE log line quoting the sentence", async () => {

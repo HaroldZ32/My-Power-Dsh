@@ -18,8 +18,11 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { apply } from "../src/index.ts"
+import { apply as applyTeam } from "../../mpd-team-core-plugin/src/index.ts"
+import { createTeam, readTeam, writeTeam } from "../../mpd-team-core-plugin/src/team-store.ts"
 import { PLANNER_RECON_LINES } from "../src/prompts.ts"
 import { contractPath, journalPath, readActiveCell, statePath } from "../src/state.ts"
+import type { TeamActionsServiceView } from "../src/caller.ts"
 
 /** One fake live agent: the session id the dispatch carries and the workspace header it resolves from. */
 interface FakeAgent {
@@ -111,6 +114,12 @@ interface Harness {
   memberAttempts: number
   /** How many live tasks were attempted so far. */
   taskAttempts: number
+  /** The real board verb used only in the commit-before-checkpoint regressions. */
+  durableAppend?: (args: unknown) => Promise<unknown>
+  /** Cancel on the same real board used by durableAppend. */
+  durableCancel?: NonNullable<TeamActionsServiceView["cancelTasks"]>
+  /** Throw when activation consumes the next append response, after the real board commit. */
+  loseAppendReply?: boolean
   /** The loop ids the verify double MINTED, so a failed attempt is not mistaken for an opened loop. */
   openedLoops: string[]
 }
@@ -278,6 +287,18 @@ function makeHarness(): Harness {
      */
     async execute(input: { name: string; arguments?: Record<string, unknown>; agent?: unknown }): Promise<unknown> {
       harness.calls.push({ name: input.name, arguments: input.arguments ?? {}, ...(input.agent === undefined ? {} : { agent: input.agent }) })
+      if (harness.durableAppend !== undefined && input.name === "agent_teams_plan" && input.arguments?.action === "create_task") {
+        /** The actual team tool has committed before its response is inspected. */
+        const value = await harness.durableAppend(input.arguments)
+        if (harness.loseAppendReply === true) {
+          harness.loseAppendReply = false
+          return { value: {
+            /** Reading the committed id interrupts activation before its partial checkpoint. */
+            get task(): never { throw new Error("interrupted after the board commit") },
+          } }
+        }
+        return { value }
+      }
       return answerTool(harness, input.name, input.arguments ?? {})
     },
   }
@@ -290,6 +311,11 @@ function makeHarness(): Harness {
      */
     register(definition: CapturedCommand): () => void { harness.commands.push(definition); return (): void => {} },
   }
+  /** In-memory dispatch and cancellation for the fixtures that do not mount the real board. */
+  const teamActions = createTeamActionsDouble({
+    record: () => team as unknown as Parameters<typeof createTeamActionsDouble>[0] extends never ? never : any,
+    send: (handle: string, text: string) => { harness.sends.push({ handle, text }) },
+  }).service
   /** The services the fake context answers. */
   const services: Record<string, unknown> = {
     tools: toolsService,
@@ -302,21 +328,24 @@ function makeHarness(): Harness {
        * @param teamId - the team asked for.
        * @returns the record, or undefined.
        */
-      get: (_workspace: string, teamId: string): LiveTeam | undefined => {
+      get: (_workspace: string, teamId: string): object | undefined => {
         if (teamId !== team.teamId) return undefined
         if (harness.injection.dispatchReadThrows && harness.openAttempts >= 2 && harness.sends.length === 0) {
           harness.injection.dispatchReadThrows = false
           throw new Error("the injected dispatch-stage team read failed")
         }
-        return team
+        if (harness.durableAppend === undefined) return team
+        /** Real durable tasks combined with the fixture's roster and planning tickets. */
+        const board = readTeam(workspace, teamId)
+        return board === undefined ? undefined : { ...board, members: team.members, tasks: [...team.tasks, ...board.tasks] }
       },
     },
-    // THE TEAM-PLANE DOUBLE (wave W2-D): activation now asks `mpdTeamActions` for its owner-only pass and
-    // closes dropped rows through it, so this harness answers that service with the shared in-memory plane.
-    mpdTeamActions: createTeamActionsDouble({
-      record: () => team as unknown as Parameters<typeof createTeamActionsDouble>[0] extends never ? never : any,
-      send: (handle: string, text: string) => { harness.sends.push({ handle, text }) },
-    }).service,
+    mpdTeamActions: {
+      ...teamActions,
+      /** Close real rows when this fixture mounted their board. */
+      cancelTasks: (input: Parameters<NonNullable<TeamActionsServiceView["cancelTasks"]>>[0]): Promise<unknown> =>
+        (harness.durableCancel ?? teamActions.cancelTasks)(input),
+    },
     mpdRoles: {
       /** @returns the roster rows the persona reader asks for. */
       list: (): Array<{ name: string; persona: string }> => ROSTER.map((entry) => ({ ...entry })),
@@ -476,11 +505,12 @@ async function finalizeRequirements(harness: Harness): Promise<void> {
  * Submit the multi-member graph as the splitter.
  *
  * @param harness - the harness.
+ * @param tasks - the graph accepted for this revision.
  * @returns the split tool's result.
  */
-async function submitSplit(harness: Harness): Promise<Record<string, any>> {
+async function submitSplit(harness: Harness, tasks: Array<Record<string, unknown>> = multiMemberTasks()): Promise<Record<string, any>> {
   /** The splitter's answer. */
-  const submitted = await runTool(harness, "cellwork_split", { action: "submit", tasks: multiMemberTasks() }, splitterAgent(harness))
+  const submitted = await runTool(harness, "cellwork_split", { action: "submit", tasks }, splitterAgent(harness))
   expect(submitted.ok).toBe(true)
   expect(submitted.accepted).toBe(true)
   return submitted
@@ -636,6 +666,170 @@ async function prepareAcceptedSplit(): Promise<Prepared> {
   await finalizeRequirements(harness)
   await submitSplit(harness)
   return { harness, cellId }
+}
+
+/** Route live appends through the real team tool and its workspace-scoped board. */
+function useDurableBoard(harness: Harness): void {
+  /** The team store owns task IDs and persists each append before returning. */
+  const record = createTeam(harness.workspace, { teamId: harness.team.teamId, name: "activation test", description: "live board", leadSessionId: harness.captain.session.id }, new Date())
+  writeTeam(harness.workspace, { ...record, phase: "active" })
+  /** Only plan registration is consumed from the actual team plugin for this fixture. */
+  const registered = new Map<string, CapturedTool>()
+  /** The team plugin's lightweight host seams. */
+  const dsh = {
+    registerTool: (tool: CapturedTool): (() => void) => { registered.set(tool.name, tool); return () => {} },
+    registerCommand: (): (() => void) => () => {},
+    workspaceRoot: (): string => harness.workspace,
+    capabilities: (): object => ({}),
+  }
+  applyTeam({ get: (key: string) => key === "mpdDsh" ? dsh : undefined, on: () => {}, effect: () => {}, inject: () => {},
+    /** Use the real board's cancellation service when superseding an interrupted append. */
+    provide(key: string, value: unknown): void {
+      if (key !== "mpdTeamActions" || typeof value !== "object" || value === null || !("cancelTasks" in value)) return
+      /** The workspace-addressed action the real team plane registers. */
+      const cancel = value.cancelTasks
+      if (typeof cancel === "function") harness.durableCancel = async (input) => cancel(input)
+    },
+  })
+  /** The registered team tool resolves and writes the record using the captain's identity. */
+  const plan = registered.get("agent_teams_plan")
+  if (plan === undefined) throw new Error("the real team plugin did not register its plan tool")
+  harness.durableAppend = (args: unknown): Promise<unknown> => plan.execute(args, { agent: harness.captain })
+}
+
+for (const change of ["unchanged", "removed", "changed", "active", "terminal", "ambiguous"] as const) {
+  test("append supersession: " + change + " task after interruption on a real board", async () => {
+    /** A cell whose first accepted revision never checkpoints its first real append. */
+    const { harness, cellId } = await prepareAcceptedSplit()
+    try {
+      useDurableBoard(harness)
+      harness.loseAppendReply = true
+      await expect(runTool(harness, "cellwork_activate")).rejects.toThrow("interrupted after the board commit")
+      /** The board and cell state disagree about the committed row. */
+      const board = readTeam(harness.workspace, harness.team.teamId)
+      /** The original task, even when the newer revision retires it. */
+      const original = board?.tasks[0]
+      if (board === undefined || original === undefined) throw new Error("the real append did not commit")
+      expect(original.subject).toBe("Implement alpha")
+      expect(stateJson(harness.workspace, cellId).activatedTasks).toEqual({})
+      if (change === "ambiguous") {
+        /** An external repeat of the exact same marker makes its provenance ambiguous. */
+        const append = harness.calls.filter((call) => call.name === "agent_teams_plan" && call.arguments.action === "create_task").at(-1)
+        await harness.durableAppend?.(append?.arguments)
+      }
+      if (change === "active" || change === "terminal") {
+        writeTeam(harness.workspace, { ...board, tasks: [{ ...original, status: change === "active" ? "in_progress" : "completed" }] })
+      }
+      /** Only the original deliverable changes in the replacement arms. */
+      const nextTasks = multiMemberTasks()
+        .filter((task) => change !== "removed" || !String(task.key).startsWith("alpha-"))
+        .map((task) => task.key === "alpha-core" && ["changed", "active", "terminal"].includes(change)
+          ? { ...task, description: "Implement alpha using the revised deliverable." } : task)
+      expect(await runTool(harness, "cellwork_requirements", { action: "update", content: COMPLETE_REQUIREMENTS + "\nFollow-up requirement.\n" }, plannerAgent(harness))).toMatchObject({ ok: true, revision: 2 })
+      await submitSplit(harness, nextTasks)
+      /** The second pass runs on the same durable board. */
+      const result = await runTool(harness, "cellwork_activate")
+      /** Every real row claiming the alpha subject after the attempted supersession. */
+      const alpha = readTeam(harness.workspace, harness.team.teamId)?.tasks.filter((task) => task.subject === original.subject) ?? []
+      if (change === "active" || change === "ambiguous") {
+        expect(result).toMatchObject({ ok: false, error: expect.stringContaining(change === "active" ? "in_progress" : "ambiguous") })
+        expect(alpha.map((task) => task.status)).toEqual(change === "active" ? ["in_progress"] : ["pending", "pending"])
+        expect(openCalls(harness)).toHaveLength(0)
+        return
+      }
+      expect(result).toMatchObject({ ok: true, revision: 2 })
+      /** Which board id the accepted replacement now owns. */
+      const mapped = stateJson(harness.workspace, cellId).activatedTasks["alpha-core"]
+      if (change === "unchanged") {
+        expect(alpha.map((task) => task.id)).toEqual([original.id])
+        expect(mapped).toBe(original.id)
+        expect(openCalls(harness).some((call) => call.arguments.task_id === original.id)).toBe(true)
+        expect(readFileSync(contractPath(harness.workspace, cellId, "alpha-core"), "utf8")).toContain("split revision 1")
+      } else {
+        expect(alpha[0]).toMatchObject({ id: original.id, status: change === "terminal" ? "completed" : "cancelled" })
+        if (change === "removed") {
+          expect(alpha).toHaveLength(1)
+          expect(mapped).toBeUndefined()
+        } else {
+          expect(alpha).toHaveLength(2)
+          expect(mapped).toBe(alpha[1]?.id)
+          expect(alpha[1]?.blockedBy).toEqual([])
+          expect(readTeam(harness.workspace, harness.team.teamId)?.tasks.find((task) => task.subject === "Review alpha")?.blockedBy).toEqual([mapped])
+          expect(openCalls(harness).some((call) => call.arguments.task_id === original.id)).toBe(false)
+        }
+      }
+    } finally {
+      rmSync(harness.workspace, { recursive: true, force: true })
+    }
+  })
+}
+
+test("append supersession: a second interruption keeps the replacement on the next revision", async () => {
+  /** The two interrupted appends land on one board across three accepted revisions. */
+  const { harness, cellId } = await prepareAcceptedSplit()
+  try {
+    useDurableBoard(harness)
+    harness.loseAppendReply = true
+    await expect(runTool(harness, "cellwork_activate")).rejects.toThrow("interrupted after the board commit")
+    /** The newer acceptance changes only the first work row. */
+    const tasks = multiMemberTasks().map((task) => task.key === "alpha-core" ? { ...task, description: "Revised alpha." } : task)
+    for (const revision of [2, 3]) {
+      expect(await runTool(harness, "cellwork_requirements", { action: "update", content: COMPLETE_REQUIREMENTS + "\nFollow-up " + String(revision) + ".\n" }, plannerAgent(harness))).toMatchObject({ ok: true, revision })
+      await submitSplit(harness, tasks)
+      if (revision === 2) {
+        harness.loseAppendReply = true
+        await expect(runTool(harness, "cellwork_activate")).rejects.toThrow("interrupted after the board commit")
+      } else {
+        expect(await runTool(harness, "cellwork_activate")).toMatchObject({ ok: true, revision })
+      }
+    }
+    /** The cancelled history stays closed while the second durable id is reused. */
+    const alpha = readTeam(harness.workspace, harness.team.teamId)?.tasks.filter((task) => task.subject === "Implement alpha") ?? []
+    expect(alpha.map((task) => task.status)).toEqual(["cancelled", "pending"])
+    expect(stateJson(harness.workspace, cellId).activatedTasks["alpha-core"]).toBe(alpha[1]?.id)
+    expect(readFileSync(contractPath(harness.workspace, cellId, "alpha-core"), "utf8")).toContain("Add the alpha store.")
+    expect(readFileSync(contractPath(harness.workspace, cellId, "alpha-core@r2"), "utf8")).toContain("Revised alpha.")
+  } finally {
+    rmSync(harness.workspace, { recursive: true, force: true })
+  }
+})
+
+for (const ambiguous of [false, true]) {
+  test(ambiguous ? "activation refuses two durable rows claiming the same split task" : "activation adopts a committed row when its checkpoint was interrupted", async () => {
+    /** The accepted cell and its live board. */
+    const { harness, cellId } = await prepareAcceptedSplit()
+    useDurableBoard(harness)
+    /** The real board append, also used to seed an unrelated same-title row. */
+    const append = harness.durableAppend
+    if (append === undefined) throw new Error("the durable board fixture did not mount")
+    await append({ action: "create_task", task: { subject: "Implement alpha", description: "unrelated work", blocked_by: [] } })
+    harness.loseAppendReply = true
+    await expect(runTool(harness, "cellwork_activate")).rejects.toThrow("interrupted after the board commit")
+    /** The durable board survived the interruption, while the cell never learned the minted id. */
+    const committed = readTeam(harness.workspace, harness.team.teamId)?.tasks[1]
+    if (committed === undefined) throw new Error("the real append did not commit")
+    expect(stateJson(harness.workspace, cellId).activatedTasks).toEqual({})
+    if (ambiguous) {
+      /** Repeat the exact append externally to create two rows carrying the same identity. */
+      const original = harness.calls.filter((call) => call.name === "agent_teams_plan" && call.arguments.action === "create_task").at(-1)
+      await append(original?.arguments)
+    }
+    /** The same accepted revision is retried through the public tool. */
+    const retry = await runTool(harness, "cellwork_activate")
+    /** Every task landed on the real board. */
+    const tasks = readTeam(harness.workspace, harness.team.teamId)?.tasks ?? []
+    if (ambiguous) {
+      expect(retry).toMatchObject({ ok: false, error: expect.stringContaining("ambiguous") })
+      expect(tasks).toHaveLength(3)
+      expect(openCalls(harness)).toHaveLength(0)
+      return
+    }
+    expect(retry.ok).toBe(true)
+    expect(tasks).toHaveLength(multiMemberTasks().length + 1)
+    expect(stateJson(harness.workspace, cellId).activatedTasks["alpha-core"]).toBe(committed.id)
+    expect(tasks.some((task) => task.blockedBy.includes(committed.id))).toBe(true)
+    expect(openCalls(harness).some((call) => call.arguments.task_id === committed.id)).toBe(true)
+  })
 }
 
 for (const stage of STAGES) {

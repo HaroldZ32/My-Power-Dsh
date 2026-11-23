@@ -1,0 +1,7 @@
+(pass) F1 shipped artifact > the committed dists are the byte-identical products of a canonical build (T-62) [120.56ms]
+(pass) discovery precedence is project > user > bundle and shadowing is recorded, never fatal [3.17ms]
+(pass) a missing or rejected project manifest cannot shadow a valid user extension [2.28ms]
+(pass) project skill changes invalidate completed catalogs without re-registering providers [24.67ms]
+ 79 pass
+ 0 fail
+Ran 79 tests across 3 files. [1.89s]

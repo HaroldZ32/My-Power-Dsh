@@ -87,6 +87,13 @@ function fixture(): Fixture {
   const executor = {
     kind: "native",
     reason: "test double",
+    spawn: async (_caller: unknown, request: { onOpening?: (handle: string) => void }): Promise<{ handle: string }> => {
+      request.onOpening?.(member.id)
+      // A fast initial turn runs before startActivation returns its receipt.
+      observations.preStep = preSteps.get(member)?.({ agent: member, turn: 1 }, { kind: "enter", messages: [] })
+      observations.denied = guards.map((guard) => guard({ agent: member, name: "agent_teams_task" })).filter((answer): answer is string => typeof answer === "string")
+      return { handle: member.id }
+    },
     send: async (_caller: unknown, handle: string): Promise<void> => {
       if (handle !== member.id) return
       /** The guard's listener for this agent, when the guard was installed for it. */
@@ -168,6 +175,16 @@ function seed(workspace: string): TeamRecord {
   writeTeam(workspace, approved)
   return approved
 }
+
+test("an opening seat is denied on its first step before the executor receipt", async () => {
+  /** The fixture calls the real idle guard from inside the simulated host activation. */
+  const h = fixture()
+  await h.call("sess-lead", "agent_teams_plan", { action: "create", name: "opening" })
+  await h.call("sess-lead", "agent_teams_plan", { action: "add_member", member: { name: "worker", prompt: "Wait for the board." } })
+  await h.call("sess-lead", "agent_teams_plan", { action: "approve" })
+  expect(h.observations.preStep).toMatchObject({ kind: "enter" })
+  expect(h.observations.denied[0]).toContain("no board task is assigned to you")
+})
 
 test("D2: the cold-resumed member's first pre-step inside send is NOT marked idle, and its claim is allowed", async () => {
   /** The harness under test. */

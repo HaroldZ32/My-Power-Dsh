@@ -13,7 +13,12 @@
 // WHAT IS NOT ASSERTED: that a browser renders the card. No browser exists in this environment;
 // the card-side projection is covered by `settings-card.test.ts` over the card's own exports.
 import { describe, expect, test } from "bun:test"
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import { apply as applySource } from "../src/index.ts"
 import { buildModelConfigBody, ROSTER_MEMBERS } from "../src/model-config-web.ts"
+import { apply as applyConfig } from "../../mpd-config-plugin/src/index.ts"
 // The shipped dist build is JavaScript with no declaration file; the arms below drive its real
 // `apply` over a cordis-shaped ctx, so no static type can describe it here.
 // @ts-expect-error JavaScript build product has no declaration file
@@ -183,6 +188,94 @@ describe("the effective model-config route", () => {
     const body = JSON.parse(res.body)
     expect(body.ok).toBe(false)
     expect(body.reason).toContain("mpdConfig service is not composed")
+  })
+
+  test("the real bundle and config rows read and edit only the authenticated session's project", async () => {
+    /** Isolated fixture holding both live workspaces and the absent user layer. */
+    const box = mkdtempSync(join(tmpdir(), "mpd-web-model-config-"))
+    /** Per-session project paths, including different routes for the same agent. */
+    const workspaces = { a: join(box, "a"), b: join(box, "b") }
+    /** The Web client's test host registry. */
+    const host = fakeHost()
+    /** Disposers from the registered server routes and file watchers. */
+    const disposers: (() => void)[] = []
+    /** The adapter sees live sessions and the harness authentication seam through this registry. */
+    const services = new Map<string, unknown>([
+      ["agents", { list: () => Object.entries(workspaces).map(([id, cwd]) => ({ session: { id, header: { cwd } } })) }],
+      ["connection", { requestRejection: (request: { headers: { host?: string } }) => request.headers.host === "test.local" ? undefined : 403 }],
+    ])
+    /** Mount both production rows on the same context. */
+    const ctx = {
+      ...host.ctx,
+      tools: { register: () => undefined },
+      get: (key: string) => services.get(key) ?? host.ctx.get(key),
+      provide: (key: string, service: unknown) => { services.set(key, service) },
+      effect: (fn: () => unknown) => {
+        /** Register the row's cleanup for this fixture. */
+        const cleanup = fn()
+        if (typeof cleanup === "function") disposers.push(() => cleanup())
+      },
+    }
+    /** Locate an isolated project's actual config file. */
+    const file = (key: keyof typeof workspaces): string => join(workspaces[key], ".mpd", "mpd.jsonc")
+    /** Unrelated JSONC bytes the surgical write must preserve. */
+    const original = (model: string): string => `// keep this comment\n{ "agentRoutes": { "deep-worker": { "provider": "example", "model": "${model}", }, }, "modelchain": { "chain": [{"provider":"example","model":"${model}"}] }, }\n`
+    try {
+      for (const key of ["a", "b"] as const) {
+        mkdirSync(join(workspaces[key], ".mpd"), { recursive: true })
+        writeFileSync(file(key), original(key))
+      }
+      applyConfig(ctx, { userFile: join(box, "absent-user.jsonc") })
+      applySource(ctx)
+      /** The exact HTTP handler installed by the bundle's normal apply path. */
+      const route = host.routes.get(MODEL_CONFIG_PATH)
+      if (route === undefined) throw new Error("model route did not register")
+      /** Simulate a host request with a streamed JSON payload when posting. */
+      const call = async (query: string, payload?: unknown, authorized: boolean = true): Promise<FakeRes> => {
+        /** A Node request-shaped stream with origin and method metadata. */
+        const request = {
+          url: MODEL_CONFIG_PATH + query,
+          method: payload === undefined ? "GET" : "POST",
+          headers: { host: authorized ? "test.local" : "blocked.local" },
+          /** Stream the JSON exactly as the Web client sends it. */
+          async *[Symbol.asyncIterator](): AsyncGenerator<string> { yield JSON.stringify(payload) },
+        }
+        /** The response written by the registered handler. */
+        const response = host.res()
+        await route.handler(request, response)
+        return response
+      }
+      expect(await call("")).toMatchObject({ status: 409 })
+      expect(await call("?sessionId=missing")).toMatchObject({ status: 409 })
+      expect(await call("?sessionId=a", undefined, false)).toMatchObject({ status: 403 })
+      /** Initial read from each session. */
+      const readA = await call("?sessionId=a")
+      /** Session B has distinct values through the same route handler. */
+      const readB = await call("?sessionId=b")
+      expect(readA.status).toBe(200)
+      expect(readB.status).toBe(200)
+      expect(JSON.parse(readA.body)).toMatchObject({ agents: { "Deep Worker": { route: { model: "a" } } }, modelchain: { chain: [{ model: "a" }] } })
+      expect(JSON.parse(readB.body)).toMatchObject({ agents: { "Deep Worker": { route: { model: "b" } } }, modelchain: { chain: [{ model: "b" }] } })
+      /** Only the selected project's model leaf is edited. */
+      const edits = [{ agent: "Deep Worker", leaf: "model", value: "updated-a" }]
+      expect(await call("?sessionId=missing", edits)).toMatchObject({ status: 409 })
+      expect(await call("?sessionId=a", edits, false)).toMatchObject({ status: 403 })
+      expect(readFileSync(file("a"), "utf8")).toBe(original("a"))
+      /** Read-back is immediate, with no watcher delay. */
+      const saved = await call("?sessionId=a", edits)
+      expect(saved.status).toBe(200)
+      expect(JSON.parse(saved.body)).toMatchObject({ agents: { "Deep Worker": { route: { model: "updated-a" } } }, workspaceRoutes: { local: { "Deep Worker": { model: "updated-a" } } } })
+      expect(readFileSync(file("a"), "utf8")).toBe(original("a").replace('"model": "a"', '"model": "updated-a"'))
+      expect(readFileSync(file("b"), "utf8")).toBe(original("b"))
+      /** Reset removes the exact field while leaving unrelated properties intact. */
+      const reset = await call("?sessionId=a", [{ agent: "Deep Worker", leaf: "model" }])
+      expect(reset.status).toBe(200)
+      expect(JSON.parse(reset.body)).toMatchObject({ agents: { "Deep Worker": { ok: false, reason: "unconfigured" } } })
+      expect(readFileSync(file("b"), "utf8")).toBe(original("b"))
+    } finally {
+      for (const dispose of disposers) dispose()
+      rmSync(box, { recursive: true, force: true })
+    }
   })
 
   test("a config row with NO per-agent resolver refuses instead of serving an empty table", () => {

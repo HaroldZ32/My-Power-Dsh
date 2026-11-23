@@ -1,0 +1,3 @@
+[test]
+# Historical QA snapshots and packed output contain copies of test files.
+pathIgnorePatterns = ["evidence/**", "dist/**"]

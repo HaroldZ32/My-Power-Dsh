@@ -40,6 +40,8 @@
 //   [docker-probe] AGENT_TEAMS_METHODS=<csv>
 //   [docker-probe] DONE=1
 
+import { writeFileSync } from "node:fs"
+
 /** The cordis plugin name this instrumentation registers under inside the booted harness. */
 export const name: string = "mpd-docker-e2e-probe"
 // An agent-scoped cordis ctx throws on any property not declared here, so `tools` must be injected
@@ -473,6 +475,39 @@ async function observeTeamSurface(ctx: ProbeContext, budgetMs: number): Promise<
 }
 
 /**
+ * Exercise the mounted AST tool on a fixture with one known match and one known miss.
+ * @param ctx - The running profile's scoped plugin context.
+ * @param resultPath - A fresh file in the smoke test's isolated profile sandbox.
+ * @returns A promise that settles after the evidence file is written.
+ */
+async function probeReleaseSearch(ctx: ProbeContext, resultPath: string): Promise<void> {
+  try {
+    /** The tool is deferred until the MCP stdio server completes discovery. */
+    const readiness = await settle(toolLookup(ctx), ["mcp__ast_grep__search"], 60_000)
+    /** The mounted adapter executes the actual registered MCP tool. */
+    const adapter: unknown = ctx.get?.("mpdDsh")
+    if (readiness.present !== 1 || typeof adapter !== "object" || adapter === null ||
+        !("executeTool" in adapter) || typeof adapter.executeTool !== "function") {
+      throw new Error("AST tool or mounted adapter unavailable")
+    }
+    /** The build-independent fixture under the smoke test's working directory. */
+    const paths = [process.cwd()]
+    /** The two calls share a path and differ only in the pattern. */
+    const results: unknown[] = []
+    for (const pattern of [LIVE_SEARCH_PATTERN, LIVE_SEARCH_CONTROL]) {
+      /** The result carries engine success, match count or a classified failure. */
+      const answer: unknown = await adapter.executeTool({
+        name: "mcp__ast_grep__search", arguments: { pattern, language: LIVE_SEARCH_LANGUAGE, paths }, timeoutMs: 30_000,
+      })
+      results.push(searchOutcome(answer))
+    }
+    writeFileSync(resultPath, JSON.stringify(results) + "\n", { flag: "wx" })
+  } catch (error) {
+    writeFileSync(resultPath, JSON.stringify({ error: messageOf(error) }) + "\n", { flag: "wx" })
+  }
+}
+
+/**
  * The plugin entry point: read the live tool registry, the adapter service and the official
  * agent-teams service from inside the booted process, and print one line per fact.
  *
@@ -480,6 +515,12 @@ async function observeTeamSurface(ctx: ProbeContext, budgetMs: number): Promise<
  * @returns A promise that settles after every line was printed; it never rejects.
  */
 export async function apply(ctx: ProbeContext): Promise<void> {
+  /** The release lane asks only for the installed AST tool's result. */
+  const releaseResult = process.env.MPD_RELEASE_PROBE_RESULT
+  if (releaseResult !== undefined) {
+    await probeReleaseSearch(ctx, releaseResult)
+    return
+  }
   try {
     console.log("[docker-probe] APPLIED=ok")
     // The registry reader every presence question below goes through (or a `null`-answering stub).

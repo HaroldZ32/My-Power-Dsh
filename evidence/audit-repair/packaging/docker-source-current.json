@@ -1,0 +1,17 @@
+{
+  "command": "node scripts/docker-e2e.ts --mode source --require-docker --no-browser",
+  "evidence": "evidence/docker/client-install/2026-11-22T16-24-44Z",
+  "exit": 0,
+  "runtime": {
+    "ast": "[owed-mcp] boot.mcpLiveSearch=true — a REAL mcp__ast_grep__search call through the mounted adapter matched 1 site(s) in /opt/mpd/packages/mpd-mcp-astgrep/src, and the negative control matched 0 — the search engine ran, so the registered name is backed by a working server on this machine",
+    "graph": "[record] tui.teamGraphEdges=true — the dependency graph contains connector arrowheads between rendered node boxes",
+    "tools": "[record] qa.mcpCallEngine=true — the ast-grep engine the call arm's launcher resolves (bundle-relative, inside the packed tree the case installs) is staged and its own --version probe reports ast-grep, so qa.mcpCall below measures the CASE rather than a missing binary"
+  },
+  "artifact": {
+    "staticCoherence": "[owed-pack] pack.staticCoherence=true — the artifact agrees with the tree it was cut from: 685 carried file(s) byte-identical, 2 generated path(s) exempted (package.json, packages/mpd-ext-plugin/dist/validator.js), none missing",
+    "fresh": "[owed-pack] pack.distFreshRebuild=true — every one of the 35 built entries in the artifact is byte-identical to the container's own from-source rebuild — the packed dist is FRESH, not merely present",
+    "control": "[record] pack.distFreshRebuildControl=true — the freshness arm is FALSIFIABLE on this machine: mutating one built entry in a copy of the same artifact flips pack.distFreshRebuild to FALSE against the SAME from-source rebuild, so a green on the untouched artifact is a measurement rather than a constant (the control's own rows are in /out/owed/pack-control.ndjson)"
+  },
+  "verdict": "[report] ok=true complete=false passed=163 failed=0 null=81 scrubbed=true -> /out/result.json",
+  "bounds": "No browser or provider credentials; all required credential-free assertions passed."
+}

@@ -221,32 +221,36 @@ export function interceptDashboardKey(event: unknown, deps: DashboardKeyDeps): b
  * @returns the projection, or undefined when nothing could be read; never throws.
  */
 export function readDashboardWorkflow(
-  workspaceRoot: () => string,
-  holds: () => readonly string[],
-  teamViews?: () => readonly DshTeamView[],
-  teamRecords?: () => readonly TeamRecordRow[],
+  workspaceRoot: (sessionId?: string, cwd?: string) => string,
+  holds: (workspace?: string) => readonly string[],
+  teamViews?: (workspace?: string) => readonly DshTeamView[],
+  teamRecords?: (workspace?: string) => readonly TeamRecordRow[],
   teams?: () => MpdTeamsLike | undefined,
   sessionId?: string,
+  cwd?: string,
 ): TeamWorkflow | undefined {
   try {
+    /** The project shared by all parts of this projection. */
+    const workspace = workspaceRoot(sessionId, cwd)
+    if (workspace === "") return undefined
     /** The watchdog's held team ids; empty when that read fails. */
     let holdIds: readonly string[] = []
     try {
-      holdIds = holds() ?? []
+      holdIds = holds(workspace) ?? []
     } catch {
       holdIds = []
     }
     /** The mpd-owned records for this workspace; empty when that read fails. */
     let records: readonly TeamRecordRow[] = []
     try {
-      records = teamRecords?.() ?? []
+      records = teamRecords?.(workspace) ?? []
     } catch {
       records = []
     }
     /** The live official views for this workspace; empty when that read fails. */
     let views: readonly DshTeamView[] = []
     try {
-      views = teamViews?.() ?? []
+      views = teamViews?.(workspace) ?? []
     } catch {
       views = []
     }
@@ -258,7 +262,7 @@ export function readDashboardWorkflow(
       service = undefined
     }
     return readScopedWorkflow({
-      workspace: workspaceRoot(),
+      workspace,
       ...(sessionId === undefined || sessionId === "" ? {} : { sessionId }),
       holds: holdIds,
       ...(service === undefined ? {} : { teams: service }),
@@ -297,7 +301,7 @@ export function createDashboardKeyComponent(tui: TuiAdapter, deps: DashboardKeyD
     const armed = React.useState(0)
     /** The counter's setter. */
     const setArmed = armed[1]
-    React.useEffect(() => tui.whenHostInput(() => setArmed((previous: number) => previous + 1)), [])
+    React.useEffect(() => tui.whenHostInput(() => setArmed((previous: number) => previous + 1), { updates: true }), [])
     /** The host's input bus (or the ONE reason there is none), read per render: a cached module plus
      *  one context read, no I/O, and no team read — the projection is read at KEYPRESS time only. */
     const bus = readHostInputBus(tui)

@@ -68,8 +68,8 @@ interface ScopeCall {
 interface ScopeSnapshot {
   /** The scope's status, e.g. ready or unavailable. */
   status: string
-  /** The mode the scope resolved, host or memory. */
-  mode: string
+  /** The host's inherited config before applying the profile override. */
+  base?: unknown
   /** Whether the scope accepts writes. */
   writable: boolean
   /** The revision a mutate must match. */
@@ -88,10 +88,8 @@ interface ScopeDouble {
     getSnapshot: () => ScopeSnapshot
     /** Subscribe to snapshot changes; the double records the listener. */
     subscribe: (listener: () => void) => () => boolean
-    /** Record one staged batch and bump the revision. */
-    mutate: (ops: Array<{ op: string; path: string[]; value?: unknown }>, expected: unknown) => Promise<void>
-    /** Drop the form; the double has nothing to release. */
-    dispose: () => void
+    /** Record one staged batch and acknowledge it. */
+    mutate: (ops: Array<{ op: string; path: string[]; value?: unknown }>, expected: unknown) => Promise<boolean>
   }
   /** Every mutation the card performed through this scope. */
   calls: ScopeCall[]
@@ -213,10 +211,7 @@ interface SessionSnapshot {
 }
 
 /** A settings scope with the host's measured surface, recording every write. */
-/** A settings scope with the host's measured surface, recording every write. */
 function fakeScope(snapshot: ScopeSnapshot, calls: ScopeCall[] = []): ScopeDouble {
-  /** The revision the scope reports, bumped by each mutation. */
-  let revision = snapshot.revision
   /** Snapshot subscribers the double would notify. */
   const listeners = new Set<() => void>()
   return {
@@ -232,9 +227,8 @@ function fakeScope(snapshot: ScopeSnapshot, calls: ScopeCall[] = []): ScopeDoubl
         },
         mutate: async (ops, expected) => {
           calls.push({ ops, expected })
-          revision = (revision ?? 0) + 1
+          return true
         },
-        dispose: () => {},
       }
     },
     calls,
@@ -244,7 +238,6 @@ function fakeScope(snapshot: ScopeSnapshot, calls: ScopeCall[] = []): ScopeDoubl
 /** The ready-scope snapshot every form arm starts from. */
 const READY = {
   status: "ready",
-  mode: "host",
   writable: true,
   revision: 7,
   value: { hashline: { maxDiffChars: 20000 }, autoproject: { maxRounds: 6 } },
@@ -252,9 +245,9 @@ const READY = {
 }
 
 /** Mount the section with a configForms service bound to one scope. */
-function mountedCard(scope: ScopeDouble): { client: LoadedMpdClient; registration: SlotRegistration } {
-  /** The client this mount built. */
-  const client = loadMpdClient({ services: { configForms: { get: (entryId: string) => { expect(entryId).toBe("mpd-config"); return scope.bind({ namespace: "mpd" }) } } } })
+function mountedCard(scope: ScopeDouble, options: HarnessOptions = {}): { client: LoadedMpdClient; registration: SlotRegistration } {
+  /** Load the shipped client with the selected session and HTTP responses the case supplies. */
+  const client = loadMpdClient({ ...options, services: { ...options.services, configForms: { get: (entryId: string) => { expect(entryId).toBe("mpd-config"); return scope.bind({ namespace: "mpd" }) } } } })
   client.exports.apply(client.ctx)
   // The section registers exactly once when its namespace form resolves.
   const registration = (client.calls.slotsRegistered ?? []).find((definition) => definition.name === "settings.section")!
@@ -408,6 +401,82 @@ describe("the registration only happens when the namespace form is available", (
 })
 
 describe("the card's form behaviour", () => {
+  test("a profile edit reads back the host's saved and inherited layers alongside the mounted value", async () => {
+    /** The rc.5 ConfigForm snapshot keeps the mounted value separate from the profile document. */
+    const snapshot: ScopeSnapshot & { revision: number } = {
+      status: "ready", writable: true, revision: 7,
+      value: { hashline: { maxDiffChars: 20000 } },
+      base: { hashline: { maxDiffChars: 20000 } },
+      user: {},
+    }
+    /** The entry form updates its user layer and revision after each accepted operation. */
+    const form = {
+      getSnapshot: (): ScopeSnapshot => snapshot,
+      subscribe: (): (() => void) => () => {},
+      mutate: async (ops: ScopeCall["ops"], expected: number): Promise<boolean> => {
+        expect(expected).toBe(snapshot.revision)
+        expect(ops).toHaveLength(1)
+        expect(ops[0]?.path).toEqual(["hashline", "maxDiffChars"])
+        snapshot.user = ops[0]?.op === "set" ? { hashline: { maxDiffChars: ops[0].value } } : {}
+        snapshot.revision = expected + 1
+        return true
+      },
+    }
+    /** The scalar field the browser edits without a session. */
+    const key = "hashline.maxDiffChars"
+    /** The controller opened on the profile form. */
+    const controller = CARD.createMpdCardController(form)
+    /** The first opening's actions and projection. */
+    const face: CardFace = controller.inject()
+    face.edit(key, "21091")
+    await face.save()
+    await Bun.sleep(0)
+    expect(face.hooks.mpdCard.getSnapshot()).toMatchObject({
+      dirty: false, writable: true, controls: { [key]: { text: "21091", overridden: true } },
+    })
+    controller.dispose()
+
+    /** A new card opening reads the profile again from the shared form. */
+    const reopened = CARD.createMpdCardController(form)
+    /** The reopened card must use the same saved document. */
+    const reopenedFace: CardFace = reopened.inject()
+    expect(reopenedFace.hooks.mpdCard.getSnapshot()).toMatchObject({ controls: { [key]: { text: "21091" } } })
+    /** The real source component rendering the divergent saved and mounted values. */
+    const runtime = createHookRuntime()
+    /** The section renderer with the card's real labels and notes. */
+    const component = CARD.createCardComponent(runtime.react)
+    /** The visible draft and persistence feedback. */
+    const tree = await runtime.render(component, { useMpdCard: (selector) => selector(reopenedFace.hooks.mpdCard.getSnapshot()), t: (key) => EN[key] ?? key })
+    expect(textOf(tree)).toContain("The mounted host entry reports 20000.")
+    expect(textOf(tree)).not.toContain("This page is not loopback")
+
+    snapshot.value = { hashline: { maxDiffChars: 21091 } }
+    reopenedFace.resetField(key)
+    await reopenedFace.save()
+    await Bun.sleep(0)
+    expect(reopenedFace.hooks.mpdCard.getSnapshot()).toMatchObject({
+      dirty: false, controls: { [key]: { text: "20000", overridden: false } },
+    })
+    reopened.dispose()
+  })
+
+  test("a false Host mutate acknowledgment keeps the profile draft and reports a refusal", async () => {
+    /** rc.5 recovers the snapshot and returns false when the Host refuses a mutation. */
+    const form = { ...fakeScope(READY).bind({ namespace: "mpd" }), mutate: async (): Promise<boolean> => false }
+    /** The controller consuming the Host's acknowledgment. */
+    const controller = CARD.createMpdCardController(form)
+    /** The face the browser uses to stage and save a profile edit. */
+    const face: CardFace = controller.inject()
+    face.edit("hashline.maxDiffChars", "21091")
+    await face.save()
+    await Bun.sleep(0)
+    expect(face.hooks.mpdCard.getSnapshot()).toMatchObject({
+      dirty: true, failed: true, error: "The host refused to save the profile settings.",
+      controls: { "hashline.maxDiffChars": { text: "21091" } },
+    })
+    controller.dispose()
+  })
+
   test("it renders what the namespace reports (values, overridden marker, disclosure) and nothing invented", async () => {
     /** This arm's client and section registration. */
     const { client, registration } = mountedCard(fakeScope(READY))
@@ -419,7 +488,7 @@ describe("the card's form behaviour", () => {
     expect(text).toContain("autoproject.maxRounds")
     expect(text).toContain("20000")
     expect(text).toContain("6")
-    expect(text).toContain("persists in the HOST's settings document")
+    expect(text).toContain("The host settings document stores the other fields.")
     expect(text).toContain("save")
   })
 
@@ -468,20 +537,16 @@ describe("the card's form behaviour", () => {
     /** Every mutation this arm's read-only scope recorded. */
     const calls: ScopeCall[] = []
     /** This arm's client and section registration. */
-    const { client, registration } = mountedCard(fakeScope({ status: "unavailable", mode: "memory", writable: false, revision: undefined, value: undefined, user: undefined }, calls))
+    const { client, registration } = mountedCard(fakeScope({ ...READY, writable: false }, calls))
     /** The section's host-facing face. */
     const face = registration.inject()
     /** The read-only state the card exposes to its component. */
     const state = face.hooks.mpdCard.getSnapshot()
     expect(state.writable).toBe(false)
-    expect(state.mode).toBe("memory")
     face.edit("autoproject.maxRounds", "9")
     /** The rendered section tree. */
     const tree = await client.hooks.render(registration.component, { useMpdCard: (selector) => selector(face.hooks.mpdCard.getSnapshot()), t: (key) => key })
-    /** The tree flattened and serialized, so the assertions can scan it. */
-    const text = textOf(tree) + " " + JSON.stringify(tree)
-    expect(text).toContain("readOnly")
-    expect(text).toContain("memoryMode")
+    expect(textOf(tree)).toContain("readOnly")
     // the inputs are disabled, and a save through the face still goes nowhere (the HOST refuses it)
     await face.save()
     expect(calls).toHaveLength(0)
@@ -755,20 +820,40 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     return elementsOf(select, "optgroup").map((group) => group.props.label)
   }
 
-  /** Mount the section over one scope and render it once. */
-  function renderedTree(scope: ScopeDouble, services: Record<string, unknown>): Promise<{ tree: ElementNode; client: LoadedMpdClient; registration: SlotRegistration }> {
-    /** The client this render mounts. */
-    const client = loadMpdClient({ services: { configForms: { get: (entryId: string) => { expect(entryId).toBe("mpd-config"); return scope.bind({ namespace: "mpd" }) } }, ...services } })
-    client.exports.apply(client.ctx)
-    // The section registers exactly once when its namespace form resolves.
-    const registration = (client.calls.slotsRegistered ?? []).find((definition) => definition.name === "settings.section")!
-    return client.hooks.render(registration.component, { useMpdCard: (selector) => selector(registration.inject().hooks.mpdCard.getSnapshot()), t: (key) => EN[key] ?? key }).then((tree) => ({ tree, client, registration }))
+  /** This fixture's selected-session route, shared by read and mutation assertions. */
+  const workspaceModelUrl = "/plugins/mpd/model-config?sessionId=s1"
+
+  /** Let a shipped-client test capture one workspace mutation without a running server. */
+  const workspaceWrites = {
+    services: { sessions: { list: { getSnapshot: () => ({ current: "s1" }) } } },
+    requestResponses: { ["POST " + workspaceModelUrl]: { ok: true } },
+  } satisfies HarnessOptions
+
+  /** Mount the shipped section with project route values served over its HTTP boundary. */
+  async function renderedTree(scope: ScopeDouble, services: Record<string, unknown>, serveRoutes: boolean = true): Promise<{ tree: ElementNode; client: LoadedMpdClient; registration: SlotRegistration }> {
+    /** The fixture's config, used to build the workspace-file route body. */
+    const current = scope.bind({ namespace: "mpd" }).getSnapshot().value as { agentRoutes?: Record<string, unknown> } | undefined
+    /** The workspace's model fields and typed route responses. */
+    const routes = current?.agentRoutes ?? {}
+    /** Send the fields and their effective rows through the shipped client's selected-session URL. */
+    const body = {
+      ok: true,
+      agents: Object.fromEntries(Object.entries(routes).map(([agent, route]) => [agent, { ok: true, agent, route }])),
+      workspaceRoutes: { values: routes, local: routes },
+      modelchain: {},
+    }
+    /** The shipped registration consumes this HTTP fixture and the independent catalog double. */
+    const { client, registration } = mountedCard(scope, { services, requestResponses: serveRoutes ? { [workspaceModelUrl]: body } : {} })
+    await Bun.sleep(0)
+    /** Render the component once the scoped values have reached its store. */
+    const tree = await client.hooks.render(registration.component, { useMpdCard: (selector) => selector(registration.inject().hooks.mpdCard.getSnapshot()), t: (key) => EN[key] ?? key })
+    return { tree, client, registration }
   }
 
 /** The section value every route arm starts from: one agent's provider/model/effort triple. */
   const AGENT_SECTION = { hashline: { maxDiffChars: 20000 }, agentRoutes: { Architect: { provider: "deepseek-official", model: "deepseek-v4-pro", reasoningEffort: "max" } } }
 /** A ready scope carrying one section value. */
-  const agentScope = (section: Record<string, unknown>): ScopeDouble => fakeScope({ status: "ready", mode: "host", writable: true, revision: 7, value: section, user: section })
+  const agentScope = (section: Record<string, unknown>): ScopeDouble => fakeScope({ status: "ready", writable: true, revision: 7, value: section, user: section })
 
   test("the model control lists the catalog's provider/model pairs, GROUPED by provider", async () => {
     /** This arm's rendered tree and client. */
@@ -841,7 +926,7 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     expect(controlOf(tree, "agentRoutes.Architect.model")?.type).toBe("select")
     expect(optionValues(controlOf(tree, "agentRoutes.Architect.model"))).toEqual(["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"])
     expect(optionValues(controlOf(tree, "agentRoutes.Architect.reasoningEffort"))).toEqual(["off", "low", "high", "max"])
-    expect(textOf(tree)).toContain("persists in the HOST's settings document")
+    expect(textOf(tree)).toContain("The host settings document stores the other fields.")
     client.restore()
   })
 
@@ -858,22 +943,27 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     throwing.client.restore()
   })
 
-  test("edits through the catalog-driven controls still write ONE mutate batch with the revision fence", async () => {
-    /** Every mutation this arm's scope recorded. */
+  test("catalog-driven model controls write one batch to the selected workspace", async () => {
+    /** Global writes recorded separately from the scoped POST. */
     const calls: ScopeCall[] = []
-    /** This arm's client and section registration. */
-    const { registration } = mountedCard(fakeScope(READY, calls))
+    /** Mount the shipped transport with one selected session. */
+    const { client, registration } = mountedCard(fakeScope(READY, calls), workspaceWrites)
     /** The section's host-facing face. */
     const face = registration.inject()
     face.edit("agentRoutes.Architect.model", "deepseek-v4-pro")
     face.edit("agentRoutes.Architect.reasoningEffort", "max")
     await face.save()
-    expect(calls).toHaveLength(1)
-    expect(calls[0].expected).toBe(7)
-    expect(calls[0].ops).toEqual([
-      { op: "set", path: ["agentRoutes", "Architect", "model"], value: "deepseek-v4-pro" },
-      { op: "set", path: ["agentRoutes", "Architect", "reasoningEffort"], value: "max" },
+    /** The actual workspace request handed to fetch by the shipped transport. */
+    const posted = client.calls.fetched.filter((entry) => entry.method === "POST")
+    expect(posted).toHaveLength(1)
+    expect(posted[0].url).toBe(workspaceModelUrl)
+    expect(JSON.parse(String(posted[0].options?.body))).toEqual([
+      { agent: "Architect", leaf: "model", value: "deepseek-v4-pro" },
+      { agent: "Architect", leaf: "reasoningEffort", value: "max" },
     ])
+    expect(calls).toEqual([])
+    await Bun.sleep(0)
+    client.restore()
   })
 
   // ── Contract §9: two agents with DIFFERENT routes render independently (no cross-talk), which is
@@ -898,16 +988,18 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     expect(text).toContain("agent Architect · heavy members: deepseek-official / deepseek-v4-pro / max")
     expect(text).toContain("agent Deep Worker · execution members: deepseek-official / deepseek-v4-flash / low")
     // An edit staged on ONE agent writes ONLY that agent's leaf (no group write, no cross-talk).
-    /** Every mutation this arm's scope recorded. */
-    const calls: ScopeCall[] = []
-    /** The mounted section whose face stages the edit. */
-    const { registration } = mountedCard(fakeScope(READY, calls))
+    /** The shipped client and the selected-session transport used by this edit. */
+    const editMount = mountedCard(fakeScope(READY), workspaceWrites)
     /** The section's host-facing face. */
-    const face = registration.inject()
+    const face = editMount.registration.inject()
     face.edit("agentRoutes.Deep Worker.model", "deepseek-v4-pro")
     await face.save()
-    expect(calls).toHaveLength(1)
-    expect(calls[0].ops).toEqual([{ op: "set", path: ["agentRoutes", "Deep Worker", "model"], value: "deepseek-v4-pro" }])
+    /** Only the edited agent's leaf reaches the workspace writer. */
+    const posted = editMount.client.calls.fetched.filter((entry) => entry.method === "POST")
+    expect(posted).toHaveLength(1)
+    expect(JSON.parse(String(posted[0].options?.body))).toEqual([{ agent: "Deep Worker", leaf: "model", value: "deepseek-v4-pro" }])
+    await Bun.sleep(0)
+    editMount.client.restore()
     client.restore()
   })
 
@@ -935,24 +1027,26 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     // The card's own field list carries no retired path either.
     expect(CARD.FIELDS.some((field: CardField) => field.path[0] === "teamModels")).toBe(false)
     // ...and a SAVE writes only `agentRoutes.<Agent>.<leaf>` (never the legacy table).
-    /** Every mutation the scope recorded. */
-    const calls: ScopeCall[] = []
-    /** The mounted section whose face stages the edit. */
-    const { registration } = mountedCard(fakeScope(READY, calls))
+    /** Scope is selected for the real route transport. */
+    const editMount = mountedCard(fakeScope(READY), workspaceWrites)
     /** The section's host-facing face. */
-    const face = registration.inject()
+    const face = editMount.registration.inject()
     face.edit("agentRoutes.Architect.model", "deepseek-v4-pro")
     await face.save()
-    expect(calls).toHaveLength(1)
-    expect(calls[0].ops).toEqual([{ op: "set", path: ["agentRoutes", "Architect", "model"], value: "deepseek-v4-pro" }])
+    /** Only one route edit reaches the project writer. */
+    const posted = editMount.client.calls.fetched.filter((entry) => entry.method === "POST")
+    expect(posted).toHaveLength(1)
+    expect(JSON.parse(String(posted[0].options?.body))).toEqual([{ agent: "Architect", leaf: "model", value: "deepseek-v4-pro" }])
+    await Bun.sleep(0)
+    editMount.client.restore()
     client.restore()
   })
 
   test("R3: the see-before-you-edit block renders ONE state per agent, and <unconfigured> where nothing is set", async () => {
     /** The section value this arm renders: Architect configured, the other ten not. */
     const section = { agentRoutes: { Architect: { provider: "deepseek-official", model: "deepseek-v4-pro", reasoningEffort: "max" } } }
-    /** This arm's rendered tree and client. */
-    const { tree, client } = await renderedTree(agentScope(section), catalogServices())
+    /** Exercise the document fallback when the workspace service is unavailable. */
+    const { tree, client } = await renderedTree(agentScope(section), catalogServices(), false)
     /** The rendered section text, where the effective block must appear above the rows. */
     const text = textOf(tree)
     expect(text).toContain("Effective model config")
@@ -1037,24 +1131,19 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     controller.dispose()
   })
 
-  test("the disclosure sentences are unchanged and still rendered with the new rows", async () => {
+  test("the disclosure identifies the workspace file and the independent global save path", async () => {
     /** This arm's rendered tree and client. */
     const { tree, client } = await renderedTree(agentScope(AGENT_SECTION), catalogServices())
-    /** The rendered section text, where the disclosure must appear once. */
+    /** The ownership sentence appears once in the help section. */
+    const workspaceNotice = "Model route edits update .mpd/mpd.jsonc in the selected session's workspace."
+    /** Rendered text includes the separate global and local scopes. */
     const text = textOf(tree)
-    // The disclosure still REACHES the reader — once, at the top of the card, where the 25 rows no
-    // longer repeat it (measured in a real browser: it buried every row's own sentence).
-    expect(text).toContain(BRIDGE_DISCLOSURE)
-    // SHIPPED SPELLING: the disclosure now opens a NEW SENTENCE here ("… workspace(s). The config
-    // service re-resolves …"), so the pin carries the shipped capital "The" — the old lowercase pin
-    // went stale the moment the save-path sentence was prepended (CodeRabbit #4 repair). The material
-    // clause is unchanged; only the sentence boundary moved.
-    expect(text).toContain("The config service re-resolves on every settings save")
+    expect(text.split(workspaceNotice)).toHaveLength(2)
+    expect(text).toContain("The host settings document stores the other fields.")
     expect(text).toContain("instead of reading the live config service per use")
-    expect(text).toContain(BRIDGE_NOT_LOST)
-    expect(text).toContain("if no session is live, the save stays in settings")
-    // ...and the ROWS do not.
-    for (const field of AGENT_ROW_FIELDS) expect(hintOfRow(tree, field.path.join("."))).not.toContain(BRIDGE_DISCLOSURE)
+    expect(text).toContain("Profile-wide settings apply across workspaces")
+    expect(text).toContain("Select a live session to save its workspace model routes.")
+    for (const field of AGENT_ROW_FIELDS) expect(hintOfRow(tree, field.path.join("."))).not.toContain(workspaceNotice)
     client.restore()
   })
 
@@ -1128,7 +1217,7 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     expect(textOf(pointer)).toBe("mpd.jsonc agentRoutes.Researcher.provider")
     // the ROW no longer carries the disclosure; the CARD does, once
     expect(textOf(pointer)).not.toContain(BRIDGE_DISCLOSURE)
-    expect(textOf(tree)).toContain(BRIDGE_DISCLOSURE)
+    expect(textOf(tree)).toContain("Model route edits update .mpd/mpd.jsonc in the selected session's workspace.")
     // readable above, dimmer below — asserted on the styles, not on a screenshot.
     //
     // RE-ANCHORED BY THE R2 RESTYLE, which moved this hierarchy from a uniform `opacity` onto the
@@ -1908,7 +1997,7 @@ describe("R2: the styled contract (the harness's own settings-form tokens)", () 
     // a control the page refuses writes on takes the host's `.input:disabled` greying, and stays a
     // control (the field rhythm, the bag and the attributes are the same ones)
     /** The same card rendered under the read-only scope. */
-    const readOnly = await renderReady({ status: "unavailable", mode: "memory", writable: false, revision: undefined, value: undefined, user: undefined })
+    const readOnly = await renderReady({ status: "unavailable", writable: false, revision: undefined, value: undefined, user: undefined })
     /** The read-only text control. */
     const offControl = controlOf(readOnly, "hashline.maxDiffChars")
     expect(offControl?.props.disabled).toBe(true)
@@ -1971,33 +2060,15 @@ describe("R2: the styled contract (the harness's own settings-form tokens)", () 
     for (const p of paragraphs) expect(styleOf(p)).toMatchObject({ margin: 0, fontSize: 12, lineHeight: 1.6, color: "var(--dsw-alias-label-tertiary, #8a94a6)" })
     /** The four sentences, as rendered. */
     const sentences = paragraphs.map((p) => textOf(p))
-    // NOTHING was dropped or shortened: all four paragraphs are present, and together they state the
-    // SCOPED truth (D-18): the live half NAMES its groups, the exception half NAMES the captured
-    // groups, and the blanket "no restart" claim appears nowhere on the rendered surface.
-    expect(sentences.every((sentence) => sentence.length > 0)).toBe(true)
-    expect(sentences[0]).toContain("persists in the HOST's settings document")
-    expect(sentences[0]).toContain("writes NO .mpd/mpd.jsonc")
-    expect(sentences[0]).toContain("<workspace>/.mpd/mpd.jsonc")
-    // The live half: the sentence qualifies itself instead of promising a blanket no-restart.
-    expect(sentences[0]).toContain("WHICH knobs take the new value in the RUNNING process — no restart — depends on how each one reads it")
-    expect(sentences[0]).toContain("agentRoutes.*")
-    expect(sentences[0]).not.toContain("teamModels.slot*")
-    expect(sentences[0]).toContain("tui.dashboardKey is live ONE WAY")
-    expect(sentences[0]).not.toContain("takes effect in the RUNNING process — no restart")
-    // The exception half, through a specific mount-captured group (not just the word "restart").
+    expect(sentences[0]).toBe("Model route edits update .mpd/mpd.jsonc in the selected session's workspace. The host settings document stores the other fields.")
+    // Keep the restart bound for general settings and the legacy global bridge's scope.
     expect(sentences[1]).toContain("are captured by their plugins at mount")
     expect(sentences[1]).toContain("hashline.*")
     expect(sentences[1]).toContain("waits for the next dsh boot")
-    // T16-F1, on the RENDERED paragraph: the scope is what a reader sees.
     expect(sentences[1]).toContain("the settings document receives it at once, and the file does too only on a host that still serves the legacy")
     expect(sentences[1]).not.toContain("the file and the settings document still receive it at once")
-    expect(sentences[2]).toContain("never lost")
-    expect(sentences[3]).toContain("if no session is live")
-    // CARD/TUI PARITY OF MEANING, not of a literal copy: both surfaces state the same constants, so
-    // the card's own copy must equal them (it cannot import the module — the client bytes may not
-    // carry the symbol — so the equality is asserted on the rendered text).
-    expect(sentences[0]).toBe(BRIDGE_DISCLOSURE)
-    expect(sentences[2]).toBe(BRIDGE_NOT_LOST)
+    expect(sentences[2]).toBe("Profile-wide settings apply across workspaces and can be saved without a live session.")
+    expect(sentences[3]).toBe("Select a live session to save its workspace model routes.")
     // and it reads as a NOTE beside the fields, not as a second body of prose: the title and the
     // description keep their own sizes above it
     expect(styleOf(elementsOf(tree, "h3")[0])).toMatchObject({ fontSize: 16, fontWeight: 500, color: "var(--dsw-alias-label-primary, #1c1c1e)" })
@@ -2051,25 +2122,42 @@ describe("the live-service read is sequenced and re-run on a settings-scope upda
   }
 
   /** The settings snapshot the card renders from; empty, because this arm observes only the service read. */
-  const snapshot = { status: "ready", mode: "host", writable: true, revision: 1, value: {}, user: {} }
+  const snapshot = { status: "ready", writable: true, revision: 1, value: {}, user: {} }
 
   /**
    * Mount the card against a hand-built ctx so the arm OWNS the fetch order: `fetchJson` answers the
    * arm's deferred reads in call order and the bound scope can be notified by hand, which is what a
    * settings-document update from another front door does.
    * @param reads - the deferred answers, handed out one per `fetchJson` call.
+   * @param initialSession - when supplied, bind the card to a session and its scoped mutation transport.
    * @returns the requested URLs, the card store reader and the scope notifier.
    */
-  function mountLiveService(reads: ControlledRead[]): {
+  function mountLiveService(reads: ControlledRead[], initialSession?: string): {
     /** Every URL the card requested, in call order. */
     urls: string[]
     /** The card's own store, read through the registration's inject face. */
     state: () => CardState
+    /** The slot face supporting normal edit and save actions. */
+    face: CardFace
     /** Fire the bound scope's subscribers, as an external settings-document update does. */
     notifyScope: () => void
+    /** Change the browser's current session and notify session subscribers. */
+    select: (session: string | undefined) => void
+    /** Workspace mutations issued by the card. */
+    posts: { url: string; body: unknown }[]
+    /** Mutations the legacy global form itself received. */
+    globalWrites: unknown[]
   } {
     /** Every fetchJson URL the card requested, in call order. */
     const urls: string[] = []
+    /** The selected session exposed by the browser snapshot. */
+    let current = initialSession
+    /** The subscribers the client registered to follow session switches. */
+    const sessionListeners = new Set<() => void>()
+    /** Workspace route writes received by the injected POST transport. */
+    const posts: { url: string; body: unknown }[] = []
+    /** Global writes recorded independently of the workspace transport. */
+    const globalWrites: unknown[] = []
     /** The index of the next deferred read to hand out. */
     let next = 0
     /** The entry's injected reader, answering the arm's deferred reads in call order. */
@@ -2082,13 +2170,18 @@ describe("the live-service read is sequenced and re-run on a settings-scope upda
     }
     /** The scope's subscribers, fired by hand to simulate an external document update. */
     const scopeListeners = new Set<() => void>()
-    /** The bound scope double; this arm only observes reads, so mutate is a no-op. */
+    /** The bound global settings scope alongside the test's workspace route. */
     const scope = {
       getSnapshot: () => snapshot,
       subscribe: (listener: () => void) => { scopeListeners.add(listener); return () => { scopeListeners.delete(listener) } },
-      mutate: async (): Promise<void> => {},
+      mutate: async (ops: unknown): Promise<void> => { globalWrites.push(ops) },
       dispose: (): void => {},
     }
+    /** The browser session list, with a second listed session separate from the selected one. */
+    const sessions = { list: {
+      getSnapshot: () => ({ current, ids: ["a", "b"] }),
+      subscribe: (listener: () => void) => { sessionListeners.add(listener); return () => { sessionListeners.delete(listener) } },
+    } }
     /** The configForms service the card resolves its namespace form through. */
     const configForms = { get: (entryId: string): unknown => { void entryId; return scope } }
     /** The section descriptor the card registers, whose inject face carries the store. */
@@ -2106,16 +2199,52 @@ describe("the live-service read is sequenced and re-run on a settings-scope upda
       },
       inject: (deps: string[], cb: (scoped: { get: (name: string) => unknown }) => unknown): { dispose: () => void } => {
         if (deps.includes("configForms")) cb({ get: (name: string) => (name === "configForms" ? configForms : undefined) })
+        if (deps.length === 1 && deps[0] === "sessions" && initialSession !== undefined) cb({ get: (name: string) => name === "sessions" ? sessions : undefined })
         return { dispose: (): void => {} }
       },
     }
-    expect(CARD.mountSettingsCard(ctx, { fetchJson })).toBe(true)
+    expect(CARD.mountSettingsCard(ctx, { fetchJson, ...(initialSession === undefined ? {} : {
+      postJson: async (url: string, body: unknown): Promise<unknown> => { posts.push({ url, body }); return { ok: true } },
+    }) })).toBe(true)
+    /** The actual face the card registers once its form is available. */
+    const face = registered?.inject?.()
+    if (face === undefined) throw new Error("Settings card failed to mount")
     return {
       urls,
-      state: () => registered!.inject!().hooks.mpdCard.getSnapshot(),
+      face,
+      state: () => face.hooks.mpdCard.getSnapshot(),
       notifyScope: () => { for (const listener of [...scopeListeners]) listener() },
+      select: (session) => { current = session; for (const listener of [...sessionListeners]) listener() },
+      posts,
+      globalWrites,
     }
   }
+
+  test("switching selected sessions drops stale model replies and keeps global edits on the host form", async () => {
+    /** A's slow request completes only after B is selected. */
+    const reads = [controlledRead(), controlledRead()]
+    /** Mount on workspace A with both workspace and profile-wide transports. */
+    const mount = mountLiveService(reads, "a")
+    mount.face.edit("agentRoutes.Architect.model", "stale-draft")
+    mount.face.edit("autoproject.maxRounds", "5")
+    mount.select("b")
+    expect(mount.urls).toEqual(["/plugins/mpd/model-config?sessionId=a", "/plugins/mpd/model-config?sessionId=b"])
+    reads[1].resolve(serviceBody("from-b"))
+    reads[0].resolve(serviceBody("stale-a"))
+    await Bun.sleep(0)
+    expect(mount.state().effective).toMatchObject({ agents: { Architect: { model: "from-b" } } })
+    expect(mount.state()).toMatchObject({ controls: { "agentRoutes.Architect.model": { text: "" } } })
+    mount.face.edit("agentRoutes.Architect.model", "edited-b")
+    await mount.face.save()
+    await Bun.sleep(0)
+    expect(mount.posts).toEqual([{ url: "/plugins/mpd/model-config?sessionId=b", body: [{ agent: "Architect", leaf: "model", value: "edited-b" }] }])
+    expect(mount.globalWrites).toEqual([[{ op: "set", path: ["autoproject", "maxRounds"], value: 5 }]])
+    mount.select(undefined)
+    mount.face.edit("agentRoutes.Architect.model", "no-session")
+    await mount.face.save()
+    expect(mount.posts).toHaveLength(1)
+    expect(mount.globalWrites).toHaveLength(1)
+  })
 
   test("F1c: the effective-source copy states the reads the card actually performs", () => {
     // The card wires NO file watcher; it reads at mount, after its own saves and on settings-scope

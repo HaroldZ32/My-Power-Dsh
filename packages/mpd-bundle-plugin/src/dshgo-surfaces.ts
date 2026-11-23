@@ -13,7 +13,7 @@
 // into the bridge.
 import { rowLogLine } from "../../mpd-dsh-adapter-plugin/src/index"
 import type { DshGoCaps, DshGoStripValue } from "../../mpd-dsh-adapter-plugin/src/dshgo-view.ts"
-import { DSHGO_POLL_MS, orDeferred, readPanelSnapshot, sessionIdOfScope, type PanelBridge, type PanelEffect, type PanelReply, type PanelServices, type PanelTeamActionsFace } from "./dshgo-panel"
+import { DSHGO_POLL_MS, orDeferred, readPanelSnapshot, sessionIdOfScope, panelAgentOf, type PanelBridge, type PanelEffect, type PanelReply, type PanelServices, type PanelTeamActionsFace } from "./dshgo-panel"
 
 /** The composer.action id that runs one dispatch pass (declared in the manifest). */
 export const DSHGO_DISPATCH_ACTION = "mpd-dispatch"
@@ -57,12 +57,6 @@ export interface SurfaceOptions {
   log?: (line: string) => void
   /** The poll period, defaulting to {@link DSHGO_POLL_MS}. */
   pollMs?: number
-}
-
-/** The tool runtime the menu handlers drive, when the composition exposes one. */
-interface SurfaceToolFace {
-  /** Call one registered tool in-process and normalize the result. */
-  executeTool?: (input: { name: string; arguments?: unknown }) => Promise<unknown>
 }
 
 /** Read one string field from an unknown value, answering `""` for anything else. */
@@ -164,19 +158,17 @@ export function replyTextOf(event: unknown): string {
  * @returns the action map, keyed by the ids the manifest declares.
  */
 export function createSurfaceActions(options: SurfaceOptions): Record<string, (scope: unknown, event: unknown) => Promise<PanelReply>> {
-  /** The tool runtime, when the composition exposed one. */
-  const tools = (): SurfaceToolFace => options.dsh as unknown as SurfaceToolFace
   /** Call one tool, answering its refusal or a confirmation as a toast. */
-  const callTool = async (name: string, args: Record<string, unknown>, success: string): Promise<PanelEffect> => {
+  const callTool = async (name: string, args: Record<string, unknown>, agent: NonNullable<ReturnType<typeof panelAgentOf>>, success: string): Promise<PanelEffect> => {
     /** The runtime, or undefined when this host has none. */
-    const runtime = tools()
+    const runtime = options.dsh
     if (runtime?.executeTool === undefined) return { toast: "Unavailable here" }
     /** The call's settled outcome; a throw is a refusal, never a rejection. */
-    const outcome = await Promise.resolve().then(() => runtime.executeTool?.({ name, arguments: args })).then((value) => ({ ok: true as const, value }), (error: unknown) => ({ ok: false as const, value: error }))
+    const outcome = await Promise.resolve().then(() => runtime.executeTool?.({ name, arguments: args, agent })).then((value) => ({ ok: true as const, value }), (error: unknown) => ({ ok: false as const, value: error }))
     if (outcome.ok === false) return { toast: clip(outcome.value instanceof Error ? outcome.value.message : "The action was refused", MAX_TOAST_CHARS) }
     /** The tool's value as a record, so `ok`/`error` are typed reads. */
     const record = recordOf(outcome.value)
-    if (record !== undefined && (record.ok === false || stringOf(record.error) !== "")) return { toast: clip(stringOf(record.error) || "The action was refused", MAX_TOAST_CHARS) }
+    if (record?.ok !== true) return { toast: clip(stringOf(record?.error) || "The action was refused", MAX_TOAST_CHARS) }
     return { toast: clip(success, MAX_TOAST_CHARS) }
   }
   /** The dispatch handler: one pass over the conversation's team, deferred when it outlives the window. */
@@ -196,15 +188,18 @@ export function createSurfaceActions(options: SurfaceOptions): Record<string, (s
     return orDeferred(running, "Dispatching…")
   }
   /** The save handler: ONE memory entry whose description is the reply's first line. */
-  const saveMemory = async (_scope: unknown, event: unknown): Promise<PanelReply> => {
+  const saveMemory = async (scope: unknown, event: unknown): Promise<PanelReply> => {
     /** The reply the action was invoked on. */
     const reply = replyTextOf(event)
     if (reply.trim() === "") return { toast: "Nothing to save" }
+    /** The authenticated tool caller for this message’s conversation. */
+    const agent = panelAgentOf(options.dsh, sessionIdOfScope(scope))
+    if (agent === undefined) return { toast: "Open a live conversation to save" }
     /** The entry's description: the reply's first non-empty line, clipped to the contract's bound. */
     const description = clip(reply.split("\n").map((line) => line.trim()).find((line) => line !== "") ?? reply, MAX_MEMORY_DESCRIPTION_CHARS)
     // The BODY keeps its line breaks: `clip` flattens, which is right for a one-line description and
     // wrong for the markdown a memory entry carries.
-    return callTool(MEMORY_WRITE_TOOL, { title: description, description, content: reply.slice(0, MAX_MEMORY_CONTENT_CHARS), kind: "note" }, "Saved to memory")
+    return callTool(MEMORY_WRITE_TOOL, { title: description, description, content: reply.slice(0, MAX_MEMORY_CONTENT_CHARS), kind: "note" }, agent, "Saved to memory")
   }
   /** The copy handler: the reply, clipped to the app's copy ceiling. */
   const copyReply = async (_scope: unknown, event: unknown): Promise<PanelReply> => {

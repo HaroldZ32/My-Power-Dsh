@@ -52,7 +52,7 @@ import { boxesFitWidth, hitTest, hitTestGroup, layoutBoxesNatural, layoutList, l
 // uses, so this page adds no cross-package edge beyond the ones the inventory already counts.
 import type { GroupedGroup } from "./dag-groups.js"
 import type { TeamWorkflow } from "./team-state.js"
-import { modelConsults, modelRanks, modelRows, NO_SESSION_TEAM_MARKER, WORKSPACE_SCOPE_MARKER, type TeamFeedAccessor } from "./team-state.js"
+import { modelConsults, modelRanks, modelRows, NO_SESSION_TEAM_MARKER, sessionIdOf, workspaceCwdOf, WORKSPACE_SCOPE_MARKER, type TeamFeedAccessor } from "./team-state.js"
 import {
   clampScroll,
   graphRow,
@@ -67,7 +67,6 @@ import {
   panelKeyEvent,
   panelKeysArmed,
   panelKit,
-  panelSessionId,
   panelSnapshot,
   panelText,
   runningGlyph,
@@ -1197,7 +1196,7 @@ export interface DagPageOptions {
  *   open, which is why the parameter is optional and why the second click then says so through a toast.
  * @returns a component matching the host's panel props contract.
  */
-export function createDagPanelComponent(readWorkflow: (sessionId?: string) => TeamWorkflow | undefined, options?: DagPageOptions): unknown {
+export function createDagPanelComponent(readWorkflow: (sessionId?: string, cwd?: string) => TeamWorkflow | undefined, options?: DagPageOptions): unknown {
   return function MpdTuiDagPanel(props: PanelPropsLike): unknown {
     /** The host's React instance and ui kit, proved usable before a single hook is called. */
     const kit = panelKit(props?.React, props?.ui)
@@ -1236,12 +1235,16 @@ export function createDagPanelComponent(readWorkflow: (sessionId?: string) => Te
     // read here on every render and thrown away; its `sessionId` is what makes this page able to ask
     // for ITS OWN session's team. The read is contained by `panelSnapshot`, and an unavailable id is a
     // legitimate state (it selects the marked workspace-level fallback), never an error.
+    /** One host snapshot keeps the session, project and subagent rows in step. */
+    const snapshot = panelSnapshot(props?.host)
     /** The calling session's id, or undefined when this host carries none. */
-    const sessionId = panelSessionId(props?.host)
+    const sessionId = sessionIdOf(snapshot)
+    /** The project cwd for both the board read and its watcher. */
+    const cwd = workspaceCwdOf(snapshot)
     /** The page's projection for this session, read PER RENDER (the panel must never freeze). */
     let workflow: TeamWorkflow | undefined
     try {
-      workflow = readWorkflow(sessionId)
+      workflow = readWorkflow(sessionId, cwd)
     } catch {
       // An unreadable record costs the drawing, never the page: the empty state says why below.
       workflow = undefined
@@ -1257,7 +1260,7 @@ export function createDagPanelComponent(readWorkflow: (sessionId?: string) => Te
     // THE PUSH (PART P). The feed re-renders this page the instant the team state changes, and the
     // 1000 ms tick below STAYS as the fallback: a composition without the feed behaves exactly as it
     // did. The workspace is resolved inside the accessor, per call, so nothing is cached here.
-    useTeamFeed(kit.React, options?.subscribeTeams)
+    useTeamFeed(kit.React, options?.subscribeTeams, undefined, sessionId, cwd)
     /** Whether the panel may receive keys right now. */
     const keysArmed = panelKeysArmed(props?.focused, props?.visible, props?.host)
     /** The pin, as one state cell: the task id the user pinned, or undefined. */
@@ -1426,7 +1429,7 @@ export function createDagPanelComponent(readWorkflow: (sessionId?: string) => Te
       // grace window and every relative age, so two rows of one render cannot disagree about "now".
       /** This render's clock, in epoch milliseconds. */
       const now = Date.now()
-      section = subagentSectionRows(panelSnapshot(props?.host), subagentRowFilter(workflow, sessionId, now))
+      section = subagentSectionRows(snapshot, subagentRowFilter(workflow, sessionId, now))
     } catch {
       // An unreadable host snapshot costs the host's own rows, never the drawing this page exists for.
       section = []

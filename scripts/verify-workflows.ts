@@ -47,7 +47,7 @@
 import { existsSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
-import { dirname, join, resolve } from "node:path"
+import { basename, dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
 /** This file's own absolute path, the anchor the repository root is derived from. */
@@ -184,6 +184,31 @@ function isMapping(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
+/** Check the ordered producer, smoke and upload steps of the npm release workflow. */
+function auditReleaseStages(file: string, steps: readonly unknown[]): Violation[] {
+  /** The job's mappings in execution order. */
+  const mappings = steps.filter(isMapping)
+  /** The index of the immutable archive producer. */
+  const pack = mappings.findIndex((step) => step.id === "release-pack")
+  /** The index of the real profile smoke test. */
+  const smoke = mappings.findIndex((step) => step.id === "release-smoke")
+  /** The index of the registry upload, excluding approvals and help. */
+  const stage = mappings.findIndex((step) => typeof step.run === "string" && /^npm stage publish\b/m.test(step.run))
+  /** The output expression both archive consumers must receive. */
+  const tarballOutput = "${{ steps.release-pack.outputs.tarball }}"
+  /** The smoke and stage readers tested by the producer-consumer contract. */
+  const consumers = [mappings[smoke], mappings[stage]]
+  /** The stage must depend on a successful smoke verdict in staging mode. */
+  const stageCondition: unknown = mappings[stage]?.if
+  /** The shell body holding the single registry upload. */
+  const stageRun: unknown = mappings[stage]?.run
+  if (pack >= 0 && pack < smoke && smoke < stage &&
+      consumers.every((step) => isMapping(step?.env) && step.env.RELEASE_TARBALL === tarballOutput) &&
+      typeof stageCondition === "string" && stageCondition.includes("steps.release-smoke.outcome == 'success'") &&
+      typeof stageRun === "string" && /^npm stage publish .* "\$RELEASE_TARBALL"$/m.test(stageRun)) return []
+  return [{ file, at: "jobs.publish.steps", what: "the npm stage must upload the same archive tested by the previous successful release smoke step" }]
+}
+
 /**
  * Audit ONE workflow document that has already been parsed.
  * @param file - Absolute path of the file, quoted in every violation.
@@ -236,6 +261,9 @@ function auditDocument(file: string, doc: unknown): Violation[] {
         out.push({ file, at, what: `a step needs EXACTLY one of "uses"/"run" (uses=${String(hasUses)}, run=${String(hasRun)})` })
       }
     })
+    if (/^publish\.ya?ml$/.test(basename(file)) && jobId === "publish") {
+      out.push(...auditReleaseStages(file, job.steps))
+    }
   }
   return out
 }
@@ -392,6 +420,23 @@ function arms(): Arm[] {
           throw new Error(`a boolean trigger block was not reported: ${JSON.stringify(found)}`)
         }
         return "a trigger block that parsed as a boolean is reported"
+      },
+    },
+    {
+      name: "release-stage-requires-the-tested-tarball",
+      check: (dir, parse): string => {
+        /** One parsed-workflow fixture with a matching archive source and two consumers. */
+        const archive = { RELEASE_TARBALL: "${{ steps.release-pack.outputs.tarball }}" }
+        /** Preserve the stage's exact success dependency and vary only the upload arguments. */
+        const run = (argument: string): Violation[] => auditReleaseStages(join(dir, "publish.yml"), [
+          { id: "release-pack" },
+          { id: "release-smoke", env: archive },
+          { run: `npm stage publish --access public${argument}`, env: archive, if: "steps.release-smoke.outcome == 'success'" },
+        ])
+        if (run(' "$RELEASE_TARBALL"').length !== 0 || !run("").some((v) => v.what.includes("same archive"))) {
+          throw new Error("the tested tarball must pass and publishing the directory must fail")
+        }
+        return "a stage without the archive argument is refused"
       },
     },
     {

@@ -1,6 +1,7 @@
 // packages/mpd-memory-plugin/src/index.ts
-import { existsSync as existsSync3, readFileSync as readFileSync4, readdirSync as readdirSync2, writeFileSync as writeFileSync2 } from "node:fs";
-import { basename as basename2, join as join4 } from "node:path";
+import { createHash as createHash2, randomUUID as randomUUID2 } from "node:crypto";
+import { closeSync as closeSync3, existsSync as existsSync3, fsyncSync, openSync as openSync3, readFileSync as readFileSync4, readdirSync as readdirSync2, renameSync as renameSync2, rmSync as rmSync2, writeFileSync as writeFileSync2 } from "node:fs";
+import { basename as basename2, dirname as dirname3, join as join4 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
@@ -1041,7 +1042,7 @@ function createDshAdapter(ctx, config = {}) {
     } catch {}
   };
   bindDshGoBridge();
-  const configAgentRouteResolver = () => {
+  const configAgentRouteResolver = (workspace) => {
     const config2 = service("mpdConfig");
     if (config2 === undefined || config2 === null)
       return;
@@ -1049,7 +1050,7 @@ function createDshAdapter(ctx, config = {}) {
       return;
     return (member) => {
       try {
-        const answer = config2.agentRouteResolutionOf.call(config2, member);
+        const answer = config2.agentRouteResolutionOf.call(config2, member, workspace);
         return answer !== null && typeof answer === "object" && typeof answer.ok === "boolean" ? answer : undefined;
       } catch {
         return;
@@ -1403,7 +1404,7 @@ function createDshAdapter(ctx, config = {}) {
         const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
         let agentOptions = request.agentOptions;
         if (agentOptions === undefined) {
-          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver());
+          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver(workspaceRootOfAgent(caller)));
           if (outcome.status === "routed") {
             const resolved = await resolveRunRoute({ llmCatalog }, outcome.route, outcome.fallbacks);
             agentOptions = resolved.route;
@@ -1419,8 +1420,13 @@ function createDshAdapter(ctx, config = {}) {
           ...agentOptions === undefined ? {} : { agentOptions },
           ...request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }
         };
+        const provider = typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn";
+        const childId = request.onOpening !== undefined && provider === "spawn" && typeof subagents.startActivation === "function" && typeof subagents.prompt === "function" ? randomUUID() : undefined;
+        if (childId !== undefined)
+          request.onOpening?.(childId);
         const spec = dualShapeActivationSpec({
-          provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
+          provider,
+          ...childId === undefined ? {} : { childId },
           label: `${request.name} · ${request.teamId}`,
           signal: request.signal ?? neverAborted()
         }, activationRequest);
@@ -2346,6 +2352,20 @@ function createDshAdapter(ctx, config = {}) {
         throw new Error("mpd-dsh-adapter: the harness skills service exposes no get()");
       return skills.get(skillName, options);
     },
+    selectedAgentPreset(agent) {
+      const session = agent?.session;
+      if (session === undefined || session === null)
+        return;
+      try {
+        const presets = service("agentPresets");
+        if (typeof presets?.presetForSession !== "function")
+          return;
+        const selected = presets.presetForSession(session);
+        return selected === null || typeof selected === "string" && selected.length > 0 ? selected : undefined;
+      } catch {
+        return;
+      }
+    },
     async resolvePreset(presetId) {
       const presets = requireService("agentPresets", 'cannot resolve preset "' + presetId + '"');
       if (typeof presets.resolve !== "function")
@@ -2993,9 +3013,9 @@ var MEMORY_READ_CARD = toolCard(buildMemoryReadCard);
 var MEMORY_STATUS_CARD = toolCard(buildMemoryStatusCard);
 
 // packages/mpd-memory-plugin/src/store.ts
-import { existsSync, mkdirSync as mkdirSync2, readFileSync as readFileSync2, appendFileSync } from "node:fs";
+import { appendFileSync, closeSync as closeSync2, existsSync, fstatSync, mkdirSync as mkdirSync2, openSync as openSync2, readFileSync as readFileSync2, readSync } from "node:fs";
 import { homedir } from "node:os";
-import { basename, dirname, join as join2, resolve as resolve3, sep as sep3 } from "node:path";
+import { basename, dirname, join as join2, relative as relative2, resolve as resolve3, sep as sep3 } from "node:path";
 import { spawnSync } from "node:child_process";
 function homeDir() {
   return process.env.HOME || homedir();
@@ -3048,8 +3068,17 @@ function journalPath(d) {
   return join2(d.runtime, "journal.jsonl");
 }
 function appendJournalLine(d, kind, detail) {
-  appendFileSync(journalPath(d), JSON.stringify({ at: new Date().toISOString(), kind, ...detail }) + `
+  const fd = openSync2(journalPath(d), "a+");
+  try {
+    const size = fstatSync(fd).size;
+    const tail2 = Buffer.alloc(1);
+    const needsSeparator = size > 0 && readSync(fd, tail2, 0, 1, size - 1) === 1 && tail2[0] !== 10;
+    appendFileSync(fd, (needsSeparator ? `
+` : "") + JSON.stringify({ at: new Date().toISOString(), kind, ...detail }) + `
 `);
+  } finally {
+    closeSync2(fd);
+  }
 }
 function run(cmd, args, cwdDir) {
   const r = spawnSync(cmd, args, { cwd: cwdDir, encoding: "utf8", timeout: 60000, maxBuffer: 8 * 1024 * 1024, env: process.env });
@@ -3062,11 +3091,14 @@ function gitEnsure(repo) {
   if (!existsSync(join2(repo, ".git"))) {
     const r = run("git", ["init", "-q"], repo);
     if (!r.ok)
-      throw new Error("mpd-memory: git init failed: " + r.out);
-    run("git", ["config", "user.name", "mpd-memory"], repo);
-    run("git", ["config", "user.email", "mpd-memory@local"], repo);
+      return "git init failed: " + r.out;
+    for (const [key, value] of [["user.name", "mpd-memory"], ["user.email", "mpd-memory@local"]]) {
+      const identity = run("git", ["config", key, value], repo);
+      if (!identity.ok)
+        return "git config failed: " + identity.out;
+    }
   }
-  return "git";
+  return "";
 }
 function svnEnsure(root, repo) {
   const svnRepo = join2(root, "svn-repo");
@@ -3074,49 +3106,50 @@ function svnEnsure(root, repo) {
   if (!existsSync(join2(svnRepo, "db"))) {
     const r = run("svnadmin", ["create", svnRepo], root);
     if (!r.ok)
-      throw new Error("mpd-memory: svnadmin create failed: " + r.out);
+      return "svnadmin create failed: " + r.out;
   }
   if (!existsSync(join2(repo, ".svn"))) {
-    mkdirSync2(dirname(repo), { recursive: true });
     const r = run("svn", ["checkout", url, repo], dirname(repo));
     if (!r.ok)
-      throw new Error("mpd-memory: svn checkout failed: " + r.out);
+      return "svn checkout failed: " + r.out;
   }
-  return "svn";
+  return "";
 }
-function ensureVcs(config, d) {
-  const vcs = config.vcs ?? "git";
-  if (vcs === "git" || vcs === "both")
-    gitEnsure(d.repo);
-  if (vcs === "svn" || vcs === "both")
-    svnEnsure(d.root, d.repo);
+function gitCommit(repo, entry, msg) {
+  const add = run("git", ["add", "-A", "--", "memory"], repo);
+  if (!add.ok)
+    return "git add failed: " + add.out;
+  const tracked = run("git", ["ls-files", "--error-unmatch", "--", entry], repo);
+  if (!tracked.ok)
+    return "git add failed for " + entry + ": " + tracked.out;
+  if (run("git", ["diff", "--cached", "--quiet", "--", "memory"], repo).ok)
+    return "";
+  const commit = run("git", ["commit", "--quiet", "--only", "-m", msg, "--", "memory"], repo);
+  return commit.ok ? "" : "git commit failed: " + commit.out;
 }
-function gitCommit(repo, msg) {
-  const a = run("git", ["add", "-A"], repo);
-  if (!a.ok)
-    return "git add failed: " + a.out;
-  const c = run("git", ["commit", "-q", "-m", msg], repo);
-  return c.ok ? "" : c.out.includes("nothing to commit") ? "" : "git commit failed: " + c.out;
+function svnCommit(repo, entry, msg) {
+  const add = run("svn", ["add", "--force", "--quiet", "memory"], repo);
+  if (!add.ok)
+    return "svn add failed: " + add.out;
+  const tracked = run("svn", ["info", "--show-item", "kind", entry], repo);
+  if (!tracked.ok)
+    return "svn add failed for " + entry + ": " + tracked.out;
+  const commit = run("svn", ["commit", "-m", msg, "memory"], repo);
+  return commit.ok ? "" : "svn commit failed: " + commit.out;
 }
-function svnCommit(repo, msg) {
-  const a = run("svn", ["add", "--force", "--quiet", "."], repo);
-  const c = run("svn", ["commit", "-m", msg], repo);
-  return c.ok ? "" : "svn commit failed: " + c.out;
-}
-function commitAll(config, d, msg) {
-  const errs = [];
-  const vcs = config.vcs ?? "git";
-  if (vcs === "git" || vcs === "both") {
-    const e = gitCommit(d.repo, msg);
-    if (e)
-      errs.push(e);
+function commitAll(config, d, file, msg, previous = []) {
+  const configured = config.vcs === "both" ? ["git", "svn"] : [config.vcs ?? "git"];
+  const entry = relative2(d.repo, file);
+  const committedTo = [];
+  const errors = [];
+  for (const backend of configured) {
+    const failure = previous.includes(backend) ? "" : backend === "git" ? gitEnsure(d.repo) || gitCommit(d.repo, entry, msg) : svnEnsure(d.root, d.repo) || svnCommit(d.repo, entry, msg);
+    if (failure)
+      errors.push(failure);
+    else
+      committedTo.push(backend);
   }
-  if (vcs === "svn" || vcs === "both") {
-    const e = svnCommit(d.repo, msg);
-    if (e)
-      errs.push(e);
-  }
-  return errs;
+  return { committedTo, errors };
 }
 function parseFrontmatter(file) {
   const raw = readFileSync2(file, "utf8");
@@ -3227,7 +3260,6 @@ function matchArchiveEvent(context, toolName, args, result, log) {
 function writeArchiveEntry(context, event) {
   assertMemoryMutationSandboxed(globalRoot(context.config), "record a global project-archive memory");
   const d = ensureGlobalDirs(context.config);
-  ensureVcs(context.config, d);
   const at = new Date().toISOString();
   const key = resolve4(context.workspace) + ":" + event.projectKey;
   const index = readIndex(d);
@@ -3241,7 +3273,7 @@ function writeArchiveEntry(context, event) {
     appendJournalLine(d, "superseded", { by: event.kind, key, file: fileName, previous: previous.eventKind });
   index.entries[key] = { key, workspace: resolve4(context.workspace), projectKey: event.projectKey, eventKind: event.kind, file: fileName, at, superseded: (previous?.superseded ?? 0) + (previous === undefined ? 0 : 1) };
   writeIndex(d, index);
-  const errors = commitAll(context.config, d, "memory: project archive " + event.projectKey + " (" + event.kind + ")");
+  const { errors } = commitAll(context.config, d, file, "memory: project archive " + event.projectKey + " (" + event.kind + ")");
   return { key, file, superseded: previous !== undefined, errors };
 }
 function digestFor(context, event) {
@@ -3596,6 +3628,56 @@ function mergedConfig(ctx, config) {
     globalDir: typeof v("memory.globalDir") === "string" ? v("memory.globalDir") : config.globalDir
   };
 }
+function renderCommitReceipt(receipt) {
+  return "committed=" + (receipt.committedTo.join(",") || "none") + (receipt.errors.length === 0 ? "" : `
+` + receipt.errors.join(`
+`));
+}
+function writeAtomically(file, stagingDir, content) {
+  const staging = join4(stagingDir, ".mpd-memory-" + randomUUID2() + ".tmp");
+  try {
+    writeFileSync2(staging, content, { flag: "wx", mode: 384 });
+    renameSync2(staging, file);
+  } finally {
+    rmSync2(staging, { force: true });
+  }
+}
+function reflectionJournaled(d, file) {
+  const journal = journalPath(d);
+  if (!existsSync3(journal))
+    return false;
+  const fd = openSync3(journal, "r+");
+  try {
+    const recorded = readFileSync4(fd, "utf8").split(`
+`).some((line) => {
+      if (!line.includes(file))
+        return false;
+      try {
+        const record = JSON.parse(line);
+        return record !== null && typeof record === "object" && "kind" in record && record.kind === "reflection" && "file" in record && record.file === file;
+      } catch (error) {
+        if (error instanceof SyntaxError)
+          return false;
+        throw error;
+      }
+    });
+    if (recorded)
+      fsyncSync(fd);
+    return recorded;
+  } finally {
+    closeSync3(fd);
+  }
+}
+function ensureReflectionJournaled(d, file, body) {
+  const name2 = basename2(file);
+  if (reflectionJournaled(d, name2))
+    return;
+  if (readFileSync4(file, "utf8") !== body)
+    throw new Error(`mpd-memory: ${file} has changed. Restore the original bytes before retrying.`);
+  appendJournalLine(d, "reflection", { file: name2 });
+  if (!reflectionJournaled(d, name2))
+    throw new Error(`mpd-memory: reflection journal record for ${name2} could not be verified; retry with the original title and content.`);
+}
 function initialState() {
   return { steps: 0, reflectionsCompleted: 0, stepsSinceReflection: 0, pendingReflection: null, triggered: false };
 }
@@ -3621,12 +3703,14 @@ function apply(ctx, config = {}) {
   function readReflection(d) {
     try {
       return adoptLegacyState(JSON.parse(readFileSync4(statePath(d), "utf8")));
-    } catch {
-      return initialState();
+    } catch (error) {
+      if (error instanceof SyntaxError || error instanceof Error && "code" in error && error.code === "ENOENT")
+        return initialState();
+      throw error;
     }
   }
   function writeReflection(d, s) {
-    writeFileSync2(statePath(d), JSON.stringify(s, null, 2));
+    writeAtomically(statePath(d), d.runtime, JSON.stringify(s, null, 2));
   }
   function teamsService() {
     const svc = ctx.get?.("mpdTeams");
@@ -3643,7 +3727,8 @@ function apply(ctx, config = {}) {
     name: "mpd_memory_write",
     description: `Persist a memory entry (markdown file with frontmatter description/kind/aliases/read_only) into the VCS-backed memory store and commit. scope:"workspace" (default, this agent's store) or "global" (the shared ~/.mpd/memory store, guarded: a global write is refused when its root is not inside the sandbox $HOME of an isolated boot, and it never advances the per-agent reflection counter). A workspace write increments the reflection step counter; when the reflection threshold is crossed the result announces a reflection is due. kind: note | fact | reflection.`,
     parameters: { type: "object", properties: { title: { type: "string" }, description: { type: "string" }, content: { type: "string" }, kind: { type: "string", enum: ["note", "fact", "reflection"] }, tags: { type: "array", items: { type: "string" } }, readOnly: { type: "boolean" }, scope: { type: "string", enum: ["workspace", "global"], description: "Which store this entry belongs to; workspace is the default." } }, required: ["title", "content"], additionalProperties: false },
-    output: { schema: { type: "object", properties: { file: { type: "string" }, committedTo: { type: "array", items: { type: "string" } }, reflectionDue: { type: "boolean" }, vcs: { type: "string" }, errors: { type: "array", items: { type: "string" } }, scope: { type: "string" } }, required: ["file", "vcs"] }, render: (_a, v) => textBlock("memory written: " + v.file + " (vcs=" + v.vcs + " committed=" + v.committedTo.join(",") + " reflectionDue=" + v.reflectionDue + ")"), presentationMeta: MEMORY_WRITE_CARD },
+    output: { schema: { type: "object", properties: { file: { type: "string" }, committedTo: { type: "array", items: { type: "string" } }, reflectionDue: { type: "boolean" }, vcs: { type: "string" }, errors: { type: "array", items: { type: "string" } }, scope: { type: "string" } }, required: ["file", "vcs"] }, render: (_a, v) => textBlock("memory written: " + v.file + " (vcs=" + v.vcs + ", reflectionDue=" + v.reflectionDue + `)
+` + renderCommitReceipt(v)), presentationMeta: MEMORY_WRITE_CARD },
     execute: async (args, exec) => {
       const scope = scopeOf(args);
       const name2 = String(args?.title).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48) + "-" + Date.now().toString(36);
@@ -3653,7 +3738,6 @@ function apply(ctx, config = {}) {
       if (scope === "global") {
         assertMemoryMutationSandboxed(globalDirs(cfg).root, "write a global memory entry");
         const g = ensureGlobalDirs(cfg);
-        ensureVcs(cfg, g);
         const globalMeta = { ...meta, scope: "global" };
         const globalFile = safeMemoryPath(g.memoryDir, name2 + ".md");
         const globalFront = `---
@@ -3663,14 +3747,13 @@ function apply(ctx, config = {}) {
         writeFileSync2(globalFile, globalFront + String(args?.content) + (String(args?.content).endsWith(`
 `) ? "" : `
 `));
-        const globalErrs = commitAll(cfg, g, "memory: " + name2 + " (" + globalMeta.kind + ")");
+        const globalCommit = commitAll(cfg, g, globalFile, "memory: " + name2 + " (" + globalMeta.kind + ")");
         appendJournalLine(g, "write", { file: basename2(globalFile), kind: globalMeta.kind, vcs: cfg.vcs ?? "git", scope: "global" });
         const wsDirs = agentPaths(cfg, dsh.workspaceRoot(exec));
         const wsState = readReflection(wsDirs);
-        return { file: globalFile, committedTo: (cfg.vcs ?? "git") === "both" ? ["git", "svn"] : [cfg.vcs ?? "git"], reflectionDue: wsState.triggered === true || wsState.pendingReflection?.due === true, vcs: cfg.vcs ?? "git", errors: globalErrs, scope };
+        return { file: globalFile, ...globalCommit, reflectionDue: wsState.triggered === true || wsState.pendingReflection?.due === true, vcs: cfg.vcs ?? "git", scope };
       }
       const d = ensureDirs(cfg, dsh.workspaceRoot(exec));
-      ensureVcs(cfg, d);
       const file = safeMemoryPath(d.memoryDir, name2 + ".md");
       const front = `---
 ` + JSON.stringify(meta) + `
@@ -3679,17 +3762,17 @@ function apply(ctx, config = {}) {
       writeFileSync2(file, front + String(args?.content) + (String(args?.content).endsWith(`
 `) ? "" : `
 `));
-      const errs = commitAll(cfg, d, "memory: " + name2 + " (" + meta.kind + ")");
+      const commit = commitAll(cfg, d, file, "memory: " + name2 + " (" + meta.kind + ")");
       const ref = readReflection(d);
       ref.steps = (ref.steps ?? 0) + 1;
       ref.stepsSinceReflection = (ref.stepsSinceReflection ?? 0) + 1;
-      if ((ref.stepsSinceReflection ?? 0) >= reflectionEvery) {
+      if (ref.stepsSinceReflection >= reflectionEvery && ref.pendingReflection?.due !== true) {
         ref.triggered = true;
         ref.pendingReflection = { due: true, at: new Date().toISOString() };
       }
       writeReflection(d, ref);
       appendJournalLine(d, "write", { file: basename2(file), kind: meta.kind, vcs: cfg.vcs ?? "git" });
-      return { file, committedTo: (cfg.vcs ?? "git") === "both" ? ["git", "svn"] : [cfg.vcs ?? "git"], reflectionDue: ref.triggered === true, vcs: cfg.vcs ?? "git", errors: errs, scope };
+      return { file, ...commit, reflectionDue: ref.triggered === true || ref.pendingReflection?.due === true, vcs: cfg.vcs ?? "git", scope };
     }
   });
   dsh.registerTool({
@@ -3740,32 +3823,56 @@ REFLECTION DUE` : "")) },
   });
   dsh.registerTool({
     name: "mpd_memory_reflect_complete",
-    description: "Complete the reflection this agent owes: writes the reflection content as a memory entry (kind=reflection), advances reflectionsCompleted, resets stepsSinceReflection, settles the pending claim and commits.",
+    description: "Save the reflection and settle the workspace claim once all configured backends succeed. If a backend fails, fix it and retry with the same title and content.",
     parameters: { type: "object", properties: { content: { type: "string" }, title: { type: "string" } }, required: ["content"], additionalProperties: false },
-    output: { schema: { type: "object", properties: { completed: { type: "boolean" }, file: { type: "string" } }, required: ["completed", "file"] }, render: (_a, v) => textBlock("reflection completed: " + (v.completed ? "yes" : "no") + " " + v.file) },
+    output: {
+      schema: { type: "object", properties: { completed: { type: "boolean" }, file: { type: "string" }, committedTo: { type: "array", items: { type: "string" } }, errors: { type: "array", items: { type: "string" } } }, required: ["completed", "file"] },
+      render: (_a, v) => textBlock("reflection completed: " + (v.completed ? "yes" : "no (saved locally; retry with the same title and content)") + " " + v.file + `
+` + renderCommitReceipt(v))
+    },
     execute: async (args, exec) => {
       const d = ensureDirs(cfg, dsh.workspaceRoot(exec));
       const s = readReflection(d);
-      if (s.triggered !== true && s.pendingReflection?.due !== true) {
-        throw new Error("mpd-memory: no reflection is due — refusing to complete (triggered=" + String(s.triggered) + ", pendingReflection=" + (s.pendingReflection?.due === false ? "settled" : "none") + ", stepsSinceReflection=" + String(s.stepsSinceReflection ?? 0) + "); call mpd_memory_reflect to inspect the state machine.");
-      }
-      ensureVcs(cfg, d);
-      const name2 = "reflection-" + Date.now().toString(36);
-      const file = safeMemoryPath(d.memoryDir, name2 + ".md");
-      const meta = { description: String(args?.title ?? "reflection"), kind: "reflection" };
-      writeFileSync2(file, `---
-` + JSON.stringify(meta) + `
+      const body = `---
+` + JSON.stringify({ description: args.title ?? "reflection", kind: "reflection" }) + `
 ---
-` + String(args?.content) + `
-`);
-      commitAll(cfg, d, "memory: reflection " + name2);
-      s.reflectionsCompleted = (s.reflectionsCompleted ?? 0) + 1;
+` + args.content + `
+`;
+      const digest = createHash2("sha256").update(body).digest("hex");
+      const claim = s.pendingReflection;
+      if (s.triggered !== true && claim?.due !== true) {
+        if (claim?.attempt?.digest === digest) {
+          const file2 = safeMemoryPath(d.memoryDir, claim.attempt.name);
+          ensureReflectionJournaled(d, file2, body);
+          return { completed: true, file: file2, committedTo: claim.attempt.committedTo, errors: [] };
+        }
+        throw new Error("mpd-memory: no reflection is due — refusing to complete; call mpd_memory_reflect to inspect the state machine.");
+      }
+      const attempt = claim?.attempt ?? { name: `reflection-${randomUUID2()}.md`, digest, committedTo: [] };
+      if (attempt.digest !== digest)
+        throw new Error(`mpd-memory: retry ${attempt.name} with its original title and content.`);
+      if (claim?.attempt === undefined) {
+        s.pendingReflection = { due: true, at: claim?.at ?? new Date().toISOString(), attempt };
+        writeReflection(d, s);
+      }
+      const file = safeMemoryPath(d.memoryDir, attempt.name);
+      if (!existsSync3(file))
+        writeAtomically(file, dirname3(d.memoryDir), body);
+      else if (readFileSync4(file, "utf8") !== body)
+        throw new Error(`mpd-memory: ${file} has changed. Restore the original bytes before retrying.`);
+      const receipt = commitAll(cfg, d, file, "memory: reflection " + basename2(file, ".md"), attempt.committedTo);
+      const progress = { ...attempt, committedTo: receipt.committedTo };
+      s.pendingReflection = { due: true, at: s.pendingReflection?.at ?? new Date().toISOString(), attempt: progress };
+      writeReflection(d, s);
+      if (receipt.errors.length > 0)
+        return { completed: false, file, ...receipt };
+      ensureReflectionJournaled(d, file, body);
+      s.reflectionsCompleted += 1;
       s.stepsSinceReflection = 0;
       s.triggered = false;
-      s.pendingReflection = { due: false, at: new Date().toISOString() };
+      s.pendingReflection = { due: false, at: new Date().toISOString(), attempt: progress };
       writeReflection(d, s);
-      appendJournalLine(d, "reflection", { file: basename2(file) });
-      return { completed: true, file };
+      return { completed: true, file, ...receipt };
     }
   });
   dsh.registerTool({

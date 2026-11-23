@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 // packages/mpd-mcp-lsp/src/launch.ts
+import { resolve as resolve3 } from "node:path";
 import { pathToFileURL } from "node:url";
 
 // packages/mpd-mcp-shared/dependency-entry.ts
@@ -1349,6 +1350,77 @@ function ensureConfigPath(options) {
   }
 }
 
+// packages/mpd-mcp-lsp/src/cclsp-diagnostics.ts
+import { readFileSync as readFileSync3 } from "node:fs";
+import * as module from "node:module";
+var CCLSP_VERSION = "0.7.0";
+var diagnosticsEdits = [
+  ["          definition: { linkSupport: false },", `          publishDiagnostics: { versionSupport: true },
+          definition: { linkSupport: false },`],
+  ["      openFiles: new Set,", `      openFiles: new Set,
+      openFileContents: new Map,`],
+  ["      serverState.fileVersions.set(filePath, 1);", `      serverState.fileVersions.set(filePath, 1);
+      serverState.openFileContents.set(filePath, fileContent);`],
+  [`  async syncFileContent(filePath) {
+    try {
+      const serverState = await this.getServer(filePath);`, `  async syncFileContent(filePath, current) {
+    try {
+      const serverState = current?.serverState ?? await this.getServer(filePath);`],
+  [`      const fileContent = readFileSync2(filePath, "utf-8");
+      const uri = pathToUri(filePath);
+      const version = (serverState.fileVersions.get(filePath) || 1) + 1;
+      serverState.fileVersions.set(filePath, version);`, `      const fileContent = current?.text ?? readFileSync2(filePath, "utf-8");
+      const uri = pathToUri(filePath);
+      const version = (serverState.fileVersions.get(filePath) || 1) + 1;
+      serverState.fileVersions.set(filePath, version);
+      serverState.openFileContents.set(filePath, fileContent);
+      serverState.diagnostics.delete(uri);
+      serverState.lastDiagnosticUpdate.delete(uri);
+      serverState.diagnosticVersions.delete(uri);`],
+  ["        if (params?.uri) {", `        if (params?.uri) {
+          if (typeof params.version === "number" && typeof params.uri === "string" && params.uri.startsWith("file:") &&
+              params.version < (serverState.fileVersions.get(uriToPath(params.uri)) ?? 0)) return;`],
+  [`    const fileUri = pathToUri(filePath);
+    const cachedDiagnostics = serverState.diagnostics.get(fileUri);`, `    const fileUri = pathToUri(filePath);
+    const currentText = readFileSync2(filePath, "utf-8");
+    const edited = currentText !== serverState.openFileContents.get(filePath);
+    if (edited) await this.syncFileContent(filePath, { serverState, text: currentText });
+    const cachedDiagnostics = serverState.diagnostics.get(fileUri);`],
+  ["      if (timeSinceLastUpdate >= idleTime) {", "      if ((!options.requireResult || serverState.diagnostics.has(fileUri)) && timeSinceLastUpdate >= idleTime) {"],
+  [`        maxWaitTime: 5000,
+        idleTime: 300`, `        maxWaitTime: 5000,
+        idleTime: 300,
+        requireResult: edited`]
+];
+async function startCclsp(entry, version, log) {
+  if (version !== CCLSP_VERSION || typeof module.registerHooks !== "function") {
+    log(`[mpd-mcp-lsp] diagnostics refresh adaptation unavailable for cclsp@${version}`);
+    await import(entry.href);
+    return;
+  }
+  const hook = module.registerHooks({
+    load(url, context, nextLoad) {
+      const loaded = nextLoad(url, context);
+      if (url !== entry.href || loaded.format !== "module")
+        return loaded;
+      const source = readFileSync3(entry, "utf8");
+      for (const [before] of diagnosticsEdits) {
+        const at = source.indexOf(before);
+        if (at < 0 || source.indexOf(before, at + before.length) >= 0) {
+          log(`[mpd-mcp-lsp] diagnostics refresh adaptation skipped: unexpected cclsp@${version} layout`);
+          return loaded;
+        }
+      }
+      return { ...loaded, source: diagnosticsEdits.reduce((text, [before, after]) => text.replace(before, after), source) };
+    }
+  });
+  try {
+    await import(entry.href);
+  } finally {
+    hook.deregister();
+  }
+}
+
 // packages/mpd-mcp-lsp/src/launch.ts
 var DEPENDENCY = "cclsp";
 var DEPENDENCY_BIN = "cclsp";
@@ -1392,8 +1464,8 @@ if (dependency === null) {
   process.exitCode = 0;
 } else {
   sink.write("[mpd-mcp-lsp] starting " + DEPENDENCY + "@" + dependency.version + " from " + dependency.entry);
-  const root = resolveLogRoots()[0] ?? process.cwd();
+  const root = resolve3(process.env.DSH_WORKSPACE_ROOT?.trim() || process.cwd());
   publishConfigPath(root, dependency.packageJson);
   const entry = dependency.entry;
-  await import(pathToFileURL(entry).href);
+  await startCclsp(pathToFileURL(entry), dependency.version, (line) => sink.write(line));
 }

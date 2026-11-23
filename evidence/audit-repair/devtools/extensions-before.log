@@ -1,0 +1,43 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-ext-plugin/test/core.test.ts:
+661 |   const { ctx, providers } = makeCtx()
+662 |   await apply(ctx, { quiet: true })
+663 |   /** The same host-wide provider must remain eligible in all three cases. */
+664 |   const provider = providerNamed(providers, "mpd-ext:shared")
+665 |   for (const cwd of [missing, malformed, unsupported]) {
+666 |     expect((await observedNames(provider, { cwd })).names).toEqual(["style-check"])
+                                                                 ^
+error: expect(received).toEqual(expected)
+
+- [
+-   "style-check",
+- ]
++ []
+
+- Expected  - 3
++ Received  + 1
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-ext-plugin/test/core.test.ts:666:60)
+(fail) a missing or rejected project manifest cannot shadow a valid user extension [7.33ms]
+684 |     /** Yield for the host filesystem notification and bound failure if invalidation is absent. */
+685 |     const expectNewRevision = async (previous: number): Promise<void> => {
+686 |       /** A host notification generally arrives on the next event-loop turn. */
+687 |       const deadline = Date.now() + 2_000
+688 |       while (revision <= previous && Date.now() < deadline) await Bun.sleep(10)
+689 |       expect(revision).toBeGreaterThan(previous)
+                             ^
+error: expect(received).toBeGreaterThan(expected)
+
+Expected: > 0
+Received: 0
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-ext-plugin/test/core.test.ts:689:24)
+      at async <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-ext-plugin/test/core.test.ts:694:11)
+(fail) project skill changes invalidate completed catalogs without re-registering providers [2010.91ms]
+
+ 0 pass
+ 45 filtered out
+ 2 fail
+ 4 expect() calls
+Ran 2 tests across 1 file. [2.04s]

@@ -47,7 +47,9 @@ import {
   usePanelViewport,
   type PanelKit,
   type PanelPropsLike,
+  panelSnapshot,
 } from "./panel-core.js"
+import { sessionIdOf, workspaceCwdOf } from "./team-state.ts"
 import type { PanelPageOptions } from "./panel.js"
 import { t } from "./i18n.js"
 import type { WatchdogView } from "./watchdog.js"
@@ -141,9 +143,9 @@ export interface WatchdogPanelDeps {
   /** Whether the `mpdWatchdog` service is mounted right now (the front door's own answer). */
   available(): boolean
   /** The durable view for the `mpd-tui` reader in this workspace; never throws (the front door). */
-  read(): WatchdogView
+  read(sessionId?: string, cwd?: string): WatchdogView
   /** Advances the `mpd-tui` watermark through the service; reports failure instead of pretending. */
-  acknowledge(upTo: number): WatchdogAckResult
+  acknowledge(upTo: number, sessionId?: string, cwd?: string): WatchdogAckResult
   /**
    * The current team projection, for the PHASE half of a held team's row.
    *
@@ -152,7 +154,7 @@ export interface WatchdogPanelDeps {
    * composition without the team reader still gets every watchdog fact — the phase cell then prints
    * `?`, which is the honest answer rather than an invented word.
    */
-  readTeam?(): WatchdogTeamHead | undefined
+  readTeam?(sessionId?: string, cwd?: string): WatchdogTeamHead | undefined
   /**
    * Opens this page's full-screen scene (`mpd-tui-watchdog`), when the composition registers one.
    *
@@ -275,7 +277,7 @@ export interface WatchdogAckPress {
   /** The newest stamp this surface has already acknowledged, so a stale closure cannot ack twice. */
   readonly lastAck: number
   /** The service call; a failure is reported, never swallowed or retried silently. */
-  acknowledge(upTo: number): WatchdogAckResult
+  acknowledge(upTo: number, sessionId?: string, cwd?: string): WatchdogAckResult
 }
 
 /** What one press produced: the line to draw and the watermark the surface should remember. */
@@ -449,21 +451,28 @@ export function createWatchdogPanelComponent(deps: WatchdogPanelDeps, options?: 
     const refresh = kit.React.useState(0)
     /** Requests one fresh render. */
     const setRefresh = refresh[1] as (next: unknown) => void
-    /** The newest incident stamp this page has already acknowledged, so a stale closure cannot ack twice. */
-    const lastAck = kit.React.useRef(0)
+    /** The terminal snapshot addresses one session's watchdog store. */
+    const snapshot = panelSnapshot(props?.host)
+    /** The session id used when a host does not publish its cwd. */
+    const sessionId = sessionIdOf(snapshot)
+    /** The project cwd published by the host. */
+    const cwd = workspaceCwdOf(snapshot)
+    /** Suppress repeated acknowledgements only within the workspace that produced the incidents. */
+    const lastAck = kit.React.useRef({ sessionId, cwd, watermark: 0 }) as { current: { sessionId?: string; cwd?: string; watermark: number } }
+    if (lastAck.current.sessionId !== sessionId || lastAck.current.cwd !== cwd) lastAck.current = { sessionId, cwd, watermark: 0 }
     /** The live view for this render; an unavailable service and an unreadable read both fall to the empty view. */
     let view: WatchdogView
     /** Whether the service answered at all this render. */
     let available = false
     try {
       available = deps.available()
-      view = available ? deps.read() : { holds: [], unread: [] }
+      view = available ? deps.read(sessionId, cwd) : { holds: [], unread: [] }
     } catch {
       available = false
       view = { holds: [], unread: [] }
     }
     /** The per-team rows, with the phase half read through the optional projection. */
-    const teams = watchdogTeamRows(view, deps.readTeam)
+    const teams = watchdogTeamRows(view, () => deps.readTeam?.(sessionId, cwd))
     /** Whether the page may receive keys right now. */
     const keysArmed = panelKeysArmed(props?.focused, props?.visible, props?.host)
     // THE PAGE OWNS A TICK: a sidebar panel is a passive surface, and the watchdog store changes on its
@@ -490,8 +499,8 @@ export function createWatchdogPanelComponent(deps: WatchdogPanelDeps, options?: 
       // an outcome the service never produced.
       if (!available) return
       /** What the shared press produced: the line and the watermark to remember. */
-      const outcome = watchdogAckPress({ unread: view.unread, lastAck: lastAck.current as number, acknowledge: (upTo: number) => deps.acknowledge(upTo) })
-      lastAck.current = outcome.lastAck
+      const outcome = watchdogAckPress({ unread: view.unread, lastAck: lastAck.current.watermark, acknowledge: (upTo: number) => deps.acknowledge(upTo, sessionId, cwd) })
+      lastAck.current.watermark = outcome.lastAck
       setFlash(outcome.flash)
     }
     /** Register the keymap: `a` acknowledges, `r` refreshes, the arrows and `jk` scroll. */

@@ -758,6 +758,7 @@ function createTuiAdapter(ctx, options = {}) {
   let hostContact = options.hostInput;
   let hostState = options.hostInput !== undefined ? { state: "bound", kit: "probed", detail: "injected by the caller" } : options.probeHostContact === true ? { state: "pending" } : { state: "absent", detail: "this adapter did not probe for the host contact" };
   const hostWaiters = [];
+  const hostUpdates = new Set;
   let panelHostProvenance;
   let panelIdReadBack = "";
   const panelKeeperOptions = {
@@ -790,7 +791,9 @@ function createTuiAdapter(ctx, options = {}) {
   let rememberedHook;
   const currentHostInput = () => rememberedHook === undefined ? hostContact : { useStdin: () => rememberedHook?.() };
   const wakeHostWaiters = () => {
-    const waiting = hostWaiters.splice(0);
+    const waiting = [...hostWaiters.splice(0), ...hostUpdates];
+    if (rememberedHook !== undefined)
+      hostUpdates.clear();
     const input = currentHostInput();
     for (const listener of waiting) {
       try {
@@ -799,6 +802,8 @@ function createTuiAdapter(ctx, options = {}) {
     }
   };
   const settleHostContact = (result) => {
+    if (rememberedHook !== undefined)
+      return;
     hostContact = result.input;
     hostState = result.input === undefined ? { state: "absent", ...result.root === undefined ? {} : { root: result.root }, detail: result.detail ?? "the installed DSH-TUI was not reachable" } : { state: "bound", kit: "probed", ...result.root === undefined ? {} : { root: result.root }, detail: "the host's own useStdin was loaded by file URL" };
     wakeHostWaiters();
@@ -870,23 +875,26 @@ function createTuiAdapter(ctx, options = {}) {
       const first = rememberedHook === undefined;
       rememberedHook = hook;
       hostState = { state: "bound", kit: "remembered", detail: "the host's own ui kit (handed to a scene render) carries useStdin" };
-      Promise.resolve().then(wakeHostWaiters);
       if (!first)
         return true;
+      Promise.resolve().then(wakeHostWaiters);
       try {
         (options.hostInputLog ?? defaultHostInputLog)(`[mpd-tui-adapter] host contact bound: remembered kit (a scene render handed us the host ui kit)`);
       } catch {}
       return true;
     },
-    whenHostInput(listener) {
+    whenHostInput(listener, options2) {
+      if (options2?.updates === true && rememberedHook === undefined)
+        hostUpdates.add(listener);
       if (hostState.state !== "pending") {
         try {
           listener(currentHostInput());
         } catch {}
-        return () => {};
+      } else if (options2?.updates !== true) {
+        hostWaiters.push(listener);
       }
-      hostWaiters.push(listener);
       return () => {
+        hostUpdates.delete(listener);
         const at = hostWaiters.indexOf(listener);
         if (at >= 0)
           hostWaiters.splice(at, 1);

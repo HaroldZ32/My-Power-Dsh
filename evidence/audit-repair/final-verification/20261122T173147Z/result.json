@@ -1,0 +1,334 @@
+{
+  "verdict": "PASS",
+  "record": "rec-20261122T173905-24ca97",
+  "loop": "loop-20261122T155822-f2c76c",
+  "boardTask": "T1",
+  "contract": ".mpd/plans/repair-team-audit-124d4591.md",
+  "source": {
+    "checkout": "fix/team-and-audit-recovery",
+    "branch": "fix/team-and-audit-recovery",
+    "implementationCommit": "b261da2ae5dff4c46fdd97c826a6441b303c6037",
+    "auditedTree": "124d4591",
+    "beganUtc": "2026-11-22T17:31:47Z",
+    "finishedUtc": "2026-11-22T17:38:51Z",
+    "snapshotSha256": "843b3fe7135fba52df432a1787c1c66e7d54d8e7439bf5f0fe224329b7a24a04",
+    "identicalStartEndSourceAndStage": true
+  },
+  "toolchain": {
+    "bun": "1.4.0",
+    "node": "24.21.0",
+    "dsh": "0.2.2-rc.5",
+    "dshGo": "f36bf91b0736e81ef40c2a7040b2ec337ca1ab40",
+    "tui": "0.20.2",
+    "pnpm": "11.23.0",
+    "chromium": "149.0.7827.55",
+    "svn": "1.14.5"
+  },
+  "gates": {
+    "tests": {
+      "command": "bun test",
+      "exit": 0,
+      "pass": 4290,
+      "skip": 4,
+      "fail": 0,
+      "files": 280,
+      "skips": [
+        "Three optional native comment-detector arms lacked the binary",
+        "Official live team projection fixture unavailable in the isolated root suite"
+      ]
+    },
+    "typecheck": {
+      "command": "bun run typecheck",
+      "exit": 0
+    },
+    "aggregate": {
+      "command": "bun run verify:gates",
+      "exit": 0,
+      "membersPassed": 11,
+      "members": [
+        "vendor",
+        "dist-fresh",
+        "rows-parity",
+        "docs-parity",
+        "preset-conformance",
+        "plugin-manifest",
+        "comment-coverage",
+        "graph-model",
+        "workflows",
+        "tui-admission",
+        "dshgo"
+      ],
+      "freshDistTargets": 35
+    },
+    "qa": {
+      "command": "bun run test:qa",
+      "exit": 0,
+      "pass": 56,
+      "skip": 2,
+      "fail": 0,
+      "skips": [
+        "tui-distribution: absent vendored distribution fixture",
+        "tui-spec-conformance: absent pinned ecosystem requirements checkout"
+      ]
+    },
+    "docs": {
+      "command": "bun run verify:docs",
+      "exit": 0,
+      "pairs": 61,
+      "violations": 0
+    },
+    "manifest": {
+      "command": "bun run verify:manifest",
+      "exit": 0,
+      "unknownPacklistControlExit": 1
+    },
+    "noHostOverride": {
+      "command": "node scripts/verify-no-host-override.ts",
+      "exit": 0
+    },
+    "manualPaths": {
+      "command": "node scripts/verify-manual-paths.ts",
+      "exit": 0
+    },
+    "gitDiffCheck": {
+      "sourceExit": 0,
+      "fullExit": 2,
+      "generatedTrailingPaddingRows": 59
+    },
+    "docker": {
+      "command": "node scripts/docker-e2e.ts --mode source --require-docker --no-browser",
+      "exit": 0,
+      "status": "163 passed, 0 failed, 81 declared bounds",
+      "counts": {
+        "passed": 163,
+        "failed": 0,
+        "null": 81
+      },
+      "evidence": "evidence/docker/client-install/2026-11-22T17-33-58Z",
+      "formerRed": {
+        "case": "docker-client-install",
+        "startedAt": "2026-11-22T17:08:30.000Z",
+        "finishedAt": "2026-11-22T17:12:53.806Z",
+        "durationSeconds": 264,
+        "counts": {
+          "total": 244,
+          "passed": 162,
+          "failed": 1,
+          "null": 81
+        },
+        "failed": [
+          {
+            "name": "pack.declarationCoherence",
+            "ok": false,
+            "reason": "a declaration the artifact makes about itself is false: filesEntries=69 unresolved=packages/*/src/**,packages/*/test/**,packages/mpd-mcp-codegraph/daemon-policy.ts,packages/mpd-mcp-lsp/references/**,packages/mpd-tui-plugin/dsh-plugin.json,packages/mpd-verify-plugin/qa/**,!**/.mpd,!**/.mpd-dsh,!**/.dsh,!**/.codegraph,!**/.npm-cache,!**/.toolchain,!**/.dsh-go-kit,!**/.bun-tmp,!**/.research,!**/.sim_build,!**/.git-home,!**/.tmp-cache,!**/.cg-qa,!**/_deps,!**/node_modules,!**/__pycache__,!**/.credentials.yaml,!**/.review-tmp*,!**/.qa-*,!**/.tmp-*,!**/.venv* missingPatches=none missingRowPaths=none forbiddenRoots=none"
+          }
+        ],
+        "confirmed": [
+          {
+            "name": "pack.staticCoherence",
+            "ok": true,
+            "reason": "the artifact agrees with the tree it was cut from: 685 carried file(s) byte-identical, 2 generated path(s) exempted (package.json, packages/mpd-ext-plugin/dist/validator.js), none missing"
+          },
+          {
+            "name": "pack.distFreshRebuild",
+            "ok": true,
+            "reason": "every one of the 35 built entries in the artifact is byte-identical to the container's own from-source rebuild — the packed dist is FRESH, not merely present"
+          }
+        ]
+      }
+    },
+    "verificationPlaneGateIds": [
+      "ev-20261122T173253-933b74",
+      "ev-20261122T173253-f2ed81",
+      "ev-20261122T173254-682a07",
+      "ev-20261122T173257-8fb662",
+      "ev-20261122T173257-6f7788",
+      "ev-20261122T173258-285722"
+    ]
+  },
+  "team": {
+    "team": "team-20261122173110884-7we8-002",
+    "leadSession": "session-197dcf72-8d9b-4fe8-8468-ea76d5cb596b",
+    "ownerSession": "6d3bc0c1-f32d-4cb2-89f2-6ea42e94a88d",
+    "idleSession": "3ca59c35-c6a6-4b36-a989-5c3c885ab3eb",
+    "board": {
+      "task": "T1",
+      "state": "in_progress",
+      "owner": "6d3bc0c1-f32d-4cb2-89f2-6ea42e94a88d"
+    },
+    "ownerEvent": {
+      "tool": "agent_teams_task",
+      "callId": "call_team-idle-member-guard_0",
+      "action": "claim",
+      "task": "T1",
+      "isError": false
+    },
+    "idleEvent": {
+      "tool": "read",
+      "callId": "call_team-idle-member-guard_0",
+      "isError": true,
+      "reason": "no board task is assigned"
+    },
+    "singleSandboxWorkspace": true,
+    "host": "0.2.2-rc.5",
+    "distSha256": "42082155f6d629e6be2542232318d33224b77eac3d5e8e8f76f9266b2752bb7f",
+    "olderHost": {
+      "version": "0.2.2-rc.2",
+      "ok": true,
+      "ownerSession": "3dea3220-4248-4f4f-b0ed-98caacfeb418",
+      "isolated": true
+    },
+    "crashAndRelease": {
+      "pass": 10,
+      "fail": 0,
+      "assertions": 111,
+      "testSha256": "86be117cc51e7e9396b5db7059cbffd0d140fabc99cb338fc5c273123bca7e1d",
+      "receiptToolNames": [
+        "agent_teams_task",
+        "agent_teams_dispatch"
+      ]
+    }
+  },
+  "targeted": {
+    "dispatchGuardAssertions": 21,
+    "tuiBaseline": {
+      "pass": 44,
+      "fail": 1
+    },
+    "tuiCurrent": {
+      "pass": 45,
+      "fail": 0
+    },
+    "dataWithSvn": {
+      "pass": 71,
+      "fail": 0
+    },
+    "automation": {
+      "pass": 538,
+      "fail": 0
+    },
+    "liveModelRefresh": {
+      "sameHost": true,
+      "before": "deepseek-v4-flash",
+      "after": "deepseek-v4-pro",
+      "acceptedSettingsHttp": 200
+    }
+  },
+  "browser": {
+    "candidateBeforeFix": {
+      "host": "0.2.2-rc.5",
+      "browser": "Chromium 149.0.7827.55",
+      "clientSha256": "10715397155f0c1333b3716cf487c3d80fa64ca72fd1bb15d9f0fa5c9c071956",
+      "tarballSha256": "31719ca40d61c87612082b482b81f97db33e53c7fbdaccad7fd5dd6716d815b9",
+      "browserResponseContainedInstalledClient": true,
+      "loopbackHost": "127.0.0.1",
+      "falseNonLoopbackWarning": true,
+      "firstClick": {
+        "initialDisplayed": 20000,
+        "submitted": 21091,
+        "displayedAfterSave": 20000,
+        "displayedAfterReload": 20000,
+        "persistedOverride": 21091
+      },
+      "secondClickAfterHostRestart": {
+        "method": "POST",
+        "path": "/api/settings/mutate",
+        "httpStatus": 200,
+        "accepted": true,
+        "revision": 1,
+        "inheritedBase": 20000,
+        "mountedValue": 21091,
+        "submittedOverride": 21092,
+        "returnedUserOverride": 21092,
+        "persistedOverride": 21092
+      },
+      "trustedAliasControl": {
+        "browserHost": "mpd-review.invalid",
+        "isolatedHostMapping": "127.0.0.1",
+        "httpStatus": 200,
+        "renderedSettings": true,
+        "nonLoopbackWarning": true
+      }
+    },
+    "clientSha256": "c5be0607ff2dc360b52c5357fe0af3e3c473cf0c6c77d343481b1c0e220000cb",
+    "regeneratedInScratchByteIdentical": true,
+    "localExactCleanTarball": {
+      "host": "127.0.0.1",
+      "configuredBefore": 20000,
+      "submitted": 21091,
+      "immediatelyDisplayed": 21091,
+      "displayedAfterReload": 21091,
+      "mountedSeparatelyDisplayed": 20000,
+      "privateProfileStored": 21091,
+      "falseWarning": false,
+      "pageErrors": 0,
+      "composedResponseContainsExactClient": true,
+      "redactedMutation": {
+        "method": "POST",
+        "pathname": "/api/settings/mutate",
+        "status": 200,
+        "submitted": 21091,
+        "ok": true,
+        "value": 20000,
+        "base": 20000,
+        "user": 21091,
+        "revision": 1
+      }
+    },
+    "trustedAlias": {
+      "host": "mpd-review.invalid",
+      "configuredAfterReload": 21091,
+      "mountedSeparatelyDisplayed": 20000,
+      "pageErrors": 0,
+      "unauthenticatedRequestHttpStatus": 401,
+      "bytesUnchangedByUnauthorizedRequest": true,
+      "redactedMutation": {
+        "method": "POST",
+        "pathname": "/api/settings/mutate",
+        "status": 200,
+        "submitted": 21091,
+        "ok": true,
+        "value": 20000,
+        "base": 20000,
+        "user": 21091,
+        "revision": 1
+      }
+    }
+  },
+  "packaging": {
+    "sha256": "b04e85c0ea7cf4bdd6f6c27bfc878299063eda3961c17d89008e706a49383f03",
+    "names": 1272,
+    "trackedInputsOnly": true,
+    "privateStatePaths": 0,
+    "supersededArchivePrivateStatePathCount": 37,
+    "cleanRelocatable": {
+      "identical": 672,
+      "compared": 672,
+      "packages": 30,
+      "drift": 0,
+      "expectedAfterPack": 0,
+      "declaredQaExemptions": 1
+    },
+    "cleanWebAndTui": {
+      "astPositiveMatches": 1,
+      "astNegativeMatches": 0,
+      "launcherMatchesArchive": true
+    },
+    "syntheticControls": {
+      "rootAndNestedStateExcludedByBothPackers": true,
+      "forcedNpmStateStrictManifestExit": 1,
+      "forcedRelocatableStateClosureExit": 1
+    }
+  },
+  "fixtureCorrections": [
+    "The initial test temp directory inherited the repository and its TypeScript dependency. The final test temp directory was isolated outside the checkout.",
+    "The offline dependency self-test used an empty synthetic credential store. No live provider credentials were needed."
+  ],
+  "bounds": [
+    "Real Team calls on Linux DSH 0.2.2-rc.5 and 0.2.2-rc.2 used a deterministic local provider. Other declared host generations were covered by compatibility tests within their documented bounds.",
+    "The Chromium profile-save check used loopback and a local, explicitly trusted test authority. A browser-driven model-route save with a selected session was outside this smoke. Scoped routes have functional test evidence.",
+    "The rootless source Docker run was credential-free with its browser disabled. Chromium and the exact tracked tarball Web/TUI installs were separate live checks.",
+    "Mobile rendering, proprietary provider behavior and release staging or publication were outside this review.",
+    "The browser generator reproduced its exact committed output, including 59 trailing-padding rows flagged by the unrestricted Git whitespace check."
+  ]
+}

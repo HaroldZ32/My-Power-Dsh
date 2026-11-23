@@ -3785,6 +3785,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle 
                       
                                                                                        
                     
+                                                                                        
+                     
                                                  
                     
    
@@ -3823,6 +3825,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle 
                    
                                                                                             
               
+                                                                  
+                     
                                                            
                   
                                                                                                 
@@ -3978,10 +3982,10 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle 
   const listeners = new Set            ();
   /** The interval handle of the running poller, or null while it is stopped. */
   let pollTimer                                        = null;
-  /** Whether a tick of the poller is currently awaiting the state route. */
-  let pollInFlight = false;
   /** Whether a watchdog refresh (tick or manual) is currently in flight. */
   let watchdogInFlight = false;
+  /** A forced post-ack read or a stopped poller supersedes earlier requests. */
+  let watchdogRequest = 0;
 
   /** Replace the store with `patch` merged over it, then wake every subscriber. */
   function publish(patch                        )       {
@@ -4021,41 +4025,43 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle 
   }
 
   /** One poll of the watchdog state route. Never throws into a render. */
-  async function refreshWatchdog()                                  {
-    if (watchdogInFlight) return store.payload;
+  async function refreshWatchdog(force          = false)                                  {
+    if (watchdogInFlight && !force) return store.payload;
+    /** The generation this request may publish into. */
+    const request = ++watchdogRequest;
     watchdogInFlight = true;
     try {
       // The route answers this page's payload shape, and the `ok` marker in the condition below is
       // the runtime check; the cast is how an untyped HTTP body enters the typed store.
       /** The route's answer, read as a maybe-payload so its `ok` marker can be probed. */
       const payload = await fetchJson(WATCHDOG_STATE_URL)                          ;
+      if (request !== watchdogRequest) return store.payload;
       if (payload !== null && typeof payload === "object" && payload.ok === true) {
         publish({ payload, error: undefined });
         return payload;
       }
       publish({ payload: null, error: new Error("the watchdog route answered a non-ok payload") });
     } catch (error) {
-      publish({ payload: null, error });
+      if (request === watchdogRequest) publish({ payload: null, error });
     } finally {
-      watchdogInFlight = false;
+      if (request === watchdogRequest) watchdogInFlight = false;
     }
     return store.payload;
   }
 
   /** Acknowledge the replay up to ONE incident timestamp through the ack route. */
-  async function acknowledgeIncident(incidentTs        )                   {
+  async function acknowledgeIncident(incidentTs        , workspace         )                   {
     try {
-      // Widened to null/undefined because the checks below are the original defensive ones.
-      /** The acknowledgement request's answer. */
-      const response                              = await fetch(WATCHDOG_ACK_URL, {
+      /** The route's explicit acknowledgement receipt. */
+      const result = await fetchJson(WATCHDOG_ACK_URL, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ reader: WATCHDOG_WEB_READER, upTo: incidentTs })
+        body: JSON.stringify({ reader: WATCHDOG_WEB_READER, incidentTs, workspace })
       });
-      if (response === undefined || response === null || response.ok !== true) {
-        throw new Error("HTTP " + String(response === undefined || response === null ? "?" : response.status));
+      if (typeof result !== "object" || result === null || !("ok" in result) || result.ok !== true) {
+        throw new Error("the watchdog acknowledge route returned no receipt");
       }
-      await refreshWatchdog();
+      await refreshWatchdog(true);
       return true;
     } catch (error) {
       publish({ error });
@@ -4068,13 +4074,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle 
     if (pollTimer !== null) return;
     void refreshWatchdog();
     try {
-      pollTimer = setInterval(() => {
-        if (pollInFlight) return;
-        pollInFlight = true;
-        void refreshWatchdog().finally(() => {
-          pollInFlight = false;
-        });
-      }, WATCHDOG_POLL_MS);
+      pollTimer = setInterval(() => { void refreshWatchdog(); }, WATCHDOG_POLL_MS);
     } catch {
       pollTimer = null;
     }
@@ -4082,6 +4082,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle 
 
   /** Stop the poller, if one is running. */
   function stopPolling()       {
+    watchdogRequest += 1;
+    watchdogInFlight = false;
     if (pollTimer === null) return;
     try {
       clearInterval(pollTimer);
@@ -4144,17 +4146,21 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle 
     /** The panel's children, appended in render order. */
     const rows            = [];
     rows.push(react.createElement("div", { key: "subtitle", style: MUTED_STYLE }, t("panel.subtitle")));
-    if (state.error !== undefined && payload === null) {
+    if (state.error !== undefined) {
       // The store keeps whatever was thrown, so its message is read through a structural cast
       // (the null/undefined guards in front of the cast are the original ones, kept as they were).
       rows.push(react.createElement("div", { key: "error", "data-watchdog-error": true },
         t("panel.error") + ": " + String((state.error !== null && state.error !== undefined && (state.error                         ).message !== undefined) ? (state.error                         ).message : state.error)));
-    } else if (payload === null) {
+    }
+    if (payload === null && state.error === undefined) {
       rows.push(react.createElement("div", { key: "loading", style: MUTED_STYLE }, t("panel.loading")));
-    } else {
+    } else if (payload !== null) {
+      /** A partial response can still draw its successful roots and report why others are missing. */
+      const failures = payload.errors ?? [];
+      if (failures.length > 0) rows.push(react.createElement("div", { key: "root-errors", "data-watchdog-error": true }, t("panel.error")));
       /** The banner to render, or null when the route reported no stuck team. */
       const banner = payload.banner !== null && payload.banner !== undefined ? payload.banner : null;
-      rows.push(react.createElement("div", {
+      if (banner !== null || failures.length === 0) rows.push(react.createElement("div", {
         key: "banner",
         style: BANNER_STYLE,
         "data-watchdog-banner": banner === null ? "none" : String(banner.kind)
@@ -4183,7 +4189,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle 
               key: "ack",
               type: "button",
               "data-watchdog-ack": String(record.id),
-              onClick: ()       => { void acknowledgeIncident(record.at); }
+              onClick: ()       => { void acknowledgeIncident(record.at, record.workspace); }
             }, t("panel.ack"))));
         }
       }
@@ -4287,11 +4293,10 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle 
   /** The test seam that runs one poll through the real route code. */
   exports.__watchdogPoll = () => refreshWatchdog();
   /** The test seam that acknowledges one incident timestamp. */
-  exports.__watchdogAck = (incidentTs        ) => acknowledgeIncident(incidentTs);
+  exports.__watchdogAck = (incidentTs        , workspace         ) => acknowledgeIncident(incidentTs, workspace);
   /** The test seam that returns the module to its just-loaded state (poller stopped, store empty). */
   exports.__resetTeamPageForTests = ()       => {
     stopPolling();
-    pollInFlight = false;
     watchdogInFlight = false;
     store = { payload: null, error: undefined };
     listeners.clear();
@@ -4395,10 +4400,16 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
   const BRIDGE_RESTART_LIMIT = "the other half of that list, so nobody reads it as a blanket: hashline.*, commentChecker.*, autoproject.*, memory.*, boulder.dir and goal.* are captured by their plugins at mount instead of reading the live config service per use, so a new value for any of them waits for the next dsh boot (the settings document receives it at once, and the file does too only on a host that still serves the legacy `mpd` namespace; each row names the key it writes)"
   /** The third disclosure paragraph: what a save means when no session is live. */
   const NO_WORKSPACE_NOTICE = "if no session is live, the save stays in settings — not written to any .mpd/mpd.jsonc"
+  /** The data ownership split for the shipped card, which supplies a workspace writer. */
+  const WORKSPACE_DISCLOSURE = "Model route edits update .mpd/mpd.jsonc in the selected session's workspace. The host settings document stores the other fields."
+  /** Model saves require a live selection, while profile-wide settings still work without one. */
+  const WORKSPACE_SELECTION_NOTICE = "Select a live session to save its workspace model routes."
   // The clause that keeps a settings-only save from reading as a lost one (same sentence the TUI
   // hint and the status line carry).
   /** The not-lost clause rendered under the two disclosures. */
   const NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — and because this path writes no file, it never waits for a live session"
+  /** Profile-wide edits keep their existing persistence independently of the selected session. */
+  const WORKSPACE_GLOBAL_NOTICE = "Profile-wide settings apply across workspaces and can be saved without a live session."
 
   // ── types for the seams this factory crosses ────────────────────────────────
   /** The subset of React this card uses; the host injects the real module at boot. */
@@ -4591,6 +4602,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
                 
                                                                      
                         
+                                                                          
+                        
                                                                       
                      
    
@@ -4667,42 +4680,38 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
                   
    
 
-  /** The settings form's snapshot, as this card reads it. */
+  /** The host's entry-config form snapshot, as this card reads it. */
                            
-                                             
+                                                          
                    
-                                           
+                                                                        
+                  
+                                                                
                   
                                             
                    
-                                                                             
+                                                    
                       
-                                                              
-                 
                                                                     
                      
    
 
-  /** The per-namespace settings form this card drives. */
+  /** The host-owned form shared by editors of one configurable entry. */
                            
                                        
                                                 
-                                                                                            
-                                                
-                                                    
-                                                                  
-                                                                                   
-                       
+                                                                                      
+                                                   
+                                                                                  
+                                                                                    
    
 
   /** The state the card component renders, published through its own store. */
                        
                                        
                       
-                                       
+                                                             
                      
-                                              
-                
                                      
                   
                                                
@@ -4760,7 +4769,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
                                                                                     
        
                                                            
-                                   
+                                                                                     
+                                                                
+                                                              
                        
    
 
@@ -4816,6 +4827,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
                                                                                          
        
                                                  
+                                                                                       
+                                                               
    
 
   /**
@@ -4999,6 +5012,13 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
   const fieldKey = (field                 )         => field.path.join(".")
   /** Walk a nested path into an untyped settings value (a missing or non-object step answers undefined). */
   const leafOf = (value         , path          )          => path.reduce         ((acc, part) => (acc === null || acc === undefined ? undefined : (acc                           )[part]), value)
+
+  /** Read the editable profile layer. Older forms without a base fall back to their value. */
+  function profileValueOf(snapshot                           , path          )          {
+    /** A stored override can be present even when its value is null or equals the base. */
+    const saved = leafOf(snapshot?.user, path)
+    return saved === undefined ? leafOf(snapshot?.base ?? snapshot?.value, path) : saved
+  }
 
   /** Whether a value is a non-null, non-array object — the only shape a route table can be. */
   const isTable = (value         )                                   => value !== null && typeof value === "object" && !Array.isArray(value)
@@ -5837,7 +5857,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
    * `scope.mutate(ops, revision)` — nested paths included, which `scope.set(field, …)` cannot
    * express (it writes top-level fields only).
    */
-  function createMpdCardController(scope               , fields                    = FIELDS, disclosure             = { BRIDGE_DISCLOSURE, BRIDGE_RESTART_LIMIT, NO_WORKSPACE_NOTICE }, catalogInfo                    = () => FALLBACK_CATALOG, afterSave             = () => {})                 {
+  function createMpdCardController(scope               , fields                    = FIELDS, disclosure             = { BRIDGE_DISCLOSURE, BRIDGE_RESTART_LIMIT, NO_WORKSPACE_NOTICE }, catalogInfo                    = () => FALLBACK_CATALOG, afterSave             = () => {}, saveWorkspaceRoutes                                                                  )                 {
     /** Every staged edit, keyed by the row's dotted knob key. */
     const staged = new Map                    ()
     // Declared BEFORE the first projection: `project()` reads all three, and a `let` below the
@@ -5854,20 +5874,17 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
      * the settings document and says so through its `notice`).
      */
     let liveService                                    = { body: undefined, notice: "" }
+    /** The selected session for workspace edits and their read-back. */
+    let workspaceSession                    
     /** The card's own store, whose first projection is built from the bound scope. */
     const store = createStore(project())
 
-    /** The bound form's snapshot and the namespace sub-tree this card reads values from. */
-    function readScope()                                                            {
-      /** The form's current snapshot. */
-      const snapshot = scope.getSnapshot()
-      return { snapshot, section: snapshot?.value ?? snapshot?.user }
-    }
-
     /** Project the whole card state (rows, flags, disclosures and catalog state). */
     function project()            {
-      /** The form snapshot and the namespace sub-tree of this projection. */
-      const { snapshot, section } = readScope()
+      /** The profile and mounted entry values are distinct views of the same form revision. */
+      const snapshot = scope.getSnapshot()
+      /** The selected session's model field values, separate from the global form. */
+      const workspaceRoutes = workspaceSession !== undefined && isTable(liveService.body) ? liveService.body.workspaceRoutes : undefined
       /** Every row's control, keyed by the row's dotted knob key. */
       const controls                             = {}
       /** Whether any row carries a staged edit. */
@@ -5889,12 +5906,26 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
           dirty = true
           continue
         }
-        controls[key] = { text: format(field.kind, leafOf(section, field.path)), overridden: leafOf(snapshot?.user, field.path) !== undefined, invalid: false }
+        if (field.path[0] === AGENT_ROUTES && workspaceSession !== undefined) {
+          /** Agent and leaf below the route table. */
+          const path = field.path.slice(1)
+          controls[key] = { text: format(field.kind, leafOf(workspaceRoutes, ["values", ...path])), overridden: leafOf(workspaceRoutes, ["local", ...path]) !== undefined, invalid: false }
+        } else {
+          /** The saved profile value or the value it inherits. */
+          const text = format(field.kind, profileValueOf(snapshot, field.path))
+          /** The mounted entry can still report a different value after a profile write. */
+          const mountedText = format(field.kind, leafOf(snapshot?.value, field.path))
+          controls[key] = {
+            text,
+            overridden: leafOf(snapshot?.user, field.path) !== undefined,
+            invalid: false,
+            ...(snapshot?.value !== undefined && mountedText !== text ? { mountedText } : {}),
+          }
+        }
       }
       return {
         available: snapshot?.status === "ready",
-        writable: snapshot?.writable === true,
-        mode: snapshot?.mode ?? "memory",
+        writable: snapshot?.status === "ready" && snapshot.writable === true,
         dirty,
         invalid,
         saving,
@@ -5907,7 +5938,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
         catalog: catalogInfo() ?? FALLBACK_CATALOG,
         // R3: the effective model config projected from the bound document plus the live-service
         // read — rides the SAME store, so a save or a service refresh re-projects the block.
-        effective: effectiveModelConfigOf(section, liveService),
+        effective: effectiveModelConfigOf(snapshot?.value ?? snapshot?.user, liveService),
       }
     }
 
@@ -5915,14 +5946,16 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
     function publish()       {
       store.set(project())
     }
+    /** The subscription owned by the card, independent of the shared form lifetime. */
+    let unsubscribe                          
     try {
-      scope.subscribe(publish)
+      unsubscribe = scope.subscribe(publish)
     } catch {
       /* a scope without subscribe still renders its first snapshot */
     }
 
-    /** Every staged edit a save would write (an unparsable draft contributes no write). */
-    function plan()            {
+    /** Every staged edit a save would write against this snapshot. */
+    function plan(snapshot               )            {
       /** The ops a save would send. */
       const writes            = []
       for (const field of fields) {
@@ -5938,7 +5971,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
         /** The staged draft's parsed value (an unparsable one contributes no write). */
         const parsed = parse(field.kind, stagedEdit.text)
         if (parsed === undefined) continue
-        if (format(field.kind, leafOf(readScope().section, field.path)) === format(field.kind, parsed)) continue
+        /** Compare a profile edit against the document the input displays. */
+        const current = field.path[0] === AGENT_ROUTES && saveWorkspaceRoutes !== undefined
+          ? leafOf(snapshot.value ?? snapshot.user, field.path)
+          : profileValueOf(snapshot, field.path)
+        if (format(field.kind, current) === format(field.kind, parsed)) continue
         writes.push({ op: "set", path: [...field.path], value: parsed })
       }
       return writes
@@ -5946,30 +5983,55 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
 
     /** Write every staged edit through the scope's mutate, with the revision fence. */
     async function save()                {
+      /** The snapshot that authorizes and fences this batch. */
+      const snapshot = scope.getSnapshot()
+      if (saving || snapshot?.status !== "ready" || snapshot.writable !== true) return
       /** The ops this save would send. */
-      const writes = plan()
-      // A scope that is not writable (a non-loopback page keeps its snapshot in memory) must not
-      // even ATTEMPT a write: the card renders the reason, and the edit stays staged for the user
-      // rather than being silently dropped on the wire.
-      if (saving || writes.length === 0 || readScope().snapshot?.writable !== true) return
+      const writes = plan(snapshot)
+      if (writes.length === 0) return
+      /** Route drafts go to the workspace when the client supports it. */
+      const local = saveWorkspaceRoutes === undefined ? [] : writes.filter((op) => op.path[0] === AGENT_ROUTES)
+      /** Global settings keep the host form's revision and persistence. */
+      const global = writes.filter((op) => !local.includes(op))
+      /** Capture workspace identity before either request can yield. */
+      const session = workspaceSession
+      /** Draft instances included in this save, to keep edits staged after it began. */
+      const submitted = new Map(staged)
+      /** Remove only the unchanged drafts from a successful batch. */
+      const finish = (batch                    )       => {
+        for (const op of batch) {
+          /** The same dotted key `stage()` indexed. */
+          const key = op.path.join(".")
+          if (staged.get(key) === submitted.get(key)) staged.delete(key)
+        }
+      }
+      /** Whether any batch was persisted before a later one failed. */
+      let changed = false
       saving = true
       failed = false
       lastError = ""
       publish()
       try {
-        // The revision fence: the scope reports the revision it read, so a concurrent change is a
-        // conflict the user can retry rather than a silent overwrite.
-        await scope.mutate(writes, scope.getSnapshot()?.revision)
-        staged.clear()
+        if (local.length > 0 && saveWorkspaceRoutes !== undefined) {
+          if (session === undefined) throw new Error("Select a live session before saving workspace model routes.")
+          await saveWorkspaceRoutes(session, local)
+          finish(local)
+          changed = true
+        }
+        if (global.length > 0) {
+          if (await scope.mutate(global, snapshot.revision) === false) {
+            throw new Error("The host refused to save the profile settings.")
+          }
+          finish(global)
+          changed = true
+        }
       } catch (error) {
         failed = true
-        lastError = String((error                         )?.message ?? error)
+        lastError = isTable(error) && typeof error.reason === "string" ? error.reason : String((error                         )?.message ?? error)
       }
       saving = false
       publish()
-      // R3: a successful save is exactly when the effective model config CHANGED, so the mount
-      // re-reads the live service here (a failed save changes nothing and skips the read).
-      if (!failed) afterSave()
+      if (changed) afterSave()
     }
 
     /** Stage one row's edit, clear the last failure and re-project. */
@@ -6012,13 +6074,19 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
         liveService = { body, notice }
         publish()
       },
-      /** Release the bound scope. */
-      dispose: ()       => {
-        try {
-          scope.dispose()
-        } catch {
-          /* already disposed */
+      /** A route draft can only be saved to the session it was edited for. */
+      setWorkspaceSession: (sessionId                    )       => {
+        if (sessionId === workspaceSession) return
+        workspaceSession = sessionId
+        liveService = { body: undefined, notice: "" }
+        for (const key of staged.keys()) {
+          if (key.startsWith(AGENT_ROUTES + ".")) staged.delete(key)
         }
+        publish()
+      },
+      /** The settings provider owns the shared form. */
+      dispose: ()       => {
+        unsubscribe?.()
       },
     }
   }
@@ -6293,6 +6361,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
           createElement("span", { style: SKIN.label }, label),
           hintNode,
           input,
+          control.mountedText === undefined ? null : createElement(
+            "span",
+            { style: SKIN.hint },
+            t("mountedValue").replace("{value}", () => control.mountedText || "—"),
+          ),
           createElement(
             "span",
             { style: SKIN.resetNote },
@@ -6402,7 +6475,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
             state.disclosure?.BRIDGE_RESTART_LIMIT ?? ""),
           // The not-lost clause belongs to the same statement; it used to ride every row's hint.
           createElement("p", { style: SKIN.helpText, "data-mpd-disclosure": "not-lost" },
-            NOT_LOST),
+            state.disclosure?.BRIDGE_DISCLOSURE === WORKSPACE_DISCLOSURE ? WORKSPACE_GLOBAL_NOTICE : NOT_LOST),
           createElement("p", { style: SKIN.helpText, "data-mpd-disclosure": "workspace" },
             state.disclosure?.NO_WORKSPACE_NOTICE ?? ""),
         ),
@@ -6426,9 +6499,6 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
           createElement("button", { type: "button", disabled: !state.dirty, onClick: () => props.discard(), style: SKIN.discard, ...BUTTON_HOVER }, t("discard")),
           createElement("span", { style: SKIN.status }, state.saving ? t("saving") : state.failed ? state.error : state.dirty ? t("unsaved") : ""),
         ),
-        state.mode === "memory"
-          ? createElement("p", { style: SKIN.note }, t("memoryMode"))
-          : null,
       )
     }
   }
@@ -6456,8 +6526,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
       reset: "Reset to the file value",
       saving: "Saving…",
       unsaved: "Unsaved",
-      readOnly: "This deployment stores settings read-only (a non-loopback page never reaches the host document).",
-      memoryMode: "This page is not loopback: settings writes stay process-local and never reach the host document.",
+      readOnly: "The host settings form is unavailable or read-only.",
+      mountedValue: "The mounted host entry reports {value}.",
     }
     /** The Simplified-Chinese dictionary, extended below with one entry per field. */
     const zh                         = {
@@ -6472,8 +6542,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
       reset: "重置为文件值",
       saving: "保存中…",
       unsaved: "未保存",
-      readOnly: "当前部署以只读方式存储设置（非回环页面无法写入宿主文档）。",
-      memoryMode: "该页面不是回环地址：设置写入仅保留在进程内，不会写入宿主文档。",
+      readOnly: "宿主设置表单不可用或处于只读状态。",
+      mountedValue: "已挂载的宿主条目报告的值为 {value}。",
     }
     for (const field of fields) {
       /** The row's dotted knob key, which is also its dictionary key. */
@@ -6586,8 +6656,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
               console.warn("[mpd] settings section: this harness exposes no configForms service — the mpd section is not registered")
               return
             }
-            /** The form of this section's own configurable entry. */
+            /** The profile's root-scoped entry form, shared with other host settings editors. */
             const scope = forms.get(CONFIG_ENTRY)
+            if (scope === undefined) return
+            /** The card's diagnostic and live-model refresh subscription. */
+            let unsubscribeScope                          
             // ONE diagnostic line, and it is load-bearing: "the section renders but every input is
             // empty" has three possible causes that look identical on screen — the form lookup threw
             // (warned above), the store never fills, or it fills with a shape this card does not read.
@@ -6595,11 +6668,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
             // capture, without a debugger.
             try {
               /** The form's first snapshot, printed so an empty card is diagnosable. */
-              const first = scope?.getSnapshot?.()
-              console.log("[mpd] settings section: form status=" + String(first?.status) + " value=" + (first?.value === undefined ? "absent" : "present") + " writable=" + String(first?.writable) + " mode=" + String(first?.mode))
-              if (typeof scope?.subscribe === "function") scope.subscribe(() => {
+              const first = scope.getSnapshot()
+              console.log("[mpd] settings section: form status=" + String(first?.status) + " value=" + (first?.value === undefined ? "absent" : "present") + " writable=" + String(first?.writable))
+              if (typeof scope.subscribe === "function") unsubscribeScope = scope.subscribe(() => {
                 /** The form's snapshot after the change that fired this line. */
-                const now = scope.getSnapshot?.()
+                const now = scope.getSnapshot()
                 console.log("[mpd] settings section: form updated status=" + String(now?.status) + " value=" + (now?.value === undefined ? "absent" : "present"))
                 // A settings-document change can come from ANOTHER front door (a TUI save, a hand
                 // edit), not only from this card's own save, so the live-service read is re-run on
@@ -6626,6 +6699,12 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
              */
             /** The entry's JSON reader, when this client provides one. */
             const fetchJson = options.fetchJson
+            /** The optional client transport for workspace route mutations. */
+            const postJson = options.postJson
+            /** The session the card reads and writes, independent of catalog fallback selection. */
+            let sessionId                    
+            /** The exact route URL addressed by the selected session or the legacy read. */
+            const routePath = (session                    )         => session === undefined ? MODEL_CONFIG_PATH : `${MODEL_CONFIG_PATH}?sessionId=${encodeURIComponent(session)}`
             /** The live-service re-reader; assigned right below, once the controller it calls exists. */
             let readLiveService             = ()       => {}
             /**
@@ -6635,10 +6714,22 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
              * must not clobber a fresher projection.
              */
             let liveReadSeq = 0
-            // An absent form is the probe path above (it renders its warning); the controller's own
-            // guarded calls keep the same behaviour the untyped original had for that case.
-            /** The card's form controller, bound to the resolved scope and the save hook. */
-            const controller = createMpdCardController(scope                 , fields, undefined, () => catalog.info(), () => { readLiveService() })
+            /** Send only route leaf edits to the session that owned the draft at save time. */
+            const saveWorkspace = postJson === undefined ? undefined : async (session        , writes                    )                => {
+              /** The file writer accepts controlled fields and an omitted value for inheritance. */
+              const edits = writes.map(({ op, path, value }) => ({ agent: path[1], leaf: path[2], ...(op === "set" ? { value } : {}) }))
+              /** The model config response acknowledges the scoped save. */
+              const body = await postJson(routePath(session), edits)
+              if (!isTable(body) || body.ok !== true) {
+                throw new Error(isTable(body) && typeof body.reason === "string" ? body.reason : "Could not save the workspace's model routes.")
+              }
+            }
+            /** The card's form controller, with separate global and workspace save paths. */
+            const controller = createMpdCardController(scope, fields, saveWorkspace === undefined ? undefined : {
+              BRIDGE_DISCLOSURE: WORKSPACE_DISCLOSURE,
+              BRIDGE_RESTART_LIMIT,
+              NO_WORKSPACE_NOTICE: WORKSPACE_SELECTION_NOTICE,
+            }, () => catalog.info(), () => { readLiveService() }, saveWorkspace)
             readLiveService = ()       => {
               if (typeof fetchJson !== "function") {
                 controller.setLiveService(undefined, "this runtime provides no reader for the live config route")
@@ -6646,7 +6737,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
               }
               /** This read's ticket: its answer applies only while it is still the newest read. */
               const seq = ++liveReadSeq
-              fetchJson(MODEL_CONFIG_PATH)
+              fetchJson(routePath(sessionId))
                 .then((body         ) => {
                   if (seq !== liveReadSeq) return
                   /** The body narrowed to the two fields the route serves. */
@@ -6656,10 +6747,26 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
                 })
                 .catch((error         ) => {
                   if (seq !== liveReadSeq) return
-                  controller.setLiveService(undefined, String((error                         )?.message ?? error))
+                  controller.setLiveService(undefined, isTable(error) && typeof error.reason === "string" ? error.reason : String((error                         )?.message ?? error))
                 })
             }
-            readLiveService()
+            /** Bind model config to the selected session, even if the model catalog is unavailable. */
+            const modelSessions = ctx.inject(["sessions"], (scoped) => {
+              /** The session list supplied by this injected client scope. */
+              const sessions = readService(scoped, "sessions")                               
+              /** Switch requests only when the selected session changes. */
+              const sync = ()       => {
+                /** Use the current session only. A listed session is not a selected workspace. */
+                const next = currentSessionIdOf(sessions)
+                if (next === sessionId) return
+                sessionId = next
+                controller.setWorkspaceSession(next)
+                readLiveService()
+              }
+              sync()
+              return sessions?.list?.subscribe?.(sync)
+            })
+            if (liveReadSeq === 0) readLiveService()
             /** The catalog subscription that re-projects the card. */
             const unsubscribeCatalog = catalog.subscribe(() => {
               controller.refresh()
@@ -6678,6 +6785,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
               Section,
             )
             return () => {
+              ++liveReadSeq
+              unsubscribeScope?.()
+              modelSessions?.dispose?.()
               try {
                 unregister()
               } catch {
@@ -6772,6 +6882,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                                                                           
                                                                                
                                                                   
+                                                                             
+                                             
                                                                             
                                                                                              
    
@@ -6974,7 +7086,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                                                                                                
                                                                                                   
        
-                                                                                                                   
+                                                                                                                                                                                
    
 
   /** One teammate row of the shared board. */
@@ -8330,10 +8442,16 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   const BRIDGE_RESTART_LIMIT = "the other half of that list, so nobody reads it as a blanket: hashline.*, commentChecker.*, autoproject.*, memory.*, boulder.dir and goal.* are captured by their plugins at mount instead of reading the live config service per use, so a new value for any of them waits for the next dsh boot (the settings document receives it at once, and the file does too only on a host that still serves the legacy `mpd` namespace; each row names the key it writes)"
   /** The third disclosure paragraph: what a save means when no session is live. */
   const NO_WORKSPACE_NOTICE = "if no session is live, the save stays in settings — not written to any .mpd/mpd.jsonc"
+  /** The data ownership split for the shipped card, which supplies a workspace writer. */
+  const WORKSPACE_DISCLOSURE = "Model route edits update .mpd/mpd.jsonc in the selected session's workspace. The host settings document stores the other fields."
+  /** Model saves require a live selection, while profile-wide settings still work without one. */
+  const WORKSPACE_SELECTION_NOTICE = "Select a live session to save its workspace model routes."
   // The clause that keeps a settings-only save from reading as a lost one (same sentence the TUI
   // hint and the status line carry).
   /** The not-lost clause rendered under the two disclosures. */
   const NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — and because this path writes no file, it never waits for a live session"
+  /** Profile-wide edits keep their existing persistence independently of the selected session. */
+  const WORKSPACE_GLOBAL_NOTICE = "Profile-wide settings apply across workspaces and can be saved without a live session."
 
   // ── types for the seams this factory crosses ────────────────────────────────
   /** The subset of React this card uses; the host injects the real module at boot. */
@@ -8526,6 +8644,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                 
                                                                      
                         
+                                                                          
+                        
                                                                       
                      
    
@@ -8602,42 +8722,38 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                   
    
 
-  /** The settings form's snapshot, as this card reads it. */
+  /** The host's entry-config form snapshot, as this card reads it. */
                            
-                                             
+                                                          
                    
-                                           
+                                                                        
+                  
+                                                                
                   
                                             
                    
-                                                                             
+                                                    
                       
-                                                              
-                 
                                                                     
                      
    
 
-  /** The per-namespace settings form this card drives. */
+  /** The host-owned form shared by editors of one configurable entry. */
                            
                                        
                                                 
-                                                                                            
-                                                
-                                                    
-                                                                  
-                                                                                   
-                       
+                                                                                      
+                                                   
+                                                                                  
+                                                                                    
    
 
   /** The state the card component renders, published through its own store. */
                        
                                        
                       
-                                       
+                                                             
                      
-                                              
-                
                                      
                   
                                                
@@ -8695,7 +8811,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                                                                                     
        
                                                            
-                                   
+                                                                                     
+                                                                
+                                                              
                        
    
 
@@ -8751,6 +8869,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                                                                                          
        
                                                  
+                                                                                       
+                                                               
    
 
   /**
@@ -8934,6 +9054,13 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   const fieldKey = (field                 )         => field.path.join(".")
   /** Walk a nested path into an untyped settings value (a missing or non-object step answers undefined). */
   const leafOf = (value         , path          )          => path.reduce         ((acc, part) => (acc === null || acc === undefined ? undefined : (acc                           )[part]), value)
+
+  /** Read the editable profile layer. Older forms without a base fall back to their value. */
+  function profileValueOf(snapshot                           , path          )          {
+    /** A stored override can be present even when its value is null or equals the base. */
+    const saved = leafOf(snapshot?.user, path)
+    return saved === undefined ? leafOf(snapshot?.base ?? snapshot?.value, path) : saved
+  }
 
   /** Whether a value is a non-null, non-array object — the only shape a route table can be. */
   const isTable = (value         )                                   => value !== null && typeof value === "object" && !Array.isArray(value)
@@ -9772,7 +9899,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
    * `scope.mutate(ops, revision)` — nested paths included, which `scope.set(field, …)` cannot
    * express (it writes top-level fields only).
    */
-  function createMpdCardController(scope               , fields                    = FIELDS, disclosure             = { BRIDGE_DISCLOSURE, BRIDGE_RESTART_LIMIT, NO_WORKSPACE_NOTICE }, catalogInfo                    = () => FALLBACK_CATALOG, afterSave             = () => {})                 {
+  function createMpdCardController(scope               , fields                    = FIELDS, disclosure             = { BRIDGE_DISCLOSURE, BRIDGE_RESTART_LIMIT, NO_WORKSPACE_NOTICE }, catalogInfo                    = () => FALLBACK_CATALOG, afterSave             = () => {}, saveWorkspaceRoutes                                                                  )                 {
     /** Every staged edit, keyed by the row's dotted knob key. */
     const staged = new Map                    ()
     // Declared BEFORE the first projection: `project()` reads all three, and a `let` below the
@@ -9789,20 +9916,17 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
      * the settings document and says so through its `notice`).
      */
     let liveService                                    = { body: undefined, notice: "" }
+    /** The selected session for workspace edits and their read-back. */
+    let workspaceSession                    
     /** The card's own store, whose first projection is built from the bound scope. */
     const store = createStore(project())
 
-    /** The bound form's snapshot and the namespace sub-tree this card reads values from. */
-    function readScope()                                                            {
-      /** The form's current snapshot. */
-      const snapshot = scope.getSnapshot()
-      return { snapshot, section: snapshot?.value ?? snapshot?.user }
-    }
-
     /** Project the whole card state (rows, flags, disclosures and catalog state). */
     function project()            {
-      /** The form snapshot and the namespace sub-tree of this projection. */
-      const { snapshot, section } = readScope()
+      /** The profile and mounted entry values are distinct views of the same form revision. */
+      const snapshot = scope.getSnapshot()
+      /** The selected session's model field values, separate from the global form. */
+      const workspaceRoutes = workspaceSession !== undefined && isTable(liveService.body) ? liveService.body.workspaceRoutes : undefined
       /** Every row's control, keyed by the row's dotted knob key. */
       const controls                             = {}
       /** Whether any row carries a staged edit. */
@@ -9824,12 +9948,26 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
           dirty = true
           continue
         }
-        controls[key] = { text: format(field.kind, leafOf(section, field.path)), overridden: leafOf(snapshot?.user, field.path) !== undefined, invalid: false }
+        if (field.path[0] === AGENT_ROUTES && workspaceSession !== undefined) {
+          /** Agent and leaf below the route table. */
+          const path = field.path.slice(1)
+          controls[key] = { text: format(field.kind, leafOf(workspaceRoutes, ["values", ...path])), overridden: leafOf(workspaceRoutes, ["local", ...path]) !== undefined, invalid: false }
+        } else {
+          /** The saved profile value or the value it inherits. */
+          const text = format(field.kind, profileValueOf(snapshot, field.path))
+          /** The mounted entry can still report a different value after a profile write. */
+          const mountedText = format(field.kind, leafOf(snapshot?.value, field.path))
+          controls[key] = {
+            text,
+            overridden: leafOf(snapshot?.user, field.path) !== undefined,
+            invalid: false,
+            ...(snapshot?.value !== undefined && mountedText !== text ? { mountedText } : {}),
+          }
+        }
       }
       return {
         available: snapshot?.status === "ready",
-        writable: snapshot?.writable === true,
-        mode: snapshot?.mode ?? "memory",
+        writable: snapshot?.status === "ready" && snapshot.writable === true,
         dirty,
         invalid,
         saving,
@@ -9842,7 +9980,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         catalog: catalogInfo() ?? FALLBACK_CATALOG,
         // R3: the effective model config projected from the bound document plus the live-service
         // read — rides the SAME store, so a save or a service refresh re-projects the block.
-        effective: effectiveModelConfigOf(section, liveService),
+        effective: effectiveModelConfigOf(snapshot?.value ?? snapshot?.user, liveService),
       }
     }
 
@@ -9850,14 +9988,16 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     function publish()       {
       store.set(project())
     }
+    /** The subscription owned by the card, independent of the shared form lifetime. */
+    let unsubscribe                          
     try {
-      scope.subscribe(publish)
+      unsubscribe = scope.subscribe(publish)
     } catch {
       /* a scope without subscribe still renders its first snapshot */
     }
 
-    /** Every staged edit a save would write (an unparsable draft contributes no write). */
-    function plan()            {
+    /** Every staged edit a save would write against this snapshot. */
+    function plan(snapshot               )            {
       /** The ops a save would send. */
       const writes            = []
       for (const field of fields) {
@@ -9873,7 +10013,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         /** The staged draft's parsed value (an unparsable one contributes no write). */
         const parsed = parse(field.kind, stagedEdit.text)
         if (parsed === undefined) continue
-        if (format(field.kind, leafOf(readScope().section, field.path)) === format(field.kind, parsed)) continue
+        /** Compare a profile edit against the document the input displays. */
+        const current = field.path[0] === AGENT_ROUTES && saveWorkspaceRoutes !== undefined
+          ? leafOf(snapshot.value ?? snapshot.user, field.path)
+          : profileValueOf(snapshot, field.path)
+        if (format(field.kind, current) === format(field.kind, parsed)) continue
         writes.push({ op: "set", path: [...field.path], value: parsed })
       }
       return writes
@@ -9881,30 +10025,55 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
 
     /** Write every staged edit through the scope's mutate, with the revision fence. */
     async function save()                {
+      /** The snapshot that authorizes and fences this batch. */
+      const snapshot = scope.getSnapshot()
+      if (saving || snapshot?.status !== "ready" || snapshot.writable !== true) return
       /** The ops this save would send. */
-      const writes = plan()
-      // A scope that is not writable (a non-loopback page keeps its snapshot in memory) must not
-      // even ATTEMPT a write: the card renders the reason, and the edit stays staged for the user
-      // rather than being silently dropped on the wire.
-      if (saving || writes.length === 0 || readScope().snapshot?.writable !== true) return
+      const writes = plan(snapshot)
+      if (writes.length === 0) return
+      /** Route drafts go to the workspace when the client supports it. */
+      const local = saveWorkspaceRoutes === undefined ? [] : writes.filter((op) => op.path[0] === AGENT_ROUTES)
+      /** Global settings keep the host form's revision and persistence. */
+      const global = writes.filter((op) => !local.includes(op))
+      /** Capture workspace identity before either request can yield. */
+      const session = workspaceSession
+      /** Draft instances included in this save, to keep edits staged after it began. */
+      const submitted = new Map(staged)
+      /** Remove only the unchanged drafts from a successful batch. */
+      const finish = (batch                    )       => {
+        for (const op of batch) {
+          /** The same dotted key `stage()` indexed. */
+          const key = op.path.join(".")
+          if (staged.get(key) === submitted.get(key)) staged.delete(key)
+        }
+      }
+      /** Whether any batch was persisted before a later one failed. */
+      let changed = false
       saving = true
       failed = false
       lastError = ""
       publish()
       try {
-        // The revision fence: the scope reports the revision it read, so a concurrent change is a
-        // conflict the user can retry rather than a silent overwrite.
-        await scope.mutate(writes, scope.getSnapshot()?.revision)
-        staged.clear()
+        if (local.length > 0 && saveWorkspaceRoutes !== undefined) {
+          if (session === undefined) throw new Error("Select a live session before saving workspace model routes.")
+          await saveWorkspaceRoutes(session, local)
+          finish(local)
+          changed = true
+        }
+        if (global.length > 0) {
+          if (await scope.mutate(global, snapshot.revision) === false) {
+            throw new Error("The host refused to save the profile settings.")
+          }
+          finish(global)
+          changed = true
+        }
       } catch (error) {
         failed = true
-        lastError = String((error                         )?.message ?? error)
+        lastError = isTable(error) && typeof error.reason === "string" ? error.reason : String((error                         )?.message ?? error)
       }
       saving = false
       publish()
-      // R3: a successful save is exactly when the effective model config CHANGED, so the mount
-      // re-reads the live service here (a failed save changes nothing and skips the read).
-      if (!failed) afterSave()
+      if (changed) afterSave()
     }
 
     /** Stage one row's edit, clear the last failure and re-project. */
@@ -9947,13 +10116,19 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         liveService = { body, notice }
         publish()
       },
-      /** Release the bound scope. */
-      dispose: ()       => {
-        try {
-          scope.dispose()
-        } catch {
-          /* already disposed */
+      /** A route draft can only be saved to the session it was edited for. */
+      setWorkspaceSession: (sessionId                    )       => {
+        if (sessionId === workspaceSession) return
+        workspaceSession = sessionId
+        liveService = { body: undefined, notice: "" }
+        for (const key of staged.keys()) {
+          if (key.startsWith(AGENT_ROUTES + ".")) staged.delete(key)
         }
+        publish()
+      },
+      /** The settings provider owns the shared form. */
+      dispose: ()       => {
+        unsubscribe?.()
       },
     }
   }
@@ -10228,6 +10403,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
           createElement("span", { style: SKIN.label }, label),
           hintNode,
           input,
+          control.mountedText === undefined ? null : createElement(
+            "span",
+            { style: SKIN.hint },
+            t("mountedValue").replace("{value}", () => control.mountedText || "—"),
+          ),
           createElement(
             "span",
             { style: SKIN.resetNote },
@@ -10337,7 +10517,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
             state.disclosure?.BRIDGE_RESTART_LIMIT ?? ""),
           // The not-lost clause belongs to the same statement; it used to ride every row's hint.
           createElement("p", { style: SKIN.helpText, "data-mpd-disclosure": "not-lost" },
-            NOT_LOST),
+            state.disclosure?.BRIDGE_DISCLOSURE === WORKSPACE_DISCLOSURE ? WORKSPACE_GLOBAL_NOTICE : NOT_LOST),
           createElement("p", { style: SKIN.helpText, "data-mpd-disclosure": "workspace" },
             state.disclosure?.NO_WORKSPACE_NOTICE ?? ""),
         ),
@@ -10361,9 +10541,6 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
           createElement("button", { type: "button", disabled: !state.dirty, onClick: () => props.discard(), style: SKIN.discard, ...BUTTON_HOVER }, t("discard")),
           createElement("span", { style: SKIN.status }, state.saving ? t("saving") : state.failed ? state.error : state.dirty ? t("unsaved") : ""),
         ),
-        state.mode === "memory"
-          ? createElement("p", { style: SKIN.note }, t("memoryMode"))
-          : null,
       )
     }
   }
@@ -10391,8 +10568,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       reset: "Reset to the file value",
       saving: "Saving…",
       unsaved: "Unsaved",
-      readOnly: "This deployment stores settings read-only (a non-loopback page never reaches the host document).",
-      memoryMode: "This page is not loopback: settings writes stay process-local and never reach the host document.",
+      readOnly: "The host settings form is unavailable or read-only.",
+      mountedValue: "The mounted host entry reports {value}.",
     }
     /** The Simplified-Chinese dictionary, extended below with one entry per field. */
     const zh                         = {
@@ -10407,8 +10584,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       reset: "重置为文件值",
       saving: "保存中…",
       unsaved: "未保存",
-      readOnly: "当前部署以只读方式存储设置（非回环页面无法写入宿主文档）。",
-      memoryMode: "该页面不是回环地址：设置写入仅保留在进程内，不会写入宿主文档。",
+      readOnly: "宿主设置表单不可用或处于只读状态。",
+      mountedValue: "已挂载的宿主条目报告的值为 {value}。",
     }
     for (const field of fields) {
       /** The row's dotted knob key, which is also its dictionary key. */
@@ -10521,8 +10698,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
               console.warn("[mpd] settings section: this harness exposes no configForms service — the mpd section is not registered")
               return
             }
-            /** The form of this section's own configurable entry. */
+            /** The profile's root-scoped entry form, shared with other host settings editors. */
             const scope = forms.get(CONFIG_ENTRY)
+            if (scope === undefined) return
+            /** The card's diagnostic and live-model refresh subscription. */
+            let unsubscribeScope                          
             // ONE diagnostic line, and it is load-bearing: "the section renders but every input is
             // empty" has three possible causes that look identical on screen — the form lookup threw
             // (warned above), the store never fills, or it fills with a shape this card does not read.
@@ -10530,11 +10710,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
             // capture, without a debugger.
             try {
               /** The form's first snapshot, printed so an empty card is diagnosable. */
-              const first = scope?.getSnapshot?.()
-              console.log("[mpd] settings section: form status=" + String(first?.status) + " value=" + (first?.value === undefined ? "absent" : "present") + " writable=" + String(first?.writable) + " mode=" + String(first?.mode))
-              if (typeof scope?.subscribe === "function") scope.subscribe(() => {
+              const first = scope.getSnapshot()
+              console.log("[mpd] settings section: form status=" + String(first?.status) + " value=" + (first?.value === undefined ? "absent" : "present") + " writable=" + String(first?.writable))
+              if (typeof scope.subscribe === "function") unsubscribeScope = scope.subscribe(() => {
                 /** The form's snapshot after the change that fired this line. */
-                const now = scope.getSnapshot?.()
+                const now = scope.getSnapshot()
                 console.log("[mpd] settings section: form updated status=" + String(now?.status) + " value=" + (now?.value === undefined ? "absent" : "present"))
                 // A settings-document change can come from ANOTHER front door (a TUI save, a hand
                 // edit), not only from this card's own save, so the live-service read is re-run on
@@ -10561,6 +10741,12 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
              */
             /** The entry's JSON reader, when this client provides one. */
             const fetchJson = options.fetchJson
+            /** The optional client transport for workspace route mutations. */
+            const postJson = options.postJson
+            /** The session the card reads and writes, independent of catalog fallback selection. */
+            let sessionId                    
+            /** The exact route URL addressed by the selected session or the legacy read. */
+            const routePath = (session                    )         => session === undefined ? MODEL_CONFIG_PATH : `${MODEL_CONFIG_PATH}?sessionId=${encodeURIComponent(session)}`
             /** The live-service re-reader; assigned right below, once the controller it calls exists. */
             let readLiveService             = ()       => {}
             /**
@@ -10570,10 +10756,22 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
              * must not clobber a fresher projection.
              */
             let liveReadSeq = 0
-            // An absent form is the probe path above (it renders its warning); the controller's own
-            // guarded calls keep the same behaviour the untyped original had for that case.
-            /** The card's form controller, bound to the resolved scope and the save hook. */
-            const controller = createMpdCardController(scope                 , fields, undefined, () => catalog.info(), () => { readLiveService() })
+            /** Send only route leaf edits to the session that owned the draft at save time. */
+            const saveWorkspace = postJson === undefined ? undefined : async (session        , writes                    )                => {
+              /** The file writer accepts controlled fields and an omitted value for inheritance. */
+              const edits = writes.map(({ op, path, value }) => ({ agent: path[1], leaf: path[2], ...(op === "set" ? { value } : {}) }))
+              /** The model config response acknowledges the scoped save. */
+              const body = await postJson(routePath(session), edits)
+              if (!isTable(body) || body.ok !== true) {
+                throw new Error(isTable(body) && typeof body.reason === "string" ? body.reason : "Could not save the workspace's model routes.")
+              }
+            }
+            /** The card's form controller, with separate global and workspace save paths. */
+            const controller = createMpdCardController(scope, fields, saveWorkspace === undefined ? undefined : {
+              BRIDGE_DISCLOSURE: WORKSPACE_DISCLOSURE,
+              BRIDGE_RESTART_LIMIT,
+              NO_WORKSPACE_NOTICE: WORKSPACE_SELECTION_NOTICE,
+            }, () => catalog.info(), () => { readLiveService() }, saveWorkspace)
             readLiveService = ()       => {
               if (typeof fetchJson !== "function") {
                 controller.setLiveService(undefined, "this runtime provides no reader for the live config route")
@@ -10581,7 +10779,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
               }
               /** This read's ticket: its answer applies only while it is still the newest read. */
               const seq = ++liveReadSeq
-              fetchJson(MODEL_CONFIG_PATH)
+              fetchJson(routePath(sessionId))
                 .then((body         ) => {
                   if (seq !== liveReadSeq) return
                   /** The body narrowed to the two fields the route serves. */
@@ -10591,10 +10789,26 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                 })
                 .catch((error         ) => {
                   if (seq !== liveReadSeq) return
-                  controller.setLiveService(undefined, String((error                         )?.message ?? error))
+                  controller.setLiveService(undefined, isTable(error) && typeof error.reason === "string" ? error.reason : String((error                         )?.message ?? error))
                 })
             }
-            readLiveService()
+            /** Bind model config to the selected session, even if the model catalog is unavailable. */
+            const modelSessions = ctx.inject(["sessions"], (scoped) => {
+              /** The session list supplied by this injected client scope. */
+              const sessions = readService(scoped, "sessions")                               
+              /** Switch requests only when the selected session changes. */
+              const sync = ()       => {
+                /** Use the current session only. A listed session is not a selected workspace. */
+                const next = currentSessionIdOf(sessions)
+                if (next === sessionId) return
+                sessionId = next
+                controller.setWorkspaceSession(next)
+                readLiveService()
+              }
+              sync()
+              return sessions?.list?.subscribe?.(sync)
+            })
+            if (liveReadSeq === 0) readLiveService()
             /** The catalog subscription that re-projects the card. */
             const unsubscribeCatalog = catalog.subscribe(() => {
               controller.refresh()
@@ -10613,6 +10827,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
               Section,
             )
             return () => {
+              ++liveReadSeq
+              unsubscribeScope?.()
+              modelSessions?.dispose?.()
               try {
                 unregister()
               } catch {
@@ -11108,8 +11325,12 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                          
                                                                                
                                                                                                              
-                                                                                        
+                                                                
                    
+                                          
+                             
+                                              
+                                  
    
 
   /** One node's box inside its column, in pixels — the geometry the drawn edges are computed from. */
@@ -11504,7 +11725,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     "tally.blocked": "blocked",
     "tally.released": "released by a failed blocker",
     "state.reading": "Reading the team…",
-    "state.unavailable": "No team state is being served. The mpd team row may not be mounted in this profile.",
+    "state.unavailable": "The team state route could not be read.",
+    "state.planUnavailable": "The staged plan route could not be read.",
+    "task.contract.unavailable": "The frozen contract route could not be read.",
     "state.none": "No team in this workspace yet. Stage one with agent_teams_plan, then approve it.",
     // ── D2: the session-less workspace listing ────────────────────────────────
     // A session that approved nothing of its own still has a workspace, and a panel that answered it
@@ -11847,8 +12070,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         // approval had already replaced.
         const [state, plan, contracts] = await Promise.all([
           readOne           (statePath, sessionId),
-          planPath === undefined ? Promise.resolve({ value: null                    }) : readOne          (planPath, sessionId),
-          taskPath === undefined ? Promise.resolve({ value: null                             }) : readOne                   (taskPath, sessionId),
+          planPath === undefined ? Promise.resolve({ value: null                   , error: undefined }) : readOne          (planPath, sessionId),
+          taskPath === undefined ? Promise.resolve({ value: null                            , error: undefined }) : readOne                   (taskPath, sessionId),
         ])
         /** The frozen contracts, keyed by task id, so the detail body is a lookup and not a scan. */
         const byTask                                                                                                 = {}
@@ -11860,6 +12083,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
           plan: plan.value === null ? null : plan.value.plan === null ? null : plan.value,
           contracts: byTask,
           error: state.error,
+          planUnavailable: plan.error !== undefined,
+          contractsUnavailable: contracts.error !== undefined,
         }
       }
 
@@ -11948,13 +12173,19 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       const start = (sessionId        , publish                           )               => {
         /** Whether the caller still wants results; cleared by the returned stop function. */
         let live = true
-        /** One poll: read, then publish only when still live. */
+        /** Sequence assigned to each poll or stream response before it awaits the route. */
+        let issued = 0
+        /** Sequence of the latest published read. */
+        let applied = 0
+        /** A later result supersedes earlier reads from the same session. */
         const tick = async ()                => {
-          /** This poll's outcome, published only if the panel is still mounted. */
+          /** This read's ordering against concurrent stream and timer requests. */
+          const sequence = ++issued
+          /** The read from this request. */
           const next = await read(sessionId)
-          // A poll that lands after the panel unmounted must not publish: React would warn, and the
-          // next mount would render a stale team for one frame.
-          if (live) publish(next)
+          if (!live || sequence < applied) return
+          applied = sequence
+          publish(next)
         }
         void tick()
         /** The interval the caller's effect stops; owned here, cleared on stop. */
@@ -14056,7 +14287,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
        * @param edges - the edges the DRAWING routed (the served model's), when one arrived.
        * @returns the detail element.
        */
-      const detailSection = (task          , tasks            , contract                                                                                            , edges                         )          => {
+      const detailSection = (task          , tasks            , contract                                                                                            , edges                         , contractUnavailable          = false)          => {
         // A CONSULT IS NOT A TASK (consult DAG, contract §6): the task body's verdict, attempt, round,
         // blockers and acceptance contract are five rows of nothing on it. Its own four facts are the
         // ones a reader pinned it for.
@@ -14118,7 +14349,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         const recordedUnresolved = Array.isArray(task.unresolvedBlockers) ? task.unresolvedBlockers : []
         if (recordedUnresolved.length > 0) rows.push(detailRow("d-unresolved", "task.unresolved", recordedUnresolved.join(", ")))
         if (contract === undefined) {
-          rows.push(react.createElement("div", { key: "d-contract-none", style: { ...CSS.dim, marginTop: "4px" } }, t("task.contract.none")))
+          rows.push(react.createElement("div", { key: "d-contract-none", style: { ...CSS.dim, marginTop: "4px" } }, t(contractUnavailable ? "task.contract.unavailable" : "task.contract.none")))
         } else {
           rows.push(react.createElement("div", { key: "d-contract-head", style: CSS.subHead }, t("task.contract")))
           rows.push(react.createElement("div", { key: "d-contract", style: { ...CSS.card, marginTop: "2px", whiteSpace: "pre-wrap", wordBreak: "break-word" } }, contract.description))
@@ -14149,7 +14380,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
        * @param activeId - the team bound to THIS session, when the index binds one.
        * @returns the section element.
        */
-      const workspaceSection = (records                 , activeId                    )          => {
+      const workspaceSection = (records                 , activeId                    , planUnavailable          = false)          => {
         /** The section's rows, in render order. */
         const rows            = [
           react.createElement("div", { key: "w-title", style: CSS.subHead }, t("workspace.title")),
@@ -14174,7 +14405,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
             + (team.tasks.failed === 0 ? "" : " · " + team.tasks.failed + " ✗")
             + " · " + team.members + " " + t("workspace.members"))))
         }
-        rows.push(react.createElement("div", { key: "w-stage", style: { ...CSS.dim, marginTop: "6px" } }, t("workspace.stage")))
+        rows.push(react.createElement("div", { key: "w-stage", style: { ...CSS.dim, marginTop: "6px" } }, t(planUnavailable ? "state.planUnavailable" : "workspace.stage")))
         return react.createElement("div", { "data-mpd-team-tab": "", "data-mpd-workspace-teams": String(records.length), style: CSS.panel }, rows)
       }
 
@@ -14191,9 +14422,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         /** The session this panel addresses; empty asks the route for the workspace principal. */
         const sessionId = String(seat.sessionId ?? seat.scope?.sessionId ?? "") || sessionIdFromPane()
         /** The polled store and its setter. */
-        const [store, setStore] = react.useState({ state: null, plan: null, contracts: {}, error: undefined }             )
+        const [store, setStore] = react.useState(null                                                  )
         // One poller per session: the effect re-runs when the host hands this panel a different one.
-        react.useEffect(() => start(sessionId, setStore), [sessionId])
+        react.useEffect(() => start(sessionId, (value           )       => setStore({ sessionId, value })), [sessionId])
         // HOVER AND PIN ARE DECLARED BEFORE EVERY EARLY RETURN on purpose: a hook's slot order must be
         // identical on every render path, or React's own state would shift the moment a team appears.
         /** The hovered task's id, which drives the focus chain; null when nothing is hovered. */
@@ -14209,7 +14440,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         setPinned = setPinnedState                                 
         setHover = setHoverState                                 
         /** The store, narrowed out of the tuple above. */
-        const current = store             
+        const scoped = store                                                  
+        /** Only a snapshot belonging to this session can draw its board. */
+        const current            = scoped?.sessionId === sessionId ? scoped.value : { state: null, plan: null, contracts: {} }
         /** The last readable payload, or null while there is none. */
         const state = current.state
         // THE CLOCK RUNS ONLY WHILE A RUNNING TASK IS VISIBLE: the card's elapsed row is the only
@@ -14243,8 +14476,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
           // answer; the sentence below stays for the workspace that genuinely has no team yet.
           /** The workspace listing this payload carries, when the route read one. */
           const listed = state.workspaceTeams?.records ?? []
-          if (listed.length > 0) return workspaceSection(listed, state.workspaceTeams?.activeId)
-          return react.createElement("div", { "data-mpd-team-tab": "", style: { ...CSS.panel, ...CSS.dim } }, t("state.none"))
+          if (listed.length > 0) return workspaceSection(listed, state.workspaceTeams?.activeId, current.planUnavailable)
+          return react.createElement("div", { "data-mpd-team-tab": "", style: { ...CSS.panel, ...CSS.dim } }, t(current.planUnavailable ? "state.planUnavailable" : "state.none"))
         }
         /** The team head; non-null past the guard above. */
         const team = state.team
@@ -14646,7 +14879,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         // way the raw subject it shows sits OUTSIDE the CJK-free drawing subtree, and the pinned task
         // makes the same card opaque (`data-pinned`) without a second component.
         if (tipTask !== undefined && tip !== null) children.push(tipCardOf(tipTask, tip, pinned === tipTask.id, clock))
-        if (pinnedTask !== undefined) children.push(detailSection(pinnedTask, tasks, current.contracts[pinnedTask.id], state.model?.edges))
+        if (pinnedTask !== undefined) children.push(detailSection(pinnedTask, tasks, current.contracts[pinnedTask.id], state.model?.edges, current.contractsUnavailable))
         for (const problem of state.problems) {
           children.push(react.createElement("div", { key: "p-" + problem, style: { ...CSS.dim, marginTop: "6px" } }, problem))
         }
@@ -15139,7 +15372,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   }
 
   /** The snapshot before the first read answers: nothing known, and nothing claimed. */
-  const EMPTY_WORKBENCH                = { team: null, tasks: [], workspace: [], staged: false, hold: null, holdKnown: false, loaded: false }
+  const EMPTY_WORKBENCH                = { team: null, tasks: [], workspace: [], staged: null, hold: null, holdKnown: false, loaded: false }
 
   /** One task row as `/plugins/mpd-team/state` serves it (only the three cells this page renders). */
                                   
@@ -15241,8 +15474,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                           
                                                                                          
                               
-                                                                                                    
-                   
+                                                                                  
+                          
                                                                                           
                               
        
@@ -15380,11 +15613,12 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
    * @returns the hold, or null when this team is not held (or the payload names no hold for it).
    */
   function workbenchHoldOf(payload                                 , teamId        )                       {
-    for (const sidecar of payload?.held ?? []) {
-      if (workbenchText(sidecar?.teamId) !== teamId) continue
-      return { cause: workbenchText(sidecar?.cause), since: workbenchCount(sidecar?.since) }
+    if (Array.isArray(payload?.held)) {
+      /** The current hold for this team, separate from unread escalation records. */
+      const sidecar = payload.held.find((entry) => workbenchText(entry?.teamId) === teamId)
+      return sidecar === undefined ? null : { cause: workbenchText(sidecar.cause), since: workbenchCount(sidecar.since) }
     }
-    /** The panel banner, which a host that serves no `held` list still answers for the held team. */
+    /** Older routes can identify the team's hold only through their banner. */
     const banner = payload?.banner ?? null
     if (banner !== null && workbenchText(banner.kind) === "held" && workbenchText(banner.teamId) === teamId) {
       return { cause: workbenchText(banner.cause), since: workbenchCount(banner.since) }
@@ -15453,7 +15687,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         team,
         tasks,
         workspace,
-        staged: (plan.value?.plan ?? null) !== null,
+        staged: plan.value === null ? null : (plan.value.plan ?? null) !== null,
         hold: team === null ? null : workbenchHoldOf(watchdog.value, team.id),
         // THE WATCHDOG READ'S OWN ANSWER, not a reading of `hold`: the reader above returns a value
         // ONLY for an `ok: true` payload, so null here means the route failed and the page knows
@@ -15515,32 +15749,43 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     const say = workbenchSay(props)
     /** The session addressed by every read; "" reads the workspace principal (the query is omitted). */
     const sessionId = sessionIdOfSeat(props)
-    /** The last snapshot; the empty value until the first read answers. */
-    const [data, setData] = react.useState               (EMPTY_WORKBENCH)
-    /** Which write is in flight, or "" when none is: BOTH buttons are disabled while it is set. */
+    /** Published reads carry the session they belong to during a conversation switch. */
+    const [reading, setReading] = react.useState                                                                  (null)
+    /** The latest snapshot for this conversation, or the initial loading state. */
+    const data = reading?.sessionId === sessionId ? reading.data : EMPTY_WORKBENCH
+    /** The failure for this conversation's latest read. */
+    const readError = reading?.sessionId === sessionId ? reading.error : ""
+    /** Which write is in flight, so both buttons can be disabled together. */
     const [busy, setBusy] = react.useState                        ("")
-    /** The last READ failure, cleared by the next successful read. */
-    const [readError, setReadError] = react.useState        ("")
-    /** The last WRITE failure, cleared when the next write starts — a poll must never erase it. */
-    const [writeError, setWriteError] = react.useState        ("")
-    // ONE READ PATH AND ONE CLOCK. The effect owns the first read and the interval, and its disposer
-    // stops both, so an unmounted page leaves no timer and no reader behind.
+    /** The last write failure remains visible through subsequent polls. */
+    const [writeError, setWriteError] = react.useState("")
+    /** The active read effect, shared with a write's post-action refresh. */
+    const refresh = react.useRef                                                         (null)
     react.useEffect(() => {
-      /** Set once the effect is disposed, so a late answer never writes state into a dead component. */
-      let stopped = false
-      /** One poll pass: read every route, then publish the whole snapshot at once. */
+      /** Request sequence and most recently published sequence within this conversation. */
+      let issued = 0
+      /** Older responses cannot replace a newer completed read. */
+      let applied = 0
+      /** Polls and post-action refreshes publish through the same ordering guard. */
       const tick = async ()                => {
+        /** This request's order is fixed before waiting on the routes. */
+        const sequence = ++issued
         /** This pass's answer, failures included. */
         const read = await readWorkbench(sessionId)
-        if (stopped) return
-        setData(read.data)
-        setReadError(read.failure === null ? "" : interpolate(say("error.read"), { path: read.failure.path, message: workbenchFailureText(read.failure.cause) }))
+        if (refresh.current !== current || sequence < applied) return
+        applied = sequence
+        setReading({ sessionId, data: read.data, error: read.failure === null ? "" : interpolate(say("error.read"), { path: read.failure.path, message: workbenchFailureText(read.failure.cause) }) })
       }
+      /** This effect's identity also guards a pending write when the conversation changes. */
+      const current = { sessionId, tick }
+      refresh.current = current
+      setBusy("")
+      setWriteError("")
       void tick()
-      /** The interval, cleared by the disposer below. */
+      /** The effect owns this timer and releases it on session change or unmount. */
       const timer = setInterval(() => { void tick() }, WORKBENCH_POLL_MS)
       return () => {
-        stopped = true
+        refresh.current = null
         clearInterval(timer)
       }
     }, [sessionId])
@@ -15562,7 +15807,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     const act = (kind                   )       => {
       /** The team the write addresses; a page with no team has nothing to hold. */
       const team = data.team
-      if (team === null || busy !== "") return
+      /** The effect that owns this write's refresh and errors. */
+      const current = refresh.current
+      if (team === null || busy !== "" || current?.sessionId !== sessionId) return
       // THE GUARD THE BUTTON ALSO CARRIES, repeated HERE so a programmatic call cannot slip past it:
       // with the watchdog route unread, an absent hold may be a hold this page simply cannot see, so
       // Pause is refused.
@@ -15583,13 +15830,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
             kind === "hold" ? WORKBENCH_HOLD_PATH : WORKBENCH_RESUME_PATH,
             kind === "hold" ? { teamId: team.id, reason: WORKBENCH_HOLD_CAUSE } : { teamId: team.id },
           )
-          /** The answer the page re-renders with: the read is the truth, not the POST's echo. */
-          const read = await readWorkbench(sessionId)
-          setData(read.data)
+          if (refresh.current === current) await current.tick()
         } catch (error) {
-          setWriteError(workbenchWriteFailure(error, kind, say))
+          if (refresh.current === current) setWriteError(workbenchWriteFailure(error, kind, say))
         } finally {
-          setBusy("")
+          if (refresh.current === current) setBusy("")
         }
       })()
     }
@@ -15638,7 +15883,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       team === null
         ? h("div", { style: { ...dim, padding: "10px 0", fontSize: "12px", lineHeight: "18px", display: "flex", flexDirection: "column", gap: "4px" } },
             h("div", { style: { fontWeight: 600, color: "inherit" } }, emptyTitle),
-            data.loaded ? h("div", null, data.staged ? say("empty.staged") : say("empty.nothing")) : null,
+            data.loaded && data.staged !== null ? h("div", null, data.staged ? say("empty.staged") : say("empty.nothing")) : null,
             data.workspace.length === 0 ? null : h("div", null, interpolate(say("empty.workspace"), {
               count: String(data.workspace.length),
               // The phase is omitted rather than invented when the record carried none: `x (…)` with
@@ -15784,6 +16029,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     try {
       loadSettingsCard().mountSettingsCard(ctx, {
         fetchJson: (url        )                   => request(url, { headers: { accept: "application/json" } }),
+        postJson: (url        , body         )                   => request(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }),
       });
     } catch (error) {
       console.warn("[mpd] settings card mount failed: " + String(error));

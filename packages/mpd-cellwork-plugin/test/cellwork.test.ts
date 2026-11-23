@@ -899,4 +899,8 @@ test("cellwork_open refuses a DELEGATED caller, and accepts a mandate only when 
   const mandated = await runTool(harness, "cellwork_open", { objective: "escalated work", mandate: "run-1" })
   expect(mandated.ok).toBe(true)
   expect(String(mandated.cellId)).not.toBe("")
+  expect(await runTool(harness, "cellwork_open", { objective: "different work", mandate: "run-1" })).toMatchObject({ ok: false })
+  expect(await runTool(harness, "cellwork_stop", {})).toMatchObject({ ok: true })
+  expect(await runTool(harness, "cellwork_open", { objective: "escalated work", mandate: "run-1" })).toMatchObject({ ok: false, error: expect.stringContaining("already opened archived cell") })
+  expect(await runTool(harness, "cellwork_open", { objective: "escalated work", mandate: { runId: "run-1" } })).toMatchObject({ ok: false, error: expect.stringContaining("string run id") })
 })

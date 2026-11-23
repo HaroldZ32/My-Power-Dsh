@@ -32,8 +32,10 @@ const TOOLCHAIN = join(repoRoot, ".toolchain")
 const ENV_OUT = join(homedir(), ".mpd", "mcp.env")
 /** The default wave overlay patch, `$HOME/.mpd/mcp-wave.patch.yml`. */
 const WAVE_PATCH = join(homedir(), ".mpd", "mcp-wave.patch.yml")
-/** The npm packages providing the `sg` and `codegraph` console scripts; codegraph is version-pinned. */
-const NPM_TOOLCHAIN = ["@ast-grep/cli", "@colbymchenry/codegraph@1.5.0"]
+/** The CodeGraph release this bootstrap must resolve and execute before pinning. */
+const CODEGRAPH_VERSION = "1.5.0"
+/** The npm packages providing the `ast-grep` and `codegraph` console scripts. */
+const NPM_TOOLCHAIN = ["@ast-grep/cli", "@colbymchenry/codegraph@" + CODEGRAPH_VERSION]
 /** The two wave-MCP rows the `--activate-wave` overlay can add, with `!!js` runtime bin lookup. */
 const WAVE_ROW = `- id: mcp-wave-mcp
   name: '@deepseek-ai/dsh-mcp-client'
@@ -105,7 +107,7 @@ function runNpm(args: readonly string[]): SpawnSyncReturns<string | Buffer> {
   // exactly the string that was tested for presence.
   /** The npm entry point this process was launched by, when npm launched it. */
   const npmExecPath = process.env.npm_execpath
-  if (npmExecPath) return sh(npmExecPath, args)
+  if (npmExecPath?.match(/(?:^|[/\\])npm-cli\.js$/i)) return sh(process.execPath, [npmExecPath, ...args])
   /** The win32 command interpreter, or null on a platform that can spawn `npm` directly. */
   const interpreter = commandInterpreter()
   if (interpreter === null) return sh("npm", args)
@@ -170,6 +172,8 @@ interface RunOptions {
   readonly timeout?: number
   /** The environment for the child; unset means this process's own environment. */
   readonly env?: NodeJS.ProcessEnv
+  /** Let a caller supply cmd.exe's own quoting for a Windows batch command. */
+  readonly windowsVerbatimArguments?: boolean
 }
 
 /** Spawns a child to completion; `silent` captures its streams instead of inheriting them. */
@@ -177,28 +181,65 @@ function sh(cmd: string, args: readonly string[], opts: RunOptions = {}): SpawnS
   /** The stream encoding: text only when the streams are captured. */
   const encoding: BufferEncoding | undefined = opts.silent ? "utf8" : undefined
   /** The completed child run. */
-  const r = spawnSync(cmd, args, { stdio: opts.silent ? "pipe" : "inherit", encoding, timeout: opts.timeout ?? 600000, env: opts.env ?? process.env })
+  const r = spawnSync(cmd, args, { stdio: opts.silent ? "pipe" : "inherit", encoding, timeout: opts.timeout ?? 600000, env: opts.env ?? process.env, windowsVerbatimArguments: opts.windowsVerbatimArguments })
   return r
 }
 
 /** True when a console script already exists at `binPath`. */
 function installed(binPath: string): boolean { return existsSync(binPath) }
 
-// --- 1) npm toolchain (sg + codegraph) -------------------------------------
-/** Installs the npm tier when either console script is missing; true when both exist afterwards. */
-function ensureNpmToolchain(): boolean {
-  /** The toolchain's own bin directory, where `sg` and `codegraph` land. */
+// --- 1) npm toolchain (ast-grep + codegraph) -------------------------------
+/** Only launchers that pass their actual version probe can be published as activation pins. */
+interface NpmPins {
+  /** Absolute path of a working ast-grep engine. */
+  readonly astGrep: string
+  /** Absolute path of the CodeGraph launcher with its working platform engine. */
+  readonly codegraph: string
+}
+
+/** Run the exact candidate the launcher will use and return its version only on success. */
+function executableVersion(binary: string): string | undefined {
+  /** Batch shims require cmd.exe on win32; native executables can be started directly. */
+  const interpreter = /\.(cmd|bat)$/i.test(binary) ? commandInterpreter() : null
+  /** Reading a shim's version exercises its own platform package resolution. */
+  const result = interpreter === null
+    ? sh(binary, ["--version"], { silent: true, timeout: 10_000 })
+    : sh(interpreter, ["/d", "/s", "/c", `""${binary}" --version"`], { silent: true, timeout: 10_000, windowsVerbatimArguments: true })
+  return result.status === 0 ? String(result.stdout).trim() : undefined
+}
+
+/** Probe the toolchain independently of the user's PATH and ambient MCP pins. */
+function probeNpmToolchain(bin: string): NpmPins | null {
+  /** Prefer the real ast-grep engine and allow a working legacy alias. */
+  const astGrep = [binIn(bin, "ast-grep"), binIn(bin, "sg")].find(
+    (candidate): candidate is string => candidate !== null && /^ast-grep\s+\d/i.test(executableVersion(candidate) ?? ""),
+  )
+  /** The CodeGraph shim must be installed and successfully run the pinned engine. */
+  const codegraph = binIn(bin, "codegraph")
+  return astGrep && codegraph && executableVersion(codegraph) === CODEGRAPH_VERSION ? { astGrep, codegraph } : null
+}
+
+/** Repair missing or unusable engines once and return only pins that actually work. */
+function ensureNpmToolchain(): NpmPins | null {
+  /** Directory where npm puts the installed console scripts. */
   const bin = join(opts.toolchain, "node_modules", ".bin")
-  /** The two console scripts this tier must provide. */
-  const need = ["sg", "codegraph"]
-  /** The subset of `need` that is not on disk yet. */
-  const missing = need.filter((name: string): boolean => binIn(bin, name) === null)
-  if (missing.length === 0) { console.log("[install-mcp] npm toolchain up to date:", join(opts.toolchain, "node_modules/.bin")); return true }
+  /** Reuse an already viable installation without contacting the registry. */
+  const existing = probeNpmToolchain(bin)
+  if (existing !== null) {
+    console.log("[install-mcp] npm toolchain up to date:", bin)
+    return existing
+  }
   console.log("[install-mcp] installing npm toolchain:", NPM_TOOLCHAIN.join(" + "))
-  /** The npm install run, with its cache kept inside the toolchain. */
-  const r = runNpm(["install", "--prefix", opts.toolchain, "--no-save", "--no-audit", "--no-fund", "--cache", join(opts.toolchain, ".npm-cache"), ...NPM_TOOLCHAIN])
-  if (r.status !== 0) { fail("npm toolchain install failed (network?): " + (r.stderr || "").slice(-300)); return false }
-  return need.every((name: string): boolean => binIn(bin, name) !== null)
+  /** npm can exit 0 even when an optional platform engine could not be installed. */
+  const result = runNpm(["install", "--prefix", opts.toolchain, "--no-save", "--no-audit", "--no-fund", "--cache", join(opts.toolchain, ".npm-cache"), ...NPM_TOOLCHAIN])
+  if (result.status !== 0) {
+    fail("npm toolchain install failed: " + (result.error?.message ?? (result.stderr || "").slice(-300)))
+    return null
+  }
+  /** Re-probe installed launchers before writing or printing an activation file. */
+  const installed = probeNpmToolchain(bin)
+  if (installed === null) fail(`npm toolchain could not run ast-grep and CodeGraph ${CODEGRAPH_VERSION} from ${bin}; check platform packages and the npm registry`)
+  return installed
 }
 
 // --- 3) wave MCPs via PIPX (each app isolated; NO hand-made venv) ----------
@@ -271,7 +312,7 @@ const WAVE_INSTALL: readonly WaveInstall[] = [
 ]
 
 /** The `export` lines of the activation file; `withWave` adds one pin per wave MCP binary. */
-function envLines(toolchain: string, withWave: boolean = false, pipxBin: string = join(homedir(), ".local", "bin")): string[] {
+function envLines(toolchain: string, withWave: boolean = false, pipxBin: string = join(homedir(), ".local", "bin"), pins?: NpmPins): string[] {
   // The pin must name the file that EXISTS on this platform (`.bin/sg.exe` here, not `.bin/sg`):
   // a wrong non-empty pin is worse than an unset one - it silently disables the MCP's own chain.
   /** The toolchain's bin directory, where the pinned binaries live. */
@@ -279,8 +320,8 @@ function envLines(toolchain: string, withWave: boolean = false, pipxBin: string 
   /** The lines in order: the banner, the two absolute pins, then the optional PATH entry. */
   const l = [
     "# my-power-dsh MCP activation (generated by scripts/install-mcp.ts; source before dsh)",
-    'export MPD_AST_GREP_SG_PATH="' + (binIn(toolchainBin, "sg") ?? join(toolchainBin, "sg")) + '"',
-    'export MPD_CODEGRAPH_BIN="' + (binIn(toolchainBin, "codegraph") ?? join(toolchainBin, "codegraph")) + '"',
+    'export MPD_AST_GREP_SG_PATH="' + (pins?.astGrep ?? join(toolchainBin, "ast-grep")) + '"',
+    'export MPD_CODEGRAPH_BIN="' + (pins?.codegraph ?? join(toolchainBin, "codegraph")) + '"',
     'export PATH="' + join(toolchain, "bin") + ':$PATH"   # toolchain bin dir (optional user binaries)',
   ]
   if (!withWave) return l
@@ -378,11 +419,12 @@ function check(): void {
 }
 
 /** Writes the activation artifacts and prints them, so a failed write is still usable by hand. */
-function act(): void {
-  /** The `export` lines destined for the env file. */
-  const env = envLines(opts.toolchain, opts.withWave, pipxBinDir())
+function act(pins: NpmPins): void {
+  /** The `export` lines destined for the env file, containing only probed npm binaries. */
+  const env = envLines(opts.toolchain, opts.withWave, pipxBinDir(), pins)
   for (const [file, content] of [[opts.envOut, env.join("\n") + "\n"], ...(opts.activateWave ? [[WAVE_PATCH, waveRef(pipxBinDir())]] : [])]) {
     try {
+      mkdirSync(dirname(file), { recursive: true })
       writeFileSync(file, content)
       console.log("[install-mcp] written ->", file)
     } catch (e) {
@@ -403,7 +445,36 @@ function act(): void {
 }
 
 // --- self-test -------------------------------------------------------------
-/** The built-in assertions: each generated artifact must carry its key content. */
+/** Exercise the same on-disk executable probes without installing anything. */
+function checkNpmPinFixtures(errors: string[]): void {
+  /** Isolated bin directory, with the same suffix rules as an npm install. */
+  const directory = mkdtempSync(join(tmpdir(), "mpd-install-mcp-"))
+  try {
+    /** Write an executable that answers the version probe or simulates a missing native engine. */
+    const fixture = (name: string, output: string, code: number): string => {
+      /** Windows wrappers need cmd.exe and are discovered through their suffix. */
+      const win = process.platform === "win32"
+      /** The exact path returned as a pin if this fixture passes. */
+      const path = join(directory, name + (win ? ".cmd" : ""))
+      writeFileSync(path, win ? `@echo off\r\necho ${output}\r\nexit /b ${code}\r\n` : `#!/bin/sh\necho '${output}'\nexit ${code}\n`, { mode: 0o755 })
+      return path
+    }
+    fixture("sg", "deprecated wrapper", 1)
+    /** The executable selected even though the deprecated alias also exists. */
+    const astGrep = fixture("ast-grep", "ast-grep 0.50.0", 0)
+    /** A CodeGraph launcher with a running native engine and the requested version. */
+    const codegraph = fixture("codegraph", CODEGRAPH_VERSION, 0)
+    /** The good pair must be selected as a unit. */
+    const verified = probeNpmToolchain(directory)
+    if (verified?.astGrep !== astGrep || verified.codegraph !== codegraph) errors.push("working npm engines were not selected")
+    fixture("codegraph", "native engine missing", 1)
+    if (probeNpmToolchain(directory) !== null) errors.push("unusable CodeGraph engine was accepted")
+  } finally {
+    rmSync(directory, { recursive: true, force: true })
+  }
+}
+
+/** The built-in assertions: each generated artifact and bootstrap probe must pass. */
 function selfTest(): void {
   /** The failed assertions, named by their subject. */
   const errors: string[] = []
@@ -413,8 +484,9 @@ function selfTest(): void {
   /** The generated overlay text under test. */
   const ref = waveRef(join(homedir(), ".local", "bin"))
   if (!ref.includes("- id: mcp-wave-mcp") || !ref.includes("- id: mcp-traceweave") || !ref.includes("- insert:")) errors.push("overlay")
+  checkNpmPinFixtures(errors)
   if (errors.length) { console.error("[install-mcp self-test] FAIL: " + errors.join(", ")); process.exit(1) }
-  console.log("[install-mcp self-test] ok: toolchain pkgs + wave rows + env lines + overlay verified")
+  console.log("[install-mcp self-test] ok: executable probes, toolchain packages, wave rows, env lines, and overlay verified")
 }
 
 // --- main ------------------------------------------------------------------
@@ -436,9 +508,11 @@ async function main(): Promise<void> {
     if (opts.activateWave) console.log("\n" + waveRef(pipxBinDir()))
     return
   }
-  ensureNpmToolchain()
+  /** Activation is conditional on successful bootstrap of the requested engines. */
+  const pins = ensureNpmToolchain()
+  if (pins === null) return
   if (opts.withWave) ensureWave()
-  act()
+  act(pins)
 }
 
 void main()

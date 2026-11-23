@@ -27,6 +27,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { installedHostRoot } from "./lib/host-root"
 
+import { apply } from "../src/index"
 import { createDagPanelComponent } from "../src/panel-dag"
 import { createSubagentSceneComponent } from "../src/subagent-scene"
 import {
@@ -581,6 +582,75 @@ describe("PART P · the push re-renders a mounted surface", () => {
 })
 
 // ── THE MERGED FULL-SCREEN SCENE ───────────────────────────────────────────
+
+test("plugin registration reads and follows the workspace in the active panel snapshot", async () => {
+  /** The host lists A first while the panel opens on B. */
+  const roots = [join(WORKSPACE, "a"), join(WORKSPACE, "b")]
+  /** A service that finds a record only in its own workspace. */
+  const teams = teamsDouble(() => [])
+  teams.service.active = (workspace, sessionId) => {
+    teams.lastActiveWorkspace = workspace
+    if (workspace === roots[1] && sessionId === "sess-B") return record("sess-B", "team-b", "workspace B board", "Build in B")
+    if (workspace === roots[0] && sessionId === "sess-A") return record("sess-A", "team-a", "workspace A board", "Build in A")
+    return undefined
+  }
+  /** Descriptors received through the plugin's public panel registration. */
+  const panels = new Map<string, unknown>()
+  /** The composed services the TUI entry point probes. */
+  const services: Record<string, unknown> = {
+    mpdDsh: { workspaceRootsAll: () => roots, workspaceRoot: () => roots[0], workspaceRootForSession: (id: string): string | undefined => id === "sess-A" ? roots[0] : undefined },
+    mpdTeams: teams.service,
+    tuiPanels: {
+      register: (panel: { id: string; component: unknown }) => {
+        panels.set(panel.id, panel.component)
+        return (): void => { panels.delete(panel.id) }
+      },
+      list: () => [...panels.keys()].map((id) => ({ id: "mpd-tui:" + id, source: "plugin", title: id })),
+    },
+  }
+  /** The host owns side effects for the same lifetime as the mounted add-on. */
+  const cleanups: (() => void)[] = []
+  /** The host binds each declared seam to its own scoped context. */
+  const ctx = {
+    get: (id: string): unknown => services[id],
+    logger: { debug: () => {}, info: () => {}, warn: () => {} },
+    effect: (start: () => unknown): void => {
+      /** The registration returns the host-owned disposer. */
+      const cleanup = start()
+      if (typeof cleanup === "function") cleanups.push(() => { cleanup() })
+    },
+    inject: (ids: readonly string[], bind: (scope: unknown) => void): void => { if (ids.every((id) => id in services)) bind(ctx) },
+  }
+  apply(ctx as Parameters<typeof apply>[0], { statusLine: false, scene: false, watchdog: false, workmate: false })
+  expect(typeof panels.get("team")).toBe("function")
+  /** The active terminal conversation changes while its panel is still mounted. */
+  let index = 1
+  /** Mount the registered component with the actual Ink renderer and a reactive host snapshot. */
+  const page = await mount(panels.get("team"), {
+    host: { ...panelHost(() => index === 1 ? "sess-B" : "sess-A"), snapshot: () => ({ sessionId: index === 1 ? "sess-B" : index === 0 ? "sess-A" : "unresolved", ...(index === 1 ? { cwd: roots[1] } : {}), subagents: [] }) },
+  })
+  try {
+    expect(page.text()).toContain("workspace B board")
+    expect(teams.lastActiveWorkspace).toBe(roots[1])
+    expect(teams.lastSubscribeWorkspace).toBe(roots[1])
+    index = 0
+    teams.notify()
+    await page.settle()
+    expect(page.text()).toContain("workspace A board")
+    expect(teams.lastActiveWorkspace).toBe(roots[0])
+    expect(teams.lastSubscribeWorkspace).toBe(roots[0])
+    expect(teams.disposals).toBeGreaterThan(0)
+    index = 2
+    teams.notify()
+    await page.settle()
+    expect(page.text()).not.toContain("workspace A board")
+    expect(teams.lastActiveWorkspace).toBe(roots[0])
+    expect(teams.disposals).toBeGreaterThanOrEqual(2)
+  } finally {
+    page.unmount()
+    for (const cleanup of cleanups.reverse()) cleanup()
+  }
+})
 
 describe("PART D · the mounted merged scene", () => {
   test("the scene reads ITS OWN session's channel and never another session's board", async () => {

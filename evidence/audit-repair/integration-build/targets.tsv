@@ -1,0 +1,40 @@
+source	output	classification
+packages/mpd-autoproject-plugin/src/index.ts	packages/mpd-autoproject-plugin/dist/index.js	Bun 1.4.0
+packages/mpd-better-sidebar-host/src/index.ts	packages/mpd-better-sidebar-host/dist/index.js	Bun 1.4.0
+packages/mpd-bootstrap-plugin/src/index.ts	packages/mpd-bootstrap-plugin/dist/index.js	Bun 1.4.0
+packages/mpd-bundle-plugin/src/index.ts	packages/mpd-bundle-plugin/dist/index.js	Bun 1.4.0
+packages/mpd-cellwork-plugin/src/index.ts	packages/mpd-cellwork-plugin/dist/index.js	Bun 1.4.0
+packages/mpd-codegraph-plugin/src/index.ts	packages/mpd-codegraph-plugin/dist/index.js	Bun 1.4.0
+packages/mpd-comment-checker-plugin/src/index.ts	packages/mpd-comment-checker-plugin/dist/index.js	Bun 1.4.0
+packages/mpd-config-plugin/src/index.ts	packages/mpd-config-plugin/dist/index.js	Bun 1.4.0
+packages/mpd-dsh-adapter-plugin/src/index.ts	packages/mpd-dsh-adapter-plugin/dist/index.js	Bun 1.4.0
+packages/mpd-ext-plugin/src/index.ts	packages/mpd-ext-plugin/dist/index.js	Bun 1.4.0
+packages/mpd-ext-plugin/src/sdk.ts	packages/mpd-ext-plugin/dist/sdk.js	Bun 1.4.0
+packages/mpd-goal-plugin/src/index.ts	packages/mpd-goal-plugin/dist/index.js	Bun 1.4.0
+packages/mpd-graph-core/src/index.ts	packages/mpd-graph-core/dist/index.js	Bun 1.4.0
+packages/mpd-hashline-plugin/src/index.ts	packages/mpd-hashline-plugin/dist/index.js	Bun 1.4.0
+packages/mpd-mail-protocol/src/index.ts	packages/mpd-mail-protocol/dist/index.js	Bun 1.4.0
+packages/mpd-mcp-astgrep/src/cli.ts	packages/mpd-mcp-astgrep/dist/cli.js	Bun 1.4.0
+packages/mpd-mcp-astgrep/src/launch.ts	packages/mpd-mcp-astgrep/dist/launch.js	Bun 1.4.0
+packages/mpd-mcp-codegraph/src/launch.ts	packages/mpd-mcp-codegraph/dist/launch.js	Bun 1.4.0
+packages/mpd-mcp-gitbash/src/launch.ts	packages/mpd-mcp-gitbash/dist/launch.js	Bun 1.4.0
+packages/mpd-mcp-lsp/src/launch.ts	packages/mpd-mcp-lsp/dist/launch.js	Bun 1.4.0
+packages/mpd-memory-plugin/src/index.ts	packages/mpd-memory-plugin/dist/index.js	Bun 1.4.0
+packages/mpd-modelchain-plugin/src/index.ts	packages/mpd-modelchain-plugin/dist/index.js	Bun 1.4.0
+packages/mpd-project-init-plugin/src/index.ts	packages/mpd-project-init-plugin/dist/index.js	Bun 1.4.0
+packages/mpd-qa-roles-probe/src/index.ts	packages/mpd-qa-roles-probe/dist/index.js	Bun 1.4.0
+packages/mpd-roles-plugin/src/index.ts	packages/mpd-roles-plugin/dist/index.js	Bun 1.4.0
+packages/mpd-roster-provider-plugin/src/index.ts	packages/mpd-roster-provider-plugin/dist/index.js	Bun 1.4.0
+packages/mpd-team-compact-plugin/src/index.ts	packages/mpd-team-compact-plugin/dist/index.js	Bun 1.4.0
+packages/mpd-team-core-plugin/src/index.ts	packages/mpd-team-core-plugin/dist/index.js	Bun 1.4.0
+packages/mpd-team-watchdog-plugin/src/index.ts	packages/mpd-team-watchdog-plugin/dist/index.js	Bun 1.4.0
+packages/mpd-tools-plugin/src/index.ts	packages/mpd-tools-plugin/dist/index.js	Bun 1.4.0
+packages/mpd-tui-adapter-plugin/src/index.ts	packages/mpd-tui-adapter-plugin/dist/index.js	Bun 1.4.0
+packages/mpd-tui-plugin/src/index.ts	packages/mpd-tui-plugin/dist/index.js	Bun 1.4.0
+packages/mpd-verify-plugin/src/index.ts	packages/mpd-verify-plugin/dist/index.js	Bun 1.4.0
+packages/mpd-workmate-plugin/src/index.ts	packages/mpd-workmate-plugin/dist/index.js	Bun 1.4.0
+packages/mpd-worktree-plugin/src/index.ts	packages/mpd-worktree-plugin/dist/index.js	Bun 1.4.0
+-	packages/mpd-mcp-codegraph/dist/serve.js	SHA-pinned prebuilt
+-	packages/mpd-bundle-plugin/adopted/agent-teams-client.js	Vendor-pinned browser input
+packages/mpd-bundle-plugin/src/{team-page,settings-card,team-view,web-client}.ts + adopted client	packages/mpd-bundle-plugin/client.js	Node browser build
+packages/mpd-ext-plugin/dist/index.js	dist/mpd-package/packages/mpd-ext-plugin/dist/validator.js	Pack-only CLI validator shim

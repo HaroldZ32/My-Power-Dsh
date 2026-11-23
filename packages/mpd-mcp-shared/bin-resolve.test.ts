@@ -83,7 +83,24 @@ test("ast-grep: a candidate that fails the ast-grep probe is skipped, never acce
   expect(r).toBeNull()
 })
 
-test("ast-grep: createRequire tier resolves the packed optionalDependency", () => {
+test("ast-grep: native package supplies the engine with no wrapper or toolchain", () => {
+  /** The packager's isolated node_modules layout with only the native dependency. */
+  const root = sandbox()
+  /** The native package's manifest and binary share its root. */
+  const packageDir = join(root, "node_modules", "@ast-grep", "cli-linux-x64-gnu")
+  touch(join(packageDir, "package.json"))
+  /** The executable distributed directly in the platform tarball. */
+  const binary = touch(join(packageDir, "ast-grep"))
+  /** The real linker resolves from this isolated copy of the shipped launcher path. */
+  const installedLauncher = pathToFileURL(touch(join(root, "packages", "mpd-mcp-astgrep", "dist", "launch.js"))).href
+  /** Test target and acceptance probe independent of the test runner's machine. */
+  const options = { env: {}, platform: "linux", arch: "x64", probe: okAstGrep }
+  expect(resolveAstGrepBinary(installedLauncher, options)).toEqual({ binary, source: "require" })
+  expect(resolveAstGrepBinary(installedLauncher, { ...options, arch: "arm64" })).toBeNull()
+  expect(resolveAstGrepBinary(installedLauncher, { ...options, probe: () => false })).toBeNull()
+})
+
+test("ast-grep: createRequire tier still resolves the legacy wrapper", () => {
   /** The temp tree this case resolves inside. */
   const s = sandbox()
   /** A fake installed `@ast-grep/cli` package directory. */

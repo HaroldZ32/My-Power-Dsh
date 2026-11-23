@@ -5,7 +5,7 @@
 // to "channel" and incidents were always empty), and a refresh signature that could not see a row's
 // STATUS change. Both are asserted here against a real registration and a real data subscription.
 import { describe, expect, test } from "bun:test"
-import { createTeamPanelActions, registerDshGoTeamPanel, buildTeamPanelFor } from "../src/dshgo-team-panel.ts"
+import { createTeamPanelActions, registerDshGoTeamPanel, readTeamSnapshot } from "../src/dshgo-team-panel.ts"
 import type { PanelBridge, PanelServices } from "../src/dshgo-panel.ts"
 
 /** One task row of the fake board. */
@@ -126,39 +126,79 @@ describe("the board signature sees a STATUS change (repair T10 #9)", () => {
     // A few poll ticks: exactly ONE refresh, because the signature changes exactly once.
     await new Promise((resolve) => setTimeout(resolve, 25))
     expect(host.refreshes).toEqual(["mpd-team"])
+    tasks[1] = { ...tasks[1], subject: "Revised subject" } as FakeTask
+    await new Promise((resolve) => setTimeout(resolve, 25))
+    expect(host.refreshes).toEqual(["mpd-team", "mpd-team"])
     cancel()
     registration.dispose()
   })
 })
 
-describe("the watchdog read unwraps the tool envelope (repair T10 #8)", () => {
-  test("the predicate and the incidents come from `value`, and a failure falls back", async () => {
-    /** A store with one member, so the panel has a board. */
-    const store = storeWith()
-    /** What the fake tool runtime answers next. */
-    let answer: unknown = { ok: true, value: { teams: [{ teamId: "team-1", held: false }], predicate: { source: "heartbeat" }, incidents: [{ ts: "2026-11-03T00:00:00Z", kind: "silence", detail: "T2 went quiet" }] } }
-    /** The tool runtime the panel drives. */
-    const tools = { executeTool: async (): Promise<unknown> => answer }
-    /** The services the read uses. */
-    const services: PanelServices = { get: (name: string): unknown => (name === "mpdTeams" ? teamsFace(store) : undefined) }
-    /** The selection store, empty. */
-    const selection = { get: (): string => "", set: (): void => {} }
-    /** The rendered tree, read through its JSON because the tabs are literal content. */
-    const rendered = JSON.stringify(await buildTeamPanelFor(services, tools, () => "/ws", selection, { sessionId: "s1" }, { app: "1.0.9", locale: "en" }))
+test("the table caps at fifty while the full board supplies counts and blocker states", () => {
+  /** A claimed row, a missing blocker, and a completed prerequisite beyond the preview. */
+  const tasks = [
+    { id: "T1", status: "claimed", subject: "Taken" },
+    { id: "T2", status: "pending", subject: "Waits", blockedBy: ["missing"] },
+    { id: "T3", status: "pending", subject: "Ready", blockedBy: ["T51", "T52"] },
+    ...Array.from({ length: 47 }, (_, index) => ({ id: "T" + (index + 4), status: "completed" })),
+    { id: "T51", status: "completed", owner: "Worker" },
+    { id: "T52", status: "failed", owner: "member-handle" },
+  ]
+  /** The real projection reads the store's own field spellings. */
+  const host = fakeHost({ record: { teamId: "team-1", name: "Drive surface", tasks, members: [{ name: "Worker", executorRef: "member-handle" }] } })
+  /** The Go data model exposes the board's tallies, independently of which rows fit. */
+  const snapshot = readTeamSnapshot(host.ctx, "/ws", "s1")
+  expect(snapshot.tasks).toHaveLength(50)
+  expect(snapshot.tasks.slice(0, 3).map((task) => task.blockedBy)).toEqual([0, 1, 0])
+  expect(snapshot.counts).toEqual({ total: 52, done: 48, active: 1, blocked: 1, completion: 92 })
+  expect(snapshot.members[0]?.taskCount).toBe(2)
+})
+
+test("the registered Go panel reads the watchdog tool as the active conversation", async () => {
+  /** Two roots have distinct registered agents. */
+  const agentA = { session: { id: "s1", header: { cwd: "/first" } } }
+  /** The panel is opened on the second root. */
+  const agentB = { session: { id: "s2", header: { cwd: "/second" } } }
+  /** The actual status tool returns teams with nested holds and incidents at numeric timestamps. */
+  let answer: unknown = { ok: true, isError: false, value: {
+    workspace: "/second",
+    predicate: { source: "heartbeat", reason: "host fallback" },
+    teams: [
+      { teamId: "other-team", held: true, hold: { cause: "different team" }, incidents: [] },
+      { teamId: "team-1", held: true, hold: { cause: "manual pause", taskId: "T2" }, incidents: [
+        { id: "older", teamId: "team-1", at: 1762128000000, kind: "warn", cause: { kind: "silence", ms: 15000 } },
+        { id: "newer", teamId: "team-1", at: 1762128060000, kind: "escalate", cause: { kind: "silence-heartbeat", ms: 21000 } },
+      ] },
+    ],
+  } }
+  /** Capture the scope supplied to the real adapter's tool execution entry. */
+  const calls: unknown[] = []
+  /** The Go view is fetched through the registered bridge spec. */
+  const host = fakeHost(storeWith())
+  host.dsh.workspaceRootForSession = (id) => id === "s2" ? "/second" : "/first"
+  host.dsh.liveAgents = () => [agentA, agentB]
+  host.dsh.executeTool = async (input) => { calls.push(input); return answer }
+  /** The panel registration also owns its cleanup. */
+  const registration = registerDshGoTeamPanel({ dsh: host.dsh, ctx: host.ctx, log: () => {} })
+  try {
+    /** The route function the host published and the first app invocation. */
+    const view = host.panels[0]?.spec.view as (scope: unknown, caps: unknown) => Promise<unknown>
+    /** The first draw contains the actual second-root diagnostics. */
+    const rendered = JSON.stringify(await view({ sessionId: "s2" }, { app: "1.0.9", locale: "en" }))
+    expect(calls).toEqual([{ name: "session-watchdog-status", arguments: { team_id: "team-1" }, agent: agentB }])
     expect(rendered).toContain("heartbeat")
-    expect(rendered).toContain("silence")
-    // A refused call leaves the predicate at its documented default and the incident list empty.
-    answer = { ok: false, error: "no store" }
-    /** The tree built after the refusal. */
-    const refused = JSON.stringify(await buildTeamPanelFor(services, tools, () => "/ws", selection, { sessionId: "s1" }, { app: "1.0.9", locale: "en" }))
-    expect(refused).toContain("\"channel\"")
-    // The incident ROW is gone; "silence" still appears in the designed empty-state copy, which is why
-    // the assertion names the row's own detail instead of the word.
-    expect(refused).not.toContain("T2 went quiet")
-    // A REJECTED call must not escape the view builder either.
-    const throwing = { executeTool: async (): Promise<unknown> => { throw new Error("runtime gone") } }
-    await expect(buildTeamPanelFor(services, throwing, () => "/ws", selection, { sessionId: "s1" }, { app: "1.0.9", locale: "en" })).resolves.toBeDefined()
-  })
+    expect(rendered).toContain("manual pause")
+    expect(rendered).toContain("2025-11-03T00:01:00.000Z")
+    expect(rendered.indexOf("21000 ms")).toBeLessThan(rendered.indexOf("15000 ms"))
+    expect(rendered).not.toContain("different team")
+    answer = { ok: false, isError: true, error: "no store" }
+    /** A failed result must disclose unknown hold status. */
+    const refused = JSON.stringify(await view({ sessionId: "s2" }, { app: "1.0.9", locale: "en" }))
+    expect(refused).toContain("Hold status unavailable")
+    expect(refused).not.toContain("21000 ms")
+  } finally {
+    registration.dispose()
+  }
 })
 
 describe("the selection store is the only state the taps touch", () => {

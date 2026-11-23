@@ -476,14 +476,11 @@ function applySetLine(lines, anchor, newText) {
   result.splice(line - 1, 1, ...replacement);
   return { lines: result, repair: repaired.repair };
 }
-function applyReplaceLines(lines, startAnchor, endAnchor, newText) {
+function applyReplaceLines(lines, startAnchor, endAnchor, newText, original) {
   const { line: startLine } = parseLineRef(startAnchor);
   const { line: endLine } = parseLineRef(endAnchor);
-  if (startLine > endLine) {
-    throw new Error(`Invalid range: start line ${startLine} cannot be greater than end line ${endLine}`);
-  }
   const result = [...lines];
-  const stripped = stripRangeBoundaryEcho(lines, startLine, endLine, toNewLines(newText));
+  const stripped = stripRangeBoundaryEcho(original, startLine, endLine, toNewLines(newText));
   const range = lines.slice(startLine - 1, endLine);
   const repaired = repairReplacementBlock(stripped, range, startLine);
   const restored = repaired.lines.map((entry, index) => {
@@ -504,10 +501,10 @@ function applyInsertAfter(lines, anchor, text) {
   result.splice(line, 0, ...newLines);
   return result;
 }
-function applyInsertBefore(lines, anchor, text) {
+function applyInsertBefore(lines, anchor, text, original) {
   const { line } = parseLineRef(anchor);
   const result = [...lines];
-  const newLines = stripInsertBeforeEcho(lines[line - 1] ?? "", toNewLines(text));
+  const newLines = stripInsertBeforeEcho(original[line - 1] ?? "", toNewLines(text));
   if (newLines.length === 0) {
     throw new Error(`prepend (anchored) requires non-empty text for ${anchor}`);
   }
@@ -536,8 +533,7 @@ function applyPrepend(lines, text) {
   return [...normalized, ...lines];
 }
 function normalizeEditPayload(payload) {
-  return toNewLines(payload).join(`
-`);
+  return JSON.stringify(toNewLines(payload));
 }
 function canonicalAnchor(anchor) {
   if (!anchor)
@@ -596,24 +592,35 @@ function collectLineRefs(edits) {
     }
   });
 }
-function detectOverlappingRanges(edits) {
+function detectRangeConflicts(edits) {
   const ranges = [];
   for (let i = 0;i < edits.length; i++) {
     const edit = edits[i];
-    if (!edit || edit.op !== "replace" || !edit.end)
+    if (!edit || edit.op !== "replace")
       continue;
     const start = parseLineRef(edit.pos).line;
-    const end = parseLineRef(edit.end).line;
+    const end = edit.end ? parseLineRef(edit.end).line : start;
+    if (start > end)
+      return `Invalid range: start line ${start} cannot be greater than end line ${end}`;
     ranges.push({ start, end, idx: i });
   }
-  if (ranges.length < 2)
+  if (ranges.length === 0)
     return null;
   ranges.sort((a, b) => a.start - b.start || a.end - b.end);
   for (let i = 1;i < ranges.length; i++) {
     const prev = ranges[i - 1];
     const curr = ranges[i];
     if (prev && curr && curr.start <= prev.end) {
-      return "Overlapping range edits detected: " + `edit ${prev.idx + 1} (lines ${prev.start}-${prev.end}) overlaps with ` + `edit ${curr.idx + 1} (lines ${curr.start}-${curr.end}). ` + "Use pos-only replace for single-line edits.";
+      return "Overlapping range edits detected: " + `edit ${prev.idx + 1} (lines ${prev.start}-${prev.end}) overlaps with ` + `edit ${curr.idx + 1} (lines ${curr.start}-${curr.end}). ` + "Each original line may be replaced or deleted only once per batch.";
+    }
+  }
+  for (const [idx, edit] of edits.entries()) {
+    if (edit.op === "replace" || !edit.pos)
+      continue;
+    const seam = parseLineRef(edit.pos).line - (edit.op === "prepend" ? 1 : 0);
+    const range = ranges.find(({ start, end }) => start <= seam && seam < end);
+    if (range) {
+      return `Overlapping insertion seam: edit ${idx + 1} (${edit.op} ${edit.pos}) falls inside edit ${range.idx + 1} (lines ${range.start}-${range.end}).`;
     }
   }
   return null;
@@ -689,7 +696,7 @@ function applyHashlineEditsWithReport(content, edits) {
     return { content, noopEdits: 0, deduplicatedEdits: 0, repairs: [] };
   }
   const dedupeResult = dedupeEdits(edits);
-  const EDIT_PRECEDENCE = { replace: 0, append: 1, prepend: 2 };
+  const EDIT_PRECEDENCE = { append: 0, replace: 1, prepend: 2 };
   const sortedEdits = [...dedupeResult.edits].sort((a, b) => {
     const lineA = getEditLineNumber(a);
     const lineB = getEditLineNumber(b);
@@ -699,17 +706,18 @@ function applyHashlineEditsWithReport(content, edits) {
   });
   let noopEdits = 0;
   const repairs = [];
-  let lines = content.length === 0 ? [] : content.split(`
+  const original = content.length === 0 ? [] : content.split(`
 `);
+  let lines = original;
   const refs = collectLineRefs(sortedEdits);
-  validateLineRefs(lines, refs);
-  const overlapError = detectOverlappingRanges(sortedEdits);
-  if (overlapError)
-    throw new Error(overlapError);
+  validateLineRefs(original, refs);
+  const conflict = detectRangeConflicts(sortedEdits);
+  if (conflict)
+    throw new Error(conflict);
   for (const edit of sortedEdits) {
     switch (edit.op) {
       case "replace": {
-        const outcome = edit.end ? applyReplaceLines(lines, edit.pos, edit.end, edit.lines) : applySetLine(lines, edit.pos, edit.lines);
+        const outcome = edit.end ? applyReplaceLines(lines, edit.pos, edit.end, edit.lines, original) : applySetLine(lines, edit.pos, edit.lines);
         if (arraysEqual(outcome.lines, lines)) {
           noopEdits += 1;
           break;
@@ -729,7 +737,7 @@ function applyHashlineEditsWithReport(content, edits) {
         break;
       }
       case "prepend": {
-        const next = edit.pos ? applyInsertBefore(lines, edit.pos, edit.lines) : applyPrepend(lines, edit.lines);
+        const next = edit.pos ? applyInsertBefore(lines, edit.pos, edit.lines, original) : applyPrepend(lines, edit.lines);
         if (arraysEqual(next, lines)) {
           noopEdits += 1;
           break;
@@ -1856,7 +1864,7 @@ function createDshAdapter(ctx, config = {}) {
     } catch {}
   };
   bindDshGoBridge();
-  const configAgentRouteResolver = () => {
+  const configAgentRouteResolver = (workspace) => {
     const config2 = service("mpdConfig");
     if (config2 === undefined || config2 === null)
       return;
@@ -1864,7 +1872,7 @@ function createDshAdapter(ctx, config = {}) {
       return;
     return (member) => {
       try {
-        const answer = config2.agentRouteResolutionOf.call(config2, member);
+        const answer = config2.agentRouteResolutionOf.call(config2, member, workspace);
         return answer !== null && typeof answer === "object" && typeof answer.ok === "boolean" ? answer : undefined;
       } catch {
         return;
@@ -2218,7 +2226,7 @@ function createDshAdapter(ctx, config = {}) {
         const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
         let agentOptions = request.agentOptions;
         if (agentOptions === undefined) {
-          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver());
+          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver(workspaceRootOfAgent(caller)));
           if (outcome.status === "routed") {
             const resolved = await resolveRunRoute({ llmCatalog }, outcome.route, outcome.fallbacks);
             agentOptions = resolved.route;
@@ -2234,8 +2242,13 @@ function createDshAdapter(ctx, config = {}) {
           ...agentOptions === undefined ? {} : { agentOptions },
           ...request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }
         };
+        const provider = typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn";
+        const childId = request.onOpening !== undefined && provider === "spawn" && typeof subagents.startActivation === "function" && typeof subagents.prompt === "function" ? randomUUID() : undefined;
+        if (childId !== undefined)
+          request.onOpening?.(childId);
         const spec = dualShapeActivationSpec({
-          provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
+          provider,
+          ...childId === undefined ? {} : { childId },
           label: `${request.name} · ${request.teamId}`,
           signal: request.signal ?? neverAborted()
         }, activationRequest);
@@ -3160,6 +3173,20 @@ function createDshAdapter(ctx, config = {}) {
       if (typeof skills.get !== "function")
         throw new Error("mpd-dsh-adapter: the harness skills service exposes no get()");
       return skills.get(skillName, options);
+    },
+    selectedAgentPreset(agent) {
+      const session = agent?.session;
+      if (session === undefined || session === null)
+        return;
+      try {
+        const presets = service("agentPresets");
+        if (typeof presets?.presetForSession !== "function")
+          return;
+        const selected = presets.presetForSession(session);
+        return selected === null || typeof selected === "string" && selected.length > 0 ? selected : undefined;
+      } catch {
+        return;
+      }
     },
     async resolvePreset(presetId) {
       const presets = requireService("agentPresets", 'cannot resolve preset "' + presetId + '"');

@@ -1,0 +1,173 @@
+bun test v1.4.0 (34cbb9a40)
+........................................................................................................................................................................................................................................................................................................................................
+
+packages/mpd-roles-plugin/test/tool-cards.test.ts:
+[card] roles.list: bytes=388 nodes=4 depth=2
+.
+[card] roles.spawn: bytes=627 nodes=8 depth=2
+.
+[card] roles.spawn.worst-case: bytes=3094 nodes=8 depth=2
+[card] roles.list.worst-case: bytes=1259 nodes=4 depth=2
+.....................................................................................................................................................................................................................................................................................................
+
+packages/mpd-workmate-plugin/test/dshgo-cards.test.ts:
+workmate-list bytes=328 nodes=6 depth=3
+.
+workmate-match bytes=381 nodes=6 depth=3
+.
+workmate-list-empty bytes=275 nodes=6 depth=3
+..........................................................................................................................
+
+packages/mpd-bundle-plugin/test/team-view-push.test.ts:
+[W-a] {"readsBefore":1,"readsAfter":2,"elapsedMs":3,"pushBudgetMs":200,"intervalMs":2000,"intervalFired":0,"streamUrl":"/plugins/mpd-team/events?sessionId=s1","refreshedOnScreen":true,"staleTagGone":true}
+.
+[mpd] team sidebar session: s1
+[W-a:mounts] {"betterSidebar":["/plugins/mpd-team/events?sessionId=s1"],"harnessRightSidebar":["/plugins/mpd-team/events?sessionId=s1"],"openTotal":2}
+.
+[W-b:absent] {"streamsOpened":0,"intervalMs":2000,"intervalFired":1,"readsBeforeTick":1,"readsAfterTick":2,"frameBefore":".mpd-dag-node { position: absolute; left: 0; top: 0; box-sizing: border-box; overflow: hidden; cursor: pointer; border: 0.5px solid rgba(17,24,39,.22); border-radius: 6px; padding: 3px 5px; font-famil","frameAfter":".mpd-dag-node { position: absolute; left: 0; top: 0; box-sizing: border-box; overflow: hidden; cursor: pointer; border: 0.5px solid rgba(17,24,39,.22); border-radius: 6px; padding: 3px 5px; font-famil"}
+.
+[W-b:error] {"errorHookInstalled":false,"closedByError":false,"frameAfterError":".mpd-dag-node { position: absolute; left: 0; top: 0; box-sizing: border-box; overflow: hidden; cursor: pointer; border: 0.5px solid rgba(17,24,39,.22); border-radius: 6px; padding: 3px 5px; font-famil","frameAfterTick":".mpd-dag-node { position: absolute; left: 0; top: 0; box-sizing: border-box; overflow: hidden; cursor: pointer; border: 0.5px solid rgba(17,24,39,.22); border-radius: 6px; padding: 3px 5px; font-famil","frameAfterFrame":".mpd-dag-node { position: absolute; left: 0; top: 0; box-sizing: border-box; overflow: hidden; cursor: pointer; border: 0.5px solid rgba(17,24,39,.22); border-radius: 6px; padding: 3px 5px; font-famil"}
+.
+[W-c:unmount] {"opened":1,"openAfterUnmount":0,"closeCalls":1,"registeredTimers":[15000,2000,1000],"clearedTimers":[2000,1000]}
+.
+[W-c:session-change] {"opened":["/plugins/mpd-team/events?sessionId=s1","/plugins/mpd-team/events?sessionId=s2"],"closedFlags":[true,false],"openAfterChange":1}
+.
+[W-c:no-route] {"opened":0}
+.......
+
+packages/mpd-bundle-plugin/test/settings-card.test.ts:
+[mpd] settings section: form status=ready value=present writable=true mode=host
+..
+[mpd] settings section: form status=ready value=present writable=true mode=host
+.
+[mpd] settings section: form status=ready value=present writable=true mode=host
+.
+[mpd] settings section: form status=ready value=present writable=true mode=host
+.
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] settings section: form status=ready value=present writable=true mode=host
+.
+[mpd] settings section: form status=unavailable value=absent writable=false mode=memory
+......
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+.
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+.
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+.
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+.
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+.
+[mpd] settings section: form status=ready value=present writable=true mode=host
+.
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: declared fallback — live catalog unavailable (no session is bound)
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: declared fallback — live catalog unavailable (the host resolved no model directory for this session: ui-model-selection: session "s1" resolved no scope)
+.
+[mpd] settings section: form status=ready value=present writable=true mode=host
+.
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+[mpd] settings section: form status=ready value=present writable=true mode=host
+.
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+[mpd] settings section: form status=ready value=present writable=true mode=host
+.
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+...
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+.
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+.
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+.
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+.
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+.
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+.
+[mpd] settings section: form status=ready value=present writable=true mode=host
+..
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 31 models
+.
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: declared fallback — live catalog unavailable (the host resolved no model directory for this session: cannot get property "testing.absent.seam" without inject)
+.
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 31 models
+..
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 31 models
+.
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: declared fallback — live catalog unavailable (no session is bound)
+.
+[mpd] settings section: form status=ready value=present writable=true mode=host
+.
+[mpd] settings section: form status=ready value=present writable=true mode=host
+.
+[mpd] settings section: form status=ready value=present writable=true mode=host
+.
+[mpd] settings section: form status=ready value=present writable=true mode=host
+...
+[mpd] settings section: form status=ready value=present writable=true mode=host
+.
+[mpd] settings section: form status=ready value=present writable=true mode=host
+.
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] settings section: form status=unavailable value=absent writable=false mode=memory
+.
+[mpd] settings section: form status=ready value=present writable=true mode=host
+.
+[mpd] settings section: form status=ready value=present writable=true mode=host
+.
+[mpd] settings section: form status=ready value=present writable=true mode=host
+.
+[mpd] settings section: form status=ready value=present writable=true mode=host
+..
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] settings section: form updated status=ready value=present
+.
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] settings section: form updated status=ready value=present
+.......................
+
+packages/mpd-bundle-plugin/test/sidebar-tab.test.ts:
+[mpd] AgentTeams sidebar file failed to load: Error: harness: unexpected require(@mpd-dsh/team-page)
+[mpd] settings card module failed to load: Error: harness: unexpected require(@mpd-dsh/settings-card)
+..................................................................................
+
+packages/mpd-bundle-plugin/test/workbench-view.test.ts:
+[mpd] AgentTeams command view failed to mount: TypeError: ctx.slots.inject is not a function. (In 'ctx.slots.inject("conversation.chat.commandview", () => ctx.slots.register({
+        name: "conversation.chat.commandview",
+        key: "agent-teams",
+      }, () => null))', 'ctx.slots.inject' is undefined)
+.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 10ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+..............................................................................................................................
+
+1046 pass
+0 fail
+22744 expect() calls
+Ran 1046 tests across 63 files. [9.37s]
+
+Exit: 0

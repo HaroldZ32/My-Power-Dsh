@@ -1,0 +1,6 @@
+(pass) an independent log directory cannot select the workspace cclsp configuration [108.97ms]
+(pass) the pinned cclsp diagnostics refresh after ordinary edits without restarting the MCP session [1372.23ms]
+(pass) the bundled TypeScript peer publishes fresh errors after normal file edits [5442.52ms]
+ 36 pass
+ 0 fail
+Ran 36 tests across 4 files. [6.95s]

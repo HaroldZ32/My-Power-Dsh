@@ -14,6 +14,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { sanitizeId, nextIdSuffix, type TaskKind } from "./team-store"
+import type { TeamWorkmateBinding } from "./team-actions"
 
 /** One member the plan wants. The prompt is what the team executor hands the teammate on approval. */
 export interface StagedMember {
@@ -150,6 +151,15 @@ export interface StagedPlan {
   stagedAt: string
   /** ISO instant approval happened; absent means the plan is still awaiting one. */
   approvedAt?: string
+  /** Frozen seat bindings for an approval that has begun but has not opened its board. */
+  activation?: {
+    /** The team record that owns every child already started by this plan. */
+    teamId: string
+    /** The original binding choices, in staged seat order. */
+    bindings: TeamWorkmateBinding[]
+    /** The last startup refusal and the way to retry it. */
+    stoppedAt?: string
+  }
   /** ISO instant the plan was discarded instead of approved. */
   discardedAt?: string
   /** What approval actually created, so a reader can reconcile plan with reality. */
@@ -292,9 +302,17 @@ export function readPlan(workspace: string, sessionId: string): StagedPlan | und
   return { ...plan, version: STAGED_PLAN_VERSION }
 }
 
+/** Atomically replace a plan document so a failed write leaves its prior checkpoint readable. */
+function writePlanFile(path: string, plan: StagedPlan): void {
+  /** The temporary document is on the same filesystem as its final path. */
+  const temp = path + ".tmp-" + process.pid
+  writeJson(temp, plan)
+  renameSync(temp, path)
+}
+
 /** Persist a plan (the caller owns its content). */
 export function writePlan(workspace: string, plan: StagedPlan): void {
-  writeJson(stagingPath(workspace, plan.sessionId), plan)
+  writePlanFile(stagingPath(workspace, plan.sessionId), plan)
 }
 
 /**
@@ -378,8 +396,8 @@ export function classifyBlocker(plan: StagedPlan, reference: string): BlockerFor
   return plan.tasks.some((task) => task.subject === reference) ? "subject" : "unknown"
 }
 
-/** Archive one plan under `.mpd/team/archive/<planId>/` and clear its staging slot. */
-export function archivePlan(workspace: string, plan: StagedPlan): string {
+/** Archive a plan and clear its staging slot. An approval retry may reuse its own committed archive. */
+export function archivePlan(workspace: string, plan: StagedPlan, retryApproval: boolean = false): string {
   // `<archive>/<planId>/`, created before the plan is written into it. The path comes from
   // `archivePathFor`, so the id is reduced and refused in ONE place — `plan.planId` is read back
   // from a staging FILE on the `stagePlan` path, and joining it verbatim here is the same T5 class.
@@ -388,14 +406,22 @@ export function archivePlan(workspace: string, plan: StagedPlan): string {
   // F4 BACKSTOP: two plans sharing a `planId` used to land in ONE directory and the second write replaced
   // the first — the measured "one archive dir for two plans". Refusing loudly turns a silently lost plan
   // into a red gate; with the millisecond+suffix mint above this is unreachable in normal use.
-  if (existsSync(join(target, "plan.json"))) {
-    throw new Error(`plan id "${plan.planId}" is already archived in this workspace — refusing to overwrite an archived plan`)
+  /** The immutable archive document. Its rename may have landed before staging cleanup failed. */
+  const path = join(target, "plan.json")
+  if (existsSync(path)) {
+    /** Only a retry of the same approved plan with the same task receipts may finish cleanup. */
+    const archived = retryApproval ? readJson<StagedPlan>(path) : undefined
+    if (archived?.planId !== plan.planId || archived.sessionId !== plan.sessionId
+      || archived.approvedAt === undefined || archived.approvedAt !== plan.approvedAt
+      || JSON.stringify(archived.created?.tasks.map((task) => task.id)) !== JSON.stringify(plan.created?.tasks.map((task) => task.id))) {
+      throw new Error(`plan id "${plan.planId}" is already archived in this workspace — refusing to overwrite an archived plan`)
+    }
+  } else {
+    writePlanFile(path, plan)
   }
-  mkdirSync(target, { recursive: true })
-  writeJson(join(target, "plan.json"), plan)
-  /** The session's staging slot, removed so the plan is no longer staged. */
+  /** The session's staging slot, cleared only while this plan still owns it. */
   const staged = stagingPath(workspace, plan.sessionId)
-  if (existsSync(staged)) rmSync(staged, { force: true })
+  if (readPlan(workspace, plan.sessionId)?.planId === plan.planId) rmSync(staged, { force: true })
   return target
 }
 

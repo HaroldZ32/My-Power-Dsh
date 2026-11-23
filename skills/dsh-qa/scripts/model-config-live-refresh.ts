@@ -612,11 +612,11 @@ function selfTest(): void {
   checks.push(["EXPECTED_PROVIDER is a declared provider option", providerOptions.includes('"' + EXPECTED_PROVIDER + '"')])
   checks.push(["BASELINE_MODEL and AFTER_MODEL differ (the save changes the route)", BASELINE_MODEL !== AFTER_MODEL])
 
-  // ── THE SERVICE IS TOTAL: a typed union and a route-or-undefined read, never an exception ──
-  checks.push(["the service exposes the per-call TOTAL agentRouteResolutionOf (typed AgentRouteResolution)", pluginSrc.includes("agentRouteResolutionOf: (member: string): AgentRouteResolution => {")])
+  // The total per-call reads use the supplied workspace, or the service's default when omitted.
+  checks.push(["the per-call agentRouteResolutionOf resolves the route from the supplied workspace", /agentRouteResolutionOf: \(member: string, workspace\?: string\): AgentRouteResolution => \{[^}]*?const resolved = stateFor\(workspace\)\.config\s+[^}]*?resolveAgentRoute\(member, resolved\)/.test(pluginSrc)])
   checks.push(["the resolution union is exported as ok:true | ok:false arms", pluginSrc.includes("export type AgentRouteResolution = AgentRouteResolved | AgentRouteUnconfigured | AgentRouteInvalid | AgentRouteUnrouted")])
   checks.push(["the agent-route resolution RETURNS every refusal — its body carries no throw", resolveAgentBody !== "" && !resolveAgentBody.includes("throw")])
-  checks.push(["the service exposes the TOTAL agentRouteOf read (route or undefined)", pluginSrc.includes("agentRouteOf: (member: string): AgentRoute | undefined => agentRouteOfMember(member, state.config)")])
+  checks.push(["the agentRouteOf read returns a route or undefined from the supplied workspace", /agentRouteOf: \(member: string, workspace\?: string\): AgentRoute \| undefined =>\s+agentRouteOfMember\(member, stateFor\(workspace\)\.config\)/.test(pluginSrc)])
   checks.push(["the route read answers undefined for every unusable agent, never throws", pluginSrc.includes("return resolution.ok ? resolution.route : undefined")])
 
   // ── THE SPAWN HAS NO CALLER MODEL OVERRIDE: its route comes from the member's OWN agentRoutes entry ──
@@ -719,7 +719,7 @@ async function runReal(argv: readonly string[]): Promise<number> {
   // `agentRoutes` entry before the boot. Phase A then measures the workspace's own configuration,
   // phase B moves the model through the ENTRY config and phase D through this same file — the two
   // live surfaces this case compares.
-  const rootConfig = join(sandbox.sandbox, ".mpd", "mpd.jsonc")
+  const rootConfig = join(sandbox.ws, ".mpd", "mpd.jsonc")
   mkdirSync(dirname(rootConfig), { recursive: true })
   writeFileSync(rootConfig, "{\n  // ac6 baseline: the spawned member's own configured route\n  \"agentRoutes\": { \"" + MEMBER + "\": { \"provider\": \"" + EXPECTED_PROVIDER + "\", \"model\": \"" + BASELINE_MODEL + "\" } }\n}\n")
   // The stub provider that answers every model step this case drives.

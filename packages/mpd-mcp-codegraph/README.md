@@ -15,7 +15,8 @@ Offline-built MCP server that serves the CodeGraph tool surface
   (checkout `link:` install) — sets `MPD_CODEGRAPH_BIN` only when the caller left it
   unset, then calls `runCodegraphServe()` from `dist/serve.js` (built at pack time from
   the vendored prebuilt codegraph dist; see `packages/mpd-mcp-codegraph/LICENSE` +
-  `NOTICE`).
+  `NOTICE`). Both `MPD_CODEGRAPH_PROJECT_CWD` and its alias `MPD_DSH_CODEGRAPH_PROJECT_CWD` select
+  the same default project used for initialization. The first non-blank value wins in that order.
 - Why the launcher and not the row env: a **wrong** `MPD_CODEGRAPH_BIN` is returned by
   the adopted resolver even when the file does not exist, which hard-blocks its
   bundled → provisioned → PATH → download chain.

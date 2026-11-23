@@ -119,43 +119,33 @@ replaced or deleted. License: **MIT** (`LICENSE.md`); third-party components kee
   `agent_teams_*` tools and `mpd-delta` registry belong to no shipped session;
   `packages/mpd-schemastery/**` survived as our own code. Narrative:
   `agent-references/overview-and-provenance.md`.
-- **A dependency a bundle DECLARES is mounted by a row that needs it** — the official Agent Teams
-  packages are declared in `dependencies` and materialized by `dsh-app-boot`'s
-  `healProfileModuleFallback` before the loader runs.
+- **The host installation supplies the official Agent Teams packages.** From DSH 0.2.2-rc.2 the host
+  mounts its own team rows. The bundle's guarded legacy rows use the host's experimental packages on
+  older supported hosts. See `docs/compatibility.md` §2.1.
 - **The persisted GOAL and autoproject.** `mpd-goal-plugin` bridges the harness goal domain (`mpd_goal_status` /
   `mpd_goal_anchor` / `mpd_goal_finish` plus the `goal.*` auto-anchor contract); a run that ends
   `max-rounds` deliberately LEAVES ITS GOAL ARMED, and goal mutations go through the harness goal TOOLS,
   never `ctx.goals`. `mpd-autoproject-plugin` answers `/autoproject` by submitting the autoproject activation
   directive as the invoking agent's OWN next user turn, so the run actually starts.
-- **The session-start complexity gate ships ON (default `mechanical`) — it stages an APPROVABLE PLAN
-  SHELL, never a team.** The frozen predicate `trigger = explicit flag OR (matchedSignals >= 1)` runs at
-  the session's first pre-step under the marker `[AgentTeams] Session-start team rule`; on a trigger the
-  gate stages a 0-member, 0-task plan shell through `agent_teams_plan`, which is INERT until the captain
-  extends it (`add_member` / `create_task`) and approves it. An explicit `team:` / `!team` request also
-  stages the shell (signal A) and has its marker CONSUMED from the goal text. `team.gate` in `mpd.jsonc`
-  selects `mechanical` (**the default again since the 2026-10-20 restore**) | `advisory` | `off`, and
-  `team.sensitivity` (`easy` DEFAULT | `normal` | `strict`) sets the signal thresholds:
-  `agent-references/overview-and-provenance.md`. With the tool
-  unmounted or under `advisory` the ONE notice says `NO team was staged` and the captain stages a team
-  itself when the work warrants one — or continues solo and says so. **APPROVAL BUNDLES THREE
-  MECHANISMS:** on the `agent_teams_plan` approve success path, after real activation, the same approval
-  anchors a persisted goal (objective = the plan description, falling back to the plan NAME when the
-  description is empty, source `team`) and seeds `todo_write` with one pending item per plan task —
-  both non-fatal, one log line on failure, no new knobs. Signal D
-  is an ACTIVE boulder work for this workspace
-  (`status: "active"` in `<workspace>/.mpd/boulder.json`, gitignored RUNTIME STATE); a plan FILE alone is
-  NOT a signal. Softer signals and the retired path: `agent-references/overview-and-provenance.md`.
-  **The gate RE-ARMS mid-session (2026-11-05).** "Leading" now means a team that has NOT ended: an
-  explicit `agent_teams_control end`, or a CLEAN-TERMINAL board (>= 1 task, every task
-  completed/cancelled, none failed), which the gate ATTEMPTS to end (`autoEndCleanTerminal`: ONE
-  `agent_teams_control end` per team per process, never retried — the team can stay open). A
-  `failed` task blocks BOTH the auto-end and any re-team and asks for a `kind=repair` row — a wave
-  whose verification failed is never closed silently. With no live team and
-  `team.reteam.afterConsults` (default 4) COMPLETED `mpd_role_spawn*` / `mpd_workmate_spawn` calls
-  since the last fire, the gate stages a NEW shell under the marker `[AgentTeams] Re-team rule` only
-  in `mechanical` mode, only when `stagePlan` succeeds and no plan is already staged (else nothing
-  new is staged), once per record in `<ws>/.mpd/session-gate/<sessionId>.json`. `team.reteam.enabled`
-  (default true) gates only the volume trigger.
+- **Choose the route before the first consult.** For an initial request or a follow-up that expands
+  it, use the conversation to identify planned owners, dependencies and integration. Use a team for
+  substantial work with several owners, shared implementation or a build/test handoff. Reuse a suitable
+  live board or plan, or stage one. Add members and owner-bound tasks, approve, dispatch to declared
+  owners and confirm delivery. Keep a one-shot consult for isolated work or one bounded question to
+  resolve scope. If planning or activation fails, name the blocker and report any limits of serial work.
+  See `agent-references/supervision.md`, "Choosing the route before consulting".
+- **The session-start complexity gate can stage an inert plan shell.** An explicit `team:` / `!team`
+  request or a signal selected by `team.sensitivity` (`easy` default | `normal` | `strict`) can
+  trigger `[AgentTeams] Session-start team rule`. Only approval can activate the plan and may also
+  anchor a goal and seed `todo_write`. A missed signal leaves the routing decision to the captain.
+  `team.gate` is `mechanical` by default. `advisory` leaves staging to the captain and `off` disables
+  automatic routing. See `agent-references/overview-and-provenance.md`, "Gate default".
+- **Re-team and consult volume.** The gate can attempt to end a clean-terminal board once per team per
+  process. A failed row blocks the automatic close and asks for a `kind=repair` row. With no live team,
+  mechanical mode can stage a `[AgentTeams] Re-team rule` shell after completed consult calls or
+  redirect overlapping public role/workmate consults before another child starts. `team.reteam.enabled`
+  (default true) controls both volume checks and `team.reteam.afterConsults` defaults to 4. The long
+  form and recovery are in `agent-references/supervision.md`.
 - **The ONLY shipped preset is `mpd`** — the main working agent — which also carries the
   project-instruction convention: every session MUST attempt to read `AGENT.md` (falling back to
   `AGENTS.md`, then `CLAUDE.md`) via `dsh-agent-instructions`. **`mpd-project-init` (host row) closes
@@ -223,7 +213,7 @@ and a reader cannot tell. Measured re-baselines are recorded in `agent-reference
 | Dist freshness | `node scripts/verify-dist-fresh.ts` (deterministic rebuild-and-diff of every `packages/*/src` entry against its committed `dist/`; unmatched `dist/` files print in a loud NOT COVERED section; the canonical REBUILD command and the package-directory trap are in §6) | any `packages/*/src` or `dist/` change; before release |
 | Row/parity | `bun run verify:rows` + `node skills/dsh-qa/scripts/preset-conformance.ts --self-test` | any bundle-patch / preset / overlay / row change |
 | Pack closure | `node scripts/verify-pack-closure.ts` (completeness + byte identity of files whose sources did not move; `--self-test` is the fixture-driven arm; `--pack-stamp <t>` re-anchors the comparison) | any pack, any post-pack writer, and the release sweep (§11) |
-| Tests | `bun test` (per package) + `bun run typecheck` (root) | every plugin change |
+| Tests | `.toolchain/node_modules/.bin/bun test` (repo root, `bunfig.toml` excludes evidence and packed output) + `bun run typecheck` (root) | every plugin change |
 | QA self-tests | `bun run test:qa` (all `--self-test`) | every plugin/QA-script change |
 | QA real cases | `bun skills/dsh-qa/scripts/<case>.ts` (a case whose module graph reaches the extensionless `packages/*/src` needs `bun` — `team-dispatch-guard` is one; a case that reaches no src may run under `node`) | runtime-behavior changes |
 | Installer | `node scripts/install-profile.ts --dry-run` | any bundle-patch/installer change |
@@ -250,11 +240,9 @@ Long form: `agent-references/verification-flow.md`.
 No evidence on disk for a gate = the change is not complete. Merge to dev only after the relevant gates
 pass and their evidence is committed with the change.
 
-`bun run verify:gates` is the fast aggregate over the static gates — **eleven members: vendor, dist
-freshness, row parity, doc pairs, preset conformance, plugin manifest, comment coverage, graph model,
-workflows, tui admission, dsh-go** — the one command for a patch/preset edit and the release sweep. It expects a
-CLEAN tree: a dirty `skills/**` corpus reddens the vendor gate until the wave's single re-pin lands
-(§9/§11).
+`bun run verify:gates` aggregates the static gates for patch/preset edits and release sweeps.
+`node scripts/verify-gates.ts --list` prints the current count, member IDs and commands. A dirty
+`skills/**` corpus fails the vendor gate until the wave's single re-pin lands (§9/§11).
 
 **A bare `bun run verify:gates` is RED by design**: it needs the PINNED harness FIRST on `PATH` and a
 pinned `dsh-Go` checkout in `MPD_DSHGO_KIT`:
@@ -314,23 +302,12 @@ Refresh the prefix whenever the declared pin moves.
      instance that accumulates across sessions. A small mechanical change goes to a Junior Engineer, a
      bounded independent piece to a Senior Engineer or Deep Worker, an evidence question to a Researcher
      or Explorer, a verdict to a Reviewer. The captain executes only what must not be delegated by rule —
-     committing in the main checkout (single git writer per worktree; a member commits only in its own worktree), contract amendments, plan/roster shaping, releasing a watchdog hold,
-     and the final integration. **RECONNAISSANCE IS DELEGATED, AGAIN MECHANICALLY (user ruling
-     2026-10-20):** on the `mpd` preset's top-level session the captain's `read`/`grep`/`glob`,
-     `mpd_hashline_read`, the MCP recon tools (`codegraph_explore`, `ast_grep_search`, the `lsp`
-     readers) and shell read-verbs on a source path are REFUSED on SOURCE paths
-     (`captain.investigation: "deny"` plus the `captain.shell` read-route; the documentation band stays readable),
-     and the harness's generic spawn tools (`subagent`, `subagent_fork`, `workflow`) are REFUSED
-     (`delegation.gate: "deny"`), so delegation goes through `mpd_role_spawn`, the workmate library or
-     Agent Teams. **THE WRITE PATH IS NOT GATED, BUT THE CAPTAIN'S SHELL AND GATE EVIDENCE
-     ARE:** `write`/`edit`/`mpd_hashline_edit` stay available and the verification law's write guard
-     (`verify.mode`) remains WITHDRAWN; `bash` stays open for git, filesystem and bookkeeping and
-     REFUSES verification commands (`bun test`, `bun run verify:*`, `node scripts/verify-*`, the QA
-     cases, `bun build packages/*`, `docker`) under `captain.shell` (default `deny`);
-     `mpd_verify_evidence {kind:"gate"}` is REFUSED for the captain under `verify.evidenceBy` (default
-     `verifier`) while `kind:"probe"` stays open. WHO executes a change is decided by size (this very
-     rule), and a DIFFERENT agent records the verdict. **Full token-by-token account of the boot line and the remaining
-     withdrawn knob: `agent-references/verification-flow.md`, "§5 rule 2 — the captain's tool pack".**
+     committing in the main checkout, amending contracts, shaping plans and rosters, releasing a
+     watchdog hold, and final integration. The top-level `mpd` captain delegates source reconnaissance
+     and uses `mpd_role_spawn`, workmates or Agent Teams under `captain.investigation` and `delegation.gate`.
+     Direct writes remain available. Under the default `captain.shell` and `verify.evidenceBy` settings,
+     a different agent runs gate commands and records verification. For tool and path access, probe
+     evidence and boot diagnostics, see `agent-references/verification-flow.md`, "§5 rule 2 — the captain's tool pack".
   3. **Keep requirement / task / review SEPARATE.** A dispatched piece of work gets a requirement task
      (the frozen acceptance contract), a work task and a review task rather than one lumped
      implementation task; finding-driven work uses `kind=repair` + `sourceTaskId` (+ `coverageOf`) on the
@@ -358,9 +335,9 @@ Refresh the prefix whenever the declared pin moves.
      carries `complete`/`fail` (owner-only, optional `note`, optional `expected_revision`
      compare-and-set; a FAIL releases its dependents per OPT-1). `claim` REFUSES a task whose declared
      blockers are not satisfied — the SAME readiness predicate dispatch uses — while `complete`/`fail`/
-     `release` stay open, so a stranded row is always closable. `agent_teams_dispatch` pairs a ready task
-     with its DECLARED owner when that member is free, and falls back to roster order ONLY with the
-     reason reported. **ONE git writer per working tree** (the binding bullet earlier in this section) is
+     `release` stay open, so a stranded row is always closable. `agent_teams_dispatch` defaults to
+     owner-only: an unavailable owner is reported and the task stays pending. Roster-order fallback
+     requires explicit `mode:"roster"` and reports why it substituted. **ONE git writer per working tree** (the binding bullet earlier in this section) is
      PROSE since 2026-10-17 and still binding: its enforcement is the dispatch contract — members edit
      files, run gates and may commit inside their own worktree; the captain alone commits in the main
      checkout and merges — plus review. The five official Agent Teams authoring
@@ -479,7 +456,9 @@ bound and the conformance failure modes — is in `agent-references/qa-disciplin
   tool evidence; `request/header.data.header.tools[]` is tool-list evidence. Asserting a tool NAME
   against the model's ANSWER is wrong in BOTH directions (both measured). The store is a
   CONCATENATED-ZSTD-FRAME container, so decode frame by frame.
-- Evidence path: `evidence/<domain>/<slug>/<timestamp>/{result.json, output.log}`.
+- Evidence path: `evidence/<domain>/<slug>/<timestamp>/{result.json, output.log}`. Keep compact,
+  redacted proof in Git and link needed bulk artifacts. See "Evidence retention for new runs" in
+  `agent-references/verification-flow.md`.
 - **Durable anchors (T-90): an ARTIFACT PATH is the anchor — a mailbox id is not a link.** A line
   pointer rots by an EDIT (T-55), a mailbox id by a MAILBOX CLEARING; a seat citing an EXCHANGE copies
   the quoted bytes into its own artifact. Long form: `agent-references/qa-discipline.md`.
@@ -548,8 +527,8 @@ lane hold this line.
   — its row's mount guard disables it when absent). 0.28.0 requires harness 0.2.1-rc.1+ (this repo pins
   0.2.2-rc.5 and still supports 0.2.2-rc.3, 0.2.2-rc.2, 0.2.2-rc.1 and 0.2.1-rc.5), injects `["webServer","sessions","connection","tools"]`, and contributes each mpd sidebar
   page twice — the primary tab plus a `bottomOnly` bottom-workbench twin (`<id>:bottom`) — with the
-  official right sidebar as the fallback when the package is absent. `@ast-grep/cli` +
-  `@code-yeongyu/comment-checker` left `optionalDependencies`.
+  official right sidebar as the fallback when the package is absent. Use `package.json` for the
+  current optional dependency list.
 - Every path-bearing patch value resolves through the loader's `baseUrl` (the profile directory), so the
   same patch works for a checkout install and for a packed install. The `mpd` preset and the skill corpus
   are SERVED by reference (`preset-mpd` → the inline plugin list, `mpd-bootstrap` → `<bundle>/skills`) —
@@ -606,11 +585,10 @@ lane hold this line.
 2. Full gate sweep. §4's gate table is the authority: run every row it marks for this change, plus the
    two it does not carry — `node scripts/verify-no-host-override.ts` (NOT a `verify:gates` member) and
    `node scripts/verify-manual-paths.ts` (whenever `AGENTS.md` changed) — plus the real smoke cases
-   `dual-track-smoke` and `mcp-call`. `bun run verify:gates` aggregates §4's eleven static members. Two
-   preconditions are easy to miss: `bun run verify:vendor` only AFTER the wave's single
+   `dual-track-smoke` and `mcp-call`. Run the static aggregate and pinned root tests from §4. Run
+   `bun run verify:vendor` after the wave's single
    `node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step` re-pin when `skills/**`
-   changed, and a repo-root `bun test` (unlike `bun test packages`) also scans the `evidence/**`
-   fixtures and reddens on them.
+   changed.
    - **LAST: the Docker real-machine lane, per §4's Docker row — BOTH runs, both stamps cited.** The
      credentialed `node scripts/docker-e2e.ts --mode source --require-docker --live` then `--mode
      oneclick --require-docker --live`, AND the credential-free `--mode source --require-docker

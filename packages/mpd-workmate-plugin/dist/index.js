@@ -1105,7 +1105,7 @@ function createDshAdapter(ctx, config = {}) {
     } catch {}
   };
   bindDshGoBridge();
-  const configAgentRouteResolver = () => {
+  const configAgentRouteResolver = (workspace) => {
     const config2 = service("mpdConfig");
     if (config2 === undefined || config2 === null)
       return;
@@ -1113,7 +1113,7 @@ function createDshAdapter(ctx, config = {}) {
       return;
     return (member) => {
       try {
-        const answer = config2.agentRouteResolutionOf.call(config2, member);
+        const answer = config2.agentRouteResolutionOf.call(config2, member, workspace);
         return answer !== null && typeof answer === "object" && typeof answer.ok === "boolean" ? answer : undefined;
       } catch {
         return;
@@ -1467,7 +1467,7 @@ function createDshAdapter(ctx, config = {}) {
         const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
         let agentOptions = request.agentOptions;
         if (agentOptions === undefined) {
-          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver());
+          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver(workspaceRootOfAgent(caller)));
           if (outcome.status === "routed") {
             const resolved = await resolveRunRoute({ llmCatalog }, outcome.route, outcome.fallbacks);
             agentOptions = resolved.route;
@@ -1483,8 +1483,13 @@ function createDshAdapter(ctx, config = {}) {
           ...agentOptions === undefined ? {} : { agentOptions },
           ...request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }
         };
+        const provider = typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn";
+        const childId = request.onOpening !== undefined && provider === "spawn" && typeof subagents.startActivation === "function" && typeof subagents.prompt === "function" ? randomUUID() : undefined;
+        if (childId !== undefined)
+          request.onOpening?.(childId);
         const spec = dualShapeActivationSpec({
-          provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
+          provider,
+          ...childId === undefined ? {} : { childId },
           label: `${request.name} · ${request.teamId}`,
           signal: request.signal ?? neverAborted()
         }, activationRequest);
@@ -2409,6 +2414,20 @@ function createDshAdapter(ctx, config = {}) {
       if (typeof skills.get !== "function")
         throw new Error("mpd-dsh-adapter: the harness skills service exposes no get()");
       return skills.get(skillName, options);
+    },
+    selectedAgentPreset(agent) {
+      const session = agent?.session;
+      if (session === undefined || session === null)
+        return;
+      try {
+        const presets = service("agentPresets");
+        if (typeof presets?.presetForSession !== "function")
+          return;
+        const selected = presets.presetForSession(session);
+        return selected === null || typeof selected === "string" && selected.length > 0 ? selected : undefined;
+      } catch {
+        return;
+      }
     },
     async resolvePreset(presetId) {
       const presets = requireService("agentPresets", 'cannot resolve preset "' + presetId + '"');
@@ -3657,6 +3676,9 @@ function sha256Of(text2) {
 function memoryBlocksOf(text2) {
   return String(text2 ?? "").split(/\n## /).map((block, index) => index === 0 ? block : "## " + block).map((block) => block.trim()).filter((block) => block !== "");
 }
+function memoryTimestampOf(block) {
+  return /^## (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z) — /.exec(block)?.[1] ?? "";
+}
 function tagsOf(note, baseName) {
   return new Set(unique(tokenize(note + " " + baseName)));
 }
@@ -3746,6 +3768,7 @@ merged-from: ` + fromKey, PERSONA_CAP);
     seen.add(sha);
     blocks.push(block);
   }
+  blocks.sort((left, right) => memoryTimestampOf(left).localeCompare(memoryTimestampOf(right)));
   let memory = "";
   for (let index = blocks.length - 1;index >= 0; index--) {
     const candidate = blocks[index] + (memory === "" ? "" : `
@@ -3839,24 +3862,24 @@ function apply(ctx) {
       return;
     }
   }
-  function spawnRouteOf(meta) {
+  function spawnRouteOf(meta, exec) {
     const live = configService();
     if (typeof live?.agentRouteResolutionOf === "function") {
-      const resolution = live.agentRouteResolutionOf(meta.baseName);
+      const resolution = live.agentRouteResolutionOf(meta.baseName, dsh.workspaceRoot(exec));
       if (resolution !== null && typeof resolution === "object" && typeof resolution.ok === "boolean") {
         if (resolution.ok)
           return { route: resolution.route, fallbacks: resolution.route.fallbacks ?? [] };
         if (resolution.reason === "unrouted")
-          return { route: declaredRouteOfBase(meta), fallbacks: [] };
+          return { route: declaredRouteOfBase(meta, exec), fallbacks: [] };
         const detail = resolution.reason === "invalid" ? resolution.problem + " must be a string" : "missing " + resolution.missing.join(", ");
         throw agentUnconfiguredRefusal(resolution.agent, detail);
       }
     }
-    return { route: declaredRouteOfBase(meta), fallbacks: [] };
+    return { route: declaredRouteOfBase(meta, exec), fallbacks: [] };
   }
-  function declaredRouteOfBase(meta) {
+  function declaredRouteOfBase(meta, exec) {
     try {
-      const base = resolveBase(meta.baseName);
+      const base = resolveBase(meta.baseName, exec);
       if (base.provider !== "" && base.model !== "")
         return { provider: base.provider, model: base.model };
     } catch {}
@@ -3938,14 +3961,14 @@ function apply(ctx) {
   function normalizeBaseKey(s) {
     return String(s ?? "").trim().toLowerCase().replace(/[\s_-]+/g, "");
   }
-  function resolveBase(key) {
+  function resolveBase(key, exec) {
     const roles = rolesService();
     if (!roles)
       throw new Error("mpd_workmate: mpdRoles service unavailable (mpd-roles-plugin not mounted)");
     const k = String(key ?? "").trim();
     if (!k)
       throw new Error(`mpd_workmate: base required (the specialist's functional name, e.g. "Deep Worker")`);
-    const all = typeof roles.list === "function" ? roles.list() : [];
+    const all = typeof roles.list === "function" ? roles.list(exec) : [];
     const wanted = normalizeBaseKey(k);
     const base = all.find((r) => normalizeBaseKey(String(r?.name ?? "")) === wanted);
     if (!base) {
@@ -3968,9 +3991,10 @@ function apply(ctx) {
       return null;
     }
   }
-  function initWorkmate(baseKey, nameArg, noteArg, workspace) {
+  function initWorkmate(baseKey, nameArg, noteArg, exec) {
     assertMutationSandboxed("initialize a workmate");
-    const base = resolveBase(baseKey);
+    const workspace = exec === undefined ? undefined : dsh.workspaceRoot(exec);
+    const base = resolveBase(baseKey, exec);
     const given = sanitizeName(nameArg);
     let name2 = given;
     if (!name2) {
@@ -3988,7 +4012,7 @@ function apply(ctx) {
     const born = (() => {
       const live = configService();
       if (typeof live?.agentRouteResolutionOf === "function") {
-        const resolution = live.agentRouteResolutionOf(base.name);
+        const resolution = live.agentRouteResolutionOf(base.name, workspace);
         if (resolution !== undefined && resolution !== null && resolution.ok === true)
           return { provider: resolution.route.provider, model: resolution.route.model };
       }
@@ -3996,7 +4020,7 @@ function apply(ctx) {
     })();
     const bornPersona = capText(base.persona, PERSONA_CAP).trim();
     const bornBase = String(base.persona ?? "").trim();
-    const meta = { name: name2, baseId: base.id, baseName: base.name, description: base.description, provider: born.provider, model: born.model, readonly: base.readonly, createdAt: now(), updatedAt: now(), uses: 0, lastTask: null, renamedFrom: [], personaRevision: 1, personaHash: sha256Of(bornPersona), baseRevision: bornBase === "" ? UNKNOWN_HASH : sha256Of(bornBase), workspaces: attuneWorkspaces([], workspace) };
+    const meta = { name: name2, baseId: base.id, baseName: base.name, description: base.description, provider: born.provider, model: born.model, readonly: base.readonly, createdAt: now(), updatedAt: now(), uses: 0, lastTask: null, renamedFrom: [], personaRevision: 1, personaHash: sha256Of(bornPersona), baseRevision: bornBase === "" ? UNKNOWN_HASH : sha256Of(bornBase), workspaces: attuneWorkspaces([], workspace ?? "") };
     writeFileSync(join2(dir, "meta.json"), JSON.stringify(meta, null, 2) + `
 `);
     writeFileSync(join2(dir, "persona.md"), bornPersona + `
@@ -4009,7 +4033,7 @@ function apply(ctx) {
     writeFileSync(join2(dir, "note.md"), note + `
 `);
     writeIndexEntry(name2, meta);
-    return { name: name2, baseName: base.name, readonly: base.readonly, provider: base.provider, model: base.model, path: dir, note };
+    return { name: name2, baseName: base.name, readonly: base.readonly, provider: born.provider, model: born.model, path: dir, note };
   }
   const workmateLibrary = {
     list: () => listInstances().map(({ name: name2, meta, note }) => ({ name: name2, baseName: meta.baseName, readonly: meta.readonly, uses: meta.uses, updatedAt: meta.updatedAt, renamedFrom: meta.renamedFrom, note })),
@@ -4074,7 +4098,7 @@ function apply(ctx) {
     parameters: { type: "object", properties: { base: { type: "string", description: `the specialist's functional name (e.g. "Deep Worker")` }, name: { type: "string", description: "independent workmate name (lowercase kebab; auto-generated from the functional name if omitted)" }, note: { type: "string", description: "optional initial note card" } }, required: ["base"], additionalProperties: false },
     output: { schema: { type: "object", properties: { name: { type: "string" }, baseName: { type: "string" }, readonly: { type: "boolean" }, provider: { type: "string" }, model: { type: "string" }, path: { type: "string" }, note: { type: "string" } }, required: ["name", "baseName"], additionalProperties: false }, render: (_a, v) => textBlock("workmate " + v.name + " initialized (base " + v.baseName + (v.readonly ? ", readonly" : "") + ", " + v.provider + "/" + v.model + `)
 note: ` + v.note) },
-    execute: async (args, exec) => initWorkmate(String(args?.base ?? ""), String(args?.name ?? ""), String(args?.note ?? ""), workspaceOf(dsh, exec))
+    execute: async (args, exec) => initWorkmate(String(args?.base ?? ""), String(args?.name ?? ""), String(args?.note ?? ""), exec)
   });
   dsh.registerTool({
     name: "mpd_workmate_spawn",
@@ -4089,20 +4113,34 @@ details: ` + v.details : "")) },
       if (tooDeep !== undefined)
         throw new Error(tooDeep);
       const { meta, key } = ensureInstance(String(args?.name ?? ""));
-      const attributed = attuneWorkspaces(meta.workspaces, workspaceOf(dsh, exec));
-      if (attributed.join("\x00") !== meta.workspaces.join("\x00")) {
-        meta.workspaces = attributed;
-        writeFileSync(join2(wmDir(key), "meta.json"), JSON.stringify(meta, null, 2) + `
-`);
-        writeIndexEntry(key, meta);
-      }
       const task = String(args?.task ?? "").trim();
       if (!task)
         throw new Error("mpd_workmate_spawn: task required");
-      const persona = readPersona(key);
-      const memory = readMemory(key);
-      const note = readNote(key);
-      const prompt = persona + `
+      const decided = spawnRouteOf(meta, exec);
+      const admission = (() => {
+        try {
+          return ctx.get?.("mpdConsults");
+        } catch {
+          return;
+        }
+      })();
+      noteSpawnStart(key);
+      let release;
+      try {
+        release = await admission?.reservePublicConsult?.(exec);
+        exec?.signal?.throwIfAborted();
+        const { meta: currentMeta, dir } = ensureInstance(key);
+        const attributed = attuneWorkspaces(currentMeta.workspaces, workspaceOf(dsh, exec));
+        if (attributed.join("\x00") !== currentMeta.workspaces.join("\x00")) {
+          currentMeta.workspaces = attributed;
+          writeFileSync(join2(dir, "meta.json"), JSON.stringify(currentMeta, null, 2) + `
+`);
+          writeIndexEntry(key, currentMeta);
+        }
+        const persona = readPersona(key);
+        const memory = readMemory(key);
+        const note = readNote(key);
+        const prompt = persona + `
 
 Your independent memory (bounded, latest first):
 ` + (memory || "(empty — you are a fresh workmate)") + `
@@ -4116,9 +4154,6 @@ Context:
 ` + String(args.context) : "") + `
 
 Work with the tools your role requires (read-only workmates must never modify anything).` + " BEFORE your final report, call mpd_workmate_reflect with a concise self-summary (task / outcome / what you learned / optional persona_delta / optional new note) so your workmate persona and memory evolve. Then end with ONLY the structured report (name/summary/recommendation/details/evidence).";
-      noteSpawnStart(key);
-      try {
-        const decided = spawnRouteOf(meta);
         const run = await resolveRunRoute(dsh, decided.route, decided.fallbacks);
         const route = run.route;
         const result = await dsh.spawnAgent({
@@ -4132,12 +4167,13 @@ Work with the tools your role requires (read-only workmates must never modify an
           outputSchema: REPORT_SCHEMA,
           maxDepth: spawnMaxDepthOf(exec.agent),
           ...route.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: route.reasoningEffort } },
-          ...meta.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {}
+          ...currentMeta.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {}
         });
         const st = result.structured ?? {};
         return { name: key, status: "complete", summary: String(st.summary ?? ""), recommendation: String(st.recommendation ?? ""), details: String(st.details ?? ""), evidence: Array.isArray(st.evidence) ? st.evidence.map(String) : [], stopReason: result.stopReason ?? null };
       } finally {
         noteSpawnEnd(key);
+        release?.();
       }
     }
   });
@@ -4377,7 +4413,7 @@ previous names: ` + v.renamedFrom.join(", ") : "")) },
           return;
         }
         try {
-          const created = initWorkmate(String(body?.base ?? ""), String(body?.name ?? ""), String(body?.note ?? ""), "");
+          const created = initWorkmate(String(body?.base ?? ""), String(body?.name ?? ""), String(body?.note ?? ""));
           res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
           res.end(JSON.stringify(created));
         } catch (e) {

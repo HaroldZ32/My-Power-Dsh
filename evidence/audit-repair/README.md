@@ -1,0 +1,17 @@
+# Audit repair evidence
+
+The implementation under review is `b261da2ae5dff4c46fdd97c826a6441b303c6037` on `fix/team-and-audit-recovery`. The original review targeted `124d4591`; its tree matched integration parent `e86764c0`. Dates in the raw records are UTC. Intermediate results remain available to explain the fixes and reproduce the controls.
+
+| User outcome | Observed evidence |
+|---|---|
+| A plan survives a refusal at the host child limit and can start the missing member on retry | [Baseline live session](pre-fix-team-host/observations.md) and [joined host tool calls and results](team-runtime/result.json) |
+| Retried approval preserves an already committed board, and release preserves or frees exactly the expected pairing | [Filesystem interruption controls, both public release tools and real rc.2/rc.5 child completion](team-approval-finalize/2026-11-22T17-13-14Z/result.json) |
+| Batch edits and legacy migration preserve user content. Failed memory commits produce accurate receipts, including journal-tail recovery | [Data-preservation tests](user-data/2026-11-22T16-10-01Z/result.json) and [follow-up regression checks](user-data-followup/result.json) |
+| Model settings, team views and acknowledgements use the calling workspace. Saved settings survive reload and display correctly | [Two-workspace tests](workspace-config/2026-11-22T16-28-05Z/result.json), [surface actions](surfaces/result.json) and [mounted Chromium](web-settings-followup/2026-11-22T165511Z/result.json) |
+| A partial escalation, cell restart or failed Boulder write has an observable and recoverable outcome | [Real tool and persistence checks](automation/result.json) and [independent follow-up](automation-followup-check/result.json) |
+| Developer tools, test discovery, packaging and gate contracts work through ordinary entry points | [MCP wire checks](devtools/result.json), [discovery fixtures](hygiene/2026-11-22T160542Z/result.json) and [private-state exclusion controls](packaging-private-state/result.json) |
+| The distributable contains exactly the intended tracked bytes | [Clean release proof](clean-release/result.json) and [exact archive smoke and same-version upgrade](clean-release/output.log) |
+
+The final tracked-only archive SHA-256 is `b04e85c0ea7cf4bdd6f6c27bfc878299063eda3961c17d89008e706a49383f03`. Its 1,272 files were compared to the source commit, then the same archive was exercised through isolated Web and real-PTY TUI profiles. The selected install path was tested as an update over a prior 0.21.0 profile. Earlier archive digests in the development records refer to earlier cuts. No registry publication or modification of the operator's live profile was performed.
+
+The pinned Team writer suite recorded 4,288 passes, 6 skips and zero failures in its full repository run. The isolated host runs used local model responses and the real activation, session, board and tool execution systems. Physical mobile rendering, every third-party model service and a credentialed release Docker run were outside those measurements. The QA self-test records its missing external fixtures as skips. The independent verifier recorded 4,290 passes, four environment skips and zero failures, 11/11 aggregate gates, and 163 passes with zero failures and 81 declared bounds in the rootless source Docker run. Its verification-plane PASS is `rec-20261122T173905-24ca97`. [Final verification record](final-verification/20261122T173147Z/result.json)

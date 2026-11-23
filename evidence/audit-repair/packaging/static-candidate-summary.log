@@ -1,0 +1,2 @@
+verify-comment-coverage exit=0
+typecheck exit=1

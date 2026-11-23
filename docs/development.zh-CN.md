@@ -83,9 +83,13 @@ manifest 声明了一个外部运行时依赖 `dsh-better-sidebar`（承载 mpd 
 
 ```bash
 bun run typecheck                        # 根 tsgo --noEmit（覆盖所有包）
-bun test packages                        # 每包单元测试（mock ctx 驱动工具）
+.toolchain/node_modules/.bin/bun test   # 用仓库固定的 Bun 版本运行默认套件
+bun run test                             # 只运行包测试
 bun test packages/<pkg>                  # 单包
 ```
+
+从仓库根目录运行这些命令。默认套件包含 `packages/` 和 `skills/` 下的测试。根目录的 `bunfig.toml`
+会排除历史证据目录 `evidence/` 和根目录下的构建产物 `dist/`。
 
 测试约定（见 `packages/mpd-roles-plugin/test/roles.test.ts`、
 `packages/mpd-workmate-plugin/test/workmate.test.ts`）：`makePlugin()` 构造 mock
@@ -97,7 +101,9 @@ bun test packages/<pkg>                  # 单包
 ## 4. QA（真实 DSH 启动，严格隔离）
 
 QA skill 是 `skills/dsh-qa`（`SKILL.md`）。每个 case 脚本都带 `--self-test`（离线）
-加一个隔离的真实启动；证据进 `evidence/<domain>/<slug>/<timestamp>/`。
+加一个隔离的真实启动。将结果和脱敏后的关键输出提交到 `evidence/<domain>/<slug>/<timestamp>/`。
+新运行生成的检出副本和大体积输出保留在临时目录。评审需要原始文件时，在结果中记录产物下载链接、
+SHA-256、大小和过期时间。
 
 | Case | 证明什么 | 运行方式（在已批准的权限上下文里） |
 |---|---|---|
@@ -163,14 +169,14 @@ shell 子进程没有：在 case 命令里显式导出）。
 | 门禁 | 命令 |
 |---|---|
 | Vendor（供应商/资产指纹） | `node scripts/verify-vendor.ts`（对本仓库发布的资产做指纹校验；不再解析任何上游 checkout） |
-| 测试 | `bun test packages` + `bun run typecheck` |
+| 测试 | `.toolchain/node_modules/.bin/bun test` + `bun run typecheck` |
 | QA self-tests | `bun run test:qa` + 每个 case `--self-test` |
 | QA 真实 case | `node skills/dsh-qa/scripts/<case>.mjs` |
 | 安装器 | `node scripts/install-profile.ts --dry-run` / `--self-test` |
-| DSH-Go 一致性（常设） | `node scripts/verify-dshgo-standard.ts` —— 五条车道（MANIFEST / VIEW / COMPAT / HOST / CROSS-CHECK）；`MPD_DSHGO_KIT` 没有提供检出时退出 3 是 NOT-PASSED，绝不是绿；它是 `bun run verify:gates` 的第十一个成员，也是 `publish.yml` 打包前的一步 |
+| DSH-Go 一致性（常设） | `node scripts/verify-dshgo-standard.ts` —— 五条车道（MANIFEST / VIEW / COMPAT / HOST / CROSS-CHECK）；`MPD_DSHGO_KIT` 没有提供检出时退出 3 是 NOT-PASSED，绝不是绿；它是 `bun run verify:gates` 的成员，也是 `publish.yml` 打包前的一步 |
 | 启动检查（MOUNT） | 在隔离 `DSH_HOME` + 沙箱 `HOME` 中真正 apply 各行的启动：`bun skills/dsh-qa/scripts/bundle-lifecycle.ts`（host 行）/ `node skills/dsh-qa/scripts/preset-conformance.ts`（`mpd` preset 的 standing 挂载）。`node scripts/dump-config.ts --profile <p>`（仓库包装器，自身就会打印该警告）只组合行，**不是**该门禁（AGENTS.md §4） |
 | 扩展 CLI | `bun scripts/mpd-ext.ts --self-test`（离线）+ `bun scripts/mpd-ext.ts validate extensions/mpd-ext-example`（退出码 0；故意写坏的扩展必须退出码 1 并逐条目报错） |
-| 静态聚合（11 个成员） | `bun run verify:gates` —— vendor、dist 新鲜度、行对齐、文档对、preset 一致性、插件清单、注释覆盖、图模型、工作流、TUI 准入、dsh-go；在仓库根目录带上下面两个环境输入运行 |
+| 静态聚合 | 用 `node scripts/verify-gates.ts --list` 列出当前成员。带上下面两个环境输入，在仓库根目录执行 `bun run verify:gates`。 |
 
 门禁没有磁盘上的证据 = 变更不算完成。
 
@@ -195,7 +201,7 @@ bun run verify:gates
 2. 从 `dev` 切出 `release/vX.Y.Z`；更新 `package.json` 中的版本（以及本套文档中出现的任何版本引用），
    并写下 changelog 条目。
 3. 跑完整门禁扫描，全部为绿且证据在盘：`node scripts/verify-vendor.ts`、`bun run typecheck`、
-   `bun test packages`、`bun run test:qa`（每个 case 的离线 `--self-test`）、真实通道子集
+   `.toolchain/node_modules/.bin/bun test`、`bun run test:qa`（每个 case 的离线 `--self-test`）、真实通道子集
    `bun run test:qa:all`，以及启动检查（§5：`preset-conformance` 加挂载证明，绝不能只看
    `--dump-config`）。
 4. **`VENDOR_LOCK.json` 配对规则**：`skills/**` 的改动会使语料 `treeSha` 失效，而重新钉住必须与

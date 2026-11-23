@@ -1,0 +1,32 @@
+{
+  "baseRevision": "e86764c0e09b",
+  "branch": "fix/team-and-audit-recovery",
+  "toolchain": { "bun": "1.4.0" },
+  "red": {
+    "command": ".toolchain/node_modules/.bin/bun test ./packages/mpd-hashline-plugin/test/tool-schema.test.ts ./packages/mpd-memory-plugin/test/backend-recovery.test.ts -t 'insertion seams|unterminated journal'",
+    "exit": 1,
+    "passed": 0,
+    "failed": 4,
+    "observations": ["Delete B through D plus append after B wrote A/E/INSERTED/F.", "A legal boundary batch misplaced inserted text and retained echoed lines.", "A reflection claimed successful settlement after appending its JSON into both a torn EOF record and a complete old record with no LF."]
+  },
+  "frozenGreen": {
+    "command": ".toolchain/node_modules/.bin/bun test ./packages/mpd-hashline-plugin ./packages/mpd-memory-plugin",
+    "exit": 0,
+    "passed": 61,
+    "failed": 0,
+    "skipped": 2,
+    "assertions": 400,
+    "files": 9,
+    "observations": ["Consumed insertion seams refuse either request order before file write. Inserts at surviving seams preserve original anchors, CRLF, BOM and deduplication. An empty line list and a one-blank-line list remain distinct.", "Git failure leaves the reflection due and the journal untouched. Same-process overlapping retries settle the same entry once and preserve the exact old journal prefix and prior markdown. Both a complete unterminated reflection record and an already-settled record from the faulty writer converge on replay."]
+  },
+  "additionalChecks": [
+    { "command": ".toolchain/node_modules/.bin/bun run typecheck", "exit": 0, "log": "types.log" },
+    { "command": "node scripts/verify-comment-coverage.ts", "exit": 0, "log": "comments.log" },
+    { "command": "PATH=\"$PWD/.toolchain/node_modules/.bin:$PATH\" .toolchain/node_modules/.bin/bun run test:qa", "exit": 0, "passed": 56, "skipped": 2, "failed": 0, "log": "qa.log" },
+    { "command": ".toolchain/node_modules/.bin/bun test", "exit": 1, "passed": 4268, "skipped": 6, "failed": 10, "log": "root-tests.log", "observation": "Five failures in cellwork activation supersession and five in autoproject boulder finalization. Both files are outside this repair scope." },
+    { "command": "git diff --check -- <scoped paths>", "exit": 0 },
+    { "command": "sha256sum -c evidence/audit-repair/user-data-followup/source-sha256.txt", "exit": 0 }
+  ],
+  "independentReview": { "agent": "agent-20", "verdict": "PASS", "sourceBasis": "Exact frozen hashes", "reportedTests": 71, "reportedAssertions": 608, "observations": ["Real Git and SVN passed.", "The registered hashline tool refused both request orders and preserved original bytes. Both outer boundaries produced the expected edits.", "The torn-tail reflection preserved prior bytes and produced one parseable record and one Git commit. Replay returned the same receipt.", "The rebuilt memory artifact matched checkout dist. Mounted DSH rc.5 accepted eight tool outcomes covering success, errors and retry."] },
+  "limits": ["Writer checks drove the plugin registrations in local test hosts. Mounted behavior and a rebuilt memory artifact were verified by the independent reviewer.", "The real SVN arms skipped because svn and svnadmin are unavailable. Fake SVN wiring and real Git checks passed.", "Concurrency evidence covers overlapping calls in one plugin process. Independent processes sharing a store and physical power-loss recovery were not exercised."]
+}

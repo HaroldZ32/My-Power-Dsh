@@ -180,7 +180,7 @@ function storedTeam(workspace: string): TeamRecord {
 describe("updateTeamMember — the workmate binding fields (W3-C2)", () => {
   test("workmateMode/workmateReason round-trip, and a reuse patch CLEARS a stale reason", () => {
     /** A one-member record, built through the real store. */
-    let record = createTeam("ws-unused", { name: "t", description: "d", leadSessionId: "lead-x", planId: "plan-x" }, NOW)
+    let record = createTeam(fixture().observed.workspace, { name: "t", description: "d", leadSessionId: "lead-x", planId: "plan-x" }, NOW)
     record = addTeamMember(record, { name: "impl", description: "implements" }, NOW)
     // A `none` binding keeps its reason, which is the whole point of persisting the mode.
     record = updateTeamMember(record, "impl", { workmateMode: "none", workmateReason: "cap" })
@@ -252,6 +252,21 @@ describe("approveTeam — deterministic workmate binding (W3-C)", () => {
     expect(storedTeam(observed.workspace).members.map((member) => member.workmate)).toEqual(["reviewer-1", "senior-engineer-1"])
     // W3-C2: the record also says HOW each seat was bound, so `status` can report the decision.
     expect(storedTeam(observed.workspace).members.map((member) => member.workmateMode)).toEqual(["reuse", "init"])
+  })
+
+  test("normalized owners follow distinct seats when both rank the same workmate first", async () => {
+    /** Both requested seats rank the same workmate, and neither may share its name with the other. */
+    const { observed, deps } = fixture({ library: { "reviewer-1": { baseName: "Reviewer", note: "review", readonly: true, persona: "Review.", memory: "" } }, scores: { "reviewer-1": 0.9 } })
+    /** The first owner uses a spelling already accepted by owner-only dispatch. */
+    const plan = stageWave(observed.workspace, [
+      { name: "Plan Judge", description: "judges", prompt: "Judge.", role: "Reviewer" },
+      { name: "Second Judge", description: "checks", prompt: "Check.", role: "Reviewer" },
+    ])
+    plan.tasks[0].owner = "plan-judge"
+    writePlan(observed.workspace, plan)
+    expect((await approveTeam(deps, callerOf(observed.workspace))).ok).toBe(true)
+    expect(new Set(observed.spawns).size).toBe(2)
+    expect(storedTeam(observed.workspace).tasks.map((task) => task.owner)).toEqual(observed.spawns)
   })
 
   test("(c) at workmates.max the seat falls back to mode:none with reason:cap, and the inits equal min(N,cap)", async () => {
