@@ -571,7 +571,7 @@ describe("the mpd-verify row", () => {
 })
 
 
-test("canonical Cellwork loops seal actual producer bytes and refuse unsealed, changed, or missing contracts", async () => {
+test.each(["produce.md", "produce@r2.md"])("canonical Cellwork loops seal %s and refuse unsealed, changed, or missing contracts", async (filename) => {
   /** Separate real paths model the nested caller's ledger and the project's canonical file. */
   const projectRoot = mkdtempSync(join(tmpdir(), "mpd-contract-root-"))
   try {
@@ -583,7 +583,7 @@ test("canonical Cellwork loops seal actual producer bytes and refuse unsealed, c
     mkdirSync(directory, { recursive: true })
     writeFileSync(join(directory, "..", "state.json"), JSON.stringify({ captainSessionId: "captain", phase: "executing" }))
     /** The generated producer document exists before the loop id is appended. */
-    const contract = join(directory, "produce.md")
+    const contract = join(directory, filename)
     writeFileSync(contract, "unaltered producer instructions\n")
     /** Mount the actual verification row against this test's bound project seam. */
     const h = harness(workspace)

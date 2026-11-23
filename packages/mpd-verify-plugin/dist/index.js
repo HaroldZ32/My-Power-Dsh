@@ -3086,7 +3086,7 @@ function authorizedCellworkContract(service, site, input) {
   try {
     const path = resolve4(input);
     const [state, plane, cellId, documents, filename, ...rest] = relative4(binding.projectRoot, path).split(sep5);
-    if (state !== ".mpd" || plane !== "cellwork" || !/^cell-[\w.-]+$/.test(cellId ?? "") || documents !== "contracts" || !/^[\w.-]+\.md$/.test(filename ?? "") || rest.length > 0)
+    if (state !== ".mpd" || plane !== "cellwork" || !/^cell-[\w.-]+$/.test(cellId ?? "") || documents !== "contracts" || !/^[\w.-]+(?:@r[1-9]\d*)?\.md$/.test(filename ?? "") || rest.length > 0)
       return;
     if (realpathSync2(path) !== path || !statSync3(path).isFile())
       return;

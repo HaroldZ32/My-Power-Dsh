@@ -32,7 +32,7 @@ export function authorizedCellworkContract(service: unknown, site: ContractCall,
     const path = resolve(input)
     /** Each segment is checked before any depth-dependent file lookup. */
     const [state, plane, cellId, documents, filename, ...rest] = relative(binding.projectRoot, path).split(sep)
-    if (state !== ".mpd" || plane !== "cellwork" || !/^cell-[\w.-]+$/.test(cellId ?? "") || documents !== "contracts" || !/^[\w.-]+\.md$/.test(filename ?? "") || rest.length > 0) return undefined
+    if (state !== ".mpd" || plane !== "cellwork" || !/^cell-[\w.-]+$/.test(cellId ?? "") || documents !== "contracts" || !/^[\w.-]+(?:@r[1-9]\d*)?\.md$/.test(filename ?? "") || rest.length > 0) return undefined
     if (realpathSync(path) !== path || !statSync(path).isFile()) return undefined
     /** The originating caller must be the captain of the exact live cell, including a nested subcaptain. */
     const cell = readJson<{ captainSessionId?: unknown; phase?: unknown }>(resolve(binding.projectRoot, ".mpd", "cellwork", cellId, "state.json"))
