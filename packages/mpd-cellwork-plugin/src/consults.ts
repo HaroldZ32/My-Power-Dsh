@@ -15,7 +15,7 @@
 // DECLARED BOUNDS (README + docs): the book is IN MEMORY and per process, exactly like the supervisor's
 // records, so a restart loses both together. A seat may still call `mpd_role_spawn_async` /
 // `mpd_role_consult` directly; a consult it collects that way simply leaves this cell's list.
-import type { DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
+import type { DshHelperFiles, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 import { appendJournal } from "./state"
 import { captainRefusal, checkpointRefusal, verifierDelegationRefusal, type CellworkSeat } from "./guard"
 import type { TeamActionsServiceView } from "./caller"
@@ -48,6 +48,8 @@ export const CONSULT_ACTIONS: readonly string[] = ["list", "wait", "collect", "c
  * because this module parses it: the authoritative declarations are `packages/mpd-roles-plugin/src/consults.ts`.
  */
 export interface ConsultServiceView {
+  /** The mounted roles row can enforce per-helper file scopes. */
+  scopedFiles?: boolean
   /**
    * Canonicalise one role spelling through the roles row's OWN resolver — the same one `mpd_role_spawn`
    * uses. Validating through this method is what keeps `cellwork_delegate` and the roster tools from
@@ -59,6 +61,7 @@ export interface ConsultServiceView {
     role: string
     task: string
     context?: string
+    helperFiles?: DshHelperFiles
     exec: unknown
     maxDepth?: number
     /**
@@ -154,6 +157,8 @@ export interface OwnedConsult {
   startedAt: number
   /** The task text as the caller wrote it (bounded only when it is journaled). */
   question: string
+  /** Project-scoped consults are visible only to this authenticated assignment while it is current. */
+  owner?: string
 }
 
 /**
@@ -309,6 +314,10 @@ function wholeNumber(value: unknown): number {
 
 /** Everything the consult verbs need from the row. */
 export interface ConsultDeps {
+  /** The original project assignment, without granting access to a peer's handle. */
+  owner?: string
+  /** Validate one helper scope against the same current project assignment before starting any. */
+  helperFiles?: (value: unknown) => DshHelperFiles
   /** The `mpdConsults` service, resolved lazily per call; undefined when the roles row is not mounted. */
   service: () => ConsultServiceView | undefined
   /** The roster role names, so a refusal can teach the addressable set. */
@@ -394,12 +403,25 @@ function missingRosterRefusal(): string {
  * @param maxTasks - the bound this call enforces (`cellwork.delegate.maxTasks` when resolved).
  * @returns the parsed tasks, or the refusal sentence.
  */
-export function readDelegateTasks(raw: unknown, maxTasks: number = DELEGATE_MAX_TASKS): { tasks: Array<{ role: string; task: string; context?: string }> } | ConsultRefusal {
+/** One member-selected subproblem and an optional explicit file subset. */
+interface DelegateTask {
+  /** Canonicalized on the mounted Roles service before starting. */
+  role: string
+  /** The actual subtask the child will see. */
+  task: string
+  /** Optional bounded supporting text supplied directly by the owner. */
+  context?: string
+  /** Validated at the original assignment boundary before any child is started. */
+  scope?: unknown
+}
+
+/** Decode one batch while preserving the optional scoped project helper input. */
+export function readDelegateTasks(raw: unknown, maxTasks: number = DELEGATE_MAX_TASKS): { tasks: DelegateTask[] } | ConsultRefusal {
   if (!Array.isArray(raw)) return { ok: false, error: "cellwork_delegate: `tasks` must be an array of 1.." + String(maxTasks) + " `{role, task}` objects — nothing was started" }
   if (raw.length === 0) return { ok: false, error: "cellwork_delegate: `tasks` is empty — name at least one `{role, task}` to start; nothing was started" }
   if (raw.length > maxTasks) return { ok: false, error: "cellwork_delegate: `tasks` carries " + String(raw.length) + " entries, more than the " + String(maxTasks) + " this call starts — split it into batches; nothing was started" }
   /** The parsed rows, in the caller's order. */
-  const tasks: Array<{ role: string; task: string; context?: string }> = []
+  const tasks: DelegateTask[] = []
   for (let index = 0; index < raw.length; index += 1) {
     /** One raw entry. */
     const entry = raw[index]
@@ -413,7 +435,7 @@ export function readDelegateTasks(raw: unknown, maxTasks: number = DELEGATE_MAX_
     const task = typeof record.task === "string" ? record.task.trim() : ""
     if (task === "") return { ok: false, error: "cellwork_delegate: tasks[" + String(index) + "].task is empty — one consult answers one concrete assignment; nothing was started" }
     if (record.context !== undefined && typeof record.context !== "string") return { ok: false, error: "cellwork_delegate: tasks[" + String(index) + "].context must be a string when present; nothing was started" }
-    tasks.push({ role, task, ...(typeof record.context === "string" && record.context !== "" ? { context: record.context } : {}) })
+    tasks.push({ role, task, ...(record.scope === undefined ? {} : { scope: record.scope }), ...(typeof record.context === "string" && record.context !== "" ? { context: record.context } : {}) })
   }
   return { tasks }
 }
@@ -559,6 +581,19 @@ export async function startDelegation(deps: ConsultDeps, rawTasks: unknown): Pro
   // with `mpd_role_spawn` (the defect this repair removes).
   if (service?.start === undefined || typeof service.canonicalRole !== "function") return { ok: false, error: missingConsultsServiceRefusal("cellwork_delegate") }
   if (deps.rosterNames().length === 0) return { ok: false, error: missingRosterRefusal() }
+  /** Project helper scopes must be enforced on the actual native child. */
+  if (deps.helperFiles !== undefined && service.scopedFiles !== true) return { ok: false, error: "cellwork_delegate: native scoped helpers are unavailable" }
+  /** Scope refusal is all-or-nothing, before a supervisor slot is taken. */
+  let files: Array<DshHelperFiles | undefined>
+  try {
+    files = parsed.tasks.map((task) => {
+      if (deps.helperFiles === undefined && task.scope !== undefined) throw new Error("explicit files require an active project assignment")
+      if (deps.helperFiles !== undefined && (Buffer.byteLength(task.task) > 1400 || Buffer.byteLength(task.context ?? "") > 4000)) throw new Error("project helper subtask or context exceeds its input limit")
+      return deps.helperFiles?.(task.scope)
+    })
+  } catch (error) {
+    return { ok: false, error: `cellwork_delegate: ${error instanceof Error ? error.message : String(error)}; nothing was started` }
+  }
   /** The canonical name of every task's role, in the caller's order. */
   const roles: string[] = []
   for (let index = 0; index < parsed.tasks.length; index += 1) {
@@ -593,6 +628,7 @@ export async function startDelegation(deps: ConsultDeps, rawTasks: unknown): Pro
         role: roles[index],
         task: task.task,
         ...(task.context === undefined ? {} : { context: task.context }),
+        ...(files[index] === undefined ? {} : { helperFiles: files[index] }),
         exec: deps.exec,
         // THE PLANE'S OWN BUDGET (§6.2): an argument to the SAME supervisor, never a second counter.
         ...(deps.consultMax === undefined ? {} : { maxConcurrent: deps.consultMax }),
@@ -604,7 +640,7 @@ export async function startDelegation(deps: ConsultDeps, rawTasks: unknown): Pro
       const row = consultRowOf(answer)
       if (row === undefined) return { ok: false, error: "cellwork_delegate: the `mpdConsults` service answered tasks[" + String(index) + "] without a consultId — " + String(consults.length) + " of " + String(parsed.tasks.length) + " consults were already started (" + consults.map((entry) => entry.consultId).join(", ") + "); collect them with `cellwork_consult`" }
       consults.push({ consultId: row.consultId, role: row.role === "" ? roles[index] : row.role, startedAt: row.startedAt })
-      rememberConsult(deps.book, deps.cellId, { consultId: row.consultId, role: row.role === "" ? roles[index] : row.role, startedAt: row.startedAt, question: task.task })
+      rememberConsult(deps.book, deps.cellId, { consultId: row.consultId, role: row.role === "" ? roles[index] : row.role, startedAt: row.startedAt, question: task.task, ...(deps.owner === undefined ? {} : { owner: deps.owner }) })
       appendJournal(deps.workspace, deps.cellId, {
         event: "delegate-start",
         role: row.role === "" ? roles[index] : row.role,
@@ -790,10 +826,12 @@ export function foreignConsultRefusal(toolName: string, consultId: string, cellI
  * @param row - the consult row.
  * @returns the answer object.
  */
-function successOf(action: string, row: ConsultRow): Record<string, unknown> {
-  /** The row without its `error` key, so the rename cannot keep both spellings. */
-  const { error, ...rest } = row
-  return { ok: true, action, ...rest, ...(error === undefined ? {} : { errorDetail: error }) }
+function successOf(action: string, row: ConsultRow, scoped: boolean = false): Record<string, unknown> {
+  /** Return one bounded helper report to the current task owner. */
+  const { error, report, ...rest } = row
+  /** An interrupted helper remains visible with its normal outcome fields. */
+  const bounded = report === undefined || !scoped ? report : { ...report, summary: report.summary.slice(0, 1200), recommendation: report.recommendation.slice(0, 500), details: report.details.slice(0, 900), evidence: report.evidence.slice(0, 6).map((item) => item.slice(0, 160)) }
+  return { ok: true, action, ...rest, ...(bounded === undefined ? {} : { report: bounded }), ...(error === undefined ? {} : { errorDetail: scoped ? error.slice(0, 320) : error }) }
 }
 
 /**
@@ -823,6 +861,7 @@ export async function runConsultAction(deps: ConsultDeps, args: { action: string
     /** The rows this call reports. */
     const consults: Array<Record<string, unknown>> = []
     for (const owned of [...own.values()]) {
+      if (owned.owner !== undefined && owned.owner !== deps.owner) continue
       /** The supervisor's row for that id. */
       const row = live.find((entry) => entry.consultId === owned.consultId)
       if (row === undefined) {
@@ -840,7 +879,9 @@ export async function runConsultAction(deps: ConsultDeps, args: { action: string
   /** The id this verb settles. */
   const consultId = args.consultId.trim()
   if (consultId === "") return { ok: false, error: "cellwork_consult: `consultId` is required for action \"" + action + "\" — use the id `cellwork_delegate` returned, or action \"list\" to see this cell's ids" }
-  if (ownedConsult(deps.book, deps.cellId, consultId) === undefined) return { ok: false, error: foreignConsultRefusal("cellwork_consult", consultId, deps.cellId) }
+  /** A peer in the same cell is not the owner of a project helper. */
+  const owned = ownedConsult(deps.book, deps.cellId, consultId)
+  if (owned === undefined || (owned.owner !== undefined && owned.owner !== deps.owner)) return { ok: false, error: foreignConsultRefusal("cellwork_consult", consultId, deps.cellId) }
   try {
     if (action === "wait") {
       if (typeof service.wait !== "function") return { ok: false, error: missingConsultsServiceRefusal("cellwork_consult") }
@@ -856,7 +897,7 @@ export async function runConsultAction(deps: ConsultDeps, args: { action: string
       // THE SECOND WRITE SOURCE (contract §5.2): an observe path records what it just saw, so a settled
       // consult reaches the graph even if the observer's own write never landed. Idempotent by id.
       await recordConsultRow(deps, row, ownedConsult(deps.book, deps.cellId, consultId)?.question ?? "")
-      return successOf(action, row)
+      return successOf(action, row, owned.owner !== undefined)
     }
     if (action === "collect") {
       if (typeof service.collect !== "function") return { ok: false, error: missingConsultsServiceRefusal("cellwork_consult") }
@@ -874,7 +915,7 @@ export async function runConsultAction(deps: ConsultDeps, args: { action: string
       if (row.state !== "running") forgetConsult(deps.book, deps.cellId, consultId)
       // The observed row, so a settlement nobody watched still reaches the graph (idempotent by id).
       await recordConsultRow(deps, row, remembered)
-      return successOf(action, row)
+      return successOf(action, row, owned.owner !== undefined)
     }
     if (typeof service.cancel !== "function") return { ok: false, error: missingConsultsServiceRefusal("cellwork_consult") }
     /** The cancellation outcome. */
@@ -886,7 +927,7 @@ export async function runConsultAction(deps: ConsultDeps, args: { action: string
     await recordConsultRow(deps, row, taskOfConsult(deps, consultId))
     // The record is KEPT: an interrupted consult still answers `collect` (which is what releases it), so
     // dropping the handle here would strand a record in the supervisor for the process lifetime.
-    return successOf(action, row)
+    return successOf(action, row, owned.owner !== undefined)
   } catch (error) {
     /** The failure's message. */
     const message = error instanceof Error ? error.message : String(error)

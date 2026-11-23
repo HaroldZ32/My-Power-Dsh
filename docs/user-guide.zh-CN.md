@@ -141,7 +141,8 @@ node scripts/install-profile.ts            # --dry-run 只打印计划，不写�
 | 探索代码库 | `mcp__ast_grep__*`（结构化检索/改写）、`mcp__lsp__*`（cclsp：定义、引用、实现、诊断、悬停、工作区符号、调用层级、重命名）、`mcp__codegraph__*`（项目代码图） | MCP 工具服务器；它们的工具以 `mcp__<server>__<tool>` 形式出现。另外两个家族 **默认不可用**：`mcp__git__*`（git 工具箱，28 个工具）与 `mcp__shell__*`（`run_process`，裸 shell）。两行都自带 `disabled: true`，因此普通会话里不会出现这类工具：想启用哪一个，就把该行的 `disabled:` 改成 `false`，然后重新安装 bundle。 |
 | 安全地修改 | 写入守卫与输出截断（无需配置）、`mpd_hashline_read/edit/format/restore`、`mpd_comment_check` | 哈希锚定编辑在锚点过期时会拒绝写入，而不是写到错误的行 |
 | 推进长任务 | `mpd_autoproject`（`light` 或 `heavy` 档：计划关卡、执行轮次、验证关卡），或其 `/autoproject <objective>` 命令、`mpd_boulder_start/status/complete/task_timer/plan_progress/plans` | 该命令会注入 autoproject 激活指令：运行自主执行，只在它的三个决策点停下等人类，并在工作确需团队时自行建队；`mpd_boulder_*` 跨会话跟踪某个计划 markdown 文件的进度 |
-| 让长任务跨轮继续 | `mpd_goal_status`、`mpd_goal_anchor`、`mpd_goal_finish`（以及宿主的 `/goal` 命令与它的 goal 轮次驱动器） | 见 §13.10：**持久化 goal** 是本 bundle 持续化执行的依据： heavy 档 autoproject 运行、绑定 plan 的 boulder 工作或 `agent_teams_plan` 批准都会 anchor 一个（`goal.autoAnchor` 覆盖长任务；团队批准则自行 anchor），而当 turn 内引擎提前停下时它会保持启用 |
+| 让长任务跨轮继续 | `mpd_goal_status`、`mpd_goal_anchor`、`mpd_goal_finish` 与宿主的 `/goal` 命令 | §13.10 说明宿主如何鉴别直接人类输入，以及如何确认当前会话已有持久化 goal。 |
+| 复用本地项目团队 | `agent_teams_plan`、`/cellwork`、`mpd_memory_read`、`mpd_worktree_copy` | [§13.12](#1312-本地项目团队) 介绍如何用同一名册承接新任务、使用私有和共享记忆，以及按需申请独立 Git 副本。 |
 | 保存记忆 | `mpd_memory_write/read/reflect/reflect_complete/status`、`mpd_memory_save/recall` | 版本库后端可以是 git 或 svn；`mpd_memory_save/recall` 是简单的键值层 |
 | 咨询专家 | `mpd_roles_list`、`mpd_role_spawn`、`mpd_role_persona` | 一次性（ONE-SHOT）单次咨询子智能体（报告落定后 activation 即被释放：新问题请用新的 spawn）；只读角色会被禁用写入类工具 |
 | 养一个会成长的智能体 | `mpd_workmate_list/init/spawn/reflect/match/rename/delete` | 见 §5 |
@@ -289,7 +290,7 @@ interrupt_agent { agent_id }                                              # 仅 
   至少有 8 个可见条目。它只在 `easy` 下评估，而且刻意粗糙：在大工作区里，仅 F 一项就会让 `hello`
   也触发。因此静默的负向对照放在**很小的**工作区里（空提示或 `hello`、以及 `验证一下` 都不会 stage）。
 - **一次批准启动三套机制。** 在 `agent_teams_plan` 批准**成功**路径上，团队真正激活之后，同一次批准还会
-  anchor 一个持久化 goal（objective = 计划描述；描述为空时回退到计划名称，来源 `team`），并用 `todo_write` 按计划任务写入待办
+  尝试创建持久化 goal（目标取计划描述，描述为空时使用计划名称，来源为 `team`），并用 `todo_write` 按计划任务写入待办
 （每个任务一条 pending；整表替换；计划没有任务时不写入）。两个副作用都是非致命的：失败只记一行日志，
   绝不让批准失败，且不新增任何旋钮。
 - **captain 的侦察与委派守卫重新开启（2026-10-20 恢复）。** 在 `mpd` preset 的**顶层**会话里，
@@ -771,8 +772,12 @@ agent_teams_task { "task_id": "T1", "action": "complete", "expected_revision": 2
 list_agents {}
 send_message { "agent_id": "senior-1", "message": "先落 README 的修改，再做使用者指南。" }
 agent_teams_dispatch { "action": "run" }
-wait_agent { "timeout_ms": 60000 }
-interrupt_agent { "agent_id": "senior-1" }                               // 仅 Lead；收件箱保留
+agent_teams_control { "action": "wake", "wake": { "action": "arm", "task_ids": ["T2"], "mode": "all" } }
+# 登记返回等待状态后，队长可以结束本轮。被唤醒时再读取任务结果。
+# 如果会话还有活跃的 GOAL，使用 arm 后它仍可能自行开启新一轮。
+# 这时也可以直接在当前轮次等待条件成立，二选一即可：
+# agent_teams_control { "action": "wake", "wake": { "action": "wait", "task_ids": ["T2"], "mode": "all" } }
+# 如需主动停止成员，可用 interrupt_agent { "agent_id": "senior-1" }
 
 # (e) 收尾一波
 mpd_team_compact_run {}
@@ -795,10 +800,9 @@ mpd_autoproject { "objective": "Rewrite the install chapter", "tier": "heavy", "
 /autoproject Make every documented command resolve to a real registration
 ```
 
-`mpd_autoproject` 跑完整纪律，由 `tier` 决定形态：`light`（不写计划文件）或 `heavy`，可选的对抗式
-hyperplan 波、使用计划文件时的**计划关卡**（planner + plan review）、按标准逐项推进的执行轮次
-（PIN → RED → GREEN → SURFACE → CLEAN）、当存在计划且（`tier: "heavy"` 或 `strictReview`）时的
-**验证关卡**，最后是带逐泳道台账的**最终质量关卡**。状态、台账与升级产物位于
+`mpd_autoproject` 支持可选的对抗式 hyperplan、使用计划文件时的计划关卡，以及逐项推进的执行轮次
+（PIN → RED → GREEN → SURFACE → CLEAN）。轻量档在传入 `plan: true` 时使用计划，重型档始终使用计划。
+两档都需要已记录的验证 PASS 和最终质量关卡通过才能完成。状态、台账与升级产物位于
 `.mpd/autoproject/<runId>/`。
 
 **运行是自主的，但有边界。** 它只在三个明确的决策点停下来等人工：超限升级触发且
@@ -948,11 +952,16 @@ mpd_goal_anchor { "objective": "交付 cordis-dev skill 及其证据", "maxRound
 mpd_goal_finish { "outcome": "complete" }
 ```
 
-**你很少需要自己调用它们。** 在 `goal.autoAnchor` 打开（默认）时，heavy 档 autoproject 运行
-（`mpd_autoproject` 的 `tier: "heavy"` 或 `plan: true`）与绑定 plan 的 `mpd_boulder_start` 会在开始前
-为各自的目标 anchor 一个 goal，于是"持续化执行的依据"是这次运行的目标，而不是某次工具调用。团队计划的
-**批准**也会 anchor 一个，并在同一路径写入待办（§6）：一次批准同时打包团队记录、goal 与待办清单。运行
-结束时：
+默认启用 `goal.autoAnchor` 时，使用计划的 Autoproject（`tier: "heavy"` 或 `plan: true`）与绑定计划的
+`mpd_boulder_start` 会尝试创建 goal。批准团队计划时，在创建任务板及填充待办清单的同时也会尝试创建 goal（§6）。
+宿主只授权顶层会话中由人类直接发起的轮次创建 goal。
+
+`/autoproject <objective>` 会在调用它的会话中提交激活指令。DSH 0.2.2-rc.5 可能拒绝在该轮次创建 GOAL，
+而 Autoproject 仍可完成并记录验证。用 `mpd_goal_status {}` 确认是否有 goal，以及当前所处的阶段。需要持久化时，
+在顶层 MPD 会话中直接发送普通聊天消息，请智能体以你的目标及 `plan: true` 调用 `mpd_autoproject`。也可以用
+宿主的 `/goal` 命令自行管理 goal。
+
+运行已创建归属于自己的 goal 时，终态决定如何更新它。
 
 - `complete` → 完成 goal 并删除 anchor 记录；
 - `blocked` → 尝试标记阻塞，harness 可能因其连续轮次阈值而拒绝（拒绝只记日志、绝不致命）；
@@ -990,6 +999,60 @@ mcp__grep_app__searchGitHub { "query": "registerTool({", "language": ["TypeScrip
 带 `apply: false` 跑一遍，读完 diff 再应用。`mcp-git` / `mcp-shell` 两行默认不启用（§3）。两个远端
 行（`context7`、`grep_app`）是公共 HTTP 服务，需要网络；三个本地服务器需要各自的
 二进制（§11）。
+
+### 13.12 本地项目团队
+
+在项目目录中打开 MPD preset，普通工作直接在会话中提出。小型单人任务需要结构化验证时，可使用
+[Autoproject](#132-autoproject-循环与它的关卡)。需要指定任务负责人时，用 `/agent-teams <objective>`
+暂存并按 [§13.1](#131-团队) 批准计划，或用 `/cellwork <objective>` 进入该流程的需求确认和派发步骤。
+[Cellwork 指南](./cellwork.zh-CN.md)
+
+首次批准需要人工确认的 Team 计划时，可以建立固定名册。首次启动 Cellwork 时，即使固定名册为空，也可使用临时席位。
+项目获准启动 Team 或 Cellwork 后，已记录的项目队长可以用以下调用查看和扩充名册。
+
+```text
+agent_teams_plan { "action": "roster" }
+agent_teams_plan { "action": "roster", "member": { "name": "build-writer", "role": "Senior Engineer" } }
+```
+
+声明默认使用已配置的角色路由，队长也可提供 `member.route`。重试会保留成员 ID 和固定路由。
+后续任务板使用已声明的名字即可沿用同一身份，无需每轮重新指定 Workmate。规划席位和一次性助手只服务于本次运行。
+已有固定名册的 Cellwork 项目使用与角色匹配的固定成员。兼容成员忙碌时，任务排队。
+需求更新会沿用切分器的开放任务，或为原切分器补一条替代任务。队长派发这条任务，再激活新通过的切分。
+
+在任务板上指定负责人和可写路径。原写入成员负责交付，由另一个会话验证。持有当前可写任务的固定 Cellwork 成员可用
+`cellwork_delegate` 的 `tasks[].scope.read` 或 `tasks[].scope.write`，指定实际 checkout 中的确切路径。
+助手只能在父任务允许的范围内写入。省略 `scope` 时，助手只做文本咨询。原成员收取结果并继续负责任务。
+
+已分配任务的固定写入成员可以调用 `agent_teams_task { "action": "progress", "task_id": "T3", "expected_revision": 4, "content": "read archive/messages.csv" }`，
+使用当前任务修订号和授权目标。原生宿主允许续行时，尚未执行的已声明操作可在原轮次续行一次。
+确实在等待依赖或批准时，使用 `wait <reason>`。达到上下文硬上限时，任务保持开放，由宿主尝试有界维护。
+
+同一项目的关联 worktree 共享项目记录，文件操作在实际 checkout 上执行。无关联的克隆拥有自己的身份。
+同一项目同时只接受一个顶层 Team 或 Cellwork 运行。另一个 checkout 报告已有运行时，请继续使用现有任务板。
+Cellwork 正常停止后，同一项目的后续目标可以在启动时结束已完成的旧任务板。
+
+队长可以为指定的任务板条目登记 `wake.arm`，然后结束当前轮次。通知登记后，活动 goal 仍可执行独立续行轮次。
+若需要留在当前轮次等待任务板条件达成，则使用 `wake.wait`。[团队唤醒示例](#131-团队)
+
+用任务板记录状态和证据。通过项目席位认证的队长和成员，各自使用自己的私有 `workspace` 记忆，并可在授权
+checkout 间延续它。只将队友需要复用的项目事实发布到 `shared` 记忆。用准确的 key 读取，采纳前核对
+`revision` 和 `appliesTo`。[记忆作用域与示例](../packages/mpd-memory-plugin/README.zh-CN.md#记忆作用域)
+
+在支持原生项目上下文的宿主中，模型收到的 `[mpd project context]` 包含当前 goal 和任务板依赖关系。队长可看到项目与
+接口摘要。被分配任务的成员还可能看到自己写入范围内的文件片段。在任务描述中用独立行引用准确的记忆键，例如
+`Context private: build-check` 和 `Context shared: {"key":"api","revision":2,"appliesTo":"v2"}`。
+当前视图有大小上限，宿主可以在会话历史中保留之前的视图。
+
+写入成员默认使用关联 worktree。任务需要独立的 Git 对象库或分支引用时，由被分配的成员申请独立 Git 副本，
+提供完整的已提交基线、任务板写入范围和字节数估算。整个流程使用公开工具结果返回的 `id`。队长可用
+`mpd_worktree_copy { "action": "list", "id": "<request id>" }` 查看请求，再用
+`mpd_worktree_copy { "action": "approve", "id": "<request id>" }` 批准。拒绝时用 `decline`。
+成员可查看自己的请求。
+
+批准后，原成员调用 `create`，将返回的 `path` 用作工作目录，再用完整候选 SHA 调用 `submit`。独立验证者
+针对该 SHA 记录 PASS 后，队长在当前检出的集成分支上集成。集成成功且任务关闭后，再清理副本。未合入的工作、
+私有引用和有修改的文件都可能阻止清理。[副本申请、验证与清理调用](../packages/mpd-worktree-plugin/README.zh-CN.md#独立开发副本)
 
 ## 14. 这些能力的来源
 
@@ -1069,9 +1132,9 @@ cell **模式**的引擎（requirements、split、activate、recon、budget）�
 
 ### 15.3 workmate 的自动绑定、优化与 persona 覆盖
 
-团队批准时，每个已暂存成员按**确定性**规则绑定：显式给出名字 → 绑定或**拒绝**；否则
-`mpd_workmate_match`（得分 ≥ 0.35 且该名字在团队内空闲）→ **复用**；否则在 `workmates.autoInit`
-（默认 `true`）且库小于 `workmates.max`（默认每工作区 12）时 → **初始化**；否则该成员保持普通成员，原因 `cap`。
+启用 Workmate 绑定后，Team 审批会先检查固定成员的已有绑定或显式 `workmate:` 指定项。首次绑定可复用匹配得分
+至少为 0.35 且兼容、可用的 Workmate。没有匹配时保留普通席位。要在 HOME 库内添加持久 Workmate，
+请显式调用 `mpd_workmate_init` 初始化。
 
 `mpd_workmate_optimize {dryRun?, confirm?, pairs?, mergeThreshold?}` 与 `/workmate-optimize` 合并
 "同一专长、各自跑偏"的 workmate：默认 dry-run；仅当同一 base、`readonly` 相等、都不在归档、都空闲，且

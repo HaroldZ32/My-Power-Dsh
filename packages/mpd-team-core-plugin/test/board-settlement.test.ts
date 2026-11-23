@@ -116,10 +116,15 @@ function fixture(): Fixture {
       return tool.execute(args, { agent: { session: { id: sessionId } }, signal: undefined })
     },
     emit: (event: string, payload: unknown) => {
-      /** The handlers subscribed to this event; the arm's answer is the FIRST one's return value. */
+      /** Native serial dispatch runs each subscriber until one returns an explicit value. */
       const handlers = listeners.get(event) ?? []
       if (handlers.length === 0) throw new Error(`nothing subscribed to ${event}`)
-      return handlers[0](payload)
+      for (const handler of handlers) {
+        /** Returning undefined lets settlement and project observer run in the same chain. */
+        const answer = handler(payload)
+        if (answer !== undefined) return answer
+      }
+      return undefined
     },
     record: (teamId: string) => readTeam(workspace, teamId),
   }

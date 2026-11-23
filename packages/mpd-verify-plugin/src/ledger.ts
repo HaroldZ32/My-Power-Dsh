@@ -73,6 +73,8 @@ export interface VerifyLoop {
    * later wave the PREVIOUS wave's plan.
    */
   contract?: string
+  /** Exact canonical project source and its sealed bytes, when Cellwork opted into that binding. */
+  cellworkContract?: import("./cellwork-contract.ts").CellworkContractFreeze
   /**
    * The project gate file AS IT WAS when this loop was opened — the freeze that stops a loop's WRITER
    * from editing its own gates while the write guard is withdrawn (CR #12).
@@ -115,8 +117,10 @@ export interface VerifySeat {
   unlockedAt?: string
   /** The record whose FAIL opened the window. */
   unlockedBy?: string
-  /** The documents the seat may always read: the loop's frozen basis, workspace-relative. */
+  /** The documents this seat received as its loop's frozen basis. */
   docPaths: string[]
+  /** Exact canonical producer document, authorized only by the sealed Cellwork loop. */
+  canonicalCellworkDoc?: string
 }
 
 /** The seat file's content: every bound seat, keyed by the verifier's agent key. */

@@ -180,8 +180,10 @@ export interface SplitVerdict {
 
 /** What {@link submitSplit} needs: where to measure, the roster, the window reader and the clock. */
 export interface SubmitDeps {
-  /** The caller's workspace root (declared inputs resolve against it). */
+  /** The project state root for the accepted or refused split artifact. */
   workspace: string
+  /** The actual checkout whose source files the splitter measures. */
+  checkout?: string
   /** The cell the split belongs to. */
   cellId: string
   /** The resolved knobs. */
@@ -681,7 +683,7 @@ export async function submitSplit(deps: SubmitDeps, submission: SplitSubmission)
   const tasks: SplitTaskVerdict[] = []
   for (const task of submission.tasks) {
     /** The measured inputs, one entry per declaration. */
-    const inputs = task.inputs.map((declared) => measureInput(deps.workspace, declared, deps.config))
+    const inputs = task.inputs.map((declared) => measureInput(deps.checkout ?? deps.workspace, declared, deps.config))
     /** The reading this task's role resolved to, or the uncertified default. */
     const reading = readings.get(roleKey(task.ownerRole)) ?? { provider: "", model: "", window: null, provenance: "uncertified" as const, maxOutputTokens: null, reason: "the owner role resolved no window" }
     /** The route key used for the fixed-overhead lookup. */

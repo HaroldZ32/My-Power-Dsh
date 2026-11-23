@@ -14,7 +14,7 @@ import { join } from "node:path"
 import { apply } from "../src/index.ts"
 import { VERIFY_SERVICE } from "../src/service.ts"
 import { DEFAULT_CONTRACT_PATH } from "../src/law.ts"
-import { readLoops, readSeats } from "../src/ledger.ts"
+import { readLoops, readRecords, readSeats, sha256File } from "../src/ledger.ts"
 import { installVerifyGuard } from "../../mpd-roles-plugin/src/verify-guard.ts"
 
 /** One registered tool, as the stub registry keeps it. */
@@ -61,7 +61,7 @@ function harness(workspace: string): {
     provide: (id: string, value: unknown) => { services.set(id, value) },
     get: (id: string, strict?: boolean) => {
       if (id === "mpdDsh") return stub
-      if (id === VERIFY_SERVICE) return services.get(VERIFY_SERVICE)
+      if (id === VERIFY_SERVICE || id === "mpdProjectIdentity") return services.get(id)
       if (id === "mpdConfig") return undefined
       if (strict === true) return undefined
       return undefined
@@ -568,4 +568,53 @@ describe("the mpd-verify row", () => {
     // validator, where both inputs can be supplied honestly: `law.test.ts`'s AC-D4 arm refuses it.
     rmSync(workspace, { recursive: true, force: true })
   })
+})
+
+
+test("canonical Cellwork loops seal actual producer bytes and refuse unsealed, changed, or missing contracts", async () => {
+  /** Separate real paths model the nested caller's ledger and the project's canonical file. */
+  const projectRoot = mkdtempSync(join(tmpdir(), "mpd-contract-root-"))
+  try {
+    /** An original worker and reviewer share this actual operating cwd. */
+    const workspace = join(projectRoot, "nested")
+    /** The project state file authorizes this exact captain and no peer. */
+    const directory = join(projectRoot, ".mpd", "cellwork", "cell-original", "contracts")
+    mkdirSync(workspace)
+    mkdirSync(directory, { recursive: true })
+    writeFileSync(join(directory, "..", "state.json"), JSON.stringify({ captainSessionId: "captain", phase: "executing" }))
+    /** The generated producer document exists before the loop id is appended. */
+    const contract = join(directory, "produce.md")
+    writeFileSync(contract, "unaltered producer instructions\n")
+    /** Mount the actual verification row against this test's bound project seam. */
+    const h = harness(workspace)
+    h.services.set("mpdProjectIdentity", { resolveSeat: (): unknown => ({ kind: "member", projectRoot, projectId: "project-original" }) })
+    apply(h.ctx as Parameters<typeof apply>[0])
+    /** All tool calls use actual exact session ids and the nested workspace. */
+    const invoke = async (name: string, args: unknown, id: string): Promise<unknown> => toolOf(h.tools, name)?.execute(args, { agent: { session: { id } } })
+    /** The existing public open path authorizes only the actual originating cell captain. */
+    const input = { writer: "delegate", writer_id: "writer", verifier: "reviewer", task_id: "T1", contract }
+    expect(await invoke("mpd_verify_open", input, "peer")).toMatchObject({ refused: expect.stringContaining("Cellwork scope") })
+    /** Preserve the original loop across interruption before the producer appends its id. */
+    const opened = await invoke("mpd_verify_open", input, "captain") as OpenResult
+    if (opened.loopId === undefined) throw new Error("the canonical loop did not open")
+    expect(await invoke("mpd_verify_open", input, "captain")).toMatchObject({ loopId: opened.loopId })
+    expect(await invoke("mpd_verify_seat", { loop_id: opened.loopId }, "reviewer")).toMatchObject({ refused: expect.stringContaining("unsealed") })
+    writeFileSync(contract, `original producer contract\nBind mpd_verify_seat {loop_id:"${opened.loopId}"}.\n`)
+    /** Only the trusted internal Cellwork completion can finalize the just-written exact document. */
+    const service = h.services.get(VERIFY_SERVICE) as { sealCellworkContract: (exec: unknown, loopId: string) => unknown }
+    expect(service.sealCellworkContract({ agent: { session: { id: "peer" } } }, opened.loopId)).toMatchObject({ refused: expect.any(String) })
+    /** Hash the actual complete producer file at the seal boundary. */
+    const sha256 = sha256File(contract)
+    expect(service.sealCellworkContract({ agent: { session: { id: "captain" } } }, opened.loopId)).toEqual({ sha256 })
+    expect(await invoke("mpd_verify_seat", { loop_id: opened.loopId }, "writer")).toMatchObject({ refused: expect.stringContaining("cannot verify") })
+    expect(await invoke("mpd_verify_seat", { loop_id: opened.loopId }, "peer")).toMatchObject({ refused: expect.stringContaining("different original verifier") })
+    expect(await invoke("mpd_verify_seat", { loop_id: opened.loopId }, "reviewer")).toMatchObject({ docs: [contract], contractSha256: sha256 })
+    writeFileSync(contract, "drifted producer instructions\n")
+    expect(await invoke("mpd_verify_record", { loop_id: opened.loopId, verdict: "PASS", sources: [contract] }, "reviewer")).toMatchObject({ refused: { reason: "frozen-contract-drift" } })
+    rmSync(contract)
+    expect(await invoke("mpd_verify_record", { loop_id: opened.loopId, verdict: "PASS", sources: [contract] }, "reviewer")).toMatchObject({ refused: { reason: "frozen-contract-missing" } })
+    expect(readRecords(workspace)).toHaveLength(0)
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true })
+  }
 })

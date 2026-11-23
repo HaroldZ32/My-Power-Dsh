@@ -1,3 +1,4 @@
+import type { FixedSeat } from "./fixed-roster"
 // CELLWORK ELASTICITY — runtime SEAT GROWTH (wave W1 §4.1) and the seat projection the operator
 // surfaces report (§4.2).
 //
@@ -58,6 +59,8 @@ interface GrowthTaskRow {
   subject?: string
   /** `pending` is the only status a growth candidate may carry. */
   status?: string
+  /** Independent review keeps its existing verifier assignment. */
+  kind?: string
   /** Declared blocker ids. */
   blockedBy?: readonly string[]
   /** The DECLARED owner name. */
@@ -88,6 +91,8 @@ export interface SeatGrowthDeps {
   refreshRecord?: () => Record<string, unknown> | undefined
   /** The canonical roster role names, or [] when the roster service cannot answer. */
   rosterRoles: readonly string[]
+  /** Established fixed pool; an empty or absent pool still permits temporary run seats. */
+  fixedRoster?: readonly FixedSeat[]
   /** The roster persona text for one role, or null when the roster cannot answer. */
   personaFor: (role: string) => string | null
   /**
@@ -495,6 +500,8 @@ export async function growExecutionSeats(deps: SeatGrowthDeps): Promise<SeatGrow
   /** The result being built; also the empty answer of a pass with nothing to grow. */
   const result: SeatGrowthResult = { members: {}, reassign: [], grown: [], reused: [], refused: [], warnings: [], caps: { perRole: caps.perRole, total: caps.total } }
   if (deps.record === undefined) return result
+  /** Existing fixed capacity is recognized using actual board-facing names. */
+  const fixedNames = new Set((deps.fixedRoster ?? []).map((seat) => roleKey(seat.name)))
   /** The board rows. */
   const tasks = growthTaskRows(deps.record.tasks)
   /** The live roster rows. */
@@ -593,7 +600,7 @@ export async function growExecutionSeats(deps: SeatGrowthDeps): Promise<SeatGrow
   for (const task of tasks) {
     /** The board id, known non-empty by `growthTaskRows`. */
     const taskId = task.id as string
-    if (task.status !== "pending") continue
+    if (task.status !== "pending" || task.kind === "review") continue
     if (!blockersSatisfied(tasks, task.blockedBy)) continue
     /** The declared owner name. */
     const owner = typeof task.owner === "string" ? task.owner.trim() : ""
@@ -647,13 +654,17 @@ export async function growExecutionSeats(deps: SeatGrowthDeps): Promise<SeatGrow
     // deliver to (see the grown-seat guard at the bottom of this file), so a handle-less seat is skipped and
     // the search continues to a later same-role seat that can actually receive the row.
     /** The first idle seat of this role that is not the owner and carries a handle, when one exists. */
-    const reuse = roster.find((row) => !isPlanningSeatName(rowName(row)) && roleKey(rowName(row)) !== roleKey(owner) && typeof row.executorRef === "string" && row.executorRef !== "" && roleKey(memberRoleOf(row) ?? "") === roleK && !seatVerifierOnly(row) && seatIdle(row))
+    const reuse = roster.find((row) => (fixedNames.size === 0 || fixedNames.has(roleKey(rowName(row)))) && !isPlanningSeatName(rowName(row)) && roleKey(rowName(row)) !== roleKey(owner) && typeof row.executorRef === "string" && row.executorRef !== "" && roleKey(memberRoleOf(row) ?? "") === roleK && !seatVerifierOnly(row) && seatIdle(row))
     if (reuse !== undefined) {
       /** The seat's canonical board spelling. */
       const name = rowName(reuse)
       allocated.add(roleKey(name))
       result.reassign.push({ task_id: taskId, owner: name })
       result.reused.push({ name, taskId })
+      continue
+    }
+    if (fixedNames.size > 0) {
+      refuse(taskId, task.subject ?? "", `declared owner ${JSON.stringify(owner)} is BUSY and no compatible fixed seat is available; the task remains queued`)
       continue
     }
     // 3. THE CAPS, named in the sentence every surface repeats. Seats grown LATER in this same pass
@@ -692,7 +703,7 @@ export async function growExecutionSeats(deps: SeatGrowthDeps): Promise<SeatGrow
         name: "agent_teams_plan",
         arguments: {
           action: "add_member",
-          member: { name, role, description: name, prompt: grownSeatPrompt(deps.cell, name, role, deps.personaFor(role)) },
+          member: { name, role, scope: "run", description: name, prompt: grownSeatPrompt(deps.cell, name, role, deps.personaFor(role)) },
         },
         agent: deps.captainAgent,
       }))

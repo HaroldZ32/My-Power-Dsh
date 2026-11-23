@@ -12,6 +12,7 @@
 // Everything here is PURE filesystem + plain data, so the whole state machine is unit-testable
 // without a ctx, a harness or a model.
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs"
+import { randomUUID } from "node:crypto"
 import { join } from "node:path"
 import { sanitizeId, nextIdSuffix, type TaskKind } from "./team-store"
 
@@ -25,6 +26,8 @@ export interface StagedMember {
   prompt: string
   /** Optional rostered role label — the FIRST identity the team executor matches against the roster when it resolves this member's model slot (then the description's head, then the name). */
   role?: string
+  /** Downgrade this declaration to one run, even when its name matches a fixed member. */
+  scope?: "run"
 }
 
 /** One shared task the plan wants posted after approval. */
@@ -183,6 +186,8 @@ export interface TaskContract {
   writeScopes: string[]
   /** Monotonic per task: the Nth time this task was claimed. */
   attempt: number
+  /** Board whose task attempt supplied the contract; absent on older contracts. */
+  teamId?: string
   /** Session id of the member that claimed the task for this attempt. */
   claimedBy: string
   /** ISO instant of the claim; contracts are listed newest claim first. */
@@ -232,7 +237,7 @@ function planFileId(value: string, what: string): string {
 /** `<root>/staging`: one JSON file per session that has a staged plan. */
 const stagingDir = (workspace: string): string => join(teamRoot(workspace), "staging")
 /** The staging slot of ONE session — the file a new stage replaces and approval clears. */
-const stagingPath = (workspace: string, sessionId: string): string => join(stagingDir(workspace), planFileId(sessionId, "staging session id") + ".json")
+export const stagingPath = (workspace: string, sessionId: string): string => join(stagingDir(workspace), planFileId(sessionId, "staging session id") + ".json")
 /** `<root>/contracts`: one frozen task contract per file. */
 const contractsDir = (workspace: string): string => join(teamRoot(workspace), "contracts")
 /** The contract file of ONE task, keyed by its board id. */
@@ -283,18 +288,49 @@ export function newPlanId(now: Date): string {
  * @returns the plan, or undefined when nothing is staged or the version is one this build cannot read.
  */
 export function readPlan(workspace: string, sessionId: string): StagedPlan | undefined {
-  /** The parsed staging slot, read with an open version so an older record can be recognised. */
-  const plan = readJson<Omit<StagedPlan, "version"> & { version?: unknown }>(stagingPath(workspace, sessionId))
-  if (plan === undefined) return undefined
-  /** The format version the file declares; anything that is not a number is unknown. */
-  const version = typeof plan.version === "number" ? plan.version : undefined
-  if (version !== 1 && version !== STAGED_PLAN_VERSION) return undefined
-  return { ...plan, version: STAGED_PLAN_VERSION }
+  return readPlanAt(stagingPath(workspace, sessionId))
+}
+
+/** Read the original plan by its board's durable approval link. */
+export function readArchivedPlan(workspace: string, planId: string): StagedPlan | undefined {
+  return readPlanAt(join(archivePathFor(workspace, planId), "plan.json"))
+}
+
+/** Decode a staged or archived plan using the same migration rules. */
+function readPlanAt(path: string): StagedPlan | undefined {
+  try {
+    return decodeStagedPlan(readFileSync(path, "utf8"))
+  } catch {
+    return undefined
+  }
+}
+
+/** Decode one immutable byte snapshot, retaining the same stage migration and stored metadata. */
+export function decodeStagedPlan(text: string): StagedPlan | undefined {
+  try {
+    /** Persisted plan fields are read structurally after checking the version and ownership shape. */
+    const plan: unknown = JSON.parse(text)
+    if (plan === null || typeof plan !== "object" || !("version" in plan) || (plan.version !== 1 && plan.version !== STAGED_PLAN_VERSION)) return undefined
+    // Versioned records come from the Team store; keep other metadata exactly as it appeared.
+    return { ...plan, version: STAGED_PLAN_VERSION } as StagedPlan
+  } catch (error) {
+    if (error instanceof SyntaxError) return undefined
+    throw error
+  }
 }
 
 /** Persist a plan (the caller owns its content). */
 export function writePlan(workspace: string, plan: StagedPlan): void {
-  writeJson(stagingPath(workspace, plan.sessionId), plan)
+  /** Publish a complete snapshot so cross-process reads cannot mistake a torn write for absence. */
+  const path = stagingPath(workspace, plan.sessionId)
+  /** A unique sibling temporary file keeps the atomic rename on the same filesystem. */
+  const temp = `${path}.${randomUUID()}.tmp`
+  writeJson(temp, plan)
+  try {
+    renameSync(temp, path)
+  } finally {
+    if (existsSync(temp)) rmSync(temp, { force: true })
+  }
 }
 
 /**
@@ -476,7 +512,7 @@ export function listArchivedPlans(workspace: string): ArchivedPlanSummary[] {
  */
 export function claimContract(
   workspace: string,
-  task: { id: string; subject: string; description: string; blockedBy?: readonly string[]; writeScopes?: readonly string[]; revision: number },
+  task: { id: string; subject: string; description: string; blockedBy?: readonly string[]; writeScopes?: readonly string[]; revision: number; teamId?: string; attempt?: number },
   claimant: string,
   now: Date,
 ): TaskContract {
@@ -490,7 +526,8 @@ export function claimContract(
     description: task.description,
     blockedBy: [...(task.blockedBy ?? [])],
     writeScopes: [...(task.writeScopes ?? [])],
-    attempt: (previous?.attempt ?? 0) + 1,
+    attempt: task.attempt ?? (previous?.attempt ?? 0) + 1,
+    ...(task.teamId === undefined ? {} : { teamId: task.teamId }),
     claimedBy: claimant,
     claimedAt: now.toISOString(),
     revision: task.revision,

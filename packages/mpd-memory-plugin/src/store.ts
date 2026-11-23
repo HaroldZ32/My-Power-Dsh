@@ -28,8 +28,8 @@ export interface Config {
   globalDir?: string
 }
 
-/** The two stores one memory call may address: the per-agent workspace store (the default) or the shared global store. */
-export type MemoryScope = "workspace" | "global"
+/** The stores addressed by memory tools, with legacy workspace entries exposed explicitly for reading. */
+export type MemoryScope = "workspace" | "global" | "shared" | "legacy"
 
 /** The four directories one memory store hangs from. */
 export interface StoreDirs {
@@ -168,13 +168,21 @@ export function agentPaths(config: Config, workspace: string): AgentDirs {
   const slug = slugOf(config, workspace)
   /** The agent's state root, which holds the VCS working copy and the runtime files. */
   const root = join(workspace, config.dir ?? ".mpd", "memory", "agents", slug)
+  return { ...storePaths(root), slug }
+}
+
+/** Apply the same repository and runtime layout to each workspace, member, or shared store. */
+export function storePaths(root: string): StoreDirs {
   /** The VCS working copy whose `memory/` subdirectory holds the entries. */
   const repo = join(root, "repo")
-  /** The non-versioned directory holding the reflection state and the journal. */
-  const runtime = join(root, "runtime")
-  /** The directory the markdown entries themselves live in. */
-  const memoryDir = join(repo, "memory")
-  return { root, repo, runtime, memoryDir, slug }
+  return { root, repo, runtime: join(root, "runtime"), memoryDir: join(repo, "memory") }
+}
+
+/** Initialize the writable directories after the caller has been authorized. */
+export function ensureStoreDirs<D extends StoreDirs>(d: D): D {
+  mkdirSync(d.memoryDir, { recursive: true })
+  mkdirSync(d.runtime, { recursive: true })
+  return d
 }
 
 /**
@@ -185,27 +193,20 @@ export function agentPaths(config: Config, workspace: string): AgentDirs {
  * @returns the workspace store's four absolute paths plus the slug, created.
  */
 export function ensureDirs(config: Config, workspace: string): AgentDirs {
-  /** The computed directories this call creates on demand. */
-  const d = agentPaths(config, workspace)
-  mkdirSync(d.memoryDir, { recursive: true })
-  mkdirSync(d.runtime, { recursive: true })
-  return d
+  return ensureStoreDirs(agentPaths(config, workspace))
 }
 
 /**
  * The store scope one tool call names.
  *
- * `workspace` is the DEFAULT so no existing call changes meaning; only the literal `global` selects
- * the shared store, and anything else (a typo, a missing argument) stays on the workspace store.
+ * `workspace` is the default. Explicit scopes select either project facts, legacy reads, or global state.
  *
  * @param args - the tool call's argument payload, as the harness validated it.
  * @returns the scope this call addresses.
  */
 export function scopeOf(args: unknown): MemoryScope {
-  // The harness types a tool call's arguments as `any`; this narrows the ONE field the selector reads
-  // instead of trusting the whole payload.
-  const a = args !== null && typeof args === "object" ? args as { scope?: unknown } : undefined
-  return a?.scope === "global" ? "global" : "workspace"
+  if (args === null || typeof args !== "object" || !("scope" in args)) return "workspace"
+  return args.scope === "global" || args.scope === "shared" || args.scope === "legacy" ? args.scope : "workspace"
 }
 
 /**
@@ -316,22 +317,33 @@ export function commitAll(config: Config, d: { root: string; repo: string }, msg
   return errs
 }
 
-/** Split a memory file into its JSON frontmatter and its body; a header-less file reads as empty meta plus the whole text. */
-export function parseFrontmatter(file: string): { meta: any; body: string } {
+/** Split a memory file into its JSON frontmatter and its body, tolerating old or invalid headers. */
+export function parseFrontmatter(file: string): { meta: Record<string, unknown>; body: string } {
   /** The file's whole text, read once for both the header scan and the body slice. */
   const raw = readFileSync(file, "utf8")
   if (!raw.startsWith("---\n")) return { meta: {}, body: raw }
   /** Offset of the closing `---` line, or -1 when the block is never terminated. */
   const end = raw.indexOf("\n---\n", 4)
   if (end < 0) return { meta: {}, body: raw }
-  /** The parsed frontmatter; an unparseable header degrades to `{}` instead of failing the read. */
-  let meta: any = {}
-  try { meta = JSON.parse(raw.slice(4, end)) } catch { meta = {} }
-  return { meta, body: raw.slice(end + 5) }
+  /** Body bytes after the frontmatter delimiter, preserved for exact lookup. */
+  const body = raw.slice(end + 5)
+  try {
+    /** Frontmatter must be an object before any caller reads its properties. */
+    const parsed: unknown = JSON.parse(raw.slice(4, end))
+    return { meta: isFrontmatter(parsed) ? parsed : {}, body }
+  } catch (error) {
+    if (error instanceof SyntaxError) return { meta: {}, body }
+    throw error
+  }
+}
+
+/** Only a JSON object can carry named frontmatter fields. */
+function isFrontmatter(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
 }
 
 /** Flatten one entry's frontmatter and body into the record the read tool answers with. */
-export function normalizeLogEntry(meta: any, file: string, body: string): any {
+export function normalizeLogEntry(meta: Record<string, unknown>, file: string, body: string): Record<string, unknown> {
   return { ...meta, description: meta.description ?? "", content: body.trim(), file: basename(file) }
 }
 

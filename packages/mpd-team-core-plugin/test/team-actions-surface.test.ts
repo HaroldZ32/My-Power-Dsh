@@ -510,9 +510,8 @@ describe("mpdTeamActions — the service the routes and a panel both read", () =
     /** The service's answer. */
     const viaService = await service.approve({ sessionId: LEAD })
     if (!viaService.ok) throw new Error(viaService.error)
-    // 2. The TOOL approves a SECOND wave of the same content, through the SAME action behind the
-    //    handler. The plan name is identical on purpose: the shape comparison is about the records,
-    //    not about a label that would mask a real field difference.
+    // The second approval uses the same project roster after the first wave closes.
+    await h.call("agent_teams_control", { action: "end" })
     await stage("the wave")
     /** The tool's answer. */
     const viaTool = await h.call("agent_teams_plan", { action: "approve" }) as { team?: TeamRecord }
@@ -755,7 +754,8 @@ describe("R1c — the session-id match is what makes this agent live", () => {
     // THE SERVICE: the session is live through `session.id` alone.
     const viaService = await service.approve({ sessionId: LEAD })
     expect(viaService.ok).toBe(true)
-    // THE APPROVE ROUTE: a second wave, answered 200 rather than 409.
+    // Close the first run so the route can approve a second wave under the same live session.
+    await h.call("agent_teams_control", { action: "end" }, SHADOW_AGENT)
     await h.call("agent_teams_plan", { action: "create", name: "the wave", description: "ship the drive surface" }, SHADOW_AGENT)
     await h.call("agent_teams_plan", { action: "add_member", member: { name: "Senior Engineer", description: "implements", prompt: "You implement." } }, SHADOW_AGENT)
     await h.call("agent_teams_plan", { action: "create_task", task: { subject: "core", description: "own the record", blocked_by: [] } }, SHADOW_AGENT)

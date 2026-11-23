@@ -38,6 +38,8 @@ export type OpenCellOutcome =
     statePath: string
     /** The activation directive text the caller relays (or the command submitted). */
     directive: string
+    /** A replay returned the existing cell without submitting a duplicate turn. */
+    replayed?: true
   }
   | {
     /** False for every refusal. */
@@ -52,6 +54,8 @@ export type OpenCellOutcome =
 export interface OpenCellInput {
   /** The caller's workspace root (resolved by the caller through the adapter, per call). */
   workspace: string
+  /** Lazily mounted admission service, shared with Team approvals. */
+  admission?: { admitCell<T>(input: { checkoutRoot: string; sessionId: string }, open: (workspace: string) => T): T }
   /** The user's objective, verbatim after trimming. */
   objective: string
   /** The session that becomes this cell's captain. */
@@ -115,10 +119,26 @@ export function openCell(input: OpenCellInput): OpenCellOutcome {
     const mandate = mandateArtifact(input.workspace, input.mandate)
     if ("refusal" in mandate) return { ok: false, error: mandate.refusal }
   }
+  if (input.admission === undefined) return openAt(input, objective)
+  try {
+    return input.admission.admitCell({ checkoutRoot: input.workspace, sessionId: input.captainSessionId }, (workspace) => openAt({ ...input, workspace }, objective))
+  } catch (error) {
+    if (error instanceof Error) return { ok: false, error: error.message }
+    throw error
+  }
+}
+
+/** Persist or replay the cell inside its selected shared state root. */
+function openAt(input: OpenCellInput, objective: string): OpenCellOutcome {
   /** The workspace's current cell scan. */
   const active = readActiveCell(input.workspace)
   if (!active.ok) return { ok: false, error: "cellwork_open refused: " + readFailureText(active), path: active.path }
   if (active.cell !== null) {
+    /** Replay the same objective only for its authenticated original captain. */
+    const prior = active.cell.state
+    if (input.admission !== undefined && prior.captainSessionId === input.captainSessionId && prior.objective === objective) {
+      return { ok: true, cellId: prior.cellId, phase: prior.phase, statePath: join(active.cell.dir, "state.json"), directive: activationDirective({ state: prior, workspace: input.workspace }), replayed: true }
+    }
     return {
       ok: false,
       error: "cellwork_open refused: cell " + active.cell.state.cellId + " is still active in this workspace (phase " + active.cell.state.phase + ") — one cell at a time, and a second one would fight the first for the same team board. Read it with `cellwork_status`, finish it, or end it with `cellwork_stop` first.",

@@ -2,26 +2,65 @@
 import { existsSync, readFileSync, readdirSync, rmSync as rmSync2 } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname as dirname2, join as join2 } from "node:path";
+import { dirname as dirname3, join as join2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
-import { resolve as resolve2, sep as sep2 } from "node:path";
+
+// packages/mpd-dsh-adapter-plugin/src/scoped-helper.ts
+import { realpathSync } from "node:fs";
+import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
+function helperTarget(checkout, value) {
+  try {
+    const root = realpathSync(checkout);
+    const path = resolve(root, value);
+    const local = relative(root, path);
+    if (local === "" || local === ".." || local.startsWith(`..${sep}`) || isAbsolute(local) || local.split(sep).some((item) => item === ".mpd" || item === ".git"))
+      return;
+    let probe = path;
+    while (probe !== root) {
+      try {
+        if (realpathSync(probe) !== probe)
+          return;
+      } catch (error) {
+        if (!(error instanceof Error) || !("code" in error) || error.code !== "ENOENT")
+          throw error;
+      }
+      probe = dirname(probe);
+    }
+    return local.split(sep).join("/");
+  } catch (error) {
+    if (error instanceof Error)
+      return;
+    throw error;
+  }
+}
+function helperFileRefusal(scope, name, args) {
+  if (name === "structured_output")
+    return;
+  if (scope.current?.() === false)
+    return "The original assignment no longer authorizes this helper.";
+  const path = typeof args === "object" && args !== null && "file_path" in args && typeof args.file_path === "string" ? helperTarget(scope.checkout, args.file_path) : undefined;
+  const allowed = path !== undefined && (name === "read" ? scope.read.includes(path) || scope.write.includes(path) : (name === "write" || name === "edit") && scope.write.includes(path));
+  return allowed ? undefined : "This one-shot can use only the exact file tools and paths its owner delegated.";
+}
+// packages/mpd-dsh-adapter-plugin/src/index.ts
+import { resolve as resolve3, sep as sep3 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
-import { dirname } from "node:path";
+import { dirname as dirname2 } from "node:path";
 import { fileURLToPath } from "node:url";
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
 }
 function bundleRootOf(moduleUrl) {
-  return dirname(dirname(dirname(dirname(fileURLToPath(moduleUrl)))));
+  return dirname2(dirname2(dirname2(dirname2(fileURLToPath(moduleUrl)))));
 }
 
 // packages/mpd-mcp-shared/log-sink.ts
 import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { isAbsolute as isAbsolute2, join, relative as relative2, resolve as resolve2, sep as sep2 } from "node:path";
 var LOG_SUBDIR = join(".mpd", "logs");
 var DEFAULT_MAX_BYTES = 1024 * 1024;
 var DEFAULT_MAX_LINE_BYTES = 8192;
@@ -46,7 +85,7 @@ function resolveLogRoots(env = process.env, cwd) {
       continue;
     let absolute;
     try {
-      absolute = resolve(candidate);
+      absolute = resolve2(candidate);
     } catch {
       continue;
     }
@@ -71,8 +110,8 @@ function owningRoot(roots, file) {
   for (const root of roots) {
     if (file === root)
       return root;
-    const rel = relative(root, file);
-    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel))
+    const rel = relative2(root, file);
+    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep2}`) && !isAbsolute2(rel))
       return root;
   }
   return null;
@@ -381,10 +420,10 @@ function sessionCwdOf(agent) {
 function workspaceRootOfAgent(agent) {
   const session = sessionCwdOf(agent);
   if (session !== undefined)
-    return resolve2(session);
+    return resolve3(session);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve2(override);
+    return resolve3(override);
   return process.cwd();
 }
 function workspaceRootOf(exec) {
@@ -392,7 +431,7 @@ function workspaceRootOf(exec) {
     return workspaceRootOfAgent(exec.agent);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve2(override);
+    return resolve3(override);
   return process.cwd();
 }
 var rowLogSinks = new Map;
@@ -457,7 +496,7 @@ function workspaceRootsOf(agents) {
     for (const agent of list) {
       const cwd = sessionCwdOf(agent);
       if (cwd !== undefined)
-        roots.add(resolve2(cwd));
+        roots.add(resolve3(cwd));
     }
     return [...roots];
   } catch {
@@ -1813,6 +1852,13 @@ function createDshAdapter(ctx, config = {}) {
       const registered = systemPrompt.section(section);
       return typeof registered === "function" ? registered : noop;
     },
+    registerPromptContext(context) {
+      const systemPrompt = service("systemPrompt");
+      if (typeof systemPrompt?.context !== "function")
+        return;
+      const registered = systemPrompt.context(context);
+      return typeof registered === "function" ? registered : noop;
+    },
     guardTool(guard) {
       const tools = requireService("tools", "cannot install a tool guard");
       if (typeof tools.guard !== "function")
@@ -2045,14 +2091,45 @@ function createDshAdapter(ctx, config = {}) {
           ...spec.outputSchema === undefined ? {} : { outputSchema: spec.outputSchema },
           ...spec.maxDepth === undefined ? {} : { maxDepth: spec.maxDepth }
         };
-        const activation = await subagents.startActivation.call(subagents, dualShapeActivationSpec({
-          provider,
-          label: spec.label,
-          signal,
-          delivery: "parent"
-        }, activationRequest));
-        return activationHandleOf(activation, subagents, spec.parent);
+        const files = spec.helperFiles;
+        if (files === undefined) {
+          const activation = await subagents.startActivation.call(subagents, dualShapeActivationSpec({ provider, label: spec.label, signal, delivery: "parent" }, activationRequest));
+          return activationHandleOf(activation, subagents, spec.parent);
+        }
+        if (provider !== "spawn" || typeof service("tools")?.guard !== "function")
+          throw new Error("scoped one-shot requires native child and tool-guard support");
+        if (files.current?.() === false)
+          throw new Error("the original helper assignment changed before admission");
+        const childId = randomUUID();
+        const offGuard = adapter.guardTool((exec) => sessionIdOfAgent(exec.agent) === childId ? helperFileRefusal(files, exec.name, exec.arguments) : undefined);
+        let installed = false;
+        const offCreated = onEvent("agent/created", (payload) => {
+          const child = payload?.agent;
+          if (sessionIdOfAgent(child) !== childId)
+            return;
+          const allow = files.write.length > 0 ? ["read", "write", "edit"] : files.read.length > 0 ? ["read"] : [];
+          applyScopedRestriction(child, { allow });
+          installed = true;
+        });
+        try {
+          if (offCreated === undefined)
+            throw new Error("scoped one-shot requires the native agent creation hook");
+          const activation = await subagents.startActivation.call(subagents, dualShapeActivationSpec({ provider, label: spec.label, signal, delivery: "caller", childId }, { ...activationRequest, cwd: files.checkout }));
+          if (!installed) {
+            await releaseActivation(activation);
+            throw new Error("the host did not publish the reserved scoped helper");
+          }
+          const handle = activationHandleOf(activation, subagents, spec.parent);
+          return { ...handle, result: handle.result.finally(offGuard) };
+        } catch (error) {
+          offGuard();
+          throw error;
+        } finally {
+          offCreated?.();
+        }
       }
+      if (spec.helperFiles !== undefined)
+        throw new Error("scoped one-shot requires native child start support");
       if (typeof subagents.start !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagent service exposes neither startActivation() nor start()");
       const run = await subagents.start(provider, {
@@ -2864,7 +2941,7 @@ function createProvider(root, ctx, dsh, invalidate) {
         invocation: parsed.invocation,
         provider: PROVIDER_NAME,
         source: "bundled",
-        resourceBase: candidate.resourceBase ?? { kind: "directory", path: dirname2(candidate?.locator?.path ?? "") },
+        resourceBase: candidate.resourceBase ?? { kind: "directory", path: dirname3(candidate?.locator?.path ?? "") },
         path: candidate?.locator?.path,
         ...parsed.metadata !== undefined ? { metadata: parsed.metadata } : {},
         content: parsed.content

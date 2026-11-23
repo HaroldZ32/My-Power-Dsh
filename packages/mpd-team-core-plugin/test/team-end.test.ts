@@ -12,7 +12,7 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { apply, TEAMS_SERVICE, type MpdTeamsService } from "../src/index"
-import { activeTeamId, listTeams, readTeam, unbindActiveTeam, writeTeam, type TeamRecord } from "../src/team-store"
+import { activeTeamId, createTeam, listTeams, readTeam, unbindActiveTeam, writeTeam, type TeamRecord } from "../src/team-store"
 import { readTeamJournal } from "../src/team-journal"
 
 /** One captured tool registration, with `execute` kept so an arm can drive the real body. */
@@ -414,8 +414,8 @@ describe("agent_teams_control {action:\"end\"}", () => {
     sandboxes.push(h.workspace)
     /** The first team, led by the harness's Lead session. */
     const first = await approvedWave(h)
-    /** The second team, led by a DIFFERENT session in the same workspace. */
-    const second = await approvedWaveAs(h, "sess-lead-2")
+    /** A second legacy board led by a different session before one-project admission. */
+    const second = createTeam(h.workspace, { name: "legacy second board", description: "end authorization control", leadSessionId: "sess-lead-2" }, new Date())
     // A declared id is NOT an authority: the second Lead names the first team and is refused.
     /** The second Lead's refusal on the first team. */
     const refused = await refusalOf(() => h.callAs("agent_teams_control", { action: "end", team_id: first.teamId }, "sess-lead-2"))

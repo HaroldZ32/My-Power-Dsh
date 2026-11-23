@@ -9,22 +9,34 @@
 
 *历史。* reducer 的早期草稿沿用了上游的状态机词汇（`reflected_completed_steps`、`steps_since_last_successful_reflection`、`reservation`，以及某个工具描述里的 `completeTransition`）。**de-omo wave F 已用本包自己的词汇替换之**：`reflectionsCompleted`、`stepsSinceReflection`、`pendingReflection`。
 
-## 两个存储：workspace（默认）与 global（wave W3-D）
+## 记忆作用域
 
-引擎用**一套数据形状**服务**两个存储**：
+`mpd_memory_write`、`mpd_memory_read` 和 `mpd_memory_status` 默认使用 `scope: "workspace"`。
+`mpd_memory_reflect` 和 `mpd_memory_reflect_complete` 只统计调用者自己的写入。写入全局记忆或共享事实时，
+个人反思计数保持原值。纳入版本管理的记忆集合通过 `memory.vcs` 支持 `git`（默认）、`svn` 和 `both`。
 
-- **workspace**——默认，也是 W3-D 之前的行为：按 agent 隔离，位于
-  `<workspace>/<memory.dir 或 ".mpd">/memory/agents/<slug>/{repo,runtime}`；
-- **global**——跨所有项目共享，位于
-  `<HOME>/.mpd/memory/{repo/memory/*.md, runtime/{journal.jsonl, index.json}}`（`memory.globalDir` 可覆盖根）。
+- **workspace** 在项目团队中使用通过身份验证的成员专属记忆，队长也有自己的集合。获准在另一个检出目录启动时，
+  同一项目与持久成员身份仍然指向同一份记忆。独立会话继续使用
+  `<workspace>/<memory.dir 或 ".mpd">/memory/agents/<slug>/{repo,runtime}`。
+- **shared** 用于发布和读取附有来源的项目事实，仅通过身份验证的项目成员可访问。
+- **legacy** 允许通过 `mpd_memory_read` 显式读取当前检出目录中归属未明的旧条目。`key` 可以在选定集合内
+  精确匹配条目的文件名。成员记忆和旧记忆的预览会在截断条目时报告 `truncated`，返回条数也可能少于
+  `limit`，可用 `next_offset` 继续读取。
+- **global** 在项目之间共享 `<HOME>/.mpd/memory/{repo/memory/*.md,runtime/{journal.jsonl,index.json}}`。
+  `memory.globalDir` 可以覆盖根目录。存储尚未创建时也可以查询内容和状态。
 
-`mpd_memory_write`、`mpd_memory_read`、`mpd_memory_status` 接受 `scope: "workspace" | "global"`，默认
-`workspace`，因此**现有调用语义不变**。`mpd_memory_reflect`、`mpd_memory_reflect_complete` 仍只作用于
-workspace——reflection 是按 agent 的行为，不是全局行为——所以 **global 写入永不推进 reflection 计数器**
-（只报告调用者已有的 claim）。两个存储共用同一套 VCS 语义（`memory.vcs`：默认 `git`，以及 `svn`、`both`），
-经由同一个 `ensureVcs`/`commitAll`，且 global 写入的 `committedTo`/`errors` 与 workspace 写入完全一致。
-**读取永不创建存储**：`<HOME>/.mpd/memory` 尚不存在时，`scope:"global"` 的读/状态返回空结果，因为创建它
-本身就是守卫刻意不覆盖的 HOME 变更。
+`mpd_memory_save` 和 `mpd_memory_recall` 使用同一成员身份读写专属键值笔记。
+需要从旧工作区映射显式读取某个键时，可在 `mpd_memory_recall` 中指定 `scope: "legacy"`。
+
+### 共享事实
+
+使用 `mpd_memory_write` 发布时，传入 `scope: "shared"`、`key`、`title`、`content`、`source` 和 `appliesTo`。
+`source` 可以是产物路径或接口修订标识，`appliesTo` 应指定确切的任务、版本或接口。工具记录经验证的作者身份。
+首次发布的修订号为 1。更新时，`supersedes` 必须等于当前修订号。工具保留每次修订；若其他作者先发布，则报告冲突。
+
+使用 `mpd_memory_read` 读取时，传入 `scope: "shared"` 和区分大小写的完整 `key`。还可以指定 `revision` 或
+`appliesTo`，检查当前事实是否适合任务。事实已被替代、条件不匹配或记录缺失时，结果为空并提供 `validity`。
+当前事实会返回来源、作者、适用条件、修订号和限长内容预览。
 
 ### HOME 守卫——包含关系在 `$HOME` 之内（wave W0 的共享判据）
 

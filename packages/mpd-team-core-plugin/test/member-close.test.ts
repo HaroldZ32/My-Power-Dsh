@@ -283,6 +283,59 @@ describe("AC-D5a — a member session resolves its own team", () => {
   })
 })
 
+describe("ordinary claim and close preserve the assigned attempt", () => {
+  test("keeps declared and active ownership, replays the owner's claim, and permits explicit lead release", async () => {
+    /** The real board tool on a disposable project with two assigned seats. */
+    const h = harness()
+    /** Both task rows preserve their declared owner before either member starts. */
+    const teamId = await approveTeam(h)
+    /** Resolve the board's exact recorded caller handles. */
+    const writer = handleOf(h.workspace, teamId, "Senior Engineer")
+    /** The second seat may claim only its own assignment until an explicit release. */
+    const reviewer = handleOf(h.workspace, teamId, "Reviewer")
+    await expect(h.call("agent_teams_task", { action: "claim", task_id: "T1" }, reviewer)).rejects.toThrow(/assigned to/)
+    await expect(h.call("agent_teams_task", { action: "claim", task_id: "T1", claimant: writer }, reviewer)).rejects.toThrow(/cannot claim for/)
+    /** The exact row and contract that the owner originally acquired. */
+    const first = await h.call("agent_teams_task", { action: "claim", task_id: "T1" }, writer)
+    await expect(h.call("agent_teams_task", { action: "claim", task_id: "T1", claimant: reviewer }, LEAD)).rejects.toThrow(/assigned to/)
+    expect(await h.call("agent_teams_task", { action: "claim", task_id: "T1", claimant: "Senior Engineer" }, writer)).toEqual(first)
+    expect(readTeam(h.workspace, teamId)?.tasks[0]).toMatchObject({ owner: writer, attempt: 1, status: "in_progress" })
+    await expect(h.call("agent_teams_task", { action: "claim", task_id: "T1", expected_revision: 0 }, writer)).rejects.toThrow(/changed under you/)
+    expect(await h.call("agent_teams_task", { action: "release", task_id: "T1" }, LEAD)).toMatchObject({ status: "pending" })
+    /** A new authorized assignment after release increments the attempt once. */
+    const reassigned = await h.call("agent_teams_task", { action: "claim", task_id: "T1", claimant: "Reviewer" }, LEAD)
+    expect(reassigned).toMatchObject({ task: { owner: "Reviewer", attempt: 2 }, contract: { attempt: 2 } })
+    expect(await h.call("agent_teams_task", { action: "complete", task_id: "T1" }, reviewer)).toMatchObject({ status: "completed", closedBy: "owner", attempt: 2 })
+  })
+
+  test("blocks successful review until its prerequisite closes and only the assigned reviewer can then complete", async () => {
+    /** The harness provides actual member handles, while the fixture pins the board dependency. */
+    const h = harness()
+    /** The active board where T2 reviews T1. */
+    const teamId = await approveTeam(h)
+    /** Add the review dependency and retain the existing roster. */
+    const team = readTeam(h.workspace, teamId)
+    if (team === undefined) throw new Error("approval wrote no team")
+    writeTeam(h.workspace, { ...team, tasks: team.tasks.map((row) => row.id === "T2" ? { ...row, kind: "review", blockedBy: ["T1"] } : row) })
+    /** The original writer and verifier keep separate roles throughout the run. */
+    const writer = handleOf(h.workspace, teamId, "Senior Engineer")
+    /** Only this member can record successful closure of the independent review task. */
+    const reviewer = handleOf(h.workspace, teamId, "Reviewer")
+    await expect(h.call("agent_teams_task", { action: "claim", task_id: "T2" }, reviewer)).rejects.toThrow(/BLOCKED by T1/)
+    expect(await h.call("agent_teams_task", { action: "complete", task_id: "T2" }, reviewer)).toMatchObject({ refused: expect.stringContaining("blocked by T1") })
+    expect(readTeam(h.workspace, teamId)?.tasks[1]).toEqual({ ...team.tasks[1], kind: "review", blockedBy: ["T1"] })
+    await h.call("agent_teams_task", { action: "claim", task_id: "T1" }, writer)
+    expect(await h.call("agent_teams_task", { action: "complete", task_id: "T1" }, writer)).toMatchObject({ closedBy: "owner", status: "completed", attempt: 1 })
+    expect(await h.call("agent_teams_task", { action: "complete", task_id: "T2" }, LEAD)).toMatchObject({ refused: expect.stringContaining("assigned independent reviewer") })
+    // Explicit reassignment can change who holds a review row, but its writer still cannot return a successful verdict.
+    await h.call("agent_teams_dispatch", { action: "run", reassign: [{ task_id: "T2", owner: "Senior Engineer" }] }, LEAD)
+    expect(await h.call("agent_teams_task", { action: "complete", task_id: "T2" }, writer)).toMatchObject({ refused: expect.stringContaining("assigned independent reviewer") })
+    await h.call("agent_teams_task", { action: "release", task_id: "T2" }, LEAD)
+    await h.call("agent_teams_task", { action: "claim", task_id: "T2" }, reviewer)
+    expect(await h.call("agent_teams_task", { action: "complete", task_id: "T2" }, reviewer)).toMatchObject({ closedBy: "owner", status: "completed", attempt: 2 })
+  })
+})
+
 describe("AC-D5b — the team's LEAD closes any task of its own team", () => {
   test("the recorded lead closes a task it does not own with NO official membership at all", async () => {
     /** The harness this arm drives. */

@@ -19,7 +19,7 @@
 // lands on the same internal path.
 //
 // The service is NOT a tool: nothing registers a name, and no tool output lists it.
-import type { DshAsyncAgent } from "../../mpd-dsh-adapter-plugin/src/index"
+import type { DshAsyncAgent, DshHelperFiles } from "../../mpd-dsh-adapter-plugin/src/index"
 import type { ConsultOutcome, ConsultSupervisor, ConsultView } from "./spawn-async.ts"
 
 /** What one background consult start carries. */
@@ -30,6 +30,8 @@ export interface MpConsultStartSpec {
   task: string
   /** Optional extra prompt block (the cell id and why the consult exists). */
   context?: string
+  /** Exact file scope already authorized by the original owner's active project assignment. */
+  helperFiles?: DshHelperFiles
   /** The CALLER's tool execution context — the same object the roles tools are handed. */
   exec: unknown
   /**
@@ -71,6 +73,8 @@ export interface MpConsultStarted {
 
 /** The service surface a consumer reads; it is never registered as a tool. */
 export interface MpConsultsApi {
+  /** This service can carry the project helper's explicit file scope to the native child. */
+  readonly scopedFiles: true
   /**
    * Canonicalise one role spelling through the SAME resolver `mpd_role_spawn` uses.
    *
@@ -116,6 +120,8 @@ export interface MpConsultsDeps {
   supervisor: ConsultSupervisor
   /** Raise one child on the shared activation seam; resolves once the child STARTED. */
   raise: (spec: MpConsultStartSpec) => Promise<DshAsyncAgent>
+  /** Restrict direct generic collection of handles owned by a scoped product boundary. */
+  scopedHandle?: (id: string, active: boolean) => void
   /**
    * Canonicalise one role spelling against the live roster surface.
    *
@@ -159,6 +165,7 @@ export function createMpConsults(deps: MpConsultsDeps): MpConsultsApi {
   }
 
   return {
+    scopedFiles: true,
     canonicalRole: (role: string, exec?: unknown): string | undefined => {
       /** The resolver's answer: the canonical name, or null for a spelling that names nothing. */
       const canonical = deps.canonicalRole(String(role ?? ""), exec)
@@ -191,6 +198,7 @@ export function createMpConsults(deps: MpConsultsDeps): MpConsultsApi {
         // observer can be fired exactly once. Absent stays absent (no empty call, no wrapper).
         ...(spec.onSettled === undefined ? {} : { onSettled: spec.onSettled }),
       })
+      if (spec.helperFiles !== undefined) deps.scopedHandle?.(view.consultId, true)
       return { consultId: view.consultId, role, state: "running", startedAt: view.startedAt }
     },
     list: (): ConsultView[] => deps.supervisor.list(),
@@ -212,7 +220,10 @@ export function createMpConsults(deps: MpConsultsDeps): MpConsultsApi {
     },
     collect: (consultId: string): ConsultOutcome | undefined => {
       try {
-        return deps.supervisor.collect(consultId)
+        /** Collect releases a settled result and retains a running supervisor row. */
+        const result = deps.supervisor.collect(consultId)
+        if (result.state !== "running") deps.scopedHandle?.(consultId, false)
+        return result
       } catch {
         // An id this process does not know is `undefined`, never a throw across the service seam.
         return undefined

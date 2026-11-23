@@ -26,6 +26,9 @@
 // never throws at construction: a missing seam surfaces as an actionable error
 // at call time, or as a `capabilities()` flag a caller can degrade on.
 import { randomUUID } from "node:crypto"
+import { helperFileRefusal, type DshHelperFiles } from "./scoped-helper"
+export { helperTarget } from "./scoped-helper"
+export type { DshHelperFiles } from "./scoped-helper"
 import { readFileSync } from "node:fs"
 import { userInfo } from "node:os"
 import { resolve, sep } from "node:path"
@@ -143,6 +146,8 @@ export interface DshToolExec {
   agent?: unknown
   /** Cancellation for the call, as the harness re-fuses it around the waterfalls. */
   signal?: AbortSignal
+  /** Request a normal turn boundary after this tool result when the host supports it. */
+  concludeTurn?: () => void
   [key: string]: unknown
 }
 
@@ -460,6 +465,8 @@ export interface DshSpawnSpec {
    * `startActivation()` arm does not forward it and logs the omission once.
    */
   toolFilter?: unknown
+  /** A project one-shot's exact file scope, installed before its first request. */
+  helperFiles?: DshHelperFiles
   /** Maximum nesting depth the child may spawn down to. */
   maxDepth?: number
   /** JSON Schema the child's answer must satisfy. */
@@ -2296,6 +2303,8 @@ export interface DshAdapter {
    * dropping the section. Reported by `capabilities().systemPromptSection`.
    */
   registerPromptSection(section: DshPromptSection): () => void
+  /** Register native dynamic request context, or return undefined on a host without this seam. */
+  registerPromptContext(context: DshPromptSection): (() => void) | undefined
   /** Install a guard that denies a call by returning a string, or allows it with undefined. */
   guardTool(guard: (exec: DshToolExec) => string | undefined): () => void
   /**
@@ -3081,6 +3090,26 @@ export function userMessage(input: DshUserMessageInput): DshUserMessage {
 export const decision = {
   accept: (content?: unknown): DshPostDecision => (content === undefined ? { kind: "accept" } : { kind: "accept", content }),
   block: (feedback: unknown): DshPostDecision => ({ kind: "block", feedback }),
+}
+
+/** Probe next-turn submission on the specific host agent that would receive it. */
+export function canSubmitUserTurn(agent: unknown): boolean {
+  return typeof (agent as { followup?: unknown } | null | undefined)?.followup === "function"
+}
+
+/** Inspect the exact agent's public inbox without removing a message or reading its body. */
+export function pendingHumanInput(agent: unknown): "step" | "turn" | "none" | undefined {
+  /** A missing destination makes responsive steering unprovable on this host. */
+  const inbox = (agent as { inbox?: { nextStep?: unknown; nextTurn?: unknown } } | null | undefined)?.inbox
+  if (!Array.isArray(inbox?.nextStep) || !Array.isArray(inbox.nextTurn)) return undefined
+  /** Follow the host job-tool convention. Goal and plugin producers use other source kinds. */
+  const isHuman = (message: unknown): boolean => {
+    /** Read only the host's role and producer marker, including optional legacy fields. */
+    const entry = message as { role?: unknown; source?: { kind?: unknown } } | null | undefined
+    return entry?.role === "user" && entry.source?.kind === "user"
+  }
+  if (inbox.nextStep.some(isHuman)) return "step"
+  return inbox.nextTurn.some(isHuman) ? "turn" : "none"
 }
 
 // ── workspace root: the ONE resolution every mpd plugin (and only it) uses ────
@@ -6121,6 +6150,16 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       return typeof registered === "function" ? registered : noop
     },
 
+    /** Use the host's dynamic context snapshot path instead of rewriting a complete system prompt. */
+    registerPromptContext(context: DshPromptSection): (() => void) | undefined {
+      /** Optional native runtime context registry, resolved against this host at call time. */
+      const systemPrompt = service("systemPrompt")
+      if (typeof systemPrompt?.context !== "function") return undefined
+      /** The registration's scope-owned disposer, or a no-op for a recording host. */
+      const registered = systemPrompt.context(context)
+      return typeof registered === "function" ? registered : noop
+    },
+
     /** Install a tool guard whose exec argument is always an object. */
     guardTool(guard: (exec: DshToolExec) => string | undefined): () => void {
       /** The tools registry, or a THROW explaining that no guard could be installed. */
@@ -6537,19 +6576,50 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
           ...(spec.outputSchema === undefined ? {} : { outputSchema: spec.outputSchema }),
           ...(spec.maxDepth === undefined ? {} : { maxDepth: spec.maxDepth }),
         }
-        /** The activation spec in the DUAL shape 0.2.2-rc.1 and rc.2+ each read. */
-        const activation: any = await subagents.startActivation.call(subagents, dualShapeActivationSpec({
-          provider,
-          label: spec.label,
-          signal,
-          // The host's own subagent caller (`dsh-tool-subagent`) delivers to the parent, so this
-          // is the spelling this seam is given rather than one invented here.
-          delivery: "parent",
-        }, activationRequest))
-        // NOT awaited here: the caller owns the child's lifetime now, and `result` normalizes and
-        // releases the activation when it settles, whichever way it settles.
-        return activationHandleOf(activation, subagents, spec.parent)
+        /** An unscoped consult uses the longstanding native start without additional registrations. */
+        const files = spec.helperFiles
+        if (files === undefined) {
+          /** The start request shape both supported native host generations accept. */
+          const activation: unknown = await subagents.startActivation.call(subagents, dualShapeActivationSpec({ provider, label: spec.label, signal, delivery: "parent" }, activationRequest))
+          return activationHandleOf(activation, subagents, spec.parent)
+        }
+        if (provider !== "spawn" || typeof service("tools")?.guard !== "function") throw new Error("scoped one-shot requires native child and tool-guard support")
+        if (files.current?.() === false) throw new Error("the original helper assignment changed before admission")
+        /** A reserved child id ties policy to the exact new worker, including during concurrent starts. */
+        const childId = randomUUID()
+        /** Restrict arguments even on a host that exposes more file tools in the child scope. */
+        const offGuard = adapter.guardTool((exec) => sessionIdOfAgent(exec.agent) === childId ? helperFileRefusal(files, exec.name, exec.arguments) : undefined)
+        /** Authorize no tools before the scoped restriction lands inside native creation. */
+        let installed = false
+        /** The host awaits creation listeners before submitting the child's first request. */
+        const offCreated = onEvent("agent/created", (payload) => {
+          /** The exact local native agent, before its first model request. */
+          const child = (payload as { agent?: unknown } | undefined)?.agent
+          if (sessionIdOfAgent(child) !== childId) return
+          /** An empty scope offers no tools; reading writable files is permitted. */
+          const allow = files.write.length > 0 ? ["read", "write", "edit"] : files.read.length > 0 ? ["read"] : []
+          applyScopedRestriction(child, { allow })
+          installed = true
+        })
+        try {
+          if (offCreated === undefined) throw new Error("scoped one-shot requires the native agent creation hook")
+          /** Caller delivery keeps the helper report on the owner's explicit collection path. */
+          const activation: unknown = await subagents.startActivation.call(subagents, dualShapeActivationSpec({ provider, label: spec.label, signal, delivery: "caller", childId }, { ...activationRequest, cwd: files.checkout }))
+          if (!installed) {
+            await releaseActivation(activation)
+            throw new Error("the host did not publish the reserved scoped helper")
+          }
+          /** The supervisor retains the guard for exactly the child's execution lifetime. */
+          const handle = activationHandleOf(activation, subagents, spec.parent)
+          return { ...handle, result: handle.result.finally(offGuard) }
+        } catch (error) {
+          offGuard()
+          throw error
+        } finally {
+          offCreated?.()
+        }
       }
+      if (spec.helperFiles !== undefined) throw new Error("scoped one-shot requires native child start support")
       // The RETIRED generation: `start(mode, request)` returned a run whose `output` was already the
       // flattened string. Kept reachable so this adapter still boots an older host.
       if (typeof subagents.start !== "function") throw new Error("mpd-dsh-adapter: the harness subagent service exposes neither startActivation() nor start()")

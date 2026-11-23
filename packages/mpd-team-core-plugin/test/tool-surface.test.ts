@@ -131,7 +131,7 @@ describe("the consolidated surface", () => {
       return ((tool?.parameters as { properties?: { action?: { enum?: string[] } } })?.properties?.action?.enum ?? [])
     }
     // plan absorbed create/add_member/create_task/edit_plan/approve/delete/status
-    expect(actions("agent_teams_plan").sort()).toEqual(["add_member", "approve", "create", "create_task", "delete", "edit", "status"])
+    expect(actions("agent_teams_plan").sort()).toEqual(["add_member", "approve", "create", "create_task", "delete", "edit", "roster", "status"])
     // task absorbed claim_task/task_contract/dispatch_release
     // task absorbed claim_task/task_contract/dispatch_release, and (2026-10-07) gained the TERMINAL
     // verbs `complete`/`fail`: with the official `team_task_*` row disabled in a dsh-tui boot this board
@@ -140,7 +140,7 @@ describe("the consolidated surface", () => {
     // one, so a lane added mid-run could not enter the DAG at all (contract team-tool plan surface §2).
     // (2026-11-02) `context`/`handoff` join with the team toolchain completion (D4): the member's own
     // occupancy and its checkpoint document are steps of the SAME workflow, not new tools.
-    expect(actions("agent_teams_task").sort()).toEqual(["claim", "complete", "context", "contract", "depend", "fail", "handoff", "release"])
+    expect(actions("agent_teams_task").sort()).toEqual(["claim", "complete", "context", "contract", "depend", "fail", "handoff", "progress", "release"])
     // dispatch absorbed dispatch/dispatch_release
     expect(actions("agent_teams_dispatch").sort()).toEqual(["release", "run"])
     // mail absorbed mailbox (and the older observation-only counter); `permit`/`wait` join with the
@@ -149,7 +149,7 @@ describe("the consolidated surface", () => {
     // control absorbed halt/resume, and (2026-11-02) the two seat verbs `fence`/`unfence` (D4): a fenced
     // member is never messaged, so closing a seat belongs beside the team-level holds. (2026-11-03) `end`
     // joins as the TERMINAL verb of the same plane: before it, no supported call could close a LIVE team.
-    expect(actions("agent_teams_control").sort()).toEqual(["end", "fence", "halt", "resume", "unfence"])
+    expect(actions("agent_teams_control").sort()).toEqual(["end", "fence", "halt", "resume", "unfence", "wake"])
   })
 
   test("the retired TOOL NAMES are gone — a re-added one would redden here", () => {

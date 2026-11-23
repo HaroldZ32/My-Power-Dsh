@@ -15,7 +15,7 @@ import { join } from "node:path"
 
 import { approveTeam, runDispatch, type TeamActionCaller, type TeamActionDeps } from "../src/team-actions"
 import { addMember, addTask, stagePlan, writePlan } from "../src/plan-store"
-import { activeTeamId, readTeam, teamRecordPath, type TeamRecord, type TeamTaskRecord } from "../src/team-store"
+import { activeTeamId, endTeamRecord, readTeam, teamRecordPath, type TeamRecord, type TeamTaskRecord } from "../src/team-store"
 import type { StagedPlan } from "../src/plan-store"
 import type { DshTeamExecutor, DshTeamSpawnRequest } from "../../mpd-dsh-adapter-plugin/src/index.ts"
 
@@ -353,7 +353,9 @@ describe("in-flight exclusion — a second concurrent caller is refused", () => 
     // EXACTLY ONE OF EACH: one spawn, one record on disk.
     expect(observed.spawns).toHaveLength(1)
     expect(readdirSync(join(observed.workspace, ".mpd", "team", "teams")).filter((name) => name.endsWith(".json"))).toHaveLength(1)
-    // AND THE SLOT IS FREE AGAIN after the refusal AND the completed pass: a fresh wave approves.
+    // End the first project run before checking that the approval slot is reusable.
+    if (outcome.team === undefined) throw new Error("first approval returned no team")
+    endTeamRecord(observed.workspace, outcome.team.teamId, "first wave ended", new Date())
     stageWave(observed.workspace)
     /** The next wave's approval, which a leaked slot would refuse. */
     const next = await approveTeam(deps, { ...LIVE, workspace: observed.workspace })

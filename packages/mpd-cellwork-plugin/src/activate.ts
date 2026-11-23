@@ -47,6 +47,7 @@ import type { TeamActionsServiceView } from "./caller"
 import type { DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 import { findSplitTicket } from "./staging"
 import { growExecutionSeats, type SeatGrowthResult } from "./elastic"
+import { fixedOwners, type FixedSeat } from "./fixed-roster"
 
 /**
  * The placeholder sentence a frozen contract carries until {@link withLoopId} replaces it.
@@ -93,6 +94,8 @@ export interface ActivateDeps {
   captainAgent: unknown
   /** The measured, ACCEPTED split verdict being materialised. */
   split: SplitVerdict
+  /** The authenticated fixed pool, when this host mounts the project identity service. */
+  fixedRoster?: readonly FixedSeat[]
   /** The roster persona text for one role, or null when the roster service cannot answer. */
   personaFor: (role: string) => string | null
   /** Read the live team record by id, or undefined when the team service cannot answer. */
@@ -104,6 +107,10 @@ export interface ActivateDeps {
    * which is today's behaviour — never a refused activation.
    */
   teams?: () => BoardTeamService | undefined
+  /** Seal an exact canonical producer document after it receives its real loop id. */
+  sealContract?: (loopId: string) => { sha256: string } | { refused: string }
+  /** Detect an interrupted new loop publication without reopening a legacy frozen contract. */
+  contractPending?: (path: string) => boolean
   /**
    * The canonical roster role names, for runtime seat growth (§4.1).
    *
@@ -325,6 +332,8 @@ export function memberPrompt(deps: Pick<ActivateDeps, "cell" | "personaFor" | "c
   const persona = deps.personaFor(ownerRole)
   /** One line per owned task: its key and subject. */
   const taskLines = owned.map((task) => "  · " + task.key + " — " + task.subject)
+  /** Only execution owners with a real write scope can start project-scoped one-shots. */
+  const mayDelegate = owned.some((task) => (task.kind === "work" || task.kind === "repair" || task.kind === "integration") && task.writeScopes.length > 0)
   return [
     ...(persona === null ? [] : [persona, ""]),
     "[mpd-cellwork] You are " + memberName + " (" + ownerRole + ") on cell " + deps.cell.cellId + ".",
@@ -342,6 +351,7 @@ export function memberPrompt(deps: Pick<ActivateDeps, "cell" | "personaFor" | "c
     "4. On completion: agent_teams_task {action:\"complete\", task_id, note:\"<one line>\"}.",
     "5. If you need a user decision, mail the captain; the captain relays the question. Do not guess.",
     "6. If the plugin tells you to CHECKPOINT, call cellwork_handoff and end your turn.",
+    ...(mayDelegate ? ["For genuinely independent work, use cellwork_delegate for a bounded subtask when useful without captain approval, and retain responsibility for the result."] : []),
   ].join("\n")
 }
 
@@ -351,15 +361,21 @@ export function memberPrompt(deps: Pick<ActivateDeps, "cell" | "personaFor" | "c
  * @param task - the review task's verdict row.
  * @param workTask - the work task it reviews.
  * @param cellId - the cell.
+ * @param workspace - the canonical project state root when delivering this description.
+ * @param additional - other explicitly reviewed producer tasks with actual frozen contracts.
  * @returns the task description.
  */
-export function reviewTaskDescription(task: SplitTaskVerdict, workTask: SplitTaskVerdict, cellId: string): string {
-  /** The contract path, relative to the workspace, that the verifier is handed. */
-  const contract = contractRelativePath(cellId, workTask.key)
+export function reviewTaskDescription(task: SplitTaskVerdict, workTask: SplitTaskVerdict | undefined, cellId: string, workspace?: string, additional: readonly SplitTaskVerdict[] = []): string {
+  /** Every supplied producer reference uses its real file, not the review's unwritten own key. */
+  const pathOf = (key: string): string => workspace === undefined ? contractRelativePath(cellId, key) : contractPath(workspace, cellId, key)
+  if (workTask === undefined) return task.description
   return [
     "VERIFY the work task " + JSON.stringify(workTask.key) + " (" + workTask.subject + ") as a BLIND reviewer.",
-    "Frozen contract: " + contract + " — read it (and the repository documentation) BEFORE the implementation.",
-    "It names the verification loop to bind with `mpd_verify_seat`; the loop was opened at activation.",
+    "FROZEN CONTRACT: " + pathOf(workTask.key),
+    ...additional.map((producer) => "Additional frozen producer contract (" + producer.key + "): " + pathOf(producer.key)),
+    ...(task.description.trim() === "" ? [] : ["Review requirements: " + task.description]),
+    "Read the supplied frozen contracts and repository documentation BEFORE the implementation.",
+    "Each producer contract names its own loop to bind with `mpd_verify_seat`; the loop was opened at activation.",
     "Then run the gates it lists, and record the verdict with `mpd_verify_record`",
     "(a PASS cites the documents it rests on and the gate evidence ids; a FAIL names each finding and its",
     "document source). You never fix the work: a FAIL bounces it back to its writer as a repair task.",
@@ -518,6 +534,8 @@ type PlanCall = (arguments_: Record<string, unknown>) => Promise<{ ok: true; val
 interface MintSeedMember {
   /** The board name the approval raises. */
   name: string
+  /** Temporary seed on a project without an established fixed pool. */
+  scope?: "run"
   /** The roster role the seat routes by. */
   role: string
   /** The description the roster row carries. */
@@ -585,6 +603,12 @@ async function mintExecutionTeam(call: PlanCall, input: MintExecutionInput): Pro
  * @returns the artifacts created, or the refusal sentence plus the partial it may resume from.
  */
 export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResult> {
+  if (deps.fixedRoster !== undefined) {
+    try { deps = { ...deps, split: fixedOwners(deps.split, deps.fixedRoster) } } catch (error) {
+      if (error instanceof Error) return { ok: false, error: error.message }
+      throw error
+    }
+  }
   // THE BOARD IS RESOLVED, NOT TRUSTED FROM THE RECORD (§7.1/§7.1a sites 3 and 8): a normal cell's
   // planning team goes clean-terminal and activation lands on a FRESH team, so `cell.teamId` names the
   // dead one. Every team read below — the live-roster seed, the cancellation, the final report — goes
@@ -722,7 +746,7 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     // F1: a KEPT task from a cell activated BEFORE `activatedLoops` existed has no recorded id, but its
     // frozen contract may already name a loop. Re-opening would duplicate the loop and rewrite a contract
     // a verifier may be reading — so such a task is skipped, and its arming satisfies the dispatch gate.
-    if (keptKeys.has(task.key) && contractAlreadyNamesLoop(deps, task.key)) {
+    if (keptKeys.has(task.key) && contractAlreadyNamesLoop(deps, task.key) && deps.contractPending?.(contractPath(deps.workspace, deps.cell.cellId, task.key)) !== true) {
       armedByContract.add(task.key)
       continue
     }
@@ -770,7 +794,7 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     const minted = await mintExecutionTeam(call, {
       planName: "cell " + deps.cell.cellId + " execution",
       description: deps.cell.objective,
-      member: { name: seedMember, role: seedRole, description: seedMember, prompt: memberPrompt(deps, seedMember, seedRole, seedOwned) },
+      member: { name: seedMember, role: seedRole, description: seedMember, prompt: memberPrompt(deps, seedMember, seedRole, seedOwned), ...(deps.fixedRoster?.length === 0 ? { scope: "run" } : {}) },
     })
     if (!minted.ok) return fail("cellwork_activate could not mint the execution team after the planning team " + JSON.stringify(teamId) + " ended: " + minted.error)
     mintedTeamId = minted.teamId
@@ -861,7 +885,7 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     /** The member append; the live arm raises the teammate immediately. The ROLE carries the routing. */
     const added = await call({
       action: "add_member",
-      member: { name: memberName, role: ownerRole, description: memberName + (pureVerifier ? " (verifier)" : ""), prompt: memberPrompt(deps, memberName, ownerRole, owned) },
+      member: { name: memberName, role: ownerRole, description: memberName + (pureVerifier ? " (verifier)" : ""), prompt: memberPrompt(deps, memberName, ownerRole, owned), ...(deps.fixedRoster?.length === 0 ? { scope: "run" } : {}) },
     })
     if (!added.ok) {
       // A DUPLICATE IS A RECONCILIATION, NOT A FAILURE (contract A3): the member exists on the live
@@ -913,12 +937,18 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     // Any dispatcher — the team plane today — delivers the description VERBATIM, so putting the pointer
     // here is what keeps Amendment 6 R1 true through the plane instead of only through cellwork's own
     // message text. The pointer names the SPLIT KEY's contract file, never the board id's.
-    /** The path the verifier's loop froze for this split key. */
-    const contractPointer = "FROZEN CONTRACT: " + contractRelativePath(deps.cell.cellId, task.key)
-    /** The task's description; a review task additionally names its frozen contract. */
-    const description = (task.kind === "review"
-      ? reviewTaskDescription(task, deps.split.tasks.find((candidate) => candidate.key === task.blockedBy[0]) ?? task, deps.cell.cellId)
-      : task.description) + "\n\n" + contractPointer
+    /** Each direct dependency may supply an actual frozen producer contract; requirement rows may not. */
+    const producers = task.kind !== "review" ? [] : task.blockedBy.flatMap((key) => {
+      /** Use the accepted producer from the split and its existing frozen file, including a kept task. */
+      const producer = deps.split.tasks.find((candidate) => candidate.key === key && candidate.kind !== "review")
+      return producer !== undefined && existsSync(contractPath(deps.workspace, deps.cell.cellId, key)) ? [producer] : []
+    })
+    /** The task's own file exists only for code work whose contract was materialized above. */
+    const fullPath = contractPath(deps.workspace, deps.cell.cellId, task.key)
+    /** The acceptance text has one primary envelope, and no fabricated review document. */
+    const description = task.kind === "review"
+      ? reviewTaskDescription(task, producers[0], deps.cell.cellId, deps.workspace, producers.slice(1))
+      : task.description + (task.writeScopes.length > 0 ? "\n\nFROZEN CONTRACT: " + fullPath : "")
     /** The live append. */
     const appended = await call({
       action: "create_task",
@@ -951,8 +981,10 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     /** The board id this task was materialised as. */
     const boardId = boardIds.get(task.key) ?? ""
     if (boardId === "") return fail("cellwork_activate has no board id for " + JSON.stringify(task.key) + " — refusing to open a verify loop for a row that is not on the board")
-    /** The relative contract path the loop freezes. */
-    const contract = contractRelativePath(deps.cell.cellId, task.key)
+    /** Legacy planes still use the working workspace; native project loops bind the original file. */
+    const path = contractPath(deps.workspace, deps.cell.cellId, task.key)
+    /** The contract reference we hand to both the seat and record. */
+    const contract = deps.sealContract === undefined ? contractRelativePath(deps.cell.cellId, task.key) : path
     /** The board member that OWNS this code task (contract C1). */
     const memberName = resolvedMemberName(task)
     /** The member row that carries the owner's agent identity, from this pass or the earlier seed. */
@@ -962,6 +994,12 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     // display name. The cell record's `sessionId` is that identity; `executorRef` is the fallback for a
     // composition that hands back only the executor handle.
     const writerId = (owner?.sessionId ?? "").trim() === "" ? (owner?.executorRef ?? "").trim() : (owner?.sessionId ?? "").trim()
+    /** The named reviewer owns this producer loop, including when its execution seat was retained. */
+    const review = reviewerOf(task.key)
+    /** Select the exact accepted review owner rather than an arbitrary live member. */
+    const reviewName = review === undefined ? undefined : resolvedMemberName(review)
+    /** The original verifier's native session, when this split declares one. */
+    const verifier = reviewName === undefined ? undefined : (newMembers[reviewName] ?? existingMembers.get(roleKey(reviewName)))?.sessionId
     /** The loop-open call, under the CAPTAIN'S OWN agent (contract A4). */
     let opened: { ok: boolean; value?: unknown; error?: unknown }
     try {
@@ -972,6 +1010,7 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
           contract,
           scope: [...task.writeScopes],
           task_id: boardId,
+          ...(deps.sealContract === undefined || !verifier ? {} : { verifier }),
           ...(writerId === "" ? {} : { writer_id: writerId, writer_reason: "member: " + memberName }),
         },
         agent: deps.captainAgent,
@@ -986,19 +1025,22 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     /** The minted loop id. */
     const loopId = typeof value.loopId === "string" ? value.loopId : ""
     if (loopId === "") return fail("cellwork_activate opened no loop id for " + JSON.stringify(task.key) + " — refusing to dispatch unarmed work")
+    // A replayed sealed project loop already checked its file. Never rewrite that accepted revision.
+    if (typeof value.contractSha256 !== "string" || value.contractSha256 === "") {
+      /** Include the actual producer board row and loop id in the final accepted bytes. */
+      const stored = buildContractDoc(deps, task, review, boardId)
+      try {
+        atomicWriteText(path, withLoopId(stored, loopId) + "\n")
+        /** Capture the final bytes before the loop is considered ready for dispatch. */
+        const sealed = deps.sealContract?.(loopId)
+        if (sealed !== undefined && "refused" in sealed) return fail("cellwork_activate could not seal the producer contract for " + JSON.stringify(task.key) + ": " + sealed.refused)
+      } catch (error) {
+        return fail("cellwork_activate could not finalize the contract for " + JSON.stringify(task.key) + ": " + errorText(error))
+      }
+    }
     loopIds.set(task.key, loopId)
     loops.push({ taskKey: task.key, boardId, loopId })
     partial.loopIds[task.key] = loopId
-    // THE FROZEN CONTRACT NAMES THE LOOP (the existing `withLoopId` path). The path is DERIVED, not
-    // remembered: on a resume the contract was written by the pass that crashed, before the loop existed.
-    const path = partial.contracts[task.key] ?? contractPath(deps.workspace, deps.cell.cellId, task.key)
-    /** The stored document, so the loop id is appended to what the verifier reads. */
-    const stored = buildContractDoc(deps, task, reviewerOf(task.key), boardId)
-    try {
-      atomicWriteText(path, withLoopId(stored, loopId) + "\n")
-    } catch (error) {
-      return fail("cellwork_activate could not rewrite the contract for " + JSON.stringify(task.key) + ": " + errorText(error))
-    }
     progress("loop", task.key)
   }
   // THE DISPATCH GATE (contract A3): only after EVERY task has a board id and EVERY code task has a loop
@@ -1086,6 +1128,7 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
       record: afterBoard.record,
       refreshRecord: () => deps.recordFor(afterBoard.teamId),
       rosterRoles: deps.rosterRoles?.() ?? [],
+      ...(deps.fixedRoster === undefined ? {} : { fixedRoster: deps.fixedRoster }),
       personaFor: deps.personaFor,
       now: deps.now,
     })

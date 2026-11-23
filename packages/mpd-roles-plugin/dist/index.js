@@ -1,6 +1,6 @@
 // packages/mpd-roles-plugin/src/index.ts
 import { existsSync as existsSync2, readFileSync } from "node:fs";
-import { join as join5, resolve as resolve3 } from "node:path";
+import { join as join5, resolve as resolve4 } from "node:path";
 
 // packages/mpd-roles-plugin/src/roles.data.ts
 var ROLES = [
@@ -2181,22 +2181,61 @@ function installRosterSection(dsh, options) {
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID as randomUUID2 } from "node:crypto";
-import { resolve as resolve2, sep as sep2 } from "node:path";
+
+// packages/mpd-dsh-adapter-plugin/src/scoped-helper.ts
+import { realpathSync } from "node:fs";
+import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
+function helperTarget(checkout, value) {
+  try {
+    const root = realpathSync(checkout);
+    const path = resolve(root, value);
+    const local = relative(root, path);
+    if (local === "" || local === ".." || local.startsWith(`..${sep}`) || isAbsolute(local) || local.split(sep).some((item) => item === ".mpd" || item === ".git"))
+      return;
+    let probe = path;
+    while (probe !== root) {
+      try {
+        if (realpathSync(probe) !== probe)
+          return;
+      } catch (error) {
+        if (!(error instanceof Error) || !("code" in error) || error.code !== "ENOENT")
+          throw error;
+      }
+      probe = dirname(probe);
+    }
+    return local.split(sep).join("/");
+  } catch (error) {
+    if (error instanceof Error)
+      return;
+    throw error;
+  }
+}
+function helperFileRefusal(scope, name, args) {
+  if (name === "structured_output")
+    return;
+  if (scope.current?.() === false)
+    return "The original assignment no longer authorizes this helper.";
+  const path = typeof args === "object" && args !== null && "file_path" in args && typeof args.file_path === "string" ? helperTarget(scope.checkout, args.file_path) : undefined;
+  const allowed = path !== undefined && (name === "read" ? scope.read.includes(path) || scope.write.includes(path) : (name === "write" || name === "edit") && scope.write.includes(path));
+  return allowed ? undefined : "This one-shot can use only the exact file tools and paths its owner delegated.";
+}
+// packages/mpd-dsh-adapter-plugin/src/index.ts
+import { resolve as resolve3, sep as sep3 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
-import { dirname } from "node:path";
+import { dirname as dirname2 } from "node:path";
 import { fileURLToPath } from "node:url";
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
 }
 function bundleRootOf(moduleUrl) {
-  return dirname(dirname(dirname(dirname(fileURLToPath(moduleUrl)))));
+  return dirname2(dirname2(dirname2(dirname2(fileURLToPath(moduleUrl)))));
 }
 
 // packages/mpd-mcp-shared/log-sink.ts
 import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { isAbsolute, join as join3, relative, resolve, sep } from "node:path";
+import { isAbsolute as isAbsolute2, join as join3, relative as relative2, resolve as resolve2, sep as sep2 } from "node:path";
 var LOG_SUBDIR = join3(".mpd", "logs");
 var DEFAULT_MAX_BYTES = 1024 * 1024;
 var DEFAULT_MAX_LINE_BYTES = 8192;
@@ -2221,7 +2260,7 @@ function resolveLogRoots(env = process.env, cwd) {
       continue;
     let absolute;
     try {
-      absolute = resolve(candidate);
+      absolute = resolve2(candidate);
     } catch {
       continue;
     }
@@ -2246,8 +2285,8 @@ function owningRoot(roots, file) {
   for (const root of roots) {
     if (file === root)
       return root;
-    const rel = relative(root, file);
-    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel))
+    const rel = relative2(root, file);
+    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep2}`) && !isAbsolute2(rel))
       return root;
   }
   return null;
@@ -2562,10 +2601,10 @@ function sessionCwdOf(agent) {
 function workspaceRootOfAgent(agent) {
   const session = sessionCwdOf(agent);
   if (session !== undefined)
-    return resolve2(session);
+    return resolve3(session);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve2(override);
+    return resolve3(override);
   return process.cwd();
 }
 function workspaceRootOf(exec) {
@@ -2573,7 +2612,7 @@ function workspaceRootOf(exec) {
     return workspaceRootOfAgent(exec.agent);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
-    return resolve2(override);
+    return resolve3(override);
   return process.cwd();
 }
 var rowLogSinks = new Map;
@@ -2694,7 +2733,7 @@ function workspaceRootsOf(agents) {
     for (const agent of list) {
       const cwd = sessionCwdOf(agent);
       if (cwd !== undefined)
-        roots.add(resolve2(cwd));
+        roots.add(resolve3(cwd));
     }
     return [...roots];
   } catch {
@@ -4050,6 +4089,13 @@ function createDshAdapter(ctx, config = {}) {
       const registered = systemPrompt.section(section);
       return typeof registered === "function" ? registered : noop;
     },
+    registerPromptContext(context) {
+      const systemPrompt = service("systemPrompt");
+      if (typeof systemPrompt?.context !== "function")
+        return;
+      const registered = systemPrompt.context(context);
+      return typeof registered === "function" ? registered : noop;
+    },
     guardTool(guard) {
       const tools = requireService("tools", "cannot install a tool guard");
       if (typeof tools.guard !== "function")
@@ -4282,14 +4328,45 @@ function createDshAdapter(ctx, config = {}) {
           ...spec.outputSchema === undefined ? {} : { outputSchema: spec.outputSchema },
           ...spec.maxDepth === undefined ? {} : { maxDepth: spec.maxDepth }
         };
-        const activation = await subagents.startActivation.call(subagents, dualShapeActivationSpec({
-          provider,
-          label: spec.label,
-          signal,
-          delivery: "parent"
-        }, activationRequest));
-        return activationHandleOf(activation, subagents, spec.parent);
+        const files = spec.helperFiles;
+        if (files === undefined) {
+          const activation = await subagents.startActivation.call(subagents, dualShapeActivationSpec({ provider, label: spec.label, signal, delivery: "parent" }, activationRequest));
+          return activationHandleOf(activation, subagents, spec.parent);
+        }
+        if (provider !== "spawn" || typeof service("tools")?.guard !== "function")
+          throw new Error("scoped one-shot requires native child and tool-guard support");
+        if (files.current?.() === false)
+          throw new Error("the original helper assignment changed before admission");
+        const childId = randomUUID2();
+        const offGuard = adapter.guardTool((exec) => sessionIdOfAgent(exec.agent) === childId ? helperFileRefusal(files, exec.name, exec.arguments) : undefined);
+        let installed = false;
+        const offCreated = onEvent("agent/created", (payload) => {
+          const child = payload?.agent;
+          if (sessionIdOfAgent(child) !== childId)
+            return;
+          const allow = files.write.length > 0 ? ["read", "write", "edit"] : files.read.length > 0 ? ["read"] : [];
+          applyScopedRestriction(child, { allow });
+          installed = true;
+        });
+        try {
+          if (offCreated === undefined)
+            throw new Error("scoped one-shot requires the native agent creation hook");
+          const activation = await subagents.startActivation.call(subagents, dualShapeActivationSpec({ provider, label: spec.label, signal, delivery: "caller", childId }, { ...activationRequest, cwd: files.checkout }));
+          if (!installed) {
+            await releaseActivation(activation);
+            throw new Error("the host did not publish the reserved scoped helper");
+          }
+          const handle = activationHandleOf(activation, subagents, spec.parent);
+          return { ...handle, result: handle.result.finally(offGuard) };
+        } catch (error) {
+          offGuard();
+          throw error;
+        } finally {
+          offCreated?.();
+        }
       }
+      if (spec.helperFiles !== undefined)
+        throw new Error("scoped one-shot requires native child start support");
       if (typeof subagents.start !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagent service exposes neither startActivation() nor start()");
       const run = await subagents.start(provider, {
@@ -4812,7 +4889,7 @@ function createLazyDshAdapter(ctx, options) {
   let temporary;
   let warnedPending = false;
   let warnedMissing = false;
-  const resolve3 = () => {
+  const resolve4 = () => {
     if (mounted !== undefined)
       return mounted;
     const active = probeMpdDsh(ctx, true);
@@ -4836,12 +4913,12 @@ function createLazyDshAdapter(ctx, options) {
   };
   return new Proxy({}, {
     get(_target, property) {
-      const impl = resolve3();
+      const impl = resolve4();
       const value = impl[property];
       return typeof value === "function" ? value.bind(impl) : value;
     },
     has(_target, property) {
-      return property in resolve3();
+      return property in resolve4();
     }
   });
 }
@@ -5720,10 +5797,10 @@ function createConsultSupervisor(deps) {
       active += 1;
       return Promise.resolve();
     }
-    return new Promise((resolve3) => {
+    return new Promise((resolve4) => {
       queue.push(() => {
         active += 1;
-        resolve3();
+        resolve4();
       });
     });
   };
@@ -5733,15 +5810,15 @@ function createConsultSupervisor(deps) {
       active += 1;
       return Promise.resolve();
     }
-    return new Promise((resolve3) => {
+    return new Promise((resolve4) => {
       queue.unshift(() => {
         active += 1;
-        resolve3();
+        resolve4();
       });
     });
   };
-  const sleep = (ms) => new Promise((resolve3) => {
-    setTimer(resolve3, ms);
+  const sleep = (ms) => new Promise((resolve4) => {
+    setTimer(resolve4, ms);
   });
   const release = () => {
     active = Math.max(0, active - 1);
@@ -5758,8 +5835,8 @@ function createConsultSupervisor(deps) {
     let fail = () => {
       return;
     };
-    const done = new Promise((resolve3, reject) => {
-      settle2 = resolve3;
+    const done = new Promise((resolve4, reject) => {
+      settle2 = resolve4;
       fail = reject;
     });
     done.catch(() => {
@@ -6049,22 +6126,22 @@ function createConsultSupervisor(deps) {
     if (record.reported)
       return record.report ?? { ...viewOf(record), ...record.failure === undefined ? {} : { error: record.failure } };
     const bound = Math.min(CONSULT_WAIT_MAX_MS, Math.max(1, Math.trunc(Number(timeoutMs)) || CONSULT_WAIT_DEFAULT_MS));
-    return await new Promise((resolve3) => {
+    return await new Promise((resolve4) => {
       let timer;
       const timedOut = () => {
         if (timer !== undefined)
           clearTimer(timer);
-        resolve3(viewOf(record));
+        resolve4(viewOf(record));
       };
       timer = setTimer(timedOut, bound);
       record.done.then((report) => {
         if (timer !== undefined)
           clearTimer(timer);
-        resolve3(report);
+        resolve4(report);
       }, () => {
         if (timer !== undefined)
           clearTimer(timer);
-        resolve3({ ...viewOf(record), ...record.failure === undefined ? {} : { error: record.failure } });
+        resolve4({ ...viewOf(record), ...record.failure === undefined ? {} : { error: record.failure } });
       });
     });
   };
@@ -6117,6 +6194,7 @@ function createMpConsults(deps) {
     return view;
   };
   return {
+    scopedFiles: true,
     canonicalRole: (role, exec) => {
       const canonical = deps.canonicalRole(String(role ?? ""), exec);
       return canonical === null ? undefined : canonical;
@@ -6137,6 +6215,8 @@ function createMpConsults(deps) {
         raise: () => deps.raise({ ...spec, role, task }),
         ...spec.onSettled === undefined ? {} : { onSettled: spec.onSettled }
       });
+      if (spec.helperFiles !== undefined)
+        deps.scopedHandle?.(view.consultId, true);
       return { consultId: view.consultId, role, state: "running", startedAt: view.startedAt };
     },
     list: () => deps.supervisor.list(),
@@ -6152,7 +6232,10 @@ function createMpConsults(deps) {
     },
     collect: (consultId) => {
       try {
-        return deps.supervisor.collect(consultId);
+        const result = deps.supervisor.collect(consultId);
+        if (result.state !== "running")
+          deps.scopedHandle?.(consultId, false);
+        return result;
       } catch {
         return;
       }
@@ -6238,7 +6321,7 @@ function roleOfToolInput(surface, key) {
   return surface.roles.find((role) => role.extension !== null && (role.id === raw || normalizeRoleNameKey(role.name) === nameKey)) ?? null;
 }
 function personaPath(config, spec) {
-  return config.personasDir ? join5(resolve3(config.personasDir), spec.id + ".md") : join5(pkgRoot(), "packages", "mpd-roles-plugin", "personas", spec.id + ".md");
+  return config.personasDir ? join5(resolve4(config.personasDir), spec.id + ".md") : join5(pkgRoot(), "packages", "mpd-roles-plugin", "personas", spec.id + ".md");
 }
 function readPersona(config, spec) {
   const p = personaPath(config, spec);
@@ -6293,7 +6376,7 @@ function readExtensionPersona(root, file) {
   if (!root || !file)
     return null;
   try {
-    const path = resolve3(root, file);
+    const path = resolve4(root, file);
     if (existsSync2(path)) {
       const body = readFileSync(path, "utf8").trim();
       if (body)
@@ -6363,7 +6446,7 @@ function extensionRoles(ctx, exec, warn) {
         refuse2('role id "' + id + '" collides with the base roster — this extension role is not exposed');
         return;
       }
-      const personaFile = root === "" ? text2(item?.persona) : resolve3(root, text2(item?.persona));
+      const personaFile = root === "" ? text2(item?.persona) : resolve4(root, text2(item?.persona));
       const persona = readExtensionPersona(root, text2(item?.persona));
       if (persona === null) {
         refuse2("persona file is not readable: " + personaFile);
@@ -6627,8 +6710,15 @@ function apply(ctx, config = {}) {
     forceAfterMs: () => consultDeadmanBound(),
     toolInFlightMaxMs: () => consultInFlightBound()
   });
+  const scopedConsults = new Set;
   ctx.provide("mpdConsults", createMpConsults({
     supervisor: consultSupervisor,
+    scopedHandle: (id, active) => {
+      if (active)
+        scopedConsults.add(id);
+      else
+        scopedConsults.delete(id);
+    },
     raise: (spec) => raiseConsultAsync(spec, spec.exec, spec.maxDepth),
     canonicalRole: (role, exec) => {
       const surface = roleSurface(exec);
@@ -6738,6 +6828,10 @@ Work with the tools your role requires (read-only roles must never modify anythi
       throw new Error("mpd_role_spawn_async: " + spec.name + " has no configured route — an extension role must declare provider+model, and a roster agent needs its agentRoutes entry configured (/mpd-model)");
     }
     const run = await resolveRunRoute(dsh, primary, resolution.ok ? resolution.route.fallbacks ?? [] : []);
+    const helperFiles = args?.helperFiles;
+    if (helperFiles !== undefined && spec.readonly && helperFiles.write.length > 0)
+      throw new Error("a read-only helper role cannot accept writable paths");
+    const scopeHint = helperFiles === undefined ? "Work with the tools your role requires (read-only roles must never modify anything)." : `Use only these delegated paths. Read ${[...helperFiles.read, ...helperFiles.write].join(", ") || "none"}. Write ${helperFiles.write.join(", ") || "none"}.`;
     const prompt = spec.persona + `
 
 Task: ` + task + (args?.context ? `
@@ -6745,7 +6839,7 @@ Task: ` + task + (args?.context ? `
 Context:
 ` + String(args.context) : "") + `
 
-Work with the tools your role requires (read-only roles must never modify anything). End with ONLY the structured report (role/summary/recommendation/details/evidence).`;
+` + scopeHint + " End with ONLY the structured report (role/summary/recommendation/details/evidence).";
     const depthCap = typeof maxDepth === "number" && Number.isFinite(maxDepth) && maxDepth >= 1 ? Math.floor(maxDepth) : spawnMaxDepthOf(exec.agent);
     return dsh.spawnAgentAsync({
       label: spec.name,
@@ -6758,7 +6852,7 @@ Work with the tools your role requires (read-only roles must never modify anythi
       outputSchema: REPORT_SCHEMA,
       maxDepth: depthCap,
       ...run.route.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: run.route.reasoningEffort } },
-      ...spec.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {}
+      ...helperFiles === undefined ? spec.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {} : { helperFiles }
     });
   }
   dsh.registerTool({
@@ -6788,10 +6882,12 @@ state: ` + v.state + " elapsed: " + v.elapsedMs + "ms" : "")) },
     execute: async (args, _exec) => {
       const action = String(args?.action ?? "").trim();
       if (action === "list")
-        return { action, consults: consultSupervisor.list() };
+        return { action, consults: consultSupervisor.list().filter((entry) => !scopedConsults.has(entry.consultId)) };
       const consultId = String(args?.consultId ?? "").trim();
       if (consultId === "")
         throw new Error('mpd_role_consult: consultId required for action "' + action + '"');
+      if (scopedConsults.has(consultId))
+        throw new Error("project helpers are collected by the owning assignment via cellwork_consult");
       if (action === "wait") {
         const timeoutMs = Number(args?.timeoutMs ?? 30000);
         return { action, ...await consultSupervisor.wait(consultId, timeoutMs) };
