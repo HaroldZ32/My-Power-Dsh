@@ -470,29 +470,21 @@ describe("approval builds an mpd-owned team record", () => {
     expect(plain.blockers).toBeUndefined()
   })
 
-  test("a reference that names NOTHING is reported at approval, on the task AND in the plan", async () => {
-    // The other half: some references CANNOT be resolved (free text that matches no subject, or a
-    // number past the plan's own length). Those must not vanish — the board task keeps the text beside
-    // the report, the approval ANSWER carries it (so the captain sees it in the same turn), and the
-    // archived plan keeps it for whoever reads the plan afterwards.
+  test("refusing a dangling reference leaves the original plan editable and unarchived", async () => {
     /** The harness under test. */
     const h = harness()
     sandboxes.push(h.workspace)
-    /** The staged plan's id, which names its archive directory. */
+    /** The persisted draft id and staging file name are independent. */
     const staged = (await h.call("agent_teams_plan", { action: "create", name: "dangling", description: "d" })) as { plan: { planId: string } }
     await h.call("agent_teams_plan", { action: "create_task", task: { subject: "only", description: "d", blocked_by: ["the review task"] } })
-    /** What the approval answered. */
-    const approved = (await h.call("agent_teams_plan", { action: "approve" })) as { created?: { unresolved?: Array<{ taskId: string; references: string[] }> } }
-    /** The board the approval built. */
-    const board = listTeams(h.workspace)[0].tasks
-    expect(board[0].blockedBy).toEqual(["the review task"])
-    expect(board[0].unresolvedBlockers).toEqual(["the review task"])
-    // The answer names the task and the exact text, so a captain cannot miss it…
-    expect(approved.created?.unresolved).toEqual([{ taskId: "T1", references: ["the review task"] }])
-    // …and the ARCHIVED plan carries the same reading, for whoever reads it afterwards.
-    /** The archived copy of the approved plan. */
-    const archived = JSON.parse(readFileSync(join(h.workspace, ".mpd", "team", "archive", staged.plan.planId, "plan.json"), "utf8")) as { created?: { unresolved?: unknown } }
-    expect(archived.created?.unresolved).toEqual([{ taskId: "T1", references: ["the review task"] }])
+    await expect(h.call("agent_teams_plan", { action: "approve" })).rejects.toThrow(/unresolved blocked_by.*the review task/u)
+    expect(listTeams(h.workspace)).toEqual([])
+    expect(h.calls).toEqual([])
+    await h.call("agent_teams_plan", { action: "edit", tasks: [{ subject: "only", description: "d", blocked_by: [] }] })
+    await h.call("agent_teams_plan", { action: "approve" })
+    /** The archive contains the repaired plan under the original staging id. */
+    const archived = JSON.parse(readFileSync(join(h.workspace, ".mpd", "team", "archive", staged.plan.planId, "plan.json"), "utf8")) as { tasks: unknown[] }
+    expect(archived.tasks).toMatchObject([{ subject: "only", blockedBy: [] }])
   })
 })
 

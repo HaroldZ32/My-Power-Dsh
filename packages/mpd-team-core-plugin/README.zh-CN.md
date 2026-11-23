@@ -13,6 +13,57 @@
 
 ## 工具
 
+### 队长唤醒
+
+使用 `agent_teams_control` 为当前团队登记一个条件，然后结束当前回合。登记所属的队长会话可以设置、查看和取消它。
+
+```json
+{"action":"wake","wake":{"action":"arm","task_ids":["T2","T3"],"mode":"all"}}
+{"action":"wake","wake":{"action":"arm","event":"mail","from_member":"M1"}}
+{"action":"wake","wake":{"action":"status"}}
+{"action":"wake","wake":{"action":"cancel","id":"<registration-id>"}}
+```
+
+任务模式默认为 `all`。选择 `any` 时，只要第一项所选任务进入 `completed`、`failed` 或 `cancelled`，条件就成立。
+`event: "mail"` 等待带有当前团队标记并发给队长的邮件。可用 `from_member` 限定名册 ID。唤醒通知会提供邮件 ID，
+正文仍在 `agent_teams_mail` 中。任务条件已成立或已有匹配的未读邮件时返回 `satisfied`，可在当前回合继续。
+重复登记同一个等待条件会返回原 ID。登记不同条件前请取消当前等待。为 `status` 加上 `id` 可查看单条记录。
+
+`waiting` 表示条件仍未满足。`ready` 表示条件已成立，将在原队长会话空闲时尝试递交。`submitted` 表示宿主已接收
+一条下一回合消息，可查阅宿主回合记录确认该回合确已运行。`cancelled` 和 `failed` 表示等待已结束。`delivery-unknown`
+表示已登记递交尝试，但因中断没有拿到确定的宿主回执。唤醒只带任务 ID 和终态，或邮件 ID。
+
+响应会显示所选团队 ID。团队关闭时，已经记录的就绪结果以及在关闭时刻或之前进入终态的任务仍可满足等待条件。
+尚未满足的等待会失败。关闭后首次观察到的邮件必须带有严格早于关闭时刻的发送时间。
+
+普通 `agent_teams_mail` 发给团队队长的邮件在提交后会通过进程内事件通知唤醒。其他生产者或进程写入的同类邮件
+依赖文件系统通知或后续检查。文件监视不可用时，可能要等宿主状态变化或原会话重新打开才会发现这些写入。
+`cellwork_send` 使用工作单元地址，不属于此团队邮件条件。
+
+等待记录在常驻宿主重启后仍保留。原会话在原工作区重新打开时会再次检查记录，已停止的宿主也需要重新打开原会话才能递交回合。
+必须能观察到原队长的空闲状态，且该会话必须支持下一回合递交。递交中断后，请先用唤醒 ID 检查原会话，再决定是否重新登记。
+唤醒功能本身不会轮询模型。人为输入、运行中的目标以及其他宿主事件仍可独立启动回合。
+
+### 在当前回合等待团队事件
+
+如果希望队长等待团队工作时仍保留已启用的目标，可使用 `wait`。原工具调用会等待已提交的事件，并在同一回合返回，
+期间无需轮询，也不会提交后续回合。队长回合正在运行时，宿主不会开始下一轮自动目标。调用或回合结束后，目标可照常继续。
+
+```json
+{"action":"wake","wake":{"action":"wait","task_ids":["T2","T3"],"mode":"all"}}
+{"action":"wake","wake":{"action":"wait","event":"mail","from_member":"M1"}}
+```
+
+任务和邮箱筛选规则与 `arm` 相同。结果为 `wait: { state, teamId, match?, reason? }`。条件已成立时立即返回 `matched`。
+原队长收到人工输入时返回 `steered`，消息仍留在宿主收件箱。宿主能交付已中止的调用结果时返回 `cancelled`，宿主或插件卸载时
+返回 `disposed`。团队关闭时条件仍未满足则返回 `ended`。每个队长会话只能运行一个等待。开始等待前请取消挂起的持久登记。
+当前回合的等待没有持久登记，进程退出后无法恢复。
+
+等待需要原会话处于运行中，宿主还须提供可观测的收件箱和取消事件。返回 `unsupported` 时可以继续当前回合，或者在适合持久
+等待时使用 `arm` 并结束回合。若宿主缺少可选的回合结束接口，等待仍可响应人工后续消息，宿主会在正常的回合边界接收它。
+
+### 其他团队操作
+
 | 工具 | `action` 取值 | 作用 |
 |---|---|---|
 | `agent_teams_plan` | `create`、`add_member`、`create_task`、`edit`、`approve`、`delete`、`status` | 把团队暂存成**计划**；`approve` 通过**团队执行器**执行它（原生后端在被钉住的宿主上（harness 0.2.1+）经 `ctx.subagents.startActivation` 拉起持久子会话，只把已退役的 `ctx.subagents.startContinuable` 留作老宿主的回退 —— `CONTINUABLE_START_MEMBERS`，由 `continuableStartMember` 从新到旧探测；官方 `dsh.team*` 调用是**回退**），并按 mpd 记录解析 `blocked_by`/`owner`，持久化声明的 `kind`（取自 `task.kind` 或其顶层别名，未知词会被**拒绝**）；0 成员且 0 任务的计划会被**拒绝**；`delete` 归档；`status` 在该后端生效时把记录与官方读数并排给出 |
@@ -24,6 +75,20 @@
 `/agent-teams <这支团队是干什么的>` 按当前目标暂存计划。
 
 **依赖守卫（mpd 记录面）。** 每次 `create_task` **必须**声明它的依赖答案——`blocked_by: [...]`（数组，可为空：显式声明为根）或 `independent: true`；两者都不给、给非数组、两个别名互相矛盾、自环或有环，一律**拒绝**并点名该任务。`approve` 会**拒绝**两个写作用域重叠（去掉尾部 `/**` 后相等，或在**段边界**上互为前缀；`**` 与 `.` 覆盖全部；空作用域列表永不重叠）、且彼此之间**没有**依赖路径的任务，并引用这一对任务与两种补救：补一条边，或让作用域互不相交。`claim` 会**拒绝**声明阻塞尚未满足的任务，用的是 `agent_teams_dispatch` **同一套**就绪判定；`complete`/`fail`/`release` 仍保持可用；按 OPT-1，**失败**的阻塞仍然释放其依赖方。**这道门在工具边界上已经关上：** 团队之门守卫按完整名称**拒绝**官方五个创作动词——`spawn_teammate`、`team_task_create`、`team_task_list`、`team_task_get`、`team_task_update`——因此没有任何**工具**能在官方看板上创作任务（`send_message`、`list_agents`、`wait_agent`、`interrupt_agent` 保留，用于 agent 之间的通信）。**这条边界只说一次：**直接调用团队**服务**的插件行（官方执行器回退路径）不是工具调用，**不**受这道门约束。**这道门对每一个 agent 都拒绝，且没有任何 preset 豁免——这是刻意的（R18）。** 委派门会放行一个外 preset 的顶层会话；这道门不放行，因为它的对象是**工作区作用域**的看板——每个工作区一份 `.mpd/team/teams/<id>.json` 记录——放行外 preset 会话会让官方看板与 mpd RECORD 在**同一个**工作区里分叉；而且本仓库自己的测量（T-92，`complexity-gate.ts`）表明：部署的顶层会话带有 `agentPreset: "cordis"`，按 preset 放行恰好会放行这道门必须约束的那个会话。mpd RECORD 仍然是唯一的看板，所以以上每条规则都作用于会话通过这些工具能创建的每一个任务。
+
+暂存的依赖可以使用任务 ID、从 1 开始的位置或精确且唯一的主题。ID 和位置优先于同名的主题。预览和批准会在启动任何队友之前拒绝格式错误、歧义或找不到任务的阻塞引用。`sourceTaskId` 若引用同一计划中的另一项任务，会与阻塞引用一样映射到实际看板 ID。已有看板历史按原样读取。
+
+**全并行计划。** 只有一项任务时，或任务是有依赖图中的根节点时，可以写 `blocked_by: []`。
+如果计划有多项任务，且每项都能独立开始，请为每项都设置 `independent: true`。`edit.tasks` 会替换
+任务列表，接受与 `create_task` 相同的任务对象字段，包括两种阻塞字段写法，以及 `kind`、`coverageOf`、
+`sourceTaskId` 和 `independent`。
+
+预览和实际批准采用同样的规则。如果多任务计划全是根节点，且经过批量编辑，或包含 `requirement`、`review`、
+`repair`、`integration` 任务，就必须显式确认独立性。为兼容现有调用方，逐条添加且只含 `work` 任务的计划
+仍可使用空的阻塞数组，这也包括省略 `kind` 而默认为 `work` 的任务。预览和批准都会在 `warning` 中列出受影响的
+任务及修正方法。请补上实际依赖，或为每项可并行任务明确设置 `independent: true`。当 `review` 或 `repair` 的
+`sourceTaskId` 指向同一计划中的另一项任务时，其依赖链必须包含该来源。批准会在启动新团队之前检查这些声明。
+已经开始启动的团队可以按当时的规则继续启动。
 
 **空写作用域不再沉默（C4）。** 一个 `work`/`repair`/`integration` 行在暂存或追加时没有 `write_scopes`，
 **仍然会创建**，但结果里会带一条 `warning`（渲染在结果自己的句子下方，并声明在输出 schema 里）：它点名
@@ -150,8 +215,8 @@ data: {"rev":8}
 
 - `approve` 的载荷：`plan`（真实批准时是已持久化、标记为已批准的计划；`dryRun` 预览时是原样的暂存
   计划）、`team`（它写入的记录；**仅**在 `dryRun` 上缺席）、`created`
-  （`{ members: [{ name, id }], tasks: [{ subject, id }] }` —— 批准时是真实 id，预览时为空串 ——
-  当某个 blocker 没有指向任何任务时另有 `unresolved`），以及 spawn 中途停下时的 `stoppedAt`。
+  （`{ members: [{ name, id }], tasks: [{ subject, id }] }`，批准时是真实 ID，预览时为空串），
+  以及启动中途停下时的 `stoppedAt`。旧版批准回执也可能保留 `unresolved`。
 - `dispatch` 的载荷：`pairs`（传输层真正接受的配对 —— `taskId`、`subject`、`memberId`、
   `memberName`，可选 `note`）、`skipped`（每个未派发的任务，带 `taskId`、`subject`、`reason`），
   以及按需出现的 `forgotten`、`holdRead`、`reaped`、`halted` 或 `refused`。

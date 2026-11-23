@@ -98,6 +98,12 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
 `message`/`question`/`answer` 记录，`send` 行先落盘，唤醒尝试是单独的 `wake` 记录；协议见
 [`docs/mail.zh-CN.md`](../../docs/mail.zh-CN.md)）。它们落在本文档所述**同一份记录与同一个守卫**之上。
 
+注册表能查到队长、却查不到普通成员时，`cellwork_supervise` 可在 `nonresident` 中列出该成员仍持有的
+`claimed` 或 `in_progress` 任务。使用建议的 `cellwork_send` 唤醒原负责人，保留其中的 `recovery` 字段。
+发送操作在写入邮件前及请求投递前都核对所有者和任务。建议过期时请重新巡检。`wakeSent:true` 表示投递已受理。
+确认该任务的工具结果、看板进展或完成状态后，再判定任务是否已恢复。如果子会话报告模型提供方错误，保留当前指派，
+待原因消除后重试。巡检本身只读取状态。
+
 ## 成员：拉起、采纳与解围
 
 - **成员就是 CELL 记录上的一个座位。** `state.json` 的 `members` 表把名字映射到每个 cellwork 动词都会读的
@@ -308,9 +314,10 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
 - **重种契约（R1–R5、F1–F3）速览。** R1：只有新 handle 已同时写进 TEAM 成员行、旧 handle 名下所有**非终态**
   看板行（或以该座位自己的名字拼写的行）和 CELL 行，才允许记 `reseeded`；否则整轮拒绝
   （`checkpoint-unrecoverable` + `surface`）、围栏座位，并**尝试**通过 `dispose()` 接缝释放子代理（接缝缺失或抛错会
-  被如实报告，绝不冒充一次释放）。**无平面例外**：workspace 里**根本没有
-  team 记录**时没有 TEAM 行、也没有看板，重种可以在**没有**它们的情况下成功（`plane: "absent"`）——不存在
-  不等于不可读（F1）。绑定若在回读验证时抛错或读到的 handle 不符，会**回滚**到绑定前的 TEAM 行与看板 owner；
+  被如实报告，绝不冒充一次释放）。中断旧会话或启动替代会话前，屏障要求恰好有一个与本 cell 关联的活跃看板同时记录
+  该席位及其原 `executorRef`。重种使用同一个看板查找工作树并完成绑定。归属缺失、存在冲突或无法读取时，
+  `checkpoint-unrecoverable` 会指出需要核对的记录或席位。既没有关联看板、也没有已记录执行任务的组合仍可返回
+  `plane: "absent"`。绑定若在回读验证时抛错或读到的 handle 不符，会**回滚**到绑定前的 TEAM 行与看板 owner；
   若期间已有别的写入者提交，回滚**拒绝覆盖**并如实报告。**回滚被拒时一律保留子代理（A11；第二轮放宽）：**
   最常见的并发形态会保留本次绑定的新 `executorRef`；而且即使**当时读到的文档点的是另一个 handle**，并发的读-改-写
   （team-core 的 `cancelTasks`）也可能在之后才提交它**在本次绑定进行期间**读到的名册——那份文档点的正是新 handle。

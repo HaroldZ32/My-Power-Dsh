@@ -14,6 +14,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { sanitizeId, nextIdSuffix, type TaskKind } from "./team-store"
+import { resolvePlanReference } from "./dependency-guard.ts"
 
 /** One member the plan wants. The prompt is what the team executor hands the teammate on approval. */
 export interface StagedMember {
@@ -43,11 +44,12 @@ export interface StagedTask {
    *      silently accepted and then silently unresolved until 2026-10-06, when a live board carrying
    *      `["2"]`, `["2","3","4","6"]`, `["7","8","9"]` flattened its whole DAG to one column.
    *
-   * Approval resolves all three to real board ids; anything that resolves to NOTHING is kept in the
-   * board task's `blockedBy` and reported BESIDE it (see `TeamTaskRecord.unresolvedBlockers`), named in
-   * the approved plan's `created.unresolved` and in the approval answer — never dropped in silence.
+   * Approval binds each unambiguous staged reference to its actual board ID. An invalid or missing
+   * target is refused before activation, and an ordinal takes precedence over an identical subject.
    */
   blockedBy?: string[]
+  /** The caller explicitly confirmed this root can run in a fully parallel plan. */
+  independent?: true
   /** Paths the task is expected to touch, forwarded to the board's write-scope check. */
   writeScopes?: string[]
   /** Teammate name the captain wants to own it; the board resolves that name to a session. */
@@ -60,7 +62,7 @@ export interface StagedTask {
   kind?: TaskKind
   /** The user clause this task serves, carried to the board unchanged (same defect as {@link kind}). */
   coverageOf?: string
-  /** The task a repair row was opened from, carried to the board unchanged (same defect). */
+  /** Repair provenance, rebound to the actual ID when it names another row in this draft. */
   sourceTaskId?: string
 }
 
@@ -138,6 +140,8 @@ export interface StagedPlan {
   description: string
   /** Whether the plan waits for an explicit approval or may proceed automatically. */
   approval: "required" | "automatic"
+  /** Require explicit independence when all tasks are roots. Bulk task replacement enables this. */
+  strictDependencies?: true
   /** The teammates the plan wants spawned, in the order they were staged. */
   members: StagedMember[]
   /** The shared tasks the plan wants posted, in the order they were staged. */
@@ -351,6 +355,7 @@ export type BlockerForm =
   | "position"
   | "subject"
   | "board-id"
+  | "ambiguous"
   | "unknown"
 
 /**
@@ -362,7 +367,8 @@ export type BlockerForm =
  *
  *   · `board-id` — `T<n>`, a task id the approval mints (the plan's own tasks become `T1…Tn`);
  *   · `position` — a bare number, the plan's own 1-BASED position (forward references included);
- *   · `subject`  — it matches a task already staged in this plan;
+ *   · `subject`  — it matches exactly one task already staged in this plan;
+ *   · `ambiguous` — more than one staged task has that subject;
  *   · `unknown`  — none of the above, so nothing in this plan can resolve it: it is exactly the text
  *                  that used to be stored and silently dropped by every reader.
  *
@@ -370,12 +376,15 @@ export type BlockerForm =
  * the approval knows the final board. `unknown` is the form worth saying out loud at write time.
  * @param plan - the plan as it stands, INCLUDING the task the reference was just written on.
  * @param reference - one reference, as the caller wrote it.
- * @returns which of the four forms it reads as.
+ * @returns the reference form, including unresolved or ambiguous subjects.
  */
 export function classifyBlocker(plan: StagedPlan, reference: string): BlockerForm {
   if (/^T\d+$/u.test(reference)) return "board-id"
   if (/^\d+$/u.test(reference)) return "position"
-  return plan.tasks.some((task) => task.subject === reference) ? "subject" : "unknown"
+  /** The same resolver approval uses for unique and ambiguous subjects. */
+  const resolution = resolvePlanReference(plan, reference)
+  if (resolution.kind === "target") return "subject"
+  return resolution.kind === "ambiguous" ? "ambiguous" : "unknown"
 }
 
 /** Archive one plan under `.mpd/team/archive/<planId>/` and clear its staging slot. */

@@ -880,18 +880,19 @@ agent_teams_task { "task_id": "T1", "action": "complete", "expected_revision": 2
 list_agents {}
 send_message { "agent_id": "senior-1", "message": "Land the README edit before the guide." }
 agent_teams_dispatch { "action": "run" }
-wait_agent { "timeout_ms": 60000 }
-interrupt_agent { "agent_id": "senior-1" }                               // Lead only; the inbox is kept
+agent_teams_control { "action": "wake", "wake": { "action": "arm", "task_ids": ["T2"], "mode": "all" } }
+# A waiting registration lets the captain end its turn. Read the task result when woken.
+# With an active GOAL, a nonblocking arm still allows independent goal rounds.
+# To stay in the current turn until the event, use this alternative instead of arming:
+# agent_teams_control { "action": "wake", "wake": { "action": "wait", "task_ids": ["T2"], "mode": "all" } }
+# To stop a worker explicitly: interrupt_agent { "agent_id": "senior-1" }
 
 # (e) finishing a wave
 mpd_team_compact_run {}
 mpd_team_compact_status {}
 ```
 
-Team names are permanent and are never reused. Every `create_task` answers the dependency question:
-`blocked_by: []` is a genuine root, `blocked_by: ["<root task>"]` depends on it, and `independent: true`
-is the other spelling, and on the mpd record plane `agent_teams_plan {action:"approve"}` REFUSES two
-tasks whose write scopes overlap with no dependency path between them. Every task a session authors
+Team names are permanent. Use `blocked_by: []` for a root and list every prerequisite in a dependent task's `blocked_by`. A final review that needs two results lists both tasks. If a multi-task plan consists entirely of independent work, set `independent: true` on every task. Preview and approval identify the tasks that need a dependency decision. An all-root draft supplied by bulk edit, or one containing workflow stages such as review, is refused before members start. For compatibility, individually added, ordinary `work` rows with no edges receive a warning and can still run. It also refuses two tasks whose write scopes overlap without a dependency path. Every task a session authors
 through these tools lives on that mpd record, so overlap is REFUSED there rather than merely advisory.
 The closure stops at the TOOL boundary: a ROW that calls the team SERVICE directly (the official-executor
 fallback) is not a tool call and is NOT gated, that is the one declared bound. A task update
@@ -1043,8 +1044,7 @@ refused with a typed error, so a reassigned task cannot silently accept a late r
 scopes overlap with no dependency path between them: add the edge, or make the scopes disjoint.
 Overlap is advisory on the OFFICIAL plane only. `write_scopes` never authorize a write, while
 bash/formatters/codegen bypass the check, so report what you changed in the task description (or a
-message) rather than relying on the scope list. A result is not accepted because a teammate says so:
-the Lead waits for the team (`wait_agent`, then re-read) and verifies the diff before answering.
+message) rather than relying on the scope list. When the Lead needs specific task results, it registers a conditional wake and ends its turn. On wake it reads the terminal outcomes and verifies the changes. `wait_agent` remains useful for a general roster or message event during a running turn.
 
 ### 13.10 The persisted goal (continuous execution)
 

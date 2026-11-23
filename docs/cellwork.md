@@ -426,6 +426,17 @@ merely theoretical risk.
 | `cellwork_inbox` | any cell agent | read and acknowledge the caller's unread cell mail |
 | `cellwork_stop` | captain | end the mode: archive the cell (no deletion), clear the guard, give the tools back; REFUSED while a board task is `claimed`/`in_progress` unless `force:true`, and a forced stop is journaled as such |
 
+The `nonresident` section of `cellwork_supervise` lists ordinary workers absent from the registry while
+that registry can still resolve the captain. It shows their existing `claimed` and `in_progress` tasks,
+including the recorded names, handles, or roster IDs used as owners. To recover the original worker, copy
+its suggested `cellwork_send` call with the `recovery` field intact. The send checks the cell, live board,
+executor and claim set before writing mail. If they changed, rerun `cellwork_supervise`. It checks again
+before asking the host to wake the original executor. A concurrent change after the mail write can leave
+an unread message with `wakeSent:false` and a `wakeReason`. These checks do not lock the board, mailbox,
+or host across processes. An accepted wake confirms delivery acceptance. Observe a task-specific tool
+result, board progress, or completion before counting recovery. If the child's next turn reports a provider
+error, preserve the assignment and retry only after the cause changes.
+
 The one-call view for a bystander is `cellwork_status`; it never transitions the cell, and its ONE
 write is the adoption described above (the first write `cellwork_context` or `cellwork_handoff` may
 perform for a member the record never learned is the same one). Every other verb either mutates the cell
@@ -646,13 +657,15 @@ and hands the work to a successor. The sequence is mechanical:
 5. **Promote or reseed**: the outcome union is exactly `promoted | reseeded | refused`. On a successful
    compaction the SAME member is promoted in place — no interrupt, no reseed — its session's mode becomes
    `subcaptain` and it receives the promotion directive (depth + 1, the remaining scope taken from the
-   handoff, the sub-team protocol). If there is no safe range, or compaction fails, the ORIGINAL
-   session is INTERRUPTED (retired through its live ancestor — the reseed path never `dispose`s it) and a
-   fresh child is started with the handoff text as its prompt plus the same promotion directive — but
-   never from the member's own dead Agent: the reseed parent is, in order, the member's
-   recorded `parentSession` resolved live, then the cell's captain, and when neither is live the barrier
-   REFUSES with the distinct reason `reseed-parent-unavailable`. The parent actually used is journaled
-   (`parentSource` + `parentSessionId`), so lineage is observable rather than inferred.
+   handoff, the sub-team protocol). If compaction fails, the barrier first resolves a live parent from the
+   member's recorded `parentSession` or the cell's captain. If neither is live it refuses with
+   `reseed-parent-unavailable`. Before attempting retirement or launching a replacement, it requires one
+   live board linked to the cell that uniquely identifies the logical seat and its old executor. An
+   ended planning board and another cell's board cannot be used. Missing or conflicting ownership and
+   ambiguous task owner aliases produce a refusal with the affected seat or ticket. With ownership
+   confirmed, the live ancestor attempts to interrupt the original session, then the replacement receives
+   the handoff text and promotion directive. The worktree and bind use that same board. The journal
+   records `parentSource` and `parentSessionId`.
 
    **THE RESEED BINDS ITS SEAT OR SAYS IT DID NOT (R1).** A resolved child handle is not yet a seat. Before
    anything is journaled as `reseeded`, THREE surfaces must name the fresh handle: the TEAM member row
@@ -766,21 +779,15 @@ and hands the work to a successor. The sequence is mechanical:
    `rebind` repairs identity (`executorRef` and the CELL mirror) and never clears a fence; `unfence`
    repairs fencing and never touches the handle. Neither can stand in for the other.
    Every FAILED entry is journaled as `member-rebind-failed` (an argument-level refusal included), so an
-   attempted repair is never visible only in the answer. The handle a RESEED displaces is recorded too: when
-   the TEAM row already named a different non-empty `executorRef` and nothing proved that child dead (the
-   re-entry guard is inert there by design), the `compaction`, `seat-rebound` and `member-reseeded` rows
-   carry `displacedExecutorRef` plus `displacedUnproven`, so an overwritten child stays findable.
+   attempted repair is never visible only in the answer. A successful reseed journals the verified old
+   executor and its observed liveness as `displacedExecutorRef` and `displacedUnproven` on `compaction`,
+   `seat-rebound` and `member-reseeded`. A different TEAM handle stops automatic handover.
 
-   **ABSENT IS NOT UNREADABLE (F1).** A cell whose workspace holds **no team record** (`ENOENT` on
-   `.mpd/team/teams/<id>.json`) answers `plane: "absent"`: there is no member row and no board to bind,
-   and refusing a healthy child for a plane nothing created would be the defect, not the fix. A record
-   that **exists** but cannot be read — corrupt JSON, `EACCES`, a plane read that throws, or an answer
-   that is not a record — is the opposite case and is a REFUSAL: `checkpoint-unrecoverable` carries
-   `surface: "team-record-unreadable"`, the seat is fenced, the bind ATTEMPTS to release the fresh child's
-   activation (the `dispose()` seam may be absent or throw, and the refusal reports what really happened),
-   and the unreadable bytes are left untouched. The distinction matters because a record read that answers
-   "nothing" cannot tell the two cases apart, and treating an unreadable surface as an absent one is
-   exactly how a reseed reported success while nothing was bound.
+   **The no-board fallback (F1).** `plane: "absent"` is reserved for a cell with no observable associated
+   board and no recorded minted execution team or activated task IDs. When ownership cannot be read
+   from an existing board, the journal reports `team-record-unreadable`. If the board disappears or becomes
+   unreadable after the replacement starts, the barrier attempts to dispose of that activation and reports
+   the result. The unreadable bytes are preserved.
 
    **THE BIND IS A COMPARE-AND-SET ON THE RECORD'S BYTES (F2).** The snapshot is taken from the same
    record file the bind rewrites; immediately before the temp+rename that file is re-read and the two
@@ -804,6 +811,12 @@ and hands the work to a successor. The sequence is mechanical:
    directive, and the barrier ALSO delivers that directive to the NEW handle through the team executor's
    `send`; `member-reseeded` records `directiveDelivered` (and `directiveError` when it could not land)
    instead of leaving the seat's idleness to inference.
+
+   If the CELL record cannot be read after launch, the barrier refuses before writing the TEAM bind and
+   attempts to dispose of the fresh activation. If either record changes while the directive is delivered,
+   the barrier preserves the current CELL row and reports the earlier bind, if one landed. It keeps the
+   replacement for explicit reconciliation because the TEAM record or delivered directive may already
+   reference it. These checks precede the write and do not form a cross-process transaction.
 
    **NO BRANCH IS SILENT (R4).** A record re-read failure journals `barrier-record-unreadable`; a throw
    after the seat was handed over journals `barrier-failed`, which FENCES the seat with the forced lever's
@@ -831,12 +844,12 @@ and hands the work to a successor. The sequence is mechanical:
 
    **The barrier OWES the seat its reopen, and this is its DUTY (R4.1).** `cellwork_handoff` writes TEAM
    `mode: "checkpoint"` when the document lands, and that spelling closes the seat for the guard and for
-   dispatch. A barrier run whose PERSISTED ROW reopened the CELL seat (`fenced !== true`) therefore calls
-   the plane's `unfence` seam AS THE CAPTAIN (`{sessionId: cell.captainSessionId, member}` — the same
-   authority the captain's own verb uses), journals `member-unfenced` with `by: "barrier"`, and reports
-   the plane's half exactly as that verb does: `plane: "unfenced" | "absent" | "refused"` (with the
-   plane's sentence in `planeReason`). The gate is the ROW the barrier writes, NEVER the raw outcome: a
-   `reseeded` run that reaches the retry bound FENCES the CELL row on that same run and reopens nothing,
+   dispatch. When the CELL row is eligible to reopen, a successful reseed reopens the seat as part of
+   its bind on the exact board. In-place promotion and the no-board fallback use the captain's optional
+   `unfence` seam (`{sessionId: cell.captainSessionId, member}`). The barrier journals `member-unfenced`
+   with `by: "barrier"` and `plane: "unfenced" | "absent" | "refused"`; `planeReason` names the selected
+   board or explains the seam outcome. A reseed that reaches the retry bound fences the CELL row and
+   skips the separate reopen step,
    journaling `plane-reopen-skipped` with `plane: "skipped-fenced"`, the barrier's fourth `plane` value (a
    `refused` run journals `checkpoint-unrecoverable` instead, as it always has).
    A REFUSED half is not a dead end (R5.4): the journal row also carries `retry` with the exact
@@ -976,7 +989,7 @@ Everything lives under the workspace, in gitignored runtime state:
 | Path | Content |
 |---|---|
 | `state.json` | the cell record: phase, captain session, depth, parent cell, team id (the EXECUTION board — the staging team is preserved as `planningTeamId` when they differ), planner/splitter handles, the staged split ticket's board id (`splitTaskId`), members and their modes (with the optional `fenced`/`fencedReason`, `adopted: true` and `grown: true` markers), split revision, checkpoints, journal cursor, the optional in-flight activation fields `activationInFlight` (the accepted revision whose materialisation is running) and `activatedLoops` (split key → verify-loop id), and `mintedTeamId` — the execution team a FAILED activation minted, which makes the retry reuse that team instead of minting a second one and which a SUCCESSFUL activation clears to `""` |
-| `journal.jsonl` | append-only transitions: phase, dispatch, checkpoint, compaction, promotion, refusal, and the supersession rows (`split-superseded`, `activation-in-flight-superseded`); an activation pass writes one compact `cell-activation-progress` row per artifact and a single full `cell-activation-partial` row on failure, and the repair rows are `task-reassigned`, `dispatch-reassign`, `checkpoint-unrecoverable`, `member-adopted`, `member-unfenced`, `member-rebound` (a `rebind` repair; it carries `previousSessionId`/`previousSessionIdLiveness`, `namedBy` (the evidence source: `team`/`cell`/`journal:<event>`), the F1 provenance markers `handleRecordCurrent`/`journalHandoverOlder` when the record won over an older journal row, the board half `tasksRebound`/`tasksNeedingRelease`, the kept-child marker `handleOrphanAdopted` when the kept child's orphan row evidenced the handle, and `displacedExecutorRef`/`displacedUnproven` when the re-point overwrote a different handle), `member-rebind-failed` (a refused `rebind` entry or argument: `reason`, the requested `handle`, `namedBy`, `previousSessionId`/`previousSessionIdLiveness`, and `supersededBy` when a later hand-over replaced it; its `detail` never chooses a direction), `seat-rebound` (the three-surface bind; it carries `displacedExecutorRef`/`displacedUnproven` when the bind overwrote a different handle), `barrier-skipped` (the `reseed-already-bound` re-entry guard), `barrier-record-unreadable` and `barrier-failed` (the two former warn-only branches), and `dispatch-unfence-withheld` (a combined `{rebind, unfence}` call whose `rebind` did not fully land: `reason` = `rebind-failed` or `cell-mirror-unconfirmed`, `members`, `failed:[{member, reason, cellRow?}]`, a `detail` saying `fence stayed closed`, and the `next` re-run) |
+| `journal.jsonl` | append-only transitions: phase, dispatch, checkpoint, compaction, promotion, refusal, and the supersession rows (`split-superseded`, `activation-in-flight-superseded`); an activation pass writes one compact `cell-activation-progress` row per artifact and a single full `cell-activation-partial` row on failure, and the repair rows are `task-reassigned`, `dispatch-reassign`, `checkpoint-unrecoverable`, `member-adopted`, `member-unfenced`, `member-rebound` (a `rebind` repair; it carries `previousSessionId`/`previousSessionIdLiveness`, `namedBy` (the evidence source: `team`/`cell`/`journal:<event>`), the F1 provenance markers `handleRecordCurrent`/`journalHandoverOlder` when the record won over an older journal row, the board half `tasksRebound`/`tasksNeedingRelease`, the kept-child marker `handleOrphanAdopted` when the kept child's orphan row evidenced the handle, and `displacedExecutorRef`/`displacedUnproven` when the re-point overwrote a different handle), `member-rebind-failed` (a refused `rebind` entry or argument: `reason`, the requested `handle`, `namedBy`, `previousSessionId`/`previousSessionIdLiveness`, and `supersededBy` when a later hand-over replaced it; its `detail` never chooses a direction), `seat-rebound` (the confirmed bind, including its `teamId` and the prior executor audit), `barrier-skipped` (the `reseed-already-bound` re-entry guard), `barrier-record-unreadable`, `barrier-cell-changed` (preserves the current CELL row and names any earlier TEAM bind), `barrier-failed`, and `dispatch-unfence-withheld` (a combined `{rebind, unfence}` call whose `rebind` did not fully land: `reason` = `rebind-failed` or `cell-mirror-unconfirmed`, `members`, `failed:[{member, reason, cellRow?}]`, a `detail` saying `fence stayed closed`, and the `next` re-run) |
 | `mail.jsonl` (legacy) | a PRE-unification per-cell mail log, still READ and merged into the cell view; new mail is NOT written here: it lives in the workspace store `<workspace>/.mpd/team/mailbox.jsonl`, stamped with this cell's `teamId` and `cellId` (plus `fromCell` on a cross-cell sender), read by `cellwork_inbox`, and followed there by a separate `wake` record stating what the wake-up attempt did; an acknowledgement of one of THESE legacy rows is appended back to this file, while a unified row is acknowledged in the store |
 | `requirements.md` | the validated requirements document, revisioned; a change bumps the revision and marks the split stale |
 | `split/<rev>.json` | the splitter's proposal plus the plugin's measured estimates and accept/refuse verdict |

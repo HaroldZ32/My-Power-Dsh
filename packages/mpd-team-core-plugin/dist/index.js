@@ -1,12 +1,15 @@
 // packages/mpd-team-core-plugin/src/index.ts
-import { existsSync as existsSync7, readdirSync as readdirSync6 } from "node:fs";
-import { join as join13 } from "node:path";
+import { existsSync as existsSync7, readdirSync as readdirSync7 } from "node:fs";
+import { join as join14 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
 import { resolve as resolve2, sep as sep2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
 }
@@ -363,6 +366,21 @@ function userMessage(input) {
   Object.freeze(source);
   const message = { id: randomUUID(), role: "user", content, source };
   return Object.freeze(message);
+}
+function canSubmitUserTurn(agent) {
+  return typeof agent?.followup === "function";
+}
+function pendingHumanInput(agent) {
+  const inbox = agent?.inbox;
+  if (!Array.isArray(inbox?.nextStep) || !Array.isArray(inbox.nextTurn))
+    return;
+  const isHuman = (message) => {
+    const entry = message;
+    return entry?.role === "user" && entry.source?.kind === "user";
+  };
+  if (inbox.nextStep.some(isHuman))
+    return "step";
+  return inbox.nextTurn.some(isHuman) ? "turn" : "none";
 }
 function sessionCwdOf(agent) {
   try {
@@ -2964,6 +2982,9 @@ function agentTeamsPlanCard(args, value) {
   const description = words(plan.description, 200);
   if (description !== undefined)
     children.push(text(description));
+  const warning = words(answer.warning, 700);
+  if (warning !== undefined)
+    children.push(text(`Warning — ${warning}`));
   if (tasks.length > 0)
     children.push(table({ columns: ["id", "subject", "status", "owner"], rows: tasks.slice(0, 12).map(taskRow) }));
   if (members.length > 0)
@@ -4817,6 +4838,183 @@ function idleMembers(record) {
   return record.members.filter((member) => (member.status === "running" || member.status === "inactive") && member.fenced !== true && !busy.has(member.name) && (member.executorRef === undefined || member.executorRef === "" || !busy.has(member.executorRef)));
 }
 
+// packages/mpd-team-core-plugin/src/dependency-guard.ts
+function planTaskId(index) {
+  return "T" + String(index + 1);
+}
+function normalizeScope(scope) {
+  const normalized = scope.replace(/\/\*\*$/u, "").replace(/\/+$/u, "");
+  return normalized === "" && scope !== "" ? "." : normalized;
+}
+function scopeCoversEverything(normalized) {
+  return normalized === "**" || normalized === ".";
+}
+function scopesOverlap(first, second) {
+  const a = normalizeScope(first);
+  const b = normalizeScope(second);
+  if (a === "" || b === "")
+    return false;
+  if (scopeCoversEverything(a) || scopeCoversEverything(b))
+    return true;
+  if (a === b)
+    return true;
+  return a.startsWith(b + "/") || b.startsWith(a + "/");
+}
+function blockerReferenceText(value) {
+  if (typeof value === "string" && value.trim() !== "")
+    return value;
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? String(value) : undefined;
+}
+function resolvePlanReference(plan, value) {
+  const reference = blockerReferenceText(value);
+  if (reference === undefined)
+    return { kind: "malformed" };
+  const numbered = /^(?:T)?(\d+)$/u.exec(reference);
+  if (numbered !== null) {
+    const index = Number(numbered[1]) - 1;
+    return index >= 0 && index < plan.tasks.length ? { kind: "target", index } : { kind: "missing" };
+  }
+  const indices = plan.tasks.flatMap((task, index) => task.subject === reference ? [index] : []);
+  if (indices.length > 1)
+    return { kind: "ambiguous", indices };
+  return indices[0] === undefined ? { kind: "missing" } : { kind: "target", index: indices[0] };
+}
+function planReferenceTarget(plan, reference) {
+  const target = resolvePlanReference(plan, reference);
+  return target.kind === "target" ? planTaskId(target.index) : undefined;
+}
+function planDependencyEdges(plan) {
+  return new Map(plan.tasks.map((task, index) => [
+    planTaskId(index),
+    (task.blockedBy ?? []).map((reference) => planReferenceTarget(plan, reference)).filter((id) => id !== undefined)
+  ]));
+}
+function boardDependencyEdges(tasks) {
+  const ids = new Set(tasks.map((task) => task.id));
+  return new Map(tasks.map((task) => [task.id, task.blockedBy.filter((reference) => ids.has(reference))]));
+}
+function dependencyCycle(edges) {
+  const done = new Set;
+  const path = [];
+  const onPath = new Set;
+  const visit = (id) => {
+    if (onPath.has(id)) {
+      const at = path.indexOf(id);
+      return [...path.slice(at), id];
+    }
+    if (done.has(id))
+      return;
+    path.push(id);
+    onPath.add(id);
+    for (const blocker of edges.get(id) ?? []) {
+      const cycle = visit(blocker);
+      if (cycle !== undefined)
+        return cycle;
+    }
+    path.pop();
+    onPath.delete(id);
+    done.add(id);
+    return;
+  };
+  for (const id of edges.keys()) {
+    const cycle = visit(id);
+    if (cycle !== undefined)
+      return cycle;
+  }
+  return;
+}
+function dependencyPath(edges, from, to) {
+  const queue = [from];
+  const seen = new Set;
+  while (queue.length > 0) {
+    const id = queue.pop();
+    if (id === to)
+      return true;
+    if (seen.has(id))
+      continue;
+    seen.add(id);
+    for (const blocker of edges.get(id) ?? [])
+      queue.push(blocker);
+  }
+  return false;
+}
+function planGraphDefect(plan) {
+  const unanswered = plan.tasks.findIndex((task) => !Array.isArray(task.blockedBy));
+  if (unanswered >= 0) {
+    const task = plan.tasks[unanswered];
+    return { kind: "unanswered", id: planTaskId(unanswered), subject: task.subject };
+  }
+  for (const [index, task] of plan.tasks.entries()) {
+    const id = planTaskId(index);
+    for (const value of task.blockedBy ?? []) {
+      const problem2 = resolvePlanReference(plan, value);
+      if (problem2.kind !== "target")
+        return { kind: "reference", id, field: "blocked_by", value, problem: problem2 };
+    }
+    if (task.sourceTaskId !== undefined) {
+      const problem2 = resolvePlanReference(plan, task.sourceTaskId);
+      if (problem2.kind === "ambiguous" || problem2.kind === "malformed")
+        return { kind: "reference", id, field: "sourceTaskId", value: task.sourceTaskId, problem: problem2 };
+    }
+  }
+  const edges = planDependencyEdges(plan);
+  for (const [id, blockers] of edges) {
+    if (blockers.includes(id))
+      return { kind: "self-edge", id };
+  }
+  const cycle = dependencyCycle(edges);
+  return cycle === undefined ? undefined : { kind: "cycle", path: cycle };
+}
+function workflowAdmissionIssue(plan) {
+  const edges = planDependencyEdges(plan);
+  for (const [index, task] of plan.tasks.entries()) {
+    if (task.kind !== "review" && task.kind !== "repair")
+      continue;
+    const source = planReferenceTarget(plan, task.sourceTaskId);
+    const id = planTaskId(index);
+    if (source === undefined || source === id || !edges.has(source) || dependencyPath(edges, id, source))
+      continue;
+    return { severity: "error", message: `plan ${plan.planId}: ${id} (${JSON.stringify(task.subject)}) names ${source} as its ${task.kind} source but does not wait for it. Use agent_teams_plan {action:"edit", tasks:[...]} to include ${source} in blocked_by or its prerequisite chain and drop independent: true from ${id}.` };
+  }
+  if (plan.tasks.length < 2 || plan.tasks.some((task) => (task.blockedBy?.length ?? 0) > 0))
+    return;
+  const unconfirmed = plan.tasks.flatMap((task, index) => task.independent === true ? [] : [`${planTaskId(index)} (${JSON.stringify(task.subject)})`]);
+  if (unconfirmed.length === 0)
+    return;
+  const strict = plan.strictDependencies === true || plan.tasks.some((task) => task.kind !== undefined && task.kind !== "work");
+  return {
+    severity: strict ? "error" : "warning",
+    message: `plan ${plan.planId}: all-root workflow without explicit independence for ${unconfirmed.join(", ")}. Use agent_teams_plan {action:"edit", tasks:[...]} to give dependent tasks blocked_by references. Keep blocked_by: [] for roots in a mixed DAG, or set independent: true on every task if all tasks can run in parallel.`
+  };
+}
+function scopeClashes(plan) {
+  const edges = planDependencyEdges(plan);
+  const clashes = [];
+  for (let first = 0;first < plan.tasks.length; first += 1) {
+    for (let second = first + 1;second < plan.tasks.length; second += 1) {
+      const firstScopes = plan.tasks[first].writeScopes ?? [];
+      const secondScopes = plan.tasks[second].writeScopes ?? [];
+      if (firstScopes.length === 0 || secondScopes.length === 0)
+        continue;
+      const firstId = planTaskId(first);
+      const secondId = planTaskId(second);
+      if (dependencyPath(edges, firstId, secondId) || dependencyPath(edges, secondId, firstId))
+        continue;
+      for (const scope of firstScopes) {
+        const collidesWith = secondScopes.find((candidate) => scopesOverlap(scope, candidate));
+        if (collidesWith === undefined)
+          continue;
+        clashes.push({
+          first: { id: firstId, subject: plan.tasks[first].subject, scope },
+          second: { id: secondId, subject: plan.tasks[second].subject, scope: collidesWith }
+        });
+        break;
+      }
+    }
+  }
+  return clashes;
+}
+
 // packages/mpd-team-core-plugin/src/plan-store.ts
 var STAGED_PLAN_VERSION = 2;
 function teamRoot2(workspace) {
@@ -4903,7 +5101,10 @@ function classifyBlocker(plan, reference) {
     return "board-id";
   if (/^\d+$/u.test(reference))
     return "position";
-  return plan.tasks.some((task) => task.subject === reference) ? "subject" : "unknown";
+  const resolution = resolvePlanReference(plan, reference);
+  if (resolution.kind === "target")
+    return "subject";
+  return resolution.kind === "ambiguous" ? "ambiguous" : "unknown";
 }
 function archivePlan(workspace, plan) {
   const target = archivePathFor(workspace, plan.planId);
@@ -5005,134 +5206,6 @@ function moveIntoArchive(workspace, from, planId) {
   mkdirSync5(archiveDir(workspace), { recursive: true });
   renameSync3(from, target);
   return target;
-}
-
-// packages/mpd-team-core-plugin/src/dependency-guard.ts
-function planTaskId(index) {
-  return "T" + String(index + 1);
-}
-function normalizeScope(scope) {
-  const normalized = scope.replace(/\/\*\*$/u, "").replace(/\/+$/u, "");
-  return normalized === "" && scope !== "" ? "." : normalized;
-}
-function scopeCoversEverything(normalized) {
-  return normalized === "**" || normalized === ".";
-}
-function scopesOverlap(first, second) {
-  const a = normalizeScope(first);
-  const b = normalizeScope(second);
-  if (a === "" || b === "")
-    return false;
-  if (scopeCoversEverything(a) || scopeCoversEverything(b))
-    return true;
-  if (a === b)
-    return true;
-  return a.startsWith(b + "/") || b.startsWith(a + "/");
-}
-function planReferenceTarget(plan, reference) {
-  const numbered = /^T(\d+)$/u.exec(reference) ?? /^(\d+)$/u.exec(reference);
-  if (numbered !== null) {
-    const position = Number(numbered[1]);
-    return position >= 1 && position <= plan.tasks.length ? planTaskId(position - 1) : undefined;
-  }
-  const index = plan.tasks.findIndex((task) => task.subject === reference);
-  return index < 0 ? undefined : planTaskId(index);
-}
-function planDependencyEdges(plan) {
-  return new Map(plan.tasks.map((task, index) => [
-    planTaskId(index),
-    (task.blockedBy ?? []).map((reference) => planReferenceTarget(plan, reference)).filter((id) => id !== undefined)
-  ]));
-}
-function boardDependencyEdges(tasks) {
-  const ids = new Set(tasks.map((task) => task.id));
-  return new Map(tasks.map((task) => [task.id, task.blockedBy.filter((reference) => ids.has(reference))]));
-}
-function dependencyCycle(edges) {
-  const done = new Set;
-  const path = [];
-  const onPath = new Set;
-  const visit = (id) => {
-    if (onPath.has(id)) {
-      const at = path.indexOf(id);
-      return [...path.slice(at), id];
-    }
-    if (done.has(id))
-      return;
-    path.push(id);
-    onPath.add(id);
-    for (const blocker of edges.get(id) ?? []) {
-      const cycle = visit(blocker);
-      if (cycle !== undefined)
-        return cycle;
-    }
-    path.pop();
-    onPath.delete(id);
-    done.add(id);
-    return;
-  };
-  for (const id of edges.keys()) {
-    const cycle = visit(id);
-    if (cycle !== undefined)
-      return cycle;
-  }
-  return;
-}
-function dependencyPath(edges, from, to) {
-  const queue = [from];
-  const seen = new Set;
-  while (queue.length > 0) {
-    const id = queue.pop();
-    if (id === to)
-      return true;
-    if (seen.has(id))
-      continue;
-    seen.add(id);
-    for (const blocker of edges.get(id) ?? [])
-      queue.push(blocker);
-  }
-  return false;
-}
-function planGraphDefect(plan) {
-  const unanswered = plan.tasks.findIndex((task) => !Array.isArray(task.blockedBy));
-  if (unanswered >= 0) {
-    const task = plan.tasks[unanswered];
-    return { kind: "unanswered", id: planTaskId(unanswered), subject: task.subject };
-  }
-  const edges = planDependencyEdges(plan);
-  for (const [id, blockers] of edges) {
-    if (blockers.includes(id))
-      return { kind: "self-edge", id };
-  }
-  const cycle = dependencyCycle(edges);
-  return cycle === undefined ? undefined : { kind: "cycle", path: cycle };
-}
-function scopeClashes(plan) {
-  const edges = planDependencyEdges(plan);
-  const clashes = [];
-  for (let first = 0;first < plan.tasks.length; first += 1) {
-    for (let second = first + 1;second < plan.tasks.length; second += 1) {
-      const firstScopes = plan.tasks[first].writeScopes ?? [];
-      const secondScopes = plan.tasks[second].writeScopes ?? [];
-      if (firstScopes.length === 0 || secondScopes.length === 0)
-        continue;
-      const firstId = planTaskId(first);
-      const secondId = planTaskId(second);
-      if (dependencyPath(edges, firstId, secondId) || dependencyPath(edges, secondId, firstId))
-        continue;
-      for (const scope of firstScopes) {
-        const collidesWith = secondScopes.find((candidate) => scopesOverlap(scope, candidate));
-        if (collidesWith === undefined)
-          continue;
-        clashes.push({
-          first: { id: firstId, subject: plan.tasks[first].subject, scope },
-          second: { id: secondId, subject: plan.tasks[second].subject, scope: collidesWith }
-        });
-        break;
-      }
-    }
-  }
-  return clashes;
 }
 
 // packages/mpd-team-core-plugin/src/team-door-guard.ts
@@ -5712,7 +5785,8 @@ data: ${JSON.stringify({ rev: revisionNow() })}
         memberCount: payload.team?.members.length ?? 0,
         taskCount: payload.team?.tasks.length ?? 0
       },
-      created: [...payload.created.members.map((member) => member.id), ...payload.created.tasks.map((task) => task.id)]
+      created: [...payload.created.members.map((member) => member.id), ...payload.created.tasks.map((task) => task.id)],
+      ...payload.warning === undefined ? {} : { warning: payload.warning }
     })) && all;
     all = mountAction(TEAM_DISPATCH_PATH, parseDispatchInput, (sessionId, body) => actions.dispatch(sessionId, body), (payload) => ({
       pairs: payload.pairs.map((pair) => ({ taskId: pair.taskId, memberId: pair.memberId, memberName: pair.memberName })),
@@ -6409,9 +6483,13 @@ async function approveTeamBody(deps, caller, input) {
     } catch (error) {
       return { ok: false, error: refusalOf(error) };
     }
+    const admission = workflowAdmissionIssue(plan);
+    if (admission?.severity === "error")
+      return { ok: false, error: admission.message };
+    const warning = admission?.message;
     const parent = deps.deriveParentTeam(workspace, sessionId, lineage);
     if (input.dryRun === true) {
-      return { ok: true, plan, created: { members: plan.members.map((m) => ({ name: m.name, id: "" })), tasks: plan.tasks.map((t) => ({ subject: t.subject, id: "" })) } };
+      return { ok: true, plan, created: { members: plan.members.map((m) => ({ name: m.name, id: "" })), tasks: plan.tasks.map((t) => ({ subject: t.subject, id: "" })) }, ...warning === undefined ? {} : { warning } };
     }
     const bound = await bindStagedWorkmates(deps, plan, caller.agent, workspace);
     if (bound.error !== undefined)
@@ -6434,40 +6512,38 @@ async function approveTeamBody(deps, caller, input) {
         ...binding.reason === undefined ? {} : { workmateReason: binding.reason }
       });
     }
-    for (const task of buildPlan.tasks) {
+    const mintedIds = buildPlan.tasks.map((_task, index) => planTaskId(record.nextTaskNumber + index - 1));
+    const planBindings = buildPlan.tasks.map((task) => (task.blockedBy ?? []).map((reference) => {
+      const target = resolvePlanReference(plan, reference);
+      if (target.kind !== "target")
+        throw new Error(`staged blocker ${JSON.stringify(reference)} lost its validated target`);
+      return { index: target.index, id: mintedIds[target.index] };
+    }));
+    const firstTask = record.tasks.length;
+    for (const [index, task] of buildPlan.tasks.entries()) {
+      const source = resolvePlanReference(plan, task.sourceTaskId);
+      const sourceTaskId = source.kind === "target" && source.index !== index ? mintedIds[source.index] : task.sourceTaskId;
+      const preceding = planBindings[index].filter((target) => target.index < index).map((target) => target.id);
       record = addTeamTask(record, {
         subject: task.subject,
         description: task.description,
         kind: task.kind ?? "work",
-        ...task.blockedBy === undefined ? {} : { blockedBy: task.blockedBy },
+        blockedBy: preceding,
         ...task.writeScopes === undefined ? {} : { writeScopes: task.writeScopes },
         ...task.owner === undefined ? {} : { owner: task.owner },
         ...task.coverageOf === undefined ? {} : { coverageOf: task.coverageOf },
-        ...task.sourceTaskId === undefined ? {} : { sourceTaskId: task.sourceTaskId }
+        ...sourceTaskId === undefined ? {} : { sourceTaskId }
       }, deps.now());
     }
-    const planAlias = new Map;
-    buildPlan.tasks.forEach((task, index) => {
-      const minted = record.tasks[index];
-      if (minted === undefined)
-        return;
-      planAlias.set(String(index + 1), minted.id);
-      if (!planAlias.has(task.subject))
-        planAlias.set(task.subject, minted.id);
-    });
-    for (const [index, task] of buildPlan.tasks.entries()) {
-      const minted = record.tasks[index];
-      if (minted === undefined || (task.blockedBy ?? []).length === 0)
-        continue;
-      const mapped = (task.blockedBy ?? []).map((reference) => planAlias.get(reference) ?? reference);
-      if (mapped.length === minted.blockedBy.length && mapped.every((id, at) => minted.blockedBy[at] === id))
-        continue;
-      record = updateTeamTask(record, minted.id, { blockedBy: mapped }, deps.now());
+    for (const [index, bindings] of planBindings.entries()) {
+      const minted = record.tasks[firstTask + index];
+      if (minted?.id !== mintedIds[index])
+        throw new Error(`staged task ${planTaskId(index)} did not mint its allocated ID`);
+      if (bindings.some((target) => target.index >= index)) {
+        record = updateTeamTask(record, minted.id, { blockedBy: bindings.map((target) => target.id) }, deps.now());
+      }
     }
     const created = { members: [], tasks: [] };
-    const unresolvedBlockers = record.tasks.filter((task) => (task.unresolvedBlockers ?? []).length > 0).map((task) => ({ taskId: task.id, references: [...task.unresolvedBlockers ?? []] }));
-    if (unresolvedBlockers.length > 0)
-      created.unresolved = unresolvedBlockers;
     let stoppedAt;
     const backend = deps.executor();
     const worktreeOf = backend.kind === "native" ? memberWorktreeLookup(deps.service, deps.log) : undefined;
@@ -6514,7 +6590,7 @@ async function approveTeamBody(deps, caller, input) {
     if (stoppedAt === undefined)
       archivePlan(workspace, { ...approved });
     await deps.bundleApprovalEffects(plan, caller);
-    return { ok: true, plan: approved, team: approvedRecord, created, bindings: bound.bindings, ...stoppedAt === undefined ? {} : { stoppedAt } };
+    return { ok: true, plan: approved, team: approvedRecord, created, bindings: bound.bindings, ...stoppedAt === undefined ? {} : { stoppedAt }, ...warning === undefined ? {} : { warning } };
   } catch (error) {
     return unexpectedRefusalOf(error);
   }
@@ -8783,6 +8859,548 @@ class ChangeFeed {
   }
 }
 
+// packages/mpd-team-core-plugin/src/captain-wake.ts
+import { resolve as resolve4 } from "node:path";
+
+// packages/mpd-team-core-plugin/src/captain-event-wait.ts
+function awaitCaptainEvent(input) {
+  return new Promise((resolve4, reject) => {
+    const disposers = [];
+    let prepared;
+    let settled = false;
+    const finish = (settle) => {
+      if (settled)
+        return;
+      settled = true;
+      for (const off of disposers) {
+        try {
+          off();
+        } catch (error) {
+          input.warn(`captain event wait cleanup: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+      settle();
+    };
+    const outcome = (state, detail = {}) => {
+      finish(() => {
+        resolve4({ teamId: input.teamId, state, ...detail });
+      });
+    };
+    const cancelled = () => {
+      outcome("cancelled", { reason: "the original tool call was aborted" });
+    };
+    const disposed = () => {
+      outcome("disposed", { reason: "the waiting captain or Team row was disposed" });
+    };
+    const check2 = () => {
+      if (settled || prepared === undefined)
+        return;
+      try {
+        if (input.dispose.aborted) {
+          disposed();
+          return;
+        }
+        if (input.exec.signal?.aborted === true) {
+          cancelled();
+          return;
+        }
+        if (!input.isCurrent()) {
+          disposed();
+          return;
+        }
+        const human = pendingHumanInput(input.agent);
+        if (human === "step" || human === "turn") {
+          if (human === "turn" && typeof input.exec.concludeTurn === "function") {
+            try {
+              input.exec.concludeTurn();
+            } catch (error) {
+              input.warn(`captain event wait could not conclude turn: ${error instanceof Error ? error.message : String(error)}`);
+            }
+          }
+          outcome("steered", { reason: "human input is pending in the original captain inbox" });
+          return;
+        }
+        const current = input.evaluate(prepared.condition);
+        const match = prepared.immediate ?? current.match;
+        if (match !== undefined)
+          outcome("matched", { match });
+        else if (current.reason !== undefined)
+          outcome(current.ended === true ? "ended" : "failed", { reason: current.reason });
+      } catch (error) {
+        outcome("failed", { reason: error instanceof Error ? error.message : String(error) });
+      }
+    };
+    try {
+      disposers.push(input.feed.subscribe(input.scope.workspace, check2));
+      const offInbox = input.dsh.onEvent?.("agent/inbox/inserted", (event) => {
+        if (isRecord(event) && event.agent === input.agent)
+          check2();
+      });
+      if (typeof offInbox === "function")
+        disposers.push(offInbox);
+      const offAgent = input.dsh.onEvent?.("agent/disposed", (event) => {
+        if (isRecord(event) && event.agent === input.agent)
+          disposed();
+      });
+      if (typeof offAgent === "function")
+        disposers.push(offAgent);
+      const signal = input.exec.signal;
+      if (signal !== undefined) {
+        signal.addEventListener("abort", cancelled, { once: true });
+        disposers.push(() => {
+          signal.removeEventListener("abort", cancelled);
+        });
+      }
+      input.dispose.addEventListener("abort", disposed, { once: true });
+      disposers.push(() => {
+        input.dispose.removeEventListener("abort", disposed);
+      });
+      prepared = input.prepare();
+      check2();
+      if (!settled && (signal === undefined || typeof offInbox !== "function" || typeof offAgent !== "function" || pendingHumanInput(input.agent) === undefined || input.agent.status !== "running")) {
+        outcome("unsupported", { reason: "this host cannot safely keep the original running turn steerable and cancellable; use a durable arm after ending the turn" });
+      }
+    } catch (error) {
+      finish(() => {
+        reject(error);
+      });
+    }
+  });
+}
+
+// packages/mpd-team-core-plugin/src/captain-wake-store.ts
+import { createHash, randomUUID as randomUUID3 } from "node:crypto";
+import { linkSync, mkdirSync as mkdirSync11, readFileSync as readFileSync10, readdirSync as readdirSync6, unlinkSync, writeFileSync as writeFileSync6 } from "node:fs";
+import { join as join13 } from "node:path";
+function errno(error) {
+  return typeof error === "object" && error !== null && "code" in error ? error.code : undefined;
+}
+function directory(scope) {
+  const key = createHash("sha256").update(scope.sessionId).digest("hex");
+  return join13(teamRoot(scope.workspace), "wakes", key);
+}
+function readOptional(path) {
+  try {
+    return JSON.parse(readFileSync10(path, "utf8"));
+  } catch (error) {
+    if (errno(error) === "ENOENT")
+      return;
+    throw error;
+  }
+}
+function writeExclusive(path, value) {
+  try {
+    writeFileSync6(path, JSON.stringify(value) + `
+`, { flag: "wx", mode: 384, flush: true });
+    return true;
+  } catch (error) {
+    if (errno(error) === "EEXIST")
+      return false;
+    throw error;
+  }
+}
+function readWakeHistory(scope, limit) {
+  let entries;
+  try {
+    entries = readdirSync6(directory(scope));
+  } catch (error) {
+    if (errno(error) === "ENOENT")
+      return [];
+    throw error;
+  }
+  return entries.flatMap((file) => /^[1-9]\d*\.json$/u.test(file) ? [Number.parseInt(file, 10)] : []).sort((a, b) => b - a).slice(0, limit).flatMap((sequence) => {
+    const record = readOptional(join13(directory(scope), `${sequence}.json`));
+    if (record === undefined || record.sessionId !== scope.sessionId || record.sequence !== sequence) {
+      throw new Error(`invalid captain wake registration at sequence ${sequence}`);
+    }
+    return [record];
+  });
+}
+function createWake(scope, sequence, input) {
+  mkdirSync11(directory(scope), { recursive: true, mode: 448 });
+  const record = { ...input, id: randomUUID3(), sequence, sessionId: scope.sessionId };
+  return publishExclusive(scope, `${sequence}.json`, record) ? record : undefined;
+}
+function publishExclusive(scope, name, value) {
+  const temporary = join13(directory(scope), `${randomUUID3()}.tmp`);
+  if (!writeExclusive(temporary, value))
+    throw new Error("could not reserve a wake state scratch file");
+  try {
+    linkSync(temporary, join13(directory(scope), name));
+    return true;
+  } catch (error) {
+    if (errno(error) === "EEXIST")
+      return false;
+    throw error;
+  } finally {
+    unlinkSync(temporary);
+  }
+}
+function rememberWakeMatch(scope, record, match) {
+  return publishExclusive(scope, `${record.sequence}.ready`, match) ? match : readWakeMatch(scope, record) ?? match;
+}
+function readWakeMatch(scope, record) {
+  return readOptional(join13(directory(scope), `${record.sequence}.ready`));
+}
+function decideWake(scope, record, decision) {
+  return writeExclusive(join13(directory(scope), `${record.sequence}.decision`), decision);
+}
+function readWakeDecision(scope, record) {
+  try {
+    const decision = readOptional(join13(directory(scope), `${record.sequence}.decision`));
+    if (decision === undefined || decision.kind === "submit" || decision.kind === "cancelled" || decision.kind === "failed")
+      return decision;
+    return "unknown";
+  } catch (error) {
+    if (error instanceof SyntaxError)
+      return "unknown";
+    throw error;
+  }
+}
+function finishWake(scope, record, accepted) {
+  writeExclusive(join13(directory(scope), `${record.sequence}.receipt`), { accepted });
+}
+function readWakeReceipt(scope, record) {
+  try {
+    const receipt = readOptional(join13(directory(scope), `${record.sequence}.receipt`));
+    return typeof receipt?.accepted === "boolean" ? receipt : undefined;
+  } catch (error) {
+    if (error instanceof SyntaxError)
+      return;
+    throw error;
+  }
+}
+
+// packages/mpd-team-core-plugin/src/captain-wake.ts
+function captainWakeScope(agent) {
+  if (!isRecord(agent) || !isRecord(agent.session) || !isRecord(agent.session.header))
+    return;
+  const { id, header } = agent.session;
+  if (typeof id !== "string" || id === "" || !isRecord(header) || typeof header.cwd !== "string" || header.cwd === "")
+    return;
+  return { sessionId: id, workspace: resolve4(header.cwd) };
+}
+function terminal(status) {
+  return status === "completed" || status === "failed" || status === "cancelled";
+}
+function mailFor(scope, team, fromMember) {
+  return readMailbox(scope.workspace).messages.filter((mail) => mail.teamId === team.teamId && mail.toId === team.leadSessionId && mail.fromId !== team.leadSessionId && mail.fromId !== scope.sessionId && (fromMember === undefined || mail.fromMemberId === fromMember));
+}
+function beforeClose(at, endedAt, inclusive) {
+  if (endedAt === undefined)
+    return true;
+  const delta = Date.parse(at) - Date.parse(endedAt);
+  return inclusive ? delta <= 0 : delta < 0;
+}
+function evaluate(scope, team, condition) {
+  if (condition.kind === "mail") {
+    const messages = mailFor(scope, team, condition.fromMember);
+    const at = condition.after === null ? -1 : messages.map((mail) => mail.id).lastIndexOf(condition.after);
+    if (condition.after !== null && at < 0)
+      return { reason: "the mailbox cursor is missing; arm a new wake after reviewing the inbox" };
+    const endedAt = readTeam(scope.workspace, team.teamId)?.endedAt ?? team.endedAt;
+    const message = messages.slice(at + 1).find((mail) => beforeClose(mail.sentAt, endedAt, false));
+    if (message !== undefined)
+      return { match: { messageId: message.id } };
+    if (endedAt !== undefined)
+      return { ended: true, reason: `team ${team.teamId} ended before the condition matched` };
+  } else {
+    const tasks = {};
+    for (const id of condition.ids) {
+      const row = team.tasks.find((task) => task.id === id);
+      if (row === undefined)
+        return { reason: `task ${id} is missing from team ${team.teamId}` };
+      if (terminal(row.status) && beforeClose(row.finishedAt ?? row.updatedAt, team.endedAt, true))
+        tasks[id] = row.status;
+    }
+    const count = Object.keys(tasks).length;
+    if (condition.mode === "any" ? count > 0 : count === condition.ids.length)
+      return { match: { tasks } };
+  }
+  return team.endedAt === undefined ? {} : { ended: true, reason: `team ${team.teamId} ended before the condition matched` };
+}
+function evaluateRecord(scope, record) {
+  const team = readTeam(scope.workspace, record.teamId);
+  if (team === undefined || !recordNamesLead(team, [scope.sessionId]))
+    return { reason: "the original team or its captain binding is unavailable" };
+  const match = readWakeMatch(scope, record);
+  return match === undefined ? evaluate(scope, team, record.condition) : { match };
+}
+function view(scope, record) {
+  const { immediate, sequence: _sequence, sessionId: _sessionId, ...fields } = record;
+  if (immediate !== undefined)
+    return { ...fields, state: "satisfied", match: immediate };
+  const decision = readWakeDecision(scope, record);
+  if (decision === "unknown")
+    return { ...fields, state: "delivery-unknown", reason: "the decision was interrupted; no retry was attempted" };
+  if (decision?.kind === "cancelled")
+    return { ...fields, state: "cancelled" };
+  if (decision?.kind === "failed")
+    return { ...fields, state: "failed", reason: decision.reason };
+  if (decision?.kind === "submit") {
+    const receipt = readWakeReceipt(scope, record);
+    if (receipt === undefined)
+      return { ...fields, state: "delivery-unknown", match: decision.match, reason: "the host receipt is missing; no retry was attempted" };
+    if (!receipt.accepted)
+      return { ...fields, state: "failed", match: decision.match, reason: "the host refused the captain follow-up" };
+    return { ...fields, state: "submitted", match: decision.match };
+  }
+  const status = evaluateRecord(scope, record);
+  if (status.reason !== undefined)
+    return { ...fields, state: "failed", reason: status.reason };
+  return status.match === undefined ? { ...fields, state: "waiting" } : { ...fields, state: "ready", match: status.match };
+}
+function parseCondition(raw, scope, team) {
+  if (raw.event === "mail") {
+    if (raw.task_ids !== undefined || raw.mode !== undefined)
+      throw new Error("a mail wake takes from_member, without task_ids or mode");
+    const fromMember = raw.from_member;
+    if (fromMember !== undefined && (typeof fromMember !== "string" || !team.members.some((member) => member.id === fromMember))) {
+      throw new Error("from_member must name a member ID on this team");
+    }
+    const messages = mailFor(scope, team, fromMember);
+    const endedAt = readTeam(scope.workspace, team.teamId)?.endedAt ?? team.endedAt;
+    const unread = messages.find((mail) => mail.readAt === undefined && beforeClose(mail.sentAt, endedAt, false));
+    return {
+      condition: { kind: "mail", ...fromMember === undefined ? {} : { fromMember }, after: messages.at(-1)?.id ?? null },
+      ...unread === undefined ? {} : { immediate: { messageId: unread.id } }
+    };
+  }
+  if (raw.event !== undefined && raw.event !== "tasks" || raw.from_member !== undefined)
+    throw new Error("wake event must be tasks or mail");
+  if (raw.mode !== undefined && raw.mode !== "all" && raw.mode !== "any")
+    throw new Error("task wake mode must be all or any");
+  const ids = raw.task_ids;
+  if (!Array.isArray(ids) || ids.length < 1 || ids.length > 64 || !ids.every((id) => typeof id === "string" && /^T[1-9]\d*$/u.test(id))) {
+    throw new Error("task_ids must be an array of 1 to 64 board task IDs");
+  }
+  const condition = { kind: "tasks", ids: [...new Set(ids)].sort(), mode: raw.mode === "any" ? "any" : "all" };
+  const outcome = evaluate(scope, team, condition);
+  if (outcome.reason !== undefined)
+    throw new Error(outcome.reason);
+  return { condition, ...outcome.match === undefined ? {} : { immediate: outcome.match } };
+}
+function sameCondition(first, second) {
+  if (first.kind === "mail" && second.kind === "mail")
+    return first.fromMember === second.fromMember;
+  return first.kind === "tasks" && second.kind === "tasks" && first.mode === second.mode && first.ids.join(",") === second.ids.join(",");
+}
+function notice(record, match) {
+  return userMessage({
+    text: `Team wake ${record.id} matched on ${JSON.stringify(record.teamId)}. ${match.messageId === undefined ? `Terminal board task statuses: ${JSON.stringify(match.tasks)}. Read the team board.` : `Mailbox message ID ${JSON.stringify(match.messageId)}. Read the team inbox.`} Continue the task you armed this wake for.`,
+    source: { kind: "mpd-team-wake", wakeId: record.id }
+  });
+}
+function renderCaptainWake(value) {
+  const line = (row) => `wake ${row.id} · team ${row.teamId} · ${row.state}${row.reason === undefined ? "" : ` · ${row.reason}`}`;
+  if ("wait" in value) {
+    const result = value.wait;
+    return `wait · team ${result.teamId} · ${result.state}${result.match === undefined ? "" : ` · ${JSON.stringify(result.match)}`}${result.reason === undefined ? "" : ` · ${result.reason}`}`;
+  }
+  if ("registration" in value)
+    return `${line(value.registration)}${value.next === undefined ? "" : `
+${value.next}`}`;
+  return value.registrations.length === 0 ? "No captain wake registrations." : value.registrations.map(line).join(`
+`);
+}
+function pending(current) {
+  return current.state === "waiting" || current.state === "ready";
+}
+function sameScope(agent, scope) {
+  const current = captainWakeScope(agent);
+  return current?.sessionId === scope.sessionId && current.workspace === scope.workspace;
+}
+function installCaptainWake(deps) {
+  return new CaptainWakeController(deps);
+}
+
+class CaptainWakeController {
+  subscriptions = new Map;
+  waits = new Map;
+  listeners = [];
+  scheduled;
+  disposed = false;
+  deps;
+  constructor(deps) {
+    this.deps = deps;
+    for (const event of ["agent/status", "agent/created"]) {
+      const off = deps.dsh.onEvent?.(event, () => {
+        this.queue();
+      });
+      if (typeof off === "function")
+        this.listeners.push(off);
+    }
+    if (this.listeners.length > 0)
+      this.queue();
+  }
+  queue() {
+    if (this.disposed || this.scheduled !== undefined)
+      return;
+    this.scheduled = setImmediate(() => {
+      this.scheduled = undefined;
+      this.scan();
+    });
+  }
+  observe(workspace) {
+    if (!this.subscriptions.has(workspace))
+      this.subscriptions.set(workspace, this.deps.feed.subscribe(workspace, () => {
+        this.queue();
+      }));
+  }
+  scan() {
+    try {
+      const agents = this.deps.dsh.liveAgents?.() ?? [];
+      const required = new Set;
+      for (const agent of agents) {
+        const scope = captainWakeScope(agent);
+        if (scope === undefined || this.deps.dsh.liveAgentExact?.(agent.id) !== agent || agents.filter((other) => sameScope(other, scope)).length !== 1)
+          continue;
+        try {
+          const [record] = readWakeHistory(scope, 1);
+          if (record === undefined || record.immediate !== undefined || readWakeDecision(scope, record) !== undefined)
+            continue;
+          this.observe(scope.workspace);
+          this.deliver(scope, record, agent);
+          if (readWakeDecision(scope, record) === undefined)
+            required.add(scope.workspace);
+        } catch (error) {
+          this.deps.warn(`captain wake for ${scope.sessionId}: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+      for (const [workspace, off] of this.subscriptions) {
+        if (required.has(workspace))
+          continue;
+        off();
+        this.subscriptions.delete(workspace);
+      }
+    } catch (error) {
+      this.deps.warn(`captain wake scan: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  deliver(scope, record, agent) {
+    const outcome = evaluateRecord(scope, record);
+    if (outcome.reason !== undefined) {
+      decideWake(scope, record, { kind: "failed", reason: outcome.reason });
+      return;
+    }
+    if (outcome.match === undefined)
+      return;
+    const match = readWakeMatch(scope, record) ?? rememberWakeMatch(scope, record, outcome.match);
+    if (this.deps.dsh.liveAgentExact(agent.id) !== agent || !sameScope(agent, scope))
+      return;
+    if (!canSubmitUserTurn(agent) || agent.status !== "idle" && agent.status !== "running" || typeof this.deps.dsh.submitUserTurn !== "function") {
+      decideWake(scope, record, { kind: "failed", reason: "the original captain no longer exposes host idle status and next-turn submission" });
+      return;
+    }
+    if (agent.status !== "idle" || !decideWake(scope, record, { kind: "submit", match }))
+      return;
+    const accepted = this.deps.dsh.submitUserTurn(agent, notice(record, match));
+    finishWake(scope, record, accepted);
+    this.queue();
+  }
+  execute(exec, scope, raw, team) {
+    if (!isRecord(raw))
+      throw new Error("wake needs an object with action arm, wait, status or cancel");
+    const agent = exec.agent;
+    const live = isRecord(agent) && typeof agent.id === "string" ? this.deps.dsh.liveAgentExact?.(agent.id) : undefined;
+    if (live === undefined || !Object.is(live, agent) || !sameScope(live, scope)) {
+      throw new Error("captain wake requires the exact live session; this host could not verify it");
+    }
+    if (raw.action === "arm" || raw.action === "wait") {
+      if (team === undefined || !recordNamesLead(team, [scope.sessionId]) || team.endedAt !== undefined)
+        throw new Error(`wake ${raw.action} requires your active team and its recorded captain session`);
+      const key = JSON.stringify([scope.workspace, scope.sessionId]);
+      if (this.waits.has(key))
+        throw new Error("this captain already has a pending in-turn wait");
+      return raw.action === "wait" ? this.wait(key, scope, live, exec, raw, team) : this.arm(scope, live, raw, team);
+    }
+    if (raw.action !== "status" && raw.action !== "cancel")
+      throw new Error("wake action must be arm, wait, status or cancel");
+    if (raw.action === "status" && raw.id === undefined)
+      return { registrations: readWakeHistory(scope, 20).map((record2) => view(scope, record2)) };
+    if (typeof raw.id !== "string" || raw.id === "")
+      throw new Error("wake cancel needs its registration id");
+    const record = readWakeHistory(scope, Infinity).find((entry) => entry.id === raw.id);
+    if (record === undefined)
+      throw new Error("wake id was not found in your session");
+    if (raw.action === "cancel" && record.immediate === undefined) {
+      decideWake(scope, record, { kind: "cancelled" });
+      this.queue();
+    }
+    return { registration: view(scope, record) };
+  }
+  async wait(key, scope, agent, exec, raw, team) {
+    const [previous] = readWakeHistory(scope, 1);
+    if (previous !== undefined && pending(view(scope, previous))) {
+      throw new Error(`cancel wake ${previous.id} before starting an in-turn wait`);
+    }
+    const controller = new AbortController;
+    this.waits.set(key, controller);
+    if (this.disposed)
+      controller.abort();
+    try {
+      return { wait: await awaitCaptainEvent({
+        agent,
+        scope,
+        teamId: team.teamId,
+        exec,
+        dispose: controller.signal,
+        dsh: this.deps.dsh,
+        feed: this.deps.feed,
+        isCurrent: () => this.deps.dsh.liveAgentExact(agent.id) === agent && sameScope(agent, scope),
+        prepare: () => parseCondition(raw, scope, team),
+        evaluate: (condition) => {
+          const latest = readTeam(scope.workspace, team.teamId);
+          if (latest === undefined || !recordNamesLead(latest, [scope.sessionId]))
+            return { reason: "the original team or its captain binding is unavailable" };
+          return evaluate(scope, latest, condition);
+        },
+        warn: this.deps.warn
+      }) };
+    } finally {
+      this.waits.delete(key);
+    }
+  }
+  arm(scope, agent, raw, team) {
+    this.queue();
+    this.observe(scope.workspace);
+    const input = parseCondition(raw, scope, team);
+    if (input.immediate === undefined && (this.listeners.length < 2 || !canSubmitUserTurn(agent) || agent.status !== "idle" && agent.status !== "running" || typeof this.deps.dsh.submitUserTurn !== "function")) {
+      throw new Error("captain wake unsupported: the original captain needs observable idle status and next-turn submission");
+    }
+    const [previous] = readWakeHistory(scope, 1);
+    if (previous !== undefined && previous.immediate === undefined && readWakeDecision(scope, previous) === undefined) {
+      const current = view(scope, previous);
+      if (pending(current)) {
+        if (previous.teamId !== team.teamId || !sameCondition(previous.condition, input.condition))
+          throw new Error(`cancel wake ${previous.id} before arming a different condition`);
+        return { registration: current, next: "End your current turn. This pending wake will submit a follow-up once the condition is met." };
+      }
+      decideWake(scope, previous, { kind: "failed", reason: current.reason ?? "the prior condition became unavailable" });
+    }
+    const record = createWake(scope, (previous?.sequence ?? 0) + 1, { teamId: team.teamId, ...input, armedAt: this.deps.now().toISOString() });
+    if (record === undefined)
+      throw new Error("another captain wake was armed concurrently; inspect it with wake status");
+    const registration = view(scope, record);
+    return {
+      registration,
+      next: registration.state === "satisfied" ? "The condition already holds. Continue in this turn." : "End your current turn. The host will be asked to start one follow-up when the condition holds."
+    };
+  }
+  dispose() {
+    this.disposed = true;
+    for (const waiter of this.waits.values())
+      waiter.abort();
+    if (this.scheduled !== undefined)
+      clearImmediate(this.scheduled);
+    for (const off of this.listeners)
+      off();
+    for (const off of this.subscriptions.values())
+      off();
+    this.subscriptions.clear();
+  }
+}
+
 // packages/mpd-team-core-plugin/src/index.ts
 var name = "mpd-team-core";
 var inject = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_COMMANDS);
@@ -8813,6 +9431,8 @@ function describeStatus(value) {
   const planId = typeof plan.planId === "string" && plan.planId !== "" ? plan.planId : "(none)";
   const summary = `plan ${planId} · members ${members.length} · tasks ${tasks.length} · hold ${board.hold === null || board.hold === undefined ? "none" : "held"}`;
   const lines = [summary];
+  if (isRecord(board.rosterUnsupported) && typeof board.rosterUnsupported.reason === "string")
+    lines.push(board.rosterUnsupported.reason);
   for (const member of members) {
     const row = member ?? {};
     lines.push(`member id=${fieldText(row.id)} name=${fieldText(row.name)} status=${fieldText(row.status)}`);
@@ -8861,9 +9481,11 @@ function blockerSentence(blockers) {
     return "";
   const unknown = blockers.filter((entry) => entry?.form === "unknown").map((entry) => String(entry?.reference ?? ""));
   const forms = [...new Set(blockers.map((entry) => String(entry?.form ?? "?")))].join("/");
+  if (forms.includes("ambiguous"))
+    return ` — blocked_by reads as ${forms}; use a task ID or position for duplicate subjects`;
   if (unknown.length === 0)
     return ` — blocked_by reads as ${forms}`;
-  return ` — WARNING: blocked_by ${unknown.map((reference) => `"${reference}"`).join(", ")} name(s) no task this plan can resolve (only a position like "2", a staged subject, or a board id like "T2" resolves); approval will report it and draw no edge`;
+  return ` — WARNING: blocked_by ${unknown.map((reference) => `"${reference}"`).join(", ")} name(s) no task this plan can resolve (only a position like "2", a staged subject, or a board id like "T2" resolves); approval requires every blocker to resolve`;
 }
 function emptyScopesWarning(kind, writeScopes, taskId, subject) {
   const effectiveKind = kind ?? "work";
@@ -8887,8 +9509,8 @@ function describeWireValue(value) {
 function namedTask(nextId, subject) {
   return `${nextId} (${JSON.stringify(subject)})`;
 }
-function readDependencyAnswer(raw, args, nextId, subject) {
-  const task = namedTask(nextId, subject);
+function readDependencyAnswer(raw, args, nextId, subject, editing = false) {
+  const task = `${editing ? "edit" : "create_task"} for ${namedTask(nextId, subject)}`;
   const declarations = [];
   if (raw.blocked_by !== undefined)
     declarations.push({ spelling: "task.blocked_by", value: raw.blocked_by });
@@ -8896,28 +9518,53 @@ function readDependencyAnswer(raw, args, nextId, subject) {
     declarations.push({ spelling: "task.blockedBy", value: raw.blockedBy });
   if (args?.blocked_by !== undefined)
     declarations.push({ spelling: "blocked_by", value: args.blocked_by });
-  for (const declaration of declarations) {
-    if (Array.isArray(declaration.value))
-      continue;
-    throw new Error(`create_task for ${task} was given a NON-ARRAY blocked_by at ${declaration.spelling} (${describeWireValue(declaration.value)}): a non-array is never silently dropped. Fix: send an array of references — blocked_by: [] for a genuine root, or blocked_by: ["<blocker id or subject>"] — or independent: true, which is the only other accepted spelling.`);
-  }
-  const lists = declarations.map((declaration) => ({ spelling: declaration.spelling, list: declaration.value.map(String) }));
+  const lists = declarations.map((declaration) => {
+    if (!Array.isArray(declaration.value)) {
+      throw new Error(`${task} was given a NON-ARRAY blocked_by at ${declaration.spelling} (${describeWireValue(declaration.value)}): a non-array is never silently dropped. Fix: send an array of references — blocked_by: [] for a genuine root, or blocked_by: ["<blocker id or subject>"] — or independent: true, which is the only other accepted spelling.`);
+    }
+    const list = declaration.value.map((value, index) => {
+      const reference = blockerReferenceText(value);
+      if (reference === undefined) {
+        throw new Error(`${task} has an invalid blocker at ${declaration.spelling}[${index}] (${describeWireValue(value)}). Use a nonblank task ID or subject, or a positive integer position.`);
+      }
+      return reference;
+    });
+    return { spelling: declaration.spelling, list };
+  });
   if (lists.length > 1) {
     const [first, ...rest] = lists;
     const disagreement = rest.find((candidate) => candidate.list.length !== first.list.length || candidate.list.some((entry, at) => entry !== first.list[at]));
     if (disagreement !== undefined) {
-      throw new Error(`create_task for ${task} was given TWO disagreeing spellings of blocked_by: ${first.spelling} reads ${JSON.stringify(first.list)} while ${disagreement.spelling} reads ${JSON.stringify(disagreement.list)}. All three spellings (task.blocked_by, task.blockedBy and top-level blocked_by) are accepted, but they must state ONE answer: send the list in a single spelling (or make both agree), or independent: true for a genuine root.`);
+      throw new Error(`${task} was given TWO disagreeing spellings of blocked_by: ${first.spelling} reads ${JSON.stringify(first.list)} while ${disagreement.spelling} reads ${JSON.stringify(disagreement.list)}. All three spellings (task.blocked_by, task.blockedBy and top-level blocked_by) are accepted, but they must state ONE answer: send the list in a single spelling (or make both agree), or independent: true for a genuine root.`);
     }
   }
   const independent = raw.independent === true || args?.independent === true;
   const blockedBy = lists.length === 0 ? undefined : lists[0].list;
-  if (blockedBy === undefined && !independent) {
-    throw new Error(`create_task for ${task} must state its DEPENDENCY ANSWER: send blocked_by: [...] — an array, possibly [] for a genuine root — or independent: true. Nothing was staged and no edge was guessed for you, because a captain that does not know its DAG is asked, never guessed for. Fix: send blocked_by: [] for a genuine root, or list what must close first — blocked_by: ["<blocker id or subject>"] — or independent: true.`);
+  if (independent) {
+    if (blockedBy !== undefined && blockedBy.length > 0) {
+      throw new Error(`${task} is CONTRADICTORY: blocked_by is non-empty (${JSON.stringify(blockedBy)}) while independent: true says the task has no blockers. Fix: keep the blockers and drop independent: true, or drop the list if this task really is independent.`);
+    }
+    return { blockedBy: [], independent: true };
   }
-  if (independent && blockedBy !== undefined && blockedBy.length > 0) {
-    throw new Error(`create_task for ${task} is CONTRADICTORY: blocked_by is non-empty (${JSON.stringify(blockedBy)}) while independent: true says the task has no blockers. Fix: either keep the blockers and drop independent: true, or drop the list and send blocked_by: [] if this task really is a root.`);
-  }
-  return blockedBy ?? [];
+  if (blockedBy !== undefined)
+    return { blockedBy };
+  if (editing)
+    return {};
+  throw new Error(`${task} must state its DEPENDENCY ANSWER: send blocked_by: [...] — an array, possibly [] for a genuine root — or independent: true. Nothing was staged and no edge was guessed for you, because a captain that does not know its DAG is asked, never guessed for. Fix: send blocked_by: [] for a genuine root, or list what must close first — blocked_by: ["<blocker id or subject>"] — or independent: true.`);
+}
+function readTaskFields(raw, args) {
+  const writeScopes = stringList(raw.write_scopes ?? raw.writeScopes ?? args.write_scopes);
+  const owner = raw.owner ?? args.owner;
+  const kind = parseTaskKind(raw.kind ?? args.kind);
+  return {
+    subject: String(raw.subject ?? "").trim(),
+    description: String(raw.description ?? ""),
+    ...kind === undefined ? {} : { kind },
+    ...writeScopes === undefined ? {} : { writeScopes },
+    ...owner === undefined ? {} : { owner: String(owner) },
+    ...raw.coverageOf === undefined ? {} : { coverageOf: String(raw.coverageOf) },
+    ...raw.sourceTaskId === undefined ? {} : { sourceTaskId: String(raw.sourceTaskId) }
+  };
 }
 function assertNoDependencyCycle(edges, subjects, nextId, task, selfReferences) {
   const label = (id) => subjects.has(id) ? namedTask(id, subjects.get(id)) : id;
@@ -8944,6 +9591,10 @@ function assertPlanGraph(plan) {
   }
   const subjects = new Map(plan.tasks.map((task, index) => [planTaskId(index), task.subject]));
   const label = (id) => subjects.has(id) ? namedTask(id, subjects.get(id)) : id;
+  if (defect.kind === "reference") {
+    const problem2 = defect.problem.kind === "ambiguous" ? `ambiguous ${defect.field}; it names ${defect.problem.indices.map(planTaskId).join(", ")}` : defect.problem.kind === "missing" ? `unresolved ${defect.field}; it matches no staged task` : `invalid blocker in ${defect.field}`;
+    throw new Error(`plan ${plan.planId} was REFUSED: ${label(defect.id)} has ${problem2} (${describeWireValue(defect.value)}). Use agent_teams_plan {action:"edit", tasks:[...]} and give the intended task's ID or position before approving.`);
+  }
   if (defect.kind === "self-edge") {
     throw new Error(`plan ${plan.planId} was REFUSED: its staged graph carries a dependency SELF-EDGE ${label(defect.id)} -> ${label(defect.id)} — the task is its own blocker, so it could never become ready, and no verb can remove the edge afterwards. Fix: re-send the plan with agent_teams_plan {action:"edit", tasks:[...]} without that task's own id or subject in its blocked_by — blocked_by: [] for a genuine root, or name the task that must close first — then approve again.`);
   }
@@ -9172,6 +9823,12 @@ function apply(ctx) {
   disposers.push(() => {
     feed.dispose();
   });
+  const captainWake = installCaptainWake({ dsh, feed, now, warn: (line) => {
+    rowLogLine("mpd-team-core", line);
+  } });
+  disposers.push(() => {
+    captainWake.dispose();
+  });
   const graphModels = new GraphModels({
     revision: (workspace) => feed.revision(workspace),
     notify: (workspace) => {
@@ -9221,11 +9878,11 @@ function apply(ctx) {
         return { state: "free" };
       if (typeof watchdog.isHeld !== "function")
         return { state: "not-readable", reason: "the mpdWatchdog service exposes no isHeld()" };
-      const view = watchdog.isHeld(record.teamId, workspace);
-      if (view === null || typeof view !== "object" || typeof view.held !== "boolean") {
+      const view2 = watchdog.isHeld(record.teamId, workspace);
+      if (view2 === null || typeof view2 !== "object" || typeof view2.held !== "boolean") {
         return { state: "not-readable", reason: "mpdWatchdog.isHeld() answered without a boolean `held`" };
       }
-      if (view.held !== true)
+      if (view2.held !== true)
         return { state: "free" };
       return { state: "held", reason: `the team watchdog holds ${record.teamId}` };
     } catch (error) {
@@ -9288,8 +9945,8 @@ function apply(ctx) {
     if (!outcome.applied)
       return { released: freed.released, taskId, refused: outcome.reason };
     writeTeam(workspace, withDerivedPhase(outcome.record));
-    const view = outcome.record.tasks.find((candidate) => candidate.id === taskId);
-    return { released: freed.released, taskId, status: view?.status, revision: view?.revision };
+    const view2 = outcome.record.tasks.find((candidate) => candidate.id === taskId);
+    return { released: freed.released, taskId, status: view2?.status, revision: view2?.revision };
   };
   const graphOf = (workspace, teamId) => {
     try {
@@ -9536,7 +10193,7 @@ function apply(ctx) {
   toolRegistrations += 1;
   disposers.push(dsh.registerTool({
     name: "agent_teams_plan",
-    description: "The team PLAN. `create` stages (spawns nothing); `add_member`/`create_task` append; `edit` reads or replaces; `approve` EXECUTES via the TEAM EXECUTOR (refuses an EMPTY plan); `delete` archives; `status` prints plan, hold, roster, board. `create_task` WARNS when a work/repair/integration row has no write_scopes.",
+    description: "`create` stages; `approve` spawns; `delete` archives. Use blocked_by: [] for DAG roots, independent: true on every task for fan-out. All-root edited or typed plans need confirmation; generic appends warn. `create_task` WARNS if work/repair/integration lacks write_scopes.",
     parameters: {
       type: "object",
       properties: {
@@ -9551,7 +10208,7 @@ function apply(ctx) {
         blocked_by: { type: "array", items: { type: "string" }, description: "create_task: [] = root." },
         kind: { type: "string", description: "create_task: alias of task.kind." },
         members: { type: "array", items: { type: "object" }, description: "edit: replacement members." },
-        tasks: { type: "array", items: { type: "object" }, description: "edit: replacement tasks." },
+        tasks: { type: "array", items: { type: "object" }, description: "edit: task objects." },
         dry_run: { type: "boolean", description: "approve: preview only." }
       },
       required: ["action"],
@@ -9567,6 +10224,7 @@ function apply(ctx) {
           team: { oneOf: [{ type: "object" }, { type: "null" }] },
           summary: { oneOf: [{ type: "object" }, { type: "null" }] },
           members: { type: "array", items: { type: "object" } },
+          rosterUnsupported: { type: "object" },
           tasks: { type: "array", items: { type: "object" } },
           contracts: { type: "array", items: { type: "object" } },
           created: { type: "object" },
@@ -9602,11 +10260,14 @@ WARNING: ${value.warning}` : "";
           }
         };
         const record = recordFor(workspace, sessionId);
+        const officialMembers = record === undefined ? read(() => dsh.teamListMembers(exec.agent), []) : undefined;
+        const rosterUnsupported = officialMembers?.unsupported;
         return {
           plan: readPlan(workspace, sessionId) ?? null,
           hold: readHold(workspace) ?? null,
           team: record ?? null,
-          members: record === undefined ? read(() => dsh.teamListMembers(exec.agent), []) : record.members.filter((member) => member.status !== "failed"),
+          members: record === undefined ? [...officialMembers ?? []] : record.members.filter((member) => member.status !== "failed"),
+          ...rosterUnsupported === undefined ? {} : { rosterUnsupported },
           tasks: record === undefined ? read(() => dsh.teamListTasks(exec.agent), []) : record.tasks,
           summary: record === undefined ? null : losslessSummary(summariseTeam(record)),
           contracts: read(() => listContracts(workspace), [])
@@ -9690,26 +10351,14 @@ WARNING: ${value.warning}` : "";
       }
       if (action === "create_task") {
         const raw = args?.task ?? {};
-        const writeScopes = stringList(raw.write_scopes ?? raw.writeScopes ?? args?.write_scopes);
-        const owner = raw.owner ?? args?.owner;
-        const kind = parseTaskKind(raw.kind ?? args?.kind);
-        const coverageOf = raw.coverageOf;
-        const sourceTaskId = raw.sourceTaskId;
+        const fields = readTaskFields(raw, args);
         const plan = stagedPlan(workspace, sessionId);
         if (plan !== undefined) {
-          const blockedBy2 = readDependencyAnswer(raw, args, planTaskId(plan.tasks.length), String(raw.subject ?? "").trim());
-          const next2 = addTask(plan, {
-            subject: String(raw.subject ?? ""),
-            description: String(raw.description ?? ""),
-            ...kind === undefined ? {} : { kind },
-            blockedBy: blockedBy2,
-            ...writeScopes === undefined ? {} : { writeScopes },
-            ...owner === undefined ? {} : { owner: String(owner) },
-            ...coverageOf === undefined ? {} : { coverageOf: String(coverageOf) },
-            ...sourceTaskId === undefined ? {} : { sourceTaskId: String(sourceTaskId) }
-          });
+          const stagedId = planTaskId(plan.tasks.length);
+          const dependency = readDependencyAnswer(raw, args, stagedId, fields.subject);
+          const blockedBy2 = dependency.blockedBy ?? [];
+          const next2 = addTask(plan, { ...fields, ...dependency });
           const stagedTask = next2.tasks[next2.tasks.length - 1];
-          const stagedId = planTaskId(next2.tasks.length - 1);
           assertNoDependencyCycle(planDependencyEdges(next2), new Map(next2.tasks.map((task, index) => [planTaskId(index), task.subject])), stagedId, namedTask(stagedId, stagedTask.subject), blockedBy2.filter((reference) => planReferenceTarget(next2, reference) === stagedId));
           writePlan(workspace, next2);
           const scopesWarning2 = emptyScopesWarning(stagedTask.kind, stagedTask.writeScopes, stagedId, stagedTask.subject);
@@ -9725,21 +10374,12 @@ WARNING: ${value.warning}` : "";
         if (!recordNamesLead(resolved.record, [sessionId, ...callerIdentity(resolved.record, sessionId, sessionTitleOf(exec), lineage).ancestry])) {
           throw new Error(`only the Lead of team ${resolved.record.teamId} may append to its live roster or board`);
         }
-        if (String(raw.subject ?? "").trim() === "")
+        if (fields.subject === "")
           throw new Error("a task needs a non-empty subject");
-        const blockedBy = readDependencyAnswer(raw, args, "T" + resolved.record.nextTaskNumber, String(raw.subject ?? "").trim());
-        const next = addTeamTask(resolved.record, {
-          subject: String(raw.subject ?? ""),
-          description: String(raw.description ?? ""),
-          ...kind === undefined ? {} : { kind },
-          blockedBy,
-          ...writeScopes === undefined ? {} : { writeScopes },
-          ...owner === undefined ? {} : { owner: String(owner) },
-          ...coverageOf === undefined ? {} : { coverageOf: String(coverageOf) },
-          ...sourceTaskId === undefined ? {} : { sourceTaskId: String(sourceTaskId) }
-        }, now());
+        const { blockedBy } = readDependencyAnswer(raw, args, "T" + resolved.record.nextTaskNumber, fields.subject);
+        const next = addTeamTask(resolved.record, { ...fields, blockedBy: blockedBy ?? [] }, now());
         const appendedTask = next.tasks[next.tasks.length - 1];
-        assertNoDependencyCycle(boardDependencyEdges(next.tasks), new Map(next.tasks.map((task) => [task.id, task.subject])), appendedTask.id, namedTask(appendedTask.id, appendedTask.subject), appendedTask.blockedBy.filter((reference) => reference === appendedTask.id || reference === appendedTask.subject));
+        assertNoDependencyCycle(boardDependencyEdges(next.tasks), new Map(next.tasks.map((task) => [task.id, task.subject])), appendedTask.id, namedTask(appendedTask.id, appendedTask.subject), appendedTask.blockedBy.filter((reference) => reference === appendedTask.id || reference === appendedTask.subject && appendedTask.unresolvedBlockers?.includes(reference) === true));
         writeTeam(workspace, withDerivedPhase(next));
         const scopesWarning = emptyScopesWarning(appendedTask.kind, appendedTask.writeScopes, appendedTask.id, appendedTask.subject);
         return {
@@ -9768,16 +10408,11 @@ WARNING: ${value.warning}` : "";
               throw new Error(`staged member "${raw.name}" needs a prompt`);
             return { name: raw.name, description: String(raw?.description ?? ""), prompt: raw.prompt, ...raw?.role === undefined ? {} : { role: String(raw.role) } };
           }) } : {},
-          ...Array.isArray(args?.tasks) ? { tasks: args.tasks.map((raw) => {
-            if (typeof raw?.subject !== "string" || raw.subject.trim() === "")
-              throw new Error("every staged task needs a subject");
-            return {
-              subject: raw.subject,
-              description: String(raw?.description ?? ""),
-              ...Array.isArray(raw?.blockedBy) || Array.isArray(raw?.blocked_by) ? { blockedBy: (raw.blockedBy ?? raw.blocked_by).map(String) } : {},
-              ...Array.isArray(raw?.writeScopes) || Array.isArray(raw?.write_scopes) ? { writeScopes: (raw.writeScopes ?? raw.write_scopes).map(String) } : {},
-              ...raw?.owner === undefined ? {} : { owner: String(raw.owner) }
-            };
+          ...Array.isArray(args?.tasks) ? { strictDependencies: true, tasks: args.tasks.map((raw, index) => {
+            if (!isRecord(raw) || typeof raw.subject !== "string" || raw.subject.trim() === "") {
+              throw new Error(`staged task ${planTaskId(index)} needs a non-empty subject`);
+            }
+            return { ...readTaskFields(raw, {}), subject: raw.subject, ...readDependencyAnswer(raw, {}, planTaskId(index), raw.subject, true) };
           }) } : {}
         };
         writePlan(workspace, next);
@@ -9940,8 +10575,8 @@ WARNING: ${value.warning}` : "";
           return { taskId, task, idempotent: true, added, unresolved: outcome.unresolved };
         const next = updateTeamTask(fresh, taskId, { blockedBy: merged }, now());
         writeTeam(workspace, withDerivedPhase(next));
-        const view = next.tasks.find((candidate) => candidate.id === taskId) ?? task;
-        return { taskId, task: view, idempotent: false, added, unresolved: outcome.unresolved };
+        const view2 = next.tasks.find((candidate) => candidate.id === taskId) ?? task;
+        return { taskId, task: view2, idempotent: false, added, unresolved: outcome.unresolved };
       }
       if (action === "contract") {
         if (args?.task_id === undefined)
@@ -9975,8 +10610,8 @@ WARNING: ${value.warning}` : "";
         const claimedMember = memberNamedBy(claimed, [claimant]);
         const next = withDerivedPhase(claimedMember?.status === "inactive" ? updateTeamMember(claimed, claimedMember.id, { status: "running" }) : claimed);
         writeTeam(workspace, next);
-        const view = next.tasks.find((candidate) => candidate.id === task.id) ?? task;
-        return { contract, task: view };
+        const view2 = next.tasks.find((candidate) => candidate.id === task.id) ?? task;
+        return { contract, task: view2 };
       }
       if (action === "complete" || action === "fail") {
         const resolved = resolveForWrite(workspace, sessionId, lineage, delegated, sessionTitleOf(exec));
@@ -10154,7 +10789,7 @@ WARNING: ${value.warning}` : "";
       const self = exec.agent;
       const mailTeam = recordFor(workspace, caller, lineage);
       const roster = (mailTeam?.members ?? []).map((member) => ({ id: member.id, name: member.name, status: member.status, handle: member.executorRef ?? "" }));
-      const resolve4 = (name2) => roster.find((member) => member.id === name2 || member.name === name2);
+      const resolve5 = (name2) => roster.find((member) => member.id === name2 || member.name === name2);
       const callerId = String(self?.session?.id ?? caller);
       const callerName = String(self?.session?.header?.title ?? caller);
       const ownMember = mailTeam === undefined ? undefined : callerIdentity(mailTeam, callerId, sessionTitleOf(exec), lineage).ownMember;
@@ -10200,6 +10835,8 @@ WARNING: ${value.warning}` : "";
         }, resolved.targets, now());
         if (!result.ok)
           return { refused: result.detail };
+        if (leadId !== "" && result.messages.some((message) => message.toId === leadId))
+          feed.notify(workspace);
         const delivered = [];
         for (const message of result.messages) {
           const member = roster.find((entry) => entry.id === message.toId);
@@ -10231,7 +10868,7 @@ ${message.body}`, exec.signal);
       if (args?.action === "permit") {
         if (!callerIsLead)
           return { refused: `permit: only this team's captain may issue a wait permit — ${captainSpelling()}` };
-        const holder = resolve4(String(args?.holder ?? ""));
+        const holder = resolve5(String(args?.holder ?? ""));
         if (holder === undefined) {
           return { refused: `permit: "${String(args?.holder ?? "")}" is not a member of this team (members: ${roster.map((member) => member.name).join(", ") || "none"})` };
         }
@@ -10286,7 +10923,7 @@ ${message.body}`, exec.signal);
           timeoutMs: checked.timeoutMs,
           read: () => scopeToTeam(readMailbox(workspace), mailTeam?.teamId),
           now,
-          sleep: (ms) => new Promise((resolve5) => setTimeout(resolve5, ms)),
+          sleep: (ms) => new Promise((resolve6) => setTimeout(resolve6, ms)),
           ...exec.signal === undefined ? {} : { signal: exec.signal }
         });
         if (!outcome.ok)
@@ -10318,7 +10955,7 @@ ${message.body}`, exec.signal);
         return { summary: summarise({ messages: mine }), scope: "team", ...legacyUnstamped === 0 ? {} : { legacyUnstamped } };
       }
       const state = readMailbox(workspace);
-      const wanted = args?.member === undefined ? undefined : resolve4(String(args.member));
+      const wanted = args?.member === undefined ? undefined : resolve5(String(args.member));
       if (args?.member !== undefined && wanted === undefined) {
         return { refused: `"${String(args.member)}" is not a member of this team (members: ${roster.map((member) => member.name).join(", ") || "none"})` };
       }
@@ -10354,26 +10991,36 @@ ${message.body}`, exec.signal);
   toolRegistrations += 1;
   disposers.push(dsh.registerTool({
     name: "agent_teams_control",
-    description: "`halt` stops NEW DISPATCH only; `resume` clears the hold; `fence`/`unfence` close/reopen ONE seat, then never messaged (Lead only); `end` closes the team (Lead only, idempotent).",
+    description: "`halt`/`resume` pause/reopen dispatch; `fence`/`unfence` close/reopen a seat; `end` closes the team. `wake` arms a follow-up or waits in-turn.",
     parameters: {
       type: "object",
       properties: {
-        action: { type: "string", enum: ["halt", "resume", "fence", "unfence", "end"], description: "What to do." },
+        action: { type: "string", enum: ["halt", "resume", "fence", "unfence", "end", "wake"] },
         reason: { type: "string", description: "halt/fence/end: why." },
         member: { type: "string", description: "fence/unfence: seat." },
-        team_id: { type: "string", description: "end: team to close (default: yours)." }
+        team_id: { type: "string", description: "end: default yours." },
+        wake: { type: "object", description: "{action:arm|wait|status|cancel,id?,task_ids?,mode:all|any,event:mail?,from_member?}" }
       },
       required: ["action"],
       additionalProperties: false
     },
     output: {
-      schema: { type: "object", properties: { hold: { type: "object" }, resumed: { type: "boolean" }, teamId: { type: "string" }, member: { type: "string" }, fenced: { type: "boolean" }, endedAt: { type: "string" }, changed: { type: "boolean" }, reason: { type: "string" }, refused: { type: "string" } } },
-      render: (_args, value) => text2(value?.refused !== undefined ? `refused: ${value.refused}` : value?.changed !== undefined ? value.changed ? `team ${value.teamId} ended (${value.reason})` : `team ${value.teamId} was already ended at ${value.endedAt} — nothing changed` : value?.fenced !== undefined ? `${value.member} ${value.fenced ? "fenced" : "unfenced"}${value.fenced && typeof value.reason === "string" && value.reason !== "" ? ` (${value.reason})` : ""}` : value?.resumed !== undefined ? value.resumed ? "resumed" : "was not halted" : value?.hold === undefined ? "not halted" : `halted: ${value.hold.reason}`)
+      schema: { type: "object", properties: { hold: { type: "object" }, resumed: { type: "boolean" }, teamId: { type: "string" }, member: { type: "string" }, fenced: { type: "boolean" }, endedAt: { type: "string" }, changed: { type: "boolean" }, reason: { type: "string" }, refused: { type: "string" }, registration: { type: "object" }, registrations: { type: "array", items: { type: "object" } }, next: { type: "string" }, wait: { type: "object" } } },
+      render: (_args, value) => text2(value?.registration !== undefined || value?.registrations !== undefined || value?.wait !== undefined ? renderCaptainWake(value) : value?.refused !== undefined ? `refused: ${value.refused}` : value?.changed !== undefined ? value.changed ? `team ${value.teamId} ended (${value.reason})` : `team ${value.teamId} was already ended at ${value.endedAt} — nothing changed` : value?.fenced !== undefined ? `${value.member} ${value.fenced ? "fenced" : "unfenced"}${value.fenced && typeof value.reason === "string" && value.reason !== "" ? ` (${value.reason})` : ""}` : value?.resumed !== undefined ? value.resumed ? "resumed" : "was not halted" : value?.hold === undefined ? "not halted" : `halted: ${value.hold.reason}`)
     },
     execute: async (args, exec) => {
       const { workspace, sessionId, lineage } = where(exec);
       const action = String(args?.action ?? "");
       const title = sessionTitleOf(exec);
+      if (action === "wake") {
+        if (args?.team_id !== undefined || sessionIsDelegatedChild(exec))
+          throw new Error("wake is scoped to this captain's own team and session");
+        const scope = captainWakeScope(exec.agent);
+        if (scope === undefined || scope.workspace !== workspace || scope.sessionId !== sessionId)
+          throw new Error("wake needs the captain's live session and workspace");
+        const team = args?.wake?.action === "arm" || args?.wake?.action === "wait" ? recordFor(workspace, sessionId) : undefined;
+        return captainWake.execute(exec, scope, args?.wake, team);
+      }
       const caller = {
         workspace,
         sessionId,
@@ -10405,7 +11052,7 @@ ${message.body}`, exec.signal);
       if (action === "resume")
         return { resumed: clearHold(workspace) };
       if (action !== "halt")
-        throw new Error(`agent_teams_control: unknown action "${action}" (halt | resume | fence | unfence | end)`);
+        throw new Error(`agent_teams_control: unknown action "${action}" (halt | resume | fence | unfence | end | wake)`);
       return { hold: placeHold(workspace, String(args?.reason ?? ""), sessionIdOf(exec), now()) };
     }
   }));
@@ -10442,27 +11089,27 @@ Add members and tasks with agent_teams_plan {action: "add_member" | "create_task
   })();
   if (root !== "") {
     try {
-      const staging = join13(root, ".mpd", "team", "staging");
-      const pending = existsSync7(staging) ? readdirSync6(staging).filter((file) => file.endsWith(".json")).length : 0;
+      const staging = join14(root, ".mpd", "team", "staging");
+      const pending2 = existsSync7(staging) ? readdirSync7(staging).filter((file) => file.endsWith(".json")).length : 0;
       const reportExecutor = () => {
-        const view = (() => {
+        const view2 = (() => {
           try {
             return executor();
           } catch (error) {
             return { kind: "unavailable", reason: String(error?.message ?? error) };
           }
         })();
-        rowLogLine("mpd-team-core", `[mpd-team-core] team executor: ${view.kind} (${view.reason})`);
+        rowLogLine("mpd-team-core", `[mpd-team-core] team executor: ${view2.kind} (${view2.reason})`);
       };
-      rowLogLine("mpd-team-core", `[mpd-team-core] team workflow plane: staged=${pending} hold=${readHold(root) === undefined ? "none" : "held"} registrations=${disposers.length} (${toolRegistrations} tools + the /agent-teams command${teamDoor.installed ? " + the team-door guard" : ""})`);
+      rowLogLine("mpd-team-core", `[mpd-team-core] team workflow plane: staged=${pending2} hold=${readHold(root) === undefined ? "none" : "held"} registrations=${disposers.length} (${toolRegistrations} tools + the /agent-teams command${teamDoor.installed ? " + the team-door guard" : ""})`);
       reportExecutor();
       const mountTeamRoute = () => registerTeamRoutes(dsh.webServerOf(), {
         recordFor: (sessionId) => recordFor(workspaceForRequest(sessionId), sessionId),
         workspace: (sessionId) => workspaceForRequest(sessionId ?? ""),
         authorize: (request) => dsh.webRequestRejection(request),
         executor: () => {
-          const view = executor();
-          return { kind: view.kind, reason: view.reason };
+          const view2 = executor();
+          return { kind: view2.kind, reason: view2.reason };
         },
         effect: (fn, label) => {
           try {

@@ -337,9 +337,9 @@ Refresh the prefix whenever the declared pin moves.
      BOARD — `sourceFindingIds` is NOT a board field, it belongs to the verify plane's repair record
      (`.mpd/verify/repairs/<id>.json`) — and
      `coverageOf` names the user clause a task serves. **Every task MUST declare its dependency answer** —
-     `blocked_by: [...]` (possibly empty, an explicit root) or `independent: true`; omitting both is
-     REFUSED, and `approve` REFUSES two tasks whose declared write scopes overlap with no dependency path
-     between them (naming the pair and the two remedies: add the edge, or make the scopes disjoint).
+     `blocked_by` lists the tasks whose output it needs. `[]` declares a root. For wholly parallel
+     multi-task plans, set `independent: true` on every task. Overlapping write scopes require a dependency
+     path. See `agent-references/supervision.md` for a fork and join example.
   4. **A-writes/B-verifies is the RECOMMENDED discipline; its MECHANICAL form is withdrawn.** The
      top-level `mpd` agent MAY `write`/`edit` a code path directly and NO loop needs arming (the
      2026-10-17 ruling removed the write guard; the 2026-10-20 restore did NOT bring it back — only the

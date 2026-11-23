@@ -1,0 +1,613 @@
+{
+  "verdict": "PASS",
+  "finding": "T17-CELLWORK-START",
+  "original_failure_record": "rec-20261123T060249-77a3ef",
+  "repair_record": "rep-20261123T060249-f78541",
+  "base": "e86764c0e09b14ba172839bc9671a2c8f3352c81",
+  "product_manifest_sha256": "4d5f94f97d5d844bc14862fc672d8c702e947955cde1049dc45a7b19bb099c81",
+  "observed_utc": "2026-11-23T06:09Z to 06:17Z",
+  "bins": {
+    "node": "24.21.0",
+    "bun": "1.4.0+34cbb9a40",
+    "main_dsh": "0.2.2-rc.5",
+    "compatibility_dsh": "0.2.2-rc.2",
+    "dsh_tui": "0.20.2",
+    "go_kit": "f36bf91b0736e81ef40c2a7040b2ec337ca1ab40"
+  },
+  "team": {
+    "baseline": {
+      "initial_approval": {
+        "session_count": 4,
+        "team_count": 1,
+        "error": false
+      },
+      "final_graph": [],
+      "matched_worker_completions": 0
+    },
+    "repair": {
+      "initial_approval": {
+        "session_count": 1,
+        "team_count": 0,
+        "error": true
+      },
+      "final_graph": [
+        [
+          "T1",
+          "T2"
+        ],
+        [
+          "T1",
+          "T3"
+        ],
+        [
+          "T2",
+          "T4"
+        ],
+        [
+          "T3",
+          "T4"
+        ]
+      ],
+      "matched_worker_completions": 4
+    },
+    "independent": {
+      "initial_approval": {
+        "session_count": 4,
+        "team_count": 1,
+        "error": false
+      },
+      "final_graph": [],
+      "matched_worker_completions": 3
+    },
+    "incremental-review": {
+      "initial_approval": {
+        "session_count": 1,
+        "team_count": 0,
+        "error": true
+      },
+      "final_graph": null,
+      "matched_worker_completions": 0
+    },
+    "generic": {
+      "initial_approval": {
+        "session_count": 3,
+        "team_count": 1,
+        "error": false
+      },
+      "final_graph": [],
+      "matched_worker_completions": 2
+    },
+    "append": {
+      "initial_approval": {
+        "session_count": 3,
+        "team_count": 1,
+        "error": false
+      },
+      "final_graph": [
+        [
+          "T1",
+          "T3"
+        ],
+        [
+          "T2",
+          "T3"
+        ]
+      ],
+      "matched_worker_completions": 3
+    }
+  },
+  "goal": {
+    "goal-armed": {
+      "exit": 0,
+      "wake_notices": 1,
+      "window_ms": 1857,
+      "captain_requests": 6
+    },
+    "goal-only": {
+      "exit": 0,
+      "wake_notices": 0,
+      "window_ms": 1870,
+      "captain_requests": 6
+    },
+    "wait-already": {
+      "exit": 0,
+      "wake_notices": 0,
+      "goal_same_id_and_revision": true,
+      "goal_revision": 1,
+      "phase": "active",
+      "activation": "armed",
+      "rounds_started": 0,
+      "wait_turn": 1,
+      "wait_result": "matched",
+      "decisive_event_to_result_ms": 7,
+      "next_tool": "agent_teams_plan",
+      "next_turn": 1
+    },
+    "wait-ended": {
+      "exit": 0,
+      "wake_notices": 0,
+      "window_ms": 2363,
+      "captain_requests": 0,
+      "goal_rounds_before": 0,
+      "goal_rounds_after": 0,
+      "goal_same_id_and_revision": true,
+      "goal_revision": 1,
+      "phase": "active",
+      "activation": "armed",
+      "rounds_started": 0,
+      "wait_turn": 1,
+      "wait_result": "ended",
+      "decisive_event_to_result_ms": 54,
+      "next_tool": "agent_teams_plan",
+      "next_turn": 1
+    },
+    "wait-mail": {
+      "exit": 0,
+      "wake_notices": 0,
+      "window_ms": 2390,
+      "captain_requests": 0,
+      "goal_rounds_before": 0,
+      "goal_rounds_after": 0,
+      "goal_same_id_and_revision": true,
+      "goal_revision": 1,
+      "phase": "active",
+      "activation": "armed",
+      "rounds_started": 0,
+      "wait_turn": 1,
+      "wait_result": "matched",
+      "decisive_event_to_result_ms": 52,
+      "next_tool": "agent_teams_mail",
+      "next_turn": 1
+    },
+    "wait-steer-step": {
+      "exit": 0,
+      "wake_notices": 0,
+      "window_ms": 2349,
+      "captain_requests": 0,
+      "goal_rounds_before": 0,
+      "goal_rounds_after": 0,
+      "goal_same_id_and_revision": true,
+      "goal_revision": 1,
+      "phase": "active",
+      "activation": "armed",
+      "rounds_started": 0,
+      "wait_turn": 1,
+      "wait_result": "steered",
+      "decisive_event_to_result_ms": 5,
+      "next_tool": "agent_teams_plan",
+      "next_turn": 1
+    },
+    "wait-steer": {
+      "exit": 0,
+      "wake_notices": 0,
+      "window_ms": 2391,
+      "captain_requests": 0,
+      "goal_rounds_before": 0,
+      "goal_rounds_after": 0,
+      "goal_same_id_and_revision": true,
+      "goal_revision": 1,
+      "phase": "active",
+      "activation": "armed",
+      "rounds_started": 0,
+      "wait_turn": 1,
+      "wait_result": "steered",
+      "decisive_event_to_result_ms": 6,
+      "next_tool": "agent_teams_plan",
+      "next_turn": 2
+    },
+    "wait-task": {
+      "exit": 0,
+      "wake_notices": 0,
+      "window_ms": 2398,
+      "captain_requests": 0,
+      "goal_rounds_before": 0,
+      "goal_rounds_after": 0,
+      "goal_same_id_and_revision": true,
+      "goal_revision": 1,
+      "phase": "active",
+      "activation": "armed",
+      "rounds_started": 0,
+      "wait_turn": 1,
+      "wait_result": "matched",
+      "decisive_event_to_result_ms": 52,
+      "next_tool": "agent_teams_plan",
+      "next_turn": 1
+    }
+  },
+  "cellwork": {
+    "two-board-single": {
+      "lookup": [
+        "team-reseed-bind"
+      ],
+      "attempt": 14,
+      "status": "in_progress",
+      "moved": true,
+      "fenced": false,
+      "replacement_disposed": false,
+      "failure_surface": null
+    },
+    "two-board-stale": {
+      "lookup": [
+        "team-reseed-bind"
+      ],
+      "attempt": 14,
+      "status": "in_progress",
+      "moved": true,
+      "fenced": false,
+      "replacement_disposed": false,
+      "failure_surface": null
+    },
+    "two-board-duplicate": {
+      "lookup": [],
+      "attempt": 14,
+      "status": "in_progress",
+      "moved": false,
+      "fenced": true,
+      "replacement_disposed": null,
+      "failure_surface": "team-ownership-ambiguous"
+    },
+    "ordinary-turn-end": {
+      "isolated": true,
+      "public_start_call": "qa_call_2",
+      "public_activate_call": "qa_call_11",
+      "distinct_original_workers": 2,
+      "accepted_wakes": 2,
+      "workers": {
+        "T3": {
+          "original_worker": "worker-Alpha",
+          "attempt": 1,
+          "initial_claim_receipt": "qa_call_15",
+          "current_owner_is_original": true,
+          "current_state": "completed",
+          "completion_receipt": "qa_call_27",
+          "provider_errors_http": []
+        },
+        "T4": {
+          "original_worker": "worker-Beta",
+          "attempt": 1,
+          "initial_claim_receipt": "qa_call_14",
+          "current_owner_is_original": true,
+          "current_state": "completed",
+          "completion_receipt": "qa_call_30",
+          "provider_errors_http": []
+        }
+      },
+      "initial_process_exit": {
+        "code": 0,
+        "signal": null
+      }
+    },
+    "cold-restart": {
+      "isolated": true,
+      "public_start_call": "qa_call_2",
+      "public_activate_call": "qa_call_11",
+      "distinct_original_workers": 2,
+      "accepted_wakes": 2,
+      "workers": {
+        "T3": {
+          "original_worker": "worker-Alpha",
+          "attempt": 1,
+          "initial_claim_receipt": "qa_call_15",
+          "current_owner_is_original": true,
+          "current_state": "completed",
+          "completion_receipt": "qa_call_30",
+          "provider_errors_http": []
+        },
+        "T4": {
+          "original_worker": "worker-Beta",
+          "attempt": 1,
+          "initial_claim_receipt": "qa_call_14",
+          "current_owner_is_original": true,
+          "current_state": "completed",
+          "completion_receipt": "qa_call_33",
+          "provider_errors_http": []
+        }
+      },
+      "initial_process_exit": {
+        "code": 0,
+        "signal": null
+      },
+      "second_host_exit": 0
+    },
+    "persistent-401": {
+      "isolated": true,
+      "public_start_call": "qa_call_2",
+      "public_activate_call": "qa_call_11",
+      "distinct_original_workers": 2,
+      "accepted_wakes": 2,
+      "workers": {
+        "T3": {
+          "original_worker": "worker-Alpha",
+          "attempt": 1,
+          "initial_claim_receipt": "qa_call_14",
+          "current_owner_is_original": true,
+          "current_state": "in_progress",
+          "completion_receipt": null,
+          "provider_errors_http": [
+            401,
+            401
+          ]
+        },
+        "T4": {
+          "original_worker": "worker-Beta",
+          "attempt": 1,
+          "initial_claim_receipt": "qa_call_15",
+          "current_owner_is_original": true,
+          "current_state": "in_progress",
+          "completion_receipt": null,
+          "provider_errors_http": [
+            401,
+            401
+          ]
+        }
+      },
+      "initial_process_exit": {
+        "code": 0,
+        "signal": null
+      }
+    },
+    "restored-provider": {
+      "isolated": true,
+      "public_start_call": "qa_call_2",
+      "public_activate_call": "qa_call_11",
+      "distinct_original_workers": 2,
+      "accepted_wakes": 2,
+      "workers": {
+        "T3": {
+          "original_worker": "worker-Alpha",
+          "attempt": 1,
+          "initial_claim_receipt": "qa_call_15",
+          "current_owner_is_original": true,
+          "current_state": "completed",
+          "completion_receipt": "qa_call_25",
+          "provider_errors_http": [
+            401
+          ]
+        },
+        "T4": {
+          "original_worker": "worker-Beta",
+          "attempt": 1,
+          "initial_claim_receipt": "qa_call_14",
+          "current_owner_is_original": true,
+          "current_state": "completed",
+          "completion_receipt": "qa_call_28",
+          "provider_errors_http": [
+            401
+          ]
+        }
+      },
+      "initial_process_exit": {
+        "code": 0,
+        "signal": null
+      }
+    },
+    "abrupt-host": {
+      "isolated": true,
+      "public_start_call": "qa_call_2",
+      "public_activate_call": "qa_call_11",
+      "distinct_original_workers": 2,
+      "accepted_wakes": 2,
+      "workers": {
+        "T3": {
+          "original_worker": "worker-Alpha",
+          "attempt": 1,
+          "initial_claim_receipt": "qa_call_14",
+          "current_owner_is_original": true,
+          "current_state": "completed",
+          "completion_receipt": "qa_call_26",
+          "provider_errors_http": []
+        },
+        "T4": {
+          "original_worker": "worker-Beta",
+          "attempt": 1,
+          "initial_claim_receipt": "qa_call_15",
+          "current_owner_is_original": true,
+          "current_state": "completed",
+          "completion_receipt": "qa_call_29",
+          "provider_errors_http": []
+        }
+      },
+      "initial_process_exit": {
+        "code": null,
+        "signal": "SIGKILL"
+      },
+      "second_host_exit": 0,
+      "two_claims_durable_at_termination": true
+    },
+    "stale-owner": {
+      "isolated": true,
+      "public_start_call": "qa_call_2",
+      "public_activate_call": "qa_call_11",
+      "distinct_original_workers": 2,
+      "accepted_wakes": 1,
+      "workers": {
+        "T3": {
+          "original_worker": "worker-Alpha",
+          "attempt": 1,
+          "initial_claim_receipt": "qa_call_14",
+          "current_owner_is_original": false,
+          "current_state": "in_progress",
+          "completion_receipt": null,
+          "provider_errors_http": []
+        },
+        "T4": {
+          "original_worker": "worker-Beta",
+          "attempt": 1,
+          "initial_claim_receipt": "qa_call_15",
+          "current_owner_is_original": true,
+          "current_state": "completed",
+          "completion_receipt": "qa_call_29",
+          "provider_errors_http": []
+        }
+      },
+      "initial_process_exit": {
+        "code": 0,
+        "signal": null
+      },
+      "stale_refusal_call": "qa_call_27",
+      "unchanged_mailbox_bytes": 0,
+      "valid_wake_call": "qa_call_28"
+    }
+  },
+  "commands": {
+    "fixed-first": {
+      "dist": {
+        "exit": 0,
+        "fresh": 35,
+        "prebuilt_outside_rebuild": 1
+      },
+      "static": {
+        "exit": 0,
+        "members_passed": 11
+      },
+      "typecheck": {
+        "exit": 0
+      },
+      "package": {
+        "exit": 1,
+        "tests": 4229,
+        "files": 269,
+        "pass": 4220,
+        "skip": 6,
+        "fail": 3
+      },
+      "root": {
+        "exit": 1,
+        "tests": 4467,
+        "files": 321,
+        "pass": 4438,
+        "skip": 6,
+        "fail": 23,
+        "errors": 16
+      },
+      "focused": {
+        "exit": 1,
+        "tests": 1565,
+        "files": 112,
+        "pass": 1564,
+        "fail": 1
+      },
+      "manual": {
+        "exit": 0
+      },
+      "no-override": {
+        "exit": 0
+      },
+      "pack": {
+        "exit": 0
+      },
+      "closure": {
+        "exit": 0
+      }
+    },
+    "runtime-first": {
+      "dist": {
+        "exit": 0,
+        "fresh": 35,
+        "prebuilt_outside_rebuild": 1
+      },
+      "static": {
+        "exit": 0,
+        "members_passed": 11
+      },
+      "typecheck": {
+        "exit": 0
+      },
+      "package": {
+        "exit": 1,
+        "tests": 4227,
+        "files": 269,
+        "pass": 4218,
+        "skip": 6,
+        "fail": 3
+      },
+      "root": {
+        "exit": 1,
+        "tests": 4465,
+        "files": 321,
+        "pass": 4436,
+        "skip": 6,
+        "fail": 23,
+        "errors": 16
+      },
+      "focused": {
+        "exit": 1,
+        "tests": 1563,
+        "files": 112,
+        "pass": 1562,
+        "fail": 1
+      },
+      "manual": {
+        "exit": 0
+      },
+      "no-override": {
+        "exit": 0
+      },
+      "pack": {
+        "exit": 0
+      },
+      "closure": {
+        "exit": 0
+      }
+    },
+    "dev-first": {
+      "dist": {
+        "exit": 0,
+        "fresh": 35,
+        "prebuilt_outside_rebuild": 1
+      },
+      "static": {
+        "exit": 0,
+        "members_passed": 11
+      },
+      "typecheck": {
+        "exit": 0
+      },
+      "package": {
+        "exit": 1,
+        "tests": 4186,
+        "files": 268,
+        "pass": 4177,
+        "skip": 6,
+        "fail": 3
+      },
+      "root": {
+        "exit": 1,
+        "tests": 4424,
+        "files": 320,
+        "pass": 4395,
+        "skip": 6,
+        "fail": 23,
+        "errors": 16
+      },
+      "pack": {
+        "exit": 0
+      },
+      "closure": {
+        "exit": 0
+      }
+    }
+  },
+  "compatibility": {
+    "host": "0.2.2-rc.2",
+    "wait_already": true,
+    "remaining_host_matrix": "unmeasured"
+  },
+  "initial_readiness_failures": {
+    "stale-owner": "First run had no mounted session or tool receipts; independent fresh serial replay passed.",
+    "wait-ended-rc5": "First attempt timed out awaiting Web readiness; fresh serial replay passed.",
+    "wait-already-rc2": "First attempt timed out awaiting Web readiness; fresh serial replay passed."
+  },
+  "bounds": [
+    "Public contract pass is scoped to these scenarios. Full root and package suites retain matched development failures.",
+    "The provider used loopback synthetic responses. The two-board handler controls simulated compaction and replacement activation.",
+    "Dist gate rebuilt 35 source-backed targets twice; one fingerprinted prebuilt remains outside that map.",
+    "Only the already-satisfied Web wait was measured on the older rc.2 host.",
+    "The clean GOAL tool returns before legitimate subsequent requests. Measurements cover only each observed wait interval."
+  ],
+  "verification_record": "rec-20261123T061726-7f16ae",
+  "shared_verification_gates": {
+    "docs": "ev-20261123T060955-c3e794",
+    "comments": "ev-20261123T060955-481a75"
+  }
+}

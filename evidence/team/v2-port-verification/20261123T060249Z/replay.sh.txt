@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# Run from a disposable clean checkout of the chosen candidate, outside the active workspace.
+# Arguments: team | goal | cell, optional single case name. BUN14, NODE_BIN and DSH_BIN are absolute input paths.
+set -euo pipefail
+family=${1:?select team, goal or cell}
+filter=${2:-all}
+: "${BUN14:?path to Bun 1.4.0}" "${NODE_BIN:?directory containing Node 24 and npm}" "${DSH_BIN:?directory containing the chosen DSH binary}"
+repo=$(pwd -P)
+packet=$(cd "$(dirname "$0")" && pwd -P)
+case "$family" in team) target=.qa-team-t11;; goal) target=.qa-captain-wake;; cell) target=.qa-v2-spawn;; *) exit 2;; esac
+stage=$repo/$target
+if [[ -e $stage ]]; then echo 'This fixture needs a fresh scratch directory.' >&2; exit 2; fi
+if [[ -e .mpd/boulder.json ]]; then echo 'Use a checkout without active workspace state.' >&2; exit 2; fi
+mkdir -p "$stage"/{home,dsh,tmp,bin,logs,fixtures}
+install -m755 "$BUN14" "$stage/bin/bun"
+mkdir -p .toolchain/node_modules/.bin
+if [[ ! -e .toolchain/node_modules/.bin/bun ]]; then ln "$stage/bin/bun" .toolchain/node_modules/.bin/bun; fi
+clean=(env -i "HOME=$stage/home" "DSH_HOME=$stage/dsh" "TMPDIR=$stage/tmp" "PATH=$stage/bin:$DSH_BIN:$NODE_BIN:/usr/local/bin:/usr/bin:/bin" "PINNED_BUN=$stage/bin/bun" LC_ALL=C.UTF-8 TZ=UTC WAKE_FIXTURE=external)
+test "$("${clean[@]}" bun --revision)" = 1.4.0+34cbb9a40
+test "$(.toolchain/node_modules/.bin/bun --revision)" = 1.4.0+34cbb9a40
+"${clean[@]}" dsh --version
+"${clean[@]}" node --version
+"${clean[@]}" bun install --frozen-lockfile >"$stage/logs/install.log" 2>&1
+test ! -L node_modules
+sha256sum packages/{mpd-team-core-plugin,mpd-cellwork-plugin,mpd-dsh-adapter-plugin}/dist/index.js
+# The manifest in this packet identifies the original, pre-repair measurement.
+# On a subsequent repair use that revision's manifest to check its own product bytes.
+if [[ -n ${EXPECTED_MANIFEST:-} ]]; then sha256sum --check --quiet "$EXPECTED_MANIFEST"; fi
+tar -xzf "$packet/host-fixtures.tar.gz" --directory "$stage/fixtures"
+cp "$stage/fixtures/$family/"*.mjs "$stage/"
+worst=0
+run_case() {
+  local name=$1 rc=0
+  shift
+  if [[ $filter != all && $filter != "$name" ]]; then return; fi
+  matched=1
+  "${clean[@]}" timeout 150 "$@" >"$stage/logs/$name.log" 2>&1 || rc=$?
+  printf '%s exit=%d\n' "$name" "$rc"
+  if ((rc)); then worst=1; fi
+}
+matched=0
+case "$family" in
+team)
+  if [[ $filter == all || $filter == baseline ]]; then
+    base=$(mktemp -d)
+    git init -q "$base"
+    git -C "$base" fetch -q --depth=1 "$repo" e86764c0e09b14ba172839bc9671a2c8f3352c81
+    git -C "$base" checkout -q --detach FETCH_HEAD
+    (cd "$base" && "${clean[@]}" bun install --frozen-lockfile >"$stage/logs/base-install.log" 2>&1)
+    run_case baseline node "$stage/team.mjs" "$base" baseline
+  fi
+  for arm in repair independent incremental-review generic append; do run_case "$arm" node "$stage/team.mjs" "$repo" "$arm"; done
+  if [[ $filter == all ]]; then run_case assert node "$stage/assert.mjs" "$stage/checks"; fi
+  ;;
+goal)
+  for arm in goal-armed goal-only; do run_case "$arm" node "$stage/goal.mjs" "$arm"; done
+  for arm in wait-task wait-mail wait-steer wait-steer-step wait-ended wait-already; do run_case "$arm" node "$stage/wait.mjs" "$arm"; done
+  ;;
+cell)
+  for arm in restart persistent-error; do run_case "$arm" node "$stage/drive.mjs" "$arm"; done
+  run_case stale-owner node "$stage/owner.mjs" turn-end
+  fixture=$stage/fixtures/base/packages/mpd-cellwork-plugin/test
+  mkdir -p "$fixture"
+  cp "$stage/fixtures/cell/base-reseed.test.ts.txt" "$fixture/reseed-binding.test.ts"
+  run_case two-boards env "BASELINE=$stage/fixtures/base" node "$stage/after-reseed.mjs"
+  ;;
+esac
+((matched)) || { echo 'Unknown case for the selected family.' >&2; exit 2; }
+exit "$worst"

@@ -7,7 +7,8 @@ import { mkdtempSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { apply } from "../src/index.ts"
-import { readActiveCell, readCell, writeCell } from "../src/state.ts"
+import { foldCellMail, readCellMail } from "../src/mail.ts"
+import { readActiveCell, readCell, writeCell, type CellMemberRecord } from "../src/state.ts"
 
 /** One fake live agent: the session id the dispatch carries and its workspace header. */
 interface FakeAgent {
@@ -57,6 +58,10 @@ interface Harness {
   teamRecords: Map<string, Record<string, any>>
   /** Member handles by board name. */
   handles: Map<string, string>
+  /** The currently resident agents, which need not include all durable child sessions. */
+  registry: Map<string, FakeAgent>
+  /** Optional events between observation and delivery. */
+  hooks: { beforeTeamRead?: () => void }
 }
 
 /** The roster the fake `mpdRoles` service serves, with distinguishable persona texts. */
@@ -181,6 +186,10 @@ function makeHarness(): Harness {
   let loopSeq = 0
   /** The captain's handle. */
   const captain: FakeAgent = { id: "session-captain", session: { id: "session-captain", header: { cwd: workspace } }, followup: (): void => { events.push("submit") } }
+  /** Registry snapshots initially contain only the known-live captain. */
+  const registry = new Map<string, FakeAgent>([[captain.id, captain]])
+  /** Hooks are armed by the test after its fixture is stable. */
+  const hooks: Harness["hooks"] = {}
   /**
    * Answer one in-process tool call.
    * @param name - the tool name.
@@ -288,9 +297,9 @@ function makeHarness(): Harness {
     // (R7.3). The captain resolves; no member session does, which is the arm's proven-dead premise.
     agents: {
       /** The live-session list the adapter's capability probe reads. */
-      list: (): FakeAgent[] => [captain],
-      /** The registry's own lookup: the CAPTAIN resolves, every other id is absent. */
-      get: (id: string): FakeAgent | undefined => (id === captain.id ? captain : undefined),
+      list: (): FakeAgent[] => [...registry.values()],
+      /** The registry's current identity lookup. */
+      get: (id: string): FakeAgent | undefined => registry.get(id),
     },
     mpdTeams: {
       /**
@@ -299,7 +308,10 @@ function makeHarness(): Harness {
        * @param teamId - the team asked for.
        * @returns the record, or undefined.
        */
-      get: (_workspace: string, teamId: string): unknown => teamRecords.get(teamId),
+      get: (_workspace: string, teamId: string): unknown => {
+        hooks.beforeTeamRead?.()
+        return teamRecords.get(teamId)
+      },
     },
     mpdRoles: {
       list: (): Array<{ name: string; persona: string }> => ROSTER.map((entry) => ({ ...entry })),
@@ -339,7 +351,7 @@ function makeHarness(): Harness {
     get(service: string): unknown { return services[service] },
   } as Parameters<typeof apply>[0]
   apply(ctx, {})
-  return { workspace, captain, tools, commands, events, calls, sends, teamRecords, handles }
+  return { workspace, captain, tools, commands, events, calls, sends, teamRecords, handles, registry, hooks }
 }
 
 /**
@@ -418,6 +430,100 @@ function validTasks(): Array<Record<string, unknown>> {
     { key: "auth-review", subject: "Review the auth core", description: "Blind review against the frozen contract.", kind: "review", ownerRole: "Reviewer", writeScopes: [], blockedBy: ["auth-core"], inputs: [], verify: false },
   ]
 }
+
+test("supervise offers same-owner wakes for nonresident open claims and requires observed progress", async () => {
+  /** Local agents and a real registered supervisor wired to the fixture's board. */
+  const harness = makeHarness()
+  /** The started cell the captain will supervise. */
+  const cellId = await startCell(harness)
+  /** The board before this arm seeds the workers. */
+  const cell = readCell(harness.workspace, cellId)
+  if (!cell.ok) throw new Error(cell.detail)
+  /** The authoritative roster and board for this fixture. */
+  const record = harness.teamRecords.get("team-1")
+  if (record === undefined) throw new Error("no live team record")
+  /** A plain member as recorded after a successful initial launch. */
+  const member = (name: string, handle: string): CellMemberRecord => ({ name, role: name, sessionId: handle, executorRef: handle, mode: "member", handoffs: 0, handoffReady: false, joinedAt: "2026-11-23T00:00:00.000Z" })
+  /** The in-progress worker, claimed worker and separate controls. */
+  const alice = member("Senior Engineer", "session-a")
+  /** The claimed worker's task stores the executor identity as the owner. */
+  const bob = member("Reviewer", "session-b")
+  /** A resident worker never needs a cold wake suggestion. */
+  const online = member("Explorer", "session-live")
+  /** Existing barrier recovery takes priority for this worker. */
+  const checkpoint = member("Deep Worker", "session-checkpoint")
+  /** This absent worker owns only terminal rows. */
+  const finished = member("Junior Engineer", "session-finished")
+  /** Include a legacy row owned by the team roster id as well as name and executor spellings. */
+  const workers = [alice, bob, online, checkpoint, finished]
+  writeCell(harness.workspace, { ...cell.state, phase: "executing", members: Object.fromEntries(workers.map((row) => [row.name, row])) })
+  record.members = workers.map((row, index) => ({ id: "M" + (index + 1), name: row.name, executorRef: row.executorRef, mode: row === checkpoint ? "checkpoint" : "member" }))
+  record.tasks = [
+    { id: "T41", status: "in_progress", owner: alice.name, revision: 4, attempt: 1 },
+    { id: "T42", status: "claimed", owner: bob.executorRef, revision: 7, attempt: 2 },
+    { id: "T43", status: "in_progress", owner: online.name },
+    { id: "T44", status: "in_progress", owner: checkpoint.name },
+    { id: "T45", status: "completed", owner: alice.name },
+    { id: "T46", status: "cancelled", owner: finished.name },
+    { id: "T47", status: "pending", owner: finished.name },
+    { id: "T48", status: "failed", owner: finished.name },
+    { id: "T49", status: "in_progress", owner: "M2" },
+  ]
+  harness.registry.set(online.sessionId, { id: online.sessionId, session: { id: online.sessionId, header: { cwd: harness.workspace } } })
+  /** Stable evidence that supervision leaves ownership and attempt revisions intact. */
+  const before = JSON.stringify(record.tasks)
+  /** The sweep's structured result and its user-facing text. */
+  const swept = await runTool(harness, "cellwork_supervise", {})
+  expect(losslessViolation(swept)).toBeUndefined()
+  expect(swept.nonresident).toMatchObject([
+    { member: alice.name, executorRef: alice.executorRef, tasks: [{ id: "T41", owner: alice.name, status: "in_progress" }], wake: { to: alice.name } },
+    { member: bob.name, executorRef: bob.executorRef, tasks: [{ id: "T42", owner: bob.executorRef, status: "claimed" }, { id: "T49", owner: "M2", status: "in_progress" }], wake: { to: bob.name } },
+  ])
+  expect(swept.fenced).toMatchObject([{ name: checkpoint.name, barrierOwned: true }])
+  /** The operator sees the two exact calls and how to distinguish a receipt from progress. */
+  const text = renderTool(harness, "cellwork_supervise", swept)
+  expect(text).toContain('cellwork_send {"to":"Senior Engineer"')
+  expect(text).toContain('cellwork_send {"to":"Reviewer"')
+  expect(text).toContain("can cold-resume")
+  expect(text).toContain("task-specific tool result")
+  expect(text).toContain("provider error")
+  expect((await runTool(harness, "cellwork_supervise", {})).nonresident).toEqual(swept.nonresident)
+  expect(harness.sends).toHaveLength(0)
+  expect(JSON.stringify(record.tasks)).toBe(before)
+  harness.registry.delete(harness.captain.id)
+  expect((await runTool(harness, "cellwork_supervise", {})).nonresident).toEqual([])
+  harness.registry.set(harness.captain.id, harness.captain)
+  /** The actual copy-ready input is now stale if the recipient is rebound between calls. */
+  const current = readCell(harness.workspace, cellId)
+  if (!current.ok) throw new Error(current.detail)
+  writeCell(harness.workspace, { ...current.state, members: { ...current.state.members, [alice.name]: { ...alice, sessionId: "session-new", executorRef: "session-new" } } })
+  record.members[0].executorRef = "session-new"
+  expect(await runTool(harness, "cellwork_send", swept.nonresident[0].wake)).toMatchObject({ ok: false, error: expect.stringContaining("rerun cellwork_supervise") })
+  writeCell(harness.workspace, current.state)
+  record.members[0].executorRef = alice.executorRef
+  /** A claim may be released, completed, or acquired by a different executor after the sweep. */
+  const original = record.tasks[0]
+  for (const changed of [{ status: "pending" }, { status: "completed" }, { owner: bob.name }, { revision: 5 }]) {
+    record.tasks[0] = { ...original, ...changed }
+    expect(await runTool(harness, "cellwork_send", swept.nonresident[0].wake)).toMatchObject({ ok: false, error: expect.stringContaining("rerun cellwork_supervise") })
+  }
+  record.tasks[0] = original
+  expect(harness.sends).toHaveLength(0)
+  expect((await runTool(harness, "cellwork_supervise", {})).unreadMail).toBe(swept.unreadMail)
+  /** The explicit action calls the real send tool and can only observe delivery acceptance. */
+  const delivered = await runTool(harness, "cellwork_send", swept.nonresident[0].wake)
+  expect(delivered).toMatchObject({ ok: true, to: alice.name, wakeSent: true })
+  expect(harness.sends).toMatchObject([{ handle: alice.executorRef }])
+  expect(JSON.stringify(record.tasks)).toBe(before)
+  /** A different process can release the task after recording mail but before delivery. */
+  const mailCount = foldCellMail(readCellMail(harness.workspace, cellId)).length
+  harness.hooks.beforeTeamRead = (): void => {
+    if (foldCellMail(readCellMail(harness.workspace, cellId)).length > mailCount) record.tasks[0] = { ...original, status: "pending" }
+  }
+  expect(await runTool(harness, "cellwork_send", swept.nonresident[0].wake)).toMatchObject({ ok: true, wakeSent: false, wakeReason: expect.stringContaining("rerun cellwork_supervise") })
+  expect(harness.sends).toHaveLength(1)
+  expect(foldCellMail(readCellMail(harness.workspace, cellId))).toHaveLength(mailCount + 1)
+})
 
 // ── B1: the supervise projection keeps a task without an owner lossless ─────
 

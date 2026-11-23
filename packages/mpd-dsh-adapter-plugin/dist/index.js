@@ -416,6 +416,21 @@ var decision = {
   accept: (content) => content === undefined ? { kind: "accept" } : { kind: "accept", content },
   block: (feedback) => ({ kind: "block", feedback })
 };
+function canSubmitUserTurn(agent) {
+  return typeof agent?.followup === "function";
+}
+function pendingHumanInput(agent) {
+  const inbox = agent?.inbox;
+  if (!Array.isArray(inbox?.nextStep) || !Array.isArray(inbox.nextTurn))
+    return;
+  const isHuman = (message) => {
+    const entry = message;
+    return entry?.role === "user" && entry.source?.kind === "user";
+  };
+  if (inbox.nextStep.some(isHuman))
+    return "step";
+  return inbox.nextTurn.some(isHuman) ? "turn" : "none";
+}
 function sessionCwdOf(agent) {
   try {
     const cwd = agent?.session?.header?.cwd;
@@ -2795,6 +2810,7 @@ export {
   apply,
   assertHomeMutationSandboxed,
   bundleRootOf,
+  canSubmitUserTurn,
   createDshAdapter,
   createLazyDshAdapter,
   decision,
@@ -2806,6 +2822,7 @@ export {
   isRecord,
   modelDeclaresNoEffort,
   name,
+  pendingHumanInput,
   realUserHome,
   resolveDshAdapter,
   resolveRunRoute,

@@ -16,6 +16,74 @@ service is the **fallback** for a composition that runs the official executor, r
 
 ## Tools
 
+### Captain wake
+
+Use `agent_teams_control` to arm one condition on your active team and then end the current turn.
+The team's recorded captain session can arm, inspect, and cancel its own registrations.
+
+```json
+{"action":"wake","wake":{"action":"arm","task_ids":["T2","T3"],"mode":"all"}}
+{"action":"wake","wake":{"action":"arm","event":"mail","from_member":"M1"}}
+{"action":"wake","wake":{"action":"status"}}
+{"action":"wake","wake":{"action":"cancel","id":"<registration-id>"}}
+```
+
+Task mode defaults to `all`. Choose `any` to wake when the first selected task reaches `completed`,
+`failed`, or `cancelled`. `event: "mail"` waits for team-stamped mail addressed to the captain.
+`from_member` is an optional roster ID. The wake includes the mailbox ID and leaves the message in
+`agent_teams_mail`. An already-true task condition or matching unread mail returns `satisfied` and
+needs no yield. An identical pending arm returns the existing ID. Cancel an outstanding wait before
+arming a different condition. Add `id` to a `status` call to inspect one registration.
+
+`waiting` means the condition is open. `ready` means the condition holds and can trigger delivery
+when the original captain becomes idle. `submitted` records the host's acceptance of one next-turn
+item. Use the host turn record to establish that the next turn actually ran. `cancelled` and `failed`
+report closed attempts. `delivery-unknown` reports an interrupted reservation with no definitive
+host receipt. The wake carries board IDs and terminal statuses or a mailbox ID.
+
+The selected team ID appears in the response. If the team closes, a ready match already recorded or
+a terminal task outcome recorded at or before close still counts. An unmet condition fails. Mail
+first observed after close needs a send timestamp strictly before close.
+
+Ordinary `agent_teams_mail` sends to the Team captain notify the wake in process after commit.
+Canonical mail written by other producers or processes depends on filesystem notifications or a
+later reconciliation. If the filesystem watcher is unavailable, those writes may go unobserved
+until a host status event or when the original session reopens. `cellwork_send` uses cell addresses
+and is outside this Team mail condition.
+
+Pending arms survive a resident-host restart and are checked when the original session reopens in
+its original workspace. A stopped host needs to reopen the session before it can submit a turn.
+The original captain must expose observable idle status and next-turn submission. An interrupted
+submission is left for inspection. Check the original session for the wake ID before arming again.
+The wake schedules no model polling. Human input, active goals, and other host events may still start
+turns independently.
+
+### Wait for a Team event in the current turn
+
+Use `wait` when an active goal should stay armed while the captain waits for Team work. The original
+tool call waits for a committed event and returns in the same turn, without a polling loop or a
+follow-up. The running turn keeps the host from admitting another automatic goal round during the
+wait. The goal can continue normally after the call or turn ends.
+
+```json
+{"action":"wake","wake":{"action":"wait","task_ids":["T2","T3"],"mode":"all"}}
+{"action":"wake","wake":{"action":"wait","event":"mail","from_member":"M1"}}
+```
+
+Task and mailbox filters match `arm`. The result is `wait: { state, teamId, match?, reason? }`.
+An already-true condition returns `matched` immediately. A scoped human message releases the call
+with `steered` and stays in the host inbox. An abort returns `cancelled` where the host delivers the
+result, and host or plugin teardown returns `disposed`. An unmatched team close returns `ended`.
+Only one wait can run per captain session. Cancel a pending durable registration before starting a
+wait. An in-turn wait creates no durable registration and cannot resume after process exit.
+
+A pending wait needs the original running session, its observable inbox and cancellation events.
+If the host reports `unsupported`, continue the turn or use `arm` and end the turn when a durable
+watch is appropriate. A host without the optional turn-conclusion hook can release a queued human
+follow-up and admit it at its normal next-turn boundary.
+
+### Other Team actions
+
 | Tool | `action` values | What it does |
 |---|---|---|
 | `agent_teams_plan` | `create`, `add_member`, `create_task`, `edit`, `approve`, `delete`, `status` | stage a team as a PLAN; `approve` EXECUTES it through the TEAM EXECUTOR — the native backend raises a durable child through `ctx.subagents.startActivation` on the pinned host (harness 0.2.1+) and keeps the retired `ctx.subagents.startContinuable` only as the older-host fallback (`CONTINUABLE_START_MEMBERS`, probed newest-first by `continuableStartMember`), while the official `dsh.team*` calls are the FALLBACK, so the official plugin need not be mounted — resolves `blocked_by`/`owner` against the mpd record, persists a declared `kind` from `task.kind` or its top-level alias (an unknown word is refused), and REFUSES a plan with 0 members and 0 tasks; `delete` archives; `status` shows the record beside the official readout when that backend is active |
@@ -28,7 +96,11 @@ service is the **fallback** for a composition that runs the official executor, r
 
 **The dependency guard (mpd record plane).** Every `create_task` MUST state its dependency answer —
 `blocked_by: [...]` (an array, possibly empty: an explicit root) or `independent: true`; omitting both,
-a non-array value, two disagreeing spellings, a self-edge or a cycle are all REFUSED, naming the task.
+a non-array value, a malformed entry, two disagreeing spellings, a self-edge or a cycle are refused,
+naming the task. Staged blockers can use a task ID, a one-based position or an exact unique subject.
+ID and position spellings take precedence over identical subjects. Preview and approval refuse missing
+or ambiguous blockers before any teammate starts. A local `sourceTaskId` is bound to the same actual
+board ID as a blocker. Existing board history is read as stored.
 `approve` REFUSES two tasks whose declared write scopes overlap (a trailing `/**` stripped, then equal
 or a prefix at a segment boundary; `**` and `.` cover everything; an empty scope list never overlaps)
 with no dependency path between them, quoting the pair and both remedies — add the edge, or make the
@@ -47,6 +119,20 @@ inside the SAME workspace, and this repository's own measurement (T-92, `complex
 deployment's top-level session carries `agentPreset: "cordis"`: a preset-keyed release would release
 exactly the session the door must bind. The mpd RECORD is still the only board, so every rule above runs
 on every task a session can create through these tools.
+
+**Fully parallel plans.** Use `blocked_by: []` for a single task or a root in a graph that has dependencies.
+For a multi-task plan where every task can start independently, set `independent: true` on every task.
+`edit.tasks` accepts the same task fields as `create_task`, including either blocker spelling, `kind`,
+`coverageOf`, `sourceTaskId`, and `independent`. It replaces the task list.
+
+For both dry-run and actual approval, an all-root multi-task draft needs explicit independence if it
+was bulk-edited or contains a `requirement`, `review`, `repair`, or `integration` task. A draft built
+incrementally with only `work` tasks, including tasks whose kind defaults to `work`, can still use
+empty blocker arrays for compatibility. Preview and approval both return a `warning` naming the rows
+and the remedy. Add the intended blockers or confirm each parallel task with `independent: true`.
+When a `review` or `repair` names another task on the same plan through `sourceTaskId`, its blocker
+chain must reach that source. Approval checks these declarations before starting a new team. Already
+started activations can resume under the policy they were admitted with.
 
 **Empty write scopes are no longer silent (C4).** A `work`/`repair`/`integration` row staged or appended
 with no `write_scopes` is still CREATED, but the result carries a `warning` (rendered below the result's
@@ -194,8 +280,8 @@ instead of forwarding it.
 - `approve`'s payload: `plan` (on a real approval the persisted plan, marked approved; on the `dryRun`
   preview the staged plan unchanged), `team` (the record it wrote; ABSENT only on `dryRun`), `created`
   (`{ members: [{ name, id }], tasks: [{ subject, id }] }` — real ids on approval, empty strings on the
-  preview — plus `unresolved` when a blocker named no task), and `stoppedAt` when a spawn stopped the
-  sequence.
+  preview), and `stoppedAt` when a spawn stopped the sequence. Legacy approval receipts can also
+  carry `unresolved`.
 - `dispatch`'s payload: `pairs` (the pairings the transport accepted — `taskId`, `subject`, `memberId`,
   `memberName`, optional `note`), `skipped` (every task left out, with `taskId`, `subject`, `reason`)
   and, when relevant, `forgotten`, `holdRead`, `reaped`, `halted` or `refused`.

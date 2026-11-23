@@ -119,6 +119,15 @@ row lands first and the wake-up attempt is a separate `wake` record; the protoco
 [`docs/mail.md`](../../docs/mail.md)). They land on the SAME record and guard
 documented here.
 
+When an ordinary worker is absent from a registry that can resolve the captain, `cellwork_supervise`
+can list its existing `claimed` or `in_progress` tasks under `nonresident`. Use the suggested
+`cellwork_send` with its `recovery` field intact to wake the same owner. The send rechecks the owner and
+claims before recording mail and again before requesting delivery. Rerun the sweep if the suggestion
+has gone stale. A `wakeSent:true` reply confirms delivery acceptance.
+Check for a task-specific tool result, board progress, or completion before counting the attempt as
+recovered. If the child reports a provider error, preserve the current assignment and retry after the
+cause changes. The sweep itself only reads state.
+
 ## Members: staged, adopted, unfenced
 
 - **A member is a seat on the CELL record.** `state.json`'s `members` table maps a name to the row every
@@ -386,9 +395,12 @@ whose window cannot be read can be certified deliberately, and it is recorded as
   handle names the TEAM member row, every NON-TERMINAL board row the old handle owned (or the row is
   spelled with the seat's own name), and the CELL row — else the run refuses (`checkpoint-unrecoverable`
   + `surface`), fences the seat and ATTEMPTS to release the child through its `dispose()` seam (a missing or
-  throwing seam is reported, never claimed as a release). THE ABSENT-PLANE EXCEPTION: a workspace with **no
-  team record at all** has no TEAM row and no board, so the reseed may succeed without them
-  (`plane: "absent"`) — absence is not an unreadable record (F1). A bind whose verification read-back
+  throwing seam is reported, never claimed as a release). Before interrupting the old session or starting
+  a replacement, the barrier requires exactly one live board associated with the cell to name both the
+  logical seat and its prior executor. It uses that board for the worktree and the bind. When ownership
+  is missing, disputed, or unreadable, `checkpoint-unrecoverable` names the affected record or seat for
+  reconciliation. Compositions with no associated board and no recorded execution tasks can still return
+  `plane: "absent"`. A bind whose verification read-back
   throws or answers another handle is ROLLED BACK to the pre-bind TEAM row and board owners, unless
   another writer committed first (then the rollback says it refused rather than overwrite them). A
   REFUSED ROLLBACK KEEPS THE CHILD (A11, widened in round 2): the ordinary concurrent shape carries this

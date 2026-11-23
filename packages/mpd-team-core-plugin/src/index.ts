@@ -26,7 +26,7 @@
 // what makes a migration unreadable.
 import { existsSync, readdirSync } from "node:fs"
 import { join } from "node:path"
-import { rowLogLine, createLazyDshAdapter, dshSeamInject, DSH_SEAM_COMMANDS, DSH_SEAM_TOOLS, type DshAdapter, type DshContextPressure, type DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
+import { rowLogLine, isRecord, createLazyDshAdapter, dshSeamInject, DSH_SEAM_COMMANDS, DSH_SEAM_TOOLS, type DshAdapter, type DshContextPressure, type DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 import { toolCard } from "../../mpd-dsh-adapter-plugin/src/dshgo-view.ts"
 import { agentTeamsDispatchCard, agentTeamsPlanCard, agentTeamsTaskCard } from "./tool-cards.ts"
 import {
@@ -77,7 +77,7 @@ import {
 // three refusals. The alias/argument READING stays here, at the tool boundary, because it is about the
 // wire shape; the graph and scope reasoning lives in its own module so `create_task`, `approve` and
 // `claim` cannot drift into three definitions of "ready" or "overlapping".
-import { boardDependencyEdges, dependencyCycle, dependencyPath, planDependencyEdges, planGraphDefect, planReferenceTarget, planTaskId, scopeClashes } from "./dependency-guard.ts"
+import { blockerReferenceText, boardDependencyEdges, dependencyCycle, dependencyPath, planDependencyEdges, planGraphDefect, planReferenceTarget, planTaskId, scopeClashes } from "./dependency-guard.ts"
 import { installTeamDoorGuard } from "./team-door-guard.ts"
 import { planForSession, registerTeamRoutes, TEAM_ACTION_ROUTES, TEAM_ROUTES, type TeamWebActions, type TeamWebPlan } from "./team-web"
 // THE TWO TEAM ACTIONS, exec-free: the bodies that used to sit inline in the `approve` and `run`
@@ -89,6 +89,7 @@ import { appendTeamJournal } from "./team-journal.ts"
 import { GraphModels } from "./graph-model"
 import type { GraphModel } from "../../mpd-graph-core/src/index.ts"
 import { ChangeFeed } from "./change-feed"
+import { captainWakeScope, installCaptainWake, renderCaptainWake } from "./captain-wake.ts"
 import {
   activeTeamId,
   addTeamMember,
@@ -425,6 +426,7 @@ function describeStatus(value: unknown): string {
   const summary = `plan ${planId} · members ${members.length} · tasks ${tasks.length} · hold ${board.hold === null || board.hold === undefined ? "none" : "held"}`
   /** The heading followed by one line per member and one per task. */
   const lines = [summary]
+  if (isRecord(board.rosterUnsupported) && typeof board.rosterUnsupported.reason === "string") lines.push(board.rosterUnsupported.reason)
   for (const member of members) {
     /** One member row read as a record. */
     const row = (member ?? {}) as Record<string, unknown>
@@ -541,8 +543,9 @@ function blockerSentence(blockers: unknown): string {
   const unknown = blockers.filter((entry: { form?: string }) => entry?.form === "unknown").map((entry: { reference?: string }) => String(entry?.reference ?? ""))
   /** The forms seen, in written order, so the answer shows how the rest WILL resolve. */
   const forms = [...new Set(blockers.map((entry: { form?: string }) => String(entry?.form ?? "?")))].join("/")
+  if (forms.includes("ambiguous")) return ` — blocked_by reads as ${forms}; use a task ID or position for duplicate subjects`
   if (unknown.length === 0) return ` — blocked_by reads as ${forms}`
-  return ` — WARNING: blocked_by ${unknown.map((reference) => `"${reference}"`).join(", ")} name(s) no task this plan can resolve (only a position like "2", a staged subject, or a board id like "T2" resolves); approval will report it and draw no edge`
+  return ` — WARNING: blocked_by ${unknown.map((reference) => `"${reference}"`).join(", ")} name(s) no task this plan can resolve (only a position like "2", a staged subject, or a board id like "T2" resolves); approval requires every blocker to resolve`
 }
 
 /**
@@ -599,37 +602,39 @@ function namedTask(nextId: string, subject: string): string {
 }
 
 /**
- * Read the ONE dependency answer a `create_task` call must state (R1).
- *
- * The answer is either `blocked_by: [...]` — an array, possibly EMPTY, which is an explicit declaration
- * of independence — or `independent: true`. Every refusal here is deliberate:
- *   · a NON-ARRAY list is refused instead of dropped, because dropping it is exactly how the measured
- *     defect let a task become independently ready when its caller meant otherwise;
- *   · two aliases carrying DIFFERENT lists are refused instead of letting the nested one silently win;
- *   · a non-empty list beside `independent: true` is a contradiction, not an answer;
- *   · no answer at all is refused, because an edge is never inferred (`Out of scope`: a captain that
- *     does not know its DAG is asked, never guessed for).
- * @param raw - the `task` object as the caller sent it.
- * @param args - the whole tool arguments, which carry the top-level aliases.
+ * Read the dependency declaration shared by `create_task` and the bulk draft editor.
+ * @param raw - the task object as the caller sent it.
+ * @param args - tool aliases for `create_task`; bulk edit supplies an empty object.
  * @param nextId - the id this call would mint.
  * @param subject - the subject this call would store.
- * @returns the declared blockers (empty for a genuine root).
- * @throws when the call carries no answer, a non-array list, disagreeing aliases or a contradiction.
+ * @param editing - whether a draft may leave a dependency answer for approval to check.
+ * @returns the declared blockers and any explicit confirmation of independence.
+ * @throws when the declaration is malformed, contradictory or required and missing.
  */
-function readDependencyAnswer(raw: Record<string, unknown>, args: any, nextId: string, subject: string): string[] {
-  /** The task every refusal below names, so a caller never reads a bare "invalid". */
-  const task = namedTask(nextId, subject)
+function readDependencyAnswer(raw: Record<string, unknown>, args: Record<string, unknown>, nextId: string, subject: string, editing: boolean = false): Pick<StagedTask, "blockedBy" | "independent"> {
+  /** The verb and task every refusal below identifies. */
+  const task = `${editing ? "edit" : "create_task"} for ${namedTask(nextId, subject)}`
   /** Every alias the call supplied, in the order the tool documents them. */
   const declarations: BlockerDeclaration[] = []
   if (raw.blocked_by !== undefined) declarations.push({ spelling: "task.blocked_by", value: raw.blocked_by })
   if (raw.blockedBy !== undefined) declarations.push({ spelling: "task.blockedBy", value: raw.blockedBy })
   if (args?.blocked_by !== undefined) declarations.push({ spelling: "blocked_by", value: args.blocked_by })
-  for (const declaration of declarations) {
-    if (Array.isArray(declaration.value)) continue
-    throw new Error(`create_task for ${task} was given a NON-ARRAY blocked_by at ${declaration.spelling} (${describeWireValue(declaration.value)}): a non-array is never silently dropped. Fix: send an array of references — blocked_by: [] for a genuine root, or blocked_by: ["<blocker id or subject>"] — or independent: true, which is the only other accepted spelling.`)
-  }
-  /** Each supplied alias as a string list, so two of them can be compared. */
-  const lists = declarations.map((declaration) => ({ spelling: declaration.spelling, list: (declaration.value as unknown[]).map(String) }))
+  /** Parse each supplied alias before comparing it with the others. */
+  const lists = declarations.map((declaration) => {
+    if (!Array.isArray(declaration.value)) {
+      throw new Error(`${task} was given a NON-ARRAY blocked_by at ${declaration.spelling} (${describeWireValue(declaration.value)}): a non-array is never silently dropped. Fix: send an array of references — blocked_by: [] for a genuine root, or blocked_by: ["<blocker id or subject>"] — or independent: true, which is the only other accepted spelling.`)
+    }
+    /** Raw list entries are normalized only if they are valid references. */
+    const list = declaration.value.map((value: unknown, index: number): string => {
+      /** Keep an exact nonblank subject or a positive ordinal; malformed entries cannot become labels. */
+      const reference = blockerReferenceText(value)
+      if (reference === undefined) {
+        throw new Error(`${task} has an invalid blocker at ${declaration.spelling}[${index}] (${describeWireValue(value)}). Use a nonblank task ID or subject, or a positive integer position.`)
+      }
+      return reference
+    })
+    return { spelling: declaration.spelling, list }
+  })
   if (lists.length > 1) {
     // The FIRST supplied alias is the reference the others are measured against; which one wins is not
     // the point — any disagreement is refused, so no alias can quietly override another.
@@ -638,20 +643,41 @@ function readDependencyAnswer(raw: Record<string, unknown>, args: any, nextId: s
     /** The first disagreeing alias, if any. */
     const disagreement = rest.find((candidate) => candidate.list.length !== first.list.length || candidate.list.some((entry, at) => entry !== first.list[at]))
     if (disagreement !== undefined) {
-      throw new Error(`create_task for ${task} was given TWO disagreeing spellings of blocked_by: ${first.spelling} reads ${JSON.stringify(first.list)} while ${disagreement.spelling} reads ${JSON.stringify(disagreement.list)}. All three spellings (task.blocked_by, task.blockedBy and top-level blocked_by) are accepted, but they must state ONE answer: send the list in a single spelling (or make both agree), or independent: true for a genuine root.`)
+      throw new Error(`${task} was given TWO disagreeing spellings of blocked_by: ${first.spelling} reads ${JSON.stringify(first.list)} while ${disagreement.spelling} reads ${JSON.stringify(disagreement.list)}. All three spellings (task.blocked_by, task.blockedBy and top-level blocked_by) are accepted, but they must state ONE answer: send the list in a single spelling (or make both agree), or independent: true for a genuine root.`)
     }
   }
   /** Whether the caller declared independence with the boolean spelling. */
   const independent = raw.independent === true || args?.independent === true
   /** The declared blockers, or undefined when the caller supplied no list at all. */
   const blockedBy = lists.length === 0 ? undefined : lists[0].list
-  if (blockedBy === undefined && !independent) {
-    throw new Error(`create_task for ${task} must state its DEPENDENCY ANSWER: send blocked_by: [...] — an array, possibly [] for a genuine root — or independent: true. Nothing was staged and no edge was guessed for you, because a captain that does not know its DAG is asked, never guessed for. Fix: send blocked_by: [] for a genuine root, or list what must close first — blocked_by: ["<blocker id or subject>"] — or independent: true.`)
+  if (independent) {
+    if (blockedBy !== undefined && blockedBy.length > 0) {
+      throw new Error(`${task} is CONTRADICTORY: blocked_by is non-empty (${JSON.stringify(blockedBy)}) while independent: true says the task has no blockers. Fix: keep the blockers and drop independent: true, or drop the list if this task really is independent.`)
+    }
+    return { blockedBy: [], independent: true }
   }
-  if (independent && blockedBy !== undefined && blockedBy.length > 0) {
-    throw new Error(`create_task for ${task} is CONTRADICTORY: blocked_by is non-empty (${JSON.stringify(blockedBy)}) while independent: true says the task has no blockers. Fix: either keep the blockers and drop independent: true, or drop the list and send blocked_by: [] if this task really is a root.`)
+  if (blockedBy !== undefined) return { blockedBy }
+  if (editing) return {}
+  throw new Error(`${task} must state its DEPENDENCY ANSWER: send blocked_by: [...] — an array, possibly [] for a genuine root — or independent: true. Nothing was staged and no edge was guessed for you, because a captain that does not know its DAG is asked, never guessed for. Fix: send blocked_by: [] for a genuine root, or list what must close first — blocked_by: ["<blocker id or subject>"] — or independent: true.`)
+}
+
+/** Normalize the task metadata shared by single creation, live append and bulk replacement. */
+function readTaskFields(raw: Record<string, unknown>, args: Record<string, unknown>): StagedTask {
+  /** Nested field spellings take precedence over the existing tool aliases. */
+  const writeScopes = stringList(raw.write_scopes ?? raw.writeScopes ?? args.write_scopes)
+  /** The seat name, which the board resolves at activation or append. */
+  const owner = raw.owner ?? args.owner
+  /** Parse the kind before a replacement can change the saved draft. */
+  const kind = parseTaskKind(raw.kind ?? args.kind)
+  return {
+    subject: String(raw.subject ?? "").trim(),
+    description: String(raw.description ?? ""),
+    ...(kind === undefined ? {} : { kind }),
+    ...(writeScopes === undefined ? {} : { writeScopes }),
+    ...(owner === undefined ? {} : { owner: String(owner) }),
+    ...(raw.coverageOf === undefined ? {} : { coverageOf: String(raw.coverageOf) }),
+    ...(raw.sourceTaskId === undefined ? {} : { sourceTaskId: String(raw.sourceTaskId) }),
   }
-  return blockedBy ?? []
 }
 
 /**
@@ -726,6 +752,12 @@ function assertPlanGraph(plan: StagedPlan): void {
   const subjects = new Map(plan.tasks.map((task, index) => [planTaskId(index), task.subject]))
   /** One id, labelled with its subject when the plan answers for it. */
   const label = (id: string): string => subjects.has(id) ? namedTask(id, subjects.get(id) as string) : id
+  if (defect.kind === "reference") {
+    /** Explain ambiguity distinctly from an absent or malformed reference. */
+    const problem = defect.problem.kind === "ambiguous" ? `ambiguous ${defect.field}; it names ${defect.problem.indices.map(planTaskId).join(", ")}`
+      : defect.problem.kind === "missing" ? `unresolved ${defect.field}; it matches no staged task` : `invalid blocker in ${defect.field}`
+    throw new Error(`plan ${plan.planId} was REFUSED: ${label(defect.id)} has ${problem} (${describeWireValue(defect.value)}). Use agent_teams_plan {action:"edit", tasks:[...]} and give the intended task's ID or position before approving.`)
+  }
   if (defect.kind === "self-edge") {
     throw new Error(`plan ${plan.planId} was REFUSED: its staged graph carries a dependency SELF-EDGE ${label(defect.id)} -> ${label(defect.id)} — the task is its own blocker, so it could never become ready, and no verb can remove the edge afterwards. Fix: re-send the plan with agent_teams_plan {action:"edit", tasks:[...]} without that task's own id or subject in its blocked_by — blocked_by: [] for a genuine root, or name the task that must close first — then approve again.`)
   }
@@ -1299,6 +1331,9 @@ export function apply(ctx: any): void {
    */
   const feed = new ChangeFeed({ warn: (line: string): void => { rowLogLine("mpd-team-core", line) } })
   disposers.push((): void => { feed.dispose() })
+  /** Captain-wake observers react only to committed board/mail state and host idle edges. */
+  const captainWake = installCaptainWake({ dsh, feed, now, warn: (line) => { rowLogLine("mpd-team-core", line) } })
+  disposers.push((): void => { captainWake.dispose() })
 
   // ── THE ONE GRAPH MODEL: computed here, served to BOTH planes ───────────────
   // `mpd-graph-core` owns the derivation and the merge; this row owns the record, so this is the ONE
@@ -1992,7 +2027,7 @@ export function apply(ctx: any): void {
   disposers.push(dsh.registerTool({
     name: "agent_teams_plan",
     description:
-      "The team PLAN. `create` stages (spawns nothing); `add_member`/`create_task` append; `edit` reads or replaces; `approve` EXECUTES via the TEAM EXECUTOR (refuses an EMPTY plan); `delete` archives; `status` prints plan, hold, roster, board. `create_task` WARNS when a work/repair/integration row has no write_scopes.",
+      "`create` stages; `approve` spawns; `delete` archives. Use blocked_by: [] for DAG roots, independent: true on every task for fan-out. All-root edited or typed plans need confirmation; generic appends warn. `create_task` WARNS if work/repair/integration lacks write_scopes.",
     parameters: {
       type: "object",
       properties: {
@@ -2012,7 +2047,7 @@ export function apply(ctx: any): void {
         blocked_by: { type: "array", items: { type: "string" }, description: "create_task: [] = root." },
         kind: { type: "string", description: "create_task: alias of task.kind." },
         members: { type: "array", items: { type: "object" }, description: "edit: replacement members." },
-        tasks: { type: "array", items: { type: "object" }, description: "edit: replacement tasks." },
+        tasks: { type: "array", items: { type: "object" }, description: "edit: task objects." },
         dry_run: { type: "boolean", description: "approve: preview only." },
       },
       required: ["action"],
@@ -2036,6 +2071,7 @@ export function apply(ctx: any): void {
           team: { oneOf: [{ type: "object" }, { type: "null" }] },
           summary: { oneOf: [{ type: "object" }, { type: "null" }] },
           members: { type: "array", items: { type: "object" } },
+          rosterUnsupported: { type: "object" },
           tasks: { type: "array", items: { type: "object" } },
           contracts: { type: "array", items: { type: "object" } },
           created: { type: "object" },
@@ -2100,6 +2136,10 @@ export function apply(ctx: any): void {
         const read = <T,>(fn: () => T, fallback: T): T => { try { return fn() } catch { return fallback } }
         /** The mpd record bound to this session — the team, when one was ever approved here. */
         const record = recordFor(workspace, sessionId)
+        /** The official fallback array may carry a non-enumerable capability marker that JSON rejects. */
+        const officialMembers = record === undefined ? read(() => dsh.teamListMembers(exec.agent), []) : undefined
+        /** Keep the capability diagnostic separate from the JSON roster array. */
+        const rosterUnsupported = officialMembers?.unsupported
         // THE AUTHORITATIVE HALF: with a record present, the roster and the board are MPD's. The
         // official readout is still reported, but BESIDE it and under its own key, so a reader can
         // see the executor's view without confusing it for the team.
@@ -2110,7 +2150,8 @@ export function apply(ctx: any): void {
           // A `failed` row is a raise that never happened: the live append and the approval REMOVE it, and
           // a legacy record may still carry one — rendering it as a live roster row is exactly the defect
           // this contract closes, so the status answer names only the members the team actually has.
-          members: record === undefined ? read(() => dsh.teamListMembers(exec.agent), []) : record.members.filter((member) => member.status !== "failed"),
+          members: record === undefined ? [...(officialMembers ?? [])] : record.members.filter((member) => member.status !== "failed"),
+          ...(rosterUnsupported === undefined ? {} : { rosterUnsupported }),
           tasks: record === undefined ? read(() => dsh.teamListTasks(exec.agent), []) : record.tasks,
           // The summary crosses a TOOL boundary, so it is projected to lossless JSON here: the store's
           // own `depths` is a Map and a Map cannot survive the harness's snapshot (defect 1).
@@ -2261,57 +2302,23 @@ export function apply(ctx: any): void {
       if (action === "create_task") {
         /** The raw task argument, read as a record because the tool schema is not enforced here. */
         const raw = (args?.task ?? {}) as Record<string, unknown>
-        // BOTH SPELLINGS, ONE READING (measured 2026-10-02, defects 4 and 5): the caller sent
-        // `owner` and `blocked_by` BESIDE `task` in 9 of 10 live create_task calls, and this branch
-        // read only the nested pair — so the board came back `owner: null, blockedBy: []` while the
-        // call plainly carried both. The nested key wins; the top-level alias is the caller's.
-        // THE BLOCKERS ARE NOT READ HERE (R1): the dependency answer is read where the task is actually
-        // appended, so a call that resolves NO plan and NO team keeps its own refusal sentence instead
-        // of being turned away for an argument the caller never got to use.
-        /** The write scopes, from the nested key or its top-level alias. */
-        const writeScopes = stringList(raw.write_scopes ?? raw.writeScopes ?? args?.write_scopes)
-        /** The owning teammate's display name, from the nested key or its top-level alias. */
-        const owner = raw.owner ?? args?.owner
-        /** The requirement-chain fields (C7-4 F1), declared inside `task` to keep the context budget. */
-        // BOTH SPELLINGS, ONE READING (contract amendment 2, 2026-10-23): the doc comment above has
-        // always promised `task.kind` OR its top-level alias, but only the nested key was read — so a
-        // live `create_task` carrying `kind` beside `task` (the spelling the `owner`/`blocked_by`
-        // aliases invite) silently reached the board as `work`. The nested key still wins.
-        /** The parsed task kind, refused at this boundary when the word is unknown. */
-        const kind = parseTaskKind(raw.kind ?? args?.kind)
-        /** The user clause this task serves, when the caller named one. */
-        const coverageOf = raw.coverageOf
-        /** The task a repair row was opened from, when the caller named one. */
-        const sourceTaskId = raw.sourceTaskId
+        /** The task metadata shared with bulk edit. The dependency check needs the future row id. */
+        const fields = readTaskFields(raw, args)
         /** The staged, not-yet-approved plan this call appends to, when one exists. */
         const plan = stagedPlan(workspace, sessionId)
         if (plan !== undefined) {
-          // THE STAGED ARM CARRIES THE SAME THREE FIELDS AS THE LIVE ONE (PR #42 review F-J). It used to
-          // parse `kind` and drop it together with `coverageOf`/`sourceTaskId`, so `approve` wrote
-          // `kind: "work"` for every staged task and a `repair` row reached the board as a plain work row
-          // with no warning anywhere. Carried rather than refused: staging a `repair` row BEFORE approval
-          // is the documented requirement-chain flow this field pair exists for.
-          // R1 LIVES HERE: the dependency answer is read and checked BEFORE the plan is written, so a
-          // refused call leaves the staging file byte-identical and the captain can simply re-send it.
-          /** The dependency answer this call declares — `blocked_by` (empty for a root) or `independent`. */
-          const blockedBy = readDependencyAnswer(raw, args, planTaskId(plan.tasks.length), String(raw.subject ?? "").trim())
-          /** The plan with the task appended (trimmed by the store). */
-          const next = addTask(plan, {
-            subject: String(raw.subject ?? ""),
-            description: String(raw.description ?? ""),
-            ...(kind === undefined ? {} : { kind }),
-            blockedBy,
-            ...(writeScopes === undefined ? {} : { writeScopes }),
-            ...(owner === undefined ? {} : { owner: String(owner) }),
-            ...(coverageOf === undefined ? {} : { coverageOf: String(coverageOf) }),
-            ...(sourceTaskId === undefined ? {} : { sourceTaskId: String(sourceTaskId) }),
-          })
+          /** The id approval will mint for the task this call stages. */
+          const stagedId = planTaskId(plan.tasks.length)
+          /** The dependency declaration is checked before writing the draft. */
+          const dependency = readDependencyAnswer(raw, args, stagedId, fields.subject)
+          /** The declared blockers or the empty list supplied by independence. */
+          const blockedBy = dependency.blockedBy ?? []
+          /** The plan with the task appended, including its explicit independence when supplied. */
+          const next = addTask(plan, { ...fields, ...dependency })
           // THE PROSPECTIVE GRAPH IS CHECKED BEFORE THE PLAN IS PERSISTED (R1): a self-reference or a
           // cycle makes a row permanently unready, and nothing in the tool surface can remove an edge.
           /** The row this append staged — the LAST task of the new plan. */
           const stagedTask = next.tasks[next.tasks.length - 1]
-          /** The id approval will mint for it. */
-          const stagedId = planTaskId(next.tasks.length - 1)
           assertNoDependencyCycle(
             planDependencyEdges(next),
             new Map(next.tasks.map((task, index) => [planTaskId(index), task.subject])),
@@ -2345,22 +2352,11 @@ export function apply(ctx: any): void {
         if (!recordNamesLead(resolved.record, [sessionId, ...callerIdentity(resolved.record, sessionId, sessionTitleOf(exec), lineage).ancestry])) {
           throw new Error(`only the Lead of team ${resolved.record.teamId} may append to its live roster or board`)
         }
-        if (String(raw.subject ?? "").trim() === "") throw new Error("a task needs a non-empty subject")
-        // R1 ON THE LIVE BOARD TOO: a mid-run row states its dependency answer exactly like a staged
-        // one, and the answer is checked against the board this append will produce.
-        /** The dependency answer this call declares — `blocked_by` (empty for a root) or `independent`. */
-        const blockedBy = readDependencyAnswer(raw, args, "T" + resolved.record.nextTaskNumber, String(raw.subject ?? "").trim())
+        if (fields.subject === "") throw new Error("a task needs a non-empty subject")
+        /** The dependency answer becomes the live row's blocker list. */
+        const { blockedBy } = readDependencyAnswer(raw, args, "T" + resolved.record.nextTaskNumber, fields.subject)
         /** The live record with the task appended (blockers split and reported by the store). */
-        const next = addTeamTask(resolved.record, {
-          subject: String(raw.subject ?? ""),
-          description: String(raw.description ?? ""),
-          ...(kind === undefined ? {} : { kind }),
-          blockedBy,
-          ...(writeScopes === undefined ? {} : { writeScopes }),
-          ...(owner === undefined ? {} : { owner: String(owner) }),
-          ...(coverageOf === undefined ? {} : { coverageOf: String(coverageOf) }),
-          ...(sourceTaskId === undefined ? {} : { sourceTaskId: String(sourceTaskId) }),
-        }, now())
+        const next = addTeamTask(resolved.record, { ...fields, blockedBy: blockedBy ?? [] }, now())
         /** The row this append minted — the LAST task of the new board. */
         const appendedTask = next.tasks[next.tasks.length - 1]
         // THE PROSPECTIVE BOARD IS CHECKED BEFORE IT IS PERSISTED (R1): the store resolved every
@@ -2373,7 +2369,8 @@ export function apply(ctx: any): void {
           new Map(next.tasks.map((task) => [task.id, task.subject])),
           appendedTask.id,
           namedTask(appendedTask.id, appendedTask.subject),
-          appendedTask.blockedBy.filter((reference) => reference === appendedTask.id || reference === appendedTask.subject),
+          appendedTask.blockedBy.filter((reference) => reference === appendedTask.id
+            || (reference === appendedTask.subject && appendedTask.unresolvedBlockers?.includes(reference) === true)),
         )
         writeTeam(workspace, withDerivedPhase(next))
         /** The empty-scopes warning this live row earns, or undefined when it declares a path (C4). */
@@ -2407,15 +2404,12 @@ export function apply(ctx: any): void {
               }) }
             : {}),
           ...(Array.isArray(args?.tasks)
-            ? { tasks: args.tasks.map((raw: any): StagedTask => {
-                if (typeof raw?.subject !== "string" || raw.subject.trim() === "") throw new Error("every staged task needs a subject")
-                return {
-                  subject: raw.subject,
-                  description: String(raw?.description ?? ""),
-                  ...(Array.isArray(raw?.blockedBy) || Array.isArray(raw?.blocked_by) ? { blockedBy: (raw.blockedBy ?? raw.blocked_by).map(String) } : {}),
-                  ...(Array.isArray(raw?.writeScopes) || Array.isArray(raw?.write_scopes) ? { writeScopes: (raw.writeScopes ?? raw.write_scopes).map(String) } : {}),
-                  ...(raw?.owner === undefined ? {} : { owner: String(raw.owner) }),
+            ? { strictDependencies: true, tasks: args.tasks.map((raw: unknown, index: number): StagedTask => {
+                if (!isRecord(raw) || typeof raw.subject !== "string" || raw.subject.trim() === "") {
+                  throw new Error(`staged task ${planTaskId(index)} needs a non-empty subject`)
                 }
+                // Keep the editor's exact subject as a dependency alias until approval mints the board row.
+                return { ...readTaskFields(raw, {}), subject: raw.subject, ...readDependencyAnswer(raw, {}, planTaskId(index), raw.subject, true) }
               }) }
             : {}),
         }
@@ -3162,6 +3156,8 @@ export function apply(ctx: any): void {
           ...(mailTeam === undefined ? {} : { teamId: mailTeam.teamId }),
         }, resolved.targets, now())
         if (!result.ok) return { refused: result.detail }
+        // The captain's conditional wake observes the committed mailbox independently of transport.
+        if (leadId !== "" && result.messages.some((message) => message.toId === leadId)) feed.notify(workspace)
         // The transport carries each row; a delivery failure does NOT lose the record — the message
         // stays undelivered in the ledger, which is exactly what `summary` reports.
         /** The ids whose recipient really accepted them, so `delivered` is stamped only where it is true. */
@@ -3401,22 +3397,24 @@ export function apply(ctx: any): void {
   disposers.push(dsh.registerTool({
     name: "agent_teams_control",
     description:
-      "`halt` stops NEW DISPATCH only; `resume` clears the hold; `fence`/`unfence` close/reopen ONE seat, then never messaged (Lead only); `end` closes the team (Lead only, idempotent).",
+      "`halt`/`resume` pause/reopen dispatch; `fence`/`unfence` close/reopen a seat; `end` closes the team. `wake` arms a follow-up or waits in-turn.",
     parameters: {
       type: "object",
       properties: {
-        action: { type: "string", enum: ["halt", "resume", "fence", "unfence", "end"], description: "What to do." },
+        action: { type: "string", enum: ["halt", "resume", "fence", "unfence", "end", "wake"] },
         reason: { type: "string", description: "halt/fence/end: why." },
         member: { type: "string", description: "fence/unfence: seat." },
-        team_id: { type: "string", description: "end: team to close (default: yours)." },
+        team_id: { type: "string", description: "end: default yours." },
+        wake: { type: "object", description: "{action:arm|wait|status|cancel,id?,task_ids?,mode:all|any,event:mail?,from_member?}" },
       },
       required: ["action"],
       additionalProperties: false,
     },
     output: {
-      schema: { type: "object", properties: { hold: { type: "object" }, resumed: { type: "boolean" }, teamId: { type: "string" }, member: { type: "string" }, fenced: { type: "boolean" }, endedAt: { type: "string" }, changed: { type: "boolean" }, reason: { type: "string" }, refused: { type: "string" } } },
+      schema: { type: "object", properties: { hold: { type: "object" }, resumed: { type: "boolean" }, teamId: { type: "string" }, member: { type: "string" }, fenced: { type: "boolean" }, endedAt: { type: "string" }, changed: { type: "boolean" }, reason: { type: "string" }, refused: { type: "string" }, registration: { type: "object" }, registrations: { type: "array", items: { type: "object" } }, next: { type: "string" }, wait: { type: "object" } } },
       render: (_args: any, value: any) =>
-        text(value?.refused !== undefined ? `refused: ${value.refused}`
+        text(value?.registration !== undefined || value?.registrations !== undefined || value?.wait !== undefined ? renderCaptainWake(value)
+          : value?.refused !== undefined ? `refused: ${value.refused}`
           : value?.changed !== undefined ? (value.changed ? `team ${value.teamId} ended (${value.reason})` : `team ${value.teamId} was already ended at ${value.endedAt} — nothing changed`)
             : value?.fenced !== undefined ? `${value.member} ${value.fenced ? "fenced" : "unfenced"}${value.fenced && typeof value.reason === "string" && value.reason !== "" ? ` (${value.reason})` : ""}`
               : value?.resumed !== undefined ? (value.resumed ? "resumed" : "was not halted") : value?.hold === undefined ? "not halted" : `halted: ${value.hold.reason}`),
@@ -3428,6 +3426,15 @@ export function apply(ctx: any): void {
       const action = String(args?.action ?? "")
       /** The session title the harness stamped (the persona prompt prefix); the identity plane reads it. */
       const title = sessionTitleOf(exec)
+      if (action === "wake") {
+        if (args?.team_id !== undefined || sessionIsDelegatedChild(exec)) throw new Error("wake is scoped to this captain's own team and session")
+        /** The host's exact workspace/session binding, with no fallback to process cwd. */
+        const scope = captainWakeScope(exec.agent)
+        if (scope === undefined || scope.workspace !== workspace || scope.sessionId !== sessionId) throw new Error("wake needs the captain's live session and workspace")
+        /** Inspection and cancellation stay available even after the original team closes. */
+        const team = args?.wake?.action === "arm" || args?.wake?.action === "wait" ? recordFor(workspace, sessionId) : undefined
+        return captainWake.execute(exec, scope, args?.wake, team)
+      }
       /** The caller this action acts as, built exactly like every other team action's caller. */
       const caller: TeamActionCaller = {
         workspace, sessionId, lineage,
@@ -3464,7 +3471,7 @@ export function apply(ctx: any): void {
         return reply
       }
       if (action === "resume") return { resumed: clearHold(workspace) }
-      if (action !== "halt") throw new Error(`agent_teams_control: unknown action "${action}" (halt | resume | fence | unfence | end)`)
+      if (action !== "halt") throw new Error(`agent_teams_control: unknown action "${action}" (halt | resume | fence | unfence | end | wake)`)
       return { hold: placeHold(workspace, String(args?.reason ?? ""), sessionIdOf(exec), now()) }
     },
   }))

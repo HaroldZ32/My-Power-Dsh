@@ -1272,6 +1272,7 @@ export function registerTeamRoutes(
       },
       // WHAT APPROVAL CREATED, by id: the executor's handle per member, then the board id per task.
       created: [...payload.created.members.map((member) => member.id), ...payload.created.tasks.map((task) => task.id)],
+      ...(payload.warning === undefined ? {} : { warning: payload.warning }),
     })) && all
     all = mountAction(TEAM_DISPATCH_PATH, parseDispatchInput, (sessionId: string, body: { limit?: number; dryRun?: boolean }) => actions.dispatch(sessionId, body), (payload: TeamDispatchPayload) => ({
       pairs: payload.pairs.map((pair) => ({ taskId: pair.taskId, memberId: pair.memberId, memberName: pair.memberName })),

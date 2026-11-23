@@ -21,6 +21,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { apply } from "../src/index"
 import { listTeams, readTeam } from "../src/team-store"
+import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** One value JSON can carry without loss. */
 type Json = null | boolean | number | string | Json[] | { [key: string]: Json }
@@ -162,9 +163,12 @@ interface Fixture {
 /**
  * Build the harness: the real plugin applied against a stub adapter and a stub executor.
  * @param roles - the roster rows the `mpdRoles` service publishes (the C7-2 source); empty by default.
+ * @param official - when supplied, the official team service read through the real adapter roster and board views.
  * @returns the fixture.
  */
-function fixture(roles: Array<{ name: string; readonly?: boolean }> = []): Fixture {
+function fixture(roles: Array<{ name: string; readonly?: boolean }> = [], official?: object): Fixture {
+  /** Use the real fallback views when an arm exercises the official service. */
+  const officialReads = official === undefined ? undefined : createDshAdapter({ get: (id: string) => id === "agentTeams" ? official : undefined })
   /** The sandbox workspace, which is what `workspaceRoot` answers. */
   const workspace = mkdtempSync(join(tmpdir(), "mpd-output-"))
   /** The tools the plugin registered. */
@@ -194,8 +198,8 @@ function fixture(roles: Array<{ name: string; readonly?: boolean }> = []): Fixtu
       // THE METER SEAM answers the adapter's OWN empty reading, which is what it returns for a session it
       // cannot resolve: a null window keeps the context verb's reply lossless JSON (no `undefined`).
       if (prop === "contextPressure") return () => ({ usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" })
-      if (prop === "teamListMembers") return () => []
-      if (prop === "teamListTasks") return () => []
+      if (prop === "teamListMembers") return officialReads?.teamListMembers ?? (() => [])
+      if (prop === "teamListTasks") return officialReads?.teamListTasks ?? (() => [])
       if (prop === "capabilities") return () => ({})
       return noop
     },
@@ -324,6 +328,42 @@ describe("an EMPTY plan cannot be approved (D4a)", () => {
 })
 
 describe("every action's value satisfies its declared output contract", () => {
+  test("task-only official roster is lossless before Cellwork staging and after a plan amendment", async () => {
+    /** The real adapter against a host that exposes the official board but lacks a roster. */
+    const f = fixture([], { listTasks: (): unknown[] => [] })
+    try {
+      /** Fresh-session status is the first call made by public cellwork_start. */
+      const fresh = await f.call("agent_teams_plan", { action: "status" })
+      expect(fresh.plan).toBeNull()
+      expect(fresh.team).toBeNull()
+      expect(fresh.members).toEqual([])
+      expect(fresh.rosterUnsupported).toMatchObject({ unsupported: true, capability: "roster", reason: expect.any(String) })
+      await f.call("agent_teams_plan", { action: "create", name: "cell planning", description: "initial" })
+      await f.call("agent_teams_plan", { action: "edit", description: "amended" })
+      /** Status for a partially staged plan must retain its current contents and capability reading. */
+      const amended = await f.call("agent_teams_plan", { action: "status" })
+      expect(amended.plan).toMatchObject({ name: "cell planning", description: "amended" })
+      expect(amended.members).toEqual([])
+      expect(amended.rosterUnsupported).toEqual(fresh.rosterUnsupported)
+    } finally {
+      rmSync(f.workspace, { recursive: true, force: true })
+    }
+  })
+
+  test("status keeps the adapter's plain empty arrays for malformed official collections", async () => {
+    /** Non-array host answers must never become array entries by spreading an iterable scalar. */
+    const f = fixture([], { listMembers: (): string => "bad-roster", listTasks: (): object => ({ invalid: true }) })
+    try {
+      /** The official fallback is available, so it has no unsupported-capability marker. */
+      const status = await f.call("agent_teams_plan", { action: "status" })
+      expect(status.members).toEqual([])
+      expect(status.tasks).toEqual([])
+      expect(status).not.toHaveProperty("rosterUnsupported")
+    } finally {
+      rmSync(f.workspace, { recursive: true, force: true })
+    }
+  })
+
   test("status answers null plan/hold, the record and a LOSSLESS summary — and the harness accepts it", async () => {
     /** The harness under test. */
     const f = fixture()

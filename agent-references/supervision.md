@@ -9,6 +9,11 @@ Three planes (Agent Teams, cellwork, autoproject) converge on ONE adapter file,
 `packages/mpd-dsh-adapter-plugin/src/index.ts`. Every mechanism below is placed on that shared base, so
 a plane inherits it instead of re-implementing it.
 
+## Choosing task dependencies
+
+Use `agent_teams_plan {action:"status"}` to find a suitable board. Otherwise reuse or stage a
+plan and add owner-bound tasks. Before approval, identify the artifact each task consumes. For example, if two investigations need the same acceptance criteria, both depend on that requirement. A synthesis that needs both findings lists both investigations in `blocked_by`. An independent review of the synthesis depends on the synthesis. A root in this graph can use `blocked_by: []`. If every task can finish from its own starting inputs, declare `independent: true` on each so the team can start them in parallel. Approve the plan and dispatch the ready rows to their declared owners.
+
 ## 1. Re-team: a session that has finished a team must be able to build the next one
 
 Owner: `packages/mpd-roles-plugin/src/complexity-gate.ts` (pure) + `session-gate.ts` (wiring).
@@ -55,6 +60,10 @@ trigger; the ended-aware and auto-end rules stay in force regardless.
 
 Because autoproject and cellwork execute their spawns AS THE SAME SESSION (`agent: exec?.agent`), their
 work counts toward the same threshold — the trigger covers all three planes with no per-plane hook.
+
+## Wake the captain on a board condition
+
+When the next decision needs several results from the current ordinary Team board, check that board's ID and task IDs, arm a one-shot watch and end the current turn. For example, `agent_teams_control {action:"wake", wake:{action:"arm", task_ids:["T2","T3"], mode:"all"}}` waits for both tasks to become terminal. Use `mode:"any"` to react to the first terminal task. For a team mailbox reply, arm `wake:{action:"arm", event:"mail", from_member:"M1"}` and read the mail through the mailbox on wake. Check the returned registration: an already-satisfied condition can be handled immediately. On wake, read the task outcomes, including failures, and act on them. `submitted` records the host accepting the wake. Use `wake:{action:"status", id:"<registration id>"}` to inspect it or `wake:{action:"cancel", id:"<registration id>"}` when the result is no longer needed. A pending watch needs a host able to reach that captain session. Arming it leaves the session's goal intact. User input or an independent goal continuation can still start a turn. With an active GOAL and only a known Team dependency pending, use `wake:{action:"wait", task_ids:["T2","T3"], mode:"all"}` in place of `arm`. This call stays in the current turn and returns on the event or on steering. It has the same mail filter. Use one mode per condition and inspect the returned state before resuming work. An open task that stops progressing needs the appropriate supervision or recovery path.
 
 ## 2. Async consults: several one-shot agents at once
 
@@ -182,7 +191,8 @@ supervised by the deadman in section 2.
 |---|---|---|---|---|
 | Agent Teams | `teamExecutor.spawn` → `startContinuableChild` | yes (same session) | — | yes (watchdog, silence) |
 | cellwork seats | the same `teamExecutor.spawn` (a seat IS a team member) | yes (same session) | — | yes (watchdog, seat identity) |
-| cellwork reseed / `cellwork_recon` | `startContinuableAgent` / `spawnAgent` | yes | yes (same seam) | yes (deadman) |
+| cellwork reseed | `startContinuableAgent` after a worker handoff | — | — | per-handoff barrier with bounded attempts |
+| `cellwork_recon` | supervised roster consult through `spawnAgent` | yes | yes | consult silence deadline |
 | autoproject | `mpd_role_spawn` → `spawnAgent` | yes (same session) | yes (inherited) | yes (deadman, `slotBoundMs` aligned) |
 | workmate | `spawnAgent` | — | yes (same seam) | yes (deadman) |
 

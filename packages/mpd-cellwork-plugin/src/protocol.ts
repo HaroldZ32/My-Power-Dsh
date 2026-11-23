@@ -4,7 +4,7 @@
 // `cellwork_subteam`, `cellwork_send`, `cellwork_inbox`. The listeners: the host-plane `agent/pre-step`
 // checkpoint detector and the `agent/turn-stopping` compaction barrier. The decision logic they share
 // lives in `protocol-core.ts` (pure, unit-testable); this file binds it to the adapter and to disk.
-import { appendJournal, atomicWriteText, freeCellId, handoffPath, journalPath, newCellState, readCell, resolveCellTeam, writeCell, type CellMemberRecord, type CellState } from "./state"
+import { appendJournal, atomicWriteText, freeCellId, handoffPath, isTerminalTeamRecord, journalPath, listCellIds, newCellState, readCell, resolveCellTeam, writeCell, type CellMemberRecord, type CellState } from "./state"
 import { callerContext, type CallerContext, type TeamActionsServiceView, type TeamsServiceView } from "./caller"
 import type { CellworkConfig } from "./config"
 import { fenceReasonOf, nameKey, resolveMemberName, sendThroughExecutor } from "./dispatch"
@@ -33,6 +33,7 @@ import {
   subteamDirective,
   type CheckpointPlan,
   type PlaneSeatView,
+  type ReseedTarget,
   type SeatBindResult,
   type SeatForceBound,
   type SeatForceReading,
@@ -317,6 +318,102 @@ function superviseTaskRow(task: Record<string, unknown>): Record<string, unknown
     ...(typeof task.owner === "string" ? { owner: task.owner } : {}),
     ...(typeof task.kind === "string" ? { kind: task.kind } : {}),
   }
+}
+
+/** A current claim that still belongs to the indicated nonresident executor. */
+interface SuperviseClaim {
+  /** The board's stable task id. */
+  readonly id: string
+  /** The owner spelling stored on the board. */
+  readonly owner: string
+  /** The two states in which work remains assigned to the original executor. */
+  readonly status: "claimed" | "in_progress"
+  /** The row revision, absent on a legacy board that has none. */
+  readonly revision?: number
+  /** The execution attempt, absent before the board records one. */
+  readonly attempt?: number
+}
+
+/** The saved reading that binds a generated recovery send to its original claim set. */
+interface RecoveryWake {
+  /** The cell in which the operator requested supervision. */
+  readonly cellId: string
+  /** The resolved live board holding the assignments. */
+  readonly teamId: string
+  /** The exact executor the suggested mail may wake. */
+  readonly executorRef: string
+  /** A digest of the ordered task identities, state, owner, revision and attempt. */
+  readonly claimsHash: string
+}
+
+/** One read-only suggestion to wake a current owner, with the claims the captain must check. */
+interface SuperviseNonresident {
+  /** The member name accepted by `cellwork_send`. */
+  readonly member: string
+  /** The durable executor handle both records must agree on. */
+  readonly executorRef: string
+  /** The existing assignments the member may resume. */
+  readonly tasks: readonly SuperviseClaim[]
+  /** The exact same-cell `cellwork_send` arguments. */
+  readonly wake: { readonly to: string; readonly subject: string; readonly body: string; readonly recovery: RecoveryWake }
+}
+
+/** Whether a roster row can be addressed by this owner spelling. */
+function ownsAlias(row: Record<string, unknown>, alias: string): boolean {
+  return alias === row.name || alias === row.executorRef || alias === row.id
+}
+
+/** Attribute only open claims whose owner uniquely identifies this seat on the current board. */
+function superviseClaimsOf(roster: readonly Record<string, unknown>[], seat: Record<string, unknown>, tasks: readonly Record<string, unknown>[]): SuperviseClaim[] {
+  return tasks.flatMap((task) => {
+    if ((task.status !== "claimed" && task.status !== "in_progress") || typeof task.id !== "string" || task.id === "" || typeof task.owner !== "string" || task.owner === "") return []
+    /** The owner can be written as a name, a durable handle, or a legacy roster id. */
+    const owner = task.owner
+    /** Reject a legacy spelling that addresses several roster entries. */
+    const matches = roster.filter((row) => ownsAlias(row, owner))
+    if (matches.length !== 1 || matches[0] !== seat) return []
+    return [{ id: task.id, owner, status: task.status,
+      ...(Number.isSafeInteger(task.revision) && typeof task.revision === "number" ? { revision: task.revision } : {}),
+      ...(Number.isSafeInteger(task.attempt) && typeof task.attempt === "number" ? { attempt: task.attempt } : {}),
+    }]
+  })
+}
+
+/** Prepare or re-derive a same-owner receipt from one Cellwork seat and its current live team. */
+function recoverySuggestion(dsh: DshAdapter, cell: CellState, board: ReturnType<typeof resolveCellTeam>, name: string): SuperviseNonresident | undefined {
+  /** The address `cellwork_send` would use. */
+  const member = cell.members[name]
+  /** The authoritative board and its member and task rows. */
+  const record = board.record
+  if (board.teamId === "" || record === undefined || isTerminalTeamRecord(record) || !Array.isArray(record.members) || !Array.isArray(record.tasks)) return undefined
+  if (member === undefined || member.name !== name || member.mode !== "member" || member.handoffReady || member.fenced === true || member.executorRef === "") return undefined
+  /** Read both names and handles for collisions before suggesting a wake. */
+  const roster = (record.members as unknown[]).filter(isPlainRecord)
+  /** Only one seat may hold the name or the executor handle. */
+  const owners = roster.filter((row) => row.name === name || row.executorRef === member.executorRef)
+  /** The current member's team-side seat. */
+  const seat = owners[0]
+  if (owners.length !== 1 || seat.name !== name || seat.executorRef !== member.executorRef || seat.fenced === true || (seat.mode !== undefined && seat.mode !== "member")) return undefined
+  if (seatLivenessOf(dsh, member.executorRef, cell.captainSessionId) !== "dead") return undefined
+  /** Sort by stable task id so a board display-order change alone cannot stale a suggestion. */
+  const tasks = superviseClaimsOf(roster, seat, (record.tasks as unknown[]).filter(isPlainRecord)).sort((left, right) => left.id.localeCompare(right.id))
+  if (tasks.length === 0) return undefined
+  /** The tickets included in the wake text. */
+  const ids = tasks.map((task) => task.id).join(", ")
+  /** This digest compares the exact selected task observations without carrying duplicate task arrays. */
+  const claimsHash = createHash("sha256").update(JSON.stringify([cell.cellId, board.teamId, name, member.executorRef, tasks])).digest("hex")
+  return { member: name, executorRef: member.executorRef, tasks, wake: {
+    to: name,
+    subject: `Resume assigned work ${ids}`,
+    body: `Resume your existing assignment for ${ids}. Report your next task action or the error blocking it.`,
+    recovery: { cellId: cell.cellId, teamId: board.teamId, executorRef: member.executorRef, claimsHash },
+  } }
+}
+
+/** A generated wake is one single-cell captain-owned send. */
+function readRecoveryWake(value: unknown): RecoveryWake | undefined {
+  if (!isPlainRecord(value) || typeof value.cellId !== "string" || typeof value.teamId !== "string" || typeof value.executorRef !== "string" || typeof value.claimsHash !== "string") return undefined
+  return { cellId: value.cellId, teamId: value.teamId, executorRef: value.executorRef, claimsHash: value.claimsHash }
 }
 
 /** One BIND's snapshot of the team record file it is about to rewrite (F2). */
@@ -604,6 +701,53 @@ function concurrentWriteOf(path: string, snapshot: TeamRecordSnapshot): string |
 function seatRowOf(record: Record<string, unknown> | undefined, memberName: string): Record<string, unknown> | undefined {
   if (record === undefined || !Array.isArray(record.members)) return undefined
   return (record.members as unknown[]).find((row) => isPlainRecord(row) && (row.name === memberName || row.id === memberName)) as Record<string, unknown> | undefined
+}
+
+/** Classify whether the logical seat and the old executor uniquely name the same roster row. */
+function reseedSeatStatus(record: Record<string, unknown>, memberName: string, oldHandle: string): "owned" | "missing" | "conflict" {
+  if (!Array.isArray(record.members)) return "missing"
+  /** The untrusted roster before narrowing its rows. */
+  const members: unknown[] = record.members
+  /** Roster entries with either identity, counted independently to catch duplicate claims. */
+  const rows = members.filter(isPlainRecord)
+  /** Every row the logical seat name or id addresses. */
+  const named = rows.filter((row) => row.name === memberName || row.id === memberName)
+  /** Every row addressed by the old session. */
+  const held = rows.filter((row) => oldHandle !== "" && row.executorRef === oldHandle)
+  if (named.length === 0 && held.length === 0) return "missing"
+  return named.length === 1 && held.length === 1 && named[0] === held[0] ? "owned" : "conflict"
+}
+
+/** Find an open task whose alias points to the targeted seat and to a different roster row. */
+function reseedAmbiguousTask(record: Record<string, unknown>, memberName: string): Record<string, unknown> | undefined {
+  /** The verified seat and all competing aliases belong to this one board. */
+  const seat = seatRowOf(record, memberName)
+  if (seat === undefined || !Array.isArray(record.members) || !Array.isArray(record.tasks)) return undefined
+  /** Exclude the target by object identity; any other row matching the same alias is ambiguous. */
+  const others = (record.members as unknown[]).filter(isPlainRecord).filter((row) => row !== seat)
+  return (record.tasks as unknown[]).filter(isPlainRecord).find((task) => {
+    if (task.status === "completed" || task.status === "failed" || task.status === "cancelled" || typeof task.owner !== "string" || task.owner === "") return false
+    /** The owner spelling the bind is otherwise about to transfer. */
+    const owner = task.owner
+    return ownsAlias(seat, owner) && others.some((row) => ownsAlias(row, owner))
+  })
+}
+
+/** Check the same checkpoint generation from which this invocation read the handoff. */
+function sameBarrierSeat(row: CellMemberRecord | undefined, original: CellMemberRecord): row is CellMemberRecord {
+  return row !== undefined && row.sessionId === original.sessionId && row.executorRef === original.executorRef
+    && row.handoffs === original.handoffs && row.handoffReady === original.handoffReady && row.checkpointSince === original.checkpointSince
+    && row.mode === original.mode && row.fenced === original.fenced && row.barrierFailures === original.barrierFailures
+}
+
+/** The durable ids a cell associates with its own board history, excluding parent-cell ids. */
+function reseedTeamIds(cell: CellState): string[] {
+  return [cell.teamId, cell.mintedTeamId, cell.planningTeamId].filter((id): id is string => typeof id === "string" && id !== "")
+}
+
+/** The current or historical Lead identity that authenticates an otherwise unlinked candidate. */
+function reseedTeamLedBy(record: Record<string, unknown>, captain: string): boolean {
+  return record.leadSessionId === captain || (Array.isArray(record.leadHistory) && record.leadHistory.includes(captain))
 }
 
 /**
@@ -2053,7 +2197,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
   // ── cellwork_supervise ───────────────────────────────────────────────────
   disposers.push(dsh.registerTool({
     name: "cellwork_supervise",
-    description: "CAPTAIN only: one READ-ONLY sweep of the cell — every member's mode / handoff state / live context ratio, the pending board tasks, the stale-split flags, the CLOSED seats together with the open rows they own, and the unread mail (including rows whose wake-up never went out). CLOSED SEATS COME IN THREE KINDS and the sweep names which, because only TWO of them are the captain's to repair: a GIVE-UP fence (an explicit `fenced:true` on EITHER record) gets the two levers — `reassign` its open rows with `cellwork_dispatch {reassign:[...]}`, and clear the fence with `cellwork_dispatch {unfence:[...]}`; a BARRIER-OWNED seat (the TEAM/CELL row at `mode:\"checkpoint\"` with NO `fenced` marker, the window every handoff opens) is reported with `barrierOwned`, `forceEligible` and `pendingMs` — the compaction barrier OWES that seat its reopen, but nothing supervises the barrier, so a seat it can no longer run for needs the BOUNDED forced lever (`cellwork_dispatch {unfence:[{member, force:true}]}`, allowed only when the recorded session is not live and the window's written bound is reached). A DEAD-RESEED seat (a reseeded `subcaptain` row whose recorded session the registry PROVES dead and which no barrier will run for) is reported as a closed seat with `barrierOwned:false`, `suspect:true` and the same `forceEligible` answer the verb uses — ONE predicate, so the lever the sweep advertises is the lever `unfence:[{member, force:true}]` accepts. A closed seat whose TEAM half is a `checkpoint` no barrier is pending for carries `retry`, the exact Lead-only verb that reopens it. A member is reported `suspect:true` only when a window stamp exists, the registry is PRESENT, its CAPTAIN anchor resolves, and the recorded session does not — a present registry that cannot resolve that anchor answers `unknown`, which licenses nothing. Call it on every wake-up; it mutates nothing.",
+    description: "CAPTAIN only: one READ-ONLY sweep of the cell — every member's mode / handoff state / live context ratio, the pending board tasks, the stale-split flags, the CLOSED seats together with the open rows they own, and the unread mail (including rows whose wake-up never went out). CLOSED SEATS COME IN THREE KINDS and the sweep names which, because only TWO of them are the captain's to repair: a GIVE-UP fence (an explicit `fenced:true` on EITHER record) gets the two levers — `reassign` its open rows with `cellwork_dispatch {reassign:[...]}`, and clear the fence with `cellwork_dispatch {unfence:[...]}`; a BARRIER-OWNED seat (the TEAM/CELL row at `mode:\"checkpoint\"` with NO `fenced` marker, the window every handoff opens) is reported with `barrierOwned`, `forceEligible` and `pendingMs` — the compaction barrier OWES that seat its reopen, but nothing supervises the barrier, so a seat it can no longer run for needs the BOUNDED forced lever (`cellwork_dispatch {unfence:[{member, force:true}]}`, allowed only when the recorded session is not live and the window's written bound is reached). A DEAD-RESEED seat (a reseeded `subcaptain` row whose recorded session the registry PROVES dead and which no barrier will run for) is reported as a closed seat with `barrierOwned:false`, `suspect:true` and the same `forceEligible` answer the verb uses — ONE predicate, so the lever the sweep advertises is the lever `unfence:[{member, force:true}]` accepts. A closed seat whose TEAM half is a `checkpoint` no barrier is pending for carries `retry`, the exact Lead-only verb that reopens it. A member is reported `suspect:true` only when a window stamp exists, the registry is PRESENT, its CAPTAIN anchor resolves, and the recorded session does not — a present registry that cannot resolve that anchor answers `unknown`, which licenses nothing. The `nonresident` list offers a same-owner `cellwork_send` for an ordinary absent worker that still owns claimed or in-progress work. Check the worker's next task action or error after delivery. The sweep is read-only.",
     parameters: { type: "object", properties: {
       limit: { type: "integer", description: "Rows to render (default 20, clamped 1..100)." },
       offset: { type: "integer", description: "First row of the page (default 0)." },
@@ -2091,6 +2235,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
           requirementsRevision: { type: "number" },
           handoffReady: { type: "array", items: { type: "string" } },
           fenced: { type: "array", items: { type: "object" }, description: "Every CLOSED member with the reason and the OPEN board rows it still owns. Each row carries `giveUp:true` for a real GIVE-UP fence (an explicit `fenced:true` on either record) — the rows a `reassign` pass repairs and `cellwork_dispatch {unfence:[name]}` clears — or `giveUp:false` for a HELD seat with no fence marker — the compaction barrier's `mode:\"checkpoint\"` window, or the DEAD-RESEED shape flagged `deadReseed:true`. Every closed-seat row ALSO carries `barrierOwned` (a checkpoint spelling, not a fence marker, is what holds it), `forceEligible` (the FORCED `unfence:[{member, force:true}]` lever would be allowed RIGHT NOW — computed by the SAME predicate the verb decides with, so the two cannot disagree), `pendingMs` (how long the window has been open, when a timestamp exists), `suspect:true` for the DEAD-RESEED shape (a reseeded seat whose recorded session the registry proves dead), and `retry` when the TEAM half is a `checkpoint` no barrier is pending for — the exact Lead-only verb that reopens it (R5.4). A barrier-owned seat is not automatically safe: nothing supervises the barrier, so the render names the force lever and its bound instead of promising that no action is needed. An `unknown` liveness never drops a seat from this list: a `subcaptain` that left the barrier's window with an unprovable session is listed `unverified:true` with `forceEligible:false` and its `forceRefusal`, reported as unverified rather than as health." },
+          nonresident: { type: "array", items: { type: "object" }, description: "Ordinary nonresident workers with current claimed or in-progress tasks, their recorded owners, and one same-owner cellwork_send suggestion per worker. A wake receipt does not demonstrate task progress." },
           unreadMail: { type: "number" },
           wakeFailures: { type: "array", items: { type: "object" } },
         },
@@ -2106,6 +2251,8 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         const tasks = Array.isArray(result.tasks) ? result.tasks as Array<Record<string, unknown>> : []
         /** The fenced members, with the rows a reassignment would move. */
         const fenced = Array.isArray(result.fenced) ? result.fenced as Array<Record<string, unknown>> : []
+        /** The same-owner wake suggestions prepared from the current board. */
+        const nonresident = Array.isArray(result.nonresident) ? result.nonresident as SuperviseNonresident[] : []
         /** The seat projection, when the answer carries one. */
         const seats = typeof result.seats === "object" && result.seats !== null ? result.seats as Record<string, unknown> : undefined
         // THE BOARD LINE NAMES THE RESOLVED TEAM AND, WHEN THEY DISAGREE, BOTH IDS (§7.1): an operator
@@ -2164,6 +2311,11 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
               }
               return name + " (" + reason + ") owns " + (owned.length > 0 ? owned.join(", ") + " — reassign those with cellwork_dispatch {reassign:[{task_id, owner}]}, and" : "no open row —") + " clear the fence with cellwork_dispatch {unfence:[" + JSON.stringify(name) + "]}"
             }).join("; ")),
+          ...(nonresident.length === 0 ? [] : [
+            "Nonresident workers with open claims",
+            ...nonresident.map((row) => `  ${row.member} (${row.executorRef}) owns ${row.tasks.map((task) => `${task.id} ${task.status} (owner ${task.owner})`).join(", ")}. Try cellwork_send ${JSON.stringify(row.wake)}`),
+            "An absent worker can cold-resume. `wakeSent:true` confirms delivery acceptance. Verify a task-specific tool result, board progress, or completion before counting recovery. If wake fails, inspect `wakeReason`. If the child's next turn reports a provider error, report the observed cause and preserve the assignment. Retry after the cause changes.",
+          ]),
           "unread mail: " + String(result.unreadMail ?? 0) + (Array.isArray(result.wakeFailures) && result.wakeFailures.length > 0 ? " · " + String((result.wakeFailures as unknown[]).length) + " without a wake-up" : ""),
         ].join("\n"))
       },
@@ -2190,7 +2342,9 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       /** The live record. */
       const record = board.record
       /** The board rows this build can read. */
-      const tasks = record !== undefined && Array.isArray(record.tasks) ? (record.tasks as Array<Record<string, unknown>>) : []
+      const tasks = record !== undefined && Array.isArray(record.tasks) ? (record.tasks as unknown[]).filter(isPlainRecord) : []
+      /** Current assignments whose executor the anchored registry did not find. */
+      const nonresident: SuperviseNonresident[] = []
       /** Every member's live reading. */
       const members = Object.values(cell.members).map((member) => {
         // THE PLANE FIRST, the adapter only as the documented degradation (see `planePressureOf`): the
@@ -2213,6 +2367,11 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         // with, projected READ-ONLY, so the sweep can never advertise a lever the verb refuses.
         /** The one forced-lever reading for this seat. */
         const reading = forceReadingOf(boardCell, caller.workspace, member, now)
+        if (!reading.closed) {
+          /** The optional same-owner recommendation for this exact seat and claim set. */
+          const suggestion = recoverySuggestion(dsh, cell, board, member.name)
+          if (suggestion !== undefined) nonresident.push(suggestion)
+        }
         return {
           name: member.name,
           mode: seat.mode ?? member.mode,
@@ -2321,6 +2480,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         requirementsRevision: cell.requirementsRevision,
         handoffReady: Object.values(cell.members).filter((member) => member.handoffReady).map((member) => member.name),
         fenced,
+        nonresident,
         seats: {
           execution: seatProjection.execution,
           planning: seatProjection.planning,
@@ -2611,6 +2771,11 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         selected: { type: "array", description: "An answer's offered labels, copied VERBATIM from the question.", items: { type: "string" } },
         custom: { type: "string", description: "An answer's free text; alone it replaces the one label of a single-select answer." },
         questionId: { type: "string", description: "A question's stable key (defaults to its message id) or the answered question's key (defaults to the referenced question's)." },
+        recovery: {
+          type: "object", description: "The original assignment guard from a cellwork_supervise wake suggestion. Copy it unchanged for a same-cell captain wake.",
+          properties: { cellId: { type: "string" }, teamId: { type: "string" }, executorRef: { type: "string" }, claimsHash: { type: "string" } },
+          required: ["cellId", "teamId", "executorRef", "claimsHash"], additionalProperties: false,
+        },
       },
       required: ["to", "subject", "body"],
       additionalProperties: false,
@@ -2650,13 +2815,15 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
     execute: async (args: unknown, exec: DshToolExec): Promise<ProtocolResult> => {
       /** The argument record. */
       const argv = readArgs(args)
-      /** The caller's context. */
-      const caller = callerFor(exec)
-      if (caller.refusal !== null) return { ok: false, error: refusalText(caller.refusal), path: caller.refusal.path }
+      /** The caller should obtain a new reading when a guarded suggestion no longer applies. */
+      const staleRecovery = "This recovery suggestion is stale or unavailable. Please rerun cellwork_supervise to check the current owner and claims."
+      /** A recovery send may inspect the cell without adopting a missing seat. */
+      const caller = argv.recovery === undefined ? callerFor(exec) : callerContext(dsh, exec, { teams, adopt: false })
+      if (caller.refusal !== null) return { ok: false, error: argv.recovery === undefined ? refusalText(caller.refusal) : staleRecovery, path: caller.refusal.path }
       // NARROWED ONCE, for the closures below: a closure cannot rely on the property narrowing above.
       /** The caller's own cell. */
       const cell = caller.cell
-      if (cell === null || caller.member === "") return { ok: false, error: "cellwork_send: this session belongs to no active cell" }
+      if (cell === null || caller.member === "") return { ok: false, error: argv.recovery === undefined ? "cellwork_send: this session belongs to no active cell" : staleRecovery }
       /** The requested recipient (or the target cell, with `broadcast`). */
       const requested = argString(argv, "to").trim()
       if (requested === "") return { ok: false, error: "cellwork_send: `to` is required (`captain`, a member name, or `<cellId>/<captain|member>` for a cell in this cell's tree)" }
@@ -2794,7 +2961,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         /** The member this spelling unambiguously names, or undefined. */
         const recipient = toCaptain ? undefined : resolveMemberName(target.members, requestedName)
         if (!toCaptain && recipient === undefined) {
-          return { ok: false, error: "cellwork_send: " + JSON.stringify(requestedName) + " is neither `captain` nor an unambiguous member of cell " + targetCellId + " (members: " + Object.keys(target.members).join(", ") + ")" }
+          return { ok: false, error: argv.recovery === undefined ? "cellwork_send: " + JSON.stringify(requestedName) + " is neither `captain` nor an unambiguous member of cell " + targetCellId + " (members: " + Object.keys(target.members).join(", ") + ")" : staleRecovery }
         }
         /** The canonical recipient name. */
         const to = toCaptain ? "captain" : String(recipient?.member.name ?? requestedName)
@@ -2839,10 +3006,23 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         ...(question === undefined ? {} : { question }),
         ...(answer === undefined ? {} : { answer }),
       }
+      /** The optional guard carried only by copy-ready captain recovery suggestions. */
+      const recovery = readRecoveryWake(argv.recovery)
+      /** Re-read the Cellwork record and authoritative board beside each side effect. */
+      const recoveryCurrent = (guard: RecoveryWake): boolean => {
+        if (guard.cellId !== cell.cellId || crossCell || broadcast || kind !== "message" || caller.sessionId !== cell.captainSessionId) return false
+        /** The freshly read CELL state must still authorize the same captain and recipient. */
+        const current = readCell(caller.workspace, guard.cellId)
+        if (!current.ok || current.state.phase === "stopped" || current.state.captainSessionId !== caller.sessionId) return false
+        /** Bind the guard to the address the ordinary send path resolved. */
+        const view = recoverySuggestion(dsh, current.state, boardOf(caller.workspace, current.state), outbound[0].name)
+        return view !== undefined && view.wake.recovery.teamId === guard.teamId && view.executorRef === guard.executorRef && view.wake.recovery.claimsHash === guard.claimsHash
+      }
+      if (argv.recovery !== undefined && (recovery === undefined || !recoveryCurrent(recovery))) return { ok: false, error: staleRecovery }
       /** The store's atomic fan-out outcome, or the refusal that wrote nothing. */
       let sent: SendManyResult
       try {
-        sent = sendMany(caller.workspace, input, outbound, now)
+        sent = sendMany(caller.workspace, recovery === undefined ? input : { ...input, teamId: recovery.teamId }, outbound, now)
       } catch (error) {
         return { ok: false, error: "cellwork_send: the message row(s) could not be written — no message was sent and no wake-up was attempted (mail is durable first): " + errorText(error) }
       }
@@ -2868,7 +3048,8 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
           /** The delivery binding, when the executor exists. */
           const wake = sendThroughExecutor(dsh.teamExecutor(), exec.agent)
           if (wake === undefined) return { sent: false, reason: "this composition exposes no team executor" }
-          await wake(String(recipientMember?.executorRef ?? ""), "[mpd-cellwork] mail from " + caller.member + ": " + subject + "\n\n" + storedBody.body + "\n\n(full row: cell " + cell.cellId + ")")
+          if (recovery !== undefined && !recoveryCurrent(recovery)) return { sent: false, reason: "Mail was recorded before the assignment changed. " + staleRecovery }
+          await wake(recovery?.executorRef ?? String(recipientMember?.executorRef ?? ""), "[mpd-cellwork] mail from " + caller.member + ": " + subject + "\n\n" + storedBody.body + "\n\n(full row: cell " + cell.cellId + ")")
           return { sent: true }
         }
         /** The durable-first delivery of THIS row; `appendSend` is true because the store already wrote it. */
@@ -3074,6 +3255,109 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
     return join(workspace, ".mpd", "team", "teams", (cleaned === "" ? "unnamed" : cleaned) + ".json")
   }
 
+  /** Resolve an exact, cell-related board owner before calling either host handover seam. */
+  const prepareReseed = (workspace: string, cell: CellState, memberName: string, oldHandle: string): ReseedTarget => {
+    /** Fresh cell evidence after the awaited compaction attempts. */
+    const fresh = readCell(workspace, cell.cellId)
+    /** The handoff this invocation is allowed to consume. */
+    const row = fresh.ok ? fresh.state.members[memberName] : undefined
+    if (!fresh.ok || !sameBarrierSeat(row, cell.members[memberName]) || !row.handoffReady || fresh.state.phase === "stopped" || fresh.state.captainSessionId !== cell.captainSessionId) {
+      return { ok: false, surface: "cell-record-changed", reason: `Reconcile cell ${cell.cellId} and the pending handoff of ${JSON.stringify(memberName)} before retrying.` }
+    }
+    /** The cell's own references are usable even in a composition without the team service. */
+    const linked = new Set(reseedTeamIds(fresh.state))
+    /** The execution plan name assigned by activation when the planning board has ended. */
+    const executionName = `cell ${cell.cellId} execution`
+    /** The optional team service, scoped to the caller's workspace. */
+    const service = teams()
+    /** Candidate ids and in-memory evidence supplied by the plane. */
+    const candidates = new Map<string, Record<string, unknown> | undefined>()
+    for (const id of linked) candidates.set(id, undefined)
+    /** The plane's active record for this captain, used as a cell link for older records without Lead fields. */
+    let captainBoard = ""
+    try {
+      /** The record the plane resolves for this specific captain. */
+      const active = service?.active?.(workspace, fresh.state.captainSessionId)
+      if (isPlainRecord(active) && typeof active.teamId === "string" && active.teamId !== "") {
+        captainBoard = active.teamId
+        candidates.set(captainBoard, active)
+      }
+      /** Every readable board, including alternate boards with competing claims on this same handle. */
+      const listed = service?.list?.(workspace)
+      for (const record of Array.isArray(listed) ? listed : []) {
+        if (!isPlainRecord(record) || typeof record.teamId !== "string" || record.teamId === "" || candidates.has(record.teamId)) continue
+        if (record.name === executionName || reseedSeatStatus(record, memberName, oldHandle) === "owned") {
+          candidates.set(record.teamId, record)
+        }
+      }
+    } catch (error) {
+      return { ok: false, surface: "team-record-unreadable", reason: "Read the Cellwork team records before retrying: " + errorText(error) }
+    }
+    /** Board ids already claimed by a different cell in the workspace. */
+    const foreignIds = new Set<string>()
+    for (const cellId of listCellIds(workspace)) {
+      if (cellId === cell.cellId) continue
+      /** Another cell's persisted team links. */
+      const other = readCell(workspace, cellId)
+      if (other.ok) for (const id of reseedTeamIds(other.state)) foreignIds.add(id)
+    }
+    /** Live board ids that prove the exact seat identity on the writable record. */
+    const owners: string[] = []
+    /** A missing or terminal board is different from a composition with no board at all. */
+    const observed: string[] = []
+    for (const [id, hint] of candidates) {
+      /** The same file the eventual bind would rewrite. */
+      const path = teamRecordPathOf(workspace, id)
+      /** A real file distinguishes absence from a broken record before any irreversible step. */
+      const read = readTeamRecordSnapshot(path)
+      if (read.kind === "unreadable") return { ok: false, surface: "team-record-unreadable", reason: read.detail }
+      if (read.kind === "ok" && isTerminalTeamRecord(read.snapshot.record)) {
+        observed.push(id)
+        continue
+      }
+      /** The plane reading, checked against disk when the service is mounted. */
+      let plane: unknown
+      try {
+        plane = service?.get?.(workspace, id)
+      } catch (error) {
+        return { ok: false, surface: "team-record-unreadable", reason: `The plane's read threw for ${JSON.stringify(id)} (${errorText(error)}). Repair the record before retrying.` }
+      }
+      if (read.kind === "absent" && plane === undefined && hint === undefined) continue
+      observed.push(id)
+      /** The file is the write target; the plane snapshot can only establish what was expected there. */
+      const record = read.kind === "ok" ? read.snapshot.record : isPlainRecord(plane) ? plane : hint
+      if (record === undefined || isTerminalTeamRecord(record)) continue
+      /** Ownership proof on the selected record; task ids repeat across boards and carry no authority. */
+      const status = reseedSeatStatus(record, memberName, oldHandle)
+      /** A scanned execution board must carry the activation's cell name and the cell's captain. */
+      const ledByCaptain = reseedTeamLedBy(record, fresh.state.captainSessionId)
+      /** Legacy thin plane replies are usable only with an independent cell or captain-specific link. */
+      const linkedToCell = linked.has(id) || (record.name === executionName && ledByCaptain) || (captainBoard === id && typeof record.name !== "string")
+      /** Explicit foreign leadership or a second cell's durable claim defeats a link. */
+      const related = linkedToCell && !foreignIds.has(id) && (ledByCaptain || typeof record.leadSessionId !== "string")
+      if (!related && status !== "owned") continue
+      if (!related || status === "conflict" || record.teamId !== id) {
+        return { ok: false, surface: "team-ownership-conflict", reason: `Reconcile ${JSON.stringify(memberName)} and executor ${JSON.stringify(oldHandle)} on team ${JSON.stringify(id)} with cell ${cell.cellId} before retrying.` }
+      }
+      if (status !== "owned") continue
+      if (read.kind !== "ok" || (service !== undefined && (!isPlainRecord(plane) || isTerminalTeamRecord(plane) || plane.teamId !== id || reseedSeatStatus(plane, memberName, oldHandle) !== "owned"))) {
+        return { ok: false, surface: "team-record-unreadable", reason: `Team ${JSON.stringify(id)} does not expose the same writable seat through disk and the team plane. Reconcile ${path} before retrying.` }
+      }
+      /** Check both observed rosters for alias collisions before any host operation. */
+      const ambiguous = reseedAmbiguousTask(record, memberName) ?? (isPlainRecord(plane) ? reseedAmbiguousTask(plane, memberName) : undefined)
+      if (ambiguous !== undefined) return { ok: false, surface: "team-task-owner-ambiguous", reason: `Reconcile the owner ${JSON.stringify(ambiguous.owner)} of task ${JSON.stringify(ambiguous.id)} on ${JSON.stringify(id)} before retrying.` }
+      owners.push(id)
+    }
+    if (owners.length === 1) return { ok: true, teamId: owners[0] }
+    if (observed.length === 0 && !fresh.state.mintedTeamId && Object.keys(fresh.state.activatedTasks ?? {}).length === 0) return { ok: true, teamId: "" }
+    if (owners.length > 1) {
+      return { ok: false, surface: "team-ownership-ambiguous", reason: `Teams ${owners.sort().join(", ")} both claim ${JSON.stringify(memberName)} and executor ${JSON.stringify(oldHandle)}. Reconcile the duplicate claims before retrying.` }
+    }
+    /** The board ids an operator can inspect, including any expectation whose file is missing. */
+    const examined = [...candidates.keys()].sort().join(", ") || "(no team id could be resolved)"
+    return { ok: false, surface: "team-member", reason: `No live board among ${examined} proves ownership of ${JSON.stringify(memberName)} and executor ${JSON.stringify(oldHandle)} for cell ${cell.cellId}. Restore its execution board or reconcile the seat before retrying.` }
+  }
+
   /**
    * Bind a fresh reseed child to its seat on the TEAM roster and the BOARD (R1).
    *
@@ -3112,14 +3396,14 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
    * @param input - the workspace, the team, the seat's name, the old handle and the fresh one.
    * @returns what was written, or the surface that refused.
    */
-  const bindReseededSeat = (input: { workspace: string; teamId: string; memberName: string; previousSessionId: string; newHandle: string }): SeatBindResult => {
-    // NO ID, NO SURFACE: an empty workspace/team pair names no record, so there is nothing to classify.
-    if (input.workspace === "" || input.teamId === "") return { ok: true, plane: "absent", tasks: 0 }
+  const bindReseededSeat = (input: { workspace: string; teamId: string; memberName: string; previousSessionId: string; newHandle: string; reopen: boolean }): SeatBindResult => {
+    // An empty id is the preflight's affirmative no-board fallback.
+    if (input.teamId === "") return { ok: true, plane: "absent", tasks: 0 }
     /** The record file this bind reads AND rewrites. */
     const path = teamRecordPathOf(input.workspace, input.teamId)
     /** The file as this bind's snapshot read it. */
     const read = readTeamRecordSnapshot(path)
-    if (read.kind === "absent") return { ok: true, plane: "absent", tasks: 0 }
+    if (read.kind === "absent") return { ok: false, surface: "team-record-changed", reason: `The selected team record ${path} disappeared after ownership was verified.` }
     if (read.kind === "unreadable") return { ok: false, surface: "team-record-unreadable", reason: read.detail }
     /** The snapshot this bind's write is a compare-and-set against. */
     const snapshot = read.snapshot
@@ -3139,9 +3423,21 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       if (!isPlainRecord(planeRecord)) {
         return { ok: false, surface: "team-record-unreadable", reason: "the team record " + JSON.stringify(path) + " exists but the plane answers " + (planeRecord === undefined ? "nothing" : "a value that is not a team record") + " for it, so this bind cannot trust the surface it would rewrite" }
       }
+      if (isTerminalTeamRecord(planeRecord) || planeRecord.teamId !== input.teamId || reseedSeatStatus(planeRecord, input.memberName, input.previousSessionId) !== "owned") {
+        return { ok: false, surface: "team-record-changed", reason: `The team plane no longer confirms the selected owner for ${JSON.stringify(input.memberName)} on ${JSON.stringify(input.teamId)}.` }
+      }
+      /** The plane itself must agree that all row aliases identify a single executor. */
+      const ambiguous = reseedAmbiguousTask(planeRecord, input.memberName)
+      if (ambiguous !== undefined) return { ok: false, surface: "team-task-owner-ambiguous", reason: `Reconcile the owner ${JSON.stringify(ambiguous.owner)} of task ${JSON.stringify(ambiguous.id)} on ${JSON.stringify(input.teamId)}.` }
     }
     /** The record this bind rewrites: the FILE's copy, which is the document the rename replaces. */
     const record = snapshot.record
+    if (isTerminalTeamRecord(record) || record.teamId !== input.teamId || reseedSeatStatus(record, input.memberName, input.previousSessionId) !== "owned") {
+      return { ok: false, surface: "team-record-changed", reason: `The selected record ${path} no longer proves the old executor owns ${JSON.stringify(input.memberName)}.` }
+    }
+    /** Retirement and spawn can yield to a board writer, so prove the aliases again. */
+    const ambiguous = reseedAmbiguousTask(record, input.memberName)
+    if (ambiguous !== undefined) return { ok: false, surface: "team-task-owner-ambiguous", reason: `Reconcile the owner ${JSON.stringify(ambiguous.owner)} of task ${JSON.stringify(ambiguous.id)} on ${JSON.stringify(input.teamId)}.` }
     /** The roster rows this build can read. */
     const members = Array.isArray(record.members) ? record.members.filter((row) => typeof row === "object" && row !== null) as Array<Record<string, unknown>> : undefined
     if (members === undefined) return { ok: false, surface: "team-record", reason: "the team record for " + JSON.stringify(input.teamId) + " carries no readable member roster" }
@@ -3150,9 +3446,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
     if (seat < 0) return { ok: false, surface: "team-member", reason: "team " + JSON.stringify(input.teamId) + " names no member " + JSON.stringify(input.memberName) + ", so the fresh handle has no roster row to bind" }
     /** The roster row as the SNAPSHOT held it, kept so a failed verification can put it back (Major-7). */
     const previousSeat = members[seat]
-    // THE HANDLE THIS BIND OVERWRITES IS A FACT OF ITS OWN (R3). The re-entry guard is inert when nothing
-    // proves the TEAM row's handle live, so this bind may replace a handle nobody proved dead. Recording it
-    // here is what keeps that child traceable from the journal instead of vanishing with the overwrite.
+    // Preserve the displaced executor and its observed liveness in the handover journal.
     /** The non-empty handle this bind replaces, when the seat named a DIFFERENT one. */
     const displacedExecutorRef = typeof previousSeat.executorRef === "string" && previousSeat.executorRef !== "" && previousSeat.executorRef !== input.newHandle ? previousSeat.executorRef : undefined
     /** Whether the displaced handle could NOT be proven live — the `unprovenPreviousHandle` marker (R3). */
@@ -3164,7 +3458,11 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
     /** The instant the patched rows are stamped with. */
     const nowIso = new Date().toISOString()
     /** The roster row after the bind: the fresh handle, an open seat, and the handoff untouched. */
-    const reboundSeat: Record<string, unknown> = { ...members[seat], executorRef: input.newHandle, mode: members[seat].mode === "checkpoint" || members[seat].mode === undefined ? "member" : members[seat].mode }
+    const reboundSeat: Record<string, unknown> = { ...previousSeat, executorRef: input.newHandle, mode: previousSeat.mode === "checkpoint" || previousSeat.mode === undefined ? "member" : previousSeat.mode }
+    if (input.reopen) {
+      delete reboundSeat.fenced
+      delete reboundSeat.fencedReason
+    }
     /** How many rows this bind re-points. */
     let rePointed = 0
     /**
@@ -3302,6 +3600,9 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
     if (afterSeat?.executorRef !== input.newHandle) {
       return rollbackBind("team-member", "the record was written but the " + (service !== undefined ? "plane" : "file") + " reads " + JSON.stringify(String(afterSeat?.executorRef ?? "")) + " for " + JSON.stringify(input.memberName) + " instead of the fresh handle")
     }
+    if (input.reopen && (afterSeat.fenced === true || afterSeat.mode === "checkpoint")) {
+      return rollbackBind("team-record-verify", `The selected team ${JSON.stringify(input.teamId)} still reports ${JSON.stringify(input.memberName)} closed after the bind.`)
+    }
     return { ok: true, plane: "bound", tasks: rePointed, ...(displacedExecutorRef === undefined ? {} : { displacedExecutorRef, displacedUnproven }) }
   }
 
@@ -3318,7 +3619,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
    */
   const recordBarrierFailure = (agent: unknown, error: unknown): void => {
     /** The caller's context, resolved the same way the barrier resolves it. */
-    const caller = callerContext(dsh, { agent } as DshToolExec, { teams })
+    const caller = callerContext(dsh, { agent } as DshToolExec, { teams, adopt: false })
     if (caller.cell === null || caller.member === "") return
     /** The member row the barrier was about. */
     const member = caller.cell.members[caller.member]
@@ -3378,9 +3679,8 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
    *
    * Consent is deliberately narrow. An EMPTY recorded session answers none (a cell that never learned the
    * id is not evidence of a stale one), an equal handle answers none (the normal, consistent shape), and a
-   * handle the identity registry does not prove live answers none (a dead row is exactly what the reseed
-   * SHOULD replace). Only a DIFFERENT handle the registry holds is a recovery state, and only then does the
-   * barrier refuse to spawn again.
+   * handle the registry does not prove live answers none. Reseed preflight still requires the old executor
+   * and the logical seat to agree before any handover.
    *
    * @param workspace - the caller's workspace root.
    * @param cell - the cell record this run belongs to.
@@ -3419,7 +3719,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
    */
   const runBarrier = async (agent: unknown): Promise<void> => {
     /** The caller's context. */
-    const caller = callerContext(dsh, { agent } as DshToolExec, { teams })
+    const caller = callerContext(dsh, { agent } as DshToolExec, { teams, adopt: false })
     if (caller.cell === null || caller.member === "") return
     /** The cell this run belongs to, named once so the closures below keep the narrowing. */
     const cell = caller.cell
@@ -3474,11 +3774,10 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         sessionId: member.sessionId,
         parentSessionId,
         cell: caller.cell,
-        // THE WORKTREE IS KEYED BY THE EXECUTION BOARD, NOT THE PLANNING RECORD (CodeRabbit round 1):
-        // a legacy cell's `teamId` can still name the ended planning team, while the member's worktree
-        // was created under the minted execution team. `boardOf` is the resolver every other board read
-        // in this closure uses; `cell` keeps the planning id for every other purpose.
-        worktreeTeamId: boardOf(caller.workspace, cell).teamId,
+        // Resolve after compaction retries. The worktree and the bind share the same verified board id.
+        prepareReseed: (): ReseedTarget => caller.sessionId === member.sessionId
+          ? prepareReseed(caller.workspace, cell, caller.member, member.sessionId)
+          : { ok: false, surface: "cell-record-changed", reason: `The stopping session no longer matches the handoff for ${JSON.stringify(caller.member)}. Reconcile the Cellwork seat before retrying.` },
         config,
         handoffText,
         nextStep: nextStepOf(handoffText),
@@ -3506,13 +3805,24 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
           }
         },
         // R1: THE THREE SURFACES ARE BOUND HERE, BEFORE `promoteAfterHandoff` may answer `reseeded`.
-        bindSeat: async (input): Promise<SeatBindResult> => bindReseededSeat({
-          workspace: caller.workspace,
-          teamId: cell.teamId,
-          memberName: caller.member,
-          previousSessionId: input.previousSessionId,
-          newHandle: input.handle,
-        }),
+        bindSeat: async (input): Promise<SeatBindResult> => {
+          /** The pending seat after the spawn returned, including any changes to its retry count. */
+          const current = readCell(caller.workspace, cell.cellId)
+          if (!current.ok) return { ok: false, surface: "cell-record-unreadable", reason: `${current.path} could not be read after launch (${current.detail}). Repair the Cellwork record before retrying.` }
+          /** The latest readable handoff must still be the generation that authorized launch. */
+          const row = current.state.members[caller.member]
+          if (!sameBarrierSeat(row, member) || current.state.phase === "stopped" || current.state.captainSessionId !== cell.captainSessionId) {
+            return { ok: false, surface: "cell-record-changed", reason: `The Cellwork handoff for ${JSON.stringify(caller.member)} changed while the replacement was launching.` }
+          }
+          return bindReseededSeat({
+            workspace: caller.workspace,
+            teamId: input.teamId,
+            memberName: caller.member,
+            previousSessionId: input.previousSessionId,
+            newHandle: input.handle,
+            reopen: (row.barrierFailures ?? 0) + 1 < config.compactionRetries,
+          })
+        },
         // R2: the fresh child is addressed by HANDLE through the team executor (`send` cold-resumes an
         // absent direct child), authorised by the SAME live parent session the reseed was raised under.
         deliverDirective: async (authority: unknown, handle: string, text: string): Promise<void> => {
@@ -3526,7 +3836,8 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       const now = new Date()
       // RE-READ before writing: a concurrent claim/complete may have moved the record during the await.
       const fresh = readCell(caller.workspace, caller.cell.cellId)
-      if (!fresh.ok) {
+      /** Journal a failed reread without overwriting a record from an older generation. */
+      const recordUnreadable = (read: Extract<ReturnType<typeof readCell>, { ok: false }>): void => {
         // R4 + CodeRabbit Major-8: NO SILENT EARLY RETURN, AND NO PRE-AWAIT SNAPSHOT WRITE. The record could
         // not be re-read, so this run has NO trustworthy merge base — writing `caller.cell` back would
         // revert every change a concurrent writer made inside the await, the exact lost update this wave
@@ -3534,20 +3845,42 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         // did NOT persist instead of claiming one nothing can see. The recovery path is explicit: repair the
         // named file, after which the barrier re-runs on the member's next turn-end; the forced lever stays
         // the verb for a seat that later carries a written bound.
-        appendJournal(caller.workspace, caller.cell.cellId, {
+        appendJournal(caller.workspace, cell.cellId, {
           event: "barrier-record-unreadable",
           member: caller.member,
-          path: fresh.path,
-          detail: fresh.detail,
+          path: read.path,
+          detail: read.detail,
+          ...(result.failedSurface === undefined ? {} : { surface: result.failedSurface, reason: result.reason }),
+          ...(result.retirement === undefined ? {} : { retirement: result.retirement }),
+          ...(result.boundTeamId === undefined ? {} : { teamId: result.boundTeamId, boundExecutor: result.newHandle ?? "" }),
           fenced: "not-persisted",
           forceEligible: false,
-          recovery: "the record was NOT rewritten: this run wrote no fence and no seat row. Repair " + fresh.path + " first; the barrier re-runs on the member's next turn-end.",
+          recovery: "the CELL record was NOT rewritten: this run wrote no fence and no CELL seat row. Repair " + read.path + " first; the barrier re-runs on the member's next turn-end.",
           // THE FORCED LEVER IS NOT AVAILABLE YET, AND THE ROW SAYS SO (round-4 finding): this run wrote no
           // fence, so there is nothing to clear, and the lever additionally needs a WRITTEN bound. Naming
           // the verb without that condition read as a contradiction beside `forceEligible:false`.
-          retry: 'no forced clear is available yet: this run persisted no fence AND the seat carries no written bound. Repair ' + fresh.path + ' first; ONCE a written bound exists (`barrierFailures` at compactionRetries, or a `checkpointSince` older than checkpointPendingMaxMs), cellwork_dispatch {unfence:[{member: ' + JSON.stringify(caller.member) + ', force: true}]} is the lever',
+          retry: 'no forced clear is available yet: this run persisted no fence AND the seat carries no written bound. Repair ' + read.path + ' first; ONCE a written bound exists (`barrierFailures` at compactionRetries, or a `checkpointSince` older than checkpointPendingMaxMs), cellwork_dispatch {unfence:[{member: ' + JSON.stringify(caller.member) + ', force: true}]} is the lever',
         }, now)
-        deps.warn("[mpd-cellwork] the compaction barrier could not re-read " + fresh.path + ": " + fresh.detail + " — nothing was written; the fence is not persisted")
+        deps.warn("[mpd-cellwork] the compaction barrier could not re-read " + read.path + ": " + read.detail + " — the CELL record was preserved")
+      }
+      /** Journal concurrent Cellwork changes and identify any team bind that already landed. */
+      const recordCellChanged = (reason: string = "The Cellwork handoff changed while the barrier was running."): void => {
+        appendJournal(caller.workspace, cell.cellId, {
+          ...checkpointUnrecoverableEntry(caller.member, result),
+          event: "barrier-cell-changed",
+          reason: result.failedSurface === "cell-record-changed" ? result.reason : reason,
+          ...(result.boundTeamId === undefined ? {} : { teamId: result.boundTeamId, boundExecutor: result.newHandle ?? "" }),
+          fenced: "not-persisted",
+          retry: "Inspect the current Cellwork handoff and reconcile the seat before retrying.",
+          repair: "The newer Cellwork row was preserved.",
+        }, now)
+      }
+      if (!fresh.ok) {
+        recordUnreadable(fresh)
+        return
+      }
+      if (result.failedSurface === "cell-record-changed" || !sameBarrierSeat(fresh.state.members[caller.member], member) || fresh.state.phase === "stopped" || fresh.state.captainSessionId !== cell.captainSessionId) {
+        recordCellChanged()
         return
       }
       // THE BARRIER OWES THE SEAT ITS REOPEN (R4.1, the one-way door). A run that REOPENED the CELL seat
@@ -3565,22 +3898,37 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       const barrierRow: CellMemberRecord = memberAfterBarrier(fresh.state.members[caller.member] ?? member, result, config.compactionRetries)
       /** Whether the barrier actually REOPENED the CELL seat: a give-up fence leaves nothing to reopen. */
       const cellReopened = barrierRow.fenced !== true
-      /** How the plane's half ended; a fenced run reports the skip instead of claiming a reopen. */
-      const plane = cellReopened
-        ? await reopenPlaneSeat(caller.cell.captainSessionId, caller.member)
-        : { plane: "skipped-fenced" as const, planeReason: "this barrier FENCED the CELL seat on the same run (the retry bound gave up), so the TEAM seat stays closed with it" }
-      // THE WRITE IS MERGED INTO A READ TAKEN AFTER THE AWAITED PLANE CALL (R5.3). The snapshot above
-      // predates `reopenPlaneSeat`, and writing it back reverted every change a concurrent writer made
-      // inside that await — another member's `fenced:true`, an adoption, a promotion. This is the SAME
-      // discipline `unfenceSeats` already follows (repair round 1, finding 3): re-read, then replace ONLY
-      // this member's row, and fall back to the pre-await snapshot only when the fresh read fails.
-      /** The record as it stands once the plane call settled. */
+      /** A bound reseed already reopened its exact board; the captain's seam may resolve another board. */
+      const plane = !cellReopened
+        ? { plane: "skipped-fenced", planeReason: "this barrier FENCED the CELL seat on the same run (the retry bound gave up), so the TEAM seat stays closed with it" }
+        : result.bindPlane === "bound"
+          ? { plane: "unfenced", planeReason: "the reseed bind reopened the seat on " + result.boundTeamId }
+          : await reopenPlaneSeat(caller.cell.captainSessionId, caller.member)
+      /** The record as it stands after the last awaited plane call. */
       const settled = readCell(caller.workspace, caller.cell.cellId)
-      if (!settled.ok) deps.warn("[mpd-cellwork] the compaction barrier could not re-read " + settled.path + " after the plane call: " + settled.detail + " — merging into the pre-await snapshot")
-      /** The merge base: the POST-plane read, or the pre-plane one when that read failed. */
-      const base = settled.ok ? settled.state : fresh.state
+      if (!settled.ok) {
+        recordUnreadable(settled)
+        return
+      }
+      /** The latest merge base preserves all other seats, even when they changed during the plane call. */
+      const base = settled.state
+      /** The original seat may be mirrored only while the same checkpoint generation is still pending. */
+      const settledMember = base.members[caller.member]
+      if (!sameBarrierSeat(settledMember, member) || base.phase === "stopped" || base.captainSessionId !== cell.captainSessionId) {
+        recordCellChanged()
+        return
+      }
+      if (result.boundTeamId !== undefined && result.newHandle !== undefined) {
+        /** The board might have changed while the replacement received its directive. */
+        const binding = readTeamRecordSnapshot(teamRecordPathOf(caller.workspace, result.boundTeamId))
+        if (binding.kind !== "ok" || binding.snapshot.record.teamId !== result.boundTeamId || isTerminalTeamRecord(binding.snapshot.record)
+          || reseedSeatStatus(binding.snapshot.record, caller.member, result.newHandle) !== "owned") {
+          recordCellChanged("The selected TEAM board no longer proves the replacement's executor. Reconcile the TEAM and CELL records before retrying.")
+          return
+        }
+      }
       /** The member row after the barrier (this outcome decides the fence markers and may mint a handle). */
-      const updated: CellMemberRecord = memberAfterBarrier(base.members[caller.member] ?? member, result, config.compactionRetries)
+      const updated: CellMemberRecord = memberAfterBarrier(settledMember, result, config.compactionRetries)
       /** The record after the barrier: ONLY this member's row is replaced on the fresh base. */
       const next: CellState = { ...base, members: { ...base.members, [caller.member]: updated } }
       // THE REOPENED SEAT IS A FACT WITH ITS OWN ROW: this is the row that says the barrier performed the
@@ -3622,6 +3970,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
           previousSessionId: member.sessionId,
           newHandle: result.newHandle ?? "",
           plane: result.bindPlane ?? "absent",
+          ...(result.boundTeamId === undefined ? {} : { teamId: result.boundTeamId }),
           tasks: result.boundTasks ?? 0,
           // THE CELL ROW WAS FENCED ON THIS SAME RUN (the retry bound): the TEAM seat still names the live
           // child, and this flag says the CELL half is a give-up the captain must clear explicitly.

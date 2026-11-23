@@ -771,18 +771,19 @@ agent_teams_task { "task_id": "T1", "action": "complete", "expected_revision": 2
 list_agents {}
 send_message { "agent_id": "senior-1", "message": "先落 README 的修改，再做使用者指南。" }
 agent_teams_dispatch { "action": "run" }
-wait_agent { "timeout_ms": 60000 }
-interrupt_agent { "agent_id": "senior-1" }                               // 仅 Lead；收件箱保留
+agent_teams_control { "action": "wake", "wake": { "action": "arm", "task_ids": ["T2"], "mode": "all" } }
+# 登记返回等待状态后，队长可以结束本轮。被唤醒时再读取任务结果。
+# 如果会话还有活跃的 GOAL，使用 arm 后它仍可能自行开启新一轮。
+# 这时也可以直接在当前轮次等待条件成立，二选一即可：
+# agent_teams_control { "action": "wake", "wake": { "action": "wait", "task_ids": ["T2"], "mode": "all" } }
+# 如需主动停止成员，可用 interrupt_agent { "agent_id": "senior-1" }
 
 # (e) 收尾一波
 mpd_team_compact_run {}
 mpd_team_compact_status {}
 ```
 
-队友名字是永久的，且永不复用。每个 `create_task` 都要回答依赖问题： `blocked_by: []` 表示真正的
-根任务，`blocked_by: ["<root task>"]` 表示依赖它，另一种写法是 `independent: true`，并且在 mpd
-record 平面上，`agent_teams_plan {action:"approve"}` 会**拒绝**两个写范围重叠、且彼此之间没有依赖
-路径的任务。会话通过这些工具创作的每个任务都活在那份 mpd record 上，所以写范围重叠在那里会被
+团队名称永久保留。根任务可写 `blocked_by: []`，后续任务在 `blocked_by` 里列出它用到的所有前置任务。例如，复核要看两份调查结果，就把两项调查都列进去。如果一份计划里的多项工作确实全部独立，在每项任务上写 `independent: true`。预览和批准都会列出还需要说明依赖的任务。当所有任务都是根节点，且计划由批量编辑生成，或包含复核等流程环节时，系统会在启动成员前拒绝批准。为兼容已有调用，逐条添加、全为普通 `work` 的无依赖计划会收到提醒，仍可执行。两个任务的写入范围重叠时，它们之间仍须有依赖路径。会话通过这些工具创作的每个任务都活在那份 mpd record 上，所以写范围重叠在那里会被
 **拒绝**，而不是「只是提示」。这项闭合止于**工具边界**：直接调用团队**服务**的插件行（官方执行器
 回退路径）不是工具调用，**不**受这道门约束（这就是那条已声明的边界。基于过期 `revision` 的任务更新会被拒绝）
 正是这道拒绝让被改派的任务不再接受迟到的结果。在点名它的计划获得**批准**之前，不存在任何队友；质量纪律则由 captain 写进任务描述里。
@@ -927,8 +928,7 @@ send_message { "agent_id": "lead", "message": "T5 完成：`bun run verify:docs`
 `approve` 会**拒绝**两个声明写范围重叠、且彼此之间没有依赖路径的暂存任务：补上依赖边，或让两个
 范围互不重叠。重叠只在官方（OFFICIAL）平面上是提示。`write_scopes` 从不授权写入，而
 bash/格式化器/代码生成器会绕过该检查，所以请在任务描述（或消息）里报告你改了什么，而不是依赖那份
-范围清单。结果不会因为队友自己说完成就被接受：Lead 会先等团队（`wait_agent`，然后重新读状态），
-并在作答前核对 diff。
+范围清单。Lead 等待指定任务的结果时，可以登记条件并结束当前轮次。唤醒后再读任务的终态、核对实际改动。运行中的会话若要等一般成员变动或消息，仍可使用 `wait_agent`。
 
 ### 13.10 持久化 goal（持续化执行）
 

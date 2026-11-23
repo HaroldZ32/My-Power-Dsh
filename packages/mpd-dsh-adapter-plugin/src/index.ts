@@ -143,6 +143,8 @@ export interface DshToolExec {
   agent?: unknown
   /** Cancellation for the call, as the harness re-fuses it around the waterfalls. */
   signal?: AbortSignal
+  /** Request a normal turn boundary after this tool result when the host supports it. */
+  concludeTurn?: () => void
   [key: string]: unknown
 }
 
@@ -3081,6 +3083,26 @@ export function userMessage(input: DshUserMessageInput): DshUserMessage {
 export const decision = {
   accept: (content?: unknown): DshPostDecision => (content === undefined ? { kind: "accept" } : { kind: "accept", content }),
   block: (feedback: unknown): DshPostDecision => ({ kind: "block", feedback }),
+}
+
+/** Probe next-turn submission on the specific host agent that would receive it. */
+export function canSubmitUserTurn(agent: unknown): boolean {
+  return typeof (agent as { followup?: unknown } | null | undefined)?.followup === "function"
+}
+
+/** Inspect the exact agent's public inbox without removing a message or reading its body. */
+export function pendingHumanInput(agent: unknown): "step" | "turn" | "none" | undefined {
+  /** A missing destination makes responsive steering unprovable on this host. */
+  const inbox = (agent as { inbox?: { nextStep?: unknown; nextTurn?: unknown } } | null | undefined)?.inbox
+  if (!Array.isArray(inbox?.nextStep) || !Array.isArray(inbox.nextTurn)) return undefined
+  /** Follow the host job-tool convention. Goal and plugin producers use other source kinds. */
+  const isHuman = (message: unknown): boolean => {
+    /** Read only the host's role and producer marker, including optional legacy fields. */
+    const entry = message as { role?: unknown; source?: { kind?: unknown } } | null | undefined
+    return entry?.role === "user" && entry.source?.kind === "user"
+  }
+  if (inbox.nextStep.some(isHuman)) return "step"
+  return inbox.nextTurn.some(isHuman) ? "turn" : "none"
 }
 
 // ── workspace root: the ONE resolution every mpd plugin (and only it) uses ────

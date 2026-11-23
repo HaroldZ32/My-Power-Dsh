@@ -172,10 +172,8 @@ function taskOnDisk(workspace: string, teamId: string, taskId: string): TeamTask
  * defect left behind, so every `depend` arm starts from the state it must change.
  *
  * THE `chain=false` ARM KEEPS ITS MEANING (R1, `.mpd/plans/task-dependency-guard.md`): the flag used to
- * decide whether T2's `blocked_by` KEY existed at all, which is no longer allowed — every task must
- * state its dependency answer. It now decides the ANSWER'S CONTENT instead: `blocked_by: []` is the
- * explicit "this is a root", so the flat arm still approves a genuinely edgeless board (and the `depend`
- * arms below still start from zero edges), while the visible-DAG arm still gets its one edge.
+ * decide whether T2's `blocked_by` key existed at all. The flat arm deliberately declares each row
+ * independent so the `depend` arms start from zero edges. The visible-DAG arm gives T2 its one edge.
  * @param h - the harness to approve in.
  * @param chain - true to wire T2 behind T1 at staging time, which the visible-DAG arm needs.
  * @returns the approved team's id.
@@ -184,9 +182,11 @@ async function approveBoard(h: Harness, chain: boolean = false): Promise<string>
   await h.call("agent_teams_plan", { action: "create", name: "the wave", description: "one wave" })
   await h.call("agent_teams_plan", { action: "add_member", member: { name: "Senior Engineer", description: "implements", prompt: "You implement." } })
   await h.call("agent_teams_plan", { action: "add_member", member: { name: "Reviewer", description: "judges", prompt: "You review." } })
-  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "core", description: "own the record", owner: "Senior Engineer", blocked_by: [] } })
-  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "review the core", description: "judge it", owner: "Reviewer", kind: "review", blocked_by: chain ? ["core"] : [] } })
-  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "integration", description: "land it", owner: "Senior Engineer", blocked_by: [] } })
+  /** Plain roots are valid in the mixed DAG. The flat fixture explicitly permits fan-out. */
+  const root = chain ? { blocked_by: [] } : { independent: true }
+  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "core", description: "own the record", owner: "Senior Engineer", ...root } })
+  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "review the core", description: "judge it", owner: "Reviewer", kind: "review", ...(chain ? { blocked_by: ["core"] } : root) } })
+  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "integration", description: "land it", owner: "Senior Engineer", ...root } })
   await h.call("agent_teams_plan", { action: "approve" })
   /** The team the approval bound to the Lead session. */
   const teamId = activeTeamId(h.workspace, LEAD)
@@ -380,7 +380,7 @@ describe("contract amendment 2 — the LIVE create_task carries `kind`", () => {
     /** The harness this arm drives. */
     const h = harness()
     await h.call("agent_teams_plan", { action: "create", name: "kinds", description: "d" })
-    for (const kind of TASK_KINDS) await h.call("agent_teams_plan", { action: "create_task", task: { subject: `staged ${kind}`, description: "d", kind, blocked_by: [] } })
+    for (const kind of TASK_KINDS) await h.call("agent_teams_plan", { action: "create_task", task: { subject: `staged ${kind}`, description: "d", kind, independent: true } })
     await h.call("agent_teams_plan", { action: "approve" })
     /** The team the approval bound to the Lead session. */
     const teamId = activeTeamId(h.workspace, LEAD)

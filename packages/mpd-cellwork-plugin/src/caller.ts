@@ -14,7 +14,7 @@
 // the approval answer exists.
 import type { DshAdapter, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 import type { CellworkSeat, CellSeatMode } from "./guard"
-import { appendJournal, cellDir, listCellIds, readCell, resolveCellTeam, statePath, writeCell, type CellMemberMode, type CellMemberRecord, type CellReadFailure, type CellState } from "./state"
+import { appendJournal, cellDir, listCellIds, readCell, resolveCellTeam, statePath, writeCell, type BoardTeamService, type CellMemberMode, type CellMemberRecord, type CellReadFailure, type CellState } from "./state"
 
 /**
  * The slice of the `mpdTeams` service this module reads, declared STRUCTURALLY.
@@ -25,9 +25,7 @@ import { appendJournal, cellDir, listCellIds, readCell, resolveCellTeam, statePa
  * field of a member row (`executorRef`) and treats every other shape as absent; the authoritative
  * declaration is `TeamRecord` in `packages/mpd-team-core-plugin/src/team-store.ts`.
  */
-export interface TeamsServiceView {
-  /** One team by id; undefined for an unknown id or an unreadable record. */
-  get?: (workspace: string, teamId: string) => unknown
+export interface TeamsServiceView extends BoardTeamService {
   /**
    * One member's context occupancy, read from the TEAM plane's own wrap of the harness meter.
    *

@@ -30,7 +30,7 @@
 //   A19 a write by another process INSIDE rebind's window is refused (`team-record-changed`), not overwritten;
 //   A20 the handle is trimmed and must be the host's UUID form — a typo refuses the whole call, journaled;
 //   A21 a handle this seat's records never name is refused per entry (`handle-unevidenced`);
-//   A22 the handle a reseed DISPLACES is journaled (`displacedExecutorRef` + `displacedUnproven`, R3);
+//   A22 a different, registry-unproven TEAM handle stops reseed before retirement or spawn;
 //   A23 a refused rollback whose surviving record is READABLE but carries no string `executorRef` says so
 //        instead of calling it unreadable (R4.2);
 //   A24 a handle only an OLDER hand-over row names is refused `handle-superseded` — the latest row wins (M1);
@@ -135,6 +135,10 @@ interface TeamRecordFile {
   updatedAt?: string
   /** The team id. */
   teamId: string
+  /** The captain identity used by list-based ownership discovery. */
+  readonly leadSessionId?: string
+  /** The team name written when Cellwork mints an execution board. */
+  readonly name?: string
   /** ISO instant the team was created. */
   createdAt: string
   /** The stored phase. */
@@ -161,6 +165,10 @@ interface Harness {
   registry: Map<string, FakeAgent>
   /** Every activation the reseed started, with the release flag the backend would expose. */
   activations: Array<{ childId: string; disposed: boolean }>
+  /** The old sessions the barrier asked the host to interrupt. */
+  interruptions: string[]
+  /** The board ids the barrier used to look up a worktree. */
+  worktreeLookups: string[]
   /** Every directive the promotion delivery bound to a HANDLE (`teamExecutor.send`). */
   sends: Array<{ handle: string; text: string }>
   /** Every plane `unfence` call the barrier made. */
@@ -179,6 +187,14 @@ interface Harness {
 interface HarnessOptions {
   /** The TEAM record this arm starts from (defaults to a reseeded-shaped board). */
   team?: TeamRecordFile
+  /** Extra team records served by the workspace, including the former planning board. */
+  readonly otherTeams?: readonly TeamRecordFile[]
+  /** The id recorded by Cellwork when it differs from the harness's execution board. */
+  readonly cellTeamId?: string
+  /** The board the service resolves for the captain when provided by this arm. */
+  readonly activeTeamId?: string
+  /** A concurrent CELL update during the awaited promotion directive. */
+  readonly duringDelivery?: () => void
   /** Whether the record FILE exists at all (false is A7's control: a cell with no team record). */
   recordFile?: boolean
   /** Whether `mpdTeams` answers at all (false models a composition with no team plane). */
@@ -312,7 +328,7 @@ function makeHarness(options: HarnessOptions = {}): Harness {
   /** The cell record, persisted so the barrier reads it back like a real cell. */
   const base = newCellState({ cellId: CELL_ID, objective: "ship the widget", captainSessionId: CAPTAIN_SESSION, now: new Date("2026-11-11T00:00:00.000Z") })
   /** The cell this arm starts from: executing, on the team the plane serves. */
-  const cell: CellState = { ...base, phase: "executing", teamId: TEAM_ID, members: options.members ?? { [MEMBER_NAME]: options.member ?? memberRow() } }
+  const cell: CellState = { ...base, phase: "executing", teamId: options.cellTeamId ?? TEAM_ID, members: options.members ?? { [MEMBER_NAME]: options.member ?? memberRow() } }
   writeCell(workspace, cell)
   /** The team record file the plane reads (and the bind writes). */
   const recordDir = join(workspace, ".mpd", "team", "teams")
@@ -321,6 +337,7 @@ function makeHarness(options: HarnessOptions = {}): Harness {
   const recordPath = join(recordDir, TEAM_ID + ".json")
   // A7's CONTROL starts with NO record file: a cell whose workspace holds no team record at all.
   if (options.recordFile !== false) writeFileSync(recordPath, JSON.stringify(options.team ?? teamRecord(), null, 2) + "\n", "utf8")
+  for (const team of options.otherTeams ?? []) writeFileSync(join(recordDir, team.teamId + ".json"), JSON.stringify(team, null, 2) + "\n", "utf8")
   /** The captain's handle. */
   const captain: FakeAgent = { id: CAPTAIN_SESSION, session: { id: CAPTAIN_SESSION, header: { cwd: workspace } } }
   /** The member's durable parent: the live authority the reseed is raised under. */
@@ -337,6 +354,10 @@ function makeHarness(options: HarnessOptions = {}): Harness {
   for (const id of options.liveSessions ?? []) registry.set(id, { id, session: { id, header: { cwd: workspace } } })
   /** Every activation this arm's backend answered. */
   const activations: Array<{ childId: string; disposed: boolean }> = []
+  /** The session targets of host interrupts, in call order. */
+  const interruptions: string[] = []
+  /** The board ids forwarded to the worktree service. */
+  const worktreeLookups: string[] = []
   /** Every handle-addressed directive the promotion delivery sent. */
   const sends: Array<{ handle: string; text: string }> = []
   /** Every plane `unfence` call. */
@@ -388,9 +409,12 @@ function makeHarness(options: HarnessOptions = {}): Harness {
     userMessage: (value: unknown): unknown => value,
     injectAgentMessage: (): void => {},
     teamExecutor: (): unknown => ({
-      send: async (_caller: unknown, handle: string, content: string): Promise<void> => { sends.push({ handle, text: content }) },
+      send: async (_caller: unknown, handle: string, content: string): Promise<void> => {
+        sends.push({ handle, text: content })
+        options.duringDelivery?.()
+      },
     }),
-    interruptAgent: (): void => {},
+    interruptAgent: (id: string): void => { interruptions.push(id) },
     startContinuableAgent: async (): Promise<unknown> => {
       options.duringSpawn?.()
       // A8/A12: an EXTERNAL WRITE arms only after the spawn, so it lands inside the BIND's window: the
@@ -409,10 +433,19 @@ function makeHarness(options: HarnessOptions = {}): Harness {
     dsh: adapter as unknown as DshAdapter,
     ctx: {
       get: (name: string): unknown => {
+        if (name === "mpdWorktree") {
+          return { cwdForMember: (_exec: unknown, ref: { teamId: string }): undefined => { worktreeLookups.push(ref.teamId); return undefined } }
+        }
         if (name === "mpdTeams") {
           if (options.planeRead === false) return undefined
           return {
-            get: (): unknown => {
+            active: (_workspace: string, sessionId: string): unknown => {
+              if (sessionId !== CAPTAIN_SESSION || options.activeTeamId === undefined) return undefined
+              return options.activeTeamId === TEAM_ID ? recordOnDisk() : options.otherTeams?.find((row) => row.teamId === options.activeTeamId)
+            },
+            list: (): TeamRecordFile[] => [...(options.otherTeams ?? []), ...(recordOnDisk() === undefined ? [] : [record()])],
+            get: (_workspace: string, teamId: string): unknown => {
+              if (teamId !== TEAM_ID) return options.otherTeams?.find((row) => row.teamId === teamId)
               // A19: THE PIPE IS NOT DRAINED BY THE BOARD RESOLUTION. The record path is a FIFO whose reads
               // must start at `rebind`'s own snapshot, so this plane answers from memory for that arm.
               if (options.rebindWindowWrite !== undefined) return options.team ?? teamRecord()
@@ -482,7 +515,7 @@ function makeHarness(options: HarnessOptions = {}): Harness {
     config: { ...DEFAULT_CELLWORK_CONFIG, compactionRetries: 3, idleBarrierDelayMs: 0, ...options.knobs },
     warn: (): void => {},
   })
-  return { workspace, captain, member, registry, activations, sends, planeUnfences, tools, events, recordPath, record }
+  return { workspace, captain, member, registry, activations, interruptions, worktreeLookups, sends, planeUnfences, tools, events, recordPath, record }
 }
 
 
@@ -679,11 +712,155 @@ test("A1b: a reseed re-points every non-terminal board row the old handle owned"
   expect(rows.some((row) => row.event === "compaction" && row.outcome === "reseeded")).toBe(true)
 })
 
+test("reseed binds the execution board when Cellwork still names an ended planning board", async () => {
+  /** The ended board retained in the legacy cell record. */
+  const planning = { ...teamRecord([]), teamId: "team-ended-planning", phase: "ended" }
+  /** The execution board owns the checkpointing seat and its open row. */
+  const harness = makeHarness({ cellTeamId: planning.teamId, activeTeamId: TEAM_ID, otherTeams: [planning] })
+  /** The planning file must stay byte-identical. */
+  const planningPath = join(dirname(harness.recordPath), planning.teamId + ".json")
+  /** The planning file's initial contents. */
+  const before = readFileSync(planningPath, "utf8")
+  try {
+    await stopListener(harness)({ agent: harness.member })
+    expect(harness.record().members[0]?.executorRef).toBe(NEW_HANDLE)
+    expect(harness.record().tasks[0]?.owner).toBe(NEW_HANDLE)
+    expect(cellMember(harness).sessionId).toBe(NEW_HANDLE)
+    expect(journalRows(harness).find((row) => row.event === "seat-rebound")).toMatchObject({ teamId: TEAM_ID, plane: "bound" })
+    expect(readFileSync(planningPath, "utf8")).toBe(before)
+    expect(harness.worktreeLookups).toEqual([TEAM_ID])
+    expect(harness.interruptions).toEqual([OLD_HANDLE])
+    expect(harness.activations).toMatchObject([{ childId: NEW_HANDLE, disposed: false }])
+  } finally {
+    rmSync(harness.workspace, { recursive: true, force: true })
+  }
+})
+
+test("reseed finds the captain-linked owner when the active board has no matching seat", async () => {
+  /** The stale planning team still linked to the cell. */
+  const planning = { ...teamRecord([]), teamId: "team-ended-planning", phase: "ended" }
+  /** A newer team run by the same captain that owns no part of this handoff. */
+  const distractor = { ...teamRecord([]), teamId: "team-current-distractor", leadSessionId: CAPTAIN_SESSION }
+  /** The execution board must be established by Lead and seat identity, even with duplicate task ids. */
+  const execution = teamRecord([{ name: MEMBER_NAME, executorRef: OLD_HANDLE, mode: "checkpoint", fenced: true, fencedReason: "explicit give-up" }])
+  /** The captain and the seat resolve to different boards during the handover. */
+  const harness = makeHarness({ team: { ...execution, name: `cell ${CELL_ID} execution`, leadSessionId: CAPTAIN_SESSION }, cellTeamId: planning.teamId, activeTeamId: distractor.teamId, otherTeams: [distractor, planning] })
+  try {
+    await stopListener(harness)({ agent: harness.member })
+    expect(harness.record().members[0]).toMatchObject({ executorRef: NEW_HANDLE, mode: "member" })
+    expect(harness.record().members[0]?.fenced).toBeUndefined()
+    expect(cellMember(harness).sessionId).toBe(NEW_HANDLE)
+    expect(harness.interruptions).toEqual([OLD_HANDLE])
+    expect(harness.planeUnfences).toHaveLength(0)
+  } finally {
+    rmSync(harness.workspace, { recursive: true, force: true })
+  }
+})
+
+for (const relation of ["duplicate", "foreign", "ordinary"] as const) {
+  test(`reseed refuses a ${relation} board claim before interrupt or spawn`, async () => {
+    /** A second board claiming the same name and executor, with an independent cell in the foreign arm. */
+    const other = { ...teamRecord(), teamId: "team-other-claim", name: relation === "ordinary" ? "Ordinary team" : `cell ${CELL_ID} execution`, leadSessionId: CAPTAIN_SESSION }
+    /** The primary board proves the seat in the duplicate and foreign arms only. */
+    const harness = makeHarness({ otherTeams: [other], ...(relation === "ordinary" ? { team: teamRecord([]), activeTeamId: other.teamId } : {}) })
+    /** The primary board's existing bytes. */
+    const primaryBefore = readFileSync(harness.recordPath, "utf8")
+    /** A second cell with a stale roster must not make its board eligible for this handoff. */
+    const foreign = newCellState({ cellId: "cell-20261110T235959999Z", objective: "separate work", captainSessionId: CAPTAIN_SESSION, now: new Date("2026-11-10T23:59:59.999Z") })
+    if (relation === "foreign") writeCell(harness.workspace, { ...foreign, teamId: other.teamId })
+    /** The second board must stay byte-identical. */
+    const otherPath = join(dirname(harness.recordPath), other.teamId + ".json")
+    /** The second board before the handoff attempt. */
+    const before = readFileSync(otherPath, "utf8")
+    try {
+      await stopListener(harness)({ agent: harness.member })
+      expect(readFileSync(harness.recordPath, "utf8")).toBe(primaryBefore)
+      expect(cellMember(harness).sessionId).toBe(OLD_HANDLE)
+      expect(readFileSync(otherPath, "utf8")).toBe(before)
+      expect(harness.interruptions).toHaveLength(0)
+      expect(harness.activations).toHaveLength(0)
+      if (relation === "foreign") {
+        /** A stopping event is read-only with respect to a different cell's roster. */
+        const foreignState = readCell(harness.workspace, foreign.cellId)
+        expect(foreignState.ok && foreignState.state.members).toEqual({})
+      }
+      /** The refusal must direct the captain to reconcile the contested board. */
+      const refusal = journalRows(harness).find((row) => row.event === "checkpoint-unrecoverable")
+      expect(refusal?.surface).toBe(relation === "duplicate" ? "team-ownership-ambiguous" : "team-ownership-conflict")
+      expect(String(refusal?.reason)).toContain(other.teamId)
+    } finally {
+      rmSync(harness.workspace, { recursive: true, force: true })
+    }
+  })
+}
+
+test("reseed rechecks the selected owner after the host spawns the replacement", async () => {
+  /** The writer that changes the seat after preflight while the spawn is in progress. */
+  const competing = teamRecord([{ name: MEMBER_NAME, executorRef: PARENT_SESSION, mode: "checkpoint" }])
+  /** The fixture whose spawn hook writes the competing identity. */
+  const harness = makeHarness({ duringSpawn: (): void => {
+    writeFileSync(harness.recordPath, JSON.stringify(competing, null, 2) + "\n", "utf8")
+  } })
+  try {
+    await stopListener(harness)({ agent: harness.member })
+    expect(harness.record()).toEqual(competing)
+    expect(cellMember(harness).sessionId).toBe(OLD_HANDLE)
+    expect(harness.activations).toMatchObject([{ childId: NEW_HANDLE, disposed: true }])
+    expect(journalRows(harness).find((row) => row.event === "checkpoint-unrecoverable")).toMatchObject({ surface: "team-record-changed" })
+  } finally {
+    rmSync(harness.workspace, { recursive: true, force: true })
+  }
+})
+
+test("reseed refuses an open row whose owner is both a different name and the target roster id", async () => {
+  /** M1 addresses two different members of this live board. */
+  const seeded = teamRecord([{ id: "M1", name: MEMBER_NAME, executorRef: OLD_HANDLE }, { id: "M2", name: "M1", executorRef: PARENT_SESSION }])
+  seeded.tasks = [{ id: "T1", subject: "one disputed owner", status: "in_progress", owner: "M1" }]
+  /** The registered barrier must fail before retirement or activation. */
+  const harness = makeHarness({ team: seeded })
+  await stopListener(harness)({ agent: harness.member })
+  expect(harness.record()).toEqual(seeded)
+  expect(harness.interruptions).toHaveLength(0)
+  expect(harness.activations).toHaveLength(0)
+  expect(journalRows(harness).find((row) => row.event === "checkpoint-unrecoverable")).toMatchObject({ surface: "team-task-owner-ambiguous", reason: expect.stringContaining("T1") })
+})
+
+test("reseed preserves a newer CELL handoff written during directive delivery", async () => {
+  /** A later handoff generation appears while the directive is sent. */
+  const newer = memberRow({ sessionId: PARENT_SESSION, executorRef: PARENT_SESSION, handoffs: 2 })
+  /** The registration drives delivery after committing the TEAM bind. */
+  const harness = makeHarness({ duringDelivery: (): void => {
+    /** The CELL snapshot the concurrent writer updates. */
+    const read = readCell(harness.workspace, CELL_ID)
+    if (!read.ok) throw new Error(read.detail)
+    writeCell(harness.workspace, { ...read.state, members: { ...read.state.members, [MEMBER_NAME]: newer } })
+  } })
+  await stopListener(harness)({ agent: harness.member })
+  expect(cellMember(harness)).toMatchObject(newer)
+  expect(harness.record().members[0]?.executorRef).toBe(NEW_HANDLE)
+  expect(harness.activations).toMatchObject([{ childId: NEW_HANDLE, disposed: false }])
+  expect(journalRows(harness).find((row) => row.event === "barrier-cell-changed")).toMatchObject({ teamId: TEAM_ID, boundExecutor: NEW_HANDLE, fenced: "not-persisted" })
+  expect(journalRows(harness).some((row) => row.event === "seat-rebound")).toBe(false)
+})
+
+test("reseed preserves the CELL row when another writer takes the TEAM seat during delivery", async () => {
+  /** The handover is initially valid, then the TEAM seat changes before the CELL mirror. */
+  const harness = makeHarness({ duringDelivery: (): void => {
+    /** A competing TEAM update inside the directive await. */
+    const latest = harness.record()
+    writeFileSync(harness.recordPath, JSON.stringify({ ...latest, members: [{ ...latest.members[0], executorRef: PARENT_SESSION }] }) + "\n")
+  } })
+  await stopListener(harness)({ agent: harness.member })
+  expect(cellMember(harness).sessionId).toBe(OLD_HANDLE)
+  expect(harness.record().members[0]?.executorRef).toBe(PARENT_SESSION)
+  expect(harness.activations).toMatchObject([{ childId: NEW_HANDLE, disposed: false }])
+  expect(journalRows(harness).find((row) => row.event === "barrier-cell-changed")).toMatchObject({ reason: expect.stringContaining("selected TEAM board") })
+})
+
 // ── A2: a surface that refuses is LOUD ──────────────────────────────────────
 
-test("A2: a reseed that cannot write the TEAM row NEVER reports `reseeded` — it names the surface, fences and hands over the retry", async () => {
-  // THE ROSTER NAMES NO SUCH MEMBER: the fresh handle has no seat row to bind, which is exactly the
-  // "a surface could not be written" shape the contract makes loud.
+test("A2: a board missing the seat refuses before retirement or spawn and hands over the retry", async () => {
+  // The roster is already missing the seat when compaction gives way to reseed.
   /** The harness whose team record has an empty roster. */
   const harness = makeHarness({ team: teamRecord([]) })
   await stopListener(harness)({ agent: harness.member })
@@ -697,16 +874,11 @@ test("A2: a reseed that cannot write the TEAM row NEVER reports `reseeded` — i
   /** The give-up row. */
   const unrecoverable = rows.find((row) => row.event === "checkpoint-unrecoverable")
   expect(unrecoverable?.surface).toBe("team-member")
-  expect(String(unrecoverable?.reason)).toContain("could not be bound")
+  expect(String(unrecoverable?.reason)).toContain("Restore its execution board or reconcile the seat")
   expect(String(unrecoverable?.retry)).toContain('cellwork_dispatch {unfence:[{member, force:true}]}')
-  // THE SEAT IS FENCED: the captain can see it and the forced lever can clear it.
-  /** The cell's member row. */
-  const cell = cellMember(harness)
-  expect(cell.fenced).toBe(true)
-  expect(String(cell.fencedReason)).toContain("could not be bound")
-  // AND THE CHILD THAT COULD NOT BE BOUND IS RELEASED, so no slot is held by a seatless session.
-  expect(harness.activations).toHaveLength(1)
-  expect(harness.activations[0].disposed).toBe(true)
+  expect(cellMember(harness)).toMatchObject({ fenced: true, sessionId: OLD_HANDLE })
+  expect(harness.activations).toHaveLength(0)
+  expect(harness.interruptions).toHaveLength(0)
 })
 
 // ── A3: the replacement is TOLD what to do ──────────────────────────────────
@@ -800,6 +972,9 @@ test("A5: a record re-read failure journals the branch and NEVER writes the pre-
   // protect, and it must be the one that goes RED on the pre-fix behaviour — not a journal flag downstream
   // of it, which stops the test before the bytes are ever compared.
   expect(readFileSync(statePath(harness.workspace, CELL_ID), "utf8")).toBe(corrupt)
+  expect(harness.record()).toEqual(teamRecord())
+  expect(harness.activations).toMatchObject([{ childId: NEW_HANDLE, disposed: true }])
+  expect(harness.sends).toHaveLength(0)
   /** The branch's journal row. */
   const row = journalRows(harness).find((entry) => entry.event === "barrier-record-unreadable")
   expect(row).toBeDefined()
@@ -902,11 +1077,11 @@ test("A7: a plane read that THROWS while the record exists is the unreadable cas
   /** The give-up row. */
   const unrecoverable = rows.find((row) => row.event === "checkpoint-unrecoverable")
   expect(unrecoverable?.surface).toBe("team-record-unreadable")
-  expect(String(unrecoverable?.reason)).toContain("exists but the plane's read threw")
-  // FENCED AND RELEASED, the same shape as the corrupt-file arm.
-  expect(cellMember(harness).fenced).toBe(true)
-  expect(harness.activations).toHaveLength(1)
-  expect(harness.activations[0].disposed).toBe(true)
+  expect(String(unrecoverable?.reason)).toContain("The plane's read threw")
+  // The unreadable plane is detected before a host operation can move either agent.
+  expect(cellMember(harness)).toMatchObject({ fenced: true, sessionId: OLD_HANDLE })
+  expect(harness.activations).toHaveLength(0)
+  expect(harness.interruptions).toHaveLength(0)
 })
 
 test("A7: a cell whose workspace holds NO team record answers `absent` and still reseeds (the control)", async () => {
@@ -2378,31 +2553,19 @@ test("A21: a handle this seat's records never name is refused per entry — the 
   expect(failed?.handle).toBe(FOREIGN)
 })
 
-// ── A22: the handle a reseed DISPLACES is journaled (R3) ────────────────────────────────────────────
+// ── A22: a different TEAM handle is an ownership conflict ──────────────────────────────────────────
 
-test("A22: a reseed that overwrites an UNPROVEN TEAM handle journals the displaced handle (R3)", async () => {
-  // THE GUARD IS INERT HERE ON PURPOSE: nothing proves the TEAM row's handle dead, and the decision to keep
-  // that behaviour is deliberate. The consequence is that the bind replaces it — so the displaced handle must
-  // stay findable, or an orphaned child disappears from every record.
-  /** The handle the TEAM row names that no registry lookup proved dead. */
-  const DISPLACED = "3c9b2a10-0000-4000-8000-0000000d15a0"
-  /** The TEAM row that names it. */
-  const seeded = teamRecord([{ id: "M1", name: MEMBER_NAME, role: MEMBER_NAME, status: "running", executorRef: DISPLACED, mode: "checkpoint" }])
-  /** The harness whose registry holds neither the displaced handle nor the fresh one. */
+test("A22: an unproven TEAM handle is preserved when it differs from the CELL session", async () => {
+  /** The TEAM row names a different session that the registry cannot prove live. */
+  const seeded = teamRecord([{ id: "M1", name: MEMBER_NAME, executorRef: NEW_HANDLE, mode: "checkpoint" }])
+  /** The CELL row still names the original session. */
   const harness = makeHarness({ team: seeded })
   await stopListener(harness)({ agent: harness.member })
-  /** This arm's journal rows. */
-  const rows = journalRows(harness)
-  // THE RESEED ITSELF STILL SUCCEEDED: the new handle is bound.
-  expect(rows.some((entry) => entry.event === "compaction" && entry.outcome === "reseeded")).toBe(true)
-  expect(harness.record().members.find((member) => member.name === MEMBER_NAME)?.executorRef).toBe(NEW_HANDLE)
-  // THE DISPLACED HANDLE IS ON EVERY ROW THAT REPORTS THE HAND-OVER, with the unproven marker beside it.
-  for (const event of ["compaction", "seat-rebound", "member-reseeded"]) {
-    /** The row this event wrote. */
-    const row = rows.find((entry) => entry.event === event)
-    expect(row?.displacedExecutorRef).toBe(DISPLACED)
-    expect(row?.displacedUnproven).toBe(true)
-  }
+  expect(harness.record()).toEqual(seeded)
+  expect(cellMember(harness).sessionId).toBe(OLD_HANDLE)
+  expect(harness.interruptions).toHaveLength(0)
+  expect(harness.activations).toHaveLength(0)
+  expect(journalRows(harness).find((entry) => entry.event === "checkpoint-unrecoverable")).toMatchObject({ surface: "team-ownership-conflict" })
 })
 
 // ── A23: an unreadable record and a readable one WITHOUT a handle are told apart (R4.2) ─────────────

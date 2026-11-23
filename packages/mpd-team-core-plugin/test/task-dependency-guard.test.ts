@@ -13,7 +13,7 @@
 //       non-array list, a self-reference, any cycle, and two aliases that disagree. All three aliases
 //       (`task.blocked_by`, `task.blockedBy`, top-level `blocked_by`) keep working.
 //   R2  approve refuses two tasks whose WRITE SCOPES overlap when NEITHER has a dependency path to the
-//       other, naming the pair and the two remedies; dangling references stay a WARNING.
+//       other, naming the pair and the two remedies. Pending staged blockers must resolve.
 //   R14 the two under-tested R2 clauses: (a) a MULTI-HOP path (T3 ← T2 ← T1) orders T1 and T3 sharing
 //       a scope; (b) the SEGMENT boundary in both directions — `packages/x` ≠ `packages/xy` and
 //       `packages/x` ⊃ `packages/x/y`.
@@ -26,7 +26,7 @@
 //
 // Every arm drives the REAL registered tools through `apply()`; the board is only ever read from disk.
 import { afterEach, describe, expect, test } from "bun:test"
-import { mkdtempSync, rmSync } from "node:fs"
+import { mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { apply } from "../src/index"
@@ -54,6 +54,8 @@ interface Harness {
   workspace: string
   /** The tools the plugin registered, by name. */
   tools: Map<string, Tool>
+  /** Calls accepted by the executor boundary, including pre-approval side effects. */
+  effects: { spawned: number; sent: number }
   /**
    * Drive one registered tool by name as a given session.
    * @param name - the registered tool name.
@@ -74,16 +76,18 @@ function harness(): Harness {
   sandboxes.push(workspace)
   /** The tools the plugin registered. */
   const tools = new Map<string, Tool>()
+  /** Counts starts and deliveries without starting host processes. */
+  const effects = { spawned: 0, sent: 0 }
   /** The stub backend: it raises any member and mints a handle derived from the member's name. */
   const executor = {
     kind: "native",
     reason: "the arm's own executor",
     providers: (): string[] => ["spawn"],
-    spawn: async (_caller: unknown, request: { name?: string }): Promise<{ handle: string; executor: string }> => ({
-      handle: "child-" + String(request?.name ?? "").replace(/\s+/g, "-"),
-      executor: "native",
-    }),
-    send: async (): Promise<void> => {},
+    spawn: async (_caller: unknown, request: { name?: string }): Promise<{ handle: string; executor: string }> => {
+      effects.spawned += 1
+      return { handle: "child-" + String(request?.name ?? "").replace(/\s+/g, "-"), executor: "native" }
+    },
+    send: async (): Promise<void> => { effects.sent += 1 },
     interrupt: async (): Promise<void> => {},
     membership: (): undefined => undefined,
     members: (): [] => [],
@@ -112,6 +116,7 @@ function harness(): Harness {
   return {
     workspace,
     tools,
+    effects,
     call: async (name: string, args: unknown, sessionId: string = LEAD) => {
       /** The registered tool, or a thrown error naming what WAS registered. */
       const tool = tools.get(name)
@@ -535,15 +540,20 @@ describe("R2 — approve refuses overlapping write scopes with no dependency pat
     expect(readTeam(h.workspace, teamId)?.tasks.map((task) => task.subject)).toEqual(["docs owner", "docss owner"])
   })
 
-  test("a DANGLING reference stays a WARNING at approval, never a refusal", async () => {
+  test("a DANGLING staged reference is refused before approval side effects", async () => {
     /** The harness this arm drives. */
     const h = harness()
     await stagePlan(h)
+    await h.call("agent_teams_plan", { action: "add_member", member: { name: "Reviewer", prompt: "Review." } })
     await h.call("agent_teams_plan", { action: "create_task", task: { subject: "only", description: "d", blocked_by: ["nowhere"] } })
-    // The approval SUCCEEDS: a dangling reference is reported, not refused (the contract's explicit bound).
-    /** The approval answer, whose `created.unresolved` names the dangling text. */
-    const approved = (await h.call("agent_teams_plan", { action: "approve" })) as { created?: { unresolved?: Array<{ taskId: string; references: string[] }> } }
-    expect(approved.created?.unresolved).toEqual([{ taskId: "T1", references: ["nowhere"] }])
+    for (const dry_run of [true, false]) {
+      /** The error names the row and its unresolvable blocker, with no board or spawn. */
+      const refused = await refusalOf(h.call("agent_teams_plan", { action: "approve", dry_run }))
+      expect(refused?.message).toContain('T1 ("only") has unresolved blocked_by')
+      expect(refused?.message).toContain("nowhere")
+      expect(listTeams(h.workspace)).toEqual([])
+      expect(h.effects).toEqual({ spawned: 0, sent: 0 })
+    }
   })
 })
 
@@ -577,10 +587,10 @@ describe("R3 — claim obeys the readiness predicate dispatch already uses", () 
     /** The harness this arm drives. */
     const h = harness()
     await stagePlan(h)
-    // A reference naming no row is a WARNING at approval and an unsatisfiable blocker at claim time.
-    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "stranded", description: "d", blocked_by: ["nowhere"] } })
-    /** The approved team. */
+    await h.call("agent_teams_plan", { action: "add_member", member: { name: "Reviewer", prompt: "Review." } })
+    /** The active team can still contain pre-existing or live dangling edges. */
     const teamId = await approveStaged(h)
+    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "stranded", description: "d", blocked_by: ["nowhere"] } })
     /** The refusal. */
     const refusal = await refusalOf(h.call("agent_teams_task", { action: "claim", task_id: "T1", claimant: "Reviewer" }))
     expect(refusal).toBeDefined()
@@ -754,6 +764,227 @@ describe("R11 — approve re-validates the WHOLE plan graph", () => {
     /** The approved team, whose task carries the normalised empty list. */
     const booleanTeam = await approveStaged(boolean)
     expect(taskOnDisk(boolean.workspace, booleanTeam, "T1")?.blockedBy).toEqual([])
+  })
+})
+
+describe("Validated plan reference binding", () => {
+  test("an ordinal keeps its validated target when another row has that exact subject", async () => {
+    /** The public plan can use forward references, IDs and plain positional aliases. */
+    const h = harness()
+    await stagePlan(h)
+    await h.call("agent_teams_plan", { action: "edit", tasks: [
+      { subject: "upstream", blocked_by: [] },
+      { subject: "T1", blocked_by: ["T1"] },
+      { subject: "1", blocked_by: ["1"] },
+      { subject: "review result", kind: "review", blocked_by: ["T2", "3"] },
+      { subject: "repair result", kind: "repair", sourceTaskId: "review result", blocked_by: ["4"] },
+    ] })
+    await h.call("agent_teams_plan", { action: "approve", dry_run: true })
+    /** Read the persisted rows that the same public plan call actually minted. */
+    const teamId = await approveStaged(h)
+    /** The canonical graph and provenance must survive materialization. */
+    const rows = readTeam(h.workspace, teamId)?.tasks ?? []
+    expect(rows.map((row) => row.blockedBy)).toEqual([[], ["T1"], ["T1"], ["T2", "T3"], ["T4"]])
+    expect(rows[4]?.sourceTaskId).toBe("T4")
+    /** Live append keeps an ID distinct from the new row's identical subject. */
+    const added = await h.call("agent_teams_plan", { action: "create_task", task: { subject: "T2", blocked_by: ["T2"] } })
+    expect(added).toMatchObject({ task: { id: "T6", blockedBy: ["T2"] } })
+  })
+
+  test("approval binds a forward dependency and its source to the same board row", async () => {
+    /** The staged repair points to the review that is minted second. */
+    const h = harness()
+    await stagePlan(h)
+    await h.call("agent_teams_plan", { action: "edit", tasks: [
+      { subject: "repair", kind: "repair", sourceTaskId: "2", blocked_by: ["2"] },
+      { subject: "review", kind: "review", blocked_by: [] },
+    ] })
+    /** Both declarations use a stage-local ordinal and become the real board ID. */
+    const teamId = await approveStaged(h)
+    /** The forward edge persists through the two-pass materialization. */
+    const rows = readTeam(h.workspace, teamId)?.tasks
+    expect(rows?.[0]).toMatchObject({ id: "T1", blockedBy: ["T2"], sourceTaskId: "T2" })
+    expect(rows?.[1]).toMatchObject({ id: "T2", blockedBy: [], revision: 1 })
+  })
+
+  test("ambiguous duplicate subjects are refused before starting any member",  async () => {
+    /** The draft uses an ambiguous subject where it could instead use an exact ordinal. */
+    const h = harness()
+    await stagePlan(h)
+    await h.call("agent_teams_plan", { action: "add_member", member: { name: "Reviewer", prompt: "Review." } })
+    /** The exact draft inputs can be repaired using the listed canonical IDs. */
+    const repeated = { subject: "duplicate", blocked_by: [] }
+    await h.call("agent_teams_plan", { action: "edit", tasks: [repeated, repeated, { subject: "consumer", blocked_by: ["duplicate"] }] })
+    for (const dry_run of [true, false]) {
+      /** Both modes must share the side-effect-free refusal. */
+      const outcome = await refusalOf(h.call("agent_teams_plan", { action: "approve", dry_run }))
+      expect(outcome?.message).toContain("ambiguous")
+      expect(outcome?.message).toContain("T1")
+      expect(outcome?.message).toContain("T2")
+      expect(outcome?.message).toContain("T3")
+      expect(listTeams(h.workspace)).toEqual([])
+      expect(h.effects).toEqual({ spawned: 0, sent: 0 })
+    }
+    await h.call("agent_teams_plan", { action: "edit", tasks: [repeated, repeated, { subject: "repair", kind: "repair", sourceTaskId: "duplicate", blocked_by: ["T2"] }] })
+    await expect(h.call("agent_teams_plan", { action: "approve" })).rejects.toThrow(/ambiguous sourceTaskId.*T1, T2/u)
+    expect(h.effects).toEqual({ spawned: 0, sent: 0 })
+    await h.call("agent_teams_plan", { action: "edit", tasks: [repeated, repeated, { subject: "consumer", blocked_by: [2] }] })
+    /** A positive numeric alias is the second row even when both subjects are identical. */
+    const teamId = await approveStaged(h)
+    expect(taskOnDisk(h.workspace, teamId, "T3")?.blockedBy).toEqual(["T2"])
+  })
+
+  test.each([false, { id: "T1" }, "   ", 0, 1.25])("malformed blocker %j cannot be coerced by bulk edit", async (value) => {
+    /** Confirm a rejected replacement leaves the prior draft and the team index untouched. */
+    const h = harness()
+    await stagePlan(h)
+    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "valid", blocked_by: [] } })
+    /** The byte-for-byte draft before the malformed replacement call. */
+    const file = join(h.workspace, ".mpd/team/staging", LEAD + ".json")
+    /** The recorded version of the original draft. */
+    const before = readFileSync(file, "utf8")
+    /** Refusal must be deterministic across values with distinct JSON types. */
+    const outcome = await refusalOf(h.call("agent_teams_plan", { action: "edit", tasks: [{ subject: "invalid", blocked_by: [value] }] }))
+    expect(outcome?.message).toContain("invalid blocker")
+    expect(readFileSync(file, "utf8")).toBe(before)
+    expect(listTeams(h.workspace)).toEqual([])
+  })
+})
+
+describe("Team workflow admission", () => {
+  test.each(["create_task", "edit"])("refuses an ambiguous all-root %s plan before approval side effects", async (verb) => {
+    /** The session and draft under evaluation. */
+    const h = harness()
+    await stagePlan(h)
+    await h.call("agent_teams_plan", { action: "add_member", member: { name: "Reviewer", prompt: "Review." } })
+    /** Bulk edit protects generic work; incremental staging protects expressly typed workflows. */
+    const tasks = ["校对", "汇总"].map((subject, index) => ({
+      subject, description: "d", owner: "Reviewer", blocked_by: [], ...(verb === "create_task" ? { kind: index === 0 ? "requirement" : "work" } : {}),
+    }))
+    if (verb === "edit") await h.call("agent_teams_plan", { action: "edit", tasks })
+    else for (const task of tasks) await h.call("agent_teams_plan", { action: "create_task", task })
+    /** The exact bytes approval must leave staged. */
+    const path = join(h.workspace, ".mpd/team/staging", LEAD + ".json")
+    /** The draft before either approval call. */
+    const before = readFileSync(path, "utf8")
+    for (const dry_run of [true, false]) {
+      /** Both approval modes apply the same admission rule. */
+      const refusal = await refusalOf(h.call("agent_teams_plan", { action: "approve", dry_run }))
+      expect(refusal?.message).toContain("all-root")
+      expect(refusal?.message).toContain('T1 ("校对")')
+      expect(refusal?.message).toContain('T2 ("汇总")')
+      expect(refusal?.message).toContain("independent: true")
+      expect(readFileSync(path, "utf8")).toBe(before)
+      expect(activeTeamId(h.workspace, LEAD)).toBeUndefined()
+      expect(listTeams(h.workspace)).toEqual([])
+      expect(h.effects).toEqual({ spawned: 0, sent: 0 })
+    }
+  })
+
+  test("generic incremental fan-out warns on both preview and approval for compatibility", async () => {
+    /** The draft uses the older spelling for parallel work. */
+    const h = harness()
+    await stagePlan(h)
+    for (const subject of ["First lane", "Second lane"]) {
+      await h.call("agent_teams_plan", { action: "create_task", task: { subject, blocked_by: [] } })
+    }
+    /** Dry run leaves the board absent while reporting every unconfirmed root. */
+    const preview = await h.call("agent_teams_plan", { action: "approve", dry_run: true }) as { warning?: string }
+    expect(preview.warning).toContain("all-root")
+    expect(preview.warning).toContain('T2 ("Second lane")')
+    expect(preview.warning).toContain("independent: true")
+    expect(listTeams(h.workspace)).toEqual([])
+    /** Approval carries the same warning and admits the legacy fan-out. */
+    const approval = await h.call("agent_teams_plan", { action: "approve" }) as { warning?: string }
+    expect(approval.warning).toBe(preview.warning)
+    expect(listTeams(h.workspace)[0]?.tasks.map(({ blockedBy }) => blockedBy)).toEqual([[], []])
+  })
+
+  test.each(["review", "repair"])("refuses independent %s with a same-plan source", async (kind) => {
+    /** Both rows explicitly opted into parallel execution, but the claimed source is still pending. */
+    const h = harness()
+    await stagePlan(h)
+    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "Source", independent: true } })
+    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "Follow-up", kind, sourceTaskId: "T1", independent: true } })
+    /** The refusal identifies the relationship and leaves the board untouched. */
+    const refusal = await refusalOf(h.call("agent_teams_plan", { action: "approve" }))
+    expect(refusal?.message).toContain(`names T1 as its ${kind} source`)
+    expect(refusal?.message).toContain("blocked_by")
+    expect(listTeams(h.workspace)).toEqual([])
+  })
+
+  test("bulk edit keeps kinds and the declared edges from preview through dispatch", async () => {
+    /** The tool registration and its isolated board. */
+    const h = harness()
+    await stagePlan(h)
+    for (const name of ["Writer", "Reviewer"]) {
+      await h.call("agent_teams_plan", { action: "add_member", member: { name, prompt: "Read your task." } })
+    }
+    /** Two ready roots converge on one review, which in turn blocks the repair. */
+    const tasks = [
+      { subject: "Specification", kind: "requirement", owner: "Reviewer", independent: true },
+      { subject: " Implementation ", kind: "work", owner: "Writer", blocked_by: [], write_scopes: ["src/core.ts"] },
+      { subject: "Assessment", kind: "review", owner: "Reviewer", blockedBy: ["1", " Implementation "] },
+      { subject: "Follow-up", kind: "repair", owner: "Writer", blocked_by: ["T3"], coverageOf: "C1", sourceTaskId: "T3", writeScopes: ["src/core.ts"] },
+    ]
+    await h.call("agent_teams_plan", { action: "edit", tasks })
+    /** A malformed replacement never silently widens the dispatch set. */
+    const refusal = await refusalOf(h.call("agent_teams_plan", { action: "edit", tasks: [{ ...tasks[0], blocked_by: "T2" }] }))
+    expect(refusal?.message).toContain("NON-ARRAY")
+    /** The dry run returns the edited task metadata and leaves the executor idle. */
+    const preview = await h.call("agent_teams_plan", { action: "approve", dry_run: true })
+    expect(preview).toMatchObject({ plan: { tasks: [
+      { kind: "requirement", independent: true, blockedBy: [] }, { kind: "work", writeScopes: ["src/core.ts"] },
+      { kind: "review", blockedBy: ["1", " Implementation "] }, { kind: "repair", coverageOf: "C1", sourceTaskId: "T3" },
+    ] } })
+    expect(h.effects).toEqual({ spawned: 0, sent: 0 })
+    /** The approved board is re-read from disk, after all edges are resolved. */
+    const teamId = await approveStaged(h)
+    /** The first approval commits the declared graph in plan order. */
+    const board = readTeam(h.workspace, teamId)?.tasks
+    expect(board?.map(({ kind, blockedBy }) => [kind, blockedBy])).toEqual([
+      ["requirement", []], ["work", []], ["review", ["T1", "T2"]], ["repair", ["T3"]],
+    ])
+    expect(board?.[3]).toMatchObject({ coverageOf: "C1", sourceTaskId: "T3" })
+    /** A manual claim is subject to the same prerequisite as dispatch. */
+    const claimRefusal = await refusalOf(h.call("agent_teams_task", { action: "claim", task_id: "T3" }))
+    expect(claimRefusal?.message).toContain("BLOCKED")
+    /** Only the two roots are delivered. */
+    const dispatched = await h.call("agent_teams_dispatch", { action: "run" }) as { pairs?: Array<{ taskId: string }> }
+    expect(dispatched.pairs?.map(({ taskId }) => taskId).sort()).toEqual(["T1", "T2"])
+    expect(h.effects).toEqual({ spawned: 2, sent: 2 })
+    await h.call("agent_teams_task", { action: "complete", task_id: "T1" })
+    /** The terminal row is captured before the live append. */
+    const completed = taskOnDisk(h.workspace, teamId, "T1")
+    /** A live append still carries declaration and provenance onto the board. */
+    const appended = await h.call("agent_teams_plan", { action: "create_task", task: {
+      subject: "Later repair", kind: "repair", coverageOf: "C2", sourceTaskId: "T3", blocked_by: ["Assessment"], write_scopes: ["src/later.ts"],
+    } })
+    expect(appended).toMatchObject({ task: { id: "T5", kind: "repair", blockedBy: ["T3"], coverageOf: "C2", sourceTaskId: "T3" } })
+    expect(taskOnDisk(h.workspace, teamId, "T1")).toEqual(completed)
+  })
+
+  test("explicit independent roots survive create and edit and can dispatch together", async () => {
+    /** One plan with an independent work lane and an independent review lane. */
+    const h = harness()
+    await stagePlan(h)
+    for (const name of ["Writer", "Reviewer"]) {
+      await h.call("agent_teams_plan", { action: "add_member", member: { name, prompt: "Read your task." } })
+    }
+    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "Independent work", owner: "Writer", independent: true } })
+    /** The public read supplies rows for the public replacement call. */
+    const staged = await h.call("agent_teams_plan", { action: "edit" }) as { plan: { tasks: unknown[] } }
+    await h.call("agent_teams_plan", { action: "edit", tasks: [
+      ...staged.plan.tasks,
+      { subject: "Independent review", kind: "review", owner: "Reviewer", independent: true },
+    ] })
+    /** The approved board is deliberately flat and both owners can receive tasks. */
+    const teamId = await approveStaged(h)
+    expect(readTeam(h.workspace, teamId)?.tasks.map(({ kind, blockedBy }) => [kind, blockedBy])).toEqual([["work", []], ["review", []]])
+    /** The first dispatch can deliver both rows. */
+    const dispatched = await h.call("agent_teams_dispatch", { action: "run" }) as { pairs?: Array<{ taskId: string }> }
+    expect(dispatched.pairs?.map(({ taskId }) => taskId).sort()).toEqual(["T1", "T2"])
+    expect(h.effects).toEqual({ spawned: 2, sent: 2 })
   })
 })
 

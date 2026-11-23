@@ -323,6 +323,8 @@ export interface PromotionDeps {
    * composition never resolved one, and the cell's own id is the fallback.
    */
   worktreeTeamId?: string
+  /** Resolve and validate the owning board after compaction fails, before retirement or spawn. */
+  prepareReseed?: () => ReseedTarget
   /** The resolved knobs (`compactionRetries`, `idleBarrierDelayMs`, `depthMax`). */
   config: CellworkConfig
   /** The handoff text a reseed child is seeded with. */
@@ -338,7 +340,7 @@ export interface PromotionDeps {
    * composition/test that models NO team plane at all: the reseed then reports `bindPlane:"absent"`,
    * because a surface that does not exist is not a surface that refused.
    */
-  bindSeat?: (input: { handle: string; previousSessionId: string }) => Promise<SeatBindResult>
+  bindSeat?: (input: { handle: string; previousSessionId: string; teamId: string }) => Promise<SeatBindResult>
   /**
    * Deliver the promotion directive to the FRESH child's handle (R2).
    *
@@ -417,12 +419,9 @@ export interface SeatBindResult {
    */
   survivingReadable?: boolean
   /**
-   * The non-empty `executorRef` this bind OVERWROTE because the seat already named a DIFFERENT handle (R3).
-   *
-   * The re-entry guard is inert when the identity registry cannot prove the TEAM row's handle live, so a
-   * bind may legitimately replace a handle nobody proved dead. Without this field that displaced handle
-   * would vanish from every record. It travels into the `seat-rebound`/`member-reseeded`/`compaction`
-   * journal rows so an orphaned child stays traceable.
+   * The verified old `executorRef` this bind replaced with the fresh handle (R3).
+   * It travels into the `seat-rebound`, `member-reseeded` and `compaction` journal rows, together with
+   * the liveness observed at bind time.
    */
   displacedExecutorRef?: string
   /**
@@ -434,6 +433,11 @@ export interface SeatBindResult {
    */
   displacedUnproven?: boolean
 }
+
+/** The one board a reseed may write, or the diagnostic that prevents any handover. */
+export type ReseedTarget =
+  | { readonly ok: true; readonly teamId: string }
+  | { readonly ok: false; readonly surface: string; readonly reason: string }
 
 /**
  * WHAT the host did with the ORIGINAL session's retirement on the reseed path (R5.1).
@@ -489,11 +493,10 @@ export interface PromotionResult {
    */
   retirementReason?: string
   /**
-   * The surface that refused to bind the fresh child (R1), on a `refused` outcome.
+   * The surface that refused board selection or binding on a `refused` outcome.
    *
-   * Present means a child WAS started and could not be given its seat: the row is journaled
-   * `checkpoint-unrecoverable` with this surface named, the seat is fenced, and the answer carries the
-   * retry. Absent on every other refusal, which never reached a spawn.
+   * The `checkpoint-unrecoverable` row names the surface and recovery path for the fenced seat.
+   * The retirement and rollback fields record any side effects that preceded a bind refusal.
    */
   failedSurface?: string
   /** Whether the promotion directive reached the FRESH child's handle on the reseed path (R2). */
@@ -504,6 +507,8 @@ export interface PromotionResult {
   boundTasks?: number
   /** Whether the seat was bound on a plane record or the plane was absent (R1). */
   bindPlane?: "bound" | "absent"
+  /** The board record actually rebound, when one exists. */
+  boundTeamId?: string
   /**
    * What the bind's ROLLBACK did, when its read-back refused a write that had already landed (Major-7):
    * `restored` | `refused` | `failed`. Present only on that refusal shape, beside `failedSurface`.
@@ -1247,6 +1252,13 @@ export async function promoteAfterHandoff(deps: PromotionDeps): Promise<Promotio
       reason: lastReason + "; reseed-parent-unavailable (the live registry no longer holds session " + JSON.stringify(parent.sessionId) + " as the exact instance the reseed would forward)",
     }
   }
+  /** The board chosen before the original session may be retired. */
+  const target = deps.prepareReseed?.()
+  if (target?.ok === false) {
+    return { outcome: "refused", attempts: deps.config.compactionRetries, failedSurface: target.surface, reason: lastReason + busyNote + "; reseed ownership could not be verified before retirement: " + target.reason }
+  }
+  /** The one board id forwarded to the bind, or empty for the no-board composition. */
+  const teamId = target?.teamId ?? deps.cell.teamId
   // THE ORIGINAL IS RETIRED BY ITS LIVE ANCESTOR, AFTER THAT ANCESTOR IS PROVEN (R5.1): the SAME session
   // the child is raised under is the only `ancestor` authority the host accepts, and the member's own
   // handle is the target, never the caller. Retirement lands here — after the parent proof — so a refusal
@@ -1264,7 +1276,7 @@ export async function promoteAfterHandoff(deps: PromotionDeps): Promise<Promotio
   // promoted member back into the shared checkout. A lookup that throws, answers nothing or answers an
   // empty string is the same as no worktree: the request keeps today's shape, no `cwd` key at all.
   /** The execution team the member's worktree is keyed by; the cell's planning id is only a fallback. */
-  const worktreeTeamId = deps.worktreeTeamId !== undefined && deps.worktreeTeamId !== "" ? deps.worktreeTeamId : deps.cell.teamId
+  const worktreeTeamId = teamId === "" || target === undefined ? deps.worktreeTeamId || deps.cell.teamId : teamId
   /** The member's worktree path for this reseed, when one is recorded. */
   const worktreeCwd = ((): string | undefined => {
     if (deps.worktreeCwd === undefined) return undefined
@@ -1307,7 +1319,7 @@ export async function promoteAfterHandoff(deps: PromotionDeps): Promise<Promotio
     }
     activation = await deps.dsh.startContinuableAgent({
       provider: "spawn",
-      label: deps.memberName + " · " + deps.cell.teamId,
+      label: deps.memberName + " · " + (teamId || deps.cell.teamId),
       ...activationRequest,
       request: activationRequest,
       signal: compactionSignal().signal,
@@ -1334,7 +1346,7 @@ export async function promoteAfterHandoff(deps: PromotionDeps): Promise<Promotio
     /** What the bind did. */
     const bind: SeatBindResult = deps.bindSeat === undefined
       ? { ok: true, plane: "absent", tasks: 0 }
-      : await deps.bindSeat({ handle, previousSessionId: deps.sessionId })
+      : await deps.bindSeat({ handle, previousSessionId: deps.sessionId, teamId })
     if (!bind.ok) {
       // THE SURVIVING DOCUMENT IS THE AUTHORITY (contract §3 A11, the Major-7 hole), AND A CONCURRENT
       // WRITER IS REASON ENOUGH TO KEEP THE CHILD (CodeRabbit round 2, Minor-1). A `refused` rollback
@@ -1409,7 +1421,7 @@ export async function promoteAfterHandoff(deps: PromotionDeps): Promise<Promotio
         directiveError = error instanceof Error ? error.message : String(error)
       }
     }
-    return { outcome: "reseeded", attempts: deps.config.compactionRetries, reason: lastReason + busyNote, newHandle: handle, parentSessionId: parent.sessionId, parentSource: parent.source, retired: retirement.retirement === "accepted", retirement: retirement.retirement, ...(retirement.reason === undefined ? {} : { retirementReason: retirement.reason }), directiveDelivered: delivered, ...(directiveError === undefined ? {} : { directiveError }), boundTasks: bind.tasks ?? 0, ...(bind.plane === undefined ? {} : { bindPlane: bind.plane }), ...(bind.displacedExecutorRef === undefined ? {} : { displacedExecutorRef: bind.displacedExecutorRef, displacedUnproven: bind.displacedUnproven === true }) }
+    return { outcome: "reseeded", attempts: deps.config.compactionRetries, reason: lastReason + busyNote, newHandle: handle, parentSessionId: parent.sessionId, parentSource: parent.source, retired: retirement.retirement === "accepted", retirement: retirement.retirement, ...(retirement.reason === undefined ? {} : { retirementReason: retirement.reason }), directiveDelivered: delivered, ...(directiveError === undefined ? {} : { directiveError }), boundTasks: bind.tasks ?? 0, ...(bind.plane === undefined ? {} : { bindPlane: bind.plane }), ...(bind.plane === "bound" ? { boundTeamId: teamId } : {}), ...(bind.displacedExecutorRef === undefined ? {} : { displacedExecutorRef: bind.displacedExecutorRef, displacedUnproven: bind.displacedUnproven === true }) }
   } catch (error) {
     // R4: A THROW AFTER THE SPAWN RELEASES WHAT IT CREATED. Without this the child keeps a slot no verb
     // can clear AND the seat is left half-bound with no journal row naming the branch.

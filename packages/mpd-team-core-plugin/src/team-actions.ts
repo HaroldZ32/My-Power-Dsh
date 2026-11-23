@@ -82,6 +82,7 @@ import {
   type RosterRow,
 } from "./dispatch"
 import { withIdlePreamble } from "./idle-guard"
+import { planTaskId, resolvePlanReference, workflowAdmissionIssue } from "./dependency-guard.ts"
 import { memberWorktreeLookup, type MemberWorktreeAssignment } from "./worktree.ts"
 import { readLedger, writeLedger } from "./dispatch-ledger"
 import { appendTeamJournal } from "./team-journal"
@@ -195,6 +196,8 @@ export interface TeamApprovePayload {
   stoppedAt?: string
   /** How every staged member was bound to the workmate library, in plan order (W3-C). */
   bindings?: TeamWorkmateBinding[]
+  /** Advisory for generic append-only plans whose roots have no explicit independence marker. */
+  warning?: string
 }
 
 /**
@@ -1099,6 +1102,11 @@ async function approveTeamBody(
     } catch (error) {
       return { ok: false, error: refusalOf(error) }
     }
+    /** The all-root workflow check runs before workmate binding, board writes or member startup. */
+    const admission = workflowAdmissionIssue(plan)
+    if (admission?.severity === "error") return { ok: false, error: admission.message }
+    /** The generic fan-out advisory appears in both preview and approval. */
+    const warning = admission?.message
     // ── THE NESTING SEAM, AT THE MOMENT THE RECORD IS BORN (cellwork wave 4) ──
     // The parent is DERIVED from the records (contract D2 option b): a promoted subcaptain is on
     // the parent team's roster, so approving its sub-team nests it without any argument. Derived
@@ -1107,7 +1115,7 @@ async function approveTeamBody(
     /** The team this approval nests under, or undefined for a root team. */
     const parent = deps.deriveParentTeam(workspace, sessionId, lineage)
     if (input.dryRun === true) {
-      return { ok: true, plan, created: { members: plan.members.map((m) => ({ name: m.name, id: "" })), tasks: plan.tasks.map((t) => ({ subject: t.subject, id: "" })) } }
+      return { ok: true, plan, created: { members: plan.members.map((m) => ({ name: m.name, id: "" })), tasks: plan.tasks.map((t) => ({ subject: t.subject, id: "" })) }, ...(warning === undefined ? {} : { warning }) }
     }
     // ── WORKMATE BINDING, BEFORE THE FIRST RECORD WRITE (W3-C, plan §4.6) ──
     // A REUSE gives the seat the workmate's OWN name, and a member name is seat identity here, so the
@@ -1147,62 +1155,46 @@ async function approveTeamBody(
         ...(binding.reason === undefined ? {} : { workmateReason: binding.reason })
       })
     }
-    // THE ORDER IS THE FIX (defect 2026-10-06). Every staged task is minted FIRST and the blockers
-    // are resolved afterwards, against the COMPLETE board: a plan may legitimately name a task that
-    // comes LATER (a forward reference), and resolving per insert could only ever see the tasks
-    // before it — which is how a plan written in its own POSITIONS (`["2"]`, `["7","8","9"]`) used to
-    // reach the board as references no task answered, flattening the whole DAG to one column with no
-    // warning anywhere. `blockedBy` is therefore added in a second pass, through `updateTeamTask`,
-    // once the plan's own namespace can be mapped to real board ids.
-    for (const task of buildPlan.tasks) {
+    /** New board IDs share the allocator's counter, not the staged graph's ordinal namespace. */
+    const mintedIds = buildPlan.tasks.map((_task, index) => planTaskId(record.nextTaskNumber + index - 1))
+    /** Validation and materialization share one resolver and never bind a raw title to the new board. */
+    const planBindings = buildPlan.tasks.map((task) => (task.blockedBy ?? []).map((reference) => {
+      /** Graph admission established this target before any member was started. */
+      const target = resolvePlanReference(plan, reference)
+      if (target.kind !== "target") throw new Error(`staged blocker ${JSON.stringify(reference)} lost its validated target`)
+      return { index: target.index, id: mintedIds[target.index] }
+    }))
+    /** The first board position allocated by this approval. */
+    const firstTask = record.tasks.length
+    for (const [index, task] of buildPlan.tasks.entries()) {
+      /** A same-plan source is rebased just like a blocker. Historical provenance stays as written. */
+      const source = resolvePlanReference(plan, task.sourceTaskId)
+      /** The actual source ID when the declaration names another row of this draft. */
+      const sourceTaskId = source.kind === "target" && source.index !== index ? mintedIds[source.index] : task.sourceTaskId
+      /** Bind already-minted IDs without consuming a new revision on the row. */
+      const preceding = planBindings[index].filter((target) => target.index < index).map((target) => target.id)
       record = addTeamTask(record, {
         subject: task.subject,
         description: task.description,
-        // THE STAGED KIND IS THE BOARD KIND (PR #42 review F-J): `work` remains the default for a
-        // plan that never named one, which is exactly what every staged task used to become.
         kind: task.kind ?? "work",
-        ...(task.blockedBy === undefined ? {} : { blockedBy: task.blockedBy }),
+        blockedBy: preceding,
         ...(task.writeScopes === undefined ? {} : { writeScopes: task.writeScopes }),
         ...(task.owner === undefined ? {} : { owner: task.owner }),
         ...(task.coverageOf === undefined ? {} : { coverageOf: task.coverageOf }),
-        ...(task.sourceTaskId === undefined ? {} : { sourceTaskId: task.sourceTaskId }),
+        ...(sourceTaskId === undefined ? {} : { sourceTaskId }),
       }, deps.now())
     }
-    /** The plan's own references → the board ids this approval minted, in plan order. */
-    const planAlias = new Map<string, string>()
-    buildPlan.tasks.forEach((task, index) => {
-      /** The board task the staged task at this position was minted as; absent for an empty subject. */
-      const minted = record.tasks[index]
-      if (minted === undefined) return
-      // BOTH FORMS THE PLAN CAN MEAN are mapped, position first: `"2"` is the second staged task,
-      // and the subject is what the plan-store's own documentation has always promised.
-      planAlias.set(String(index + 1), minted.id)
-      if (!planAlias.has(task.subject)) planAlias.set(task.subject, minted.id)
-    })
-    for (const [index, task] of buildPlan.tasks.entries()) {
-      /** The board task this staged task became. */
-      const minted = record.tasks[index]
-      if (minted === undefined || (task.blockedBy ?? []).length === 0) continue
-      /** What this task's references resolve to now that the whole plan is on the board. */
-      const mapped = (task.blockedBy ?? []).map((reference) => planAlias.get(reference) ?? reference)
-      // UNCHANGED MEANS ALREADY RIGHT. A subject or a backward id was resolved when the task was
-      // minted, so re-writing it would only move the task's own revision for nothing; only a
-      // reference the first pass could NOT resolve (a plan position, a forward reference) is
-      // rewritten — and a rewrite is what turns that dangling entry into a real edge.
-      if (mapped.length === minted.blockedBy.length && mapped.every((id, at) => minted.blockedBy[at] === id)) continue
-      record = updateTeamTask(record, minted.id, { blockedBy: mapped }, deps.now())
+    // The board now contains every forward target. Only rows which needed one are revised.
+    for (const [index, bindings] of planBindings.entries()) {
+      /** The row minted at this draft position. */
+      const minted = record.tasks[firstTask + index]
+      if (minted?.id !== mintedIds[index]) throw new Error(`staged task ${planTaskId(index)} did not mint its allocated ID`)
+      if (bindings.some((target) => target.index >= index)) {
+        record = updateTeamTask(record, minted.id, { blockedBy: bindings.map((target) => target.id) }, deps.now())
+      }
     }
     /** What approval actually created, recorded onto the plan so a reader can reconcile plan with reality. */
     const created: NonNullable<StagedPlan["created"]> = { members: [], tasks: [] }
-    // THE REPORT A CAPTAIN SEES AT APPROVAL TIME, not three layers downstream: every staged blocker
-    // that named no task is named HERE, with the board task it landed on. It travels in the
-    // approval ANSWER (rendered by the tool) and into the archived plan's `created.unresolved`, and
-    // the same list is on each board task as `unresolvedBlockers` for every later reader.
-    /** The board tasks carrying a blocker nothing answered, in board order. */
-    const unresolvedBlockers = record.tasks
-      .filter((task) => (task.unresolvedBlockers ?? []).length > 0)
-      .map((task) => ({ taskId: task.id, references: [...(task.unresolvedBlockers ?? [])] }))
-    if (unresolvedBlockers.length > 0) created.unresolved = unresolvedBlockers
     /** The first failure's description; set means approval stopped rather than half-build the team. */
     let stoppedAt: string | undefined
     // THE EXECUTOR IS SELECTED BEFORE ANY WORKTREE (CodeRabbit round 1): the official backend has no
@@ -1296,7 +1288,7 @@ async function approveTeamBody(
     // line, and an approval that throws (empty shell, already approved, executor refusal) does
     // not leak a goal or a checklist. NON-FATAL by contract: see the row's `bundleApprovalEffects`.
     await deps.bundleApprovalEffects(plan, caller)
-    return { ok: true, plan: approved, team: approvedRecord, created, bindings: bound.bindings, ...(stoppedAt === undefined ? {} : { stoppedAt }) }
+    return { ok: true, plan: approved, team: approvedRecord, created, bindings: bound.bindings, ...(stoppedAt === undefined ? {} : { stoppedAt }), ...(warning === undefined ? {} : { warning }) }
   } catch (error) {
     // A THROW HERE IS UNEXPECTED — a store write, a broken record, a failed archive — because every
     // POLICY refusal above (the empty shell, the graph, the scopes) is returned or converted before it

@@ -132,6 +132,9 @@ export function agentTeamsPlanCard(args: unknown, value: unknown): DshGoView | n
   /** The team's one-line purpose, clipped so the card stays a summary. */
   const description = words(plan.description, 200)
   if (description !== undefined) children.push(text(description))
+  /** Compatibility and scope advisories accompany the card's plan result. */
+  const warning = words(answer.warning, 700)
+  if (warning !== undefined) children.push(text(`Warning — ${warning}`))
   if (tasks.length > 0) children.push(table({ columns: ["id", "subject", "status", "owner"], rows: tasks.slice(0, 12).map(taskRow) }))
   if (members.length > 0) children.push(table({ columns: ["name", "status", "role"], rows: members.slice(0, 8).map(memberRow) }))
   return stack(children, { title: `plan · ${action}` })

@@ -149,7 +149,7 @@ describe("the consolidated surface", () => {
     // control absorbed halt/resume, and (2026-11-02) the two seat verbs `fence`/`unfence` (D4): a fenced
     // member is never messaged, so closing a seat belongs beside the team-level holds. (2026-11-03) `end`
     // joins as the TERMINAL verb of the same plane: before it, no supported call could close a LIVE team.
-    expect(actions("agent_teams_control").sort()).toEqual(["end", "fence", "halt", "resume", "unfence"])
+    expect(actions("agent_teams_control").sort()).toEqual(["end", "fence", "halt", "resume", "unfence", "wake"])
   })
 
   test("the retired TOOL NAMES are gone — a re-added one would redden here", () => {

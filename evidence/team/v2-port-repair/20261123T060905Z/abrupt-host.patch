@@ -1,0 +1,26 @@
+--- drive.mjs
++++ abrupt.mjs
+@@ -126,6 +126,15 @@
+                         const failed = ['provider-error', 'persistent-error'].includes(mode);
+                         observed.add(id);
+                         snapshots.push({ event: failed ? 'provider-failure' : 'turn-ended-open-task', id, observedAt: new Date().toISOString(), board: boards().map(redactBoard) });
++                        if (mode === 'restart' && observed.size === 2) {
++                            const claimed = boards().flatMap(board => board.tasks).filter(task => task.subject.startsWith('QA worker'));
++                            if (claimed.length !== 2 || claimed.some(task => task.status !== 'in_progress' || task.attempt !== 1))
++                                throw Error('both attempt-one claims must be durable before interrupting the host');
++                            snapshots.push({ event: 'forced-host-exit', board: boards().map(redactBoard) });
++                            if (!child.kill('SIGKILL')) throw Error('the isolated host had already exited');
++                            res.end();
++                            return;
++                        }
+                         if (failed) {
+                             res.writeHead(401, { 'content-type': 'application/json' });
+                             res.end(JSON.stringify({ error: { type: 'authentication_error', message: 'QA simulated route unavailability' } }));
+@@ -188,6 +197,6 @@
+ const relevant = result.boards.flatMap(b => b.tasks).filter(t => t.subject.startsWith('QA '));
+ const expected = mode === 'persistent-error' ? 'in_progress' : 'completed';
+ const ownerReceipts = relevant.every(t => { const member = result.boards.flatMap(b => b.members).find(m => m.name === t.owner || m.executorRef === t.owner); return sessions.find(s => s.id === member?.executorRef)?.receipts.some(r => r.tool === 'agent_teams_task' && r.isError === false && r.text.includes(t.id)); });
+-const passed = exit.code === 0 && result.isolation.ok && relevant.length === 2 && relevant.every(t => t.status === expected) && ownerReceipts && (!mortality || observed.size === 2) && (!(mode === 'loop-fault') || snapshots.some(s => s.event === 'partial-before-retry'));
++const passed = exit.code === null && exit.signal === 'SIGKILL' && snapshots.some(s => s.event === 'forced-host-exit') && snapshots.some(s => s.event === 'restart-exit' && s.code === 0) && result.isolation.ok && relevant.length === 2 && relevant.every(t => t.status === expected) && ownerReceipts && (!mortality || observed.size === 2) && (!(mode === 'loop-fault') || snapshots.some(s => s.event === 'partial-before-retry'));
+ console.log(JSON.stringify({ passed, mode, phase: state?.phase, team: state?.teamId, rows: relevant, report: mode + '-result.json' }));
+ process.exitCode = passed ? 0 : 1;

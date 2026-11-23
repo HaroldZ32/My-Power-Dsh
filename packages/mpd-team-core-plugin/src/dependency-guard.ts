@@ -9,8 +9,7 @@
 //
 // The module is PURE — plain data in, a verdict out — so the three refusals can be pinned without a
 // filesystem, and so `create_task`, `approve` and `claim` reason over the SAME graph. Approval maps a
-// staged plan onto board ids `T1…Tn` in plan order (see the approve arm's `planAlias`), which is why a
-// plan's own 1-based POSITION and the id it will mint are the same string here.
+// staged references in the plan's own ordinal namespace before binding them to the new board IDs.
 import type { StagedPlan } from "./plan-store.ts"
 
 /**
@@ -80,29 +79,40 @@ export function scopesOverlap(first: string, second: string): boolean {
   return a.startsWith(b + "/") || b.startsWith(a + "/")
 }
 
-/**
- * Resolve one plan reference to the board id approval will mint for it, or undefined when this plan
- * can resolve nothing.
- *
- * The three forms are the ones approval itself resolves (`planAlias`): the plan's 1-based position
- * (`"2"`), the id that position mints (`"T2"`), and a staged task's SUBJECT — first occurrence wins,
- * exactly as approval's own map does. A reference this plan cannot resolve draws no edge (approval
- * keeps the text and reports it as `unresolved`), so it is ignored here rather than guessed at.
- * @param plan - the plan the reference was written against.
- * @param reference - one declared blocker, as written.
- * @returns the minted id, or undefined when nothing in this plan answers the text.
- */
-export function planReferenceTarget(plan: StagedPlan, reference: string): string | undefined {
-  /** The number a position-or-id reference names, when it names one. */
-  const numbered = /^T(\d+)$/u.exec(reference) ?? /^(\d+)$/u.exec(reference)
+/** A staged reference's exact target or the evidence that prevents choosing one. */
+type PlanReference = { readonly kind: "target"; readonly index: number }
+  | { readonly kind: "ambiguous"; readonly indices: readonly number[] }
+  | { readonly kind: "missing" | "malformed" }
+
+/** Preserve exact subjects and positive numeric positions. Reject arbitrary JSON coercion. */
+export function blockerReferenceText(value: unknown): string | undefined {
+  if (typeof value === "string" && value.trim() !== "") return value
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? String(value) : undefined
+}
+
+/** Positions and board-ID spellings take precedence over subjects, including out-of-range ordinals. */
+export function resolvePlanReference(plan: StagedPlan, value: unknown): PlanReference {
+  /** The exact subject or canonical numeric spelling accepted at the tool boundary. */
+  const reference = blockerReferenceText(value)
+  if (reference === undefined) return { kind: "malformed" }
+  /** An ordinal-looking token belongs to the plan's positional namespace. */
+  const numbered = /^(?:T)?(\d+)$/u.exec(reference)
   if (numbered !== null) {
-    /** The 1-based position the reference names. */
-    const position = Number(numbered[1])
-    return position >= 1 && position <= plan.tasks.length ? planTaskId(position - 1) : undefined
+    /** Convert the declared one-based ordinal to the exact staged index. */
+    const index = Number(numbered[1]) - 1
+    return index >= 0 && index < plan.tasks.length ? { kind: "target", index } : { kind: "missing" }
   }
-  /** The index of the first staged task carrying that subject, which is what approval maps. */
-  const index = plan.tasks.findIndex((task) => task.subject === reference)
-  return index < 0 ? undefined : planTaskId(index)
+  /** A title is usable as a reference only when exactly one row carries it. */
+  const indices = plan.tasks.flatMap((task, index) => task.subject === reference ? [index] : [])
+  if (indices.length > 1) return { kind: "ambiguous", indices }
+  return indices[0] === undefined ? { kind: "missing" } : { kind: "target", index: indices[0] }
+}
+
+/** Resolve to the staged graph's canonical ID, which is independent of the eventual board offset. */
+export function planReferenceTarget(plan: StagedPlan, reference: unknown): string | undefined {
+  /** Resolve once before formatting the staged ordinal. */
+  const target = resolvePlanReference(plan, reference)
+  return target.kind === "target" ? planTaskId(target.index) : undefined
 }
 
 /**
@@ -210,6 +220,8 @@ export function dependencyPath(edges: ReadonlyMap<string, readonly string[]>, fr
 export type PlanGraphDefect =
   /** A staged task states NO dependency answer at all: `blockedBy` is absent (the bulk-`edit` hole). */
   | { kind: "unanswered"; id: string; subject: string }
+  /** A blocker did not resolve, or provenance ambiguously names multiple tasks. */
+  | { kind: "reference"; id: string; field: "blocked_by" | "sourceTaskId"; value: unknown; problem: Exclude<PlanReference, { kind: "target" }> }
   /** A task's own id appears among its resolved blockers, so it waits for itself. */
   | { kind: "self-edge"; id: string }
   /** The first cycle the walk found, as a path that repeats its first id (`["T1","T2","T1"]`). */
@@ -235,6 +247,20 @@ export function planGraphDefect(plan: StagedPlan): PlanGraphDefect | undefined {
     const task = plan.tasks[unanswered]
     return { kind: "unanswered", id: planTaskId(unanswered), subject: task.subject }
   }
+  for (const [index, task] of plan.tasks.entries()) {
+    /** Both blocker and source diagnostics name the staged row. */
+    const id = planTaskId(index)
+    for (const value of task.blockedBy ?? []) {
+      /** Approval cannot materialize a blocker that has no unambiguous staged target. */
+      const problem = resolvePlanReference(plan, value)
+      if (problem.kind !== "target") return { kind: "reference", id, field: "blocked_by", value, problem }
+    }
+    if (task.sourceTaskId !== undefined) {
+      /** An unresolved source can be historical provenance; an ambiguous local source cannot be bound. */
+      const problem = resolvePlanReference(plan, task.sourceTaskId)
+      if (problem.kind === "ambiguous" || problem.kind === "malformed") return { kind: "reference", id, field: "sourceTaskId", value: task.sourceTaskId, problem }
+    }
+  }
   /** The plan's resolved edges, which is the graph approval would write onto the board. */
   const edges = planDependencyEdges(plan)
   for (const [id, blockers] of edges) {
@@ -244,6 +270,39 @@ export function planGraphDefect(plan: StagedPlan): PlanGraphDefect | undefined {
   /** The first cycle the graph carries, if any. */
   const cycle = dependencyCycle(edges)
   return cycle === undefined ? undefined : { kind: "cycle", path: cycle }
+}
+
+/** An admission refusal or a compatibility warning for a structurally valid draft. */
+interface WorkflowAdmissionIssue {
+  /** Compatibility warnings allow already-documented generic fan-out to proceed. */
+  readonly severity: "error" | "warning"
+  /** Names the affected rows and the correction the caller can submit. */
+  readonly message: string
+}
+
+/** Check the first approval of a structurally valid draft for missing workflow ordering. */
+export function workflowAdmissionIssue(plan: StagedPlan): WorkflowAdmissionIssue | undefined {
+  /** The draft's resolved edges, used for direct and transitive source relationships. */
+  const edges = planDependencyEdges(plan)
+  for (const [index, task] of plan.tasks.entries()) {
+    if (task.kind !== "review" && task.kind !== "repair") continue
+    /** `sourceTaskId` is provenance unless it identifies another task in this draft. */
+    const source = planReferenceTarget(plan, task.sourceTaskId)
+    /** The id this task will have on the new board. */
+    const id = planTaskId(index)
+    if (source === undefined || source === id || !edges.has(source) || dependencyPath(edges, id, source)) continue
+    return { severity: "error", message: `plan ${plan.planId}: ${id} (${JSON.stringify(task.subject)}) names ${source} as its ${task.kind} source but does not wait for it. Use agent_teams_plan {action:"edit", tasks:[...]} to include ${source} in blocked_by or its prerequisite chain and drop independent: true from ${id}.` }
+  }
+  if (plan.tasks.length < 2 || plan.tasks.some((task) => (task.blockedBy?.length ?? 0) > 0)) return undefined
+  /** Every root that has not explicitly confirmed this fully parallel plan. */
+  const unconfirmed = plan.tasks.flatMap((task, index) => task.independent === true ? [] : [`${planTaskId(index)} (${JSON.stringify(task.subject)})`])
+  if (unconfirmed.length === 0) return undefined
+  /** Generic append-only drafts already use empty arrays for deliberate fan-out. */
+  const strict = plan.strictDependencies === true || plan.tasks.some((task) => task.kind !== undefined && task.kind !== "work")
+  return {
+    severity: strict ? "error" : "warning",
+    message: `plan ${plan.planId}: all-root workflow without explicit independence for ${unconfirmed.join(", ")}. Use agent_teams_plan {action:"edit", tasks:[...]} to give dependent tasks blocked_by references. Keep blocked_by: [] for roots in a mixed DAG, or set independent: true on every task if all tasks can run in parallel.`,
+  }
 }
 
 /** One unordered pair of staged tasks whose declared write scopes collide (R2's refusal subject). */
