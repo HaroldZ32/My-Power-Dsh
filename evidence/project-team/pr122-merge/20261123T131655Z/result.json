@@ -1,0 +1,118 @@
+{
+  "verdict": "PASS",
+  "scope": "Independent local verification of the integrated product commit",
+  "commit": "eb8338b3f123b286fb2381225ea827f24ae22db2",
+  "tree": "d4115842c5f97307e3c7160b1593ce6aef9fa7bf",
+  "integrationMerge": "5e1130d00f2012976bae6c9684f8bcce77e52b61",
+  "mergeParents": [
+    "a68854f2a1a16593a9ba5a937fa42f557db0c86d",
+    "d868eaecc4cb442dc7e7ee8e848e998d6ce9faa0"
+  ],
+  "startUtc": "2026-11-23T13:16:55.794Z",
+  "finishUtc": "2026-11-23T13:19:09.519Z",
+  "trackedBytesAndIndexCleanBeforeAndAfter": true,
+  "unmergedIndexEntries": 0,
+  "newConflictMarkersAgainstEitherParent": 0,
+  "toolchain": {
+    "bun": "1.4.0",
+    "node": "24.21.0",
+    "dsh": "0.2.2-rc.5",
+    "isolatedTui": "0.20.1",
+    "dshGoKit": "@dsh-go/plugin-kit 0.1.0",
+    "dshGoCheckerSha256": "0a92e1902abd3d9b8b3d07adac21fff84bd98d0ff1bfc136f643295e81841565"
+  },
+  "tests": {
+    "command": ".toolchain/node_modules/.bin/bun test",
+    "exit": 0,
+    "files": 294,
+    "pass": 4390,
+    "skip": 6,
+    "fail": 0,
+    "skipped": [
+      "2 real Subversion cases (svn and svnadmin unavailable)",
+      "1 official live-team projection (isolated workspace has no live team)",
+      "3 native comment-detector cases (optional binary unavailable)"
+    ],
+    "logSha256": "b525da38e5e8189146b7e1ff59295d267af66f6d7b11b8e65be2d53e72c59fe3"
+  },
+  "typecheck": {
+    "command": "bun run typecheck",
+    "exit": 0
+  },
+  "static": {
+    "command": "bun run verify:gates",
+    "exit": 0,
+    "members": [
+      "vendor",
+      "dist-fresh",
+      "rows-parity",
+      "docs-parity",
+      "preset-conformance",
+      "plugin-manifest",
+      "comment-coverage",
+      "graph-model",
+      "workflows",
+      "tui-admission",
+      "dshgo"
+    ],
+    "freshDistTargets": 35,
+    "prebuiltCheckedByVendor": "packages/mpd-mcp-codegraph/dist/serve.js",
+    "logSha256": "70173f9518b3960f93ce9fcf5b90b5ef0c39882568215a3e014edd30ef77331d"
+  },
+  "offlineQA": {
+    "command": "bun run test:qa",
+    "exit": 0,
+    "pass": 56,
+    "skip": 2,
+    "fail": 0,
+    "skipped": [
+      "tui-distribution (external distribution fixture unavailable)",
+      "tui-spec-conformance (external requirements checkout unavailable)"
+    ],
+    "logSha256": "85e4eff1a632ccf66f567fd519f2d390de6a993ed9e6add286ef3a05e4ef60ca"
+  },
+  "mount": {
+    "transport": "Pinned DSH with local scripted model transport",
+    "idleMember": "The assigned owner claimed T1. A distinct idle member received the directive and tool denial. The case observed three session logs in one sandbox workspace.",
+    "linkedCaptain": {
+      "all": {
+        "quietMs": 1259,
+        "quietCaptainRequests": 0,
+        "originalCaptainTurns": 2,
+        "wakeNotices": 1,
+        "sandboxWorkspaceKeys": 2
+      },
+      "cancel": {
+        "quietMs": 1272,
+        "quietCaptainRequests": 0,
+        "originalCaptainTurns": 1,
+        "wakeNotices": 0,
+        "sandboxWorkspaceKeys": 2
+      }
+    }
+  },
+  "other": {
+    "team-dispatch-guard": "21 in-process assertions passed",
+    "verify-no-host-override": 0,
+    "verify-manual-paths": 0,
+    "verify-pack-closure": "30/30 packages, 672/672 compared files identical, one declared QA-only exemption"
+  },
+  "native": {
+    "record": "rec-20261123T131845-f4e57c",
+    "loop": "loop-20261123T131842-f85484",
+    "evidence": "ev-20261123T131843-3d3dd2",
+    "gate": "pr122-exact-typecheck",
+    "exit": 0,
+    "gateFreeze": "frozen",
+    "gateLogSha256": "78d11c66499ded2655afebbb1670e20052208481022986470f8f8bf5e27ce3f1",
+    "contractSha256": "7d72431b7fa9d4fa3683bea447864964501638e2d48406ea28e3b95fdc79dc4e",
+    "recordSha256": "373d326e2592e4b6df1192720b5ac2e9dedbe855750c545b4bed9642dad495dd",
+    "basis": "blind",
+    "originalLoop": "loop-20261123T125411-7ad429 resolves the main workspace; this record belongs to the verifier-local candidate clone."
+  },
+  "bounds": [
+    "Independent black-box QA. Product implementation and diff were outside this verifier pass.",
+    "Mounted behavior covers rc.5 with local scripted inputs. Other hosts, live providers and release Docker were outside this run.",
+    "Remote PR state and mergeability are checked separately by the captain."
+  ]
+}
